@@ -1,0 +1,286 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.garefl &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.garefl</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for refl1d.garefl</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Load garefl models into refl1d</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;load&quot;</span><span class="p">]</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">ctypes</span> <span class="kn">import</span> <span class="n">CDLL</span><span class="p">,</span> <span class="n">c_int</span><span class="p">,</span> <span class="n">c_void_p</span><span class="p">,</span> <span class="n">c_char_p</span><span class="p">,</span> <span class="n">c_double</span><span class="p">,</span> <span class="n">byref</span>
+<span class="kn">from</span> <span class="nn">threading</span> <span class="kn">import</span> <span class="n">current_thread</span>
+<span class="kn">from</span> <span class="nn">os</span> <span class="kn">import</span> <span class="n">getpid</span>
+
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">empty</span><span class="p">,</span> <span class="n">zeros</span><span class="p">,</span> <span class="n">array</span>
+
+<span class="kn">from</span> <span class="nn">.mystic.parameter</span> <span class="kn">import</span> <span class="n">Parameter</span><span class="p">,</span> <span class="n">Constant</span>
+<span class="kn">from</span> <span class="nn">.probe</span> <span class="kn">import</span> <span class="n">QProbe</span><span class="p">,</span> <span class="n">PolarizedNeutronQProbe</span>
+<span class="kn">from</span> <span class="nn">.experiment</span> <span class="kn">import</span> <span class="n">Experiment</span>
+<span class="kn">from</span> <span class="nn">.model</span> <span class="kn">import</span> <span class="n">Stack</span>
+<span class="kn">from</span> <span class="nn">.profile</span> <span class="kn">import</span> <span class="n">Microslabs</span>
+<span class="kn">from</span> <span class="nn">.fitproblem</span> <span class="kn">import</span> <span class="n">FitProblem</span><span class="p">,</span> <span class="n">MultiFitProblem</span>
+<span class="kn">from</span> <span class="nn">.material</span> <span class="kn">import</span> <span class="n">SLD</span><span class="p">,</span> <span class="n">Vacuum</span>
+
+<span class="k">def</span> <span class="nf">trace</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;simple function trace function&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">fn</span>  <span class="c"># Comment this to turn on tracing</span>
+    <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="k">print</span> <span class="s">&quot;entering&quot;</span><span class="p">,</span><span class="n">fn</span><span class="o">.</span><span class="n">func_name</span><span class="p">,</span><span class="s">&quot;from&quot;</span><span class="p">,</span><span class="n">current_thread</span><span class="p">(),</span><span class="n">getpid</span><span class="p">()</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="n">fn</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s">&quot;leaving&quot;</span><span class="p">,</span><span class="n">fn</span><span class="o">.</span><span class="n">func_name</span><span class="p">,</span><span class="s">&quot;from&quot;</span><span class="p">,</span><span class="n">current_thread</span><span class="p">(),</span><span class="n">getpid</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">ret</span>
+    <span class="k">return</span> <span class="n">wrapper</span>
+
+<div class="viewcode-block" id="load"><a class="viewcode-back" href="../../api/garefl.html#refl1d.garefl.load">[docs]</a><span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="n">modelfile</span><span class="p">):</span>
+    <span class="n">setup</span> <span class="o">=</span> <span class="n">GareflModel</span><span class="p">(</span><span class="n">modelfile</span><span class="p">)</span>
+    <span class="n">M</span> <span class="o">=</span> <span class="p">[</span><span class="n">GareflExperiment</span><span class="p">(</span><span class="n">setup</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
+         <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">setup</span><span class="o">.</span><span class="n">num_models</span><span class="p">)]</span>
+    <span class="n">names</span> <span class="o">=</span> <span class="n">setup</span><span class="o">.</span><span class="n">par_names</span><span class="p">()</span>
+    <span class="n">low</span><span class="p">,</span><span class="n">high</span> <span class="o">=</span> <span class="n">setup</span><span class="o">.</span><span class="n">par_bounds</span><span class="p">()</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">setup</span><span class="o">.</span><span class="n">par_values</span><span class="p">()</span>
+    <span class="n">pars</span> <span class="o">=</span> <span class="p">[</span><span class="n">Parameter</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">s</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="p">(</span><span class="n">L</span><span class="p">,</span><span class="n">H</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">v</span><span class="p">,</span><span class="n">s</span><span class="p">,</span><span class="n">L</span><span class="p">,</span><span class="n">H</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">value</span><span class="p">,</span><span class="n">names</span><span class="p">,</span><span class="n">low</span><span class="p">,</span><span class="n">high</span><span class="p">)]</span>
+    <span class="n">M</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="o">.</span><span class="n">_pars</span> <span class="o">=</span> <span class="n">pars</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">M</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">MultiFitProblem</span><span class="p">(</span><span class="n">M</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">FitProblem</span><span class="p">(</span><span class="n">M</span><span class="p">[</span><span class="mf">0</span><span class="p">])</span>
+</div>
+<span class="n">NOTHING</span><span class="o">=</span><span class="n">Vacuum</span><span class="p">()</span>
+<span class="n">NOTHING</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+
+<span class="k">class</span> <span class="nc">GareflExperiment</span><span class="p">(</span><span class="n">Experiment</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">dz</span><span class="o">=</span><span class="mf">1</span><span class="p">,</span> <span class="n">step_interfaces</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">index</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">probe</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">get_probe</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample</span> <span class="o">=</span> <span class="n">Stack</span><span class="p">([</span><span class="n">NOTHING</span><span class="p">,</span><span class="n">NOTHING</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="o">.</span><span class="n">interface</span><span class="o">.</span><span class="n">fittable</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">step_interfaces</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_slabs</span> <span class="o">=</span> <span class="n">Microslabs</span><span class="p">(</span><span class="mf">1</span><span class="p">,</span> <span class="n">dz</span><span class="o">=</span><span class="n">dz</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c"># Cache calculated profiles/reflectivities</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pars</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">roughness_limit</span> <span class="o">=</span> <span class="mf">2.35</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_substrate</span> <span class="o">=</span> <span class="n">SLD</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s">&#39;substrate&#39;</span><span class="p">,</span><span class="n">rho</span><span class="o">=</span><span class="mf">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_surface</span> <span class="o">=</span> <span class="n">SLD</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s">&#39;surface&#39;</span><span class="p">,</span><span class="n">rho</span><span class="o">=</span><span class="mf">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pars</span>
+
+    <span class="k">def</span> <span class="nf">_render_slabs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Build a slab description of the model from the individual layers.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="s">&#39;rendered&#39;</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">:</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pars</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">pvec</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pars</span><span class="p">],</span> <span class="s">&#39;d&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_chisq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">update_model</span><span class="p">(</span><span class="n">pvec</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_slabs</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="n">w</span><span class="p">,</span><span class="n">rho</span><span class="p">,</span><span class="n">irho</span><span class="p">,</span><span class="n">rhoM</span><span class="p">,</span><span class="n">thetaM</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">get_profile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+            <span class="n">rho</span><span class="p">,</span><span class="n">irho</span><span class="p">,</span><span class="n">rhoM</span> <span class="o">=</span> <span class="mf">1e6</span><span class="o">*</span><span class="n">rho</span><span class="p">,</span><span class="mf">1e6</span><span class="o">*</span><span class="n">irho</span><span class="p">,</span><span class="mf">1e6</span><span class="o">*</span><span class="n">rhoM</span> <span class="c"># remove zeros</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_slabs</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">w</span><span class="o">=</span><span class="n">w</span><span class="p">,</span><span class="n">rho</span><span class="o">=</span><span class="n">rho</span><span class="p">[</span><span class="bp">None</span><span class="p">,:],</span><span class="n">irho</span><span class="o">=</span><span class="n">irho</span><span class="p">[</span><span class="bp">None</span><span class="p">,:])</span>
+            <span class="c"># TODO: What about rhoM, thetaM</span>
+
+            <span class="c"># Set values for the Fresnel reflectivity plot</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_substrate</span><span class="o">.</span><span class="n">rho</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">rho</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_substrate</span><span class="o">.</span><span class="n">irho</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">irho</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_surface</span><span class="o">.</span><span class="n">rho</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">rho</span><span class="p">[</span><span class="o">-</span><span class="mf">1</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_surface</span><span class="o">.</span><span class="n">irho</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">irho</span><span class="p">[</span><span class="o">-</span><span class="mf">1</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_slabs</span>
+
+    <span class="k">def</span> <span class="nf">amplitude</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate reflectivity amplitude at the probe points.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&quot;amplitude not available from garefl&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">reflectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate predicted reflectivity.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="s">&#39;reflectivity&#39;</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">:</span>
+            <span class="n">slabs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_render_slabs</span><span class="p">()</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">polarized</span><span class="p">:</span>
+                <span class="n">Q</span><span class="p">,</span><span class="n">Rmm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">get_reflectivity</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="mf">0</span><span class="p">)</span>
+                <span class="n">Q</span><span class="p">,</span><span class="n">Rmp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">get_reflectivity</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="mf">1</span><span class="p">)</span>
+                <span class="n">Q</span><span class="p">,</span><span class="n">Rpm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">get_reflectivity</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="mf">2</span><span class="p">)</span>
+                <span class="n">Q</span><span class="p">,</span><span class="n">Rpp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">get_reflectivity</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="mf">3</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">Q</span><span class="p">,(</span><span class="n">Rmm</span><span class="p">,</span><span class="n">Rmp</span><span class="p">,</span><span class="n">Rpm</span><span class="p">,</span><span class="n">Rpp</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">Q</span><span class="p">,</span><span class="n">R</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">get_reflectivity</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="mf">0</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">Q</span><span class="p">,</span><span class="n">R</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+
+
+<span class="k">class</span> <span class="nc">GareflModel</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dll_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_load_dll</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setup_model</span><span class="p">()</span>
+
+    <span class="nd">@trace</span>
+    <span class="k">def</span> <span class="nf">_load_dll</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">dll</span> <span class="o">=</span> <span class="n">CDLL</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dll_path</span><span class="p">)</span>
+        <span class="n">dll</span><span class="o">.</span><span class="n">ex_get_data</span><span class="o">.</span><span class="n">restype</span> <span class="o">=</span> <span class="n">c_char_p</span>
+        <span class="n">dll</span><span class="o">.</span><span class="n">setup_models</span><span class="o">.</span><span class="n">restype</span> <span class="o">=</span> <span class="n">c_void_p</span>
+        <span class="n">dll</span><span class="o">.</span><span class="n">ex_par_name</span><span class="o">.</span><span class="n">restype</span> <span class="o">=</span> <span class="n">c_char_p</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dll</span> <span class="o">=</span> <span class="n">dll</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_models</span> <span class="o">=</span> <span class="mf">0</span>
+
+    <span class="nd">@trace</span>
+    <span class="k">def</span> <span class="nf">_setup_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_models</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s">&quot;Model already loaded&quot;</span><span class="p">)</span>
+        <span class="n">MODELS</span> <span class="o">=</span> <span class="n">c_int</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">models</span> <span class="o">=</span> <span class="n">c_void_p</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dll</span><span class="o">.</span><span class="n">setup_models</span><span class="p">(</span><span class="n">byref</span><span class="p">(</span><span class="n">MODELS</span><span class="p">)))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_models</span> <span class="o">=</span> <span class="n">MODELS</span><span class="o">.</span><span class="n">value</span>
+
+    <span class="c"># Pickle protocol doesn&#39;t support ctypes linkage; reload the</span>
+    <span class="c"># module on the other side.</span>
+    <span class="k">def</span> <span class="nf">__getstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dll_path</span>
+    <span class="k">def</span> <span class="nf">__setstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dll_path</span> <span class="o">=</span> <span class="n">state</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_load_dll</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setup_model</span><span class="p">()</span>
+
+
+    <span class="k">def</span> <span class="nf">clear_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_models</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dll</span><span class="o">.</span><span class="n">ex_fit_destroy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">num_models</span> <span class="o">=</span> <span class="mf">0</span>
+
+    <span class="nd">@trace</span>
+    <span class="k">def</span> <span class="nf">update_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">weighted</span><span class="o">=</span><span class="mf">1</span><span class="p">,</span> <span class="n">approximate_roughness</span><span class="o">=</span><span class="mf">0</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dll</span><span class="o">.</span><span class="n">ex_set_pars</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">chisq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dll</span><span class="o">.</span><span class="n">ex_update_models</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_models</span><span class="p">,</span>
+                                       <span class="n">weighted</span><span class="p">,</span> <span class="n">approximate_roughness</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">chisq</span>
+
+    <span class="nd">@trace</span>
+    <span class="k">def</span> <span class="nf">get_probe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a probe for an individual garefl model.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_getdata</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">xs</span><span class="p">)</span> <span class="k">for</span> <span class="n">xs</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mf">4</span><span class="p">)]</span>
+        <span class="k">if</span> <span class="n">any</span><span class="p">(</span><span class="n">d</span><span class="o">!=</span><span class="bp">None</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="mf">1</span><span class="p">:]):</span>
+            <span class="n">probe</span> <span class="o">=</span> <span class="n">PolarizedNeutronQProbe</span><span class="p">(</span><span class="n">xs</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">probe</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">probe</span>
+
+    <span class="k">def</span> <span class="nf">_getdata</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">xs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert a single model into a probe</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dll</span><span class="o">.</span><span class="n">ex_ndata</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">xs</span><span class="p">);</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mf">0</span><span class="p">:</span> <span class="k">return</span> <span class="bp">None</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">empty</span><span class="p">((</span><span class="n">n</span><span class="p">,</span><span class="mf">4</span><span class="p">),</span><span class="s">&#39;d&#39;</span><span class="p">)</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dll</span><span class="o">.</span><span class="n">ex_get_data</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">Q</span><span class="p">,</span><span class="n">dQ</span><span class="p">,</span><span class="n">R</span><span class="p">,</span><span class="n">dR</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">T</span>
+        <span class="n">probe</span> <span class="o">=</span> <span class="n">QProbe</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span><span class="n">dQ</span><span class="p">,</span><span class="n">data</span><span class="o">=</span><span class="p">(</span><span class="n">R</span><span class="p">,</span><span class="n">dR</span><span class="p">))</span>
+        <span class="n">probe</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">filename</span>
+        <span class="k">return</span> <span class="n">probe</span>
+
+    <span class="nd">@trace</span>
+    <span class="k">def</span> <span class="nf">get_profile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dll</span><span class="o">.</span><span class="n">ex_nprofile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
+        <span class="n">w</span><span class="p">,</span> <span class="n">rho</span><span class="p">,</span><span class="n">irho</span><span class="p">,</span><span class="n">rhoM</span><span class="p">,</span><span class="n">thetaM</span> <span class="o">=</span> <span class="p">[</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span><span class="s">&#39;d&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mf">5</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dll</span><span class="o">.</span><span class="n">ex_get_profile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">w</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data</span><span class="p">,</span>
+                             <span class="n">rho</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">irho</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data</span><span class="p">,</span>
+                             <span class="n">rhoM</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">thetaM</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">w</span><span class="p">[::</span><span class="o">-</span><span class="mf">1</span><span class="p">],</span> <span class="n">rho</span><span class="p">[::</span><span class="o">-</span><span class="mf">1</span><span class="p">],</span> <span class="n">irho</span><span class="p">[::</span><span class="o">-</span><span class="mf">1</span><span class="p">],</span> <span class="n">rhoM</span><span class="p">[::</span><span class="o">-</span><span class="mf">1</span><span class="p">],</span> <span class="n">thetaM</span><span class="p">[::</span><span class="o">-</span><span class="mf">1</span><span class="p">]</span>
+
+    <span class="nd">@trace</span>
+    <span class="k">def</span> <span class="nf">get_reflectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">xs</span><span class="p">):</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dll</span><span class="o">.</span><span class="n">ex_ncalc</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
+        <span class="n">Q</span><span class="p">,</span> <span class="n">R</span> <span class="o">=</span> <span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span><span class="s">&#39;d&#39;</span><span class="p">),</span> <span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span><span class="s">&#39;d&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dll</span><span class="o">.</span><span class="n">ex_get_reflectivity</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span>
+                                     <span class="n">Q</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">R</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Q</span><span class="p">,</span> <span class="n">R</span>
+
+    <span class="nd">@trace</span>
+    <span class="k">def</span> <span class="nf">par_names</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dll</span><span class="o">.</span><span class="n">ex_npars</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">dll</span><span class="o">.</span><span class="n">ex_par_name</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)]</span>
+
+    <span class="nd">@trace</span>
+    <span class="k">def</span> <span class="nf">par_bounds</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dll</span><span class="o">.</span><span class="n">ex_npars</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="p">)</span>
+        <span class="n">lo</span><span class="p">,</span><span class="n">hi</span> <span class="o">=</span> <span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span><span class="s">&#39;d&#39;</span><span class="p">),</span> <span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span><span class="s">&#39;d&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dll</span><span class="o">.</span><span class="n">ex_par_bounds</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="p">,</span> <span class="n">lo</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">hi</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span>
+
+    <span class="nd">@trace</span>
+    <span class="k">def</span> <span class="nf">par_values</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dll</span><span class="o">.</span><span class="n">ex_npars</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="p">)</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span><span class="s">&#39;d&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dll</span><span class="o">.</span><span class="n">ex_par_values</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">p</span>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

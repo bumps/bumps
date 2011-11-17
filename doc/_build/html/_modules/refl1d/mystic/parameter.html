@@ -1,0 +1,684 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.mystic.parameter &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../../../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../../../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.mystic.parameter</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        <a class="uplink" href="../../../index.html">Contents</a>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for refl1d.mystic.parameter</h1><div class="highlight"><pre>
+<span class="c"># This program is public domain</span>
+<span class="c"># Author: Paul Kienzle</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Model parameters</span>
+<span class="sd">================</span>
+
+<span class="sd">Parameters are a big part of the interface between the model and the fitting</span>
+<span class="sd">engine.  By saving and retrieving values and ranges from the parameter, the</span>
+<span class="sd">fitting engine does not need to be aware of the structure of the model.</span>
+
+<span class="sd">Users can also perform calculations with parameters, tying together different</span>
+<span class="sd">parts of the model, or different models.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="c">#__all__ = [ &#39;Parameter&#39;, &#39;ParameterSet&#39;]</span>
+
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">inf</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">bounds</span> <span class="k">as</span> <span class="n">mbounds</span>
+<span class="kn">from</span> <span class="nn">.formatnum</span> <span class="kn">import</span> <span class="n">format_uncertainty</span>
+
+<span class="c"># TODO: avoid evaluation of subexpressions if parameters do not change.</span>
+<span class="c"># This is especially important if the subexpression invokes an expensive</span>
+<span class="c"># calculation via a parameterized function.  This will require a restructuring</span>
+<span class="c"># of the parameter class.  The park-1.3 solution is viable: given a parameter</span>
+<span class="c"># set, figure out which order the expressions need to be evaluated by</span>
+<span class="c"># building up a dependency graph.  With a little care, we can check which</span>
+<span class="c"># parameters have actually changed since the last calculation update, and</span>
+<span class="c"># restrict the dependency graph to just them.</span>
+<span class="c"># TODO: support full aliasing, so that floating point model attributes can</span>
+<span class="c"># be aliased to a parameter.  The same technique as subexpressions applies:</span>
+<span class="c"># when the parameter is changed, the model will be updated and will need</span>
+<span class="c"># to be re-evaluated.</span>
+
+
+<div class="viewcode-block" id="BaseParameter"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.BaseParameter">[docs]</a><span class="k">class</span> <span class="nc">BaseParameter</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Root of the parameter class, defining arithmetic on parameters</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c"># Parameters are fixed unless told otherwise</span>
+    <span class="n">fixed</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="n">fittable</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="n">discrete</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="n">bounds</span> <span class="o">=</span> <span class="n">mbounds</span><span class="o">.</span><span class="n">Unbounded</span><span class="p">()</span>
+
+    <span class="c"># Parameters may be dependent on other parameters, and the</span>
+    <span class="c"># fit engine will need to access them.</span>
+<div class="viewcode-block" id="BaseParameter.parameters"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.BaseParameter.parameters">[docs]</a>    <span class="k">def</span> <span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="BaseParameter.pmp"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.BaseParameter.pmp">[docs]</a>    <span class="k">def</span> <span class="nf">pmp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Allow the parameter to vary as value +/- percent.</span>
+
+<span class="sd">        pmp(percent) -&gt; [value*(100 - percent)/100, value*(100 + percent)/100]</span>
+<span class="sd">        pmp(plus,minus) -&gt; [value*(100 - minus)/100, value*(100 + plus)/100]</span>
+
+<span class="sd">        This uses nice numbers for the resulting range.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fittable</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">fixed</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span> <span class="o">=</span> <span class="n">mbounds</span><span class="o">.</span><span class="n">Bounded</span><span class="p">(</span><span class="o">*</span><span class="n">mbounds</span><span class="o">.</span><span class="n">pmp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+<div class="viewcode-block" id="BaseParameter.pm"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.BaseParameter.pm">[docs]</a>    <span class="k">def</span> <span class="nf">pm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Allow the parameter to vary as value +/- delta.</span>
+
+<span class="sd">        pm(delta) -&gt; [value-delta, value+delta]</span>
+<span class="sd">        pm(plus,minus) -&gt; [value-minus, value+plus]</span>
+
+<span class="sd">        This uses nice numbers for the resulting range.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fittable</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">fixed</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span> <span class="o">=</span> <span class="n">mbounds</span><span class="o">.</span><span class="n">Bounded</span><span class="p">(</span><span class="o">*</span><span class="n">mbounds</span><span class="o">.</span><span class="n">pm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+<div class="viewcode-block" id="BaseParameter.dev"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.BaseParameter.dev">[docs]</a>    <span class="k">def</span> <span class="nf">dev</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1</span><span class="p">,</span> <span class="n">mu</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Allow the parameter to vary according to a normal distribution, with</span>
+<span class="sd">        deviations added to the overall cost function:</span>
+
+<span class="sd">            dev(sigma, mu) -&gt; Normal(mean=mu,std=sigma)</span>
+
+<span class="sd">        If mu is None, then it defaults to the current parameter value.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fittable</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">fixed</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="k">if</span> <span class="n">mu</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> <span class="n">mu</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span> <span class="o">=</span> <span class="n">mbounds</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="n">mu</span><span class="p">,</span><span class="n">sigma</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+<div class="viewcode-block" id="BaseParameter.range"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.BaseParameter.range">[docs]</a>    <span class="k">def</span> <span class="nf">range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">low</span><span class="p">,</span> <span class="n">high</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Allow the parameter to vary within the given range.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fittable</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">fixed</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span> <span class="o">=</span> <span class="n">mbounds</span><span class="o">.</span><span class="n">init_bounds</span><span class="p">((</span><span class="n">low</span><span class="p">,</span><span class="n">high</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="c"># Functional form of parameter value access</span></div>
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span>
+
+    <span class="c"># Parameter algebra: express relationships between parameters</span>
+    <span class="k">def</span> <span class="nf">__gt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span> <span class="k">return</span> <span class="n">ConstraintGT</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__ge__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span> <span class="k">return</span> <span class="n">ConstraintGE</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__le__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span> <span class="k">return</span> <span class="n">ConstraintLE</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__lt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span> <span class="k">return</span> <span class="n">ConstraintLT</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span>
+    <span class="c">#def __eq__(self, other): return ConstraintEQ(self, other)</span>
+    <span class="c">#def __ne__(self, other): return ConstraintNE(self, other)</span>
+
+    <span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span> <span class="k">return</span> <span class="n">OperatorAdd</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">other</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span> <span class="k">return</span> <span class="n">OperatorSub</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">other</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span> <span class="k">return</span> <span class="n">OperatorMul</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">other</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__div__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span> <span class="k">return</span> <span class="n">OperatorDiv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">other</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__pow__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span> <span class="k">return</span> <span class="n">OperatorPow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">other</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__radd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span> <span class="k">return</span> <span class="n">OperatorAdd</span><span class="p">(</span><span class="n">other</span><span class="p">,</span><span class="bp">self</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__rsub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span> <span class="k">return</span> <span class="n">OperatorSub</span><span class="p">(</span><span class="n">other</span><span class="p">,</span><span class="bp">self</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__rmul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span> <span class="k">return</span> <span class="n">OperatorMul</span><span class="p">(</span><span class="n">other</span><span class="p">,</span><span class="bp">self</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__rdiv__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span> <span class="k">return</span> <span class="n">OperatorDiv</span><span class="p">(</span><span class="n">other</span><span class="p">,</span><span class="bp">self</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__rpow__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span> <span class="k">return</span> <span class="n">OperatorPow</span><span class="p">(</span><span class="n">other</span><span class="p">,</span><span class="bp">self</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__abs__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="k">return</span> <span class="n">_abs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__neg__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="k">return</span> <span class="n">_mul</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="o">-</span><span class="mf">1</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__pos__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="k">return</span> <span class="bp">self</span>
+    <span class="k">def</span> <span class="nf">__float__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="n">__truediv__</span> <span class="o">=</span> <span class="n">__div__</span>
+    <span class="n">__rtruediv__</span> <span class="o">=</span> <span class="n">__rdiv__</span>
+
+<div class="viewcode-block" id="BaseParameter.nllf"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.BaseParameter.nllf">[docs]</a>    <span class="k">def</span> <span class="nf">nllf</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the negative log likelihood of seeing the current parameter value.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="o">.</span><span class="n">nllf</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="BaseParameter.residual"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.BaseParameter.residual">[docs]</a>    <span class="k">def</span> <span class="nf">residual</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the negative log likelihood of seeing the current parameter value.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="o">.</span><span class="n">residual</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="BaseParameter.valid"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.BaseParameter.valid">[docs]</a>    <span class="k">def</span> <span class="nf">valid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return true if the parameter is within the valid range.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="n">numpy</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nllf</span><span class="p">())</span>
+</div>
+<div class="viewcode-block" id="BaseParameter.format"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.BaseParameter.format">[docs]</a>    <span class="k">def</span> <span class="nf">format</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Format the parameter, value and range as a string.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s">=</span><span class="si">%g</span><span class="s"> in </span><span class="si">%s</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">!=</span> <span class="bp">None</span> <span class="k">else</span> <span class="s">&#39;?&#39;</span>
+        <span class="k">return</span> <span class="n">name</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;Parameter(</span><span class="si">%s</span><span class="s">)&quot;</span><span class="o">%</span><span class="bp">self</span>
+</div>
+<div class="viewcode-block" id="Constant"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.Constant">[docs]</a><span class="k">class</span> <span class="nc">Constant</span><span class="p">(</span><span class="n">BaseParameter</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    An unmodifiable value.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fittable</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="n">fixed</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="Constant.value"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.Constant.value">[docs]</a>    <span class="k">def</span> <span class="nf">value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_value</span></div>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_value</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+</div>
+<div class="viewcode-block" id="Parameter"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.Parameter">[docs]</a><span class="k">class</span> <span class="nc">Parameter</span><span class="p">(</span><span class="n">BaseParameter</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A parameter is a symbolic value.</span>
+
+<span class="sd">    It can be fixed or it can vary within bounds.</span>
+
+<span class="sd">    p = Parameter(3).pmp(10)    # 3 +/- 10%</span>
+<span class="sd">    p = Parameter(3).pmp(-5,10) # 3 in [2.85,3.3] rounded to 2 digits</span>
+<span class="sd">    p = Parameter(3).pm(2)      # 3 +/- 2</span>
+<span class="sd">    p = Parameter(3).pm(-1,2)   # 3 in [2,5]</span>
+<span class="sd">    p = Parameter(3).range(0,5) # 3 in [0,5]</span>
+
+<span class="sd">    It has hard limits on the possible values, and a range that should live</span>
+<span class="sd">    within those hard limits.  The value should lie within the range for</span>
+<span class="sd">    it to be valid.  Some algorithms may drive the value outside the range</span>
+<span class="sd">    in order to satisfy soft It has a value which should lie within the range.</span>
+
+<span class="sd">    Other properties can decorate the parameter, such as tip for tool tip</span>
+<span class="sd">    and units for units.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fittable</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="Parameter.default"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.Parameter.default">[docs]</a>    <span class="k">def</span> <span class="nf">default</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="c"># Need to constrain the parameter to fit within fixed limits and</span>
+        <span class="c"># to receive a name if a name has not already been provided.</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">BaseParameter</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">value</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">cls</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span></div>
+<div class="viewcode-block" id="Parameter.set"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.Parameter.set">[docs]</a>    <span class="k">def</span> <span class="nf">set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set a new value for the parameter, ignoring the bounds.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">value</span>
+</div>
+<div class="viewcode-block" id="Parameter.clip_set"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.Parameter.clip_set">[docs]</a>    <span class="k">def</span> <span class="nf">clip_set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set a new value for the parameter, clipping it to the bounds.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">low</span><span class="p">,</span><span class="n">high</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="o">.</span><span class="n">limits</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">value</span><span class="p">,</span><span class="n">low</span><span class="p">),</span><span class="n">high</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">fixed</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="c"># UI nicities:</span>
+        <span class="c"># 1. check if we are started with value=range or bounds=range; if we are given bounds, then assume</span>
+        <span class="c"># this is a fittable parameter, otherwise the parameter</span>
+        <span class="c"># defaults to fixed; if value is not set, use the midpoint</span>
+        <span class="c"># of the range.</span>
+        <span class="k">if</span> <span class="n">bounds</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="o">=</span> <span class="n">value</span>
+                <span class="n">bounds</span> <span class="o">=</span> <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+                <span class="k">pass</span>
+        <span class="k">if</span> <span class="n">fixed</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">fixed</span> <span class="o">=</span> <span class="p">(</span><span class="n">bounds</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">)</span>
+        <span class="n">bounds</span> <span class="o">=</span> <span class="n">mbounds</span><span class="o">.</span><span class="n">init_bounds</span><span class="p">(</span><span class="n">bounds</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">bounds</span><span class="o">.</span><span class="n">start_value</span><span class="p">()</span>
+
+        <span class="c"># Store whatever values the user needs to associate with the parameter</span>
+        <span class="c"># Models should set units and tool tips so the user interface has</span>
+        <span class="c"># something to work with.</span>
+        <span class="n">limits</span> <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;limits&#39;</span><span class="p">,(</span><span class="o">-</span><span class="n">inf</span><span class="p">,</span><span class="n">inf</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">kw</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">k</span><span class="p">,</span><span class="n">v</span><span class="p">)</span>
+
+        <span class="c"># The real initialization</span>
+        <span class="k">def</span> <span class="nf">clip</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">):</span> <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">a</span><span class="p">),</span><span class="n">b</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span> <span class="o">=</span> <span class="n">bounds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="o">.</span><span class="n">limits</span> <span class="o">=</span> <span class="p">(</span><span class="n">clip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="o">.</span><span class="n">limits</span><span class="p">[</span><span class="mf">0</span><span class="p">],</span><span class="o">*</span><span class="n">limits</span><span class="p">),</span>
+                              <span class="n">clip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="o">.</span><span class="n">limits</span><span class="p">[</span><span class="mf">1</span><span class="p">],</span><span class="o">*</span><span class="n">limits</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fixed</span> <span class="o">=</span> <span class="n">fixed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+
+<div class="viewcode-block" id="Parameter.rand"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.Parameter.rand">[docs]</a>    <span class="k">def</span> <span class="nf">rand</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rng</span><span class="o">=</span><span class="n">mbounds</span><span class="o">.</span><span class="n">RNG</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set a random value for the parameter.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">rng</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Parameter.feasible"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.Parameter.feasible">[docs]</a>    <span class="k">def</span> <span class="nf">feasible</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Value is within the limits defined by the model</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="p">[</span><span class="mf">1</span><span class="p">]</span>
+</div></div>
+<div class="viewcode-block" id="Reference"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.Reference">[docs]</a><span class="k">class</span> <span class="nc">Reference</span><span class="p">(</span><span class="n">Parameter</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create an adaptor so that a model attribute can be treated as if it</span>
+<span class="sd">    were a parameter.  This allows only direct access, wherein the</span>
+<span class="sd">    storage for the parameter value is provided by the underlying model.</span>
+
+<span class="sd">    Indirect access, wherein the storage is provided by the parameter, cannot</span>
+<span class="sd">    be supported since the parameter has no way to detect that the model</span>
+<span class="sd">    is asking for the value of the attribute.  This means that model</span>
+<span class="sd">    attributes cannot be assigned to parameter expressions without some</span>
+<span class="sd">    trigger to update the values of the attributes in the model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">obj</span> <span class="o">=</span> <span class="n">obj</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">attr</span> <span class="o">=</span> <span class="n">attr</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;.&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">obj</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="n">attr</span><span class="p">])</span>
+    <span class="k">def</span> <span class="nf">_getvalue</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">obj</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">attr</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_setvalue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">obj</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">attr</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">_getvalue</span><span class="p">,</span> <span class="n">_setvalue</span><span class="p">)</span>
+
+<span class="c"># Current implementation computes values on the fly, so you only</span>
+<span class="c"># need to plug the values into the parameters and the parameters</span>
+<span class="c"># are automatically updated.</span>
+<span class="c">#</span>
+<span class="c"># This will not work well for wrapped models.  In those cases you</span>
+<span class="c"># want to do a number of optimizations, such as only updating the</span>
+<span class="c">#</span>
+
+<span class="c"># ==== Comparison operators ===</span></div>
+<div class="viewcode-block" id="Constraint"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.Constraint">[docs]</a><span class="k">class</span> <span class="nc">Constraint</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Abstract base class for constraints.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__bool__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns True if the condition is satisfied</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+    <span class="n">__nonzero__</span> <span class="o">=</span> <span class="n">__bool__</span>
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Text description of the constraint</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+</div>
+<span class="k">def</span> <span class="nf">_gen_constraint</span><span class="p">(</span><span class="n">name</span><span class="p">,</span><span class="n">op</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate a comparison function from a comparison operator.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="s">&#39;&#39;&#39;</span><span class="se">\</span>
+<span class="s">class Constraint</span><span class="si">%(name)s</span><span class="s">(Constraint):</span>
+<span class="s">    &quot;&quot;&quot;</span>
+<span class="s">    Constraint operator </span><span class="si">%(op)s</span><span class="s"></span>
+<span class="s">    &quot;&quot;&quot;</span>
+<span class="s">    def __init__(self, a, b):</span>
+<span class="s">        self.a, self.b = a,b</span>
+<span class="s">    def __bool__(self):</span>
+<span class="s">        return float(self.a) </span><span class="si">%(op)s</span><span class="s"> float(self.b)</span>
+<span class="s">    __nonzero__ = __bool__</span>
+<span class="s">    def __str__(self):</span>
+<span class="s">        return &quot;(</span><span class="si">%%</span><span class="s">s </span><span class="si">%(op)s</span><span class="s"> </span><span class="si">%%</span><span class="s">s)&quot;</span><span class="si">%%</span><span class="s">(self.a,self.b)</span>
+<span class="s">&#39;&#39;&#39;</span><span class="o">%</span><span class="nb">dict</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span><span class="n">op</span><span class="o">=</span><span class="n">op</span><span class="p">)</span>
+
+<span class="k">exec</span> <span class="n">_gen_constraint</span><span class="p">(</span><span class="s">&#39;GT&#39;</span><span class="p">,</span><span class="s">&#39;&gt;&#39;</span><span class="p">)</span>
+<span class="k">exec</span> <span class="n">_gen_constraint</span><span class="p">(</span><span class="s">&#39;GE&#39;</span><span class="p">,</span><span class="s">&#39;&gt;=&#39;</span><span class="p">)</span>
+<span class="k">exec</span> <span class="n">_gen_constraint</span><span class="p">(</span><span class="s">&#39;LE&#39;</span><span class="p">,</span><span class="s">&#39;&lt;=&#39;</span><span class="p">)</span>
+<span class="k">exec</span> <span class="n">_gen_constraint</span><span class="p">(</span><span class="s">&#39;LT&#39;</span><span class="p">,</span><span class="s">&#39;&lt;&#39;</span><span class="p">)</span>
+<span class="k">exec</span> <span class="n">_gen_constraint</span><span class="p">(</span><span class="s">&#39;EQ&#39;</span><span class="p">,</span><span class="s">&#39;==&#39;</span><span class="p">)</span>
+<span class="k">exec</span> <span class="n">_gen_constraint</span><span class="p">(</span><span class="s">&#39;NE&#39;</span><span class="p">,</span><span class="s">&#39;!=&#39;</span><span class="p">)</span>
+
+
+<span class="c"># ==== Arithmetic operators ===</span>
+<span class="k">def</span> <span class="nf">_gen_binop</span><span class="p">(</span><span class="n">name</span><span class="p">,</span><span class="n">op</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate a comparison function from a comparison operator.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="s">&#39;&#39;&#39;</span><span class="se">\</span>
+<span class="s">class Operator</span><span class="si">%(name)s</span><span class="s">(BaseParameter):</span>
+<span class="s">    &quot;&quot;&quot;</span>
+<span class="s">    Parameter operator </span><span class="si">%(op)s</span><span class="s"></span>
+<span class="s">    &quot;&quot;&quot;</span>
+<span class="s">    def __init__(self, a, b):</span>
+<span class="s">        self.a, self.b = a,b</span>
+<span class="s">        pars = []</span>
+<span class="s">        if isinstance(a,BaseParameter): pars += a.parameters()</span>
+<span class="s">        if isinstance(b,BaseParameter): pars += b.parameters()</span>
+<span class="s">        self._parameters = pars</span>
+<span class="s">        self.name = str(self)</span>
+<span class="s">    def parameters(self):</span>
+<span class="s">        return self._parameters</span>
+<span class="s">    def _value(self):</span>
+<span class="s">        return float(self.a) </span><span class="si">%(op)s</span><span class="s"> float(self.b)</span>
+<span class="s">    value = property(_value)</span>
+<span class="s">    def _dvalue(self):</span>
+<span class="s">        return float(self.a)</span>
+<span class="s">    dvalue = property(_dvalue)</span>
+<span class="s">    def __str__(self):</span>
+<span class="s">        return &quot;(</span><span class="si">%%</span><span class="s">s </span><span class="si">%(op)s</span><span class="s"> </span><span class="si">%%</span><span class="s">s)&quot;</span><span class="si">%%</span><span class="s">(self.a,self.b)</span>
+<span class="s">&#39;&#39;&#39;</span><span class="o">%</span><span class="nb">dict</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span><span class="n">op</span><span class="o">=</span><span class="n">op</span><span class="p">)</span>
+
+<span class="k">exec</span> <span class="n">_gen_binop</span><span class="p">(</span><span class="s">&#39;Add&#39;</span><span class="p">,</span><span class="s">&#39;+&#39;</span><span class="p">)</span>
+<span class="k">exec</span> <span class="n">_gen_binop</span><span class="p">(</span><span class="s">&#39;Sub&#39;</span><span class="p">,</span><span class="s">&#39;-&#39;</span><span class="p">)</span>
+<span class="k">exec</span> <span class="n">_gen_binop</span><span class="p">(</span><span class="s">&#39;Mul&#39;</span><span class="p">,</span><span class="s">&#39;*&#39;</span><span class="p">)</span>
+<span class="k">exec</span> <span class="n">_gen_binop</span><span class="p">(</span><span class="s">&#39;Div&#39;</span><span class="p">,</span><span class="s">&#39;/&#39;</span><span class="p">)</span>
+<span class="k">exec</span> <span class="n">_gen_binop</span><span class="p">(</span><span class="s">&#39;Pow&#39;</span><span class="p">,</span><span class="s">&#39;**&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="substitute"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.substitute">[docs]</a><span class="k">def</span> <span class="nf">substitute</span><span class="p">(</span><span class="n">a</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return structure a with values substituted for all parameters.</span>
+
+<span class="sd">    The function traverses lists, tuples and dicts recursively.  Things</span>
+<span class="sd">    which are not parameters are returned directly.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">BaseParameter</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">substitute</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">a</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">substitute</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">a</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">((</span><span class="n">k</span><span class="p">,</span><span class="n">substitute</span><span class="p">(</span><span class="n">v</span><span class="p">))</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">a</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">a</span>
+</div>
+<div class="viewcode-block" id="Function"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.Function">[docs]</a><span class="k">class</span> <span class="nc">Function</span><span class="p">(</span><span class="n">BaseParameter</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Delayed function evaluator.</span>
+
+<span class="sd">    f.value evaluates the function with the values of the</span>
+<span class="sd">    parameter arguments at the time f.value is referenced rather</span>
+<span class="sd">    than when the function was invoked.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">__slots__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;op&#39;</span><span class="p">,</span><span class="s">&#39;args&#39;</span><span class="p">,</span><span class="s">&#39;kw&#39;</span><span class="p">]</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">op</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;name&#39;</span><span class="p">,</span><span class="bp">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">op</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">kw</span> <span class="o">=</span> <span class="n">op</span><span class="p">,</span><span class="n">args</span><span class="p">,</span><span class="n">kw</span>
+<div class="viewcode-block" id="Function.parameters"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.Function.parameters">[docs]</a>    <span class="k">def</span> <span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># Figure out which arguments to the function are parameters</span>
+        <span class="c">#deps = [p for p in self.args if isinstance(p,BaseParameter)]</span>
+        <span class="n">deps</span> <span class="o">=</span> <span class="n">flatten</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">kw</span><span class="p">))</span>
+        <span class="c"># Find out which other parameters these parameters depend on.</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">deps</span><span class="p">:</span> <span class="n">res</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">parameters</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">res</span></div>
+    <span class="k">def</span> <span class="nf">_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># Expand args and kw, replacing instances of parameters</span>
+        <span class="c"># with their values</span>
+        <span class="c">#return self.op(*[float(v) for v in self.args], **self.kw)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">op</span><span class="p">(</span><span class="o">*</span><span class="n">substitute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="p">),</span> <span class="o">**</span><span class="n">substitute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kw</span><span class="p">))</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">_value</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__getstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">op</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">kw</span>
+    <span class="k">def</span> <span class="nf">__setstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">op</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">kw</span> <span class="o">=</span> <span class="n">state</span>
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">args</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="p">]</span>
+            <span class="n">kw</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">k</span><span class="p">)</span><span class="o">+</span><span class="s">&quot;=&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">kw</span><span class="o">.</span><span class="n">items</span><span class="p">()]</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">op</span><span class="o">.</span><span class="n">__name__</span> <span class="o">+</span> <span class="s">&quot;(&quot;</span> <span class="o">+</span> <span class="s">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">args</span><span class="o">+</span><span class="n">kw</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot;)&quot;</span>
+        <span class="k">return</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s">:</span><span class="si">%g</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">name</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span></div>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">wraps</span>
+<div class="viewcode-block" id="function"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.function">[docs]</a><span class="k">def</span> <span class="nf">function</span><span class="p">(</span><span class="n">op</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert a function into a delayed evaluator.</span>
+
+<span class="sd">    The value of the function is computed from the values of the parameters</span>
+<span class="sd">    at the time that the function value is requested rather than when the</span>
+<span class="sd">    function is created.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c"># Note: @functools.wraps(op) does not work with numpy ufuncs</span>
+    <span class="c"># Note: @decorator does not work with builtins like abs</span>
+    <span class="k">def</span> <span class="nf">function_generator</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Function</span><span class="p">(</span><span class="n">op</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+    <span class="n">function_generator</span><span class="o">.</span><span class="n">__name__</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">__name__</span>
+    <span class="n">function_generator</span><span class="o">.</span><span class="n">__doc__</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">__doc__</span>
+    <span class="k">return</span> <span class="n">function_generator</span></div>
+<span class="n">_abs</span> <span class="o">=</span> <span class="n">function</span><span class="p">(</span><span class="nb">abs</span><span class="p">)</span>
+
+
+
+<div class="viewcode-block" id="flatten"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.flatten">[docs]</a><span class="k">def</span> <span class="nf">flatten</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="p">(</span><span class="nb">tuple</span><span class="p">,</span><span class="nb">list</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="nb">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">:</span> <span class="n">a</span> <span class="o">+</span> <span class="n">flatten</span><span class="p">(</span><span class="n">b</span><span class="p">),</span> <span class="n">s</span><span class="p">,</span> <span class="p">[])</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">set</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;parameter flattening cannot order sets&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">:</span> <span class="n">a</span> <span class="o">+</span> <span class="n">flatten</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="n">b</span><span class="p">]),</span> <span class="n">sorted</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span> <span class="p">[])</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">BaseParameter</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">s</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="n">s</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;don&#39;t understand type </span><span class="si">%s</span><span class="s"> for </span><span class="si">%s</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">s</span><span class="p">),</span> <span class="n">s</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="format"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.format">[docs]</a><span class="k">def</span> <span class="nf">format</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mf">0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Format parameter set for printing.</span>
+
+<span class="sd">    Note that this only says how the parameters are arranged, not how they</span>
+<span class="sd">    relate to each other.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">p</span><span class="p">,</span><span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="n">p</span> <span class="o">!=</span> <span class="p">{}:</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">sorted</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+            <span class="k">if</span> <span class="n">k</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;_&#39;</span><span class="p">):</span> <span class="k">continue</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="n">format</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">indent</span><span class="o">+</span><span class="mf">2</span><span class="p">)</span>
+            <span class="n">label</span> <span class="o">=</span> <span class="s">&quot; &quot;</span><span class="o">*</span><span class="n">indent</span><span class="o">+</span><span class="s">&quot;.&quot;</span><span class="o">+</span><span class="n">k</span>
+            <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">):</span>
+                <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">label</span><span class="o">+</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">+</span><span class="n">s</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">label</span><span class="o">+</span><span class="s">&quot; = &quot;</span><span class="o">+</span><span class="n">s</span><span class="o">+</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s">&#39;_index&#39;</span> <span class="ow">in</span> <span class="n">p</span><span class="p">:</span>
+            <span class="n">res</span> <span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">format</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s">&#39;_index&#39;</span><span class="p">],</span> <span class="n">indent</span><span class="p">))</span>
+        <span class="k">return</span> <span class="s">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="n">p</span> <span class="o">!=</span> <span class="p">[]:</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">p</span><span class="p">):</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="n">format</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">indent</span><span class="o">+</span><span class="mf">2</span><span class="p">)</span>
+            <span class="n">label</span> <span class="o">=</span> <span class="s">&quot; &quot;</span><span class="o">*</span><span class="n">indent</span><span class="o">+</span><span class="s">&quot;[</span><span class="si">%d</span><span class="s">]&quot;</span><span class="o">%</span><span class="n">k</span>
+            <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">):</span>
+                <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">label</span><span class="o">+</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">+</span><span class="n">s</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">label</span><span class="o">+</span><span class="s">&#39; = &#39;</span><span class="o">+</span><span class="n">s</span><span class="o">+</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+    <span class="c">#elif isinstance(p, tuple) and p != ():</span>
+    <span class="c">#    return &quot;&quot;.join(format(v, indent) for v in p)</span>
+
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">Parameter</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">fixed</span><span class="p">:</span>
+            <span class="n">bounds</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">bounds</span><span class="o">=</span><span class="s">&quot;, bounds=(</span><span class="si">%g</span><span class="s">,</span><span class="si">%g</span><span class="s">)&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">bounds</span><span class="o">.</span><span class="n">limits</span><span class="p">[</span><span class="mf">0</span><span class="p">],</span><span class="n">p</span><span class="o">.</span><span class="n">bounds</span><span class="o">.</span><span class="n">limits</span><span class="p">[</span><span class="mf">1</span><span class="p">])</span>
+        <span class="k">return</span> <span class="s">&quot;Parameter(</span><span class="si">%g</span><span class="s">, name=&#39;</span><span class="si">%s</span><span class="s">&#39;</span><span class="si">%s</span><span class="s">)&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">value</span><span class="p">,</span><span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="p">),</span><span class="n">bounds</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">BaseParameter</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s">&quot;None&quot;</span>
+</div>
+<div class="viewcode-block" id="summarize"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.summarize">[docs]</a><span class="k">def</span> <span class="nf">summarize</span><span class="p">(</span><span class="n">pars</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return a stylized list of parameter names and values with range bars</span>
+<span class="sd">    suitable for printing.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">sorted</span><span class="p">(</span><span class="n">pars</span><span class="p">,</span> <span class="nb">cmp</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">:</span> <span class="nb">cmp</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">name</span><span class="p">,</span><span class="n">y</span><span class="o">.</span><span class="n">name</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">numpy</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">value</span><span class="p">):</span>
+            <span class="n">bar</span> <span class="o">=</span> <span class="s">&quot;*invalid* &quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">position</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">bounds</span><span class="o">.</span><span class="n">get01</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">value</span><span class="p">)</span><span class="o">*</span><span class="mf">9.999999999</span><span class="p">)</span>
+            <span class="n">bar</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;.&#39;</span><span class="p">]</span><span class="o">*</span><span class="mf">10</span>
+            <span class="k">if</span> <span class="n">position</span> <span class="o">&lt;</span> <span class="mf">0</span><span class="p">:</span> <span class="n">bar</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span> <span class="o">=</span> <span class="s">&#39;&lt;&#39;</span>
+            <span class="k">elif</span> <span class="n">position</span> <span class="o">&gt;</span> <span class="mf">9</span><span class="p">:</span> <span class="n">bar</span><span class="p">[</span><span class="mf">9</span><span class="p">]</span> <span class="o">=</span> <span class="s">&#39;&gt;&#39;</span>
+            <span class="k">else</span><span class="p">:</span> <span class="n">bar</span><span class="p">[</span><span class="n">position</span><span class="p">]</span> <span class="o">=</span> <span class="s">&#39;|&#39;</span>
+        <span class="n">output</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%40s</span><span class="s"> </span><span class="si">%s</span><span class="s"> </span><span class="si">%10g</span><span class="s"> in </span><span class="si">%s</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">,</span><span class="s">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">bar</span><span class="p">),</span><span class="n">p</span><span class="o">.</span><span class="n">value</span><span class="p">,</span><span class="n">p</span><span class="o">.</span><span class="n">bounds</span><span class="p">))</span>
+    <span class="k">return</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="unique"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.unique">[docs]</a><span class="k">def</span> <span class="nf">unique</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the unique set of parameters</span>
+
+<span class="sd">    The ordering is stable.  The same parameters/dependencies will always</span>
+<span class="sd">    return the same ordering, with the first occurrence first.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c"># Walk structures such as dicts and lists</span>
+    <span class="n">pars</span> <span class="o">=</span> <span class="n">flatten</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+    <span class="c">#print &quot;====== flattened&quot;</span>
+    <span class="c">#print &quot;\n&quot;.join(&quot;%s:%s&quot;%(id(p),p) for p in pars)</span>
+    <span class="c"># Also walk parameter expressions</span>
+    <span class="n">pars</span> <span class="o">=</span> <span class="n">pars</span> <span class="o">+</span> <span class="n">flatten</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">parameters</span><span class="p">()</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pars</span><span class="p">])</span>
+    <span class="c">#print &quot;====== extended&quot;</span>
+    <span class="c">#print &quot;\n&quot;.join(&quot;%s:%s&quot;%(id(p),p) for p in pars)</span>
+
+    <span class="c"># TODO: implement n log n rather than n^2 uniqueness algorithm</span>
+    <span class="c"># problem is that the sorting has to be unique across a pickle.</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pars</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">any</span><span class="p">(</span><span class="n">p</span> <span class="ow">is</span> <span class="n">q</span> <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="n">result</span><span class="p">):</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+
+    <span class="c">#print &quot;====== unique&quot;</span>
+    <span class="c">#print &quot;\n&quot;.join(&quot;%s:%s&quot;%(id(p),p) for p in result)</span>
+    <span class="c"># Return the complete set of parameters</span>
+    <span class="k">return</span> <span class="n">result</span>
+</div>
+<div class="viewcode-block" id="fittable"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.fittable">[docs]</a><span class="k">def</span> <span class="nf">fittable</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the list of fittable parameters in no paraticular order.</span>
+
+<span class="sd">    Note that some fittable parameters may be fixed during the fit.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">unique</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">p</span><span class="o">.</span><span class="n">fittable</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="varying"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.varying">[docs]</a><span class="k">def</span> <span class="nf">varying</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the list of fitted parameters in the model.</span>
+
+<span class="sd">    This is the set of parameters that will vary during the fit.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">unique</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">p</span><span class="o">.</span><span class="n">fixed</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="randomize"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.randomize">[docs]</a><span class="k">def</span> <span class="nf">randomize</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Set random values to the parameters in the parameter set, with</span>
+<span class="sd">    values chosen according to the bounds.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">s</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">bounds</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="mf">1</span><span class="p">)[</span><span class="mf">0</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="current"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.current">[docs]</a><span class="k">def</span> <span class="nf">current</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">s</span><span class="p">]</span>
+
+<span class="c"># ========= trash ===================</span>
+</div>
+<div class="viewcode-block" id="ParameterSet"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.ParameterSet">[docs]</a><span class="k">class</span> <span class="nc">ParameterSet</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__dict__</span> <span class="o">=</span> <span class="n">kw</span>
+<div class="viewcode-block" id="ParameterSet.flatten"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.ParameterSet.flatten">[docs]</a>    <span class="k">def</span> <span class="nf">flatten</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s">&quot;&quot;</span><span class="p">):</span>
+        <span class="n">L</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__dict__</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">ParameterSet</span><span class="p">):</span>
+                <span class="n">L</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">flatten</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="n">prefix</span><span class="o">+</span><span class="n">k</span><span class="o">+</span><span class="s">&quot;.&quot;</span><span class="p">))</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="n">L</span><span class="o">.</span><span class="n">extend</span><span class="p">((</span><span class="n">prefix</span><span class="o">+</span><span class="n">k</span><span class="o">+</span><span class="s">&quot;[</span><span class="si">%d</span><span class="s">]&quot;</span><span class="o">%</span><span class="n">i</span><span class="p">,</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">p</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">L</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">prefix</span><span class="o">+</span><span class="n">k</span><span class="p">,</span><span class="n">v</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">L</span>
+</div></div>
+<div class="viewcode-block" id="IntegerParameter"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.IntegerParameter">[docs]</a><span class="k">class</span> <span class="nc">IntegerParameter</span><span class="p">(</span><span class="n">Parameter</span><span class="p">):</span>
+    <span class="n">discrete</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="k">def</span> <span class="nf">_get_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_value</span>
+    <span class="k">def</span> <span class="nf">_set_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span> <span class="bp">self</span><span class="o">.</span><span class="n">_value</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">_get_value</span><span class="p">,</span> <span class="n">_set_value</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="VectorParameter"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.VectorParameter">[docs]</a><span class="k">class</span> <span class="nc">VectorParameter</span><span class="p">(</span><span class="n">Parameter</span><span class="p">):</span>
+    <span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="Alias"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.Alias">[docs]</a><span class="k">class</span> <span class="nc">Alias</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parameter alias.</span>
+
+<span class="sd">    Rather than modifying a model to contain a parameter slot,</span>
+<span class="sd">    allow the parameter to exist outside the model. The resulting</span>
+<span class="sd">    parameter will have the full parameter semantics, including</span>
+<span class="sd">    the ability to replace a fixed value with a parameter expression.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">obj</span> <span class="o">=</span> <span class="n">obj</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">attr</span> <span class="o">=</span> <span class="n">attr</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;.&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">obj</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="n">attr</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">p</span> <span class="o">=</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+<div class="viewcode-block" id="Alias.update"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.Alias.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">obj</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">attr</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">par</span><span class="o">.</span><span class="n">value</span><span class="p">)</span></div>
+<div class="viewcode-block" id="Alias.parameters"><a class="viewcode-back" href="../../../api/mystic.parameter.html#refl1d.mystic.parameter.Alias.parameters">[docs]</a>    <span class="k">def</span> <span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">parameters</span><span class="p">()</span></div></div>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        <a class="uplink" href="../../../index.html">Contents</a>
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

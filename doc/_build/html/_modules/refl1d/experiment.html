@@ -1,0 +1,732 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.experiment &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.experiment</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for refl1d.experiment</h1><div class="highlight"><pre>
+<span class="c"># This program is in the public domain</span>
+<span class="c"># Author: Paul Kienzle</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Experiment definition</span>
+
+<span class="sd">An experiment combines the sample definition with a measurement probe</span>
+<span class="sd">to create a fittable reflectometry model.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span>
+
+<span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">log</span><span class="p">,</span> <span class="n">pi</span><span class="p">,</span> <span class="n">log10</span><span class="p">,</span> <span class="n">ceil</span><span class="p">,</span> <span class="n">floor</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">traceback</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">from</span> <span class="nn">.reflectivity</span> <span class="kn">import</span> <span class="n">reflectivity_amplitude</span> <span class="k">as</span> <span class="n">reflamp</span>
+<span class="kn">from</span> <span class="nn">.reflectivity</span> <span class="kn">import</span> <span class="n">magnetic_amplitude</span> <span class="k">as</span> <span class="n">reflmag</span>
+<span class="c">#print &quot;Using pure python reflectivity calculator&quot;</span>
+<span class="c">#from .abeles import refl as reflamp</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">material</span><span class="p">,</span> <span class="n">profile</span>
+<span class="kn">from</span> <span class="nn">.mystic.parameter</span> <span class="kn">import</span> <span class="n">Parameter</span>
+<span class="kn">from</span> <span class="nn">.util</span> <span class="kn">import</span> <span class="n">auto_shift</span>
+
+
+<div class="viewcode-block" id="plot_sample"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.plot_sample">[docs]</a><span class="k">def</span> <span class="nf">plot_sample</span><span class="p">(</span><span class="n">sample</span><span class="p">,</span> <span class="n">instrument</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">roughness_limit</span><span class="o">=</span><span class="mf">0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Quick plot of a reflectivity sample and the corresponding reflectivity.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">instrument</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="kn">from</span> <span class="nn">.probe</span> <span class="kn">import</span> <span class="n">NeutronProbe</span>
+        <span class="n">probe</span> <span class="o">=</span> <span class="n">NeutronProbe</span><span class="p">(</span><span class="n">T</span><span class="o">=</span><span class="n">numpy</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="mf">5</span><span class="p">,</span><span class="mf">0.05</span><span class="p">),</span> <span class="n">L</span><span class="o">=</span><span class="mf">5</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">probe</span> <span class="o">=</span> <span class="n">instrument</span><span class="o">.</span><span class="n">simulate</span><span class="p">()</span>
+    <span class="n">experiment</span> <span class="o">=</span> <span class="n">Experiment</span><span class="p">(</span><span class="n">sample</span><span class="o">=</span><span class="n">sample</span><span class="p">,</span> <span class="n">probe</span><span class="o">=</span><span class="n">probe</span><span class="p">,</span>
+                            <span class="n">roughness_limit</span><span class="o">=</span><span class="n">roughness_limit</span><span class="p">)</span>
+    <span class="n">experiment</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="ExperimentBase"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.ExperimentBase">[docs]</a><span class="k">class</span> <span class="nc">ExperimentBase</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<div class="viewcode-block" id="ExperimentBase.format_parameters"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.ExperimentBase.format_parameters">[docs]</a>    <span class="k">def</span> <span class="nf">format_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">mystic.parameter</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">()</span>
+        <span class="k">print</span> <span class="n">mystic</span><span class="o">.</span><span class="n">parameter</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="ExperimentBase.update_composition"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.ExperimentBase.update_composition">[docs]</a>    <span class="k">def</span> <span class="nf">update_composition</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        When the model composition has changed, we need to lookup the</span>
+<span class="sd">        scattering factors for the new model.  This is only needed</span>
+<span class="sd">        when an existing chemical formula is modified; new and</span>
+<span class="sd">        deleted formulas will be handled automatically.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_probe_cache</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="ExperimentBase.is_reset"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.ExperimentBase.is_reset">[docs]</a>    <span class="k">def</span> <span class="nf">is_reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns True if a model reset was triggered.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span> <span class="o">==</span> <span class="p">{}</span>
+</div>
+<div class="viewcode-block" id="ExperimentBase.update"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.ExperimentBase.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Called when any parameter in the model is changed.</span>
+
+<span class="sd">        This signals that the entire model needs to be recalculated.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c"># if we wanted to be particularly clever we could predefine</span>
+        <span class="c"># the optical matrices and only adjust those that have changed</span>
+        <span class="c"># as the result of a parameter changing.   More trouble than it</span>
+        <span class="c"># is worth, methinks.</span>
+        <span class="c">#print &quot;reseting calculation&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span> <span class="o">=</span> <span class="p">{}</span>
+</div>
+<div class="viewcode-block" id="ExperimentBase.residuals"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.ExperimentBase.residuals">[docs]</a>    <span class="k">def</span> <span class="nf">residuals</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="s">&#39;residuals&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">polarized</span>
+                 <span class="ow">and</span> <span class="n">all</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">R</span> <span class="ow">is</span> <span class="bp">None</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">xs</span><span class="p">))</span>
+                <span class="ow">or</span> <span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">polarized</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">R</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">)):</span>
+                <span class="n">resid</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mf">0</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">QR</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity</span><span class="p">()</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">polarized</span><span class="p">:</span>
+                    <span class="n">resid</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">hstack</span><span class="p">([(</span><span class="n">xs</span><span class="o">.</span><span class="n">R</span> <span class="o">-</span> <span class="n">QRi</span><span class="p">[</span><span class="mf">1</span><span class="p">])</span><span class="o">/</span><span class="n">xs</span><span class="o">.</span><span class="n">dR</span>
+                                          <span class="k">for</span> <span class="n">xs</span><span class="p">,</span><span class="n">QRi</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">xs</span><span class="p">,</span> <span class="n">QR</span><span class="p">)</span>
+                                          <span class="k">if</span> <span class="n">xs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">])</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">resid</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">R</span> <span class="o">-</span> <span class="n">QR</span><span class="p">[</span><span class="mf">1</span><span class="p">])</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">dR</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="s">&#39;residuals&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">resid</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="s">&#39;residuals&#39;</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="ExperimentBase.numpoints"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.ExperimentBase.numpoints">[docs]</a>    <span class="k">def</span> <span class="nf">numpoints</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">Q</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="ExperimentBase.nllf"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.ExperimentBase.nllf">[docs]</a>    <span class="k">def</span> <span class="nf">nllf</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the -log(P(data|model)).</span>
+
+<span class="sd">        Using the assumption that data uncertainty is uncorrelated, with</span>
+<span class="sd">        measurements normally distributed with mean R and variance dR**2,</span>
+<span class="sd">        this is just sum( resid**2/2 + log(2*pi*dR**2)/2 ).</span>
+
+<span class="sd">        The current version drops the constant term, sum(log(2*pi*dR**2)/2).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c">#if &#39;nllf_scale&#39; not in self._cache:</span>
+        <span class="c">#    if self.probe.dR is None:</span>
+        <span class="c">#        raise ValueError(&quot;No data from which to calculate nllf&quot;)</span>
+        <span class="c">#    self._cache[&#39;nllf_scale&#39;] = numpy.sum(numpy.log(2*pi*self.probe.dR**2))</span>
+        <span class="c"># TODO: add sigma^2 effects back into nllf; only needs to be calculated</span>
+        <span class="c"># when dR changes, so maybe it belongs in probe.</span>
+        <span class="k">return</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">numpy</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">residuals</span><span class="p">()</span><span class="o">**</span><span class="mf">2</span><span class="p">)</span> <span class="c"># + self._cache[&#39;nllf_scale&#39;]</span>
+</div>
+<div class="viewcode-block" id="ExperimentBase.plot_reflectivity"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.ExperimentBase.plot_reflectivity">[docs]</a>    <span class="k">def</span> <span class="nf">plot_reflectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">show_resolution</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                          <span class="n">view</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">plot_shift</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+
+        <span class="n">QR</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">theory</span><span class="o">=</span><span class="n">QR</span><span class="p">,</span>
+                        <span class="n">substrate</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_substrate</span><span class="p">,</span> <span class="n">surface</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_surface</span><span class="p">,</span>
+                        <span class="n">view</span><span class="o">=</span><span class="n">view</span><span class="p">,</span> <span class="n">plot_shift</span><span class="o">=</span><span class="n">plot_shift</span><span class="p">,</span>
+                        <span class="n">label</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">show_resolution</span><span class="p">:</span>
+            <span class="kn">import</span> <span class="nn">pylab</span>
+            <span class="n">QR</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity</span><span class="p">(</span><span class="n">resolution</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">polarized</span><span class="p">:</span>
+                <span class="c"># Should be four pairs</span>
+                <span class="k">for</span> <span class="n">Q</span><span class="p">,</span><span class="n">R</span> <span class="ow">in</span> <span class="n">QR</span><span class="p">:</span>
+                    <span class="n">pylab</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span><span class="n">R</span><span class="p">,</span><span class="s">&#39;:g&#39;</span><span class="p">,</span><span class="n">hold</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">Q</span><span class="p">,</span><span class="n">R</span> <span class="o">=</span> <span class="n">QR</span>
+                <span class="n">pylab</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span><span class="n">R</span><span class="p">,</span><span class="s">&#39;:g&#39;</span><span class="p">,</span><span class="n">hold</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="ExperimentBase.plot"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.ExperimentBase.plot">[docs]</a>    <span class="k">def</span> <span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">plot_shift</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">profile_shift</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">pylab</span>
+        <span class="n">pylab</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mf">211</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plot_reflectivity</span><span class="p">(</span><span class="n">plot_shift</span><span class="o">=</span><span class="n">plot_shift</span><span class="p">)</span>
+        <span class="n">pylab</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mf">212</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plot_profile</span><span class="p">(</span><span class="n">plot_shift</span><span class="o">=</span><span class="n">profile_shift</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="ExperimentBase.resynth_data"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.ExperimentBase.resynth_data">[docs]</a>    <span class="k">def</span> <span class="nf">resynth_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Resynthesize data with noise from the uncertainty estimates.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">resynth_data</span><span class="p">()</span></div>
+<div class="viewcode-block" id="ExperimentBase.restore_data"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.ExperimentBase.restore_data">[docs]</a>    <span class="k">def</span> <span class="nf">restore_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Restore original data after resynthesis.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">restore_data</span><span class="p">()</span></div>
+<div class="viewcode-block" id="ExperimentBase.write_data"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.ExperimentBase.write_data">[docs]</a>    <span class="k">def</span> <span class="nf">write_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Save simulated data to a file&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">write_data</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span></div>
+<div class="viewcode-block" id="ExperimentBase.simulate_data"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.ExperimentBase.simulate_data">[docs]</a>    <span class="k">def</span> <span class="nf">simulate_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">noise</span><span class="o">=</span><span class="mf">2</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Simulate a random data set for the model</span>
+
+<span class="sd">        **Parameters:**</span>
+
+<span class="sd">        *noise* = 2 : float | %</span>
+<span class="sd">            Percentage noise to add to the data.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">theory</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity</span><span class="p">(</span><span class="n">resolution</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">simulate_data</span><span class="p">(</span><span class="n">theory</span><span class="p">,</span> <span class="n">noise</span><span class="o">=</span><span class="n">noise</span><span class="p">)</span></div>
+    <span class="k">def</span> <span class="nf">_set_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="o">=</span> <span class="n">name</span>
+    <span class="k">def</span> <span class="nf">_get_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">name</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">_get_name</span><span class="p">,</span> <span class="n">_set_name</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ExperimentBase.save"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.ExperimentBase.save">[docs]</a>    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">basename</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">save_profile</span><span class="p">(</span><span class="n">basename</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">save_staj</span><span class="p">(</span><span class="n">basename</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">save_refl</span><span class="p">(</span><span class="n">basename</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="ExperimentBase.save_profile"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.ExperimentBase.save_profile">[docs]</a>    <span class="k">def</span> <span class="nf">save_profile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">basename</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ismagnetic</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_save_magnetic</span><span class="p">(</span><span class="n">basename</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_save_nonmagnetic</span><span class="p">(</span><span class="n">basename</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">_save_magnetic</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">basename</span><span class="p">):</span>
+        <span class="c"># Slabs</span>
+        <span class="n">A</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">magnetic_slabs</span><span class="p">())</span>
+        <span class="n">fid</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">basename</span><span class="o">+</span><span class="s">&quot;-slabs.dat&quot;</span><span class="p">,</span><span class="s">&quot;w&quot;</span><span class="p">)</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;# </span><span class="si">%17s</span><span class="s"> </span><span class="si">%20s</span><span class="s"> </span><span class="si">%20s</span><span class="s"> </span><span class="si">%20s</span><span class="s"> </span><span class="si">%20s</span><span class="se">\n</span><span class="s">&quot;</span>
+                  <span class="o">%</span><span class="p">(</span><span class="s">&quot;thickness (A)&quot;</span><span class="p">,</span> <span class="s">&quot;rho (1e-6/A^2)&quot;</span><span class="p">,</span> <span class="s">&quot;irho (1e-6/A^2)&quot;</span><span class="p">,</span>
+                    <span class="s">&quot;rhoM (1e-6/A^2)&quot;</span><span class="p">,</span> <span class="s">&quot;theta (degrees)&quot;</span><span class="p">))</span>
+        <span class="n">numpy</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">fid</span><span class="p">,</span> <span class="n">A</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s">&quot;</span><span class="si">%20.15g</span><span class="s">&quot;</span><span class="p">)</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="c"># Step profile</span>
+        <span class="n">A</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">magnetic_profile</span><span class="p">())</span>
+        <span class="n">fid</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">basename</span><span class="o">+</span><span class="s">&quot;-steps.dat&quot;</span><span class="p">,</span><span class="s">&quot;w&quot;</span><span class="p">)</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;# </span><span class="si">%10s</span><span class="s"> </span><span class="si">%12s</span><span class="s"> </span><span class="si">%12s</span><span class="s"> </span><span class="si">%12s</span><span class="s"> </span><span class="si">%12s</span><span class="se">\n</span><span class="s">&quot;</span>
+                  <span class="o">%</span><span class="p">(</span><span class="s">&quot;z (A)&quot;</span><span class="p">,</span> <span class="s">&quot;rho (1e-6/A2)&quot;</span><span class="p">,</span> <span class="s">&quot;irho (1e-6/A2)&quot;</span><span class="p">,</span>
+                    <span class="s">&quot;rhoM (1e-6/A2)&quot;</span><span class="p">,</span> <span class="s">&quot;theta (degrees)&quot;</span><span class="p">))</span>
+        <span class="n">numpy</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">fid</span><span class="p">,</span> <span class="n">A</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s">&quot;</span><span class="si">%12.8f</span><span class="s">&quot;</span><span class="p">)</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_save_nonmagnetic</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">basename</span><span class="p">):</span>
+        <span class="c"># Slabs</span>
+        <span class="n">A</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">slabs</span><span class="p">())</span>
+        <span class="n">fid</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">basename</span><span class="o">+</span><span class="s">&quot;-slabs.dat&quot;</span><span class="p">,</span><span class="s">&quot;w&quot;</span><span class="p">)</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;# </span><span class="si">%17s</span><span class="s"> </span><span class="si">%20s</span><span class="s"> </span><span class="si">%20s</span><span class="s"> </span><span class="si">%20s</span><span class="se">\n</span><span class="s">&quot;</span>
+                  <span class="o">%</span><span class="p">(</span><span class="s">&quot;thickness (A)&quot;</span><span class="p">,</span><span class="s">&quot;interface (A)&quot;</span><span class="p">,</span><span class="s">&quot;rho (1e-6/A^2)&quot;</span><span class="p">,</span>
+                    <span class="s">&quot;irho (1e-6/A^2)&quot;</span><span class="p">))</span>
+        <span class="n">numpy</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">fid</span><span class="p">,</span> <span class="n">A</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s">&quot;</span><span class="si">%20.15g</span><span class="s">&quot;</span><span class="p">)</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="c"># Step profile</span>
+        <span class="n">A</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">step_profile</span><span class="p">())</span>
+        <span class="n">fid</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">basename</span><span class="o">+</span><span class="s">&quot;-steps.dat&quot;</span><span class="p">,</span><span class="s">&quot;w&quot;</span><span class="p">)</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;# </span><span class="si">%10s</span><span class="s"> </span><span class="si">%20s</span><span class="s"> </span><span class="si">%20s</span><span class="se">\n</span><span class="s">&quot;</span>
+                  <span class="o">%</span><span class="p">(</span><span class="s">&quot;z (A)&quot;</span><span class="p">,</span> <span class="s">&quot;rho (1e-6/A2)&quot;</span><span class="p">,</span> <span class="s">&quot;irho (1e-6/A2)&quot;</span><span class="p">))</span>
+        <span class="n">numpy</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">fid</span><span class="p">,</span> <span class="n">A</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s">&quot;</span><span class="si">%12.8f</span><span class="s">&quot;</span><span class="p">)</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="c"># Smooth profile</span>
+        <span class="n">A</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">smooth_profile</span><span class="p">())</span>
+        <span class="n">fid</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">basename</span><span class="o">+</span><span class="s">&quot;-profile.dat&quot;</span><span class="p">,</span><span class="s">&quot;w&quot;</span><span class="p">)</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;# </span><span class="si">%10s</span><span class="s"> </span><span class="si">%12s</span><span class="s"> </span><span class="si">%12s</span><span class="se">\n</span><span class="s">&quot;</span>
+                  <span class="o">%</span><span class="p">(</span><span class="s">&quot;z (A)&quot;</span><span class="p">,</span> <span class="s">&quot;rho (1e-6/A2)&quot;</span><span class="p">,</span> <span class="s">&quot;irho (1e-6/A2)&quot;</span><span class="p">))</span>
+        <span class="n">numpy</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">fid</span><span class="p">,</span> <span class="n">A</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s">&quot;</span><span class="si">%12.8f</span><span class="s">&quot;</span><span class="p">)</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<div class="viewcode-block" id="ExperimentBase.save_refl"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.ExperimentBase.save_refl">[docs]</a>    <span class="k">def</span> <span class="nf">save_refl</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">basename</span><span class="p">):</span>
+        <span class="c"># Reflectivity</span>
+        <span class="n">theory</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reflectivity</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="n">basename</span><span class="o">+</span><span class="s">&quot;-refl.dat&quot;</span><span class="p">,</span> <span class="n">theory</span><span class="o">=</span><span class="n">theory</span><span class="p">,</span>
+                        <span class="n">substrate</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_substrate</span><span class="p">,</span> <span class="n">surface</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_surface</span><span class="p">)</span>
+
+
+</div></div>
+<div class="viewcode-block" id="Experiment"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.Experiment">[docs]</a><span class="k">class</span> <span class="nc">Experiment</span><span class="p">(</span><span class="n">ExperimentBase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Theory calculator.  Associates sample with data, Sample plus data.</span>
+<span class="sd">    Associate sample with measurement.</span>
+
+<span class="sd">    The model calculator is specific to the particular measurement technique</span>
+<span class="sd">    that was applied to the model.</span>
+
+<span class="sd">    Measurement properties:</span>
+
+<span class="sd">        *probe* is the measuring probe</span>
+
+<span class="sd">    Sample properties:</span>
+
+<span class="sd">        *sample* is the model sample</span>
+<span class="sd">        *step_interfaces* use slabs to approximate gaussian interfaces</span>
+<span class="sd">        *roughness_limit* limit the roughness based on layer thickness</span>
+<span class="sd">        *dz* minimum step size for computed profile steps in Angstroms</span>
+<span class="sd">        *dA* discretization condition for computed profiles</span>
+
+<span class="sd">    If *step_interfaces* is True, then approximate the interface using</span>
+<span class="sd">    microslabs with step size *dz*.  The microslabs extend throughout</span>
+<span class="sd">    the whole profile, both the interfaces and the bulk; a value</span>
+<span class="sd">    for *dA* should be specified to save computation time.  If False, then</span>
+<span class="sd">    use the Nevot-Croce analytic expression for the interface between slabs.</span>
+
+<span class="sd">    The *roughness_limit* value should be reasonably large (e.g., 2.5 or above)</span>
+<span class="sd">    to make sure that the Nevot-Croce reflectivity calculation matches the</span>
+<span class="sd">    calculation of the displayed profile.  Use a value of 0 if you want no</span>
+<span class="sd">    limits on the roughness,  but be aware that the displayed profile may</span>
+<span class="sd">    not reflect the actual scattering densities in the material.</span>
+
+<span class="sd">    The *dz* step size sets the size of the slabs for non-uniform profiles.</span>
+<span class="sd">    Using the relation d = 2 pi / Q_max,  we use a default step size of d/20</span>
+<span class="sd">    rounded to two digits, with 5 |Ang| as the maximum default.  For</span>
+<span class="sd">    simultaneous fitting you may want to set *dz* explicitly using to</span>
+<span class="sd">    round(pi/Q_max/10,1) so that all models use the same step size.</span>
+
+<span class="sd">    The *dA* condition measures the uncertainty in scattering materials</span>
+<span class="sd">    allowed when combining the steps of a non-uniform profile into slabs.</span>
+<span class="sd">    Specifically, the area of the box containing the minimum and the</span>
+<span class="sd">    maximum of the non-uniform profile within the slab will be smaller</span>
+<span class="sd">    than *dA*.  A *dA* of 10 gives coarse slabs.  If *dA* is not provided</span>
+<span class="sd">    then each profile step forms its own slab.  The *dA* condition will</span>
+<span class="sd">    also apply to the slab approximation to the interfaces.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">profile_shift</span> <span class="o">=</span> <span class="mf">0</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">probe</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                 <span class="n">roughness_limit</span><span class="o">=</span><span class="mf">0</span><span class="p">,</span> <span class="n">dz</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">dA</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                 <span class="n">step_interfaces</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">smoothness</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="c"># Note: smoothness ignored</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample</span> <span class="o">=</span> <span class="n">sample</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_substrate</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="o">.</span><span class="n">material</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_surface</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">[</span><span class="o">-</span><span class="mf">1</span><span class="p">]</span><span class="o">.</span><span class="n">material</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">probe</span> <span class="o">=</span> <span class="n">probe</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">roughness_limit</span> <span class="o">=</span> <span class="n">roughness_limit</span>
+        <span class="k">if</span> <span class="n">dz</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">dz</span> <span class="o">=</span> <span class="n">nice</span><span class="p">((</span><span class="mf">2</span><span class="o">*</span><span class="n">pi</span><span class="o">/</span><span class="n">probe</span><span class="o">.</span><span class="n">Q</span><span class="o">.</span><span class="n">max</span><span class="p">())</span><span class="o">/</span><span class="mf">10</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">dz</span> <span class="o">&gt;</span> <span class="mf">5</span><span class="p">:</span> <span class="n">dz</span> <span class="o">=</span> <span class="mf">5</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dz</span> <span class="o">=</span> <span class="n">dz</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dA</span> <span class="o">=</span> <span class="n">dA</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">step_interfaces</span> <span class="o">=</span> <span class="n">step_interfaces</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_slabs</span> <span class="o">=</span> <span class="n">profile</span><span class="o">.</span><span class="n">Microslabs</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">probe</span><span class="p">),</span> <span class="n">dz</span><span class="o">=</span><span class="n">dz</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_probe_cache</span> <span class="o">=</span> <span class="n">material</span><span class="o">.</span><span class="n">ProbeCache</span><span class="p">(</span><span class="n">probe</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c"># Cache calculated profiles/reflectivities</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="o">=</span> <span class="n">name</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="Experiment.ismagnetic"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.Experiment.ismagnetic">[docs]</a>    <span class="k">def</span> <span class="nf">ismagnetic</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">slabs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_render_slabs</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">slabs</span><span class="o">.</span><span class="n">ismagnetic</span>
+</div>
+<div class="viewcode-block" id="Experiment.parameters"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.Experiment.parameters">[docs]</a>    <span class="k">def</span> <span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">sample</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span>
+                    <span class="n">probe</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">parameters</span><span class="p">())</span>
+</div>
+    <span class="k">def</span> <span class="nf">_render_slabs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Build a slab description of the model from the individual layers.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="s">&#39;rendered&#39;</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_slabs</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_probe_cache</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_slabs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_slabs</span><span class="o">.</span><span class="n">finalize</span><span class="p">(</span><span class="n">step_interfaces</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">step_interfaces</span><span class="p">,</span>
+                                 <span class="n">dA</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dA</span><span class="p">,</span>
+                                 <span class="n">roughness_limit</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">roughness_limit</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_slabs</span>
+
+    <span class="k">def</span> <span class="nf">_reflamp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c">#calc_q = self.probe.calc_Q</span>
+        <span class="c">#return calc_q,calc_q</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="s">&#39;calc_r&#39;</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">:</span>
+            <span class="n">slabs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_render_slabs</span><span class="p">()</span>
+            <span class="n">w</span> <span class="o">=</span> <span class="n">slabs</span><span class="o">.</span><span class="n">w</span>
+            <span class="n">rho</span><span class="p">,</span><span class="n">irho</span> <span class="o">=</span> <span class="n">slabs</span><span class="o">.</span><span class="n">rho</span><span class="p">,</span> <span class="n">slabs</span><span class="o">.</span><span class="n">irho</span>
+            <span class="n">sigma</span> <span class="o">=</span> <span class="n">slabs</span><span class="o">.</span><span class="n">sigma</span>
+            <span class="c">#sigma = slabs.sigma</span>
+            <span class="n">calc_q</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">calc_Q</span>
+            <span class="k">if</span> <span class="n">slabs</span><span class="o">.</span><span class="n">ismagnetic</span><span class="p">:</span>
+                <span class="n">rhoM</span><span class="p">,</span> <span class="n">thetaM</span> <span class="o">=</span> <span class="n">slabs</span><span class="o">.</span><span class="n">rhoM</span><span class="p">,</span> <span class="n">slabs</span><span class="o">.</span><span class="n">thetaM</span>
+                <span class="n">Aguide</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">Aguide</span>
+                <span class="n">calc_r</span> <span class="o">=</span> <span class="n">reflmag</span><span class="p">(</span><span class="o">-</span><span class="n">calc_q</span><span class="o">/</span><span class="mf">2</span><span class="p">,</span> <span class="n">depth</span><span class="o">=</span><span class="n">w</span><span class="p">,</span> <span class="n">rho</span><span class="o">=</span><span class="n">rho</span><span class="p">[</span><span class="mf">0</span><span class="p">],</span> <span class="n">irho</span><span class="o">=</span><span class="n">irho</span><span class="p">[</span><span class="mf">0</span><span class="p">],</span>
+                                 <span class="n">rhoM</span><span class="o">=</span><span class="n">rhoM</span><span class="p">,</span> <span class="n">thetaM</span><span class="o">=</span><span class="n">thetaM</span><span class="p">,</span> <span class="n">Aguide</span><span class="o">=</span><span class="n">Aguide</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">calc_r</span> <span class="o">=</span> <span class="n">reflamp</span><span class="p">(</span><span class="o">-</span><span class="n">calc_q</span><span class="o">/</span><span class="mf">2</span><span class="p">,</span> <span class="n">depth</span><span class="o">=</span><span class="n">w</span><span class="p">,</span> <span class="n">rho</span><span class="o">=</span><span class="n">rho</span><span class="p">,</span> <span class="n">irho</span><span class="o">=</span><span class="n">irho</span><span class="p">,</span>
+                                 <span class="n">sigma</span><span class="o">=</span><span class="n">sigma</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">False</span> <span class="ow">and</span> <span class="n">numpy</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">calc_r</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+                <span class="k">print</span> <span class="s">&quot;w&quot;</span><span class="p">,</span><span class="n">w</span>
+                <span class="k">print</span> <span class="s">&quot;rho&quot;</span><span class="p">,</span><span class="n">rho</span>
+                <span class="k">print</span> <span class="s">&quot;irho&quot;</span><span class="p">,</span><span class="n">irho</span>
+                <span class="k">print</span> <span class="s">&quot;sigma&quot;</span><span class="p">,</span><span class="n">sigma</span>
+                <span class="k">print</span> <span class="s">&quot;kz&quot;</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">calc_Q</span><span class="o">/</span><span class="mf">2</span>
+                <span class="k">print</span> <span class="s">&quot;R&quot;</span><span class="p">,</span><span class="nb">abs</span><span class="p">(</span><span class="n">calc_r</span><span class="o">**</span><span class="mf">2</span><span class="p">)</span>
+                <span class="kn">from</span> <span class="nn">.mystic</span> <span class="kn">import</span> <span class="n">parameter</span>
+                <span class="n">pars</span> <span class="o">=</span> <span class="n">parameter</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">())</span>
+                <span class="n">fitted</span> <span class="o">=</span> <span class="n">parameter</span><span class="o">.</span><span class="n">varying</span><span class="p">(</span><span class="n">pars</span><span class="p">)</span>
+                <span class="k">print</span> <span class="n">parameter</span><span class="o">.</span><span class="n">summarize</span><span class="p">(</span><span class="n">fitted</span><span class="p">)</span>
+                <span class="k">print</span> <span class="s">&quot;===&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">calc_q</span><span class="p">,</span><span class="n">calc_r</span>
+            <span class="c">#if numpy.isnan(calc_q).any(): print &quot;calc_Q contains NaN&quot;</span>
+            <span class="c">#if numpy.isnan(calc_r).any(): print &quot;calc_r contains NaN&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+
+<div class="viewcode-block" id="Experiment.amplitude"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.Experiment.amplitude">[docs]</a>    <span class="k">def</span> <span class="nf">amplitude</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate reflectivity amplitude at the probe points.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;amplitude&#39;</span><span class="p">,</span><span class="n">resolution</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">:</span>
+            <span class="n">calc_q</span><span class="p">,</span><span class="n">calc_r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reflamp</span><span class="p">()</span>
+            <span class="n">r_real</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">apply_beam</span><span class="p">(</span><span class="n">calc_q</span><span class="p">,</span> <span class="n">calc_r</span><span class="o">.</span><span class="n">real</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="n">resolution</span><span class="p">)</span>
+            <span class="n">r_imag</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">apply_beam</span><span class="p">(</span><span class="n">calc_q</span><span class="p">,</span> <span class="n">calc_r</span><span class="o">.</span><span class="n">imag</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="n">resolution</span><span class="p">)</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="n">r_real</span> <span class="o">+</span> <span class="mf">1</span><span class="n">j</span><span class="o">*</span><span class="n">r_imag</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">r</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="Experiment.reflectivity"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.Experiment.reflectivity">[docs]</a>    <span class="k">def</span> <span class="nf">reflectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate predicted reflectivity.</span>
+
+<span class="sd">        If *resolution* is true include resolution effects.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;reflectivity&#39;</span><span class="p">,</span><span class="n">resolution</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">:</span>
+            <span class="n">Q</span><span class="p">,</span> <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reflamp</span><span class="p">()</span>
+            <span class="n">R</span> <span class="o">=</span> <span class="n">_amplitude_to_magnitude</span><span class="p">(</span><span class="n">r</span><span class="p">,</span>
+                                        <span class="n">ismagnetic</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ismagnetic</span><span class="p">,</span>
+                                        <span class="n">polarized</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">polarized</span><span class="p">)</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">apply_beam</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="n">resolution</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">res</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="Experiment.smooth_profile"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.Experiment.smooth_profile">[docs]</a>    <span class="k">def</span> <span class="nf">smooth_profile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">dz</span><span class="o">=</span><span class="mf">0.1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the scattering potential for the sample.</span>
+
+<span class="sd">        If *dz* is not given, use *dz* = 0.1 A.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_interfaces</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_profile</span><span class="p">()</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="s">&#39;smooth_profile&#39;</span><span class="p">,</span> <span class="n">dz</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">:</span>
+            <span class="n">slabs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_render_slabs</span><span class="p">()</span>
+            <span class="n">prof</span> <span class="o">=</span> <span class="n">slabs</span><span class="o">.</span><span class="n">smooth_profile</span><span class="p">(</span><span class="n">dz</span><span class="o">=</span><span class="n">dz</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">prof</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="Experiment.step_profile"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.Experiment.step_profile">[docs]</a>    <span class="k">def</span> <span class="nf">step_profile</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the step scattering potential for the sample, ignoring</span>
+<span class="sd">        interfaces.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="s">&#39;step_profile&#39;</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">:</span>
+            <span class="n">slabs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_render_slabs</span><span class="p">()</span>
+            <span class="n">prof</span> <span class="o">=</span> <span class="n">slabs</span><span class="o">.</span><span class="n">step_profile</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">prof</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="Experiment.slabs"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.Experiment.slabs">[docs]</a>    <span class="k">def</span> <span class="nf">slabs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the slab thickness, roughness, rho, irho for the</span>
+<span class="sd">        rendered model.</span>
+
+<span class="sd">        .. Note::</span>
+<span class="sd">             Roughness is for the top of the layer.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">slabs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_render_slabs</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">slabs</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">slabs</span><span class="o">.</span><span class="n">sigma</span><span class="p">,</span><span class="mf">0</span><span class="p">)),</span>
+                <span class="n">slabs</span><span class="o">.</span><span class="n">rho</span><span class="p">[</span><span class="mf">0</span><span class="p">],</span> <span class="n">slabs</span><span class="o">.</span><span class="n">irho</span><span class="p">[</span><span class="mf">0</span><span class="p">])</span>
+</div>
+<div class="viewcode-block" id="Experiment.magnetic_profile"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.Experiment.magnetic_profile">[docs]</a>    <span class="k">def</span> <span class="nf">magnetic_profile</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the nuclear and magnetic scattering potential for the sample.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="s">&#39;magnetic_profile&#39;</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">:</span>
+            <span class="n">slabs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_render_slabs</span><span class="p">()</span>
+            <span class="n">prof</span> <span class="o">=</span> <span class="n">slabs</span><span class="o">.</span><span class="n">magnetic_profile</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">prof</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="Experiment.magnetic_slabs"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.Experiment.magnetic_slabs">[docs]</a>    <span class="k">def</span> <span class="nf">magnetic_slabs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">slabs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_render_slabs</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">slabs</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="n">slabs</span><span class="o">.</span><span class="n">rho</span><span class="p">[</span><span class="mf">0</span><span class="p">],</span> <span class="n">slabs</span><span class="o">.</span><span class="n">irho</span><span class="p">[</span><span class="mf">0</span><span class="p">],</span>
+                <span class="n">slabs</span><span class="o">.</span><span class="n">rhoM</span><span class="p">,</span> <span class="n">slabs</span><span class="o">.</span><span class="n">thetaM</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Experiment.save_staj"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.Experiment.save_staj">[docs]</a>    <span class="k">def</span> <span class="nf">save_staj</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">basename</span><span class="p">):</span>
+        <span class="kn">from</span> <span class="nn">.stajconvert</span> <span class="kn">import</span> <span class="n">save_mlayer</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">R</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">datafile</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="p">,</span> <span class="s">&#39;filename&#39;</span><span class="p">,</span> <span class="n">basename</span><span class="o">+</span><span class="s">&quot;.refl&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">datafile</span> <span class="o">=</span> <span class="bp">None</span>
+            <span class="n">save_mlayer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">basename</span><span class="o">+</span><span class="s">&quot;.staj&quot;</span><span class="p">,</span> <span class="n">datafile</span><span class="o">=</span><span class="n">datafile</span><span class="p">)</span>
+            <span class="n">probe</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">probe</span>
+            <span class="n">datafile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">basename</span><span class="p">),</span><span class="n">datafile</span><span class="p">)</span>
+            <span class="n">fid</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">datafile</span><span class="p">,</span><span class="s">&quot;w&quot;</span><span class="p">)</span>
+            <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;# Q R dR</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">)</span>
+            <span class="n">numpy</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">fid</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">probe</span><span class="o">.</span><span class="n">Qo</span><span class="p">,</span><span class="n">probe</span><span class="o">.</span><span class="n">R</span><span class="p">,</span><span class="n">probe</span><span class="o">.</span><span class="n">dR</span><span class="p">))</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+            <span class="n">fid</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">print</span> <span class="s">&quot;==== could not save staj file ====&quot;</span>
+            <span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
+
+</div>
+<div class="viewcode-block" id="Experiment.plot_profile"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.Experiment.plot_profile">[docs]</a>    <span class="k">def</span> <span class="nf">plot_profile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">plot_shift</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">pylab</span>
+        <span class="n">plot_shift</span> <span class="o">=</span> <span class="n">plot_shift</span> <span class="k">if</span> <span class="n">plot_shift</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="k">else</span> <span class="n">Experiment</span><span class="o">.</span><span class="n">profile_shift</span>
+        <span class="n">trans</span> <span class="o">=</span> <span class="n">auto_shift</span><span class="p">(</span><span class="n">plot_shift</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ismagnetic</span><span class="p">:</span>
+            <span class="n">z</span><span class="p">,</span><span class="n">rho</span><span class="p">,</span><span class="n">irho</span><span class="p">,</span><span class="n">rhoM</span><span class="p">,</span><span class="n">thetaM</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">magnetic_profile</span><span class="p">()</span>
+            <span class="c">#rhoM_net = rhoM*numpy.cos(numpy.radians(thetaM))</span>
+            <span class="n">pylab</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">z</span><span class="p">,</span><span class="n">rho</span><span class="p">,</span><span class="n">transform</span><span class="o">=</span><span class="n">trans</span><span class="p">)</span>
+            <span class="n">pylab</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">z</span><span class="p">,</span><span class="n">irho</span><span class="p">,</span><span class="n">hold</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span><span class="n">transform</span><span class="o">=</span><span class="n">trans</span><span class="p">)</span>
+            <span class="n">pylab</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">z</span><span class="p">,</span><span class="n">rhoM</span><span class="p">,</span><span class="n">hold</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span><span class="n">transform</span><span class="o">=</span><span class="n">trans</span><span class="p">)</span>
+            <span class="n">pylab</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s">&#39;depth (A)&#39;</span><span class="p">)</span>
+            <span class="n">pylab</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s">&#39;SLD (10^6 / A**2)&#39;</span><span class="p">)</span>
+            <span class="n">pylab</span><span class="o">.</span><span class="n">legend</span><span class="p">([</span><span class="s">&#39;rho&#39;</span><span class="p">,</span><span class="s">&#39;irho&#39;</span><span class="p">,</span><span class="s">&#39;rhoM&#39;</span><span class="p">])</span>
+            <span class="k">if</span> <span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">thetaM</span><span class="o">-</span><span class="n">thetaM</span><span class="p">[</span><span class="mf">0</span><span class="p">])</span><span class="o">&gt;</span><span class="mf">1e-3</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+                <span class="n">ax</span> <span class="o">=</span> <span class="n">pylab</span><span class="o">.</span><span class="n">twinx</span><span class="p">()</span>
+                <span class="n">pylab</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">z</span><span class="p">,</span><span class="n">thetaM</span><span class="p">,</span><span class="s">&#39;:k&#39;</span><span class="p">,</span><span class="n">hold</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span><span class="n">axes</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span><span class="n">transform</span><span class="o">=</span><span class="n">trans</span><span class="p">)</span>
+                <span class="n">pylab</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s">&#39;magnetic angle (degrees)&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">z</span><span class="p">,</span><span class="n">rho</span><span class="p">,</span><span class="n">irho</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_profile</span><span class="p">()</span>
+            <span class="n">pylab</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">z</span><span class="p">,</span><span class="n">rho</span><span class="p">,</span><span class="s">&#39;:g&#39;</span><span class="p">,</span><span class="n">z</span><span class="p">,</span><span class="n">irho</span><span class="p">,</span><span class="s">&#39;:b&#39;</span><span class="p">,</span><span class="n">transform</span><span class="o">=</span><span class="n">trans</span><span class="p">)</span>
+            <span class="n">z</span><span class="p">,</span><span class="n">rho</span><span class="p">,</span><span class="n">irho</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">smooth_profile</span><span class="p">()</span>
+            <span class="n">pylab</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">z</span><span class="p">,</span><span class="n">rho</span><span class="p">,</span><span class="s">&#39;-g&#39;</span><span class="p">,</span><span class="n">z</span><span class="p">,</span><span class="n">irho</span><span class="p">,</span><span class="s">&#39;-b&#39;</span><span class="p">,</span> <span class="n">hold</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span><span class="n">transform</span><span class="o">=</span><span class="n">trans</span><span class="p">)</span>
+            <span class="n">pylab</span><span class="o">.</span><span class="n">legend</span><span class="p">([</span><span class="s">&#39;rho&#39;</span><span class="p">,</span><span class="s">&#39;irho&#39;</span><span class="p">])</span>
+            <span class="n">pylab</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s">&#39;depth (A)&#39;</span><span class="p">)</span>
+            <span class="n">pylab</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s">&#39;SLD (10^6 / A**2)&#39;</span><span class="p">)</span>
+
+</div></div>
+<div class="viewcode-block" id="MixedExperiment"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.MixedExperiment">[docs]</a><span class="k">class</span> <span class="nc">MixedExperiment</span><span class="p">(</span><span class="n">ExperimentBase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Support composite sample reflectivity measurements.</span>
+
+<span class="sd">    Sometimes the sample you are measuring is not uniform.</span>
+<span class="sd">    For example, you may have one portion of you polymer</span>
+<span class="sd">    brush sample where the brushes are close packed and able</span>
+<span class="sd">    to stay upright, whereas a different section of the sample</span>
+<span class="sd">    has the brushes lying flat.  Constructing two sample</span>
+<span class="sd">    models, one with brushes upright and one with brushes</span>
+<span class="sd">    flat, and adding the reflectivity incoherently, you can</span>
+<span class="sd">    then fit the ratio of upright to flat.</span>
+
+<span class="sd">    *samples* the layer stacks making up the models</span>
+<span class="sd">    *ratio* a list of parameters, such as [3,1] for a 3:1 ratio</span>
+<span class="sd">    *probe* the measurement to be fitted or simulated</span>
+
+<span class="sd">    *coherent* is True if the length scale of the domains</span>
+<span class="sd">    is less than the coherence length of the neutron, or false</span>
+<span class="sd">    otherwise.</span>
+
+<span class="sd">    Statistics such as the cost functions for the individual</span>
+<span class="sd">    profiles can be accessed from the underlying experiments</span>
+<span class="sd">    using composite.parts[i] for the various samples.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">samples</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">ratio</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">probe</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                 <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">coherent</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">samples</span> <span class="o">=</span> <span class="n">samples</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">probe</span> <span class="o">=</span> <span class="n">probe</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ratio</span> <span class="o">=</span> <span class="p">[</span><span class="n">Parameter</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;ratio </span><span class="si">%d</span><span class="s">&quot;</span><span class="o">%</span><span class="n">i</span><span class="p">)</span>
+                      <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">r</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">ratio</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parts</span> <span class="o">=</span> <span class="p">[</span><span class="n">Experiment</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="n">probe</span><span class="p">,</span><span class="o">**</span><span class="n">kw</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">samples</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">coherent</span> <span class="o">=</span> <span class="n">coherent</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_substrate</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">[</span><span class="mf">0</span><span class="p">][</span><span class="mf">0</span><span class="p">]</span><span class="o">.</span><span class="n">material</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_surface</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">[</span><span class="mf">0</span><span class="p">][</span><span class="o">-</span><span class="mf">1</span><span class="p">]</span><span class="o">.</span><span class="n">material</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_name</span> <span class="o">=</span> <span class="n">name</span>
+
+<div class="viewcode-block" id="MixedExperiment.update"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.MixedExperiment.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">parts</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="MixedExperiment.parameters"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.MixedExperiment.parameters">[docs]</a>    <span class="k">def</span> <span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">samples</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">parameters</span><span class="p">()</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">],</span>
+                    <span class="n">ratio</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ratio</span><span class="p">,</span>
+                    <span class="n">probe</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span>
+                    <span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">_reflamp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the amplitude of the reflectivity...</span>
+
+<span class="sd">        For an incoherent sum, we want to add the squares of the amplitudes,</span>
+<span class="sd">        with a weighting specified by self.ratio, so the amplitudes</span>
+<span class="sd">        are scaled by sqrt(self.ratio/total) so when they get squared and added</span>
+<span class="sd">        the normalization is correct.</span>
+
+<span class="sd">        For a coherent sum, just multiply by ratio/total.</span>
+<span class="sd">        It all comes out in the wash.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">total</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ratio</span><span class="p">)</span>
+        <span class="n">Qs</span><span class="p">,</span><span class="n">Rs</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">_reflamp</span><span class="p">()</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">parts</span><span class="p">])</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">coherent</span> <span class="o">==</span> <span class="bp">False</span><span class="p">:</span>
+            <span class="n">Rs</span> <span class="o">=</span> <span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ri</span><span class="p">)</span><span class="o">*</span><span class="n">numpy</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">ratio_i</span><span class="o">.</span><span class="n">value</span><span class="o">/</span><span class="n">total</span><span class="p">)</span>
+              <span class="k">for</span> <span class="n">ri</span><span class="p">,</span><span class="n">ratio_i</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">Rs</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">ratio</span><span class="p">)]</span>
+        <span class="k">else</span><span class="p">:</span> <span class="c"># self.coherent == True</span>
+            <span class="n">Rs</span> <span class="o">=</span> <span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ri</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">ratio_i</span><span class="o">.</span><span class="n">value</span><span class="o">/</span><span class="n">total</span><span class="p">)</span>
+              <span class="k">for</span> <span class="n">ri</span><span class="p">,</span><span class="n">ratio_i</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">Rs</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">ratio</span><span class="p">)]</span>
+        <span class="c">#print &quot;Rs&quot;,Rs</span>
+        <span class="k">return</span> <span class="n">Qs</span><span class="p">[</span><span class="mf">0</span><span class="p">],</span> <span class="n">Rs</span>
+
+<div class="viewcode-block" id="MixedExperiment.amplitude"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.MixedExperiment.amplitude">[docs]</a>    <span class="k">def</span> <span class="nf">amplitude</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">coherent</span> <span class="o">==</span> <span class="bp">False</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;Cannot compute amplitude of system which is mixed incoherently&quot;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;amplitude&#39;</span><span class="p">,</span><span class="n">resolution</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">:</span>
+            <span class="n">calc_Q</span><span class="p">,</span> <span class="n">calc_R</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reflamp</span><span class="p">()</span>
+            <span class="n">calc_R</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">calc_R</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mf">1</span><span class="p">)</span>
+            <span class="n">r_real</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">apply_beam</span><span class="p">(</span><span class="n">calc_q</span><span class="p">,</span> <span class="n">calc_r</span><span class="o">.</span><span class="n">real</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="n">resolution</span><span class="p">)</span>
+            <span class="n">r_imag</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">apply_beam</span><span class="p">(</span><span class="n">calc_q</span><span class="p">,</span> <span class="n">calc_r</span><span class="o">.</span><span class="n">imag</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="n">resolution</span><span class="p">)</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="n">r_real</span> <span class="o">+</span> <span class="mf">1</span><span class="n">j</span><span class="o">*</span><span class="n">r_imag</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">r</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+
+</div>
+<div class="viewcode-block" id="MixedExperiment.reflectivity"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.MixedExperiment.reflectivity">[docs]</a>    <span class="k">def</span> <span class="nf">reflectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate predicted reflectivity.</span>
+
+<span class="sd">        This will be the weighted sum of the reflectivity from the</span>
+<span class="sd">        individual systems.  If coherent is set, then the coherent</span>
+<span class="sd">        sum will be used, otherwise the incoherent sum will be used.</span>
+
+<span class="sd">        If *resolution* is true include resolution effects.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;reflectivity&#39;</span><span class="p">,</span><span class="n">resolution</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">:</span>
+            <span class="n">Q</span><span class="p">,</span> <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reflamp</span><span class="p">()</span>
+
+            <span class="n">polarized</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">polarized</span>
+            <span class="n">ismagnetic</span> <span class="o">=</span> <span class="n">any</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">ismagnetic</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">parts</span><span class="p">)</span>
+
+            <span class="c"># If any reflectivity is magnetic, make all reflectivity magnetic</span>
+            <span class="k">if</span> <span class="n">ismagnetic</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">p</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parts</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">p</span><span class="o">.</span><span class="n">ismagnetic</span><span class="p">:</span>
+                        <span class="n">r</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">_polarized_nonmagnetic</span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+            <span class="c"># Add the cross sections</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">coherent</span><span class="p">:</span>
+                <span class="n">r</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">r</span><span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mf">0</span><span class="p">)</span>
+                <span class="n">R</span> <span class="o">=</span> <span class="n">_amplitude_to_magnitude</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">ismagnetic</span><span class="o">=</span><span class="n">ismagnetic</span><span class="p">,</span>
+                                            <span class="n">polarized</span><span class="o">=</span><span class="n">polarized</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">R</span> <span class="o">=</span> <span class="p">[</span><span class="n">_amplitude_to_magnitude</span><span class="p">(</span><span class="n">ri</span><span class="p">,</span> <span class="n">ismagnetic</span><span class="o">=</span><span class="n">ismagnetic</span><span class="p">,</span>
+                                             <span class="n">polarized</span><span class="o">=</span><span class="n">polarized</span><span class="p">)</span>
+                     <span class="k">for</span> <span class="n">ri</span> <span class="ow">in</span> <span class="n">r</span><span class="p">]</span>
+                <span class="n">R</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">R</span><span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mf">0</span><span class="p">)</span>
+
+            <span class="c"># Apply resolution</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">probe</span><span class="o">.</span><span class="n">apply_beam</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="n">resolution</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">res</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="MixedExperiment.plot_profile"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.MixedExperiment.plot_profile">[docs]</a>    <span class="k">def</span> <span class="nf">plot_profile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">plot_shift</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">pylab</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">r</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ratio</span><span class="p">],</span><span class="s">&#39;d&#39;</span><span class="p">)</span>
+        <span class="n">f</span> <span class="o">/=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="n">held</span> <span class="o">=</span> <span class="n">pylab</span><span class="o">.</span><span class="n">hold</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">parts</span><span class="p">:</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">plot_profile</span><span class="p">(</span><span class="n">plot_shift</span><span class="o">=</span><span class="n">plot_shift</span><span class="p">)</span>
+            <span class="n">pylab</span><span class="o">.</span><span class="n">hold</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+        <span class="n">pylab</span><span class="o">.</span><span class="n">hold</span><span class="p">(</span><span class="n">held</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="MixedExperiment.save_profile"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.MixedExperiment.save_profile">[docs]</a>    <span class="k">def</span> <span class="nf">save_profile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">basename</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">p</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parts</span><span class="p">):</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">save_profile</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s">-</span><span class="si">%d</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">basename</span><span class="p">,</span><span class="n">i</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="MixedExperiment.save_staj"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.MixedExperiment.save_staj">[docs]</a>    <span class="k">def</span> <span class="nf">save_staj</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">basename</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">p</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parts</span><span class="p">):</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">save_staj</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s">-</span><span class="si">%d</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">basename</span><span class="p">,</span><span class="n">i</span><span class="p">))</span>
+</div></div>
+<span class="k">def</span> <span class="nf">_polarized_nonmagnetic</span><span class="p">(</span><span class="n">r</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Convert nonmagnetic data to polarized representation.</span>
+
+<span class="sd">    Polarized non-magnetic data repeats the reflectivity in the non spin flip</span>
+<span class="sd">    channels and sets the spin flip channels to zero.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">nsf</span> <span class="o">=</span> <span class="n">r</span>
+    <span class="n">sf</span> <span class="o">=</span> <span class="mf">0</span><span class="o">*</span><span class="n">r</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">nsf</span><span class="p">,</span> <span class="n">sf</span><span class="p">,</span> <span class="n">sf</span><span class="p">,</span> <span class="n">nsf</span><span class="p">]</span>
+
+<span class="k">def</span> <span class="nf">_nonpolarized_magnetic</span><span class="p">(</span><span class="n">R</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Convert magnetic reflectivity to unpolarized representation.</span>
+
+<span class="sd">    Unpolarized magnetic data adds the cross-sections of the magnetic</span>
+<span class="sd">    data incoherently and divides by two.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">reduce</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">add</span><span class="p">,</span> <span class="n">R</span><span class="p">)</span><span class="o">/</span><span class="mf">2</span>
+
+<span class="k">def</span> <span class="nf">_amplitude_to_magnitude</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">ismagnetic</span><span class="p">,</span> <span class="n">polarized</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute the reflectivity magnitude</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">ismagnetic</span><span class="p">:</span>
+        <span class="n">R</span> <span class="o">=</span> <span class="p">[</span><span class="nb">abs</span><span class="p">(</span><span class="n">xs</span><span class="p">)</span><span class="o">**</span><span class="mf">2</span> <span class="k">for</span> <span class="n">xs</span> <span class="ow">in</span> <span class="n">r</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">polarized</span><span class="p">:</span> <span class="n">R</span> <span class="o">=</span> <span class="n">_nonpolarized_magnetic</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">R</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">r</span><span class="p">)</span><span class="o">**</span><span class="mf">2</span>
+        <span class="k">if</span> <span class="n">polarized</span><span class="p">:</span> <span class="n">R</span> <span class="o">=</span> <span class="n">_polarized_nonmagnetic</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">R</span>
+
+
+<div class="viewcode-block" id="nice"><a class="viewcode-back" href="../../api/experiment.html#refl1d.experiment.nice">[docs]</a><span class="k">def</span> <span class="nf">nice</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">digits</span> <span class="o">=</span> <span class="mf">2</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Fix v to a value with a given number of digits of precision&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">v</span> <span class="o">==</span> <span class="mf">0.</span><span class="p">:</span> <span class="k">return</span> <span class="n">v</span>
+    <span class="n">sign</span> <span class="o">=</span> <span class="n">v</span><span class="o">/</span><span class="nb">abs</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+    <span class="n">place</span> <span class="o">=</span> <span class="n">floor</span><span class="p">(</span><span class="n">log10</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">v</span><span class="p">)))</span>
+    <span class="n">scale</span> <span class="o">=</span> <span class="mf">10</span><span class="o">**</span><span class="p">(</span><span class="n">place</span><span class="o">-</span><span class="p">(</span><span class="n">digits</span><span class="o">-</span><span class="mf">1</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">sign</span><span class="o">*</span><span class="n">floor</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="o">/</span><span class="n">scale</span><span class="o">+</span><span class="mf">0.5</span><span class="p">)</span><span class="o">*</span><span class="n">scale</span></div>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

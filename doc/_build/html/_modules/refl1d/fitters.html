@@ -1,0 +1,603 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.fitters &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.fitters</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for refl1d.fitters</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">deepcopy</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span>
+
+<span class="kn">from</span> <span class="nn">.mystic</span> <span class="kn">import</span> <span class="n">monitor</span><span class="p">,</span> <span class="n">parameter</span>
+<span class="kn">from</span> <span class="nn">.mystic.history</span> <span class="kn">import</span> <span class="n">History</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">initpop</span>
+
+<div class="viewcode-block" id="ConsoleMonitor"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.ConsoleMonitor">[docs]</a><span class="k">class</span> <span class="nc">ConsoleMonitor</span><span class="p">(</span><span class="n">monitor</span><span class="o">.</span><span class="n">TimedUpdate</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Display fit progress on the console</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">problem</span><span class="p">,</span> <span class="n">progress</span><span class="o">=</span><span class="mf">1</span><span class="p">,</span> <span class="n">improvement</span><span class="o">=</span><span class="mf">30</span><span class="p">):</span>
+        <span class="n">monitor</span><span class="o">.</span><span class="n">TimedUpdate</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">progress</span><span class="o">=</span><span class="n">progress</span><span class="p">,</span>
+                                     <span class="n">improvement</span><span class="o">=</span><span class="n">improvement</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">problem</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">problem</span><span class="p">)</span>
+<div class="viewcode-block" id="ConsoleMonitor.show_progress"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.ConsoleMonitor.show_progress">[docs]</a>    <span class="k">def</span> <span class="nf">show_progress</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">history</span><span class="p">):</span>
+        <span class="k">print</span> <span class="s">&quot;step&quot;</span><span class="p">,</span> <span class="n">history</span><span class="o">.</span><span class="n">step</span><span class="p">[</span><span class="mf">0</span><span class="p">],</span> \
+            <span class="s">&quot;cost&quot;</span><span class="p">,</span> <span class="mf">2</span><span class="o">*</span><span class="n">history</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">dof</span></div>
+<div class="viewcode-block" id="ConsoleMonitor.show_improvement"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.ConsoleMonitor.show_improvement">[docs]</a>    <span class="k">def</span> <span class="nf">show_improvement</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">history</span><span class="p">):</span>
+        <span class="c">#print &quot;step&quot;,history.step[0],&quot;chisq&quot;,history.value[0]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">setp</span><span class="p">(</span><span class="n">history</span><span class="o">.</span><span class="n">point</span><span class="p">[</span><span class="mf">0</span><span class="p">])</span>
+        <span class="k">print</span> <span class="n">parameter</span><span class="o">.</span><span class="n">summarize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">parameters</span><span class="p">)</span>
+</div></div>
+<div class="viewcode-block" id="StepMonitor"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.StepMonitor">[docs]</a><span class="k">class</span> <span class="nc">StepMonitor</span><span class="p">(</span><span class="n">monitor</span><span class="o">.</span><span class="n">Monitor</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Collect information at every step of the fit and save it to a file.</span>
+
+<span class="sd">    *fid* is the file to save the information to</span>
+<span class="sd">    *fields* is the list of &quot;step|time|value|point&quot; fields to save</span>
+
+<span class="sd">    The point field should be last in the list.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">FIELDS</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;step&#39;</span><span class="p">,</span> <span class="s">&#39;time&#39;</span><span class="p">,</span> <span class="s">&#39;value&#39;</span><span class="p">,</span> <span class="s">&#39;point&#39;</span><span class="p">]</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">problem</span><span class="p">,</span> <span class="n">fid</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="n">FIELDS</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">any</span><span class="p">(</span><span class="n">f</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">FIELDS</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">fields</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;invalid monitor field&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dof</span> <span class="o">=</span> <span class="n">problem</span><span class="o">.</span><span class="n">dof</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fid</span> <span class="o">=</span> <span class="n">fid</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fields</span> <span class="o">=</span> <span class="n">fields</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pattern</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%%</span><span class="s">(</span><span class="si">%s</span><span class="s">)s</span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="s">&quot;)s %(&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">fields</span><span class="p">))</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;# &quot;</span><span class="o">+</span><span class="s">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span><span class="o">+</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+<div class="viewcode-block" id="StepMonitor.config_history"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.StepMonitor.config_history">[docs]</a>    <span class="k">def</span> <span class="nf">config_history</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">history</span><span class="p">):</span>
+        <span class="n">history</span><span class="o">.</span><span class="n">requires</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="mf">1</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">1</span><span class="p">,</span> <span class="n">point</span><span class="o">=</span><span class="mf">1</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mf">1</span><span class="p">)</span></div>
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">history</span><span class="p">):</span>
+        <span class="n">point</span> <span class="o">=</span> <span class="s">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%.15g</span><span class="s">&quot;</span><span class="o">%</span><span class="n">v</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">history</span><span class="o">.</span><span class="n">point</span><span class="p">[</span><span class="mf">0</span><span class="p">])</span>
+        <span class="n">time</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%g</span><span class="s">&quot;</span><span class="o">%</span><span class="n">history</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span>
+        <span class="n">step</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%d</span><span class="s">&quot;</span><span class="o">%</span><span class="n">history</span><span class="o">.</span><span class="n">step</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%.15g</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="mf">2</span><span class="o">*</span><span class="n">history</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">dof</span><span class="p">)</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pattern</span><span class="o">%</span><span class="nb">dict</span><span class="p">(</span><span class="n">point</span><span class="o">=</span><span class="n">point</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="n">time</span><span class="p">,</span>
+                                 <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="n">step</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="MonitorRunner"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.MonitorRunner">[docs]</a><span class="k">class</span> <span class="nc">MonitorRunner</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Adaptor which allows non-mystic solvers to accept progress monitors.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">monitors</span><span class="p">,</span> <span class="n">problem</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">monitors</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">monitors</span> <span class="o">=</span> <span class="p">[</span><span class="n">ConsoleMonitor</span><span class="p">(</span><span class="n">problem</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">monitors</span> <span class="o">=</span> <span class="n">monitors</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">history</span> <span class="o">=</span> <span class="n">History</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="mf">1</span><span class="p">,</span><span class="n">step</span><span class="o">=</span><span class="mf">1</span><span class="p">,</span><span class="n">point</span><span class="o">=</span><span class="mf">1</span><span class="p">,</span><span class="n">value</span><span class="o">=</span><span class="mf">1</span><span class="p">,</span>
+                               <span class="n">population_points</span><span class="o">=</span><span class="mf">1</span><span class="p">,</span> <span class="n">population_values</span><span class="o">=</span><span class="mf">1</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">M</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">monitors</span><span class="p">:</span>
+            <span class="n">M</span><span class="o">.</span><span class="n">config_history</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">point</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span>
+                 <span class="n">population_points</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">population_values</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">_start</span><span class="p">,</span>
+                            <span class="n">step</span><span class="o">=</span><span class="n">step</span><span class="p">,</span> <span class="n">point</span><span class="o">=</span><span class="n">point</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">,</span>
+                            <span class="n">population_points</span><span class="o">=</span><span class="n">population_points</span><span class="p">,</span>
+                            <span class="n">population_values</span><span class="o">=</span><span class="n">population_values</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">M</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">monitors</span><span class="p">:</span>
+            <span class="n">M</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="FitBase"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.FitBase">[docs]</a><span class="k">class</span> <span class="nc">FitBase</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">problem</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Fit the models and show the results&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">problem</span> <span class="o">=</span> <span class="n">problem</span>
+<div class="viewcode-block" id="FitBase.solve"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.FitBase.solve">[docs]</a>    <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">monitors</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">mapper</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+</div></div>
+<div class="viewcode-block" id="MultiStart"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.MultiStart">[docs]</a><span class="k">class</span> <span class="nc">MultiStart</span><span class="p">(</span><span class="n">FitBase</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;Multistart Monte Carlo&quot;</span>
+    <span class="n">settings</span> <span class="o">=</span> <span class="p">[(</span><span class="s">&#39;starts&#39;</span><span class="p">,</span> <span class="mf">100</span><span class="p">)]</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fitter</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fitter</span> <span class="o">=</span> <span class="n">fitter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">problem</span> <span class="o">=</span> <span class="n">fitter</span><span class="o">.</span><span class="n">problem</span>
+<div class="viewcode-block" id="MultiStart.solve"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.MultiStart.solve">[docs]</a>    <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">monitors</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">mapper</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="n">starts</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;starts&#39;</span><span class="p">,</span><span class="mf">1</span><span class="p">)</span>
+        <span class="n">reset</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">options</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;keep_best&#39;</span><span class="p">,</span><span class="bp">True</span><span class="p">)</span>
+        <span class="n">f_best</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">inf</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">starts</span><span class="p">,</span><span class="mf">1</span><span class="p">)):</span>
+            <span class="k">print</span> <span class="s">&quot;round&quot;</span><span class="p">,</span><span class="n">_</span>
+            <span class="n">x</span><span class="p">,</span><span class="n">fx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fitter</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">monitors</span><span class="o">=</span><span class="n">monitors</span><span class="p">,</span> <span class="n">mapper</span><span class="o">=</span><span class="n">mapper</span><span class="p">,</span>
+                                     <span class="o">**</span><span class="n">options</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">fx</span> <span class="o">&lt;</span> <span class="n">f_best</span><span class="p">:</span>
+                <span class="n">x_best</span><span class="p">,</span> <span class="n">f_best</span> <span class="o">=</span> <span class="n">x</span><span class="p">,</span><span class="n">fx</span>
+                <span class="k">print</span> <span class="n">x_best</span><span class="p">,</span> <span class="n">fx</span>
+            <span class="k">if</span> <span class="n">reset</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">randomize</span><span class="p">()</span>
+            <span class="k">elif</span> <span class="mf">0</span><span class="p">:</span>
+                <span class="c"># Jitter</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">setp</span><span class="p">(</span><span class="n">x_best</span><span class="p">)</span>
+                <span class="n">pop</span> <span class="o">=</span> <span class="n">initpop</span><span class="o">.</span><span class="n">eps_init</span><span class="p">(</span><span class="mf">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">parameters</span><span class="p">,</span>
+                                       <span class="n">include_current</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">setp</span><span class="p">(</span><span class="n">pop</span><span class="p">[</span><span class="mf">0</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">x_best</span><span class="p">,</span> <span class="n">f_best</span>
+</div></div>
+<div class="viewcode-block" id="DEFit"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.DEFit">[docs]</a><span class="k">class</span> <span class="nc">DEFit</span><span class="p">(</span><span class="n">FitBase</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;Differential Evolution&quot;</span>
+    <span class="n">settings</span> <span class="o">=</span> <span class="p">[(</span><span class="s">&#39;steps&#39;</span><span class="p">,</span><span class="mf">1000</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;pop&#39;</span><span class="p">,</span> <span class="mf">10</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;CR&#39;</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;F&#39;</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">)</span> <span class="p">]</span>
+<div class="viewcode-block" id="DEFit.solve"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.DEFit.solve">[docs]</a>    <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">monitors</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">mapper</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="n">_fill_defaults</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">)</span>
+        <span class="kn">from</span> <span class="nn">mystic.optimizer</span> <span class="kn">import</span> <span class="n">de</span>
+        <span class="kn">from</span> <span class="nn">mystic.solver</span> <span class="kn">import</span> <span class="n">Minimizer</span>
+        <span class="kn">from</span> <span class="nn">mystic.stop</span> <span class="kn">import</span> <span class="n">Steps</span>
+        <span class="k">if</span> <span class="n">monitors</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">monitors</span> <span class="o">=</span> <span class="p">[</span><span class="n">ConsoleMonitor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="p">)]</span>
+        <span class="k">if</span> <span class="n">mapper</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">_mapper</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">,</span><span class="n">x</span><span class="p">:</span> <span class="n">mapper</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">_mapper</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">,</span><span class="n">x</span><span class="p">:</span> <span class="nb">map</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">nllf</span><span class="p">,</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">strategy</span> <span class="o">=</span> <span class="n">de</span><span class="o">.</span><span class="n">DifferentialEvolution</span><span class="p">(</span><span class="n">npop</span><span class="o">=</span><span class="n">options</span><span class="p">[</span><span class="s">&#39;pop&#39;</span><span class="p">],</span>
+                                            <span class="n">CR</span><span class="o">=</span><span class="n">options</span><span class="p">[</span><span class="s">&#39;CR&#39;</span><span class="p">],</span>
+                                            <span class="n">F</span><span class="o">=</span><span class="n">options</span><span class="p">[</span><span class="s">&#39;F&#39;</span><span class="p">])</span>
+        <span class="n">minimize</span> <span class="o">=</span> <span class="n">Minimizer</span><span class="p">(</span><span class="n">strategy</span><span class="o">=</span><span class="n">strategy</span><span class="p">,</span> <span class="n">problem</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="p">,</span>
+                             <span class="n">monitors</span><span class="o">=</span><span class="n">monitors</span><span class="p">,</span>
+                             <span class="n">failure</span><span class="o">=</span><span class="n">Steps</span><span class="p">(</span><span class="n">options</span><span class="p">[</span><span class="s">&#39;steps&#39;</span><span class="p">]))</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">minimize</span><span class="p">(</span><span class="n">mapper</span><span class="o">=</span><span class="n">_mapper</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">minimize</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span>
+
+</div></div>
+<div class="viewcode-block" id="BFGSFit"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.BFGSFit">[docs]</a><span class="k">class</span> <span class="nc">BFGSFit</span><span class="p">(</span><span class="n">FitBase</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;Quasi-Newton BFGS&quot;</span>
+    <span class="n">settings</span> <span class="o">=</span> <span class="p">[(</span><span class="s">&#39;steps&#39;</span><span class="p">,</span><span class="mf">3000</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;starts&#39;</span><span class="p">,</span><span class="mf">100</span><span class="p">)</span> <span class="p">]</span>
+<div class="viewcode-block" id="BFGSFit.solve"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.BFGSFit.solve">[docs]</a>    <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">monitors</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">mapper</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="n">_fill_defaults</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">)</span>
+        <span class="kn">from</span> <span class="nn">quasinewton</span> <span class="kn">import</span> <span class="n">quasinewton</span><span class="p">,</span> <span class="n">STATUS</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update</span> <span class="o">=</span> <span class="n">MonitorRunner</span><span class="p">(</span><span class="n">problem</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="p">,</span>
+                                     <span class="n">monitors</span><span class="o">=</span><span class="n">monitors</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">quasinewton</span><span class="p">(</span><span class="n">fn</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">nllf</span><span class="p">,</span>
+                             <span class="n">x0</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">getp</span><span class="p">(),</span>
+                             <span class="n">monitor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_monitor</span><span class="p">,</span>
+                             <span class="n">itnlimit</span> <span class="o">=</span> <span class="n">options</span><span class="p">[</span><span class="s">&#39;steps&#39;</span><span class="p">],</span>
+                             <span class="p">)</span>
+        <span class="n">code</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s">&#39;status&#39;</span><span class="p">]</span>
+        <span class="k">print</span> <span class="s">&quot;</span><span class="si">%d</span><span class="s">: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="n">STATUS</span><span class="p">[</span><span class="n">code</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">result</span><span class="p">[</span><span class="s">&#39;x&#39;</span><span class="p">],</span> <span class="n">result</span><span class="p">[</span><span class="s">&#39;fx&#39;</span><span class="p">]</span></div>
+    <span class="k">def</span> <span class="nf">_monitor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">fx</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update</span><span class="p">(</span><span class="n">step</span><span class="o">=</span><span class="n">step</span><span class="p">,</span> <span class="n">point</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">fx</span><span class="p">,</span>
+                     <span class="n">population_points</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">],</span>
+                     <span class="n">population_values</span><span class="o">=</span><span class="p">[</span><span class="n">fx</span><span class="p">])</span>
+        <span class="k">return</span> <span class="bp">True</span>
+</div>
+<div class="viewcode-block" id="PSFit"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.PSFit">[docs]</a><span class="k">class</span> <span class="nc">PSFit</span><span class="p">(</span><span class="n">FitBase</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;Particle Swarm&quot;</span>
+    <span class="n">settings</span> <span class="o">=</span> <span class="p">[(</span><span class="s">&#39;steps&#39;</span><span class="p">,</span><span class="mf">3000</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;pop&#39;</span><span class="p">,</span> <span class="mf">1</span><span class="p">)</span> <span class="p">]</span>
+<div class="viewcode-block" id="PSFit.solve"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.PSFit.solve">[docs]</a>    <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">monitors</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">mapper</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="n">_fill_defaults</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">mapper</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">mapper</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">map</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">nllf</span><span class="p">,</span><span class="n">x</span><span class="p">)</span>
+        <span class="kn">from</span> <span class="nn">random_lines</span> <span class="kn">import</span> <span class="n">particle_swarm</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update</span> <span class="o">=</span> <span class="n">MonitorRunner</span><span class="p">(</span><span class="n">problem</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="p">,</span>
+                                     <span class="n">monitors</span><span class="o">=</span><span class="n">monitors</span><span class="p">)</span>
+        <span class="n">bounds</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">bounds</span><span class="o">.</span><span class="n">limits</span>
+                              <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">parameters</span><span class="p">])</span><span class="o">.</span><span class="n">T</span>
+        <span class="n">cfo</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">parallel_cost</span><span class="o">=</span><span class="n">mapper</span><span class="p">,</span>
+                   <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">bounds</span><span class="p">[</span><span class="mf">0</span><span class="p">]),</span>
+                   <span class="n">x0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">getp</span><span class="p">(),</span>
+                   <span class="n">x1</span> <span class="o">=</span> <span class="n">bounds</span><span class="p">[</span><span class="mf">0</span><span class="p">],</span>
+                   <span class="n">x2</span> <span class="o">=</span> <span class="n">bounds</span><span class="p">[</span><span class="mf">1</span><span class="p">],</span>
+                   <span class="n">f_opt</span> <span class="o">=</span> <span class="mf">0</span><span class="p">,</span>
+                   <span class="n">monitor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_monitor</span><span class="p">)</span>
+        <span class="n">NP</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">cfo</span><span class="p">[</span><span class="s">&#39;n&#39;</span><span class="p">]</span><span class="o">*</span><span class="n">options</span><span class="p">[</span><span class="s">&#39;pop&#39;</span><span class="p">])</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="n">particle_swarm</span><span class="p">(</span><span class="n">cfo</span><span class="p">,</span> <span class="n">NP</span><span class="p">,</span> <span class="n">maxiter</span><span class="o">=</span><span class="n">options</span><span class="p">[</span><span class="s">&#39;steps&#39;</span><span class="p">])</span>
+        <span class="n">satisfied_sc</span><span class="p">,</span> <span class="n">n_feval</span><span class="p">,</span> <span class="n">f_best</span><span class="p">,</span> <span class="n">x_best</span> <span class="o">=</span> <span class="n">result</span>
+
+        <span class="k">return</span> <span class="n">x_best</span><span class="p">,</span> <span class="n">f_best</span>
+</div>
+    <span class="k">def</span> <span class="nf">_monitor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">fx</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update</span><span class="p">(</span><span class="n">step</span><span class="o">=</span><span class="n">step</span><span class="p">,</span> <span class="n">point</span><span class="o">=</span><span class="n">x</span><span class="p">[:,</span><span class="n">k</span><span class="p">],</span> <span class="n">value</span><span class="o">=</span><span class="n">fx</span><span class="p">[</span><span class="n">k</span><span class="p">],</span>
+                     <span class="n">population_points</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">population_values</span><span class="o">=</span><span class="n">fx</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">True</span>
+</div>
+<div class="viewcode-block" id="RLFit"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.RLFit">[docs]</a><span class="k">class</span> <span class="nc">RLFit</span><span class="p">(</span><span class="n">FitBase</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;Random Lines&quot;</span>
+    <span class="n">settings</span> <span class="o">=</span> <span class="p">[(</span><span class="s">&#39;steps&#39;</span><span class="p">,</span><span class="mf">3000</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;starts&#39;</span><span class="p">,</span><span class="mf">20</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;pop&#39;</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;CR&#39;</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">)]</span>
+<div class="viewcode-block" id="RLFit.solve"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.RLFit.solve">[docs]</a>    <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">monitors</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">mapper</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="n">_fill_defaults</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">mapper</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">mapper</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">map</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">nllf</span><span class="p">,</span><span class="n">x</span><span class="p">)</span>
+        <span class="kn">from</span> <span class="nn">random_lines</span> <span class="kn">import</span> <span class="n">random_lines</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update</span> <span class="o">=</span> <span class="n">MonitorRunner</span><span class="p">(</span><span class="n">problem</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="p">,</span>
+                                     <span class="n">monitors</span><span class="o">=</span><span class="n">monitors</span><span class="p">)</span>
+        <span class="n">bounds</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">bounds</span><span class="o">.</span><span class="n">limits</span>
+                              <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">parameters</span><span class="p">])</span><span class="o">.</span><span class="n">T</span>
+        <span class="n">cfo</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">parallel_cost</span><span class="o">=</span><span class="n">mapper</span><span class="p">,</span>
+                   <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">bounds</span><span class="p">[</span><span class="mf">0</span><span class="p">]),</span>
+                   <span class="n">x0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">getp</span><span class="p">(),</span>
+                   <span class="n">x1</span> <span class="o">=</span> <span class="n">bounds</span><span class="p">[</span><span class="mf">0</span><span class="p">],</span>
+                   <span class="n">x2</span> <span class="o">=</span> <span class="n">bounds</span><span class="p">[</span><span class="mf">1</span><span class="p">],</span>
+                   <span class="n">f_opt</span> <span class="o">=</span> <span class="mf">0</span><span class="p">,</span>
+                   <span class="n">monitor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_monitor</span><span class="p">)</span>
+        <span class="n">NP</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">cfo</span><span class="p">[</span><span class="s">&#39;n&#39;</span><span class="p">]</span><span class="o">*</span><span class="n">options</span><span class="p">[</span><span class="s">&#39;pop&#39;</span><span class="p">]),</span><span class="mf">3</span><span class="p">)</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="n">random_lines</span><span class="p">(</span><span class="n">cfo</span><span class="p">,</span> <span class="n">NP</span><span class="p">,</span> <span class="n">maxiter</span><span class="o">=</span><span class="n">options</span><span class="p">[</span><span class="s">&#39;steps&#39;</span><span class="p">],</span>
+                              <span class="n">CR</span><span class="o">=</span><span class="n">options</span><span class="p">[</span><span class="s">&#39;CR&#39;</span><span class="p">])</span>
+        <span class="n">satisfied_sc</span><span class="p">,</span> <span class="n">n_feval</span><span class="p">,</span> <span class="n">f_best</span><span class="p">,</span> <span class="n">x_best</span> <span class="o">=</span> <span class="n">result</span>
+
+        <span class="k">return</span> <span class="n">x_best</span><span class="p">,</span> <span class="n">f_best</span>
+</div>
+    <span class="k">def</span> <span class="nf">_monitor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">fx</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+        <span class="c">#print &quot;rl best&quot;,k, x.shape,fx.shape</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update</span><span class="p">(</span><span class="n">step</span><span class="o">=</span><span class="n">step</span><span class="p">,</span> <span class="n">point</span><span class="o">=</span><span class="n">x</span><span class="p">[:,</span><span class="n">k</span><span class="p">],</span> <span class="n">value</span><span class="o">=</span><span class="n">fx</span><span class="p">[</span><span class="n">k</span><span class="p">],</span>
+                     <span class="n">population_points</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">population_values</span><span class="o">=</span><span class="n">fx</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
+</div>
+<div class="viewcode-block" id="PTFit"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.PTFit">[docs]</a><span class="k">class</span> <span class="nc">PTFit</span><span class="p">(</span><span class="n">FitBase</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;Parallel Tempering&quot;</span>
+    <span class="n">settings</span> <span class="o">=</span> <span class="p">[(</span><span class="s">&#39;steps&#39;</span><span class="p">,</span><span class="mf">1000</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;nT&#39;</span><span class="p">,</span> <span class="mf">25</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;CR&#39;</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">),</span>
+                <span class="p">(</span><span class="s">&#39;burn&#39;</span><span class="p">,</span><span class="mf">4000</span><span class="p">),</span>  <span class="p">(</span><span class="s">&#39;Tmin&#39;</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;Tmax&#39;</span><span class="p">,</span> <span class="mf">10</span><span class="p">)]</span>
+<div class="viewcode-block" id="PTFit.solve"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.PTFit.solve">[docs]</a>    <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">monitors</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">mapper</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="n">_fill_defaults</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">)</span>
+        <span class="c"># TODO: no mapper??</span>
+        <span class="kn">from</span> <span class="nn">partemp</span> <span class="kn">import</span> <span class="n">parallel_tempering</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update</span> <span class="o">=</span> <span class="n">MonitorRunner</span><span class="p">(</span><span class="n">problem</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="p">,</span>
+                                     <span class="n">monitors</span><span class="o">=</span><span class="n">monitors</span><span class="p">)</span>
+        <span class="n">bounds</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">bounds</span><span class="o">.</span><span class="n">limits</span>
+                              <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">parameters</span><span class="p">])</span><span class="o">.</span><span class="n">T</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">logspace</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">options</span><span class="p">[</span><span class="s">&#39;Tmin&#39;</span><span class="p">]),</span>
+                           <span class="n">numpy</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">options</span><span class="p">[</span><span class="s">&#39;Tmax&#39;</span><span class="p">]),</span>
+                           <span class="n">options</span><span class="p">[</span><span class="s">&#39;nT&#39;</span><span class="p">])</span>
+        <span class="n">history</span> <span class="o">=</span> <span class="n">parallel_tempering</span><span class="p">(</span><span class="n">nllf</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">nllf</span><span class="p">,</span>
+                                    <span class="n">p</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">getp</span><span class="p">(),</span>
+                                    <span class="n">bounds</span><span class="o">=</span><span class="n">bounds</span><span class="p">,</span>
+                                    <span class="c">#logfile=&quot;partemp.dat&quot;,</span>
+                                    <span class="n">T</span><span class="o">=</span><span class="n">T</span><span class="p">,</span>
+                                    <span class="n">CR</span><span class="o">=</span><span class="n">options</span><span class="p">[</span><span class="s">&#39;CR&#39;</span><span class="p">],</span>
+                                    <span class="n">steps</span><span class="o">=</span><span class="n">options</span><span class="p">[</span><span class="s">&#39;steps&#39;</span><span class="p">],</span>
+                                    <span class="n">burn</span><span class="o">=</span><span class="n">options</span><span class="p">[</span><span class="s">&#39;burn&#39;</span><span class="p">],</span>
+                                    <span class="n">monitor</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_monitor</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">history</span><span class="o">.</span><span class="n">best_point</span><span class="p">,</span> <span class="n">history</span><span class="o">.</span><span class="n">best</span></div>
+    <span class="k">def</span> <span class="nf">_monitor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">fx</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span> <span class="n">E</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update</span><span class="p">(</span><span class="n">step</span><span class="o">=</span><span class="n">step</span><span class="p">,</span> <span class="n">point</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">fx</span><span class="p">,</span>
+                     <span class="n">population_points</span><span class="o">=</span><span class="n">P</span><span class="p">,</span> <span class="n">population_values</span><span class="o">=</span><span class="n">E</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">True</span>
+</div>
+<div class="viewcode-block" id="AmoebaFit"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.AmoebaFit">[docs]</a><span class="k">class</span> <span class="nc">AmoebaFit</span><span class="p">(</span><span class="n">FitBase</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;Nelder-Mead Simplex&quot;</span>
+    <span class="n">settings</span> <span class="o">=</span> <span class="p">[</span> <span class="p">(</span><span class="s">&#39;steps&#39;</span><span class="p">,</span><span class="mf">1000</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;starts&#39;</span><span class="p">,</span><span class="mf">1</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;radius&#39;</span><span class="p">,</span><span class="mf">0.15</span><span class="p">)</span> <span class="p">]</span>
+<div class="viewcode-block" id="AmoebaFit.solve"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.AmoebaFit.solve">[docs]</a>    <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">monitors</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">mapper</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="n">_fill_defaults</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">)</span>
+        <span class="c"># TODO: no mapper??</span>
+        <span class="kn">from</span> <span class="nn">simplex</span> <span class="kn">import</span> <span class="n">simplex</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update</span> <span class="o">=</span> <span class="n">MonitorRunner</span><span class="p">(</span><span class="n">problem</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="p">,</span>
+                                     <span class="n">monitors</span><span class="o">=</span><span class="n">monitors</span><span class="p">)</span>
+        <span class="n">bounds</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">bounds</span><span class="o">.</span><span class="n">limits</span>
+                              <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">parameters</span><span class="p">])</span><span class="o">.</span><span class="n">T</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">simplex</span><span class="p">(</span><span class="n">f</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">nllf</span><span class="p">,</span> <span class="n">x0</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">getp</span><span class="p">(),</span>
+                         <span class="n">bounds</span><span class="o">=</span><span class="n">bounds</span><span class="p">,</span>
+                         <span class="n">update_handler</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_monitor</span><span class="p">,</span>
+                         <span class="n">maxiter</span><span class="o">=</span><span class="n">options</span><span class="p">[</span><span class="s">&#39;steps&#39;</span><span class="p">],</span>
+                         <span class="n">radius</span><span class="o">=</span><span class="n">options</span><span class="p">[</span><span class="s">&#39;radius&#39;</span><span class="p">])</span>
+        <span class="c"># Let simplex propose the starting point for the next amoeba</span>
+        <span class="c"># fit in a multistart amoeba context.  If the best is always</span>
+        <span class="c"># used, the fit can get stuck in a local minimum.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">setp</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">next_start</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">fx</span></div>
+    <span class="k">def</span> <span class="nf">_monitor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">fx</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update</span><span class="p">(</span><span class="n">step</span><span class="o">=</span><span class="n">k</span><span class="p">,</span> <span class="n">point</span><span class="o">=</span><span class="n">x</span><span class="p">[</span><span class="mf">0</span><span class="p">],</span> <span class="n">value</span><span class="o">=</span><span class="n">fx</span><span class="p">[</span><span class="mf">0</span><span class="p">],</span>
+                     <span class="n">population_points</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">population_values</span><span class="o">=</span><span class="n">fx</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">True</span>
+</div>
+<div class="viewcode-block" id="SnobFit"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.SnobFit">[docs]</a><span class="k">class</span> <span class="nc">SnobFit</span><span class="p">(</span><span class="n">FitBase</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;SNOBFIT&quot;</span>
+    <span class="n">settings</span> <span class="o">=</span> <span class="p">[(</span><span class="s">&#39;steps&#39;</span><span class="p">,</span><span class="mf">200</span><span class="p">)]</span>
+<div class="viewcode-block" id="SnobFit.solve"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.SnobFit.solve">[docs]</a>    <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">monitors</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">mapper</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="n">_fill_defaults</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">)</span>
+        <span class="c"># TODO: no mapper??</span>
+        <span class="kn">from</span> <span class="nn">snobfit.snobfit</span> <span class="kn">import</span> <span class="n">snobfit</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update</span> <span class="o">=</span> <span class="n">MonitorRunner</span><span class="p">(</span><span class="n">problem</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="p">,</span>
+                                     <span class="n">monitors</span><span class="o">=</span><span class="n">monitors</span><span class="p">)</span>
+        <span class="n">bounds</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">bounds</span><span class="o">.</span><span class="n">limits</span>
+                              <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">parameters</span><span class="p">])</span><span class="o">.</span><span class="n">T</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">fx</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">snobfit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">getp</span><span class="p">(),</span> <span class="n">bounds</span><span class="p">,</span>
+                          <span class="n">fglob</span><span class="o">=</span><span class="mf">0</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_monitor</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">fx</span></div>
+    <span class="k">def</span> <span class="nf">_monitor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">fx</span><span class="p">,</span> <span class="n">improved</span><span class="p">):</span>
+        <span class="c"># TODO: snobfit does have a population...</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update</span><span class="p">(</span><span class="n">step</span><span class="o">=</span><span class="n">k</span><span class="p">,</span> <span class="n">point</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">fx</span><span class="p">,</span>
+                     <span class="n">population_points</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="n">population_values</span><span class="o">=</span><span class="p">[</span><span class="n">fx</span><span class="p">])</span>
+</div>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">dream</span> <span class="kn">import</span> <span class="n">MCMCModel</span>
+<span class="k">except</span><span class="p">:</span>
+    <span class="n">MCMCModel</span> <span class="o">=</span> <span class="nb">object</span>
+<div class="viewcode-block" id="DreamModel"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.DreamModel">[docs]</a><span class="k">class</span> <span class="nc">DreamModel</span><span class="p">(</span><span class="n">MCMCModel</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    DREAM wrapper for refl1d models.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">problem</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">mapper</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a sampling from the multidimensional likelihood function</span>
+<span class="sd">        represented by the problem set using dream.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">problem</span> <span class="o">=</span> <span class="n">problem</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">bounds</span><span class="o">.</span><span class="n">limits</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">problem</span><span class="o">.</span><span class="n">parameters</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">problem</span><span class="o">.</span><span class="n">parameters</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">mapper</span> <span class="o">=</span> <span class="n">mapper</span> <span class="k">if</span> <span class="n">mapper</span> <span class="k">else</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="nb">map</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nllf</span><span class="p">,</span><span class="n">p</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DreamModel.log_density"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.DreamModel.log_density">[docs]</a>    <span class="k">def</span> <span class="nf">log_density</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">nllf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="DreamModel.nllf"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.DreamModel.nllf">[docs]</a>    <span class="k">def</span> <span class="nf">nllf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Negative log likelihood of seeing models given parameters *x*&quot;&quot;&quot;</span>
+        <span class="c">#print &quot;eval&quot;,x; sys.stdout.flush()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">nllf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="DreamModel.map"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.DreamModel.map">[docs]</a>    <span class="k">def</span> <span class="nf">map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pop</span><span class="p">):</span>
+        <span class="c">#print &quot;calling mapper&quot;,self.mapper</span>
+        <span class="k">return</span> <span class="o">-</span><span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mapper</span><span class="p">(</span><span class="n">pop</span><span class="p">))</span>
+</div></div>
+<div class="viewcode-block" id="DreamFit"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.DreamFit">[docs]</a><span class="k">class</span> <span class="nc">DreamFit</span><span class="p">(</span><span class="n">FitBase</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;DREAM&quot;</span>
+    <span class="n">settings</span> <span class="o">=</span> <span class="p">[(</span><span class="s">&#39;steps&#39;</span><span class="p">,</span><span class="mf">500</span><span class="p">),</span>  <span class="p">(</span><span class="s">&#39;burn&#39;</span><span class="p">,</span> <span class="mf">0</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;pop&#39;</span><span class="p">,</span> <span class="mf">10</span><span class="p">),</span> <span class="p">(</span><span class="s">&#39;init&#39;</span><span class="p">,</span> <span class="s">&#39;lhs&#39;</span><span class="p">)]</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">problem</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dream_model</span> <span class="o">=</span> <span class="n">DreamModel</span><span class="p">(</span><span class="n">problem</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DreamFit.solve"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.DreamFit.solve">[docs]</a>    <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">monitors</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">mapper</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="n">_fill_defaults</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">settings</span><span class="p">)</span>
+        <span class="kn">import</span> <span class="nn">dream</span>
+
+        <span class="k">if</span> <span class="n">mapper</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dream_model</span><span class="o">.</span><span class="n">mapper</span> <span class="o">=</span> <span class="n">mapper</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update</span> <span class="o">=</span> <span class="n">MonitorRunner</span><span class="p">(</span><span class="n">problem</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dream_model</span><span class="o">.</span><span class="n">problem</span><span class="p">,</span>
+                                     <span class="n">monitors</span><span class="o">=</span><span class="n">monitors</span><span class="p">)</span>
+
+        <span class="n">population</span> <span class="o">=</span> <span class="n">initpop</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dream_model</span><span class="o">.</span><span class="n">problem</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
+        <span class="n">pop_size</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span>
+        <span class="n">population</span> <span class="o">=</span> <span class="n">population</span><span class="p">[</span><span class="bp">None</span><span class="p">,:,:]</span>
+        <span class="n">sampler</span> <span class="o">=</span> <span class="n">dream</span><span class="o">.</span><span class="n">Dream</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dream_model</span><span class="p">,</span> <span class="n">population</span><span class="o">=</span><span class="n">population</span><span class="p">,</span>
+                              <span class="n">draws</span> <span class="o">=</span> <span class="n">pop_size</span><span class="o">*</span><span class="n">options</span><span class="p">[</span><span class="s">&#39;steps&#39;</span><span class="p">],</span>
+                              <span class="n">burn</span> <span class="o">=</span> <span class="n">pop_size</span><span class="o">*</span><span class="n">options</span><span class="p">[</span><span class="s">&#39;burn&#39;</span><span class="p">],</span>
+                              <span class="n">monitor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_monitor</span><span class="p">,</span>
+                              <span class="n">DE_noise</span> <span class="o">=</span> <span class="mf">1e-6</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">sampler</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">mark_outliers</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">keep_best</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">title</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dream_model</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">name</span>
+
+        <span class="n">x</span><span class="p">,</span><span class="n">fx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">best</span><span class="p">()</span>
+
+        <span class="n">points</span><span class="p">,</span><span class="n">logp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span>
+        <span class="k">assert</span> <span class="n">logp</span><span class="p">[</span><span class="o">-</span><span class="mf">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">fx</span>
+        <span class="k">assert</span> <span class="n">all</span><span class="p">(</span><span class="n">points</span><span class="p">[</span><span class="o">-</span><span class="mf">1</span><span class="p">,</span><span class="n">i</span><span class="p">]</span><span class="o">==</span><span class="n">xi</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">xi</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">x</span><span class="p">,</span><span class="o">-</span><span class="n">fx</span>
+</div>
+    <span class="k">def</span> <span class="nf">_monitor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">pop</span><span class="p">,</span> <span class="n">logp</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">uncertainty_state</span> <span class="o">=</span> <span class="n">state</span> <span class="c"># Get an early copy of the state</span>
+        <span class="n">step</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">generation</span>
+        <span class="n">x</span><span class="p">,</span><span class="n">fx</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">best</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update</span><span class="p">(</span><span class="n">step</span><span class="o">=</span><span class="n">step</span><span class="p">,</span> <span class="n">point</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">value</span><span class="o">=-</span><span class="n">fx</span><span class="p">,</span>
+                     <span class="n">population_points</span><span class="o">=</span><span class="n">pop</span><span class="p">,</span> <span class="n">population_values</span><span class="o">=-</span><span class="n">logp</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
+<div class="viewcode-block" id="DreamFit.save"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.DreamFit.save">[docs]</a>    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output_path</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">output_path</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="DreamFit.plot"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.DreamFit.plot">[docs]</a>    <span class="k">def</span> <span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output_path</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">show</span><span class="p">(</span><span class="n">figfile</span><span class="o">=</span><span class="n">output_path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">error_plot</span><span class="p">(</span><span class="n">figfile</span><span class="o">=</span><span class="n">output_path</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="DreamFit.show"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.DreamFit.show">[docs]</a>    <span class="k">def</span> <span class="nf">show</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="DreamFit.error_plot"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.DreamFit.error_plot">[docs]</a>    <span class="k">def</span> <span class="nf">error_plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">figfile</span><span class="p">):</span>
+        <span class="c"># Produce error plot</span>
+        <span class="kn">import</span> <span class="nn">errors</span><span class="o">,</span> <span class="nn">pylab</span>
+        <span class="c"># TODO: shouldn&#39;t mix calc and display!</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">errors</span><span class="o">.</span><span class="n">calc_distribution_from_state</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dream_model</span><span class="o">.</span><span class="n">problem</span><span class="p">,</span>
+                                                      <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">res</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">pylab</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">show_distribution</span><span class="p">(</span><span class="o">*</span><span class="n">res</span><span class="p">)</span>
+            <span class="n">pylab</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">figfile</span><span class="o">+</span><span class="s">&quot;-errors.png&quot;</span><span class="p">,</span> <span class="n">format</span><span class="o">=</span><span class="s">&#39;png&#39;</span><span class="p">)</span>
+</div></div>
+<div class="viewcode-block" id="Resampler"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.Resampler">[docs]</a><span class="k">class</span> <span class="nc">Resampler</span><span class="p">(</span><span class="n">FitBase</span><span class="p">):</span>
+    <span class="c">#TODO: why isn&#39;t cli.resynth using this?</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fitter</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fitter</span> <span class="o">=</span> <span class="n">fitter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">problem</span> <span class="o">=</span> <span class="n">fitter</span><span class="o">.</span><span class="n">problem</span>
+<div class="viewcode-block" id="Resampler.solve"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.Resampler.solve">[docs]</a>    <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="n">starts</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;starts&#39;</span><span class="p">,</span><span class="mf">1</span><span class="p">)</span>
+        <span class="n">restart</span> <span class="o">=</span> <span class="n">options</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;restart&#39;</span><span class="p">,</span><span class="bp">False</span><span class="p">)</span>
+        <span class="n">x</span><span class="p">,</span><span class="n">fx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fitter</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="o">**</span><span class="n">options</span><span class="p">)</span>
+        <span class="n">points</span> <span class="o">=</span> <span class="n">_resampler</span><span class="p">(</span><span class="n">fitter</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">samples</span><span class="o">=</span><span class="n">starts</span><span class="p">,</span>
+                            <span class="n">restart</span><span class="o">=</span><span class="n">restart</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span><span class="p">,</span><span class="n">fx</span>
+</div></div>
+<span class="k">def</span> <span class="nf">_resampler</span><span class="p">(</span><span class="n">fitter</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">samples</span><span class="o">=</span><span class="mf">100</span><span class="p">,</span> <span class="n">restart</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Refit the result multiple times with resynthesized data, building</span>
+<span class="sd">    up an array in Result.samples which contains the best fit to the</span>
+<span class="sd">    resynthesized data.  *samples* is the number of samples to generate.</span>
+<span class="sd">    *fitter* is the (local) optimizer to use. **kw are the parameters</span>
+<span class="sd">    for the optimizer.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">opt</span> <span class="o">=</span> <span class="n">fitter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="p">)</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">try</span><span class="p">:</span> <span class="c"># TODO: some solvers already catch KeyboardInterrupt</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">samples</span><span class="p">):</span>
+            <span class="c">#print &quot;== resynth %d of %d&quot; % (i, samples)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">resynth_data</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">restart</span><span class="p">:</span>
+                <span class="n">parameter</span><span class="o">.</span><span class="n">randomize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">parameters</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">setp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">solution</span><span class="p">)</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">fitter</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="o">**</span><span class="n">options</span><span class="p">)</span>
+            <span class="n">nllf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">nllf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="c"># TODO: don&#39;t recalculate!</span>
+            <span class="n">points</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">nllf</span><span class="p">,</span><span class="n">x</span><span class="p">)))</span>
+            <span class="c">#print parameter.summarize(self.problem.parameters)</span>
+            <span class="c">#print &quot;[chisq=%g]&quot; % (nllf*2/self.problem.dof)</span>
+    <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="c"># Restore the state of the problem</span>
+        <span class="n">problem</span><span class="o">.</span><span class="n">restore_data</span><span class="p">()</span>
+        <span class="n">problem</span><span class="o">.</span><span class="n">setp</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">problem</span><span class="o">.</span><span class="n">model_update</span><span class="p">()</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">points</span><span class="p">]</span> <span class="o">+</span> <span class="n">points</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="FitDriver"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.FitDriver">[docs]</a><span class="k">class</span> <span class="nc">FitDriver</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fitclass</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">problem</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">monitors</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                 <span class="n">mapper</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fitclass</span> <span class="o">=</span> <span class="n">fitclass</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">problem</span> <span class="o">=</span> <span class="n">problem</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">options</span> <span class="o">=</span> <span class="n">options</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">monitors</span> <span class="o">=</span> <span class="n">monitors</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mapper</span> <span class="o">=</span> <span class="n">mapper</span> <span class="k">if</span> <span class="n">mapper</span> <span class="k">else</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="nb">map</span><span class="p">(</span><span class="n">problem</span><span class="o">.</span><span class="n">nllf</span><span class="p">,</span><span class="n">p</span><span class="p">)</span>
+
+<div class="viewcode-block" id="FitDriver.fit"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.FitDriver.fit">[docs]</a>    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">fitter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fitclass</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="p">)</span>
+        <span class="n">starts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;starts&#39;</span><span class="p">,</span> <span class="mf">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">starts</span> <span class="o">&gt;</span> <span class="mf">1</span><span class="p">:</span>
+            <span class="n">fitter</span> <span class="o">=</span> <span class="n">MultiStart</span><span class="p">(</span><span class="n">fitter</span><span class="p">)</span>
+        <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">clock</span><span class="p">()</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">fx</span> <span class="o">=</span> <span class="n">fitter</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">monitors</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">monitors</span><span class="p">,</span>
+                             <span class="n">mapper</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mapper</span><span class="p">,</span>
+                             <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fitter</span> <span class="o">=</span> <span class="n">fitter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">clock</span><span class="p">()</span> <span class="o">-</span> <span class="n">t0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">result</span> <span class="o">=</span> <span class="n">x</span><span class="p">,</span> <span class="n">fx</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">setp</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">fx</span>
+</div>
+<div class="viewcode-block" id="FitDriver.show"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.FitDriver.show">[docs]</a>    <span class="k">def</span> <span class="nf">show</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="p">,</span> <span class="s">&#39;show&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fitter</span><span class="p">,</span> <span class="s">&#39;show&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fitter</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="FitDriver.save"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.FitDriver.save">[docs]</a>    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output_path</span><span class="p">):</span>
+        <span class="c">#print &quot;calling driver save&quot;</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="p">,</span> <span class="s">&#39;save&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">output_path</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fitter</span><span class="p">,</span> <span class="s">&#39;save&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fitter</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">output_path</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="FitDriver.plot"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.FitDriver.plot">[docs]</a>    <span class="k">def</span> <span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output_path</span><span class="p">):</span>
+        <span class="c">#print &quot;calling fitter.plot&quot;</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="p">,</span> <span class="s">&#39;plot&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">figfile</span><span class="o">=</span><span class="n">output_path</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fitter</span><span class="p">,</span> <span class="s">&#39;plot&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fitter</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">output_path</span><span class="o">=</span><span class="n">output_path</span><span class="p">)</span>
+
+</div></div>
+<span class="k">def</span> <span class="nf">_fill_defaults</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="n">settings</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">field</span><span class="p">,</span><span class="n">value</span> <span class="ow">in</span> <span class="n">settings</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">field</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">options</span><span class="p">:</span>
+            <span class="n">options</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+<div class="viewcode-block" id="FitOptions"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.FitOptions">[docs]</a><span class="k">class</span> <span class="nc">FitOptions</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="c"># Field labels and types for all possible fields</span>
+    <span class="n">FIELDS</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">starts</span> <span class="o">=</span> <span class="p">(</span><span class="s">&quot;Starts&quot;</span><span class="p">,</span>          <span class="s">&quot;int&quot;</span><span class="p">),</span>
+        <span class="n">steps</span>  <span class="o">=</span> <span class="p">(</span><span class="s">&quot;Steps&quot;</span><span class="p">,</span>           <span class="s">&quot;int&quot;</span><span class="p">),</span>
+        <span class="n">burn</span>   <span class="o">=</span> <span class="p">(</span><span class="s">&quot;Burn-in Steps&quot;</span><span class="p">,</span>   <span class="s">&quot;int&quot;</span><span class="p">),</span>
+        <span class="n">pop</span>    <span class="o">=</span> <span class="p">(</span><span class="s">&quot;Population&quot;</span><span class="p">,</span>      <span class="s">&quot;float&quot;</span><span class="p">),</span>
+        <span class="n">init</span>   <span class="o">=</span> <span class="p">(</span><span class="s">&quot;Initializer&quot;</span><span class="p">,</span>     <span class="p">(</span><span class="s">&quot;lhs&quot;</span><span class="p">,</span><span class="s">&quot;cov&quot;</span><span class="p">,</span><span class="s">&quot;random&quot;</span><span class="p">,</span><span class="s">&quot;eps&quot;</span><span class="p">)),</span>
+        <span class="n">CR</span>     <span class="o">=</span> <span class="p">(</span><span class="s">&quot;Crossover Ratio&quot;</span><span class="p">,</span> <span class="s">&quot;float&quot;</span><span class="p">),</span>
+        <span class="n">F</span>      <span class="o">=</span> <span class="p">(</span><span class="s">&quot;Scale&quot;</span><span class="p">,</span>           <span class="s">&quot;float&quot;</span><span class="p">),</span>
+        <span class="n">nT</span>     <span class="o">=</span> <span class="p">(</span><span class="s">&quot;# Temperatures&quot;</span><span class="p">,</span>  <span class="s">&quot;int&quot;</span><span class="p">),</span>
+        <span class="n">Tmin</span>   <span class="o">=</span> <span class="p">(</span><span class="s">&quot;Min Temperature&quot;</span><span class="p">,</span> <span class="s">&quot;float&quot;</span><span class="p">),</span>
+        <span class="n">Tmax</span>   <span class="o">=</span> <span class="p">(</span><span class="s">&quot;Max Temperature&quot;</span><span class="p">,</span> <span class="s">&quot;float&quot;</span><span class="p">),</span>
+        <span class="n">radius</span> <span class="o">=</span> <span class="p">(</span><span class="s">&quot;Simplex Radius&quot;</span><span class="p">,</span>  <span class="s">&quot;float&quot;</span><span class="p">),</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fitclass</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fitclass</span> <span class="o">=</span> <span class="n">fitclass</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">options</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">fitclass</span><span class="o">.</span><span class="n">settings</span><span class="p">)</span>
+<div class="viewcode-block" id="FitOptions.set_from_cli"><a class="viewcode-back" href="../../api/fitters.html#refl1d.fitters.FitOptions.set_from_cli">[docs]</a>    <span class="k">def</span> <span class="nf">set_from_cli</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">opts</span><span class="p">):</span>
+        <span class="c"># Convert supplied options to the correct types and save them in value</span>
+        <span class="k">for</span> <span class="n">field</span><span class="p">,</span><span class="n">reset_value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fitclass</span><span class="o">.</span><span class="n">settings</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">opts</span><span class="p">,</span><span class="n">field</span><span class="p">,</span><span class="bp">None</span><span class="p">)</span>
+            <span class="n">dtype</span> <span class="o">=</span> <span class="n">FitOptions</span><span class="o">.</span><span class="n">FIELDS</span><span class="p">[</span><span class="n">field</span><span class="p">][</span><span class="mf">1</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">dtype</span> <span class="o">==</span> <span class="s">&#39;int&#39;</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">dtype</span> <span class="o">==</span> <span class="s">&#39;float&#39;</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span> <span class="c"># string</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">dtype</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;invalid option &quot;</span><span class="si">%s</span><span class="s">&quot; for </span><span class="si">%s</span><span class="s">: use &#39;</span>
+                                         <span class="o">%</span> <span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">field</span><span class="p">)</span>
+                                         <span class="o">+</span> <span class="s">&#39;|&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">dtype</span><span class="p">))</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+<span class="c"># List of (parameter,factory value) required for each algorithm</span></div></div>
+<span class="n">FIT_OPTIONS</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+    <span class="n">amoeba</span> <span class="o">=</span> <span class="n">FitOptions</span><span class="p">(</span><span class="n">AmoebaFit</span><span class="p">),</span>
+    <span class="n">de</span>     <span class="o">=</span> <span class="n">FitOptions</span><span class="p">(</span><span class="n">DEFit</span><span class="p">),</span>
+    <span class="n">dream</span>  <span class="o">=</span> <span class="n">FitOptions</span><span class="p">(</span><span class="n">DreamFit</span><span class="p">),</span>
+    <span class="n">newton</span> <span class="o">=</span> <span class="n">FitOptions</span><span class="p">(</span><span class="n">BFGSFit</span><span class="p">),</span>
+    <span class="n">ps</span>     <span class="o">=</span> <span class="n">FitOptions</span><span class="p">(</span><span class="n">PSFit</span><span class="p">),</span>
+    <span class="n">pt</span>     <span class="o">=</span> <span class="n">FitOptions</span><span class="p">(</span><span class="n">PTFit</span><span class="p">),</span>
+    <span class="n">rl</span>     <span class="o">=</span> <span class="n">FitOptions</span><span class="p">(</span><span class="n">RLFit</span><span class="p">),</span>
+    <span class="n">snobfit</span> <span class="o">=</span> <span class="n">FitOptions</span><span class="p">(</span><span class="n">SnobFit</span><span class="p">),</span>
+    <span class="p">)</span>
+
+<span class="n">FIT_DEFAULT</span> <span class="o">=</span> <span class="s">&#39;amoeba&#39;</span>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

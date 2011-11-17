@@ -1,0 +1,651 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.mystic.bounds &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../../../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../../../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.mystic.bounds</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        <a class="uplink" href="../../../index.html">Contents</a>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for refl1d.mystic.bounds</h1><div class="highlight"><pre>
+<span class="c"># This program is in the public domain</span>
+<span class="c"># Author: Paul Kienzle</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Parameter bounds.</span>
+
+<span class="sd">Parameter bounds encompass several features of our optimizers.</span>
+
+<span class="sd">First and most trivially they allow for bounded constraints on</span>
+<span class="sd">parameter values.</span>
+
+<span class="sd">Secondly, for parameter values known to follow some distribution,</span>
+<span class="sd">the bounds encodes a penalty function as the value strays from</span>
+<span class="sd">its nominal value.  Using a negative log likelihood cost function</span>
+<span class="sd">on the fit, then this value naturally contributes to the overall</span>
+<span class="sd">likelihood measure.</span>
+
+<span class="sd">Predefined bounds are::</span>
+
+<span class="sd">    Unbounded</span>
+<span class="sd">        range (-inf, inf)</span>
+<span class="sd">    BoundedBelow</span>
+<span class="sd">        range (base, inf)</span>
+<span class="sd">    BoundedAbove</span>
+<span class="sd">        range (-inf, base)</span>
+<span class="sd">    Bounded</span>
+<span class="sd">        range (low, high)</span>
+<span class="sd">    SoftBounded</span>
+<span class="sd">        range (low, high) with gaussian probability sigma</span>
+<span class="sd">    Normal</span>
+<span class="sd">        range (-inf, inf) with gaussian probability</span>
+
+<span class="sd">Using :func:`int_bounds` you can create the appropriate bounded</span>
+<span class="sd">or unbounded object for the kind of input.</span>
+
+<span class="sd">New bounds can be defined following the abstract base class</span>
+<span class="sd">interface defined in :class:`Bounds`.</span>
+
+<span class="sd">For generating bounds given a value, we provide a few helper</span>
+<span class="sd">functions::</span>
+
+<span class="sd">    v +/- d:  pm(x,dx) or pm(x,-dm,+dp) or pm(x,+dp,-dm)</span>
+<span class="sd">        return (x-dm,x+dm) limited to 2 significant digits</span>
+<span class="sd">    v +/- p%: pmp(x,p) or pmp(x,-pm,+pp) or pmp(x,+pp,-pm)</span>
+<span class="sd">        return (x-pm*x/100, x+pp*x/100) limited to 2 sig. digits</span>
+<span class="sd">    pm_raw(x,dx) or raw_pm(x,-dm,+dp) or raw_pm(x,+dp,-dm)</span>
+<span class="sd">        return (x-dm,x+dm)</span>
+<span class="sd">    pmp_raw(x,p) or raw_pmp(x,-pm,+pp) or raw_pmp(x,+pp,-pm)</span>
+<span class="sd">        return (x-pm*x/100, x+pp*x/100)</span>
+<span class="sd">    nice_range(lo,hi)</span>
+<span class="sd">        return (lo,hi) limited to 2 significant digits</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;pm&#39;</span><span class="p">,</span><span class="s">&#39;pmp&#39;</span><span class="p">,</span><span class="s">&#39;pm_raw&#39;</span><span class="p">,</span><span class="s">&#39;pmp_raw&#39;</span><span class="p">,</span> <span class="s">&#39;nice_range&#39;</span><span class="p">,</span> <span class="s">&#39;init_bounds&#39;</span><span class="p">,</span>
+           <span class="s">&#39;Unbounded&#39;</span><span class="p">,</span> <span class="s">&#39;Bounded&#39;</span><span class="p">,</span> <span class="s">&#39;BoundedAbove&#39;</span><span class="p">,</span> <span class="s">&#39;BoundedBelow&#39;</span><span class="p">,</span>
+           <span class="s">&#39;Distribution&#39;</span><span class="p">,</span> <span class="s">&#39;Normal&#39;</span><span class="p">,</span> <span class="s">&#39;SoftBounded&#39;</span><span class="p">]</span>
+
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="p">(</span><span class="n">isinf</span><span class="p">,</span> <span class="n">inf</span><span class="p">,</span> <span class="n">nan</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">pi</span><span class="p">,</span> <span class="n">log</span><span class="p">,</span> <span class="n">sqrt</span><span class="p">,</span> <span class="n">exp</span><span class="p">)</span>
+<span class="n">RNG</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="kn">import</span> <span class="n">norm</span> <span class="k">as</span> <span class="n">normal_distribution</span>
+<span class="k">except</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">normal_distribution</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s">&quot;scipy.stats unavailable&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="pm"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.pm">[docs]</a><span class="k">def</span> <span class="nf">pm</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the tuple (~v-dv,~v+dv), where ~expr is a &#39;nice&#39; number near to</span>
+<span class="sd">    to the value of expr.  For example::</span>
+
+<span class="sd">        &gt;&gt;&gt; r = pm(0.78421, 0.0023145)</span>
+<span class="sd">        &gt;&gt;&gt; print &quot;%g - %g&quot;%r</span>
+<span class="sd">        0.7818 - 0.7866</span>
+
+<span class="sd">    If called as pm(value, +dp, -dm) or pm(value, -dm, +dp),</span>
+<span class="sd">    return (~v-dm, ~v+dp).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">nice_range</span><span class="p">(</span><span class="n">pm_raw</span><span class="p">(</span><span class="n">v</span><span class="p">,</span><span class="o">*</span><span class="n">args</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="pmp"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.pmp">[docs]</a><span class="k">def</span> <span class="nf">pmp</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the tuple (~v-%v,~v+%v), where ~expr is a &#39;nice&#39; number near to</span>
+<span class="sd">    the value of expr.  For example::</span>
+
+<span class="sd">        &gt;&gt;&gt; r = pmp(0.78421, 10)</span>
+<span class="sd">        &gt;&gt;&gt; print &quot;%g - %g&quot;%r</span>
+<span class="sd">        0.7 - 0.87</span>
+<span class="sd">        &gt;&gt;&gt; r = pmp(0.78421, 0.1)</span>
+<span class="sd">        &gt;&gt;&gt; print &quot;%g - %g&quot;%r</span>
+<span class="sd">        0.7834 - 0.785</span>
+
+<span class="sd">    If called as pmp(value, +pp, -pm) or pmp(value, -pm, +pp),</span>
+<span class="sd">    return (~v-pm%v, ~v+pp%v).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">nice_range</span><span class="p">(</span><span class="n">pmp_raw</span><span class="p">(</span><span class="n">v</span><span class="p">,</span><span class="o">*</span><span class="n">args</span><span class="p">))</span>
+
+<span class="c"># Generate ranges using x +/- dx or x +/- p%*x</span></div>
+<div class="viewcode-block" id="pm_raw"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.pm_raw">[docs]</a><span class="k">def</span> <span class="nf">pm_raw</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the tuple [v-dv,v+dv].</span>
+
+<span class="sd">    If called as pm_raw(value, +dp, -dm) or pm_raw(value, -dm, +dp),</span>
+<span class="sd">    return (v-dm, v+dp).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mf">1</span><span class="p">:</span>
+        <span class="n">dv</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">v</span><span class="o">-</span><span class="n">dv</span><span class="p">,</span> <span class="n">v</span><span class="o">+</span><span class="n">dv</span>
+    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mf">2</span><span class="p">:</span>
+        <span class="n">plus</span><span class="p">,</span><span class="n">minus</span> <span class="o">=</span> <span class="n">args</span>
+        <span class="k">if</span> <span class="n">plus</span><span class="o">&lt;</span><span class="n">minus</span><span class="p">:</span> <span class="n">plus</span><span class="p">,</span><span class="n">minus</span> <span class="o">=</span> <span class="n">minus</span><span class="p">,</span><span class="n">plus</span>
+        <span class="c">#if minus &gt; 0 or plus &lt; 0:</span>
+        <span class="c">#    raise TypeError(&quot;pm(value, p1, p2) requires both + and - values&quot;)</span>
+        <span class="k">return</span> <span class="n">v</span><span class="o">+</span><span class="n">minus</span><span class="p">,</span> <span class="n">v</span><span class="o">+</span><span class="n">plus</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;pm(value, delta) or pm(value, -p1, +p2)&quot;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="pmp_raw"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.pmp_raw">[docs]</a><span class="k">def</span> <span class="nf">pmp_raw</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the tuple [v-%v,v+%v]</span>
+
+<span class="sd">    If called as pmp_raw(value, +pp, -pm) or pmp_raw(value, -pm, +pp),</span>
+<span class="sd">    return (v-pm%v, v+pp%v).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mf">1</span><span class="p">:</span>
+        <span class="n">percent</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span>
+        <span class="n">b1</span><span class="p">,</span><span class="n">b2</span> <span class="o">=</span> <span class="n">v</span><span class="o">*</span><span class="p">(</span><span class="mf">1</span><span class="o">-</span><span class="mf">0.01</span><span class="o">*</span><span class="n">percent</span><span class="p">),</span> <span class="n">v</span><span class="o">*</span><span class="p">(</span><span class="mf">1</span><span class="o">+</span><span class="mf">0.01</span><span class="o">*</span><span class="n">percent</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mf">2</span><span class="p">:</span>
+        <span class="n">plus</span><span class="p">,</span><span class="n">minus</span> <span class="o">=</span> <span class="n">args</span>
+        <span class="k">if</span> <span class="n">plus</span><span class="o">&lt;</span><span class="n">minus</span><span class="p">:</span> <span class="n">plus</span><span class="p">,</span><span class="n">minus</span> <span class="o">=</span> <span class="n">minus</span><span class="p">,</span><span class="n">plus</span>
+        <span class="c">#if minus &gt; 0 or plus &lt; 0:</span>
+        <span class="c">#    raise TypeError(&quot;pmp(value, p1, p2) requires both + and - values&quot;)</span>
+        <span class="n">b1</span><span class="p">,</span><span class="n">b2</span> <span class="o">=</span> <span class="n">v</span><span class="o">*</span><span class="p">(</span><span class="mf">1</span><span class="o">+</span><span class="mf">0.01</span><span class="o">*</span><span class="n">minus</span><span class="p">),</span> <span class="n">v</span><span class="o">*</span><span class="p">(</span><span class="mf">1</span><span class="o">+</span><span class="mf">0.01</span><span class="o">*</span><span class="n">plus</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;pmp(value, delta) or pmp(value, -p1, +p2)&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">b1</span><span class="p">,</span><span class="n">b2</span><span class="p">)</span> <span class="k">if</span> <span class="n">v</span><span class="o">&gt;</span><span class="mf">0</span> <span class="k">else</span> <span class="p">(</span><span class="n">b2</span><span class="p">,</span><span class="n">b1</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="nice_range"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.nice_range">[docs]</a><span class="k">def</span> <span class="nf">nice_range</span><span class="p">(</span><span class="nb">range</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given a range, return an enclosing range accurate to two digits.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">step</span> <span class="o">=</span> <span class="nb">range</span><span class="p">[</span><span class="mf">1</span><span class="p">]</span><span class="o">-</span><span class="nb">range</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">step</span> <span class="o">&gt;</span> <span class="mf">0</span><span class="p">:</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="mf">10</span><span class="o">**</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">step</span><span class="p">))</span><span class="o">-</span><span class="mf">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="nb">range</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="o">/</span><span class="n">d</span><span class="p">)</span><span class="o">*</span><span class="n">d</span><span class="p">,</span><span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="nb">range</span><span class="p">[</span><span class="mf">1</span><span class="p">]</span><span class="o">/</span><span class="n">d</span><span class="p">)</span><span class="o">*</span><span class="n">d</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">range</span>
+</div>
+<div class="viewcode-block" id="init_bounds"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.init_bounds">[docs]</a><span class="k">def</span> <span class="nf">init_bounds</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns a bounds object of the appropriate type given the arguments.</span>
+
+<span class="sd">    This is a helper factory to simplify the user interface to parameter</span>
+<span class="sd">    objects.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c"># if it is none, then it is unbounded</span>
+    <span class="k">if</span> <span class="n">v</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">Unbounded</span><span class="p">()</span>
+
+    <span class="c"># if it isn&#39;t a tuple, assume it is a bounds type.</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">lo</span><span class="p">,</span><span class="n">hi</span> <span class="o">=</span> <span class="n">v</span>
+    <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">v</span>
+
+    <span class="c"># if it is a tuple</span>
+    <span class="k">if</span> <span class="n">lo</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span> <span class="n">lo</span> <span class="o">=</span> <span class="o">-</span><span class="n">inf</span>
+    <span class="k">if</span> <span class="n">hi</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span> <span class="n">hi</span> <span class="o">=</span> <span class="n">inf</span>
+    <span class="k">if</span> <span class="n">lo</span> <span class="o">&gt;=</span> <span class="n">hi</span><span class="p">:</span> <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;invalid bounds&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">isinf</span><span class="p">(</span><span class="n">lo</span><span class="p">)</span> <span class="ow">and</span> <span class="n">isinf</span><span class="p">(</span><span class="n">hi</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Unbounded</span><span class="p">()</span>
+    <span class="k">elif</span> <span class="n">isinf</span><span class="p">(</span><span class="n">lo</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">BoundedAbove</span><span class="p">(</span><span class="n">hi</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">isinf</span><span class="p">(</span><span class="n">hi</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">BoundedBelow</span><span class="p">(</span><span class="n">lo</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">Bounded</span><span class="p">(</span><span class="n">lo</span><span class="p">,</span><span class="n">hi</span><span class="p">)</span>
+</div>
+<span class="k">class</span> <span class="nc">Bounds</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Bounds abstract base class.</span>
+
+<span class="sd">    A range is used for several purposes.  One is that it transforms parameters</span>
+<span class="sd">    between unbounded and bounded forms, depending on the needs of the optimizer.</span>
+
+<span class="sd">    Another is that it generates random values in the range for stochastic</span>
+<span class="sd">    optimizers, and for initialization.</span>
+
+<span class="sd">    A third is that it returns the likelihood of seeing that particular value</span>
+<span class="sd">    for optimizers which use soft constraints.  Assuming the cost function that</span>
+<span class="sd">    is being optimized is also a probability, then this is an easy way to</span>
+<span class="sd">    incorporate information from other sorts of measurements into the model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">limits</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="n">inf</span><span class="p">,</span><span class="n">inf</span><span class="p">)</span>
+    <span class="c"># TODO: need derivatives wrt bounds transforms</span>
+    <span class="k">def</span> <span class="nf">get01</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert the value into [0,1] for optimizers which are bounds constrained.</span>
+
+<span class="sd">        This can also be used as a scale bar to show approximately how close to</span>
+<span class="sd">        the end of the range the value is.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">put01</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert [0,1] into the value for optimizers which are bounds constrained.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">getfull</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert the value into (-inf,inf) for optimizers which are unconstrained.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">putfull</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert (-inf,inf) into the value for optimizers which are unconstrained.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">random</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mf">1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a randomly generated valid value.</span>
+
+<span class="sd">        The random number generator is assumed to follow the numpy.random</span>
+<span class="sd">        interface.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">nllf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the negative log likelihood of seeing this value, with</span>
+<span class="sd">        likelihood scaled so that the maximum probability is one.</span>
+
+<span class="sd">        For uniform bounds, this either returns zero or inf.  For bounds</span>
+<span class="sd">        based on a probability distribution, this returns values between</span>
+<span class="sd">        zero and inf.  The scaling is necessary so that indefinite and</span>
+<span class="sd">        semi-definite ranges return a sensible value.  The scaling does</span>
+<span class="sd">        not affect the likelihood maximization process, though the resulting</span>
+<span class="sd">        likelihood is not easily interpreted.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">residual</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the parameter &#39;residual&#39; in a way that is consistent with</span>
+<span class="sd">        residuals in the normal distribution.  The primary purpose is to</span>
+<span class="sd">        graphically display exceptional values in a way that is familiar</span>
+<span class="sd">        to the user.  For fitting, the scaled likelihood should be used.</span>
+
+<span class="sd">        To do this, we will match the cumulative density function value</span>
+<span class="sd">        with that for N(0,1) and find the corresponding percent point</span>
+<span class="sd">        function from the N(0,1) distribution.  In this way, for example,</span>
+<span class="sd">        a value to the right of 2.275% of the distribution would correspond</span>
+<span class="sd">        to a residual of -2, or 2 standard deviations below the mean.</span>
+
+<span class="sd">        For uniform distributions, with all values equally probable, we</span>
+<span class="sd">        use a value of +/-4 for values outside the range, and 0 for values</span>
+<span class="sd">        inside the range.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">start_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a default starting value if none given.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">put01</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">v</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="p">[</span><span class="mf">1</span><span class="p">]</span>
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">limits</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">num_format</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s">&quot;(</span><span class="si">%s</span><span class="s">,</span><span class="si">%s</span><span class="s">)&quot;</span><span class="o">%</span><span class="n">limits</span>
+
+<span class="c">#CRUFT: python 2.5 doesn&#39;t format indefinite numbers properly on windows</span>
+<span class="k">def</span> <span class="nf">num_format</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Number formating which supports inf/nan on windows.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">numpy</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;</span><span class="si">%g</span><span class="s">&quot;</span><span class="o">%</span><span class="n">v</span>
+    <span class="k">elif</span> <span class="n">numpy</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;inf&quot;</span> <span class="k">if</span> <span class="n">v</span><span class="o">&gt;</span><span class="mf">0</span> <span class="k">else</span> <span class="s">&quot;-inf&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s">&quot;NaN&quot;</span>
+
+<div class="viewcode-block" id="Unbounded"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.Unbounded">[docs]</a><span class="k">class</span> <span class="nc">Unbounded</span><span class="p">(</span><span class="n">Bounds</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Unbounded parameter.</span>
+
+<span class="sd">    The random initial condition is assumed to be between 0 and 1</span>
+
+<span class="sd">    The probability is uniformly 1/inf everywhere, which means the negative</span>
+<span class="sd">    log likelihood of P is inf everywhere.  A value inf will interfere</span>
+<span class="sd">    with optimization routines, and so we instead choose P == 1 everywhere.</span>
+
+
+<span class="sd">    Convert sign*m*2^e to sign*(e+1023+m), yielding a value in [-2048,2048].</span>
+<span class="sd">    This can then be converted to a value in [0,1].</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="Unbounded.random"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.Unbounded.random">[docs]</a>    <span class="k">def</span> <span class="nf">random</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mf">1</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">RNG</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">n</span><span class="p">)</span></div>
+<div class="viewcode-block" id="Unbounded.nllf"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.Unbounded.nllf">[docs]</a>    <span class="k">def</span> <span class="nf">nllf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mf">0</span></div>
+<div class="viewcode-block" id="Unbounded.residual"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.Unbounded.residual">[docs]</a>    <span class="k">def</span> <span class="nf">residual</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mf">0</span></div>
+<div class="viewcode-block" id="Unbounded.get01"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.Unbounded.get01">[docs]</a>    <span class="k">def</span> <span class="nf">get01</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">_get01_inf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span></div>
+<div class="viewcode-block" id="Unbounded.put01"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.Unbounded.put01">[docs]</a>    <span class="k">def</span> <span class="nf">put01</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">_put01_inf</span><span class="p">(</span><span class="n">v</span><span class="p">)</span></div>
+<div class="viewcode-block" id="Unbounded.getfull"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.Unbounded.getfull">[docs]</a>    <span class="k">def</span> <span class="nf">getfull</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">x</span></div>
+<div class="viewcode-block" id="Unbounded.putfull"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.Unbounded.putfull">[docs]</a>    <span class="k">def</span> <span class="nf">putfull</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">v</span>
+</div></div>
+<div class="viewcode-block" id="BoundedBelow"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.BoundedBelow">[docs]</a><span class="k">class</span> <span class="nc">BoundedBelow</span><span class="p">(</span><span class="n">Bounds</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Semidefinite range bounded below.</span>
+
+<span class="sd">    The random initial condition is assumed to be within 1 of the maximum.</span>
+
+<span class="sd">    [base,inf] &lt;-&gt; (-inf,inf) is direct above base+1, -1/(x-base) below</span>
+<span class="sd">    [base,inf] &lt;-&gt; [0,1] uses logarithmic compression.</span>
+
+<span class="sd">    Logarithmic compression works by converting sign*m*2^e+base to</span>
+<span class="sd">    sign*(e+1023+m), yielding a value in [0,2048]. This can then be</span>
+<span class="sd">    converted to a value in [0,1].</span>
+
+<span class="sd">    Note that the likelihood function is problematic: the true probability</span>
+<span class="sd">    of seeing any particular value in the range is infintesimal, and that</span>
+<span class="sd">    is indistinguishable from values outside the range.    Instead we say</span>
+<span class="sd">    that P = 1 in range, and 0 outside.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">limits</span> <span class="o">=</span> <span class="p">(</span><span class="n">base</span><span class="p">,</span><span class="n">inf</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_base</span> <span class="o">=</span> <span class="n">base</span>
+<div class="viewcode-block" id="BoundedBelow.start_value"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.BoundedBelow.start_value">[docs]</a>    <span class="k">def</span> <span class="nf">start_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base</span><span class="o">+</span><span class="mf">1</span></div>
+<div class="viewcode-block" id="BoundedBelow.random"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.BoundedBelow.random">[docs]</a>    <span class="k">def</span> <span class="nf">random</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">n</span><span class="o">=</span><span class="mf">1</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base</span> <span class="o">+</span> <span class="n">RNG</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">n</span><span class="p">)</span></div>
+<div class="viewcode-block" id="BoundedBelow.nllf"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.BoundedBelow.nllf">[docs]</a>    <span class="k">def</span> <span class="nf">nllf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mf">0</span> <span class="k">if</span> <span class="n">value</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base</span> <span class="k">else</span> <span class="n">inf</span></div>
+<div class="viewcode-block" id="BoundedBelow.residual"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.BoundedBelow.residual">[docs]</a>    <span class="k">def</span> <span class="nf">residual</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mf">0</span> <span class="k">if</span> <span class="n">value</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base</span> <span class="k">else</span> <span class="o">-</span><span class="mf">4</span></div>
+<div class="viewcode-block" id="BoundedBelow.get01"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.BoundedBelow.get01">[docs]</a>    <span class="k">def</span> <span class="nf">get01</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="p">(</span><span class="n">m</span><span class="p">,</span><span class="n">e</span><span class="p">)</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">frexp</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">m</span> <span class="o">&gt;=</span> <span class="mf">0</span> <span class="ow">and</span> <span class="n">e</span> <span class="o">&lt;=</span> <span class="n">_e_max</span><span class="p">:</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="p">(</span><span class="n">e</span> <span class="o">+</span> <span class="n">m</span><span class="p">)</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="n">v</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">_e_max</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">v</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0</span> <span class="k">if</span> <span class="n">m</span> <span class="o">&lt;</span> <span class="mf">0</span> <span class="k">else</span> <span class="mf">1</span></div>
+<div class="viewcode-block" id="BoundedBelow.put01"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.BoundedBelow.put01">[docs]</a>    <span class="k">def</span> <span class="nf">put01</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="n">v</span><span class="o">*</span><span class="mf">2</span><span class="o">*</span><span class="n">_e_max</span>
+        <span class="n">e</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">v</span><span class="o">-</span><span class="n">e</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">ldexp</span><span class="p">(</span><span class="n">m</span><span class="p">,</span><span class="n">e</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base</span>
+        <span class="k">return</span> <span class="n">x</span></div>
+<div class="viewcode-block" id="BoundedBelow.getfull"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.BoundedBelow.getfull">[docs]</a>    <span class="k">def</span> <span class="nf">getfull</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base</span>
+        <span class="k">return</span> <span class="n">v</span> <span class="k">if</span> <span class="n">v</span> <span class="o">&gt;=</span> <span class="mf">1</span> <span class="k">else</span> <span class="mf">2</span><span class="o">-</span><span class="mf">1.</span><span class="o">/</span><span class="n">v</span></div>
+<div class="viewcode-block" id="BoundedBelow.putfull"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.BoundedBelow.putfull">[docs]</a>    <span class="k">def</span> <span class="nf">putfull</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">v</span> <span class="k">if</span> <span class="n">v</span> <span class="o">&gt;=</span> <span class="mf">1</span> <span class="k">else</span> <span class="mf">1.</span><span class="o">/</span><span class="p">(</span><span class="mf">2</span><span class="o">-</span><span class="n">v</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base</span>
+</div></div>
+<div class="viewcode-block" id="BoundedAbove"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.BoundedAbove">[docs]</a><span class="k">class</span> <span class="nc">BoundedAbove</span><span class="p">(</span><span class="n">Bounds</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Semidefinite range bounded above.</span>
+
+<span class="sd">    [-inf,base] &lt;-&gt; [0,1] uses logarithmic compression</span>
+<span class="sd">    [-inf,base] &lt;-&gt; (-inf,inf) is direct below base-1, 1/(base-x) above</span>
+
+<span class="sd">    Logarithmic compression works by converting sign*m*2^e+base to</span>
+<span class="sd">    sign*(e+1023+m), yielding a value in [0,2048].  This can then be</span>
+<span class="sd">    converted to a value in [0,1].</span>
+
+<span class="sd">    Note that the likelihood function is problematic: the true probability</span>
+<span class="sd">    of seeing any particular value in the range is infintesimal, and that</span>
+<span class="sd">    is indistinguishable from values outside the range.    Instead we say</span>
+<span class="sd">    that P = 1 in range, and 0 outside.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">limits</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="n">inf</span><span class="p">,</span><span class="n">base</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_base</span> <span class="o">=</span> <span class="n">base</span>
+<div class="viewcode-block" id="BoundedAbove.start_value"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.BoundedAbove.start_value">[docs]</a>    <span class="k">def</span> <span class="nf">start_value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base</span> <span class="o">-</span> <span class="mf">1</span></div>
+<div class="viewcode-block" id="BoundedAbove.random"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.BoundedAbove.random">[docs]</a>    <span class="k">def</span> <span class="nf">random</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">n</span><span class="o">=</span><span class="mf">1</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base</span> <span class="o">-</span> <span class="n">RNG</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">n</span><span class="p">)</span></div>
+<div class="viewcode-block" id="BoundedAbove.nllf"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.BoundedAbove.nllf">[docs]</a>    <span class="k">def</span> <span class="nf">nllf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mf">0</span> <span class="k">if</span> <span class="n">value</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base</span> <span class="k">else</span> <span class="n">inf</span></div>
+<div class="viewcode-block" id="BoundedAbove.residual"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.BoundedAbove.residual">[docs]</a>    <span class="k">def</span> <span class="nf">residual</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mf">0</span> <span class="k">if</span> <span class="n">value</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base</span> <span class="k">else</span> <span class="mf">4</span></div>
+<div class="viewcode-block" id="BoundedAbove.get01"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.BoundedAbove.get01">[docs]</a>    <span class="k">def</span> <span class="nf">get01</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="p">(</span><span class="n">m</span><span class="p">,</span><span class="n">e</span><span class="p">)</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">frexp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_base</span> <span class="o">-</span> <span class="n">x</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">m</span> <span class="o">&gt;=</span> <span class="mf">0</span> <span class="ow">and</span> <span class="n">e</span> <span class="o">&lt;=</span> <span class="n">_e_max</span><span class="p">:</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="p">(</span><span class="n">e</span> <span class="o">+</span> <span class="n">m</span><span class="p">)</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="n">v</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">_e_max</span><span class="p">)</span>
+            <span class="k">return</span> <span class="mf">1</span><span class="o">-</span><span class="n">v</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">1</span> <span class="k">if</span> <span class="n">m</span> <span class="o">&lt;</span> <span class="mf">0</span> <span class="k">else</span> <span class="mf">0</span></div>
+<div class="viewcode-block" id="BoundedAbove.put01"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.BoundedAbove.put01">[docs]</a>    <span class="k">def</span> <span class="nf">put01</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1</span><span class="o">-</span><span class="n">v</span><span class="p">)</span><span class="o">*</span><span class="mf">2</span><span class="o">*</span><span class="n">_e_max</span>
+        <span class="n">e</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">v</span><span class="o">-</span><span class="n">e</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="o">-</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">ldexp</span><span class="p">(</span><span class="n">m</span><span class="p">,</span><span class="n">e</span><span class="p">)</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span></div>
+<div class="viewcode-block" id="BoundedAbove.getfull"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.BoundedAbove.getfull">[docs]</a>    <span class="k">def</span> <span class="nf">getfull</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base</span>
+        <span class="k">return</span> <span class="n">v</span> <span class="k">if</span> <span class="n">v</span> <span class="o">&lt;=</span> <span class="o">-</span><span class="mf">1</span> <span class="k">else</span> <span class="o">-</span><span class="mf">2</span> <span class="o">-</span> <span class="mf">1.</span><span class="o">/</span><span class="n">v</span></div>
+<div class="viewcode-block" id="BoundedAbove.putfull"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.BoundedAbove.putfull">[docs]</a>    <span class="k">def</span> <span class="nf">putfull</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">v</span> <span class="k">if</span> <span class="n">v</span> <span class="o">&lt;=</span> <span class="o">-</span><span class="mf">1</span> <span class="k">else</span> <span class="o">-</span><span class="mf">1.</span><span class="o">/</span><span class="p">(</span><span class="n">v</span> <span class="o">+</span> <span class="mf">2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base</span>
+</div></div>
+<div class="viewcode-block" id="Bounded"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.Bounded">[docs]</a><span class="k">class</span> <span class="nc">Bounded</span><span class="p">(</span><span class="n">Bounds</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Bounded range.</span>
+
+<span class="sd">    [lo,hi] &lt;-&gt; [0,1] scale is simple linear</span>
+<span class="sd">    [lo,hi] &lt;-&gt; (-inf,inf) scale uses exponential expansion</span>
+
+<span class="sd">    While technically the probability of seeing any value within the</span>
+<span class="sd">    range is 1/range, for consistency with the semi-infinite ranges</span>
+<span class="sd">    and for a more natural mapping between nllf and chisq, we instead</span>
+<span class="sd">    set the probability to 0.  This choice will not affect the fits.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">limits</span> <span class="o">=</span> <span class="p">(</span><span class="n">lo</span><span class="p">,</span><span class="n">hi</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_nllf_scale</span> <span class="o">=</span> <span class="n">log</span><span class="p">(</span><span class="n">hi</span><span class="o">-</span><span class="n">lo</span><span class="p">)</span>
+<div class="viewcode-block" id="Bounded.random"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.Bounded.random">[docs]</a>    <span class="k">def</span> <span class="nf">random</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mf">1</span><span class="p">):</span>
+        <span class="n">lo</span><span class="p">,</span><span class="n">hi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span>
+        <span class="k">return</span> <span class="n">RNG</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">lo</span><span class="p">,</span> <span class="n">hi</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">n</span><span class="p">)</span></div>
+<div class="viewcode-block" id="Bounded.nllf"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.Bounded.nllf">[docs]</a>    <span class="k">def</span> <span class="nf">nllf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="n">lo</span><span class="p">,</span><span class="n">hi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span>
+        <span class="k">return</span> <span class="mf">0</span> <span class="k">if</span> <span class="n">lo</span><span class="o">&lt;=</span><span class="n">value</span><span class="o">&lt;=</span><span class="n">hi</span> <span class="k">else</span> <span class="n">inf</span>
+        <span class="c">#return self._nllf_scale if lo&lt;=value&lt;=hi else inf</span></div>
+<div class="viewcode-block" id="Bounded.residual"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.Bounded.residual">[docs]</a>    <span class="k">def</span> <span class="nf">residual</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="n">lo</span><span class="p">,</span><span class="n">hi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mf">4</span> <span class="k">if</span> <span class="n">lo</span><span class="o">&gt;</span><span class="n">value</span> <span class="k">else</span> <span class="p">(</span><span class="mf">4</span> <span class="k">if</span> <span class="n">hi</span><span class="o">&lt;</span><span class="n">value</span> <span class="k">else</span> <span class="mf">0</span><span class="p">)</span></div>
+<div class="viewcode-block" id="Bounded.get01"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.Bounded.get01">[docs]</a>    <span class="k">def</span> <span class="nf">get01</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">lo</span><span class="p">,</span><span class="n">hi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">x</span><span class="o">-</span><span class="n">lo</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">hi</span><span class="o">-</span><span class="n">lo</span><span class="p">)</span> <span class="k">if</span> <span class="n">hi</span><span class="o">-</span><span class="n">lo</span><span class="o">&gt;</span><span class="mf">0</span> <span class="k">else</span> <span class="mf">0</span></div>
+<div class="viewcode-block" id="Bounded.put01"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.Bounded.put01">[docs]</a>    <span class="k">def</span> <span class="nf">put01</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="n">lo</span><span class="p">,</span><span class="n">hi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">hi</span><span class="o">-</span><span class="n">lo</span><span class="p">)</span><span class="o">*</span><span class="n">v</span> <span class="o">+</span> <span class="n">lo</span></div>
+<div class="viewcode-block" id="Bounded.getfull"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.Bounded.getfull">[docs]</a>    <span class="k">def</span> <span class="nf">getfull</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">_put01_inf</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get01</span><span class="p">(</span><span class="n">x</span><span class="p">))</span></div>
+<div class="viewcode-block" id="Bounded.putfull"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.Bounded.putfull">[docs]</a>    <span class="k">def</span> <span class="nf">putfull</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">put01</span><span class="p">(</span><span class="n">_get01_inf</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+</div></div>
+<div class="viewcode-block" id="Distribution"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.Distribution">[docs]</a><span class="k">class</span> <span class="nc">Distribution</span><span class="p">(</span><span class="n">Bounds</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parameter is pulled from a distribution.</span>
+
+<span class="sd">    *dist* must implement the distribution interface from scipy.stats.</span>
+<span class="sd">    In particular, it should define methods rvs, nnlf, cdf and ppf and</span>
+<span class="sd">    attributes args and dist.name.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dist</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">Distribution</span><span class="p">,</span> <span class="s">&quot;N&quot;</span><span class="p">):</span>
+            <span class="n">Distribution</span><span class="o">.</span><span class="n">N</span> <span class="o">=</span> <span class="n">normal_distribution</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="mf">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dist</span> <span class="o">=</span> <span class="n">dist</span>
+<div class="viewcode-block" id="Distribution.random"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.Distribution.random">[docs]</a>    <span class="k">def</span> <span class="nf">random</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mf">1</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">rvs</span><span class="p">(</span><span class="n">n</span><span class="p">)</span></div>
+<div class="viewcode-block" id="Distribution.nllf"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.Distribution.nllf">[docs]</a>    <span class="k">def</span> <span class="nf">nllf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">nnlf</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></div>
+<div class="viewcode-block" id="Distribution.residual"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.Distribution.residual">[docs]</a>    <span class="k">def</span> <span class="nf">residual</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">cdf</span><span class="p">(</span><span class="n">value</span><span class="p">))</span></div>
+<div class="viewcode-block" id="Distribution.get01"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.Distribution.get01">[docs]</a>    <span class="k">def</span> <span class="nf">get01</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">cdf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span></div>
+<div class="viewcode-block" id="Distribution.put01"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.Distribution.put01">[docs]</a>    <span class="k">def</span> <span class="nf">put01</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="n">v</span><span class="p">)</span></div>
+<div class="viewcode-block" id="Distribution.getfull"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.Distribution.getfull">[docs]</a>    <span class="k">def</span> <span class="nf">getfull</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">x</span></div>
+<div class="viewcode-block" id="Distribution.putfull"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.Distribution.putfull">[docs]</a>    <span class="k">def</span> <span class="nf">putfull</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">v</span></div>
+    <span class="k">def</span> <span class="nf">__getstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># WARNING: does not preserve and restore seed</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">__class__</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">args</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">kwds</span>
+    <span class="k">def</span> <span class="nf">__setstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+        <span class="n">cls</span><span class="p">,</span><span class="n">args</span><span class="p">,</span><span class="n">kwds</span> <span class="o">=</span> <span class="n">state</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dist</span> <span class="o">=</span> <span class="n">cls</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;</span><span class="si">%s</span><span class="s">(</span><span class="si">%s</span><span class="s">)&quot;</span><span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                         <span class="s">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">args</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="Normal"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.Normal">[docs]</a><span class="k">class</span> <span class="nc">Normal</span><span class="p">(</span><span class="n">Distribution</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parameter is pulled from a normal distribution.</span>
+
+<span class="sd">    If you have measured a parameter value with some uncertainty (e.g., the</span>
+<span class="sd">    film thickness is 35+/-5 according to TEM), then you can use this</span>
+<span class="sd">    measurement to restrict the values given to the search, and to penalize</span>
+<span class="sd">    choices of this fitting parameter which are different from this value.</span>
+
+<span class="sd">    *mean* is the expected value of the parameter and *std* is the 1-sigma</span>
+<span class="sd">    standard deviation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mean</span><span class="o">=</span><span class="mf">0</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="mf">1</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dist</span> <span class="o">=</span> <span class="n">normal_distribution</span><span class="p">(</span><span class="n">mean</span><span class="p">,</span> <span class="n">std</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_nllf_scale</span> <span class="o">=</span> <span class="n">log</span><span class="p">(</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">2</span><span class="o">*</span><span class="n">pi</span><span class="o">*</span><span class="n">std</span><span class="o">**</span><span class="mf">2</span><span class="p">))</span>
+<div class="viewcode-block" id="Normal.nllf"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.Normal.nllf">[docs]</a>    <span class="k">def</span> <span class="nf">nllf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="c"># P(v) = exp(-0.5*(v-mean)**2/std**2)/sqrt(2*pi*std**2)</span>
+        <span class="c"># -log(P(v)) = -(-0.5*(v-mean)**2/std**2 - log( (2*pi*std**2) ** 0.5))</span>
+        <span class="c">#            = 0.5*(v-mean)**2/std**2 + log(2*pi*std**2)/2</span>
+        <span class="n">mean</span><span class="p">,</span><span class="n">std</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">args</span>
+        <span class="k">return</span> <span class="mf">0.5</span><span class="o">*</span><span class="p">((</span><span class="n">value</span><span class="o">-</span><span class="n">mean</span><span class="p">)</span><span class="o">/</span><span class="n">std</span><span class="p">)</span><span class="o">**</span><span class="mf">2</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nllf_scale</span></div>
+<div class="viewcode-block" id="Normal.residual"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.Normal.residual">[docs]</a>    <span class="k">def</span> <span class="nf">residual</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="n">mean</span><span class="p">,</span><span class="n">std</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">args</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">value</span><span class="o">-</span><span class="n">mean</span><span class="p">)</span><span class="o">/</span><span class="n">std</span></div>
+    <span class="k">def</span> <span class="nf">__getstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">args</span> <span class="c"># args is mean,std</span>
+    <span class="k">def</span> <span class="nf">__setstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+        <span class="n">mean</span><span class="p">,</span><span class="n">std</span> <span class="o">=</span> <span class="n">state</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="n">mean</span><span class="p">,</span><span class="n">std</span><span class="o">=</span><span class="n">std</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="SoftBounded"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.SoftBounded">[docs]</a><span class="k">class</span> <span class="nc">SoftBounded</span><span class="p">(</span><span class="n">Bounds</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parameter is pulled from a stretched normal distribution.</span>
+
+<span class="sd">    This is like a rectangular distribution, but with gaussian tails.</span>
+
+<span class="sd">    The intent of this distribution is for soft constraints on the values.</span>
+<span class="sd">    As such, the random generator will return values like the rectangular</span>
+<span class="sd">    distribution, but the likelihood will return finite values based on</span>
+<span class="sd">    the distance from the from the bounds rather than returning infinity.</span>
+
+<span class="sd">    Note that for bounds constrained optimizers which force the value</span>
+<span class="sd">    into the range [0,1] for each parameter we don&#39;t need to use soft</span>
+<span class="sd">    constraints, and this acts just like the rectangular distribution.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="mf">1</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lo</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">_hi</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">_std</span><span class="o">=</span><span class="n">lo</span><span class="p">,</span><span class="n">hi</span><span class="p">,</span><span class="n">std</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_nllf_scale</span> <span class="o">=</span> <span class="n">log</span><span class="p">(</span> <span class="n">hi</span><span class="o">-</span><span class="n">lo</span> <span class="o">+</span> <span class="n">sqrt</span><span class="p">(</span><span class="mf">2</span><span class="o">*</span><span class="n">pi</span><span class="o">*</span><span class="n">std</span><span class="p">)</span> <span class="p">)</span>
+<div class="viewcode-block" id="SoftBounded.random"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.SoftBounded.random">[docs]</a>    <span class="k">def</span> <span class="nf">random</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mf">1</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">RNG</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_lo</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hi</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">n</span><span class="p">)</span></div>
+<div class="viewcode-block" id="SoftBounded.nllf"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.SoftBounded.nllf">[docs]</a>    <span class="k">def</span> <span class="nf">nllf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="c"># To turn f(x) = 1 if x in [lo,hi] else G(tail)</span>
+        <span class="c"># into a probability p, we need to normalize by \int{f(x)dx},</span>
+        <span class="c"># which is just hi-lo + sqrt(2*pi*std**2).</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lo</span><span class="p">:</span>
+            <span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lo</span><span class="o">-</span><span class="n">value</span>
+        <span class="k">elif</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hi</span><span class="p">:</span>
+            <span class="n">z</span> <span class="o">=</span> <span class="n">value</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">_hi</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">z</span> <span class="o">=</span> <span class="mf">0</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">z</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">_std</span><span class="p">)</span><span class="o">**</span><span class="mf">2</span><span class="o">/</span><span class="mf">2</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nllf_scale</span></div>
+<div class="viewcode-block" id="SoftBounded.residual"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.SoftBounded.residual">[docs]</a>    <span class="k">def</span> <span class="nf">residual</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lo</span><span class="p">:</span>
+            <span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lo</span><span class="o">-</span><span class="n">value</span>
+        <span class="k">elif</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hi</span><span class="p">:</span>
+            <span class="n">z</span> <span class="o">=</span> <span class="n">value</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">_hi</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">z</span> <span class="o">=</span> <span class="mf">0</span>
+        <span class="k">return</span> <span class="n">z</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">_std</span></div>
+<div class="viewcode-block" id="SoftBounded.get01"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.SoftBounded.get01">[docs]</a>    <span class="k">def</span> <span class="nf">get01</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lo</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_hi</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">_lo</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">v</span> <span class="k">if</span> <span class="mf">0</span> <span class="o">&lt;=</span> <span class="n">v</span> <span class="o">&lt;=</span> <span class="mf">1</span> <span class="k">else</span> <span class="p">(</span><span class="mf">0</span> <span class="k">if</span> <span class="n">v</span> <span class="o">&lt;</span> <span class="mf">0</span> <span class="k">else</span> <span class="mf">1</span><span class="p">)</span></div>
+<div class="viewcode-block" id="SoftBounded.put01"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.SoftBounded.put01">[docs]</a>    <span class="k">def</span> <span class="nf">put01</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">v</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_hi</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">_lo</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lo</span></div>
+<div class="viewcode-block" id="SoftBounded.getfull"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.SoftBounded.getfull">[docs]</a>    <span class="k">def</span> <span class="nf">getfull</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">x</span></div>
+<div class="viewcode-block" id="SoftBounded.putfull"><a class="viewcode-back" href="../../../api/mystic.bounds.html#refl1d.mystic.bounds.SoftBounded.putfull">[docs]</a>    <span class="k">def</span> <span class="nf">putfull</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">v</span></div>
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;stretch_norm(</span><span class="si">%g</span><span class="s">,</span><span class="si">%g</span><span class="s">,sigma=</span><span class="si">%g</span><span class="s">)&quot;</span><span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_lo</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">_hi</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">_width</span><span class="p">)</span>
+
+
+</div>
+<span class="n">_e_min</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1023</span>
+<span class="n">_e_max</span> <span class="o">=</span> <span class="mf">1024</span>
+<span class="k">def</span> <span class="nf">_get01_inf</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="c">## Arctan alternative</span>
+    <span class="c">## Arctan is approximately linear in (-0.5, 0.5), but the</span>
+    <span class="c">## transform is only useful up to (-10**15,10**15).</span>
+    <span class="c"># return math.atan(x)/pi + 0.5</span>
+    <span class="p">(</span><span class="n">m</span><span class="p">,</span><span class="n">e</span><span class="p">)</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">frexp</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="p">(</span><span class="n">e</span> <span class="o">-</span> <span class="n">_e_min</span> <span class="o">+</span> <span class="n">m</span><span class="o">*</span><span class="n">s</span><span class="p">)</span><span class="o">*</span><span class="n">s</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">v</span><span class="o">/</span><span class="p">(</span><span class="mf">4.</span><span class="o">*</span><span class="n">_e_max</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.5</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">v</span><span class="p">[</span><span class="n">e</span><span class="o">&lt;</span><span class="n">_e_min</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0</span>
+        <span class="n">v</span><span class="p">[</span><span class="n">e</span><span class="o">&gt;</span><span class="n">_e_max</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="mf">0</span> <span class="k">if</span> <span class="n">_e_min</span> <span class="o">&gt;</span> <span class="n">e</span> <span class="k">else</span> <span class="p">(</span><span class="mf">1</span> <span class="k">if</span> <span class="n">_e_max</span> <span class="o">&lt;</span> <span class="n">e</span> <span class="k">else</span> <span class="n">v</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">v</span>
+
+<span class="k">def</span> <span class="nf">_put01_inf</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+    <span class="c">## Arctan alternative</span>
+    <span class="c">#return math.tan(pi*(v-0.5))</span>
+
+    <span class="n">v</span> <span class="o">=</span> <span class="p">(</span><span class="n">v</span><span class="o">-</span><span class="mf">0.5</span><span class="p">)</span><span class="o">*</span><span class="mf">4</span><span class="o">*</span><span class="n">_e_max</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+    <span class="n">v</span> <span class="o">*=</span> <span class="n">s</span>
+    <span class="n">e</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">v</span><span class="o">-</span><span class="n">e</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">ldexp</span><span class="p">(</span><span class="n">s</span><span class="o">*</span><span class="n">m</span><span class="p">,</span><span class="n">e</span><span class="o">+</span><span class="n">_e_min</span><span class="p">)</span>
+    <span class="c">#print &quot;&lt; x,e,m,s,v&quot;,x,e+_e_min,s*m,s,v</span>
+    <span class="k">return</span> <span class="n">x</span>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        <a class="uplink" href="../../../index.html">Contents</a>
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

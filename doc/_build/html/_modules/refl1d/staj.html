@@ -1,0 +1,1130 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.staj &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.staj</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for refl1d.staj</h1><div class="highlight"><pre>
+<span class="c"># This program is in the public domain</span>
+<span class="c"># Author: Paul Kienzle</span>
+<span class="s">r&quot;&quot;&quot;</span>
+<span class="s">Read and write staj files</span>
+
+<span class="s">Staj files are the model files for the mlayer and gj2 programs, which are</span>
+<span class="s">used as the calculation engine for the reflpak suite. Mlayer supports</span>
+<span class="s">unpolarized beam with multilayer models,  and has files ending in</span>
+<span class="s">**.staj**. GJ2 supports polarized beam without multilayer models, and</span>
+<span class="s">has files ending in **.sta**.</span>
+<span class="s">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">pi</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">import</span> <span class="nn">wsolve</span>
+
+<span class="n">ERF_FWHM</span> <span class="o">=</span> <span class="mf">2.35482004503095</span> <span class="c"># 2 * sqrt(2*log(2))</span>
+<span class="n">TANH_FWHM</span> <span class="o">=</span> <span class="mf">0.47320111770856327</span> <span class="c"># 1/2 atanh(erf(1/sqrt(2))) / acosh(sqrt(2))</span>
+<span class="c"># Derivation</span>
+<span class="c"># ==========</span>
+<span class="c"># Converting from error function FWHM to 1-sigma requires solving</span>
+<span class="c"># exp(-0.5*(z/1)**2) = 0.5 for z and doubling it, giving 2*sqrt(2*log(2))</span>
+<span class="c">#</span>
+<span class="c"># Converting from tanh FWHM to 1-sigma error function is more complicated.</span>
+<span class="c"># First find C where w is defined as 1-sigma equivalent of tanh, using the</span>
+<span class="c"># identity Erf.CDF(z=sigma;w=sigma) = tanh.CDF(z=sigma;w=sigma).</span>
+<span class="c"># This simplifies to::</span>
+<span class="c">#</span>
+<span class="c">#    erf.CDF  = (1+erf(z/(w*sqrt(2)))/2 = (1+erf(1/sqrt(2)))/2</span>
+<span class="c">#    tanh.CDF = (1+tanh(C/w*z))/2       = (1+tanh(C))/2</span>
+<span class="c">#</span>
+<span class="c">#    erf.CDF = tanh.CDF =&gt; C = atanh(erf(1/sqrt(2)))</span>
+<span class="c">#</span>
+<span class="c"># Next find C where w is defined as FWHM, using the equivalent probability</span>
+<span class="c"># density function::</span>
+<span class="c">#</span>
+<span class="c">#    PDF(z) = C/2w * sech(C/w*z)**2</span>
+<span class="c">#</span>
+<span class="c"># Solving PDF(w/2) = PDF(0)/2 yields::</span>
+<span class="c">#</span>
+<span class="c">#    Pw = PDF(w/2) = C/2w * sech(C/2)**2</span>
+<span class="c">#    Po = PDF(0) = C/2w * sech(0)**2/2 = C/2w</span>
+<span class="c">#</span>
+<span class="c">#    Pw = Po/2 =&gt; sech(C/2)**2 = 1/2</span>
+<span class="c">#              =&gt; C = 2 acosh(sqrt(2))</span>
+<span class="c">#</span>
+<span class="c"># To find 1-sigma width given tanh FWHM of w, use the scale factor</span>
+<span class="c"># s = C_1_sigma/C_fwhm = 1/2 atanh(erf(1/sqrt(2)))/acosh(sqrt(2))</span>
+
+
+<span class="c">#----------------------------------------------------------------------------</span>
+<span class="c">#The format of a Non-Magnetic Staj file is shown below.  It is an ASCII text</span>
+<span class="c">#file composed of lines as follows:</span>
+<span class="c">#</span>
+<span class="c">#Note that nLayers = nTLayers + nMLayers + nBLayers + 3</span>
+<span class="c">#This is the number of top, middle, and bottom layers plus extra profile lines.</span>
+<span class="c">#</span>
+<span class="c">#Note that nRepeat is the number of repeats of the mLayers profile lines.</span>
+<span class="c">#This parameter is ignored by KsRefl.</span>
+<span class="c">#</span>
+<span class="c">#Line 1:         nTLayers  nMLayers  nBLayers  nRepeat  nFitParams  nRoughSteps</span>
+<span class="c">#Line 2:         wavelength  wavelengthDiv  angularDiv  [theta_offset]</span>
+<span class="c">#Line 3:         intensity  background  Qmin  Qmax  nQ (data points)</span>
+<span class="c">#Line 4:         profileType (&#39;E&#39; for error function, &#39;H&#39; for tanh)</span>
+<span class="c">#Line 5:         datafileName</span>
+<span class="c">#Line 6:         &lt;optional outputfileName&gt;</span>
+<span class="c">##Sections have an ignored layer followed by the layers for the section</span>
+<span class="c">##The ignored layer of the top section contains vacuum SLD</span>
+<span class="c">##Layers have rho  mrho  depth  rough  mu</span>
+<span class="c">#Line 7 to 7+nL: sections</span>
+<span class="c">#Line 7+nL+1:    p1 p2 p3 ... (fitted parameter numbers)</span>
+<span class="c">#Line 7+nL+2 to end: constraints</span>
+<span class="c">## Constraints often end with a line of garbage characters.</span>
+<span class="c">#</span>
+<span class="c">#On reading a Staj file the following conversions are made:</span>
+<span class="c">#- scattering_length_density = 1e6 rho / (16 pi)</span>
+<span class="c">#- magnetic_scat_len_density = 1e6 mrho / (16 pi)</span>
+<span class="c">#- roughness_between_layers  = rough</span>
+<span class="c">#- absorption                = mu / (2 wavelength)</span>
+<span class="c">#</span>
+<span class="c">#-------------------------------------------------------------------------------</span>
+<span class="c">#The following shows the contents of an sample Non-Magnetic Staj file:</span>
+<span class="c">#            1            1            1            1            0           21</span>
+<span class="c">#        6.00000       0.160000    0.000300000       0.000000</span>
+<span class="c">#        1.00000   1.00000E-010     0.00741408       0.109617            267</span>
+<span class="c">#E</span>
+<span class="c">#SNS_Ni_Si_3col.txt</span>
+<span class="c">#</span>
+<span class="c">#  0.000000E+000  0.000000E+000  0.000000E+000  1.000000E-010  0.000000E+000</span>
+<span class="c">#  0.000000E+000  0.000000E+000  9.000000E+002  0.000000E+000  0.000000E+000</span>
+<span class="c">#  0.000000E+000  0.000000E+000  0.000000E+000  1.000000E-010  0.000000E+000</span>
+<span class="c">#  4.452130E-004  0.000000E+000  7.439860E+002  5.308710E+001  0.000000E+000</span>
+<span class="c">#  4.452130E-004  0.000000E+000  0.000000E+000  5.308710E+001  0.000000E+000</span>
+<span class="c">#  1.279860E-004  0.000000E+000  6.250000E+002  1.814250E+001  0.000000E+000</span>
+<span class="c">#</span>
+<span class="c">#MQC1=MQC2</span>
+<span class="c">#]</span>
+<span class="c">#</span>
+<span class="c">#-------------------------------------------------------------------------------</span>
+<span class="c">#The sample Non-Magnetic Staj File shown above (after conversion of data</span>
+<span class="c">#elements) consists of the following layers:</span>
+<span class="c">#</span>
+<span class="c">#- T0 (Air)  rho =  0.0, depth =   0.0, mu = 0.0, mrho = 0.0</span>
+<span class="c">#                                          roughness between layers =  0.0</span>
+<span class="c">#- T1 (Air)  rho =  0.0, depth = 900.0, mu = 0.0, mrho = 0.0</span>
+<span class="c">#                                          roughness between layers = 22.5</span>
+<span class="c">#- M1 (Ni)   rho = 8.86, depth = 744.0, mu = 0.0, mrho = 0.0</span>
+<span class="c">#                                          roughness between layers = 7.70</span>
+<span class="c">#- B1 (Si)   rho = 2.55, depth = 625.0, mu = 0.0, mrho = 0.0</span>
+<span class="c">#</span>
+<span class="c">#Note that comments or additional blank lines are not permitted except after</span>
+<span class="c">#all required lines (i.e. line 1 through line 6+nLayers).</span>
+<span class="c">#</span>
+<span class="c">#Note that the number of values on the first line determines if the format is</span>
+<span class="c">#for a non-magnetic (6 values) or a magnetic (4 values) Staj file.</span>
+
+<div class="viewcode-block" id="MlayerModel"><a class="viewcode-back" href="../../api/staj.html#refl1d.staj.MlayerModel">[docs]</a><span class="k">class</span> <span class="nc">MlayerModel</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="s">r&quot;&quot;&quot;</span>
+<span class="s">    Model definition used by MLayer program.</span>
+
+<span class="s">    **Attributes:**</span>
+
+<span class="s">    Q values and reflectivity come from a data file with Q, R, dR or</span>
+<span class="s">    from simulation with linear spacing from Qmin to Qmax in equal steps:</span>
+
+<span class="s">        *data_file*</span>
+<span class="s">            name of the data file, or None if this is simulation only</span>
+<span class="s">        *Qmin*, *Qmax*, *num_Q*</span>
+<span class="s">            for simulation, Q sample points</span>
+
+<span class="s">    Resolution is defined by wavelength and by incident angle:</span>
+
+<span class="s">        *wavelength*, *wavelength_dispersion*, *angular_divergence*</span>
+<span class="s">            resolution is calculated as</span>
+<span class="s">            $\Delta Q/Q = \Delta\lambda/\lambda + \Delta\theta/\theta$</span>
+
+<span class="s">    Additional beam parameters correct for intensity, background and</span>
+<span class="s">    possibly sample alignment:</span>
+
+<span class="s">        *intensity*, *background*</span>
+<span class="s">            incident beam intensity and sample background</span>
+<span class="s">        *theta_offset*</span>
+<span class="s">            alignment angle correction</span>
+
+<span class="s">    The model is defined in terms of layers, with three sections.  The top</span>
+<span class="s">    and bottom section correspond to the fixed layers at the surface and</span>
+<span class="s">    the substrate.  The middle section layers can be repeated an arbitrary</span>
+<span class="s">    number of times, as defined by the number of repeats attribute.  The</span>
+<span class="s">    attributes defining the sections are:</span>
+
+<span class="s">        *num_top* *num_middle* *num_bottom*</span>
+<span class="s">            section sizes</span>
+<span class="s">        *num_repeats*</span>
+<span class="s">            number of times middle section repeats</span>
+
+<span class="s">    Interfaces are split into discrete steps according to a profile,</span>
+<span class="s">    either error function or hyperbolic tangent.  For sharp interfaces</span>
+<span class="s">    which do not overlap within a layer, the interface is broken into a</span>
+<span class="s">    fixed number of slabs with slabs having different widths, but equal</span>
+<span class="s">    changes in height.  For broad interfaces, the whole layer is split</span>
+<span class="s">    into the same fixed number of slabs, but with each slab having the</span>
+<span class="s">    same width.  The following attributes are used:</span>
+
+<span class="s">        *roughness_steps*</span>
+<span class="s">            number of roughness steps (13 is coarse; 51 is fine)</span>
+<span class="s">        *roughness_profile*</span>
+<span class="s">            roughness profile is either &#39;E&#39; for error function or &#39;H&#39; for tanh</span>
+
+<span class="s">    Layers have thickness, interface roughness and real and imaginary</span>
+<span class="s">    scattering length density (SLD).  Roughness is stored in the file</span>
+<span class="s">    using full width at half maximum (FWHM) for the given profile type.</span>
+<span class="s">    For convenience, roughness can also be set or queried using a 1-\ $\sigma$</span>
+<span class="s">    equivalent roughness on an error function profile.  Regardless,</span>
+<span class="s">    layer parameters are represented as vectors with one entry for each</span>
+<span class="s">    top, middle and bottom layer using the following attributes:</span>
+
+<span class="s">        *thickness*, *roughness* : float | |Ang|</span>
+<span class="s">            layer thickness and FWHM roughness</span>
+<span class="s">        *rho*, *irho*, *incoh* : float | |1e-6/Ang^2|</span>
+<span class="s">            complex coherent $\rho + j \rho_i$ and incoherent SLD</span>
+
+<span class="s">    Computed attributes are provided for convenience:</span>
+
+<span class="s">        *sigma_roughness* : float | |Ang|</span>
+<span class="s">            1-\ $\sigma$ equivalent roughness for erf profile</span>
+<span class="s">        *mu*</span>
+<span class="s">            absorption cross section (2*wavelength*irho + incoh)</span>
+
+<span class="s">    .. Note::</span>
+<span class="s">          The staj files store SLD as $16\pi\rho$, $2\lambda\rho_i$</span>
+<span class="s">          with an additional column of 0 for magnetic SLD. This conversion</span>
+<span class="s">          happens automatically on read/write. The incoherent cross section</span>
+<span class="s">          is assumed to be zero.</span>
+
+<span class="s">    The layers are ordered from surface to substrate.</span>
+
+<span class="s">    Additional attributes are as follows:</span>
+
+<span class="s">        *fitpars*</span>
+<span class="s">            individual fit parameter numbers</span>
+<span class="s">        *constraints*</span>
+<span class="s">            constraints between layers</span>
+<span class="s">        *output_file*</span>
+<span class="s">            name of the output file</span>
+
+<span class="s">    These can be safely ignored, except perhaps if you want to try to</span>
+<span class="s">    compile the constraints into something that can be used by your system.</span>
+
+<span class="s">    **Methods:**</span>
+
+<span class="s">    model = MlayerModel(attribute=value, ...)</span>
+
+<span class="s">        Construct a new MLayer model with the given attributes set.</span>
+
+<span class="s">    model = MlayerModel.load(filename)</span>
+
+<span class="s">        Construct a new MLayer model from a staj file.</span>
+
+<span class="s">    model.set(attribute=value, ...)</span>
+
+<span class="s">        Replace a set of attribute values.</span>
+
+<span class="s">    model.fit_resolution(Q,dQ)</span>
+
+<span class="s">        Choose the best resolution parameters to match the given Q,dQ</span>
+<span class="s">        resolution.  Returns the object so that calls can be chained.</span>
+
+<span class="s">    model.resolution(Q)</span>
+
+<span class="s">        Return the resolution at Q for the current resolution parameters.</span>
+
+<span class="s">    model.split_sections()</span>
+
+<span class="s">        Assign top, middle, bottom and repeats to distribute the layers</span>
+<span class="s">        across sections.  Returns the object so that calls can be chained.</span>
+
+<span class="s">    model.save(filename)</span>
+
+<span class="s">        Write the model to the given named file.  Raises ValueError if</span>
+<span class="s">        the model is invalid.</span>
+
+<span class="s">    **Constructing new files:**</span>
+
+<span class="s">    Staj files can be constructed directly.  The MlayerModel constructor</span>
+<span class="s">    can accept all data attributes as key word arguments.  Models require</span>
+<span class="s">    at least *data_file*, *wavelength*, *thickness*, *roughness* and *rho*.</span>
+<span class="s">    Resolution parameters can be set using model.fit_resolution(Q,dQ).</span>
+<span class="s">    Section sizes can be set using model.split_sections().  Everything</span>
+<span class="s">    else has reasonable defaults.</span>
+
+<span class="s">    &quot;&quot;&quot;</span>
+    <span class="n">data_file</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+    <span class="n">Qmin</span> <span class="o">=</span> <span class="mf">0</span>
+    <span class="n">Qmax</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">num_Q</span> <span class="o">=</span> <span class="mf">200</span>
+    <span class="n">wavelength</span> <span class="o">=</span> <span class="mf">1</span>
+    <span class="n">wavelength_dispersion</span> <span class="o">=</span> <span class="mf">0.01</span>
+    <span class="n">angular_divergence</span> <span class="o">=</span> <span class="mf">0.001</span>
+    <span class="n">intensity</span> <span class="o">=</span> <span class="mf">1</span>
+    <span class="n">background</span> <span class="o">=</span> <span class="mf">0</span>
+    <span class="n">theta_offset</span> <span class="o">=</span> <span class="mf">0</span>
+    <span class="n">num_top</span><span class="p">,</span> <span class="n">num_middle</span><span class="p">,</span> <span class="n">num_bottom</span> <span class="o">=</span> <span class="mf">0</span><span class="p">,</span> <span class="mf">0</span><span class="p">,</span> <span class="mf">0</span>
+    <span class="n">num_repeats</span> <span class="o">=</span> <span class="mf">1</span>
+    <span class="n">roughness_steps</span> <span class="o">=</span> <span class="mf">13</span>
+    <span class="n">roughness_profile</span> <span class="o">=</span> <span class="s">&#39;E&#39;</span>
+    <span class="n">thickness</span> <span class="o">=</span> <span class="n">roughness</span> <span class="o">=</span> <span class="n">rho</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">irho</span> <span class="o">=</span> <span class="n">incoh</span> <span class="o">=</span> <span class="mf">0</span>
+    <span class="n">fitpars</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">constraints</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+    <span class="n">output_file</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MlayerModel.set"><a class="viewcode-back" href="../../api/staj.html#refl1d.staj.MlayerModel.set">[docs]</a>    <span class="k">def</span> <span class="nf">set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="n">valid</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;data_file&#39;</span><span class="p">,</span><span class="s">&#39;Qmin&#39;</span><span class="p">,</span><span class="s">&#39;Qmax&#39;</span><span class="p">,</span><span class="s">&#39;num_Q&#39;</span><span class="p">,</span><span class="s">&#39;wavelength&#39;</span><span class="p">,</span>
+                 <span class="s">&#39;wavelength_dispersion&#39;</span><span class="p">,</span><span class="s">&#39;angular_divergence&#39;</span><span class="p">,</span><span class="s">&#39;intensity&#39;</span><span class="p">,</span>
+                 <span class="s">&#39;background&#39;</span><span class="p">,</span><span class="s">&#39;theta_offset&#39;</span><span class="p">,</span>
+                 <span class="s">&#39;num_top&#39;</span><span class="p">,</span><span class="s">&#39;num_middle&#39;</span><span class="p">,</span><span class="s">&#39;num_bottom&#39;</span><span class="p">,</span><span class="s">&#39;num_repeats&#39;</span><span class="p">,</span>
+                 <span class="s">&#39;roughness_steps&#39;</span><span class="p">,</span><span class="s">&#39;roughness_profile&#39;</span><span class="p">,</span><span class="s">&#39;sigma_roughness&#39;</span><span class="p">,</span>
+                 <span class="s">&#39;thickness&#39;</span><span class="p">,</span><span class="s">&#39;roughness&#39;</span><span class="p">,</span><span class="s">&#39;rho&#39;</span><span class="p">,</span><span class="s">&#39;irho&#39;</span><span class="p">,</span><span class="s">&#39;incoh&#39;</span><span class="p">,</span>
+                 <span class="s">&#39;fitpars&#39;</span><span class="p">,</span><span class="s">&#39;constraints&#39;</span><span class="p">,</span><span class="s">&#39;output_file&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">kw</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">valid</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;Unexpected attribute &#39;</span><span class="si">%s</span><span class="s">&#39; in Mlayer Model&quot;</span><span class="o">%</span><span class="n">k</span><span class="p">)</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">k</span><span class="p">,</span><span class="n">v</span><span class="p">)</span>
+</div>
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="MlayerModel.load"><a class="viewcode-back" href="../../api/staj.html#refl1d.staj.MlayerModel.load">[docs]</a>    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Load a staj file, returning an MlayerModel object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">fin</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span><span class="s">&#39;r&#39;</span><span class="p">)</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="n">fin</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+        <span class="n">fin</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="bp">self</span> <span class="o">=</span> <span class="n">cls</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+</div>
+<div class="viewcode-block" id="MlayerModel.save"><a class="viewcode-back" href="../../api/staj.html#refl1d.staj.MlayerModel.save">[docs]</a>    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Save the staj file</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check</span><span class="p">()</span>
+        <span class="n">fid</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span><span class="s">&#39;w&#39;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_write</span><span class="p">(</span><span class="n">fid</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">fid</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="MlayerModel.FWHMresolution"><a class="viewcode-back" href="../../api/staj.html#refl1d.staj.MlayerModel.FWHMresolution">[docs]</a>    <span class="k">def</span> <span class="nf">FWHMresolution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Q</span><span class="p">):</span>
+        <span class="s">r&quot;&quot;&quot;</span>
+<span class="s">        Return the resolution at Q for mlayer with the current settings</span>
+<span class="s">        for wavelength, wavelength divergence and angular divergence.</span>
+
+<span class="s">        Resolution is full-width at half maximum (FWHM), not 1-\ $\sigma$.</span>
+<span class="s">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">wavelength_dispersion</span>
+                <span class="o">+</span> <span class="mf">4</span> <span class="o">*</span> <span class="n">pi</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">angular_divergence</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">wavelength</span>
+</div>
+<div class="viewcode-block" id="MlayerModel.fit_FWHMresolution"><a class="viewcode-back" href="../../api/staj.html#refl1d.staj.MlayerModel.fit_FWHMresolution">[docs]</a>    <span class="k">def</span> <span class="nf">fit_FWHMresolution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Q</span><span class="p">,</span> <span class="n">dQ</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="mf">1</span><span class="p">):</span>
+        <span class="s">r&quot;&quot;&quot;</span>
+<span class="s">        Choose the best dL and dT to match the resolution dQ.</span>
+
+<span class="s">        Given that mlayer uses the following resolution function:</span>
+
+<span class="s">        .. math::</span>
+
+<span class="s">            \Delta Q_k = (|Q_k| \Delta\lambda + 4 \pi \Delta\theta)/\lambda_k</span>
+
+<span class="s">        we can use a linear system solver to find the optimal</span>
+<span class="s">        $\Delta \lambda$ and $\Delta \theta$ across our dataset from the</span>
+<span class="s">        over-determined system:</span>
+
+<span class="s">        .. math::</span>
+
+<span class="s">          [|Q_k|/\lambda_k, 4\pi/\lambda_k][\Delta\lambda, \Delta\theta]^T</span>
+<span class="s">              = \Delta Q_k</span>
+
+<span class="s">        If weights are provided (e.g., $\Delta R_k/R_k$), then weigh each</span>
+<span class="s">        point during the fit.</span>
+
+<span class="s">        Given that the experiment is often run with fixed slits at the</span>
+<span class="s">        start and end, you may choose to match the resolution across the</span>
+<span class="s">        entire $Q$ range, or instead restrict it to just the region where</span>
+<span class="s">        the slits are opening.  You will generally want to get the resolution</span>
+<span class="s">        correct at the critical edge since that&#39;s where it will have the</span>
+<span class="s">        largest effect on the fit.</span>
+
+<span class="s">        Returns the object so that operations can be chained.</span>
+<span class="s">        &quot;&quot;&quot;</span>
+        <span class="n">A</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="nb">abs</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">wavelength</span><span class="p">,</span>
+                         <span class="n">numpy</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="mf">4</span><span class="o">*</span><span class="n">pi</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">wavelength</span><span class="p">)])</span><span class="o">.</span><span class="n">T</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">wsolve</span><span class="o">.</span><span class="n">wsolve</span><span class="p">(</span><span class="n">A</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="n">dQ</span><span class="p">,</span><span class="n">dy</span><span class="o">=</span><span class="n">weight</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wavelength_dispersion</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">angular_divergence</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="mf">1</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="bp">self</span>
+</div>
+<div class="viewcode-block" id="MlayerModel.split_sections"><a class="viewcode-back" href="../../api/staj.html#refl1d.staj.MlayerModel.split_sections">[docs]</a>    <span class="k">def</span> <span class="nf">split_sections</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Split the given set of layers into sections, putting as many layers</span>
+<span class="sd">        as possible into the middle section, then the bottom and finally</span>
+<span class="sd">        the top.</span>
+
+<span class="sd">        Returns the object so that operations can be chained.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_repeats</span> <span class="o">=</span> <span class="mf">1</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">thickness</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mf">28</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;A maximum of 28 layers is allowed&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="mf">2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Must have at least two layers&quot;</span><span class="p">)</span>
+        <span class="n">n</span> <span class="o">-=</span> <span class="mf">1</span>  <span class="c"># Incident medium layer</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;=</span> <span class="mf">11</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">num_middle</span> <span class="o">=</span> <span class="mf">9</span>
+        <span class="k">elif</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mf">2</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">num_middle</span> <span class="o">=</span> <span class="n">n</span><span class="o">-</span><span class="mf">2</span>
+        <span class="k">elif</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mf">1</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">num_middle</span> <span class="o">=</span> <span class="mf">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">num_middle</span> <span class="o">=</span> <span class="mf">0</span>
+        <span class="n">n</span> <span class="o">-=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_middle</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;=</span> <span class="mf">10</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">num_bottom</span> <span class="o">=</span> <span class="mf">9</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">num_bottom</span> <span class="o">=</span> <span class="n">n</span><span class="o">-</span><span class="mf">1</span>
+        <span class="n">n</span> <span class="o">-=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_bottom</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_top</span> <span class="o">=</span> <span class="n">n</span>  <span class="c"># This may be zero if there are less than 3 layers.</span>
+
+        <span class="k">return</span> <span class="bp">self</span>
+</div>
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">line</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="s">&quot;&quot;</span><span class="p">:</span>
+            <span class="n">line</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;Data: </span><span class="si">%s</span><span class="s">&quot;</span><span class="o">%</span><span class="bp">self</span><span class="o">.</span><span class="n">data_file</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">line</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;Q: </span><span class="si">%g</span><span class="s"> to </span><span class="si">%g</span><span class="s"> in </span><span class="si">%d</span><span class="s"> steps&quot;</span>
+                        <span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Qmin</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">Qmax</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">num_Q</span><span class="p">))</span>
+        <span class="n">line</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;Wavelength L: </span><span class="si">%g</span><span class="s">  dL/L: </span><span class="si">%g</span><span class="s">, dTheta: </span><span class="si">%g</span><span class="s">&quot;</span>
+                    <span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wavelength</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">wavelength_dispersion</span><span class="p">,</span>
+                      <span class="bp">self</span><span class="o">.</span><span class="n">angular_divergence</span><span class="p">))</span>
+        <span class="n">line</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;Beam intensity: </span><span class="si">%g</span><span class="s">  Background: </span><span class="si">%g</span><span class="s">, Theta offset: </span><span class="si">%g</span><span class="s">&quot;</span>
+                    <span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">intensity</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">background</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">theta_offset</span><span class="p">))</span>
+        <span class="n">profile</span> <span class="o">=</span> <span class="s">&#39;error function&#39;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">roughness_profile</span><span class="o">==</span><span class="s">&#39;E&#39;</span> <span class="k">else</span> <span class="s">&#39;tanh&#39;</span>
+        <span class="n">line</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;Interface: </span><span class="si">%s</span><span class="s"> in </span><span class="si">%d</span><span class="s"> steps&quot;</span>
+                    <span class="o">%</span><span class="p">(</span><span class="n">profile</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">roughness_steps</span><span class="p">))</span>
+        <span class="n">w</span><span class="p">,</span><span class="n">s</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">roughness</span>
+        <span class="n">rho</span><span class="p">,</span><span class="n">mu</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mu</span>
+        <span class="n">line</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;Layers:&quot;</span><span class="p">)</span>
+        <span class="n">line</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s">&quot;   &quot;</span> <span class="o">+</span> <span class="s">&quot;</span><span class="si">%15s</span><span class="s"> &quot;</span><span class="o">*</span><span class="mf">4</span><span class="p">)</span>
+                    <span class="o">%</span><span class="p">(</span><span class="s">&quot;Width (A)&quot;</span><span class="p">,</span><span class="s">&quot;Interface (FWHM)&quot;</span><span class="p">,</span>
+                      <span class="s">&quot;Rho (1e-6/A)&quot;</span><span class="p">,</span><span class="s">&quot;Mu (1e-6/A)&quot;</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mf">0</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;V&#39;</span>
+            <span class="k">elif</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_top</span> <span class="o">+</span> <span class="mf">1</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;T</span><span class="si">%d</span><span class="s">&#39;</span><span class="o">%</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_top</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_middle</span> <span class="o">+</span> <span class="mf">1</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;M</span><span class="si">%d</span><span class="s">&#39;</span><span class="o">%</span><span class="p">(</span><span class="n">i</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">num_top</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="s">&#39;B</span><span class="si">%d</span><span class="s">&#39;</span><span class="o">%</span><span class="p">(</span><span class="n">i</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">num_top</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">num_middle</span><span class="p">)</span>
+            <span class="n">line</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s">&quot;</span><span class="si">%s</span><span class="s">:&quot;</span><span class="o">+</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%15g</span><span class="s"> &quot;</span><span class="o">*</span><span class="mf">4</span><span class="p">))</span><span class="o">%</span><span class="p">(</span><span class="n">name</span><span class="p">,</span><span class="n">w</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">s</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">rho</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">mu</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">constraints</span> <span class="o">!=</span> <span class="s">&quot;&quot;</span><span class="p">:</span>
+            <span class="n">line</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;Constraints:&quot;</span><span class="p">)</span>
+            <span class="n">line</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">constraints</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_check</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Verify that the staj file is correct and ready for writing, filling</span>
+<span class="sd">        in the details that are missing.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">irho</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">irho</span><span class="p">))</span>
+            <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">thickness</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">roughness</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;layer parameters have different lengths&quot;</span><span class="p">)</span>
+
+        <span class="c"># Could check if Qmin/Qmax/num_Q matches data, but I don&#39;t think</span>
+        <span class="c"># it matters, so skip it</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_top</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">num_middle</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">num_bottom</span><span class="o">+</span><span class="mf">1</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;section sizes do not match number of layers&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_mu</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">mu</span> <span class="o">=</span> <span class="mf">2</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">wavelength</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">irho</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">incoh</span>
+        <span class="k">return</span> <span class="n">mu</span><span class="o">*</span><span class="n">numpy</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_set_mu</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mu</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">irho</span> <span class="o">=</span> <span class="n">mu</span><span class="o">/</span><span class="p">(</span><span class="mf">2</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">wavelength</span><span class="p">)</span>
+    <span class="n">mu</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">fget</span><span class="o">=</span><span class="n">_get_mu</span><span class="p">,</span> <span class="n">fset</span><span class="o">=</span><span class="n">_set_mu</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_sigma</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">roughness_profile</span> <span class="o">==</span> <span class="s">&#39;H&#39;</span><span class="p">:</span>
+            <span class="n">scale</span> <span class="o">=</span> <span class="n">TANH_FWHM</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">scale</span> <span class="o">=</span> <span class="n">ERF_FWHM</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">roughness</span><span class="o">/</span><span class="n">scale</span>
+    <span class="k">def</span> <span class="nf">_set_sigma</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">roughness_profile</span> <span class="o">==</span> <span class="s">&#39;H&#39;</span><span class="p">:</span>
+            <span class="n">scale</span> <span class="o">=</span> <span class="n">TANH_FWHM</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">scale</span> <span class="o">=</span> <span class="n">ERF_FWHM</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">roughness</span> <span class="o">=</span> <span class="n">v</span> <span class="o">*</span> <span class="n">scale</span>
+    <span class="n">sigma_roughness</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">fget</span><span class="o">=</span><span class="n">_get_sigma</span><span class="p">,</span> <span class="n">fset</span><span class="o">=</span><span class="n">_set_sigma</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lines</span><span class="p">):</span>
+        <span class="c">#1: num_top num_middle num_bottom num_repeats num_fit rough_steps</span>
+        <span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_top</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_middle</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_bottom</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_repeats</span><span class="p">,</span> \
+            <span class="n">_</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">roughness_steps</span> <span class="o">=</span> <span class="n">nums</span>
+
+        <span class="c">#2: wavelength  wavelength_dispersion  angular_divergence [theta_offset]</span>
+        <span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">[</span><span class="mf">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wavelength</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">wavelength_dispersion</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">angular_divergence</span> \
+            <span class="o">=</span> <span class="n">nums</span><span class="p">[:</span><span class="mf">3</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">theta_offset</span> <span class="o">=</span> <span class="n">nums</span><span class="p">[</span><span class="mf">3</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">nums</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">3</span> <span class="k">else</span> <span class="mf">0</span>
+
+        <span class="c">#3: intensity  background  Qmin  Qmax  num_Q</span>
+        <span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">[</span><span class="mf">2</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">intensity</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">background</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Qmin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Qmax</span> <span class="o">=</span> <span class="n">nums</span><span class="p">[:</span><span class="mf">4</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_Q</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">nums</span><span class="p">[</span><span class="mf">4</span><span class="p">])</span>
+
+        <span class="c">#4: profile_type (&#39;E&#39; for error function, &#39;H&#39; for tanh)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">roughness_profile</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="mf">3</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">upper</span><span class="p">()[:</span><span class="mf">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">roughness_profile</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;E&#39;</span><span class="p">,</span><span class="s">&#39;H&#39;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Expected roughness profile type E or H&quot;</span><span class="p">)</span>
+
+        <span class="c">#5: data_file</span>
+        <span class="c">#6: output_file</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_file</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="mf">4</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_file</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="mf">5</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+        <span class="c">#nL = num_top+num_middle+num_bottom+3</span>
+        <span class="c">#7 to 7+nL: rho mrho depth rough mu</span>
+        <span class="c">#ignore the layer before each section</span>
+        <span class="n">nL</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_top</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">num_middle</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">num_bottom</span><span class="o">+</span><span class="mf">3</span>
+        <span class="n">layers</span> <span class="o">=</span> <span class="p">[[</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
+                  <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">[</span><span class="mf">6</span><span class="p">:</span><span class="mf">6</span><span class="o">+</span><span class="n">nL</span><span class="p">]]</span>
+        <span class="k">del</span> <span class="n">layers</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">num_top</span><span class="o">+</span><span class="mf">1</span><span class="p">]</span>
+        <span class="k">del</span> <span class="n">layers</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">num_top</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">num_middle</span><span class="o">+</span><span class="mf">1</span><span class="p">]</span>
+
+        <span class="n">A</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">layers</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rho</span> <span class="o">=</span> <span class="n">A</span><span class="p">[:,</span><span class="mf">0</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1e6</span><span class="o">/</span><span class="mf">16</span><span class="o">/</span><span class="n">pi</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">irho</span> <span class="o">=</span> <span class="n">A</span><span class="p">[:,</span><span class="mf">4</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1e6</span><span class="o">/</span><span class="mf">2</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">wavelength</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">incoh</span> <span class="o">=</span> <span class="n">A</span><span class="p">[:,</span><span class="mf">0</span><span class="p">]</span> <span class="o">*</span> <span class="mf">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span> <span class="o">=</span> <span class="n">A</span><span class="p">[:,</span><span class="mf">2</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">roughness</span> <span class="o">=</span> <span class="n">A</span><span class="p">[:,</span><span class="mf">3</span><span class="p">]</span>
+
+        <span class="c">#7+nL+1: P1 P2 P3 ...  (fit parameters)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fitpars</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">[</span><span class="mf">6</span><span class="o">+</span><span class="n">nL</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
+        <span class="c">#7+nL+2 to end: constraints</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">constraints</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="mf">6</span><span class="o">+</span><span class="n">nL</span><span class="o">+</span><span class="mf">1</span><span class="p">:])</span>
+
+    <span class="k">def</span> <span class="nf">_write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fid</span><span class="p">):</span>
+        <span class="c">#1: num_top num_middle num_bottom num_repeats num_fit rough_steps</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%d</span><span class="s"> </span><span class="si">%d</span><span class="s"> </span><span class="si">%d</span><span class="s"> </span><span class="si">%d</span><span class="s"> </span><span class="si">%d</span><span class="s"> </span><span class="si">%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_top</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_middle</span><span class="p">,</span>
+                                    <span class="bp">self</span><span class="o">.</span><span class="n">num_bottom</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_repeats</span><span class="p">,</span>
+                                    <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fitpars</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">roughness_steps</span><span class="p">))</span>
+
+        <span class="c">#2: wavelength  wavelength_dispersion  angular_divergence [theta_offset]</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%g</span><span class="s"> </span><span class="si">%g</span><span class="s"> </span><span class="si">%g</span><span class="s"> </span><span class="si">%g</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wavelength</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">wavelength_dispersion</span><span class="p">,</span>
+                                 <span class="bp">self</span><span class="o">.</span><span class="n">angular_divergence</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">theta_offset</span><span class="p">))</span>
+
+        <span class="c">#3: intensity  background  Qmin  Qmax  num_Q</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%g</span><span class="s"> </span><span class="si">%g</span><span class="s"> </span><span class="si">%g</span><span class="s"> </span><span class="si">%g</span><span class="s"> </span><span class="si">%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">intensity</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">background</span><span class="p">,</span>
+                                    <span class="bp">self</span><span class="o">.</span><span class="n">Qmin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Qmax</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_Q</span><span class="p">))</span>
+
+        <span class="c">#4: profile_type (&#39;E&#39; for error function, &#39;H&#39; for tanh)</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">%</span><span class="bp">self</span><span class="o">.</span><span class="n">roughness_profile</span><span class="p">)</span>
+
+        <span class="c">#5: data_file</span>
+        <span class="c">#6: output_file</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="se">\n</span><span class="si">%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_file</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_file</span><span class="p">))</span>
+
+        <span class="c">#nL = num_top+num_middle+num_bottom+3</span>
+        <span class="c">#7 to 7+nL: rho mrho depth rough mu</span>
+        <span class="c">#ignore the layer before each section</span>
+        <span class="n">rho</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="o">*</span><span class="p">(</span><span class="mf">16</span><span class="o">*</span><span class="n">pi</span><span class="o">*</span><span class="mf">1e-6</span><span class="p">)</span>
+        <span class="n">mu</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mu</span><span class="o">*</span><span class="mf">1e-6</span>
+        <span class="n">w</span><span class="p">,</span><span class="n">s</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">roughness</span>
+        <span class="k">def</span> <span class="nf">_write_layer</span><span class="p">(</span><span class="n">idx</span><span class="p">):</span>
+            <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%g</span><span class="s"> </span><span class="si">%g</span><span class="s"> </span><span class="si">%g</span><span class="s"> </span><span class="si">%g</span><span class="s"> </span><span class="si">%g</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">rho</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="mf">0.</span><span class="p">,</span>
+                                          <span class="n">w</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">s</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span>
+                                          <span class="n">mu</span><span class="p">[</span><span class="n">idx</span><span class="p">]))</span>
+        <span class="n">offset</span> <span class="o">=</span> <span class="mf">0</span>
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">num_top</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_middle</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_bottom</span><span class="p">]:</span>
+            <span class="n">_write_layer</span><span class="p">(</span><span class="n">offset</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mf">0</span><span class="p">:</span>
+                <span class="c"># In the case of only two or three layers, some sections</span>
+                <span class="c"># may have no layers, and need to be filled with a repeated</span>
+                <span class="c"># value from the next section.</span>
+                <span class="n">_write_layer</span><span class="p">(</span><span class="n">offset</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+                <span class="n">_write_layer</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="n">offset</span><span class="o">+</span><span class="mf">1</span><span class="p">)</span>
+            <span class="n">offset</span> <span class="o">+=</span> <span class="n">n</span>
+        <span class="c">#7+nL+1: P1 P2 P3 ...  (fit parameters)</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fitpars</span><span class="p">)</span><span class="o">+</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">)</span>
+        <span class="c">#7+nL+2 to end: constraints</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">constraints</span><span class="p">)</span>
+
+
+
+<span class="c">#==============================================================================</span>
+<span class="c"># Translate the Staj file into model representation (magnetic case).</span>
+<span class="c">#==============================================================================</span>
+
+<span class="c">#-------------------------------------------------------------------------------</span>
+<span class="c">#The format of a Magnetic Staj file is shown below.  It is an ASCII text file</span>
+<span class="c">#composed of lines as follows:</span>
+<span class="c">#</span>
+<span class="c">#Note that nLayers does not count the top layer, just the middle and bottom</span>
+<span class="c">#layers (though data for the top (incident) layer is provided) in the file.</span>
+<span class="c">#</span>
+<span class="c">#Line 1:         wavelength  wavelengthDiv  angularDiv  [aguide]</span>
+<span class="c">#Line 2:         intensity  background</span>
+<span class="c">#Line 3:         nLayers  nRoughSteps  nFitParam</span>
+<span class="c">#Line 4:         Qmin  Qmax  nQ (data points in &#39;a&#39; datafle)</span>
+<span class="c">#Line 5:         Qmin  Qmax  nQ (data points in &#39;b&#39; datafle)</span>
+<span class="c">#Line 6:         Qmin  Qmax  nQ (data points in &#39;c&#39; datafle)</span>
+<span class="c">#Line 7:         Qmin  Qmax  nQ (data points in &#39;d&#39; datafle)</span>
+<span class="c">#Line 8:         profileType (&#39;E&#39; for error function, &#39;H&#39; for tanh)</span>
+<span class="c">#Line 9:         active cross sections (usually &#39;abcd&#39; or &#39;ABCD&#39;)</span>
+<span class="c">#Line 10:        data file (base name without suffix char such as test.refl)</span>
+<span class="c">#Line 11:        output file</span>
+<span class="c">## Layer information follows in sets of 3 lines x (nL+1).</span>
+<span class="c">#Line next (1):  rho   depth   rough  mu</span>
+<span class="c">#Line next (2):  mrho  mdepth  mrough (mrho is also known as phi)</span>
+<span class="c">#Line next (3):  mtheta</span>
+<span class="c">## Fit information fills the remainder of the file</span>
+<span class="c">#Line 11+3*(nL+1)+1:  Fit parameters (integers)</span>
+<span class="c">#Line 11+3*(nL+1)+2 to end-of-file:  Constraint program</span>
+<span class="c">#</span>
+<span class="c">#On reading a Staj file the following conversions are made:</span>
+<span class="c">#- scattering length density = rho * (1e6 / 16 / pi )</span>
+<span class="c">#- complex SLD               = irho * (1e6 / 2 / wavelength)</span>
+<span class="c">#- magnetic SLD              = mrho * (1e6 / 16 / pi )</span>
+<span class="c">#- structural roughness      = rough</span>
+<span class="c">#- magnetic roughness        = mrough</span>
+<span class="c">#</span>
+<span class="c">#-------------------------------------------------------------------------------</span>
+<span class="c">#The following shows the contents of an sample Magnetic Staj file:</span>
+<span class="c">#</span>
+<span class="c">#        5.00000      0.0500000   1.00000E-005       -90.0000</span>
+<span class="c">#        1.00000   1.00000E-010</span>
+<span class="c">#            7            7            0</span>
+<span class="c">#     0.00613985       0.174845            215</span>
+<span class="c">#     0.00613985       0.174845            215</span>
+<span class="c">#     0.00613985       0.174845            215</span>
+<span class="c">#     0.00613985       0.174845            215</span>
+<span class="c">#E</span>
+<span class="c"># abcd</span>
+<span class="c">#Test.refl</span>
+<span class="c">#</span>
+<span class="c">#       0.000000       0.000000       0.000000       0.000000</span>
+<span class="c">#       0.000000       0.000000       0.000000</span>
+<span class="c">#        270.000</span>
+<span class="c">#    0.000318683        50.0000        2.00000       0.000000</span>
+<span class="c">#       0.000000        50.0000        2.00000</span>
+<span class="c">#        270.000</span>
+<span class="c">#    0.000329239        80.0000        2.00000       0.000000</span>
+<span class="c">#       0.000000        80.0000        2.00000</span>
+<span class="c">#        270.000</span>
+<span class="c">#    0.000352864        216.000        2.00000       0.000000</span>
+<span class="c">#    0.000117621        216.000        2.00000</span>
+<span class="c">#        270.000</span>
+<span class="c">#    0.000329239        80.0000        2.00000       0.000000</span>
+<span class="c">#       0.000000        80.0000        2.00000</span>
+<span class="c">#        270.000</span>
+<span class="c">#    0.000318683        50.0000        2.00000       0.000000</span>
+<span class="c">#       0.000000        50.0000        2.00000</span>
+<span class="c">#        270.000</span>
+<span class="c">#   9.70124E-005        10.0000        2.00000       0.000000</span>
+<span class="c">#       0.000000        10.0000        2.00000</span>
+<span class="c">#        270.000</span>
+<span class="c">#    0.000104050        100.000        2.00000   1.00000E-009</span>
+<span class="c">#       0.000000        100.000        2.00000</span>
+<span class="c">#        270.000</span>
+<span class="c">#</span>
+<span class="c">#-------------------------------------------------------------------------------</span>
+<span class="c">#The sample Magnetic Staj File shown above (after conversion of data elements)</span>
+<span class="c">#consists of the following layers (with mdepth and mrough not shown):</span>
+<span class="c">#</span>
+<span class="c">#- MV (Air)   rho =  0.0, depth =   0.0, mu = 0.0, mrho =  0.0, mtheta = 270.0</span>
+<span class="c">#                                           roughness between layers =   0.0</span>
+<span class="c">#- M1 (Pt)    rho = 6.34, depth =  50.0, mu = 0.0, mrho =  0.0, mtheta = 270.0</span>
+<span class="c">#                                           roughness between layers = 0.849</span>
+<span class="c">#- M2 (Cu)    rho = 6.55, depth =  80.0, mu = 0.0, mrho =  0.0, mtheta = 270.0</span>
+<span class="c">#                                           roughness between layers = 0.849</span>
+<span class="c">#- M3 (Co+Ni) rho = 7.02, depth = 216.0, mu = 0.0, mrho = 2.34, mtheta = 270.0</span>
+<span class="c">#                                           roughness between layers = 0.849</span>
+<span class="c">#- M4 (Cu)    rho = 6.55, depth =  80.0, mu = 0.0, mrho =  0.0, mtheta = 270.0</span>
+<span class="c">#                                           roughness between layers = 0.849</span>
+<span class="c">#- M5 (Pt)    rho = 6.34, depth =  50.0, mu = 0.0, mrho =  0.0, mtheta = 270.0</span>
+<span class="c">#                                           roughness between layers = 0.849</span>
+<span class="c">#- M6 (SiO2)  rho = 1.93, depth =  10.0, mu = 0.0, mrho =  0.0, mtheta = 270.0</span>
+<span class="c">#                                           roughness between layers = 0.849</span>
+<span class="c">#- M7 (Si)    rho = 2.07, depth = 100.0, mu = 0.0, mrho =  0.0, mtheta = 270.0</span>
+<span class="c">#</span>
+<span class="c">#Note that comments or additional blank lines are not permitted except after</span>
+<span class="c">#all required lines (i.e. line 1 through line 11+3*(nLayers+1)).</span>
+<span class="c">#</span>
+<span class="c">#Note that the number of values on the first line determines if the format is</span>
+<span class="c">#for a non-magnetic (6 values) or a magnetic (4 values) Staj file.</span>
+<span class="c">#</span></div>
+<div class="viewcode-block" id="MlayerMagnetic"><a class="viewcode-back" href="../../api/staj.html#refl1d.staj.MlayerMagnetic">[docs]</a><span class="k">class</span> <span class="nc">MlayerMagnetic</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="s">r&quot;&quot;&quot;</span>
+<span class="s">    Model definition used by GJ2 program.</span>
+
+<span class="s">    **Attributes:**</span>
+
+<span class="s">    Q values and reflectivity come from a data file with Q, R, dR or</span>
+<span class="s">    from simulation with linear spacing from Qmin to Qmax in equal steps:</span>
+
+<span class="s">        *data_file*</span>
+<span class="s">            base name of the data file, or None if this is simulation only</span>
+<span class="s">        *active_xsec*</span>
+<span class="s">            active cross sections (usually &#39;abcd&#39; for all cross sections)</span>
+<span class="s">        *Qmin*, *Qmax*, *num_Q*</span>
+<span class="s">            for simulation, Q sample points</span>
+
+<span class="s">    Resolution is defined by wavelength and by incident angle:</span>
+
+<span class="s">        *wavelength*, *wavelength_dispersion*, *angular_divergence*</span>
+<span class="s">            resolution is calculated as</span>
+<span class="s">            $\Delta Q/Q = \Delta\lambda/\lambda + \Delta\theta/\theta$</span>
+
+<span class="s">    Additional beam parameters correct for intensity, background and</span>
+<span class="s">    possibly guide field angle:</span>
+
+<span class="s">        *intensity*, *background*</span>
+<span class="s">            incident beam intensity and sample background</span>
+<span class="s">        *guide_angle*</span>
+<span class="s">            angle of the guide field</span>
+
+<span class="s">    Unlike pure structural models, magnetic models are in one large</span>
+<span class="s">    section with no repeats.  The single parameter is the number of</span>
+<span class="s">    layers, which is implicit in the length of the layer data and</span>
+<span class="s">    does not need to be an explicit attribute.</span>
+
+<span class="s">    Interfaces are split into discrete steps according to a profile,</span>
+<span class="s">    either error function or hyperbolic tangent.  For sharp interfaces</span>
+<span class="s">    which do not overlap within a layer, the interface is broken into a</span>
+<span class="s">    fixed number of slabs with slabs having different widths, but equal</span>
+<span class="s">    changes in height.  For broad interfaces, the whole layer is split</span>
+<span class="s">    into the same fixed number of slabs, but with each slab having the</span>
+<span class="s">    same width. The following attributes are used:</span>
+
+<span class="s">        *roughness_steps*</span>
+<span class="s">            number of roughness steps (13 is coarse; 51 is fine)</span>
+<span class="s">        *roughness_profile*</span>
+<span class="s">            roughness profile is either &#39;E&#39; for error function or &#39;H&#39; for tanh</span>
+
+<span class="s">    Layers have thickness, interface roughness and real and imaginary</span>
+<span class="s">    scattering length density (SLD).  Roughness is stored in the file</span>
+<span class="s">    using full width at half maximum (FWHM) for the given profile type.</span>
+<span class="s">    For convenience, roughness can also be set or queried using a 1-\ $\sigma$</span>
+<span class="s">    equivalent roughness on an error function profile.  Regardless,</span>
+<span class="s">    layer parameters are represented as vectors with one entry for each</span>
+<span class="s">    top, middle and bottom layer using the following attributes:</span>
+
+<span class="s">        *thickness*, *roughness* : float | |Ang|</span>
+<span class="s">            layer thickness and FWHM roughness</span>
+<span class="s">        *rho*, *irho* : float, float | $16 \pi \rho$, $2\lambda\rho_i$</span>
+<span class="s">            complex scattering length density</span>
+<span class="s">        *mthickness*, *mroughness* : float | |Ang|</span>
+<span class="s">            magnetic thickness and roughness</span>
+<span class="s">        *mrho* : float | $16 \pi \rho_M$</span>
+<span class="s">            magnetic scattering length density</span>
+<span class="s">        *mtheta* : float | |deg|</span>
+<span class="s">            magnetic angle</span>
+<span class="s">        *sigma_roughness*, *sigma_mroughness* : float | |Ang|</span>
+<span class="s">            computed 1-\ $\sigma$ equivalent roughness for erf profile</span>
+
+<span class="s">    The conversion from stored $16 \pi \rho$, $2\lambda\rho_i$ to</span>
+<span class="s">    in memory $10^6 \rho$, $10^6 \rho_i$  happens automatically on</span>
+<span class="s">    read/write.</span>
+
+<span class="s">    The layers are ordered from surface to substrate.</span>
+
+<span class="s">    Additional attributes are as follows:</span>
+
+<span class="s">        *fitpars*</span>
+<span class="s">            individual fit parameter numbers</span>
+
+<span class="s">        *constraints*</span>
+<span class="s">            constraints between layers</span>
+
+<span class="s">        *output_file*</span>
+<span class="s">            name of the output file</span>
+
+<span class="s">    These can be safely ignored, except perhaps if you want to try to</span>
+<span class="s">    compile the constraints into something that can be used by your system.</span>
+
+<span class="s">    **Methods:**</span>
+
+<span class="s">    model = MlayerMagnetic(attribute=value, ...)</span>
+
+<span class="s">        Construct a new MLayer model with the given attributes set.</span>
+
+<span class="s">    model = MlayerMagnetic.load(filename)</span>
+
+<span class="s">        Construct a new MLayer model from a staj file.</span>
+
+<span class="s">    model.set(attribute=value, ...)</span>
+
+<span class="s">        Replace a set of attribute values.</span>
+
+<span class="s">    model.fit_resolution(Q,dQ)</span>
+
+<span class="s">        Choose the best resolution parameters to match the given Q,dQ</span>
+<span class="s">        resolution.  Returns the object so that calls can be chained.</span>
+
+<span class="s">    model.resolution(Q)</span>
+
+<span class="s">        Return the resolution at Q for the current resolution parameters.</span>
+
+<span class="s">    model.save(filename)</span>
+
+<span class="s">        Write the model to the given named file.  Raises ValueError if</span>
+<span class="s">        the model is invalid.</span>
+
+<span class="s">    **Constructing new files:**</span>
+
+<span class="s">    Staj files can be constructed directly.  The MlayerModel constructor</span>
+<span class="s">    can accept all data attributes as key word arguments.  Models require</span>
+<span class="s">    at least *data_file*, *wavelength*, *thickness*, *roughness* and *rho*.</span>
+<span class="s">    Resolution parameters can be set using model.fit_resolution(Q,dQ).</span>
+<span class="s">    Everything else has reasonable defaults.</span>
+
+<span class="s">    &quot;&quot;&quot;</span>
+    <span class="n">data_file</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+    <span class="n">active_xsec</span> <span class="o">=</span> <span class="s">&quot;abcd&quot;</span>
+    <span class="n">Qmin</span> <span class="o">=</span> <span class="mf">0</span>
+    <span class="n">Qmax</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">num_Q</span> <span class="o">=</span> <span class="mf">200</span>
+    <span class="n">wavelength</span> <span class="o">=</span> <span class="mf">1</span>
+    <span class="n">wavelength_dispersion</span> <span class="o">=</span> <span class="mf">0.01</span>
+    <span class="n">angular_divergence</span> <span class="o">=</span> <span class="mf">0.001</span>
+    <span class="n">intensity</span> <span class="o">=</span> <span class="mf">1</span>
+    <span class="n">background</span> <span class="o">=</span> <span class="mf">0</span>
+    <span class="n">guide_angle</span> <span class="o">=</span> <span class="mf">270</span>
+    <span class="n">roughness_steps</span> <span class="o">=</span> <span class="mf">13</span>
+    <span class="n">roughness_profile</span> <span class="o">=</span> <span class="s">&#39;E&#39;</span>
+    <span class="n">thickness</span> <span class="o">=</span> <span class="n">roughness</span> <span class="o">=</span> <span class="n">rho</span> <span class="o">=</span> <span class="n">irho</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">mthickness</span> <span class="o">=</span> <span class="n">mroughness</span> <span class="o">=</span> <span class="n">mrho</span> <span class="o">=</span> <span class="n">mtheta</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">fitpars</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">constraints</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+    <span class="n">output_file</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MlayerMagnetic.set"><a class="viewcode-back" href="../../api/staj.html#refl1d.staj.MlayerMagnetic.set">[docs]</a>    <span class="k">def</span> <span class="nf">set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="n">valid</span> <span class="o">=</span> <span class="p">(</span><span class="s">&#39;data_file&#39;</span><span class="p">,</span><span class="s">&#39;active_xsec&#39;</span><span class="p">,</span><span class="s">&#39;Qmin&#39;</span><span class="p">,</span><span class="s">&#39;Qmax&#39;</span><span class="p">,</span><span class="s">&#39;num_Q&#39;</span><span class="p">,</span><span class="s">&#39;wavelength&#39;</span><span class="p">,</span>
+                 <span class="s">&#39;wavelength_dispersion&#39;</span><span class="p">,</span><span class="s">&#39;angular_divergence&#39;</span><span class="p">,</span><span class="s">&#39;intensity&#39;</span><span class="p">,</span>
+                 <span class="s">&#39;background&#39;</span><span class="p">,</span><span class="s">&#39;guide_angle&#39;</span><span class="p">,</span>
+                 <span class="s">&#39;roughness_steps&#39;</span><span class="p">,</span><span class="s">&#39;roughness_profile&#39;</span><span class="p">,</span>
+                 <span class="s">&#39;thickness&#39;</span><span class="p">,</span><span class="s">&#39;roughness&#39;</span><span class="p">,</span><span class="s">&#39;rho&#39;</span><span class="p">,</span><span class="s">&#39;irho&#39;</span><span class="p">,</span><span class="s">&#39;sigma_roughness&#39;</span><span class="p">,</span>
+                 <span class="s">&#39;mthickness&#39;</span><span class="p">,</span><span class="s">&#39;mroughness&#39;</span><span class="p">,</span><span class="s">&#39;mrho&#39;</span><span class="p">,</span><span class="s">&#39;mtheta&#39;</span><span class="p">,</span><span class="s">&#39;sigma_mroughness&#39;</span><span class="p">,</span>
+                 <span class="s">&#39;fitpars&#39;</span><span class="p">,</span><span class="s">&#39;constraints&#39;</span><span class="p">,</span><span class="s">&#39;output_file&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">kw</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">valid</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;Unexpected attribute &#39;</span><span class="si">%s</span><span class="s">&#39; in Mlayer Model&quot;</span><span class="o">%</span><span class="n">k</span><span class="p">)</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">k</span><span class="p">,</span><span class="n">v</span><span class="p">)</span>
+</div>
+    <span class="nd">@classmethod</span>
+<div class="viewcode-block" id="MlayerMagnetic.load"><a class="viewcode-back" href="../../api/staj.html#refl1d.staj.MlayerMagnetic.load">[docs]</a>    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Load a staj file, returning an MlayerModel object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">fin</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span><span class="s">&#39;r&#39;</span><span class="p">)</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="n">fin</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+        <span class="n">fin</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="bp">self</span> <span class="o">=</span> <span class="n">cls</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_parse</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Improper staj file&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+</div>
+<div class="viewcode-block" id="MlayerMagnetic.save"><a class="viewcode-back" href="../../api/staj.html#refl1d.staj.MlayerMagnetic.save">[docs]</a>    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Save the staj file</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check</span><span class="p">()</span>
+        <span class="n">fid</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span><span class="s">&#39;w&#39;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_write</span><span class="p">(</span><span class="n">fid</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">fid</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="MlayerMagnetic.FWHMresolution"><a class="viewcode-back" href="../../api/staj.html#refl1d.staj.MlayerMagnetic.FWHMresolution">[docs]</a>    <span class="k">def</span> <span class="nf">FWHMresolution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Q</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">wavelength_dispersion</span>
+                <span class="o">+</span> <span class="mf">4</span> <span class="o">*</span> <span class="n">pi</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">angular_divergence</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">wavelength</span></div>
+    <span class="n">FWHMresolution</span><span class="o">.</span><span class="n">__doc__</span> <span class="o">=</span> <span class="n">MlayerModel</span><span class="o">.</span><span class="n">FWHMresolution</span><span class="o">.</span><span class="n">__doc__</span>
+
+<div class="viewcode-block" id="MlayerMagnetic.fit_FWHMresolution"><a class="viewcode-back" href="../../api/staj.html#refl1d.staj.MlayerMagnetic.fit_FWHMresolution">[docs]</a>    <span class="k">def</span> <span class="nf">fit_FWHMresolution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Q</span><span class="p">,</span> <span class="n">dQ</span><span class="p">,</span> <span class="n">weight</span><span class="o">=</span><span class="mf">1</span><span class="p">):</span>
+        <span class="n">A</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="nb">abs</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">wavelength</span><span class="p">,</span>
+                         <span class="n">numpy</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="mf">4</span><span class="o">*</span><span class="n">pi</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">wavelength</span><span class="p">)])</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">wsolve</span><span class="o">.</span><span class="n">wsolve</span><span class="p">(</span><span class="n">A</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="n">dQ</span><span class="p">,</span><span class="n">dy</span><span class="o">=</span><span class="n">weight</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wavelength_dispersion</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">angular_divergence</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="mf">1</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="bp">self</span></div>
+    <span class="n">fit_FWHMresolution</span><span class="o">.</span><span class="n">__doc__</span> <span class="o">=</span> <span class="n">MlayerModel</span><span class="o">.</span><span class="n">fit_FWHMresolution</span><span class="o">.</span><span class="n">__doc__</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">line</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="s">&quot;&quot;</span><span class="p">:</span>
+            <span class="n">line</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;Data: </span><span class="si">%s</span><span class="s">[</span><span class="si">%s</span><span class="s">]&quot;</span>
+                        <span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_file</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">active_xsec</span><span class="o">.</span><span class="n">upper</span><span class="p">()))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">line</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;Q: </span><span class="si">%g</span><span class="s"> to </span><span class="si">%g</span><span class="s"> in </span><span class="si">%d</span><span class="s"> steps&quot;</span>
+                        <span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Qmin</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">Qmax</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">num_Q</span><span class="p">))</span>
+        <span class="n">line</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;Wavelength L: </span><span class="si">%g</span><span class="s">  dL/L: </span><span class="si">%g</span><span class="s">, dTheta: </span><span class="si">%g</span><span class="s">&quot;</span>
+                    <span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wavelength</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">wavelength_dispersion</span><span class="p">,</span>
+                      <span class="bp">self</span><span class="o">.</span><span class="n">angular_divergence</span><span class="p">))</span>
+        <span class="n">line</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;Beam intensity: </span><span class="si">%g</span><span class="s">  Background: </span><span class="si">%g</span><span class="s">, Guide angle: </span><span class="si">%g</span><span class="s">&quot;</span>
+                    <span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">intensity</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">background</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">guide_angle</span><span class="p">))</span>
+        <span class="n">profile</span> <span class="o">=</span> <span class="s">&#39;error function&#39;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">roughness_profile</span><span class="o">==</span><span class="s">&#39;E&#39;</span> <span class="k">else</span> <span class="s">&#39;tanh&#39;</span>
+        <span class="n">line</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;Interface: </span><span class="si">%s</span><span class="s"> in </span><span class="si">%d</span><span class="s"> steps&quot;</span>
+                    <span class="o">%</span><span class="p">(</span><span class="n">profile</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">roughness_steps</span><span class="p">))</span>
+        <span class="n">w</span><span class="p">,</span><span class="n">s</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">roughness</span>
+        <span class="n">wm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mthickness</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mthickness</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="k">else</span> <span class="n">w</span>
+        <span class="n">sm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mroughness</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mroughness</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="k">else</span> <span class="n">s</span>
+        <span class="n">rho</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rho</span>
+        <span class="n">irho</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">irho</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">irho</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="k">else</span> <span class="n">numpy</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+        <span class="n">mrho</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mrho</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mrho</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="k">else</span> <span class="n">numpy</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+        <span class="n">mtheta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mtheta</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mtheta</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="k">else</span> <span class="mf">270</span><span class="o">*</span><span class="n">numpy</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+        <span class="n">line</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;Layers:&quot;</span><span class="p">)</span>
+        <span class="n">line</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s">&quot;    &quot;</span> <span class="o">+</span> <span class="p">(</span><span class="s">&quot;</span><span class="si">%15s</span><span class="s"> &quot;</span><span class="o">*</span><span class="mf">4</span><span class="p">)</span> <span class="o">+</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">    &quot;</span> <span class="o">+</span> <span class="p">(</span><span class="s">&quot;</span><span class="si">%15s</span><span class="s"> &quot;</span><span class="o">*</span><span class="mf">4</span><span class="p">))</span>
+                    <span class="o">%</span><span class="p">(</span><span class="s">&quot;Width (A)&quot;</span><span class="p">,</span><span class="s">&quot;Interface (FWHM)&quot;</span><span class="p">,</span>
+                      <span class="s">&quot;Rho (1e-6/A)&quot;</span><span class="p">,</span><span class="s">&quot;iRho (1e-6/A)&quot;</span><span class="p">,</span>
+                      <span class="s">&quot;Mag width&quot;</span><span class="p">,</span><span class="s">&quot;Mag interface&quot;</span><span class="p">,</span><span class="s">&quot;Mag rho&quot;</span><span class="p">,</span><span class="s">&quot;Mag angle (deg)&quot;</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="p">)):</span>
+            <span class="n">line</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s">&quot;</span><span class="si">%3d</span><span class="s">:&quot;</span><span class="o">+</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%15g</span><span class="s"> &quot;</span><span class="o">*</span><span class="mf">4</span><span class="p">)</span><span class="o">+</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">    &quot;</span> <span class="o">+</span> <span class="p">(</span><span class="s">&quot;</span><span class="si">%15g</span><span class="s">=&quot;</span><span class="o">*</span><span class="mf">4</span><span class="p">))</span>
+                        <span class="o">%</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">w</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">s</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">rho</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">irho</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                          <span class="n">wm</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">sm</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">mrho</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">mtheta</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">constraints</span> <span class="o">!=</span> <span class="s">&quot;&quot;</span><span class="p">:</span>
+            <span class="n">line</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;Constraints:&quot;</span><span class="p">)</span>
+            <span class="n">line</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">constraints</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_check</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Verify that the staj file is correct and ready for writing, filling</span>
+<span class="sd">        in the details that are missing.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ns</span> <span class="o">=</span> <span class="p">[(</span><span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="k">else</span> <span class="mf">0</span><span class="p">)</span>
+              <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">roughness</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">irho</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">mrho</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mthickness</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mroughness</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">mtheta</span><span class="p">)]</span>
+        <span class="k">if</span> <span class="n">any</span><span class="p">((</span><span class="n">n</span> <span class="o">!=</span> <span class="n">ns</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span> <span class="ow">and</span> <span class="n">n</span> <span class="o">!=</span> <span class="mf">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">ns</span><span class="p">[</span><span class="mf">1</span><span class="p">:]):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;layer parameters have different lengths&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">any</span><span class="p">((</span><span class="n">n</span><span class="o">==</span><span class="mf">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">ns</span><span class="p">[:</span><span class="mf">3</span><span class="p">]):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;rho, thickness and roughness are required&quot;</span><span class="p">)</span>
+
+        <span class="c"># Could check if Qmin/Qmax/num_Q matches data, but I don&#39;t think</span>
+        <span class="c"># it matters, so skip it</span>
+
+    <span class="k">def</span> <span class="nf">_get_sigma</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">roughness_profile</span> <span class="o">==</span> <span class="s">&#39;H&#39;</span><span class="p">:</span>
+            <span class="n">scale</span> <span class="o">=</span> <span class="n">TANH_FWHM</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">scale</span> <span class="o">=</span> <span class="n">ERF_FWHM</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">roughness</span><span class="o">/</span><span class="n">scale</span>
+    <span class="k">def</span> <span class="nf">_set_sigma</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">roughness_profile</span> <span class="o">==</span> <span class="s">&#39;H&#39;</span><span class="p">:</span>
+            <span class="n">scale</span> <span class="o">=</span> <span class="n">TANH_FWHM</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">scale</span> <span class="o">=</span> <span class="n">ERF_FWHM</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">roughness</span> <span class="o">=</span> <span class="n">v</span> <span class="o">*</span> <span class="n">scale</span>
+    <span class="n">sigma_roughness</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">_get_sigma</span><span class="p">,</span> <span class="n">_set_sigma</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_msigma</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">roughness_profile</span> <span class="o">==</span> <span class="s">&#39;H&#39;</span><span class="p">:</span>
+            <span class="n">scale</span> <span class="o">=</span> <span class="n">TANH_FWHM</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">scale</span> <span class="o">=</span> <span class="n">ERF_FWHM</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">mroughness</span><span class="o">/</span><span class="n">scale</span>
+    <span class="k">def</span> <span class="nf">_set_msigma</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mroughness_profile</span> <span class="o">==</span> <span class="s">&#39;H&#39;</span><span class="p">:</span>
+            <span class="n">scale</span> <span class="o">=</span> <span class="n">TANH_FWHM</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">scale</span> <span class="o">=</span> <span class="n">ERF_FWHM</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mroughness</span> <span class="o">=</span> <span class="n">v</span> <span class="o">*</span> <span class="n">scale</span>
+    <span class="n">sigma_mroughness</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">_get_msigma</span><span class="p">,</span> <span class="n">_set_msigma</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lines</span><span class="p">):</span>
+        <span class="c">#1: wavelength  wavelength_dispersion  angular_divergence [aguide]</span>
+        <span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wavelength</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">wavelength_dispersion</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">angular_divergence</span> \
+            <span class="o">=</span> <span class="n">nums</span><span class="p">[:</span><span class="mf">3</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">guide_angle</span> <span class="o">=</span> <span class="n">nums</span><span class="p">[</span><span class="mf">3</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">nums</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">3</span> <span class="k">else</span> <span class="mf">0</span>
+
+        <span class="c">#2: intensity  background</span>
+        <span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">[</span><span class="mf">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">intensity</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">background</span> <span class="o">=</span> <span class="n">nums</span>
+
+        <span class="c">#3: maxLayer  nRoughSteps  nFitParam</span>
+        <span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">[</span><span class="mf">2</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
+        <span class="n">maxLayer</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">roughness_steps</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">nums</span>
+
+        <span class="c">#4-7: Qmin  Qmax  nQ (data points in a, b, c and d)</span>
+        <span class="c"># Note that we are only keeping the first one; for simulation all the</span>
+        <span class="c"># others should be the same, and for loading, the datafile will tell</span>
+        <span class="c"># us what Q to use.</span>
+        <span class="n">nums</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">[</span><span class="mf">3</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Qmin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Qmax</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_Q</span> <span class="o">=</span> <span class="n">nums</span><span class="p">[</span><span class="mf">0</span><span class="p">],</span> <span class="n">nums</span><span class="p">[</span><span class="mf">1</span><span class="p">],</span> <span class="nb">int</span><span class="p">(</span><span class="n">nums</span><span class="p">[</span><span class="mf">2</span><span class="p">])</span>
+
+        <span class="c">#8: profile_type (&#39;E&#39; for error function, &#39;H&#39; for tanh)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">roughness_profile</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="mf">7</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">roughness_profile</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;E&#39;</span><span class="p">,</span><span class="s">&#39;H&#39;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Expected roughness profile type E or H&quot;</span><span class="p">)</span>
+
+        <span class="c">#9: active cross sections (usually &#39;abcd&#39; or &#39;ABCD&#39;)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">active_xsec</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="mf">8</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+
+        <span class="c">#10: data file (base name without suffix char such as test.refl)</span>
+        <span class="c">#11: output_file</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_file</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="mf">9</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_file</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="mf">10</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+        <span class="c">## Layer information follows in sets of 3 lines x (nL+1).</span>
+        <span class="c">#Line next (1):  rho   depth   rough  mu</span>
+        <span class="c">#Line next (2):  mrho  mdepth  mrough (mrho is also known as phi)</span>
+        <span class="c">#Line next (3):  mtheta</span>
+        <span class="n">nL</span> <span class="o">=</span> <span class="n">maxLayer</span> <span class="o">+</span> <span class="mf">1</span>
+        <span class="n">layers</span> <span class="o">=</span> <span class="p">[[</span><span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="s">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="mf">11</span><span class="o">+</span><span class="mf">3</span><span class="o">*</span><span class="n">i</span><span class="p">:</span><span class="mf">11</span><span class="o">+</span><span class="mf">3</span><span class="o">*</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mf">1</span><span class="p">)])</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
+                  <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nL</span><span class="p">)]</span>
+
+        <span class="n">A</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">layers</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rho</span> <span class="o">=</span> <span class="n">A</span><span class="p">[:,</span><span class="mf">0</span><span class="p">]</span><span class="o">*</span> <span class="p">(</span><span class="mf">1e6</span><span class="o">/</span><span class="mf">16</span><span class="o">/</span><span class="n">pi</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">irho</span> <span class="o">=</span> <span class="n">A</span><span class="p">[:,</span><span class="mf">3</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1e6</span><span class="o">/</span><span class="mf">2</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">wavelength</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span> <span class="o">=</span> <span class="n">A</span><span class="p">[:,</span><span class="mf">1</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">roughness</span> <span class="o">=</span> <span class="n">A</span><span class="p">[:,</span><span class="mf">2</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mrho</span> <span class="o">=</span> <span class="n">A</span><span class="p">[:,</span><span class="mf">4</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1e6</span><span class="o">/</span><span class="mf">16</span><span class="o">/</span><span class="n">pi</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mtheta</span> <span class="o">=</span> <span class="n">A</span><span class="p">[:,</span><span class="mf">7</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mthickness</span> <span class="o">=</span> <span class="n">A</span><span class="p">[:,</span><span class="mf">5</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mroughness</span> <span class="o">=</span> <span class="n">A</span><span class="p">[:,</span><span class="mf">6</span><span class="p">]</span>
+
+        <span class="c">## Fit information fills the remainder of the file</span>
+        <span class="c">#footer+1: P1 P2 P3 ...  (fit parameters)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fitpars</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">[</span><span class="mf">10</span><span class="o">+</span><span class="mf">3</span><span class="o">*</span><span class="n">nL</span><span class="o">+</span><span class="mf">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()]</span>
+        <span class="c">#footer+2 to end: constraints</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">constraints</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="mf">10</span><span class="o">+</span><span class="mf">3</span><span class="o">*</span><span class="n">nL</span><span class="o">+</span><span class="mf">2</span><span class="p">:])</span>
+
+    <span class="k">def</span> <span class="nf">_write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fid</span><span class="p">):</span>
+        <span class="c">#1: wavelength  wavelength_dispersion  angular_divergence [aguide]</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%g</span><span class="s"> </span><span class="si">%g</span><span class="s"> </span><span class="si">%g</span><span class="s"> </span><span class="si">%g</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wavelength</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">wavelength_dispersion</span><span class="p">,</span>
+                                 <span class="bp">self</span><span class="o">.</span><span class="n">angular_divergence</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">guide_angle</span><span class="p">))</span>
+
+        <span class="c">#2: intensity  background</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%g</span><span class="s"> </span><span class="si">%g</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">intensity</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">background</span><span class="p">))</span>
+
+        <span class="c">#3: maxLayer  nRoughSteps  nFitParam</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%d</span><span class="s"> </span><span class="si">%d</span><span class="s"> </span><span class="si">%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="p">)</span><span class="o">-</span><span class="mf">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">roughness_steps</span><span class="p">,</span>
+                                <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fitpars</span><span class="p">)))</span>
+
+        <span class="c">#4-7: Qmin  Qmax  nQ (data points in a, b, c and d)</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%g</span><span class="s"> </span><span class="si">%g</span><span class="s"> </span><span class="si">%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Qmin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Qmax</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_Q</span><span class="p">))</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%g</span><span class="s"> </span><span class="si">%g</span><span class="s"> </span><span class="si">%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Qmin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Qmax</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_Q</span><span class="p">))</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%g</span><span class="s"> </span><span class="si">%g</span><span class="s"> </span><span class="si">%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Qmin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Qmax</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_Q</span><span class="p">))</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%g</span><span class="s"> </span><span class="si">%g</span><span class="s"> </span><span class="si">%d</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Qmin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Qmax</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_Q</span><span class="p">))</span>
+
+        <span class="c">#8: profile_type (&#39;E&#39; for error function, &#39;H&#39; for tanh)</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">%</span><span class="bp">self</span><span class="o">.</span><span class="n">roughness_profile</span><span class="p">)</span>
+
+        <span class="c">#9: active cross sections (usually &#39;abcd&#39; or &#39;ABCD&#39;)</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot; </span><span class="si">%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">%</span><span class="bp">self</span><span class="o">.</span><span class="n">active_xsec</span><span class="p">)</span>
+
+        <span class="c">#10: data file (base name without suffix char such as test.refl)</span>
+        <span class="c">#11: output_file</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="se">\n</span><span class="si">%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_file</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_file</span><span class="p">))</span>
+
+        <span class="c">## Layer information follows in sets of 3 lines x (nL+1).</span>
+        <span class="c">#Line next (1):  rho   depth   rough  mu</span>
+        <span class="c">#Line next (2):  mrho  mdepth  mrough (mrho is also known as phi)</span>
+        <span class="c">#Line next (3):  mtheta</span>
+        <span class="n">offset</span> <span class="o">=</span> <span class="mf">0</span>
+        <span class="n">rho</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="o">*</span><span class="p">(</span><span class="mf">16</span><span class="o">*</span><span class="n">pi</span><span class="o">/</span><span class="mf">1e6</span><span class="p">)</span>
+        <span class="n">w</span><span class="p">,</span><span class="n">s</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">roughness</span>
+        <span class="n">wm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mthickness</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mthickness</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span>
+        <span class="n">sm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mroughness</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mroughness</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">roughness</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">irho</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">mu</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">irho</span><span class="o">*</span><span class="p">(</span><span class="mf">2</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">wavelength</span><span class="o">/</span><span class="mf">1e6</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">mu</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">rho</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mrho</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">mrho</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mrho</span> <span class="o">*</span> <span class="p">(</span><span class="mf">16</span><span class="o">*</span><span class="n">pi</span><span class="o">/</span><span class="mf">1e6</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">mrho</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">rho</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mtheta</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">mtheta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mtheta</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">mtheta</span> <span class="o">=</span> <span class="mf">270</span><span class="o">*</span><span class="n">numpy</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">rho</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">rho</span><span class="p">)):</span>
+            <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%g</span><span class="s"> </span><span class="si">%g</span><span class="s"> </span><span class="si">%g</span><span class="s"> </span><span class="si">%g</span><span class="se">\n</span><span class="si">%g</span><span class="s"> </span><span class="si">%g</span><span class="s"> </span><span class="si">%g</span><span class="se">\n</span><span class="si">%g</span><span class="se">\n</span><span class="s">&quot;</span>
+                      <span class="o">%</span><span class="p">(</span><span class="n">rho</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">w</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">s</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">mu</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">mrho</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">wm</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">sm</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">mtheta</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+
+        <span class="c">## Fit information fills the remainder of the file</span>
+        <span class="c">#footer+1: P1 P2 P3 ...  (fit parameters)</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fitpars</span><span class="p">)</span><span class="o">+</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">)</span>
+        <span class="c">#footer+2 to end: constraints</span>
+        <span class="n">fid</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">constraints</span><span class="p">)</span></div>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

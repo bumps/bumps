@@ -1,0 +1,153 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.stitch - Overlapping reflectivity curve stitching &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../index.html" />
+    <link rel="up" title="Reference" href="index.html" />
+    <link rel="next" title="refl1d.support - Environment support" href="support.html" />
+    <link rel="prev" title="refl1d.stajconvert - Staj File Converter" href="stajconvert.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.stitch - Overlapping reflectivity curve stitching</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="stajconvert.html">refl1d.stajconvert - Staj File Converter</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="support.html">refl1d.support - Environment support</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="refl1d-stitch-overlapping-reflectivity-curve-stitching">
+<h1>refl1d.stitch - Overlapping reflectivity curve stitching<a class="headerlink" href="#refl1d-stitch-overlapping-reflectivity-curve-stitching" title="Permalink to this headline">¶</a></h1>
+<table border="1" class="docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr><td><a class="reference internal" href="#refl1d.stitch.poisson_average" title="refl1d.stitch.poisson_average"><tt class="xref py py-obj docutils literal"><span class="pre">poisson_average</span></tt></a></td>
+<td>Compute the poisson average of R/dR using a set of data points.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.stitch.stitch" title="refl1d.stitch.stitch"><tt class="xref py py-obj docutils literal"><span class="pre">stitch</span></tt></a></td>
+<td>Stitch together multiple measurements into one.</td>
+</tr>
+</tbody>
+</table>
+<span class="target" id="module-refl1d.stitch"></span><p>Data stitching for reflectometry.</p>
+<p>Join together datasets yielding unique sorted Q.</p>
+<dl class="function">
+<dt id="refl1d.stitch.poisson_average">
+<tt class="descclassname">refl1d.stitch.</tt><tt class="descname">poisson_average</tt><big>(</big><em>QdQRdRw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/stitch.html#poisson_average"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.stitch.poisson_average" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the poisson average of R/dR using a set of data points.</p>
+<p>The returned Q,dQ is the weighted average of the inputs:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">Q</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">Q</span><span class="o">*</span><span class="n">I</span><span class="p">)</span><span class="o">/</span><span class="nb">sum</span><span class="p">(</span><span class="n">I</span><span class="p">)</span>
+<span class="n">dQ</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">dQ</span><span class="o">*</span><span class="n">I</span><span class="p">)</span><span class="o">/</span><span class="nb">sum</span><span class="p">(</span><span class="n">I</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The returned R,dR use Poisson averaging:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">w</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">y</span><span class="o">/</span><span class="n">dy</span><span class="o">^</span><span class="mf">2</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">((</span><span class="n">y</span><span class="o">/</span><span class="n">dy</span><span class="p">)</span><span class="o">^</span><span class="mf">2</span><span class="p">)</span><span class="o">/</span><span class="n">w</span>
+<span class="n">dy</span> <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">y</span><span class="o">/</span><span class="n">w</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The above formula gives the expected result for combining two
+measurements, assuming there is no uncertainty in the monitor.</p>
+<blockquote>
+<dl class="docutils">
+<dt>measure N counts during M monitors</dt>
+<dd>rate:                   r = N/M
+rate uncertainty:       dr = sqrt(N)/M
+weighted rate:          r/dr^2 = (N/M) / (N/M^2) =  M
+weighted rate squared:  r^2/dr^2 = (N^2/M^2) / (N/M^2) = N</dd>
+<dt>for two measurements Na, Nb</dt>
+<dd>w = ra/dra^2 + rb/drb^2 = Ma + Mb
+y = ((ra/dra)^2 + (rb/drb)^2)/w = (Na + Nb)/(Ma + Mb)
+dy = sqrt(y/w) = sqrt( (Na + Nb)/ w^2 ) = sqrt(Na+Nb)/(Ma + Mb)</dd>
+</dl>
+</blockquote>
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.stitch.stitch">
+<tt class="descclassname">refl1d.stitch.</tt><tt class="descname">stitch</tt><big>(</big><em>probes</em>, <em>same_Q=0.001</em>, <em>same_dQ=0.001</em><big>)</big><a class="reference internal" href="../_modules/refl1d/stitch.html#stitch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.stitch.stitch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stitch together multiple measurements into one.</p>
+<p><em>probes</em> a list of datasets with Q,dQ,R,dR attributes
+<em>same_Q</em> minimum point separation (default is 0.001).
+<em>same_dQ</em> minimum change in resolution that may be averaged (default is 0.001).</p>
+<p>Wavelength and angle are not preserved since different points with the
+same Q,dQ may have different wavelength/angle inputs, particularly for
+time of flight instruments.</p>
+<p>WARNING: the returned Q values may be data dependent, with two measured
+sets having different Q after stitching, even though the measurement
+conditions are identical!!</p>
+<p>Either add an intensity weight to the datasets:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">probe</span><span class="o">.</span><span class="n">I</span> <span class="o">=</span> <span class="n">slitscan</span>
+</pre></div>
+</div>
+<p>or use interpolation if you need to align two stitched scans:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">Q1</span><span class="p">,</span><span class="n">dQ1</span><span class="p">,</span><span class="n">R1</span><span class="p">,</span><span class="n">dR1</span> <span class="o">=</span> <span class="n">stitch</span><span class="p">([</span><span class="n">a1</span><span class="p">,</span><span class="n">b1</span><span class="p">,</span><span class="n">c1</span><span class="p">,</span><span class="n">d1</span><span class="p">])</span>
+<span class="n">Q2</span><span class="p">,</span><span class="n">dQ2</span><span class="p">,</span><span class="n">R2</span><span class="p">,</span><span class="n">dR2</span> <span class="o">=</span> <span class="n">stitch</span><span class="p">([</span><span class="n">a2</span><span class="p">,</span><span class="n">b2</span><span class="p">,</span><span class="n">c2</span><span class="p">,</span><span class="n">d2</span><span class="p">])</span>
+<span class="n">Q2</span><span class="p">[</span><span class="mf">0</span><span class="p">],</span><span class="n">Q2</span><span class="p">[</span><span class="o">-</span><span class="mf">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">Q1</span><span class="p">[</span><span class="mf">0</span><span class="p">],</span><span class="n">Q1</span><span class="p">[</span><span class="o">-</span><span class="mf">1</span><span class="p">]</span> <span class="c"># Force matching end points</span>
+<span class="n">R2</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">Q1</span><span class="p">,</span><span class="n">Q2</span><span class="p">,</span><span class="n">R2</span><span class="p">)</span>
+<span class="n">dR2</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">Q1</span><span class="p">,</span><span class="n">Q2</span><span class="p">,</span><span class="n">dR2</span><span class="p">)</span>
+<span class="n">Q2</span> <span class="o">=</span> <span class="n">Q1</span>
+</pre></div>
+</div>
+<p>WARNING: the returned dQ value underestimates the true Q, depending on
+the relative weights of the averaged data points.</p>
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="stajconvert.html">refl1d.stajconvert - Staj File Converter</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="support.html">refl1d.support - Environment support</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

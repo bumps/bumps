@@ -1,0 +1,131 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.stajconvert - Staj File Converter &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../index.html" />
+    <link rel="up" title="Reference" href="index.html" />
+    <link rel="next" title="refl1d.stitch - Overlapping reflectivity curve stitching" href="stitch.html" />
+    <link rel="prev" title="refl1d.staj - Staj File" href="staj.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.stajconvert - Staj File Converter</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="staj.html">refl1d.staj - Staj File</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="stitch.html">refl1d.stitch - Overlapping reflectivity curve stitching</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="refl1d-stajconvert-staj-file-converter">
+<h1>refl1d.stajconvert - Staj File Converter<a class="headerlink" href="#refl1d-stajconvert-staj-file-converter" title="Permalink to this headline">¶</a></h1>
+<table border="1" class="docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr><td><a class="reference internal" href="#refl1d.stajconvert.fit_all" title="refl1d.stajconvert.fit_all"><tt class="xref py py-obj docutils literal"><span class="pre">fit_all</span></tt></a></td>
+<td>Set all non-zero parameters to fitted parameters inside the model.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.stajconvert.load_mlayer" title="refl1d.stajconvert.load_mlayer"><tt class="xref py py-obj docutils literal"><span class="pre">load_mlayer</span></tt></a></td>
+<td>Load a staj file as a model.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.stajconvert.mlayer_to_model" title="refl1d.stajconvert.mlayer_to_model"><tt class="xref py py-obj docutils literal"><span class="pre">mlayer_to_model</span></tt></a></td>
+<td>Convert a loaded staj file to a refl1d experiment.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.stajconvert.model_to_mlayer" title="refl1d.stajconvert.model_to_mlayer"><tt class="xref py py-obj docutils literal"><span class="pre">model_to_mlayer</span></tt></a></td>
+<td>Return an mlayer model based on the a slab stack.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.stajconvert.save_mlayer" title="refl1d.stajconvert.save_mlayer"><tt class="xref py py-obj docutils literal"><span class="pre">save_mlayer</span></tt></a></td>
+<td>Save a model to a staj file.</td>
+</tr>
+</tbody>
+</table>
+<span class="target" id="module-refl1d.stajconvert"></span><p>Convert staj files to Refl1D models</p>
+<dl class="function">
+<dt id="refl1d.stajconvert.fit_all">
+<tt class="descclassname">refl1d.stajconvert.</tt><tt class="descname">fit_all</tt><big>(</big><em>M</em>, <em>pmp=20</em><big>)</big><a class="reference internal" href="../_modules/refl1d/stajconvert.html#fit_all"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.stajconvert.fit_all" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set all non-zero parameters to fitted parameters inside the model.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.stajconvert.load_mlayer">
+<tt class="descclassname">refl1d.stajconvert.</tt><tt class="descname">load_mlayer</tt><big>(</big><em>filename</em>, <em>fit_pmp=0</em><big>)</big><a class="reference internal" href="../_modules/refl1d/stajconvert.html#load_mlayer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.stajconvert.load_mlayer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load a staj file as a model.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.stajconvert.mlayer_to_model">
+<tt class="descclassname">refl1d.stajconvert.</tt><tt class="descname">mlayer_to_model</tt><big>(</big><em>staj</em><big>)</big><a class="reference internal" href="../_modules/refl1d/stajconvert.html#mlayer_to_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.stajconvert.mlayer_to_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert a loaded staj file to a refl1d experiment.</p>
+<p>Returns a new experiment</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.stajconvert.model_to_mlayer">
+<tt class="descclassname">refl1d.stajconvert.</tt><tt class="descname">model_to_mlayer</tt><big>(</big><em>model</em>, <em>datafile</em><big>)</big><a class="reference internal" href="../_modules/refl1d/stajconvert.html#model_to_mlayer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.stajconvert.model_to_mlayer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an mlayer model based on the a slab stack.</p>
+<p>Raises TypeError if model cannot be stored as a staj file.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.stajconvert.save_mlayer">
+<tt class="descclassname">refl1d.stajconvert.</tt><tt class="descname">save_mlayer</tt><big>(</big><em>experiment</em>, <em>filename</em>, <em>datafile=None</em><big>)</big><a class="reference internal" href="../_modules/refl1d/stajconvert.html#save_mlayer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.stajconvert.save_mlayer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save a model to a staj file.</p>
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="staj.html">refl1d.staj - Staj File</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="stitch.html">refl1d.stitch - Overlapping reflectivity curve stitching</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

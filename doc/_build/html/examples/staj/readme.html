@@ -1,0 +1,169 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>MLayer Models &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../../index.html" />
+    <link rel="up" title="Tutorial" href="../index.html" />
+    <link rel="next" title="User’s Guide" href="../../guide/index.html" />
+    <link rel="prev" title="Freeform structures" href="../superlattice/freeform.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>MLayer Models</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="../superlattice/freeform.html">Freeform structures</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="../../guide/index.html">User&#8217;s Guide</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="mlayer-models">
+<h1>MLayer Models<a class="headerlink" href="#mlayer-models" title="Permalink to this headline">¶</a></h1>
+<p>This package can load models from other reflectometry fitting software.  In
+this example we load an mlayer .staj file and fit the parameters within it.</p>
+<p>The staj file can be used directly from the graphical interactor or it can
+be previewed from the command line:</p>
+<div class="highlight-python"><pre>$ refl1d De2_VATR.staj --preview</pre>
+</div>
+<p>This shows the model plot:</p>
+<p>[<a class="reference external" href="../../plot_directive/inline/aee62ada96.hires.png">hires.png</a>, <a class="reference external" href="../../plot_directive/inline/aee62ada96.pdf">pdf</a>]</p>
+<img alt="../../_images/aee62ada96.png" src="../../_images/aee62ada96.png" />
+<p>and the available model parameters:</p>
+<div class="highlight-python"><pre>.probe
+  .back_absorption = Parameter(1, name='back_absorption')
+  .background = Parameter(1e-10, name='background')
+  .intensity = Parameter(1, name='intensity')
+  .theta_offset = Parameter(0, name='theta_offset')
+.sample
+  .layers
+    [0]
+      .interface = Parameter(4.24661e-11, name='B3 interface')
+      .material
+        .irho = Parameter(3.00904e-05, name='B3 irho')
+        .rho = Parameter(5.69228, name='B3 rho')
+      .thickness = Parameter(90, name='B3 thickness')
+    [1]
+      .interface = Parameter(4.24661e-11, name='B2 interface')
+      .material
+        .irho = Parameter(1.39368e-05, name='B2 irho')
+        .rho = Parameter(5.86948, name='B2 rho')
+      .thickness = Parameter(64.0154, name='B2 thickness')
+    [2]
+      .interface = Parameter(83.7958, name='B1 interface')
+      .material
+        .irho = Parameter(6.93684e-05, name='B1 irho')
+        .rho = Parameter(0.340309, name='B1 rho')
+      .thickness = Parameter(316.991, name='B1 thickness')
+    [3]
+      .interface = Parameter(33.2095, name='M2 interface')
+      .material
+        .irho = Parameter(6.93684e-05, name='M2 irho')
+        .rho = Parameter(1.73106, name='M2 rho')
+      .thickness = Parameter(1052.77, name='M2 thickness')
+    [4]
+      .interface = Parameter(20.6753, name='M1 interface')
+      .material
+        .irho = Parameter(0.00137419, name='M1 irho')
+        .rho = Parameter(4.02059, name='M1 rho')
+      .thickness = Parameter(567.547, name='M1 thickness')
+    [5]
+      .interface = Parameter(4.24661e-11, name='V interface')
+      .material
+        .irho = Parameter(0, name='V irho')
+        .rho = Parameter(0, name='V rho')
+      .thickness = Parameter(0, name='V thickness')
+  .thickness = stack thickness:2091.32
+
+[chisq=2.16242, nllf=408.697]</pre>
+</div>
+<p>Note that the parameters are reversed from the order in mlayer, so layer 0
+is the substrate rather than the incident medium.  The graphical interactor,
+refl1d_gui, allows you to adjust parameters and fit ranges before starting
+the fit, but you can also do so from a script, as shown in
+<a class="reference download internal" href="../../_downloads/De2_VATR.py"><tt class="xref download docutils literal"><span class="pre">De2_VATR.py</span></tt></a>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">refl1d.names</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">refl1d.stajconvert</span> <span class="kn">import</span> <span class="n">load_mlayer</span>
+
+<span class="c"># Load neutron model and data from staj file</span>
+<span class="n">M</span> <span class="o">=</span> <span class="n">load_mlayer</span><span class="p">(</span><span class="s">&quot;De2_VATR.staj&quot;</span><span class="p">)</span>
+
+<span class="c"># Set thickness/roughness fitting parameters to +/- 20 %</span>
+<span class="c"># Set SLD to +/- 5% for all but the incident medium and the substrate.</span>
+<span class="k">for</span> <span class="n">L</span> <span class="ow">in</span> <span class="n">M</span><span class="o">.</span><span class="n">sample</span><span class="p">[</span><span class="mf">1</span><span class="p">:</span><span class="o">-</span><span class="mf">1</span><span class="p">]:</span>
+    <span class="n">L</span><span class="o">.</span><span class="n">thickness</span><span class="o">.</span><span class="n">pmp</span><span class="p">(</span><span class="mf">20</span><span class="p">)</span>
+    <span class="n">L</span><span class="o">.</span><span class="n">interface</span><span class="o">.</span><span class="n">pmp</span><span class="p">(</span><span class="mf">20</span><span class="p">)</span>
+    <span class="n">L</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">rho</span><span class="o">.</span><span class="n">pmp</span><span class="p">(</span><span class="mf">5</span><span class="p">)</span>
+
+<span class="c"># Let the substrate SLD vary by 2%</span>
+<span class="n">M</span><span class="o">.</span><span class="n">sample</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">rho</span><span class="o">.</span><span class="n">pmp</span><span class="p">(</span><span class="mf">2</span><span class="p">)</span>
+<span class="n">M</span><span class="o">.</span><span class="n">sample</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="o">.</span><span class="n">interface</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="mf">20</span><span class="p">)</span>
+<span class="n">M</span><span class="o">.</span><span class="n">sample</span><span class="p">[</span><span class="mf">1</span><span class="p">]</span><span class="o">.</span><span class="n">interface</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="mf">20</span><span class="p">)</span>
+
+<span class="n">problem</span> <span class="o">=</span> <span class="n">FitProblem</span><span class="p">(</span><span class="n">M</span><span class="p">)</span>
+<span class="n">problem</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s">&quot;Desorption 2&quot;</span>
+</pre></div>
+</div>
+<p>Staj file constraints are ignored, but you can get similar functionality by
+setting parameters to equal expressions of other parameters.  You can even
+constrain one staj file to share parameters with another by setting, for
+example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">M1</span> <span class="o">=</span> <span class="n">load_mlayer</span><span class="p">(</span><span class="s">&quot;De1_VATR.staj&quot;</span><span class="p">)</span>
+<span class="n">M2</span> <span class="o">=</span> <span class="n">load_mlayer</span><span class="p">(</span><span class="s">&quot;De2_VATR.staj&quot;</span><span class="p">)</span>
+<span class="n">M1</span><span class="o">.</span><span class="n">sample</span><span class="p">[</span><span class="mf">3</span><span class="p">]</span><span class="o">.</span><span class="n">thickness</span> <span class="o">=</span> <span class="n">M2</span><span class="o">.</span><span class="n">sample</span><span class="p">[</span><span class="mf">3</span><span class="p">]</span><span class="o">.</span><span class="n">thickness</span>
+<span class="n">problem</span> <span class="o">=</span> <span class="n">MultiFitProblem</span><span class="p">([</span><span class="n">M1</span><span class="p">,</span><span class="n">M2</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="../superlattice/freeform.html">Freeform structures</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="../../guide/index.html">User&#8217;s Guide</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

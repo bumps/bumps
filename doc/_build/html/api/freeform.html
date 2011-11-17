@@ -1,0 +1,206 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.freeform - Freeform - Parametric B-Spline &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../index.html" />
+    <link rel="up" title="Reference" href="index.html" />
+    <link rel="next" title="refl1d.fresnel - Pure python Fresnel reflectivity calculator" href="fresnel.html" />
+    <link rel="prev" title="refl1d.fitters - Wrappers for various optimization algorithms" href="fitters.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.freeform - Freeform - Parametric B-Spline</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="fitters.html">refl1d.fitters - Wrappers for various optimization algorithms</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="fresnel.html">refl1d.fresnel - Pure python Fresnel reflectivity calculator</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="refl1d-freeform-freeform-parametric-b-spline">
+<h1>refl1d.freeform - Freeform - Parametric B-Spline<a class="headerlink" href="#refl1d-freeform-freeform-parametric-b-spline" title="Permalink to this headline">¶</a></h1>
+<table border="1" class="docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr><td><a class="reference internal" href="#refl1d.freeform.FreeInterface" title="refl1d.freeform.FreeInterface"><tt class="xref py py-obj docutils literal"><span class="pre">FreeInterface</span></tt></a></td>
+<td>A freeform section of the sample modeled with monotonic splines.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.freeform.FreeLayer" title="refl1d.freeform.FreeLayer"><tt class="xref py py-obj docutils literal"><span class="pre">FreeLayer</span></tt></a></td>
+<td>A freeform section of the sample modeled with B-splines.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.freeform.FreeformInterface01" title="refl1d.freeform.FreeformInterface01"><tt class="xref py py-obj docutils literal"><span class="pre">FreeformInterface01</span></tt></a></td>
+<td>A freeform section of the sample modeled with B-splines.</td>
+</tr>
+</tbody>
+</table>
+<span class="target" id="module-refl1d.freeform"></span><p>Freeform modeling with B-Splines</p>
+<dl class="class">
+<dt id="refl1d.freeform.FreeInterface">
+<em class="property">class </em><tt class="descclassname">refl1d.freeform.</tt><tt class="descname">FreeInterface</tt><big>(</big><em>interface=0</em>, <em>below=None</em>, <em>above=None</em>, <em>dz=None</em>, <em>dp=None</em>, <em>name='Interface'</em><big>)</big><a class="reference internal" href="../_modules/refl1d/freeform.html#FreeInterface"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.freeform.FreeInterface" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="model.html#refl1d.model.Layer" title="refl1d.model.Layer"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.model.Layer</span></tt></a></p>
+<p>A freeform section of the sample modeled with monotonic splines.</p>
+<p>Layers have a slope of zero at the ends, so the automatically blend
+with slabs.</p>
+<dl class="method">
+<dt id="refl1d.freeform.FreeInterface.constraints">
+<tt class="descname">constraints</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.freeform.FreeInterface.constraints" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constraints</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.freeform.FreeInterface.find">
+<tt class="descname">find</tt><big>(</big><em>z</em><big>)</big><a class="headerlink" href="#refl1d.freeform.FreeInterface.find" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find the layer at depth z.</p>
+<p>Returns layer, start, end</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.freeform.FreeInterface.parameters">
+<tt class="descname">parameters</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/freeform.html#FreeInterface.parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.freeform.FreeInterface.parameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.freeform.FreeInterface.render">
+<tt class="descname">render</tt><big>(</big><em>probe</em>, <em>slabs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/freeform.html#FreeInterface.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.freeform.FreeInterface.render" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.freeform.FreeInterface.thickness">
+<tt class="descname">thickness</tt><a class="headerlink" href="#refl1d.freeform.FreeInterface.thickness" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="refl1d.freeform.FreeLayer">
+<em class="property">class </em><tt class="descclassname">refl1d.freeform.</tt><tt class="descname">FreeLayer</tt><big>(</big><em>thickness=0</em>, <em>left=None</em>, <em>right=None</em>, <em>rho=</em><span class="optional">[</span><span class="optional">]</span>, <em>irho=</em><span class="optional">[</span><span class="optional">]</span>, <em>rhoz=</em><span class="optional">[</span><span class="optional">]</span>, <em>irhoz=</em><span class="optional">[</span><span class="optional">]</span>, <em>name='Freeform'</em><big>)</big><a class="reference internal" href="../_modules/refl1d/freeform.html#FreeLayer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.freeform.FreeLayer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="model.html#refl1d.model.Layer" title="refl1d.model.Layer"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.model.Layer</span></tt></a></p>
+<p>A freeform section of the sample modeled with B-splines.</p>
+<p>sld (rho) and imaginary sld (irho) can be modeled with a separate
+number of control points. The control points can be equally spaced
+in the layers unless rhoz or irhoz are specified. If the z values
+are given, they must be in the range [0,1].  One control point is
+anchored at either end, so there are two fewer z values than controls
+if z values are given.</p>
+<p>Layers have a slope of zero at the ends, so the automatically blend
+with slabs.</p>
+<dl class="method">
+<dt id="refl1d.freeform.FreeLayer.constraints">
+<tt class="descname">constraints</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.freeform.FreeLayer.constraints" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constraints</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.freeform.FreeLayer.find">
+<tt class="descname">find</tt><big>(</big><em>z</em><big>)</big><a class="headerlink" href="#refl1d.freeform.FreeLayer.find" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find the layer at depth z.</p>
+<p>Returns layer, start, end</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.freeform.FreeLayer.parameters">
+<tt class="descname">parameters</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/freeform.html#FreeLayer.parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.freeform.FreeLayer.parameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.freeform.FreeLayer.render">
+<tt class="descname">render</tt><big>(</big><em>probe</em>, <em>slabs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/freeform.html#FreeLayer.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.freeform.FreeLayer.render" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="refl1d.freeform.FreeformInterface01">
+<em class="property">class </em><tt class="descclassname">refl1d.freeform.</tt><tt class="descname">FreeformInterface01</tt><big>(</big><em>thickness=0</em>, <em>interface=0</em>, <em>below=None</em>, <em>above=None</em>, <em>z=None</em>, <em>vf=None</em>, <em>name='Interface'</em><big>)</big><a class="reference internal" href="../_modules/refl1d/freeform.html#FreeformInterface01"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.freeform.FreeformInterface01" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="model.html#refl1d.model.Layer" title="refl1d.model.Layer"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.model.Layer</span></tt></a></p>
+<p>A freeform section of the sample modeled with B-splines.</p>
+<p>sld (rho) and imaginary sld (irho) can be modeled with a separate
+number of control points. The control points can be equally spaced
+in the layers unless rhoz or irhoz are specified. If the z values
+are given, they must be in the range [0,1].  One control point is
+anchored at either end, so there are two fewer z values than controls
+if z values are given.</p>
+<p>Layers have a slope of zero at the ends, so the automatically blend
+with slabs.</p>
+<dl class="method">
+<dt id="refl1d.freeform.FreeformInterface01.constraints">
+<tt class="descname">constraints</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.freeform.FreeformInterface01.constraints" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constraints</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.freeform.FreeformInterface01.find">
+<tt class="descname">find</tt><big>(</big><em>z</em><big>)</big><a class="headerlink" href="#refl1d.freeform.FreeformInterface01.find" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find the layer at depth z.</p>
+<p>Returns layer, start, end</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.freeform.FreeformInterface01.parameters">
+<tt class="descname">parameters</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/freeform.html#FreeformInterface01.parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.freeform.FreeformInterface01.parameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.freeform.FreeformInterface01.render">
+<tt class="descname">render</tt><big>(</big><em>probe</em>, <em>slabs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/freeform.html#FreeformInterface01.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.freeform.FreeformInterface01.render" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="fitters.html">refl1d.fitters - Wrappers for various optimization algorithms</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="fresnel.html">refl1d.fresnel - Pure python Fresnel reflectivity calculator</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

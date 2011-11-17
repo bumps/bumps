@@ -1,0 +1,334 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.magnetic - Magnetic Models &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../index.html" />
+    <link rel="up" title="Reference" href="index.html" />
+    <link rel="next" title="refl1d.mapper - Parallel processing implementations" href="mapper.html" />
+    <link rel="prev" title="refl1d.instrument - Reflectivity instrument definition" href="instrument.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.magnetic - Magnetic Models</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="instrument.html">refl1d.instrument - Reflectivity instrument definition</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="mapper.html">refl1d.mapper - Parallel processing implementations</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="refl1d-magnetic-magnetic-models">
+<h1>refl1d.magnetic - Magnetic Models<a class="headerlink" href="#refl1d-magnetic-magnetic-models" title="Permalink to this headline">¶</a></h1>
+<table border="1" class="docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr><td><a class="reference internal" href="#refl1d.magnetic.FreeMagnetic" title="refl1d.magnetic.FreeMagnetic"><tt class="xref py py-obj docutils literal"><span class="pre">FreeMagnetic</span></tt></a></td>
+<td>Linear change in magnetism throughout layer.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.magnetic.MagneticLayer" title="refl1d.magnetic.MagneticLayer"><tt class="xref py py-obj docutils literal"><span class="pre">MagneticLayer</span></tt></a></td>
+<td></td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.magnetic.MagneticSlab" title="refl1d.magnetic.MagneticSlab"><tt class="xref py py-obj docutils literal"><span class="pre">MagneticSlab</span></tt></a></td>
+<td>Region of constant magnetism.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.magnetic.MagneticTwist" title="refl1d.magnetic.MagneticTwist"><tt class="xref py py-obj docutils literal"><span class="pre">MagneticTwist</span></tt></a></td>
+<td>Linear change in magnetism throughout layer.</td>
+</tr>
+</tbody>
+</table>
+<span class="target" id="module-refl1d.magnetic"></span><p>Magnetic modeling for 1-D reflectometry.</p>
+<p>Magnetic properties are tied to the structural description of the
+but only loosely.</p>
+<p>There may be dead regions near the interfaces of magnetic materials.</p>
+<p>Magnetic behaviour may be varying in complex ways within and
+across structural boundaries.  For example, the ma
+Indeed, the pattern may continue
+across spacer layers, going to zero in the magnetically dead
+region and returning to its long range variation on entry to
+the next magnetic layer.  Magnetic multilayers may exhibit complex
+magnetism throughout the repeated section while the structural
+components are fixed.</p>
+<p>The scattering behaviour is dependent upon net field strength relative to
+polarization direction.   This arises from three underlying quantities:
+the strength of the individual dipole moments in the layer, the degree
+of alignment of these moments, and the net direction of the alignment.  The
+strength of the dipole moment depends on the details of the electronic
+structure, so is not This could in principle be approximated from
+the dipole moments of the individual moments
+aligned within the sample, then you would see the
+If the fields for all carriers are aligned with
+the polarization direction, you will see the idealized magnetic scattering
+strength
+will see the saturated This is determined by the number and strength
+of the magnetic &#8216;carriers&#8217;, the amount of order, and the direct or :math:`
+ho_M cos(      heta_M)`, where
+orientation, which leads to over-parameterization in the fits.  The
+reflectometry technique is sensitive</p>
+<p>Magnetism support is split into two parts: describing the layers
+and anchoring them to the structure.</p>
+<dl class="class">
+<dt id="refl1d.magnetic.FreeMagnetic">
+<em class="property">class </em><tt class="descclassname">refl1d.magnetic.</tt><tt class="descname">FreeMagnetic</tt><big>(</big><em>stack</em>, <em>z=</em><span class="optional">[</span><span class="optional">]</span>, <em>rhoM=</em><span class="optional">[</span><span class="optional">]</span>, <em>thetaM=</em><span class="optional">[</span><span class="optional">]</span>, <em>name='freemag'</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/magnetic.html#FreeMagnetic"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.magnetic.FreeMagnetic" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#refl1d.magnetic.MagneticLayer" title="refl1d.magnetic.MagneticLayer"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.magnetic.MagneticLayer</span></tt></a></p>
+<p>Linear change in magnetism throughout layer.</p>
+<dl class="method">
+<dt id="refl1d.magnetic.FreeMagnetic.constraints">
+<tt class="descname">constraints</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.magnetic.FreeMagnetic.constraints" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constraints</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.magnetic.FreeMagnetic.find">
+<tt class="descname">find</tt><big>(</big><em>z</em><big>)</big><a class="headerlink" href="#refl1d.magnetic.FreeMagnetic.find" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find the layer at depth z.</p>
+<p>Returns layer, start, end</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.magnetic.FreeMagnetic.parameters">
+<tt class="descname">parameters</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/magnetic.html#FreeMagnetic.parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.magnetic.FreeMagnetic.parameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.magnetic.FreeMagnetic.profile">
+<tt class="descname">profile</tt><big>(</big><em>Pz</em><big>)</big><a class="reference internal" href="../_modules/refl1d/magnetic.html#FreeMagnetic.profile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.magnetic.FreeMagnetic.profile" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.magnetic.FreeMagnetic.render">
+<tt class="descname">render</tt><big>(</big><em>probe</em>, <em>slabs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/magnetic.html#FreeMagnetic.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.magnetic.FreeMagnetic.render" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.magnetic.FreeMagnetic.render_stack">
+<tt class="descname">render_stack</tt><big>(</big><em>probe</em>, <em>slabs</em><big>)</big><a class="headerlink" href="#refl1d.magnetic.FreeMagnetic.render_stack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Render the nuclear sld structure.</p>
+<p>If either the interface below or the interface above is left
+unspecified, the corresponding nuclear interface is used.</p>
+<p>Returns the anchor point in the nuclear structure and interface
+widths at either end of the magnetic slab.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.magnetic.FreeMagnetic.thickness">
+<tt class="descname">thickness</tt><a class="headerlink" href="#refl1d.magnetic.FreeMagnetic.thickness" title="Permalink to this definition">¶</a></dt>
+<dd><p>Thickness of the magnetic region</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.magnetic.FreeMagnetic.thicknessM">
+<tt class="descname">thicknessM</tt><a class="headerlink" href="#refl1d.magnetic.FreeMagnetic.thicknessM" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="refl1d.magnetic.MagneticLayer">
+<em class="property">class </em><tt class="descclassname">refl1d.magnetic.</tt><tt class="descname">MagneticLayer</tt><big>(</big><em>stack=None</em>, <em>dead_below=0</em>, <em>dead_above=0</em>, <em>interface_below=None</em>, <em>interface_above=None</em>, <em>name='magnetic'</em><big>)</big><a class="reference internal" href="../_modules/refl1d/magnetic.html#MagneticLayer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.magnetic.MagneticLayer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="model.html#refl1d.model.Layer" title="refl1d.model.Layer"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.model.Layer</span></tt></a></p>
+<dl class="method">
+<dt id="refl1d.magnetic.MagneticLayer.constraints">
+<tt class="descname">constraints</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.magnetic.MagneticLayer.constraints" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constraints</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.magnetic.MagneticLayer.find">
+<tt class="descname">find</tt><big>(</big><em>z</em><big>)</big><a class="headerlink" href="#refl1d.magnetic.MagneticLayer.find" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find the layer at depth z.</p>
+<p>Returns layer, start, end</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.magnetic.MagneticLayer.parameters">
+<tt class="descname">parameters</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/magnetic.html#MagneticLayer.parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.magnetic.MagneticLayer.parameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.magnetic.MagneticLayer.render">
+<tt class="descname">render</tt><big>(</big><em>probe</em>, <em>slabs</em><big>)</big><a class="headerlink" href="#refl1d.magnetic.MagneticLayer.render" title="Permalink to this definition">¶</a></dt>
+<dd><p>Use the probe to render the layer into a microslab representation.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.magnetic.MagneticLayer.render_stack">
+<tt class="descname">render_stack</tt><big>(</big><em>probe</em>, <em>slabs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/magnetic.html#MagneticLayer.render_stack"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.magnetic.MagneticLayer.render_stack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Render the nuclear sld structure.</p>
+<p>If either the interface below or the interface above is left
+unspecified, the corresponding nuclear interface is used.</p>
+<p>Returns the anchor point in the nuclear structure and interface
+widths at either end of the magnetic slab.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.magnetic.MagneticLayer.thickness">
+<tt class="descname">thickness</tt><a class="reference internal" href="../_modules/refl1d/magnetic.html#MagneticLayer.thickness"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.magnetic.MagneticLayer.thickness" title="Permalink to this definition">¶</a></dt>
+<dd><p>Thickness of the magnetic region</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.magnetic.MagneticLayer.thicknessM">
+<tt class="descname">thicknessM</tt><a class="reference internal" href="../_modules/refl1d/magnetic.html#MagneticLayer.thicknessM"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.magnetic.MagneticLayer.thicknessM" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="refl1d.magnetic.MagneticSlab">
+<em class="property">class </em><tt class="descclassname">refl1d.magnetic.</tt><tt class="descname">MagneticSlab</tt><big>(</big><em>stack</em>, <em>rhoM=0</em>, <em>thetaM=270</em>, <em>name='magnetic'</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/magnetic.html#MagneticSlab"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.magnetic.MagneticSlab" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#refl1d.magnetic.MagneticLayer" title="refl1d.magnetic.MagneticLayer"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.magnetic.MagneticLayer</span></tt></a></p>
+<p>Region of constant magnetism.</p>
+<dl class="method">
+<dt id="refl1d.magnetic.MagneticSlab.constraints">
+<tt class="descname">constraints</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.magnetic.MagneticSlab.constraints" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constraints</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.magnetic.MagneticSlab.find">
+<tt class="descname">find</tt><big>(</big><em>z</em><big>)</big><a class="headerlink" href="#refl1d.magnetic.MagneticSlab.find" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find the layer at depth z.</p>
+<p>Returns layer, start, end</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.magnetic.MagneticSlab.parameters">
+<tt class="descname">parameters</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/magnetic.html#MagneticSlab.parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.magnetic.MagneticSlab.parameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.magnetic.MagneticSlab.render">
+<tt class="descname">render</tt><big>(</big><em>probe</em>, <em>slabs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/magnetic.html#MagneticSlab.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.magnetic.MagneticSlab.render" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.magnetic.MagneticSlab.render_stack">
+<tt class="descname">render_stack</tt><big>(</big><em>probe</em>, <em>slabs</em><big>)</big><a class="headerlink" href="#refl1d.magnetic.MagneticSlab.render_stack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Render the nuclear sld structure.</p>
+<p>If either the interface below or the interface above is left
+unspecified, the corresponding nuclear interface is used.</p>
+<p>Returns the anchor point in the nuclear structure and interface
+widths at either end of the magnetic slab.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.magnetic.MagneticSlab.thickness">
+<tt class="descname">thickness</tt><a class="headerlink" href="#refl1d.magnetic.MagneticSlab.thickness" title="Permalink to this definition">¶</a></dt>
+<dd><p>Thickness of the magnetic region</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.magnetic.MagneticSlab.thicknessM">
+<tt class="descname">thicknessM</tt><a class="headerlink" href="#refl1d.magnetic.MagneticSlab.thicknessM" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="refl1d.magnetic.MagneticTwist">
+<em class="property">class </em><tt class="descclassname">refl1d.magnetic.</tt><tt class="descname">MagneticTwist</tt><big>(</big><em>stack, rhoM=[0, 0], thetaM=[270, 270], name='twist', **kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/magnetic.html#MagneticTwist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.magnetic.MagneticTwist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#refl1d.magnetic.MagneticLayer" title="refl1d.magnetic.MagneticLayer"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.magnetic.MagneticLayer</span></tt></a></p>
+<p>Linear change in magnetism throughout layer.</p>
+<dl class="method">
+<dt id="refl1d.magnetic.MagneticTwist.constraints">
+<tt class="descname">constraints</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.magnetic.MagneticTwist.constraints" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constraints</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.magnetic.MagneticTwist.find">
+<tt class="descname">find</tt><big>(</big><em>z</em><big>)</big><a class="headerlink" href="#refl1d.magnetic.MagneticTwist.find" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find the layer at depth z.</p>
+<p>Returns layer, start, end</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.magnetic.MagneticTwist.parameters">
+<tt class="descname">parameters</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/magnetic.html#MagneticTwist.parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.magnetic.MagneticTwist.parameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.magnetic.MagneticTwist.render">
+<tt class="descname">render</tt><big>(</big><em>probe</em>, <em>slabs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/magnetic.html#MagneticTwist.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.magnetic.MagneticTwist.render" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.magnetic.MagneticTwist.render_stack">
+<tt class="descname">render_stack</tt><big>(</big><em>probe</em>, <em>slabs</em><big>)</big><a class="headerlink" href="#refl1d.magnetic.MagneticTwist.render_stack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Render the nuclear sld structure.</p>
+<p>If either the interface below or the interface above is left
+unspecified, the corresponding nuclear interface is used.</p>
+<p>Returns the anchor point in the nuclear structure and interface
+widths at either end of the magnetic slab.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.magnetic.MagneticTwist.thickness">
+<tt class="descname">thickness</tt><a class="headerlink" href="#refl1d.magnetic.MagneticTwist.thickness" title="Permalink to this definition">¶</a></dt>
+<dd><p>Thickness of the magnetic region</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.magnetic.MagneticTwist.thicknessM">
+<tt class="descname">thicknessM</tt><a class="headerlink" href="#refl1d.magnetic.MagneticTwist.thicknessM" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="instrument.html">refl1d.instrument - Reflectivity instrument definition</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="mapper.html">refl1d.mapper - Parallel processing implementations</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

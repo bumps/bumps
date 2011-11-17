@@ -1,0 +1,137 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Contributing Changes &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../index.html" />
+    <link rel="up" title="Getting Started" href="index.html" />
+    <link rel="next" title="License" href="license.html" />
+    <link rel="prev" title="Server installation" href="server.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>Contributing Changes</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="server.html">Server installation</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="license.html">License</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="contributing-changes">
+<span id="contributing"></span><h1>Contributing Changes<a class="headerlink" href="#contributing-changes" title="Permalink to this headline">¶</a></h1>
+<p>The best way to contribute to the reflectometry package is to work
+from a copy of the source tree in the revision control system.</p>
+<p>The refl1d project is hosted on github at:</p>
+<blockquote>
+<a class="reference external" href="http://github.com/reflectometry/refl1d">http://github.com/reflectometry/refl1d</a></blockquote>
+<p>You can obtain a copy via git using:</p>
+<div class="highlight-python"><pre>git clone https://github.com/reflectometry/refl1d.git
+    cd refl1d
+    python setup.py develop</pre>
+</div>
+<p>By using the <em>develop</em> keyword on setup.py, changes to the files in the
+package are immediately available without the need to run setup.py
+install each time.</p>
+<p>Track updates to the original package using:</p>
+<div class="highlight-python"><pre>git pull</pre>
+</div>
+<p>If you find you need to modify the package, please update the documentation
+and add tests for your changes.  We use doctests on all of our examples
+that we know our documentation is correct.  More thorough tests are found
+in test directory.  Using the the nose test package, you can run both sets
+of tests:</p>
+<div class="highlight-python"><pre>easy_install nose
+python2.5 tests.py
+python2.6 tests.py</pre>
+</div>
+<p>When all the tests run, generate a patch and send it to the
+<a class="reference external" href="http://danse.us">DANSE</a> Project mailing list at <a class="reference external" href="mailto:danse-dev&#37;&#52;&#48;cacr&#46;caltech&#46;edu">danse-dev<span>&#64;</span>cacr<span>&#46;</span>caltech<span>&#46;</span>edu</a>:</p>
+<div class="highlight-python"><pre>git diff &gt; patch</pre>
+</div>
+<p>Alternatively, create a project fork at github and we can pull your
+changes directly from your repository.</p>
+<p>Windows user can use <a class="reference external" href="http://code.google.com/p/tortoisegit/">TortoiseGit</a>
+package which provides similar operations.</p>
+<p>Building the package documentation requires a working sphinx installation
+and in addition, a copy of <a class="reference external" href="http://www.mathjax.org/">MathJax</a> to view
+the equations.  Download and unzip the MathJax package into the doc/sphinx
+directory to install MathJax.  You can then build the documentation as follows:</p>
+<div class="highlight-python"><pre>(cd doc &amp;&amp; make clean html pdf)</pre>
+</div>
+<p>You can see the result by pointing your browser to:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">refl1d</span><span class="o">/</span><span class="n">doc</span><span class="o">/</span><span class="n">_build</span><span class="o">/</span><span class="n">html</span><span class="o">/</span><span class="n">index</span><span class="o">.</span><span class="n">html</span>
+<span class="n">refl1d</span><span class="o">/</span><span class="n">doc</span><span class="o">/</span><span class="n">_build</span><span class="o">/</span><span class="n">latex</span><span class="o">/</span><span class="n">PeriodicTable</span><span class="o">.</span><span class="n">pdf</span>
+</pre></div>
+</div>
+<p>As of this writing, the \AA LaTeX command for the Angstrom symbol is not
+available in the MathJax distribution. We patched jax/input/TeX/jax.js
+with the additional symbol AA using:</p>
+<div class="highlight-python"><pre>  // Ord symbols
+  S:            '00A7',
++ AA:           '212B',
+  aleph:        ['2135',{mathvariant: MML.VARIANT.NORMAL}],</pre>
+</div>
+<p>If you are using unusual math characters, you may need similar patches
+for your own documentation.</p>
+<p>ReStructured text format does not have a nice syntax for superscripts and
+subscripts.  Units such as g·cm<sup>-3</sup> are entered using macros such as
+|g/cm^3| to hide the details.  The complete list of macros is available in</p>
+<blockquote>
+doc/rst_prolog</blockquote>
+<p>In addition to macros for units, we also define cdot, angstrom and degrees
+unicode characters here.  The corresponding latex symbols are defined in
+doc/conf.py.</p>
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="server.html">Server installation</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="license.html">License</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

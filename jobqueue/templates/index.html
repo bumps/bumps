@@ -1,0 +1,8 @@
+<title>{% block title %}{% endblock %}</title>
+<table>
+<caption>Available files for <a href="/jobs/{{jobid}}">job {{ jobid }}</a></caption>
+<tr><th>Name</th><th>Size</th></tr>
+{% for f,size in files %}
+  <tr><td><a href="{{ f }}">{{f}} </a></td><td>{{size}} bytes</td></tr>
+{% endfor %}
+</table>

@@ -1,0 +1,280 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.polymer - Polymer models &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../index.html" />
+    <link rel="up" title="Reference" href="index.html" />
+    <link rel="next" title="refl1d.probe - Instrument probe" href="probe.html" />
+    <link rel="prev" title="refl1d.partemp - Parallel tempering optimizer" href="partemp.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.polymer - Polymer models</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="partemp.html">refl1d.partemp - Parallel tempering optimizer</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="probe.html">refl1d.probe - Instrument probe</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="refl1d-polymer-polymer-models">
+<h1>refl1d.polymer - Polymer models<a class="headerlink" href="#refl1d-polymer-polymer-models" title="Permalink to this headline">¶</a></h1>
+<table border="1" class="docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr><td><a class="reference internal" href="#refl1d.polymer.PolymerBrush" title="refl1d.polymer.PolymerBrush"><tt class="xref py py-obj docutils literal"><span class="pre">PolymerBrush</span></tt></a></td>
+<td>Polymer brushes in a solvent</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.polymer.VolumeProfile" title="refl1d.polymer.VolumeProfile"><tt class="xref py py-obj docutils literal"><span class="pre">VolumeProfile</span></tt></a></td>
+<td>Generic volume profile function</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.polymer.layer_thickness" title="refl1d.polymer.layer_thickness"><tt class="xref py py-obj docutils literal"><span class="pre">layer_thickness</span></tt></a></td>
+<td>Return the thickness of a layer given the microslab z points.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.polymer.smear" title="refl1d.polymer.smear"><tt class="xref py py-obj docutils literal"><span class="pre">smear</span></tt></a></td>
+<td>Gaussian smearing</td>
+</tr>
+</tbody>
+</table>
+<span class="target" id="module-refl1d.polymer"></span><p>Layer models for polymer systems.</p>
+<p>Analytic Self-consistent Field (SCF) profile <a class="footnote-reference" href="#zhulina" id="id1">[1]</a> <a class="footnote-reference" href="#karima" id="id2">[2]</a></p>
+<p>layer = TetheredPolymer(polymer,solvent,head,tail,power,</p>
+<table class="docutils footnote" frame="void" id="zhulina" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>Zhulina, EB; Borisov, OV; Pryamitsyn, VA; Birshtein, TM (1991)
+&#8220;Coil-Globule Type Transitions in Polymers. 1. Collapse of Layers
+of Grafted Polymer Chains&#8221;, Macromolecules 24, 140-149.</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="karima" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id2">[2]</a></td><td>Karima, A; Douglas, JF; Horkay, F; Fetters, LJ; Satija, SK (1996)
+&#8220;Comparative swelling of gels and polymer brush layers&#8221;,
+Physica B 221, 331-336. <a class="reference external" href="DOI:10.1016/0921-4526(95)00946-9">DOI:10.1016/0921-4526(95)00946-9</a></td></tr>
+</tbody>
+</table>
+<dl class="class">
+<dt id="refl1d.polymer.PolymerBrush">
+<em class="property">class </em><tt class="descclassname">refl1d.polymer.</tt><tt class="descname">PolymerBrush</tt><big>(</big><em>thickness=0</em>, <em>interface=0</em>, <em>name='brush'</em>, <em>polymer=None</em>, <em>solvent=None</em>, <em>base_vf=None</em>, <em>base=None</em>, <em>length=None</em>, <em>power=None</em>, <em>sigma=None</em><big>)</big><a class="reference internal" href="../_modules/refl1d/polymer.html#PolymerBrush"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.polymer.PolymerBrush" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="model.html#refl1d.model.Layer" title="refl1d.model.Layer"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.model.Layer</span></tt></a></p>
+<p>Polymer brushes in a solvent</p>
+<p>Parameters:</p>
+<blockquote>
+<em>thickness</em> the thickness of the solvent layer
+<em>interface</em> the roughness of the solvent surface
+<em>polymer</em> the polymer material
+<em>solvent</em> the solvent material or vacuum
+<em>base_vf</em> volume fraction (%) of the polymer brush at the interface
+<em>base</em> the thickness of the brush interface (A)
+<em>length</em> the length of the brush above the interface (A)
+<em>power</em> the rate of brush thinning
+<em>sigma</em> rms brush roughness (A)</blockquote>
+<p>The materials can either use the scattering length density directly,
+such as PDMS = SLD(0.063, 0.00006) or they can use chemical composition
+and material density such as PDMS=Material(&#8220;C2H6OSi&#8221;,density=0.965).</p>
+<p>These parameters combine in the following profile formula:</p>
+<div class="math">
+\begin{split}V(z) &amp;= \left\{
+  \begin{array}{ll}
+    V_o                        &amp; \mbox{if } z &lt;= z_o \\
+    V_o (1 - ((z-z_o)/L)^2)^p  &amp; \mbox{if } z_o &lt; z &lt; z_o + L \\
+    0                          &amp; \mbox{if } z &gt;= z_o + L
+  \end{array}
+\right. \\
+V_\sigma(z)
+   &amp;= V(z) \star
+         \frac{e^{-\frac{1}{2}(z/\sigma)^2}}{\sqrt{2\pi\sigma^2}} \\
+\rho(z) &amp;= \rho_p V_\sigma(z) + \rho_s (1-V_\sigma(z))\end{split}</div>
+<p>where <span class="math">V_\sigma(z)</span> is volume fraction convoluted with brush
+roughness <span class="math">\sigma</span> and <span class="math">\rho(z)</span> is the complex scattering
+length density of the profile.</p>
+<dl class="method">
+<dt id="refl1d.polymer.PolymerBrush.constraints">
+<tt class="descname">constraints</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.polymer.PolymerBrush.constraints" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constraints</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.polymer.PolymerBrush.find">
+<tt class="descname">find</tt><big>(</big><em>z</em><big>)</big><a class="headerlink" href="#refl1d.polymer.PolymerBrush.find" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find the layer at depth z.</p>
+<p>Returns layer, start, end</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.polymer.PolymerBrush.parameters">
+<tt class="descname">parameters</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/polymer.html#PolymerBrush.parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.polymer.PolymerBrush.parameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.polymer.PolymerBrush.profile">
+<tt class="descname">profile</tt><big>(</big><em>z</em><big>)</big><a class="reference internal" href="../_modules/refl1d/polymer.html#PolymerBrush.profile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.polymer.PolymerBrush.profile" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.polymer.PolymerBrush.render">
+<tt class="descname">render</tt><big>(</big><em>probe</em>, <em>slabs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/polymer.html#PolymerBrush.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.polymer.PolymerBrush.render" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="refl1d.polymer.VolumeProfile">
+<em class="property">class </em><tt class="descclassname">refl1d.polymer.</tt><tt class="descname">VolumeProfile</tt><big>(</big><em>thickness=0</em>, <em>interface=0</em>, <em>name='VolumeProfile'</em>, <em>material=None</em>, <em>solvent=None</em>, <em>profile=None</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/polymer.html#VolumeProfile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.polymer.VolumeProfile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="model.html#refl1d.model.Layer" title="refl1d.model.Layer"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.model.Layer</span></tt></a></p>
+<p>Generic volume profile function</p>
+<p>Parameters:</p>
+<blockquote>
+<em>thickness</em> the thickness of the solvent layer
+<em>interface</em> the roughness of the solvent surface
+<em>material</em> the polymer material
+<em>solvent</em> the solvent material
+<em>profile</em> the profile function, suitably parameterized</blockquote>
+<p>The materials can either use the scattering length density directly,
+such as PDMS = SLD(0.063, 0.00006) or they can use chemical composition
+and material density such as PDMS=Material(&#8220;C2H6OSi&#8221;,density=0.965).</p>
+<p>These parameters combine in the following profile formula:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">sld</span> <span class="o">=</span> <span class="n">material</span><span class="o">.</span><span class="n">sld</span> <span class="o">*</span> <span class="n">profile</span> <span class="o">+</span> <span class="n">solvent</span><span class="o">.</span><span class="n">sld</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1</span> <span class="o">-</span> <span class="n">profile</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The profile function takes a depth z and returns a density rho.</p>
+<p>For volume profiles, the returned rho should be the volume fraction
+of the material.  For SLD profiles, rho should be complex scattering
+length density of the material.</p>
+<p>Fitting parameters are the available named arguments to the function.
+The first argument must be <em>z</em>, which is the array of depths at which
+the profile is to be evaluated.  It is guaranteed to be increasing, with
+step size 2*z[0].</p>
+<p>Initial values for the function parameters can be given using name=value.
+These values can be scalars or fitting parameters.  The function will
+be called with the current parameter values as arguments.  The layer
+thickness can be computed as <a class="reference internal" href="#refl1d.polymer.layer_thickness" title="refl1d.polymer.layer_thickness"><tt class="xref py py-func docutils literal"><span class="pre">layer_thickness()</span></tt></a>.</p>
+<dl class="method">
+<dt id="refl1d.polymer.VolumeProfile.constraints">
+<tt class="descname">constraints</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.polymer.VolumeProfile.constraints" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constraints</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.polymer.VolumeProfile.find">
+<tt class="descname">find</tt><big>(</big><em>z</em><big>)</big><a class="headerlink" href="#refl1d.polymer.VolumeProfile.find" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find the layer at depth z.</p>
+<p>Returns layer, start, end</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.polymer.VolumeProfile.parameters">
+<tt class="descname">parameters</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/polymer.html#VolumeProfile.parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.polymer.VolumeProfile.parameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.polymer.VolumeProfile.render">
+<tt class="descname">render</tt><big>(</big><em>probe</em>, <em>slabs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/polymer.html#VolumeProfile.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.polymer.VolumeProfile.render" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.polymer.layer_thickness">
+<tt class="descclassname">refl1d.polymer.</tt><tt class="descname">layer_thickness</tt><big>(</big><em>z</em><big>)</big><a class="reference internal" href="../_modules/refl1d/polymer.html#layer_thickness"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.polymer.layer_thickness" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the thickness of a layer given the microslab z points.</p>
+<p>The layer is sliced into bins of equal width, with the final
+bin making up the remainder.  The z values given to the profile
+function are the centers of these bins.  Using this, we can
+guess that the total layer thickness will be the following:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="mf">2</span><span class="o">*</span><span class="n">z</span><span class="p">[</span><span class="o">-</span><span class="mf">1</span><span class="p">]</span><span class="o">-</span><span class="n">z</span><span class="p">[</span><span class="o">-</span><span class="mf">2</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">z</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0</span> <span class="k">else</span> <span class="mf">2</span><span class="o">*</span><span class="n">z</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.polymer.smear">
+<tt class="descclassname">refl1d.polymer.</tt><tt class="descname">smear</tt><big>(</big><em>z</em>, <em>P</em>, <em>sigma</em><big>)</big><a class="reference internal" href="../_modules/refl1d/polymer.html#smear"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.polymer.smear" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gaussian smearing</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters :</th><td class="field-body"><dl class="first docutils">
+<dt><em>z</em> | vector</dt>
+<dd><p class="first last">equally spaced sample times</p>
+</dd>
+<dt><em>P</em> | vector</dt>
+<dd><p class="first last">sample values</p>
+</dd>
+<dt><em>sigma</em> | real</dt>
+<dd><p class="first last">root-mean-squared convolution width</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns :</th><td class="field-body"><dl class="first last docutils">
+<dt><em>Ps</em> | vector</dt>
+<dd><p class="first last">smeared sample values</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="partemp.html">refl1d.partemp - Parallel tempering optimizer</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="probe.html">refl1d.probe - Instrument probe</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

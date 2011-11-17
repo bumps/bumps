@@ -1,0 +1,293 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.dist - Non-uniform samples &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../index.html" />
+    <link rel="up" title="Reference" href="index.html" />
+    <link rel="next" title="refl1d.errors - Plot sample profile uncertainty" href="errors.html" />
+    <link rel="prev" title="refl1d.cli - Command line interface" href="cli.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.dist - Non-uniform samples</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="cli.html">refl1d.cli - Command line interface</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="errors.html">refl1d.errors - Plot sample profile uncertainty</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="refl1d-dist-non-uniform-samples">
+<h1>refl1d.dist - Non-uniform samples<a class="headerlink" href="#refl1d-dist-non-uniform-samples" title="Permalink to this headline">¶</a></h1>
+<table border="1" class="docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr><td><a class="reference internal" href="#refl1d.dist.DistributionExperiment" title="refl1d.dist.DistributionExperiment"><tt class="xref py py-obj docutils literal"><span class="pre">DistributionExperiment</span></tt></a></td>
+<td>Compute reflectivity from a non-uniform sample.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.dist.Weights" title="refl1d.dist.Weights"><tt class="xref py py-obj docutils literal"><span class="pre">Weights</span></tt></a></td>
+<td>Parameterized distribution for use in DistributionExperiment.</td>
+</tr>
+</tbody>
+</table>
+<span class="target" id="module-refl1d.dist"></span><p>Inhomogeneous samples</p>
+<p>In the presence of samples with short range order on scale of the coherence
+length of the probe in the plane, but long range disorder following some
+distribution of parameter values, the reflectivity can be computed from
+a weighted incoherent sum of the reflectivities for different values of
+the parameter.</p>
+<p>DistristributionExperiment allows the model to be computed for a single
+varying parameter.  Multi-parameter dispersion models are not available.</p>
+<dl class="class">
+<dt id="refl1d.dist.DistributionExperiment">
+<em class="property">class </em><tt class="descclassname">refl1d.dist.</tt><tt class="descname">DistributionExperiment</tt><big>(</big><em>experiment=None</em>, <em>P=None</em>, <em>distribution=None</em>, <em>coherent=False</em><big>)</big><a class="reference internal" href="../_modules/refl1d/dist.html#DistributionExperiment"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.dist.DistributionExperiment" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="experiment.html#refl1d.experiment.ExperimentBase" title="refl1d.experiment.ExperimentBase"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.experiment.ExperimentBase</span></tt></a></p>
+<p>Compute reflectivity from a non-uniform sample.</p>
+<p>The parameter <em>P</em> takes on the values from <em>distribution</em> in the
+context of <em>experiment</em>. Clearly, <em>P</em> should not be a fitted
+parameter, but the remaining experiment parameters can be fitted,
+as can the parameters of the distribution.</p>
+<p>If <em>coherent</em> is true, then the reflectivity of the mixture is computed
+from the coherent sum rather than the incoherent sum.</p>
+<p>See <a class="reference internal" href="#refl1d.dist.Weights" title="refl1d.dist.Weights"><tt class="xref py py-class docutils literal"><span class="pre">Weights</span></tt></a> for a description of how to set up the distribution.</p>
+<dl class="method">
+<dt id="refl1d.dist.DistributionExperiment.format_parameters">
+<tt class="descname">format_parameters</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.dist.DistributionExperiment.format_parameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.dist.DistributionExperiment.is_reset">
+<tt class="descname">is_reset</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.dist.DistributionExperiment.is_reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns True if a model reset was triggered.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.dist.DistributionExperiment.name">
+<tt class="descname">name</tt><a class="headerlink" href="#refl1d.dist.DistributionExperiment.name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.dist.DistributionExperiment.nllf">
+<tt class="descname">nllf</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.dist.DistributionExperiment.nllf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the -log(P(data|model)).</p>
+<p>Using the assumption that data uncertainty is uncorrelated, with
+measurements normally distributed with mean R and variance dR**2,
+this is just sum( resid**2/2 + log(2*pi*dR**2)/2 ).</p>
+<p>The current version drops the constant term, sum(log(2*pi*dR**2)/2).</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.dist.DistributionExperiment.numpoints">
+<tt class="descname">numpoints</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.dist.DistributionExperiment.numpoints" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.dist.DistributionExperiment.parameters">
+<tt class="descname">parameters</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/dist.html#DistributionExperiment.parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.dist.DistributionExperiment.parameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.dist.DistributionExperiment.plot">
+<tt class="descname">plot</tt><big>(</big><em>plot_shift=None</em>, <em>profile_shift=None</em><big>)</big><a class="headerlink" href="#refl1d.dist.DistributionExperiment.plot" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.dist.DistributionExperiment.plot_profile">
+<tt class="descname">plot_profile</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/dist.html#DistributionExperiment.plot_profile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.dist.DistributionExperiment.plot_profile" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.dist.DistributionExperiment.plot_reflectivity">
+<tt class="descname">plot_reflectivity</tt><big>(</big><em>show_resolution=False</em>, <em>view=None</em>, <em>plot_shift=None</em><big>)</big><a class="headerlink" href="#refl1d.dist.DistributionExperiment.plot_reflectivity" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.dist.DistributionExperiment.plot_weights">
+<tt class="descname">plot_weights</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/dist.html#DistributionExperiment.plot_weights"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.dist.DistributionExperiment.plot_weights" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.dist.DistributionExperiment.reflectivity">
+<tt class="descname">reflectivity</tt><big>(</big><em>resolution=True</em><big>)</big><a class="reference internal" href="../_modules/refl1d/dist.html#DistributionExperiment.reflectivity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.dist.DistributionExperiment.reflectivity" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.dist.DistributionExperiment.residuals">
+<tt class="descname">residuals</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.dist.DistributionExperiment.residuals" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.dist.DistributionExperiment.restore_data">
+<tt class="descname">restore_data</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.dist.DistributionExperiment.restore_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Restore original data after resynthesis.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.dist.DistributionExperiment.resynth_data">
+<tt class="descname">resynth_data</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.dist.DistributionExperiment.resynth_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resynthesize data with noise from the uncertainty estimates.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.dist.DistributionExperiment.save">
+<tt class="descname">save</tt><big>(</big><em>basename</em><big>)</big><a class="headerlink" href="#refl1d.dist.DistributionExperiment.save" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.dist.DistributionExperiment.save_profile">
+<tt class="descname">save_profile</tt><big>(</big><em>basename</em><big>)</big><a class="headerlink" href="#refl1d.dist.DistributionExperiment.save_profile" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.dist.DistributionExperiment.save_refl">
+<tt class="descname">save_refl</tt><big>(</big><em>basename</em><big>)</big><a class="headerlink" href="#refl1d.dist.DistributionExperiment.save_refl" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.dist.DistributionExperiment.simulate_data">
+<tt class="descname">simulate_data</tt><big>(</big><em>noise=2</em><big>)</big><a class="headerlink" href="#refl1d.dist.DistributionExperiment.simulate_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simulate a random data set for the model</p>
+<p><strong>Parameters:</strong></p>
+<dl class="docutils">
+<dt><em>noise</em> = 2 <span class="classifier-delimiter">:</span> <span class="classifier">float | %</span></dt>
+<dd>Percentage noise to add to the data.</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.dist.DistributionExperiment.smooth_profile">
+<tt class="descname">smooth_profile</tt><big>(</big><em>dz=1</em><big>)</big><a class="reference internal" href="../_modules/refl1d/dist.html#DistributionExperiment.smooth_profile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.dist.DistributionExperiment.smooth_profile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute a density profile for the material</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.dist.DistributionExperiment.step_profile">
+<tt class="descname">step_profile</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/dist.html#DistributionExperiment.step_profile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.dist.DistributionExperiment.step_profile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute a scattering length density profile</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.dist.DistributionExperiment.update">
+<tt class="descname">update</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.dist.DistributionExperiment.update" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when any parameter in the model is changed.</p>
+<p>This signals that the entire model needs to be recalculated.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.dist.DistributionExperiment.update_composition">
+<tt class="descname">update_composition</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.dist.DistributionExperiment.update_composition" title="Permalink to this definition">¶</a></dt>
+<dd><p>When the model composition has changed, we need to lookup the
+scattering factors for the new model.  This is only needed
+when an existing chemical formula is modified; new and
+deleted formulas will be handled automatically.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.dist.DistributionExperiment.write_data">
+<tt class="descname">write_data</tt><big>(</big><em>filename</em>, <em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.dist.DistributionExperiment.write_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save simulated data to a file</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="refl1d.dist.Weights">
+<em class="property">class </em><tt class="descclassname">refl1d.dist.</tt><tt class="descname">Weights</tt><big>(</big><em>edges=None</em>, <em>cdf=None</em>, <em>args=</em><span class="optional">[</span><span class="optional">]</span>, <em>loc=None</em>, <em>scale=None</em>, <em>truncated=True</em><big>)</big><a class="reference internal" href="../_modules/refl1d/dist.html#Weights"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.dist.Weights" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Parameterized distribution for use in DistributionExperiment.</p>
+<p>To support non-uniform experiments, we must bin the possible values
+for the parameter and compute the theory function for one parameter
+value per bin.  The weighted sum of the resulting theory functions
+is the value that we compare to the data.</p>
+<p>Performing this analysis requires a cumulative density function which
+can return the integrated value of the probability density from -inf
+to x.  The total density in each bin is then the difference between
+the cumulative densities at the edges.  If the distribution is wider
+than the range, then the tails need to be truncated and the bins
+reweighted to a total density of 1, or the tail density can be added
+to the first and last bins.  Weights of zero are not returned.  Note
+that if the tails are truncated, this may result in no weights being
+returned.</p>
+<p>The vector <em>edges</em> contains the bin edges for the distribution.  The
+function <em>cdf</em> returns the cumulative density function at the edges.
+The <em>cdf</em> function must implement the scipy.stats interface, with
+function signature f(x,a1,a2,...,loc=0,scale=1).  The list <em>args</em>
+defines the arguments a1, a2, etc.  The underlying parameters are
+available as args[i].  Similarly, <em>loc</em> and <em>scale</em> define the
+distribution center and width.  Use <em>truncated=False</em> if you want
+the distribution tails to be included in the weights.</p>
+<p>SciPy distribution D is used by specifying cdf=scipy.stats.D.cdf.
+Useful distributions include:</p>
+<div class="highlight-python"><pre>norm      Gaussian distribution.
+halfnorm  Right half of a gaussian.
+triang    Triangle distribution from loc up to loc+args[0]*scale
+          and down to loc+scale.  Use loc=edges[0], scale=edges[-1]
+          and args=[0.5] to define a symmetric triangle in the range
+          of parameter P.
+uniform   Flat from loc to loc+scale. Use loc=edges[0], scale=edges[-1]
+          to define P as uniform over the range.</pre>
+</div>
+<dl class="method">
+<dt id="refl1d.dist.Weights.parameters">
+<tt class="descname">parameters</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/dist.html#Weights.parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.dist.Weights.parameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="cli.html">refl1d.cli - Command line interface</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="errors.html">refl1d.errors - Plot sample profile uncertainty</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

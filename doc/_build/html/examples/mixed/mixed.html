@@ -1,0 +1,163 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Channel measurement &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../../index.html" />
+    <link rel="up" title="Composite sample" href="readme.html" />
+    <link rel="next" title="Superlattice Models" href="../superlattice/readme.html" />
+    <link rel="prev" title="Composite sample" href="readme.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>Channel measurement</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="readme.html">Composite sample</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="../superlattice/readme.html">Superlattice Models</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="channel-measurement">
+<h1>Channel measurement<a class="headerlink" href="#channel-measurement" title="Permalink to this headline">¶</a></h1>
+<p>In this example we will look at a nickel grating on a silicon substrate
+using specular reflectivity. When the spacing within the grating is
+sufficiently large, this can be modeled to first order as the incoherent sum
+of the reflectivity on the plateau and the reflectivity on the valley floor.
+By adjusting the weight of two reflectivities, we should be able to
+determine the ratio of plateau width to valley width.</p>
+<p>[<a class="reference external" href="../../plot_directive/inline/059ce42618.hires.png">hires.png</a>, <a class="reference external" href="../../plot_directive/inline/059ce42618.pdf">pdf</a>]</p>
+<img alt="../../_images/059ce42618.png" src="../../_images/059ce42618.png" />
+<p>Since silicon and air are defined, the only material we need to
+define is nickel.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">refl1d.names</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="n">nickel</span> <span class="o">=</span> <span class="n">Material</span><span class="p">(</span><span class="s">&#39;Ni&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We need two separate models, one with 1000 Å nickel and one without.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">plateau</span> <span class="o">=</span> <span class="n">silicon</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="mf">5</span><span class="p">)</span> <span class="o">|</span> <span class="n">nickel</span><span class="p">(</span><span class="mf">1000</span><span class="p">,</span><span class="mf">200</span><span class="p">)</span> <span class="o">|</span> <span class="n">air</span>
+<span class="n">valley</span> <span class="o">=</span> <span class="n">silicon</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="mf">5</span><span class="p">)</span> <span class="o">|</span> <span class="n">air</span>
+</pre></div>
+</div>
+<p>We need only one probe for simulation.  The reflectivity measured at
+the detector will be a mixture of those neutrons which reflect off
+the plateau and those that reflect off the valley.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">T</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span> <span class="mf">2</span><span class="p">,</span> <span class="mf">200</span><span class="p">)</span>
+<span class="n">probe</span> <span class="o">=</span> <span class="n">NeutronProbe</span><span class="p">(</span><span class="n">T</span><span class="o">=</span><span class="n">T</span><span class="p">,</span> <span class="n">dT</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">L</span><span class="o">=</span><span class="mf">4.75</span><span class="p">,</span> <span class="n">dL</span><span class="o">=</span><span class="mf">0.0475</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We are going to start with a 1:1 ratio of plateau to valley and create
+a simulated data set.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">M</span> <span class="o">=</span> <span class="n">MixedExperiment</span><span class="p">(</span><span class="n">samples</span><span class="o">=</span><span class="p">[</span><span class="n">plateau</span><span class="p">,</span><span class="n">valley</span><span class="p">],</span> <span class="n">probe</span><span class="o">=</span><span class="n">probe</span><span class="p">,</span> <span class="n">ratio</span><span class="o">=</span><span class="p">[</span><span class="mf">1</span><span class="p">,</span><span class="mf">1</span><span class="p">])</span>
+<span class="n">M</span><span class="o">.</span><span class="n">simulate_data</span><span class="p">(</span><span class="mf">5</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We will assume the silicon interface is the same for the valley as the
+plateau, which depending on the how the sample is constructed, may or
+may not be realistic.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">valley</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="o">.</span><span class="n">interface</span> <span class="o">=</span> <span class="n">plateau</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="o">.</span><span class="n">interface</span>
+</pre></div>
+</div>
+<p>We will want to fit the thicknesses and interfaces as usual.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">plateau</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="o">.</span><span class="n">interface</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="mf">200</span><span class="p">)</span>
+<span class="n">plateau</span><span class="p">[</span><span class="mf">1</span><span class="p">]</span><span class="o">.</span><span class="n">interface</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="mf">200</span><span class="p">)</span>
+<span class="n">plateau</span><span class="p">[</span><span class="mf">1</span><span class="p">]</span><span class="o">.</span><span class="n">thickness</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="mf">200</span><span class="p">,</span><span class="mf">1800</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The ratio between the valley and the plateau can also be fit, either
+by fixing size of the plateau and fitting the size of the valley or
+fixing the size of the valley and fitting the size of the plateau.  We
+will hold the plateau fixed.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">M</span><span class="o">.</span><span class="n">ratio</span><span class="p">[</span><span class="mf">1</span><span class="p">]</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="mf">5</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Note that we could include a second order effect by including a
+hillside term with the same height as the plateau but using a
+50:50 mixture of air and nickel.  In this case we would have three
+entries in the ratio.</p>
+<p>We wrap this as a fit problem as usual.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">problem</span> <span class="o">=</span> <span class="n">FitProblem</span><span class="p">(</span><span class="n">M</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This complete model script is defined in
+<a class="reference download internal" href="../../_downloads/mixed.py"><tt class="xref download docutils literal"><span class="pre">mixed.py</span></tt></a>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">refl1d.names</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="n">nickel</span> <span class="o">=</span> <span class="n">Material</span><span class="p">(</span><span class="s">&#39;Ni&#39;</span><span class="p">)</span>
+
+<span class="n">plateau</span> <span class="o">=</span> <span class="n">silicon</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="mf">5</span><span class="p">)</span> <span class="o">|</span> <span class="n">nickel</span><span class="p">(</span><span class="mf">1000</span><span class="p">,</span><span class="mf">200</span><span class="p">)</span> <span class="o">|</span> <span class="n">air</span>
+<span class="n">valley</span> <span class="o">=</span> <span class="n">silicon</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="mf">5</span><span class="p">)</span> <span class="o">|</span> <span class="n">air</span>
+
+<span class="n">T</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span> <span class="mf">2</span><span class="p">,</span> <span class="mf">200</span><span class="p">)</span>
+<span class="n">probe</span> <span class="o">=</span> <span class="n">NeutronProbe</span><span class="p">(</span><span class="n">T</span><span class="o">=</span><span class="n">T</span><span class="p">,</span> <span class="n">dT</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">L</span><span class="o">=</span><span class="mf">4.75</span><span class="p">,</span> <span class="n">dL</span><span class="o">=</span><span class="mf">0.0475</span><span class="p">)</span>
+
+<span class="n">M</span> <span class="o">=</span> <span class="n">MixedExperiment</span><span class="p">(</span><span class="n">samples</span><span class="o">=</span><span class="p">[</span><span class="n">plateau</span><span class="p">,</span><span class="n">valley</span><span class="p">],</span> <span class="n">probe</span><span class="o">=</span><span class="n">probe</span><span class="p">,</span> <span class="n">ratio</span><span class="o">=</span><span class="p">[</span><span class="mf">1</span><span class="p">,</span><span class="mf">1</span><span class="p">])</span>
+<span class="n">M</span><span class="o">.</span><span class="n">simulate_data</span><span class="p">(</span><span class="mf">5</span><span class="p">)</span>
+
+<span class="n">valley</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="o">.</span><span class="n">interface</span> <span class="o">=</span> <span class="n">plateau</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="o">.</span><span class="n">interface</span>
+
+<span class="n">plateau</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="o">.</span><span class="n">interface</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="mf">200</span><span class="p">)</span>
+<span class="n">plateau</span><span class="p">[</span><span class="mf">1</span><span class="p">]</span><span class="o">.</span><span class="n">interface</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="mf">200</span><span class="p">)</span>
+<span class="n">plateau</span><span class="p">[</span><span class="mf">1</span><span class="p">]</span><span class="o">.</span><span class="n">thickness</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="mf">200</span><span class="p">,</span><span class="mf">1800</span><span class="p">)</span>
+
+<span class="n">M</span><span class="o">.</span><span class="n">ratio</span><span class="p">[</span><span class="mf">1</span><span class="p">]</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="mf">5</span><span class="p">)</span>
+
+<span class="n">problem</span> <span class="o">=</span> <span class="n">FitProblem</span><span class="p">(</span><span class="n">M</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can test how well the fitter can recover the original model
+by running refl1d with &#8211;random:</p>
+<div class="highlight-python"><pre>$ refl1d mixed.py --random --store=T1</pre>
+</div>
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="readme.html">Composite sample</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="../superlattice/readme.html">Superlattice Models</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

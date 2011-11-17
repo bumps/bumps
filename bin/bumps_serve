@@ -1,0 +1,9 @@
+#!/usr/bin/env python
+"""
+Debug server for the bumps fit infrastructure.
+"""
+
+from jobqueue.serve import serve
+serve()
+
+

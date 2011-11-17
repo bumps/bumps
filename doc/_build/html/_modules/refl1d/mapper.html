@@ -1,0 +1,178 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.mapper &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.mapper</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for refl1d.mapper</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">deepcopy</span>
+
+<span class="c">## {{{ http://code.activestate.com/recipes/496767/ (r1)</span>
+<span class="c">## Converted to use ctypes by Paul Kienzle</span>
+<div class="viewcode-block" id="setpriority"><a class="viewcode-back" href="../../api/mapper.html#refl1d.mapper.setpriority">[docs]</a><span class="k">def</span> <span class="nf">setpriority</span><span class="p">(</span><span class="n">pid</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span><span class="n">priority</span><span class="o">=</span><span class="mf">1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Set The Priority of a Windows Process.  Priority is a value between 0-5</span>
+<span class="sd">    where 2 is normal priority and 5 is maximum.  Default sets the priority</span>
+<span class="sd">    of the current python process but can take any valid process ID.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c">#import win32api,win32process,win32con</span>
+    <span class="kn">from</span> <span class="nn">ctypes</span> <span class="kn">import</span> <span class="n">windll</span>
+
+    <span class="n">priorityclasses</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0</span><span class="n">x40</span><span class="p">,</span>   <span class="c"># IDLE_PRIORITY_CLASS,</span>
+                       <span class="mf">0</span><span class="n">x4000</span><span class="p">,</span> <span class="c"># BELOW_NORMAL_PRIORITY_CLASS,</span>
+                       <span class="mf">0</span><span class="n">x20</span><span class="p">,</span>   <span class="c"># NORMAL_PRIORITY_CLASS,</span>
+                       <span class="mf">0</span><span class="n">x8000</span><span class="p">,</span> <span class="c"># ABOVE_NORMAL_PRIORITY_CLASS,</span>
+                       <span class="mf">0</span><span class="n">x80</span><span class="p">,</span>   <span class="c"># HIGH_PRIORITY_CLASS,</span>
+                       <span class="mf">0</span><span class="n">x100</span><span class="p">,</span>  <span class="c"># REALTIME_PRIORITY_CLASS</span>
+                       <span class="p">]</span>
+    <span class="k">if</span> <span class="n">pid</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">pid</span> <span class="o">=</span> <span class="n">windll</span><span class="o">.</span><span class="n">kernel32</span><span class="o">.</span><span class="n">GetCurrentProcessId</span><span class="p">()</span>
+    <span class="n">PROCESS_ALL_ACCESS</span> <span class="o">=</span> <span class="mf">0</span><span class="n">x1F0FFF</span>
+    <span class="n">handle</span> <span class="o">=</span> <span class="n">windll</span><span class="o">.</span><span class="n">kernel32</span><span class="o">.</span><span class="n">OpenProcess</span><span class="p">(</span><span class="n">PROCESS_ALL_ACCESS</span><span class="p">,</span> <span class="bp">True</span><span class="p">,</span> <span class="n">pid</span><span class="p">)</span>
+    <span class="n">windll</span><span class="o">.</span><span class="n">kernel32</span><span class="o">.</span><span class="n">SetPriorityClass</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="n">priorityclasses</span><span class="p">[</span><span class="n">priority</span><span class="p">])</span>
+<span class="c">## end of http://code.activestate.com/recipes/496767/ }}}</span></div>
+<div class="viewcode-block" id="nice"><a class="viewcode-back" href="../../api/mapper.html#refl1d.mapper.nice">[docs]</a><span class="k">def</span> <span class="nf">nice</span><span class="p">():</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s">&#39;nt&#39;</span><span class="p">:</span>
+        <span class="n">setpriority</span><span class="p">(</span><span class="n">priority</span><span class="o">=</span><span class="mf">1</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">nice</span><span class="p">(</span><span class="mf">5</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="SerialMapper"><a class="viewcode-back" href="../../api/mapper.html#refl1d.mapper.SerialMapper">[docs]</a><span class="k">class</span> <span class="nc">SerialMapper</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="SerialMapper.start_worker"><a class="viewcode-back" href="../../api/mapper.html#refl1d.mapper.SerialMapper.start_worker">[docs]</a>    <span class="k">def</span> <span class="nf">start_worker</span><span class="p">(</span><span class="n">problem</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="SerialMapper.start_mapper"><a class="viewcode-back" href="../../api/mapper.html#refl1d.mapper.SerialMapper.start_mapper">[docs]</a>    <span class="k">def</span> <span class="nf">start_mapper</span><span class="p">(</span><span class="n">problem</span><span class="p">,</span> <span class="n">modelargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="k">lambda</span> <span class="n">points</span><span class="p">:</span> <span class="nb">map</span><span class="p">(</span><span class="n">problem</span><span class="o">.</span><span class="n">nllf</span><span class="p">,</span> <span class="n">points</span><span class="p">)</span></div>
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="SerialMapper.stop_mapper"><a class="viewcode-back" href="../../api/mapper.html#refl1d.mapper.SerialMapper.stop_mapper">[docs]</a>    <span class="k">def</span> <span class="nf">stop_mapper</span><span class="p">(</span><span class="n">mapper</span><span class="p">):</span>
+        <span class="k">pass</span>
+</div></div>
+<span class="k">def</span> <span class="nf">_MP_set_problem</span><span class="p">(</span><span class="n">problem</span><span class="p">):</span>
+    <span class="k">global</span> <span class="n">_problem</span>
+    <span class="n">nice</span><span class="p">()</span>
+    <span class="n">_problem</span> <span class="o">=</span> <span class="n">problem</span>
+<span class="k">def</span> <span class="nf">_MP_run_problem</span><span class="p">(</span><span class="n">point</span><span class="p">):</span>
+    <span class="k">global</span> <span class="n">_problem</span>
+    <span class="k">return</span> <span class="n">_problem</span><span class="o">.</span><span class="n">nllf</span><span class="p">(</span><span class="n">point</span><span class="p">)</span>
+<div class="viewcode-block" id="MPMapper"><a class="viewcode-back" href="../../api/mapper.html#refl1d.mapper.MPMapper">[docs]</a><span class="k">class</span> <span class="nc">MPMapper</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="MPMapper.start_worker"><a class="viewcode-back" href="../../api/mapper.html#refl1d.mapper.MPMapper.start_worker">[docs]</a>    <span class="k">def</span> <span class="nf">start_worker</span><span class="p">(</span><span class="n">problem</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="MPMapper.start_mapper"><a class="viewcode-back" href="../../api/mapper.html#refl1d.mapper.MPMapper.start_mapper">[docs]</a>    <span class="k">def</span> <span class="nf">start_mapper</span><span class="p">(</span><span class="n">problem</span><span class="p">,</span> <span class="n">modelargs</span><span class="p">,</span> <span class="n">cpus</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">multiprocessing</span>
+        <span class="k">if</span> <span class="n">cpus</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">cpus</span> <span class="o">=</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span>
+        <span class="n">pool</span> <span class="o">=</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">Pool</span><span class="p">(</span><span class="n">cpus</span><span class="p">,</span><span class="n">_MP_set_problem</span><span class="p">,(</span><span class="n">problem</span><span class="p">,))</span>
+        <span class="n">mapper</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">points</span><span class="p">:</span> <span class="n">pool</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">_MP_run_problem</span><span class="p">,</span> <span class="n">points</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">mapper</span></div>
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="MPMapper.stop_mapper"><a class="viewcode-back" href="../../api/mapper.html#refl1d.mapper.MPMapper.stop_mapper">[docs]</a>    <span class="k">def</span> <span class="nf">stop_mapper</span><span class="p">(</span><span class="n">mapper</span><span class="p">):</span>
+        <span class="k">pass</span>
+</div></div>
+<div class="viewcode-block" id="AMQPMapper"><a class="viewcode-back" href="../../api/mapper.html#refl1d.mapper.AMQPMapper">[docs]</a><span class="k">class</span> <span class="nc">AMQPMapper</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="AMQPMapper.start_worker"><a class="viewcode-back" href="../../api/mapper.html#refl1d.mapper.AMQPMapper.start_worker">[docs]</a>    <span class="k">def</span> <span class="nf">start_worker</span><span class="p">(</span><span class="n">problem</span><span class="p">):</span>
+        <span class="c">#sys.stderr = open(&quot;dream-%d.log&quot;%os.getpid(),&quot;w&quot;)</span>
+        <span class="c">#print &gt;&gt;sys.stderr,&quot;worker is starting&quot;; sys.stdout.flush()</span>
+        <span class="kn">from</span> <span class="nn">amqp_map.config</span> <span class="kn">import</span> <span class="n">SERVICE_HOST</span>
+        <span class="kn">from</span> <span class="nn">amqp_map.core</span> <span class="kn">import</span> <span class="n">connect</span><span class="p">,</span> <span class="n">start_worker</span> <span class="k">as</span> <span class="n">serve</span>
+        <span class="n">server</span> <span class="o">=</span> <span class="n">connect</span><span class="p">(</span><span class="n">SERVICE_HOST</span><span class="p">)</span>
+        <span class="c">#os.system(&quot;echo &#39;serving&#39; &gt; /tmp/map.%d&quot;%(os.getpid()))</span>
+        <span class="c">#print &quot;worker is serving&quot;; sys.stdout.flush()</span>
+        <span class="n">serve</span><span class="p">(</span><span class="n">server</span><span class="p">,</span> <span class="s">&quot;dream&quot;</span><span class="p">,</span> <span class="n">problem</span><span class="o">.</span><span class="n">nllf</span><span class="p">)</span>
+        <span class="c">#print &gt;&gt;sys.stderr,&quot;worker ended&quot;; sys.stdout.flush()</span>
+</div>
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="AMQPMapper.start_mapper"><a class="viewcode-back" href="../../api/mapper.html#refl1d.mapper.AMQPMapper.start_mapper">[docs]</a>    <span class="k">def</span> <span class="nf">start_mapper</span><span class="p">(</span><span class="n">problem</span><span class="p">,</span> <span class="n">modelargs</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">multiprocessing</span>
+        <span class="kn">from</span> <span class="nn">amqp_map.config</span> <span class="kn">import</span> <span class="n">SERVICE_HOST</span>
+        <span class="kn">from</span> <span class="nn">amqp_map.core</span> <span class="kn">import</span> <span class="n">connect</span><span class="p">,</span> <span class="n">Mapper</span>
+
+        <span class="n">server</span> <span class="o">=</span> <span class="n">connect</span><span class="p">(</span><span class="n">SERVICE_HOST</span><span class="p">)</span>
+        <span class="n">mapper</span> <span class="o">=</span> <span class="n">Mapper</span><span class="p">(</span><span class="n">server</span><span class="p">,</span> <span class="s">&quot;dream&quot;</span><span class="p">)</span>
+        <span class="n">cpus</span> <span class="o">=</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span>
+        <span class="n">pipes</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">cpus</span><span class="p">):</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mf">0</span><span class="p">],</span> <span class="s">&quot;--worker&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">modelargs</span>
+            <span class="c">#print &quot;starting&quot;,sys.argv[0],&quot;in&quot;,os.getcwd(),&quot;with&quot;,cmd</span>
+            <span class="n">pipe</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">universal_newlines</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+                                <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">)</span>
+            <span class="n">pipes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pipe</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">pipe</span> <span class="ow">in</span> <span class="n">pipes</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">pipe</span><span class="o">.</span><span class="n">poll</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mf">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s">&quot;subprocess returned </span><span class="si">%d</span><span class="se">\n</span><span class="s">out: </span><span class="si">%s</span><span class="se">\n</span><span class="s">err: </span><span class="si">%s</span><span class="s">&quot;</span>
+                                   <span class="o">%</span> <span class="p">(</span><span class="n">pipe</span><span class="o">.</span><span class="n">returncode</span><span class="p">,</span> <span class="n">pipe</span><span class="o">.</span><span class="n">stdout</span><span class="p">,</span> <span class="n">pipe</span><span class="o">.</span><span class="n">stderr</span><span class="p">))</span>
+        <span class="c">#os.system(&quot; &quot;.join(cmd+[&quot;&amp;&quot;]))</span>
+        <span class="kn">import</span> <span class="nn">atexit</span>
+        <span class="k">def</span> <span class="nf">exit_fun</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">pipes</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span>
+        <span class="n">atexit</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">exit_fun</span><span class="p">)</span>
+
+        <span class="c">#print &quot;returning mapper&quot;,mapper</span>
+        <span class="k">return</span> <span class="n">mapper</span>
+</div>
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="AMQPMapper.stop_mapper"><a class="viewcode-back" href="../../api/mapper.html#refl1d.mapper.AMQPMapper.stop_mapper">[docs]</a>    <span class="k">def</span> <span class="nf">stop_mapper</span><span class="p">(</span><span class="n">mapper</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">pipe</span> <span class="ow">in</span> <span class="n">mapper</span><span class="o">.</span><span class="n">pipes</span><span class="p">:</span>
+            <span class="n">pipe</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span></div></div>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

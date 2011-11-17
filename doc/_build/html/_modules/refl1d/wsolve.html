@@ -1,0 +1,494 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.wsolve &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.wsolve</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for refl1d.wsolve</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Solve a potentially over-determined system with uncertainty in</span>
+<span class="sd">the values.</span>
+
+<span class="sd">Given: A x = y +/- dy</span>
+<span class="sd">Use:   s = wsolve(A,y,dy)</span>
+
+<span class="sd">wsolve uses the singular value decomposition for increased accuracy.</span>
+<span class="sd">Estimates the uncertainty for the solution from the scatter in the data.</span>
+
+<span class="sd">The returned model object s provides:</span>
+
+<span class="sd">    s.x      solution</span>
+<span class="sd">    s.std    uncertainty estimate assuming no correlation</span>
+<span class="sd">    s.rnorm  residual norm</span>
+<span class="sd">    s.DoF    degrees of freedom</span>
+<span class="sd">    s.cov    covariance matrix</span>
+<span class="sd">    s.ci(p)  confidence intervals at point p</span>
+<span class="sd">    s.pi(p)  prediction intervals at point p</span>
+<span class="sd">    s(p)     predicted value at point p</span>
+
+<span class="sd">Example</span>
+<span class="sd">=======</span>
+
+<span class="sd">Weighted system::</span>
+
+<span class="sd">    import numpy,wsolve</span>
+<span class="sd">    A = numpy.matrix(&quot;1,2,3;2,1,3;1,1,1&quot;,&#39;d&#39;).A</span>
+<span class="sd">    xin = numpy.array([1,2,3],&#39;d&#39;)</span>
+<span class="sd">    dy = numpy.array([0.2,0.01,0.1])</span>
+<span class="sd">    y = numpy.random.normal(numpy.dot(A,xin),dy)</span>
+<span class="sd">    print A,y,dy</span>
+<span class="sd">    s = wsolve.wsolve(A,y,dy)</span>
+<span class="sd">    print &quot;xin,x,dx&quot;, xin, s.x, s.std</span>
+
+<span class="sd">Note there is a counter-intuitive result that scaling the estimated</span>
+<span class="sd">uncertainty in the data does not affect the computed uncertainty in</span>
+<span class="sd">the fit.  This is the correct result --- if the data were indeed</span>
+<span class="sd">selected from a process with ten times the uncertainty, you would</span>
+<span class="sd">expect the scatter in the data to increase by a factor of ten as</span>
+<span class="sd">well.  When this new data set is fitted, it will show a computed</span>
+<span class="sd">uncertainty increased by the same factor.  Monte carlo simulations</span>
+<span class="sd">bear this out.  The conclusion is that the dataset carries its own</span>
+<span class="sd">information about the variance in the data, and the weight vector</span>
+<span class="sd">serves only to provide relative weighting between the points.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c"># FIXME: test second example</span>
+<span class="c">#</span>
+<span class="c"># Example 2: weighted overdetermined system  y = x1 + 2*x2 + 3*x3 + e</span>
+<span class="c">#</span>
+<span class="c">#    A = fullfact([3,3,3]); xin=[1;2;3];</span>
+<span class="c">#    y = A*xin; dy = rand(size(y))/50; y+=dy.*randn(size(y));</span>
+<span class="c">#    [x,s] = wsolve(A,y,dy);</span>
+<span class="c">#    dx = s.normr*sqrt(sumsq(inv(s.R&#39;))&#39;/s.df);</span>
+<span class="c">#    res = [xin, x, dx]</span>
+
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">N</span>
+
+<span class="c"># Grab erfc from scipy if it is available; if not then we can only</span>
+<span class="c"># calculate confidence intervals for sigma = 1</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">stats</span>
+    <span class="kn">from</span> <span class="nn">scipy.special</span> <span class="kn">import</span> <span class="n">erfc</span>
+<span class="k">except</span><span class="p">:</span>
+    <span class="c"># If scipy is missing we will not be able to calculate confidence</span>
+    <span class="c"># intervals or prediction intervals.</span>
+    <span class="k">pass</span>
+
+<div class="viewcode-block" id="LinearModel"><a class="viewcode-back" href="../../api/wsolve.html#refl1d.wsolve.LinearModel">[docs]</a><span class="k">class</span> <span class="nc">LinearModel</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Model evaluator for linear solution to Ax = y.</span>
+
+<span class="sd">    Computes a confidence interval (range of likely values for the</span>
+<span class="sd">    mean at x) or a prediction interval (range of likely values</span>
+<span class="sd">    seen when measuring at x).  The prediction interval tells</span>
+<span class="sd">    you the width of the distribution at x.  This should be the same</span>
+<span class="sd">    regardless of the number of measurements you have for the value</span>
+<span class="sd">    at x.  The confidence interval tells you how well you know the</span>
+<span class="sd">    mean at x.  It should get smaller as you increase the number of</span>
+<span class="sd">    measurements.  Error bars in the physical sciences usually show</span>
+<span class="sd">    a 1-alpha confidence value of erfc(1/sqrt(2)), representing</span>
+<span class="sd">    a 1-sigma standandard deviation of uncertainty in the mean.</span>
+
+<span class="sd">    Confidence intervals for linear system are given by::</span>
+
+<span class="sd">        x&#39; p +/- sqrt( Finv(1-a,1,df) var(x&#39; p) )</span>
+
+<span class="sd">    where for confidence intervals::</span>
+
+<span class="sd">        var(x&#39; p) = sigma^2 (x&#39; inv(A&#39;A) x)</span>
+
+<span class="sd">    and for prediction intervals::</span>
+
+<span class="sd">        var(x&#39; p) = sigma^2 (1 + x&#39; inv(A&#39;A) x)</span>
+
+
+<span class="sd">    Stored properties::</span>
+
+<span class="sd">        DoF = len(y)-len(x) = degrees of freedom</span>
+<span class="sd">        rnorm = 2-norm of the residuals y-Ax</span>
+<span class="sd">        x = solution to the equation Ax = y</span>
+
+<span class="sd">    Computed properties::</span>
+
+<span class="sd">        cov = covariance matrix [ inv(A&#39;A); O(n^3) ]</span>
+<span class="sd">        var = parameter variance [ diag(cov); O(n^2)]</span>
+<span class="sd">        std = standard deviation of parameters [ sqrt(var); O(n^2) ]</span>
+<span class="sd">        p = test statistic for chisquare goodness of fit [ chi2.sf; O(1) ]</span>
+
+<span class="sd">    Methods::</span>
+
+<span class="sd">        ci(A,sigma=1):  return confidence interval evaluated at A</span>
+<span class="sd">        pi(A,alpha=0.05):  return prediction interval evaluated at A</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">DoF</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">SVinv</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">rnorm</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c"># V,S where USV&#39; = A</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">x</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">DoF</span> <span class="o">=</span> <span class="n">DoF</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rnorm</span> <span class="o">=</span> <span class="n">rnorm</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_SVinv</span> <span class="o">=</span> <span class="n">SVinv</span>
+
+    <span class="c"># covariance matrix invC = A&#39;A  = (USV&#39;)&#39;USV&#39; = VSU&#39;USV&#39; = VSSV&#39;</span>
+    <span class="c"># C = inv(A&#39;A) = inv(VSSV&#39;) = inv(V&#39;)inv(SS)inv(V) = Vinv(SS)V&#39;</span>
+    <span class="c"># diag(inv(A&#39;A)) is sum of the squares of the columns inv(S) V&#39;</span>
+    <span class="c"># and is also the sum of the squares of the rows of V inv(S)</span>
+    <span class="k">def</span> <span class="nf">_cov</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># FIXME: don&#39;t know if we need to scale by C, but it will</span>
+        <span class="c"># at least make things consistent</span>
+        <span class="n">C</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rnorm</span><span class="o">**</span><span class="mf">2</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">DoF</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">DoF</span><span class="o">&gt;</span><span class="mf">0</span> <span class="k">else</span> <span class="mf">1</span>
+        <span class="k">return</span> <span class="n">C</span> <span class="o">*</span> <span class="n">N</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_SVinv</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">_SVinv</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_var</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">C</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rnorm</span><span class="o">**</span><span class="mf">2</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">DoF</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">DoF</span><span class="o">&gt;</span><span class="mf">0</span> <span class="k">else</span> <span class="mf">1</span>
+        <span class="k">return</span> <span class="n">C</span> <span class="o">*</span> <span class="n">N</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_SVinv</span><span class="o">**</span><span class="mf">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mf">1</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_std</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">N</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_var</span><span class="p">())</span>
+    <span class="k">def</span> <span class="nf">_p</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">stats</span>
+        <span class="k">return</span> <span class="n">stats</span><span class="o">.</span><span class="n">chi2</span><span class="o">.</span><span class="n">sf</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rnorm</span><span class="o">**</span><span class="mf">2</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">DoF</span><span class="p">)</span>
+
+    <span class="n">cov</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">_cov</span><span class="p">,</span><span class="n">doc</span><span class="o">=</span><span class="s">&quot;covariance matrix&quot;</span><span class="p">)</span>
+    <span class="n">var</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">_var</span><span class="p">,</span><span class="n">doc</span><span class="o">=</span><span class="s">&quot;result variance&quot;</span><span class="p">)</span>
+    <span class="n">std</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">_std</span><span class="p">,</span><span class="n">doc</span><span class="o">=</span><span class="s">&quot;result standard deviation&quot;</span><span class="p">)</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">_p</span><span class="p">,</span><span class="n">doc</span><span class="o">=</span><span class="s">&quot;probability of rejection&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_interval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">X</span><span class="p">,</span><span class="n">alpha</span><span class="p">,</span><span class="n">pred</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Helper for computing prediction/confidence intervals.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c"># Comments from QR decomposition solution to Ax = y:</span>
+        <span class="c">#</span>
+        <span class="c">#   Rather than A&#39;A we have R from the QR decomposition of A, but</span>
+        <span class="c">#   R&#39;R equals A&#39;A.  Note that R is not upper triangular since we</span>
+        <span class="c">#   have already multiplied it by the permutation matrix, but it</span>
+        <span class="c">#   is invertible.  Rather than forming the product R&#39;R which is</span>
+        <span class="c">#   ill-conditioned, we can rewrite x&#39; inv(A&#39;A) x as the equivalent</span>
+        <span class="c">#      x&#39; inv(R) inv(R&#39;) x = t t&#39;, for t = x&#39; inv(R)</span>
+        <span class="c">#</span>
+        <span class="c"># We have since switched to an SVD solver, which gives us</span>
+        <span class="c">#</span>
+        <span class="c">#    invC = A&#39;A  = (USV&#39;)&#39;USV&#39; = VSU&#39;USV&#39; = VSSV&#39;</span>
+        <span class="c">#    C = inv(A&#39;A) = inv(VSSV&#39;) = inv(V&#39;)inv(SS)inv(V)</span>
+        <span class="c">#      = Vinv(SS)V&#39; = Vinv(S) inv(S)V&#39;</span>
+        <span class="c">#</span>
+        <span class="c"># Substituting, we get</span>
+        <span class="c">#</span>
+        <span class="c">#    x&#39; inv(A&#39;A) x = t t&#39;, for t = x&#39; Vinv(S)</span>
+        <span class="c">#</span>
+        <span class="c"># Since x is a vector, t t&#39; is the inner product sum(t**2).</span>
+        <span class="c"># Note that LAPACK allows us to do this simultaneously for many</span>
+        <span class="c"># different x using sqrt(sum(T**2,axis=1)), with T = X&#39; Vinv(S).</span>
+        <span class="c">#</span>
+        <span class="c"># Note: sqrt(F(1-a;1,df)) = T(1-a/2;df)</span>
+        <span class="c">#</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">X</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">t</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mf">1</span><span class="o">-</span><span class="n">alpha</span><span class="o">/</span><span class="mf">2</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">DoF</span><span class="p">)</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">rnorm</span><span class="o">/</span><span class="n">N</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">DoF</span><span class="p">)</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">X</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">_SVinv</span><span class="p">)</span>
+        <span class="n">dy</span> <span class="o">=</span> <span class="n">s</span><span class="o">*</span><span class="n">N</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">pred</span> <span class="o">+</span> <span class="n">N</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span> <span class="n">t</span><span class="o">**</span><span class="mf">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mf">1</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">y</span><span class="p">,</span><span class="n">dy</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the prediction for a linear system at points in the</span>
+<span class="sd">        rows of A.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">N</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">A</span><span class="p">),</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+
+<div class="viewcode-block" id="LinearModel.ci"><a class="viewcode-back" href="../../api/wsolve.html#refl1d.wsolve.LinearModel.ci">[docs]</a>    <span class="k">def</span> <span class="nf">ci</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute the calculated values and the confidence intervals</span>
+<span class="sd">        for the linear model evaluated at A.</span>
+
+<span class="sd">        sigma=1 corresponds to a 1-sigma confidence interval</span>
+
+<span class="sd">        Confidence intervals are sometimes expressed as 1-alpha values,</span>
+<span class="sd">        where alpha = erfc(sigma/sqrt(2)).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">alpha</span> <span class="o">=</span> <span class="n">erfc</span><span class="p">(</span><span class="n">sigma</span><span class="o">/</span><span class="n">N</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">2</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interval</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">A</span><span class="p">),</span><span class="n">alpha</span><span class="p">,</span><span class="mf">0</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="LinearModel.pi"><a class="viewcode-back" href="../../api/wsolve.html#refl1d.wsolve.LinearModel.pi">[docs]</a>    <span class="k">def</span> <span class="nf">pi</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="mf">0.05</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute the calculated values and the prediction intervals</span>
+<span class="sd">        for the linear model evaluated at A.</span>
+
+<span class="sd">        p = 1-alpha = 0.05 corresponds to 95% prediction interval</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interval</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">A</span><span class="p">),</span><span class="n">p</span><span class="p">,</span><span class="mf">1</span><span class="p">)</span>
+</div></div>
+<div class="viewcode-block" id="wsolve"><a class="viewcode-back" href="../../api/wsolve.html#refl1d.wsolve.wsolve">[docs]</a><span class="k">def</span> <span class="nf">wsolve</span><span class="p">(</span><span class="n">A</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">dy</span><span class="o">=</span><span class="mf">1</span><span class="p">,</span><span class="n">rcond</span><span class="o">=</span><span class="mf">1e-12</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given a linear system y = A*x + e(dy), estimates x,dx</span>
+
+<span class="sd">    A is an n x m array</span>
+<span class="sd">    y is an n x k array or vector of length n</span>
+<span class="sd">    dy is a scalar or an n x 1 array</span>
+<span class="sd">    x is a m x k array</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c"># The ugliness v[:,N.newaxis] transposes a vector</span>
+    <span class="c"># The ugliness N.dot(a,b) is a*b for a,b matrices</span>
+    <span class="c"># The ugliness vh.T.conj() is the hermitian transpose</span>
+
+    <span class="c"># Make sure inputs are arrays</span>
+    <span class="n">A</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">dy</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">A</span><span class="p">),</span><span class="n">N</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">y</span><span class="p">),</span><span class="n">N</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">dy</span><span class="p">)</span>
+    <span class="n">result_dims</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">ndim</span>
+    <span class="k">if</span> <span class="n">dy</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mf">1</span><span class="p">:</span> <span class="n">dy</span> <span class="o">=</span> <span class="n">dy</span><span class="p">[:,</span><span class="n">N</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">y</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mf">1</span><span class="p">:</span> <span class="n">y</span> <span class="o">=</span> <span class="n">y</span><span class="p">[:,</span><span class="n">N</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+
+    <span class="c"># Apply weighting if dy is not a scalar</span>
+    <span class="c"># If dy is a scalar, it cancels out of both sides of the equation</span>
+    <span class="c"># Note: with A,dy arrays instead of matrices, A/dy operates element-wise</span>
+    <span class="c"># Since dy is a row vector, this divides each row of A by the corresponding</span>
+    <span class="c"># element of dy.</span>
+    <span class="k">if</span> <span class="n">dy</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mf">2</span><span class="p">:</span>  <span class="n">A</span><span class="p">,</span><span class="n">y</span> <span class="o">=</span> <span class="n">A</span><span class="o">/</span><span class="n">dy</span><span class="p">,</span><span class="n">y</span><span class="o">/</span><span class="n">dy</span>
+
+    <span class="c"># Singular value decomposition: A = U S V.H</span>
+    <span class="c"># Since A is an array, U, S, VH are also arrays</span>
+    <span class="c"># The zero indicates an economy decomposition, with u nxm rathern than nxn</span>
+    <span class="n">u</span><span class="p">,</span><span class="n">s</span><span class="p">,</span><span class="n">vh</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">svd</span><span class="p">(</span><span class="n">A</span><span class="p">,</span><span class="mf">0</span><span class="p">)</span>
+
+    <span class="c"># FIXME what to do with ill-conditioned systems?</span>
+    <span class="c">#if s[-1]&lt;rcond*s[0]: raise ValueError, &quot;matrix is singular&quot;</span>
+    <span class="c">#s[s&lt;rcond*s[0]] = 0.  # Can&#39;t do this because 1/s below will fail</span>
+
+    <span class="c"># Solve: x = V inv(S) U.H y</span>
+    <span class="c"># S diagonal elements =&gt; 1/S is inv(S)</span>
+    <span class="c"># A*D, D diagonal multiplies each column of A by the corresponding diagonal</span>
+    <span class="c"># D*A, D diagonal multiplies each row of A by the corresponding diagonal</span>
+    <span class="c"># Computing V*inv(S) is slightly faster than inv(S)*U.H since V is smaller</span>
+    <span class="c"># than U.H.  Similarly, U.H*y is somewhat faster than V*U.H</span>
+    <span class="n">SVinv</span> <span class="o">=</span> <span class="n">vh</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">conj</span><span class="p">()</span><span class="o">/</span><span class="n">s</span>
+    <span class="n">Uy</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">conj</span><span class="p">(),</span> <span class="n">y</span><span class="p">)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">SVinv</span><span class="p">,</span> <span class="n">Uy</span><span class="p">)</span>
+
+    <span class="n">DoF</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span>
+    <span class="n">rnorm</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">y</span> <span class="o">-</span> <span class="n">N</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">A</span><span class="p">,</span><span class="n">x</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">LinearModel</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">DoF</span><span class="o">=</span><span class="n">DoF</span><span class="p">,</span> <span class="n">SVinv</span><span class="o">=</span><span class="n">SVinv</span><span class="p">,</span> <span class="n">rnorm</span><span class="o">=</span><span class="n">rnorm</span><span class="p">)</span>
+</div>
+<span class="k">def</span> <span class="nf">_poly_matrix</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">degree</span><span class="p">,</span><span class="n">origin</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate the matrix A used to fit a polynomial using a linear solver.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">origin</span><span class="p">:</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">degree</span><span class="p">,</span><span class="mf">0</span><span class="p">,</span><span class="o">-</span><span class="mf">1</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">degree</span><span class="p">,</span><span class="o">-</span><span class="mf">1</span><span class="p">,</span><span class="o">-</span><span class="mf">1</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">N</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">x</span><span class="p">)[:,</span><span class="bp">None</span><span class="p">]</span><span class="o">**</span><span class="n">n</span><span class="p">[</span><span class="bp">None</span><span class="p">,:]</span>
+
+<div class="viewcode-block" id="PolynomialModel"><a class="viewcode-back" href="../../api/wsolve.html#refl1d.wsolve.PolynomialModel">[docs]</a><span class="k">class</span> <span class="nc">PolynomialModel</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Model evaluator for best fit polynomial p(x) = y.</span>
+
+<span class="sd">    Stored properties::</span>
+
+<span class="sd">        DoF = len(y)-len(x) = degrees of freedom</span>
+<span class="sd">        rnorm = 2-norm of the residuals y-Ax</span>
+<span class="sd">        coeff = coefficients</span>
+<span class="sd">        degree = polynomial degree</span>
+
+<span class="sd">    Computed properties::</span>
+
+<span class="sd">        cov = covariance matrix [ inv(A&#39;A); O(n^3) ]</span>
+<span class="sd">        var = coefficient variance [ diag(cov); O(n^2)]</span>
+<span class="sd">        std = standard deviation of coefficients [ sqrt(var); O(n^2) ]</span>
+<span class="sd">        p = test statistic for chisquare goodness of fit [ chi2.sf; O(1) ]</span>
+
+<span class="sd">    Methods::</span>
+
+<span class="sd">        __call__(x): return the polynomial evaluated at x</span>
+<span class="sd">        ci(x,sigma=1):  return confidence interval evaluated at x</span>
+<span class="sd">        pi(x,alpha=0.05):  return prediction interval evaluated at x</span>
+
+<span class="sd">    Note that the covariance matrix will not include the ones column if</span>
+<span class="sd">    the polynomial goes through the origin.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">origin</span> <span class="o">=</span> <span class="n">origin</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">coeff</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">origin</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">coeff</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">coeff</span><span class="p">,</span><span class="mf">0</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">degree</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">coeff</span><span class="p">)</span><span class="o">-</span><span class="mf">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">DoF</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">DoF</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rnorm</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">rnorm</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_conf</span> <span class="o">=</span> <span class="n">s</span>
+    <span class="k">def</span> <span class="nf">_cov</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conf</span><span class="o">.</span><span class="n">cov</span>
+    <span class="k">def</span> <span class="nf">_std</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">N</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_var</span><span class="p">())</span>
+    <span class="k">def</span> <span class="nf">_var</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">var</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_conf</span><span class="o">.</span><span class="n">var</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">origin</span><span class="p">:</span> <span class="n">var</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">var</span><span class="p">,</span><span class="mf">0</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">var</span>
+    <span class="k">def</span> <span class="nf">_p</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conf</span><span class="o">.</span><span class="n">p</span>
+    <span class="n">cov</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">_cov</span><span class="p">,</span><span class="n">doc</span><span class="o">=</span><span class="s">&quot;covariance matrix&quot;</span><span class="p">)</span>
+    <span class="n">var</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">_var</span><span class="p">,</span><span class="n">doc</span><span class="o">=</span><span class="s">&quot;result variance&quot;</span><span class="p">)</span>
+    <span class="n">std</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">_std</span><span class="p">,</span><span class="n">doc</span><span class="o">=</span><span class="s">&quot;result standard deviation&quot;</span><span class="p">)</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">_p</span><span class="p">,</span><span class="n">doc</span><span class="o">=</span><span class="s">&quot;probability of rejection&quot;</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate the polynomial at x.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">N</span><span class="o">.</span><span class="n">polyval</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">coeff</span><span class="p">,</span><span class="n">x</span><span class="p">)</span>
+
+<div class="viewcode-block" id="PolynomialModel.der"><a class="viewcode-back" href="../../api/wsolve.html#refl1d.wsolve.PolynomialModel.der">[docs]</a>    <span class="k">def</span> <span class="nf">der</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate the polynomial derivative at x.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">N</span><span class="o">.</span><span class="n">polyval</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">polyder</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">coeff</span><span class="p">),</span><span class="n">x</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="PolynomialModel.ci"><a class="viewcode-back" href="../../api/wsolve.html#refl1d.wsolve.PolynomialModel.ci">[docs]</a>    <span class="k">def</span> <span class="nf">ci</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate the polynomial and the confidence intervals at x.</span>
+
+<span class="sd">        sigma=1 corresponds to a 1-sigma confidence interval</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">A</span> <span class="o">=</span> <span class="n">_poly_matrix</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">degree</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">origin</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conf</span><span class="o">.</span><span class="n">ci</span><span class="p">(</span><span class="n">A</span><span class="p">,</span><span class="n">sigma</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="PolynomialModel.pi"><a class="viewcode-back" href="../../api/wsolve.html#refl1d.wsolve.PolynomialModel.pi">[docs]</a>    <span class="k">def</span> <span class="nf">pi</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="mf">0.05</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate the polynomial and the prediction intervals at x.</span>
+
+<span class="sd">        p = 1-alpha = 0.05 corresponds to 95% prediction interval</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">A</span> <span class="o">=</span> <span class="n">_poly_matrix</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">degree</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">origin</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conf</span><span class="o">.</span><span class="n">pi</span><span class="p">(</span><span class="n">A</span><span class="p">,</span><span class="n">p</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># TODO: better polynomial pretty printing using formatnum</span>
+        <span class="k">return</span> <span class="s">&quot;Polynomial(</span><span class="si">%s</span><span class="s">)&quot;</span><span class="o">%</span><span class="bp">self</span><span class="o">.</span><span class="n">coeff</span>
+</div>
+<div class="viewcode-block" id="wpolyfit"><a class="viewcode-back" href="../../api/wsolve.html#refl1d.wsolve.wpolyfit">[docs]</a><span class="k">def</span> <span class="nf">wpolyfit</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">dy</span><span class="o">=</span><span class="mf">1</span><span class="p">,</span><span class="n">degree</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span><span class="n">origin</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the polynomial of degree n that</span>
+<span class="sd">    minimizes sum( (p(x_i) - y_i)**2/dy_i**2).</span>
+
+<span class="sd">    if origin is True, the fit should go through the origin.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="n">degree</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">,</span> <span class="s">&quot;Missing degree argument to wpolyfit&quot;</span>
+
+    <span class="n">A</span> <span class="o">=</span> <span class="n">_poly_matrix</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">degree</span><span class="p">,</span><span class="n">origin</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">wsolve</span><span class="p">(</span><span class="n">A</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">dy</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">PolynomialModel</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="n">origin</span><span class="o">=</span><span class="n">origin</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="demo"><a class="viewcode-back" href="../../api/wsolve.html#refl1d.wsolve.demo">[docs]</a><span class="k">def</span> <span class="nf">demo</span><span class="p">():</span>
+    <span class="kn">import</span> <span class="nn">pylab</span>
+
+    <span class="c"># Make fake data</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mf">15</span><span class="p">,</span><span class="mf">5</span><span class="p">,</span><span class="mf">15</span><span class="p">)</span>
+    <span class="n">th</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">polyval</span><span class="p">([</span><span class="o">.</span><span class="mf">2</span><span class="p">,</span><span class="mf">3</span><span class="p">,</span><span class="mf">1</span><span class="p">,</span><span class="mf">5</span><span class="p">],</span><span class="n">x</span><span class="p">)</span>  <span class="c"># polynomial</span>
+    <span class="n">dy</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">th</span><span class="p">))</span>        <span class="c"># poisson uncertainty estimate</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">th</span><span class="p">,</span><span class="n">dy</span><span class="p">)</span>    <span class="c"># but normal generator</span>
+
+    <span class="c"># Fit to a polynomial</span>
+    <span class="n">poly</span> <span class="o">=</span> <span class="n">wpolyfit</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">dy</span><span class="o">=</span><span class="n">dy</span><span class="p">,</span><span class="n">degree</span><span class="o">=</span><span class="mf">3</span><span class="p">)</span>
+
+    <span class="c"># Plot the result</span>
+    <span class="n">pylab</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">yerr</span><span class="o">=</span><span class="n">dy</span><span class="p">,</span><span class="n">fmt</span><span class="o">=</span><span class="s">&#39;x&#39;</span><span class="p">)</span>
+    <span class="n">pylab</span><span class="o">.</span><span class="n">hold</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">px</span><span class="o">=</span><span class="n">N</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mf">0</span><span class="p">],</span><span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mf">1</span><span class="p">],</span><span class="mf">200</span><span class="p">)</span>
+    <span class="n">py</span><span class="p">,</span><span class="n">pdy</span> <span class="o">=</span> <span class="n">poly</span><span class="o">.</span><span class="n">pi</span><span class="p">(</span><span class="n">px</span><span class="p">)</span>
+    <span class="n">cy</span><span class="p">,</span><span class="n">cdy</span> <span class="o">=</span> <span class="n">poly</span><span class="o">.</span><span class="n">ci</span><span class="p">(</span><span class="n">px</span><span class="p">)</span>
+    <span class="n">pylab</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">px</span><span class="p">,</span><span class="n">py</span><span class="p">,</span><span class="s">&#39;g-&#39;</span><span class="p">,</span>
+               <span class="n">px</span><span class="p">,</span><span class="n">py</span><span class="o">+</span><span class="n">pdy</span><span class="p">,</span><span class="s">&#39;g-.&#39;</span><span class="p">,</span><span class="n">px</span><span class="p">,</span><span class="n">py</span><span class="o">-</span><span class="n">pdy</span><span class="p">,</span><span class="s">&#39;g-.&#39;</span><span class="p">,</span>
+               <span class="n">px</span><span class="p">,</span><span class="n">cy</span><span class="o">+</span><span class="n">cdy</span><span class="p">,</span><span class="s">&#39;r-.&#39;</span><span class="p">,</span><span class="n">px</span><span class="p">,</span><span class="n">cy</span><span class="o">-</span><span class="n">cdy</span><span class="p">,</span><span class="s">&#39;r-.&#39;</span><span class="p">)</span>
+    <span class="n">pylab</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="test"><a class="viewcode-back" href="../../api/wsolve.html#refl1d.wsolve.test">[docs]</a><span class="k">def</span> <span class="nf">test</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    smoke test...make sure the function continues to return the same</span>
+<span class="sd">    result for a particular system.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0</span><span class="p">,</span><span class="mf">1</span><span class="p">,</span><span class="mf">2</span><span class="p">,</span><span class="mf">3</span><span class="p">,</span><span class="mf">4</span><span class="p">],</span><span class="s">&#39;d&#39;</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>  <span class="mf">2.5</span><span class="p">,</span>   <span class="mf">7.9</span><span class="p">,</span>  <span class="mf">13.9</span><span class="p">,</span>  <span class="mf">21.1</span><span class="p">,</span>  <span class="mf">44.4</span><span class="p">],</span><span class="s">&#39;d&#39;</span><span class="p">)</span>
+    <span class="n">dy</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">([</span> <span class="mf">1.7</span><span class="p">,</span>  <span class="mf">2.4</span><span class="p">,</span>  <span class="mf">3.6</span><span class="p">,</span>  <span class="mf">4.8</span><span class="p">,</span>  <span class="mf">6.2</span><span class="p">],</span><span class="s">&#39;d&#39;</span><span class="p">)</span>
+    <span class="n">poly</span> <span class="o">=</span> <span class="n">wpolyfit</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">dy</span><span class="p">,</span><span class="mf">1</span><span class="p">)</span>
+    <span class="n">px</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.5</span><span class="p">],</span><span class="s">&#39;d&#39;</span><span class="p">)</span>
+    <span class="n">py</span><span class="p">,</span><span class="n">pi</span> <span class="o">=</span> <span class="n">poly</span><span class="o">.</span><span class="n">pi</span><span class="p">(</span><span class="n">px</span><span class="p">)</span>
+    <span class="n">py</span><span class="p">,</span><span class="n">ci</span> <span class="o">=</span> <span class="n">poly</span><span class="o">.</span><span class="n">ci</span><span class="p">(</span><span class="n">px</span><span class="p">)</span>
+
+    <span class="c">## Uncomment these to show target values</span>
+    <span class="c">#print &quot;Tp = [%.16g, %.16g]&quot;%(p[0],p[1])</span>
+    <span class="c">#print &quot;Tdp = [%.16g, %.16g]&quot;%(dp[0],dp[1])</span>
+    <span class="c">#print &quot;Tpi,Tci = %.16g, %.16g&quot;%(pi,ci)</span>
+    <span class="n">Tp</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">7.787249069840737</span><span class="p">,</span> <span class="mf">1.503992847461524</span><span class="p">])</span>
+    <span class="n">Tdp</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.522338103010216</span><span class="p">,</span> <span class="mf">2.117633626902384</span><span class="p">])</span>
+    <span class="n">Tpi</span><span class="p">,</span><span class="n">Tci</span> <span class="o">=</span> <span class="mf">7.611128464981324</span><span class="p">,</span> <span class="mf">2.342860389884832</span>
+
+    <span class="n">perr</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">poly</span><span class="o">.</span><span class="n">coeff</span><span class="o">-</span><span class="n">Tp</span><span class="p">))</span>
+    <span class="n">dperr</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">poly</span><span class="o">.</span><span class="n">std</span><span class="o">-</span><span class="n">Tdp</span><span class="p">))</span>
+    <span class="n">cierr</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">ci</span><span class="o">-</span><span class="n">Tci</span><span class="p">)</span>
+    <span class="n">pierr</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">pi</span><span class="o">-</span><span class="n">Tpi</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">perr</span> <span class="o">&lt;</span> <span class="mf">1e-15</span><span class="p">,</span><span class="s">&quot;||p-Tp||=</span><span class="si">%g</span><span class="s">&quot;</span><span class="o">%</span><span class="n">perr</span>
+    <span class="k">assert</span> <span class="n">dperr</span> <span class="o">&lt;</span> <span class="mf">1e-15</span><span class="p">,</span><span class="s">&quot;||dp-Tdp||=</span><span class="si">%g</span><span class="s">&quot;</span><span class="o">%</span><span class="n">dperr</span>
+    <span class="k">assert</span> <span class="n">cierr</span> <span class="o">&lt;</span> <span class="mf">1e-15</span><span class="p">,</span><span class="s">&quot;||ci-Tci||=</span><span class="si">%g</span><span class="s">&quot;</span><span class="o">%</span><span class="n">cierr</span>
+    <span class="k">assert</span> <span class="n">pierr</span> <span class="o">&lt;</span> <span class="mf">1e-15</span><span class="p">,</span><span class="s">&quot;||pi-Tpi||=</span><span class="si">%g</span><span class="s">&quot;</span><span class="o">%</span><span class="n">pierr</span>
+    <span class="k">assert</span> <span class="n">py</span> <span class="o">==</span> <span class="n">poly</span><span class="p">(</span><span class="n">px</span><span class="p">),</span><span class="s">&quot;direct call to poly function fails&quot;</span>
+</div>
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">test</span><span class="p">()</span>
+<span class="c">#    demo()</span>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

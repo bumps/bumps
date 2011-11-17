@@ -1,0 +1,186 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Soft material structures &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../../index.html" />
+    <link rel="up" title="Superlattice Models" href="readme.html" />
+    <link rel="next" title="Freeform structures" href="freeform.html" />
+    <link rel="prev" title="Hard material structures" href="NiTi.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>Soft material structures</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="NiTi.html">Hard material structures</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="freeform.html">Freeform structures</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="soft-material-structures">
+<h1>Soft material structures<a class="headerlink" href="#soft-material-structures" title="Permalink to this headline">¶</a></h1>
+<p>Inter-diffusion properties of multilayer systems are of great interest in both
+hard and soft materials. Jomaa, et. al  have shown that reflectometry can be
+used to elucidate the kinetics of a diffusion process in polyelectrolytes
+multilayers. Although the purpose of this paper was not to fit the presented
+system, it offers a good model for an experimentally relevant system for which
+information from neutron reflectometry can be obtained. In this model system
+we will show that we can create a model for this type of system and determine
+the relevant parameters through our optimisation scheme. This particular
+example uses deuterated reference layers to determine the kinetics of the
+overall system.</p>
+<p>Reference: Jomaa, H., Schlenoff, Macromolecules, 38 (2005), 8473-8480
+<a class="reference external" href="http://dx.doi.org/10.1021/ma050072g">http://dx.doi.org/10.1021/ma050072g</a></p>
+<p>We will model the system described in figure 2 of the reference as
+<a class="reference download internal" href="../../_downloads/PEMU.py"><tt class="xref download docutils literal"><span class="pre">PEMU.py</span></tt></a>.</p>
+<p>[<a class="reference external" href="../../plot_directive/inline/a6b48bc7a5.hires.png">hires.png</a>, <a class="reference external" href="../../plot_directive/inline/a6b48bc7a5.pdf">pdf</a>]</p>
+<img alt="../../_images/a6b48bc7a5.png" src="../../_images/a6b48bc7a5.png" />
+<p>Bring in all of the functions from refl1d.names so that we can use them
+in the remainder of the script.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">refl1d.names</span> <span class="kn">import</span> <span class="o">*</span>
+</pre></div>
+</div>
+<p>The polymer system is deposited on a gold film with chromium as an
+adhesion layer. Because these are standard films which are very well-known
+in this experiment we can use the built-in materials library to create
+these layers.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># == Sample definition ==</span>
+<span class="n">chrome</span> <span class="o">=</span> <span class="n">Material</span><span class="p">(</span><span class="s">&#39;Cr&#39;</span><span class="p">)</span>
+<span class="n">gold</span> <span class="o">=</span> <span class="n">Material</span><span class="p">(</span><span class="s">&#39;Au&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The polymer system consists of two polymers, deuterated and non-deuterated
+PDADMA/PSS.  Since the neutron scattering cross section for deuterium is
+considerably different from that for hydrogen while having nearly identical
+chemical properties, we can use the deuterium as a tag to see to what
+extent the deuterated polymer layer interdiffuses with an underated polymer
+layer.</p>
+<p>We model the materials using scattering length density (SLD) rather than using
+the chemical formula and mass density.  This allows us to fit the SLD directly
+rather than making assumptions about the specific chemical composition of the
+mixture.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">PDADMA_dPSS</span> <span class="o">=</span> <span class="n">SLD</span><span class="p">(</span><span class="n">name</span> <span class="o">=</span><span class="s">&#39;PDADMA dPSS&#39;</span><span class="p">,</span><span class="n">rho</span> <span class="o">=</span> <span class="mf">2.77</span><span class="p">)</span>
+<span class="n">PDADMA_PSS</span> <span class="o">=</span> <span class="n">SLD</span><span class="p">(</span><span class="n">name</span> <span class="o">=</span> <span class="s">&#39;PDADMA PSS&#39;</span><span class="p">,</span><span class="n">rho</span> <span class="o">=</span> <span class="mf">1.15</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The polymer materials are stacked into a bilayer, with thickness
+estimates based on ellipsometery measurements (as stated in the paper).</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">bilayer</span> <span class="o">=</span> <span class="n">PDADMA_PSS</span><span class="p">(</span><span class="mf">178</span><span class="p">,</span><span class="mf">10</span><span class="p">)</span> <span class="o">|</span> <span class="n">PDADMA_dPSS</span><span class="p">(</span><span class="mf">44.3</span><span class="p">,</span><span class="mf">10</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The bilayer is repeated 5 times and stacked on the chromium/gold substrate
+In this system we expect the kinetics of the surface diffusion to differ
+from that of the bulk layer structure. Because we want the top bilayer to
+optimise independently of the other bilayers, the fifth layer was not
+included in the stack. If the diffusion properties of each layer were
+expected to vary widely from one-another, the repeat notation could not
+have been used at all.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">sample</span> <span class="o">=</span> <span class="p">(</span><span class="n">silicon</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="mf">5</span><span class="p">)</span> <span class="o">|</span> <span class="n">chrome</span><span class="p">(</span><span class="mf">30</span><span class="p">,</span><span class="mf">3</span><span class="p">)</span> <span class="o">|</span> <span class="n">gold</span><span class="p">(</span><span class="mf">120</span><span class="p">,</span><span class="mf">5</span><span class="p">)</span>
+          <span class="o">|</span> <span class="p">(</span><span class="n">bilayer</span><span class="p">)</span><span class="o">*</span><span class="mf">4</span> <span class="o">|</span> <span class="n">PDADMA_PSS</span><span class="p">(</span><span class="mf">178</span><span class="p">,</span><span class="mf">10</span><span class="p">)</span> <span class="o">|</span> <span class="n">PDADMA_dPSS</span><span class="p">(</span><span class="mf">44.3</span><span class="p">,</span><span class="mf">10</span><span class="p">)</span> <span class="o">|</span> <span class="n">air</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Now that the model sample is built, we can start adding ranges to the fit
+parameters. We assume that the chromium and gold layers are well known through
+other methods and will not fit it; however, additional optimisation could
+certainly be included here.</p>
+<p>As stated earlier, we will be fitting the SLD of the polymers directly.
+The range for each will vary from that for pure deuterated to the
+pure undeuterated SLD.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># == Fit parameters ==</span>
+<span class="n">PDADMA_dPSS</span><span class="o">.</span><span class="n">rho</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="mf">1.15</span><span class="p">,</span><span class="mf">2.77</span><span class="p">)</span>
+<span class="n">PDADMA_PSS</span><span class="o">.</span><span class="n">rho</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="mf">1.15</span><span class="p">,</span><span class="mf">2.77</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We are primarily interested in the interfacial roughness so we will
+fit those as well.  First we define the interfaces within the repeated
+stack.  Note that the interface for bilayer[1] is the interface between
+the current bilayer and the next bilayer.   Here we use sample[3] as
+the repeated bilayer, which is the 0-origin index of the bilayer in the
+stack.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">sample</span><span class="p">[</span><span class="mf">3</span><span class="p">][</span><span class="mf">0</span><span class="p">]</span><span class="o">.</span><span class="n">interface</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="mf">5</span><span class="p">,</span><span class="mf">45</span><span class="p">)</span>
+<span class="n">sample</span><span class="p">[</span><span class="mf">3</span><span class="p">][</span><span class="mf">1</span><span class="p">]</span><span class="o">.</span><span class="n">interface</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="mf">5</span><span class="p">,</span><span class="mf">45</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The interface between the stack and the next layer is controlled from
+the repeated bilayer.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">sample</span><span class="p">[</span><span class="mf">3</span><span class="p">]</span><span class="o">.</span><span class="n">interface</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="mf">5</span><span class="p">,</span><span class="mf">45</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Because the top bilayer has different dynamics, we optimize the interfaces
+independenly. Although we want the optimiser to threat these parameters
+independently because surface diffusion is expected to occur faster, the
+overall nature of the diffusion is expected to be the same and so we use the
+same limits.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">sample</span><span class="p">[</span><span class="mf">4</span><span class="p">]</span><span class="o">.</span><span class="n">interface</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="mf">5</span><span class="p">,</span><span class="mf">45</span><span class="p">)</span>
+<span class="n">sample</span><span class="p">[</span><span class="mf">5</span><span class="p">]</span><span class="o">.</span><span class="n">interface</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="mf">5</span><span class="p">,</span><span class="mf">45</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Finally we need to associate the sample with a measurement.  We do not
+have the measurements from the paper available, so instead we will
+simulate a measurement but setting up a neutron probe whose incident
+angles range from 0 to 5 degrees in 100 steps.  The simulated measurement
+is returned together with the model as a fit problem.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># == Data ==</span>
+<span class="n">T</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span> <span class="mf">5</span><span class="p">,</span> <span class="mf">100</span><span class="p">)</span>
+<span class="n">probe</span> <span class="o">=</span> <span class="n">NeutronProbe</span><span class="p">(</span><span class="n">T</span><span class="o">=</span><span class="n">T</span><span class="p">,</span> <span class="n">dT</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">L</span><span class="o">=</span><span class="mf">4.75</span><span class="p">,</span> <span class="n">dL</span><span class="o">=</span><span class="mf">0.0475</span><span class="p">)</span>
+
+<span class="n">M</span> <span class="o">=</span> <span class="n">Experiment</span><span class="p">(</span><span class="n">probe</span><span class="o">=</span><span class="n">probe</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="n">sample</span><span class="p">)</span>
+<span class="n">M</span><span class="o">.</span><span class="n">simulate_data</span><span class="p">(</span><span class="mf">5</span><span class="p">)</span>
+
+<span class="n">problem</span> <span class="o">=</span> <span class="n">FitProblem</span><span class="p">(</span><span class="n">M</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="NiTi.html">Hard material structures</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="freeform.html">Freeform structures</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

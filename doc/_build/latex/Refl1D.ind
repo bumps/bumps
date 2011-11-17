@@ -1,0 +1,1223 @@
+\begin{theindex}
+\def\bigletter#1{{\Large\sffamily#1}\nopagebreak\vspace{1mm}}
+
+  \bigletter A
+  \item add() (refl1d.model.Stack method), \hyperpage{86}
+  \item add\_magnetism() (refl1d.profile.Microslabs method), \hyperpage{118}
+  \item Alias (class in refl1d.mystic.parameter), \hyperpage{146}
+  \item alignment\_uncertainty() (refl1d.probe.NeutronProbe static method), \hyperpage{100}
+  \item alignment\_uncertainty() (refl1d.probe.Probe static method), \hyperpage{106}
+  \item alignment\_uncertainty() (refl1d.probe.ProbeSet static method), \hyperpage{108}
+  \item alignment\_uncertainty() (refl1d.probe.QProbe static method), \hyperpage{111}
+  \item alignment\_uncertainty() (refl1d.probe.XrayProbe static method), \hyperpage{114}
+  \item AmoebaFit (class in refl1d.fitters), \hyperpage{68}
+  \item amplitude() (refl1d.experiment.Experiment method), \hyperpage{59}
+  \item amplitude() (refl1d.experiment.MixedExperiment method), \hyperpage{62}
+  \item AMQPMapper (class in refl1d.mapper), \hyperpage{81}
+  \item Ana() (refl1d.pytwalk.pytwalk method), \hyperpage{120}
+  \item ANDR (class in refl1d.ncnrdata), \hyperpage{90}
+  \item append() (refl1d.profile.Microslabs method), \hyperpage{118}
+  \item apply\_beam() (refl1d.probe.NeutronProbe method), \hyperpage{100}
+  \item apply\_beam() (refl1d.probe.PolarizedNeutronProbe method), \hyperpage{103}
+  \item apply\_beam() (refl1d.probe.PolarizedNeutronQProbe method), \hyperpage{104}
+  \item apply\_beam() (refl1d.probe.Probe method), \hyperpage{106}
+  \item apply\_beam() (refl1d.probe.ProbeSet method), \hyperpage{109}
+  \item apply\_beam() (refl1d.probe.QProbe method), \hyperpage{112}
+  \item apply\_beam() (refl1d.probe.XrayProbe method), \hyperpage{114}
+  \item args (refl1d.mystic.parameter.Function attribute), \hyperpage{148}
+  \item auto\_shift() (in module refl1d.util), \hyperpage{140}
+
+  \indexspace
+  \bigletter B
+  \item BaseParameter (class in refl1d.mystic.parameter), \hyperpage{146}
+  \item beep() (in module refl1d.cli), \hyperpage{55}
+  \item BFGSFit (class in refl1d.fitters), \hyperpage{69}
+  \item binedges() (in module refl1d.resolution), \hyperpage{126}
+  \item bins() (in module refl1d.resolution), \hyperpage{127}
+  \item binwidths() (in module refl1d.resolution), \hyperpage{127}
+  \item blend() (in module refl1d.profile), \hyperpage{119}
+  \item boltzmann\_feather() (in module refl1d.snsdata), \hyperpage{132}
+  \item Bounded (class in refl1d.mystic.bounds), \hyperpage{159}
+  \item BoundedAbove (class in refl1d.mystic.bounds), \hyperpage{159}
+  \item BoundedBelow (class in refl1d.mystic.bounds), \hyperpage{160}
+  \item bspline() (in module refl1d.bspline), \hyperpage{52}
+  \item bspline\_control() (in module refl1d.bspline), \hyperpage{52}
+  \item build\_mag\_profile() (in module refl1d.profile), \hyperpage{120}
+  \item build\_profile() (in module refl1d.profile), \hyperpage{120}
+  \item bymass() (refl1d.material.Mixture class method), \hyperpage{84}
+  \item byvolume() (refl1d.material.Mixture class method), \hyperpage{84}
+
+  \indexspace
+  \bigletter C
+  \item calc() (in module refl1d.abeles), \hyperpage{51}
+  \item calc\_distribution() (in module refl1d.errors), \hyperpage{58}
+  \item calc\_distribution\_from\_state() (in module refl1d.errors), \hyperpage{58}
+  \item calc\_dT() (refl1d.instrument.Monochromatic method), \hyperpage{76}
+  \item calc\_dT() (refl1d.instrument.Pulsed method), \hyperpage{77}
+  \item calc\_dT() (refl1d.ncnrdata.ANDR method), \hyperpage{90}
+  \item calc\_dT() (refl1d.ncnrdata.NG1 method), \hyperpage{91}
+  \item calc\_dT() (refl1d.ncnrdata.NG7 method), \hyperpage{92}
+  \item calc\_dT() (refl1d.ncnrdata.XRay method), \hyperpage{94}
+  \item calc\_dT() (refl1d.snsdata.Liquids method), \hyperpage{130}
+  \item calc\_dT() (refl1d.snsdata.Magnetic method), \hyperpage{131}
+  \item calc\_Q (refl1d.probe.NeutronProbe attribute), \hyperpage{101}
+  \item calc\_Q (refl1d.probe.PolarizedNeutronProbe attribute), \hyperpage{103}
+  \item calc\_Q (refl1d.probe.PolarizedNeutronQProbe attribute), \hyperpage{104}
+  \item calc\_Q (refl1d.probe.Probe attribute), \hyperpage{106}
+  \item calc\_Q (refl1d.probe.ProbeSet attribute), \hyperpage{109}
+  \item calc\_Q (refl1d.probe.QProbe attribute), \hyperpage{112}
+  \item calc\_Q (refl1d.probe.XrayProbe attribute), \hyperpage{114}
+  \item calc\_slits() (refl1d.instrument.Monochromatic method), \hyperpage{76}
+  \item calc\_slits() (refl1d.instrument.Pulsed method), \hyperpage{77}
+  \item calc\_slits() (refl1d.ncnrdata.ANDR method), \hyperpage{90}
+  \item calc\_slits() (refl1d.ncnrdata.NG1 method), \hyperpage{91}
+  \item calc\_slits() (refl1d.ncnrdata.NG7 method), \hyperpage{93}
+  \item calc\_slits() (refl1d.ncnrdata.XRay method), \hyperpage{94}
+  \item calc\_slits() (refl1d.snsdata.Liquids method), \hyperpage{130}
+  \item calc\_slits() (refl1d.snsdata.Magnetic method), \hyperpage{131}
+  \item cheby\_approx() (in module refl1d.cheby), \hyperpage{54}
+  \item cheby\_coeff() (in module refl1d.cheby), \hyperpage{54}
+  \item cheby\_points() (in module refl1d.cheby), \hyperpage{54}
+  \item cheby\_val() (in module refl1d.cheby), \hyperpage{54}
+  \item ChebyVF (class in refl1d.cheby), \hyperpage{53}
+  \item chisq() (refl1d.fitproblem.FitProblem method), \hyperpage{63}
+  \item chisq() (refl1d.fitproblem.MultiFitProblem method), \hyperpage{65}
+  \item ci() (refl1d.wsolve.LinearModel method), \hyperpage{143}
+  \item ci() (refl1d.wsolve.PolynomialModel method), \hyperpage{144}
+  \item clear() (refl1d.material.ProbeCache method), \hyperpage{85}
+  \item clear() (refl1d.profile.Microslabs method), \hyperpage{118}
+  \item clip\_set() (refl1d.mystic.parameter.IntegerParameter method), \hyperpage{149}
+  \item clip\_set() (refl1d.mystic.parameter.Parameter method), \hyperpage{153}
+  \item clip\_set() (refl1d.mystic.parameter.Reference method), \hyperpage{154}
+  \item clip\_set() (refl1d.mystic.parameter.VectorParameter method), \hyperpage{155}
+  \item compute\_limited\_sigma() (in module refl1d.profile), \hyperpage{120}
+  \item config\_history() (refl1d.fitservice.ServiceMonitor method), \hyperpage{68}
+  \item config\_history() (refl1d.fitters.ConsoleMonitor method), \hyperpage{69}
+  \item config\_history() (refl1d.fitters.StepMonitor method), \hyperpage{70}
+  \item config\_matplotlib() (in module refl1d.cli), \hyperpage{55}
+  \item ConsoleMonitor (class in refl1d.fitters), \hyperpage{69}
+  \item Constant (class in refl1d.mystic.parameter), \hyperpage{147}
+  \item Constraint (class in refl1d.mystic.parameter), \hyperpage{147}
+  \item ConstraintEQ (class in refl1d.mystic.parameter), \hyperpage{147}
+  \item ConstraintGE (class in refl1d.mystic.parameter), \hyperpage{147}
+  \item ConstraintGT (class in refl1d.mystic.parameter), \hyperpage{147}
+  \item ConstraintLE (class in refl1d.mystic.parameter), \hyperpage{148}
+  \item ConstraintLT (class in refl1d.mystic.parameter), \hyperpage{148}
+  \item ConstraintNE (class in refl1d.mystic.parameter), \hyperpage{148}
+  \item constraints() (refl1d.cheby.ChebyVF method), \hyperpage{54}
+  \item constraints() (refl1d.cheby.FreeformCheby method), \hyperpage{54}
+  \item constraints() (refl1d.freeform.FreeformInterface01 method), \hyperpage{71}
+  \item constraints() (refl1d.freeform.FreeInterface method), \hyperpage{71}
+  \item constraints() (refl1d.freeform.FreeLayer method), \hyperpage{71}
+  \item constraints() (refl1d.magnetic.FreeMagnetic method), \hyperpage{79}
+  \item constraints() (refl1d.magnetic.MagneticLayer method), \hyperpage{80}
+  \item constraints() (refl1d.magnetic.MagneticSlab method), \hyperpage{80}
+  \item constraints() (refl1d.magnetic.MagneticTwist method), \hyperpage{80}
+  \item constraints() (refl1d.model.Layer method), \hyperpage{87}
+  \item constraints() (refl1d.model.Repeat method), \hyperpage{86}
+  \item constraints() (refl1d.model.Slab method), \hyperpage{86}
+  \item constraints() (refl1d.model.Stack method), \hyperpage{87}
+  \item constraints() (refl1d.mono.FreeInterface method), \hyperpage{88}
+  \item constraints() (refl1d.mono.FreeLayer method), \hyperpage{88}
+  \item constraints() (refl1d.polymer.PolymerBrush method), \hyperpage{99}
+  \item constraints() (refl1d.polymer.VolumeProfile method), \hyperpage{99}
+  \item convolve() (in module refl1d.reflectivity), \hyperpage{124}
+  \item coordinated\_colors() (in module refl1d.util), \hyperpage{140}
+  \item count\_inflections() (in module refl1d.mono), \hyperpage{88}
+  \item cov (refl1d.wsolve.LinearModel attribute), \hyperpage{144}
+  \item cov (refl1d.wsolve.PolynomialModel attribute), \hyperpage{144}
+  \item cov() (refl1d.fitproblem.FitProblem method), \hyperpage{64}
+  \item cov() (refl1d.fitproblem.MultiFitProblem method), \hyperpage{66}
+  \item cov\_init() (in module refl1d.initpop), \hyperpage{73}
+  \item critical\_edge() (refl1d.probe.NeutronProbe method), \hyperpage{101}
+  \item critical\_edge() (refl1d.probe.Probe method), \hyperpage{106}
+  \item critical\_edge() (refl1d.probe.ProbeSet method), \hyperpage{109}
+  \item critical\_edge() (refl1d.probe.QProbe method), \hyperpage{112}
+  \item critical\_edge() (refl1d.probe.XrayProbe method), \hyperpage{114}
+  \item current() (in module refl1d.mystic.parameter), \hyperpage{156}
+
+  \indexspace
+  \bigletter D
+  \item data (refl1d.probe.NeutronProbe attribute), \hyperpage{101}
+  \item data (refl1d.probe.Probe attribute), \hyperpage{107}
+  \item data (refl1d.probe.ProbeSet attribute), \hyperpage{109}
+  \item data (refl1d.probe.QProbe attribute), \hyperpage{112}
+  \item data (refl1d.probe.XrayProbe attribute), \hyperpage{115}
+  \item default() (refl1d.mystic.parameter.IntegerParameter class method), \hyperpage{149}
+  \item default() (refl1d.mystic.parameter.Parameter class method), \hyperpage{153}
+  \item default() (refl1d.mystic.parameter.Reference class method), \hyperpage{155}
+  \item default() (refl1d.mystic.parameter.VectorParameter class method), \hyperpage{155}
+  \item defaults() (refl1d.instrument.Monochromatic class method), \hyperpage{76}
+  \item defaults() (refl1d.instrument.Pulsed class method), \hyperpage{78}
+  \item defaults() (refl1d.ncnrdata.ANDR class method), \hyperpage{90}
+  \item defaults() (refl1d.ncnrdata.NG1 class method), \hyperpage{92}
+  \item defaults() (refl1d.ncnrdata.NG7 class method), \hyperpage{93}
+  \item defaults() (refl1d.ncnrdata.XRay class method), \hyperpage{94}
+  \item defaults() (refl1d.snsdata.Liquids class method), \hyperpage{130}
+  \item defaults() (refl1d.snsdata.Magnetic class method), \hyperpage{131}
+  \item DEFit (class in refl1d.fitters), \hyperpage{69}
+  \item demo() (in module refl1d.bspline), \hyperpage{52}
+  \item demo() (in module refl1d.wsolve), \hyperpage{145}
+  \item demo\_interp() (in module refl1d.bspline), \hyperpage{52}
+  \item density (refl1d.material.Mixture attribute), \hyperpage{84}
+  \item der() (refl1d.wsolve.PolynomialModel method), \hyperpage{144}
+  \item dev() (refl1d.mystic.parameter.BaseParameter method), \hyperpage{146}
+  \item dev() (refl1d.mystic.parameter.Constant method), \hyperpage{147}
+  \item dev() (refl1d.mystic.parameter.Function method), \hyperpage{148}
+  \item dev() (refl1d.mystic.parameter.IntegerParameter method), \hyperpage{149}
+  \item dev() (refl1d.mystic.parameter.OperatorAdd method), \hyperpage{150}
+  \item dev() (refl1d.mystic.parameter.OperatorDiv method), \hyperpage{150}
+  \item dev() (refl1d.mystic.parameter.OperatorMul method), \hyperpage{151}
+  \item dev() (refl1d.mystic.parameter.OperatorPow method), \hyperpage{152}
+  \item dev() (refl1d.mystic.parameter.OperatorSub method), \hyperpage{152}
+  \item dev() (refl1d.mystic.parameter.Parameter method), \hyperpage{153}
+  \item dev() (refl1d.mystic.parameter.Reference method), \hyperpage{155}
+  \item dev() (refl1d.mystic.parameter.VectorParameter method), \hyperpage{155}
+  \item dhsv() (in module refl1d.util), \hyperpage{140}
+  \item Distribution (class in refl1d.mystic.bounds), \hyperpage{160}
+  \item DistributionExperiment (class in refl1d.dist), \hyperpage{56}
+  \item divergence() (in module refl1d.resolution), \hyperpage{127}
+  \item dQdL2dT() (in module refl1d.resolution), \hyperpage{127}
+  \item dQdT2dLoL() (in module refl1d.resolution), \hyperpage{127}
+  \item DreamFit (class in refl1d.fitters), \hyperpage{69}
+  \item DreamModel (class in refl1d.fitters), \hyperpage{69}
+  \item dTdL2dQ() (in module refl1d.resolution), \hyperpage{127}
+  \item dvalue (refl1d.mystic.parameter.OperatorAdd attribute), \hyperpage{150}
+  \item dvalue (refl1d.mystic.parameter.OperatorDiv attribute), \hyperpage{150}
+  \item dvalue (refl1d.mystic.parameter.OperatorMul attribute), \hyperpage{151}
+  \item dvalue (refl1d.mystic.parameter.OperatorPow attribute), \hyperpage{152}
+  \item dvalue (refl1d.mystic.parameter.OperatorSub attribute), \hyperpage{153}
+
+  \indexspace
+  \bigletter E
+  \item erf() (in module refl1d.reflectivity), \hyperpage{124}
+  \item error\_plot() (refl1d.fitters.DreamFit method), \hyperpage{69}
+  \item errors() (in module refl1d.numpyerrors), \hyperpage{97}
+  \item Experiment (class in refl1d.experiment), \hyperpage{59}
+  \item ExperimentBase (class in refl1d.experiment), \hyperpage{61}
+  \item extend() (refl1d.profile.Microslabs method), \hyperpage{118}
+
+  \indexspace
+  \bigletter F
+  \item feasible() (refl1d.mystic.parameter.IntegerParameter method), \hyperpage{149}
+  \item feasible() (refl1d.mystic.parameter.Parameter method), \hyperpage{154}
+  \item feasible() (refl1d.mystic.parameter.Reference method), \hyperpage{155}
+  \item feasible() (refl1d.mystic.parameter.VectorParameter method), \hyperpage{156}
+  \item finalize() (refl1d.profile.Microslabs method), \hyperpage{118}
+  \item find() (refl1d.cheby.ChebyVF method), \hyperpage{54}
+  \item find() (refl1d.cheby.FreeformCheby method), \hyperpage{54}
+  \item find() (refl1d.freeform.FreeformInterface01 method), \hyperpage{71}
+  \item find() (refl1d.freeform.FreeInterface method), \hyperpage{71}
+  \item find() (refl1d.freeform.FreeLayer method), \hyperpage{71}
+  \item find() (refl1d.magnetic.FreeMagnetic method), \hyperpage{79}
+  \item find() (refl1d.magnetic.MagneticLayer method), \hyperpage{80}
+  \item find() (refl1d.magnetic.MagneticSlab method), \hyperpage{80}
+  \item find() (refl1d.magnetic.MagneticTwist method), \hyperpage{81}
+  \item find() (refl1d.model.Layer method), \hyperpage{87}
+  \item find() (refl1d.model.Repeat method), \hyperpage{86}
+  \item find() (refl1d.model.Slab method), \hyperpage{86}
+  \item find() (refl1d.model.Stack method), \hyperpage{87}
+  \item find() (refl1d.mono.FreeInterface method), \hyperpage{88}
+  \item find() (refl1d.mono.FreeLayer method), \hyperpage{88}
+  \item find() (refl1d.polymer.PolymerBrush method), \hyperpage{99}
+  \item find() (refl1d.polymer.VolumeProfile method), \hyperpage{99}
+  \item find\_xsec() (in module refl1d.ncnrdata), \hyperpage{95}
+  \item fit (refl1d.cli.Refl1dOpts attribute), \hyperpage{55}
+  \item fit() (in module refl1d.fitproblem), \hyperpage{67}
+  \item fit() (refl1d.fitters.FitDriver method), \hyperpage{69}
+  \item fit\_all() (in module refl1d.stajconvert), \hyperpage{138}
+  \item fit\_FWHMresolution() (refl1d.staj.MlayerMagnetic method), \hyperpage{135}
+  \item fit\_FWHMresolution() (refl1d.staj.MlayerModel method), \hyperpage{137}
+  \item FitBase (class in refl1d.fitters), \hyperpage{69}
+  \item fitby() (refl1d.material.Material method), \hyperpage{83}
+  \item FitDriver (class in refl1d.fitters), \hyperpage{69}
+  \item Fitness (class in refl1d.fitproblem), \hyperpage{65}
+  \item FitOptions (class in refl1d.fitters), \hyperpage{70}
+  \item FitProblem (class in refl1d.fitproblem), \hyperpage{63}
+  \item fitservice() (in module refl1d.fitservice), \hyperpage{68}
+  \item fittable() (in module refl1d.mystic.parameter), \hyperpage{156}
+  \item flatten() (in module refl1d.mystic.parameter), \hyperpage{156}
+  \item flatten() (refl1d.mystic.parameter.ParameterSet method), \hyperpage{154}
+  \item format() (in module refl1d.mystic.parameter), \hyperpage{156}
+  \item format() (refl1d.mystic.parameter.BaseParameter method), \hyperpage{146}
+  \item format() (refl1d.mystic.parameter.Constant method), \hyperpage{147}
+  \item format() (refl1d.mystic.parameter.Function method), \hyperpage{148}
+  \item format() (refl1d.mystic.parameter.IntegerParameter method), \hyperpage{149}
+  \item format() (refl1d.mystic.parameter.OperatorAdd method), \hyperpage{150}
+  \item format() (refl1d.mystic.parameter.OperatorDiv method), \hyperpage{150}
+  \item format() (refl1d.mystic.parameter.OperatorMul method), \hyperpage{151}
+  \item format() (refl1d.mystic.parameter.OperatorPow method), \hyperpage{152}
+  \item format() (refl1d.mystic.parameter.OperatorSub method), \hyperpage{153}
+  \item format() (refl1d.mystic.parameter.Parameter method), \hyperpage{154}
+  \item format() (refl1d.mystic.parameter.Reference method), \hyperpage{155}
+  \item format() (refl1d.mystic.parameter.VectorParameter method), \hyperpage{156}
+  \item format\_parameters() (refl1d.dist.DistributionExperiment method), \hyperpage{56}
+  \item format\_parameters() (refl1d.experiment.Experiment method), \hyperpage{59}
+  \item format\_parameters() (refl1d.experiment.ExperimentBase method), \hyperpage{61}
+  \item format\_parameters() (refl1d.experiment.MixedExperiment method), \hyperpage{62}
+  \item format\_uncertainty\_compact() (in module refl1d.mystic.formatnum), \hyperpage{162}
+  \item format\_uncertainty\_pm() (in module refl1d.mystic.formatnum), \hyperpage{162}
+  \item FreeformCheby (class in refl1d.cheby), \hyperpage{54}
+  \item FreeformInterface01 (class in refl1d.freeform), \hyperpage{71}
+  \item FreeInterface (class in refl1d.freeform), \hyperpage{70}
+  \item FreeInterface (class in refl1d.mono), \hyperpage{87}
+  \item FreeLayer (class in refl1d.freeform), \hyperpage{71}
+  \item FreeLayer (class in refl1d.mono), \hyperpage{88}
+  \item FreeMagnetic (class in refl1d.magnetic), \hyperpage{79}
+  \item Fresnel (class in refl1d.fresnel), \hyperpage{72}
+  \item fresnel() (refl1d.probe.NeutronProbe method), \hyperpage{101}
+  \item fresnel() (refl1d.probe.PolarizedNeutronProbe method), \hyperpage{103}
+  \item fresnel() (refl1d.probe.PolarizedNeutronQProbe method), \hyperpage{104}
+  \item fresnel() (refl1d.probe.Probe method), \hyperpage{107}
+  \item fresnel() (refl1d.probe.ProbeSet method), \hyperpage{109}
+  \item fresnel() (refl1d.probe.QProbe method), \hyperpage{112}
+  \item fresnel() (refl1d.probe.XrayProbe method), \hyperpage{115}
+  \item Function (class in refl1d.mystic.parameter), \hyperpage{148}
+  \item function() (in module refl1d.mystic.parameter), \hyperpage{156}
+  \item FWHM2sigma() (in module refl1d.resolution), \hyperpage{126}
+  \item FWHMresolution() (refl1d.staj.MlayerMagnetic method), \hyperpage{135}
+  \item FWHMresolution() (refl1d.staj.MlayerModel method), \hyperpage{137}
+
+  \indexspace
+  \bigletter G
+  \item GBlowU() (refl1d.pytwalk.pytwalk method), \hyperpage{120}
+  \item get01() (refl1d.mystic.bounds.Bounded method), \hyperpage{159}
+  \item get01() (refl1d.mystic.bounds.BoundedAbove method), \hyperpage{160}
+  \item get01() (refl1d.mystic.bounds.BoundedBelow method), \hyperpage{160}
+  \item get01() (refl1d.mystic.bounds.Distribution method), \hyperpage{160}
+  \item get01() (refl1d.mystic.bounds.Normal method), \hyperpage{161}
+  \item get01() (refl1d.mystic.bounds.SoftBounded method), \hyperpage{161}
+  \item get01() (refl1d.mystic.bounds.Unbounded method), \hyperpage{159}
+  \item get\_data\_path() (in module refl1d.support), \hyperpage{139}
+  \item getfull() (refl1d.mystic.bounds.Bounded method), \hyperpage{159}
+  \item getfull() (refl1d.mystic.bounds.BoundedAbove method), \hyperpage{160}
+  \item getfull() (refl1d.mystic.bounds.BoundedBelow method), \hyperpage{160}
+  \item getfull() (refl1d.mystic.bounds.Distribution method), \hyperpage{160}
+  \item getfull() (refl1d.mystic.bounds.Normal method), \hyperpage{161}
+  \item getfull() (refl1d.mystic.bounds.SoftBounded method), \hyperpage{161}
+  \item getfull() (refl1d.mystic.bounds.Unbounded method), \hyperpage{159}
+  \item getopts() (in module refl1d.cli), \hyperpage{55}
+  \item getp() (refl1d.fitproblem.FitProblem method), \hyperpage{64}
+  \item getp() (refl1d.fitproblem.MultiFitProblem method), \hyperpage{66}
+  \item GHopU() (refl1d.pytwalk.pytwalk method), \hyperpage{120}
+
+  \indexspace
+  \bigletter H
+  \item has\_columns() (in module refl1d.snsdata), \hyperpage{133}
+  \item hermite() (in module refl1d.mono), \hyperpage{88}
+  \item Hist() (refl1d.pytwalk.pytwalk method), \hyperpage{120}
+
+  \indexspace
+  \bigletter I
+  \item IAT() (refl1d.pytwalk.pytwalk method), \hyperpage{120}
+  \item ignored() (in module refl1d.numpyerrors), \hyperpage{97}
+  \item indfloat() (in module refl1d.util), \hyperpage{140}
+  \item inflections() (in module refl1d.mono), \hyperpage{88}
+  \item init\_bounds() (in module refl1d.mystic.bounds), \hyperpage{158}
+  \item initial\_model() (in module refl1d.cli), \hyperpage{55}
+  \item insert() (refl1d.model.Stack method), \hyperpage{87}
+  \item IntegerParameter (class in refl1d.mystic.parameter), \hyperpage{149}
+  \item intensity\_from\_spline() (in module refl1d.snsdata), \hyperpage{133}
+  \item interface() (refl1d.profile.Microslabs method), \hyperpage{118}
+  \item irho (refl1d.profile.Microslabs attribute), \hyperpage{119}
+  \item is\_reset() (refl1d.dist.DistributionExperiment method), \hyperpage{56}
+  \item is\_reset() (refl1d.experiment.Experiment method), \hyperpage{59}
+  \item is\_reset() (refl1d.experiment.ExperimentBase method), \hyperpage{61}
+  \item is\_reset() (refl1d.experiment.MixedExperiment method), \hyperpage{62}
+  \item ismagnetic (refl1d.experiment.Experiment attribute), \hyperpage{59}
+  \item ismagnetic (refl1d.profile.Microslabs attribute), \hyperpage{119}
+
+  \indexspace
+  \bigletter J
+  \item jacobian() (refl1d.fitproblem.FitProblem method), \hyperpage{64}
+  \item jacobian() (refl1d.fitproblem.MultiFitProblem method), \hyperpage{66}
+
+  \indexspace
+  \bigletter K
+  \item kbhit() (in module refl1d.util), \hyperpage{141}
+  \item kw (refl1d.mystic.parameter.Function attribute), \hyperpage{148}
+
+  \indexspace
+  \bigletter L
+  \item label() (refl1d.probe.NeutronProbe method), \hyperpage{101}
+  \item label() (refl1d.probe.Probe method), \hyperpage{107}
+  \item label() (refl1d.probe.ProbeSet method), \hyperpage{109}
+  \item label() (refl1d.probe.QProbe method), \hyperpage{112}
+  \item label() (refl1d.probe.XrayProbe method), \hyperpage{115}
+  \item Layer (class in refl1d.model), \hyperpage{87}
+  \item layer\_thickness() (in module refl1d.polymer), \hyperpage{99}
+  \item lhs\_init() (in module refl1d.initpop), \hyperpage{73}
+  \item LinearModel (class in refl1d.wsolve), \hyperpage{143}
+  \item Liquids (class in refl1d.snsdata), \hyperpage{130}
+  \item load() (in module refl1d.garefl), \hyperpage{72}
+  \item load() (in module refl1d.ncnrdata), \hyperpage{95}
+  \item load() (in module refl1d.snsdata), \hyperpage{133}
+  \item load() (refl1d.ncnrdata.ANDR method), \hyperpage{90}
+  \item load() (refl1d.ncnrdata.NCNRData method), \hyperpage{91}
+  \item load() (refl1d.ncnrdata.NG1 method), \hyperpage{92}
+  \item load() (refl1d.ncnrdata.NG7 method), \hyperpage{93}
+  \item load() (refl1d.ncnrdata.XRay method), \hyperpage{94}
+  \item load() (refl1d.snsdata.Liquids method), \hyperpage{130}
+  \item load() (refl1d.snsdata.Magnetic method), \hyperpage{131}
+  \item load() (refl1d.snsdata.SNSData method), \hyperpage{132}
+  \item load() (refl1d.staj.MlayerMagnetic class method), \hyperpage{135}
+  \item load() (refl1d.staj.MlayerModel class method), \hyperpage{137}
+  \item load\_magnetic() (in module refl1d.ncnrdata), \hyperpage{95}
+  \item load\_magnetic() (refl1d.ncnrdata.ANDR method), \hyperpage{90}
+  \item load\_magnetic() (refl1d.ncnrdata.NCNRData method), \hyperpage{91}
+  \item load\_magnetic() (refl1d.ncnrdata.NG1 method), \hyperpage{92}
+  \item load\_magnetic() (refl1d.ncnrdata.NG7 method), \hyperpage{93}
+  \item load\_magnetic() (refl1d.ncnrdata.XRay method), \hyperpage{94}
+  \item load\_mlayer() (in module refl1d.stajconvert), \hyperpage{138}
+  \item load\_problem() (in module refl1d.cli), \hyperpage{55}
+  \item load\_problem() (in module refl1d.fitproblem), \hyperpage{67}
+  \item log10\_to\_linear() (refl1d.probe.NeutronProbe method), \hyperpage{101}
+  \item log10\_to\_linear() (refl1d.probe.Probe method), \hyperpage{107}
+  \item log10\_to\_linear() (refl1d.probe.ProbeSet method), \hyperpage{109}
+  \item log10\_to\_linear() (refl1d.probe.QProbe method), \hyperpage{112}
+  \item log10\_to\_linear() (refl1d.probe.XrayProbe method), \hyperpage{115}
+  \item log\_density() (refl1d.fitters.DreamModel method), \hyperpage{69}
+
+  \indexspace
+  \bigletter M
+  \item Magnetic (class in refl1d.snsdata), \hyperpage{131}
+  \item magnetic (refl1d.model.Repeat attribute), \hyperpage{86}
+  \item magnetic (refl1d.model.Stack attribute), \hyperpage{87}
+  \item magnetic\_amplitude() (in module refl1d.reflectivity), \hyperpage{124}
+  \item magnetic\_probe() (refl1d.instrument.Monochromatic method), \hyperpage{76}
+  \item magnetic\_probe() (refl1d.instrument.Pulsed method), \hyperpage{78}
+  \item magnetic\_probe() (refl1d.ncnrdata.ANDR method), \hyperpage{90}
+  \item magnetic\_probe() (refl1d.ncnrdata.NG1 method), \hyperpage{92}
+  \item magnetic\_probe() (refl1d.ncnrdata.NG7 method), \hyperpage{93}
+  \item magnetic\_probe() (refl1d.ncnrdata.XRay method), \hyperpage{95}
+  \item magnetic\_probe() (refl1d.snsdata.Liquids method), \hyperpage{130}
+  \item magnetic\_probe() (refl1d.snsdata.Magnetic method), \hyperpage{131}
+  \item magnetic\_profile() (refl1d.experiment.Experiment method), \hyperpage{59}
+  \item magnetic\_profile() (refl1d.profile.Microslabs method), \hyperpage{119}
+  \item magnetic\_reflectivity() (in module refl1d.reflectivity), \hyperpage{124}
+  \item magnetic\_slabs() (refl1d.experiment.Experiment method), \hyperpage{59}
+  \item MagneticLayer (class in refl1d.magnetic), \hyperpage{79}
+  \item MagneticSlab (class in refl1d.magnetic), \hyperpage{80}
+  \item MagneticTwist (class in refl1d.magnetic), \hyperpage{80}
+  \item main() (in module refl1d.cli), \hyperpage{55}
+  \item make\_probe() (in module refl1d.probe), \hyperpage{116}
+  \item make\_store() (in module refl1d.cli), \hyperpage{55}
+  \item map() (refl1d.fitters.DreamModel method), \hyperpage{69}
+  \item Material (class in refl1d.material), \hyperpage{82}
+  \item max() (in module refl1d.bspline), \hyperpage{52}
+  \item mcmc() (refl1d.fitproblem.Result method), \hyperpage{67}
+  \item measurement\_union() (in module refl1d.probe), \hyperpage{116}
+  \item merge\_ends() (in module refl1d.util), \hyperpage{140}
+  \item mesh() (in module refl1d.cli), \hyperpage{55}
+  \item mesh() (in module refl1d.fitproblem), \hyperpage{67}
+  \item Microslabs (class in refl1d.profile), \hyperpage{118}
+  \item microslabs() (refl1d.profile.Microslabs method), \hyperpage{119}
+  \item min() (in module refl1d.bspline), \hyperpage{52}
+  \item MixedExperiment (class in refl1d.experiment), \hyperpage{61}
+  \item Mixture (class in refl1d.material), \hyperpage{83}
+  \item mlayer\_to\_model() (in module refl1d.stajconvert), \hyperpage{138}
+  \item MlayerMagnetic (class in refl1d.staj), \hyperpage{133}
+  \item MlayerModel (class in refl1d.staj), \hyperpage{135}
+  \item mm (refl1d.probe.PolarizedNeutronProbe attribute), \hyperpage{103}
+  \item mm (refl1d.probe.PolarizedNeutronQProbe attribute), \hyperpage{104}
+  \item model\_nllf() (refl1d.fitproblem.FitProblem method), \hyperpage{64}
+  \item model\_nllf() (refl1d.fitproblem.MultiFitProblem method), \hyperpage{66}
+  \item model\_parameters() (refl1d.fitproblem.FitProblem method), \hyperpage{64}
+  \item model\_parameters() (refl1d.fitproblem.MultiFitProblem method), \hyperpage{66}
+  \item model\_points() (refl1d.fitproblem.FitProblem method), \hyperpage{64}
+  \item model\_points() (refl1d.fitproblem.MultiFitProblem method), \hyperpage{66}
+  \item model\_reset() (refl1d.fitproblem.FitProblem method), \hyperpage{64}
+  \item model\_reset() (refl1d.fitproblem.MultiFitProblem method), \hyperpage{66}
+  \item model\_to\_mlayer() (in module refl1d.stajconvert), \hyperpage{138}
+  \item model\_update() (refl1d.fitproblem.FitProblem method), \hyperpage{64}
+  \item model\_update() (refl1d.fitproblem.MultiFitProblem method), \hyperpage{66}
+  \item MonitorRunner (class in refl1d.fitters), \hyperpage{70}
+  \item Monochromatic (class in refl1d.instrument), \hyperpage{75}
+  \item monospline() (in module refl1d.mono), \hyperpage{88}
+  \item mp (refl1d.probe.PolarizedNeutronProbe attribute), \hyperpage{103}
+  \item mp (refl1d.probe.PolarizedNeutronQProbe attribute), \hyperpage{104}
+  \item MPMapper (class in refl1d.mapper), \hyperpage{81}
+  \item mu (refl1d.staj.MlayerModel attribute), \hyperpage{137}
+  \item MultiFitProblem (class in refl1d.fitproblem), \hyperpage{65}
+  \item MultiStart (class in refl1d.fitters), \hyperpage{70}
+
+  \indexspace
+  \bigletter N
+  \item name (refl1d.dist.DistributionExperiment attribute), \hyperpage{56}
+  \item name (refl1d.experiment.Experiment attribute), \hyperpage{60}
+  \item name (refl1d.experiment.ExperimentBase attribute), \hyperpage{61}
+  \item name (refl1d.experiment.MixedExperiment attribute), \hyperpage{62}
+  \item name (refl1d.probe.NeutronProbe attribute), \hyperpage{101}
+  \item name (refl1d.probe.PolarizedNeutronProbe attribute), \hyperpage{103}
+  \item name (refl1d.probe.PolarizedNeutronQProbe attribute), \hyperpage{104}
+  \item name (refl1d.probe.Probe attribute), \hyperpage{107}
+  \item name (refl1d.probe.ProbeSet attribute), \hyperpage{109}
+  \item name (refl1d.probe.QProbe attribute), \hyperpage{112}
+  \item name (refl1d.probe.XrayProbe attribute), \hyperpage{115}
+  \item NCNRData (class in refl1d.ncnrdata), \hyperpage{91}
+  \item NeutronProbe (class in refl1d.probe), \hyperpage{100}
+  \item next\_color() (in module refl1d.util), \hyperpage{140}
+  \item NG1 (class in refl1d.ncnrdata), \hyperpage{91}
+  \item NG7 (class in refl1d.ncnrdata), \hyperpage{92}
+  \item nice() (in module refl1d.experiment), \hyperpage{63}
+  \item nice() (in module refl1d.mapper), \hyperpage{81}
+  \item nice\_range() (in module refl1d.mystic.bounds), \hyperpage{158}
+  \item nllf() (refl1d.dist.DistributionExperiment method), \hyperpage{56}
+  \item nllf() (refl1d.experiment.Experiment method), \hyperpage{60}
+  \item nllf() (refl1d.experiment.ExperimentBase method), \hyperpage{61}
+  \item nllf() (refl1d.experiment.MixedExperiment method), \hyperpage{62}
+  \item nllf() (refl1d.fitproblem.Fitness method), \hyperpage{65}
+  \item nllf() (refl1d.fitproblem.FitProblem method), \hyperpage{64}
+  \item nllf() (refl1d.fitproblem.MultiFitProblem method), \hyperpage{66}
+  \item nllf() (refl1d.fitters.DreamModel method), \hyperpage{69}
+  \item nllf() (refl1d.mystic.bounds.Bounded method), \hyperpage{159}
+  \item nllf() (refl1d.mystic.bounds.BoundedAbove method), \hyperpage{160}
+  \item nllf() (refl1d.mystic.bounds.BoundedBelow method), \hyperpage{160}
+  \item nllf() (refl1d.mystic.bounds.Distribution method), \hyperpage{160}
+  \item nllf() (refl1d.mystic.bounds.Normal method), \hyperpage{161}
+  \item nllf() (refl1d.mystic.bounds.SoftBounded method), \hyperpage{161}
+  \item nllf() (refl1d.mystic.bounds.Unbounded method), \hyperpage{159}
+  \item nllf() (refl1d.mystic.parameter.BaseParameter method), \hyperpage{146}
+  \item nllf() (refl1d.mystic.parameter.Constant method), \hyperpage{147}
+  \item nllf() (refl1d.mystic.parameter.Function method), \hyperpage{148}
+  \item nllf() (refl1d.mystic.parameter.IntegerParameter method), \hyperpage{149}
+  \item nllf() (refl1d.mystic.parameter.OperatorAdd method), \hyperpage{150}
+  \item nllf() (refl1d.mystic.parameter.OperatorDiv method), \hyperpage{150}
+  \item nllf() (refl1d.mystic.parameter.OperatorMul method), \hyperpage{151}
+  \item nllf() (refl1d.mystic.parameter.OperatorPow method), \hyperpage{152}
+  \item nllf() (refl1d.mystic.parameter.OperatorSub method), \hyperpage{153}
+  \item nllf() (refl1d.mystic.parameter.Parameter method), \hyperpage{154}
+  \item nllf() (refl1d.mystic.parameter.Reference method), \hyperpage{155}
+  \item nllf() (refl1d.mystic.parameter.VectorParameter method), \hyperpage{156}
+  \item Normal (class in refl1d.mystic.bounds), \hyperpage{161}
+  \item numpoints() (refl1d.dist.DistributionExperiment method), \hyperpage{57}
+  \item numpoints() (refl1d.experiment.Experiment method), \hyperpage{60}
+  \item numpoints() (refl1d.experiment.ExperimentBase method), \hyperpage{61}
+  \item numpoints() (refl1d.experiment.MixedExperiment method), \hyperpage{62}
+  \item numpoints() (refl1d.fitproblem.Fitness method), \hyperpage{65}
+
+  \indexspace
+  \bigletter O
+  \item onemove() (refl1d.pytwalk.pytwalk method), \hyperpage{121}
+  \item op (refl1d.mystic.parameter.Function attribute), \hyperpage{148}
+  \item OperatorAdd (class in refl1d.mystic.parameter), \hyperpage{149}
+  \item OperatorDiv (class in refl1d.mystic.parameter), \hyperpage{150}
+  \item OperatorMul (class in refl1d.mystic.parameter), \hyperpage{151}
+  \item OperatorPow (class in refl1d.mystic.parameter), \hyperpage{152}
+  \item OperatorSub (class in refl1d.mystic.parameter), \hyperpage{152}
+  \item oversample() (refl1d.probe.NeutronProbe method), \hyperpage{101}
+  \item oversample() (refl1d.probe.PolarizedNeutronProbe method), \hyperpage{103}
+  \item oversample() (refl1d.probe.PolarizedNeutronQProbe method), \hyperpage{104}
+  \item oversample() (refl1d.probe.Probe method), \hyperpage{107}
+  \item oversample() (refl1d.probe.ProbeSet method), \hyperpage{109}
+  \item oversample() (refl1d.probe.QProbe method), \hyperpage{112}
+  \item oversample() (refl1d.probe.XrayProbe method), \hyperpage{115}
+
+  \indexspace
+  \bigletter P
+  \item p (refl1d.wsolve.LinearModel attribute), \hyperpage{144}
+  \item p (refl1d.wsolve.PolynomialModel attribute), \hyperpage{144}
+  \item parallel\_tempering() (in module refl1d.partemp), \hyperpage{97}
+  \item Parameter (class in refl1d.mystic.parameter), \hyperpage{153}
+  \item parameter\_nllf() (refl1d.fitproblem.FitProblem method), \hyperpage{64}
+  \item parameter\_nllf() (refl1d.fitproblem.MultiFitProblem method), \hyperpage{66}
+  \item parameter\_residuals() (refl1d.fitproblem.FitProblem method), \hyperpage{64}
+  \item parameter\_residuals() (refl1d.fitproblem.MultiFitProblem method), \hyperpage{66}
+  \item parameters() (refl1d.cheby.ChebyVF method), \hyperpage{54}
+  \item parameters() (refl1d.cheby.FreeformCheby method), \hyperpage{54}
+  \item parameters() (refl1d.dist.DistributionExperiment method), \hyperpage{57}
+  \item parameters() (refl1d.dist.Weights method), \hyperpage{58}
+  \item parameters() (refl1d.experiment.Experiment method), \hyperpage{60}
+  \item parameters() (refl1d.experiment.MixedExperiment method), \hyperpage{62}
+  \item parameters() (refl1d.fitproblem.Fitness method), \hyperpage{65}
+  \item parameters() (refl1d.freeform.FreeformInterface01 method), \hyperpage{71}
+  \item parameters() (refl1d.freeform.FreeInterface method), \hyperpage{71}
+  \item parameters() (refl1d.freeform.FreeLayer method), \hyperpage{71}
+  \item parameters() (refl1d.magnetic.FreeMagnetic method), \hyperpage{79}
+  \item parameters() (refl1d.magnetic.MagneticLayer method), \hyperpage{80}
+  \item parameters() (refl1d.magnetic.MagneticSlab method), \hyperpage{80}
+  \item parameters() (refl1d.magnetic.MagneticTwist method), \hyperpage{81}
+  \item parameters() (refl1d.material.Material method), \hyperpage{83}
+  \item parameters() (refl1d.material.Mixture method), \hyperpage{84}
+  \item parameters() (refl1d.material.SLD method), \hyperpage{84}
+  \item parameters() (refl1d.material.Vacuum method), \hyperpage{84}
+  \item parameters() (refl1d.model.Layer method), \hyperpage{87}
+  \item parameters() (refl1d.model.Repeat method), \hyperpage{86}
+  \item parameters() (refl1d.model.Slab method), \hyperpage{86}
+  \item parameters() (refl1d.model.Stack method), \hyperpage{87}
+  \item parameters() (refl1d.mono.FreeInterface method), \hyperpage{88}
+  \item parameters() (refl1d.mono.FreeLayer method), \hyperpage{88}
+  \item parameters() (refl1d.mystic.parameter.Alias method), \hyperpage{146}
+  \item parameters() (refl1d.mystic.parameter.BaseParameter method), \hyperpage{146}
+  \item parameters() (refl1d.mystic.parameter.Constant method), \hyperpage{147}
+  \item parameters() (refl1d.mystic.parameter.Function method), \hyperpage{148}
+  \item parameters() (refl1d.mystic.parameter.IntegerParameter method), \hyperpage{149}
+  \item parameters() (refl1d.mystic.parameter.OperatorAdd method), \hyperpage{150}
+  \item parameters() (refl1d.mystic.parameter.OperatorDiv method), \hyperpage{151}
+  \item parameters() (refl1d.mystic.parameter.OperatorMul method), \hyperpage{151}
+  \item parameters() (refl1d.mystic.parameter.OperatorPow method), \hyperpage{152}
+  \item parameters() (refl1d.mystic.parameter.OperatorSub method), \hyperpage{153}
+  \item parameters() (refl1d.mystic.parameter.Parameter method), \hyperpage{154}
+  \item parameters() (refl1d.mystic.parameter.Reference method), \hyperpage{155}
+  \item parameters() (refl1d.mystic.parameter.VectorParameter method), \hyperpage{156}
+  \item parameters() (refl1d.polymer.PolymerBrush method), \hyperpage{99}
+  \item parameters() (refl1d.polymer.VolumeProfile method), \hyperpage{99}
+  \item parameters() (refl1d.probe.NeutronProbe method), \hyperpage{101}
+  \item parameters() (refl1d.probe.PolarizedNeutronProbe method), \hyperpage{103}
+  \item parameters() (refl1d.probe.PolarizedNeutronQProbe method), \hyperpage{105}
+  \item parameters() (refl1d.probe.Probe method), \hyperpage{107}
+  \item parameters() (refl1d.probe.ProbeSet method), \hyperpage{110}
+  \item parameters() (refl1d.probe.QProbe method), \hyperpage{113}
+  \item parameters() (refl1d.probe.XrayProbe method), \hyperpage{115}
+  \item ParameterSet (class in refl1d.mystic.parameter), \hyperpage{154}
+  \item parse\_file() (in module refl1d.ncnrdata), \hyperpage{96}
+  \item parse\_file() (in module refl1d.snsdata), \hyperpage{133}
+  \item parse\_file() (in module refl1d.util), \hyperpage{140}
+  \item ParseOpts (class in refl1d.cli), \hyperpage{55}
+  \item pbs() (in module refl1d.bspline), \hyperpage{52}
+  \item pbs\_control() (in module refl1d.bspline), \hyperpage{52}
+  \item pi() (refl1d.wsolve.LinearModel method), \hyperpage{144}
+  \item pi() (refl1d.wsolve.PolynomialModel method), \hyperpage{144}
+  \item plot (refl1d.cli.Refl1dOpts attribute), \hyperpage{55}
+  \item plot() (refl1d.dist.DistributionExperiment method), \hyperpage{57}
+  \item plot() (refl1d.experiment.Experiment method), \hyperpage{60}
+  \item plot() (refl1d.experiment.ExperimentBase method), \hyperpage{61}
+  \item plot() (refl1d.experiment.MixedExperiment method), \hyperpage{62}
+  \item plot() (refl1d.fitproblem.Fitness method), \hyperpage{65}
+  \item plot() (refl1d.fitproblem.FitProblem method), \hyperpage{64}
+  \item plot() (refl1d.fitproblem.MultiFitProblem method), \hyperpage{66}
+  \item plot() (refl1d.fitproblem.Result method), \hyperpage{67}
+  \item plot() (refl1d.fitters.DreamFit method), \hyperpage{69}
+  \item plot() (refl1d.fitters.DreamModel method), \hyperpage{69}
+  \item plot() (refl1d.fitters.FitDriver method), \hyperpage{69}
+  \item plot() (refl1d.probe.NeutronProbe method), \hyperpage{101}
+  \item plot() (refl1d.probe.PolarizedNeutronProbe method), \hyperpage{103}
+  \item plot() (refl1d.probe.PolarizedNeutronQProbe method), \hyperpage{105}
+  \item plot() (refl1d.probe.Probe method), \hyperpage{107}
+  \item plot() (refl1d.probe.ProbeSet method), \hyperpage{110}
+  \item plot() (refl1d.probe.QProbe method), \hyperpage{113}
+  \item plot() (refl1d.probe.XrayProbe method), \hyperpage{115}
+  \item plot\_fft() (refl1d.probe.NeutronProbe method), \hyperpage{102}
+  \item plot\_fft() (refl1d.probe.Probe method), \hyperpage{107}
+  \item plot\_fft() (refl1d.probe.ProbeSet method), \hyperpage{110}
+  \item plot\_fft() (refl1d.probe.QProbe method), \hyperpage{113}
+  \item plot\_fft() (refl1d.probe.XrayProbe method), \hyperpage{115}
+  \item plot\_fresnel() (refl1d.probe.NeutronProbe method), \hyperpage{102}
+  \item plot\_fresnel() (refl1d.probe.PolarizedNeutronProbe method), \hyperpage{103}
+  \item plot\_fresnel() (refl1d.probe.PolarizedNeutronQProbe method), \hyperpage{105}
+  \item plot\_fresnel() (refl1d.probe.Probe method), \hyperpage{107}
+  \item plot\_fresnel() (refl1d.probe.ProbeSet method), \hyperpage{110}
+  \item plot\_fresnel() (refl1d.probe.QProbe method), \hyperpage{113}
+  \item plot\_fresnel() (refl1d.probe.XrayProbe method), \hyperpage{115}
+  \item plot\_inflection() (in module refl1d.mono), \hyperpage{88}
+  \item plot\_linear() (refl1d.probe.NeutronProbe method), \hyperpage{102}
+  \item plot\_linear() (refl1d.probe.PolarizedNeutronProbe method), \hyperpage{103}
+  \item plot\_linear() (refl1d.probe.PolarizedNeutronQProbe method), \hyperpage{105}
+  \item plot\_linear() (refl1d.probe.Probe method), \hyperpage{108}
+  \item plot\_linear() (refl1d.probe.ProbeSet method), \hyperpage{110}
+  \item plot\_linear() (refl1d.probe.QProbe method), \hyperpage{113}
+  \item plot\_linear() (refl1d.probe.XrayProbe method), \hyperpage{115}
+  \item plot\_log() (refl1d.probe.NeutronProbe method), \hyperpage{102}
+  \item plot\_log() (refl1d.probe.PolarizedNeutronProbe method), \hyperpage{103}
+  \item plot\_log() (refl1d.probe.PolarizedNeutronQProbe method), \hyperpage{105}
+  \item plot\_log() (refl1d.probe.Probe method), \hyperpage{108}
+  \item plot\_log() (refl1d.probe.ProbeSet method), \hyperpage{110}
+  \item plot\_log() (refl1d.probe.QProbe method), \hyperpage{113}
+  \item plot\_log() (refl1d.probe.XrayProbe method), \hyperpage{116}
+  \item plot\_profile() (refl1d.dist.DistributionExperiment method), \hyperpage{57}
+  \item plot\_profile() (refl1d.experiment.Experiment method), \hyperpage{60}
+  \item plot\_profile() (refl1d.experiment.MixedExperiment method), \hyperpage{62}
+  \item plot\_Q4() (refl1d.probe.NeutronProbe method), \hyperpage{102}
+  \item plot\_Q4() (refl1d.probe.PolarizedNeutronProbe method), \hyperpage{103}
+  \item plot\_Q4() (refl1d.probe.PolarizedNeutronQProbe method), \hyperpage{105}
+  \item plot\_Q4() (refl1d.probe.Probe method), \hyperpage{107}
+  \item plot\_Q4() (refl1d.probe.ProbeSet method), \hyperpage{110}
+  \item plot\_Q4() (refl1d.probe.QProbe method), \hyperpage{113}
+  \item plot\_Q4() (refl1d.probe.XrayProbe method), \hyperpage{115}
+  \item plot\_reflectivity() (refl1d.dist.DistributionExperiment method), \hyperpage{57}
+  \item plot\_reflectivity() (refl1d.experiment.Experiment method), \hyperpage{60}
+  \item plot\_reflectivity() (refl1d.experiment.ExperimentBase method), \hyperpage{61}
+  \item plot\_reflectivity() (refl1d.experiment.MixedExperiment method), \hyperpage{62}
+  \item plot\_residuals() (refl1d.probe.NeutronProbe method), \hyperpage{102}
+  \item plot\_residuals() (refl1d.probe.PolarizedNeutronProbe method), \hyperpage{103}
+  \item plot\_residuals() (refl1d.probe.PolarizedNeutronQProbe method), \hyperpage{105}
+  \item plot\_residuals() (refl1d.probe.Probe method), \hyperpage{108}
+  \item plot\_residuals() (refl1d.probe.ProbeSet method), \hyperpage{110}
+  \item plot\_residuals() (refl1d.probe.QProbe method), \hyperpage{113}
+  \item plot\_residuals() (refl1d.probe.XrayProbe method), \hyperpage{116}
+  \item plot\_resolution() (refl1d.probe.NeutronProbe method), \hyperpage{102}
+  \item plot\_resolution() (refl1d.probe.PolarizedNeutronProbe method), \hyperpage{103}
+  \item plot\_resolution() (refl1d.probe.PolarizedNeutronQProbe method), \hyperpage{105}
+  \item plot\_resolution() (refl1d.probe.Probe method), \hyperpage{108}
+  \item plot\_resolution() (refl1d.probe.ProbeSet method), \hyperpage{110}
+  \item plot\_resolution() (refl1d.probe.QProbe method), \hyperpage{113}
+  \item plot\_resolution() (refl1d.probe.XrayProbe method), \hyperpage{116}
+  \item plot\_SA() (refl1d.probe.PolarizedNeutronProbe method), \hyperpage{103}
+  \item plot\_SA() (refl1d.probe.PolarizedNeutronQProbe method), \hyperpage{105}
+  \item plot\_sample() (in module refl1d.experiment), \hyperpage{63}
+  \item plot\_weights() (refl1d.dist.DistributionExperiment method), \hyperpage{57}
+  \item pm (refl1d.probe.PolarizedNeutronProbe attribute), \hyperpage{103}
+  \item pm (refl1d.probe.PolarizedNeutronQProbe attribute), \hyperpage{105}
+  \item pm() (in module refl1d.mystic.bounds), \hyperpage{158}
+  \item pm() (refl1d.mystic.parameter.BaseParameter method), \hyperpage{146}
+  \item pm() (refl1d.mystic.parameter.Constant method), \hyperpage{147}
+  \item pm() (refl1d.mystic.parameter.Function method), \hyperpage{148}
+  \item pm() (refl1d.mystic.parameter.IntegerParameter method), \hyperpage{149}
+  \item pm() (refl1d.mystic.parameter.OperatorAdd method), \hyperpage{150}
+  \item pm() (refl1d.mystic.parameter.OperatorDiv method), \hyperpage{151}
+  \item pm() (refl1d.mystic.parameter.OperatorMul method), \hyperpage{151}
+  \item pm() (refl1d.mystic.parameter.OperatorPow method), \hyperpage{152}
+  \item pm() (refl1d.mystic.parameter.OperatorSub method), \hyperpage{153}
+  \item pm() (refl1d.mystic.parameter.Parameter method), \hyperpage{154}
+  \item pm() (refl1d.mystic.parameter.Reference method), \hyperpage{155}
+  \item pm() (refl1d.mystic.parameter.VectorParameter method), \hyperpage{156}
+  \item pm\_raw() (in module refl1d.mystic.bounds), \hyperpage{158}
+  \item pmp() (in module refl1d.mystic.bounds), \hyperpage{158}
+  \item pmp() (refl1d.mystic.parameter.BaseParameter method), \hyperpage{146}
+  \item pmp() (refl1d.mystic.parameter.Constant method), \hyperpage{147}
+  \item pmp() (refl1d.mystic.parameter.Function method), \hyperpage{148}
+  \item pmp() (refl1d.mystic.parameter.IntegerParameter method), \hyperpage{149}
+  \item pmp() (refl1d.mystic.parameter.OperatorAdd method), \hyperpage{150}
+  \item pmp() (refl1d.mystic.parameter.OperatorDiv method), \hyperpage{151}
+  \item pmp() (refl1d.mystic.parameter.OperatorMul method), \hyperpage{151}
+  \item pmp() (refl1d.mystic.parameter.OperatorPow method), \hyperpage{152}
+  \item pmp() (refl1d.mystic.parameter.OperatorSub method), \hyperpage{153}
+  \item pmp() (refl1d.mystic.parameter.Parameter method), \hyperpage{154}
+  \item pmp() (refl1d.mystic.parameter.Reference method), \hyperpage{155}
+  \item pmp() (refl1d.mystic.parameter.VectorParameter method), \hyperpage{156}
+  \item pmp\_raw() (in module refl1d.mystic.bounds), \hyperpage{158}
+  \item poisson\_average() (in module refl1d.stitch), \hyperpage{138}
+  \item PolarizedNeutronProbe (class in refl1d.probe), \hyperpage{103}
+  \item PolarizedNeutronQProbe (class in refl1d.probe), \hyperpage{104}
+  \item PolymerBrush (class in refl1d.polymer), \hyperpage{98}
+  \item PolynomialModel (class in refl1d.wsolve), \hyperpage{144}
+  \item pp (refl1d.probe.PolarizedNeutronProbe attribute), \hyperpage{104}
+  \item pp (refl1d.probe.PolarizedNeutronQProbe attribute), \hyperpage{105}
+  \item preview() (in module refl1d.cli), \hyperpage{55}
+  \item preview() (in module refl1d.fitproblem), \hyperpage{67}
+  \item printed() (in module refl1d.numpyerrors), \hyperpage{97}
+  \item Probe (class in refl1d.probe), \hyperpage{105}
+  \item probe() (refl1d.instrument.Monochromatic method), \hyperpage{76}
+  \item probe() (refl1d.instrument.Pulsed method), \hyperpage{78}
+  \item probe() (refl1d.ncnrdata.ANDR method), \hyperpage{90}
+  \item probe() (refl1d.ncnrdata.NG1 method), \hyperpage{92}
+  \item probe() (refl1d.ncnrdata.NG7 method), \hyperpage{93}
+  \item probe() (refl1d.ncnrdata.XRay method), \hyperpage{95}
+  \item probe() (refl1d.snsdata.Liquids method), \hyperpage{130}
+  \item probe() (refl1d.snsdata.Magnetic method), \hyperpage{132}
+  \item ProbeCache (class in refl1d.material), \hyperpage{85}
+  \item ProbeSet (class in refl1d.probe), \hyperpage{108}
+  \item profile() (in module refl1d.util), \hyperpage{141}
+  \item profile() (refl1d.magnetic.FreeMagnetic method), \hyperpage{79}
+  \item profile() (refl1d.mono.FreeInterface method), \hyperpage{88}
+  \item profile() (refl1d.mono.FreeLayer method), \hyperpage{88}
+  \item profile() (refl1d.polymer.PolymerBrush method), \hyperpage{99}
+  \item PSFit (class in refl1d.fitters), \hyperpage{70}
+  \item PTFit (class in refl1d.fitters), \hyperpage{70}
+  \item Pulsed (class in refl1d.instrument), \hyperpage{77}
+  \item push\_seed (class in refl1d.util), \hyperpage{141}
+  \item pushdir (class in refl1d.util), \hyperpage{141}
+  \item put01() (refl1d.mystic.bounds.Bounded method), \hyperpage{159}
+  \item put01() (refl1d.mystic.bounds.BoundedAbove method), \hyperpage{160}
+  \item put01() (refl1d.mystic.bounds.BoundedBelow method), \hyperpage{160}
+  \item put01() (refl1d.mystic.bounds.Distribution method), \hyperpage{161}
+  \item put01() (refl1d.mystic.bounds.Normal method), \hyperpage{161}
+  \item put01() (refl1d.mystic.bounds.SoftBounded method), \hyperpage{161}
+  \item put01() (refl1d.mystic.bounds.Unbounded method), \hyperpage{159}
+  \item putfull() (refl1d.mystic.bounds.Bounded method), \hyperpage{159}
+  \item putfull() (refl1d.mystic.bounds.BoundedAbove method), \hyperpage{160}
+  \item putfull() (refl1d.mystic.bounds.BoundedBelow method), \hyperpage{160}
+  \item putfull() (refl1d.mystic.bounds.Distribution method), \hyperpage{161}
+  \item putfull() (refl1d.mystic.bounds.Normal method), \hyperpage{161}
+  \item putfull() (refl1d.mystic.bounds.SoftBounded method), \hyperpage{161}
+  \item putfull() (refl1d.mystic.bounds.Unbounded method), \hyperpage{159}
+  \item pytwalk (class in refl1d.pytwalk), \hyperpage{120}
+
+  \indexspace
+  \bigletter Q
+  \item Q (refl1d.probe.NeutronProbe attribute), \hyperpage{100}
+  \item Q (refl1d.probe.Probe attribute), \hyperpage{106}
+  \item Q (refl1d.probe.ProbeSet attribute), \hyperpage{108}
+  \item Q (refl1d.probe.QProbe attribute), \hyperpage{111}
+  \item Q (refl1d.probe.XrayProbe attribute), \hyperpage{114}
+  \item QL2T() (in module refl1d.resolution), \hyperpage{126}
+  \item Qmeasurement\_union() (in module refl1d.probe), \hyperpage{114}
+  \item QProbe (class in refl1d.probe), \hyperpage{111}
+  \item QRL\_to\_data() (in module refl1d.snsdata), \hyperpage{132}
+  \item quasinewton() (in module refl1d.quasinewton), \hyperpage{121}
+
+  \indexspace
+  \bigletter R
+  \item raised() (in module refl1d.numpyerrors), \hyperpage{97}
+  \item rand() (refl1d.mystic.parameter.IntegerParameter method), \hyperpage{149}
+  \item rand() (refl1d.mystic.parameter.Parameter method), \hyperpage{154}
+  \item rand() (refl1d.mystic.parameter.Reference method), \hyperpage{155}
+  \item rand() (refl1d.mystic.parameter.VectorParameter method), \hyperpage{156}
+  \item random() (refl1d.mystic.bounds.Bounded method), \hyperpage{159}
+  \item random() (refl1d.mystic.bounds.BoundedAbove method), \hyperpage{160}
+  \item random() (refl1d.mystic.bounds.BoundedBelow method), \hyperpage{160}
+  \item random() (refl1d.mystic.bounds.Distribution method), \hyperpage{161}
+  \item random() (refl1d.mystic.bounds.Normal method), \hyperpage{161}
+  \item random() (refl1d.mystic.bounds.SoftBounded method), \hyperpage{161}
+  \item random() (refl1d.mystic.bounds.Unbounded method), \hyperpage{159}
+  \item random\_init() (in module refl1d.initpop), \hyperpage{73}
+  \item random\_lines() (in module refl1d.random\_lines), \hyperpage{122}
+  \item randomize() (in module refl1d.mystic.parameter), \hyperpage{157}
+  \item randomize() (refl1d.fitproblem.FitProblem method), \hyperpage{64}
+  \item randomize() (refl1d.fitproblem.MultiFitProblem method), \hyperpage{66}
+  \item range() (refl1d.mystic.parameter.BaseParameter method), \hyperpage{146}
+  \item range() (refl1d.mystic.parameter.Constant method), \hyperpage{147}
+  \item range() (refl1d.mystic.parameter.Function method), \hyperpage{148}
+  \item range() (refl1d.mystic.parameter.IntegerParameter method), \hyperpage{149}
+  \item range() (refl1d.mystic.parameter.OperatorAdd method), \hyperpage{150}
+  \item range() (refl1d.mystic.parameter.OperatorDiv method), \hyperpage{151}
+  \item range() (refl1d.mystic.parameter.OperatorMul method), \hyperpage{152}
+  \item range() (refl1d.mystic.parameter.OperatorPow method), \hyperpage{152}
+  \item range() (refl1d.mystic.parameter.OperatorSub method), \hyperpage{153}
+  \item range() (refl1d.mystic.parameter.Parameter method), \hyperpage{154}
+  \item range() (refl1d.mystic.parameter.Reference method), \hyperpage{155}
+  \item range() (refl1d.mystic.parameter.VectorParameter method), \hyperpage{156}
+  \item readfile() (refl1d.ncnrdata.ANDR method), \hyperpage{91}
+  \item readfile() (refl1d.ncnrdata.NCNRData method), \hyperpage{91}
+  \item readfile() (refl1d.ncnrdata.NG1 method), \hyperpage{92}
+  \item readfile() (refl1d.ncnrdata.NG7 method), \hyperpage{93}
+  \item readfile() (refl1d.ncnrdata.XRay method), \hyperpage{95}
+  \item rebin() (in module refl1d.rebin), \hyperpage{122}
+  \item rebin2d() (in module refl1d.rebin), \hyperpage{122}
+  \item rebin2d\_float32() (in module refl1d.reflmodule), \hyperpage{125}
+  \item rebin2d\_float64() (in module refl1d.reflmodule), \hyperpage{125}
+  \item rebin2d\_uint16() (in module refl1d.reflmodule), \hyperpage{125}
+  \item rebin2d\_uint32() (in module refl1d.reflmodule), \hyperpage{125}
+  \item rebin2d\_uint8() (in module refl1d.reflmodule), \hyperpage{125}
+  \item rebin\_float32() (in module refl1d.reflmodule), \hyperpage{125}
+  \item rebin\_float64() (in module refl1d.reflmodule), \hyperpage{125}
+  \item rebin\_uint16() (in module refl1d.reflmodule), \hyperpage{125}
+  \item rebin\_uint32() (in module refl1d.reflmodule), \hyperpage{125}
+  \item rebin\_uint8() (in module refl1d.reflmodule), \hyperpage{125}
+  \item recall\_best() (in module refl1d.cli), \hyperpage{55}
+  \item redirect\_console (class in refl1d.util), \hyperpage{141}
+  \item Reference (class in refl1d.mystic.parameter), \hyperpage{154}
+  \item refl() (in module refl1d.abeles), \hyperpage{51}
+  \item refl1d.abeles (module), \hyperpage{51}
+  \item refl1d.bspline (module), \hyperpage{52}
+  \item refl1d.cheby (module), \hyperpage{53}
+  \item refl1d.cli (module), \hyperpage{55}
+  \item refl1d.dist (module), \hyperpage{56}
+  \item refl1d.errors (module), \hyperpage{58}
+  \item refl1d.experiment (module), \hyperpage{59}
+  \item refl1d.fitproblem (module), \hyperpage{63}
+  \item refl1d.fitservice (module), \hyperpage{68}
+  \item refl1d.fitters (module), \hyperpage{68}
+  \item refl1d.freeform (module), \hyperpage{70}
+  \item refl1d.fresnel (module), \hyperpage{72}
+  \item refl1d.garefl (module), \hyperpage{72}
+  \item refl1d.initpop (module), \hyperpage{72}
+  \item refl1d.instrument (module), \hyperpage{73}
+  \item refl1d.magnetic (module), \hyperpage{79}
+  \item refl1d.mapper (module), \hyperpage{81}
+  \item refl1d.material (module), \hyperpage{82}
+  \item refl1d.materialdb (module), \hyperpage{85}
+  \item refl1d.model (module), \hyperpage{86}
+  \item refl1d.mono (module), \hyperpage{87}
+  \item refl1d.mystic.bounds (module), \hyperpage{157}
+  \item refl1d.mystic.formatnum (module), \hyperpage{162}
+  \item refl1d.mystic.parameter (module), \hyperpage{146}
+  \item refl1d.ncnrdata (module), \hyperpage{89}
+  \item refl1d.numpyerrors (module), \hyperpage{96}
+  \item refl1d.partemp (module), \hyperpage{97}
+  \item refl1d.polymer (module), \hyperpage{98}
+  \item refl1d.probe (module), \hyperpage{100}
+  \item refl1d.profile (module), \hyperpage{117}
+  \item refl1d.pytwalk (module), \hyperpage{120}
+  \item refl1d.quasinewton (module), \hyperpage{121}
+  \item refl1d.random\_lines (module), \hyperpage{122}
+  \item refl1d.rebin (module), \hyperpage{122}
+  \item refl1d.reflectivity (module), \hyperpage{123}
+  \item refl1d.reflmodule (module), \hyperpage{125}
+  \item refl1d.resolution (module), \hyperpage{126}
+  \item refl1d.simplex (module), \hyperpage{129}
+  \item refl1d.snsdata (module), \hyperpage{130}
+  \item refl1d.staj (module), \hyperpage{133}
+  \item refl1d.stajconvert (module), \hyperpage{138}
+  \item refl1d.stitch (module), \hyperpage{138}
+  \item refl1d.support (module), \hyperpage{139}
+  \item refl1d.util (module), \hyperpage{140}
+  \item refl1d.wsolve (module), \hyperpage{142}
+  \item Refl1dOpts (class in refl1d.cli), \hyperpage{55}
+  \item reflectivity() (in module refl1d.reflectivity), \hyperpage{123}
+  \item reflectivity() (refl1d.dist.DistributionExperiment method), \hyperpage{57}
+  \item reflectivity() (refl1d.experiment.Experiment method), \hyperpage{60}
+  \item reflectivity() (refl1d.experiment.MixedExperiment method), \hyperpage{62}
+  \item reflectivity() (refl1d.fresnel.Fresnel method), \hyperpage{72}
+  \item reflectivity\_amplitude() (in module refl1d.reflectivity), \hyperpage{123}
+  \item remember\_best() (in module refl1d.cli), \hyperpage{55}
+  \item render() (refl1d.cheby.ChebyVF method), \hyperpage{54}
+  \item render() (refl1d.cheby.FreeformCheby method), \hyperpage{54}
+  \item render() (refl1d.freeform.FreeformInterface01 method), \hyperpage{71}
+  \item render() (refl1d.freeform.FreeInterface method), \hyperpage{71}
+  \item render() (refl1d.freeform.FreeLayer method), \hyperpage{71}
+  \item render() (refl1d.magnetic.FreeMagnetic method), \hyperpage{79}
+  \item render() (refl1d.magnetic.MagneticLayer method), \hyperpage{80}
+  \item render() (refl1d.magnetic.MagneticSlab method), \hyperpage{80}
+  \item render() (refl1d.magnetic.MagneticTwist method), \hyperpage{81}
+  \item render() (refl1d.model.Layer method), \hyperpage{87}
+  \item render() (refl1d.model.Repeat method), \hyperpage{86}
+  \item render() (refl1d.model.Slab method), \hyperpage{86}
+  \item render() (refl1d.model.Stack method), \hyperpage{87}
+  \item render() (refl1d.mono.FreeInterface method), \hyperpage{88}
+  \item render() (refl1d.mono.FreeLayer method), \hyperpage{88}
+  \item render() (refl1d.polymer.PolymerBrush method), \hyperpage{99}
+  \item render() (refl1d.polymer.VolumeProfile method), \hyperpage{99}
+  \item render\_stack() (refl1d.magnetic.FreeMagnetic method), \hyperpage{79}
+  \item render\_stack() (refl1d.magnetic.MagneticLayer method), \hyperpage{80}
+  \item render\_stack() (refl1d.magnetic.MagneticSlab method), \hyperpage{80}
+  \item render\_stack() (refl1d.magnetic.MagneticTwist method), \hyperpage{81}
+  \item Repeat (class in refl1d.model), \hyperpage{86}
+  \item repeat() (refl1d.profile.Microslabs method), \hyperpage{119}
+  \item resample() (refl1d.fitproblem.Result method), \hyperpage{67}
+  \item Resampler (class in refl1d.fitters), \hyperpage{70}
+  \item residiuals() (refl1d.fitproblem.Fitness method), \hyperpage{65}
+  \item residual() (refl1d.mystic.bounds.Bounded method), \hyperpage{159}
+  \item residual() (refl1d.mystic.bounds.BoundedAbove method), \hyperpage{160}
+  \item residual() (refl1d.mystic.bounds.BoundedBelow method), \hyperpage{160}
+  \item residual() (refl1d.mystic.bounds.Distribution method), \hyperpage{161}
+  \item residual() (refl1d.mystic.bounds.Normal method), \hyperpage{161}
+  \item residual() (refl1d.mystic.bounds.SoftBounded method), \hyperpage{161}
+  \item residual() (refl1d.mystic.bounds.Unbounded method), \hyperpage{159}
+  \item residual() (refl1d.mystic.parameter.BaseParameter method), \hyperpage{146}
+  \item residual() (refl1d.mystic.parameter.Constant method), \hyperpage{147}
+  \item residual() (refl1d.mystic.parameter.Function method), \hyperpage{148}
+  \item residual() (refl1d.mystic.parameter.IntegerParameter method), \hyperpage{149}
+  \item residual() (refl1d.mystic.parameter.OperatorAdd method), \hyperpage{150}
+  \item residual() (refl1d.mystic.parameter.OperatorDiv method), \hyperpage{151}
+  \item residual() (refl1d.mystic.parameter.OperatorMul method), \hyperpage{152}
+  \item residual() (refl1d.mystic.parameter.OperatorPow method), \hyperpage{152}
+  \item residual() (refl1d.mystic.parameter.OperatorSub method), \hyperpage{153}
+  \item residual() (refl1d.mystic.parameter.Parameter method), \hyperpage{154}
+  \item residual() (refl1d.mystic.parameter.Reference method), \hyperpage{155}
+  \item residual() (refl1d.mystic.parameter.VectorParameter method), \hyperpage{156}
+  \item residuals() (refl1d.dist.DistributionExperiment method), \hyperpage{57}
+  \item residuals() (refl1d.experiment.Experiment method), \hyperpage{60}
+  \item residuals() (refl1d.experiment.ExperimentBase method), \hyperpage{61}
+  \item residuals() (refl1d.experiment.MixedExperiment method), \hyperpage{62}
+  \item residuals() (refl1d.fitproblem.FitProblem method), \hyperpage{64}
+  \item residuals() (refl1d.fitproblem.MultiFitProblem method), \hyperpage{66}
+  \item resolution() (refl1d.instrument.Monochromatic method), \hyperpage{77}
+  \item resolution() (refl1d.instrument.Pulsed method), \hyperpage{78}
+  \item resolution() (refl1d.ncnrdata.ANDR method), \hyperpage{91}
+  \item resolution() (refl1d.ncnrdata.NG1 method), \hyperpage{92}
+  \item resolution() (refl1d.ncnrdata.NG7 method), \hyperpage{93}
+  \item resolution() (refl1d.ncnrdata.XRay method), \hyperpage{95}
+  \item resolution() (refl1d.snsdata.Liquids method), \hyperpage{131}
+  \item resolution() (refl1d.snsdata.Magnetic method), \hyperpage{132}
+  \item resolution\_guard() (refl1d.probe.NeutronProbe method), \hyperpage{102}
+  \item resolution\_guard() (refl1d.probe.Probe method), \hyperpage{108}
+  \item resolution\_guard() (refl1d.probe.ProbeSet method), \hyperpage{110}
+  \item resolution\_guard() (refl1d.probe.QProbe method), \hyperpage{113}
+  \item resolution\_guard() (refl1d.probe.XrayProbe method), \hyperpage{116}
+  \item restore\_data() (refl1d.dist.DistributionExperiment method), \hyperpage{57}
+  \item restore\_data() (refl1d.experiment.Experiment method), \hyperpage{60}
+  \item restore\_data() (refl1d.experiment.ExperimentBase method), \hyperpage{61}
+  \item restore\_data() (refl1d.experiment.MixedExperiment method), \hyperpage{62}
+  \item restore\_data() (refl1d.fitproblem.Fitness method), \hyperpage{65}
+  \item restore\_data() (refl1d.fitproblem.FitProblem method), \hyperpage{64}
+  \item restore\_data() (refl1d.fitproblem.MultiFitProblem method), \hyperpage{66}
+  \item restore\_data() (refl1d.probe.NeutronProbe method), \hyperpage{102}
+  \item restore\_data() (refl1d.probe.PolarizedNeutronProbe method), \hyperpage{104}
+  \item restore\_data() (refl1d.probe.PolarizedNeutronQProbe method), \hyperpage{105}
+  \item restore\_data() (refl1d.probe.Probe method), \hyperpage{108}
+  \item restore\_data() (refl1d.probe.ProbeSet method), \hyperpage{110}
+  \item restore\_data() (refl1d.probe.QProbe method), \hyperpage{113}
+  \item restore\_data() (refl1d.probe.XrayProbe method), \hyperpage{116}
+  \item Result (class in refl1d.fitproblem), \hyperpage{67}
+  \item resynth() (in module refl1d.cli), \hyperpage{55}
+  \item resynth\_data() (refl1d.dist.DistributionExperiment method), \hyperpage{57}
+  \item resynth\_data() (refl1d.experiment.Experiment method), \hyperpage{60}
+  \item resynth\_data() (refl1d.experiment.ExperimentBase method), \hyperpage{61}
+  \item resynth\_data() (refl1d.experiment.MixedExperiment method), \hyperpage{62}
+  \item resynth\_data() (refl1d.fitproblem.Fitness method), \hyperpage{65}
+  \item resynth\_data() (refl1d.fitproblem.FitProblem method), \hyperpage{64}
+  \item resynth\_data() (refl1d.fitproblem.MultiFitProblem method), \hyperpage{66}
+  \item resynth\_data() (refl1d.probe.NeutronProbe method), \hyperpage{102}
+  \item resynth\_data() (refl1d.probe.PolarizedNeutronProbe method), \hyperpage{104}
+  \item resynth\_data() (refl1d.probe.PolarizedNeutronQProbe method), \hyperpage{105}
+  \item resynth\_data() (refl1d.probe.Probe method), \hyperpage{108}
+  \item resynth\_data() (refl1d.probe.ProbeSet method), \hyperpage{110}
+  \item resynth\_data() (refl1d.probe.QProbe method), \hyperpage{113}
+  \item resynth\_data() (refl1d.probe.XrayProbe method), \hyperpage{116}
+  \item rho (refl1d.profile.Microslabs attribute), \hyperpage{119}
+  \item RLFit (class in refl1d.fitters), \hyperpage{70}
+  \item run() (refl1d.fitproblem.TWalk method), \hyperpage{67}
+  \item Run() (refl1d.pytwalk.pytwalk method), \hyperpage{120}
+  \item run\_profile() (in module refl1d.cli), \hyperpage{56}
+  \item RunRWMH() (refl1d.pytwalk.pytwalk method), \hyperpage{120}
+
+  \indexspace
+  \bigletter S
+  \item sample\_data() (in module refl1d.support), \hyperpage{139}
+  \item save() (refl1d.dist.DistributionExperiment method), \hyperpage{57}
+  \item save() (refl1d.experiment.Experiment method), \hyperpage{60}
+  \item save() (refl1d.experiment.ExperimentBase method), \hyperpage{61}
+  \item save() (refl1d.experiment.MixedExperiment method), \hyperpage{62}
+  \item save() (refl1d.fitproblem.Fitness method), \hyperpage{65}
+  \item save() (refl1d.fitproblem.FitProblem method), \hyperpage{64}
+  \item save() (refl1d.fitproblem.MultiFitProblem method), \hyperpage{67}
+  \item save() (refl1d.fitproblem.Result method), \hyperpage{67}
+  \item save() (refl1d.fitters.DreamFit method), \hyperpage{69}
+  \item save() (refl1d.fitters.FitDriver method), \hyperpage{69}
+  \item save() (refl1d.probe.NeutronProbe method), \hyperpage{102}
+  \item save() (refl1d.probe.PolarizedNeutronProbe method), \hyperpage{104}
+  \item save() (refl1d.probe.PolarizedNeutronQProbe method), \hyperpage{105}
+  \item save() (refl1d.probe.Probe method), \hyperpage{108}
+  \item save() (refl1d.probe.ProbeSet method), \hyperpage{110}
+  \item save() (refl1d.probe.QProbe method), \hyperpage{113}
+  \item save() (refl1d.probe.XrayProbe method), \hyperpage{116}
+  \item Save() (refl1d.pytwalk.pytwalk method), \hyperpage{121}
+  \item save() (refl1d.staj.MlayerMagnetic method), \hyperpage{135}
+  \item save() (refl1d.staj.MlayerModel method), \hyperpage{137}
+  \item save\_mlayer() (in module refl1d.stajconvert), \hyperpage{138}
+  \item save\_profile() (refl1d.dist.DistributionExperiment method), \hyperpage{57}
+  \item save\_profile() (refl1d.experiment.Experiment method), \hyperpage{60}
+  \item save\_profile() (refl1d.experiment.ExperimentBase method), \hyperpage{61}
+  \item save\_profile() (refl1d.experiment.MixedExperiment method), \hyperpage{62}
+  \item save\_refl() (refl1d.dist.DistributionExperiment method), \hyperpage{57}
+  \item save\_refl() (refl1d.experiment.Experiment method), \hyperpage{60}
+  \item save\_refl() (refl1d.experiment.ExperimentBase method), \hyperpage{61}
+  \item save\_refl() (refl1d.experiment.MixedExperiment method), \hyperpage{62}
+  \item save\_staj() (refl1d.experiment.Experiment method), \hyperpage{60}
+  \item save\_staj() (refl1d.experiment.MixedExperiment method), \hyperpage{63}
+  \item Scatterer (class in refl1d.material), \hyperpage{84}
+  \item scattering\_factors() (refl1d.material.ProbeCache method), \hyperpage{85}
+  \item scattering\_factors() (refl1d.probe.NeutronProbe method), \hyperpage{102}
+  \item scattering\_factors() (refl1d.probe.PolarizedNeutronProbe method), \hyperpage{104}
+  \item scattering\_factors() (refl1d.probe.PolarizedNeutronQProbe method), \hyperpage{105}
+  \item scattering\_factors() (refl1d.probe.Probe method), \hyperpage{108}
+  \item scattering\_factors() (refl1d.probe.ProbeSet method), \hyperpage{110}
+  \item scattering\_factors() (refl1d.probe.QProbe method), \hyperpage{113}
+  \item scattering\_factors() (refl1d.probe.XrayProbe method), \hyperpage{116}
+  \item select\_corresponding() (refl1d.probe.PolarizedNeutronProbe method), \hyperpage{104}
+  \item select\_corresponding() (refl1d.probe.PolarizedNeutronQProbe method), \hyperpage{105}
+  \item SerialMapper (class in refl1d.mapper), \hyperpage{81}
+  \item ServiceMonitor (class in refl1d.fitservice), \hyperpage{68}
+  \item set() (refl1d.mystic.parameter.IntegerParameter method), \hyperpage{149}
+  \item set() (refl1d.mystic.parameter.Parameter method), \hyperpage{154}
+  \item set() (refl1d.mystic.parameter.Reference method), \hyperpage{155}
+  \item set() (refl1d.mystic.parameter.VectorParameter method), \hyperpage{156}
+  \item set() (refl1d.staj.MlayerMagnetic method), \hyperpage{135}
+  \item set() (refl1d.staj.MlayerModel method), \hyperpage{137}
+  \item set\_from\_cli() (refl1d.fitters.FitOptions method), \hyperpage{70}
+  \item setp() (refl1d.fitproblem.FitProblem method), \hyperpage{65}
+  \item setp() (refl1d.fitproblem.MultiFitProblem method), \hyperpage{67}
+  \item setpriority() (in module refl1d.mapper), \hyperpage{81}
+  \item shared\_beam() (refl1d.probe.PolarizedNeutronProbe method), \hyperpage{104}
+  \item shared\_beam() (refl1d.probe.PolarizedNeutronQProbe method), \hyperpage{105}
+  \item shared\_beam() (refl1d.probe.ProbeSet method), \hyperpage{110}
+  \item show() (refl1d.fitproblem.FitProblem method), \hyperpage{65}
+  \item show() (refl1d.fitproblem.MultiFitProblem method), \hyperpage{67}
+  \item show() (refl1d.fitproblem.Result method), \hyperpage{67}
+  \item show() (refl1d.fitters.DreamFit method), \hyperpage{69}
+  \item show() (refl1d.fitters.FitDriver method), \hyperpage{69}
+  \item show\_chisq() (in module refl1d.fitproblem), \hyperpage{68}
+  \item show\_correlations() (in module refl1d.fitproblem), \hyperpage{68}
+  \item show\_distribution() (in module refl1d.errors), \hyperpage{58}
+  \item show\_improvement() (refl1d.fitservice.ServiceMonitor method), \hyperpage{68}
+  \item show\_improvement() (refl1d.fitters.ConsoleMonitor method), \hyperpage{69}
+  \item show\_progress() (refl1d.fitservice.ServiceMonitor method), \hyperpage{68}
+  \item show\_progress() (refl1d.fitters.ConsoleMonitor method), \hyperpage{69}
+  \item show\_stats() (in module refl1d.fitproblem), \hyperpage{68}
+  \item show\_stats() (refl1d.fitproblem.Result method), \hyperpage{67}
+  \item showmodel() (refl1d.fitproblem.Result method), \hyperpage{67}
+  \item showpars() (refl1d.fitproblem.Result method), \hyperpage{67}
+  \item sigma (refl1d.profile.Microslabs attribute), \hyperpage{119}
+  \item sigma2FWHM() (in module refl1d.resolution), \hyperpage{128}
+  \item sigma\_mroughness (refl1d.staj.MlayerMagnetic attribute), \hyperpage{135}
+  \item sigma\_roughness (refl1d.staj.MlayerMagnetic attribute), \hyperpage{135}
+  \item sigma\_roughness (refl1d.staj.MlayerModel attribute), \hyperpage{137}
+  \item Simbeta() (refl1d.pytwalk.pytwalk method), \hyperpage{121}
+  \item SimBlow() (refl1d.pytwalk.pytwalk method), \hyperpage{121}
+  \item SimHop() (refl1d.pytwalk.pytwalk method), \hyperpage{121}
+  \item simplex() (in module refl1d.simplex), \hyperpage{129}
+  \item SimTraverse() (refl1d.pytwalk.pytwalk method), \hyperpage{121}
+  \item simulate() (refl1d.instrument.Pulsed method), \hyperpage{78}
+  \item simulate() (refl1d.snsdata.Liquids method), \hyperpage{131}
+  \item simulate() (refl1d.snsdata.Magnetic method), \hyperpage{132}
+  \item simulate\_data() (refl1d.dist.DistributionExperiment method), \hyperpage{57}
+  \item simulate\_data() (refl1d.experiment.Experiment method), \hyperpage{60}
+  \item simulate\_data() (refl1d.experiment.ExperimentBase method), \hyperpage{61}
+  \item simulate\_data() (refl1d.experiment.MixedExperiment method), \hyperpage{63}
+  \item simulate\_data() (refl1d.fitproblem.FitProblem method), \hyperpage{65}
+  \item simulate\_data() (refl1d.fitproblem.MultiFitProblem method), \hyperpage{67}
+  \item simulate\_data() (refl1d.probe.NeutronProbe method), \hyperpage{102}
+  \item simulate\_data() (refl1d.probe.PolarizedNeutronProbe method), \hyperpage{104}
+  \item simulate\_data() (refl1d.probe.PolarizedNeutronQProbe method), \hyperpage{105}
+  \item simulate\_data() (refl1d.probe.Probe method), \hyperpage{108}
+  \item simulate\_data() (refl1d.probe.ProbeSet method), \hyperpage{110}
+  \item simulate\_data() (refl1d.probe.QProbe method), \hyperpage{113}
+  \item simulate\_data() (refl1d.probe.XrayProbe method), \hyperpage{116}
+  \item SimWalk() (refl1d.pytwalk.pytwalk method), \hyperpage{121}
+  \item Slab (class in refl1d.model), \hyperpage{86}
+  \item slabs() (refl1d.experiment.Experiment method), \hyperpage{60}
+  \item SLD (class in refl1d.material), \hyperpage{84}
+  \item sld() (refl1d.material.Material method), \hyperpage{83}
+  \item sld() (refl1d.material.Mixture method), \hyperpage{84}
+  \item sld() (refl1d.material.Scatterer method), \hyperpage{85}
+  \item sld() (refl1d.material.SLD method), \hyperpage{84}
+  \item sld() (refl1d.material.Vacuum method), \hyperpage{84}
+  \item slit\_widths() (in module refl1d.resolution), \hyperpage{128}
+  \item smear() (in module refl1d.polymer), \hyperpage{100}
+  \item smooth\_profile() (refl1d.dist.DistributionExperiment method), \hyperpage{57}
+  \item smooth\_profile() (refl1d.experiment.Experiment method), \hyperpage{60}
+  \item smooth\_profile() (refl1d.profile.Microslabs method), \hyperpage{119}
+  \item SnobFit (class in refl1d.fitters), \hyperpage{70}
+  \item SNSData (class in refl1d.snsdata), \hyperpage{132}
+  \item SoftBounded (class in refl1d.mystic.bounds), \hyperpage{161}
+  \item solve() (refl1d.fitters.AmoebaFit method), \hyperpage{69}
+  \item solve() (refl1d.fitters.BFGSFit method), \hyperpage{69}
+  \item solve() (refl1d.fitters.DEFit method), \hyperpage{69}
+  \item solve() (refl1d.fitters.DreamFit method), \hyperpage{69}
+  \item solve() (refl1d.fitters.FitBase method), \hyperpage{69}
+  \item solve() (refl1d.fitters.MultiStart method), \hyperpage{70}
+  \item solve() (refl1d.fitters.PSFit method), \hyperpage{70}
+  \item solve() (refl1d.fitters.PTFit method), \hyperpage{70}
+  \item solve() (refl1d.fitters.Resampler method), \hyperpage{70}
+  \item solve() (refl1d.fitters.RLFit method), \hyperpage{70}
+  \item solve() (refl1d.fitters.SnobFit method), \hyperpage{70}
+  \item speed\_check() (in module refl1d.bspline), \hyperpage{52}
+  \item spin\_asymmetry() (in module refl1d.probe), \hyperpage{116}
+  \item split\_sections() (refl1d.staj.MlayerModel method), \hyperpage{138}
+  \item Stack (class in refl1d.model), \hyperpage{86}
+  \item start\_mapper() (refl1d.mapper.AMQPMapper static method), \hyperpage{81}
+  \item start\_mapper() (refl1d.mapper.MPMapper static method), \hyperpage{81}
+  \item start\_mapper() (refl1d.mapper.SerialMapper static method), \hyperpage{81}
+  \item start\_remote\_fit() (in module refl1d.cli), \hyperpage{56}
+  \item start\_value() (refl1d.mystic.bounds.Bounded method), \hyperpage{159}
+  \item start\_value() (refl1d.mystic.bounds.BoundedAbove method), \hyperpage{160}
+  \item start\_value() (refl1d.mystic.bounds.BoundedBelow method), \hyperpage{160}
+  \item start\_value() (refl1d.mystic.bounds.Distribution method), \hyperpage{161}
+  \item start\_value() (refl1d.mystic.bounds.Normal method), \hyperpage{161}
+  \item start\_value() (refl1d.mystic.bounds.SoftBounded method), \hyperpage{161}
+  \item start\_value() (refl1d.mystic.bounds.Unbounded method), \hyperpage{159}
+  \item start\_worker() (refl1d.mapper.AMQPMapper static method), \hyperpage{81}
+  \item start\_worker() (refl1d.mapper.MPMapper static method), \hyperpage{81}
+  \item start\_worker() (refl1d.mapper.SerialMapper static method), \hyperpage{81}
+  \item std (refl1d.wsolve.LinearModel attribute), \hyperpage{144}
+  \item std (refl1d.wsolve.PolynomialModel attribute), \hyperpage{145}
+  \item stderr() (refl1d.fitproblem.FitProblem method), \hyperpage{65}
+  \item stderr() (refl1d.fitproblem.MultiFitProblem method), \hyperpage{67}
+  \item step\_profile() (refl1d.dist.DistributionExperiment method), \hyperpage{57}
+  \item step\_profile() (refl1d.experiment.Experiment method), \hyperpage{60}
+  \item step\_profile() (refl1d.profile.Microslabs method), \hyperpage{119}
+  \item StepMonitor (class in refl1d.fitters), \hyperpage{70}
+  \item stitch() (in module refl1d.stitch), \hyperpage{139}
+  \item stitch() (refl1d.probe.ProbeSet method), \hyperpage{110}
+  \item stop\_mapper() (refl1d.mapper.AMQPMapper static method), \hyperpage{81}
+  \item stop\_mapper() (refl1d.mapper.MPMapper static method), \hyperpage{81}
+  \item stop\_mapper() (refl1d.mapper.SerialMapper static method), \hyperpage{81}
+  \item store\_overwrite\_query() (in module refl1d.cli), \hyperpage{56}
+  \item store\_overwrite\_query\_gui() (in module refl1d.cli), \hyperpage{56}
+  \item subsample() (refl1d.probe.NeutronProbe method), \hyperpage{102}
+  \item subsample() (refl1d.probe.Probe method), \hyperpage{108}
+  \item subsample() (refl1d.probe.ProbeSet method), \hyperpage{111}
+  \item subsample() (refl1d.probe.QProbe method), \hyperpage{113}
+  \item subsample() (refl1d.probe.XrayProbe method), \hyperpage{116}
+  \item substitute() (in module refl1d.mystic.parameter), \hyperpage{157}
+  \item summarize() (in module refl1d.mystic.parameter), \hyperpage{157}
+  \item surface\_sigma (refl1d.profile.Microslabs attribute), \hyperpage{119}
+
+  \indexspace
+  \bigletter T
+  \item test() (in module refl1d.bspline), \hyperpage{52}
+  \item test() (in module refl1d.fresnel), \hyperpage{72}
+  \item test() (in module refl1d.rebin), \hyperpage{123}
+  \item test() (in module refl1d.wsolve), \hyperpage{145}
+  \item thickness (refl1d.freeform.FreeInterface attribute), \hyperpage{71}
+  \item thickness (refl1d.magnetic.FreeMagnetic attribute), \hyperpage{79}
+  \item thickness (refl1d.magnetic.MagneticLayer attribute), \hyperpage{80}
+  \item thickness (refl1d.magnetic.MagneticSlab attribute), \hyperpage{80}
+  \item thickness (refl1d.magnetic.MagneticTwist attribute), \hyperpage{81}
+  \item thickness (refl1d.model.Repeat attribute), \hyperpage{86}
+  \item thickness (refl1d.model.Stack attribute), \hyperpage{87}
+  \item thickness() (refl1d.profile.Microslabs method), \hyperpage{119}
+  \item thicknessM (refl1d.magnetic.FreeMagnetic attribute), \hyperpage{79}
+  \item thicknessM (refl1d.magnetic.MagneticLayer attribute), \hyperpage{80}
+  \item thicknessM (refl1d.magnetic.MagneticSlab attribute), \hyperpage{80}
+  \item thicknessM (refl1d.magnetic.MagneticTwist attribute), \hyperpage{81}
+  \item TL2Q() (in module refl1d.resolution), \hyperpage{126}
+  \item TOF2L() (in module refl1d.resolution), \hyperpage{126}
+  \item TOF\_to\_data() (in module refl1d.snsdata), \hyperpage{132}
+  \item transport (refl1d.cli.Refl1dOpts attribute), \hyperpage{55}
+  \item TS() (refl1d.pytwalk.pytwalk method), \hyperpage{121}
+  \item TWalk (class in refl1d.fitproblem), \hyperpage{67}
+
+  \indexspace
+  \bigletter U
+  \item Unbounded (class in refl1d.mystic.bounds), \hyperpage{159}
+  \item unique() (in module refl1d.mystic.parameter), \hyperpage{157}
+  \item unpolarized\_magnetic() (in module refl1d.reflectivity), \hyperpage{124}
+  \item update() (refl1d.dist.DistributionExperiment method), \hyperpage{57}
+  \item update() (refl1d.experiment.Experiment method), \hyperpage{60}
+  \item update() (refl1d.experiment.ExperimentBase method), \hyperpage{61}
+  \item update() (refl1d.experiment.MixedExperiment method), \hyperpage{63}
+  \item update() (refl1d.fitproblem.Fitness method), \hyperpage{65}
+  \item update() (refl1d.mystic.parameter.Alias method), \hyperpage{146}
+  \item update\_composition() (refl1d.dist.DistributionExperiment method), \hyperpage{57}
+  \item update\_composition() (refl1d.experiment.Experiment method), \hyperpage{60}
+  \item update\_composition() (refl1d.experiment.ExperimentBase method), \hyperpage{61}
+  \item update\_composition() (refl1d.experiment.MixedExperiment method), \hyperpage{63}
+
+  \indexspace
+  \bigletter V
+  \item Vacuum (class in refl1d.material), \hyperpage{84}
+  \item valid() (refl1d.fitproblem.FitProblem method), \hyperpage{65}
+  \item valid() (refl1d.fitproblem.MultiFitProblem method), \hyperpage{67}
+  \item valid() (refl1d.mystic.parameter.BaseParameter method), \hyperpage{146}
+  \item valid() (refl1d.mystic.parameter.Constant method), \hyperpage{147}
+  \item valid() (refl1d.mystic.parameter.Function method), \hyperpage{148}
+  \item valid() (refl1d.mystic.parameter.IntegerParameter method), \hyperpage{149}
+  \item valid() (refl1d.mystic.parameter.OperatorAdd method), \hyperpage{150}
+  \item valid() (refl1d.mystic.parameter.OperatorDiv method), \hyperpage{151}
+  \item valid() (refl1d.mystic.parameter.OperatorMul method), \hyperpage{152}
+  \item valid() (refl1d.mystic.parameter.OperatorPow method), \hyperpage{152}
+  \item valid() (refl1d.mystic.parameter.OperatorSub method), \hyperpage{153}
+  \item valid() (refl1d.mystic.parameter.Parameter method), \hyperpage{154}
+  \item valid() (refl1d.mystic.parameter.Reference method), \hyperpage{155}
+  \item valid() (refl1d.mystic.parameter.VectorParameter method), \hyperpage{156}
+  \item value (refl1d.mystic.parameter.Constant attribute), \hyperpage{147}
+  \item value (refl1d.mystic.parameter.Function attribute), \hyperpage{149}
+  \item value (refl1d.mystic.parameter.IntegerParameter attribute), \hyperpage{149}
+  \item value (refl1d.mystic.parameter.OperatorAdd attribute), \hyperpage{150}
+  \item value (refl1d.mystic.parameter.OperatorDiv attribute), \hyperpage{151}
+  \item value (refl1d.mystic.parameter.OperatorMul attribute), \hyperpage{152}
+  \item value (refl1d.mystic.parameter.OperatorPow attribute), \hyperpage{152}
+  \item value (refl1d.mystic.parameter.OperatorSub attribute), \hyperpage{153}
+  \item value (refl1d.mystic.parameter.Reference attribute), \hyperpage{155}
+  \item var (refl1d.wsolve.LinearModel attribute), \hyperpage{144}
+  \item var (refl1d.wsolve.PolynomialModel attribute), \hyperpage{145}
+  \item varying() (in module refl1d.mystic.parameter), \hyperpage{157}
+  \item VectorParameter (class in refl1d.mystic.parameter), \hyperpage{155}
+  \item VolumeProfile (class in refl1d.polymer), \hyperpage{99}
+
+  \indexspace
+  \bigletter W
+  \item w (refl1d.profile.Microslabs attribute), \hyperpage{119}
+  \item warned() (in module refl1d.numpyerrors), \hyperpage{97}
+  \item Weights (class in refl1d.dist), \hyperpage{57}
+  \item wpolyfit() (in module refl1d.wsolve), \hyperpage{145}
+  \item write\_data() (refl1d.dist.DistributionExperiment method), \hyperpage{57}
+  \item write\_data() (refl1d.experiment.Experiment method), \hyperpage{61}
+  \item write\_data() (refl1d.experiment.ExperimentBase method), \hyperpage{61}
+  \item write\_data() (refl1d.experiment.MixedExperiment method), \hyperpage{63}
+  \item write\_data() (refl1d.probe.NeutronProbe method), \hyperpage{102}
+  \item write\_data() (refl1d.probe.Probe method), \hyperpage{108}
+  \item write\_data() (refl1d.probe.ProbeSet method), \hyperpage{111}
+  \item write\_data() (refl1d.probe.QProbe method), \hyperpage{114}
+  \item write\_data() (refl1d.probe.XrayProbe method), \hyperpage{116}
+  \item write\_file() (in module refl1d.snsdata), \hyperpage{133}
+  \item wsolve() (in module refl1d.wsolve), \hyperpage{145}
+
+  \indexspace
+  \bigletter X
+  \item XRay (class in refl1d.ncnrdata), \hyperpage{94}
+  \item XrayProbe (class in refl1d.probe), \hyperpage{114}
+
+\end{theindex}

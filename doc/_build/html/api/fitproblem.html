@@ -1,0 +1,637 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.fitproblem - Interface between models and fitters &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../index.html" />
+    <link rel="up" title="Reference" href="index.html" />
+    <link rel="next" title="refl1d.fitservice - Remote job plugin for fit jobs" href="fitservice.html" />
+    <link rel="prev" title="refl1d.experiment - Reflectivity fitness function" href="experiment.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.fitproblem - Interface between models and fitters</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="experiment.html">refl1d.experiment - Reflectivity fitness function</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="fitservice.html">refl1d.fitservice - Remote job plugin for fit jobs</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="refl1d-fitproblem-interface-between-models-and-fitters">
+<h1>refl1d.fitproblem - Interface between models and fitters<a class="headerlink" href="#refl1d-fitproblem-interface-between-models-and-fitters" title="Permalink to this headline">¶</a></h1>
+<table border="1" class="docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr><td><a class="reference internal" href="#refl1d.fitproblem.FitProblem" title="refl1d.fitproblem.FitProblem"><tt class="xref py py-obj docutils literal"><span class="pre">FitProblem</span></tt></a></td>
+<td></td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.fitproblem.Fitness" title="refl1d.fitproblem.Fitness"><tt class="xref py py-obj docutils literal"><span class="pre">Fitness</span></tt></a></td>
+<td></td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.fitproblem.MultiFitProblem" title="refl1d.fitproblem.MultiFitProblem"><tt class="xref py py-obj docutils literal"><span class="pre">MultiFitProblem</span></tt></a></td>
+<td>Weighted fits for multiple models.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.fitproblem.Result" title="refl1d.fitproblem.Result"><tt class="xref py py-obj docutils literal"><span class="pre">Result</span></tt></a></td>
+<td></td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.fitproblem.TWalk" title="refl1d.fitproblem.TWalk"><tt class="xref py py-obj docutils literal"><span class="pre">TWalk</span></tt></a></td>
+<td></td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.fitproblem.fit" title="refl1d.fitproblem.fit"><tt class="xref py py-obj docutils literal"><span class="pre">fit</span></tt></a></td>
+<td>Perform a fit</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.fitproblem.load_problem" title="refl1d.fitproblem.load_problem"><tt class="xref py py-obj docutils literal"><span class="pre">load_problem</span></tt></a></td>
+<td>Load a problem definition from a python script file.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.fitproblem.mesh" title="refl1d.fitproblem.mesh"><tt class="xref py py-obj docutils literal"><span class="pre">mesh</span></tt></a></td>
+<td></td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.fitproblem.preview" title="refl1d.fitproblem.preview"><tt class="xref py py-obj docutils literal"><span class="pre">preview</span></tt></a></td>
+<td>Preview the models in preparation for fitting</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.fitproblem.show_chisq" title="refl1d.fitproblem.show_chisq"><tt class="xref py py-obj docutils literal"><span class="pre">show_chisq</span></tt></a></td>
+<td>Show chisq statistics on a drawing from the likelihood function.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.fitproblem.show_correlations" title="refl1d.fitproblem.show_correlations"><tt class="xref py py-obj docutils literal"><span class="pre">show_correlations</span></tt></a></td>
+<td>List correlations between parameters in descending order.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.fitproblem.show_stats" title="refl1d.fitproblem.show_stats"><tt class="xref py py-obj docutils literal"><span class="pre">show_stats</span></tt></a></td>
+<td>Print a stylized list of parameter names and values with range bars.</td>
+</tr>
+</tbody>
+</table>
+<span class="target" id="module-refl1d.fitproblem"></span><p>Interface between the models and the fitters.</p>
+<p><a class="reference internal" href="#refl1d.fitproblem.Fitness" title="refl1d.fitproblem.Fitness"><tt class="xref py py-class docutils literal"><span class="pre">Fitness</span></tt></a> defines the interface that new model definitions must follow.</p>
+<p><a class="reference internal" href="#refl1d.fitproblem.FitProblem" title="refl1d.fitproblem.FitProblem"><tt class="xref py py-class docutils literal"><span class="pre">FitProblem</span></tt></a> wraps a fitness function for use in the fitters.</p>
+<p><a class="reference internal" href="#refl1d.fitproblem.MultiFitProblem" title="refl1d.fitproblem.MultiFitProblem"><tt class="xref py py-class docutils literal"><span class="pre">MultiFitProblem</span></tt></a> allows simultaneous fitting of multiple functions.</p>
+<p><em>WARNING</em> within models self.parameters() returns a tree of all possible
+parameters associated with the model.  Within fit problems, self.parameters
+is a list of fitted parameters only.</p>
+<dl class="class">
+<dt id="refl1d.fitproblem.FitProblem">
+<em class="property">class </em><tt class="descclassname">refl1d.fitproblem.</tt><tt class="descname">FitProblem</tt><big>(</big><em>fitness</em><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#FitProblem"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.FitProblem" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<dl class="method">
+<dt id="refl1d.fitproblem.FitProblem.chisq">
+<tt class="descname">chisq</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#FitProblem.chisq"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.FitProblem.chisq" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return sum squared residuals normalized by the degrees of freedom.</p>
+<p>In the context of a composite fit, the reduced chisq on the individual
+models only considers the points and the fitted parameters within
+the individual model.</p>
+<p>Note that this does not include cost factors due to constraints on
+the parameters, such as sample_offset ~ N(0,0.01).</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.FitProblem.cov">
+<tt class="descname">cov</tt><big>(</big><em>pvec=None</em>, <em>step=None</em>, <em>tol=1e-08</em><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#FitProblem.cov"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.FitProblem.cov" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the covariance matrix inv(J&#8217;J) at point p.</p>
+<p>We provide some protection against singular matrices by setting
+singular values smaller than tolerance <em>tol</em> to the tolerance
+value.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.FitProblem.getp">
+<tt class="descname">getp</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#FitProblem.getp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.FitProblem.getp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the current value of the parameter vector.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.FitProblem.jacobian">
+<tt class="descname">jacobian</tt><big>(</big><em>pvec=None</em>, <em>step=None</em><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#FitProblem.jacobian"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.FitProblem.jacobian" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the derivative wrt the fit parameters at point p.</p>
+<p>Numeric derivatives are calculated based on step, where step is
+the portion of the total range for parameter j, or the portion of
+point value p_j if the range on parameter j is infinite.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.FitProblem.model_nllf">
+<tt class="descname">model_nllf</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#FitProblem.model_nllf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.FitProblem.model_nllf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Negative log likelihood of seeing data given model.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.FitProblem.model_parameters">
+<tt class="descname">model_parameters</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#FitProblem.model_parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.FitProblem.model_parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parameters associated with the model.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.FitProblem.model_points">
+<tt class="descname">model_points</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#FitProblem.model_points"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.FitProblem.model_points" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of data points associated with the model.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.FitProblem.model_reset">
+<tt class="descname">model_reset</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#FitProblem.model_reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.FitProblem.model_reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prepare for the fit.</p>
+<p>This sets the parameters and the bounds properties that the
+solver is expecting from the fittable object.  We also compute
+the degrees of freedom so that we can return a normalized fit
+likelihood.</p>
+<p>If the set of fit parameters changes, then model_reset must
+be called.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.FitProblem.model_update">
+<tt class="descname">model_update</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#FitProblem.model_update"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.FitProblem.model_update" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the model according to the changed parameters.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.FitProblem.nllf">
+<tt class="descname">nllf</tt><big>(</big><em>pvec=None</em><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#FitProblem.nllf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.FitProblem.nllf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the cost function for a new parameter set p.</p>
+<p>Note that this is not simply the sum-squared residuals, but instead
+is the negative log likelihood of seeing the data given the model plus
+the negative log likelihood of seeing the model.  The individual
+likelihoods are scaled by 1/max(P) so that normalization constants
+can be ignored.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.FitProblem.parameter_nllf">
+<tt class="descname">parameter_nllf</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#FitProblem.parameter_nllf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.FitProblem.parameter_nllf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns negative log likelihood of seeing parameters p.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.FitProblem.parameter_residuals">
+<tt class="descname">parameter_residuals</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#FitProblem.parameter_residuals"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.FitProblem.parameter_residuals" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns negative log likelihood of seeing parameters p.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.FitProblem.plot">
+<tt class="descname">plot</tt><big>(</big><em>p=None</em>, <em>fignum=None</em>, <em>figfile=None</em><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#FitProblem.plot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.FitProblem.plot" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.FitProblem.randomize">
+<tt class="descname">randomize</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#FitProblem.randomize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.FitProblem.randomize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a random model.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.FitProblem.residuals">
+<tt class="descname">residuals</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#FitProblem.residuals"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.FitProblem.residuals" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the model residuals.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.FitProblem.restore_data">
+<tt class="descname">restore_data</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#FitProblem.restore_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.FitProblem.restore_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Restore original data after resynthesis.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.FitProblem.resynth_data">
+<tt class="descname">resynth_data</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#FitProblem.resynth_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.FitProblem.resynth_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resynthesize data with noise from the uncertainty estimates.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.FitProblem.save">
+<tt class="descname">save</tt><big>(</big><em>basename</em><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#FitProblem.save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.FitProblem.save" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.FitProblem.setp">
+<tt class="descname">setp</tt><big>(</big><em>pvec</em><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#FitProblem.setp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.FitProblem.setp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set a new value for the parameters into the model.  If the model
+is valid, calls model_update to signal that the model should be
+recalculated.</p>
+<p>Returns True if the value is valid and the parameters were set,
+otherwise returns False.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.FitProblem.show">
+<tt class="descname">show</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#FitProblem.show"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.FitProblem.show" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.FitProblem.simulate_data">
+<tt class="descname">simulate_data</tt><big>(</big><em>noise=None</em><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#FitProblem.simulate_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.FitProblem.simulate_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simulate data with added noise</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.FitProblem.stderr">
+<tt class="descname">stderr</tt><big>(</big><em>pvec=None</em>, <em>step=None</em><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#FitProblem.stderr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.FitProblem.stderr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return parameter uncertainty.</p>
+<p>This is just the sqrt diagonal of covariance matrix inv(J&#8217;J) at point p.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.FitProblem.valid">
+<tt class="descname">valid</tt><big>(</big><em>pvec</em><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#FitProblem.valid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.FitProblem.valid" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="refl1d.fitproblem.Fitness">
+<em class="property">class </em><tt class="descclassname">refl1d.fitproblem.</tt><tt class="descname">Fitness</tt><a class="reference internal" href="../_modules/refl1d/fitproblem.html#Fitness"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.Fitness" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<dl class="method">
+<dt id="refl1d.fitproblem.Fitness.nllf">
+<tt class="descname">nllf</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#Fitness.nllf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.Fitness.nllf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the negative log likelihood value of the current parameter set.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.Fitness.numpoints">
+<tt class="descname">numpoints</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#Fitness.numpoints"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.Fitness.numpoints" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the number of data points.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.Fitness.parameters">
+<tt class="descname">parameters</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#Fitness.parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.Fitness.parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the set of parameters in the model.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.Fitness.plot">
+<tt class="descname">plot</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#Fitness.plot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.Fitness.plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the model to the current figure.  You only get one figure, but you
+can make it as complex as you want.  This will be saved as a png on
+the server, and composed onto a results webpage.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.Fitness.residiuals">
+<tt class="descname">residiuals</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#Fitness.residiuals"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.Fitness.residiuals" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return residuals for current theory minus data.  For levenburg-marquardt.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.Fitness.restore_data">
+<tt class="descname">restore_data</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#Fitness.restore_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.Fitness.restore_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Restore the original data in the model (after resynth).</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.Fitness.resynth_data">
+<tt class="descname">resynth_data</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#Fitness.resynth_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.Fitness.resynth_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate fake data based on uncertainties in the real data.  For Monte Carlo
+resynth-refit uncertainty analysis.  Bootstrapping?</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.Fitness.save">
+<tt class="descname">save</tt><big>(</big><em>basename</em><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#Fitness.save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.Fitness.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save the model to a file based on basename+extension.  This will point to
+a path to a directory on a remote machine; don&#8217;t make any assumptions about
+information stored on the server.  Return the set of files saved so that
+the monitor software can make a pretty web page.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.Fitness.update">
+<tt class="descname">update</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#Fitness.update"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.Fitness.update" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when parameters have been updated.  Any cached values will need to
+be cleared and the model reevaluated.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="refl1d.fitproblem.MultiFitProblem">
+<em class="property">class </em><tt class="descclassname">refl1d.fitproblem.</tt><tt class="descname">MultiFitProblem</tt><big>(</big><em>models</em>, <em>weights=None</em><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#MultiFitProblem"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.MultiFitProblem" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#refl1d.fitproblem.FitProblem" title="refl1d.fitproblem.FitProblem"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.fitproblem.FitProblem</span></tt></a></p>
+<p>Weighted fits for multiple models.</p>
+<dl class="method">
+<dt id="refl1d.fitproblem.MultiFitProblem.chisq">
+<tt class="descname">chisq</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.fitproblem.MultiFitProblem.chisq" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return sum squared residuals normalized by the degrees of freedom.</p>
+<p>In the context of a composite fit, the reduced chisq on the individual
+models only considers the points and the fitted parameters within
+the individual model.</p>
+<p>Note that this does not include cost factors due to constraints on
+the parameters, such as sample_offset ~ N(0,0.01).</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.MultiFitProblem.cov">
+<tt class="descname">cov</tt><big>(</big><em>pvec=None</em>, <em>step=None</em>, <em>tol=1e-08</em><big>)</big><a class="headerlink" href="#refl1d.fitproblem.MultiFitProblem.cov" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the covariance matrix inv(J&#8217;J) at point p.</p>
+<p>We provide some protection against singular matrices by setting
+singular values smaller than tolerance <em>tol</em> to the tolerance
+value.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.MultiFitProblem.getp">
+<tt class="descname">getp</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.fitproblem.MultiFitProblem.getp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the current value of the parameter vector.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.MultiFitProblem.jacobian">
+<tt class="descname">jacobian</tt><big>(</big><em>pvec=None</em>, <em>step=None</em><big>)</big><a class="headerlink" href="#refl1d.fitproblem.MultiFitProblem.jacobian" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the derivative wrt the fit parameters at point p.</p>
+<p>Numeric derivatives are calculated based on step, where step is
+the portion of the total range for parameter j, or the portion of
+point value p_j if the range on parameter j is infinite.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.MultiFitProblem.model_nllf">
+<tt class="descname">model_nllf</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#MultiFitProblem.model_nllf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.MultiFitProblem.model_nllf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return cost function for all data sets</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.MultiFitProblem.model_parameters">
+<tt class="descname">model_parameters</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#MultiFitProblem.model_parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.MultiFitProblem.model_parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return parameters from all models</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.MultiFitProblem.model_points">
+<tt class="descname">model_points</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#MultiFitProblem.model_points"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.MultiFitProblem.model_points" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return number of points in all models</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.MultiFitProblem.model_reset">
+<tt class="descname">model_reset</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.fitproblem.MultiFitProblem.model_reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prepare for the fit.</p>
+<p>This sets the parameters and the bounds properties that the
+solver is expecting from the fittable object.  We also compute
+the degrees of freedom so that we can return a normalized fit
+likelihood.</p>
+<p>If the set of fit parameters changes, then model_reset must
+be called.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.MultiFitProblem.model_update">
+<tt class="descname">model_update</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#MultiFitProblem.model_update"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.MultiFitProblem.model_update" title="Permalink to this definition">¶</a></dt>
+<dd><p>Let all models know they need to be recalculated</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.MultiFitProblem.nllf">
+<tt class="descname">nllf</tt><big>(</big><em>pvec=None</em><big>)</big><a class="headerlink" href="#refl1d.fitproblem.MultiFitProblem.nllf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the cost function for a new parameter set p.</p>
+<p>Note that this is not simply the sum-squared residuals, but instead
+is the negative log likelihood of seeing the data given the model plus
+the negative log likelihood of seeing the model.  The individual
+likelihoods are scaled by 1/max(P) so that normalization constants
+can be ignored.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.MultiFitProblem.parameter_nllf">
+<tt class="descname">parameter_nllf</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.fitproblem.MultiFitProblem.parameter_nllf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns negative log likelihood of seeing parameters p.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.MultiFitProblem.parameter_residuals">
+<tt class="descname">parameter_residuals</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.fitproblem.MultiFitProblem.parameter_residuals" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns negative log likelihood of seeing parameters p.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.MultiFitProblem.plot">
+<tt class="descname">plot</tt><big>(</big><em>fignum=1</em>, <em>figfile=None</em><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#MultiFitProblem.plot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.MultiFitProblem.plot" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.MultiFitProblem.randomize">
+<tt class="descname">randomize</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.fitproblem.MultiFitProblem.randomize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a random model.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.MultiFitProblem.residuals">
+<tt class="descname">residuals</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#MultiFitProblem.residuals"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.MultiFitProblem.residuals" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.MultiFitProblem.restore_data">
+<tt class="descname">restore_data</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#MultiFitProblem.restore_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.MultiFitProblem.restore_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Restore original data after resynthesis.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.MultiFitProblem.resynth_data">
+<tt class="descname">resynth_data</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#MultiFitProblem.resynth_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.MultiFitProblem.resynth_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resynthesize data with noise from the uncertainty estimates.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.MultiFitProblem.save">
+<tt class="descname">save</tt><big>(</big><em>basename</em><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#MultiFitProblem.save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.MultiFitProblem.save" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.MultiFitProblem.setp">
+<tt class="descname">setp</tt><big>(</big><em>pvec</em><big>)</big><a class="headerlink" href="#refl1d.fitproblem.MultiFitProblem.setp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set a new value for the parameters into the model.  If the model
+is valid, calls model_update to signal that the model should be
+recalculated.</p>
+<p>Returns True if the value is valid and the parameters were set,
+otherwise returns False.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.MultiFitProblem.show">
+<tt class="descname">show</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#MultiFitProblem.show"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.MultiFitProblem.show" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.MultiFitProblem.simulate_data">
+<tt class="descname">simulate_data</tt><big>(</big><em>noise=None</em><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#MultiFitProblem.simulate_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.MultiFitProblem.simulate_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simulate data with added noise</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.MultiFitProblem.stderr">
+<tt class="descname">stderr</tt><big>(</big><em>pvec=None</em>, <em>step=None</em><big>)</big><a class="headerlink" href="#refl1d.fitproblem.MultiFitProblem.stderr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return parameter uncertainty.</p>
+<p>This is just the sqrt diagonal of covariance matrix inv(J&#8217;J) at point p.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.MultiFitProblem.valid">
+<tt class="descname">valid</tt><big>(</big><em>pvec</em><big>)</big><a class="headerlink" href="#refl1d.fitproblem.MultiFitProblem.valid" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="refl1d.fitproblem.Result">
+<em class="property">class </em><tt class="descclassname">refl1d.fitproblem.</tt><tt class="descname">Result</tt><big>(</big><em>problem</em>, <em>solution</em><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#Result"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.Result" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="refl1d.fitproblem.Result.mcmc">
+<tt class="descname">mcmc</tt><big>(</big><em>samples=100000.0</em>, <em>burnin=None</em>, <em>walker=&lt;class refl1d.fitproblem.TWalk at 0x47f1b30&gt;</em><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#Result.mcmc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.Result.mcmc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Markov Chain Monte Carlo resampler.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.Result.plot">
+<tt class="descname">plot</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#Result.plot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.Result.plot" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.Result.resample">
+<tt class="descname">resample</tt><big>(</big><em>samples=100</em>, <em>restart=False</em>, <em>fitter=None</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#Result.resample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.Result.resample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Refit the result multiple times with resynthesized data, building
+up an array in Result.samples which contains the best fit to the
+resynthesized data.  <em>samples</em> is the number of samples to generate.
+<em>fitter</em> is the (local) optimizer to use. The kw are the parameters
+for the optimizer.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.Result.save">
+<tt class="descname">save</tt><big>(</big><em>basename</em><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#Result.save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.Result.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save the parameter table and the fitted model.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.Result.show">
+<tt class="descname">show</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#Result.show"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.Result.show" title="Permalink to this definition">¶</a></dt>
+<dd><p>Show the model parameters and plots</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.Result.show_stats">
+<tt class="descname">show_stats</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#Result.show_stats"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.Result.show_stats" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.Result.showmodel">
+<tt class="descname">showmodel</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#Result.showmodel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.Result.showmodel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.fitproblem.Result.showpars">
+<tt class="descname">showpars</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#Result.showpars"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.Result.showpars" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="refl1d.fitproblem.TWalk">
+<em class="property">class </em><tt class="descclassname">refl1d.fitproblem.</tt><tt class="descname">TWalk</tt><big>(</big><em>problem</em><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#TWalk"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.TWalk" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="refl1d.fitproblem.TWalk.run">
+<tt class="descname">run</tt><big>(</big><em>N</em>, <em>x0</em>, <em>x1</em><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#TWalk.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.TWalk.run" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.fitproblem.fit">
+<tt class="descclassname">refl1d.fitproblem.</tt><tt class="descname">fit</tt><big>(</big><em>models=</em><span class="optional">[</span><span class="optional">]</span>, <em>weights=None</em>, <em>fitter=None</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#fit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.fit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform a fit</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.fitproblem.load_problem">
+<tt class="descclassname">refl1d.fitproblem.</tt><tt class="descname">load_problem</tt><big>(</big><em>file</em>, <em>options=</em><span class="optional">[</span><span class="optional">]</span><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#load_problem"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.load_problem" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load a problem definition from a python script file.</p>
+<p>sys.argv is set to <tt class="docutils literal"><span class="pre">[file]</span> <span class="pre">+</span> <span class="pre">options</span></tt> within the context of the script.</p>
+<p>The user must define <tt class="docutils literal"><span class="pre">problem=FitProblem(...)</span></tt> within the script.</p>
+<p>Raises ValueError if the script does not define problem.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.fitproblem.mesh">
+<tt class="descclassname">refl1d.fitproblem.</tt><tt class="descname">mesh</tt><big>(</big><em>models=</em><span class="optional">[</span><span class="optional">]</span>, <em>weights=None</em>, <em>vars=None</em>, <em>n=40</em><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#mesh"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.mesh" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="refl1d.fitproblem.preview">
+<tt class="descclassname">refl1d.fitproblem.</tt><tt class="descname">preview</tt><big>(</big><em>models=</em><span class="optional">[</span><span class="optional">]</span>, <em>weights=None</em><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#preview"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.preview" title="Permalink to this definition">¶</a></dt>
+<dd><p>Preview the models in preparation for fitting</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.fitproblem.show_chisq">
+<tt class="descclassname">refl1d.fitproblem.</tt><tt class="descname">show_chisq</tt><big>(</big><em>chisq</em>, <em>fid=None</em><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#show_chisq"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.show_chisq" title="Permalink to this definition">¶</a></dt>
+<dd><p>Show chisq statistics on a drawing from the likelihood function.</p>
+<p>dof is the number of degrees of freedom, required for showing the
+normalized chisq.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.fitproblem.show_correlations">
+<tt class="descclassname">refl1d.fitproblem.</tt><tt class="descname">show_correlations</tt><big>(</big><em>pars</em>, <em>points</em>, <em>fid=None</em><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#show_correlations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.show_correlations" title="Permalink to this definition">¶</a></dt>
+<dd><p>List correlations between parameters in descending order.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.fitproblem.show_stats">
+<tt class="descclassname">refl1d.fitproblem.</tt><tt class="descname">show_stats</tt><big>(</big><em>pars</em>, <em>points</em>, <em>fid=None</em><big>)</big><a class="reference internal" href="../_modules/refl1d/fitproblem.html#show_stats"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.fitproblem.show_stats" title="Permalink to this definition">¶</a></dt>
+<dd><p>Print a stylized list of parameter names and values with range bars.</p>
+<p>Report mean +/- std of the samples as the parameter values.</p>
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="experiment.html">refl1d.experiment - Reflectivity fitness function</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="fitservice.html">refl1d.fitservice - Remote job plugin for fit jobs</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

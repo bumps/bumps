@@ -1,0 +1,114 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.quasinewton - BFGS quasi-newton optimizer &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../index.html" />
+    <link rel="up" title="Reference" href="index.html" />
+    <link rel="next" title="refl1d.random_lines - random lines and particle swarm optimizers" href="random_lines.html" />
+    <link rel="prev" title="refl1d.pytwalk - MCMC error analysis using T-Walk steps" href="pytwalk.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.quasinewton - BFGS quasi-newton optimizer</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="pytwalk.html">refl1d.pytwalk - MCMC error analysis using T-Walk steps</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="random_lines.html">refl1d.random_lines - random lines and particle swarm optimizers</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="refl1d-quasinewton-bfgs-quasi-newton-optimizer">
+<h1>refl1d.quasinewton - BFGS quasi-newton optimizer<a class="headerlink" href="#refl1d-quasinewton-bfgs-quasi-newton-optimizer" title="Permalink to this headline">¶</a></h1>
+<table border="1" class="docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr><td><a class="reference internal" href="#refl1d.quasinewton.quasinewton" title="refl1d.quasinewton.quasinewton"><tt class="xref py py-obj docutils literal"><span class="pre">quasinewton</span></tt></a></td>
+<td>Run a quasinewton optimization on the problem.</td>
+</tr>
+</tbody>
+</table>
+<span class="target" id="module-refl1d.quasinewton"></span><p>All modules in this file are implemented from the book
+&#8220;Numerical Methods for Unconstrained Optimization and Nonlinear Equations&#8221; by
+J.E. Dennis and Robert B. Schnabel (Only a few minor modifications are done).</p>
+<p>EXAMPLE CALL:</p>
+<div class="highlight-python"><pre>n = 2
+x0 = [-0.9 0.9]'
+fn = lambda p: (1-p[0])**2 + 100*(p[1]-p[0]**2)**2
+grad = lambda p: array([-2*(1-p[0]) - 400*(p[1]-p[0]**2)*p[0], 200*p[1]])
+Sx = ones(n,1)
+typf = 1                       # todo. see what default value is the best
+macheps = eps
+eta = eps
+maxstep = 100
+gradtol = 1e-6
+steptol = 1e-12                # do not let steptol larger than 1e-9
+itnlimit = 1000
+result = quasinewton(fn, x0, grad, Sx, typf,
+                     macheps, eta, maxstep, gradtol, steptol, itnlimit)
+print "status code",result['status']
+print "x_min, f(x_min)",result['x'],result['fx']
+print "iterations, function calls, linesearch function calls",          result['iterations'],result['evals'],result['linesearch_evals']</pre>
+</div>
+<dl class="function">
+<dt id="refl1d.quasinewton.quasinewton">
+<tt class="descclassname">refl1d.quasinewton.</tt><tt class="descname">quasinewton</tt><big>(</big><em>fn</em>, <em>x0=</em><span class="optional">[</span><span class="optional">]</span>, <em>grad=</em><span class="optional">[</span><span class="optional">]</span>, <em>Sx=</em><span class="optional">[</span><span class="optional">]</span>, <em>typf=1</em>, <em>macheps=</em><span class="optional">[</span><span class="optional">]</span>, <em>eta=</em><span class="optional">[</span><span class="optional">]</span>, <em>maxstep=100</em>, <em>gradtol=9.9999999999999995e-07</em>, <em>steptol=9.9999999999999998e-13</em>, <em>itnlimit=2000</em>, <em>monitor=&lt;function &lt;lambda&gt; at 0x543ec80&gt;</em><big>)</big><a class="reference internal" href="../_modules/refl1d/quasinewton.html#quasinewton"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.quasinewton.quasinewton" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run a quasinewton optimization on the problem.</p>
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="pytwalk.html">refl1d.pytwalk - MCMC error analysis using T-Walk steps</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="random_lines.html">refl1d.random_lines - random lines and particle swarm optimizers</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

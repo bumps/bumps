@@ -1,0 +1,60 @@
+SERVICE/WORKER ARCHITECTURE
+* pause/resume job
+* cancel job
+* cancel map
+* slow node
+* one data point more expensive than the others
+* infinite loop for some values
+* exceptions for some values
+* worker not stateless: one calculation interferes with the next
+* worker memory leak
+* worker requires initial state
+* worker state changes between map calls
+
+* client requests logging on service, any worker, or all workers
+* logging based on condition
+* rerun value with logging when worker fails
+
+* parallel random number generator, with seed control
+
+* worker which needs workers
+
+CLUSTER MANAGEMENT
+* priority jobs
+* start/stop workers when job starts
+* add client to processing pool, with preference for client jobs
+* add new node
+* machine reboots: exchange, service, worker, monitor
+* unreliable processor/memory on some nodes
+* workers which use local disk but don't clean up after themselves
+* service monitoring
+* identify all processes for a given user
+* identify idle machines
+
+JOB MANAGER
+* job manager machine reboots
+* job manager upgrades
+* progress thumbnail
+* client detach/attach
+* retrieve results
+* notify user when job starts (message queue or email)
+
+DEPLOYMENT
+* egg basket and trusted users
+* different users having conflicting dependencies
+* worker implemented in java, IDL, Matlab, R, ...
+* client implemented java, IDL, Matlab, R, ...
+* code movement while developing worker
+
+DATA MANAGEMENT
+* big file, independent disks
+* storing run results
+
+SCALABILITY
+* workstation, dedicated cluster, batch queue, NoW, EC2, teragrid
+
+SECURITY (SNS, Teragrid, shared clusters)
+* service/workers run as user
+* exchange runs as user
+* job manager behind firewall
+* cluster behind firewall

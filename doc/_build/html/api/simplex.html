@@ -1,0 +1,154 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.simplex - Nelder-Mead simplex optimizer (amoeba) &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../index.html" />
+    <link rel="up" title="Reference" href="index.html" />
+    <link rel="next" title="refl1d.snsdata - SNS Data" href="snsdata.html" />
+    <link rel="prev" title="refl1d.resolution - Resolution" href="resolution.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.simplex - Nelder-Mead simplex optimizer (amoeba)</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="resolution.html">refl1d.resolution - Resolution</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="snsdata.html">refl1d.snsdata - SNS Data</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="refl1d-simplex-nelder-mead-simplex-optimizer-amoeba">
+<h1>refl1d.simplex - Nelder-Mead simplex optimizer (amoeba)<a class="headerlink" href="#refl1d-simplex-nelder-mead-simplex-optimizer-amoeba" title="Permalink to this headline">¶</a></h1>
+<table border="1" class="docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr><td><a class="reference internal" href="#refl1d.simplex.simplex" title="refl1d.simplex.simplex"><tt class="xref py py-obj docutils literal"><span class="pre">simplex</span></tt></a></td>
+<td>Minimize a function using Nelder-Mead downhill simplex algorithm.</td>
+</tr>
+</tbody>
+</table>
+<span class="target" id="module-refl1d.simplex"></span><p>Downhill simplex optimizer.</p>
+<dl class="function">
+<dt id="refl1d.simplex.simplex">
+<tt class="descclassname">refl1d.simplex.</tt><tt class="descname">simplex</tt><big>(</big><em>f</em>, <em>x0=None</em>, <em>bounds=None</em>, <em>radius=0.050000000000000003</em>, <em>xtol=0.0001</em>, <em>ftol=0.0001</em>, <em>maxiter=None</em>, <em>update_handler=None</em>, <em>abort_test=&lt;function dont_abort at 0x546b1b8&gt;</em><big>)</big><a class="reference internal" href="../_modules/refl1d/simplex.html#simplex"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.simplex.simplex" title="Permalink to this definition">¶</a></dt>
+<dd><p>Minimize a function using Nelder-Mead downhill simplex algorithm.</p>
+<p>This optimizer is also known as Amoeba (from Numerical Recipes) and
+the Nealder-Mead simplex algorithm.  This is not the simplex algorithm
+for solving constrained linear systems.</p>
+<p>Downhill simplex is a robust derivative free algorithm for finding
+minima.  It proceeds by choosing a set of points (the simplex) forming
+an n-dimensional triangle, and transforming that triangle so that the
+worst vertex is improved, either by stretching, shrinking or reflecting
+it about the center of the triangle.  This algorithm is not known for
+its speed, but for its simplicity and robustness, and is a good algorithm
+to start your problem with.</p>
+<p><em>Parameters</em>:</p>
+<blockquote>
+<dl class="docutils">
+<dt>f <span class="classifier-delimiter">:</span> <span class="classifier">callable f(x,*args)</span></dt>
+<dd>The objective function to be minimized.</dd>
+<dt>x0 <span class="classifier-delimiter">:</span> <span class="classifier">ndarray</span></dt>
+<dd>Initial guess.</dd>
+<dt>bounds <span class="classifier-delimiter">:</span> <span class="classifier">(ndarray,ndarray) or None</span></dt>
+<dd>Bounds on the parameter values for the function.</dd>
+<dt>radius: float</dt>
+<dd>Size of the initial simplex.  For bounded parameters (those
+which have finite lower and upper bounds), radius is clipped
+to a value in (0,0.5] representing the portion of the
+range to use as the size of the initial simplex.</dd>
+</dl>
+</blockquote>
+<p><em>Returns</em>: Result (<cite>park.simplex.Result</cite>)</p>
+<blockquote>
+<dl class="docutils">
+<dt>x <span class="classifier-delimiter">:</span> <span class="classifier">ndarray</span></dt>
+<dd>Parameter that minimizes function.</dd>
+<dt>fx <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
+<dd>Value of function at minimum: <tt class="docutils literal"><span class="pre">fopt</span> <span class="pre">=</span> <span class="pre">func(xopt)</span></tt>.</dd>
+<dt>iters <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
+<dd>Number of iterations performed.</dd>
+<dt>calls <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
+<dd>Number of function calls made.</dd>
+<dt>success <span class="classifier-delimiter">:</span> <span class="classifier">boolean</span></dt>
+<dd>True if fit completed successfully.</dd>
+</dl>
+</blockquote>
+<p><em>Other Parameters</em>:</p>
+<blockquote>
+<dl class="docutils">
+<dt>xtol <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
+<dd>Relative error in xopt acceptable for convergence.</dd>
+<dt>ftol <span class="classifier-delimiter">:</span> <span class="classifier">number</span></dt>
+<dd>Relative error in func(xopt) acceptable for convergence.</dd>
+<dt>maxiter <span class="classifier-delimiter">:</span> <span class="classifier">int=200*N</span></dt>
+<dd>Maximum number of iterations to perform.  Defaults</dd>
+<dt>update_handler <span class="classifier-delimiter">:</span> <span class="classifier">callable</span></dt>
+<dd>Called after each iteration, as callback(k,n,xk,fxk),
+where k is the current iteration, n is the maximum
+iteration, xk is the simplex and fxk is the value of
+the simplex vertices.  xk[0],fxk[0] is the current best.</dd>
+</dl>
+</blockquote>
+<p><em>Notes</em></p>
+<blockquote>
+Uses a Nelder-Mead simplex algorithm to find the minimum of
+function of one or more variables.</blockquote>
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="resolution.html">refl1d.resolution - Resolution</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="snsdata.html">refl1d.snsdata - SNS Data</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

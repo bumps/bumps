@@ -1,0 +1,285 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.magnetic &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.magnetic</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for refl1d.magnetic</h1><div class="highlight"><pre>
+<span class="c"># This program is public domain</span>
+<span class="c"># Author: Paul Kienzle</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Magnetic modeling for 1-D reflectometry.</span>
+
+<span class="sd">Magnetic properties are tied to the structural description of the</span>
+<span class="sd">but only loosely.</span>
+
+<span class="sd">There may be dead regions near the interfaces of magnetic materials.</span>
+
+<span class="sd">Magnetic behaviour may be varying in complex ways within and</span>
+<span class="sd">across structural boundaries.  For example, the ma</span>
+<span class="sd">Indeed, the pattern may continue</span>
+<span class="sd">across spacer layers, going to zero in the magnetically dead</span>
+<span class="sd">region and returning to its long range variation on entry to</span>
+<span class="sd">the next magnetic layer.  Magnetic multilayers may exhibit complex</span>
+<span class="sd">magnetism throughout the repeated section while the structural</span>
+<span class="sd">components are fixed.</span>
+
+<span class="sd">The scattering behaviour is dependent upon net field strength relative to</span>
+<span class="sd">polarization direction.   This arises from three underlying quantities:</span>
+<span class="sd">the strength of the individual dipole moments in the layer, the degree</span>
+<span class="sd">of alignment of these moments, and the net direction of the alignment.  The</span>
+<span class="sd">strength of the dipole moment depends on the details of the electronic</span>
+<span class="sd">structure, so is not This could in principle be approximated from</span>
+<span class="sd">the dipole moments of the individual moments</span>
+<span class="sd">aligned within the sample, then you would see the</span>
+<span class="sd">If the fields for all carriers are aligned with</span>
+<span class="sd">the polarization direction, you will see the idealized magnetic scattering</span>
+<span class="sd">strength</span>
+<span class="sd">will see the saturated This is determined by the number and strength</span>
+<span class="sd">of the magnetic &#39;carriers&#39;, the amount of order, and the direct or :math:`\rho_M \cos(\theta_M)`, where</span>
+<span class="sd">orientation, which leads to over-parameterization in the fits.  The</span>
+<span class="sd">reflectometry technique is sensitive</span>
+
+<span class="sd">Magnetism support is split into two parts: describing the layers</span>
+<span class="sd">and anchoring them to the structure.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">inf</span>
+<span class="kn">from</span> <span class="nn">.mystic.parameter</span> <span class="kn">import</span> <span class="n">Parameter</span><span class="p">,</span> <span class="n">Constant</span>
+<span class="kn">from</span> <span class="nn">.model</span> <span class="kn">import</span> <span class="n">Layer</span><span class="p">,</span> <span class="n">Stack</span>
+<span class="kn">from</span> <span class="nn">.mono</span> <span class="kn">import</span> <span class="n">monospline</span>
+
+<div class="viewcode-block" id="MagneticLayer"><a class="viewcode-back" href="../../api/magnetic.html#refl1d.magnetic.MagneticLayer">[docs]</a><span class="k">class</span> <span class="nc">MagneticLayer</span><span class="p">(</span><span class="n">Layer</span><span class="p">):</span>
+    <span class="n">magnetic</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stack</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                 <span class="n">dead_below</span><span class="o">=</span><span class="mf">0</span><span class="p">,</span> <span class="n">dead_above</span><span class="o">=</span><span class="mf">0</span><span class="p">,</span>
+                 <span class="n">interface_below</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">interface_above</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                 <span class="n">name</span><span class="o">=</span><span class="s">&quot;magnetic&quot;</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stack</span> <span class="o">=</span> <span class="n">Stack</span><span class="p">(</span><span class="n">stack</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dead_below</span> <span class="o">=</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">dead_below</span><span class="p">,</span> <span class="n">limits</span><span class="o">=</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="n">inf</span><span class="p">),</span>
+                                            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="o">+</span><span class="s">&quot; dead below&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dead_above</span> <span class="o">=</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">dead_above</span><span class="p">,</span> <span class="n">limits</span><span class="o">=</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="n">inf</span><span class="p">),</span>
+                                            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="o">+</span><span class="s">&quot; dead above&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interface_below</span> <span class="o">=</span> <span class="n">interface_below</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interface_above</span> <span class="o">=</span> <span class="n">interface_above</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+<div class="viewcode-block" id="MagneticLayer.parameters"><a class="viewcode-back" href="../../api/magnetic.html#refl1d.magnetic.MagneticLayer.parameters">[docs]</a>    <span class="k">def</span> <span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">stack</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span>
+                    <span class="n">dead_below</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dead_below</span><span class="p">,</span>
+                    <span class="n">dead_above</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dead_above</span><span class="p">,</span>
+                    <span class="n">interface_below</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">interface_below</span><span class="p">,</span>
+                    <span class="n">interface_above</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">interface_above</span><span class="p">)</span></div>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="MagneticLayer.thickness"><a class="viewcode-back" href="../../api/magnetic.html#refl1d.magnetic.MagneticLayer.thickness">[docs]</a>    <span class="k">def</span> <span class="nf">thickness</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Thickness of the magnetic region&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">thickness</span>
+</div>
+<div class="viewcode-block" id="MagneticLayer.render_stack"><a class="viewcode-back" href="../../api/magnetic.html#refl1d.magnetic.MagneticLayer.render_stack">[docs]</a>    <span class="k">def</span> <span class="nf">render_stack</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">probe</span><span class="p">,</span> <span class="n">slabs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Render the nuclear sld structure.</span>
+
+<span class="sd">        If either the interface below or the interface above is left</span>
+<span class="sd">        unspecified, the corresponding nuclear interface is used.</span>
+
+<span class="sd">        Returns the anchor point in the nuclear structure and interface</span>
+<span class="sd">        widths at either end of the magnetic slab.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">anchor</span> <span class="o">=</span> <span class="n">slabs</span><span class="o">.</span><span class="n">thickness</span><span class="p">()</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">dead_below</span><span class="o">.</span><span class="n">value</span>
+
+        <span class="n">s_below</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">interface_below</span><span class="o">.</span><span class="n">value</span>
+                   <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">interface_below</span> <span class="k">else</span> <span class="n">slabs</span><span class="o">.</span><span class="n">surface_sigma</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">probe</span><span class="p">,</span> <span class="n">slabs</span><span class="p">)</span>
+        <span class="n">s_above</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">interface_above</span><span class="o">.</span><span class="n">value</span>
+                   <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">interface_above</span> <span class="k">else</span> <span class="n">slabs</span><span class="o">.</span><span class="n">surface_sigma</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">anchor</span><span class="p">,</span> <span class="p">(</span><span class="n">s_below</span><span class="p">,</span> <span class="n">s_above</span><span class="p">)</span>
+</div>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="MagneticLayer.thicknessM"><a class="viewcode-back" href="../../api/magnetic.html#refl1d.magnetic.MagneticLayer.thicknessM">[docs]</a>    <span class="k">def</span> <span class="nf">thicknessM</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">thickness</span>
+                <span class="o">-</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dead_below</span><span class="o">.</span><span class="n">value</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">dead_above</span><span class="o">.</span><span class="n">value</span><span class="p">))</span>
+</div></div>
+<div class="viewcode-block" id="MagneticSlab"><a class="viewcode-back" href="../../api/magnetic.html#refl1d.magnetic.MagneticSlab">[docs]</a><span class="k">class</span> <span class="nc">MagneticSlab</span><span class="p">(</span><span class="n">MagneticLayer</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Region of constant magnetism.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stack</span><span class="p">,</span> <span class="n">rhoM</span><span class="o">=</span><span class="mf">0</span><span class="p">,</span> <span class="n">thetaM</span><span class="o">=</span><span class="mf">270</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;magnetic&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="n">MagneticLayer</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stack</span><span class="o">=</span><span class="n">stack</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rhoM</span> <span class="o">=</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">rhoM</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="o">+</span><span class="s">&quot; SLD&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thetaM</span> <span class="o">=</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">thetaM</span><span class="p">,</span> <span class="n">limits</span><span class="o">=</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="mf">360</span><span class="p">),</span>
+                                        <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="o">+</span><span class="s">&quot; angle&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MagneticSlab.parameters"><a class="viewcode-back" href="../../api/magnetic.html#refl1d.magnetic.MagneticSlab.parameters">[docs]</a>    <span class="k">def</span> <span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">parameters</span> <span class="o">=</span> <span class="n">MagneticLayer</span><span class="o">.</span><span class="n">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">parameters</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">rhoM</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rhoM</span><span class="p">,</span>
+                          <span class="n">thetaM</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">thetaM</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">parameters</span>
+</div>
+<div class="viewcode-block" id="MagneticSlab.render"><a class="viewcode-back" href="../../api/magnetic.html#refl1d.magnetic.MagneticSlab.render">[docs]</a>    <span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">probe</span><span class="p">,</span> <span class="n">slabs</span><span class="p">):</span>
+        <span class="n">anchor</span><span class="p">,</span> <span class="n">sigma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_stack</span><span class="p">(</span><span class="n">probe</span><span class="p">,</span> <span class="n">slabs</span><span class="p">)</span>
+        <span class="n">slabs</span><span class="o">.</span><span class="n">add_magnetism</span><span class="p">(</span><span class="n">anchor</span><span class="o">=</span><span class="n">anchor</span><span class="p">,</span>
+                            <span class="n">w</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">thicknessM</span><span class="p">],</span>
+                            <span class="n">rhoM</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">rhoM</span><span class="o">.</span><span class="n">value</span><span class="p">],</span>
+                            <span class="n">thetaM</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">thetaM</span><span class="o">.</span><span class="n">value</span><span class="p">],</span>
+                            <span class="n">sigma</span><span class="o">=</span><span class="n">sigma</span><span class="p">)</span></div>
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;magnetic(</span><span class="si">%g</span><span class="s">)&quot;</span><span class="o">%</span><span class="bp">self</span><span class="o">.</span><span class="n">rhoM</span><span class="o">.</span><span class="n">value</span>
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="s">&quot;Magnetic(rhoM=</span><span class="si">%g</span><span class="s">,thetaM=</span><span class="si">%g</span><span class="s">)&quot;</span>
+                <span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rhoM</span><span class="o">.</span><span class="n">value</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">thetaM</span><span class="o">.</span><span class="n">value</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="MagneticTwist"><a class="viewcode-back" href="../../api/magnetic.html#refl1d.magnetic.MagneticTwist">[docs]</a><span class="k">class</span> <span class="nc">MagneticTwist</span><span class="p">(</span><span class="n">MagneticLayer</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Linear change in magnetism throughout layer.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">magnetic</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stack</span><span class="p">,</span>
+                 <span class="n">rhoM</span><span class="o">=</span><span class="p">[</span><span class="mf">0</span><span class="p">,</span><span class="mf">0</span><span class="p">],</span> <span class="n">thetaM</span><span class="o">=</span><span class="p">[</span><span class="mf">270</span><span class="p">,</span><span class="mf">270</span><span class="p">],</span>
+                 <span class="n">name</span><span class="o">=</span><span class="s">&quot;twist&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="n">MagneticLayer</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stack</span><span class="o">=</span><span class="n">stack</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rhoM</span> <span class="o">=</span> <span class="p">[</span><span class="n">Parameter</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="o">+</span><span class="s">&quot; SLD[</span><span class="si">%d</span><span class="s">]&quot;</span><span class="o">%</span><span class="n">i</span><span class="p">)</span>
+                     <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">rhoM</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thetaM</span> <span class="o">=</span> <span class="p">[</span><span class="n">Parameter</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="o">+</span><span class="s">&quot; angle[</span><span class="si">%d</span><span class="s">]&quot;</span><span class="o">%</span><span class="n">i</span><span class="p">)</span>
+                       <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">thetaM</span><span class="p">)]</span>
+
+<div class="viewcode-block" id="MagneticTwist.parameters"><a class="viewcode-back" href="../../api/magnetic.html#refl1d.magnetic.MagneticTwist.parameters">[docs]</a>    <span class="k">def</span> <span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">parameters</span> <span class="o">=</span> <span class="n">MagneticLayer</span><span class="o">.</span><span class="n">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">parameters</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">rhoM</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rhoM</span><span class="p">,</span>
+                          <span class="n">thetaM</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">thetaM</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">parameters</span>
+</div>
+<div class="viewcode-block" id="MagneticTwist.render"><a class="viewcode-back" href="../../api/magnetic.html#refl1d.magnetic.MagneticTwist.render">[docs]</a>    <span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">probe</span><span class="p">,</span> <span class="n">slabs</span><span class="p">):</span>
+        <span class="n">anchor</span><span class="p">,</span> <span class="n">sigma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_stack</span><span class="p">(</span><span class="n">probe</span><span class="p">,</span> <span class="n">slabs</span><span class="p">)</span>
+        <span class="n">w</span><span class="p">,</span><span class="n">z</span> <span class="o">=</span> <span class="n">slabs</span><span class="o">.</span><span class="n">microslabs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">thicknessM</span><span class="p">)</span>
+        <span class="n">rhoM</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rhoM</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+                              <span class="bp">self</span><span class="o">.</span><span class="n">rhoM</span><span class="p">[</span><span class="mf">1</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">z</span><span class="p">))</span>
+        <span class="n">thetaM</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">thetaM</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">thetaM</span><span class="p">[</span><span class="mf">1</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">z</span><span class="p">))</span>
+        <span class="n">slabs</span><span class="o">.</span><span class="n">add_magnetism</span><span class="p">(</span><span class="n">anchor</span><span class="o">=</span><span class="n">anchor</span><span class="p">,</span>
+                            <span class="n">w</span><span class="o">=</span><span class="n">w</span><span class="p">,</span><span class="n">rhoM</span><span class="o">=</span><span class="n">rhoM</span><span class="p">,</span><span class="n">thetaM</span><span class="o">=</span><span class="n">thetaM</span><span class="p">,</span>
+                            <span class="n">sigma</span><span class="o">=</span><span class="n">sigma</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;twist(</span><span class="si">%g</span><span class="s">-&gt;</span><span class="si">%g</span><span class="s">)&quot;</span><span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rhoM</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">rhoM</span><span class="p">[</span><span class="mf">1</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;MagneticTwist&quot;</span>
+
+</div>
+<div class="viewcode-block" id="FreeMagnetic"><a class="viewcode-back" href="../../api/magnetic.html#refl1d.magnetic.FreeMagnetic">[docs]</a><span class="k">class</span> <span class="nc">FreeMagnetic</span><span class="p">(</span><span class="n">MagneticLayer</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Linear change in magnetism throughout layer.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">magnetic</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stack</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="p">[],</span> <span class="n">rhoM</span> <span class="o">=</span> <span class="p">[],</span> <span class="n">thetaM</span> <span class="o">=</span> <span class="p">[],</span>
+                 <span class="n">name</span><span class="o">=</span><span class="s">&quot;freemag&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="n">MagneticLayer</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stack</span><span class="o">=</span><span class="n">stack</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">parvec</span><span class="p">(</span><span class="n">vector</span><span class="p">,</span><span class="n">name</span><span class="p">,</span><span class="n">limits</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">Parameter</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">p</span><span class="p">,</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="o">+</span><span class="s">&quot;[</span><span class="si">%d</span><span class="s">]&quot;</span><span class="o">%</span><span class="n">i</span><span class="p">,</span><span class="n">limits</span><span class="o">=</span><span class="n">limits</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">p</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">vector</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rhoM</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">thetaM</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span> \
+            <span class="o">=</span> <span class="p">[</span><span class="n">parvec</span><span class="p">(</span><span class="n">v</span><span class="p">,</span><span class="n">name</span><span class="o">+</span><span class="s">&quot; &quot;</span><span class="o">+</span><span class="n">part</span><span class="p">,</span><span class="n">limits</span><span class="p">)</span>
+               <span class="k">for</span> <span class="n">v</span><span class="p">,</span><span class="n">part</span><span class="p">,</span><span class="n">limits</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">((</span><span class="n">rhoM</span><span class="p">,</span> <span class="n">thetaM</span><span class="p">,</span> <span class="n">z</span><span class="p">),</span>
+                                        <span class="p">(</span><span class="s">&#39;rhoM&#39;</span><span class="p">,</span> <span class="s">&#39;angle&#39;</span><span class="p">,</span> <span class="s">&#39;z&#39;</span><span class="p">),</span>
+                                        <span class="p">((</span><span class="mf">0</span><span class="p">,</span><span class="n">inf</span><span class="p">),(</span><span class="mf">0</span><span class="p">,</span><span class="mf">360</span><span class="p">),(</span><span class="mf">0</span><span class="p">,</span><span class="mf">1</span><span class="p">))</span>
+                                        <span class="p">)]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rhoM</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;must have number of intervals dz one less than rhoM&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">thetaM</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rhoM</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">thetaM</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;must have one thetaM for each rhoM&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="FreeMagnetic.parameters"><a class="viewcode-back" href="../../api/magnetic.html#refl1d.magnetic.FreeMagnetic.parameters">[docs]</a>    <span class="k">def</span> <span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">parameters</span> <span class="o">=</span> <span class="n">MagneticLayer</span><span class="o">.</span><span class="n">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">parameters</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">rhoM</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rhoM</span><span class="p">,</span>
+                          <span class="n">thetaM</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">thetaM</span><span class="p">,</span>
+                          <span class="n">z</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">parameters</span>
+</div>
+<div class="viewcode-block" id="FreeMagnetic.profile"><a class="viewcode-back" href="../../api/magnetic.html#refl1d.magnetic.FreeMagnetic.profile">[docs]</a>    <span class="k">def</span> <span class="nf">profile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Pz</span><span class="p">):</span>
+        <span class="n">thickness</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span><span class="o">.</span><span class="n">value</span>
+        <span class="n">mbelow</span><span class="p">,</span><span class="n">tbelow</span> <span class="o">=</span> <span class="mf">0</span><span class="p">,(</span><span class="bp">self</span><span class="o">.</span><span class="n">thetaM</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="o">.</span><span class="n">value</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">thetaM</span> <span class="k">else</span> <span class="mf">270</span><span class="p">)</span>
+        <span class="n">mabove</span><span class="p">,</span><span class="n">tabove</span> <span class="o">=</span> <span class="mf">0</span><span class="p">,(</span><span class="bp">self</span><span class="o">.</span><span class="n">thetaM</span><span class="p">[</span><span class="o">-</span><span class="mf">1</span><span class="p">]</span><span class="o">.</span><span class="n">value</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">thetaM</span> <span class="k">else</span> <span class="mf">270</span><span class="p">)</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">sort</span><span class="p">([</span><span class="mf">0</span><span class="p">]</span><span class="o">+</span><span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">]</span><span class="o">+</span><span class="p">[</span><span class="mf">1</span><span class="p">])</span><span class="o">*</span><span class="n">thickness</span>
+
+        <span class="n">rhoM</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">mbelow</span><span class="p">,</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rhoM</span><span class="p">],</span> <span class="n">mabove</span><span class="p">))</span>
+        <span class="n">PrhoM</span> <span class="o">=</span> <span class="n">monospline</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">rhoM</span><span class="p">,</span> <span class="n">Pz</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">numpy</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">PrhoM</span><span class="p">)):</span>
+            <span class="k">print</span> <span class="s">&quot;in mono&quot;</span>
+            <span class="k">print</span> <span class="s">&quot;z&quot;</span><span class="p">,</span><span class="n">z</span>
+            <span class="k">print</span> <span class="s">&quot;p&quot;</span><span class="p">,[</span><span class="n">p</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">]</span>
+
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">thetaM</span><span class="p">)</span><span class="o">&gt;</span><span class="mf">0</span><span class="p">:</span>
+            <span class="n">thetaM</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">tbelow</span><span class="p">,</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">thetaM</span><span class="p">],</span> <span class="n">tabove</span><span class="p">))</span>
+            <span class="n">PthetaM</span> <span class="o">=</span> <span class="n">monospline</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">thetaM</span><span class="p">,</span> <span class="n">Pz</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">PthetaM</span> <span class="o">=</span> <span class="mf">270</span><span class="o">*</span><span class="n">numpy</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">PrhoM</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">PrhoM</span><span class="p">,</span><span class="n">PthetaM</span>
+</div>
+<div class="viewcode-block" id="FreeMagnetic.render"><a class="viewcode-back" href="../../api/magnetic.html#refl1d.magnetic.FreeMagnetic.render">[docs]</a>    <span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">probe</span><span class="p">,</span> <span class="n">slabs</span><span class="p">):</span>
+        <span class="n">anchor</span><span class="p">,</span> <span class="n">sigma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">render_stack</span><span class="p">(</span><span class="n">probe</span><span class="p">,</span> <span class="n">slabs</span><span class="p">)</span>
+        <span class="n">Pw</span><span class="p">,</span><span class="n">Pz</span> <span class="o">=</span> <span class="n">slabs</span><span class="o">.</span><span class="n">microslabs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">thicknessM</span><span class="p">)</span>
+        <span class="n">rhoM</span><span class="p">,</span><span class="n">thetaM</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="p">(</span><span class="n">Pz</span><span class="p">)</span>
+        <span class="n">slabs</span><span class="o">.</span><span class="n">add_magnetism</span><span class="p">(</span><span class="n">anchor</span><span class="o">=</span><span class="n">anchor</span><span class="p">,</span>
+                            <span class="n">w</span><span class="o">=</span><span class="n">Pw</span><span class="p">,</span><span class="n">rhoM</span><span class="o">=</span><span class="n">rhoM</span><span class="p">,</span><span class="n">thetaM</span><span class="o">=</span><span class="n">thetaM</span><span class="p">,</span>
+                            <span class="n">sigma</span><span class="o">=</span><span class="n">sigma</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;freemag(</span><span class="si">%d</span><span class="s">)&quot;</span><span class="o">%</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rhoM</span><span class="p">))</span>
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;FreeMagnetic&quot;</span></div>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

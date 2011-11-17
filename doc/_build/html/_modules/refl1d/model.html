@@ -1,0 +1,516 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.model &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.model</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for refl1d.model</h1><div class="highlight"><pre>
+<span class="c"># This program is in the public domain</span>
+<span class="c"># Author: Paul Kienzle</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Reflectometry models</span>
+
+<span class="sd">Reflectometry models consist of 1-D stacks of layers. Layers are joined</span>
+<span class="sd">by gaussian interfaces. The layers themselves may be uniform, or the</span>
+<span class="sd">scattering density may vary with depth in the layer.</span>
+
+<span class="sd">.. Note::</span>
+<span class="sd">   By importing model, the definition of :class:`material.Scatterer &lt;refl1d.material.Scatterer&gt;`</span>
+<span class="sd">   changes so that materials can be stacked into layers using operator</span>
+<span class="sd">   overloading. This will affect all instances of the Scatterer class,</span>
+<span class="sd">   and all of its subclasses.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c">#TODO: xray has smaller beam spot</span>
+<span class="c"># =&gt; smaller roughness</span>
+<span class="c"># =&gt; thickness depends on where the beam spot hits the sample</span>
+<span class="c"># Xray thickness variance = neutron roughness - xray roughness</span>
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;Repeat&#39;</span><span class="p">,</span><span class="s">&#39;Slab&#39;</span><span class="p">,</span><span class="s">&#39;Stack&#39;</span><span class="p">,</span><span class="s">&#39;Layer&#39;</span><span class="p">]</span>
+
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">copy</span><span class="p">,</span> <span class="n">deepcopy</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="p">(</span><span class="n">inf</span><span class="p">,</span> <span class="n">nan</span><span class="p">,</span> <span class="n">pi</span><span class="p">,</span> <span class="n">sin</span><span class="p">,</span> <span class="n">cos</span><span class="p">,</span> <span class="n">tan</span><span class="p">,</span> <span class="n">sqrt</span><span class="p">,</span> <span class="n">exp</span><span class="p">,</span> <span class="n">log</span><span class="p">,</span> <span class="n">log10</span><span class="p">,</span>
+                   <span class="n">degrees</span><span class="p">,</span> <span class="n">radians</span><span class="p">,</span> <span class="n">floor</span><span class="p">,</span> <span class="n">ceil</span><span class="p">)</span>
+<span class="kn">import</span> <span class="nn">periodictable</span>
+<span class="kn">import</span> <span class="nn">periodictable.xsf</span> <span class="kn">as</span> <span class="nn">xsf</span>
+<span class="kn">import</span> <span class="nn">periodictable.nsf</span> <span class="kn">as</span> <span class="nn">nsf</span>
+
+<span class="kn">from</span> <span class="nn">mystic.parameter</span> <span class="kn">import</span> <span class="n">Parameter</span> <span class="k">as</span> <span class="n">Par</span><span class="p">,</span> <span class="n">IntegerParameter</span> <span class="k">as</span> <span class="n">IntPar</span><span class="p">,</span> <span class="n">Function</span>
+
+<span class="kn">from</span> <span class="nn">.interface</span> <span class="kn">import</span> <span class="n">Erf</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">material</span>
+
+<div class="viewcode-block" id="Layer"><a class="viewcode-back" href="../../api/model.html#refl1d.model.Layer">[docs]</a><span class="k">class</span> <span class="nc">Layer</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span> <span class="c"># Abstract base class</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Component of a material description.</span>
+
+<span class="sd">    thickness (Parameter: angstrom)</span>
+<span class="sd">        Thickness of the layer</span>
+<span class="sd">    interface (Interface function)</span>
+<span class="sd">        Interface for the top of the layer.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">thickness</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">interface</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">magnetic</span> <span class="o">=</span> <span class="bp">False</span>
+<div class="viewcode-block" id="Layer.constraints"><a class="viewcode-back" href="../../api/model.html#refl1d.model.Layer.constraints">[docs]</a>    <span class="k">def</span> <span class="nf">constraints</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Constraints</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span> <span class="o">&gt;=</span> <span class="mf">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">interface</span> <span class="o">&gt;=</span> <span class="mf">0</span></div>
+<div class="viewcode-block" id="Layer.find"><a class="viewcode-back" href="../../api/model.html#refl1d.model.Layer.find">[docs]</a>    <span class="k">def</span> <span class="nf">find</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Find the layer at depth z.</span>
+
+<span class="sd">        Returns layer, start, end</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="p">,</span> <span class="mf">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span><span class="o">.</span><span class="n">value</span></div>
+<div class="viewcode-block" id="Layer.parameters"><a class="viewcode-back" href="../../api/model.html#refl1d.model.Layer.parameters">[docs]</a>    <span class="k">def</span> <span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns a list of parameters used in the layer.</span>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+<div class="viewcode-block" id="Layer.render"><a class="viewcode-back" href="../../api/model.html#refl1d.model.Layer.render">[docs]</a>    <span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">probe</span><span class="p">,</span> <span class="n">slabs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Use the probe to render the layer into a microslab representation.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+</div>
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Print shows the layer name</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="s">&#39;name&#39;</span><span class="p">,</span><span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+
+
+    <span class="c"># Define a little algebra for composing samples</span>
+    <span class="c"># Layers can be stacked, repeated, or have length/roughness set</span>
+    <span class="k">def</span> <span class="nf">__or__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Join two layers to make a stack&quot;&quot;&quot;</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">Stack</span><span class="p">()</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">s</span>
+    <span class="k">def</span> <span class="nf">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Repeat a stack or complex layer&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">other</span> <span class="o">&gt;</span> <span class="mf">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;Repeat count must be an integer &gt; 1&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Slab</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;Cannot repeat single slab&quot;&quot;&quot;</span><span class="p">)</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">Stack</span><span class="p">()</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">Repeat</span><span class="p">(</span><span class="n">stack</span><span class="o">=</span><span class="n">s</span><span class="p">,</span> <span class="n">repeat</span><span class="o">=</span><span class="n">other</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">r</span>
+    <span class="k">def</span> <span class="nf">__rmul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__mul__</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">thickness</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">interface</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">thickness</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">c</span><span class="o">.</span><span class="n">thickness</span> <span class="o">=</span> <span class="n">Par</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">thickness</span><span class="p">,</span> <span class="n">limits</span><span class="o">=</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="n">inf</span><span class="p">),</span>
+                                      <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="o">+</span><span class="s">&quot; thickness&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">interface</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">c</span><span class="o">.</span><span class="n">interface</span> <span class="o">=</span> <span class="n">Par</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">interface</span><span class="p">,</span> <span class="n">limits</span><span class="o">=</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="n">inf</span><span class="p">),</span>
+                                      <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="o">+</span><span class="s">&quot; interface&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">c</span>
+</div>
+<span class="k">def</span> <span class="nf">_parinit</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    If v is a parameter use v, otherwise use p but with value v.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">Par</span><span class="p">):</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">v</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">p</span>
+<span class="k">def</span> <span class="nf">_parcopy</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    If v is a parameter use v, otherwise use a copy of p but with value v.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">Par</span><span class="p">):</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">v</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">copy</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">p</span>
+
+
+<div class="viewcode-block" id="Stack"><a class="viewcode-back" href="../../api/model.html#refl1d.model.Stack">[docs]</a><span class="k">class</span> <span class="nc">Stack</span><span class="p">(</span><span class="n">Layer</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Reflectometry layer stack</span>
+
+<span class="sd">    A reflectometry sample is defined by a stack of layers. Each layer</span>
+<span class="sd">    has an interface describing how the top of the layer interacts with</span>
+<span class="sd">    the bottom of the overlaying layer. The stack may contain</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;Stack&quot;</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interface</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">base</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">base</span><span class="p">)</span>
+        <span class="c"># TODO: can we make this a class variable?</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_thickness</span> <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_calc_thickness</span><span class="p">,</span><span class="n">name</span><span class="o">=</span><span class="s">&quot;stack thickness&quot;</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="Stack.magnetic"><a class="viewcode-back" href="../../api/model.html#refl1d.model.Stack.magnetic">[docs]</a>    <span class="k">def</span> <span class="nf">magnetic</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">any</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">magnetic</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="p">)</span></div>
+<div class="viewcode-block" id="Stack.find"><a class="viewcode-back" href="../../api/model.html#refl1d.model.Stack.find">[docs]</a>    <span class="k">def</span> <span class="nf">find</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Find the layer at depth z.</span>
+
+<span class="sd">        Returns layer, start, end</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">offset</span> <span class="o">=</span> <span class="mf">0</span>
+        <span class="k">for</span> <span class="n">L</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="p">:</span>
+            <span class="n">dz</span> <span class="o">=</span> <span class="n">L</span><span class="o">.</span><span class="n">thickness</span><span class="o">.</span><span class="n">value</span>
+            <span class="k">if</span> <span class="n">z</span> <span class="o">&lt;</span> <span class="n">offset</span> <span class="o">+</span> <span class="n">dz</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="n">offset</span> <span class="o">+=</span> <span class="n">dz</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">L</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="p">[</span><span class="o">-</span><span class="mf">1</span><span class="p">]</span>
+            <span class="n">offset</span> <span class="o">-=</span> <span class="n">dz</span>
+
+        <span class="n">L</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">L</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">z</span><span class="o">-</span><span class="n">offset</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">L</span><span class="p">,</span> <span class="n">start</span><span class="o">+</span><span class="n">offset</span><span class="p">,</span> <span class="n">end</span><span class="o">+</span><span class="n">offset</span>
+</div>
+<div class="viewcode-block" id="Stack.add"><a class="viewcode-back" href="../../api/model.html#refl1d.model.Stack.add">[docs]</a>    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span><span class="n">Stack</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">_layers</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span><span class="n">Repeat</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">L</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="n">L</span> <span class="o">=</span> <span class="p">[</span><span class="n">other</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_check_layer</span><span class="p">(</span><span class="n">el</span><span class="p">)</span> <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">L</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">__getstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">interface</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+    <span class="k">def</span> <span class="nf">__setstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interface</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">state</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_thickness</span> <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_calc_thickness</span><span class="p">,</span><span class="n">name</span><span class="o">=</span><span class="s">&quot;stack thickness&quot;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__copy__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">newone</span> <span class="o">=</span> <span class="n">Stack</span><span class="p">()</span>
+        <span class="n">newone</span><span class="o">.</span><span class="n">interface</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interface</span>
+        <span class="n">newone</span><span class="o">.</span><span class="n">_layers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="p">[:]</span>
+        <span class="k">return</span> <span class="n">newone</span>
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot; | &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s">(</span><span class="si">%.3g</span><span class="s">)&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">L</span><span class="p">,</span><span class="n">L</span><span class="o">.</span><span class="n">thickness</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+                          <span class="k">for</span> <span class="n">L</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;Stack(&quot;</span><span class="o">+</span><span class="s">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">L</span><span class="p">)</span> <span class="k">for</span> <span class="n">L</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="p">)</span><span class="o">+</span><span class="s">&quot;)&quot;</span>
+<div class="viewcode-block" id="Stack.parameters"><a class="viewcode-back" href="../../api/model.html#refl1d.model.Stack.parameters">[docs]</a>    <span class="k">def</span> <span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">layers</span><span class="o">=</span><span class="p">[</span><span class="n">L</span><span class="o">.</span><span class="n">parameters</span><span class="p">()</span> <span class="k">for</span> <span class="n">L</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">thickness</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">thickness</span><span class="p">,</span> <span class="n">layers</span> <span class="o">=</span> <span class="n">layers</span><span class="p">)</span>
+
+        <span class="c">#attrs = dict(thickness=self.thickness)</span>
+        <span class="c">#return (attrs,layers)</span>
+        <span class="c">#return [L.parameters() for L in self._layers]</span></div>
+    <span class="k">def</span> <span class="nf">_calc_thickness</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;returns the total thickness of the stack&quot;&quot;&quot;</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="mf">0</span>
+        <span class="k">for</span> <span class="n">L</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="p">:</span>
+            <span class="n">t</span> <span class="o">+=</span> <span class="n">L</span><span class="o">.</span><span class="n">thickness</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">return</span> <span class="n">t</span>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="Stack.thickness"><a class="viewcode-back" href="../../api/model.html#refl1d.model.Stack.thickness">[docs]</a>    <span class="k">def</span> <span class="nf">thickness</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_thickness</span></div>
+<div class="viewcode-block" id="Stack.render"><a class="viewcode-back" href="../../api/model.html#refl1d.model.Stack.render">[docs]</a>    <span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">probe</span><span class="p">,</span> <span class="n">slabs</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="p">:</span>
+            <span class="n">layer</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">probe</span><span class="p">,</span> <span class="n">slabs</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">_plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dz</span><span class="o">=</span><span class="mf">1</span><span class="p">,</span> <span class="n">roughness_limit</span><span class="o">=</span><span class="mf">0</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">pylab</span>
+        <span class="kn">import</span> <span class="nn">profile</span><span class="o">,</span> <span class="nn">material</span><span class="o">,</span> <span class="nn">probe</span>
+        <span class="n">neutron_probe</span> <span class="o">=</span> <span class="n">probe</span><span class="o">.</span><span class="n">NeutronProbe</span><span class="p">(</span><span class="n">T</span><span class="o">=</span><span class="n">numpy</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="mf">5</span><span class="p">,</span><span class="mf">100</span><span class="p">),</span> <span class="n">L</span><span class="o">=</span><span class="mf">5.</span><span class="p">)</span>
+        <span class="n">xray_probe</span> <span class="o">=</span> <span class="n">probe</span><span class="o">.</span><span class="n">XrayProbe</span><span class="p">(</span><span class="n">T</span><span class="o">=</span><span class="n">numpy</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="mf">5</span><span class="p">,</span><span class="mf">100</span><span class="p">),</span> <span class="n">L</span><span class="o">=</span><span class="mf">1.54</span><span class="p">)</span>
+        <span class="n">slabs</span> <span class="o">=</span> <span class="n">profile</span><span class="o">.</span><span class="n">Microslabs</span><span class="p">(</span><span class="mf">1</span><span class="p">,</span> <span class="n">dz</span><span class="o">=</span><span class="n">dz</span><span class="p">)</span>
+
+        <span class="n">pylab</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mf">211</span><span class="p">)</span>
+        <span class="n">cache</span> <span class="o">=</span> <span class="n">material</span><span class="o">.</span><span class="n">ProbeCache</span><span class="p">(</span><span class="n">xray_probe</span><span class="p">)</span>
+        <span class="n">slabs</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">cache</span><span class="p">,</span> <span class="n">slabs</span><span class="p">)</span>
+        <span class="n">z</span><span class="p">,</span><span class="n">rho</span><span class="p">,</span><span class="n">irho</span> <span class="o">=</span> <span class="n">slabs</span><span class="o">.</span><span class="n">step_profile</span><span class="p">()</span>
+        <span class="n">pylab</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">z</span><span class="p">,</span><span class="n">rho</span><span class="p">,</span><span class="s">&#39;-g&#39;</span><span class="p">,</span><span class="n">z</span><span class="p">,</span><span class="n">irho</span><span class="p">,</span><span class="s">&#39;-b&#39;</span><span class="p">)</span>
+        <span class="n">z</span><span class="p">,</span><span class="n">rho</span><span class="p">,</span><span class="n">irho</span> <span class="o">=</span> <span class="n">slabs</span><span class="o">.</span><span class="n">smooth_profile</span><span class="p">(</span><span class="n">dz</span><span class="o">=</span><span class="mf">1</span><span class="p">,</span> <span class="n">roughness_limit</span><span class="o">=</span><span class="n">roughness_limit</span><span class="p">)</span>
+        <span class="n">pylab</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">z</span><span class="p">,</span><span class="n">rho</span><span class="p">,</span><span class="s">&#39;:g&#39;</span><span class="p">,</span><span class="n">z</span><span class="p">,</span><span class="n">irho</span><span class="p">,</span><span class="s">&#39;:b&#39;</span><span class="p">,</span> <span class="n">hold</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="n">pylab</span><span class="o">.</span><span class="n">legend</span><span class="p">([</span><span class="s">&#39;rho&#39;</span><span class="p">,</span><span class="s">&#39;irho&#39;</span><span class="p">])</span>
+        <span class="n">pylab</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s">&#39;depth (A)&#39;</span><span class="p">)</span>
+        <span class="n">pylab</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s">&#39;SLD (10^6 inv A**2)&#39;</span><span class="p">)</span>
+        <span class="n">pylab</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mf">0.05</span><span class="p">,</span><span class="mf">0.95</span><span class="p">,</span><span class="s">r&quot;Cu-$K_\alpha$ X-ray&quot;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s">&quot;top&quot;</span><span class="p">,</span><span class="n">ha</span><span class="o">=</span><span class="s">&quot;left&quot;</span><span class="p">,</span>
+                   <span class="n">transform</span><span class="o">=</span><span class="n">pylab</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">transAxes</span><span class="p">)</span>
+
+        <span class="n">pylab</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mf">212</span><span class="p">)</span>
+        <span class="n">cache</span> <span class="o">=</span> <span class="n">material</span><span class="o">.</span><span class="n">ProbeCache</span><span class="p">(</span><span class="n">neutron_probe</span><span class="p">)</span>
+        <span class="n">slabs</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">cache</span><span class="p">,</span> <span class="n">slabs</span><span class="p">)</span>
+        <span class="n">z</span><span class="p">,</span><span class="n">rho</span><span class="p">,</span><span class="n">irho</span> <span class="o">=</span> <span class="n">slabs</span><span class="o">.</span><span class="n">step_profile</span><span class="p">()</span>
+        <span class="n">pylab</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">z</span><span class="p">,</span><span class="n">rho</span><span class="p">,</span><span class="s">&#39;-g&#39;</span><span class="p">,</span><span class="n">z</span><span class="p">,</span><span class="n">irho</span><span class="p">,</span><span class="s">&#39;-b&#39;</span><span class="p">)</span>
+        <span class="n">z</span><span class="p">,</span><span class="n">rho</span><span class="p">,</span><span class="n">irho</span> <span class="o">=</span> <span class="n">slabs</span><span class="o">.</span><span class="n">smooth_profile</span><span class="p">(</span><span class="n">dz</span><span class="o">=</span><span class="mf">1</span><span class="p">,</span> <span class="n">roughness_limit</span><span class="o">=</span><span class="n">roughness_limit</span><span class="p">)</span>
+        <span class="n">pylab</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">z</span><span class="p">,</span><span class="n">rho</span><span class="p">,</span><span class="s">&#39;:g&#39;</span><span class="p">,</span><span class="n">z</span><span class="p">,</span><span class="n">irho</span><span class="p">,</span><span class="s">&#39;:b&#39;</span><span class="p">,</span> <span class="n">hold</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+        <span class="n">pylab</span><span class="o">.</span><span class="n">legend</span><span class="p">([</span><span class="s">&#39;rho&#39;</span><span class="p">,</span><span class="s">&#39;irho&#39;</span><span class="p">])</span>
+        <span class="n">pylab</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s">&#39;depth (A)&#39;</span><span class="p">)</span>
+        <span class="n">pylab</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s">&#39;SLD (10^6 inv A**2)&#39;</span><span class="p">)</span>
+        <span class="n">pylab</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mf">0.05</span><span class="p">,</span><span class="mf">0.95</span><span class="p">,</span><span class="s">&quot;5 A neutron&quot;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s">&quot;top&quot;</span><span class="p">,</span><span class="n">ha</span><span class="o">=</span><span class="s">&quot;left&quot;</span><span class="p">,</span>
+                   <span class="n">transform</span><span class="o">=</span><span class="n">pylab</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">transAxes</span><span class="p">)</span>
+
+
+    <span class="c"># Stacks as lists</span>
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span><span class="nb">slice</span><span class="p">):</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="n">Stack</span><span class="p">()</span>
+            <span class="n">s</span><span class="o">.</span><span class="n">_layers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">s</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+    <span class="k">def</span> <span class="nf">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="nb">slice</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span><span class="n">Stack</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">_layers</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">_check_layer</span><span class="p">(</span><span class="n">el</span><span class="p">)</span> <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">other</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">_check_layer</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__delitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
+        <span class="c"># works the same for slices and individual indices</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+
+<div class="viewcode-block" id="Stack.insert"><a class="viewcode-back" href="../../api/model.html#refl1d.model.Stack.insert">[docs]</a>    <span class="k">def</span> <span class="nf">insert</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Insert structure into a stack.  If the inserted element is</span>
+<span class="sd">        another stack, the stack will be expanded to accommodate.  You</span>
+<span class="sd">        cannot make nested stacks.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span><span class="n">Stack</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">L</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">_layers</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">idx</span><span class="o">+</span><span class="n">i</span><span class="p">,</span><span class="n">L</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span><span class="n">Repeat</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">other</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="n">other</span> <span class="o">=</span> <span class="p">[</span><span class="n">other</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">L</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_layers</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">idx</span><span class="o">+</span><span class="n">i</span><span class="p">,</span><span class="n">_check_layer</span><span class="p">(</span><span class="n">L</span><span class="p">))</span>
+
+    <span class="c"># Define a little algebra for composing samples</span>
+    <span class="c"># Stacks can be repeated or extended</span></div>
+    <span class="k">def</span> <span class="nf">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">Par</span><span class="p">):</span> <span class="k">pass</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">and</span> <span class="n">other</span> <span class="o">&gt;</span> <span class="mf">1</span><span class="p">:</span> <span class="k">pass</span>
+        <span class="k">else</span><span class="p">:</span> <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;Repeat count must be an integer &gt; 1&quot;</span><span class="p">)</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">Repeat</span><span class="p">(</span><span class="n">stack</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">repeat</span><span class="o">=</span><span class="n">other</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">s</span>
+    <span class="k">def</span> <span class="nf">__rmul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__mul__</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__or__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">Stack</span><span class="p">()</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">s</span>
+
+    <span class="n">render</span><span class="o">.</span><span class="n">__doc__</span> <span class="o">=</span> <span class="n">Layer</span><span class="o">.</span><span class="n">render</span><span class="o">.</span><span class="n">__doc__</span>
+</div>
+<span class="k">def</span> <span class="nf">_check_layer</span><span class="p">(</span><span class="n">el</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">el</span><span class="p">,</span><span class="n">Layer</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">el</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">el</span><span class="p">,</span> <span class="n">material</span><span class="o">.</span><span class="n">Scatterer</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Slab</span><span class="p">(</span><span class="n">el</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;Can only stack materials and layers, not </span><span class="si">%s</span><span class="s">&quot;</span><span class="o">%</span><span class="n">el</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Repeat"><a class="viewcode-back" href="../../api/model.html#refl1d.model.Repeat">[docs]</a><span class="k">class</span> <span class="nc">Repeat</span><span class="p">(</span><span class="n">Layer</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Repeat a layer or stack.</span>
+
+<span class="sd">    If an interface parameter is provide, the roughness between the</span>
+<span class="sd">    multilayers may be different from the roughness between the repeated</span>
+<span class="sd">    stack and the following layer.</span>
+
+<span class="sd">    Note: Repeat is not a type of Stack, but it does have a stack inside.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stack</span><span class="p">,</span> <span class="n">repeat</span><span class="o">=</span><span class="mf">1</span><span class="p">,</span> <span class="n">interface</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> <span class="n">name</span> <span class="o">=</span> <span class="s">&quot;multilayer&quot;</span>
+        <span class="k">if</span> <span class="n">interface</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> <span class="n">interface</span> <span class="o">=</span> <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mf">1</span><span class="p">]</span><span class="o">.</span><span class="n">interface</span><span class="o">.</span><span class="n">value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">repeat</span> <span class="o">=</span> <span class="n">IntPar</span><span class="p">(</span><span class="n">repeat</span><span class="p">,</span> <span class="n">limits</span><span class="o">=</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="n">inf</span><span class="p">),</span>
+                             <span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="s">&quot; repeats&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stack</span> <span class="o">=</span> <span class="n">stack</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interface</span> <span class="o">=</span> <span class="n">Par</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">interface</span><span class="p">,</span> <span class="n">limits</span><span class="o">=</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="n">inf</span><span class="p">),</span>
+                                     <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="o">+</span><span class="s">&quot; top interface&quot;</span><span class="p">)</span>
+        <span class="c"># Thickness is computed; don&#39;t make it a simple attribute</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_thickness</span> <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_calc_thickness</span><span class="p">,</span><span class="n">name</span><span class="o">=</span><span class="s">&quot;repeat thickness&quot;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__getstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">interface</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">repeat</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">stack</span>
+    <span class="k">def</span> <span class="nf">__setstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interface</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">repeat</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">stack</span> <span class="o">=</span> <span class="n">state</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_thickness</span> <span class="o">=</span> <span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_calc_thickness</span><span class="p">,</span><span class="n">name</span><span class="o">=</span><span class="s">&quot;repeat thickness&quot;</span><span class="p">)</span>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="Repeat.magnetic"><a class="viewcode-back" href="../../api/model.html#refl1d.model.Repeat.magnetic">[docs]</a>    <span class="k">def</span> <span class="nf">magnetic</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">magnetic</span></div>
+<div class="viewcode-block" id="Repeat.find"><a class="viewcode-back" href="../../api/model.html#refl1d.model.Repeat.find">[docs]</a>    <span class="k">def</span> <span class="nf">find</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Find the layer at depth z.</span>
+
+<span class="sd">        Returns layer, start, end</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">repeat</span><span class="o">.</span><span class="n">value</span>
+        <span class="n">unit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">if</span> <span class="n">z</span> <span class="o">&lt;</span> <span class="n">n</span><span class="o">*</span><span class="n">unit</span><span class="p">:</span>
+            <span class="n">offset</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">z</span><span class="o">/</span><span class="n">unit</span><span class="p">)</span><span class="o">*</span><span class="n">unit</span>
+            <span class="n">L</span><span class="p">,</span><span class="n">start</span><span class="p">,</span><span class="n">end</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">z</span><span class="o">-</span><span class="n">offset</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">L</span><span class="p">,</span><span class="n">start</span><span class="o">+</span><span class="n">offset</span><span class="p">,</span><span class="n">end</span><span class="o">+</span><span class="n">offset</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">offset</span> <span class="o">=</span> <span class="n">n</span><span class="o">*</span><span class="n">unit</span>
+            <span class="n">L</span><span class="p">,</span><span class="n">start</span><span class="p">,</span><span class="n">end</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">unit</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">L</span><span class="p">,</span><span class="n">start</span><span class="o">+</span><span class="n">offset</span><span class="p">,</span><span class="n">end</span><span class="o">+</span><span class="n">offset</span>
+    <span class="c"># Stacks as lists</span></div>
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+    <span class="k">def</span> <span class="nf">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">other</span>
+    <span class="k">def</span> <span class="nf">__delitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+
+<div class="viewcode-block" id="Repeat.parameters"><a class="viewcode-back" href="../../api/model.html#refl1d.model.Repeat.parameters">[docs]</a>    <span class="k">def</span> <span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">stack</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span>
+                    <span class="n">repeat</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">repeat</span><span class="p">,</span>
+                    <span class="n">thickness</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_thickness</span><span class="p">,</span>
+                    <span class="n">interface</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">interface</span><span class="p">)</span>
+    <span class="c"># Mark thickness as read only</span></div>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="Repeat.thickness"><a class="viewcode-back" href="../../api/model.html#refl1d.model.Repeat.thickness">[docs]</a>    <span class="k">def</span> <span class="nf">thickness</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_thickness</span></div>
+    <span class="k">def</span> <span class="nf">_calc_thickness</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">thickness</span><span class="o">.</span><span class="n">value</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">repeat</span><span class="o">.</span><span class="n">value</span>
+<div class="viewcode-block" id="Repeat.render"><a class="viewcode-back" href="../../api/model.html#refl1d.model.Repeat.render">[docs]</a>    <span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">probe</span><span class="p">,</span> <span class="n">slabs</span><span class="p">):</span>
+        <span class="n">nr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">repeat</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">if</span> <span class="n">nr</span> <span class="o">&lt;=</span> <span class="mf">0</span><span class="p">:</span> <span class="k">return</span>
+        <span class="n">mark</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">slabs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">probe</span><span class="p">,</span> <span class="n">slabs</span><span class="p">)</span>
+        <span class="n">slabs</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">mark</span><span class="p">,</span> <span class="n">nr</span><span class="p">,</span> <span class="n">interface</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">interface</span><span class="o">.</span><span class="n">value</span><span class="p">)</span></div>
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;(</span><span class="si">%s</span><span class="s">)x</span><span class="si">%d</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">),</span><span class="bp">self</span><span class="o">.</span><span class="n">repeat</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;Repeat(</span><span class="si">%s</span><span class="s">, </span><span class="si">%d</span><span class="s">)&quot;</span><span class="o">%</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stack</span><span class="p">),</span><span class="bp">self</span><span class="o">.</span><span class="n">repeat</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+
+<span class="c"># Extend the materials scatterer class so that any scatter can be</span>
+<span class="c"># implicitly turned into a slab.  This is a nasty thing to do</span>
+<span class="c"># since those who have to debug the system later will not know</span>
+<span class="c"># to look elsewhere for the class attributes.  On the flip side,</span>
+<span class="c"># changing the base class definition saves us the equally nasty</span>
+<span class="c"># problem of having to create a sister hierarchy of stackable</span>
+<span class="c"># scatterers mirroring the structure of the materials class.</span></div>
+<span class="k">class</span> <span class="nc">_MaterialStacker</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Allows materials to be used in a stack algebra, automatically</span>
+<span class="sd">    turning them into slabs when they are given a thickness (e.g., M/10)</span>
+<span class="sd">    or roughness (e.g., M%10), or when they are added together</span>
+<span class="sd">    (e.g., M1 + M2).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c"># Define a little algebra for composing samples</span>
+    <span class="c"># Layers can be repeated, stacked, or have length/interface set</span>
+    <span class="k">def</span> <span class="nf">__or__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Place a slab of material into a layer stack&quot;&quot;&quot;</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">Stack</span><span class="p">()</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">s</span>
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">thickness</span><span class="o">=</span><span class="mf">0</span><span class="p">,</span><span class="n">interface</span><span class="o">=</span><span class="mf">0</span><span class="p">):</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">Slab</span><span class="p">(</span><span class="n">material</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">thickness</span><span class="o">=</span><span class="n">thickness</span><span class="p">,</span> <span class="n">interface</span><span class="o">=</span><span class="n">interface</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">c</span>
+<span class="n">material</span><span class="o">.</span><span class="n">Scatterer</span><span class="o">.</span><span class="n">__bases__</span> <span class="o">+=</span> <span class="p">(</span><span class="n">_MaterialStacker</span><span class="p">,)</span>
+
+<div class="viewcode-block" id="Slab"><a class="viewcode-back" href="../../api/model.html#refl1d.model.Slab">[docs]</a><span class="k">class</span> <span class="nc">Slab</span><span class="p">(</span><span class="n">Layer</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A block of material.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">material</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">thickness</span><span class="o">=</span><span class="mf">0</span><span class="p">,</span> <span class="n">interface</span><span class="o">=</span><span class="mf">0</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span> <span class="n">name</span> <span class="o">=</span> <span class="n">material</span><span class="o">.</span><span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">material</span> <span class="o">=</span> <span class="n">material</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span> <span class="o">=</span> <span class="n">Par</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">thickness</span><span class="p">,</span> <span class="n">limits</span><span class="o">=</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="n">inf</span><span class="p">),</span>
+                                     <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="o">+</span><span class="s">&quot; thickness&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interface</span> <span class="o">=</span> <span class="n">Par</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">interface</span><span class="p">,</span> <span class="n">limits</span><span class="o">=</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="n">inf</span><span class="p">),</span>
+                                     <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="o">+</span><span class="s">&quot; interface&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Slab.parameters"><a class="viewcode-back" href="../../api/model.html#refl1d.model.Slab.parameters">[docs]</a>    <span class="k">def</span> <span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">thickness</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">thickness</span><span class="p">,</span>
+                    <span class="n">interface</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">interface</span><span class="p">,</span>
+                    <span class="n">material</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">parameters</span><span class="p">())</span>
+</div>
+<div class="viewcode-block" id="Slab.render"><a class="viewcode-back" href="../../api/model.html#refl1d.model.Slab.render">[docs]</a>    <span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">probe</span><span class="p">,</span> <span class="n">slabs</span><span class="p">):</span>
+        <span class="n">rho</span><span class="p">,</span> <span class="n">irho</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">sld</span><span class="p">(</span><span class="n">probe</span><span class="p">)</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span><span class="o">.</span><span class="n">value</span>
+        <span class="n">sigma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interface</span><span class="o">.</span><span class="n">value</span>
+        <span class="c">#print &quot;rho&quot;,rho</span>
+        <span class="c">#print &quot;irho&quot;,irho</span>
+        <span class="c">#print &quot;w&quot;,w</span>
+        <span class="c">#print &quot;sigma&quot;,sigma</span>
+        <span class="n">slabs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rho</span><span class="o">=</span><span class="n">rho</span><span class="p">,</span> <span class="n">irho</span><span class="o">=</span><span class="n">irho</span><span class="p">,</span> <span class="n">w</span><span class="o">=</span><span class="n">w</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="n">sigma</span><span class="p">)</span></div>
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span><span class="o">.</span><span class="n">value</span> <span class="o">&gt;</span> <span class="mf">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;Slab(&quot;</span><span class="o">+</span><span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="p">)</span><span class="o">+</span><span class="s">&quot;)&quot;</span></div>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,1820 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.probe - Instrument probe &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../index.html" />
+    <link rel="up" title="Reference" href="index.html" />
+    <link rel="next" title="refl1d.profile - Model profile" href="profile.html" />
+    <link rel="prev" title="refl1d.polymer - Polymer models" href="polymer.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.probe - Instrument probe</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="polymer.html">refl1d.polymer - Polymer models</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="profile.html">refl1d.profile - Model profile</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="refl1d-probe-instrument-probe">
+<h1>refl1d.probe - Instrument probe<a class="headerlink" href="#refl1d-probe-instrument-probe" title="Permalink to this headline">¶</a></h1>
+<table border="1" class="docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr><td><a class="reference internal" href="#refl1d.probe.NeutronProbe" title="refl1d.probe.NeutronProbe"><tt class="xref py py-obj docutils literal"><span class="pre">NeutronProbe</span></tt></a></td>
+<td></td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.probe.PolarizedNeutronProbe" title="refl1d.probe.PolarizedNeutronProbe"><tt class="xref py py-obj docutils literal"><span class="pre">PolarizedNeutronProbe</span></tt></a></td>
+<td>Polarized neutron probe</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.probe.PolarizedNeutronQProbe" title="refl1d.probe.PolarizedNeutronQProbe"><tt class="xref py py-obj docutils literal"><span class="pre">PolarizedNeutronQProbe</span></tt></a></td>
+<td></td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.probe.Probe" title="refl1d.probe.Probe"><tt class="xref py py-obj docutils literal"><span class="pre">Probe</span></tt></a></td>
+<td>Defines the incident beam used to study the material.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.probe.ProbeSet" title="refl1d.probe.ProbeSet"><tt class="xref py py-obj docutils literal"><span class="pre">ProbeSet</span></tt></a></td>
+<td></td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.probe.QProbe" title="refl1d.probe.QProbe"><tt class="xref py py-obj docutils literal"><span class="pre">QProbe</span></tt></a></td>
+<td>A pure Q,R probe</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.probe.Qmeasurement_union" title="refl1d.probe.Qmeasurement_union"><tt class="xref py py-obj docutils literal"><span class="pre">Qmeasurement_union</span></tt></a></td>
+<td>Determine the unique (T,dT,L,dL) across all datasets.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.probe.XrayProbe" title="refl1d.probe.XrayProbe"><tt class="xref py py-obj docutils literal"><span class="pre">XrayProbe</span></tt></a></td>
+<td>X-Ray probe.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.probe.make_probe" title="refl1d.probe.make_probe"><tt class="xref py py-obj docutils literal"><span class="pre">make_probe</span></tt></a></td>
+<td>Return a reflectometry measurement object of the given resolution.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.probe.measurement_union" title="refl1d.probe.measurement_union"><tt class="xref py py-obj docutils literal"><span class="pre">measurement_union</span></tt></a></td>
+<td>Determine the unique (T,dT,L,dL) across all datasets.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.probe.spin_asymmetry" title="refl1d.probe.spin_asymmetry"><tt class="xref py py-obj docutils literal"><span class="pre">spin_asymmetry</span></tt></a></td>
+<td>Compute spin asymmetry for R++, R&#8211;.</td>
+</tr>
+</tbody>
+</table>
+<span class="target" id="module-refl1d.probe"></span><p>Experimental probe.</p>
+<p>The experimental probe describes the incoming beam for the experiment.
+Scattering properties of the sample are dependent on the type and
+energy of the radiation.</p>
+<p>See <a href="#id1"><span class="problematic" id="id2">`data-guide`_</span></a> for details.</p>
+<dl class="class">
+<dt id="refl1d.probe.NeutronProbe">
+<em class="property">class </em><tt class="descclassname">refl1d.probe.</tt><tt class="descname">NeutronProbe</tt><big>(</big><em>T=None</em>, <em>dT=0</em>, <em>L=None</em>, <em>dL=0</em>, <em>data=None</em>, <em>intensity=1</em>, <em>background=0</em>, <em>back_absorption=1</em>, <em>theta_offset=0</em>, <em>back_reflectivity=False</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#NeutronProbe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.NeutronProbe" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#refl1d.probe.Probe" title="refl1d.probe.Probe"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.probe.Probe</span></tt></a></p>
+<dl class="attribute">
+<dt id="refl1d.probe.NeutronProbe.Q">
+<tt class="descname">Q</tt><a class="headerlink" href="#refl1d.probe.NeutronProbe.Q" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="refl1d.probe.NeutronProbe.alignment_uncertainty">
+<em class="property">static </em><tt class="descname">alignment_uncertainty</tt><big>(</big><em>w</em>, <em>I</em>, <em>d=0</em><big>)</big><a class="headerlink" href="#refl1d.probe.NeutronProbe.alignment_uncertainty" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute alignment uncertainty.</p>
+<p><strong>Parameters:</strong></p>
+<dl class="docutils">
+<dt><em>w</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | degrees</span></dt>
+<dd>Rocking curve full width at half max.</dd>
+<dt><em>I</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | counts</span></dt>
+<dd>Rocking curve integrated intensity.</dd>
+<dt><em>d</em> = 0: float | degrees</dt>
+<dd>Motor step size</dd>
+</dl>
+<p><strong>Returns:</strong></p>
+<dl class="docutils">
+<dt><em>dtheta</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | degrees</span></dt>
+<dd>uncertainty in alignment angle</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.NeutronProbe.apply_beam">
+<tt class="descname">apply_beam</tt><big>(</big><em>calc_Q</em>, <em>calc_R</em>, <em>resolution=True</em><big>)</big><a class="headerlink" href="#refl1d.probe.NeutronProbe.apply_beam" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply factors such as beam intensity, background, backabsorption,
+resolution to the data.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.probe.NeutronProbe.calc_Q">
+<tt class="descname">calc_Q</tt><a class="headerlink" href="#refl1d.probe.NeutronProbe.calc_Q" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.NeutronProbe.critical_edge">
+<tt class="descname">critical_edge</tt><big>(</big><em>substrate=None</em>, <em>surface=None</em>, <em>n=51</em>, <em>delta=0.25</em><big>)</big><a class="headerlink" href="#refl1d.probe.NeutronProbe.critical_edge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Oversample points near the critical edge.</p>
+<p>The critical edge is defined by the difference in scattering
+potential for the <em>substrate</em> and <em>surface</em> materials, or the
+reverse if <em>back_reflectivity</em> is true.</p>
+<p><em>n</em> is the number of <span class="math">Q</span> points to compute near the critical edge.</p>
+<p><em>delta</em> is the relative uncertainty in the material density,
+which defines the range of values which are calculated.</p>
+<p>The <span class="math">n</span> points <span class="math">Q_i</span> are evenly distributed around the critical
+edge in <span class="math">Q_c \pm \delta Q_c</span> by varying angle <span class="math">\theta</span> for a
+fixed wavelength <span class="math">&lt; \lambda &gt;</span>, the average of all wavelengths
+in the probe.</p>
+<p>Specifically:</p>
+<div class="math">
+\begin{split}Q_c^2 &amp;= 16 \pi (\rho - \rho_\text{incident}) \\
+Q_i &amp;= Q_c - \delta_i Q_c (i - (n-1)/2)
+    \qquad \text{for} \; i \in 0 \ldots n-1 \\
+\lambda_i &amp;= &lt; \lambda &gt; \\
+\theta_i &amp;= \sin^{-1}(Q_i \lambda_i / 4 \pi)\end{split}</div>
+<p>If <span class="math">Q_c</span> is imaginary, then <span class="math">-|Q_c|</span> is used instead, so this
+routine can be used for reflectivity signals which scan from
+back reflectivity to front reflectivity.  For completeness,
+the angle <span class="math">\theta = 0</span> is added as well.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.probe.NeutronProbe.data">
+<tt class="descname">data</tt><a class="headerlink" href="#refl1d.probe.NeutronProbe.data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.NeutronProbe.fresnel">
+<tt class="descname">fresnel</tt><big>(</big><em>substrate=None</em>, <em>surface=None</em><big>)</big><a class="headerlink" href="#refl1d.probe.NeutronProbe.fresnel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the reflectivity for the probe reflecting from a block of
+material with the given substrate.</p>
+<p>Returns F = R(probe.Q), where R is magnitude squared reflectivity.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.NeutronProbe.label">
+<tt class="descname">label</tt><big>(</big><em>prefix=None</em>, <em>gloss=''</em>, <em>suffix=''</em><big>)</big><a class="headerlink" href="#refl1d.probe.NeutronProbe.label" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.NeutronProbe.log10_to_linear">
+<tt class="descname">log10_to_linear</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.probe.NeutronProbe.log10_to_linear" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert data from log to linear.</p>
+<p>Older reflectometry reduction code stored reflectivity in log base 10
+format.  Call probe.log10_to_linear() after loading this data to
+convert it to linear for subsequent display and fitting.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.probe.NeutronProbe.name">
+<tt class="descname">name</tt><a class="headerlink" href="#refl1d.probe.NeutronProbe.name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.NeutronProbe.oversample">
+<tt class="descname">oversample</tt><big>(</big><em>n=20</em>, <em>seed=1</em><big>)</big><a class="headerlink" href="#refl1d.probe.NeutronProbe.oversample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate an over-sampling of Q to avoid aliasing effects.</p>
+<p>Oversampling is needed for thick layers, in which the underlying
+reflectivity oscillates so rapidly in Q that a single measurement
+has contributions from multiple Kissig fringes.</p>
+<p>Sampling will be done using a pseudo-random generator so that
+accidental structure in the function does not contribute to the
+aliasing.  The generator will usually be initialized with a fixed
+<em>seed</em> so that the point selection will not change from run to run,
+but a <em>seed</em> of None will choose a different set of points each time
+oversample is called.</p>
+<p>The value <em>n</em> is the number of points that should contribute to
+each Q value when computing the resolution.   These will be
+distributed about the nominal measurement value, but varying in
+both angle and energy according to the resolution function.  This
+will yield more points near the measurement and fewer farther away.
+The measurement point itself will not be used to avoid accidental
+bias from uniform Q steps.  Depending on the problem, a value of
+<em>n</em> between 20 and 100 should lead to stable values for the convolved
+reflectivity.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.NeutronProbe.parameters">
+<tt class="descname">parameters</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.probe.NeutronProbe.parameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.NeutronProbe.plot">
+<tt class="descname">plot</tt><big>(</big><em>view=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.NeutronProbe.plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot theory against data.</p>
+<p>Need substrate/surface for Fresnel reflectivity</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.NeutronProbe.plot_Q4">
+<tt class="descname">plot_Q4</tt><big>(</big><em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.NeutronProbe.plot_Q4" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the Q**4 reflectivity associated with the probe.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.NeutronProbe.plot_fft">
+<tt class="descname">plot_fft</tt><big>(</big><em>theory=None</em>, <em>suffix=''</em>, <em>label=None</em>, <em>substrate=None</em>, <em>surface=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.NeutronProbe.plot_fft" title="Permalink to this definition">¶</a></dt>
+<dd><p>FFT analysis of reflectivity signal.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.NeutronProbe.plot_fresnel">
+<tt class="descname">plot_fresnel</tt><big>(</big><em>substrate=None</em>, <em>surface=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.NeutronProbe.plot_fresnel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the Fresnel reflectivity associated with the probe.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.NeutronProbe.plot_linear">
+<tt class="descname">plot_linear</tt><big>(</big><em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.NeutronProbe.plot_linear" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the data associated with probe.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.NeutronProbe.plot_log">
+<tt class="descname">plot_log</tt><big>(</big><em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.NeutronProbe.plot_log" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the data associated with probe.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.NeutronProbe.plot_residuals">
+<tt class="descname">plot_residuals</tt><big>(</big><em>theory=None</em>, <em>suffix=''</em>, <em>label=None</em>, <em>plot_shift=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.NeutronProbe.plot_residuals" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.NeutronProbe.plot_resolution">
+<tt class="descname">plot_resolution</tt><big>(</big><em>suffix=''</em>, <em>label=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.NeutronProbe.plot_resolution" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.NeutronProbe.resolution_guard">
+<tt class="descname">resolution_guard</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.probe.NeutronProbe.resolution_guard" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make sure each measured <span class="math">Q</span> point has at least 5 calculated <span class="math">Q</span>
+points contributing to it in the range <span class="math">[-3\Delta Q,3\Delta Q]</span>.</p>
+<p><em>Not Implemented</em></p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.NeutronProbe.restore_data">
+<tt class="descname">restore_data</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.probe.NeutronProbe.restore_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Restore the original data.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.NeutronProbe.resynth_data">
+<tt class="descname">resynth_data</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.probe.NeutronProbe.resynth_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate new data according to the model R ~ N(Ro,dR).</p>
+<p>The resynthesis step is a precursor to refitting the data, as is
+required for certain types of monte carlo error analysis.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.NeutronProbe.save">
+<tt class="descname">save</tt><big>(</big><em>filename</em>, <em>theory</em>, <em>substrate=None</em>, <em>surface=None</em><big>)</big><a class="headerlink" href="#refl1d.probe.NeutronProbe.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save the data and theory to a file.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.NeutronProbe.scattering_factors">
+<tt class="descname">scattering_factors</tt><big>(</big><em>material</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#NeutronProbe.scattering_factors"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.NeutronProbe.scattering_factors" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the scattering factors associated with the material given
+the range of wavelengths/energies used in the probe.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.NeutronProbe.simulate_data">
+<tt class="descname">simulate_data</tt><big>(</big><em>theory</em>, <em>noise=2</em><big>)</big><a class="headerlink" href="#refl1d.probe.NeutronProbe.simulate_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the data for the probe to R, adding random noise dR.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.NeutronProbe.subsample">
+<tt class="descname">subsample</tt><big>(</big><em>dQ</em><big>)</big><a class="headerlink" href="#refl1d.probe.NeutronProbe.subsample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Select points at most every dQ.</p>
+<p>Use this to speed up computation early in the fitting process.</p>
+<p>This changes the data object, and is not reversible.</p>
+<p>The current algorithm is not picking the &#8220;best&#8221; Q value, just the
+nearest, so if you have nearby Q points with different quality
+statistics (as happens in overlapped regions from spallation
+source measurements at different angles), then it may choose
+badly.  Simple solutions based on the smallest relative error dR/R
+will be biased toward peaks, and smallest absolute error dR will
+be biased toward valleys.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.NeutronProbe.write_data">
+<tt class="descname">write_data</tt><big>(</big><em>filename, columns=['Q', 'R', 'dR'], header=None</em><big>)</big><a class="headerlink" href="#refl1d.probe.NeutronProbe.write_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save the data to a file.</p>
+<p><em>header</em> is a string with trailing n containing the file header.
+<em>columns</em> is a list of column names from Q, dQ, R, dR, L, dL, T, dT.</p>
+<p>The default is to write Q,R,dR data.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="refl1d.probe.PolarizedNeutronProbe">
+<em class="property">class </em><tt class="descclassname">refl1d.probe.</tt><tt class="descname">PolarizedNeutronProbe</tt><big>(</big><em>xs=None</em>, <em>Aguide=270</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#PolarizedNeutronProbe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.PolarizedNeutronProbe" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Polarized neutron probe</p>
+<p><em>xs</em> (4 x NeutronProbe) is a sequence pp, pm, mp and mm.
+<em>Aguide</em> (degrees) is the angle of the guide field</p>
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronProbe.apply_beam">
+<tt class="descname">apply_beam</tt><big>(</big><em>Q</em>, <em>R</em>, <em>resolution=True</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#PolarizedNeutronProbe.apply_beam"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.PolarizedNeutronProbe.apply_beam" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply factors such as beam intensity, background, backabsorption,
+and footprint to the data.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.probe.PolarizedNeutronProbe.calc_Q">
+<tt class="descname">calc_Q</tt><a class="reference internal" href="../_modules/refl1d/probe.html#PolarizedNeutronProbe.calc_Q"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.PolarizedNeutronProbe.calc_Q" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronProbe.fresnel">
+<tt class="descname">fresnel</tt><big>(</big><em>*args</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#PolarizedNeutronProbe.fresnel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.PolarizedNeutronProbe.fresnel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the reflectivity for the probe reflecting from a block of
+material with the given substrate.</p>
+<p>Returns F = R(probe.Q), where R is magnitude squared reflectivity.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.probe.PolarizedNeutronProbe.mm">
+<tt class="descname">mm</tt><a class="reference internal" href="../_modules/refl1d/probe.html#PolarizedNeutronProbe.mm"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.PolarizedNeutronProbe.mm" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.probe.PolarizedNeutronProbe.mp">
+<tt class="descname">mp</tt><a class="reference internal" href="../_modules/refl1d/probe.html#PolarizedNeutronProbe.mp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.PolarizedNeutronProbe.mp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.probe.PolarizedNeutronProbe.name">
+<tt class="descname">name</tt><a class="reference internal" href="../_modules/refl1d/probe.html#PolarizedNeutronProbe.name"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.PolarizedNeutronProbe.name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronProbe.oversample">
+<tt class="descname">oversample</tt><big>(</big><em>n=6</em>, <em>seed=1</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#PolarizedNeutronProbe.oversample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.PolarizedNeutronProbe.oversample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate an over-sampling of Q to avoid aliasing effects.</p>
+<p>Oversampling is needed for thick layers, in which the underlying
+reflectivity oscillates so rapidly in Q that a single measurement
+has contributions from multiple Kissig fringes.</p>
+<p>Sampling will be done using a pseudo-random generator so that
+accidental structure in the function does not contribute to the
+aliasing.  The generator will usually be initialized with a fixed
+<em>seed</em> so that the point selection will not change from run to run,
+but a <em>seed</em> of None will choose a different set of points each time
+oversample is called.</p>
+<p>The value <em>n</em> is the number of points that should contribute to
+each Q value when computing the resolution.   These will be
+distributed about the nominal measurement value, but varying in
+both angle and energy according to the resolution function.  This
+will yield more points near the measurement and fewer farther away.
+The measurement point itself will not be used to avoid accidental
+bias from uniform Q steps.  Depending on the problem, a value of
+<em>n</em> between 20 and 100 should lead to stable values for the convolved
+reflectivity.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronProbe.parameters">
+<tt class="descname">parameters</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#PolarizedNeutronProbe.parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.PolarizedNeutronProbe.parameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronProbe.plot">
+<tt class="descname">plot</tt><big>(</big><em>view=None</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#PolarizedNeutronProbe.plot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.PolarizedNeutronProbe.plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot theory against data.</p>
+<p>Need substrate/surface for Fresnel reflectivity</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronProbe.plot_Q4">
+<tt class="descname">plot_Q4</tt><big>(</big><em>**kwargs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#PolarizedNeutronProbe.plot_Q4"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.PolarizedNeutronProbe.plot_Q4" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronProbe.plot_SA">
+<tt class="descname">plot_SA</tt><big>(</big><em>theory=None</em>, <em>label=None</em>, <em>plot_shift=None</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#PolarizedNeutronProbe.plot_SA"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.PolarizedNeutronProbe.plot_SA" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronProbe.plot_fresnel">
+<tt class="descname">plot_fresnel</tt><big>(</big><em>**kwargs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#PolarizedNeutronProbe.plot_fresnel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.PolarizedNeutronProbe.plot_fresnel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronProbe.plot_linear">
+<tt class="descname">plot_linear</tt><big>(</big><em>**kwargs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#PolarizedNeutronProbe.plot_linear"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.PolarizedNeutronProbe.plot_linear" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronProbe.plot_log">
+<tt class="descname">plot_log</tt><big>(</big><em>**kwargs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#PolarizedNeutronProbe.plot_log"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.PolarizedNeutronProbe.plot_log" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronProbe.plot_residuals">
+<tt class="descname">plot_residuals</tt><big>(</big><em>**kwargs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#PolarizedNeutronProbe.plot_residuals"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.PolarizedNeutronProbe.plot_residuals" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronProbe.plot_resolution">
+<tt class="descname">plot_resolution</tt><big>(</big><em>**kwargs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#PolarizedNeutronProbe.plot_resolution"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.PolarizedNeutronProbe.plot_resolution" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.probe.PolarizedNeutronProbe.pm">
+<tt class="descname">pm</tt><a class="reference internal" href="../_modules/refl1d/probe.html#PolarizedNeutronProbe.pm"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.PolarizedNeutronProbe.pm" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.probe.PolarizedNeutronProbe.pp">
+<tt class="descname">pp</tt><a class="reference internal" href="../_modules/refl1d/probe.html#PolarizedNeutronProbe.pp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.PolarizedNeutronProbe.pp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronProbe.restore_data">
+<tt class="descname">restore_data</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#PolarizedNeutronProbe.restore_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.PolarizedNeutronProbe.restore_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Restore the original data.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronProbe.resynth_data">
+<tt class="descname">resynth_data</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#PolarizedNeutronProbe.resynth_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.PolarizedNeutronProbe.resynth_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate new data according to the model R ~ N(Ro,dR).</p>
+<p>The resynthesis step is a precursor to refitting the data, as is
+required for certain types of monte carlo error analysis.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronProbe.save">
+<tt class="descname">save</tt><big>(</big><em>filename</em>, <em>theory</em>, <em>substrate=None</em>, <em>surface=None</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#PolarizedNeutronProbe.save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.PolarizedNeutronProbe.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save the data and theory to a file.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronProbe.scattering_factors">
+<tt class="descname">scattering_factors</tt><big>(</big><em>material</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#PolarizedNeutronProbe.scattering_factors"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.PolarizedNeutronProbe.scattering_factors" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the scattering factors associated with the material given
+the range of wavelengths/energies used in the probe.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronProbe.select_corresponding">
+<tt class="descname">select_corresponding</tt><big>(</big><em>theory</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#PolarizedNeutronProbe.select_corresponding"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.PolarizedNeutronProbe.select_corresponding" title="Permalink to this definition">¶</a></dt>
+<dd><p>Select theory points corresponding to the measured data.</p>
+<p>Since we have evaluated theory at every Q, it is safe to interpolate
+measured Q into theory, since it will land on a node,
+not in an interval.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronProbe.shared_beam">
+<tt class="descname">shared_beam</tt><big>(</big><em>intensity=1</em>, <em>background=0</em>, <em>back_absorption=1</em>, <em>theta_offset=0</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#PolarizedNeutronProbe.shared_beam"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.PolarizedNeutronProbe.shared_beam" title="Permalink to this definition">¶</a></dt>
+<dd><p>Share beam parameters across all four cross sections.</p>
+<p>New parameters are created for <em>intensity</em>, <em>background</em>,
+<em>theta_offset</em> and <em>back_absorption</em> and assigned to the all
+cross sections.  These can be replaced in an individual
+cross section if for some reason one of the parameters is
+independent.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronProbe.simulate_data">
+<tt class="descname">simulate_data</tt><big>(</big><em>theory</em>, <em>noise=2</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#PolarizedNeutronProbe.simulate_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.PolarizedNeutronProbe.simulate_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the data for the probe to R, adding random noise dR.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="refl1d.probe.PolarizedNeutronQProbe">
+<em class="property">class </em><tt class="descclassname">refl1d.probe.</tt><tt class="descname">PolarizedNeutronQProbe</tt><big>(</big><em>xs=None</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#PolarizedNeutronQProbe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.PolarizedNeutronQProbe" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#refl1d.probe.PolarizedNeutronProbe" title="refl1d.probe.PolarizedNeutronProbe"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.probe.PolarizedNeutronProbe</span></tt></a></p>
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronQProbe.apply_beam">
+<tt class="descname">apply_beam</tt><big>(</big><em>Q</em>, <em>R</em>, <em>resolution=True</em><big>)</big><a class="headerlink" href="#refl1d.probe.PolarizedNeutronQProbe.apply_beam" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply factors such as beam intensity, background, backabsorption,
+and footprint to the data.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.probe.PolarizedNeutronQProbe.calc_Q">
+<tt class="descname">calc_Q</tt><a class="headerlink" href="#refl1d.probe.PolarizedNeutronQProbe.calc_Q" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronQProbe.fresnel">
+<tt class="descname">fresnel</tt><big>(</big><em>*args</em>, <em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.probe.PolarizedNeutronQProbe.fresnel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the reflectivity for the probe reflecting from a block of
+material with the given substrate.</p>
+<p>Returns F = R(probe.Q), where R is magnitude squared reflectivity.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.probe.PolarizedNeutronQProbe.mm">
+<tt class="descname">mm</tt><a class="headerlink" href="#refl1d.probe.PolarizedNeutronQProbe.mm" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.probe.PolarizedNeutronQProbe.mp">
+<tt class="descname">mp</tt><a class="headerlink" href="#refl1d.probe.PolarizedNeutronQProbe.mp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.probe.PolarizedNeutronQProbe.name">
+<tt class="descname">name</tt><a class="headerlink" href="#refl1d.probe.PolarizedNeutronQProbe.name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronQProbe.oversample">
+<tt class="descname">oversample</tt><big>(</big><em>n=6</em>, <em>seed=1</em><big>)</big><a class="headerlink" href="#refl1d.probe.PolarizedNeutronQProbe.oversample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate an over-sampling of Q to avoid aliasing effects.</p>
+<p>Oversampling is needed for thick layers, in which the underlying
+reflectivity oscillates so rapidly in Q that a single measurement
+has contributions from multiple Kissig fringes.</p>
+<p>Sampling will be done using a pseudo-random generator so that
+accidental structure in the function does not contribute to the
+aliasing.  The generator will usually be initialized with a fixed
+<em>seed</em> so that the point selection will not change from run to run,
+but a <em>seed</em> of None will choose a different set of points each time
+oversample is called.</p>
+<p>The value <em>n</em> is the number of points that should contribute to
+each Q value when computing the resolution.   These will be
+distributed about the nominal measurement value, but varying in
+both angle and energy according to the resolution function.  This
+will yield more points near the measurement and fewer farther away.
+The measurement point itself will not be used to avoid accidental
+bias from uniform Q steps.  Depending on the problem, a value of
+<em>n</em> between 20 and 100 should lead to stable values for the convolved
+reflectivity.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronQProbe.parameters">
+<tt class="descname">parameters</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.probe.PolarizedNeutronQProbe.parameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronQProbe.plot">
+<tt class="descname">plot</tt><big>(</big><em>view=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.PolarizedNeutronQProbe.plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot theory against data.</p>
+<p>Need substrate/surface for Fresnel reflectivity</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronQProbe.plot_Q4">
+<tt class="descname">plot_Q4</tt><big>(</big><em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.PolarizedNeutronQProbe.plot_Q4" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronQProbe.plot_SA">
+<tt class="descname">plot_SA</tt><big>(</big><em>theory=None</em>, <em>label=None</em>, <em>plot_shift=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.PolarizedNeutronQProbe.plot_SA" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronQProbe.plot_fresnel">
+<tt class="descname">plot_fresnel</tt><big>(</big><em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.PolarizedNeutronQProbe.plot_fresnel" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronQProbe.plot_linear">
+<tt class="descname">plot_linear</tt><big>(</big><em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.PolarizedNeutronQProbe.plot_linear" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronQProbe.plot_log">
+<tt class="descname">plot_log</tt><big>(</big><em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.PolarizedNeutronQProbe.plot_log" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronQProbe.plot_residuals">
+<tt class="descname">plot_residuals</tt><big>(</big><em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.PolarizedNeutronQProbe.plot_residuals" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronQProbe.plot_resolution">
+<tt class="descname">plot_resolution</tt><big>(</big><em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.PolarizedNeutronQProbe.plot_resolution" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.probe.PolarizedNeutronQProbe.pm">
+<tt class="descname">pm</tt><a class="headerlink" href="#refl1d.probe.PolarizedNeutronQProbe.pm" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.probe.PolarizedNeutronQProbe.pp">
+<tt class="descname">pp</tt><a class="headerlink" href="#refl1d.probe.PolarizedNeutronQProbe.pp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronQProbe.restore_data">
+<tt class="descname">restore_data</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.probe.PolarizedNeutronQProbe.restore_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Restore the original data.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronQProbe.resynth_data">
+<tt class="descname">resynth_data</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.probe.PolarizedNeutronQProbe.resynth_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate new data according to the model R ~ N(Ro,dR).</p>
+<p>The resynthesis step is a precursor to refitting the data, as is
+required for certain types of monte carlo error analysis.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronQProbe.save">
+<tt class="descname">save</tt><big>(</big><em>filename</em>, <em>theory</em>, <em>substrate=None</em>, <em>surface=None</em><big>)</big><a class="headerlink" href="#refl1d.probe.PolarizedNeutronQProbe.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save the data and theory to a file.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronQProbe.scattering_factors">
+<tt class="descname">scattering_factors</tt><big>(</big><em>material</em><big>)</big><a class="headerlink" href="#refl1d.probe.PolarizedNeutronQProbe.scattering_factors" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the scattering factors associated with the material given
+the range of wavelengths/energies used in the probe.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronQProbe.select_corresponding">
+<tt class="descname">select_corresponding</tt><big>(</big><em>theory</em><big>)</big><a class="headerlink" href="#refl1d.probe.PolarizedNeutronQProbe.select_corresponding" title="Permalink to this definition">¶</a></dt>
+<dd><p>Select theory points corresponding to the measured data.</p>
+<p>Since we have evaluated theory at every Q, it is safe to interpolate
+measured Q into theory, since it will land on a node,
+not in an interval.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronQProbe.shared_beam">
+<tt class="descname">shared_beam</tt><big>(</big><em>intensity=1</em>, <em>background=0</em>, <em>back_absorption=1</em>, <em>theta_offset=0</em><big>)</big><a class="headerlink" href="#refl1d.probe.PolarizedNeutronQProbe.shared_beam" title="Permalink to this definition">¶</a></dt>
+<dd><p>Share beam parameters across all four cross sections.</p>
+<p>New parameters are created for <em>intensity</em>, <em>background</em>,
+<em>theta_offset</em> and <em>back_absorption</em> and assigned to the all
+cross sections.  These can be replaced in an individual
+cross section if for some reason one of the parameters is
+independent.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.PolarizedNeutronQProbe.simulate_data">
+<tt class="descname">simulate_data</tt><big>(</big><em>theory</em>, <em>noise=2</em><big>)</big><a class="headerlink" href="#refl1d.probe.PolarizedNeutronQProbe.simulate_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the data for the probe to R, adding random noise dR.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="refl1d.probe.Probe">
+<em class="property">class </em><tt class="descclassname">refl1d.probe.</tt><tt class="descname">Probe</tt><big>(</big><em>T=None</em>, <em>dT=0</em>, <em>L=None</em>, <em>dL=0</em>, <em>data=None</em>, <em>intensity=1</em>, <em>background=0</em>, <em>back_absorption=1</em>, <em>theta_offset=0</em>, <em>back_reflectivity=False</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#Probe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.Probe" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Defines the incident beam used to study the material.</p>
+<p>For calculation purposes, probe needs to return the values <span class="math">Q_\text{calc}</span>
+at which the model is evaluated.  This is normally going to be the measured
+points only, but for some systems, such as those with very thick layers,
+oversampling is needed to avoid aliasing effects.</p>
+<p>Measurement properties:</p>
+<blockquote>
+<em>intensity</em> is the beam intensity
+<em>background</em> is the background
+<em>back_absorption</em> is the amount of absorption through the substrate
+<em>theta_offset</em> is the offset of the sample from perfect alignment
+<em>back_reflectivity</em> is true if the beam enters through the substrate</blockquote>
+<p>Measurement properties are fittable parameters.  <em>theta_offset</em> in
+particular should be set using probe.theta_offset.dev(dT), with dT
+equal to the uncertainty in the peak position for the rocking curve,
+as measured in radians.  Changes to <em>theta_offset</em> will then be penalized
+in the cost function for the fit as if it were another measurement.  Use
+<a class="reference internal" href="#refl1d.probe.Probe.alignment_uncertainty" title="refl1d.probe.Probe.alignment_uncertainty"><tt class="xref py py-meth docutils literal"><span class="pre">alignment_uncertainty()</span></tt></a> to compute dT from the shape of the
+rocking curve.</p>
+<p><em>intensity</em> and <em>back_absorption</em> are generally not needed &#8212; scaling
+the reflected signal by an appropriate intensity measurement will correct
+for both of these during reduction.  <em>background</em> may be needed,
+particularly for samples with significant hydrogen content due to its
+large isotropic incoherent scattering cross section.</p>
+<p>View properties:</p>
+<blockquote>
+<em>substrate</em> is the material which makes up the substrate
+<em>surface</em> is the material which makes up the surface
+<em>view</em> is &#8216;fresnel&#8217;, &#8216;log&#8217;, &#8216;linear&#8217;, &#8216;q4&#8217;, &#8216;residual&#8217;
+<em>plot_shift</em> is the number of pt to shift each new dataset</blockquote>
+<p>Normally <em>view</em> is set directly in the class rather than the
+instance since it is not specific to the view.  The fresnel
+substrate and surface materials are a property of the sample,
+and should share the same material.</p>
+<dl class="attribute">
+<dt id="refl1d.probe.Probe.Q">
+<tt class="descname">Q</tt><a class="headerlink" href="#refl1d.probe.Probe.Q" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="refl1d.probe.Probe.alignment_uncertainty">
+<em class="property">static </em><tt class="descname">alignment_uncertainty</tt><big>(</big><em>w</em>, <em>I</em>, <em>d=0</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#Probe.alignment_uncertainty"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.Probe.alignment_uncertainty" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute alignment uncertainty.</p>
+<p><strong>Parameters:</strong></p>
+<dl class="docutils">
+<dt><em>w</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | degrees</span></dt>
+<dd>Rocking curve full width at half max.</dd>
+<dt><em>I</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | counts</span></dt>
+<dd>Rocking curve integrated intensity.</dd>
+<dt><em>d</em> = 0: float | degrees</dt>
+<dd>Motor step size</dd>
+</dl>
+<p><strong>Returns:</strong></p>
+<dl class="docutils">
+<dt><em>dtheta</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | degrees</span></dt>
+<dd>uncertainty in alignment angle</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.Probe.apply_beam">
+<tt class="descname">apply_beam</tt><big>(</big><em>calc_Q</em>, <em>calc_R</em>, <em>resolution=True</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#Probe.apply_beam"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.Probe.apply_beam" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply factors such as beam intensity, background, backabsorption,
+resolution to the data.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.probe.Probe.calc_Q">
+<tt class="descname">calc_Q</tt><a class="headerlink" href="#refl1d.probe.Probe.calc_Q" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.Probe.critical_edge">
+<tt class="descname">critical_edge</tt><big>(</big><em>substrate=None</em>, <em>surface=None</em>, <em>n=51</em>, <em>delta=0.25</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#Probe.critical_edge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.Probe.critical_edge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Oversample points near the critical edge.</p>
+<p>The critical edge is defined by the difference in scattering
+potential for the <em>substrate</em> and <em>surface</em> materials, or the
+reverse if <em>back_reflectivity</em> is true.</p>
+<p><em>n</em> is the number of <span class="math">Q</span> points to compute near the critical edge.</p>
+<p><em>delta</em> is the relative uncertainty in the material density,
+which defines the range of values which are calculated.</p>
+<p>The <span class="math">n</span> points <span class="math">Q_i</span> are evenly distributed around the critical
+edge in <span class="math">Q_c \pm \delta Q_c</span> by varying angle <span class="math">\theta</span> for a
+fixed wavelength <span class="math">&lt; \lambda &gt;</span>, the average of all wavelengths
+in the probe.</p>
+<p>Specifically:</p>
+<div class="math">
+\begin{split}Q_c^2 &amp;= 16 \pi (\rho - \rho_\text{incident}) \\
+Q_i &amp;= Q_c - \delta_i Q_c (i - (n-1)/2)
+    \qquad \text{for} \; i \in 0 \ldots n-1 \\
+\lambda_i &amp;= &lt; \lambda &gt; \\
+\theta_i &amp;= \sin^{-1}(Q_i \lambda_i / 4 \pi)\end{split}</div>
+<p>If <span class="math">Q_c</span> is imaginary, then <span class="math">-|Q_c|</span> is used instead, so this
+routine can be used for reflectivity signals which scan from
+back reflectivity to front reflectivity.  For completeness,
+the angle <span class="math">\theta = 0</span> is added as well.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.probe.Probe.data">
+<tt class="descname">data</tt><a class="headerlink" href="#refl1d.probe.Probe.data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.Probe.fresnel">
+<tt class="descname">fresnel</tt><big>(</big><em>substrate=None</em>, <em>surface=None</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#Probe.fresnel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.Probe.fresnel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the reflectivity for the probe reflecting from a block of
+material with the given substrate.</p>
+<p>Returns F = R(probe.Q), where R is magnitude squared reflectivity.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.Probe.label">
+<tt class="descname">label</tt><big>(</big><em>prefix=None</em>, <em>gloss=''</em>, <em>suffix=''</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#Probe.label"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.Probe.label" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.Probe.log10_to_linear">
+<tt class="descname">log10_to_linear</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#Probe.log10_to_linear"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.Probe.log10_to_linear" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert data from log to linear.</p>
+<p>Older reflectometry reduction code stored reflectivity in log base 10
+format.  Call probe.log10_to_linear() after loading this data to
+convert it to linear for subsequent display and fitting.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.probe.Probe.name">
+<tt class="descname">name</tt><a class="reference internal" href="../_modules/refl1d/probe.html#Probe.name"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.Probe.name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.Probe.oversample">
+<tt class="descname">oversample</tt><big>(</big><em>n=20</em>, <em>seed=1</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#Probe.oversample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.Probe.oversample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate an over-sampling of Q to avoid aliasing effects.</p>
+<p>Oversampling is needed for thick layers, in which the underlying
+reflectivity oscillates so rapidly in Q that a single measurement
+has contributions from multiple Kissig fringes.</p>
+<p>Sampling will be done using a pseudo-random generator so that
+accidental structure in the function does not contribute to the
+aliasing.  The generator will usually be initialized with a fixed
+<em>seed</em> so that the point selection will not change from run to run,
+but a <em>seed</em> of None will choose a different set of points each time
+oversample is called.</p>
+<p>The value <em>n</em> is the number of points that should contribute to
+each Q value when computing the resolution.   These will be
+distributed about the nominal measurement value, but varying in
+both angle and energy according to the resolution function.  This
+will yield more points near the measurement and fewer farther away.
+The measurement point itself will not be used to avoid accidental
+bias from uniform Q steps.  Depending on the problem, a value of
+<em>n</em> between 20 and 100 should lead to stable values for the convolved
+reflectivity.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.Probe.parameters">
+<tt class="descname">parameters</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#Probe.parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.Probe.parameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.Probe.plot">
+<tt class="descname">plot</tt><big>(</big><em>view=None</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#Probe.plot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.Probe.plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot theory against data.</p>
+<p>Need substrate/surface for Fresnel reflectivity</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.Probe.plot_Q4">
+<tt class="descname">plot_Q4</tt><big>(</big><em>**kwargs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#Probe.plot_Q4"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.Probe.plot_Q4" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the Q**4 reflectivity associated with the probe.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.Probe.plot_fft">
+<tt class="descname">plot_fft</tt><big>(</big><em>theory=None</em>, <em>suffix=''</em>, <em>label=None</em>, <em>substrate=None</em>, <em>surface=None</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#Probe.plot_fft"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.Probe.plot_fft" title="Permalink to this definition">¶</a></dt>
+<dd><p>FFT analysis of reflectivity signal.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.Probe.plot_fresnel">
+<tt class="descname">plot_fresnel</tt><big>(</big><em>substrate=None</em>, <em>surface=None</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#Probe.plot_fresnel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.Probe.plot_fresnel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the Fresnel reflectivity associated with the probe.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.Probe.plot_linear">
+<tt class="descname">plot_linear</tt><big>(</big><em>**kwargs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#Probe.plot_linear"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.Probe.plot_linear" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the data associated with probe.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.Probe.plot_log">
+<tt class="descname">plot_log</tt><big>(</big><em>**kwargs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#Probe.plot_log"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.Probe.plot_log" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the data associated with probe.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.Probe.plot_residuals">
+<tt class="descname">plot_residuals</tt><big>(</big><em>theory=None</em>, <em>suffix=''</em>, <em>label=None</em>, <em>plot_shift=None</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#Probe.plot_residuals"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.Probe.plot_residuals" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.Probe.plot_resolution">
+<tt class="descname">plot_resolution</tt><big>(</big><em>suffix=''</em>, <em>label=None</em>, <em>**kwargs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#Probe.plot_resolution"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.Probe.plot_resolution" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.Probe.resolution_guard">
+<tt class="descname">resolution_guard</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#Probe.resolution_guard"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.Probe.resolution_guard" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make sure each measured <span class="math">Q</span> point has at least 5 calculated <span class="math">Q</span>
+points contributing to it in the range <span class="math">[-3\Delta Q,3\Delta Q]</span>.</p>
+<p><em>Not Implemented</em></p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.Probe.restore_data">
+<tt class="descname">restore_data</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#Probe.restore_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.Probe.restore_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Restore the original data.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.Probe.resynth_data">
+<tt class="descname">resynth_data</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#Probe.resynth_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.Probe.resynth_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate new data according to the model R ~ N(Ro,dR).</p>
+<p>The resynthesis step is a precursor to refitting the data, as is
+required for certain types of monte carlo error analysis.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.Probe.save">
+<tt class="descname">save</tt><big>(</big><em>filename</em>, <em>theory</em>, <em>substrate=None</em>, <em>surface=None</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#Probe.save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.Probe.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save the data and theory to a file.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.Probe.scattering_factors">
+<tt class="descname">scattering_factors</tt><big>(</big><em>material</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#Probe.scattering_factors"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.Probe.scattering_factors" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the scattering factors associated with the material given
+the range of wavelengths/energies used in the probe.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.Probe.simulate_data">
+<tt class="descname">simulate_data</tt><big>(</big><em>theory</em>, <em>noise=2</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#Probe.simulate_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.Probe.simulate_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the data for the probe to R, adding random noise dR.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.Probe.subsample">
+<tt class="descname">subsample</tt><big>(</big><em>dQ</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#Probe.subsample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.Probe.subsample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Select points at most every dQ.</p>
+<p>Use this to speed up computation early in the fitting process.</p>
+<p>This changes the data object, and is not reversible.</p>
+<p>The current algorithm is not picking the &#8220;best&#8221; Q value, just the
+nearest, so if you have nearby Q points with different quality
+statistics (as happens in overlapped regions from spallation
+source measurements at different angles), then it may choose
+badly.  Simple solutions based on the smallest relative error dR/R
+will be biased toward peaks, and smallest absolute error dR will
+be biased toward valleys.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.Probe.write_data">
+<tt class="descname">write_data</tt><big>(</big><em>filename, columns=['Q', 'R', 'dR'], header=None</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#Probe.write_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.Probe.write_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save the data to a file.</p>
+<p><em>header</em> is a string with trailing n containing the file header.
+<em>columns</em> is a list of column names from Q, dQ, R, dR, L, dL, T, dT.</p>
+<p>The default is to write Q,R,dR data.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="refl1d.probe.ProbeSet">
+<em class="property">class </em><tt class="descclassname">refl1d.probe.</tt><tt class="descname">ProbeSet</tt><big>(</big><em>probes</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#ProbeSet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.ProbeSet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#refl1d.probe.Probe" title="refl1d.probe.Probe"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.probe.Probe</span></tt></a></p>
+<dl class="attribute">
+<dt id="refl1d.probe.ProbeSet.Q">
+<tt class="descname">Q</tt><a class="headerlink" href="#refl1d.probe.ProbeSet.Q" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="refl1d.probe.ProbeSet.alignment_uncertainty">
+<em class="property">static </em><tt class="descname">alignment_uncertainty</tt><big>(</big><em>w</em>, <em>I</em>, <em>d=0</em><big>)</big><a class="headerlink" href="#refl1d.probe.ProbeSet.alignment_uncertainty" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute alignment uncertainty.</p>
+<p><strong>Parameters:</strong></p>
+<dl class="docutils">
+<dt><em>w</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | degrees</span></dt>
+<dd>Rocking curve full width at half max.</dd>
+<dt><em>I</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | counts</span></dt>
+<dd>Rocking curve integrated intensity.</dd>
+<dt><em>d</em> = 0: float | degrees</dt>
+<dd>Motor step size</dd>
+</dl>
+<p><strong>Returns:</strong></p>
+<dl class="docutils">
+<dt><em>dtheta</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | degrees</span></dt>
+<dd>uncertainty in alignment angle</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.ProbeSet.apply_beam">
+<tt class="descname">apply_beam</tt><big>(</big><em>calc_Q</em>, <em>calc_R</em>, <em>resolution=True</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#ProbeSet.apply_beam"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.ProbeSet.apply_beam" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.probe.ProbeSet.calc_Q">
+<tt class="descname">calc_Q</tt><a class="headerlink" href="#refl1d.probe.ProbeSet.calc_Q" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.ProbeSet.critical_edge">
+<tt class="descname">critical_edge</tt><big>(</big><em>substrate=None</em>, <em>surface=None</em>, <em>n=51</em>, <em>delta=0.25</em><big>)</big><a class="headerlink" href="#refl1d.probe.ProbeSet.critical_edge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Oversample points near the critical edge.</p>
+<p>The critical edge is defined by the difference in scattering
+potential for the <em>substrate</em> and <em>surface</em> materials, or the
+reverse if <em>back_reflectivity</em> is true.</p>
+<p><em>n</em> is the number of <span class="math">Q</span> points to compute near the critical edge.</p>
+<p><em>delta</em> is the relative uncertainty in the material density,
+which defines the range of values which are calculated.</p>
+<p>The <span class="math">n</span> points <span class="math">Q_i</span> are evenly distributed around the critical
+edge in <span class="math">Q_c \pm \delta Q_c</span> by varying angle <span class="math">\theta</span> for a
+fixed wavelength <span class="math">&lt; \lambda &gt;</span>, the average of all wavelengths
+in the probe.</p>
+<p>Specifically:</p>
+<div class="math">
+\begin{split}Q_c^2 &amp;= 16 \pi (\rho - \rho_\text{incident}) \\
+Q_i &amp;= Q_c - \delta_i Q_c (i - (n-1)/2)
+    \qquad \text{for} \; i \in 0 \ldots n-1 \\
+\lambda_i &amp;= &lt; \lambda &gt; \\
+\theta_i &amp;= \sin^{-1}(Q_i \lambda_i / 4 \pi)\end{split}</div>
+<p>If <span class="math">Q_c</span> is imaginary, then <span class="math">-|Q_c|</span> is used instead, so this
+routine can be used for reflectivity signals which scan from
+back reflectivity to front reflectivity.  For completeness,
+the angle <span class="math">\theta = 0</span> is added as well.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.probe.ProbeSet.data">
+<tt class="descname">data</tt><a class="headerlink" href="#refl1d.probe.ProbeSet.data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.ProbeSet.fresnel">
+<tt class="descname">fresnel</tt><big>(</big><em>*args</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#ProbeSet.fresnel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.ProbeSet.fresnel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the reflectivity for the probe reflecting from a block of
+material with the given substrate.</p>
+<p>Returns F = R(probe.Q), where R is magnitude squared reflectivity.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.ProbeSet.label">
+<tt class="descname">label</tt><big>(</big><em>prefix=None</em>, <em>gloss=''</em>, <em>suffix=''</em><big>)</big><a class="headerlink" href="#refl1d.probe.ProbeSet.label" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.ProbeSet.log10_to_linear">
+<tt class="descname">log10_to_linear</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.probe.ProbeSet.log10_to_linear" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert data from log to linear.</p>
+<p>Older reflectometry reduction code stored reflectivity in log base 10
+format.  Call probe.log10_to_linear() after loading this data to
+convert it to linear for subsequent display and fitting.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.probe.ProbeSet.name">
+<tt class="descname">name</tt><a class="reference internal" href="../_modules/refl1d/probe.html#ProbeSet.name"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.ProbeSet.name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.ProbeSet.oversample">
+<tt class="descname">oversample</tt><big>(</big><em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#ProbeSet.oversample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.ProbeSet.oversample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate an over-sampling of Q to avoid aliasing effects.</p>
+<p>Oversampling is needed for thick layers, in which the underlying
+reflectivity oscillates so rapidly in Q that a single measurement
+has contributions from multiple Kissig fringes.</p>
+<p>Sampling will be done using a pseudo-random generator so that
+accidental structure in the function does not contribute to the
+aliasing.  The generator will usually be initialized with a fixed
+<em>seed</em> so that the point selection will not change from run to run,
+but a <em>seed</em> of None will choose a different set of points each time
+oversample is called.</p>
+<p>The value <em>n</em> is the number of points that should contribute to
+each Q value when computing the resolution.   These will be
+distributed about the nominal measurement value, but varying in
+both angle and energy according to the resolution function.  This
+will yield more points near the measurement and fewer farther away.
+The measurement point itself will not be used to avoid accidental
+bias from uniform Q steps.  Depending on the problem, a value of
+<em>n</em> between 20 and 100 should lead to stable values for the convolved
+reflectivity.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.ProbeSet.parameters">
+<tt class="descname">parameters</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#ProbeSet.parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.ProbeSet.parameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.ProbeSet.plot">
+<tt class="descname">plot</tt><big>(</big><em>theory=None</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#ProbeSet.plot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.ProbeSet.plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot theory against data.</p>
+<p>Need substrate/surface for Fresnel reflectivity</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.ProbeSet.plot_Q4">
+<tt class="descname">plot_Q4</tt><big>(</big><em>theory=None</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#ProbeSet.plot_Q4"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.ProbeSet.plot_Q4" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the Q**4 reflectivity associated with the probe.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.ProbeSet.plot_fft">
+<tt class="descname">plot_fft</tt><big>(</big><em>theory=None</em>, <em>suffix=''</em>, <em>label=None</em>, <em>substrate=None</em>, <em>surface=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.ProbeSet.plot_fft" title="Permalink to this definition">¶</a></dt>
+<dd><p>FFT analysis of reflectivity signal.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.ProbeSet.plot_fresnel">
+<tt class="descname">plot_fresnel</tt><big>(</big><em>theory=None</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#ProbeSet.plot_fresnel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.ProbeSet.plot_fresnel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the Fresnel reflectivity associated with the probe.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.ProbeSet.plot_linear">
+<tt class="descname">plot_linear</tt><big>(</big><em>theory=None</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#ProbeSet.plot_linear"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.ProbeSet.plot_linear" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the data associated with probe.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.ProbeSet.plot_log">
+<tt class="descname">plot_log</tt><big>(</big><em>theory=None</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#ProbeSet.plot_log"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.ProbeSet.plot_log" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the data associated with probe.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.ProbeSet.plot_residuals">
+<tt class="descname">plot_residuals</tt><big>(</big><em>theory=None</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#ProbeSet.plot_residuals"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.ProbeSet.plot_residuals" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.ProbeSet.plot_resolution">
+<tt class="descname">plot_resolution</tt><big>(</big><em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#ProbeSet.plot_resolution"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.ProbeSet.plot_resolution" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.ProbeSet.resolution_guard">
+<tt class="descname">resolution_guard</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.probe.ProbeSet.resolution_guard" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make sure each measured <span class="math">Q</span> point has at least 5 calculated <span class="math">Q</span>
+points contributing to it in the range <span class="math">[-3\Delta Q,3\Delta Q]</span>.</p>
+<p><em>Not Implemented</em></p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.ProbeSet.restore_data">
+<tt class="descname">restore_data</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#ProbeSet.restore_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.ProbeSet.restore_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Restore the original data.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.ProbeSet.resynth_data">
+<tt class="descname">resynth_data</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#ProbeSet.resynth_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.ProbeSet.resynth_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate new data according to the model R ~ N(Ro,dR).</p>
+<p>The resynthesis step is a precursor to refitting the data, as is
+required for certain types of monte carlo error analysis.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.ProbeSet.save">
+<tt class="descname">save</tt><big>(</big><em>filename</em>, <em>theory</em>, <em>substrate=None</em>, <em>surface=None</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#ProbeSet.save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.ProbeSet.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save the data and theory to a file.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.ProbeSet.scattering_factors">
+<tt class="descname">scattering_factors</tt><big>(</big><em>material</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#ProbeSet.scattering_factors"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.ProbeSet.scattering_factors" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the scattering factors associated with the material given
+the range of wavelengths/energies used in the probe.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.ProbeSet.shared_beam">
+<tt class="descname">shared_beam</tt><big>(</big><em>intensity=1</em>, <em>background=0</em>, <em>back_absorption=1</em>, <em>theta_offset=0</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#ProbeSet.shared_beam"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.ProbeSet.shared_beam" title="Permalink to this definition">¶</a></dt>
+<dd><p>Share beam parameters across all segments.</p>
+<p>New parameters are created for <em>intensity</em>, <em>background</em>,
+<em>theta_offset</em> and <em>back_absorption</em> and assigned to the all
+segments.  These can be replaced in an individual segment if
+that parameter is independent.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.ProbeSet.simulate_data">
+<tt class="descname">simulate_data</tt><big>(</big><em>theory</em>, <em>noise=2</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#ProbeSet.simulate_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.ProbeSet.simulate_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the data for the probe to R, adding random noise dR.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.ProbeSet.stitch">
+<tt class="descname">stitch</tt><big>(</big><em>same_Q=0.001</em>, <em>same_dQ=0.001</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#ProbeSet.stitch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.ProbeSet.stitch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stitch together multiple datasets into a single dataset.</p>
+<p>Points within <em>tol</em> of each other and with the same resolution
+are combined by interpolating them to a common <span class="math">Q</span> value then averaged
+using Gaussian error propagation.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Returns :</th><td class="field-body">probe | Probe
+Combined data set.</td>
+</tr>
+<tr class="field"><th class="field-name">Algorithm :</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<p>To interpolate a set of points to a common value, first find the
+common <span class="math">Q</span> value:</p>
+<div class="math">
+\hat Q = \sum{Q_k} / n</div>
+<p>Then for each dataset <span class="math">k</span>, find the interval <span class="math">[i,i+1]</span> containing the
+value <span class="math">Q</span>, and use it to compute interpolated value for <span class="math">R</span>:</p>
+<div class="math">
+\begin{split}w &amp;= (\hat Q - Q_i)/(Q_{i+1} - Q_i) \\
+\hat R &amp;= w R_{i+1} + (1-w) R_{i+1} \\
+\hat \sigma_{R} &amp;=
+    \sqrt{ w^2 \sigma^2_{R_i} + (1-w)^2 \sigma^2_{R_{i+1}} } / n\end{split}</div>
+<p>Average the resulting <span class="math">R</span> using Gaussian error propagation:</p>
+<div class="math">
+\begin{split}\hat R &amp;= \sum{\hat R_k}/n \\
+\hat \sigma_R &amp;= \sqrt{\sum \hat \sigma_{R_k}^2}/n\end{split}</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.ProbeSet.subsample">
+<tt class="descname">subsample</tt><big>(</big><em>dQ</em><big>)</big><a class="headerlink" href="#refl1d.probe.ProbeSet.subsample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Select points at most every dQ.</p>
+<p>Use this to speed up computation early in the fitting process.</p>
+<p>This changes the data object, and is not reversible.</p>
+<p>The current algorithm is not picking the &#8220;best&#8221; Q value, just the
+nearest, so if you have nearby Q points with different quality
+statistics (as happens in overlapped regions from spallation
+source measurements at different angles), then it may choose
+badly.  Simple solutions based on the smallest relative error dR/R
+will be biased toward peaks, and smallest absolute error dR will
+be biased toward valleys.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.ProbeSet.write_data">
+<tt class="descname">write_data</tt><big>(</big><em>filename, columns=['Q', 'R', 'dR'], header=None</em><big>)</big><a class="headerlink" href="#refl1d.probe.ProbeSet.write_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save the data to a file.</p>
+<p><em>header</em> is a string with trailing n containing the file header.
+<em>columns</em> is a list of column names from Q, dQ, R, dR, L, dL, T, dT.</p>
+<p>The default is to write Q,R,dR data.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="refl1d.probe.QProbe">
+<em class="property">class </em><tt class="descclassname">refl1d.probe.</tt><tt class="descname">QProbe</tt><big>(</big><em>Q</em>, <em>dQ</em>, <em>data=None</em>, <em>intensity=1</em>, <em>background=0</em>, <em>back_absorption=1</em>, <em>back_reflectivity=False</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#QProbe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.QProbe" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#refl1d.probe.Probe" title="refl1d.probe.Probe"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.probe.Probe</span></tt></a></p>
+<p>A pure Q,R probe</p>
+<p>This probe with no possibility of tricks such as looking up the
+scattering length density based on wavelength, or adjusting for
+alignment errors.</p>
+<dl class="attribute">
+<dt id="refl1d.probe.QProbe.Q">
+<tt class="descname">Q</tt><a class="headerlink" href="#refl1d.probe.QProbe.Q" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="refl1d.probe.QProbe.alignment_uncertainty">
+<em class="property">static </em><tt class="descname">alignment_uncertainty</tt><big>(</big><em>w</em>, <em>I</em>, <em>d=0</em><big>)</big><a class="headerlink" href="#refl1d.probe.QProbe.alignment_uncertainty" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute alignment uncertainty.</p>
+<p><strong>Parameters:</strong></p>
+<dl class="docutils">
+<dt><em>w</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | degrees</span></dt>
+<dd>Rocking curve full width at half max.</dd>
+<dt><em>I</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | counts</span></dt>
+<dd>Rocking curve integrated intensity.</dd>
+<dt><em>d</em> = 0: float | degrees</dt>
+<dd>Motor step size</dd>
+</dl>
+<p><strong>Returns:</strong></p>
+<dl class="docutils">
+<dt><em>dtheta</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | degrees</span></dt>
+<dd>uncertainty in alignment angle</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.QProbe.apply_beam">
+<tt class="descname">apply_beam</tt><big>(</big><em>calc_Q</em>, <em>calc_R</em>, <em>resolution=True</em><big>)</big><a class="headerlink" href="#refl1d.probe.QProbe.apply_beam" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply factors such as beam intensity, background, backabsorption,
+resolution to the data.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.probe.QProbe.calc_Q">
+<tt class="descname">calc_Q</tt><a class="headerlink" href="#refl1d.probe.QProbe.calc_Q" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.QProbe.critical_edge">
+<tt class="descname">critical_edge</tt><big>(</big><em>substrate=None</em>, <em>surface=None</em>, <em>n=51</em>, <em>delta=0.25</em><big>)</big><a class="headerlink" href="#refl1d.probe.QProbe.critical_edge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Oversample points near the critical edge.</p>
+<p>The critical edge is defined by the difference in scattering
+potential for the <em>substrate</em> and <em>surface</em> materials, or the
+reverse if <em>back_reflectivity</em> is true.</p>
+<p><em>n</em> is the number of <span class="math">Q</span> points to compute near the critical edge.</p>
+<p><em>delta</em> is the relative uncertainty in the material density,
+which defines the range of values which are calculated.</p>
+<p>The <span class="math">n</span> points <span class="math">Q_i</span> are evenly distributed around the critical
+edge in <span class="math">Q_c \pm \delta Q_c</span> by varying angle <span class="math">\theta</span> for a
+fixed wavelength <span class="math">&lt; \lambda &gt;</span>, the average of all wavelengths
+in the probe.</p>
+<p>Specifically:</p>
+<div class="math">
+\begin{split}Q_c^2 &amp;= 16 \pi (\rho - \rho_\text{incident}) \\
+Q_i &amp;= Q_c - \delta_i Q_c (i - (n-1)/2)
+    \qquad \text{for} \; i \in 0 \ldots n-1 \\
+\lambda_i &amp;= &lt; \lambda &gt; \\
+\theta_i &amp;= \sin^{-1}(Q_i \lambda_i / 4 \pi)\end{split}</div>
+<p>If <span class="math">Q_c</span> is imaginary, then <span class="math">-|Q_c|</span> is used instead, so this
+routine can be used for reflectivity signals which scan from
+back reflectivity to front reflectivity.  For completeness,
+the angle <span class="math">\theta = 0</span> is added as well.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.probe.QProbe.data">
+<tt class="descname">data</tt><a class="headerlink" href="#refl1d.probe.QProbe.data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.QProbe.fresnel">
+<tt class="descname">fresnel</tt><big>(</big><em>substrate=None</em>, <em>surface=None</em><big>)</big><a class="headerlink" href="#refl1d.probe.QProbe.fresnel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the reflectivity for the probe reflecting from a block of
+material with the given substrate.</p>
+<p>Returns F = R(probe.Q), where R is magnitude squared reflectivity.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.QProbe.label">
+<tt class="descname">label</tt><big>(</big><em>prefix=None</em>, <em>gloss=''</em>, <em>suffix=''</em><big>)</big><a class="headerlink" href="#refl1d.probe.QProbe.label" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.QProbe.log10_to_linear">
+<tt class="descname">log10_to_linear</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.probe.QProbe.log10_to_linear" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert data from log to linear.</p>
+<p>Older reflectometry reduction code stored reflectivity in log base 10
+format.  Call probe.log10_to_linear() after loading this data to
+convert it to linear for subsequent display and fitting.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.probe.QProbe.name">
+<tt class="descname">name</tt><a class="headerlink" href="#refl1d.probe.QProbe.name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.QProbe.oversample">
+<tt class="descname">oversample</tt><big>(</big><em>n=20</em>, <em>seed=1</em><big>)</big><a class="headerlink" href="#refl1d.probe.QProbe.oversample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate an over-sampling of Q to avoid aliasing effects.</p>
+<p>Oversampling is needed for thick layers, in which the underlying
+reflectivity oscillates so rapidly in Q that a single measurement
+has contributions from multiple Kissig fringes.</p>
+<p>Sampling will be done using a pseudo-random generator so that
+accidental structure in the function does not contribute to the
+aliasing.  The generator will usually be initialized with a fixed
+<em>seed</em> so that the point selection will not change from run to run,
+but a <em>seed</em> of None will choose a different set of points each time
+oversample is called.</p>
+<p>The value <em>n</em> is the number of points that should contribute to
+each Q value when computing the resolution.   These will be
+distributed about the nominal measurement value, but varying in
+both angle and energy according to the resolution function.  This
+will yield more points near the measurement and fewer farther away.
+The measurement point itself will not be used to avoid accidental
+bias from uniform Q steps.  Depending on the problem, a value of
+<em>n</em> between 20 and 100 should lead to stable values for the convolved
+reflectivity.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.QProbe.parameters">
+<tt class="descname">parameters</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.probe.QProbe.parameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.QProbe.plot">
+<tt class="descname">plot</tt><big>(</big><em>view=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.QProbe.plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot theory against data.</p>
+<p>Need substrate/surface for Fresnel reflectivity</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.QProbe.plot_Q4">
+<tt class="descname">plot_Q4</tt><big>(</big><em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.QProbe.plot_Q4" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the Q**4 reflectivity associated with the probe.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.QProbe.plot_fft">
+<tt class="descname">plot_fft</tt><big>(</big><em>theory=None</em>, <em>suffix=''</em>, <em>label=None</em>, <em>substrate=None</em>, <em>surface=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.QProbe.plot_fft" title="Permalink to this definition">¶</a></dt>
+<dd><p>FFT analysis of reflectivity signal.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.QProbe.plot_fresnel">
+<tt class="descname">plot_fresnel</tt><big>(</big><em>substrate=None</em>, <em>surface=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.QProbe.plot_fresnel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the Fresnel reflectivity associated with the probe.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.QProbe.plot_linear">
+<tt class="descname">plot_linear</tt><big>(</big><em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.QProbe.plot_linear" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the data associated with probe.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.QProbe.plot_log">
+<tt class="descname">plot_log</tt><big>(</big><em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.QProbe.plot_log" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the data associated with probe.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.QProbe.plot_residuals">
+<tt class="descname">plot_residuals</tt><big>(</big><em>theory=None</em>, <em>suffix=''</em>, <em>label=None</em>, <em>plot_shift=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.QProbe.plot_residuals" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.QProbe.plot_resolution">
+<tt class="descname">plot_resolution</tt><big>(</big><em>suffix=''</em>, <em>label=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.QProbe.plot_resolution" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.QProbe.resolution_guard">
+<tt class="descname">resolution_guard</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.probe.QProbe.resolution_guard" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make sure each measured <span class="math">Q</span> point has at least 5 calculated <span class="math">Q</span>
+points contributing to it in the range <span class="math">[-3\Delta Q,3\Delta Q]</span>.</p>
+<p><em>Not Implemented</em></p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.QProbe.restore_data">
+<tt class="descname">restore_data</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.probe.QProbe.restore_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Restore the original data.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.QProbe.resynth_data">
+<tt class="descname">resynth_data</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.probe.QProbe.resynth_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate new data according to the model R ~ N(Ro,dR).</p>
+<p>The resynthesis step is a precursor to refitting the data, as is
+required for certain types of monte carlo error analysis.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.QProbe.save">
+<tt class="descname">save</tt><big>(</big><em>filename</em>, <em>theory</em>, <em>substrate=None</em>, <em>surface=None</em><big>)</big><a class="headerlink" href="#refl1d.probe.QProbe.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save the data and theory to a file.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.QProbe.scattering_factors">
+<tt class="descname">scattering_factors</tt><big>(</big><em>material</em><big>)</big><a class="headerlink" href="#refl1d.probe.QProbe.scattering_factors" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the scattering factors associated with the material given
+the range of wavelengths/energies used in the probe.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.QProbe.simulate_data">
+<tt class="descname">simulate_data</tt><big>(</big><em>theory</em>, <em>noise=2</em><big>)</big><a class="headerlink" href="#refl1d.probe.QProbe.simulate_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the data for the probe to R, adding random noise dR.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.QProbe.subsample">
+<tt class="descname">subsample</tt><big>(</big><em>dQ</em><big>)</big><a class="headerlink" href="#refl1d.probe.QProbe.subsample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Select points at most every dQ.</p>
+<p>Use this to speed up computation early in the fitting process.</p>
+<p>This changes the data object, and is not reversible.</p>
+<p>The current algorithm is not picking the &#8220;best&#8221; Q value, just the
+nearest, so if you have nearby Q points with different quality
+statistics (as happens in overlapped regions from spallation
+source measurements at different angles), then it may choose
+badly.  Simple solutions based on the smallest relative error dR/R
+will be biased toward peaks, and smallest absolute error dR will
+be biased toward valleys.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.QProbe.write_data">
+<tt class="descname">write_data</tt><big>(</big><em>filename, columns=['Q', 'R', 'dR'], header=None</em><big>)</big><a class="headerlink" href="#refl1d.probe.QProbe.write_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save the data to a file.</p>
+<p><em>header</em> is a string with trailing n containing the file header.
+<em>columns</em> is a list of column names from Q, dQ, R, dR, L, dL, T, dT.</p>
+<p>The default is to write Q,R,dR data.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.probe.Qmeasurement_union">
+<tt class="descclassname">refl1d.probe.</tt><tt class="descname">Qmeasurement_union</tt><big>(</big><em>xs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#Qmeasurement_union"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.Qmeasurement_union" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine the unique (T,dT,L,dL) across all datasets.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="refl1d.probe.XrayProbe">
+<em class="property">class </em><tt class="descclassname">refl1d.probe.</tt><tt class="descname">XrayProbe</tt><big>(</big><em>T=None</em>, <em>dT=0</em>, <em>L=None</em>, <em>dL=0</em>, <em>data=None</em>, <em>intensity=1</em>, <em>background=0</em>, <em>back_absorption=1</em>, <em>theta_offset=0</em>, <em>back_reflectivity=False</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#XrayProbe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.XrayProbe" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#refl1d.probe.Probe" title="refl1d.probe.Probe"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.probe.Probe</span></tt></a></p>
+<p>X-Ray probe.</p>
+<p>Contains information about the kind of probe used to investigate
+the sample.</p>
+<p>X-ray data is traditionally recorded by angle and energy, rather
+than angle and wavelength as is used by neutron probes.</p>
+<dl class="attribute">
+<dt id="refl1d.probe.XrayProbe.Q">
+<tt class="descname">Q</tt><a class="headerlink" href="#refl1d.probe.XrayProbe.Q" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="refl1d.probe.XrayProbe.alignment_uncertainty">
+<em class="property">static </em><tt class="descname">alignment_uncertainty</tt><big>(</big><em>w</em>, <em>I</em>, <em>d=0</em><big>)</big><a class="headerlink" href="#refl1d.probe.XrayProbe.alignment_uncertainty" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute alignment uncertainty.</p>
+<p><strong>Parameters:</strong></p>
+<dl class="docutils">
+<dt><em>w</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | degrees</span></dt>
+<dd>Rocking curve full width at half max.</dd>
+<dt><em>I</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | counts</span></dt>
+<dd>Rocking curve integrated intensity.</dd>
+<dt><em>d</em> = 0: float | degrees</dt>
+<dd>Motor step size</dd>
+</dl>
+<p><strong>Returns:</strong></p>
+<dl class="docutils">
+<dt><em>dtheta</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | degrees</span></dt>
+<dd>uncertainty in alignment angle</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.XrayProbe.apply_beam">
+<tt class="descname">apply_beam</tt><big>(</big><em>calc_Q</em>, <em>calc_R</em>, <em>resolution=True</em><big>)</big><a class="headerlink" href="#refl1d.probe.XrayProbe.apply_beam" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply factors such as beam intensity, background, backabsorption,
+resolution to the data.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.probe.XrayProbe.calc_Q">
+<tt class="descname">calc_Q</tt><a class="headerlink" href="#refl1d.probe.XrayProbe.calc_Q" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.XrayProbe.critical_edge">
+<tt class="descname">critical_edge</tt><big>(</big><em>substrate=None</em>, <em>surface=None</em>, <em>n=51</em>, <em>delta=0.25</em><big>)</big><a class="headerlink" href="#refl1d.probe.XrayProbe.critical_edge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Oversample points near the critical edge.</p>
+<p>The critical edge is defined by the difference in scattering
+potential for the <em>substrate</em> and <em>surface</em> materials, or the
+reverse if <em>back_reflectivity</em> is true.</p>
+<p><em>n</em> is the number of <span class="math">Q</span> points to compute near the critical edge.</p>
+<p><em>delta</em> is the relative uncertainty in the material density,
+which defines the range of values which are calculated.</p>
+<p>The <span class="math">n</span> points <span class="math">Q_i</span> are evenly distributed around the critical
+edge in <span class="math">Q_c \pm \delta Q_c</span> by varying angle <span class="math">\theta</span> for a
+fixed wavelength <span class="math">&lt; \lambda &gt;</span>, the average of all wavelengths
+in the probe.</p>
+<p>Specifically:</p>
+<div class="math">
+\begin{split}Q_c^2 &amp;= 16 \pi (\rho - \rho_\text{incident}) \\
+Q_i &amp;= Q_c - \delta_i Q_c (i - (n-1)/2)
+    \qquad \text{for} \; i \in 0 \ldots n-1 \\
+\lambda_i &amp;= &lt; \lambda &gt; \\
+\theta_i &amp;= \sin^{-1}(Q_i \lambda_i / 4 \pi)\end{split}</div>
+<p>If <span class="math">Q_c</span> is imaginary, then <span class="math">-|Q_c|</span> is used instead, so this
+routine can be used for reflectivity signals which scan from
+back reflectivity to front reflectivity.  For completeness,
+the angle <span class="math">\theta = 0</span> is added as well.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.probe.XrayProbe.data">
+<tt class="descname">data</tt><a class="headerlink" href="#refl1d.probe.XrayProbe.data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.XrayProbe.fresnel">
+<tt class="descname">fresnel</tt><big>(</big><em>substrate=None</em>, <em>surface=None</em><big>)</big><a class="headerlink" href="#refl1d.probe.XrayProbe.fresnel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the reflectivity for the probe reflecting from a block of
+material with the given substrate.</p>
+<p>Returns F = R(probe.Q), where R is magnitude squared reflectivity.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.XrayProbe.label">
+<tt class="descname">label</tt><big>(</big><em>prefix=None</em>, <em>gloss=''</em>, <em>suffix=''</em><big>)</big><a class="headerlink" href="#refl1d.probe.XrayProbe.label" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.XrayProbe.log10_to_linear">
+<tt class="descname">log10_to_linear</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.probe.XrayProbe.log10_to_linear" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert data from log to linear.</p>
+<p>Older reflectometry reduction code stored reflectivity in log base 10
+format.  Call probe.log10_to_linear() after loading this data to
+convert it to linear for subsequent display and fitting.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.probe.XrayProbe.name">
+<tt class="descname">name</tt><a class="headerlink" href="#refl1d.probe.XrayProbe.name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.XrayProbe.oversample">
+<tt class="descname">oversample</tt><big>(</big><em>n=20</em>, <em>seed=1</em><big>)</big><a class="headerlink" href="#refl1d.probe.XrayProbe.oversample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate an over-sampling of Q to avoid aliasing effects.</p>
+<p>Oversampling is needed for thick layers, in which the underlying
+reflectivity oscillates so rapidly in Q that a single measurement
+has contributions from multiple Kissig fringes.</p>
+<p>Sampling will be done using a pseudo-random generator so that
+accidental structure in the function does not contribute to the
+aliasing.  The generator will usually be initialized with a fixed
+<em>seed</em> so that the point selection will not change from run to run,
+but a <em>seed</em> of None will choose a different set of points each time
+oversample is called.</p>
+<p>The value <em>n</em> is the number of points that should contribute to
+each Q value when computing the resolution.   These will be
+distributed about the nominal measurement value, but varying in
+both angle and energy according to the resolution function.  This
+will yield more points near the measurement and fewer farther away.
+The measurement point itself will not be used to avoid accidental
+bias from uniform Q steps.  Depending on the problem, a value of
+<em>n</em> between 20 and 100 should lead to stable values for the convolved
+reflectivity.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.XrayProbe.parameters">
+<tt class="descname">parameters</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.probe.XrayProbe.parameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.XrayProbe.plot">
+<tt class="descname">plot</tt><big>(</big><em>view=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.XrayProbe.plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot theory against data.</p>
+<p>Need substrate/surface for Fresnel reflectivity</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.XrayProbe.plot_Q4">
+<tt class="descname">plot_Q4</tt><big>(</big><em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.XrayProbe.plot_Q4" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the Q**4 reflectivity associated with the probe.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.XrayProbe.plot_fft">
+<tt class="descname">plot_fft</tt><big>(</big><em>theory=None</em>, <em>suffix=''</em>, <em>label=None</em>, <em>substrate=None</em>, <em>surface=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.XrayProbe.plot_fft" title="Permalink to this definition">¶</a></dt>
+<dd><p>FFT analysis of reflectivity signal.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.XrayProbe.plot_fresnel">
+<tt class="descname">plot_fresnel</tt><big>(</big><em>substrate=None</em>, <em>surface=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.XrayProbe.plot_fresnel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the Fresnel reflectivity associated with the probe.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.XrayProbe.plot_linear">
+<tt class="descname">plot_linear</tt><big>(</big><em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.XrayProbe.plot_linear" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the data associated with probe.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.XrayProbe.plot_log">
+<tt class="descname">plot_log</tt><big>(</big><em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.XrayProbe.plot_log" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the data associated with probe.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.XrayProbe.plot_residuals">
+<tt class="descname">plot_residuals</tt><big>(</big><em>theory=None</em>, <em>suffix=''</em>, <em>label=None</em>, <em>plot_shift=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.XrayProbe.plot_residuals" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.XrayProbe.plot_resolution">
+<tt class="descname">plot_resolution</tt><big>(</big><em>suffix=''</em>, <em>label=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#refl1d.probe.XrayProbe.plot_resolution" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.XrayProbe.resolution_guard">
+<tt class="descname">resolution_guard</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.probe.XrayProbe.resolution_guard" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make sure each measured <span class="math">Q</span> point has at least 5 calculated <span class="math">Q</span>
+points contributing to it in the range <span class="math">[-3\Delta Q,3\Delta Q]</span>.</p>
+<p><em>Not Implemented</em></p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.XrayProbe.restore_data">
+<tt class="descname">restore_data</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.probe.XrayProbe.restore_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Restore the original data.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.XrayProbe.resynth_data">
+<tt class="descname">resynth_data</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.probe.XrayProbe.resynth_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate new data according to the model R ~ N(Ro,dR).</p>
+<p>The resynthesis step is a precursor to refitting the data, as is
+required for certain types of monte carlo error analysis.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.XrayProbe.save">
+<tt class="descname">save</tt><big>(</big><em>filename</em>, <em>theory</em>, <em>substrate=None</em>, <em>surface=None</em><big>)</big><a class="headerlink" href="#refl1d.probe.XrayProbe.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save the data and theory to a file.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.XrayProbe.scattering_factors">
+<tt class="descname">scattering_factors</tt><big>(</big><em>material</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#XrayProbe.scattering_factors"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.XrayProbe.scattering_factors" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the scattering factors associated with the material given
+the range of wavelengths/energies used in the probe.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.XrayProbe.simulate_data">
+<tt class="descname">simulate_data</tt><big>(</big><em>theory</em>, <em>noise=2</em><big>)</big><a class="headerlink" href="#refl1d.probe.XrayProbe.simulate_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the data for the probe to R, adding random noise dR.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.XrayProbe.subsample">
+<tt class="descname">subsample</tt><big>(</big><em>dQ</em><big>)</big><a class="headerlink" href="#refl1d.probe.XrayProbe.subsample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Select points at most every dQ.</p>
+<p>Use this to speed up computation early in the fitting process.</p>
+<p>This changes the data object, and is not reversible.</p>
+<p>The current algorithm is not picking the &#8220;best&#8221; Q value, just the
+nearest, so if you have nearby Q points with different quality
+statistics (as happens in overlapped regions from spallation
+source measurements at different angles), then it may choose
+badly.  Simple solutions based on the smallest relative error dR/R
+will be biased toward peaks, and smallest absolute error dR will
+be biased toward valleys.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.probe.XrayProbe.write_data">
+<tt class="descname">write_data</tt><big>(</big><em>filename, columns=['Q', 'R', 'dR'], header=None</em><big>)</big><a class="headerlink" href="#refl1d.probe.XrayProbe.write_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save the data to a file.</p>
+<p><em>header</em> is a string with trailing n containing the file header.
+<em>columns</em> is a list of column names from Q, dQ, R, dR, L, dL, T, dT.</p>
+<p>The default is to write Q,R,dR data.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.probe.make_probe">
+<tt class="descclassname">refl1d.probe.</tt><tt class="descname">make_probe</tt><big>(</big><em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#make_probe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.make_probe" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a reflectometry measurement object of the given resolution.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.probe.measurement_union">
+<tt class="descclassname">refl1d.probe.</tt><tt class="descname">measurement_union</tt><big>(</big><em>xs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#measurement_union"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.measurement_union" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine the unique (T,dT,L,dL) across all datasets.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.probe.spin_asymmetry">
+<tt class="descclassname">refl1d.probe.</tt><tt class="descname">spin_asymmetry</tt><big>(</big><em>Qp</em>, <em>Rp</em>, <em>dRp</em>, <em>Qm</em>, <em>Rm</em>, <em>dRm</em><big>)</big><a class="reference internal" href="../_modules/refl1d/probe.html#spin_asymmetry"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.probe.spin_asymmetry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute spin asymmetry for R++, R&#8211;.</p>
+<p><strong>Parameters:</strong></p>
+<dl class="docutils">
+<dt><em>Qp</em>, <em>Rp</em>, <em>dRp</em> <span class="classifier-delimiter">:</span> <span class="classifier">vector</span></dt>
+<dd>Measured ++ cross section and uncertainty.</dd>
+<dt><em>Qm</em>, <em>Rm</em>, <em>dRm</em> <span class="classifier-delimiter">:</span> <span class="classifier">vector</span></dt>
+<dd>Measured &#8211; cross section and uncertainty.</dd>
+</dl>
+<p>If <em>dRp</em>, <em>dRm</em> are None then the returned uncertainty will also be None.</p>
+<p><strong>Returns:</strong></p>
+<dl class="docutils">
+<dt><em>Q</em>, <em>SA</em>, <em>dSA</em> <span class="classifier-delimiter">:</span> <span class="classifier">vector</span></dt>
+<dd>Computed spin asymmetry and uncertainty.</dd>
+</dl>
+<p><strong>Algorithm:</strong></p>
+<p>Spin asymmetry, <span class="math">S_A</span>, is:</p>
+<div class="math">
+S_A = \frac{R_{++} - R_{--}}{R_{++} + R_{--}}</div>
+<p>Uncertainty <span class="math">\Delta S_A</span> follows from propagation of error:</p>
+<div class="math">
+\Delta S_A^2 = \frac{4(R_{++}^2\Delta R_{--}^2+R_{--}^2\Delta R_{++})}
+                    {(R_{++} + R_{--})^4}</div>
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="polymer.html">refl1d.polymer - Polymer models</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="profile.html">refl1d.profile - Model profile</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

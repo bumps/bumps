@@ -1,0 +1,222 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.mono - Freeform - Monotonic Spline &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../index.html" />
+    <link rel="up" title="Reference" href="index.html" />
+    <link rel="next" title="refl1d.ncnrdata - NCNR Data" href="ncnrdata.html" />
+    <link rel="prev" title="refl1d.model - Reflectivity Models" href="model.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.mono - Freeform - Monotonic Spline</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="model.html">refl1d.model - Reflectivity Models</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="ncnrdata.html">refl1d.ncnrdata - NCNR Data</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="refl1d-mono-freeform-monotonic-spline">
+<h1>refl1d.mono - Freeform - Monotonic Spline<a class="headerlink" href="#refl1d-mono-freeform-monotonic-spline" title="Permalink to this headline">¶</a></h1>
+<table border="1" class="docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr><td><a class="reference internal" href="#refl1d.mono.FreeInterface" title="refl1d.mono.FreeInterface"><tt class="xref py py-obj docutils literal"><span class="pre">FreeInterface</span></tt></a></td>
+<td>A freeform section of the sample modeled with monotonic splines.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.mono.FreeLayer" title="refl1d.mono.FreeLayer"><tt class="xref py py-obj docutils literal"><span class="pre">FreeLayer</span></tt></a></td>
+<td>A freeform section of the sample modeled with splines.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.mono.count_inflections" title="refl1d.mono.count_inflections"><tt class="xref py py-obj docutils literal"><span class="pre">count_inflections</span></tt></a></td>
+<td>Count the number of inflection points in the spline curve</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.mono.hermite" title="refl1d.mono.hermite"><tt class="xref py py-obj docutils literal"><span class="pre">hermite</span></tt></a></td>
+<td>Computes the cubic hermite polynomial p(xt).</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.mono.inflections" title="refl1d.mono.inflections"><tt class="xref py py-obj docutils literal"><span class="pre">inflections</span></tt></a></td>
+<td></td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.mono.monospline" title="refl1d.mono.monospline"><tt class="xref py py-obj docutils literal"><span class="pre">monospline</span></tt></a></td>
+<td>Monotonic cubic hermite interpolation.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.mono.plot_inflection" title="refl1d.mono.plot_inflection"><tt class="xref py py-obj docutils literal"><span class="pre">plot_inflection</span></tt></a></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<span class="target" id="module-refl1d.mono"></span><p>Monotonic spline modeling for free interfaces</p>
+<dl class="class">
+<dt id="refl1d.mono.FreeInterface">
+<em class="property">class </em><tt class="descclassname">refl1d.mono.</tt><tt class="descname">FreeInterface</tt><big>(</big><em>thickness=0</em>, <em>interface=0</em>, <em>below=None</em>, <em>above=None</em>, <em>dz=None</em>, <em>dp=None</em>, <em>name='Interface'</em><big>)</big><a class="reference internal" href="../_modules/refl1d/mono.html#FreeInterface"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.mono.FreeInterface" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="model.html#refl1d.model.Layer" title="refl1d.model.Layer"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.model.Layer</span></tt></a></p>
+<p>A freeform section of the sample modeled with monotonic splines.</p>
+<p>Layers have a slope of zero at the ends, so the automatically blend
+with slabs.</p>
+<dl class="method">
+<dt id="refl1d.mono.FreeInterface.constraints">
+<tt class="descname">constraints</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.mono.FreeInterface.constraints" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constraints</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.mono.FreeInterface.find">
+<tt class="descname">find</tt><big>(</big><em>z</em><big>)</big><a class="headerlink" href="#refl1d.mono.FreeInterface.find" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find the layer at depth z.</p>
+<p>Returns layer, start, end</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.mono.FreeInterface.parameters">
+<tt class="descname">parameters</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/mono.html#FreeInterface.parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.mono.FreeInterface.parameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.mono.FreeInterface.profile">
+<tt class="descname">profile</tt><big>(</big><em>Pz</em><big>)</big><a class="reference internal" href="../_modules/refl1d/mono.html#FreeInterface.profile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.mono.FreeInterface.profile" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.mono.FreeInterface.render">
+<tt class="descname">render</tt><big>(</big><em>probe</em>, <em>slabs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/mono.html#FreeInterface.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.mono.FreeInterface.render" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="refl1d.mono.FreeLayer">
+<em class="property">class </em><tt class="descclassname">refl1d.mono.</tt><tt class="descname">FreeLayer</tt><big>(</big><em>below=None</em>, <em>above=None</em>, <em>thickness=0</em>, <em>z=</em><span class="optional">[</span><span class="optional">]</span>, <em>rho=</em><span class="optional">[</span><span class="optional">]</span>, <em>irho=</em><span class="optional">[</span><span class="optional">]</span>, <em>name='Freeform'</em><big>)</big><a class="reference internal" href="../_modules/refl1d/mono.html#FreeLayer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.mono.FreeLayer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="model.html#refl1d.model.Layer" title="refl1d.model.Layer"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.model.Layer</span></tt></a></p>
+<p>A freeform section of the sample modeled with splines.</p>
+<p>sld (rho) and imaginary sld (irho) can be modeled with a separate
+number of control points. The control points can be equally spaced
+in the layers unless rhoz or irhoz are specified. If the z values
+are given, they must be in the range [0,1].  One control point is
+anchored at either end, so there are two fewer z values than controls
+if z values are given.</p>
+<p>Layers have a slope of zero at the ends, so the automatically blend
+with slabs.</p>
+<dl class="method">
+<dt id="refl1d.mono.FreeLayer.constraints">
+<tt class="descname">constraints</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.mono.FreeLayer.constraints" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constraints</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.mono.FreeLayer.find">
+<tt class="descname">find</tt><big>(</big><em>z</em><big>)</big><a class="headerlink" href="#refl1d.mono.FreeLayer.find" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find the layer at depth z.</p>
+<p>Returns layer, start, end</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.mono.FreeLayer.parameters">
+<tt class="descname">parameters</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/mono.html#FreeLayer.parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.mono.FreeLayer.parameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.mono.FreeLayer.profile">
+<tt class="descname">profile</tt><big>(</big><em>Pz</em>, <em>below</em>, <em>above</em><big>)</big><a class="reference internal" href="../_modules/refl1d/mono.html#FreeLayer.profile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.mono.FreeLayer.profile" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.mono.FreeLayer.render">
+<tt class="descname">render</tt><big>(</big><em>probe</em>, <em>slabs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/mono.html#FreeLayer.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.mono.FreeLayer.render" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.mono.count_inflections">
+<tt class="descclassname">refl1d.mono.</tt><tt class="descname">count_inflections</tt><big>(</big><em>*args</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/mono.html#count_inflections"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.mono.count_inflections" title="Permalink to this definition">¶</a></dt>
+<dd><p>Count the number of inflection points in the spline curve</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.mono.hermite">
+<tt class="descclassname">refl1d.mono.</tt><tt class="descname">hermite</tt><big>(</big><em>*args</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/mono.html#hermite"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.mono.hermite" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the cubic hermite polynomial p(xt).</p>
+<p>The polynomial goes through all points (x_i,y_i) with slope
+m_i at the point.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.mono.inflections">
+<tt class="descclassname">refl1d.mono.</tt><tt class="descname">inflections</tt><big>(</big><em>dx</em>, <em>dy</em><big>)</big><a class="reference internal" href="../_modules/refl1d/mono.html#inflections"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.mono.inflections" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="refl1d.mono.monospline">
+<tt class="descclassname">refl1d.mono.</tt><tt class="descname">monospline</tt><big>(</big><em>*args</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/mono.html#monospline"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.mono.monospline" title="Permalink to this definition">¶</a></dt>
+<dd><p>Monotonic cubic hermite interpolation.</p>
+<p>Returns <span class="math">p(x_t)</span> where <span class="math">p(x_i)= y_i</span> and <span class="math">p(x) \leq p(xi)</span>
+if <span class="math">y_i \leq y_{i+1}</span> for all <span class="math">y_i</span>.  Also works for decreasing
+values <span class="math">y</span>, resulting in decreasing <span class="math">p(x)</span>.  If <span class="math">y</span> is not monotonic,
+then <span class="math">p(x)</span> may peak higher than any <span class="math">y</span>, so this function is not
+suitable for a strict constraint on the interpolated function when
+<span class="math">y</span> values are unconstrained.</p>
+<p><a class="reference external" href="http://en.wikipedia.org/wiki/Monotone_cubic_interpolation">http://en.wikipedia.org/wiki/Monotone_cubic_interpolation</a></p>
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.mono.plot_inflection">
+<tt class="descclassname">refl1d.mono.</tt><tt class="descname">plot_inflection</tt><big>(</big><em>x</em>, <em>y</em><big>)</big><a class="reference internal" href="../_modules/refl1d/mono.html#plot_inflection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.mono.plot_inflection" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="model.html">refl1d.model - Reflectivity Models</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="ncnrdata.html">refl1d.ncnrdata - NCNR Data</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

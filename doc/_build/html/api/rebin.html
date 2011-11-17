@@ -1,0 +1,150 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.rebin - 1D and 2D rebinning &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../index.html" />
+    <link rel="up" title="Reference" href="index.html" />
+    <link rel="next" title="refl1d.reflectivity - Reflectivity" href="reflectivity.html" />
+    <link rel="prev" title="refl1d.random_lines - random lines and particle swarm optimizers" href="random_lines.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.rebin - 1D and 2D rebinning</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="random_lines.html">refl1d.random_lines - random lines and particle swarm optimizers</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="reflectivity.html">refl1d.reflectivity - Reflectivity</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="refl1d-rebin-1d-and-2d-rebinning">
+<h1>refl1d.rebin - 1D and 2D rebinning<a class="headerlink" href="#refl1d-rebin-1d-and-2d-rebinning" title="Permalink to this headline">¶</a></h1>
+<table border="1" class="docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr><td><a class="reference internal" href="#refl1d.rebin.rebin" title="refl1d.rebin.rebin"><tt class="xref py py-obj docutils literal"><span class="pre">rebin</span></tt></a></td>
+<td>Rebin a vector.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.rebin.rebin2d" title="refl1d.rebin.rebin2d"><tt class="xref py py-obj docutils literal"><span class="pre">rebin2d</span></tt></a></td>
+<td>Rebin a matrix.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.rebin.test" title="refl1d.rebin.test"><tt class="xref py py-obj docutils literal"><span class="pre">test</span></tt></a></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<span class="target" id="module-refl1d.rebin"></span><p>1-D and 2-D rebinning code.</p>
+<dl class="function">
+<dt id="refl1d.rebin.rebin">
+<tt class="descclassname">refl1d.rebin.</tt><tt class="descname">rebin</tt><big>(</big><em>x</em>, <em>I</em>, <em>xo</em>, <em>Io=None</em>, <em>dtype=&lt;type 'numpy.float64'&gt;</em><big>)</big><a class="reference internal" href="../_modules/refl1d/rebin.html#rebin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.rebin.rebin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Rebin a vector.</p>
+<p>x are the existing bin edges
+xo are the new bin edges
+I are the existing counts (one fewer than edges)</p>
+<p>Io will be used if present, but be sure that it is a contiguous
+array of the correct shape and size.</p>
+<p>dtype is the type to use for the intensity vectors.  This can be
+integer (uint8, uint16, uint32) or real (float32 or f, float64 or d).
+The edge vectors are all coerced to doubles.</p>
+<p>Note that total intensity is not preserved for integer rebinning.
+The algorithm uses truncation so total intensity will be down on
+average by half the total number of bins.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.rebin.rebin2d">
+<tt class="descclassname">refl1d.rebin.</tt><tt class="descname">rebin2d</tt><big>(</big><em>x</em>, <em>y</em>, <em>I</em>, <em>xo</em>, <em>yo</em>, <em>Io=None</em>, <em>dtype=None</em><big>)</big><a class="reference internal" href="../_modules/refl1d/rebin.html#rebin2d"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.rebin.rebin2d" title="Permalink to this definition">¶</a></dt>
+<dd><p>Rebin a matrix.</p>
+<p>x,y are the existing bin edges
+xo,yo are the new bin edges
+I is the existing counts (one fewer than edges in each direction)</p>
+<p>For example, with x representing the column edges in each row and
+y representing the row edges in each column, the following
+represents a uniform field:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">refl1d.rebin</span> <span class="kn">import</span> <span class="n">rebin2d</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">x</span><span class="p">,</span><span class="n">y</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0</span><span class="p">,</span><span class="mf">2</span><span class="p">,</span><span class="mf">4</span><span class="p">,</span><span class="mf">5</span><span class="p">],</span> <span class="p">[</span><span class="mf">0</span><span class="p">,</span><span class="mf">1</span><span class="p">,</span><span class="mf">3</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">z</span> <span class="o">=</span> <span class="p">[[</span><span class="mf">2</span><span class="p">,</span><span class="mf">2</span><span class="p">,</span><span class="mf">1</span><span class="p">],[</span><span class="mf">4</span><span class="p">,</span><span class="mf">4</span><span class="p">,</span><span class="mf">2</span><span class="p">]]</span>
+</pre></div>
+</div>
+<p>We can check this by rebinning with uniform size bins:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">xo</span><span class="p">,</span><span class="n">yo</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mf">6</span><span class="p">),</span> <span class="nb">range</span><span class="p">(</span><span class="mf">4</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rebin2d</span><span class="p">(</span><span class="n">y</span><span class="p">,</span><span class="n">x</span><span class="p">,</span><span class="n">z</span><span class="p">,</span><span class="n">yo</span><span class="p">,</span><span class="n">xo</span><span class="p">)</span>
+<span class="go">array([[ 1.,  1.,  1.,  1.,  1.],</span>
+<span class="go">       [ 1.,  1.,  1.,  1.,  1.],</span>
+<span class="go">       [ 1.,  1.,  1.,  1.,  1.]])</span>
+</pre></div>
+</div>
+<p>dtype is the type to use for the intensity vectors.  This can be
+integer (uint8, uint16, uint32) or real (float32 or f, float64 or d).
+The edge vectors are all coerced to doubles.</p>
+<p>Note that total intensity is not preserved for integer rebinning.
+The algorithm uses truncation so total intensity will be down on
+average by half the total number of bins.</p>
+<p>Io will be used if present, if it is contiguous and if it has the
+correct shape and type for the input.  Otherwise it will raise a
+TypeError.  This will allow you to rebin the slices of an appropriately
+ordered matrix without making copies.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.rebin.test">
+<tt class="descclassname">refl1d.rebin.</tt><tt class="descname">test</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/rebin.html#test"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.rebin.test" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="random_lines.html">refl1d.random_lines - random lines and particle swarm optimizers</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="reflectivity.html">refl1d.reflectivity - Reflectivity</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

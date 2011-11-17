@@ -1,0 +1,120 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.errors - Plot sample profile uncertainty &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../index.html" />
+    <link rel="up" title="Reference" href="index.html" />
+    <link rel="next" title="refl1d.experiment - Reflectivity fitness function" href="experiment.html" />
+    <link rel="prev" title="refl1d.dist - Non-uniform samples" href="dist.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.errors - Plot sample profile uncertainty</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="dist.html">refl1d.dist - Non-uniform samples</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="experiment.html">refl1d.experiment - Reflectivity fitness function</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="refl1d-errors-plot-sample-profile-uncertainty">
+<h1>refl1d.errors - Plot sample profile uncertainty<a class="headerlink" href="#refl1d-errors-plot-sample-profile-uncertainty" title="Permalink to this headline">¶</a></h1>
+<table border="1" class="docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr><td><a class="reference internal" href="#refl1d.errors.calc_distribution" title="refl1d.errors.calc_distribution"><tt class="xref py py-obj docutils literal"><span class="pre">calc_distribution</span></tt></a></td>
+<td>Align the sample profiles and compute the residual difference from the measured reflectivity for a set of points.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.errors.calc_distribution_from_state" title="refl1d.errors.calc_distribution_from_state"><tt class="xref py py-obj docutils literal"><span class="pre">calc_distribution_from_state</span></tt></a></td>
+<td>Align the sample profiles and compute the residual difference from the</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.errors.show_distribution" title="refl1d.errors.show_distribution"><tt class="xref py py-obj docutils literal"><span class="pre">show_distribution</span></tt></a></td>
+<td>Plot the aligned profiles and the distribution of the residuals for</td>
+</tr>
+</tbody>
+</table>
+<span class="target" id="module-refl1d.errors"></span><p>Visual representation of model uncertainty.</p>
+<p>For reflectivity models, this aligns and plots a set of profiles chosen
+from the parameter uncertainty distribution, and plots the distribution
+of the residual values.</p>
+<dl class="function">
+<dt id="refl1d.errors.calc_distribution">
+<tt class="descclassname">refl1d.errors.</tt><tt class="descname">calc_distribution</tt><big>(</big><em>problem</em>, <em>points</em><big>)</big><a class="reference internal" href="../_modules/refl1d/errors.html#calc_distribution"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.errors.calc_distribution" title="Permalink to this definition">¶</a></dt>
+<dd><p>Align the sample profiles and compute the residual difference from the
+measured reflectivity for a set of points.</p>
+<p>The points should be sampled from the posterior probability
+distribution computed from MCMC, bootstrapping or sampled from
+the error ellipse calculated at the minimum.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.errors.calc_distribution_from_state">
+<tt class="descclassname">refl1d.errors.</tt><tt class="descname">calc_distribution_from_state</tt><big>(</big><em>problem</em>, <em>state</em>, <em>nshown=50</em>, <em>random=False</em><big>)</big><a class="reference internal" href="../_modules/refl1d/errors.html#calc_distribution_from_state"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.errors.calc_distribution_from_state" title="Permalink to this definition">¶</a></dt>
+<dd><p>Align the sample profiles and compute the residual difference from the
+measured reflectivity for a set of points returned from DREAM.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.errors.show_distribution">
+<tt class="descclassname">refl1d.errors.</tt><tt class="descname">show_distribution</tt><big>(</big><em>profiles</em>, <em>Q</em>, <em>residuals</em><big>)</big><a class="reference internal" href="../_modules/refl1d/errors.html#show_distribution"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.errors.show_distribution" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the aligned profiles and the distribution of the residuals for
+profiles and residuals returned from calc_distribution.</p>
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="dist.html">refl1d.dist - Non-uniform samples</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="experiment.html">refl1d.experiment - Reflectivity fitness function</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

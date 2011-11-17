@@ -1,0 +1,324 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.wsolve - Weighted linear and polynomial solver with uncertainty &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../index.html" />
+    <link rel="up" title="Reference" href="index.html" />
+    <link rel="next" title="refl1d.mystic.parameter - Parameters" href="mystic.parameter.html" />
+    <link rel="prev" title="refl1d.util - Miscellaneous functions" href="util.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.wsolve - Weighted linear and polynomial solver with uncertainty</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="util.html">refl1d.util - Miscellaneous functions</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="mystic.parameter.html">refl1d.mystic.parameter - Parameters</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="refl1d-wsolve-weighted-linear-and-polynomial-solver-with-uncertainty">
+<h1>refl1d.wsolve - Weighted linear and polynomial solver with uncertainty<a class="headerlink" href="#refl1d-wsolve-weighted-linear-and-polynomial-solver-with-uncertainty" title="Permalink to this headline">¶</a></h1>
+<table border="1" class="docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr><td><a class="reference internal" href="#refl1d.wsolve.LinearModel" title="refl1d.wsolve.LinearModel"><tt class="xref py py-obj docutils literal"><span class="pre">LinearModel</span></tt></a></td>
+<td>Model evaluator for linear solution to Ax = y.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.wsolve.PolynomialModel" title="refl1d.wsolve.PolynomialModel"><tt class="xref py py-obj docutils literal"><span class="pre">PolynomialModel</span></tt></a></td>
+<td>Model evaluator for best fit polynomial p(x) = y.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.wsolve.demo" title="refl1d.wsolve.demo"><tt class="xref py py-obj docutils literal"><span class="pre">demo</span></tt></a></td>
+<td></td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.wsolve.test" title="refl1d.wsolve.test"><tt class="xref py py-obj docutils literal"><span class="pre">test</span></tt></a></td>
+<td>smoke test...make sure the function continues to return the same</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.wsolve.wpolyfit" title="refl1d.wsolve.wpolyfit"><tt class="xref py py-obj docutils literal"><span class="pre">wpolyfit</span></tt></a></td>
+<td>Return the polynomial of degree n that minimizes sum( (p(x_i) - y_i)**2/dy_i**2).</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.wsolve.wsolve" title="refl1d.wsolve.wsolve"><tt class="xref py py-obj docutils literal"><span class="pre">wsolve</span></tt></a></td>
+<td>Given a linear system y = A*x + e(dy), estimates x,dx</td>
+</tr>
+</tbody>
+</table>
+<span class="target" id="module-refl1d.wsolve"></span><p>Solve a potentially over-determined system with uncertainty in
+the values.</p>
+<p>Given: A x = y +/- dy
+Use:   s = wsolve(A,y,dy)</p>
+<p>wsolve uses the singular value decomposition for increased accuracy.
+Estimates the uncertainty for the solution from the scatter in the data.</p>
+<p>The returned model object s provides:</p>
+<blockquote>
+s.x      solution
+s.std    uncertainty estimate assuming no correlation
+s.rnorm  residual norm
+s.DoF    degrees of freedom
+s.cov    covariance matrix
+s.ci(p)  confidence intervals at point p
+s.pi(p)  prediction intervals at point p
+s(p)     predicted value at point p</blockquote>
+<div class="section" id="example">
+<h2>Example<a class="headerlink" href="#example" title="Permalink to this headline">¶</a></h2>
+<p>Weighted system:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">numpy</span><span class="o">,</span><span class="nn">wsolve</span>
+<span class="n">A</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">matrix</span><span class="p">(</span><span class="s">&quot;1,2,3;2,1,3;1,1,1&quot;</span><span class="p">,</span><span class="s">&#39;d&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">A</span>
+<span class="n">xin</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1</span><span class="p">,</span><span class="mf">2</span><span class="p">,</span><span class="mf">3</span><span class="p">],</span><span class="s">&#39;d&#39;</span><span class="p">)</span>
+<span class="n">dy</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.2</span><span class="p">,</span><span class="mf">0.01</span><span class="p">,</span><span class="mf">0.1</span><span class="p">])</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">A</span><span class="p">,</span><span class="n">xin</span><span class="p">),</span><span class="n">dy</span><span class="p">)</span>
+<span class="k">print</span> <span class="n">A</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">dy</span>
+<span class="n">s</span> <span class="o">=</span> <span class="n">wsolve</span><span class="o">.</span><span class="n">wsolve</span><span class="p">(</span><span class="n">A</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">dy</span><span class="p">)</span>
+<span class="k">print</span> <span class="s">&quot;xin,x,dx&quot;</span><span class="p">,</span> <span class="n">xin</span><span class="p">,</span> <span class="n">s</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">s</span><span class="o">.</span><span class="n">std</span>
+</pre></div>
+</div>
+<p>Note there is a counter-intuitive result that scaling the estimated
+uncertainty in the data does not affect the computed uncertainty in
+the fit.  This is the correct result &#8212; if the data were indeed
+selected from a process with ten times the uncertainty, you would
+expect the scatter in the data to increase by a factor of ten as
+well.  When this new data set is fitted, it will show a computed
+uncertainty increased by the same factor.  Monte carlo simulations
+bear this out.  The conclusion is that the dataset carries its own
+information about the variance in the data, and the weight vector
+serves only to provide relative weighting between the points.</p>
+<dl class="class">
+<dt id="refl1d.wsolve.LinearModel">
+<em class="property">class </em><tt class="descclassname">refl1d.wsolve.</tt><tt class="descname">LinearModel</tt><big>(</big><em>x=None</em>, <em>DoF=None</em>, <em>SVinv=None</em>, <em>rnorm=None</em><big>)</big><a class="reference internal" href="../_modules/refl1d/wsolve.html#LinearModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.wsolve.LinearModel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Model evaluator for linear solution to Ax = y.</p>
+<p>Computes a confidence interval (range of likely values for the
+mean at x) or a prediction interval (range of likely values
+seen when measuring at x).  The prediction interval tells
+you the width of the distribution at x.  This should be the same
+regardless of the number of measurements you have for the value
+at x.  The confidence interval tells you how well you know the
+mean at x.  It should get smaller as you increase the number of
+measurements.  Error bars in the physical sciences usually show
+a 1-alpha confidence value of erfc(1/sqrt(2)), representing
+a 1-sigma standandard deviation of uncertainty in the mean.</p>
+<p>Confidence intervals for linear system are given by:</p>
+<div class="highlight-python"><pre>x' p +/- sqrt( Finv(1-a,1,df) var(x' p) )</pre>
+</div>
+<p>where for confidence intervals:</p>
+<div class="highlight-python"><pre>var(x' p) = sigma^2 (x' inv(A'A) x)</pre>
+</div>
+<p>and for prediction intervals:</p>
+<div class="highlight-python"><pre>var(x' p) = sigma^2 (1 + x' inv(A'A) x)</pre>
+</div>
+<p>Stored properties:</p>
+<div class="highlight-python"><pre>DoF = len(y)-len(x) = degrees of freedom
+rnorm = 2-norm of the residuals y-Ax
+x = solution to the equation Ax = y</pre>
+</div>
+<p>Computed properties:</p>
+<div class="highlight-python"><pre>cov = covariance matrix [ inv(A'A); O(n^3) ]
+var = parameter variance [ diag(cov); O(n^2)]
+std = standard deviation of parameters [ sqrt(var); O(n^2) ]
+p = test statistic for chisquare goodness of fit [ chi2.sf; O(1) ]</pre>
+</div>
+<p>Methods:</p>
+<div class="highlight-python"><pre>ci(A,sigma=1):  return confidence interval evaluated at A
+pi(A,alpha=0.05):  return prediction interval evaluated at A</pre>
+</div>
+<dl class="method">
+<dt id="refl1d.wsolve.LinearModel.ci">
+<tt class="descname">ci</tt><big>(</big><em>A</em>, <em>sigma=1</em><big>)</big><a class="reference internal" href="../_modules/refl1d/wsolve.html#LinearModel.ci"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.wsolve.LinearModel.ci" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the calculated values and the confidence intervals
+for the linear model evaluated at A.</p>
+<p>sigma=1 corresponds to a 1-sigma confidence interval</p>
+<p>Confidence intervals are sometimes expressed as 1-alpha values,
+where alpha = erfc(sigma/sqrt(2)).</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.wsolve.LinearModel.cov">
+<tt class="descname">cov</tt><a class="headerlink" href="#refl1d.wsolve.LinearModel.cov" title="Permalink to this definition">¶</a></dt>
+<dd><p>covariance matrix</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.wsolve.LinearModel.p">
+<tt class="descname">p</tt><a class="headerlink" href="#refl1d.wsolve.LinearModel.p" title="Permalink to this definition">¶</a></dt>
+<dd><p>probability of rejection</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.wsolve.LinearModel.pi">
+<tt class="descname">pi</tt><big>(</big><em>A</em>, <em>p=0.050000000000000003</em><big>)</big><a class="reference internal" href="../_modules/refl1d/wsolve.html#LinearModel.pi"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.wsolve.LinearModel.pi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the calculated values and the prediction intervals
+for the linear model evaluated at A.</p>
+<p>p = 1-alpha = 0.05 corresponds to 95% prediction interval</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.wsolve.LinearModel.std">
+<tt class="descname">std</tt><a class="headerlink" href="#refl1d.wsolve.LinearModel.std" title="Permalink to this definition">¶</a></dt>
+<dd><p>result standard deviation</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.wsolve.LinearModel.var">
+<tt class="descname">var</tt><a class="headerlink" href="#refl1d.wsolve.LinearModel.var" title="Permalink to this definition">¶</a></dt>
+<dd><p>result variance</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="refl1d.wsolve.PolynomialModel">
+<em class="property">class </em><tt class="descclassname">refl1d.wsolve.</tt><tt class="descname">PolynomialModel</tt><big>(</big><em>s</em>, <em>origin=False</em><big>)</big><a class="reference internal" href="../_modules/refl1d/wsolve.html#PolynomialModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.wsolve.PolynomialModel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Model evaluator for best fit polynomial p(x) = y.</p>
+<p>Stored properties:</p>
+<div class="highlight-python"><pre>DoF = len(y)-len(x) = degrees of freedom
+rnorm = 2-norm of the residuals y-Ax
+coeff = coefficients
+degree = polynomial degree</pre>
+</div>
+<p>Computed properties:</p>
+<div class="highlight-python"><pre>cov = covariance matrix [ inv(A'A); O(n^3) ]
+var = coefficient variance [ diag(cov); O(n^2)]
+std = standard deviation of coefficients [ sqrt(var); O(n^2) ]
+p = test statistic for chisquare goodness of fit [ chi2.sf; O(1) ]</pre>
+</div>
+<p>Methods:</p>
+<div class="highlight-python"><pre>__call__(x): return the polynomial evaluated at x
+ci(x,sigma=1):  return confidence interval evaluated at x
+pi(x,alpha=0.05):  return prediction interval evaluated at x</pre>
+</div>
+<p>Note that the covariance matrix will not include the ones column if
+the polynomial goes through the origin.</p>
+<dl class="method">
+<dt id="refl1d.wsolve.PolynomialModel.ci">
+<tt class="descname">ci</tt><big>(</big><em>x</em>, <em>sigma=1</em><big>)</big><a class="reference internal" href="../_modules/refl1d/wsolve.html#PolynomialModel.ci"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.wsolve.PolynomialModel.ci" title="Permalink to this definition">¶</a></dt>
+<dd><p>Evaluate the polynomial and the confidence intervals at x.</p>
+<p>sigma=1 corresponds to a 1-sigma confidence interval</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.wsolve.PolynomialModel.cov">
+<tt class="descname">cov</tt><a class="headerlink" href="#refl1d.wsolve.PolynomialModel.cov" title="Permalink to this definition">¶</a></dt>
+<dd><p>covariance matrix</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.wsolve.PolynomialModel.der">
+<tt class="descname">der</tt><big>(</big><em>x</em><big>)</big><a class="reference internal" href="../_modules/refl1d/wsolve.html#PolynomialModel.der"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.wsolve.PolynomialModel.der" title="Permalink to this definition">¶</a></dt>
+<dd><p>Evaluate the polynomial derivative at x.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.wsolve.PolynomialModel.p">
+<tt class="descname">p</tt><a class="headerlink" href="#refl1d.wsolve.PolynomialModel.p" title="Permalink to this definition">¶</a></dt>
+<dd><p>probability of rejection</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.wsolve.PolynomialModel.pi">
+<tt class="descname">pi</tt><big>(</big><em>x</em>, <em>p=0.050000000000000003</em><big>)</big><a class="reference internal" href="../_modules/refl1d/wsolve.html#PolynomialModel.pi"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.wsolve.PolynomialModel.pi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Evaluate the polynomial and the prediction intervals at x.</p>
+<p>p = 1-alpha = 0.05 corresponds to 95% prediction interval</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.wsolve.PolynomialModel.std">
+<tt class="descname">std</tt><a class="headerlink" href="#refl1d.wsolve.PolynomialModel.std" title="Permalink to this definition">¶</a></dt>
+<dd><p>result standard deviation</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.wsolve.PolynomialModel.var">
+<tt class="descname">var</tt><a class="headerlink" href="#refl1d.wsolve.PolynomialModel.var" title="Permalink to this definition">¶</a></dt>
+<dd><p>result variance</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.wsolve.demo">
+<tt class="descclassname">refl1d.wsolve.</tt><tt class="descname">demo</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/wsolve.html#demo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.wsolve.demo" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="refl1d.wsolve.test">
+<tt class="descclassname">refl1d.wsolve.</tt><tt class="descname">test</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/wsolve.html#test"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.wsolve.test" title="Permalink to this definition">¶</a></dt>
+<dd><p>smoke test...make sure the function continues to return the same
+result for a particular system.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.wsolve.wpolyfit">
+<tt class="descclassname">refl1d.wsolve.</tt><tt class="descname">wpolyfit</tt><big>(</big><em>x</em>, <em>y</em>, <em>dy=1</em>, <em>degree=None</em>, <em>origin=False</em><big>)</big><a class="reference internal" href="../_modules/refl1d/wsolve.html#wpolyfit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.wsolve.wpolyfit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the polynomial of degree n that
+minimizes sum( (p(x_i) - y_i)**2/dy_i**2).</p>
+<p>if origin is True, the fit should go through the origin.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.wsolve.wsolve">
+<tt class="descclassname">refl1d.wsolve.</tt><tt class="descname">wsolve</tt><big>(</big><em>A</em>, <em>y</em>, <em>dy=1</em>, <em>rcond=9.9999999999999998e-13</em><big>)</big><a class="reference internal" href="../_modules/refl1d/wsolve.html#wsolve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.wsolve.wsolve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given a linear system y = A*x + e(dy), estimates x,dx</p>
+<p>A is an n x m array
+y is an n x k array or vector of length n
+dy is a scalar or an n x 1 array
+x is a m x k array</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="util.html">refl1d.util - Miscellaneous functions</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="mystic.parameter.html">refl1d.mystic.parameter - Parameters</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

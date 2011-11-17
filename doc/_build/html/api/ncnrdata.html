@@ -1,0 +1,900 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.ncnrdata - NCNR Data &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../index.html" />
+    <link rel="up" title="Reference" href="index.html" />
+    <link rel="next" title="refl1d.numpyerrors - Decorator for function level error behaviour" href="numpyerrors.html" />
+    <link rel="prev" title="refl1d.mono - Freeform - Monotonic Spline" href="mono.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.ncnrdata - NCNR Data</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="mono.html">refl1d.mono - Freeform - Monotonic Spline</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="numpyerrors.html">refl1d.numpyerrors - Decorator for function level error behaviour</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="refl1d-ncnrdata-ncnr-data">
+<h1>refl1d.ncnrdata - NCNR Data<a class="headerlink" href="#refl1d-ncnrdata-ncnr-data" title="Permalink to this headline">¶</a></h1>
+<table border="1" class="docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr><td><a class="reference internal" href="#refl1d.ncnrdata.ANDR" title="refl1d.ncnrdata.ANDR"><tt class="xref py py-obj docutils literal"><span class="pre">ANDR</span></tt></a></td>
+<td>Instrument definition for NCNR AND/R diffractometer/reflectometer.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.ncnrdata.NCNRData" title="refl1d.ncnrdata.NCNRData"><tt class="xref py py-obj docutils literal"><span class="pre">NCNRData</span></tt></a></td>
+<td></td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.ncnrdata.NG1" title="refl1d.ncnrdata.NG1"><tt class="xref py py-obj docutils literal"><span class="pre">NG1</span></tt></a></td>
+<td>Instrument definition for NCNR NG-1 reflectometer.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.ncnrdata.NG7" title="refl1d.ncnrdata.NG7"><tt class="xref py py-obj docutils literal"><span class="pre">NG7</span></tt></a></td>
+<td>Instrument definition for NCNR NG-7 reflectometer.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.ncnrdata.XRay" title="refl1d.ncnrdata.XRay"><tt class="xref py py-obj docutils literal"><span class="pre">XRay</span></tt></a></td>
+<td>Instrument definition for NCNR X-ray reflectometer.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.ncnrdata.find_xsec" title="refl1d.ncnrdata.find_xsec"><tt class="xref py py-obj docutils literal"><span class="pre">find_xsec</span></tt></a></td>
+<td>Find files containing the polarization cross-sections.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.ncnrdata.load" title="refl1d.ncnrdata.load"><tt class="xref py py-obj docutils literal"><span class="pre">load</span></tt></a></td>
+<td>Return a probe for NCNR data.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.ncnrdata.load_magnetic" title="refl1d.ncnrdata.load_magnetic"><tt class="xref py py-obj docutils literal"><span class="pre">load_magnetic</span></tt></a></td>
+<td>Return a probe for magnetic NCNR data.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.ncnrdata.parse_file" title="refl1d.ncnrdata.parse_file"><tt class="xref py py-obj docutils literal"><span class="pre">parse_file</span></tt></a></td>
+<td>Parse NCNR reduced data file returning <em>header</em> and <em>data</em>.</td>
+</tr>
+</tbody>
+</table>
+<span class="target" id="module-refl1d.ncnrdata"></span><p>NCNR data loaders</p>
+<p>The following instruments are defined:</p>
+<blockquote>
+ANDR, NG1, NG7 and XRay</blockquote>
+<p>These are <a class="reference internal" href="instrument.html#refl1d.instrument.Monochromatic" title="refl1d.instrument.Monochromatic"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.instrument.Monochromatic</span></tt></a> classes tuned with default
+instrument parameters and loaders for reduced NCNR data.</p>
+<p>The instruments can be used to load data or to compute resolution functions
+for the purposes.</p>
+<p>Example loading data:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">refl1d.names</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">datafile</span> <span class="o">=</span> <span class="n">sample_data</span><span class="p">(</span><span class="s">&#39;chale207.refl&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">instrument</span> <span class="o">=</span> <span class="n">NCNR</span><span class="o">.</span><span class="n">ANDR</span><span class="p">(</span><span class="n">Tlo</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">slits_at_Tlo</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">slits_below</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">probe</span> <span class="o">=</span> <span class="n">instrument</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">datafile</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">probe</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">view</span><span class="o">=</span><span class="s">&#39;log&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Magnetic data has multiple cross sections and often has fixed slits:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">datafile</span> <span class="o">=</span> <span class="n">sample_data</span><span class="p">(</span><span class="s">&#39;lha03_255G.refl&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">instrument</span> <span class="o">=</span> <span class="n">NCNR</span><span class="o">.</span><span class="n">NG1</span><span class="p">(</span><span class="n">slits_at_Tlo</span><span class="o">=</span><span class="mf">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">probe</span> <span class="o">=</span> <span class="n">instrument</span><span class="o">.</span><span class="n">load_magnetic</span><span class="p">(</span><span class="n">datafile</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">probe</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">view</span><span class="o">=</span><span class="s">&#39;SA&#39;</span><span class="p">,</span> <span class="n">substrate</span><span class="o">=</span><span class="n">silicon</span><span class="p">)</span> <span class="c"># Spin asymmetry view</span>
+</pre></div>
+</div>
+<p>For simulation, you need a probe and a sample:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">instrument</span> <span class="o">=</span> <span class="n">NCNR</span><span class="o">.</span><span class="n">ANDR</span><span class="p">(</span><span class="n">Tlo</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">slits_at_Tlo</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">slits_below</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">probe</span> <span class="o">=</span> <span class="n">instrument</span><span class="o">.</span><span class="n">probe</span><span class="p">(</span><span class="n">T</span><span class="o">=</span><span class="n">numpy</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="mf">5</span><span class="p">,</span><span class="mf">51</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">probe</span><span class="o">.</span><span class="n">plot_resolution</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sample</span> <span class="o">=</span> <span class="n">silicon</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="mf">10</span><span class="p">)</span> <span class="o">|</span> <span class="n">gold</span><span class="p">(</span><span class="mf">100</span><span class="p">,</span><span class="mf">10</span><span class="p">)</span> <span class="o">|</span> <span class="n">air</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">M</span> <span class="o">=</span> <span class="n">Experiment</span><span class="p">(</span><span class="n">probe</span><span class="o">=</span><span class="n">probe</span><span class="p">,</span> <span class="n">sample</span><span class="o">=</span><span class="n">sample</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">M</span><span class="o">.</span><span class="n">simulate_data</span><span class="p">()</span> <span class="c"># Optional</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">M</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>And for magnetic:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">instrument</span> <span class="o">=</span> <span class="n">NCNR</span><span class="o">.</span><span class="n">NG1</span><span class="p">(</span><span class="n">slits_at_Tlo</span><span class="o">=</span><span class="mf">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c">#sample = silicon(0,10) | Magnetic(permalloy(100,10),rho_M=3) | air</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c">#M = Experiment(probe=probe, sample=sample)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c">#M.simulate_data()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c">#M.plot()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c">#probe = instrument.simulate_magnetic(sample, T=numpy.linspace(0,5,51))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c">#h = pylab.plot(probe.Q, probe.dQ)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c">#h = pylab.ylabel(&#39;resolution (1-sigma)&#39;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c">#h = pylab.xlabel(&#39;Q (inv A)&#39;)</span>
+</pre></div>
+</div>
+<p>See <a class="reference internal" href="instrument.html#module-refl1d.instrument" title="refl1d.instrument"><tt class="xref py py-mod docutils literal"><span class="pre">instrument</span></tt></a> for details.</p>
+<dl class="class">
+<dt id="refl1d.ncnrdata.ANDR">
+<em class="property">class </em><tt class="descclassname">refl1d.ncnrdata.</tt><tt class="descname">ANDR</tt><big>(</big><em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/ncnrdata.html#ANDR"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.ncnrdata.ANDR" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#refl1d.ncnrdata.NCNRData" title="refl1d.ncnrdata.NCNRData"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.ncnrdata.NCNRData</span></tt></a>, <a class="reference internal" href="instrument.html#refl1d.instrument.Monochromatic" title="refl1d.instrument.Monochromatic"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.instrument.Monochromatic</span></tt></a></p>
+<p>Instrument definition for NCNR AND/R diffractometer/reflectometer.</p>
+<dl class="method">
+<dt id="refl1d.ncnrdata.ANDR.calc_dT">
+<tt class="descname">calc_dT</tt><big>(</big><em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.ANDR.calc_dT" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the angular divergence for given slits and angles</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters :</th><td class="field-body"><dl class="first docutils">
+<dt><em>T</em> OR <em>Q</em> <span class="classifier-delimiter">:</span> <span class="classifier">[float] | ° OR Å<sup>-1</sup></span></dt>
+<dd><p class="first last">measurement angles</p>
+</dd>
+<dt><em>slits</em> <span class="classifier-delimiter">:</span> <span class="classifier">float OR (float,float) | mm</span></dt>
+<dd><p class="first last">total slit opening from edge to edge, not beam center to edge</p>
+</dd>
+<dt><em>d_s1</em>, <em>d_s2</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | mm</span></dt>
+<dd><p class="first last">distance from sample to slit 1 and slit 2</p>
+</dd>
+<dt><em>sample_width</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | mm</span></dt>
+<dd><p class="first last">size of sample</p>
+</dd>
+<dt><em>sample_broadening</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | ° FWHM</span></dt>
+<dd><p class="first last">resolution changes from sample warp</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns :</th><td class="field-body"><dl class="first last docutils">
+<dt><em>dT</em> <span class="classifier-delimiter">:</span> <span class="classifier">[float] | ° FWHM</span></dt>
+<dd><p class="first last">angular divergence</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+<p><em>sample_broadening</em> can be estimated from W, the full width at half
+maximum of a rocking curve measured in degrees:</p>
+<blockquote>
+sample_broadening = W - degrees( 0.5*(s1+s2) / (d1-d2))</blockquote>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.ANDR.calc_slits">
+<tt class="descname">calc_slits</tt><big>(</big><em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.ANDR.calc_slits" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determines slit openings from measurement pattern.</p>
+<p>If slits are fixed simply return the same slits for every angle,
+otherwise use an opening range [Tlo,Thi] and the value of the
+slits at the start of the opening to define the slits.  Slits
+below Tlo and above Thi can be specified separately.</p>
+<p><em>T</em> OR <em>Q</em>       incident angle or Q
+<em>Tlo</em>, <em>Thi</em>     angle range over which slits are opening
+<em>slits_at_Tlo</em>   openings at the start of the range, or fixed opening
+<em>slits_below</em>, <em>slits_above</em>   openings below and above the range</p>
+<p>Use fixed_slits is available, otherwise use opening slits.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="refl1d.ncnrdata.ANDR.defaults">
+<em class="property">classmethod </em><tt class="descname">defaults</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.ANDR.defaults" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return default instrument properties as a printable string.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.ANDR.load">
+<tt class="descname">load</tt><big>(</big><em>filename</em>, <em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.ANDR.load" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.ANDR.load_magnetic">
+<tt class="descname">load_magnetic</tt><big>(</big><em>filename</em>, <em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.ANDR.load_magnetic" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.ANDR.magnetic_probe">
+<tt class="descname">magnetic_probe</tt><big>(</big><em>Aguide=270</em>, <em>shared_beam=True</em>, <em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.ANDR.magnetic_probe" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simulate a polarized measurement probe.</p>
+<p>Returns a probe with Q, angle, wavelength and the associated
+uncertainties, but not any data.</p>
+<p>Guide field angle <em>Aguide</em> can be specified, as well as keyword
+arguments for the geometry of the probe cross sections such as
+<em>slits_at_Tlo</em>, <em>Tlo</em>, <em>Thi</em>, <em>slits_below</em>, and <em>slits_above</em>
+to define the angular divergence.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.ANDR.probe">
+<tt class="descname">probe</tt><big>(</big><em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.ANDR.probe" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a probe for use in simulation.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters :</th><td class="field-body"><dl class="first last docutils">
+<dt><em>Q</em> <span class="classifier-delimiter">:</span> <span class="classifier">[float] | Å</span></dt>
+<dd><p class="first last">Q values to be measured.</p>
+</dd>
+<dt><em>T</em> <span class="classifier-delimiter">:</span> <span class="classifier">[float] | °</span></dt>
+<dd><p class="first last">Angles to be measured.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+<p>Additional keyword parameters</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Returns :</th><td class="field-body"><dl class="first last docutils">
+<dt><em>probe</em> <span class="classifier-delimiter">:</span> <span class="classifier">Probe</span></dt>
+<dd><p class="first last">Measurement probe with complete resolution information.  The
+probe will not have any data.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+<p>If both <em>Q</em> and <em>T</em> are specified then <em>Q</em> takes precedents.</p>
+<p>You can override instrument parameters using key=value.  In
+particular, settings for <em>slits_at_Tlo</em>, <em>Tlo</em>, <em>Thi</em>,
+<em>slits_below</em>, and <em>slits_above</em> are used to define the
+angular divergence.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.ANDR.readfile">
+<tt class="descname">readfile</tt><big>(</big><em>filename</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.ANDR.readfile" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.ANDR.resolution">
+<tt class="descname">resolution</tt><big>(</big><em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.ANDR.resolution" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate resolution at each angle.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Return :</th><td class="field-body"><dl class="first last docutils">
+<dt><em>T</em>, <em>dT</em> <span class="classifier-delimiter">:</span> <span class="classifier">[float] | °</span></dt>
+<dd><p class="first last">Angles and angular divergence.</p>
+</dd>
+<dt><em>L</em>, <em>dL</em> <span class="classifier-delimiter">:</span> <span class="classifier">[float] | Å</span></dt>
+<dd><p class="first last">Wavelengths and wavelength dispersion.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="refl1d.ncnrdata.NCNRData">
+<em class="property">class </em><tt class="descclassname">refl1d.ncnrdata.</tt><tt class="descname">NCNRData</tt><a class="reference internal" href="../_modules/refl1d/ncnrdata.html#NCNRData"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.ncnrdata.NCNRData" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<dl class="method">
+<dt id="refl1d.ncnrdata.NCNRData.load">
+<tt class="descname">load</tt><big>(</big><em>filename</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/ncnrdata.html#NCNRData.load"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.ncnrdata.NCNRData.load" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.NCNRData.load_magnetic">
+<tt class="descname">load_magnetic</tt><big>(</big><em>filename</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/ncnrdata.html#NCNRData.load_magnetic"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.ncnrdata.NCNRData.load_magnetic" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.NCNRData.readfile">
+<tt class="descname">readfile</tt><big>(</big><em>filename</em><big>)</big><a class="reference internal" href="../_modules/refl1d/ncnrdata.html#NCNRData.readfile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.ncnrdata.NCNRData.readfile" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="refl1d.ncnrdata.NG1">
+<em class="property">class </em><tt class="descclassname">refl1d.ncnrdata.</tt><tt class="descname">NG1</tt><big>(</big><em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/ncnrdata.html#NG1"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.ncnrdata.NG1" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#refl1d.ncnrdata.NCNRData" title="refl1d.ncnrdata.NCNRData"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.ncnrdata.NCNRData</span></tt></a>, <a class="reference internal" href="instrument.html#refl1d.instrument.Monochromatic" title="refl1d.instrument.Monochromatic"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.instrument.Monochromatic</span></tt></a></p>
+<p>Instrument definition for NCNR NG-1 reflectometer.</p>
+<dl class="method">
+<dt id="refl1d.ncnrdata.NG1.calc_dT">
+<tt class="descname">calc_dT</tt><big>(</big><em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.NG1.calc_dT" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the angular divergence for given slits and angles</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters :</th><td class="field-body"><dl class="first docutils">
+<dt><em>T</em> OR <em>Q</em> <span class="classifier-delimiter">:</span> <span class="classifier">[float] | ° OR Å<sup>-1</sup></span></dt>
+<dd><p class="first last">measurement angles</p>
+</dd>
+<dt><em>slits</em> <span class="classifier-delimiter">:</span> <span class="classifier">float OR (float,float) | mm</span></dt>
+<dd><p class="first last">total slit opening from edge to edge, not beam center to edge</p>
+</dd>
+<dt><em>d_s1</em>, <em>d_s2</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | mm</span></dt>
+<dd><p class="first last">distance from sample to slit 1 and slit 2</p>
+</dd>
+<dt><em>sample_width</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | mm</span></dt>
+<dd><p class="first last">size of sample</p>
+</dd>
+<dt><em>sample_broadening</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | ° FWHM</span></dt>
+<dd><p class="first last">resolution changes from sample warp</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns :</th><td class="field-body"><dl class="first last docutils">
+<dt><em>dT</em> <span class="classifier-delimiter">:</span> <span class="classifier">[float] | ° FWHM</span></dt>
+<dd><p class="first last">angular divergence</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+<p><em>sample_broadening</em> can be estimated from W, the full width at half
+maximum of a rocking curve measured in degrees:</p>
+<blockquote>
+sample_broadening = W - degrees( 0.5*(s1+s2) / (d1-d2))</blockquote>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.NG1.calc_slits">
+<tt class="descname">calc_slits</tt><big>(</big><em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.NG1.calc_slits" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determines slit openings from measurement pattern.</p>
+<p>If slits are fixed simply return the same slits for every angle,
+otherwise use an opening range [Tlo,Thi] and the value of the
+slits at the start of the opening to define the slits.  Slits
+below Tlo and above Thi can be specified separately.</p>
+<p><em>T</em> OR <em>Q</em>       incident angle or Q
+<em>Tlo</em>, <em>Thi</em>     angle range over which slits are opening
+<em>slits_at_Tlo</em>   openings at the start of the range, or fixed opening
+<em>slits_below</em>, <em>slits_above</em>   openings below and above the range</p>
+<p>Use fixed_slits is available, otherwise use opening slits.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="refl1d.ncnrdata.NG1.defaults">
+<em class="property">classmethod </em><tt class="descname">defaults</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.NG1.defaults" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return default instrument properties as a printable string.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.NG1.load">
+<tt class="descname">load</tt><big>(</big><em>filename</em>, <em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.NG1.load" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.NG1.load_magnetic">
+<tt class="descname">load_magnetic</tt><big>(</big><em>filename</em>, <em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.NG1.load_magnetic" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.NG1.magnetic_probe">
+<tt class="descname">magnetic_probe</tt><big>(</big><em>Aguide=270</em>, <em>shared_beam=True</em>, <em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.NG1.magnetic_probe" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simulate a polarized measurement probe.</p>
+<p>Returns a probe with Q, angle, wavelength and the associated
+uncertainties, but not any data.</p>
+<p>Guide field angle <em>Aguide</em> can be specified, as well as keyword
+arguments for the geometry of the probe cross sections such as
+<em>slits_at_Tlo</em>, <em>Tlo</em>, <em>Thi</em>, <em>slits_below</em>, and <em>slits_above</em>
+to define the angular divergence.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.NG1.probe">
+<tt class="descname">probe</tt><big>(</big><em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.NG1.probe" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a probe for use in simulation.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters :</th><td class="field-body"><dl class="first last docutils">
+<dt><em>Q</em> <span class="classifier-delimiter">:</span> <span class="classifier">[float] | Å</span></dt>
+<dd><p class="first last">Q values to be measured.</p>
+</dd>
+<dt><em>T</em> <span class="classifier-delimiter">:</span> <span class="classifier">[float] | °</span></dt>
+<dd><p class="first last">Angles to be measured.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+<p>Additional keyword parameters</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Returns :</th><td class="field-body"><dl class="first last docutils">
+<dt><em>probe</em> <span class="classifier-delimiter">:</span> <span class="classifier">Probe</span></dt>
+<dd><p class="first last">Measurement probe with complete resolution information.  The
+probe will not have any data.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+<p>If both <em>Q</em> and <em>T</em> are specified then <em>Q</em> takes precedents.</p>
+<p>You can override instrument parameters using key=value.  In
+particular, settings for <em>slits_at_Tlo</em>, <em>Tlo</em>, <em>Thi</em>,
+<em>slits_below</em>, and <em>slits_above</em> are used to define the
+angular divergence.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.NG1.readfile">
+<tt class="descname">readfile</tt><big>(</big><em>filename</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.NG1.readfile" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.NG1.resolution">
+<tt class="descname">resolution</tt><big>(</big><em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.NG1.resolution" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate resolution at each angle.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Return :</th><td class="field-body"><dl class="first last docutils">
+<dt><em>T</em>, <em>dT</em> <span class="classifier-delimiter">:</span> <span class="classifier">[float] | °</span></dt>
+<dd><p class="first last">Angles and angular divergence.</p>
+</dd>
+<dt><em>L</em>, <em>dL</em> <span class="classifier-delimiter">:</span> <span class="classifier">[float] | Å</span></dt>
+<dd><p class="first last">Wavelengths and wavelength dispersion.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="refl1d.ncnrdata.NG7">
+<em class="property">class </em><tt class="descclassname">refl1d.ncnrdata.</tt><tt class="descname">NG7</tt><big>(</big><em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/ncnrdata.html#NG7"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.ncnrdata.NG7" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#refl1d.ncnrdata.NCNRData" title="refl1d.ncnrdata.NCNRData"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.ncnrdata.NCNRData</span></tt></a>, <a class="reference internal" href="instrument.html#refl1d.instrument.Monochromatic" title="refl1d.instrument.Monochromatic"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.instrument.Monochromatic</span></tt></a></p>
+<p>Instrument definition for NCNR NG-7 reflectometer.</p>
+<dl class="method">
+<dt id="refl1d.ncnrdata.NG7.calc_dT">
+<tt class="descname">calc_dT</tt><big>(</big><em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.NG7.calc_dT" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the angular divergence for given slits and angles</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters :</th><td class="field-body"><dl class="first docutils">
+<dt><em>T</em> OR <em>Q</em> <span class="classifier-delimiter">:</span> <span class="classifier">[float] | ° OR Å<sup>-1</sup></span></dt>
+<dd><p class="first last">measurement angles</p>
+</dd>
+<dt><em>slits</em> <span class="classifier-delimiter">:</span> <span class="classifier">float OR (float,float) | mm</span></dt>
+<dd><p class="first last">total slit opening from edge to edge, not beam center to edge</p>
+</dd>
+<dt><em>d_s1</em>, <em>d_s2</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | mm</span></dt>
+<dd><p class="first last">distance from sample to slit 1 and slit 2</p>
+</dd>
+<dt><em>sample_width</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | mm</span></dt>
+<dd><p class="first last">size of sample</p>
+</dd>
+<dt><em>sample_broadening</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | ° FWHM</span></dt>
+<dd><p class="first last">resolution changes from sample warp</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns :</th><td class="field-body"><dl class="first last docutils">
+<dt><em>dT</em> <span class="classifier-delimiter">:</span> <span class="classifier">[float] | ° FWHM</span></dt>
+<dd><p class="first last">angular divergence</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+<p><em>sample_broadening</em> can be estimated from W, the full width at half
+maximum of a rocking curve measured in degrees:</p>
+<blockquote>
+sample_broadening = W - degrees( 0.5*(s1+s2) / (d1-d2))</blockquote>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.NG7.calc_slits">
+<tt class="descname">calc_slits</tt><big>(</big><em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.NG7.calc_slits" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determines slit openings from measurement pattern.</p>
+<p>If slits are fixed simply return the same slits for every angle,
+otherwise use an opening range [Tlo,Thi] and the value of the
+slits at the start of the opening to define the slits.  Slits
+below Tlo and above Thi can be specified separately.</p>
+<p><em>T</em> OR <em>Q</em>       incident angle or Q
+<em>Tlo</em>, <em>Thi</em>     angle range over which slits are opening
+<em>slits_at_Tlo</em>   openings at the start of the range, or fixed opening
+<em>slits_below</em>, <em>slits_above</em>   openings below and above the range</p>
+<p>Use fixed_slits is available, otherwise use opening slits.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="refl1d.ncnrdata.NG7.defaults">
+<em class="property">classmethod </em><tt class="descname">defaults</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.NG7.defaults" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return default instrument properties as a printable string.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.NG7.load">
+<tt class="descname">load</tt><big>(</big><em>filename</em>, <em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.NG7.load" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.NG7.load_magnetic">
+<tt class="descname">load_magnetic</tt><big>(</big><em>filename</em>, <em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.NG7.load_magnetic" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.NG7.magnetic_probe">
+<tt class="descname">magnetic_probe</tt><big>(</big><em>Aguide=270</em>, <em>shared_beam=True</em>, <em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.NG7.magnetic_probe" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simulate a polarized measurement probe.</p>
+<p>Returns a probe with Q, angle, wavelength and the associated
+uncertainties, but not any data.</p>
+<p>Guide field angle <em>Aguide</em> can be specified, as well as keyword
+arguments for the geometry of the probe cross sections such as
+<em>slits_at_Tlo</em>, <em>Tlo</em>, <em>Thi</em>, <em>slits_below</em>, and <em>slits_above</em>
+to define the angular divergence.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.NG7.probe">
+<tt class="descname">probe</tt><big>(</big><em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.NG7.probe" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a probe for use in simulation.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters :</th><td class="field-body"><dl class="first last docutils">
+<dt><em>Q</em> <span class="classifier-delimiter">:</span> <span class="classifier">[float] | Å</span></dt>
+<dd><p class="first last">Q values to be measured.</p>
+</dd>
+<dt><em>T</em> <span class="classifier-delimiter">:</span> <span class="classifier">[float] | °</span></dt>
+<dd><p class="first last">Angles to be measured.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+<p>Additional keyword parameters</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Returns :</th><td class="field-body"><dl class="first last docutils">
+<dt><em>probe</em> <span class="classifier-delimiter">:</span> <span class="classifier">Probe</span></dt>
+<dd><p class="first last">Measurement probe with complete resolution information.  The
+probe will not have any data.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+<p>If both <em>Q</em> and <em>T</em> are specified then <em>Q</em> takes precedents.</p>
+<p>You can override instrument parameters using key=value.  In
+particular, settings for <em>slits_at_Tlo</em>, <em>Tlo</em>, <em>Thi</em>,
+<em>slits_below</em>, and <em>slits_above</em> are used to define the
+angular divergence.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.NG7.readfile">
+<tt class="descname">readfile</tt><big>(</big><em>filename</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.NG7.readfile" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.NG7.resolution">
+<tt class="descname">resolution</tt><big>(</big><em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.NG7.resolution" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate resolution at each angle.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Return :</th><td class="field-body"><dl class="first last docutils">
+<dt><em>T</em>, <em>dT</em> <span class="classifier-delimiter">:</span> <span class="classifier">[float] | °</span></dt>
+<dd><p class="first last">Angles and angular divergence.</p>
+</dd>
+<dt><em>L</em>, <em>dL</em> <span class="classifier-delimiter">:</span> <span class="classifier">[float] | Å</span></dt>
+<dd><p class="first last">Wavelengths and wavelength dispersion.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="refl1d.ncnrdata.XRay">
+<em class="property">class </em><tt class="descclassname">refl1d.ncnrdata.</tt><tt class="descname">XRay</tt><big>(</big><em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/ncnrdata.html#XRay"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.ncnrdata.XRay" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#refl1d.ncnrdata.NCNRData" title="refl1d.ncnrdata.NCNRData"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.ncnrdata.NCNRData</span></tt></a>, <a class="reference internal" href="instrument.html#refl1d.instrument.Monochromatic" title="refl1d.instrument.Monochromatic"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.instrument.Monochromatic</span></tt></a></p>
+<p>Instrument definition for NCNR X-ray reflectometer.</p>
+<p>Normal dT is in the range 2e-5 to 3e-4.</p>
+<p>Slits are fixed throughout the experiment in one of a
+few preconfigured openings.  Please update this file with
+the standard configurations when you find them.</p>
+<p>You can choose to ignore the geometric calculation entirely
+by setting the slit opening to 0 and using sample_broadening
+to define the entire divergence:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">refl1d.names</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">file</span> <span class="o">=</span> <span class="n">sample_data</span><span class="p">(</span><span class="s">&quot;spin_valve01.refl&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">xray</span> <span class="o">=</span> <span class="n">NCNR</span><span class="o">.</span><span class="n">XRay</span><span class="p">(</span><span class="n">slits_at_Tlo</span><span class="o">=</span><span class="mf">0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">data</span> <span class="o">=</span> <span class="n">xray</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">file</span><span class="p">,</span> <span class="n">sample_broadening</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">print</span> <span class="n">data</span><span class="o">.</span><span class="n">dT</span><span class="p">[</span><span class="mf">5</span><span class="p">]</span>
+<span class="go">0.0001</span>
+</pre></div>
+</div>
+<dl class="method">
+<dt id="refl1d.ncnrdata.XRay.calc_dT">
+<tt class="descname">calc_dT</tt><big>(</big><em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.XRay.calc_dT" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the angular divergence for given slits and angles</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters :</th><td class="field-body"><dl class="first docutils">
+<dt><em>T</em> OR <em>Q</em> <span class="classifier-delimiter">:</span> <span class="classifier">[float] | ° OR Å<sup>-1</sup></span></dt>
+<dd><p class="first last">measurement angles</p>
+</dd>
+<dt><em>slits</em> <span class="classifier-delimiter">:</span> <span class="classifier">float OR (float,float) | mm</span></dt>
+<dd><p class="first last">total slit opening from edge to edge, not beam center to edge</p>
+</dd>
+<dt><em>d_s1</em>, <em>d_s2</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | mm</span></dt>
+<dd><p class="first last">distance from sample to slit 1 and slit 2</p>
+</dd>
+<dt><em>sample_width</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | mm</span></dt>
+<dd><p class="first last">size of sample</p>
+</dd>
+<dt><em>sample_broadening</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | ° FWHM</span></dt>
+<dd><p class="first last">resolution changes from sample warp</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Returns :</th><td class="field-body"><dl class="first last docutils">
+<dt><em>dT</em> <span class="classifier-delimiter">:</span> <span class="classifier">[float] | ° FWHM</span></dt>
+<dd><p class="first last">angular divergence</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+<p><em>sample_broadening</em> can be estimated from W, the full width at half
+maximum of a rocking curve measured in degrees:</p>
+<blockquote>
+sample_broadening = W - degrees( 0.5*(s1+s2) / (d1-d2))</blockquote>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.XRay.calc_slits">
+<tt class="descname">calc_slits</tt><big>(</big><em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.XRay.calc_slits" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determines slit openings from measurement pattern.</p>
+<p>If slits are fixed simply return the same slits for every angle,
+otherwise use an opening range [Tlo,Thi] and the value of the
+slits at the start of the opening to define the slits.  Slits
+below Tlo and above Thi can be specified separately.</p>
+<p><em>T</em> OR <em>Q</em>       incident angle or Q
+<em>Tlo</em>, <em>Thi</em>     angle range over which slits are opening
+<em>slits_at_Tlo</em>   openings at the start of the range, or fixed opening
+<em>slits_below</em>, <em>slits_above</em>   openings below and above the range</p>
+<p>Use fixed_slits is available, otherwise use opening slits.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="refl1d.ncnrdata.XRay.defaults">
+<em class="property">classmethod </em><tt class="descname">defaults</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.XRay.defaults" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return default instrument properties as a printable string.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.XRay.load">
+<tt class="descname">load</tt><big>(</big><em>filename</em>, <em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.XRay.load" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.XRay.load_magnetic">
+<tt class="descname">load_magnetic</tt><big>(</big><em>filename</em>, <em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.XRay.load_magnetic" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.XRay.magnetic_probe">
+<tt class="descname">magnetic_probe</tt><big>(</big><em>Aguide=270</em>, <em>shared_beam=True</em>, <em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.XRay.magnetic_probe" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simulate a polarized measurement probe.</p>
+<p>Returns a probe with Q, angle, wavelength and the associated
+uncertainties, but not any data.</p>
+<p>Guide field angle <em>Aguide</em> can be specified, as well as keyword
+arguments for the geometry of the probe cross sections such as
+<em>slits_at_Tlo</em>, <em>Tlo</em>, <em>Thi</em>, <em>slits_below</em>, and <em>slits_above</em>
+to define the angular divergence.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.XRay.probe">
+<tt class="descname">probe</tt><big>(</big><em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.XRay.probe" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a probe for use in simulation.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Parameters :</th><td class="field-body"><dl class="first last docutils">
+<dt><em>Q</em> <span class="classifier-delimiter">:</span> <span class="classifier">[float] | Å</span></dt>
+<dd><p class="first last">Q values to be measured.</p>
+</dd>
+<dt><em>T</em> <span class="classifier-delimiter">:</span> <span class="classifier">[float] | °</span></dt>
+<dd><p class="first last">Angles to be measured.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+<p>Additional keyword parameters</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Returns :</th><td class="field-body"><dl class="first last docutils">
+<dt><em>probe</em> <span class="classifier-delimiter">:</span> <span class="classifier">Probe</span></dt>
+<dd><p class="first last">Measurement probe with complete resolution information.  The
+probe will not have any data.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+<p>If both <em>Q</em> and <em>T</em> are specified then <em>Q</em> takes precedents.</p>
+<p>You can override instrument parameters using key=value.  In
+particular, settings for <em>slits_at_Tlo</em>, <em>Tlo</em>, <em>Thi</em>,
+<em>slits_below</em>, and <em>slits_above</em> are used to define the
+angular divergence.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.XRay.readfile">
+<tt class="descname">readfile</tt><big>(</big><em>filename</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.XRay.readfile" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.ncnrdata.XRay.resolution">
+<tt class="descname">resolution</tt><big>(</big><em>**kw</em><big>)</big><a class="headerlink" href="#refl1d.ncnrdata.XRay.resolution" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate resolution at each angle.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Return :</th><td class="field-body"><dl class="first last docutils">
+<dt><em>T</em>, <em>dT</em> <span class="classifier-delimiter">:</span> <span class="classifier">[float] | °</span></dt>
+<dd><p class="first last">Angles and angular divergence.</p>
+</dd>
+<dt><em>L</em>, <em>dL</em> <span class="classifier-delimiter">:</span> <span class="classifier">[float] | Å</span></dt>
+<dd><p class="first last">Wavelengths and wavelength dispersion.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.ncnrdata.find_xsec">
+<tt class="descclassname">refl1d.ncnrdata.</tt><tt class="descname">find_xsec</tt><big>(</big><em>filename</em><big>)</big><a class="reference internal" href="../_modules/refl1d/ncnrdata.html#find_xsec"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.ncnrdata.find_xsec" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find files containing the polarization cross-sections.</p>
+<p>Returns tuple with file names for ++ +- -+ &#8211; cross sections, or
+None if the spin cross section does not exist.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.ncnrdata.load">
+<tt class="descclassname">refl1d.ncnrdata.</tt><tt class="descname">load</tt><big>(</big><em>filename</em>, <em>instrument=None</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/ncnrdata.html#load"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.ncnrdata.load" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a probe for NCNR data.</p>
+<p>Keyword arguments are as specified Monochromatic instruments.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.ncnrdata.load_magnetic">
+<tt class="descclassname">refl1d.ncnrdata.</tt><tt class="descname">load_magnetic</tt><big>(</big><em>filename</em>, <em>Aguide=270</em>, <em>shared_beam=True</em>, <em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/ncnrdata.html#load_magnetic"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.ncnrdata.load_magnetic" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a probe for magnetic NCNR data.</p>
+<dl class="docutils">
+<dt><em>filename</em> (string, or 4x string)</dt>
+<dd>If it is a string, then filenameA, filenameB, filenameC, filenameD,
+are the ++, +-, -+, &#8211; cross sections, otherwise the individual
+cross sections should the be the file name for the cross section or
+None if the cross section does not exist.</dd>
+<dt><em>Aguide</em> (degrees)</dt>
+<dd>Angle of the guide field relative to the beam.  270 is the default.</dd>
+<dt><em>shared_beam</em> (True)</dt>
+<dd>Use false if beam parameters should be fit separately for the
+individual cross sections.</dd>
+</dl>
+<p>Other keyword arguments are for the individual cross section loaders
+as specified in <a class="reference internal" href="instrument.html#refl1d.instrument.Monochromatic" title="refl1d.instrument.Monochromatic"><tt class="xref py py-class docutils literal"><span class="pre">instrument.Monochromatic</span></tt></a>.</p>
+<p>The data sets should are the base filename with an additional character
+corresponding to the spin state:</p>
+<div class="highlight-python"><pre>'a' corresponds to spin ++
+'b' corresponds to spin +-
+'c' corresponds to spin -+
+'d' corresponds to spin --</pre>
+</div>
+<p>Unfortunately the interpretation is a little more complicated than
+this as the data acquisition system assigns letter on the basis of
+flipper state rather than neutron spin state.  Whether flipper on
+or off corresponds to spin up or down depends on whether the
+polarizer/analyzer is a supermirror in transmission or reflection
+mode, or in the case of ^3He polarizers, whether the polarization
+is up or down.</p>
+<p>For full control, specify filename as a list of files, with None
+for the missing cross sections.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.ncnrdata.parse_file">
+<tt class="descclassname">refl1d.ncnrdata.</tt><tt class="descname">parse_file</tt><big>(</big><em>filename</em><big>)</big><a class="reference internal" href="../_modules/refl1d/ncnrdata.html#parse_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.ncnrdata.parse_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parse NCNR reduced data file returning <em>header</em> and <em>data</em>.</p>
+<p><em>header</em> dictionary of fields such as &#8216;data&#8217;, &#8216;title&#8217;, &#8216;instrument&#8217;
+<em>data</em> 2D array of data</p>
+<p>If &#8216;columns&#8217; is present in header, it will be a list of the names of
+the columns.  If &#8216;instrument&#8217; is present in the header, the default
+instrument geometry will be specified.</p>
+<p>Slit geometry is set to the default from the instrument if it is not
+available in the reduced file.</p>
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="mono.html">refl1d.mono - Freeform - Monotonic Spline</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="numpyerrors.html">refl1d.numpyerrors - Decorator for function level error behaviour</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

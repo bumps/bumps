@@ -1,0 +1,2384 @@
+This is pdfTeXk, Version 3.141592-1.40.3 (Web2C 7.5.6) (format=pdflatex 2010.6.11)  28 JUL 2011 12:43
+entering extended mode
+ %&-line parsing enabled.
+**Refl1D.tex
+(./Refl1D.tex
+LaTeX2e <2005/12/01>
+Babel <v3.8h> and hyphenation patterns for english, usenglishmax, dumylang, noh
+yphenation, arabic, farsi, croatian, ukrainian, russian, bulgarian, czech, slov
+ak, danish, dutch, finnish, basque, french, german, ngerman, ibycus, greek, mon
+ogreek, ancientgreek, hungarian, italian, latin, mongolian, norsk, icelandic, i
+nterlingua, turkish, coptic, romanian, welsh, serbian, slovenian, estonian, esp
+eranto, uppersorbian, indonesian, polish, portuguese, spanish, catalan, galicia
+n, swedish, ukenglish, pinyin, loaded.
+(./sphinxmanual.cls
+Document Class: sphinxmanual 2009/06/02 Document class (Sphinx manual)
+(/usr/share/texmf-texlive/tex/latex/base/report.cls
+Document Class: report 2005/09/16 v1.4f Standard LaTeX document class
+(/usr/share/texmf-texlive/tex/latex/base/size10.clo
+File: size10.clo 2005/09/16 v1.4f Standard LaTeX file (size option)
+)
+\c@part=\count79
+\c@chapter=\count80
+\c@section=\count81
+\c@subsection=\count82
+\c@subsubsection=\count83
+\c@paragraph=\count84
+\c@subparagraph=\count85
+\c@figure=\count86
+\c@table=\count87
+\abovecaptionskip=\skip41
+\belowcaptionskip=\skip42
+\bibindent=\dimen102
+))
+(/usr/share/texmf-texlive/tex/latex/base/inputenc.sty
+Package: inputenc 2006/05/05 v1.1b Input encoding file
+\inpenc@prehook=\toks14
+\inpenc@posthook=\toks15
+
+(/usr/share/texmf-texlive/tex/latex/base/utf8.def
+File: utf8.def 2006/03/30 v1.1i UTF-8 support for inputenc
+Now handling font encoding OML ...
+... no UTF-8 mapping file for font encoding OML
+Now handling font encoding T1 ...
+... processing UTF-8 mapping file for font encodingT1
+
+(/usr/share/texmf-texlive/tex/latex/base/t1enc.dfu
+File: t1enc.dfu 2006/03/30 v1.1i UTF-8 support for inputenc
+   defining Unicode char U+00A1 (decimal 161)
+   defining Unicode char U+00A3 (decimal 163)
+   defining Unicode char U+00AB (decimal 171)
+   defining Unicode char U+00BB (decimal 187)
+   defining Unicode char U+00BF (decimal 191)
+   defining Unicode char U+00C0 (decimal 192)
+   defining Unicode char U+00C1 (decimal 193)
+   defining Unicode char U+00C2 (decimal 194)
+   defining Unicode char U+00C3 (decimal 195)
+   defining Unicode char U+00C4 (decimal 196)
+   defining Unicode char U+00C5 (decimal 197)
+   defining Unicode char U+00C6 (decimal 198)
+   defining Unicode char U+00C7 (decimal 199)
+   defining Unicode char U+00C8 (decimal 200)
+   defining Unicode char U+00C9 (decimal 201)
+   defining Unicode char U+00CA (decimal 202)
+   defining Unicode char U+00CB (decimal 203)
+   defining Unicode char U+00CC (decimal 204)
+   defining Unicode char U+00CD (decimal 205)
+   defining Unicode char U+00CE (decimal 206)
+   defining Unicode char U+00CF (decimal 207)
+   defining Unicode char U+00D0 (decimal 208)
+   defining Unicode char U+00D1 (decimal 209)
+   defining Unicode char U+00D2 (decimal 210)
+   defining Unicode char U+00D3 (decimal 211)
+   defining Unicode char U+00D4 (decimal 212)
+   defining Unicode char U+00D5 (decimal 213)
+   defining Unicode char U+00D6 (decimal 214)
+   defining Unicode char U+00D8 (decimal 216)
+   defining Unicode char U+00D9 (decimal 217)
+   defining Unicode char U+00DA (decimal 218)
+   defining Unicode char U+00DB (decimal 219)
+   defining Unicode char U+00DC (decimal 220)
+   defining Unicode char U+00DD (decimal 221)
+   defining Unicode char U+00DE (decimal 222)
+   defining Unicode char U+00DF (decimal 223)
+   defining Unicode char U+00E0 (decimal 224)
+   defining Unicode char U+00E1 (decimal 225)
+   defining Unicode char U+00E2 (decimal 226)
+   defining Unicode char U+00E3 (decimal 227)
+   defining Unicode char U+00E4 (decimal 228)
+   defining Unicode char U+00E5 (decimal 229)
+   defining Unicode char U+00E6 (decimal 230)
+   defining Unicode char U+00E7 (decimal 231)
+   defining Unicode char U+00E8 (decimal 232)
+   defining Unicode char U+00E9 (decimal 233)
+   defining Unicode char U+00EA (decimal 234)
+   defining Unicode char U+00EB (decimal 235)
+   defining Unicode char U+00EC (decimal 236)
+   defining Unicode char U+00ED (decimal 237)
+   defining Unicode char U+00EE (decimal 238)
+   defining Unicode char U+00EF (decimal 239)
+   defining Unicode char U+00F0 (decimal 240)
+   defining Unicode char U+00F1 (decimal 241)
+   defining Unicode char U+00F2 (decimal 242)
+   defining Unicode char U+00F3 (decimal 243)
+   defining Unicode char U+00F4 (decimal 244)
+   defining Unicode char U+00F5 (decimal 245)
+   defining Unicode char U+00F6 (decimal 246)
+   defining Unicode char U+00F8 (decimal 248)
+   defining Unicode char U+00F9 (decimal 249)
+   defining Unicode char U+00FA (decimal 250)
+   defining Unicode char U+00FB (decimal 251)
+   defining Unicode char U+00FC (decimal 252)
+   defining Unicode char U+00FD (decimal 253)
+   defining Unicode char U+00FE (decimal 254)
+   defining Unicode char U+00FF (decimal 255)
+   defining Unicode char U+0102 (decimal 258)
+   defining Unicode char U+0103 (decimal 259)
+   defining Unicode char U+0104 (decimal 260)
+   defining Unicode char U+0105 (decimal 261)
+   defining Unicode char U+0106 (decimal 262)
+   defining Unicode char U+0107 (decimal 263)
+   defining Unicode char U+010C (decimal 268)
+   defining Unicode char U+010D (decimal 269)
+   defining Unicode char U+010E (decimal 270)
+   defining Unicode char U+010F (decimal 271)
+   defining Unicode char U+0110 (decimal 272)
+   defining Unicode char U+0111 (decimal 273)
+   defining Unicode char U+0118 (decimal 280)
+   defining Unicode char U+0119 (decimal 281)
+   defining Unicode char U+011A (decimal 282)
+   defining Unicode char U+011B (decimal 283)
+   defining Unicode char U+011E (decimal 286)
+   defining Unicode char U+011F (decimal 287)
+   defining Unicode char U+0130 (decimal 304)
+   defining Unicode char U+0131 (decimal 305)
+   defining Unicode char U+0132 (decimal 306)
+   defining Unicode char U+0133 (decimal 307)
+   defining Unicode char U+0139 (decimal 313)
+   defining Unicode char U+013A (decimal 314)
+   defining Unicode char U+013D (decimal 317)
+   defining Unicode char U+013E (decimal 318)
+   defining Unicode char U+0141 (decimal 321)
+   defining Unicode char U+0142 (decimal 322)
+   defining Unicode char U+0143 (decimal 323)
+   defining Unicode char U+0144 (decimal 324)
+   defining Unicode char U+0147 (decimal 327)
+   defining Unicode char U+0148 (decimal 328)
+   defining Unicode char U+014A (decimal 330)
+   defining Unicode char U+014B (decimal 331)
+   defining Unicode char U+0150 (decimal 336)
+   defining Unicode char U+0151 (decimal 337)
+   defining Unicode char U+0152 (decimal 338)
+   defining Unicode char U+0153 (decimal 339)
+   defining Unicode char U+0154 (decimal 340)
+   defining Unicode char U+0155 (decimal 341)
+   defining Unicode char U+0158 (decimal 344)
+   defining Unicode char U+0159 (decimal 345)
+   defining Unicode char U+015A (decimal 346)
+   defining Unicode char U+015B (decimal 347)
+   defining Unicode char U+015E (decimal 350)
+   defining Unicode char U+015F (decimal 351)
+   defining Unicode char U+0160 (decimal 352)
+   defining Unicode char U+0161 (decimal 353)
+   defining Unicode char U+0162 (decimal 354)
+   defining Unicode char U+0163 (decimal 355)
+   defining Unicode char U+0164 (decimal 356)
+   defining Unicode char U+0165 (decimal 357)
+   defining Unicode char U+016E (decimal 366)
+   defining Unicode char U+016F (decimal 367)
+   defining Unicode char U+0170 (decimal 368)
+   defining Unicode char U+0171 (decimal 369)
+   defining Unicode char U+0178 (decimal 376)
+   defining Unicode char U+0179 (decimal 377)
+   defining Unicode char U+017A (decimal 378)
+   defining Unicode char U+017B (decimal 379)
+   defining Unicode char U+017C (decimal 380)
+   defining Unicode char U+017D (decimal 381)
+   defining Unicode char U+017E (decimal 382)
+   defining Unicode char U+200C (decimal 8204)
+   defining Unicode char U+2013 (decimal 8211)
+   defining Unicode char U+2014 (decimal 8212)
+   defining Unicode char U+2018 (decimal 8216)
+   defining Unicode char U+2019 (decimal 8217)
+   defining Unicode char U+201A (decimal 8218)
+   defining Unicode char U+201C (decimal 8220)
+   defining Unicode char U+201D (decimal 8221)
+   defining Unicode char U+201E (decimal 8222)
+   defining Unicode char U+2030 (decimal 8240)
+   defining Unicode char U+2031 (decimal 8241)
+   defining Unicode char U+2039 (decimal 8249)
+   defining Unicode char U+203A (decimal 8250)
+   defining Unicode char U+2423 (decimal 9251)
+)
+Now handling font encoding OT1 ...
+... processing UTF-8 mapping file for font encodingOT1
+
+(/usr/share/texmf-texlive/tex/latex/base/ot1enc.dfu
+File: ot1enc.dfu 2006/03/30 v1.1i UTF-8 support for inputenc
+   defining Unicode char U+00A1 (decimal 161)
+   defining Unicode char U+00A3 (decimal 163)
+   defining Unicode char U+00B8 (decimal 184)
+   defining Unicode char U+00BF (decimal 191)
+   defining Unicode char U+00C5 (decimal 197)
+   defining Unicode char U+00C6 (decimal 198)
+   defining Unicode char U+00D8 (decimal 216)
+   defining Unicode char U+00DF (decimal 223)
+   defining Unicode char U+00E6 (decimal 230)
+   defining Unicode char U+00EC (decimal 236)
+   defining Unicode char U+00ED (decimal 237)
+   defining Unicode char U+00EE (decimal 238)
+   defining Unicode char U+00EF (decimal 239)
+   defining Unicode char U+00F8 (decimal 248)
+   defining Unicode char U+0131 (decimal 305)
+   defining Unicode char U+0141 (decimal 321)
+   defining Unicode char U+0142 (decimal 322)
+   defining Unicode char U+0152 (decimal 338)
+   defining Unicode char U+0153 (decimal 339)
+   defining Unicode char U+2013 (decimal 8211)
+   defining Unicode char U+2014 (decimal 8212)
+   defining Unicode char U+2018 (decimal 8216)
+   defining Unicode char U+2019 (decimal 8217)
+   defining Unicode char U+201C (decimal 8220)
+   defining Unicode char U+201D (decimal 8221)
+)
+Now handling font encoding OMS ...
+... processing UTF-8 mapping file for font encodingOMS
+
+(/usr/share/texmf-texlive/tex/latex/base/omsenc.dfu
+File: omsenc.dfu 2006/03/30 v1.1i UTF-8 support for inputenc
+   defining Unicode char U+00A7 (decimal 167)
+   defining Unicode char U+00B6 (decimal 182)
+   defining Unicode char U+00B7 (decimal 183)
+   defining Unicode char U+2020 (decimal 8224)
+   defining Unicode char U+2021 (decimal 8225)
+   defining Unicode char U+2022 (decimal 8226)
+)
+Now handling font encoding OMX ...
+... no UTF-8 mapping file for font encoding OMX
+Now handling font encoding U ...
+... no UTF-8 mapping file for font encoding U
+   defining Unicode char U+00A9 (decimal 169)
+   defining Unicode char U+00AA (decimal 170)
+   defining Unicode char U+00AE (decimal 174)
+   defining Unicode char U+00BA (decimal 186)
+   defining Unicode char U+02C6 (decimal 710)
+   defining Unicode char U+02DC (decimal 732)
+   defining Unicode char U+200C (decimal 8204)
+   defining Unicode char U+2026 (decimal 8230)
+   defining Unicode char U+2122 (decimal 8482)
+   defining Unicode char U+2423 (decimal 9251)
+))
+   defining Unicode char U+00A0 (decimal 160)
+
+(/usr/share/texmf-texlive/tex/latex/base/fontenc.sty
+Package: fontenc 2005/09/27 v1.99g Standard LaTeX package
+
+(/usr/share/texmf-texlive/tex/latex/base/t1enc.def
+File: t1enc.def 2005/09/27 v1.99g Standard LaTeX file
+LaTeX Font Info:    Redeclaring font encoding T1 on input line 43.
+))
+(/usr/share/texmf-texlive/tex/generic/babel/babel.sty
+Package: babel 2005/11/23 v3.8h The Babel package
+
+(/usr/share/texmf-texlive/tex/generic/babel/english.ldf
+Language: english 2005/03/30 v3.3o English support from the babel system
+
+(/usr/share/texmf-texlive/tex/generic/babel/babel.def
+File: babel.def 2005/11/23 v3.8h Babel common definitions
+\babel@savecnt=\count88
+\U@D=\dimen103
+)
+\l@british = a dialect from \language\l@english 
+\l@UKenglish = a dialect from \language\l@english 
+\l@canadian = a dialect from \language\l@american 
+\l@australian = a dialect from \language\l@british 
+\l@newzealand = a dialect from \language\l@british 
+))
+(/usr/share/texmf-texlive/tex/latex/psnfss/times.sty
+Package: times 2005/04/12 PSNFSS-v9.2a (SPQR) 
+) (./fncychap.sty
+Package: fncychap 2007/07/30 v1.34 LaTeX package (Revised chapters)
+\RW=\skip43
+\mylen=\skip44
+\myhi=\skip45
+\px=\skip46
+\py=\skip47
+\pyy=\skip48
+\pxx=\skip49
+\c@AlphaCnt=\count89
+\c@AlphaDecCnt=\count90
+)
+(/usr/share/texmf-texlive/tex/latex/tools/longtable.sty
+Package: longtable 2004/02/01 v4.11 Multi-page Table package (DPC)
+\LTleft=\skip50
+\LTright=\skip51
+\LTpre=\skip52
+\LTpost=\skip53
+\LTchunksize=\count91
+\LTcapwidth=\dimen104
+\LT@head=\box26
+\LT@firsthead=\box27
+\LT@foot=\box28
+\LT@lastfoot=\box29
+\LT@cols=\count92
+\LT@rows=\count93
+\c@LT@tables=\count94
+\c@LT@chunks=\count95
+\LT@p@ftn=\toks16
+) (./sphinx.sty
+Package: sphinx 2010/01/15 LaTeX package (Sphinx markup)
+
+(/usr/share/texmf-texlive/tex/latex/base/textcomp.sty
+Package: textcomp 2005/09/27 v1.99g Standard LaTeX package
+Package textcomp Info: Sub-encoding information:
+(textcomp)               5 = only ISO-Adobe without \textcurrency
+(textcomp)               4 = 5 + \texteuro
+(textcomp)               3 = 4 + \textohm
+(textcomp)               2 = 3 + \textestimated + \textcurrency
+(textcomp)               1 = TS1 - \textcircled - \t
+(textcomp)               0 = TS1 (full)
+(textcomp)             Font families with sub-encoding setting implement
+(textcomp)             only a restricted character set as indicated.
+(textcomp)             Family '?' is the default used for unknown fonts.
+(textcomp)             See the documentation for details.
+Package textcomp Info: Setting ? sub-encoding to TS1/1 on input line 71.
+
+(/usr/share/texmf-texlive/tex/latex/base/ts1enc.def
+File: ts1enc.def 2001/06/05 v3.0e (jk/car/fm) Standard LaTeX file
+Now handling font encoding TS1 ...
+... processing UTF-8 mapping file for font encoding TS1
+
+(/usr/share/texmf-texlive/tex/latex/base/ts1enc.dfu
+File: ts1enc.dfu 2006/03/30 v1.1i UTF-8 support for inputenc
+   defining Unicode char U+00A2 (decimal 162)
+   defining Unicode char U+00A3 (decimal 163)
+   defining Unicode char U+00A4 (decimal 164)
+   defining Unicode char U+00A5 (decimal 165)
+   defining Unicode char U+00A6 (decimal 166)
+   defining Unicode char U+00A7 (decimal 167)
+   defining Unicode char U+00A8 (decimal 168)
+   defining Unicode char U+00A9 (decimal 169)
+   defining Unicode char U+00AA (decimal 170)
+   defining Unicode char U+00AC (decimal 172)
+   defining Unicode char U+00AE (decimal 174)
+   defining Unicode char U+00AF (decimal 175)
+   defining Unicode char U+00B0 (decimal 176)
+   defining Unicode char U+00B1 (decimal 177)
+   defining Unicode char U+00B2 (decimal 178)
+   defining Unicode char U+00B3 (decimal 179)
+   defining Unicode char U+00B4 (decimal 180)
+   defining Unicode char U+00B5 (decimal 181)
+   defining Unicode char U+00B6 (decimal 182)
+   defining Unicode char U+00B7 (decimal 183)
+   defining Unicode char U+00B9 (decimal 185)
+   defining Unicode char U+00BA (decimal 186)
+   defining Unicode char U+00BC (decimal 188)
+   defining Unicode char U+00BD (decimal 189)
+   defining Unicode char U+00BE (decimal 190)
+   defining Unicode char U+00D7 (decimal 215)
+   defining Unicode char U+00F7 (decimal 247)
+   defining Unicode char U+0192 (decimal 402)
+   defining Unicode char U+02C7 (decimal 711)
+   defining Unicode char U+02D8 (decimal 728)
+   defining Unicode char U+02DD (decimal 733)
+   defining Unicode char U+0E3F (decimal 3647)
+   defining Unicode char U+2016 (decimal 8214)
+   defining Unicode char U+2020 (decimal 8224)
+   defining Unicode char U+2021 (decimal 8225)
+   defining Unicode char U+2022 (decimal 8226)
+   defining Unicode char U+2030 (decimal 8240)
+   defining Unicode char U+2031 (decimal 8241)
+   defining Unicode char U+203B (decimal 8251)
+   defining Unicode char U+203D (decimal 8253)
+   defining Unicode char U+2044 (decimal 8260)
+   defining Unicode char U+204E (decimal 8270)
+   defining Unicode char U+2052 (decimal 8274)
+   defining Unicode char U+20A1 (decimal 8353)
+   defining Unicode char U+20A4 (decimal 8356)
+   defining Unicode char U+20A6 (decimal 8358)
+   defining Unicode char U+20A9 (decimal 8361)
+   defining Unicode char U+20AB (decimal 8363)
+   defining Unicode char U+20AC (decimal 8364)
+   defining Unicode char U+20B1 (decimal 8369)
+   defining Unicode char U+2103 (decimal 8451)
+   defining Unicode char U+2116 (decimal 8470)
+   defining Unicode char U+2117 (decimal 8471)
+   defining Unicode char U+211E (decimal 8478)
+   defining Unicode char U+2120 (decimal 8480)
+   defining Unicode char U+2122 (decimal 8482)
+   defining Unicode char U+2126 (decimal 8486)
+   defining Unicode char U+2127 (decimal 8487)
+   defining Unicode char U+212E (decimal 8494)
+   defining Unicode char U+2190 (decimal 8592)
+   defining Unicode char U+2191 (decimal 8593)
+   defining Unicode char U+2192 (decimal 8594)
+   defining Unicode char U+2193 (decimal 8595)
+   defining Unicode char U+2329 (decimal 9001)
+   defining Unicode char U+232A (decimal 9002)
+   defining Unicode char U+2422 (decimal 9250)
+   defining Unicode char U+25E6 (decimal 9702)
+   defining Unicode char U+25EF (decimal 9711)
+   defining Unicode char U+266A (decimal 9834)
+))
+LaTeX Info: Redefining \oldstylenums on input line 266.
+Package textcomp Info: Setting cmr sub-encoding to TS1/0 on input line 281.
+Package textcomp Info: Setting cmss sub-encoding to TS1/0 on input line 282.
+Package textcomp Info: Setting cmtt sub-encoding to TS1/0 on input line 283.
+Package textcomp Info: Setting cmvtt sub-encoding to TS1/0 on input line 284.
+Package textcomp Info: Setting cmbr sub-encoding to TS1/0 on input line 285.
+Package textcomp Info: Setting cmtl sub-encoding to TS1/0 on input line 286.
+Package textcomp Info: Setting ccr sub-encoding to TS1/0 on input line 287.
+Package textcomp Info: Setting ptm sub-encoding to TS1/4 on input line 288.
+Package textcomp Info: Setting pcr sub-encoding to TS1/4 on input line 289.
+Package textcomp Info: Setting phv sub-encoding to TS1/4 on input line 290.
+Package textcomp Info: Setting ppl sub-encoding to TS1/3 on input line 291.
+Package textcomp Info: Setting pag sub-encoding to TS1/4 on input line 292.
+Package textcomp Info: Setting pbk sub-encoding to TS1/4 on input line 293.
+Package textcomp Info: Setting pnc sub-encoding to TS1/4 on input line 294.
+Package textcomp Info: Setting pzc sub-encoding to TS1/4 on input line 295.
+Package textcomp Info: Setting bch sub-encoding to TS1/4 on input line 296.
+Package textcomp Info: Setting put sub-encoding to TS1/5 on input line 297.
+Package textcomp Info: Setting uag sub-encoding to TS1/5 on input line 298.
+Package textcomp Info: Setting ugq sub-encoding to TS1/5 on input line 299.
+Package textcomp Info: Setting ul8 sub-encoding to TS1/4 on input line 300.
+Package textcomp Info: Setting ul9 sub-encoding to TS1/4 on input line 301.
+Package textcomp Info: Setting augie sub-encoding to TS1/5 on input line 302.
+Package textcomp Info: Setting dayrom sub-encoding to TS1/3 on input line 303.
+Package textcomp Info: Setting dayroms sub-encoding to TS1/3 on input line 304.
+
+Package textcomp Info: Setting pxr sub-encoding to TS1/0 on input line 305.
+Package textcomp Info: Setting pxss sub-encoding to TS1/0 on input line 306.
+Package textcomp Info: Setting pxtt sub-encoding to TS1/0 on input line 307.
+Package textcomp Info: Setting txr sub-encoding to TS1/0 on input line 308.
+Package textcomp Info: Setting txss sub-encoding to TS1/0 on input line 309.
+Package textcomp Info: Setting txtt sub-encoding to TS1/0 on input line 310.
+Package textcomp Info: Setting futs sub-encoding to TS1/4 on input line 311.
+Package textcomp Info: Setting futx sub-encoding to TS1/4 on input line 312.
+Package textcomp Info: Setting futj sub-encoding to TS1/4 on input line 313.
+Package textcomp Info: Setting hlh sub-encoding to TS1/3 on input line 314.
+Package textcomp Info: Setting hls sub-encoding to TS1/3 on input line 315.
+Package textcomp Info: Setting hlst sub-encoding to TS1/3 on input line 316.
+Package textcomp Info: Setting hlct sub-encoding to TS1/5 on input line 317.
+Package textcomp Info: Setting hlx sub-encoding to TS1/5 on input line 318.
+Package textcomp Info: Setting hlce sub-encoding to TS1/5 on input line 319.
+Package textcomp Info: Setting hlcn sub-encoding to TS1/5 on input line 320.
+Package textcomp Info: Setting hlcw sub-encoding to TS1/5 on input line 321.
+Package textcomp Info: Setting hlcf sub-encoding to TS1/5 on input line 322.
+Package textcomp Info: Setting pplx sub-encoding to TS1/3 on input line 323.
+Package textcomp Info: Setting pplj sub-encoding to TS1/3 on input line 324.
+Package textcomp Info: Setting ptmx sub-encoding to TS1/4 on input line 325.
+Package textcomp Info: Setting ptmj sub-encoding to TS1/4 on input line 326.
+)
+(/usr/share/texmf-texlive/tex/latex/fancyhdr/fancyhdr.sty
+\fancy@headwidth=\skip54
+\f@ncyO@elh=\skip55
+\f@ncyO@erh=\skip56
+\f@ncyO@olh=\skip57
+\f@ncyO@orh=\skip58
+\f@ncyO@elf=\skip59
+\f@ncyO@erf=\skip60
+\f@ncyO@olf=\skip61
+\f@ncyO@orf=\skip62
+)
+(/usr/share/texmf-texlive/tex/latex/fancybox/fancybox.sty
+Package: fancybox 2000/09/19 1.3
+
+Style option: `fancybox' v1.3 <2000/09/19> (tvz)
+\@fancybox=\box30
+\shadowsize=\dimen105
+\@Sbox=\box31
+\do@VerbBox=\toks17
+\the@fancyput=\toks18
+\this@fancyput=\toks19
+\EndVerbatimTokens=\toks20
+\Verbatim@Outfile=\write3
+\Verbatim@Infile=\read1
+) (/usr/share/texmf-texlive/tex/latex/titlesec/titlesec.sty
+Package: titlesec 2005/01/22 v2.6 Sectioning titles
+\ttl@box=\box32
+\beforetitleunit=\skip63
+\aftertitleunit=\skip64
+\ttl@plus=\dimen106
+\ttl@minus=\dimen107
+\titlewidth=\dimen108
+\titlewidthlast=\dimen109
+\titlewidthfirst=\dimen110
+) (./tabulary.sty
+Package: tabulary 2007/10/02 v0.9 tabulary package (DPC)
+
+(/usr/share/texmf-texlive/tex/latex/tools/array.sty
+Package: array 2005/08/23 v2.4b Tabular extension package (FMi)
+\col@sep=\dimen111
+\extrarowheight=\dimen112
+\NC@list=\toks21
+\extratabsurround=\skip65
+\backup@length=\skip66
+)
+\TY@count=\count96
+\TY@linewidth=\dimen113
+\tymin=\dimen114
+\tymax=\dimen115
+\TY@tablewidth=\dimen116
+)
+(/usr/share/texmf-texlive/tex/latex/amsmath/amsmath.sty
+Package: amsmath 2000/07/18 v2.13 AMS math features
+\@mathmargin=\skip67
+
+For additional information on amsmath, use the `?' option.
+(/usr/share/texmf-texlive/tex/latex/amsmath/amstext.sty
+Package: amstext 2000/06/29 v2.01
+
+(/usr/share/texmf-texlive/tex/latex/amsmath/amsgen.sty
+File: amsgen.sty 1999/11/30 v2.0
+\@emptytoks=\toks22
+\ex@=\dimen117
+))
+(/usr/share/texmf-texlive/tex/latex/amsmath/amsbsy.sty
+Package: amsbsy 1999/11/29 v1.2d
+\pmbraise@=\dimen118
+)
+(/usr/share/texmf-texlive/tex/latex/amsmath/amsopn.sty
+Package: amsopn 1999/12/14 v2.01 operator names
+)
+\inf@bad=\count97
+LaTeX Info: Redefining \frac on input line 211.
+\uproot@=\count98
+\leftroot@=\count99
+LaTeX Info: Redefining \overline on input line 307.
+\classnum@=\count100
+\DOTSCASE@=\count101
+LaTeX Info: Redefining \ldots on input line 379.
+LaTeX Info: Redefining \dots on input line 382.
+LaTeX Info: Redefining \cdots on input line 467.
+\Mathstrutbox@=\box33
+\strutbox@=\box34
+\big@size=\dimen119
+LaTeX Font Info:    Redeclaring font encoding OML on input line 567.
+LaTeX Font Info:    Redeclaring font encoding OMS on input line 568.
+\macc@depth=\count102
+\c@MaxMatrixCols=\count103
+\dotsspace@=\muskip10
+\c@parentequation=\count104
+\dspbrk@lvl=\count105
+\tag@help=\toks23
+\row@=\count106
+\column@=\count107
+\maxfields@=\count108
+\andhelp@=\toks24
+\eqnshift@=\dimen120
+\alignsep@=\dimen121
+\tagshift@=\dimen122
+\tagwidth@=\dimen123
+\totwidth@=\dimen124
+\lineht@=\dimen125
+\@envbody=\toks25
+\multlinegap=\skip68
+\multlinetaggap=\skip69
+\mathdisplay@stack=\toks26
+LaTeX Info: Redefining \[ on input line 2666.
+LaTeX Info: Redefining \] on input line 2667.
+)
+(/usr/share/texmf-texlive/tex/latex/base/makeidx.sty
+Package: makeidx 2000/03/29 v1.0m Standard LaTeX package
+)
+(/usr/share/texmf-texlive/tex/latex/ltxmisc/framed.sty
+Package: framed 2003/07/21 v 0.8a: framed or shaded text with page breaks
+\FrameRule=\dimen126
+\FrameSep=\dimen127
+)
+(/usr/share/texmf-texlive/tex/latex/graphics/color.sty
+Package: color 2005/11/14 v1.0j Standard LaTeX Color (DPC)
+
+(/etc/texmf/tex/latex/config/color.cfg
+File: color.cfg 2007/01/18 v1.5 color configuration of teTeX/TeXLive
+)
+Package color Info: Driver file: pdftex.def on input line 130.
+
+(/usr/share/texmf-texlive/tex/latex/pdftex-def/pdftex.def
+File: pdftex.def 2007/01/08 v0.04d Graphics/color for pdfTeX
+\Gread@gobject=\count109
+))
+(/usr/share/texmf-texlive/tex/latex/fancyvrb/fancyvrb.sty
+Package: fancyvrb 1998/07/17
+
+Style option: `fancyvrb' v2.6, with DG/SPQR fixes <1998/07/17> (tvz)
+(/usr/share/texmf-texlive/tex/latex/graphics/keyval.sty
+Package: keyval 1999/03/16 v1.13 key=value parser (DPC)
+\KV@toks@=\toks27
+)
+\FV@CodeLineNo=\count110
+\FV@InFile=\read2
+\FV@TabBox=\box35
+\c@FancyVerbLine=\count111
+\FV@StepNumber=\count112
+\FV@OutFile=\write4
+
+No file fancyvrb.cfg.
+) (/usr/share/texmf-texlive/tex/latex/ltxmisc/threeparttable.sty
+Package: threeparttable 2003/06/13  v 3.0
+\@tempboxb=\box36
+)
+(/usr/share/texmf-texlive/tex/latex/mdwtools/footnote.sty
+Package: footnote 1997/01/28 1.13 Save footnotes around boxes
+\fn@notes=\box37
+\fn@width=\dimen128
+)
+(/usr/share/texmf-texlive/tex/latex/wrapfig/wrapfig.sty
+\wrapoverhang=\dimen129
+\WF@size=\dimen130
+\c@WF@wrappedlines=\count113
+\WF@box=\box38
+\WF@everypar=\toks28
+Package: wrapfig 2003/01/31  v 3.6
+)
+(/usr/share/texmf-texlive/tex/latex/ltxmisc/parskip.sty
+Package: parskip 2001/04/09 non-zero parskip adjustments
+)
+(/usr/share/texmf-texlive/tex/latex/graphics/graphicx.sty
+Package: graphicx 1999/02/16 v1.0f Enhanced LaTeX Graphics (DPC,SPQR)
+
+(/usr/share/texmf-texlive/tex/latex/graphics/graphics.sty
+Package: graphics 2006/02/20 v1.0o Standard LaTeX Graphics (DPC,SPQR)
+
+(/usr/share/texmf-texlive/tex/latex/graphics/trig.sty
+Package: trig 1999/03/16 v1.09 sin cos tan (DPC)
+)
+(/etc/texmf/tex/latex/config/graphics.cfg
+File: graphics.cfg 2007/01/18 v1.5 graphics configuration of teTeX/TeXLive
+)
+Package graphics Info: Driver file: pdftex.def on input line 90.
+)
+\Gin@req@height=\dimen131
+\Gin@req@width=\dimen132
+)
+(/usr/share/texmf-texlive/tex/plain/misc/pdfcolor.tex)
+\distancetoright=\skip70
+\leftsidespace=\skip71
+\py@argswidth=\skip72
+\py@noticelength=\skip73
+\lineblockindentation=\skip74
+\image@box=\box39
+\image@width=\dimen133
+
+(/usr/share/texmf-texlive/tex/latex/hyperref/hyperref.sty
+Package: hyperref 2007/02/07 v6.75r Hypertext links for LaTeX
+\@linkdim=\dimen134
+\Hy@linkcounter=\count114
+\Hy@pagecounter=\count115
+
+(/usr/share/texmf-texlive/tex/latex/hyperref/pd1enc.def
+File: pd1enc.def 2007/02/07 v6.75r Hyperref: PDFDocEncoding definition (HO)
+Now handling font encoding PD1 ...
+... no UTF-8 mapping file for font encoding PD1
+)
+(/etc/texmf/tex/latex/config/hyperref.cfg
+File: hyperref.cfg 2002/06/06 v1.2 hyperref configuration of TeXLive
+)
+(/usr/share/texmf-texlive/tex/latex/oberdiek/kvoptions.sty
+Package: kvoptions 2006/08/22 v2.4 Connects package keyval with LaTeX options (
+HO)
+)
+Package hyperref Info: Option `colorlinks' set `true' on input line 2238.
+Package hyperref Info: Option `breaklinks' set `true' on input line 2238.
+Package hyperref Info: Hyper figures OFF on input line 2288.
+Package hyperref Info: Link nesting OFF on input line 2293.
+Package hyperref Info: Hyper index ON on input line 2296.
+Package hyperref Info: Plain pages OFF on input line 2303.
+Package hyperref Info: Backreferencing OFF on input line 2308.
+
+Implicit mode ON; LaTeX internals redefined
+Package hyperref Info: Bookmarks ON on input line 2444.
+(/usr/share/texmf-texlive/tex/latex/ltxmisc/url.sty
+\Urlmuskip=\muskip11
+Package: url 2005/06/27  ver 3.2  Verb mode for urls, etc.
+)
+LaTeX Info: Redefining \url on input line 2599.
+\Fld@menulength=\count116
+\Field@Width=\dimen135
+\Fld@charsize=\dimen136
+\Choice@toks=\toks29
+\Field@toks=\toks30
+Package hyperref Info: Hyper figures OFF on input line 3102.
+Package hyperref Info: Link nesting OFF on input line 3107.
+Package hyperref Info: Hyper index ON on input line 3110.
+Package hyperref Info: backreferencing OFF on input line 3117.
+Package hyperref Info: Link coloring ON on input line 3120.
+\Hy@abspage=\count117
+\c@Item=\count118
+\c@Hfootnote=\count119
+)
+*hyperref using default driver hpdftex*
+(/usr/share/texmf-texlive/tex/latex/hyperref/hpdftex.def
+File: hpdftex.def 2007/02/07 v6.75r Hyperref driver for pdfTeX
+\Fld@listcount=\count120
+)
+(/usr/share/texmf-texlive/tex/latex/oberdiek/hypcap.sty
+Package: hypcap 2006/02/20 v1.5 Adjusting anchors of captions (HO)
+))
+   defining Unicode char U+00B7 (decimal 183)
+   defining Unicode char U+00B0 (decimal 176)
+   defining Unicode char U+212B (decimal 8491)
+\@indexfile=\write5
+\openout5 = `Refl1D.idx'.
+
+
+Writing index file Refl1D.idx
+(./Refl1D.aux)
+\openout1 = `Refl1D.aux'.
+
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 90.
+LaTeX Font Info:    ... okay on input line 90.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 90.
+LaTeX Font Info:    ... okay on input line 90.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 90.
+LaTeX Font Info:    ... okay on input line 90.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 90.
+LaTeX Font Info:    ... okay on input line 90.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 90.
+LaTeX Font Info:    ... okay on input line 90.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 90.
+LaTeX Font Info:    ... okay on input line 90.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 90.
+LaTeX Font Info:    Try loading font information for TS1+cmr on input line 90.
+ (/usr/share/texmf-texlive/tex/latex/base/ts1cmr.fd
+File: ts1cmr.fd 1999/05/25 v2.5h Standard LaTeX font definitions
+)
+LaTeX Font Info:    ... okay on input line 90.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 90.
+LaTeX Font Info:    ... okay on input line 90.
+LaTeX Font Info:    Try loading font information for T1+ptm on input line 90.
+
+(/usr/share/texmf-texlive/tex/latex/psnfss/t1ptm.fd
+File: t1ptm.fd 2001/06/04 font definitions for T1/ptm.
+)
+(/usr/share/texmf/tex/context/base/supp-pdf.tex
+[Loading MPS to PDF converter (version 2006.09.02).]
+\scratchcounter=\count121
+\scratchdimen=\dimen137
+\scratchbox=\box40
+\nofMPsegments=\count122
+\nofMParguments=\count123
+\everyMPshowfont=\toks31
+\MPscratchCnt=\count124
+\MPscratchDim=\dimen138
+\MPnumerator=\count125
+\everyMPtoPDFconversion=\toks32
+)
+Package hyperref Info: Link coloring ON on input line 90.
+ (/usr/share/texmf-texlive/tex/latex/hyperref/nameref.sty
+Package: nameref 2006/12/27 v2.28 Cross-referencing by name of section
+
+(/usr/share/texmf-texlive/tex/latex/oberdiek/refcount.sty
+Package: refcount 2006/02/20 v3.0 Data extraction from references (HO)
+)
+\c@section@level=\count126
+)
+LaTeX Info: Redefining \ref on input line 90.
+LaTeX Info: Redefining \pageref on input line 90.
+ (./Refl1D.out)
+(./Refl1D.out)
+\@outlinefile=\write6
+\openout6 = `Refl1D.out'.
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 93--93
+
+ []
+
+LaTeX Font Info:    Try loading font information for T1+phv on input line 93.
+(/usr/share/texmf-texlive/tex/latex/psnfss/t1phv.fd
+File: t1phv.fd 2001/06/04 scalable font definitions for T1/phv.
+)
+LaTeX Font Info:    Font shape `T1/phv/bx/n' in size <24.88> not available
+(Font)              Font shape `T1/phv/b/n' tried instead on input line 93.
+LaTeX Font Info:    Font shape `T1/phv/m/it' in size <17.28> not available
+(Font)              Font shape `T1/phv/m/sl' tried instead on input line 93.
+LaTeX Font Info:    Font shape `T1/phv/bx/it' in size <17.28> not available
+(Font)              Font shape `T1/phv/b/it' tried instead on input line 93.
+LaTeX Font Info:    Font shape `T1/phv/b/it' in size <17.28> not available
+(Font)              Font shape `T1/phv/b/sl' tried instead on input line 93.
+LaTeX Font Info:    Font shape `T1/phv/bx/n' in size <17.28> not available
+(Font)              Font shape `T1/phv/b/n' tried instead on input line 93.
+ [1
+
+{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}] [2
+
+] (./Refl1D.toc
+LaTeX Font Info:    Font shape `T1/ptm/bx/n' in size <10> not available
+(Font)              Font shape `T1/ptm/b/n' tried instead on input line 2.
+pdfTeX warning (ext4): destination with the same identifier (name{page.i}) has 
+been already used, duplicate ignored
+<to be read again> 
+                   \relax 
+l.90 ...cessing implementations}{81}{section.4.17}
+                                                  
+LaTeX Font Info:    Font shape `T1/phv/bx/n' in size <10> not available
+(Font)              Font shape `T1/phv/b/n' tried instead on input line 90.
+ [1
+
+])
+\tf@toc=\write7
+\openout7 = `Refl1D.toc'.
+
+pdfTeX warning (ext4): destination with the same identifier (name{page.ii}) has
+ been already used, duplicate ignored
+<to be read again> 
+                   \relax 
+l.93 \tableofcontents
+                      [2]
+Chapter 1.
+LaTeX Font Info:    Font shape `T1/phv/bx/n' in size <14.4> not available
+(Font)              Font shape `T1/phv/b/n' tried instead on input line 98.
+LaTeX Font Info:    Try loading font information for TS1+ptm on input line 112.
+
+(/usr/share/texmf-texlive/tex/latex/psnfss/ts1ptm.fd
+File: ts1ptm.fd 2001/06/04 font definitions for TS1/ptm.
+)
+Overfull \hbox (14.79999pt too wide) in paragraph at lines 134--134
+ [] 
+ []
+
+LaTeX Font Info:    Font shape `T1/phv/bx/n' in size <12> not available
+(Font)              Font shape `T1/phv/b/n' tried instead on input line 155.
+[1
+
+
+]
+LaTeX Font Info:    Try loading font information for T1+pcr on input line 239.
+ (/usr/share/texmf-texlive/tex/latex/psnfss/t1pcr.fd
+File: t1pcr.fd 2001/06/04 font definitions for T1/pcr.
+) [2] [3] [4]
+Overfull \hbox (14.79999pt too wide) in paragraph at lines 470--470
+ [] 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 530--532
+[]\T1/ptm/m/n/10 WSGIDaemonProcess re-flserve user=pkienzle group=refl threads=
+3 WS-GIS-crip-tAl-ias /queue
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 533--538
+[]\T1/ptm/m/n/10 WSGIProcessGroup re-flserve WS-GIAp-pli-ca-tion-Group
+ []
+
+[5] [6] [7] [8] [9] [10
+
+]
+Chapter 2.
+<a2ca71e2ff.pdf, id=455, 397.485pt x 325.215pt>
+File: a2ca71e2ff.pdf Graphic file (type pdf)
+ <use a2ca71e2ff.pdf>
+File: a2ca71e2ff.pdf Graphic file (type pdf)
+
+<use a2ca71e2ff.pdf> [11] [12 <./a2ca71e2ff.pdf>]
+LaTeX Font Info:    Font shape `T1/pcr/m/it' in size <9> not available
+(Font)              Font shape `T1/pcr/m/sl' tried instead on input line 918.
+
+<9027665fb3.pdf, id=519, 397.485pt x 325.215pt>
+File: 9027665fb3.pdf Graphic file (type pdf)
+ <use 9027665fb3.pdf>
+File: 9027665fb3.pdf Graphic file (type pdf)
+
+<use 9027665fb3.pdf> [13]
+LaTeX Font Info:    Font shape `T1/pcr/bx/n' in size <9> not available
+(Font)              Font shape `T1/pcr/b/n' tried instead on input line 991.
+ [14 <./9027665fb3.pdf>]
+<564caae046.pdf, id=585, 397.485pt x 325.215pt>
+File: 564caae046.pdf Graphic file (type pdf)
+ <use 564caae046.pdf>
+File: 564caae046.pdf Graphic file (type pdf)
+
+<use 564caae046.pdf> [15] [16 <./564caae046.pdf>]
+<f0e3f5eecb.pdf, id=648, 397.485pt x 325.215pt>
+File: f0e3f5eecb.pdf Graphic file (type pdf)
+ <use f0e3f5eecb.pdf>
+File: f0e3f5eecb.pdf Graphic file (type pdf)
+
+<use f0e3f5eecb.pdf> <fc43445452.pdf, id=649, 397.485pt x 325.215pt>
+File: fc43445452.pdf Graphic file (type pdf)
+
+<use fc43445452.pdf>
+File: fc43445452.pdf Graphic file (type pdf)
+ <use fc43445452.pdf> [17 <./f0e3f5eecb.pdf>] [18 <./fc43445452.pdf>] [19] [20]
+ <0808430085_00.pdf, id=772, 397.485pt x 325.215pt>
+File: 0808430085_00.pdf Graphic file (type pdf)
+
+<use 0808430085_00.pdf>
+File: 0808430085_00.pdf Graphic file (type pdf)
+ <use 0808430085_00.pdf>
+<0808430085_01.pdf, id=773, 397.485pt x 325.215pt>
+File: 0808430085_01.pdf Graphic file (type pdf)
+ <use 0808430085_01.pdf>
+[21]
+File: 0808430085_01.pdf Graphic file (type pdf)
+ <use 0808430085_01.pdf> [22 <./0808430085_00.pdf>]
+Overfull \vbox (0.7726pt too high) detected at line 1481
+ []
+
+[23 <./0808430085_01.pdf>] <059ce42618.pdf, id=900, 397.485pt x 325.215pt>
+File: 059ce42618.pdf Graphic file (type pdf)
+
+<use 059ce42618.pdf>
+File: 059ce42618.pdf Graphic file (type pdf)
+ <use 059ce42618.pdf> [24] [25 <./059ce42618.pdf>] [26]
+<e1eb8621b4.pdf, id=966, 397.485pt x 325.215pt>
+File: e1eb8621b4.pdf Graphic file (type pdf)
+ <use e1eb8621b4.pdf>
+File: e1eb8621b4.pdf Graphic file (type pdf)
+
+<use e1eb8621b4.pdf> [27 <./e1eb8621b4.pdf>]
+<a6b48bc7a5.pdf, id=1023, 397.485pt x 325.215pt>
+File: a6b48bc7a5.pdf Graphic file (type pdf)
+ <use a6b48bc7a5.pdf>
+File: a6b48bc7a5.pdf Graphic file (type pdf)
+
+<use a6b48bc7a5.pdf> [28] [29 <./a6b48bc7a5.pdf>]
+<1f37e03481.pdf, id=1082, 397.485pt x 325.215pt>
+File: 1f37e03481.pdf Graphic file (type pdf)
+ <use 1f37e03481.pdf>
+File: 1f37e03481.pdf Graphic file (type pdf)
+
+<use 1f37e03481.pdf> [30] [31 <./1f37e03481.pdf>]
+<aee62ada96.pdf, id=1145, 397.485pt x 325.215pt>
+File: aee62ada96.pdf Graphic file (type pdf)
+ <use aee62ada96.pdf>
+File: aee62ada96.pdf Graphic file (type pdf)
+
+<use aee62ada96.pdf> [32]
+Overfull \vbox (0.52963pt too high) detected at line 2003
+ []
+
+[33 <./aee62ada96.pdf>] [34]
+Chapter 3.
+[35
+
+]
+Overfull \hbox (14.79999pt too wide) in paragraph at lines 2231--2231
+ [] 
+ []
+
+[36] [37] [38] [39] [40]
+Overfull \hbox (14.79999pt too wide) in paragraph at lines 2623--2623
+ [] 
+ []
+
+[41]
+Underfull \hbox (badness 10000) in paragraph at lines 2744--2747
+[]\T1/ptm/m/n/10 <[][]http://en.wikipedia.org/wiki/Chebyshev_polynomials[][]>`_
+
+ []
+
+[42] [43]
+Overfull \hbox (14.79999pt too wide) in paragraph at lines 2890--2890
+ [] 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 2922--2930
+\T1/ptm/m/n/10 Rather than us-ing \T1/pcr/m/n/10 Stack <refl1d.model.Stack\T1/p
+tm/m/n/10 , [][]\T1/pcr/m/n/10 Probe[][] \T1/ptm/m/n/10 and class:\T1/ptm/m/it/
+10 Experiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 2922--2930
+\T1/ptm/m/it/10 <refl1d.experiment.Experiment\T1/ptm/m/n/10 , we can com-pute r
+e-flec-tiv-i-ties di-rectly with the func-tions in
+ []
+
+[44]
+Overfull \hbox (14.79999pt too wide) in paragraph at lines 2978--2978
+ [] 
+ []
+
+[45] <var.png, id=1373, 1156.32pt x 621.522pt>
+File: var.png Graphic file (type png)
+ <use var.png>
+File: var.png Graphic file (type png)
+ <use var.png>
+[46] <corr.png, id=1378, 1156.32pt x 621.522pt>
+File: corr.png Graphic file (type png)
+ <use corr.png>
+File: corr.png Graphic file (type png)
+ <use corr.png>
+<error.png, id=1379, 1156.32pt x 621.522pt>
+File: error.png Graphic file (type png)
+ <use error.png>
+File: error.png Graphic file (type png)
+ <use error.png>
+[47 <./var.png> <./corr.png> <./error.png>] [48] [49]
+Underfull \hbox (badness 6445) in paragraph at lines 3327--3328
+\T1/ptm/m/n/10 ple-ment 1 to the `Guide to the ex-pres-sion of un-cer-tainty in
+ mea-sure-ment' ^^U Prop-a-ga-tion of dis-
+ []
+
+
+Underfull \hbox (badness 6961) in paragraph at lines 3327--3328
+\T1/ptm/m/n/10 tri-bu-tions us-ing a Monte Carlo method. Joint Com-mit-tee for 
+Guides in Metrol-ogy, JCGM 101
+ []
+
+[50]
+Chapter 4.
+LaTeX Font Info:    Font shape `T1/pcr/bx/n' in size <10> not available
+(Font)              Font shape `T1/pcr/b/n' tried instead on input line 3361.
+LaTeX Font Info:    Font shape `T1/ptm/bx/it' in size <10> not available
+(Font)              Font shape `T1/ptm/b/it' tried instead on input line 3371.
+[51
+
+]
+Overfull \hbox (17.77899pt too wide) in paragraph at lines 3584--3584
+[][][]\T1/pcr/m/n/10 FreeformCheby[][]|  
+ []
+
+
+Overfull \hbox (11.77899pt too wide) in paragraph at lines 3584--3584
+[][][]\T1/pcr/m/n/10 cheby_approx[][]|  
+ []
+
+
+Overfull \hbox (5.77899pt too wide) in paragraph at lines 3584--3584
+[][][]\T1/pcr/m/n/10 cheby_coeff[][]|  
+ []
+
+
+Overfull \hbox (11.77899pt too wide) in paragraph at lines 3584--3584
+[][][]\T1/pcr/m/n/10 cheby_points[][]|  
+ []
+
+[52] [53]
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 3660--3660
+| [] 
+ []
+
+[54] [55]
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 4013--4013
+| [] 
+ []
+
+[56]
+Underfull \hbox (badness 10000) in paragraph at lines 4268--4268
+[]\T1/ptm/m/it/10 edges=None\T1/ptm/m/n/10 , \T1/ptm/m/it/10 cdf=None\T1/ptm/m/
+n/10 , \T1/ptm/m/it/10 args=\T1/ptm/m/n/14.4 [ ]\T1/ptm/m/n/10 , \T1/ptm/m/it/1
+0 loc=None\T1/ptm/m/n/10 , \T1/ptm/m/it/10 scale=None\T1/ptm/m/n/10 , \T1/ptm/m
+/it/10 trun-
+ []
+
+[57]
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 4309--4309
+| [] 
+ []
+
+
+Overfull \hbox (45.7196pt too wide) in paragraph at lines 4341--4341
+[][][]\T1/pcr/m/n/10 calc_distribution_from_state[][]|  
+ []
+
+[58]
+Underfull \hbox (badness 10000) in paragraph at lines 4422--4422
+[]\T1/ptm/m/it/10 sample=None\T1/ptm/m/n/10 , \T1/ptm/m/it/10 probe=None\T1/ptm
+/m/n/10 , \T1/ptm/m/it/10 name=None\T1/ptm/m/n/10 , \T1/ptm/m/it/10 rough-
+ []
+
+[59] [60]
+Underfull \hbox (badness 10000) in paragraph at lines 4846--4846
+[]\T1/ptm/m/it/10 samples=None\T1/ptm/m/n/10 , \T1/ptm/m/it/10 ra-tio=None\T1/p
+tm/m/n/10 , \T1/ptm/m/it/10 probe=None\T1/ptm/m/n/10 ,
+ []
+
+[61] [62] [63] [64] [65] [66] [67] [68] [69]
+Underfull \hbox (badness 10000) in paragraph at lines 6308--6308
+[]\T1/ptm/m/it/10 interface=0\T1/ptm/m/n/10 , \T1/ptm/m/it/10 be-low=None\T1/pt
+m/m/n/10 , \T1/ptm/m/it/10 above=None\T1/ptm/m/n/10 , \T1/ptm/m/it/10 dz=None\T
+1/ptm/m/n/10 ,
+ []
+
+[70]
+Underfull \hbox (badness 10000) in paragraph at lines 6407--6407
+[]\T1/ptm/m/it/10 thickness=0\T1/ptm/m/n/10 , \T1/ptm/m/it/10 in-ter-face=0\T1/
+ptm/m/n/10 , \T1/ptm/m/it/10 be-low=None\T1/ptm/m/n/10 ,
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6407--6407
+\T1/ptm/m/it/10 above=None\T1/ptm/m/n/10 , \T1/ptm/m/it/10 z=None\T1/ptm/m/n/10
+ , \T1/ptm/m/it/10 vf=None\T1/ptm/m/n/10 ,
+ []
+
+[71] [72]
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 6624--6624
+| [] 
+ []
+
+[73] [74] [75] [76] [77] [78]
+Underfull \hbox (badness 10000) in paragraph at lines 7339--7339
+[]\T1/ptm/m/it/10 stack=None\T1/ptm/m/n/10 , \T1/ptm/m/it/10 dead_below=0\T1/pt
+m/m/n/10 , \T1/ptm/m/it/10 dead_above=0\T1/ptm/m/n/10 , \T1/ptm/m/it/10 in-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 7339--7339
+\T1/ptm/m/it/10 ter-face_below=None\T1/ptm/m/n/10 , \T1/ptm/m/it/10 in-ter-face
+_above=None\T1/ptm/m/n/10 ,
+ []
+
+[79] [80] [81]
+Overfull \hbox (3.24133pt too wide) in paragraph at lines 7705--7705
+[][][]\T1/pcr/m/n/10 Scatterer[][]|  
+ []
+
+
+Overfull \hbox (9.24133pt too wide) in paragraph at lines 7705--7705
+[][][]\T1/pcr/m/n/10 ProbeCache[][]|  
+ []
+
+[82]
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 7805--7805
+| [] 
+ []
+
+
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 7885--7885
+| [] 
+ []
+
+[83] [84] [85] [86] [87] [88] [89] [90] [91] [92] [93]
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 9315--9315
+| [] 
+ []
+
+[94]
+Underfull \hbox (badness 10000) in paragraph at lines 9520--9522
+[]\T1/ptm/m/n/10 Other key-word ar-gu-ments are for the in-di-vid-ual cross sec
+-tion load-ers as spec-i-fied in
+ []
+
+[95]
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 9531--9531
+| [] 
+ []
+
+[96]
+Underfull \hbox (badness 10000) in paragraph at lines 9694--9694
+[]\T1/ptm/m/it/10 nllf\T1/ptm/m/n/10 , \T1/ptm/m/it/10 p\T1/ptm/m/n/10 , \T1/pt
+m/m/it/10 bounds\T1/ptm/m/n/10 , \T1/ptm/m/it/10 T=None\T1/ptm/m/n/10 , \T1/ptm
+/m/it/10 steps=1000\T1/ptm/m/n/10 ,
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 9694--9694
+\T1/ptm/m/it/10 CR=0.90000000000000002\T1/ptm/m/n/10 , \T1/ptm/m/it/10 burn=100
+0\T1/ptm/m/n/10 , \T1/ptm/m/it/10 mon-i-
+ []
+
+[97]
+Underfull \hbox (badness 6625) in paragraph at lines 9809--9809
+[]\T1/ptm/m/it/10 thickness=0\T1/ptm/m/n/10 , \T1/ptm/m/it/10 in-ter-face=0\T1/
+ptm/m/n/10 , \T1/ptm/m/it/10 name='brush'\T1/ptm/m/n/10 , \T1/ptm/m/it/10 poly-
+mer=None\T1/ptm/m/n/10 ,
+ []
+
+
+Underfull \hbox (badness 6927) in paragraph at lines 9809--9809
+\T1/ptm/m/it/10 sol-vent=None\T1/ptm/m/n/10 , \T1/ptm/m/it/10 base_vf=None\T1/p
+tm/m/n/10 , \T1/ptm/m/it/10 base=None\T1/ptm/m/n/10 , \T1/ptm/m/it/10 length=No
+ne\T1/ptm/m/n/10 ,
+ []
+
+[98]
+Underfull \hbox (badness 7468) in paragraph at lines 9891--9891
+[]\T1/ptm/m/it/10 thickness=0\T1/ptm/m/n/10 , \T1/ptm/m/it/10 in-ter-face=0\T1/
+ptm/m/n/10 , \T1/ptm/m/it/10 name='VolumeProfile'\T1/ptm/m/n/10 , \T1/ptm/m/it/
+10 ma-te-
+ []
+
+
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 9914--9914
+| [] 
+ []
+
+[99]
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 9977--9977
+| [] 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 10084--10084
+[]\T1/ptm/m/it/10 T=None\T1/ptm/m/n/10 , \T1/ptm/m/it/10 dT=0\T1/ptm/m/n/10 , \
+T1/ptm/m/it/10 L=None\T1/ptm/m/n/10 , \T1/ptm/m/it/10 dL=0\T1/ptm/m/n/10 , \T1/
+ptm/m/it/10 data=None\T1/ptm/m/n/10 , \T1/ptm/m/it/10 in-ten-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 10084--10084
+\T1/ptm/m/it/10 sity=1\T1/ptm/m/n/10 , \T1/ptm/m/it/10 back-ground=0\T1/ptm/m/n
+/10 , \T1/ptm/m/it/10 back_absorption=1\T1/ptm/m/n/10 , \T1/ptm/m/it/10 theta_o
+ffset=0\T1/ptm/m/n/10 ,
+ []
+
+[100] [101] [102] [103] [104] [105]
+Underfull \hbox (badness 5504) in paragraph at lines 10869--10876
+[]\T1/ptm/m/n/10 Measurement prop-er-ties are fit-table pa-ram-e-ters. \T1/ptm/
+m/it/10 theta_offset \T1/ptm/m/n/10 in par-tic-u-lar should be set us-ing
+ []
+
+[106] [107] [108] [109] [110] [111] [112] [113]
+Underfull \hbox (badness 10000) in paragraph at lines 11909--11909
+[]\T1/ptm/m/it/10 T=None\T1/ptm/m/n/10 , \T1/ptm/m/it/10 dT=0\T1/ptm/m/n/10 , \
+T1/ptm/m/it/10 L=None\T1/ptm/m/n/10 , \T1/ptm/m/it/10 dL=0\T1/ptm/m/n/10 , \T1/
+ptm/m/it/10 data=None\T1/ptm/m/n/10 , \T1/ptm/m/it/10 in-ten-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 11909--11909
+\T1/ptm/m/it/10 sity=1\T1/ptm/m/n/10 , \T1/ptm/m/it/10 back-ground=0\T1/ptm/m/n
+/10 , \T1/ptm/m/it/10 back_absorption=1\T1/ptm/m/n/10 , \T1/ptm/m/it/10 theta_o
+ffset=0\T1/ptm/m/n/10 ,
+ []
+
+[114] [115] [116] [117]
+Overfull \hbox (50.00006pt too wide) in paragraph at lines 12375--12375
+| [] 
+ []
+
+
+Overfull \hbox (50.00006pt too wide) in paragraph at lines 12384--12384
+| [] 
+ []
+
+[118] [119]
+Underfull \hbox (badness 10000) in paragraph at lines 12664--12664
+[]\T1/ptm/m/it/10 n, U=<function <lambda> at 0x3cee500>, Supp=<function
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 12664--12664
+\T1/ptm/m/it/10 <lambda> at 0x3cee578>, ww=[0.0, 0.49180000000000001,
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 12664--12664
+\T1/ptm/m/it/10 0.49180000000000001, 0.0082000000000000007,
+ []
+
+[120]
+Underfull \hbox (badness 10000) in paragraph at lines 12850--12850
+\T1/ptm/m/n/14.4 ]\T1/ptm/m/n/10 , \T1/ptm/m/it/10 maxstep=100\T1/ptm/m/n/10 , 
+\T1/ptm/m/it/10 gradtol=9.9999999999999995e-07\T1/ptm/m/n/10 ,
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 12850--12850
+\T1/ptm/m/it/10 steptol=9.9999999999999998e-13\T1/ptm/m/n/10 , \T1/ptm/m/it/10 
+itnlimit=2000\T1/ptm/m/n/10 , \T1/ptm/m/it/10 mon-i-
+ []
+
+[121]
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 12942--12942
+| [] 
+ []
+
+
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 12952--12952
+| [] 
+ []
+
+[122] [123]
+LaTeX Font Info:    Font shape `T1/ptm/bx/n' in size <7> not available
+(Font)              Font shape `T1/ptm/b/n' tried instead on input line 13089.
+LaTeX Font Info:    Font shape `T1/ptm/bx/n' in size <5> not available
+(Font)              Font shape `T1/ptm/b/n' tried instead on input line 13089.
+
+Underfull \hbox (badness 5817) in paragraph at lines 13168--13168
+[]\T1/ptm/m/it/10 kz\T1/ptm/m/n/10 , \T1/ptm/m/it/10 depth\T1/ptm/m/n/10 , \T1/
+ptm/m/it/10 rho\T1/ptm/m/n/10 , \T1/ptm/m/it/10 irho=0\T1/ptm/m/n/10 , \T1/ptm/
+m/it/10 rhoM=0\T1/ptm/m/n/10 , \T1/ptm/m/it/10 thetaM=0\T1/ptm/m/n/10 ,
+ []
+
+[124] [125] [126]
+Underfull \hbox (badness 10000) in paragraph at lines 13579--13579
+[]\T1/ptm/m/it/10 T=None\T1/ptm/m/n/10 , \T1/ptm/m/it/10 slits=None\T1/ptm/m/n/
+10 , \T1/ptm/m/it/10 dis-tance=None\T1/ptm/m/n/10 , \T1/ptm/m/it/10 sam-
+ []
+
+[127] [128] [129] [130] [131] [132] [133] [134] [135] [136] [137]
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 14925--14925
+| [] 
+ []
+
+[138]
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 14933--14933
+| [] 
+ []
+
+
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 14977--14977
+| [] 
+ []
+
+
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 14988--14988
+| [] 
+ []
+
+[139]
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 15146--15146
+| [] 
+ []
+
+[140]
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 15192--15192
+| [] 
+ []
+
+
+Overfull \hbox (87.7pt too wide) in paragraph at lines 15233--15233
+| [] 
+ []
+
+
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 15277--15277
+| [] 
+ []
+
+
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 15287--15287
+| [] 
+ []
+
+[141]
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 15301--15301
+| [] 
+ []
+
+
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 15319--15319
+| [] 
+ []
+
+[142]
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 15434--15434
+| [] 
+ []
+
+
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 15440--15440
+| [] 
+ []
+
+
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 15446--15446
+| [] 
+ []
+
+
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 15454--15454
+| [] 
+ []
+
+
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 15463--15463
+| [] 
+ []
+
+
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 15470--15470
+| [] 
+ []
+
+[143]
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 15546--15546
+| [] 
+ []
+
+
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 15555--15555
+| [] 
+ []
+
+
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 15563--15563
+| [] 
+ []
+
+[144] [145] [146] [147] [148]
+Underfull \hbox (badness 10000) in paragraph at lines 16369--16369
+[]\T1/ptm/m/it/10 rng=<module `numpy.random' from `/usr/lib/python2.6/dist-
+ []
+
+[149] [150] [151] [152]
+Underfull \hbox (badness 10000) in paragraph at lines 16963--16963
+[]\T1/ptm/m/it/10 value=None\T1/ptm/m/n/10 , \T1/ptm/m/it/10 bounds=None\T1/ptm
+/m/n/10 , \T1/ptm/m/it/10 fixed=None\T1/ptm/m/n/10 ,
+ []
+
+[153]
+Underfull \hbox (badness 10000) in paragraph at lines 17071--17071
+[]\T1/ptm/m/it/10 rng=<module `numpy.random' from `/usr/lib/python2.6/dist-
+ []
+
+[154]
+Underfull \hbox (badness 10000) in paragraph at lines 17226--17226
+[]\T1/ptm/m/it/10 rng=<module `numpy.random' from `/usr/lib/python2.6/dist-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 17275--17275
+[]\T1/ptm/m/it/10 value=None\T1/ptm/m/n/10 , \T1/ptm/m/it/10 bounds=None\T1/ptm
+/m/n/10 , \T1/ptm/m/it/10 fixed=None\T1/ptm/m/n/10 ,
+ []
+
+[155]
+Underfull \hbox (badness 10000) in paragraph at lines 17365--17365
+[]\T1/ptm/m/it/10 rng=<module `numpy.random' from `/usr/lib/python2.6/dist-
+ []
+
+[156] [157]
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 17637--17637
+| [] 
+ []
+
+
+Overfull \hbox (25.00003pt too wide) in paragraph at lines 17658--17658
+| [] 
+ []
+
+[158] [159] [160] [161]
+Overfull \hbox (14.28133pt too wide) in alignment at lines 18273--18275
+ [] [] 
+ []
+
+
+Overfull \hbox (14.28133pt too wide) in alignment at lines 18275--18280
+ [] [] 
+ []
+
+
+Overfull \hbox (14.28133pt too wide) in alignment at lines 18280--18283
+ [] [] 
+ []
+
+
+Overfull \hbox (14.28133pt too wide) in alignment at lines 18283--18286
+ [] [] 
+ []
+
+
+Overfull \hbox (14.28133pt too wide) in alignment at lines 18286--18388
+ [] [] 
+ []
+
+
+Overfull \hbox (14.28133pt too wide) in alignment at lines 18388--18488
+ [] [] 
+ []
+
+[162]
+Overfull \hbox (14.28133pt too wide) in alignment at lines 18488--18514
+ [] [] 
+ []
+
+[163] [164
+
+] [165
+
+] (./Refl1D.ind [166
+
+
+]
+Underfull \hbox (badness 10000) in paragraph at lines 8--9
+[]\T1/ptm/m/n/10 alignment_uncertainty() (refl1d.probe.NeutronProbe
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 9--10
+[]\T1/ptm/m/n/10 alignment_uncertainty() (refl1d.probe.Probe static
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 10--11
+[]\T1/ptm/m/n/10 alignment_uncertainty() (refl1d.probe.ProbeSet static
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 11--12
+[]\T1/ptm/m/n/10 alignment_uncertainty() (refl1d.probe.QProbe static
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 15--16
+[]\T1/ptm/m/n/10 amplitude() (refl1d.experiment.MixedExperiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 21--22
+[]\T1/ptm/m/n/10 apply_beam() (refl1d.probe.PolarizedNeutronProbe
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 22--23
+[]\T1/ptm/m/n/10 apply_beam() (refl1d.probe.PolarizedNeutronQProbe
+ []
+
+[167
+
+]
+Underfull \hbox (badness 10000) in paragraph at lines 89--90
+[]\T1/ptm/m/n/10 clip_set() (refl1d.mystic.parameter.IntegerParameter
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 92--93
+[]\T1/ptm/m/n/10 clip_set() (refl1d.mystic.parameter.VectorParameter
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 94--95
+[]\T1/ptm/m/n/10 config_history() (refl1d.fitservice.ServiceMonitor
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 109--110
+[]\T1/ptm/m/n/10 constraints() (refl1d.freeform.FreeformInterface01
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 147--148
+[]\T1/ptm/m/n/10 default() (refl1d.mystic.parameter.Parameter class
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 148--149
+[]\T1/ptm/m/n/10 default() (refl1d.mystic.parameter.Reference class
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 150--151
+[]\T1/ptm/m/n/10 defaults() (refl1d.instrument.Monochromatic class
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 168--169
+[]\T1/ptm/m/n/10 dev() (refl1d.mystic.parameter.OperatorAdd method),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 170--171
+[]\T1/ptm/m/n/10 dev() (refl1d.mystic.parameter.OperatorMul method),
+ []
+
+[168]
+Underfull \hbox (badness 10000) in paragraph at lines 171--172
+[]\T1/ptm/m/n/10 dev() (refl1d.mystic.parameter.OperatorPow method),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 202--203
+[]\T1/ptm/m/n/10 feasible() (refl1d.mystic.parameter.IntegerParameter
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 205--206
+[]\T1/ptm/m/n/10 feasible() (refl1d.mystic.parameter.VectorParameter
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 229--230
+[]\T1/ptm/m/n/10 fit_FWHMresolution() (refl1d.staj.MlayerMagnetic
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 230--231
+[]\T1/ptm/m/n/10 fit_FWHMresolution() (refl1d.staj.MlayerModel
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 242--243
+[]\T1/ptm/m/n/10 format() (refl1d.mystic.parameter.BaseParameter
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 245--246
+[]\T1/ptm/m/n/10 format() (refl1d.mystic.parameter.IntegerParameter
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 251--252
+[]\T1/ptm/m/n/10 format() (refl1d.mystic.parameter.Parameter method),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 252--253
+[]\T1/ptm/m/n/10 format() (refl1d.mystic.parameter.Reference method),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 253--254
+[]\T1/ptm/m/n/10 format() (refl1d.mystic.parameter.VectorParameter
+ []
+
+[169]
+Underfull \hbox (badness 10000) in paragraph at lines 255--256
+[]\T1/ptm/m/n/10 format_parameters() (refl1d.experiment.Experiment
+ []
+
+
+Overfull \hbox (3.3301pt too wide) in paragraph at lines 257--258
+[]\T1/ptm/m/n/10 format_parameters() (refl1d.experiment.MixedExperiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 258--259
+[]\T1/ptm/m/n/10 format_uncertainty_compact() (in mod-ule
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 259--260
+[]\T1/ptm/m/n/10 format_uncertainty_pm() (in mod-ule
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 297--298
+[]\T1/ptm/m/n/10 getfull() (refl1d.mystic.bounds.SoftBounded method),
+ []
+
+[170]
+Underfull \hbox (badness 10000) in paragraph at lines 387--388
+[]\T1/ptm/m/n/10 magnetic_probe() (refl1d.instrument.Monochromatic
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 395--396
+[]\T1/ptm/m/n/10 magnetic_profile() (refl1d.experiment.Experiment
+ []
+
+
+Underfull \hbox (badness 7064) in paragraph at lines 396--397
+[]\T1/ptm/m/n/10 magnetic_profile() (refl1d.profile.Microslabs method),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 398--399
+[]\T1/ptm/m/n/10 magnetic_slabs() (refl1d.experiment.Experiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 422--423
+[]\T1/ptm/m/n/10 mm (refl1d.probe.PolarizedNeutronQProbe at-tribute),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 424--425
+[]\T1/ptm/m/n/10 model_nllf() (refl1d.fitproblem.MultiFitProblem
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 425--426
+[]\T1/ptm/m/n/10 model_parameters() (refl1d.fitproblem.FitProblem
+ []
+
+
+Underfull \hbox (badness 7326) in paragraph at lines 426--427
+[]\T1/ptm/m/n/10 model_parameters() (refl1d.fitproblem.MultiFitProblem
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 428--429
+[]\T1/ptm/m/n/10 model_points() (refl1d.fitproblem.MultiFitProblem
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 430--431
+[]\T1/ptm/m/n/10 model_reset() (refl1d.fitproblem.MultiFitProblem
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 433--434
+[]\T1/ptm/m/n/10 model_update() (refl1d.fitproblem.MultiFitProblem
+ []
+
+[171]
+Underfull \hbox (badness 10000) in paragraph at lines 484--485
+[]\T1/ptm/m/n/10 nllf() (refl1d.mystic.parameter.OperatorAdd method),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 487--488
+[]\T1/ptm/m/n/10 nllf() (refl1d.mystic.parameter.OperatorPow method),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 495--496
+[]\T1/ptm/m/n/10 numpoints() (refl1d.experiment.ExperimentBase
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 496--497
+[]\T1/ptm/m/n/10 numpoints() (refl1d.experiment.MixedExperiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 509--510
+[]\T1/ptm/m/n/10 oversample() (refl1d.probe.PolarizedNeutronProbe
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 510--511
+[]\T1/ptm/m/n/10 oversample() (refl1d.probe.PolarizedNeutronQProbe
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 523--524
+[]\T1/ptm/m/n/10 parameter_nllf() (refl1d.fitproblem.MultiFitProblem
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 524--525
+[]\T1/ptm/m/n/10 parameter_residuals() (refl1d.fitproblem.FitProblem
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 528--529
+[]\T1/ptm/m/n/10 parameters() (refl1d.dist.DistributionExperiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 531--532
+[]\T1/ptm/m/n/10 parameters() (refl1d.experiment.MixedExperiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 533--534
+[]\T1/ptm/m/n/10 parameters() (refl1d.freeform.FreeformInterface01
+ []
+
+[172]
+Underfull \hbox (badness 10000) in paragraph at lines 551--552
+[]\T1/ptm/m/n/10 parameters() (refl1d.mystic.parameter.BaseParameter
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 554--555
+[]\T1/ptm/m/n/10 parameters() (refl1d.mystic.parameter.IntegerParameter
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 555--556
+[]\T1/ptm/m/n/10 parameters() (refl1d.mystic.parameter.OperatorAdd
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 556--557
+[]\T1/ptm/m/n/10 parameters() (refl1d.mystic.parameter.OperatorDiv
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 557--558
+[]\T1/ptm/m/n/10 parameters() (refl1d.mystic.parameter.OperatorMul
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 558--559
+[]\T1/ptm/m/n/10 parameters() (refl1d.mystic.parameter.OperatorPow
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 559--560
+[]\T1/ptm/m/n/10 parameters() (refl1d.mystic.parameter.OperatorSub
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 560--561
+[]\T1/ptm/m/n/10 parameters() (refl1d.mystic.parameter.Parameter
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 561--562
+[]\T1/ptm/m/n/10 parameters() (refl1d.mystic.parameter.Reference
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 562--563
+[]\T1/ptm/m/n/10 parameters() (refl1d.mystic.parameter.VectorParameter
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 566--567
+[]\T1/ptm/m/n/10 parameters() (refl1d.probe.PolarizedNeutronProbe
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 567--568
+[]\T1/ptm/m/n/10 parameters() (refl1d.probe.PolarizedNeutronQProbe
+ []
+
+
+Underfull \hbox (badness 5345) in paragraph at lines 595--596
+[]\T1/ptm/m/n/10 plot() (refl1d.probe.PolarizedNeutronQProbe method),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 606--607
+[]\T1/ptm/m/n/10 plot_fresnel() (refl1d.probe.PolarizedNeutronProbe
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 607--608
+[]\T1/ptm/m/n/10 plot_fresnel() (refl1d.probe.PolarizedNeutronQProbe
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 614--615
+[]\T1/ptm/m/n/10 plot_linear() (refl1d.probe.PolarizedNeutronProbe
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 615--616
+[]\T1/ptm/m/n/10 plot_linear() (refl1d.probe.PolarizedNeutronQProbe
+ []
+
+[173]
+Underfull \hbox (badness 10000) in paragraph at lines 622--623
+[]\T1/ptm/m/n/10 plot_log() (refl1d.probe.PolarizedNeutronQProbe
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 627--628
+[]\T1/ptm/m/n/10 plot_profile() (refl1d.dist.DistributionExperiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 629--630
+[]\T1/ptm/m/n/10 plot_profile() (refl1d.experiment.MixedExperiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 632--633
+[]\T1/ptm/m/n/10 plot_Q4() (refl1d.probe.PolarizedNeutronQProbe
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 637--638
+[]\T1/ptm/m/n/10 plot_reflectivity() (refl1d.dist.DistributionExperiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 638--639
+[]\T1/ptm/m/n/10 plot_reflectivity() (refl1d.experiment.Experiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 639--640
+[]\T1/ptm/m/n/10 plot_reflectivity() (refl1d.experiment.ExperimentBase
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 640--641
+[]\T1/ptm/m/n/10 plot_reflectivity() (refl1d.experiment.MixedExperiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 641--642
+[]\T1/ptm/m/n/10 plot_residuals() (refl1d.probe.NeutronProbe method),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 642--643
+[]\T1/ptm/m/n/10 plot_residuals() (refl1d.probe.PolarizedNeutronProbe
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 643--644
+[]\T1/ptm/m/n/10 plot_residuals() (refl1d.probe.PolarizedNeutronQProbe
+ []
+
+
+Underfull \hbox (badness 5331) in paragraph at lines 648--649
+[]\T1/ptm/m/n/10 plot_resolution() (refl1d.probe.NeutronProbe method),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 649--650
+[]\T1/ptm/m/n/10 plot_resolution() (refl1d.probe.PolarizedNeutronProbe
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 656--657
+[]\T1/ptm/m/n/10 plot_SA() (refl1d.probe.PolarizedNeutronQProbe
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 658--659
+[]\T1/ptm/m/n/10 plot_weights() (refl1d.dist.DistributionExperiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 679--680
+[]\T1/ptm/m/n/10 pmp() (refl1d.mystic.parameter.IntegerParameter
+ []
+
+
+Underfull \hbox (badness 5756) in paragraph at lines 680--681
+[]\T1/ptm/m/n/10 pmp() (refl1d.mystic.parameter.OperatorAdd method),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 681--682
+[]\T1/ptm/m/n/10 pmp() (refl1d.mystic.parameter.OperatorDiv method),
+ []
+
+
+Underfull \hbox (badness 6608) in paragraph at lines 682--683
+[]\T1/ptm/m/n/10 pmp() (refl1d.mystic.parameter.OperatorMul method),
+ []
+
+
+Underfull \hbox (badness 5302) in paragraph at lines 683--684
+[]\T1/ptm/m/n/10 pmp() (refl1d.mystic.parameter.OperatorPow method),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 684--685
+[]\T1/ptm/m/n/10 pmp() (refl1d.mystic.parameter.OperatorSub method),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 687--688
+[]\T1/ptm/m/n/10 pmp() (refl1d.mystic.parameter.VectorParameter
+ []
+
+[174]
+Underfull \hbox (badness 10000) in paragraph at lines 732--733
+[]\T1/ptm/m/n/10 putfull() (refl1d.mystic.bounds.SoftBounded method),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 752--753
+[]\T1/ptm/m/n/10 rand() (refl1d.mystic.parameter.IntegerParameter
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 755--756
+[]\T1/ptm/m/n/10 rand() (refl1d.mystic.parameter.VectorParameter
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 759--760
+[]\T1/ptm/m/n/10 random() (refl1d.mystic.bounds.Distribution method),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 762--763
+[]\T1/ptm/m/n/10 random() (refl1d.mystic.bounds.Unbounded method),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 771--772
+[]\T1/ptm/m/n/10 range() (refl1d.mystic.parameter.IntegerParameter
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 779--780
+[]\T1/ptm/m/n/10 range() (refl1d.mystic.parameter.VectorParameter
+ []
+
+[175]
+Underfull \hbox (badness 10000) in paragraph at lines 848--849
+[]\T1/ptm/m/n/10 reflectivity() (refl1d.dist.DistributionExperiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 850--851
+[]\T1/ptm/m/n/10 reflectivity() (refl1d.experiment.MixedExperiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 881--882
+[]\T1/ptm/m/n/10 residual() (refl1d.mystic.bounds.BoundedAbove
+ []
+
+
+Underfull \hbox (badness 7888) in paragraph at lines 883--884
+[]\T1/ptm/m/n/10 residual() (refl1d.mystic.bounds.Distribution method),
+ []
+
+[176]
+Underfull \hbox (badness 10000) in paragraph at lines 886--887
+[]\T1/ptm/m/n/10 residual() (refl1d.mystic.bounds.Unbounded method),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 887--888
+[]\T1/ptm/m/n/10 residual() (refl1d.mystic.parameter.BaseParameter
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 888--889
+[]\T1/ptm/m/n/10 residual() (refl1d.mystic.parameter.Constant method),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 889--890
+[]\T1/ptm/m/n/10 residual() (refl1d.mystic.parameter.Function method),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 890--891
+[]\T1/ptm/m/n/10 residual() (refl1d.mystic.parameter.IntegerParameter
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 891--892
+[]\T1/ptm/m/n/10 residual() (refl1d.mystic.parameter.OperatorAdd
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 893--894
+[]\T1/ptm/m/n/10 residual() (refl1d.mystic.parameter.OperatorMul
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 894--895
+[]\T1/ptm/m/n/10 residual() (refl1d.mystic.parameter.OperatorPow
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 898--899
+[]\T1/ptm/m/n/10 residual() (refl1d.mystic.parameter.VectorParameter
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 902--903
+[]\T1/ptm/m/n/10 residuals() (refl1d.experiment.MixedExperiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 918--919
+[]\T1/ptm/m/n/10 restore_data() (refl1d.dist.DistributionExperiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 920--921
+[]\T1/ptm/m/n/10 restore_data() (refl1d.experiment.ExperimentBase
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 921--922
+[]\T1/ptm/m/n/10 restore_data() (refl1d.experiment.MixedExperiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 924--925
+[]\T1/ptm/m/n/10 restore_data() (refl1d.fitproblem.MultiFitProblem
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 926--927
+[]\T1/ptm/m/n/10 restore_data() (refl1d.probe.PolarizedNeutronProbe
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 927--928
+[]\T1/ptm/m/n/10 restore_data() (refl1d.probe.PolarizedNeutronQProbe
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 934--935
+[]\T1/ptm/m/n/10 resynth_data() (refl1d.dist.DistributionExperiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 936--937
+[]\T1/ptm/m/n/10 resynth_data() (refl1d.experiment.ExperimentBase
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 937--938
+[]\T1/ptm/m/n/10 resynth_data() (refl1d.experiment.MixedExperiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 940--941
+[]\T1/ptm/m/n/10 resynth_data() (refl1d.fitproblem.MultiFitProblem
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 942--943
+[]\T1/ptm/m/n/10 resynth_data() (refl1d.probe.PolarizedNeutronProbe
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 943--944
+[]\T1/ptm/m/n/10 resynth_data() (refl1d.probe.PolarizedNeutronQProbe
+ []
+
+[177]
+Underfull \hbox (badness 10000) in paragraph at lines 979--980
+[]\T1/ptm/m/n/10 save_profile() (refl1d.dist.DistributionExperiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 981--982
+[]\T1/ptm/m/n/10 save_profile() (refl1d.experiment.ExperimentBase
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 982--983
+[]\T1/ptm/m/n/10 save_profile() (refl1d.experiment.MixedExperiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 986--987
+[]\T1/ptm/m/n/10 save_refl() (refl1d.experiment.MixedExperiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 988--989
+[]\T1/ptm/m/n/10 save_staj() (refl1d.experiment.MixedExperiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 990--991
+[]\T1/ptm/m/n/10 scattering_factors() (refl1d.material.ProbeCache
+ []
+
+
+Overfull \hbox (5.19012pt too wide) in paragraph at lines 993--994
+[]\T1/ptm/m/n/10 scattering_factors() (refl1d.probe.PolarizedNeutronQProbe
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 997--998
+[]\T1/ptm/m/n/10 scattering_factors() (refl1d.probe.XrayProbe method),
+ []
+
+
+Overfull \hbox (11.9603pt too wide) in paragraph at lines 998--999
+[]\T1/ptm/m/n/10 select_corresponding() (refl1d.probe.PolarizedNeutronProbe
+ []
+
+
+Overfull \hbox (19.18027pt too wide) in paragraph at lines 999--1000
+[]\T1/ptm/m/n/10 select_corresponding() (refl1d.probe.PolarizedNeutronQProbe
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1012--1013
+[]\T1/ptm/m/n/10 shared_beam() (refl1d.probe.PolarizedNeutronProbe
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1013--1014
+[]\T1/ptm/m/n/10 shared_beam() (refl1d.probe.PolarizedNeutronQProbe
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1023--1024
+[]\T1/ptm/m/n/10 show_improvement() (refl1d.fitservice.ServiceMonitor
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1024--1025
+[]\T1/ptm/m/n/10 show_improvement() (refl1d.fitters.ConsoleMonitor
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1025--1026
+[]\T1/ptm/m/n/10 show_progress() (refl1d.fitservice.ServiceMonitor
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1033--1034
+[]\T1/ptm/m/n/10 sigma_mroughness (refl1d.staj.MlayerMagnetic at-
+ []
+
+[178]
+Underfull \hbox (badness 10000) in paragraph at lines 1044--1045
+[]\T1/ptm/m/n/10 simulate_data() (refl1d.dist.DistributionExperiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1046--1047
+[]\T1/ptm/m/n/10 simulate_data() (refl1d.experiment.ExperimentBase
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1047--1048
+[]\T1/ptm/m/n/10 simulate_data() (refl1d.experiment.MixedExperiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1049--1050
+[]\T1/ptm/m/n/10 simulate_data() (refl1d.fitproblem.MultiFitProblem
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1051--1052
+[]\T1/ptm/m/n/10 simulate_data() (refl1d.probe.PolarizedNeutronProbe
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1052--1053
+[]\T1/ptm/m/n/10 simulate_data() (refl1d.probe.PolarizedNeutronQProbe
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1068--1069
+[]\T1/ptm/m/n/10 smooth_profile() (refl1d.dist.DistributionExperiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1069--1070
+[]\T1/ptm/m/n/10 smooth_profile() (refl1d.experiment.Experiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1089--1090
+[]\T1/ptm/m/n/10 start_mapper() (refl1d.mapper.AMQPMapper static
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1091--1092
+[]\T1/ptm/m/n/10 start_mapper() (refl1d.mapper.SerialMapper static
+ []
+
+
+Underfull \hbox (badness 8000) in paragraph at lines 1093--1094
+[]\T1/ptm/m/n/10 start_value() (refl1d.mystic.bounds.Bounded method),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1094--1095
+[]\T1/ptm/m/n/10 start_value() (refl1d.mystic.bounds.BoundedAbove
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1095--1096
+[]\T1/ptm/m/n/10 start_value() (refl1d.mystic.bounds.BoundedBelow
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1098--1099
+[]\T1/ptm/m/n/10 start_value() (refl1d.mystic.bounds.SoftBounded
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1100--1101
+[]\T1/ptm/m/n/10 start_worker() (refl1d.mapper.AMQPMapper static
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1102--1103
+[]\T1/ptm/m/n/10 start_worker() (refl1d.mapper.SerialMapper static
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1107--1108
+[]\T1/ptm/m/n/10 step_profile() (refl1d.dist.DistributionExperiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1113--1114
+[]\T1/ptm/m/n/10 stop_mapper() (refl1d.mapper.AMQPMapper static
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1115--1116
+[]\T1/ptm/m/n/10 stop_mapper() (refl1d.mapper.SerialMapper static
+ []
+
+[179]
+Overfull \hbox (0.6999pt too wide) in paragraph at lines 1163--1164
+[]\T1/ptm/m/n/10 update_composition() (refl1d.dist.DistributionExperiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1164--1165
+[]\T1/ptm/m/n/10 update_composition() (refl1d.experiment.Experiment
+ []
+
+
+Overfull \hbox (2.39015pt too wide) in paragraph at lines 1165--1166
+[]\T1/ptm/m/n/10 update_composition() (refl1d.experiment.ExperimentBase
+ []
+
+
+Overfull \hbox (8.91028pt too wide) in paragraph at lines 1166--1167
+[]\T1/ptm/m/n/10 update_composition() (refl1d.experiment.MixedExperiment
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1176--1177
+[]\T1/ptm/m/n/10 valid() (refl1d.mystic.parameter.IntegerParameter
+ []
+
+
+Underfull \hbox (badness 6526) in paragraph at lines 1178--1179
+[]\T1/ptm/m/n/10 valid() (refl1d.mystic.parameter.OperatorDiv method),
+ []
+
+
+Underfull \hbox (badness 5302) in paragraph at lines 1181--1182
+[]\T1/ptm/m/n/10 valid() (refl1d.mystic.parameter.OperatorSub method),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1184--1185
+[]\T1/ptm/m/n/10 valid() (refl1d.mystic.parameter.VectorParameter
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1187--1188
+[]\T1/ptm/m/n/10 value (refl1d.mystic.parameter.IntegerParameter at-
+ []
+
+
+Underfull \hbox (badness 5607) in paragraph at lines 1188--1189
+[]\T1/ptm/m/n/10 value (refl1d.mystic.parameter.OperatorAdd at-tribute),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1189--1190
+[]\T1/ptm/m/n/10 value (refl1d.mystic.parameter.OperatorDiv at-tribute),
+ []
+
+
+Underfull \hbox (badness 6445) in paragraph at lines 1190--1191
+[]\T1/ptm/m/n/10 value (refl1d.mystic.parameter.OperatorMul at-tribute),
+ []
+
+
+Underfull \hbox (badness 5161) in paragraph at lines 1191--1192
+[]\T1/ptm/m/n/10 value (refl1d.mystic.parameter.OperatorPow at-tribute),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1192--1193
+[]\T1/ptm/m/n/10 value (refl1d.mystic.parameter.OperatorSub at-tribute),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1208--1209
+[]\T1/ptm/m/n/10 write_data() (refl1d.experiment.ExperimentBase
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1209--1210
+[]\T1/ptm/m/n/10 write_data() (refl1d.experiment.MixedExperiment
+ []
+
+[180] [181
+
+]) (./Refl1D.aux) ) 
+Here is how much of TeX's memory you used:
+ 9485 strings out of 94074
+ 167255 string characters out of 1165153
+ 242804 words of memory out of 1500000
+ 11129 multiletter control sequences out of 10000+50000
+ 79695 words of font info for 90 fonts, out of 1200000 for 2000
+ 646 hyphenation exceptions out of 8191
+ 38i,20n,51p,533b,594s stack positions out of 5000i,500n,6000p,200000b,5000s
+{/usr/share/texmf-texlive/fonts/enc/dvips/base/8r.enc}</usr/
+share/texmf-texlive/fonts/type1/bluesky/cm/cmex10.pfb></usr/share/texmf-texlive
+/fonts/type1/bluesky/cm/cmmi10.pfb></usr/share/texmf-texlive/fonts/type1/bluesk
+y/cm/cmmi5.pfb></usr/share/texmf-texlive/fonts/type1/bluesky/cm/cmmi7.pfb></usr
+/share/texmf-texlive/fonts/type1/bluesky/cm/cmr10.pfb></usr/share/texmf-texlive
+/fonts/type1/bluesky/cm/cmr5.pfb></usr/share/texmf-texlive/fonts/type1/bluesky/
+cm/cmr7.pfb></usr/share/texmf-texlive/fonts/type1/bluesky/cm/cmsy10.pfb></usr/s
+hare/texmf-texlive/fonts/type1/bluesky/cm/cmsy7.pfb></usr/share/texmf-texlive/f
+onts/type1/urw/courier/ucrb8a.pfb></usr/share/texmf-texlive/fonts/type1/urw/cou
+rier/ucrr8a.pfb></usr/share/texmf-texlive/fonts/type1/urw/courier/ucrro8a.pfb><
+/usr/share/texmf-texlive/fonts/type1/urw/helvetic/uhvb8a.pfb></usr/share/texmf-
+texlive/fonts/type1/urw/helvetic/uhvbo8a.pfb></usr/share/texmf-texlive/fonts/ty
+pe1/urw/helvetic/uhvr8a.pfb></usr/share/texmf-texlive/fonts/type1/urw/times/utm
+b8a.pfb></usr/share/texmf-texlive/fonts/type1/urw/times/utmbi8a.pfb></usr/share
+/texmf-texlive/fonts/type1/urw/times/utmr8a.pfb></usr/share/texmf-texlive/fonts
+/type1/urw/times/utmri8a.pfb>
+Output written on Refl1D.pdf (185 pages, 2640625 bytes).
+PDF statistics:
+ 5302 PDF objects out of 6186 (max. 8388607)
+ 1465 named destinations out of 1728 (max. 131072)
+ 636 words of extra memory for PDF output out of 10000 (max. 10000000)
+

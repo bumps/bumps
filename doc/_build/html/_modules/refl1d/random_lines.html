@@ -1,0 +1,304 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.random_lines &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.random_lines</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for refl1d.random_lines</h1><div class="highlight"><pre>
+<span class="c"># Author : Ismet Sahin</span>
+<span class="c"># Random Lines Algorithm finds the optimal minima of a function</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span> <span class="s">&quot;random_lines&quot;</span><span class="p">]</span>
+
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">zeros</span><span class="p">,</span> <span class="n">ones</span><span class="p">,</span> <span class="n">asarray</span><span class="p">,</span> <span class="n">sqrt</span>
+<span class="kn">from</span> <span class="nn">numpy.random</span> <span class="kn">import</span> <span class="n">rand</span><span class="p">,</span> <span class="n">random_integers</span>
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">deepcopy</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">count</span><span class="p">,</span> <span class="n">izip</span>
+
+<span class="k">def</span> <span class="nf">print_every_five</span><span class="p">(</span><span class="n">step</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">fx</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">step</span><span class="o">%</span><span class="mf">5</span> <span class="o">==</span> <span class="mf">0</span><span class="p">:</span>
+        <span class="k">print</span> <span class="n">step</span><span class="p">,</span><span class="s">&quot;:&quot;</span><span class="p">,</span><span class="n">fx</span><span class="p">[</span><span class="n">k</span><span class="p">],</span><span class="n">x</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+
+<div class="viewcode-block" id="random_lines"><a class="viewcode-back" href="../../api/random_lines.html#refl1d.random_lines.random_lines">[docs]</a><span class="k">def</span> <span class="nf">random_lines</span><span class="p">(</span><span class="n">cfo</span><span class="p">,</span> <span class="n">NP</span><span class="p">,</span> <span class="n">CR</span> <span class="o">=</span> <span class="mf">0.9</span><span class="p">,</span> <span class="n">epsilon</span> <span class="o">=</span> <span class="mf">1e-10</span><span class="p">,</span> <span class="n">maxiter</span> <span class="o">=</span> <span class="mf">1000</span><span class="p">):</span>
+    <span class="k">if</span> <span class="s">&#39;parallel_cost&#39;</span> <span class="ow">in</span> <span class="n">cfo</span><span class="p">:</span>
+        <span class="n">mapper</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="n">asarray</span><span class="p">(</span><span class="n">cfo</span><span class="p">[</span><span class="s">&#39;parallel_cost&#39;</span><span class="p">](</span><span class="n">v</span><span class="o">.</span><span class="n">T</span><span class="p">),</span><span class="s">&#39;d&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">mapper</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="n">asarray</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">cfo</span><span class="p">[</span><span class="s">&#39;cost&#39;</span><span class="p">],</span><span class="n">v</span><span class="o">.</span><span class="n">T</span><span class="p">),</span><span class="s">&#39;d&#39;</span><span class="p">)</span>
+    <span class="n">monitor</span> <span class="o">=</span> <span class="n">cfo</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;monitor&#39;</span><span class="p">,</span><span class="n">print_every_five</span><span class="p">)</span>
+    <span class="n">satisfied_sc</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1</span>
+    <span class="n">n_feval</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1</span>
+
+    <span class="n">n</span> <span class="o">=</span> <span class="n">cfo</span><span class="p">[</span><span class="s">&#39;n&#39;</span><span class="p">]</span>
+
+    <span class="n">X</span> <span class="o">=</span> <span class="n">rand</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">NP</span><span class="p">)</span>            <span class="c"># will hold original vectors</span>
+    <span class="n">fk</span> <span class="o">=</span> <span class="mf">1e300</span> <span class="o">*</span> <span class="n">ones</span><span class="p">(</span><span class="n">NP</span><span class="p">)</span>
+
+    <span class="n">n_no_improvement</span> <span class="o">=</span> <span class="mf">0</span>
+    <span class="n">satisfied_sc</span> <span class="o">=</span> <span class="mf">0</span>
+
+    <span class="c"># CREATE FIRST GENERATION WITH LEGAL PARAMETER VALUES AND EVALUATE COSTS</span>
+    <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span> <span class="n">NP</span><span class="p">):</span>                        <span class="c"># m th member of the population</span>
+        <span class="n">X</span><span class="p">[:,</span><span class="n">m</span><span class="p">]</span> <span class="o">=</span> <span class="n">cfo</span><span class="p">[</span><span class="s">&#39;x1&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">cfo</span><span class="p">[</span><span class="s">&#39;x2&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">cfo</span><span class="p">[</span><span class="s">&#39;x1&#39;</span><span class="p">])</span> <span class="o">*</span> <span class="n">X</span><span class="p">[:,</span><span class="n">m</span><span class="p">]</span>
+    <span class="k">if</span> <span class="s">&#39;x0&#39;</span> <span class="ow">in</span> <span class="n">cfo</span><span class="p">:</span> <span class="n">X</span><span class="p">[:,</span><span class="mf">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">cfo</span><span class="p">[</span><span class="s">&#39;x0&#39;</span><span class="p">]</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="n">mapper</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+    <span class="n">n_feval</span> <span class="o">=</span> <span class="n">NP</span>
+    <span class="n">f_best</span><span class="p">,</span> <span class="n">i_best</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">izip</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">count</span><span class="p">()))</span>
+
+    <span class="c"># CHECK INITIAL STOPPING CRITERIA</span>
+    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">cfo</span><span class="p">[</span><span class="s">&#39;f_opt&#39;</span><span class="p">]</span><span class="o">-</span><span class="n">f_best</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">epsilon</span><span class="p">:</span>
+        <span class="n">satisfied_sc</span> <span class="o">=</span> <span class="mf">1</span>
+        <span class="n">x_best</span> <span class="o">=</span> <span class="n">X</span><span class="p">[:,</span><span class="n">i_best</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">satisfied_sc</span><span class="p">,</span> <span class="n">n_feval</span><span class="p">,</span> <span class="n">f_best</span><span class="p">,</span> <span class="n">x_best</span>
+
+    <span class="k">for</span> <span class="n">L</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mf">1</span><span class="p">,</span><span class="n">maxiter</span><span class="o">+</span><span class="mf">1</span><span class="p">):</span>
+        <span class="n">L</span> <span class="o">=</span> <span class="n">L</span> <span class="o">+</span> <span class="mf">1</span>
+
+        <span class="c"># finding destination vector</span>
+        <span class="n">i_Xj</span> <span class="o">=</span> <span class="n">random_integers</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="n">NP</span><span class="o">-</span><span class="mf">2</span><span class="p">,</span><span class="n">NP</span><span class="p">)</span>
+        <span class="n">i_ge</span> <span class="o">=</span> <span class="p">(</span><span class="n">i_Xj</span> <span class="o">&gt;=</span> <span class="nb">range</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="n">NP</span><span class="p">))</span>
+        <span class="n">i_Xj</span><span class="p">[</span><span class="n">i_ge</span><span class="p">]</span> <span class="o">=</span> <span class="n">i_Xj</span><span class="p">[</span><span class="n">i_ge</span><span class="p">]</span> <span class="o">+</span> <span class="mf">1</span>
+
+        <span class="c"># choosing muk</span>
+        <span class="n">muk</span> <span class="o">=</span> <span class="mf">0.01</span> <span class="o">+</span> <span class="mf">0.49</span><span class="o">*</span><span class="n">rand</span><span class="p">(</span><span class="n">NP</span><span class="p">)</span>
+        <span class="n">inx</span> <span class="o">=</span> <span class="n">rand</span><span class="p">(</span><span class="n">NP</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">0.5</span>
+        <span class="n">muk</span><span class="p">[</span><span class="n">inx</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">muk</span><span class="p">[</span><span class="n">inx</span><span class="p">]</span>
+
+        <span class="c"># find xk and fk s</span>
+        <span class="n">Xi</span> <span class="o">=</span> <span class="n">X</span>
+        <span class="n">Xj</span> <span class="o">=</span> <span class="n">X</span><span class="p">[:,</span><span class="n">i_Xj</span><span class="p">]</span>
+        <span class="n">P</span> <span class="o">=</span> <span class="n">Xj</span> <span class="o">-</span> <span class="n">Xi</span>
+        <span class="n">Xk</span> <span class="o">=</span> <span class="n">Xi</span> <span class="o">+</span> <span class="p">(</span><span class="n">ones</span><span class="p">((</span><span class="n">n</span><span class="p">,</span><span class="mf">1</span><span class="p">))</span><span class="o">*</span><span class="n">muk</span><span class="p">)</span> <span class="o">*</span> <span class="n">P</span>
+        <span class="n">fk</span> <span class="o">=</span> <span class="n">mapper</span><span class="p">(</span><span class="n">Xk</span><span class="p">)</span>
+        <span class="n">n_feval</span> <span class="o">=</span> <span class="n">n_feval</span> <span class="o">+</span> <span class="n">NP</span>
+
+        <span class="c"># find quadratic models</span>
+        <span class="k">if</span> <span class="n">any</span><span class="p">(</span><span class="n">muk</span> <span class="o">==</span> <span class="mf">0</span><span class="p">)</span> <span class="ow">or</span> <span class="n">any</span><span class="p">(</span><span class="n">muk</span> <span class="o">==</span> <span class="mf">1</span><span class="p">):</span>
+            <span class="n">satisfied_sc</span> <span class="o">=</span> <span class="mf">0</span>
+            <span class="n">x_best</span> <span class="o">=</span> <span class="n">X</span><span class="p">[:,</span><span class="n">i_best</span><span class="p">]</span>
+            <span class="k">print</span> <span class="s">&#39;muk cannot be zero or one !!!&#39;</span>
+            <span class="k">return</span> <span class="n">satisfied_sc</span><span class="p">,</span> <span class="n">n_feval</span><span class="p">,</span> <span class="n">f_best</span><span class="p">,</span> <span class="n">x_best</span>
+
+        <span class="n">fi</span> <span class="o">=</span> <span class="n">f</span>
+        <span class="n">fj</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="n">i_Xj</span><span class="p">]</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="p">(</span><span class="n">muk</span><span class="o">/</span><span class="p">(</span><span class="n">muk</span> <span class="o">-</span> <span class="mf">1</span><span class="p">))</span> <span class="o">*</span> <span class="n">fj</span> <span class="o">-</span> <span class="p">((</span><span class="n">muk</span><span class="o">+</span><span class="mf">1</span><span class="p">)</span><span class="o">/</span><span class="n">muk</span><span class="p">)</span> <span class="o">*</span> <span class="n">fi</span> <span class="o">-</span> <span class="p">(</span><span class="mf">1</span><span class="o">/</span><span class="p">(</span><span class="n">muk</span><span class="o">*</span><span class="p">(</span><span class="n">muk</span><span class="o">-</span><span class="mf">1</span><span class="p">)))</span> <span class="o">*</span> <span class="n">fk</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">fj</span> <span class="o">-</span> <span class="n">fi</span> <span class="o">-</span> <span class="n">b</span>
+
+        <span class="n">crossovers</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="n">NP</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="o">&lt;</span> <span class="mf">1e-30</span> <span class="ow">or</span> <span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">0</span> <span class="ow">and</span> <span class="n">fk</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">&gt;</span><span class="n">fi</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="ow">and</span> <span class="n">fk</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">&gt;</span><span class="n">fj</span><span class="p">[</span><span class="n">k</span><span class="p">]):</span>
+                <span class="c"># xi survives</span>
+                <span class="k">continue</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c"># xi may not survive</span>
+                <span class="n">mustar</span> <span class="o">=</span> <span class="o">-</span><span class="n">b</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">/</span><span class="p">(</span><span class="mf">2</span><span class="o">*</span><span class="n">a</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
+                <span class="n">xstar</span> <span class="o">=</span> <span class="n">Xi</span><span class="p">[:,</span><span class="n">k</span><span class="p">]</span> <span class="o">+</span> <span class="n">mustar</span> <span class="o">*</span> <span class="n">P</span><span class="p">[:,</span><span class="n">k</span><span class="p">]</span>
+
+                <span class="c"># choosing random numbers for crossover</span>
+                <span class="n">rn</span> <span class="o">=</span> <span class="n">rand</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+                <span class="n">indi</span> <span class="o">=</span> <span class="p">(</span><span class="n">rn</span> <span class="o">&lt;</span> <span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="mf">1</span> <span class="o">-</span> <span class="n">CR</span><span class="p">))</span>
+                <span class="n">indj</span> <span class="o">=</span> <span class="p">(</span><span class="n">rn</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="mf">1</span> <span class="o">+</span> <span class="n">CR</span><span class="p">))</span>
+                <span class="n">xstar</span><span class="p">[</span><span class="n">indi</span><span class="p">]</span> <span class="o">=</span> <span class="n">Xi</span><span class="p">[</span><span class="n">indi</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span>
+                <span class="n">xstar</span><span class="p">[</span><span class="n">indj</span><span class="p">]</span> <span class="o">=</span> <span class="n">Xj</span><span class="p">[</span><span class="n">indj</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span>
+
+                <span class="c"># map into feasible set</span>
+                <span class="n">inx</span> <span class="o">=</span> <span class="n">xstar</span> <span class="o">&lt;</span> <span class="n">cfo</span><span class="p">[</span><span class="s">&#39;x1&#39;</span><span class="p">];</span>
+                <span class="n">xstar</span><span class="p">[</span><span class="n">inx</span><span class="p">]</span> <span class="o">=</span> <span class="n">cfo</span><span class="p">[</span><span class="s">&#39;x1&#39;</span><span class="p">][</span><span class="n">inx</span><span class="p">];</span>
+                <span class="n">inx</span> <span class="o">=</span> <span class="n">xstar</span> <span class="o">&gt;</span> <span class="n">cfo</span><span class="p">[</span><span class="s">&#39;x2&#39;</span><span class="p">];</span>
+                <span class="n">xstar</span><span class="p">[</span><span class="n">inx</span><span class="p">]</span> <span class="o">=</span> <span class="n">cfo</span><span class="p">[</span><span class="s">&#39;x2&#39;</span><span class="p">][</span><span class="n">inx</span><span class="p">];</span>
+
+                <span class="n">crossovers</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">k</span><span class="p">,</span><span class="n">xstar</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">crossovers</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0</span><span class="p">:</span>
+            <span class="n">idx</span><span class="p">,</span><span class="n">xstar</span> <span class="o">=</span> <span class="p">[</span><span class="n">asarray</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">crossovers</span><span class="p">)]</span>
+            <span class="n">fstar</span> <span class="o">=</span> <span class="n">mapper</span><span class="p">(</span><span class="n">xstar</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+            <span class="n">n_feval</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">crossovers</span><span class="p">)</span>
+
+            <span class="c"># xi does not survive, xstar replaces it</span>
+            <span class="n">update</span> <span class="o">=</span> <span class="n">fstar</span> <span class="o">&lt;</span> <span class="n">fi</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+            <span class="n">f</span><span class="p">[</span><span class="n">idx</span><span class="p">[</span><span class="n">update</span><span class="p">]]</span> <span class="o">=</span> <span class="n">fstar</span><span class="p">[</span><span class="n">update</span><span class="p">]</span>
+            <span class="n">X</span><span class="p">[:,</span><span class="n">idx</span><span class="p">[</span><span class="n">update</span><span class="p">]]</span> <span class="o">=</span> <span class="n">xstar</span><span class="p">[</span><span class="n">update</span><span class="p">,:]</span><span class="o">.</span><span class="n">T</span>
+
+        <span class="c"># CHECKING STOPPING CRITERIA</span>
+        <span class="n">f_best</span><span class="p">,</span> <span class="n">i_best</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">izip</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">count</span><span class="p">()))</span>
+        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">cfo</span><span class="p">[</span><span class="s">&#39;f_opt&#39;</span><span class="p">]</span><span class="o">-</span><span class="n">f_best</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">epsilon</span><span class="p">:</span>
+            <span class="n">satisfied_sc</span> <span class="o">=</span> <span class="mf">1</span>
+            <span class="n">x_best</span> <span class="o">=</span> <span class="n">X</span><span class="p">[:,</span><span class="n">i_best</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">satisfied_sc</span><span class="p">,</span> <span class="n">n_feval</span><span class="p">,</span> <span class="n">f_best</span><span class="p">,</span> <span class="n">x_best</span>
+
+        <span class="n">monitor</span><span class="p">(</span><span class="n">L</span><span class="p">,</span><span class="n">X</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">i_best</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="mf">1</span><span class="p">,</span> <span class="n">n_feval</span><span class="p">,</span> <span class="n">f_best</span><span class="p">,</span> <span class="n">X</span><span class="p">[:,</span><span class="n">i_best</span><span class="p">]</span>
+
+</div>
+<span class="k">def</span> <span class="nf">particle_swarm</span><span class="p">(</span><span class="n">cfo</span><span class="p">,</span> <span class="n">NP</span><span class="p">,</span> <span class="n">epsilon</span> <span class="o">=</span> <span class="mf">1e-10</span><span class="p">,</span> <span class="n">maxiter</span> <span class="o">=</span> <span class="mf">1000</span><span class="p">):</span>
+    <span class="k">if</span> <span class="s">&#39;parallel_cost&#39;</span> <span class="ow">in</span> <span class="n">cfo</span><span class="p">:</span>
+        <span class="n">mapper</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="n">asarray</span><span class="p">(</span><span class="n">cfo</span><span class="p">[</span><span class="s">&#39;parallel_cost&#39;</span><span class="p">](</span><span class="n">v</span><span class="o">.</span><span class="n">T</span><span class="p">),</span><span class="s">&#39;d&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">mapper</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="n">asarray</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">cfo</span><span class="p">[</span><span class="s">&#39;cost&#39;</span><span class="p">],</span><span class="n">v</span><span class="o">.</span><span class="n">T</span><span class="p">),</span><span class="s">&#39;d&#39;</span><span class="p">)</span>
+    <span class="n">monitor</span> <span class="o">=</span> <span class="n">cfo</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;monitor&#39;</span><span class="p">,</span><span class="n">print_every_five</span><span class="p">)</span>
+    <span class="n">satisfied_sc</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1</span>
+
+    <span class="n">n</span> <span class="o">=</span> <span class="n">cfo</span><span class="p">[</span><span class="s">&#39;n&#39;</span><span class="p">]</span>
+    <span class="n">c1</span> <span class="o">=</span> <span class="mf">2.8</span><span class="p">;</span>
+    <span class="n">c2</span> <span class="o">=</span> <span class="mf">1.3</span><span class="p">;</span>
+    <span class="n">phi</span> <span class="o">=</span> <span class="n">c1</span> <span class="o">+</span> <span class="n">c2</span><span class="p">;</span>
+    <span class="n">K</span> <span class="o">=</span> <span class="mf">2</span> <span class="o">/</span> <span class="nb">abs</span><span class="p">(</span><span class="mf">2</span> <span class="o">-</span> <span class="n">phi</span> <span class="o">-</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">phi</span><span class="o">*</span><span class="n">phi</span> <span class="o">-</span> <span class="mf">4</span><span class="o">*</span><span class="n">phi</span><span class="p">))</span>
+
+    <span class="n">X</span> <span class="o">=</span> <span class="n">rand</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">NP</span><span class="p">)</span>            <span class="c"># will hold original vectors</span>
+    <span class="n">V</span> <span class="o">=</span> <span class="n">zeros</span><span class="p">((</span><span class="n">n</span><span class="p">,</span> <span class="n">NP</span><span class="p">))</span>
+
+    <span class="n">n_no_improvement</span> <span class="o">=</span> <span class="mf">0</span>
+    <span class="n">satisfied_sc</span> <span class="o">=</span> <span class="mf">0</span>
+
+    <span class="c"># CREATE FIRST GENERATION WITH LEGAL PARAMETER VALUES AND EVALUATE COSTS</span>
+    <span class="n">rn1</span> <span class="o">=</span> <span class="n">rand</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">NP</span><span class="p">);</span>
+    <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span> <span class="n">NP</span><span class="p">):</span>                        <span class="c"># m th member of the population</span>
+        <span class="n">extend</span> <span class="o">=</span> <span class="n">cfo</span><span class="p">[</span><span class="s">&#39;x2&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">cfo</span><span class="p">[</span><span class="s">&#39;x1&#39;</span><span class="p">]</span>
+        <span class="n">X</span><span class="p">[:,</span><span class="n">m</span><span class="p">]</span> <span class="o">=</span> <span class="n">cfo</span><span class="p">[</span><span class="s">&#39;x1&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">extend</span> <span class="o">*</span> <span class="n">X</span><span class="p">[:,</span><span class="n">m</span><span class="p">]</span>
+        <span class="n">V</span><span class="p">[:,</span><span class="n">m</span><span class="p">]</span> <span class="o">=</span> <span class="mf">2</span> <span class="o">*</span> <span class="n">rn1</span><span class="p">[:,</span><span class="n">m</span><span class="p">]</span> <span class="o">*</span> <span class="n">extend</span> <span class="o">-</span> <span class="n">extend</span>
+
+    <span class="k">if</span> <span class="s">&#39;x0&#39;</span> <span class="ow">in</span> <span class="n">cfo</span><span class="p">:</span> <span class="n">X</span><span class="p">[:,</span><span class="mf">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">cfo</span><span class="p">[</span><span class="s">&#39;x0&#39;</span><span class="p">]</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="n">mapper</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+    <span class="n">n_feval</span> <span class="o">=</span> <span class="n">NP</span>
+    <span class="n">P</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+    <span class="n">f_best</span><span class="p">,</span> <span class="n">i_best</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">izip</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">count</span><span class="p">()))</span>
+    <span class="k">for</span> <span class="n">L</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mf">2</span><span class="p">,</span><span class="n">maxiter</span><span class="o">+</span><span class="mf">1</span><span class="p">):</span>
+
+        <span class="n">rn2</span> <span class="o">=</span> <span class="n">rand</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">NP</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span> <span class="n">NP</span><span class="p">):</span>
+            <span class="c">#r = rand(2)</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="n">rn2</span><span class="p">[:,</span><span class="n">i</span><span class="p">];</span>
+            <span class="n">V</span><span class="p">[:,</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">V</span><span class="p">[:,</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">r</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="o">*</span><span class="n">c1</span><span class="o">*</span><span class="p">(</span><span class="n">P</span><span class="p">[:,</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">X</span><span class="p">[:,</span><span class="n">i</span><span class="p">])</span> <span class="o">+</span> <span class="n">r</span><span class="p">[</span><span class="mf">1</span><span class="p">]</span><span class="o">*</span><span class="n">c2</span><span class="o">*</span><span class="p">(</span><span class="n">P</span><span class="p">[:,</span><span class="n">i_best</span><span class="p">]</span> <span class="o">-</span> <span class="n">X</span><span class="p">[:,</span><span class="n">i</span><span class="p">])</span>
+            <span class="n">V</span><span class="p">[:,</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">K</span> <span class="o">*</span> <span class="n">V</span><span class="p">[:,</span><span class="n">i</span><span class="p">]</span>
+
+            <span class="n">X</span><span class="p">[:,</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">X</span><span class="p">[:,</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">V</span><span class="p">[:,</span><span class="n">i</span><span class="p">]</span>
+
+        <span class="n">f_temp</span> <span class="o">=</span> <span class="n">mapper</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">f_temp</span> <span class="o">&lt;</span> <span class="n">f</span>
+        <span class="n">f</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">f_temp</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+        <span class="n">P</span><span class="p">[:,</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">X</span><span class="p">[:,</span><span class="n">idx</span><span class="p">]</span>
+
+        <span class="n">n_feval</span> <span class="o">=</span> <span class="n">n_feval</span> <span class="o">+</span> <span class="n">NP</span>
+
+        <span class="c"># CHECKING STOPPING CRITERIA</span>
+        <span class="n">f_best</span><span class="p">,</span> <span class="n">i_best</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">izip</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">count</span><span class="p">()))</span>
+        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">cfo</span><span class="p">[</span><span class="s">&#39;f_opt&#39;</span><span class="p">]</span><span class="o">-</span><span class="n">f_best</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">epsilon</span><span class="p">:</span>
+            <span class="n">satisfied_sc</span> <span class="o">=</span> <span class="mf">1</span>
+            <span class="n">x_best</span> <span class="o">=</span> <span class="n">X</span><span class="p">[:,</span><span class="n">i_best</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">satisfied_sc</span><span class="p">,</span> <span class="n">n_feval</span><span class="p">,</span> <span class="n">f_best</span><span class="p">,</span> <span class="n">x_best</span>
+
+        <span class="n">monitor</span><span class="p">(</span><span class="n">L</span><span class="p">,</span><span class="n">X</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">i_best</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="mf">1</span><span class="p">,</span> <span class="n">n_feval</span><span class="p">,</span> <span class="n">f_best</span><span class="p">,</span> <span class="n">X</span><span class="p">[:,</span><span class="n">i_best</span><span class="p">]</span>
+
+<span class="k">def</span> <span class="nf">example_call</span><span class="p">(</span><span class="n">optimizer</span><span class="o">=</span><span class="n">random_lines</span><span class="p">):</span>
+    <span class="kn">from</span> <span class="nn">numpy.random</span> <span class="kn">import</span> <span class="n">seed</span>
+    <span class="n">seed</span><span class="p">(</span><span class="mf">1</span><span class="p">);</span>
+    <span class="n">cost</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span><span class="o">**</span><span class="mf">2</span> <span class="o">+</span> <span class="n">x</span><span class="p">[</span><span class="mf">1</span><span class="p">]</span><span class="o">**</span><span class="mf">2</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="mf">2</span>
+    <span class="n">x1</span> <span class="o">=</span> <span class="o">-</span><span class="mf">5</span> <span class="o">*</span> <span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="n">x2</span> <span class="o">=</span>  <span class="mf">5</span> <span class="o">*</span> <span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="n">f_opt</span> <span class="o">=</span> <span class="mf">0</span>
+    <span class="n">cfo</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;cost&#39;</span><span class="p">:</span><span class="n">cost</span><span class="p">,</span> <span class="s">&#39;n&#39;</span><span class="p">:</span><span class="n">n</span><span class="p">,</span> <span class="s">&#39;x1&#39;</span><span class="p">:</span><span class="n">x1</span><span class="p">,</span> <span class="s">&#39;x2&#39;</span><span class="p">:</span><span class="n">x2</span><span class="p">,</span> <span class="s">&#39;f_opt&#39;</span><span class="p">:</span><span class="n">f_opt</span><span class="p">};</span>
+
+    <span class="n">NP</span> <span class="o">=</span> <span class="mf">10</span> <span class="o">*</span> <span class="n">n</span>
+    <span class="n">satisfied_sc</span><span class="p">,</span> <span class="n">n_feval</span><span class="p">,</span> <span class="n">f_best</span><span class="p">,</span> <span class="n">x_best</span> <span class="o">=</span> <span class="n">optimizer</span><span class="p">(</span><span class="n">cfo</span><span class="p">,</span> <span class="n">NP</span><span class="p">)</span>
+    <span class="k">print</span> <span class="n">satisfied_sc</span><span class="p">,</span> <span class="s">&quot;n:</span><span class="si">%d</span><span class="s">&quot;</span><span class="o">%</span><span class="n">n_feval</span><span class="p">,</span> <span class="n">f_best</span><span class="p">,</span> <span class="n">x_best</span>
+
+<span class="k">def</span> <span class="nf">example_call_spline</span><span class="p">():</span>
+    <span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">linspace</span>
+    <span class="kn">from</span> <span class="nn">numpy.random</span> <span class="kn">import</span> <span class="n">seed</span>
+    <span class="kn">import</span> <span class="nn">splinedemo</span> <span class="kn">as</span> <span class="nn">sp</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="mf">6</span>
+    <span class="c">#dx = rand(m-1)*20</span>
+    <span class="n">dx</span> <span class="o">=</span> <span class="n">asarray</span><span class="p">([</span><span class="mf">3.0</span><span class="p">,</span>   <span class="mf">6.0</span><span class="p">,</span>  <span class="mf">16.0</span><span class="p">,</span>  <span class="mf">15.0</span><span class="p">,</span>   <span class="mf">10.0</span><span class="p">])</span>
+
+    <span class="n">y</span> <span class="o">=</span> <span class="n">linspace</span><span class="p">(</span><span class="mf">1</span><span class="p">,</span><span class="mf">3</span><span class="p">,</span><span class="n">m</span><span class="p">)</span> <span class="c"># Freeform interface</span>
+    <span class="n">M</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">spline_model</span><span class="p">(</span><span class="n">dx</span><span class="p">,</span><span class="n">y</span><span class="p">)</span>
+    <span class="n">D</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span><span class="n">M</span><span class="p">)</span>
+    <span class="n">refl</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">Refl</span><span class="p">(</span><span class="n">D</span><span class="p">)</span>
+    <span class="c">#p = hstack((dx,y))</span>
+    <span class="c">#refl.chisq(p)</span>
+
+    <span class="n">cost</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">refl</span><span class="o">.</span><span class="n">chisq</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="mf">11</span>
+    <span class="n">x1</span> <span class="o">=</span> <span class="mf">0</span> <span class="o">*</span> <span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="n">x2</span> <span class="o">=</span> <span class="n">asarray</span><span class="p">([</span><span class="mf">17</span><span class="p">,</span> <span class="mf">17</span><span class="p">,</span> <span class="mf">17</span><span class="p">,</span> <span class="mf">17</span><span class="p">,</span> <span class="mf">17</span><span class="p">,</span> <span class="mf">4</span><span class="p">,</span> <span class="mf">4</span><span class="p">,</span> <span class="mf">4</span><span class="p">,</span> <span class="mf">4</span><span class="p">,</span> <span class="mf">4</span><span class="p">,</span> <span class="mf">4</span><span class="p">])</span>
+    <span class="n">cfo</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;cost&#39;</span><span class="p">:</span><span class="n">cost</span><span class="p">,</span> <span class="s">&#39;n&#39;</span><span class="p">:</span><span class="n">n</span><span class="p">,</span> <span class="s">&#39;x1&#39;</span><span class="p">:</span><span class="n">x1</span><span class="p">,</span> <span class="s">&#39;x2&#39;</span><span class="p">:</span><span class="n">x2</span><span class="p">};</span>
+    <span class="c">#print &quot;chisq&quot;,cost.chisq(p)</span>
+    <span class="c">#cost.plot(p)</span>
+    <span class="c">#import pylab; pylab.show()</span>
+
+    <span class="n">NP</span> <span class="o">=</span> <span class="mf">5</span> <span class="o">*</span> <span class="n">n</span>
+    <span class="n">satisfied_sc</span><span class="p">,</span> <span class="n">n_feval</span><span class="p">,</span> <span class="n">f_best</span><span class="p">,</span> <span class="n">x_best</span> <span class="o">=</span> <span class="n">random_lines</span><span class="p">(</span><span class="n">cfo</span><span class="p">,</span> <span class="n">NP</span><span class="p">)</span>
+    <span class="k">print</span> <span class="n">satisfied_sc</span><span class="p">,</span> <span class="n">n_feval</span><span class="p">,</span> <span class="n">f_best</span><span class="p">,</span> <span class="n">x_best</span>
+
+
+<span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="c">#example_call_spline()</span>
+    <span class="k">print</span> <span class="s">&quot;=== Random Lines&quot;</span>
+    <span class="n">example_call</span><span class="p">(</span><span class="n">random_lines</span><span class="p">)</span>
+    <span class="k">print</span> <span class="s">&quot;=== Particle Swarm&quot;</span>
+    <span class="n">example_call</span><span class="p">(</span><span class="n">particle_swarm</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

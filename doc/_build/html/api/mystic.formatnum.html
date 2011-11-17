@@ -1,0 +1,131 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.mystic.formatnum - Format numbers &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../index.html" />
+    <link rel="up" title="Reference" href="index.html" />
+    <link rel="prev" title="refl1d.mystic.bounds - Bounds" href="mystic.bounds.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.mystic.formatnum - Format numbers</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="mystic.bounds.html">refl1d.mystic.bounds - Bounds</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="refl1d-mystic-formatnum-format-numbers">
+<h1>refl1d.mystic.formatnum - Format numbers<a class="headerlink" href="#refl1d-mystic-formatnum-format-numbers" title="Permalink to this headline">¶</a></h1>
+<table border="1" class="docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr><td><tt class="xref py py-obj docutils literal"><span class="pre">format_uncertainty</span></tt></td>
+<td>Value and uncertainty formatter.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.mystic.formatnum.format_uncertainty_pm" title="refl1d.mystic.formatnum.format_uncertainty_pm"><tt class="xref py py-obj docutils literal"><span class="pre">format_uncertainty_pm</span></tt></a></td>
+<td>Given <em>value</em> v and <em>uncertainty</em> dv, return a string v +/- dv.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.mystic.formatnum.format_uncertainty_compact" title="refl1d.mystic.formatnum.format_uncertainty_compact"><tt class="xref py py-obj docutils literal"><span class="pre">format_uncertainty_compact</span></tt></a></td>
+<td>Given <em>value</em> v and <em>uncertainty</em> dv, return the compact</td>
+</tr>
+</tbody>
+</table>
+<span class="target" id="module-refl1d.mystic.formatnum"></span><div class="section" id="number-formatting">
+<h2>Number formatting<a class="headerlink" href="#number-formatting" title="Permalink to this headline">¶</a></h2>
+<p>Format values and uncertainties nicely for printing.</p>
+<p><a class="reference internal" href="#refl1d.mystic.formatnum.format_uncertainty_pm" title="refl1d.mystic.formatnum.format_uncertainty_pm"><tt class="xref py py-func docutils literal"><span class="pre">format_uncertainty_pm()</span></tt></a> produces the expanded format v +/- err.</p>
+<p><a class="reference internal" href="#refl1d.mystic.formatnum.format_uncertainty_compact" title="refl1d.mystic.formatnum.format_uncertainty_compact"><tt class="xref py py-func docutils literal"><span class="pre">format_uncertainty_compact()</span></tt></a> produces the compact format v(##),
+where the number in parenthesis is the uncertainty in the last two digits of v.</p>
+<p><tt class="xref py py-func docutils literal"><span class="pre">format_uncertainty()</span></tt> uses the compact format by default, but this
+can be changed to use the expanded +/- format by setting
+format_uncertainty.compact to False.</p>
+<p>The formatted string uses only the number of digits warranted by
+the uncertainty in the measurement.</p>
+<p>If the uncertainty is 0 or not otherwise provided, the simple
+%g floating point format option is used.</p>
+<p>Infinite and indefinite numbers are represented as inf and NaN.</p>
+<p>Example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">v</span><span class="p">,</span><span class="n">dv</span> <span class="o">=</span> <span class="mf">757.2356</span><span class="p">,</span><span class="mf">0.01032</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">print</span> <span class="n">format_uncertainty_pm</span><span class="p">(</span><span class="n">v</span><span class="p">,</span><span class="n">dv</span><span class="p">)</span>
+<span class="go">757.236 +/- 0.010</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">print</span> <span class="n">format_uncertainty_compact</span><span class="p">(</span><span class="n">v</span><span class="p">,</span><span class="n">dv</span><span class="p">)</span>
+<span class="go">757.236(10)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">print</span> <span class="n">format_uncertainty</span><span class="p">(</span><span class="n">v</span><span class="p">,</span><span class="n">dv</span><span class="p">)</span>
+<span class="go">757.236(10)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">format_uncertainty</span><span class="o">.</span><span class="n">compact</span> <span class="o">=</span> <span class="bp">False</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">print</span> <span class="n">format_uncertainty</span><span class="p">(</span><span class="n">v</span><span class="p">,</span><span class="n">dv</span><span class="p">)</span>
+<span class="go">757.236 +/- 0.010</span>
+</pre></div>
+</div>
+<p>UncertaintyFormatter() returns a private formatter with its own
+formatter.compact flag.</p>
+<dl class="function">
+<dt id="refl1d.mystic.formatnum.format_uncertainty_pm">
+<tt class="descclassname">refl1d.mystic.formatnum.</tt><tt class="descname">format_uncertainty_pm</tt><big>(</big><em>value</em>, <em>uncertainty</em><big>)</big><a class="reference internal" href="../_modules/refl1d/mystic/formatnum.html#format_uncertainty_pm"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.mystic.formatnum.format_uncertainty_pm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given <em>value</em> v and <em>uncertainty</em> dv, return a string v +/- dv.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="refl1d.mystic.formatnum.format_uncertainty_compact">
+<tt class="descclassname">refl1d.mystic.formatnum.</tt><tt class="descname">format_uncertainty_compact</tt><big>(</big><em>value</em>, <em>uncertainty</em><big>)</big><a class="reference internal" href="../_modules/refl1d/mystic/formatnum.html#format_uncertainty_compact"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.mystic.formatnum.format_uncertainty_compact" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given <em>value</em> v and <em>uncertainty</em> dv, return the compact
+representation v(##), where ## are the first two digits of
+the uncertainty.</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="mystic.bounds.html">refl1d.mystic.bounds - Bounds</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

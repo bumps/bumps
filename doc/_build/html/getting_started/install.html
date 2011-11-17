@@ -1,0 +1,300 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Installing the application &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../index.html" />
+    <link rel="up" title="Getting Started" href="index.html" />
+    <link rel="next" title="Server installation" href="server.html" />
+    <link rel="prev" title="Getting Started" href="index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>Installing the application</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="index.html">Getting Started</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="server.html">Server installation</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="installing-the-application">
+<span id="installing"></span><h1>Installing the application<a class="headerlink" href="#installing-the-application" title="Permalink to this headline">¶</a></h1>
+<div class="contents local topic" id="contents">
+<ul class="simple">
+<li><a class="reference internal" href="#building-from-source" id="id1">Building from source</a><ul>
+<li><a class="reference internal" href="#windows" id="id2">Windows</a></li>
+<li><a class="reference internal" href="#linux" id="id3">Linux</a></li>
+<li><a class="reference internal" href="#os-x" id="id4">OS/X</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#building-documentation" id="id5">Building Documentation</a></li>
+<li><a class="reference internal" href="#windows-installer" id="id6">Windows Installer</a></li>
+</ul>
+</div>
+<p>Refl1D 0.6.19 is provided as a Windows installer or as source:</p>
+<blockquote>
+<ul class="simple">
+<li>Windows installer: <a class="reference external" href="http://www.reflectometry.org/danse/download.php?file=refl1d-0.6.19-win32.exe">refl1d-0.6.19-win32.exe</a></li>
+<li>Apple installer: <a class="reference external" href="http://www.reflectometry.org/danse/download.php?file=Refl1D 0.6.19.dmg">Refl1D 0.6.19.dmg</a></li>
+<li>Source: <a class="reference external" href="http://www.reflectometry.org/danse/download.php?file=refl1d-0.6.19.zip">refl1d-0.6.19.zip</a></li>
+</ul>
+</blockquote>
+<p>Th Windows installer walks through the steps of setting the program up
+to run on your machine and provides the sample data to be used in the
+tutorial.  Installers for other platforms are not yet available, and
+must be built from source.</p>
+<div class="section" id="building-from-source">
+<h2><a class="toc-backref" href="#id1">Building from source</a><a class="headerlink" href="#building-from-source" title="Permalink to this headline">¶</a></h2>
+<p>Building the application from source requires some preparation.</p>
+<p>First you will need to set up your python environment.  We depend on
+numerous external packages.  The versions listed below are a snapshot
+of a configuration that we are using. Both older or more recent versions
+may work.</p>
+<p>Our base scientific python environment contains:</p>
+<blockquote>
+<ul class="simple">
+<li>Python 2.6 (not 3.x)</li>
+<li>Matplotlib 1.0.0</li>
+<li>Numpy 1.3.0</li>
+<li>Scipy 0.7.0</li>
+<li>WxPython 2.8.10.1</li>
+<li>SetupTools 0.6c9</li>
+<li>gcc 3.4.4</li>
+<li>PyParsing 1.5.2</li>
+<li>Periodictable 1.3</li>
+</ul>
+</blockquote>
+<p>To run tests you will need:</p>
+<blockquote>
+<ul class="simple">
+<li>Nose 0.11</li>
+</ul>
+</blockquote>
+<p>To build the HTML documentation you will need:</p>
+<blockquote>
+<ul class="simple">
+<li>Sphinx 1.0.4</li>
+<li>DocUtils 0.5</li>
+<li>Pyments 1.0</li>
+<li>Jinja2 2.5.2</li>
+<li><a class="reference external" href="http://www.mathjax.org/download/">MathJax</a> 1.0.1</li>
+</ul>
+</blockquote>
+<p>The PDF documentation requires a working LaTeX installation.</p>
+<p>Platform specific details for setting up your environment are given below.</p>
+<div class="section" id="windows">
+<h3><a class="toc-backref" href="#id2">Windows</a><a class="headerlink" href="#windows" title="Permalink to this headline">¶</a></h3>
+<p>The <a class="reference external" href="http://code.google.com/p/pythonxy/">Python(X,Y)</a> package contains
+most of the pieces required to build the application.  You can select
+&#8220;Full Install&#8221; for convenience, or you can select &#8220;Custom Install&#8221; and make
+sure the above packages are selected.  In particular, wx is not selected
+by default.  Be sure to select py2exe as well, since you may want to
+build a self contained release package.</p>
+<p>The Python(x,y) package supplies a C/C++ compiler, but the package does
+not set it as the default compiler.  To do this you will need to create
+<em>C:\Python26\Lib\distutils\distutils.cfg</em> with the following content:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="p">[</span><span class="n">build</span><span class="p">]</span>
+<span class="n">compiler</span><span class="o">=</span><span class="n">mingw32</span>
+</pre></div>
+</div>
+<p>Once python is prepared, you can install the periodic table package using
+the Windows console.  To start the console, click the &#8220;Start&#8221; icon on your
+task bar and select &#8220;Run...&#8221;.  In the Run box, type &#8220;cmd&#8221;.  Enter the
+following command in the console:</p>
+<div class="highlight-python"><pre>python -m easy_install periodictable</pre>
+</div>
+<p>This should install periodictable and pyparsing.</p>
+<p>Next change to the directory containing the source.  This will be a command
+like the following:</p>
+<div class="highlight-python"><pre>cd "C:\Documents and Settings\&lt;username&gt;\My Documents\refl1d-src"</pre>
+</div>
+<p>Now type the command to build and install Refl1D:</p>
+<div class="highlight-python"><pre>python setup.py install
+python test.py</pre>
+</div>
+<p>Now change to your data directory:</p>
+<div class="highlight-python"><pre>cd "C:\Documents and Settings\&lt;username&gt;\My Documents\data"</pre>
+</div>
+<p>To run the program use:</p>
+<div class="highlight-python"><pre>python "C:\Python26\Scripts\refl1d" -h</pre>
+</div>
+</div>
+<div class="section" id="linux">
+<h3><a class="toc-backref" href="#id3">Linux</a><a class="headerlink" href="#linux" title="Permalink to this headline">¶</a></h3>
+<p>Many linux distributions will provide the base required packages.  You
+will need to refer to your distribution documentation for details.</p>
+<p>On ubuntu you can use apt-get to install matplotlib, numpy, scipy, wx,
+nose and sphinx.</p>
+<p>From a terminal, change to the directory containing the source and type:</p>
+<div class="highlight-python"><pre>python -m easy_install periodictable
+python setup.py install
+python test.py</pre>
+</div>
+<p>This should install the refl1d file somewhere on your path.</p>
+<p>To run the program use:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">refl1d</span> <span class="o">-</span><span class="n">h</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="os-x">
+<h3><a class="toc-backref" href="#id4">OS/X</a><a class="headerlink" href="#os-x" title="Permalink to this headline">¶</a></h3>
+<p>Building a useful python environment on OS/X is somewhat involved, and
+this documentation will be expanded to provide more detail.</p>
+<p>You will need to download python, numpy, scipy, wx and matplotlib
+packages from their respective sites (use the links above).  Setuptools
+will need to be installed by hand.</p>
+<p>From a terminal, change to the directory containing the source and type:</p>
+<div class="highlight-python"><pre>python -m easy_install periodictable nose sphinx
+python setup.py install
+python test.py</pre>
+</div>
+<p>This should install the refl1d file somewhere on your path.</p>
+<p>To run the program use:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">refl1d</span> <span class="o">-</span><span class="n">h</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="building-documentation">
+<h2><a class="toc-backref" href="#id5">Building Documentation</a><a class="headerlink" href="#building-documentation" title="Permalink to this headline">¶</a></h2>
+<p>Building the package documentation requires a working Sphinx installation,
+a working LaTex installation and a copy of MathJax.  Download and unzip
+the MathJax package into the doc/sphinx directory to install MathJax.  You
+can then build the documentation as follows:</p>
+<div class="highlight-python"><pre>(cd doc &amp;&amp; make clean html pdf)</pre>
+</div>
+<p>Note that this only works under cygwin/msys for now since we are
+using <em>make</em>.  There is a skeleton <em>make.bat</em> in the directory
+that will work using <em>cmd</em> but it doesn&#8217;t yet build PDF files.</p>
+<p>You can see the result by pointing your browser to:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">refl1d</span><span class="o">/</span><span class="n">doc</span><span class="o">/</span><span class="n">_build</span><span class="o">/</span><span class="n">html</span><span class="o">/</span><span class="n">index</span><span class="o">.</span><span class="n">html</span>
+<span class="n">refl1d</span><span class="o">/</span><span class="n">doc</span><span class="o">/</span><span class="n">_build</span><span class="o">/</span><span class="n">latex</span><span class="o">/</span><span class="n">Refl1D</span><span class="o">.</span><span class="n">pdf</span>
+</pre></div>
+</div>
+<p>As of this writing, the \AA LaTeX command for the Angstrom symbol is not
+available in the MathJax distribution. We patched jax/input/TeX/jax.js
+with the additional symbol AA using:</p>
+<div class="highlight-python"><pre>  // Ord symbols
+  S:            '00A7',
++ AA:           '212B',
+  aleph:        ['2135',{mathvariant: MML.VARIANT.NORMAL}],</pre>
+</div>
+<p>If you are using unusual math characters, you may need similar patches
+for your own documentation.</p>
+<p>ReStructured text format does not have a nice syntax for superscripts and
+subscripts.  Units such as g·cm<sup>-3</sup> are entered using macros such as
+|g/cm^3| to hide the details.  The complete list of macros is available in</p>
+<blockquote>
+doc/sphinx/rst_prolog</blockquote>
+<p>In addition to macros for units, we also define cdot, angstrom and degrees
+unicode characters here.  The corresponding latex symbols are defined in
+doc/sphinx/conf.py.</p>
+<p>There is a bug in sphinx versions (1.0.7 as of this writing) in which
+latex tables cannot be created.  You can fix this by changing:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="bp">self</span><span class="o">.</span><span class="n">body</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">table</span><span class="o">.</span><span class="n">colspec</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>to:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="bp">self</span><span class="o">.</span><span class="n">body</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">table</span><span class="o">.</span><span class="n">colspec</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>in site-packages/sphinx/writers/latex.py.</p>
+</div>
+<div class="section" id="windows-installer">
+<h2><a class="toc-backref" href="#id6">Windows Installer</a><a class="headerlink" href="#windows-installer" title="Permalink to this headline">¶</a></h2>
+<p>To build a windows standalone executable with py2exe you may first need
+to create an empty file named
+<em>C:\Python26\Lib\numpy\distutils\tests\__init__.py</em>.
+Without this file, py2exe raises an error when it is searching for
+the parts of the numpy package.  This may be fixed on recent versions
+of numpy. Next, update the __version__ tag in refl1d/__init__.py to mark
+it as your own.</p>
+<p>Now you can build the standalone executable using:</p>
+<div class="highlight-python"><pre>python setup_py2exe</pre>
+</div>
+<p>This creates a dist subdirectory in the source tree containing
+everything needed to run the application including python and
+all required packages.</p>
+<p>To build the Windows installer, you will need two more downloads:</p>
+<blockquote>
+<ul class="simple">
+<li>Visual C++ 2008 Redistributable Package (x86) 11/29/2007</li>
+<li><a class="reference external" href="http://www.jrsoftware.org/isdl.php">Inno Setup</a> 5.3.10 QuickStart Pack</li>
+</ul>
+</blockquote>
+<p>The C++ redistributable package is needed for programs compiled with the
+Microsoft Visual C++ compiler, including the standard build of the Python
+interpreter for Windows.  It is available as vcredist_x86.exe from the
+<a class="reference external" href="http://www.microsoft.com/downloads/">Microsoft Download Center</a>.
+Be careful to select the version that corresponds to the one used
+to build the Python interpreter &#8212; different versions can have the
+same name.  For the Python 2.6 standard build, the file is 1.7 Mb
+and is dated 11/29/2007.  We have a copy (<a class="reference external" href="http://www.reflectometry.org/danse/download.php?file=vcredist_x86.exe">vcredist_x86.exe</a>) on
+our website for your convenience.  Save it to the <em>C:\Python26</em>
+directory so the installer script can find it.</p>
+<p>Inno Setup creates the installer executable.  When installing Inno Setup,
+be sure to choose the &#8216;Install Inno Setup Preprocessor&#8217; option.</p>
+<p>With all the pieces in place, you can run through all steps of the
+build and install by changing to the top level python directory and
+typing:</p>
+<div class="highlight-python"><pre>python master_builder.py</pre>
+</div>
+<p>This creates the redistributable installer refl1d-&lt;version&gt;-win32.exe for
+Windows one level up in the directory tree.  In addition, source archives
+in zip and tar.gz format are produced as well as text files listing the
+contents of the installer and the archives.</p>
+</div>
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="index.html">Getting Started</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="server.html">Server installation</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

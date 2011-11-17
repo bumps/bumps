@@ -1,0 +1,496 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.mystic.formatnum &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../../../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../../../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.mystic.formatnum</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        <a class="uplink" href="../../../index.html">Contents</a>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for refl1d.mystic.formatnum</h1><div class="highlight"><pre>
+<span class="c"># This program is public domain</span>
+<span class="c"># Author: Paul Kienzle</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Number formatting</span>
+<span class="sd">=================</span>
+
+<span class="sd">Format values and uncertainties nicely for printing.</span>
+
+<span class="sd">:func:`format_uncertainty_pm` produces the expanded format v +/- err.</span>
+
+<span class="sd">:func:`format_uncertainty_compact` produces the compact format v(##),</span>
+<span class="sd">where the number in parenthesis is the uncertainty in the last two digits of v.</span>
+
+<span class="sd">:func:`format_uncertainty` uses the compact format by default, but this</span>
+<span class="sd">can be changed to use the expanded +/- format by setting</span>
+<span class="sd">format_uncertainty.compact to False.</span>
+
+<span class="sd">The formatted string uses only the number of digits warranted by</span>
+<span class="sd">the uncertainty in the measurement.</span>
+
+<span class="sd">If the uncertainty is 0 or not otherwise provided, the simple</span>
+<span class="sd">%g floating point format option is used.</span>
+
+<span class="sd">Infinite and indefinite numbers are represented as inf and NaN.</span>
+
+<span class="sd">Example::</span>
+
+<span class="sd">    &gt;&gt;&gt; v,dv = 757.2356,0.01032</span>
+<span class="sd">    &gt;&gt;&gt; print format_uncertainty_pm(v,dv)</span>
+<span class="sd">    757.236 +/- 0.010</span>
+<span class="sd">    &gt;&gt;&gt; print format_uncertainty_compact(v,dv)</span>
+<span class="sd">    757.236(10)</span>
+<span class="sd">    &gt;&gt;&gt; print format_uncertainty(v,dv)</span>
+<span class="sd">    757.236(10)</span>
+<span class="sd">    &gt;&gt;&gt; format_uncertainty.compact = False</span>
+<span class="sd">    &gt;&gt;&gt; print format_uncertainty(v,dv)</span>
+<span class="sd">    757.236 +/- 0.010</span>
+
+<span class="sd">UncertaintyFormatter() returns a private formatter with its own</span>
+<span class="sd">formatter.compact flag.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span>
+
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;format_uncertainty&#39;</span><span class="p">,</span> <span class="s">&#39;format_uncertainty_pm&#39;</span><span class="p">,</span>
+           <span class="s">&#39;format_uncertainty_compact&#39;</span><span class="p">]</span>
+
+<span class="c"># Coordinating scales across a set of numbers is not supported.  For easy</span>
+<span class="c"># comparison a set of numbers should be shown in the same scale.  One could</span>
+<span class="c"># force this from the outside by adding scale parameter (either 10**n, n, or</span>
+<span class="c"># a string representing the desired SI prefix) and having a separate routine</span>
+<span class="c"># which computes the scale given a set of values.</span>
+
+<span class="c"># Coordinating scales with units offers its own problems.  Again, the user</span>
+<span class="c"># may want to force particular units.  This can be done by outside of the</span>
+<span class="c"># formatting routines by scaling the numbers to the appropriate units then</span>
+<span class="c"># forcing them to print with scale 10**0.  If this is a common operation,</span>
+<span class="c"># however, it may want to happen inside.</span>
+
+<span class="c"># The value e&lt;n&gt; is currently formatted into the number.  Alternatively this</span>
+<span class="c"># scale factor could be returned so that the user can choose the appropriate</span>
+<span class="c"># SI prefix when printing the units.  This gets tricky when talking about</span>
+<span class="c"># composite units such as 2.3e-3 m**2 -&gt; 2300 mm**2, and with volumes</span>
+<span class="c"># such as 1 g/cm**3 -&gt; 1 kg/L.</span>
+
+<div class="viewcode-block" id="format_uncertainty_pm"><a class="viewcode-back" href="../../../api/mystic.formatnum.html#refl1d.mystic.formatnum.format_uncertainty_pm">[docs]</a><span class="k">def</span> <span class="nf">format_uncertainty_pm</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">uncertainty</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given *value* v and *uncertainty* dv, return a string v +/- dv.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_format_uncertainty</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">uncertainty</span><span class="p">,</span> <span class="n">compact</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="format_uncertainty_compact"><a class="viewcode-back" href="../../../api/mystic.formatnum.html#refl1d.mystic.formatnum.format_uncertainty_compact">[docs]</a><span class="k">def</span> <span class="nf">format_uncertainty_compact</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">uncertainty</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given *value* v and *uncertainty* dv, return the compact</span>
+<span class="sd">    representation v(##), where ## are the first two digits of</span>
+<span class="sd">    the uncertainty.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_format_uncertainty</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">uncertainty</span><span class="p">,</span> <span class="n">compact</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+</div>
+<span class="k">class</span> <span class="nc">UncertaintyFormatter</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Value and uncertainty formatter.</span>
+
+<span class="sd">    The *formatter* instance will use either the expanded v +/- dv form</span>
+<span class="sd">    or the compact v(##) form depending on whether *formatter.compact* is</span>
+<span class="sd">    True or False.  The default is True.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">compact</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">uncertainty</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Given *value* and *uncertainty*, return a string representation.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">_format_uncertainty</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">uncertainty</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">compact</span><span class="p">)</span>
+<span class="n">format_uncertainty</span> <span class="o">=</span> <span class="n">UncertaintyFormatter</span><span class="p">()</span>
+
+<span class="k">def</span> <span class="nf">_format_uncertainty</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">uncertainty</span><span class="p">,</span> <span class="n">compact</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Implementation of both the compact and the +/- formats.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c"># Handle indefinite value</span>
+    <span class="k">if</span> <span class="n">numpy</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;inf&quot;</span> <span class="k">if</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="mf">0</span> <span class="k">else</span> <span class="s">&quot;-inf&quot;</span>
+    <span class="k">if</span> <span class="n">numpy</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;NaN&quot;</span>
+
+    <span class="c"># Handle indefinite uncertainty</span>
+    <span class="k">if</span> <span class="n">uncertainty</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">uncertainty</span><span class="o">&lt;=</span><span class="mf">0</span> <span class="ow">or</span> <span class="n">numpy</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">uncertainty</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&quot;</span><span class="si">%g</span><span class="s">&quot;</span><span class="o">%</span><span class="n">value</span>
+    <span class="k">if</span> <span class="n">numpy</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">uncertainty</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">compact</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;</span><span class="si">%.2g</span><span class="s">(inf)&quot;</span><span class="o">%</span><span class="n">value</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s">&quot;</span><span class="si">%.2g</span><span class="s"> +/- inf&quot;</span><span class="o">%</span><span class="n">value</span>
+
+    <span class="c"># Handle zero and negative values</span>
+    <span class="n">sign</span> <span class="o">=</span> <span class="s">&quot;-&quot;</span> <span class="k">if</span> <span class="n">value</span> <span class="o">&lt;</span> <span class="mf">0</span> <span class="k">else</span> <span class="s">&quot;&quot;</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="c"># Determine scale of value and error</span>
+    <span class="n">err_place</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">uncertainty</span><span class="p">)))</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="mf">0</span><span class="p">:</span>
+        <span class="n">val_place</span> <span class="o">=</span> <span class="n">err_place</span> <span class="o">-</span> <span class="mf">1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">val_place</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">value</span><span class="p">)))</span>
+
+    <span class="k">if</span> <span class="n">err_place</span> <span class="o">&gt;</span> <span class="n">val_place</span><span class="p">:</span>
+        <span class="c"># Degenerate case: error bigger than value</span>
+        <span class="c"># The mantissa is 0.#(##)e#, 0.0#(##)e# or 0.00#(##)e#</span>
+        <span class="n">val_place</span> <span class="o">=</span> <span class="n">err_place</span><span class="o">+</span><span class="mf">2</span>
+    <span class="k">elif</span> <span class="n">err_place</span> <span class="o">==</span> <span class="n">val_place</span><span class="p">:</span>
+        <span class="c"># Degenerate case: error and value the same order of magnitude</span>
+        <span class="c"># The value is ##(##)e#, #.#(##)e# or 0.##(##)e#</span>
+        <span class="n">val_place</span> <span class="o">=</span> <span class="n">err_place</span><span class="o">+</span><span class="mf">1</span>
+    <span class="k">elif</span> <span class="n">err_place</span> <span class="o">&lt;=</span> <span class="mf">1</span> <span class="ow">and</span> <span class="n">val_place</span> <span class="o">&gt;=</span> <span class="o">-</span><span class="mf">3</span><span class="p">:</span>
+        <span class="c"># Normal case: nice numbers and errors</span>
+        <span class="c"># The value is ###.###(##)</span>
+        <span class="n">val_place</span> <span class="o">=</span> <span class="mf">0</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c"># Extreme cases: zeros before value or after error</span>
+        <span class="c"># The value is ###.###(##)e#, ##.####(##)e# or #.#####(##)e#</span>
+        <span class="k">pass</span>
+
+    <span class="c"># Force engineering notation, with exponent a multiple of 3</span>
+    <span class="n">val_place</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">val_place</span><span class="o">/</span><span class="mf">3.</span><span class="p">))</span><span class="o">*</span><span class="mf">3</span>
+
+    <span class="c"># Format the result</span>
+    <span class="n">digits_after_decimal</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">val_place</span> <span class="o">-</span> <span class="n">err_place</span> <span class="o">+</span> <span class="mf">1</span><span class="p">)</span>
+    <span class="n">val_str</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%.*f</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">digits_after_decimal</span><span class="p">,</span><span class="n">value</span><span class="o">/</span><span class="mf">10.</span><span class="o">**</span><span class="n">val_place</span><span class="p">)</span>
+    <span class="n">exp_str</span> <span class="o">=</span> <span class="s">&quot;e</span><span class="si">%d</span><span class="s">&quot;</span><span class="o">%</span><span class="n">val_place</span> <span class="k">if</span> <span class="n">val_place</span> <span class="o">!=</span> <span class="mf">0</span> <span class="k">else</span> <span class="s">&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">compact</span><span class="p">:</span>
+        <span class="n">err_str</span> <span class="o">=</span> <span class="s">&quot;(</span><span class="si">%2d</span><span class="s">)&quot;</span><span class="o">%</span><span class="nb">int</span><span class="p">(</span><span class="n">uncertainty</span><span class="o">/</span><span class="mf">10.</span><span class="o">**</span><span class="p">(</span><span class="n">err_place</span><span class="o">-</span><span class="mf">1</span><span class="p">)</span><span class="o">+</span><span class="mf">0.5</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">((</span><span class="n">sign</span><span class="p">,</span><span class="n">val_str</span><span class="p">,</span><span class="n">err_str</span><span class="p">,</span><span class="n">exp_str</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">err_str</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%.*f</span><span class="s">&quot;</span><span class="o">%</span><span class="p">(</span><span class="n">digits_after_decimal</span><span class="p">,</span><span class="n">uncertainty</span><span class="o">/</span><span class="mf">10.</span><span class="o">**</span><span class="n">val_place</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">((</span><span class="n">sign</span><span class="p">,</span><span class="n">val_str</span><span class="p">,</span><span class="n">exp_str</span><span class="o">+</span><span class="s">&quot; +/- &quot;</span><span class="p">,</span><span class="n">err_str</span><span class="p">,</span><span class="n">exp_str</span><span class="p">))</span>
+    <span class="c">#print sign,value, uncertainty, &quot;=&gt;&quot;, result</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<span class="k">def</span> <span class="nf">test_compact</span><span class="p">():</span>
+    <span class="c"># Oops... renamed function after writing tests</span>
+    <span class="n">value_str</span> <span class="o">=</span> <span class="n">format_uncertainty_compact</span>
+
+    <span class="c"># val_place &gt; err_place</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1235670</span><span class="p">,</span><span class="mf">766000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;1.24(77)e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123567.</span><span class="p">,</span><span class="mf">76600</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;124(77)e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12356.7</span><span class="p">,</span><span class="mf">7660</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;12.4(77)e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1235.67</span><span class="p">,</span><span class="mf">766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;1.24(77)e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123.567</span><span class="p">,</span><span class="mf">76.6</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;124(77)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12.3567</span><span class="p">,</span><span class="mf">7.66</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;12.4(77)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1.23567</span><span class="p">,</span><span class="o">.</span><span class="mf">766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;1.24(77)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">123567</span><span class="p">,</span><span class="o">.</span><span class="mf">0766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.124(77)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">0123567</span><span class="p">,</span><span class="o">.</span><span class="mf">00766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0124(77)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">00123567</span><span class="p">,</span><span class="o">.</span><span class="mf">000766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00124(77)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">000123567</span><span class="p">,</span><span class="o">.</span><span class="mf">0000766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;124(77)e-6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">0000123567</span><span class="p">,</span><span class="o">.</span><span class="mf">00000766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;12.4(77)e-6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">00000123567</span><span class="p">,</span><span class="o">.</span><span class="mf">000000766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;1.24(77)e-6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">000000123567</span><span class="p">,</span><span class="o">.</span><span class="mf">0000000766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;124(77)e-9&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">00000123567</span><span class="p">,</span><span class="o">.</span><span class="mf">0000000766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;1.236(77)e-6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">0000123567</span><span class="p">,</span><span class="o">.</span><span class="mf">0000000766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;12.357(77)e-6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">000123567</span><span class="p">,</span><span class="o">.</span><span class="mf">0000000766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;123.567(77)e-6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">00123567</span><span class="p">,</span><span class="o">.</span><span class="mf">000000766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00123567(77)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">0123567</span><span class="p">,</span><span class="o">.</span><span class="mf">00000766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0123567(77)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">123567</span><span class="p">,</span><span class="o">.</span><span class="mf">0000766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.123567(77)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1.23567</span><span class="p">,</span><span class="o">.</span><span class="mf">000766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;1.23567(77)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12.3567</span><span class="p">,</span><span class="o">.</span><span class="mf">00766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;12.3567(77)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123.567</span><span class="p">,</span><span class="o">.</span><span class="mf">0764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;123.567(76)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1235.67</span><span class="p">,</span><span class="o">.</span><span class="mf">764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;1235.67(76)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12356.7</span><span class="p">,</span><span class="mf">7.64</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;12356.7(76)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123567</span><span class="p">,</span><span class="mf">76.4</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;123567(76)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1235670</span><span class="p">,</span><span class="mf">764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;1.23567(76)e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12356700</span><span class="p">,</span><span class="mf">764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;12.35670(76)e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123567000</span><span class="p">,</span><span class="mf">764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;123.56700(76)e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123567000</span><span class="p">,</span><span class="mf">7640</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;123.5670(76)e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1235670000</span><span class="p">,</span><span class="mf">76400</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;1.235670(76)e9&quot;</span>
+
+    <span class="c"># val_place == err_place</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123567</span><span class="p">,</span><span class="mf">764000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.12(76)e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12356.7</span><span class="p">,</span><span class="mf">76400</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;12(76)e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1235.67</span><span class="p">,</span><span class="mf">7640</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;1.2(76)e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123.567</span><span class="p">,</span><span class="mf">764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.12(76)e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12.3567</span><span class="p">,</span><span class="mf">76.4</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;12(76)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1.23567</span><span class="p">,</span><span class="mf">7.64</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;1.2(76)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">123567</span><span class="p">,</span><span class="o">.</span><span class="mf">764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.12(76)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">0123567</span><span class="p">,</span><span class="o">.</span><span class="mf">0764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;12(76)e-3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">00123567</span><span class="p">,</span><span class="o">.</span><span class="mf">00764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;1.2(76)e-3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">000123567</span><span class="p">,</span><span class="o">.</span><span class="mf">000764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.12(76)e-3&quot;</span>
+
+    <span class="c"># val_place == err_place-1</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123567</span><span class="p">,</span><span class="mf">7640000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.1(76)e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12356.7</span><span class="p">,</span><span class="mf">764000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.01(76)e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1235.67</span><span class="p">,</span><span class="mf">76400</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.001(76)e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123.567</span><span class="p">,</span><span class="mf">7640</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.1(76)e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12.3567</span><span class="p">,</span><span class="mf">764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.01(76)e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1.23567</span><span class="p">,</span><span class="mf">76.4</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.001(76)e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">123567</span><span class="p">,</span><span class="mf">7.64</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.1(76)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">0123567</span><span class="p">,</span><span class="o">.</span><span class="mf">764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.01(76)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">00123567</span><span class="p">,</span><span class="o">.</span><span class="mf">0764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.001(76)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">000123567</span><span class="p">,</span><span class="o">.</span><span class="mf">00764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.1(76)e-3&quot;</span>
+
+    <span class="c"># val_place == err_place-2</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12356700</span><span class="p">,</span><span class="mf">7640000000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0(76)e9&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1235670</span><span class="p">,</span><span class="mf">764000000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00(76)e9&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123567</span><span class="p">,</span><span class="mf">76400000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.000(76)e9&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12356</span><span class="p">,</span><span class="mf">7640000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0(76)e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1235</span><span class="p">,</span><span class="mf">764000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00(76)e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123</span><span class="p">,</span><span class="mf">76400</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.000(76)e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12</span><span class="p">,</span><span class="mf">7640</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0(76)e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1</span><span class="p">,</span><span class="mf">764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00(76)e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span><span class="mf">76.4</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.000(76)e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span><span class="mf">7.64</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0(76)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0.001</span><span class="p">,</span><span class="mf">0.764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00(76)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0.0001</span><span class="p">,</span><span class="mf">0.0764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.000(76)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0.00001</span><span class="p">,</span><span class="mf">0.00764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0(76)e-3&quot;</span>
+
+    <span class="c"># val_place == err_place-3</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12356700</span><span class="p">,</span><span class="mf">76400000000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.000(76)e12&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1235670</span><span class="p">,</span><span class="mf">7640000000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0(76)e9&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123567</span><span class="p">,</span><span class="mf">764000000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00(76)e9&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12356</span><span class="p">,</span><span class="mf">76400000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.000(76)e9&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1235</span><span class="p">,</span><span class="mf">7640000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0(76)e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123</span><span class="p">,</span><span class="mf">764000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00(76)e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12</span><span class="p">,</span><span class="mf">76400</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.000(76)e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1</span><span class="p">,</span><span class="mf">7640</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0(76)e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span><span class="mf">764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00(76)e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span><span class="mf">76.4</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.000(76)e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0.001</span><span class="p">,</span><span class="mf">7.64</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0(76)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0.0001</span><span class="p">,</span><span class="mf">0.764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00(76)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0.00001</span><span class="p">,</span><span class="mf">0.0764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.000(76)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0.000001</span><span class="p">,</span><span class="mf">0.00764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0(76)e-3&quot;</span>
+
+    <span class="c"># Zero values</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="mf">7640000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0(76)e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span> <span class="mf">764000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00(76)e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span>  <span class="mf">76400</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.000(76)e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span>   <span class="mf">7640</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0(76)e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span>    <span class="mf">764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00(76)e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span>     <span class="mf">76.4</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.000(76)e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span>      <span class="mf">7.64</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0(76)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span>      <span class="mf">0.764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00(76)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span>      <span class="mf">0.0764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.000(76)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span>      <span class="mf">0.00764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0(76)e-3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span>      <span class="mf">0.000764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00(76)e-3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span>      <span class="mf">0.0000764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.000(76)e-3&quot;</span>
+
+    <span class="c"># negative values</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">1235670</span><span class="p">,</span><span class="mf">765000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-1.24(77)e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">1.23567</span><span class="p">,</span><span class="o">.</span><span class="mf">766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-1.24(77)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-.</span><span class="mf">00000123567</span><span class="p">,</span><span class="o">.</span><span class="mf">0000000766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-1.236(77)e-6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">12356.7</span><span class="p">,</span><span class="mf">7.64</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-12356.7(76)&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">123.567</span><span class="p">,</span><span class="mf">764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-0.12(76)e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">1235.67</span><span class="p">,</span><span class="mf">76400</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-0.001(76)e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-.</span><span class="mf">000123567</span><span class="p">,</span><span class="o">.</span><span class="mf">00764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-0.1(76)e-3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">12356</span><span class="p">,</span><span class="mf">7640000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-0.0(76)e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">12</span><span class="p">,</span><span class="mf">76400</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-0.000(76)e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">0.0001</span><span class="p">,</span><span class="mf">0.764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-0.00(76)&quot;</span>
+
+    <span class="c"># non-finite values</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="n">numpy</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span><span class="bp">None</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-inf&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span><span class="bp">None</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;inf&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">NaN</span><span class="p">,</span><span class="bp">None</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;NaN&quot;</span>
+
+    <span class="c"># bad or missing uncertainty</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">1.23567</span><span class="p">,</span><span class="n">numpy</span><span class="o">.</span><span class="n">NaN</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-1.23567&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">1.23567</span><span class="p">,</span><span class="o">-</span><span class="n">numpy</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-1.23567&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">1.23567</span><span class="p">,</span><span class="o">-</span><span class="mf">0.1</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-1.23567&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">1.23567</span><span class="p">,</span><span class="mf">0</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-1.23567&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">1.23567</span><span class="p">,</span><span class="bp">None</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-1.23567&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">1.23567</span><span class="p">,</span><span class="n">numpy</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-1.2(inf)&quot;</span>
+
+<span class="k">def</span> <span class="nf">test_pm</span><span class="p">():</span>
+    <span class="c"># Oops... renamed function after writing tests</span>
+    <span class="n">value_str</span> <span class="o">=</span> <span class="n">format_uncertainty_pm</span>
+
+    <span class="c"># val_place &gt; err_place</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1235670</span><span class="p">,</span><span class="mf">766000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;1.24e6 +/- 0.77e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123567.</span><span class="p">,</span> <span class="mf">76600</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;124e3 +/- 77e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12356.7</span><span class="p">,</span>  <span class="mf">7660</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;12.4e3 +/- 7.7e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1235.67</span><span class="p">,</span>   <span class="mf">766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;1.24e3 +/- 0.77e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123.567</span><span class="p">,</span>    <span class="mf">76.6</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;124 +/- 77&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12.3567</span><span class="p">,</span>     <span class="mf">7.66</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;12.4 +/- 7.7&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1.23567</span><span class="p">,</span>      <span class="o">.</span><span class="mf">766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;1.24 +/- 0.77&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">123567</span><span class="p">,</span>      <span class="o">.</span><span class="mf">0766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.124 +/- 0.077&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">0123567</span><span class="p">,</span>     <span class="o">.</span><span class="mf">00766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0124 +/- 0.0077&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">00123567</span><span class="p">,</span>    <span class="o">.</span><span class="mf">000766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00124 +/- 0.00077&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">000123567</span><span class="p">,</span>   <span class="o">.</span><span class="mf">0000766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;124e-6 +/- 77e-6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">0000123567</span><span class="p">,</span>  <span class="o">.</span><span class="mf">00000766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;12.4e-6 +/- 7.7e-6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">00000123567</span><span class="p">,</span> <span class="o">.</span><span class="mf">000000766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;1.24e-6 +/- 0.77e-6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">000000123567</span><span class="p">,</span><span class="o">.</span><span class="mf">0000000766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;124e-9 +/- 77e-9&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">00000123567</span><span class="p">,</span> <span class="o">.</span><span class="mf">0000000766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;1.236e-6 +/- 0.077e-6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">0000123567</span><span class="p">,</span>  <span class="o">.</span><span class="mf">0000000766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;12.357e-6 +/- 0.077e-6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">000123567</span><span class="p">,</span>   <span class="o">.</span><span class="mf">0000000766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;123.567e-6 +/- 0.077e-6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">00123567</span><span class="p">,</span>    <span class="o">.</span><span class="mf">000000766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00123567 +/- 0.00000077&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">0123567</span><span class="p">,</span>     <span class="o">.</span><span class="mf">00000766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0123567 +/- 0.0000077&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">123567</span><span class="p">,</span>      <span class="o">.</span><span class="mf">0000766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.123567 +/- 0.000077&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1.23567</span><span class="p">,</span>      <span class="o">.</span><span class="mf">000766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;1.23567 +/- 0.00077&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12.3567</span><span class="p">,</span>      <span class="o">.</span><span class="mf">00766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;12.3567 +/- 0.0077&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123.567</span><span class="p">,</span>      <span class="o">.</span><span class="mf">0764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;123.567 +/- 0.076&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1235.67</span><span class="p">,</span>      <span class="o">.</span><span class="mf">764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;1235.67 +/- 0.76&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12356.7</span><span class="p">,</span>     <span class="mf">7.64</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;12356.7 +/- 7.6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123567</span><span class="p">,</span>     <span class="mf">76.4</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;123567 +/- 76&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1235670</span><span class="p">,</span>   <span class="mf">764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;1.23567e6 +/- 0.00076e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12356700</span><span class="p">,</span>  <span class="mf">764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;12.35670e6 +/- 0.00076e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123567000</span><span class="p">,</span> <span class="mf">764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;123.56700e6 +/- 0.00076e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123567000</span><span class="p">,</span><span class="mf">7640</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;123.5670e6 +/- 0.0076e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1235670000</span><span class="p">,</span><span class="mf">76400</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;1.235670e9 +/- 0.000076e9&quot;</span>
+
+    <span class="c"># val_place == err_place</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123567</span><span class="p">,</span><span class="mf">764000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.12e6 +/- 0.76e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12356.7</span><span class="p">,</span><span class="mf">76400</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;12e3 +/- 76e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1235.67</span><span class="p">,</span><span class="mf">7640</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;1.2e3 +/- 7.6e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123.567</span><span class="p">,</span><span class="mf">764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.12e3 +/- 0.76e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12.3567</span><span class="p">,</span><span class="mf">76.4</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;12 +/- 76&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1.23567</span><span class="p">,</span><span class="mf">7.64</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;1.2 +/- 7.6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">123567</span><span class="p">,</span><span class="o">.</span><span class="mf">764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.12 +/- 0.76&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">0123567</span><span class="p">,</span><span class="o">.</span><span class="mf">0764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;12e-3 +/- 76e-3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">00123567</span><span class="p">,</span><span class="o">.</span><span class="mf">00764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;1.2e-3 +/- 7.6e-3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">000123567</span><span class="p">,</span><span class="o">.</span><span class="mf">000764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.12e-3 +/- 0.76e-3&quot;</span>
+
+    <span class="c"># val_place == err_place-1</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123567</span><span class="p">,</span><span class="mf">7640000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.1e6 +/- 7.6e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12356.7</span><span class="p">,</span><span class="mf">764000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.01e6 +/- 0.76e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1235.67</span><span class="p">,</span><span class="mf">76400</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.001e6 +/- 0.076e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123.567</span><span class="p">,</span><span class="mf">7640</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.1e3 +/- 7.6e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12.3567</span><span class="p">,</span><span class="mf">764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.01e3 +/- 0.76e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1.23567</span><span class="p">,</span><span class="mf">76.4</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.001e3 +/- 0.076e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">123567</span><span class="p">,</span><span class="mf">7.64</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.1 +/- 7.6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">0123567</span><span class="p">,</span><span class="o">.</span><span class="mf">764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.01 +/- 0.76&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">00123567</span><span class="p">,</span><span class="o">.</span><span class="mf">0764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.001 +/- 0.076&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">.</span><span class="mf">000123567</span><span class="p">,</span><span class="o">.</span><span class="mf">00764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.1e-3 +/- 7.6e-3&quot;</span>
+
+    <span class="c"># val_place == err_place-2</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12356700</span><span class="p">,</span><span class="mf">7640000000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0e9 +/- 7.6e9&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1235670</span><span class="p">,</span><span class="mf">764000000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00e9 +/- 0.76e9&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123567</span><span class="p">,</span><span class="mf">76400000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.000e9 +/- 0.076e9&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12356</span><span class="p">,</span><span class="mf">7640000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0e6 +/- 7.6e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1235</span><span class="p">,</span><span class="mf">764000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00e6 +/- 0.76e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123</span><span class="p">,</span><span class="mf">76400</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.000e6 +/- 0.076e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12</span><span class="p">,</span><span class="mf">7640</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0e3 +/- 7.6e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1</span><span class="p">,</span><span class="mf">764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00e3 +/- 0.76e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span><span class="mf">76.4</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.000e3 +/- 0.076e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span><span class="mf">7.64</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0 +/- 7.6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0.001</span><span class="p">,</span><span class="mf">0.764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00 +/- 0.76&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0.0001</span><span class="p">,</span><span class="mf">0.0764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.000 +/- 0.076&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0.00001</span><span class="p">,</span><span class="mf">0.00764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0e-3 +/- 7.6e-3&quot;</span>
+
+    <span class="c"># val_place == err_place-3</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12356700</span><span class="p">,</span><span class="mf">76400000000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.000e12 +/- 0.076e12&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1235670</span><span class="p">,</span><span class="mf">7640000000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0e9 +/- 7.6e9&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123567</span><span class="p">,</span><span class="mf">764000000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00e9 +/- 0.76e9&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12356</span><span class="p">,</span><span class="mf">76400000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.000e9 +/- 0.076e9&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1235</span><span class="p">,</span><span class="mf">7640000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0e6 +/- 7.6e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">123</span><span class="p">,</span><span class="mf">764000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00e6 +/- 0.76e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">12</span><span class="p">,</span><span class="mf">76400</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.000e6 +/- 0.076e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">1</span><span class="p">,</span><span class="mf">7640</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0e3 +/- 7.6e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span><span class="mf">764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00e3 +/- 0.76e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span><span class="mf">76.4</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.000e3 +/- 0.076e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0.001</span><span class="p">,</span><span class="mf">7.64</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0 +/- 7.6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0.0001</span><span class="p">,</span><span class="mf">0.764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00 +/- 0.76&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0.00001</span><span class="p">,</span><span class="mf">0.0764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.000 +/- 0.076&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0.000001</span><span class="p">,</span><span class="mf">0.00764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0e-3 +/- 7.6e-3&quot;</span>
+
+    <span class="c"># Zero values</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span><span class="mf">7640000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0e6 +/- 7.6e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span> <span class="mf">764000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00e6 +/- 0.76e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span>  <span class="mf">76400</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.000e6 +/- 0.076e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span>   <span class="mf">7640</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0e3 +/- 7.6e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span>    <span class="mf">764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00e3 +/- 0.76e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span>     <span class="mf">76.4</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.000e3 +/- 0.076e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span>      <span class="mf">7.64</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0 +/- 7.6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span>      <span class="mf">0.764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00 +/- 0.76&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span>      <span class="mf">0.0764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.000 +/- 0.076&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span>      <span class="mf">0.00764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.0e-3 +/- 7.6e-3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span>      <span class="mf">0.000764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.00e-3 +/- 0.76e-3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="mf">0</span><span class="p">,</span>      <span class="mf">0.0000764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;0.000e-3 +/- 0.076e-3&quot;</span>
+
+    <span class="c"># negative values</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">1235670</span><span class="p">,</span><span class="mf">766000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-1.24e6 +/- 0.77e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">1.23567</span><span class="p">,</span><span class="o">.</span><span class="mf">766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-1.24 +/- 0.77&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-.</span><span class="mf">00000123567</span><span class="p">,</span><span class="o">.</span><span class="mf">0000000766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-1.236e-6 +/- 0.077e-6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">12356.7</span><span class="p">,</span><span class="mf">7.64</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-12356.7 +/- 7.6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">123.567</span><span class="p">,</span><span class="mf">764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-0.12e3 +/- 0.76e3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">1235.67</span><span class="p">,</span><span class="mf">76400</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-0.001e6 +/- 0.076e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-.</span><span class="mf">000123567</span><span class="p">,</span><span class="o">.</span><span class="mf">00764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-0.1e-3 +/- 7.6e-3&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">12356</span><span class="p">,</span><span class="mf">7640000</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-0.0e6 +/- 7.6e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">12</span><span class="p">,</span><span class="mf">76400</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-0.000e6 +/- 0.076e6&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">0.0001</span><span class="p">,</span><span class="mf">0.764</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-0.00 +/- 0.76&quot;</span>
+
+    <span class="c"># non-finite values</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="n">numpy</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span><span class="bp">None</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-inf&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span><span class="bp">None</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;inf&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">NaN</span><span class="p">,</span><span class="bp">None</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;NaN&quot;</span>
+
+    <span class="c"># bad or missing uncertainty</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">1.23567</span><span class="p">,</span><span class="n">numpy</span><span class="o">.</span><span class="n">NaN</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-1.23567&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">1.23567</span><span class="p">,</span><span class="o">-</span><span class="n">numpy</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-1.23567&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">1.23567</span><span class="p">,</span><span class="o">-</span><span class="mf">0.1</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-1.23567&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">1.23567</span><span class="p">,</span><span class="mf">0</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-1.23567&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">1.23567</span><span class="p">,</span><span class="bp">None</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-1.23567&quot;</span>
+    <span class="k">assert</span> <span class="n">value_str</span><span class="p">(</span><span class="o">-</span><span class="mf">1.23567</span><span class="p">,</span><span class="n">numpy</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-1.2 +/- inf&quot;</span>
+
+<span class="k">def</span> <span class="nf">test</span><span class="p">():</span>
+    <span class="c"># Check compact and plus/minus formats</span>
+    <span class="n">test_compact</span><span class="p">()</span>
+    <span class="n">test_pm</span><span class="p">()</span>
+    <span class="c"># Check that the default is the compact format</span>
+    <span class="k">assert</span> <span class="n">format_uncertainty</span><span class="p">(</span><span class="o">-</span><span class="mf">1.23567</span><span class="p">,</span><span class="mf">0.766</span><span class="p">)</span> <span class="o">==</span> <span class="s">&quot;-1.24(77)&quot;</span>
+
+    <span class="kn">import</span> <span class="nn">doctest</span>
+    <span class="n">doctest</span><span class="o">.</span><span class="n">testmod</span><span class="p">()</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&quot;__main__&quot;</span><span class="p">:</span> <span class="n">test</span><span class="p">()</span>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        <a class="uplink" href="../../../index.html">Contents</a>
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

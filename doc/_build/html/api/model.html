@@ -1,0 +1,275 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.model - Reflectivity Models &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../index.html" />
+    <link rel="up" title="Reference" href="index.html" />
+    <link rel="next" title="refl1d.mono - Freeform - Monotonic Spline" href="mono.html" />
+    <link rel="prev" title="refl1d.materialdb - Materials Database" href="materialdb.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.model - Reflectivity Models</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="materialdb.html">refl1d.materialdb - Materials Database</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="mono.html">refl1d.mono - Freeform - Monotonic Spline</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="refl1d-model-reflectivity-models">
+<h1>refl1d.model - Reflectivity Models<a class="headerlink" href="#refl1d-model-reflectivity-models" title="Permalink to this headline">¶</a></h1>
+<table border="1" class="docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr><td><a class="reference internal" href="#refl1d.model.Repeat" title="refl1d.model.Repeat"><tt class="xref py py-obj docutils literal"><span class="pre">Repeat</span></tt></a></td>
+<td>Repeat a layer or stack.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.model.Slab" title="refl1d.model.Slab"><tt class="xref py py-obj docutils literal"><span class="pre">Slab</span></tt></a></td>
+<td>A block of material.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.model.Stack" title="refl1d.model.Stack"><tt class="xref py py-obj docutils literal"><span class="pre">Stack</span></tt></a></td>
+<td>Reflectometry layer stack</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.model.Layer" title="refl1d.model.Layer"><tt class="xref py py-obj docutils literal"><span class="pre">Layer</span></tt></a></td>
+<td>Component of a material description.</td>
+</tr>
+</tbody>
+</table>
+<span class="target" id="module-refl1d.model"></span><p>Reflectometry models</p>
+<p>Reflectometry models consist of 1-D stacks of layers. Layers are joined
+by gaussian interfaces. The layers themselves may be uniform, or the
+scattering density may vary with depth in the layer.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">By importing model, the definition of <a class="reference internal" href="material.html#refl1d.material.Scatterer" title="refl1d.material.Scatterer"><tt class="xref py py-class docutils literal"><span class="pre">material.Scatterer</span></tt></a>
+changes so that materials can be stacked into layers using operator
+overloading. This will affect all instances of the Scatterer class,
+and all of its subclasses.</p>
+</div>
+<dl class="class">
+<dt id="refl1d.model.Repeat">
+<em class="property">class </em><tt class="descclassname">refl1d.model.</tt><tt class="descname">Repeat</tt><big>(</big><em>stack</em>, <em>repeat=1</em>, <em>interface=None</em>, <em>name=None</em><big>)</big><a class="reference internal" href="../_modules/refl1d/model.html#Repeat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.model.Repeat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#refl1d.model.Layer" title="refl1d.model.Layer"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.model.Layer</span></tt></a></p>
+<p>Repeat a layer or stack.</p>
+<p>If an interface parameter is provide, the roughness between the
+multilayers may be different from the roughness between the repeated
+stack and the following layer.</p>
+<p>Note: Repeat is not a type of Stack, but it does have a stack inside.</p>
+<dl class="method">
+<dt id="refl1d.model.Repeat.constraints">
+<tt class="descname">constraints</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.model.Repeat.constraints" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constraints</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.model.Repeat.find">
+<tt class="descname">find</tt><big>(</big><em>z</em><big>)</big><a class="reference internal" href="../_modules/refl1d/model.html#Repeat.find"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.model.Repeat.find" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find the layer at depth z.</p>
+<p>Returns layer, start, end</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.model.Repeat.magnetic">
+<tt class="descname">magnetic</tt><a class="reference internal" href="../_modules/refl1d/model.html#Repeat.magnetic"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.model.Repeat.magnetic" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.model.Repeat.parameters">
+<tt class="descname">parameters</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/model.html#Repeat.parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.model.Repeat.parameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.model.Repeat.render">
+<tt class="descname">render</tt><big>(</big><em>probe</em>, <em>slabs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/model.html#Repeat.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.model.Repeat.render" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.model.Repeat.thickness">
+<tt class="descname">thickness</tt><a class="reference internal" href="../_modules/refl1d/model.html#Repeat.thickness"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.model.Repeat.thickness" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="refl1d.model.Slab">
+<em class="property">class </em><tt class="descclassname">refl1d.model.</tt><tt class="descname">Slab</tt><big>(</big><em>material=None</em>, <em>thickness=0</em>, <em>interface=0</em>, <em>name=None</em><big>)</big><a class="reference internal" href="../_modules/refl1d/model.html#Slab"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.model.Slab" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#refl1d.model.Layer" title="refl1d.model.Layer"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.model.Layer</span></tt></a></p>
+<p>A block of material.</p>
+<dl class="method">
+<dt id="refl1d.model.Slab.constraints">
+<tt class="descname">constraints</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.model.Slab.constraints" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constraints</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.model.Slab.find">
+<tt class="descname">find</tt><big>(</big><em>z</em><big>)</big><a class="headerlink" href="#refl1d.model.Slab.find" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find the layer at depth z.</p>
+<p>Returns layer, start, end</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.model.Slab.parameters">
+<tt class="descname">parameters</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/model.html#Slab.parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.model.Slab.parameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.model.Slab.render">
+<tt class="descname">render</tt><big>(</big><em>probe</em>, <em>slabs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/model.html#Slab.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.model.Slab.render" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="refl1d.model.Stack">
+<em class="property">class </em><tt class="descclassname">refl1d.model.</tt><tt class="descname">Stack</tt><big>(</big><em>base=None</em>, <em>name='Stack'</em><big>)</big><a class="reference internal" href="../_modules/refl1d/model.html#Stack"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.model.Stack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#refl1d.model.Layer" title="refl1d.model.Layer"><tt class="xref py py-class docutils literal"><span class="pre">refl1d.model.Layer</span></tt></a></p>
+<p>Reflectometry layer stack</p>
+<p>A reflectometry sample is defined by a stack of layers. Each layer
+has an interface describing how the top of the layer interacts with
+the bottom of the overlaying layer. The stack may contain</p>
+<dl class="method">
+<dt id="refl1d.model.Stack.add">
+<tt class="descname">add</tt><big>(</big><em>other</em><big>)</big><a class="reference internal" href="../_modules/refl1d/model.html#Stack.add"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.model.Stack.add" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.model.Stack.constraints">
+<tt class="descname">constraints</tt><big>(</big><big>)</big><a class="headerlink" href="#refl1d.model.Stack.constraints" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constraints</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.model.Stack.find">
+<tt class="descname">find</tt><big>(</big><em>z</em><big>)</big><a class="reference internal" href="../_modules/refl1d/model.html#Stack.find"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.model.Stack.find" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find the layer at depth z.</p>
+<p>Returns layer, start, end</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.model.Stack.insert">
+<tt class="descname">insert</tt><big>(</big><em>idx</em>, <em>other</em><big>)</big><a class="reference internal" href="../_modules/refl1d/model.html#Stack.insert"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.model.Stack.insert" title="Permalink to this definition">¶</a></dt>
+<dd><p>Insert structure into a stack.  If the inserted element is
+another stack, the stack will be expanded to accommodate.  You
+cannot make nested stacks.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.model.Stack.magnetic">
+<tt class="descname">magnetic</tt><a class="reference internal" href="../_modules/refl1d/model.html#Stack.magnetic"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.model.Stack.magnetic" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.model.Stack.parameters">
+<tt class="descname">parameters</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/model.html#Stack.parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.model.Stack.parameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.model.Stack.render">
+<tt class="descname">render</tt><big>(</big><em>probe</em>, <em>slabs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/model.html#Stack.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.model.Stack.render" title="Permalink to this definition">¶</a></dt>
+<dd><p>Use the probe to render the layer into a microslab representation.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.model.Stack.thickness">
+<tt class="descname">thickness</tt><a class="reference internal" href="../_modules/refl1d/model.html#Stack.thickness"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.model.Stack.thickness" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="refl1d.model.Layer">
+<em class="property">class </em><tt class="descclassname">refl1d.model.</tt><tt class="descname">Layer</tt><a class="reference internal" href="../_modules/refl1d/model.html#Layer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.model.Layer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Component of a material description.</p>
+<dl class="docutils">
+<dt>thickness (Parameter: angstrom)</dt>
+<dd>Thickness of the layer</dd>
+<dt>interface (Interface function)</dt>
+<dd>Interface for the top of the layer.</dd>
+</dl>
+<dl class="method">
+<dt id="refl1d.model.Layer.constraints">
+<tt class="descname">constraints</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/model.html#Layer.constraints"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.model.Layer.constraints" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constraints</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.model.Layer.find">
+<tt class="descname">find</tt><big>(</big><em>z</em><big>)</big><a class="reference internal" href="../_modules/refl1d/model.html#Layer.find"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.model.Layer.find" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find the layer at depth z.</p>
+<p>Returns layer, start, end</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.model.Layer.parameters">
+<tt class="descname">parameters</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/model.html#Layer.parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.model.Layer.parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a list of parameters used in the layer.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.model.Layer.render">
+<tt class="descname">render</tt><big>(</big><em>probe</em>, <em>slabs</em><big>)</big><a class="reference internal" href="../_modules/refl1d/model.html#Layer.render"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.model.Layer.render" title="Permalink to this definition">¶</a></dt>
+<dd><p>Use the probe to render the layer into a microslab representation.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="materialdb.html">refl1d.materialdb - Materials Database</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="mono.html">refl1d.mono - Freeform - Monotonic Spline</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,334 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.polymer &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.polymer</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for refl1d.polymer</h1><div class="highlight"><pre>
+<span class="c"># This program is public domain</span>
+<span class="c"># Author Paul Kienzle</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Layer models for polymer systems.</span>
+
+<span class="sd">Analytic Self-consistent Field (SCF) profile [#Zhulina]_ [#Karima]_</span>
+
+<span class="sd">layer = TetheredPolymer(polymer,solvent,head,tail,power,</span>
+
+<span class="sd">.. [#Zhulina] Zhulina, EB; Borisov, OV; Pryamitsyn, VA; Birshtein, TM (1991)</span>
+<span class="sd">   &quot;Coil-Globule Type Transitions in Polymers. 1. Collapse of Layers</span>
+<span class="sd">   of Grafted Polymer Chains&quot;, Macromolecules 24, 140-149.</span>
+
+<span class="sd">.. [#Karima] Karima, A; Douglas, JF; Horkay, F; Fetters, LJ; Satija, SK (1996)</span>
+<span class="sd">   &quot;Comparative swelling of gels and polymer brush layers&quot;,</span>
+<span class="sd">   Physica B 221, 331-336. `&lt;DOI: 10.1016/0921-4526(95)00946-9&gt;`_</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span>
+<span class="c">#__all__ = [&quot;TetheredPolymer&quot;,&quot;VolumeProfile&quot;,&quot;layer_thickness&quot;]</span>
+<span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">real</span><span class="p">,</span> <span class="n">imag</span><span class="p">,</span> <span class="n">exp</span>
+<span class="kn">from</span> <span class="nn">mystic</span> <span class="kn">import</span> <span class="n">Parameter</span>
+<span class="kn">from</span> <span class="nn">.model</span> <span class="kn">import</span> <span class="n">Layer</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">util</span>
+
+
+<div class="viewcode-block" id="PolymerBrush"><a class="viewcode-back" href="../../api/polymer.html#refl1d.polymer.PolymerBrush">[docs]</a><span class="k">class</span> <span class="nc">PolymerBrush</span><span class="p">(</span><span class="n">Layer</span><span class="p">):</span>
+    <span class="s">r&quot;&quot;&quot;</span>
+<span class="s">    Polymer brushes in a solvent</span>
+
+<span class="s">    Parameters:</span>
+
+<span class="s">        *thickness* the thickness of the solvent layer</span>
+<span class="s">        *interface* the roughness of the solvent surface</span>
+<span class="s">        *polymer* the polymer material</span>
+<span class="s">        *solvent* the solvent material or vacuum</span>
+<span class="s">        *base_vf* volume fraction (%) of the polymer brush at the interface</span>
+<span class="s">        *base* the thickness of the brush interface (A)</span>
+<span class="s">        *length* the length of the brush above the interface (A)</span>
+<span class="s">        *power* the rate of brush thinning</span>
+<span class="s">        *sigma* rms brush roughness (A)</span>
+
+<span class="s">    The materials can either use the scattering length density directly,</span>
+<span class="s">    such as PDMS = SLD(0.063, 0.00006) or they can use chemical composition</span>
+<span class="s">    and material density such as PDMS=Material(&quot;C2H6OSi&quot;,density=0.965).</span>
+
+<span class="s">    These parameters combine in the following profile formula:</span>
+
+<span class="s">    .. math::</span>
+
+<span class="s">        V(z) &amp;= \left\{</span>
+<span class="s">          \begin{array}{ll}</span>
+<span class="s">            V_o                        &amp; \mbox{if } z &lt;= z_o \\</span>
+<span class="s">            V_o (1 - ((z-z_o)/L)^2)^p  &amp; \mbox{if } z_o &lt; z &lt; z_o + L \\</span>
+<span class="s">            0                          &amp; \mbox{if } z &gt;= z_o + L</span>
+<span class="s">          \end{array}</span>
+<span class="s">        \right. \\</span>
+<span class="s">        V_\sigma(z)</span>
+<span class="s">           &amp;= V(z) \star</span>
+<span class="s">                 \frac{e^{-\frac{1}{2}(z/\sigma)^2}}{\sqrt{2\pi\sigma^2}} \\</span>
+<span class="s">        \rho(z) &amp;= \rho_p V_\sigma(z) + \rho_s (1-V_\sigma(z))</span>
+
+<span class="s">    where $V_\sigma(z)$ is volume fraction convoluted with brush</span>
+<span class="s">    roughness $\sigma$ and $\rho(z)$ is the complex scattering</span>
+<span class="s">    length density of the profile.</span>
+<span class="s">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">thickness</span><span class="o">=</span><span class="mf">0</span><span class="p">,</span> <span class="n">interface</span><span class="o">=</span><span class="mf">0</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;brush&quot;</span><span class="p">,</span>
+                 <span class="n">polymer</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">solvent</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">base_vf</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                 <span class="n">base</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">length</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span> <span class="o">=</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">thickness</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;brush thickness&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interface</span> <span class="o">=</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">interface</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;brush interface&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base_vf</span> <span class="o">=</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">base_vf</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;base_vf&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base</span> <span class="o">=</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;base&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">length</span> <span class="o">=</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">length</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;length&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">power</span> <span class="o">=</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">power</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;power&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigma</span> <span class="o">=</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">sigma</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;sigma&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">solvent</span> <span class="o">=</span> <span class="n">solvent</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">polymer</span> <span class="o">=</span> <span class="n">polymer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="c"># Constraints:</span>
+        <span class="c">#   base_vf in [0,1]</span>
+        <span class="c">#   base,length,sigma,thickness,interface&gt;0</span>
+        <span class="c">#   base+length+3*sigma &lt;= thickness</span>
+<div class="viewcode-block" id="PolymerBrush.parameters"><a class="viewcode-back" href="../../api/polymer.html#refl1d.polymer.PolymerBrush.parameters">[docs]</a>    <span class="k">def</span> <span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">solvent</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">solvent</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span>
+                    <span class="n">polymer</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">polymer</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span>
+                    <span class="n">thickness</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">thickness</span><span class="p">,</span>
+                    <span class="n">interface</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">interface</span><span class="p">,</span>
+                    <span class="n">base_vf</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base_vf</span><span class="p">,</span>
+                    <span class="n">base</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="p">,</span>
+                    <span class="n">length</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">length</span><span class="p">,</span>
+                    <span class="n">power</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">power</span><span class="p">,</span>
+                    <span class="n">sigma</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="PolymerBrush.profile"><a class="viewcode-back" href="../../api/polymer.html#refl1d.polymer.PolymerBrush.profile">[docs]</a>    <span class="k">def</span> <span class="nf">profile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
+        <span class="n">thickness</span><span class="p">,</span> <span class="n">base_vf</span><span class="p">,</span> <span class="n">base</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">power</span><span class="p">,</span> <span class="n">sigma</span> \
+            <span class="o">=</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_vf</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="p">,</span>
+               <span class="bp">self</span><span class="o">.</span><span class="n">length</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">power</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma</span><span class="p">]</span>
+        <span class="n">base_vf</span> <span class="o">/=</span> <span class="mf">100.</span> <span class="c"># % to fraction</span>
+        <span class="n">L0</span> <span class="o">=</span> <span class="n">base</span>  <span class="c"># if base &lt; thickness else thickness</span>
+        <span class="n">L1</span> <span class="o">=</span> <span class="n">base</span><span class="o">+</span><span class="n">length</span> <span class="c"># if base+length &lt; thickness else thickness-L0</span>
+        <span class="k">if</span> <span class="n">length</span> <span class="o">==</span> <span class="mf">0</span><span class="p">:</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">v</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1</span> <span class="o">-</span> <span class="p">((</span><span class="n">z</span><span class="o">-</span><span class="n">L0</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">L1</span><span class="o">-</span><span class="n">L0</span><span class="p">))</span><span class="o">**</span><span class="mf">2</span><span class="p">)</span>
+        <span class="n">v</span><span class="p">[</span><span class="n">z</span><span class="o">&lt;</span><span class="n">L0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1</span>
+        <span class="n">v</span><span class="p">[</span><span class="n">z</span><span class="o">&gt;</span><span class="n">L1</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0</span>
+        <span class="n">brush_profile</span> <span class="o">=</span> <span class="n">base_vf</span> <span class="o">*</span> <span class="n">v</span><span class="o">**</span><span class="n">power</span>
+        <span class="c"># TODO: we could use Nevot-Croce rather than smearing the profile</span>
+        <span class="n">vf</span> <span class="o">=</span> <span class="n">smear</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">brush_profile</span><span class="p">,</span> <span class="n">sigma</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">vf</span>
+</div>
+<div class="viewcode-block" id="PolymerBrush.render"><a class="viewcode-back" href="../../api/polymer.html#refl1d.polymer.PolymerBrush.render">[docs]</a>    <span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">probe</span><span class="p">,</span> <span class="n">slabs</span><span class="p">):</span>
+        <span class="n">thickness</span><span class="p">,</span><span class="n">interface</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span><span class="o">.</span><span class="n">value</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">interface</span><span class="o">.</span><span class="n">value</span>
+        <span class="n">Pw</span><span class="p">,</span><span class="n">Pz</span> <span class="o">=</span> <span class="n">slabs</span><span class="o">.</span><span class="n">microslabs</span><span class="p">(</span><span class="n">thickness</span><span class="p">)</span>
+        <span class="c"># Skip layer if it falls to zero thickness.  This may lead to</span>
+        <span class="c"># problems in the fitter, since R(thickness) is non-differentiable</span>
+        <span class="c"># at thickness = 0.  &quot;Clip to boundary&quot; range handling will at</span>
+        <span class="c"># least allow this point to be found.</span>
+        <span class="c"># TODO: consider using this behaviour on all layer types.</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">Pw</span><span class="p">)</span> <span class="o">==</span> <span class="mf">0</span><span class="p">:</span> <span class="k">return</span>
+
+        <span class="n">Mr</span><span class="p">,</span><span class="n">Mi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">polymer</span><span class="o">.</span><span class="n">sld</span><span class="p">(</span><span class="n">probe</span><span class="p">)</span>
+        <span class="n">Sr</span><span class="p">,</span><span class="n">Si</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">solvent</span><span class="o">.</span><span class="n">sld</span><span class="p">(</span><span class="n">probe</span><span class="p">)</span>
+        <span class="n">M</span> <span class="o">=</span> <span class="n">Mr</span> <span class="o">+</span> <span class="mf">1</span><span class="n">j</span><span class="o">*</span><span class="n">Mi</span>
+        <span class="n">S</span> <span class="o">=</span> <span class="n">Sr</span> <span class="o">+</span> <span class="mf">1</span><span class="n">j</span><span class="o">*</span><span class="n">Si</span>
+        <span class="k">try</span><span class="p">:</span> <span class="n">M</span><span class="p">,</span><span class="n">S</span> <span class="o">=</span> <span class="n">M</span><span class="p">[</span><span class="mf">0</span><span class="p">],</span><span class="n">S</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span>  <span class="c"># Temporary hack</span>
+        <span class="k">except</span><span class="p">:</span> <span class="k">pass</span>
+
+        <span class="n">vf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="p">(</span><span class="n">Pz</span><span class="p">)</span>
+        <span class="n">Pw</span><span class="p">,</span><span class="n">vf</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">merge_ends</span><span class="p">(</span><span class="n">Pw</span><span class="p">,</span> <span class="n">vf</span><span class="p">,</span> <span class="n">tol</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
+        <span class="n">P</span> <span class="o">=</span> <span class="n">M</span><span class="o">*</span><span class="n">vf</span> <span class="o">+</span> <span class="n">S</span><span class="o">*</span><span class="p">(</span><span class="mf">1</span><span class="o">-</span><span class="n">vf</span><span class="p">)</span>
+        <span class="n">Pr</span><span class="p">,</span> <span class="n">Pi</span> <span class="o">=</span> <span class="n">real</span><span class="p">(</span><span class="n">P</span><span class="p">),</span> <span class="n">imag</span><span class="p">(</span><span class="n">P</span><span class="p">)</span>
+        <span class="n">slabs</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">rho</span><span class="o">=</span><span class="p">[</span><span class="n">Pr</span><span class="p">],</span> <span class="n">irho</span><span class="o">=</span><span class="p">[</span><span class="n">Pi</span><span class="p">],</span> <span class="n">w</span><span class="o">=</span><span class="n">Pw</span><span class="p">)</span>
+</div></div>
+<div class="viewcode-block" id="layer_thickness"><a class="viewcode-back" href="../../api/polymer.html#refl1d.polymer.layer_thickness">[docs]</a><span class="k">def</span> <span class="nf">layer_thickness</span><span class="p">(</span><span class="n">z</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the thickness of a layer given the microslab z points.</span>
+
+<span class="sd">    The layer is sliced into bins of equal width, with the final</span>
+<span class="sd">    bin making up the remainder.  The z values given to the profile</span>
+<span class="sd">    function are the centers of these bins.  Using this, we can</span>
+<span class="sd">    guess that the total layer thickness will be the following::</span>
+
+<span class="sd">         2*z[-1]-z[-2] if len(z) &gt; 0 else 2*z[0]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="mf">2</span><span class="o">*</span><span class="n">z</span><span class="p">[</span><span class="o">-</span><span class="mf">1</span><span class="p">]</span><span class="o">-</span><span class="n">z</span><span class="p">[</span><span class="o">-</span><span class="mf">2</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">z</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0</span> <span class="k">else</span> <span class="mf">2</span><span class="o">*</span><span class="n">z</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="VolumeProfile"><a class="viewcode-back" href="../../api/polymer.html#refl1d.polymer.VolumeProfile">[docs]</a><span class="k">class</span> <span class="nc">VolumeProfile</span><span class="p">(</span><span class="n">Layer</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generic volume profile function</span>
+
+<span class="sd">    Parameters:</span>
+
+<span class="sd">        *thickness* the thickness of the solvent layer</span>
+<span class="sd">        *interface* the roughness of the solvent surface</span>
+<span class="sd">        *material* the polymer material</span>
+<span class="sd">        *solvent* the solvent material</span>
+<span class="sd">        *profile* the profile function, suitably parameterized</span>
+
+<span class="sd">    The materials can either use the scattering length density directly,</span>
+<span class="sd">    such as PDMS = SLD(0.063, 0.00006) or they can use chemical composition</span>
+<span class="sd">    and material density such as PDMS=Material(&quot;C2H6OSi&quot;,density=0.965).</span>
+
+<span class="sd">    These parameters combine in the following profile formula::</span>
+
+<span class="sd">        sld = material.sld * profile + solvent.sld * (1 - profile)</span>
+
+<span class="sd">    The profile function takes a depth z and returns a density rho.</span>
+
+<span class="sd">    For volume profiles, the returned rho should be the volume fraction</span>
+<span class="sd">    of the material.  For SLD profiles, rho should be complex scattering</span>
+<span class="sd">    length density of the material.</span>
+
+<span class="sd">    Fitting parameters are the available named arguments to the function.</span>
+<span class="sd">    The first argument must be *z*, which is the array of depths at which</span>
+<span class="sd">    the profile is to be evaluated.  It is guaranteed to be increasing, with</span>
+<span class="sd">    step size 2*z[0].</span>
+
+<span class="sd">    Initial values for the function parameters can be given using name=value.</span>
+<span class="sd">    These values can be scalars or fitting parameters.  The function will</span>
+<span class="sd">    be called with the current parameter values as arguments.  The layer</span>
+<span class="sd">    thickness can be computed as :func:`layer_thickness`.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c"># TODO: test that thickness(z) matches the thickness of the layer</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">thickness</span><span class="o">=</span><span class="mf">0</span><span class="p">,</span> <span class="n">interface</span><span class="o">=</span><span class="mf">0</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;VolumeProfile&quot;</span><span class="p">,</span>
+                 <span class="n">material</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">solvent</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">profile</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">interface</span> <span class="o">!=</span> <span class="mf">0</span><span class="p">:</span> <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s">&quot;interface not yet supported&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">profile</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">material</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">or</span> <span class="n">solvent</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;Need polymer, solvent and profile&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span> <span class="o">=</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">thickness</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;solvent thickness&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interface</span> <span class="o">=</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">interface</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;solvent interface&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">profile</span> <span class="o">=</span> <span class="n">profile</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">solvent</span> <span class="o">=</span> <span class="n">solvent</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">material</span> <span class="o">=</span> <span class="n">material</span>
+
+        <span class="c"># Query profile function for the list of arguments</span>
+        <span class="nb">vars</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getargspec</span><span class="p">(</span><span class="n">profile</span><span class="p">)[</span><span class="mf">0</span><span class="p">]</span>
+        <span class="c">#print &quot;vars&quot;,vars</span>
+        <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">ismethod</span><span class="p">(</span><span class="n">profile</span><span class="p">):</span> <span class="nb">vars</span> <span class="o">=</span> <span class="nb">vars</span><span class="p">[</span><span class="mf">1</span><span class="p">:]</span>  <span class="c"># Chop self</span>
+        <span class="nb">vars</span> <span class="o">=</span> <span class="nb">vars</span><span class="p">[</span><span class="mf">1</span><span class="p">:]</span>  <span class="c"># Chop z</span>
+        <span class="c">#print vars</span>
+        <span class="n">unused</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">kw</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">vars</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">unused</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;Profile got unexpected keyword argument &#39;</span><span class="si">%s</span><span class="s">&#39;&quot;</span><span class="o">%</span><span class="n">unused</span><span class="p">[</span><span class="mf">0</span><span class="p">])</span>
+        <span class="n">dups</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">vars</span>
+                <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="s">&#39;thickness&#39;</span><span class="p">,</span><span class="s">&#39;interface&#39;</span><span class="p">,</span><span class="s">&#39;polymer&#39;</span><span class="p">,</span><span class="s">&#39;solvent&#39;</span><span class="p">,</span><span class="s">&#39;profile&#39;</span><span class="p">)]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dups</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;Profile has conflicting argument &#39;</span><span class="si">%s</span><span class="s">&#39;&quot;</span><span class="o">%</span><span class="n">dups</span><span class="p">[</span><span class="mf">0</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">vars</span><span class="p">:</span> <span class="n">kw</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">k</span><span class="p">,</span><span class="mf">0</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">kw</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">k</span><span class="p">,</span><span class="n">Parameter</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="n">v</span><span class="p">,</span><span class="n">name</span><span class="o">=</span><span class="n">k</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parameters</span> <span class="o">=</span> <span class="nb">vars</span>
+
+<div class="viewcode-block" id="VolumeProfile.parameters"><a class="viewcode-back" href="../../api/polymer.html#refl1d.polymer.VolumeProfile.parameters">[docs]</a>    <span class="k">def</span> <span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">P</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">solvent</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">solvent</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span>
+                 <span class="n">material</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span>
+                 <span class="n">thickness</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">thickness</span><span class="p">,</span>
+                 <span class="n">interface</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">interface</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parameters</span><span class="p">:</span>
+            <span class="n">P</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">k</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">P</span>
+</div>
+<div class="viewcode-block" id="VolumeProfile.render"><a class="viewcode-back" href="../../api/polymer.html#refl1d.polymer.VolumeProfile.render">[docs]</a>    <span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">probe</span><span class="p">,</span> <span class="n">slabs</span><span class="p">):</span>
+        <span class="n">Mr</span><span class="p">,</span><span class="n">Mi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">material</span><span class="o">.</span><span class="n">sld</span><span class="p">(</span><span class="n">probe</span><span class="p">)</span>
+        <span class="n">Sr</span><span class="p">,</span><span class="n">Si</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">solvent</span><span class="o">.</span><span class="n">sld</span><span class="p">(</span><span class="n">probe</span><span class="p">)</span>
+        <span class="n">M</span> <span class="o">=</span> <span class="n">Mr</span> <span class="o">+</span> <span class="mf">1</span><span class="n">j</span><span class="o">*</span><span class="n">Mi</span>
+        <span class="n">S</span> <span class="o">=</span> <span class="n">Sr</span> <span class="o">+</span> <span class="mf">1</span><span class="n">j</span><span class="o">*</span><span class="n">Si</span>
+        <span class="c">#M,S = M[0],S[0]  # Temporary hack</span>
+        <span class="n">Pw</span><span class="p">,</span><span class="n">Pz</span> <span class="o">=</span> <span class="n">slabs</span><span class="o">.</span><span class="n">microslabs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">thickness</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">Pw</span><span class="p">)</span><span class="o">==</span> <span class="mf">0</span><span class="p">:</span> <span class="k">return</span>
+        <span class="n">kw</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">((</span><span class="n">k</span><span class="p">,</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">k</span><span class="p">)</span><span class="o">.</span><span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parameters</span><span class="p">)</span>
+        <span class="c">#print kw</span>
+        <span class="n">phi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="p">(</span><span class="n">Pz</span><span class="p">,</span><span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">phi</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">Pz</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span> <span class="k">raise</span> <span class="ne">Exception</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;profile function &#39;</span><span class="si">%s</span><span class="s">&#39; did not return array phi(z)&quot;</span>
+                            <span class="o">%</span><span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="o">.</span><span class="n">__name__</span><span class="p">)</span>
+        <span class="n">Pw</span><span class="p">,</span><span class="n">phi</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">merge_ends</span><span class="p">(</span><span class="n">Pw</span><span class="p">,</span> <span class="n">phi</span><span class="p">,</span> <span class="n">tol</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
+        <span class="n">P</span> <span class="o">=</span> <span class="n">M</span><span class="o">*</span><span class="n">phi</span> <span class="o">+</span> <span class="n">S</span><span class="o">*</span><span class="p">(</span><span class="mf">1</span><span class="o">-</span><span class="n">phi</span><span class="p">)</span>
+        <span class="n">slabs</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">rho</span> <span class="o">=</span> <span class="p">[</span><span class="n">real</span><span class="p">(</span><span class="n">P</span><span class="p">)],</span> <span class="n">irho</span> <span class="o">=</span> <span class="p">[</span><span class="n">imag</span><span class="p">(</span><span class="n">P</span><span class="p">)],</span> <span class="n">w</span> <span class="o">=</span> <span class="n">Pw</span><span class="p">)</span>
+        <span class="c">#slabs.interface(self.interface.value)</span>
+
+</div></div>
+<div class="viewcode-block" id="smear"><a class="viewcode-back" href="../../api/polymer.html#refl1d.polymer.smear">[docs]</a><span class="k">def</span> <span class="nf">smear</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span> <span class="n">sigma</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Gaussian smearing</span>
+
+<span class="sd">    :Parameters:</span>
+<span class="sd">        *z* | vector</span>
+<span class="sd">            equally spaced sample times</span>
+<span class="sd">        *P* | vector</span>
+<span class="sd">            sample values</span>
+<span class="sd">        *sigma* | real</span>
+<span class="sd">            root-mean-squared convolution width</span>
+<span class="sd">    :Returns:</span>
+<span class="sd">        *Ps* | vector</span>
+<span class="sd">            smeared sample values</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">z</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">3</span><span class="p">:</span> <span class="k">return</span> <span class="n">P</span>
+    <span class="n">dz</span> <span class="o">=</span> <span class="n">z</span><span class="p">[</span><span class="mf">1</span><span class="p">]</span><span class="o">-</span><span class="n">z</span><span class="p">[</span><span class="mf">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="mf">3</span><span class="o">*</span><span class="n">sigma</span> <span class="o">&lt;</span> <span class="n">dz</span><span class="p">:</span> <span class="k">return</span> <span class="n">P</span>
+    <span class="n">w</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mf">3</span><span class="o">*</span><span class="n">sigma</span><span class="o">/</span><span class="n">dz</span><span class="p">)</span>
+    <span class="n">G</span> <span class="o">=</span> <span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">-</span><span class="n">w</span><span class="p">,</span><span class="n">w</span><span class="o">+</span><span class="mf">1</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">dz</span><span class="o">/</span><span class="n">sigma</span><span class="p">))</span><span class="o">**</span><span class="mf">2</span><span class="p">)</span>
+    <span class="n">full</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span> <span class="p">([</span><span class="n">P</span><span class="p">[</span><span class="mf">0</span><span class="p">]]</span><span class="o">*</span><span class="n">w</span><span class="p">,</span> <span class="n">P</span><span class="p">,</span> <span class="p">[</span><span class="n">P</span><span class="p">[</span><span class="o">-</span><span class="mf">1</span><span class="p">]]</span><span class="o">*</span><span class="n">w</span><span class="p">)</span> <span class="p">)</span>
+    <span class="k">return</span> <span class="n">numpy</span><span class="o">.</span><span class="n">convolve</span><span class="p">(</span><span class="n">full</span><span class="p">,</span><span class="n">G</span><span class="o">/</span><span class="n">numpy</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">G</span><span class="p">),</span><span class="s">&#39;valid&#39;</span><span class="p">)</span></div>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

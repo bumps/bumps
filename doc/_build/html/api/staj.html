@@ -1,0 +1,487 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.staj - Staj File &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../index.html" />
+    <link rel="up" title="Reference" href="index.html" />
+    <link rel="next" title="refl1d.stajconvert - Staj File Converter" href="stajconvert.html" />
+    <link rel="prev" title="refl1d.snsdata - SNS Data" href="snsdata.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.staj - Staj File</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        «&#160;&#160;<a href="snsdata.html">refl1d.snsdata - SNS Data</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="stajconvert.html">refl1d.stajconvert - Staj File Converter</a>&#160;&#160;»
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <div class="section" id="refl1d-staj-staj-file">
+<h1>refl1d.staj - Staj File<a class="headerlink" href="#refl1d-staj-staj-file" title="Permalink to this headline">¶</a></h1>
+<table border="1" class="docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr><td><a class="reference internal" href="#refl1d.staj.MlayerMagnetic" title="refl1d.staj.MlayerMagnetic"><tt class="xref py py-obj docutils literal"><span class="pre">MlayerMagnetic</span></tt></a></td>
+<td>Model definition used by GJ2 program.</td>
+</tr>
+<tr><td><a class="reference internal" href="#refl1d.staj.MlayerModel" title="refl1d.staj.MlayerModel"><tt class="xref py py-obj docutils literal"><span class="pre">MlayerModel</span></tt></a></td>
+<td>Model definition used by MLayer program.</td>
+</tr>
+</tbody>
+</table>
+<span class="target" id="module-refl1d.staj"></span><p>Read and write staj files</p>
+<p>Staj files are the model files for the mlayer and gj2 programs, which are
+used as the calculation engine for the reflpak suite. Mlayer supports
+unpolarized beam with multilayer models,  and has files ending in
+<strong>.staj</strong>. GJ2 supports polarized beam without multilayer models, and
+has files ending in <strong>.sta</strong>.</p>
+<dl class="class">
+<dt id="refl1d.staj.MlayerMagnetic">
+<em class="property">class </em><tt class="descclassname">refl1d.staj.</tt><tt class="descname">MlayerMagnetic</tt><big>(</big><em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/staj.html#MlayerMagnetic"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.staj.MlayerMagnetic" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Model definition used by GJ2 program.</p>
+<p><strong>Attributes:</strong></p>
+<p>Q values and reflectivity come from a data file with Q, R, dR or
+from simulation with linear spacing from Qmin to Qmax in equal steps:</p>
+<blockquote>
+<dl class="docutils">
+<dt><em>data_file</em></dt>
+<dd>base name of the data file, or None if this is simulation only</dd>
+<dt><em>active_xsec</em></dt>
+<dd>active cross sections (usually &#8216;abcd&#8217; for all cross sections)</dd>
+<dt><em>Qmin</em>, <em>Qmax</em>, <em>num_Q</em></dt>
+<dd>for simulation, Q sample points</dd>
+</dl>
+</blockquote>
+<p>Resolution is defined by wavelength and by incident angle:</p>
+<blockquote>
+<dl class="docutils">
+<dt><em>wavelength</em>, <em>wavelength_dispersion</em>, <em>angular_divergence</em></dt>
+<dd>resolution is calculated as
+<span class="math">\Delta Q/Q = \Delta\lambda/\lambda + \Delta\theta/\theta</span></dd>
+</dl>
+</blockquote>
+<p>Additional beam parameters correct for intensity, background and
+possibly guide field angle:</p>
+<blockquote>
+<dl class="docutils">
+<dt><em>intensity</em>, <em>background</em></dt>
+<dd>incident beam intensity and sample background</dd>
+<dt><em>guide_angle</em></dt>
+<dd>angle of the guide field</dd>
+</dl>
+</blockquote>
+<p>Unlike pure structural models, magnetic models are in one large
+section with no repeats.  The single parameter is the number of
+layers, which is implicit in the length of the layer data and
+does not need to be an explicit attribute.</p>
+<p>Interfaces are split into discrete steps according to a profile,
+either error function or hyperbolic tangent.  For sharp interfaces
+which do not overlap within a layer, the interface is broken into a
+fixed number of slabs with slabs having different widths, but equal
+changes in height.  For broad interfaces, the whole layer is split
+into the same fixed number of slabs, but with each slab having the
+same width. The following attributes are used:</p>
+<blockquote>
+<dl class="docutils">
+<dt><em>roughness_steps</em></dt>
+<dd>number of roughness steps (13 is coarse; 51 is fine)</dd>
+<dt><em>roughness_profile</em></dt>
+<dd>roughness profile is either &#8216;E&#8217; for error function or &#8216;H&#8217; for tanh</dd>
+</dl>
+</blockquote>
+<p>Layers have thickness, interface roughness and real and imaginary
+scattering length density (SLD).  Roughness is stored in the file
+using full width at half maximum (FWHM) for the given profile type.
+For convenience, roughness can also be set or queried using a 1-<span class="math">\sigma</span>
+equivalent roughness on an error function profile.  Regardless,
+layer parameters are represented as vectors with one entry for each
+top, middle and bottom layer using the following attributes:</p>
+<blockquote>
+<dl class="docutils">
+<dt><em>thickness</em>, <em>roughness</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | Å</span></dt>
+<dd>layer thickness and FWHM roughness</dd>
+<dt><em>rho</em>, <em>irho</em> <span class="classifier-delimiter">:</span> <span class="classifier">float, float | <span class="math">16 \pi \rho</span>, <span class="math">2\lambda\rho_i</span></span></dt>
+<dd>complex scattering length density</dd>
+<dt><em>mthickness</em>, <em>mroughness</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | Å</span></dt>
+<dd>magnetic thickness and roughness</dd>
+<dt><em>mrho</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | <span class="math">16 \pi \rho_M</span></span></dt>
+<dd>magnetic scattering length density</dd>
+<dt><em>mtheta</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | °</span></dt>
+<dd>magnetic angle</dd>
+<dt><em>sigma_roughness</em>, <em>sigma_mroughness</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | Å</span></dt>
+<dd>computed 1-<span class="math">\sigma</span> equivalent roughness for erf profile</dd>
+</dl>
+</blockquote>
+<p>The conversion from stored <span class="math">16 \pi \rho</span>, <span class="math">2\lambda\rho_i</span> to
+in memory <span class="math">10^6 \rho</span>, <span class="math">10^6 \rho_i</span>  happens automatically on
+read/write.</p>
+<p>The layers are ordered from surface to substrate.</p>
+<p>Additional attributes are as follows:</p>
+<blockquote>
+<dl class="docutils">
+<dt><em>fitpars</em></dt>
+<dd>individual fit parameter numbers</dd>
+<dt><em>constraints</em></dt>
+<dd>constraints between layers</dd>
+<dt><em>output_file</em></dt>
+<dd>name of the output file</dd>
+</dl>
+</blockquote>
+<p>These can be safely ignored, except perhaps if you want to try to
+compile the constraints into something that can be used by your system.</p>
+<p><strong>Methods:</strong></p>
+<p>model = MlayerMagnetic(attribute=value, ...)</p>
+<blockquote>
+Construct a new MLayer model with the given attributes set.</blockquote>
+<p>model = MlayerMagnetic.load(filename)</p>
+<blockquote>
+Construct a new MLayer model from a staj file.</blockquote>
+<p>model.set(attribute=value, ...)</p>
+<blockquote>
+Replace a set of attribute values.</blockquote>
+<p>model.fit_resolution(Q,dQ)</p>
+<blockquote>
+Choose the best resolution parameters to match the given Q,dQ
+resolution.  Returns the object so that calls can be chained.</blockquote>
+<p>model.resolution(Q)</p>
+<blockquote>
+Return the resolution at Q for the current resolution parameters.</blockquote>
+<p>model.save(filename)</p>
+<blockquote>
+Write the model to the given named file.  Raises ValueError if
+the model is invalid.</blockquote>
+<p><strong>Constructing new files:</strong></p>
+<p>Staj files can be constructed directly.  The MlayerModel constructor
+can accept all data attributes as key word arguments.  Models require
+at least <em>data_file</em>, <em>wavelength</em>, <em>thickness</em>, <em>roughness</em> and <em>rho</em>.
+Resolution parameters can be set using model.fit_resolution(Q,dQ).
+Everything else has reasonable defaults.</p>
+<dl class="method">
+<dt id="refl1d.staj.MlayerMagnetic.FWHMresolution">
+<tt class="descname">FWHMresolution</tt><big>(</big><em>Q</em><big>)</big><a class="reference internal" href="../_modules/refl1d/staj.html#MlayerMagnetic.FWHMresolution"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.staj.MlayerMagnetic.FWHMresolution" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the resolution at Q for mlayer with the current settings
+for wavelength, wavelength divergence and angular divergence.</p>
+<p>Resolution is full-width at half maximum (FWHM), not 1-<span class="math">\sigma</span>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.staj.MlayerMagnetic.fit_FWHMresolution">
+<tt class="descname">fit_FWHMresolution</tt><big>(</big><em>Q</em>, <em>dQ</em>, <em>weight=1</em><big>)</big><a class="reference internal" href="../_modules/refl1d/staj.html#MlayerMagnetic.fit_FWHMresolution"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.staj.MlayerMagnetic.fit_FWHMresolution" title="Permalink to this definition">¶</a></dt>
+<dd><p>Choose the best dL and dT to match the resolution dQ.</p>
+<p>Given that mlayer uses the following resolution function:</p>
+<div class="math">
+\Delta Q_k = (|Q_k| \Delta\lambda + 4 \pi \Delta\theta)/\lambda_k</div>
+<p>we can use a linear system solver to find the optimal
+<span class="math">\Delta \lambda</span> and <span class="math">\Delta \theta</span> across our dataset from the
+over-determined system:</p>
+<div class="math">
+[|Q_k|/\lambda_k, 4\pi/\lambda_k][\Delta\lambda, \Delta\theta]^T
+    = \Delta Q_k</div>
+<p>If weights are provided (e.g., <span class="math">\Delta R_k/R_k</span>), then weigh each
+point during the fit.</p>
+<p>Given that the experiment is often run with fixed slits at the
+start and end, you may choose to match the resolution across the
+entire <span class="math">Q</span> range, or instead restrict it to just the region where
+the slits are opening.  You will generally want to get the resolution
+correct at the critical edge since that&#8217;s where it will have the
+largest effect on the fit.</p>
+<p>Returns the object so that operations can be chained.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="refl1d.staj.MlayerMagnetic.load">
+<em class="property">classmethod </em><tt class="descname">load</tt><big>(</big><em>filename</em><big>)</big><a class="reference internal" href="../_modules/refl1d/staj.html#MlayerMagnetic.load"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.staj.MlayerMagnetic.load" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load a staj file, returning an MlayerModel object</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.staj.MlayerMagnetic.save">
+<tt class="descname">save</tt><big>(</big><em>filename</em><big>)</big><a class="reference internal" href="../_modules/refl1d/staj.html#MlayerMagnetic.save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.staj.MlayerMagnetic.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save the staj file</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.staj.MlayerMagnetic.set">
+<tt class="descname">set</tt><big>(</big><em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/staj.html#MlayerMagnetic.set"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.staj.MlayerMagnetic.set" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.staj.MlayerMagnetic.sigma_mroughness">
+<tt class="descname">sigma_mroughness</tt><a class="headerlink" href="#refl1d.staj.MlayerMagnetic.sigma_mroughness" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.staj.MlayerMagnetic.sigma_roughness">
+<tt class="descname">sigma_roughness</tt><a class="headerlink" href="#refl1d.staj.MlayerMagnetic.sigma_roughness" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="refl1d.staj.MlayerModel">
+<em class="property">class </em><tt class="descclassname">refl1d.staj.</tt><tt class="descname">MlayerModel</tt><big>(</big><em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/staj.html#MlayerModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.staj.MlayerModel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Model definition used by MLayer program.</p>
+<p><strong>Attributes:</strong></p>
+<p>Q values and reflectivity come from a data file with Q, R, dR or
+from simulation with linear spacing from Qmin to Qmax in equal steps:</p>
+<blockquote>
+<dl class="docutils">
+<dt><em>data_file</em></dt>
+<dd>name of the data file, or None if this is simulation only</dd>
+<dt><em>Qmin</em>, <em>Qmax</em>, <em>num_Q</em></dt>
+<dd>for simulation, Q sample points</dd>
+</dl>
+</blockquote>
+<p>Resolution is defined by wavelength and by incident angle:</p>
+<blockquote>
+<dl class="docutils">
+<dt><em>wavelength</em>, <em>wavelength_dispersion</em>, <em>angular_divergence</em></dt>
+<dd>resolution is calculated as
+<span class="math">\Delta Q/Q = \Delta\lambda/\lambda + \Delta\theta/\theta</span></dd>
+</dl>
+</blockquote>
+<p>Additional beam parameters correct for intensity, background and
+possibly sample alignment:</p>
+<blockquote>
+<dl class="docutils">
+<dt><em>intensity</em>, <em>background</em></dt>
+<dd>incident beam intensity and sample background</dd>
+<dt><em>theta_offset</em></dt>
+<dd>alignment angle correction</dd>
+</dl>
+</blockquote>
+<p>The model is defined in terms of layers, with three sections.  The top
+and bottom section correspond to the fixed layers at the surface and
+the substrate.  The middle section layers can be repeated an arbitrary
+number of times, as defined by the number of repeats attribute.  The
+attributes defining the sections are:</p>
+<blockquote>
+<dl class="docutils">
+<dt><em>num_top</em> <em>num_middle</em> <em>num_bottom</em></dt>
+<dd>section sizes</dd>
+<dt><em>num_repeats</em></dt>
+<dd>number of times middle section repeats</dd>
+</dl>
+</blockquote>
+<p>Interfaces are split into discrete steps according to a profile,
+either error function or hyperbolic tangent.  For sharp interfaces
+which do not overlap within a layer, the interface is broken into a
+fixed number of slabs with slabs having different widths, but equal
+changes in height.  For broad interfaces, the whole layer is split
+into the same fixed number of slabs, but with each slab having the
+same width.  The following attributes are used:</p>
+<blockquote>
+<dl class="docutils">
+<dt><em>roughness_steps</em></dt>
+<dd>number of roughness steps (13 is coarse; 51 is fine)</dd>
+<dt><em>roughness_profile</em></dt>
+<dd>roughness profile is either &#8216;E&#8217; for error function or &#8216;H&#8217; for tanh</dd>
+</dl>
+</blockquote>
+<p>Layers have thickness, interface roughness and real and imaginary
+scattering length density (SLD).  Roughness is stored in the file
+using full width at half maximum (FWHM) for the given profile type.
+For convenience, roughness can also be set or queried using a 1-<span class="math">\sigma</span>
+equivalent roughness on an error function profile.  Regardless,
+layer parameters are represented as vectors with one entry for each
+top, middle and bottom layer using the following attributes:</p>
+<blockquote>
+<dl class="docutils">
+<dt><em>thickness</em>, <em>roughness</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | Å</span></dt>
+<dd>layer thickness and FWHM roughness</dd>
+<dt><em>rho</em>, <em>irho</em>, <em>incoh</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | 10<sup>-6</sup>Å<sup>-2</sup></span></dt>
+<dd>complex coherent <span class="math">\rho + j \rho_i</span> and incoherent SLD</dd>
+</dl>
+</blockquote>
+<p>Computed attributes are provided for convenience:</p>
+<blockquote>
+<dl class="docutils">
+<dt><em>sigma_roughness</em> <span class="classifier-delimiter">:</span> <span class="classifier">float | Å</span></dt>
+<dd>1-<span class="math">\sigma</span> equivalent roughness for erf profile</dd>
+<dt><em>mu</em></dt>
+<dd>absorption cross section (2*wavelength*irho + incoh)</dd>
+</dl>
+</blockquote>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The staj files store SLD as <span class="math">16\pi\rho</span>, <span class="math">2\lambda\rho_i</span>
+with an additional column of 0 for magnetic SLD. This conversion
+happens automatically on read/write. The incoherent cross section
+is assumed to be zero.</p>
+</div>
+<p>The layers are ordered from surface to substrate.</p>
+<p>Additional attributes are as follows:</p>
+<blockquote>
+<dl class="docutils">
+<dt><em>fitpars</em></dt>
+<dd>individual fit parameter numbers</dd>
+<dt><em>constraints</em></dt>
+<dd>constraints between layers</dd>
+<dt><em>output_file</em></dt>
+<dd>name of the output file</dd>
+</dl>
+</blockquote>
+<p>These can be safely ignored, except perhaps if you want to try to
+compile the constraints into something that can be used by your system.</p>
+<p><strong>Methods:</strong></p>
+<p>model = MlayerModel(attribute=value, ...)</p>
+<blockquote>
+Construct a new MLayer model with the given attributes set.</blockquote>
+<p>model = MlayerModel.load(filename)</p>
+<blockquote>
+Construct a new MLayer model from a staj file.</blockquote>
+<p>model.set(attribute=value, ...)</p>
+<blockquote>
+Replace a set of attribute values.</blockquote>
+<p>model.fit_resolution(Q,dQ)</p>
+<blockquote>
+Choose the best resolution parameters to match the given Q,dQ
+resolution.  Returns the object so that calls can be chained.</blockquote>
+<p>model.resolution(Q)</p>
+<blockquote>
+Return the resolution at Q for the current resolution parameters.</blockquote>
+<p>model.split_sections()</p>
+<blockquote>
+Assign top, middle, bottom and repeats to distribute the layers
+across sections.  Returns the object so that calls can be chained.</blockquote>
+<p>model.save(filename)</p>
+<blockquote>
+Write the model to the given named file.  Raises ValueError if
+the model is invalid.</blockquote>
+<p><strong>Constructing new files:</strong></p>
+<p>Staj files can be constructed directly.  The MlayerModel constructor
+can accept all data attributes as key word arguments.  Models require
+at least <em>data_file</em>, <em>wavelength</em>, <em>thickness</em>, <em>roughness</em> and <em>rho</em>.
+Resolution parameters can be set using model.fit_resolution(Q,dQ).
+Section sizes can be set using model.split_sections().  Everything
+else has reasonable defaults.</p>
+<dl class="method">
+<dt id="refl1d.staj.MlayerModel.FWHMresolution">
+<tt class="descname">FWHMresolution</tt><big>(</big><em>Q</em><big>)</big><a class="reference internal" href="../_modules/refl1d/staj.html#MlayerModel.FWHMresolution"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.staj.MlayerModel.FWHMresolution" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the resolution at Q for mlayer with the current settings
+for wavelength, wavelength divergence and angular divergence.</p>
+<p>Resolution is full-width at half maximum (FWHM), not 1-<span class="math">\sigma</span>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.staj.MlayerModel.fit_FWHMresolution">
+<tt class="descname">fit_FWHMresolution</tt><big>(</big><em>Q</em>, <em>dQ</em>, <em>weight=1</em><big>)</big><a class="reference internal" href="../_modules/refl1d/staj.html#MlayerModel.fit_FWHMresolution"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.staj.MlayerModel.fit_FWHMresolution" title="Permalink to this definition">¶</a></dt>
+<dd><p>Choose the best dL and dT to match the resolution dQ.</p>
+<p>Given that mlayer uses the following resolution function:</p>
+<div class="math">
+\Delta Q_k = (|Q_k| \Delta\lambda + 4 \pi \Delta\theta)/\lambda_k</div>
+<p>we can use a linear system solver to find the optimal
+<span class="math">\Delta \lambda</span> and <span class="math">\Delta \theta</span> across our dataset from the
+over-determined system:</p>
+<div class="math">
+[|Q_k|/\lambda_k, 4\pi/\lambda_k][\Delta\lambda, \Delta\theta]^T
+    = \Delta Q_k</div>
+<p>If weights are provided (e.g., <span class="math">\Delta R_k/R_k</span>), then weigh each
+point during the fit.</p>
+<p>Given that the experiment is often run with fixed slits at the
+start and end, you may choose to match the resolution across the
+entire <span class="math">Q</span> range, or instead restrict it to just the region where
+the slits are opening.  You will generally want to get the resolution
+correct at the critical edge since that&#8217;s where it will have the
+largest effect on the fit.</p>
+<p>Returns the object so that operations can be chained.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="refl1d.staj.MlayerModel.load">
+<em class="property">classmethod </em><tt class="descname">load</tt><big>(</big><em>filename</em><big>)</big><a class="reference internal" href="../_modules/refl1d/staj.html#MlayerModel.load"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.staj.MlayerModel.load" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load a staj file, returning an MlayerModel object</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.staj.MlayerModel.mu">
+<tt class="descname">mu</tt><a class="headerlink" href="#refl1d.staj.MlayerModel.mu" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.staj.MlayerModel.save">
+<tt class="descname">save</tt><big>(</big><em>filename</em><big>)</big><a class="reference internal" href="../_modules/refl1d/staj.html#MlayerModel.save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.staj.MlayerModel.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save the staj file</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="refl1d.staj.MlayerModel.set">
+<tt class="descname">set</tt><big>(</big><em>**kw</em><big>)</big><a class="reference internal" href="../_modules/refl1d/staj.html#MlayerModel.set"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.staj.MlayerModel.set" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="refl1d.staj.MlayerModel.sigma_roughness">
+<tt class="descname">sigma_roughness</tt><a class="headerlink" href="#refl1d.staj.MlayerModel.sigma_roughness" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="refl1d.staj.MlayerModel.split_sections">
+<tt class="descname">split_sections</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/refl1d/staj.html#MlayerModel.split_sections"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#refl1d.staj.MlayerModel.split_sections" title="Permalink to this definition">¶</a></dt>
+<dd><p>Split the given set of layers into sections, putting as many layers
+as possible into the middle section, then the bottom and finally
+the top.</p>
+<p>Returns the object so that operations can be chained.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        «&#160;&#160;<a href="snsdata.html">refl1d.snsdata - SNS Data</a>
+        &#160;&#160;::&#160;&#160;
+        <a class="uplink" href="../index.html">Contents</a>
+        &#160;&#160;::&#160;&#160;
+        <a href="stajconvert.html">refl1d.stajconvert - Staj File Converter</a>&#160;&#160;»
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>

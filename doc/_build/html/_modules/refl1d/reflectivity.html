@@ -1,0 +1,288 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>refl1d.reflectivity &mdash; Refl1D v0.6.19 documentation</title>
+    <link rel="stylesheet" href="../../_static/haiku-site.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/print.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6.19',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/MathJax/MathJax.js"></script>
+    <script type="text/javascript" src="../../_static/theme_extras.js"></script>
+    <link rel="top" title="Refl1D v0.6.19 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+      <div class="header"><img class="rightlogo" src="../../_static/logo.png" alt="Logo"/><h1 class="heading"><a href="../../index.html">
+          <span>Refl1D v0.6.19 documentation</span></a></h1>
+        <h2 class="heading"><span>refl1d.reflectivity</span></h2>
+      </div>
+      <div class="topnav">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+      <div class="content">
+        
+        
+  <h1>Source code for refl1d.reflectivity</h1><div class="highlight"><pre>
+<span class="c">#!/usr/bin/env python</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Basic reflectometry calculations</span>
+
+<span class="sd">Slab model reflectivity calculator with optional absorption and roughness.</span>
+<span class="sd">The function reflectivity_amplitude returns the complex waveform.</span>
+<span class="sd">Slab model with supporting magnetic scattering.  The function</span>
+<span class="sd">magnetic_reflectivity returns the complex reflection for the four</span>
+<span class="sd">spin polarization cross sections [++, +-, -+, --].  The function</span>
+<span class="sd">unpolarized_magnetic returns the expected magnitude for a measurement</span>
+<span class="sd">of the magnetic scattering using an unpolarized beam.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c">#__doc__ = &quot;Fundamental reflectivity calculations&quot;</span>
+<span class="n">__author__</span> <span class="o">=</span> <span class="s">&quot;Paul Kienzle&quot;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span> <span class="s">&#39;reflectivity&#39;</span><span class="p">,</span> <span class="s">&#39;reflectivity_amplitude&#39;</span><span class="p">,</span>
+            <span class="s">&#39;magnetic_reflectivity&#39;</span><span class="p">,</span> <span class="s">&#39;magnetic_amplitude&#39;</span><span class="p">,</span>
+            <span class="s">&#39;unpolarized_magnetic&#39;</span><span class="p">,</span> <span class="s">&#39;convolve&#39;</span><span class="p">,</span>
+            <span class="s">&#39;erf&#39;</span>
+            <span class="p">]</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">pi</span><span class="p">,</span> <span class="n">sin</span><span class="p">,</span> <span class="n">cos</span><span class="p">,</span> <span class="n">conj</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">ascontiguousarray</span> <span class="k">as</span> <span class="n">_dense</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">reflmodule</span>
+
+
+<div class="viewcode-block" id="reflectivity"><a class="viewcode-back" href="../../api/reflectivity.html#refl1d.reflectivity.reflectivity">[docs]</a><span class="k">def</span> <span class="nf">reflectivity</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate reflectivity $|r(k_z)|^2$ from slab model.</span>
+
+<span class="sd">    :Parameters :</span>
+<span class="sd">        *depth* : float[N] | |Ang|</span>
+<span class="sd">            Thickness of the individual layers (incident and substrate</span>
+<span class="sd">            depths are ignored)</span>
+<span class="sd">        *sigma* : float OR float[N-1] | |Ang|</span>
+<span class="sd">            Interface roughness between the current layer and the next.</span>
+<span class="sd">            The final layer is ignored.  This may be a scalar for fixed</span>
+<span class="sd">            roughness on every layer, or None if there is no roughness.</span>
+<span class="sd">        *rho*, *irho* : float[N] OR float[N,K] | |1e-6/Ang^2|</span>
+<span class="sd">            Real and imaginary scattering length density.  Use multiple</span>
+<span class="sd">            columns when you have kz-dependent scattering length densities,</span>
+<span class="sd">            and set rho_offset to select the appropriate one.  Data should</span>
+<span class="sd">            be stored in column order.</span>
+<span class="sd">        *kz* : float[M] | |1/Ang|</span>
+<span class="sd">            Points at which to evaluate the reflectivity</span>
+<span class="sd">        *rho_index* : integer[M]</span>
+<span class="sd">            *rho* and *irho* columns to use for the various kz.</span>
+
+<span class="sd">    :Returns:</span>
+<span class="sd">        *R* | float[M]</span>
+<span class="sd">            Reflectivity magnitude.</span>
+
+<span class="sd">    This function does not compute any instrument resolution corrections.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">reflectivity_amplitude</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span><span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">r</span><span class="o">*</span><span class="n">conj</span><span class="p">(</span><span class="n">r</span><span class="p">))</span><span class="o">.</span><span class="n">real</span>
+</div>
+<div class="viewcode-block" id="reflectivity_amplitude"><a class="viewcode-back" href="../../api/reflectivity.html#refl1d.reflectivity.reflectivity_amplitude">[docs]</a><span class="k">def</span> <span class="nf">reflectivity_amplitude</span><span class="p">(</span><span class="n">kz</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                           <span class="n">depth</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                           <span class="n">rho</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                           <span class="n">irho</span><span class="o">=</span><span class="mf">0</span><span class="p">,</span>
+                           <span class="n">sigma</span><span class="o">=</span><span class="mf">0</span><span class="p">,</span>
+                           <span class="n">rho_index</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                           <span class="p">):</span>
+    <span class="s">r&quot;&quot;&quot;</span>
+<span class="s">    Calculate reflectivity amplitude $r(k_z)$ from slab model.</span>
+
+<span class="s">    :Parameters :</span>
+<span class="s">        *depth* : float[N] | |Ang|</span>
+<span class="s">            Thickness of the individual layers (incident and substrate</span>
+<span class="s">            depths are ignored)</span>
+<span class="s">        *sigma* = 0 : float OR float[N-1] | |Ang|</span>
+<span class="s">            Interface roughness between the current layer and the next.</span>
+<span class="s">            The final layer is ignored.  This may be a scalar for fixed</span>
+<span class="s">            roughness on every layer, or None if there is no roughness.</span>
+<span class="s">        *rho*, *irho* = 0: float[N] OR float[N,K] | |1e-6/Ang^2|</span>
+<span class="s">            Real and imaginary scattering length density.  Use multiple</span>
+<span class="s">            columns when you have kz-dependent scattering length densities,</span>
+<span class="s">            and set *rho_index* to select amongst them.  Data should be</span>
+<span class="s">            stored in column order.</span>
+<span class="s">        *kz* : float[M] | |1/Ang|</span>
+<span class="s">            Points at which to evaluate the reflectivity</span>
+<span class="s">        *rho_index* = 0 : integer[M]</span>
+<span class="s">            *rho* and *irho* columns to use for the various kz.</span>
+
+<span class="s">    :Returns:</span>
+<span class="s">        *r* | complex[M]</span>
+<span class="s">            Complex reflectivity waveform.</span>
+
+<span class="s">    This function does not compute any instrument resolution corrections.</span>
+<span class="s">    &quot;&quot;&quot;</span>
+    <span class="n">kz</span> <span class="o">=</span> <span class="n">_dense</span><span class="p">(</span><span class="n">kz</span><span class="p">,</span> <span class="s">&#39;d&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">rho_index</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">rho_index</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">kz</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span><span class="s">&#39;i&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">rho_index</span> <span class="o">=</span> <span class="n">_dense</span><span class="p">(</span><span class="n">rho_index</span><span class="p">,</span> <span class="s">&#39;i&#39;</span><span class="p">)</span>
+
+    <span class="n">depth</span> <span class="o">=</span> <span class="n">_dense</span><span class="p">(</span><span class="n">depth</span><span class="p">,</span> <span class="s">&#39;d&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">numpy</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">sigma</span><span class="p">):</span>
+        <span class="n">sigma</span> <span class="o">=</span> <span class="n">sigma</span><span class="o">*</span><span class="n">numpy</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">depth</span><span class="p">)</span><span class="o">-</span><span class="mf">1</span><span class="p">,</span> <span class="s">&#39;d&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">sigma</span> <span class="o">=</span> <span class="n">_dense</span><span class="p">(</span><span class="n">sigma</span><span class="p">,</span> <span class="s">&#39;d&#39;</span><span class="p">)</span>
+    <span class="n">rho</span> <span class="o">=</span> <span class="n">_dense</span><span class="p">(</span><span class="n">rho</span><span class="p">,</span> <span class="s">&#39;d&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">numpy</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">irho</span><span class="p">):</span>
+        <span class="n">irho</span> <span class="o">=</span> <span class="n">irho</span> <span class="o">*</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">rho</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">irho</span> <span class="o">=</span> <span class="n">_dense</span><span class="p">(</span><span class="n">irho</span><span class="p">,</span> <span class="s">&#39;d&#39;</span><span class="p">)</span>
+
+    <span class="c">#print depth.shape,rho.shape,irho.shape,sigma.shape</span>
+    <span class="c">#print depth.dtype,rho.dtype,irho.dtype,sigma.dtype</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">kz</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span><span class="s">&#39;D&#39;</span><span class="p">)</span>
+    <span class="c">#print &quot;amplitude&quot;,depth,rho,kz,rho_index</span>
+    <span class="c">#print depth.shape, sigma.shape, rho.shape, irho.shape, kz.shape</span>
+    <span class="n">reflmodule</span><span class="o">.</span><span class="n">_reflectivity_amplitude</span><span class="p">(</span><span class="n">depth</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">rho</span><span class="p">,</span> <span class="n">irho</span><span class="p">,</span> <span class="n">kz</span><span class="p">,</span>
+                                       <span class="n">rho_index</span><span class="p">,</span> <span class="n">r</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">r</span>
+
+</div>
+<div class="viewcode-block" id="magnetic_reflectivity"><a class="viewcode-back" href="../../api/reflectivity.html#refl1d.reflectivity.magnetic_reflectivity">[docs]</a><span class="k">def</span> <span class="nf">magnetic_reflectivity</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span><span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Magnetic reflectivity for slab models.</span>
+
+<span class="sd">    Returns the expected values for the four polarization cross</span>
+<span class="sd">    sections (++,+-,-+,--).</span>
+<span class="sd">    Return reflectivity R^2 from slab model with sharp interfaces.</span>
+<span class="sd">    returns reflectivities.</span>
+
+<span class="sd">    The parameters are as follows:</span>
+
+<span class="sd">    kz (|1/Ang|)</span>
+<span class="sd">        points at which to evaluate the reflectivity</span>
+<span class="sd">    depth (|Ang|)</span>
+<span class="sd">        thickness of the individual layers (incident and substrate</span>
+<span class="sd">        depths are ignored)</span>
+<span class="sd">    rho (microNb)</span>
+<span class="sd">        Scattering length density.</span>
+<span class="sd">    mu (microNb)</span>
+<span class="sd">        absorption. Defaults to 0.</span>
+<span class="sd">    wavelength (|Ang|)</span>
+<span class="sd">        Incident wavelength (only affects absorption).  May be a vector.</span>
+<span class="sd">        Defaults to 1.</span>
+<span class="sd">    rho_m (microNb)</span>
+<span class="sd">        Magnetic scattering length density correction.</span>
+<span class="sd">    theta_m (degrees)</span>
+<span class="sd">        Angle of the magnetism within the layer.</span>
+<span class="sd">    Aguide (degrees)</span>
+<span class="sd">        Angle of the guide field; -90 is the usual case</span>
+
+<span class="sd">    This function does not compute any instrument resolution corrections</span>
+<span class="sd">    or interface diffusion</span>
+
+<span class="sd">    Use magnetic_amplitude to return the complex waveform.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">magnetic_amplitude</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span><span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">[(</span><span class="n">z</span><span class="o">*</span><span class="n">z</span><span class="o">.</span><span class="n">conj</span><span class="p">())</span><span class="o">.</span><span class="n">real</span> <span class="k">for</span> <span class="n">z</span> <span class="ow">in</span> <span class="n">r</span><span class="p">]</span>
+</div>
+<div class="viewcode-block" id="unpolarized_magnetic"><a class="viewcode-back" href="../../api/reflectivity.html#refl1d.reflectivity.unpolarized_magnetic">[docs]</a><span class="k">def</span> <span class="nf">unpolarized_magnetic</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span><span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns the average of magnetic reflectivity for all cross-sections.</span>
+
+<span class="sd">    See :class:`magnetic_reflectivity &lt;refl1d.reflectivity.magnetic_reflectivity&gt;` for details.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">reduce</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">add</span><span class="p">,</span> <span class="n">magnetic_reflectivity</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span><span class="o">**</span><span class="n">kw</span><span class="p">))</span><span class="o">/</span><span class="mf">2.</span>
+</div>
+<div class="viewcode-block" id="magnetic_amplitude"><a class="viewcode-back" href="../../api/reflectivity.html#refl1d.reflectivity.magnetic_amplitude">[docs]</a><span class="k">def</span> <span class="nf">magnetic_amplitude</span><span class="p">(</span><span class="n">kz</span><span class="p">,</span>
+                       <span class="n">depth</span><span class="p">,</span>
+                       <span class="n">rho</span><span class="p">,</span>
+                       <span class="n">irho</span><span class="o">=</span><span class="mf">0</span><span class="p">,</span>
+                       <span class="n">rhoM</span><span class="o">=</span><span class="mf">0</span><span class="p">,</span>
+                       <span class="n">thetaM</span><span class="o">=</span><span class="mf">0</span><span class="p">,</span>
+                       <span class="n">sigma</span><span class="o">=</span><span class="mf">0</span><span class="p">,</span>
+                       <span class="n">Aguide</span><span class="o">=-</span><span class="mf">90.0</span><span class="p">,</span>
+                       <span class="n">rho_index</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                       <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns the complex magnetic reflectivity waveform.</span>
+
+<span class="sd">    See :class:`magnetic_reflectivity &lt;refl1d.reflectivity.magnetic_reflectivity&gt;` for details.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">kz</span> <span class="o">=</span> <span class="n">_dense</span><span class="p">(</span><span class="n">kz</span><span class="p">,</span><span class="s">&#39;d&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">rho_index</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">rho_index</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">kz</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span><span class="s">&#39;i&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">rho_index</span> <span class="o">=</span> <span class="n">_dense</span><span class="p">(</span><span class="n">rho_index</span><span class="p">,</span> <span class="s">&#39;i&#39;</span><span class="p">)</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">depth</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">numpy</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">irho</span><span class="p">):</span>
+        <span class="n">irho</span> <span class="o">=</span> <span class="n">irho</span><span class="o">*</span><span class="n">numpy</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="s">&#39;d&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">numpy</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">rhoM</span><span class="p">):</span>
+        <span class="n">rhoM</span> <span class="o">=</span> <span class="n">rhoM</span><span class="o">*</span><span class="n">numpy</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="s">&#39;d&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">numpy</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">thetaM</span><span class="p">):</span>
+        <span class="n">thetaM</span> <span class="o">=</span> <span class="n">thetaM</span><span class="o">*</span><span class="n">numpy</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="s">&#39;d&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">numpy</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">sigma</span><span class="p">):</span>
+        <span class="n">sigma</span> <span class="o">=</span> <span class="n">sigma</span><span class="o">*</span><span class="n">numpy</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="o">-</span><span class="mf">1</span><span class="p">,</span> <span class="s">&#39;d&#39;</span><span class="p">)</span>
+
+    <span class="n">depth</span><span class="p">,</span> <span class="n">rho</span><span class="p">,</span> <span class="n">irho</span><span class="p">,</span> <span class="n">rho_m</span><span class="p">,</span> <span class="n">thetaM</span><span class="p">,</span> <span class="n">sigma</span> \
+        <span class="o">=</span> <span class="p">[</span><span class="n">_dense</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="s">&#39;d&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">depth</span><span class="p">,</span> <span class="n">rho</span><span class="p">,</span> <span class="n">irho</span><span class="p">,</span> <span class="n">rhoM</span><span class="p">,</span> <span class="n">thetaM</span><span class="p">,</span> <span class="n">sigma</span><span class="p">]</span>
+    <span class="n">expth</span> <span class="o">=</span> <span class="n">cos</span><span class="p">(</span><span class="n">thetaM</span> <span class="o">*</span> <span class="n">pi</span><span class="o">/</span><span class="mf">180.0</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1</span><span class="n">j</span><span class="o">*</span><span class="n">sin</span><span class="p">(</span><span class="n">thetaM</span> <span class="o">*</span> <span class="n">pi</span><span class="o">/</span><span class="mf">180.0</span><span class="p">)</span>
+    <span class="c">#rho,irho,rho_m = [v*1e-6 for v in rho,irho,rho_m]</span>
+    <span class="n">R1</span><span class="p">,</span><span class="n">R2</span><span class="p">,</span><span class="n">R3</span><span class="p">,</span><span class="n">R4</span> <span class="o">=</span> <span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">kz</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span><span class="s">&#39;D&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">pol</span> <span class="ow">in</span> <span class="mf">1</span><span class="p">,</span><span class="mf">2</span><span class="p">,</span><span class="mf">3</span><span class="p">,</span><span class="mf">4</span><span class="p">]</span>
+    <span class="n">reflmodule</span><span class="o">.</span><span class="n">_magnetic_amplitude</span><span class="p">(</span><span class="n">depth</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">rho</span><span class="p">,</span> <span class="n">irho</span><span class="p">,</span>
+                                   <span class="n">rhoM</span><span class="p">,</span>  <span class="n">expth</span><span class="p">,</span> <span class="n">Aguide</span><span class="p">,</span> <span class="n">kz</span><span class="p">,</span> <span class="n">rho_index</span><span class="p">,</span>
+                                   <span class="n">R1</span><span class="p">,</span> <span class="n">R2</span><span class="p">,</span> <span class="n">R3</span><span class="p">,</span> <span class="n">R4</span>
+                                   <span class="p">)</span>
+    <span class="k">return</span> <span class="n">R1</span><span class="p">,</span><span class="n">R2</span><span class="p">,</span><span class="n">R3</span><span class="p">,</span><span class="n">R4</span>
+</div>
+<div class="viewcode-block" id="convolve"><a class="viewcode-back" href="../../api/reflectivity.html#refl1d.reflectivity.convolve">[docs]</a><span class="k">def</span> <span class="nf">convolve</span><span class="p">(</span><span class="n">Qi</span><span class="p">,</span><span class="n">Ri</span><span class="p">,</span><span class="n">Q</span><span class="p">,</span><span class="n">dQ</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Apply Q-dependent resolution function to the theory.</span>
+
+<span class="sd">    Returns convolution R[k] of width dQ[k] at points Q[k].</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">R</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">Q</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span><span class="s">&#39;d&#39;</span><span class="p">)</span>
+    <span class="n">reflmodule</span><span class="o">.</span><span class="n">_convolve</span><span class="p">(</span><span class="n">_dense</span><span class="p">(</span><span class="n">Qi</span><span class="p">),</span><span class="n">_dense</span><span class="p">(</span><span class="n">Ri</span><span class="p">),</span><span class="n">_dense</span><span class="p">(</span><span class="n">Q</span><span class="p">),</span><span class="n">_dense</span><span class="p">(</span><span class="n">dQ</span><span class="p">),</span><span class="n">R</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">R</span>
+</div>
+<div class="viewcode-block" id="erf"><a class="viewcode-back" href="../../api/reflectivity.html#refl1d.reflectivity.erf">[docs]</a><span class="k">def</span> <span class="nf">erf</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Error function calculator.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">input</span> <span class="o">=</span> <span class="n">_dense</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="s">&#39;d&#39;</span><span class="p">)</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
+    <span class="n">reflmodule</span><span class="o">.</span><span class="n">_erf</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span><span class="n">output</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">output</span></div>
+</pre></div>
+
+      </div>
+      <div class="bottomnav">
+      
+        <p>
+        <a class="uplink" href="../../index.html">Contents</a>
+        </p>
+
+      </div>
+
+    <div class="footer">
+        &copy; Copyright 2006-2011, Paul Kienzle, Nikunj Patel, James Krycka.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.4.
+    </div>
+  </body>
+</html>
