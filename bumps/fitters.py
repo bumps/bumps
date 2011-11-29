@@ -303,7 +303,7 @@ except:
     MCMCModel = object
 class DreamModel(MCMCModel):
     """
-    DREAM wrapper for refl1d models.
+    DREAM wrapper for bumps models.
     """
     def __init__(self, problem=None, mapper=None):
         """

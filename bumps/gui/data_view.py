@@ -145,7 +145,7 @@ class DataView(wx.Panel):
         self._need_redraw = False
         self._calculating = True
 
-        # Calculate reflectivity
+        # Calculate theory
         #print "calling again"
         while True:
             #print "restarting"

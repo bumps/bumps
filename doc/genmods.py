@@ -43,7 +43,7 @@ Reference
    :hidden:
 
    %(rsts)s
-**Modules defined within Refl1D**
+**Modules defined within Bumps**
 
 .. currentmodule:: %(package)s
 

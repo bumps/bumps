@@ -1,11 +1,13 @@
 /* This program is public domain. */
 
-#include "reflcalc.h"
 #include <math.h>
 #include <stdio.h>
 #include <iostream>
 #include "methods.h"
 
+extern "C" void
+resolution(int Nin, const double xin[], const double yin[],
+           int N, const double x[], const double dx[], double y[]);
 
 #if defined(PY_VERSION_HEX) &&  (PY_VERSION_HEX < 0x02050000)
 typedef int Py_ssize_t;
@@ -17,31 +19,31 @@ typedef int Py_ssize_t;
 
 PyObject* Pconvolve(PyObject *obj, PyObject *args)
 {
-  PyObject *Qi_obj,*Ri_obj,*Q_obj,*dQ_obj,*R_obj;
-  const double *Qi, *Ri, *Q, *dQ;
-  double *R;
-  Py_ssize_t nQi, nRi, nQ, ndQ, nR;
+  PyObject *xi_obj,*yi_obj,*x_obj,*dx_obj,*y_obj;
+  const double *xi, *yi, *x, *dx;
+  double *y;
+  Py_ssize_t nxi, nyi, nx, ndx, ny;
 
-  if (!PyArg_ParseTuple(args, "OOOOO:resolution",
-			&Qi_obj,&Ri_obj,&Q_obj,&dQ_obj,&R_obj)) return NULL;
-  INVECTOR(Qi_obj,Qi,nQi);
-  INVECTOR(Ri_obj,Ri,nRi);
-  INVECTOR(Q_obj,Q,nQ);
-  INVECTOR(dQ_obj,dQ,ndQ);
-  OUTVECTOR(R_obj,R,nR);
-  if (nQi != nRi) {
+  if (!PyArg_ParseTuple(args, "OOOOO:convolve",
+			&xi_obj,&yi_obj,&x_obj,&dx_obj,&y_obj)) return NULL;
+  INVECTOR(xi_obj,xi,nxi);
+  INVECTOR(yi_obj,yi,nyi);
+  INVECTOR(x_obj,x,nx);
+  INVECTOR(dx_obj,dx,ndx);
+  OUTVECTOR(y_obj,y,ny);
+  if (nxi != nyi) {
 #ifndef BROKEN_EXCEPTIONS
-    PyErr_SetString(PyExc_ValueError, "_librefl.convolve: Qi and Ri have different lengths");
+    PyErr_SetString(PyExc_ValueError, "convolve: xi and yi have different lengths");
 #endif
     return NULL;
   }
-  if (nQ != ndQ || nQ != nR) {
+  if (nx != ndx || nx != ny) {
 #ifndef BROKEN_EXCEPTIONS
-    PyErr_SetString(PyExc_ValueError, "_librefl.convolve: Q, dQ and R have different lengths");
+    PyErr_SetString(PyExc_ValueError, "convolve: x, dx and y have different lengths");
 #endif
     return NULL;
   }
-  resolution(nQi,Qi,Ri,nQ,Q,dQ,R);
+  resolution(nxi,xi,yi,nx,x,dx,y);
   return Py_BuildValue("");
 }
 

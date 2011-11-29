@@ -100,17 +100,17 @@ qthelp: generated
 	@echo
 	@echo "Build finished; now you can run "qcollectiongenerator" with the" \
 	      ".qhcp project file in $(BUILDDIR)/qthelp, like this:"
-	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/Refl1Ddocumentation.qhcp"
+	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/bumpsdocumentation.qhcp"
 	@echo "To view the help file:"
-	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/Refl1Ddocumentation.qhc"
+	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/bumpsdocumentation.qhc"
 
 devhelp: generated
 	$(SPHINXBUILD) -b devhelp $(ALLSPHINXOPTS) $(BUILDDIR)/devhelp
 	@echo
 	@echo "Build finished."
 	@echo "To view the help file:"
-	@echo "# mkdir -p $$HOME/.local/share/devhelp/Refl1Ddocumentation"
-	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/Refl1Ddocumentation"
+	@echo "# mkdir -p $$HOME/.local/share/devhelp/bumpsdocumentation"
+	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/bumpsdocumentation"
 	@echo "# devhelp"
 
 epub: generated
@@ -130,7 +130,7 @@ pdf: generated
 	@echo "Running LaTeX files through (pdf)latex..."
 	make -C $(BUILDDIR)/latex all-pdf
 	@echo "pdflatex finished; the PDF files are in $(BUILDDIR)/latex."
-	cp $(BUILDDIR)/latex/Refl1D.pdf $(BUILDDIR)/html
+	cp $(BUILDDIR)/latex/Bumps.pdf $(BUILDDIR)/html
 
 text: generated
 	$(SPHINXBUILD) -b text $(ALLSPHINXOPTS) $(BUILDDIR)/text
@@ -160,5 +160,5 @@ doctest: generated
 
 install:
 	scp _build/html/*.pdf reflectometry.org:web/danse/download
-	ssh reflectometry.org rm -rf web/danse/docs/refl1d
-	scp -r _build/html reflectometry.org:web/danse/docs/refl1d
+	ssh reflectometry.org rm -rf web/danse/docs/bumps
+	scp -r _build/html reflectometry.org:web/danse/docs/bumps

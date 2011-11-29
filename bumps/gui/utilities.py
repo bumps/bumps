@@ -161,7 +161,7 @@ def resource_dir():
     """
     Return the path to the application data.
 
-    This is either in the environment variable REFL1D_DATA, in the
+    This is either in the environment variable BUMPS_DATA, in the
     source tree in gui/resources, or beside the executable in
     bumps-data.
     """
@@ -170,7 +170,7 @@ def resource_dir():
     if _RESOURCE_DIR is not None: return _RESOURCE_DIR
 
     # Check for data path in the environment
-    key = 'REFL1D_DATA'
+    key = 'BUMPS_DATA'
     if os.environ.has_key(key):
         path = os.path.join(os.environ[key],data)
         if not os.path.isdir(path):

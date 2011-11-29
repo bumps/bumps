@@ -4,7 +4,7 @@ import logging
 
 TWITTER_KEYS = '~/.ssh/twitter'
 EMAIL_SERVER = 'localhost'
-EMAIL_SENDER = 'reflfit@reflectometry.org'
+EMAIL_SENDER = 'bumps@reflectometry.org'
 
 def notify(user, msg, body="No body", level=1):
     """

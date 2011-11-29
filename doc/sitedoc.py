@@ -1,8 +1,8 @@
 import os
 import numpy
 import pylab
-from refl1d.fitters import BFGSFit, DEFit, RLFit, PTFit
-from refl1d.cli import load_problem
+from bumps.fitters import BFGSFit, DEFit, RLFit, PTFit
+from bumps.cli import load_problem
 
 SEED = 1
 

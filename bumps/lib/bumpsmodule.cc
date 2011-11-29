@@ -3,8 +3,6 @@
 //#include <Python.h>
 #include "methods.h"
 
-//#define PY_ARRAY_UNIQUE_SYMBOL reflmodule_array
-//#include <numpy/arrayobject.h>
 #include "rebin.h"
 #include "rebin2D.h"
 
@@ -76,7 +74,7 @@ static PyMethodDef methods[] = {
 	{"_convolve",
 	 Pconvolve,
 	 METH_VARARGS,
-	 "_convolve(Qi,Ri,Q,dQ,R): compute convolution of width dQ[k] at points Q[k], returned in R[k]"},
+	 "_convolve(xi,yi,x,dx,y): compute convolution of width dx[k] at points x[k], returned in y[k]"},
 
 	{"_erf",
 	 Perf,
@@ -144,13 +142,11 @@ __declspec(dllexport)
 #endif
 
 
-extern "C" void initreflmodule(void) {
-  Py_InitModule4("reflmodule",
+extern "C" void initbumpsmodule(void) {
+  Py_InitModule4("bumpsmodule",
 		 methods,
-		 "Reflectometry C Library",
+		 "Bumps C Library",
 		 0,
 		 PYTHON_API_VERSION
 		 );
-  //PY_ARRAY_UNIQUE_SYMBOL = NULL;
-  //import_array();
 }

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Refl1D documentation documentation build configuration file, created by
+# BUMPS documentation documentation build configuration file, created by
 # sphinx-quickstart on Wed Oct 13 15:11:19 2010.
 #
 # This file is execfile()d with the current directory set to its containing dir.
@@ -73,7 +73,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'Refl1D'
+project = 'Bumps'
 copyright = '2006-2011, Paul Kienzle, Nikunj Patel, James Krycka'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -81,7 +81,7 @@ copyright = '2006-2011, Paul Kienzle, Nikunj Patel, James Krycka'
 # built documents.
 #
 # The full version, including alpha/beta/rc tags.
-from refl1d import __version__ as release
+from bumps import __version__ as release
 # The short X.Y version.
 #version = ".".join(release.split(".")[:2])
 version = release
@@ -200,7 +200,7 @@ html_use_smartypants = True
 #html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'Refl1D'
+htmlhelp_basename = 'Bumps'
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -214,7 +214,7 @@ htmlhelp_basename = 'Refl1D'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'Refl1D.tex', '1-D Reflectometry Modeling',
+  ('index', 'Bumps.tex', 'Bayesian Uncertainty Modeling for Parameteric Systems',
    'Paul Kienzle', 'manual'),
 ]
 
@@ -258,9 +258,9 @@ def download(name):
     subs = dict(file=name%dict(version=version), path=htmlroot)
     return "%(file)s <%(path)s/download.php?file=%(file)s>"%subs
 slink_vars=dict(version=release, htmlroot=htmlroot,
-                srczip=download("refl1d-%(version)s.zip"),
-                winexe=download("refl1d-%(version)s-win32.exe"),
-                macapp=download("Refl1D %(version)s.dmg"),
+                srczip=download("bumps-%(version)s.zip"),
+                winexe=download("bumps-%(version)s-win32.exe"),
+                macapp=download("Bumps %(version)s.dmg"),
                 vcredist=download("vcredist_x86.exe"),
                 )
 
@@ -269,6 +269,6 @@ slink_vars=dict(version=release, htmlroot=htmlroot,
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'refl1d', '1-D reflectometry modeling',
+    ('index', 'bumps', 'Bayesian Uncertainty Modeling for Parameteric Systems',
      ['Paul Kienzle'], 1)
 ]

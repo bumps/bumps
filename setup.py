@@ -6,20 +6,17 @@ import os
 from setuptools import setup, find_packages, Extension
 #import fix_setuptools_chmod
 
-import refl1d
+import bumps
 
-packages = find_packages(exclude=['amqp_map','models','park'])
-packages += find_packages('dream')
+packages = find_packages(exclude=['amqp_map','models'])
 
 if len(sys.argv) == 1:
     sys.argv.append('install')
 
-# reflmodule extension
-def reflmodule_config():
-    sources = [os.path.join('refl1d','lib',f)
-               for f in ("reflmodule.cc","methods.cc","reflectivity.cc",
-                         "magnetic.cc","resolution.c","contract_profile.cc")]
-    module = Extension('refl1d.reflmodule', sources=sources)
+def bumpsmodule():
+    sources = [os.path.join('bumps','lib',f)
+               for f in ("bumpsmodule.cc","methods.cc","resolution.c")]
+    module = Extension('bumps.bumpsmodule', sources=sources)
     return module
 
 #TODO: write a proper dependency checker for packages which cannot be
@@ -27,12 +24,12 @@ def reflmodule_config():
 #dependency_check('numpy>=1.0', 'scipy>=0.6', 'matplotlib>=1.0', 'wx>=2.8.9')
 
 dist = setup(
-        name = 'refl1d',
-        version = refl1d.__version__,
+        name = 'bumps',
+        version = bumps.__version__,
         author='Paul Kienzle',
         author_email='pkienzle@nist.gov',
         url='http://www.reflectometry.org/danse/model1d.html',
-        description='1-D reflectometry modelling',
+        description='Bayesian uncertainty modeling of parametric systems',
         long_description=open('README.txt').read(),
         classifiers=[
             'Development Status :: 4 - Beta',
@@ -44,11 +41,10 @@ dist = setup(
             'Topic :: Scientific/Engineering :: Chemistry',
             'Topic :: Scientific/Engineering :: Physics',
             ],
-        package_dir = { 'dream': 'dream/dream' },
         packages = packages,
-        package_data = refl1d.package_data(),
-        scripts = ['bin/reflworkerd','bin/refl1d_cli.py','bin/refl1d_gui.py'],
-        ext_modules = [reflmodule_config()],
+        package_data = bumps.package_data(),
+        scripts = ['bin/bumps_workerd','bin/bumps'],
+        ext_modules = [bumpsmodule()],
         install_requires = ['httplib2'],
         )
 

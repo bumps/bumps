@@ -2,7 +2,7 @@
    :Release: |version|
    :Date:    |today|
 
-   Printable manual: `Relf1D.pdf <Refl1D.pdf>`_
+   Printable manual: `Bumps.pdf <Bumps.pdf>`_
    Windows installer: :slink:`%(winexe)s`
    Apple installer: :slink:`%(macapp)s`
 

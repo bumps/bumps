@@ -29,8 +29,6 @@ def fitservice(request):
 
     data = request['data']
     model = str(data['package'])
-    if model != 'refl1d':
-        raise ValueError('model is not refl1d')
 
     service_model_version = __version__
     request_model_version = str(data['version'])

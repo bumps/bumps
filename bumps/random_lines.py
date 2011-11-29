@@ -212,11 +212,8 @@ def example_call_spline():
     y = linspace(1,3,m) # Freeform interface
     M = sp.spline_model(dx,y)
     D = sp.simulate(M)
-    refl = sp.Refl(D)
     #p = hstack((dx,y))
-    #refl.chisq(p)
 
-    cost = lambda x: refl.chisq(x)
     n = 11
     x1 = 0 * ones(n)
     x2 = asarray([17, 17, 17, 17, 17, 4, 4, 4, 4, 4, 4])

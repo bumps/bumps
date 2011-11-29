@@ -76,7 +76,6 @@ import numpy
 from numpy import inf, real, imag, exp, pi, cos, hstack, arange, asarray
 from numpy.fft import fft
 from .parameter import Parameter as Par, IntegerParameter as IntPar
-from .model import Layer
 from . import util
 
 def profile(c, t, method):

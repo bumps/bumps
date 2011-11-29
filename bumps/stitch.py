@@ -1,25 +1,25 @@
 """
-Data stitching for reflectometry.
+Data stitching.
 
-Join together datasets yielding unique sorted Q.
+Join together datasets yielding unique sorted x.
 """
 
 from numpy import hstack, vstack, argsort, sum, sqrt
 
-def stitch(probes, same_Q = 0.001, same_dQ = 0.001):
+def stitch(data, same_x = 0.001, same_dx = 0.001):
     """
     Stitch together multiple measurements into one.
 
-    *probes* a list of datasets with Q,dQ,R,dR attributes
-    *same_Q* minimum point separation (default is 0.001).
-    *same_dQ* minimum change in resolution that may be averaged (default is 0.001).
+    *data* a list of datasets with x,dx,y,dy attributes
+    *same_x* minimum point separation (default is 0.001).
+    *same_dx* minimum change in resolution that may be averaged (default is 0.001).
 
     Wavelength and angle are not preserved since different points with the
-    same Q,dQ may have different wavelength/angle inputs, particularly for
+    same x,dx may have different wavelength/angle inputs, particularly for
     time of flight instruments.
 
-    WARNING: the returned Q values may be data dependent, with two measured
-    sets having different Q after stitching, even though the measurement
+    WARNING: the returned x values may be data dependent, with two measured
+    sets having different x after stitching, even though the measurement
     conditions are identical!!
 
     Either add an intensity weight to the datasets::
@@ -28,50 +28,50 @@ def stitch(probes, same_Q = 0.001, same_dQ = 0.001):
 
     or use interpolation if you need to align two stitched scans::
 
-        Q1,dQ1,R1,dR1 = stitch([a1,b1,c1,d1])
-        Q2,dQ2,R2,dR2 = stitch([a2,b2,c2,d2])
-        Q2[0],Q2[-1] = Q1[0],Q1[-1] # Force matching end points
-        R2 = numpy.interp(Q1,Q2,R2)
-        dR2 = numpy.interp(Q1,Q2,dR2)
-        Q2 = Q1
+        x1,dx1,y1,dy1 = stitch([a1,b1,c1,d1])
+        x2,dx2,y2,dy2 = stitch([a2,b2,c2,d2])
+        x2[0],x2[-1] = x1[0],x1[-1] # Force matching end points
+        y2 = numpy.interp(x1,x2,y2)
+        dy2 = numpy.interp(x1,x2,dy2)
+        x2 = x1
 
-    WARNING: the returned dQ value underestimates the true Q, depending on
+    WARNING: the returned dx value underestimates the true x, depending on
     the relative weights of the averaged data points.
     """
-    if same_dQ is None: same_dQ = same_Q
-    Q = hstack(p.Q for p in probes)
-    dQ = hstack(p.dQ for p in probes)
-    R = hstack(p.R for p in probes)
-    dR = hstack(p.dR for p in probes)
-    if all(hasattr(p,'I') for p in probes):
-        weight = hstack(p.I for p in probes)
+    if same_dx is None: same_dx = same_x
+    x = hstack(p.x for p in data)
+    dx = hstack(p.dx for p in data)
+    y = hstack(p.y for p in data)
+    dy = hstack(p.dy for p in data)
+    if all(hasattr(p,'I') for p in data):
+        weight = hstack(p.I for p in data)
     else:
-        weight = R/dR**2  # R/dR**2 is approximately the intensity
+        weight = y/dy**2  # y/dy**2 is approximately the intensity
 
-    # Sort the data by increasing Q
-    idx = argsort(Q)
-    data = vstack((Q,dQ,R,dR,weight))
+    # Sort the data by increasing x
+    idx = argsort(x)
+    data = vstack((x,dx,y,dy,weight))
     data = data[:, idx]
-    Q = data[0, :]
-    dQ = data[1, :]
+    x = data[0, :]
+    dx = data[1, :]
 
     # Skip through the data looking for regions of overlap.
     keep = []
-    n, last, next = len(Q), 0, 1
+    n, last, next = len(x), 0, 1
     while next < n:
-        while next < n and abs(Q[next]-Q[last]) <= same_Q:
+        while next < n and abs(x[next]-x[last]) <= same_x:
             next += 1
         if next - last == 1:
             # Only one point, so no averaging necessary
             keep.append(last)
         else:
-            # Pick the Q in [last:next] with the best resolution and average
+            # Pick the x in [last:next] with the best resolution and average
             # them using Poisson averages.  Repeat until all points are used
             remainder = data[:,last:next]
             avg = []
             while remainder.shape[1] > 0:
-                best_dQ = min(remainder[1,:])
-                idx = (remainder[1,:]-best_dQ <= same_dQ)
+                best_dx = min(remainder[1,:])
+                idx = (remainder[1,:]-best_dx <= same_dx)
                 avg.append(poisson_average(remainder[:,idx]))
                 remainder = remainder[:,~idx]
             # Store the result in worst to best resolution order.
@@ -82,16 +82,16 @@ def stitch(probes, same_Q = 0.001, same_dQ = 0.001):
 
     return data[:4,keep]
 
-def poisson_average(QdQRdRw):
+def poisson_average(xdxydyw):
     """
-    Compute the poisson average of R/dR using a set of data points.
+    Compute the poisson average of y/dy using a set of data points.
 
-    The returned Q,dQ is the weighted average of the inputs::
+    The returned x,dx is the weighted average of the inputs::
 
-        Q = sum(Q*I)/sum(I)
-        dQ = sum(dQ*I)/sum(I)
+        x = sum(x*I)/sum(I)
+        dx = sum(dx*I)/sum(I)
 
-    The returned R,dR use Poisson averaging::
+    The returned y,dy use Poisson averaging::
 
         w = sum(y/dy^2)
         y = sum((y/dy)^2)/w
@@ -111,13 +111,13 @@ def poisson_average(QdQRdRw):
           y = ((ra/dra)^2 + (rb/drb)^2)/w = (Na + Nb)/(Ma + Mb)
           dy = sqrt(y/w) = sqrt( (Na + Nb)/ w^2 ) = sqrt(Na+Nb)/(Ma + Mb)
     """
-    # TODO: need better estimate of dQ, with weighted broadening according
-    # to the distance of the Q's from the centers.
-    Q,dQ,R,dR,weight = QdQRdRw
+    # TODO: need better estimate of dx, with weighted broadening according
+    # to the distance of the x's from the centers.
+    x,dx,y,dy,weight = xdxydyw
     w = sum(weight)
-    Q = sum(Q*weight)/w
-    dQ = sum(dQ*weight)/w
-    R = sum(R*weight)/w
-    dR = sqrt(R/w)
-    #print "averaging",QdQRdR,Q,dQ,R,dR
-    return Q,dQ,R,dR,w
+    x = sum(x*weight)/w
+    dx = sum(dx*weight)/w
+    y = sum(y*weight)/w
+    dy = sqrt(y/w)
+    #print "averaging",xdxydy,x,dx,y,dy
+    return x,dx,y,dy,w
