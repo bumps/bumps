@@ -56,6 +56,8 @@ import time
 
 import wx
 
+from .. import plugin
+
 from .about import APP_TITLE
 from .utilities import resource_dir, resource, log_time
 
@@ -243,8 +245,7 @@ class GUIApp(wx.App):
 
         # Put up the initial model
         model = cli.initial_model(opts)
-        #from ..profileview import fitplugin
-        #if not model: model = fitplugin.new_model()
+        if not model: model = plugin.new_model()
         panel.set_model(model=model)
 
 

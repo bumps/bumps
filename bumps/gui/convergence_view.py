@@ -4,7 +4,7 @@ import numpy
 
 from .. import monitor
 from .plot_view import PlotView
-from ..util import coordinated_colors
+from ..plotutil import coordinated_colors
 
 
 class ConvergenceMonitor(monitor.Monitor):

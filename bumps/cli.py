@@ -20,8 +20,14 @@ from . import util
 from . import parameter
 from . import initpop
 from . import __version__
+from . import plugin
 
 from .util import pushdir
+
+def install_plugin(p):
+    for symbol in plugin.__all__:
+        if hasattr(p, symbol):
+            setattr(plugin, symbol, getattr(p, symbol))
 
 def mesh(problem, vars=None, n=40):
     x,y = [numpy.linspace(p.bounds.limits[0],p.bounds.limits[1],n) for p in vars]
@@ -41,18 +47,21 @@ def load_problem(args):
 
     directory,filename = os.path.split(path)
     with pushdir(directory):
-        #print "loading",filename,"from",directory
-        try:
-            # First see if it is a pickle
-            problem = pickle.load(open(filename, 'rb'))
-        except:
-            # Then see if it is a model
-            options = args[1:]
-            problem = load_script(filename, options=options)
-            # Guard against the user changing parameters after defining
-            # the problem.
-        problem.model_reset()
+        # Try a specialized model loader
+        problem = plugin.load_model(filename)
+        if problem is None:
+            #print "loading",filename,"from",directory
+            try:
+                # First see if it is a pickle
+                problem = pickle.load(open(filename, 'rb'))
+            except:
+                # Then see if it is a model
+                options = args[1:]
+                problem = load_script(filename, options=options)
+                # Guard against the user changing parameters after defining
+                # the problem.
 
+    problem.model_reset()
     problem.path = os.path.abspath(path)
     if not hasattr(problem,'title'):
         problem.title = filename

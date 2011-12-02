@@ -10,16 +10,13 @@ Usage
 -----
 
 This is a wrapper around the numpy.seterr() command, and uses the same
-types of error handling controls, but in a with context or as a decorator::
-
-    with Errors(...):
-        statements
+types of error handling controls, but as a decorator::
 
     @errors(...)
     def f():
         statements
 
-The arguments to Errors and errors are identical to numpy.seterr.
+The arguments to errors are identical to numpy.seterr.
 
 Some convenience decorators are predefined: ignored, raised, printed, warned.
 

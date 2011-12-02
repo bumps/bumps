@@ -75,8 +75,6 @@ the bounds.  Bounds on the oscillation are easier to control using
 import numpy
 from numpy import inf, real, imag, exp, pi, cos, hstack, arange, asarray
 from numpy.fft import fft
-from .parameter import Parameter as Par, IntegerParameter as IntPar
-from . import util
 
 def profile(c, t, method):
     r"""

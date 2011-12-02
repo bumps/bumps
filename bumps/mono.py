@@ -2,12 +2,10 @@
 Monotonic spline modeling
 """
 
-
 from __future__ import division
 from numpy import (diff, hstack, sqrt, searchsorted, asarray, cumsum,
                    nonzero, linspace, isnan)
 from . import numpyerrors
-
 
 @numpyerrors.ignored
 def monospline(x, y, xt):
@@ -72,12 +70,6 @@ def hermite(x,y,m,xt):
 
 
 
-def inflections(dx,dy):
-    x = hstack( (0, cumsum(dx)) )
-    y = hstack( (0, cumsum(dy)) )
-    return count_inflections(x,y)
-
-
 @numpyerrors.ignored
 def count_inflections(x,y):
     """
@@ -90,7 +82,10 @@ def count_inflections(x,y):
     sign_change = (delta[1:]*delta[:-1]) < 0
     return sum(sign_change)
 
-def plot_inflection(x,y):
+def plot_inflections(x,y):
+    """
+    Plot inflection points in the spline curve.
+    """
     m = (y[2:]-y[:-2])/(x[2:]-x[:-2])
     b = y[2:] - m*x[2:]
     delta = y[1:-1] - (m*x[1:-1] + b)

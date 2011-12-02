@@ -23,17 +23,17 @@
 # Author: James Krycka
 
 """
-This script uses py2exe to create dist\refl1d.exe and dist\refl1d_gui.exe for
-running the Refl1D application in either CLI or GUI mode.
+This script uses py2exe to create dist\bumps.exe and dist\bumps_gui.exe for
+running the Bumps application in either CLI or GUI mode.
 
 These executables start the application and import the rest of the application
 code stored in library.zip.  The python interpreter and other required python
 packages and dlls are also placed in the zip file.  Additional resource files
-that are needed when Refl1D is run are copied to the dist directory tree.  On
+that are needed when Bumps is run are copied to the dist directory tree.  On
 completion, the contents of the dist directory tree can be used by the Inno
 Setup Compiler (via a separate script) to build a Windows installer/uninstaller
-for deployment of the Refl1D application.  For testing purposes, refl1d.exe or
-refl1d_gui.exe can be run from the dist directory.
+for deployment of the Bumps application.  For testing purposes, bumps.exe or
+bumps_gui.exe can be run from the dist directory.
 """
 
 import os
@@ -74,8 +74,8 @@ matplotlib.use('WXAgg')
 import periodictable
 
 # Retrieve the application version string.
-import refl1d
-version = refl1d.__version__
+import bumps
+version = bumps.__version__
 
 # A manifest is required to be included in a py2exe image (or accessible as a
 # file in the image directory) when wxPython is included so that the Windows XP
@@ -175,10 +175,10 @@ data_files = []
 # Add resource files that need to reside in the same directory as the image.
 data_files.append( ('.', [os.path.join('.', 'LICENSE.txt')]) )
 data_files.append( ('.', [os.path.join('.', 'README.txt')]) )
-data_files.append( ('.', [os.path.join('.', 'bin', 'refl1d_launch.bat')]) )
+data_files.append( ('.', [os.path.join('.', 'bin', 'bumps_launch.bat')]) )
 
-# Add application specific data files from the refl1d\refl1d-data folder.
-data_files += refl1d.data_files()
+# Add application specific data files from the bumps\bumps-data folder.
+data_files += bumps.data_files()
 
 # Add data files from the matplotlib\mpl-data folder and its subfolders.
 # For matploblib prior to version 0.99 see the examples at the end of the file.
@@ -205,7 +205,7 @@ for path in glob.glob(os.path.join('doc', 'examples', '*')):
         data_files.append( ('doc', [path]) )
 
 # Add PDF documentation to the dist staging directory.
-pdf = os.path.join('doc', 'Refl1D.pdf')
+pdf = os.path.join('doc', 'Bumps.pdf')
 if os.path.isfile(pdf):
     data_files.append( ('doc', [pdf]) )
 else:
@@ -224,7 +224,7 @@ if sys.version_info >= (2, 6):
 
 # Specify required packages to bundle in the executable image.
 packages = ['numpy', 'scipy', 'matplotlib', 'pytz', 'pyparsing',
-            'periodictable', 'refl1d.names', 'dream'
+            'periodictable', 'bumps.names', 'dream'
             ]
 
 # Specify files to include in the executable image.
@@ -263,22 +263,22 @@ class Target():
         self.version = version
 
 clientCLI = Target(
-    name = 'Refl1D',
-    description = 'Refl1D CLI application',
-    script = os.path.join('bin', 'refl1d_cli.py'),  # module to run on application start
-    dest_base = 'refl1d',  # file name part of the exe file to create
-    icon_resources = [(1, os.path.join('refl1d', 'gui', 'resources', 'refl1d.ico'))],  # also need to specify in data_files
+    name = 'Bumps',
+    description = 'Bumps CLI application',
+    script = os.path.join('bin', 'bumps_cli.py'),  # module to run on application start
+    dest_base = 'bumps',  # file name part of the exe file to create
+    icon_resources = [(1, os.path.join('bumps', 'gui', 'resources', 'bumps.ico'))],  # also need to specify in data_files
     bitmap_resources = [],
-    other_resources = [(24, 1, manifest % dict(prog='Refl1D'))] )
+    other_resources = [(24, 1, manifest % dict(prog='Bumps'))] )
 
 clientGUI = Target(
-    name = 'Refl1D',
-    description = 'Refl1D GUI application',
-    script = os.path.join('bin', 'refl1d_gui.py'),  # module to run on application start
-    dest_base = 'refl1d_gui',  # file name part of the exe file to create
-    icon_resources = [(1, os.path.join('refl1d', 'gui', 'resources', 'refl1d.ico'))],  # also need to specify in data_files
+    name = 'Bumps',
+    description = 'Bumps GUI application',
+    script = os.path.join('bin', 'bumps_gui.py'),  # module to run on application start
+    dest_base = 'bumps_gui',  # file name part of the exe file to create
+    icon_resources = [(1, os.path.join('bumps', 'gui', 'resources', 'bumps.ico'))],  # also need to specify in data_files
     bitmap_resources = [],
-    other_resources = [(24, 1, manifest % dict(prog='Refl1D'))] )
+    other_resources = [(24, 1, manifest % dict(prog='Bumps'))] )
 
 # Now we do the work to create a standalone distribution using py2exe.
 #

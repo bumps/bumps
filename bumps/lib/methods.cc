@@ -6,8 +6,8 @@
 #include "methods.h"
 
 extern "C" void
-resolution(int Nin, const double xin[], const double yin[],
-           int N, const double x[], const double dx[], double y[]);
+convolve(int Nin, const double xin[], const double yin[],
+         int N, const double x[], const double dx[], double y[]);
 
 #if defined(PY_VERSION_HEX) &&  (PY_VERSION_HEX < 0x02050000)
 typedef int Py_ssize_t;
@@ -43,7 +43,7 @@ PyObject* Pconvolve(PyObject *obj, PyObject *args)
 #endif
     return NULL;
   }
-  resolution(nxi,xi,yi,nx,x,dx,y);
+  convolve(nxi,xi,yi,nx,x,dx,y);
   return Py_BuildValue("");
 }
 

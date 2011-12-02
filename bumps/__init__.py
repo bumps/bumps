@@ -3,14 +3,11 @@
 """
 BUMPS: Bayesian Uncertainty Modeling for Parametric Systems
 
-This package provides tools for modeling a variety of systems from
-simple slabs to complex systems with a mixture models involving
-smoothly varying layers.
+This package provides tools for modeling parametric systems in a Bayesian
+context, with routines for finding the maximum likelihood and the
+posterior probability density function.
 
-X-ray and neutron and polarized neutron data can be loaded and the model
-parameters adjusted to achieve the best fit.
-
-A graphical interface allows direct manipulation of the model profiles.
+A graphical interface allows direct manipulation of the model paramaters.
 
 See http://www.reflectometry.org/danse/reflectometry for online manuals.
 """

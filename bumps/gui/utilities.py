@@ -29,6 +29,7 @@ This module contains utility functions and classes for the application.
 import os
 import sys
 import time
+import glob
 
 import wx
 from wx.lib import delayedresult
@@ -121,6 +122,14 @@ def display_fontsize(fontname=None, benchmark_text=BENCHMARK_TEXT,
 
     frame.Destroy()
 
+def _finddata():
+    patterns = ['*.png','*.ico','*.jpg']
+    path = resource_dir()
+    files = []
+    for p in patterns:
+        files += glob.glob(os.path.join(path,p))
+    return files
+
 def data_files():
     """
     Return the data files associated with the package.
@@ -132,14 +141,7 @@ def data_files():
               data_files=data_files(),
               ...)
     """
-    import os, glob
-    def _finddata(*patterns):
-        path = resource_dir()
-        files = []
-        for p in patterns:
-            files += glob.glob(os.path.join(path,p))
-        return files
-    data_files = [('bumps-data', _finddata('*.png','*.ico','*.jpg'))]
+    data_files = [('bumps-data', _finddata())]
     return data_files
 
 def package_data():
@@ -153,8 +155,7 @@ def package_data():
               package_data=package_data(),
               ...)
     """
-    return { 'bumps.gui':
-            ['resources/*.png','resources/*.ico','resources/*.jpg'] }
+    return { 'bumps.gui': _finddata() }
 
 _RESOURCE_DIR = None
 def resource_dir():

@@ -35,16 +35,16 @@ import traceback
 import wx
 import wx.aui
 
-from bumps.cli import load_problem
-
 from .. import fitters
+from .. import plugin
+from ..cli import load_problem
 from ..util import redirect_console
 from .summary_view import SummaryView
 from .parameter_view import ParameterView
 from .log_view import LogView
-from .data_view import DataView
 from .convergence_view import ConvergenceView
-from .uncertainty_view import CorrelationView, UncertaintyView, TraceView, ErrorView
+from .uncertainty_view import (CorrelationView, UncertaintyView,
+                               TraceView, ModelErrorView)
 from .fit_dialog import OpenFitOptions
 from .fit_thread import (FitThread, EVT_FIT_PROGRESS, EVT_FIT_COMPLETE)
 from .util import nice
@@ -238,8 +238,8 @@ class AppPanel(wx.Panel):
         self.aui = wx.aui.AuiNotebook(self)
         self.aui.Bind(wx.aui.EVT_AUINOTEBOOK_PAGE_CLOSE, self.OnViewTabClose)
         self.view_constructor = {
-            'data': DataView,
-            #'model': ModelView,
+            'data': plugin.data_view(),
+            'model': plugin.model_view(),
             'parameter': ParameterView,
             'summary': SummaryView,
             'log': LogView,
@@ -247,17 +247,17 @@ class AppPanel(wx.Panel):
             'uncertainty': UncertaintyView,
             'correlation': CorrelationView,
             'trace': TraceView,
-            'error': ErrorView,
+            'error': ModelErrorView,
             }
-        self.view_list = ['data',#'model',
-                          'parameter',
+        self.view_list = ['data','model','parameter',
                           'summary','log','convergence',
                           'uncertainty','correlation','trace','error']
         self.view = {}
         for v in self.view_list:
-            self.view[v] = self.view_constructor[v](self.aui,
-                                                    size=(600,600))
-            self.aui.AddPage(self.view[v],self.view_constructor[v].title)
+            if self.view_constructor[v]:
+                self.view[v] = self.view_constructor[v](self.aui,
+                                                        size=(600,600))
+                self.aui.AddPage(self.view[v],self.view_constructor[v].title)
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.aui, 1, wx.EXPAND)
         self.SetSizer(sizer)
