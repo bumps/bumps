@@ -93,7 +93,6 @@ def data_view():
     If your model has an adequate show() function this should not be
     necessary.
     """
-    print "calling old dataview"
     from .gui.data_view import DataView
     return DataView
 
