@@ -6,6 +6,7 @@ import os
 from setuptools import setup, find_packages, Extension
 #import fix_setuptools_chmod
 
+sys.path.insert(0,os.path.dirname(__file__))
 import bumps
 
 packages = find_packages(exclude=['amqp_map','models'])
@@ -15,13 +16,14 @@ if len(sys.argv) == 1:
 
 def bumpsmodule():
     sources = [os.path.join('bumps','lib',f)
-               for f in ("bumpsmodule.cc","methods.cc","resolution.c")]
+               for f in ("bumpsmodule.cc","methods.cc","convolve.c")]
     module = Extension('bumps.bumpsmodule', sources=sources)
     return module
 
 #TODO: write a proper dependency checker for packages which cannot be
 # installed by easy_install
 #dependency_check('numpy>=1.0', 'scipy>=0.6', 'matplotlib>=1.0', 'wx>=2.8.9')
+#print bumps.package_data()
 
 dist = setup(
         name = 'bumps',
