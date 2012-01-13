@@ -384,13 +384,13 @@ class DreamFit(FitBase):
 
     def error_plot(self, figfile):
         # Produce error plot
-        import errors, pylab
+        import errplot, pylab
         # TODO: shouldn't mix calc and display!
-        res = errors.calc_errors_from_state(self.dream_model.problem,
+        res = errplot.calc_errors_from_state(self.dream_model.problem,
                                             self.state)
         if res is not None:
             pylab.figure()
-            errors.show_errors(res)
+            errplot.show_errors(res)
             pylab.savefig(figfile+"-errors.png", format='png')
 
 class Resampler(FitBase):

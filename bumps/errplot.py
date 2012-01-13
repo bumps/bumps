@@ -1,7 +1,9 @@
 from . import plugin
 
+import numpy
 
-def reload_errors(model, store, nshown=50, random=False):
+
+def reload_errors(model, store, nshown=50, random=True):
     """
     Reload the error information for a model.
 
@@ -32,7 +34,7 @@ def reload_errors(model, store, nshown=50, random=False):
 def show_errors(*args, **kw):
     return plugin.show_errors(*args, **kw)
 
-def calc_errors_from_state(problem, state, nshown=50, random=False):
+def calc_errors_from_state(problem, state, nshown=50, random=True):
     """
     Align the sample profiles and compute the residual difference from the
     measured reflectivity for a set of points returned from DREAM.
@@ -40,7 +42,10 @@ def calc_errors_from_state(problem, state, nshown=50, random=False):
     *nshown* is the number of samples to include from the state.
 
     *random* is True if the samples are randomly selected, or False if
-    the most recent samples should be used.
+    the most recent samples should be used.  Use random if you have
+    poor mixing (i.e., the parameters tend to stay fixed from generation
+    to generation), but not random if your burn-in was too short, and
+    you want to select from the end.
 
     See :func:`calc_errors` for details on the return values.
     """
