@@ -21,18 +21,17 @@ import threading
 
 ## USE_SLEEP_TO_THROTTLE
 #import time
-import os
+#import os
 
 #from dill import loads, dumps
 from cPickle import loads, dumps
 import sys
 
-from amqplib import client_0_8 as amqp
+from amqplib import client_0_8 as amqp #@UnresolvedImport if amqp isn't available
 
 from . import config
 from .url import URL
-import time
-from .threaded import threaded, daemon
+from .threaded import daemon
 
 def connect(url, insist=False):
     url = URL(url, host="localhost", port=5672,
@@ -73,8 +72,8 @@ def start_worker(server, mapid, work):
         #os.system("echo 'processing %s' >> /home/pkienzle/map.%d"%(body['value'],me))
         try:
             result = work(body['value'])
-        except Exception,exc:
-            #os.system("echo 'error %s' >> /home/pkienzle/map.%d"%(exc,me))
+        except Exception,_exc:
+            #os.system("echo 'error %s' >> /home/pkienzle/map.%d"%(_exc,me))
             result = None
         #os.system("echo 'returning %s' >> /home/pkienzle/map.%d"%(result,me))
         #print "done"
