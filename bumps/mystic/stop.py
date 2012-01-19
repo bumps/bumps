@@ -116,7 +116,7 @@ percentage changes rather than absolute changes.
 import math
 
 import numpy
-from numpy import inf, isinf, nan, isnan
+from numpy import inf, isinf
 
 from .condition import Condition
 
@@ -466,7 +466,7 @@ class r_hull:
         r = 0
         for i,y1 in enumerate(population):
             for y2 in population[i+1:]:
-                d = norm(y2-y1)
+                d = self.norm(y2-y1)
                 if d > r: r = d
         return r/2
 
@@ -584,7 +584,7 @@ class Rf(Condition):
         return float(max(Pf) - min(Pf))/scale
     def _raw_condition(self, history):
         P = numpy.asarray(history.population_values)
-        return max(PF) - min(Pf)
+        return max(P) - min(P)
     def config_history(self, history):
         """
         Needs the previous n points from history.

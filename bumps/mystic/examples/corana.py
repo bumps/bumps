@@ -10,7 +10,6 @@ References::
     (Same title as above, but as a technical report.)
     http://www.icsi.berkeley.edu/~storn/deshort1.ps
 """
-from numpy import asarray
 from math import pow
 from numpy import sign, floor, inf
 

@@ -61,11 +61,11 @@ Returns:: (xopt, {fopt, iter, funcalls, status}, [allvecs])
     failure = stop.Calls(maxfun)|stop.Steps(maxiter)
 
     monitors = []
-    if callback is not None:
-        monitors.append(CallbackMonitor(callback))
-    if retall:
-        population_monitor = StepMonitor('population_values')
-        monitors.append(population_monitor)
+    #if callback is not None:
+    #    monitors.append(CallbackMonitor(callback))
+    #if retall:
+    #    population_monitor = StepMonitor('population_values')
+    #    monitors.append(population_monitor)
     minimize = Minimizer(problem=problem, strategy=strategy,
                          monitors=monitors, success=success, failure=failure)
 
@@ -99,7 +99,10 @@ Returns:: (xopt, {fopt, iter, funcalls, status}, [allvecs])
     elif full_output:
         ret = (hist.point[0], hist.value[0],
             hist.step[0], hist.calls[0], status)
-        if retall: ret += (population_monitor.population_points,)
+        if retall:
+            raise NotImplementedError("retall not implemented")
+            #ret += (population_monitor.population_points,)
     else:
-        ret = hist.point[0], population_monitor.population_points
+        raise NotImplementedError("retall not implemented")
+        #ret = hist.point[0], population_monitor.population_points
     return ret

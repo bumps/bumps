@@ -33,7 +33,7 @@
 %    retcode : boolean indicating a new point xp found (0) or not (1)    (N).
 %    xp : the new point (Rn)
 %    fp : function value at xp (R)
-%    maxtaken : boolean (N)
+%    #maxtaken : boolean (N)
 
 % NOTES:
 %    alfa : is used to prevent function value reductions which are too small.
@@ -44,7 +44,7 @@
 from numpy import linalg, array, dot, sqrt, amax, maximum
 
 def linesearch(cost_func, n, xc, fc, g, p, Sx, maxstep, steptol):
-    maxtaken = 0.0
+    #maxtaken = 0.0
     retcode = 1.0
 
     # alfa specifies how much function value reduction is allowable.  The smaller
@@ -74,12 +74,12 @@ def linesearch(cost_func, n, xc, fc, g, p, Sx, maxstep, steptol):
     # finding an optimal lambda based on one dimensional quadratic and cubic models
     while retcode < 2.0:                # 10 starts.
         xp = xc + lambdaM * p                                    # next point candidate
-        fp,gp = cost_func(xp)                                    # function value at xp
+        fp,_gp = cost_func(xp)                                    # function value at xp
         if fp <= fc + alfa * lambdaM * initslope:
             # satisfactory xp is found
             retcode = 0.0
-            if lambdaM == 1.0 and Newtlen > 0.99 * maxstep:
-                maxtaken = 1.0
+            #if lambdaM == 1.0 and Newtlen > 0.99 * maxstep:
+            #    maxtaken = 1.0
             break                                                    # return from here
         elif lambdaM < minlambda:
             # step length is too small, therefore a satisfactory xp cannot be found
@@ -91,6 +91,9 @@ def linesearch(cost_func, n, xc, fc, g, p, Sx, maxstep, steptol):
             if lambdaM == 1.0:
                 # first backtrack with one dimensional quadratic fit
                 lambda_temp = -initslope / (2.0*(fp-fc-initslope))
+
+                lambda_prev = lambdaM
+                fp_prev = fp
             else:
                 # ISMET : I added the following if statements
                 if lambdaM == lambda_prev:
@@ -115,8 +118,9 @@ def linesearch(cost_func, n, xc, fc, g, p, Sx, maxstep, steptol):
                     # larger than half of previous lambda is not allowed.
                     lambda_temp = 0.5 * lambdaM
 
-            lambda_prev = lambdaM
-            fp_prev = fp
+                lambda_prev = lambdaM
+                fp_prev = fp
+
             if lambda_temp <= 0.1 * lambdaM:
                 # smaller than 1/10 th of previous lambda is not allowed.
                 lambdaM = 0.1 * lambdaM

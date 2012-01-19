@@ -19,7 +19,6 @@ def plot_response_surface(f, p, dims=[0,1], steps=pylab.linspace(-10,10,40)):
     """
     Plot a line or a slice around a point in a n-D function
     """
-    import pylab
     if len(dims) == 1:
         xi = dims[0]
         x = steps - p[xi]

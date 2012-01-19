@@ -10,7 +10,7 @@ References::
 """
 
 import numpy
-from numpy import exp, sum, inf, sqrt
+from numpy import exp, inf, sqrt
 
 def dual_exponential(t,a):
     """

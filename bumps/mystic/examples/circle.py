@@ -5,9 +5,9 @@ References::
     None
 """
 
-from numpy import array, arange
+import numpy
+from numpy import arange
 from numpy import random, sin, cos, pi, inf, sqrt
-from math import floor
 
 random.seed(123)
 
@@ -27,14 +27,14 @@ def genpoints(coeffs, npts=20):
 
     NOTE: if npts == None, constrain all points to circle of given radius
     """
-    xo,yo,R = coeffs
+    xo,yo,_R = coeffs
     # Radial density varies as sqrt(x)
     r,theta = sqrt(random.rand(npts)), 2*pi*(random.rand(npts))
     x,y = r*cos(theta)+xo, r*sin(theta)+yo
     return x,y
 
 def gendensity(coeffs,density=0.1):
-    xo,yo,R = coeffs
+    _xo,_yo,R = coeffs
     npts = int(0.2*pi*R**2)
     return genpoints(coeffs,npts)
 
@@ -64,11 +64,11 @@ class MinimumCircle(Fitness):
         resid = self._residuals(p)
         # Throw r in the residual so that it is minimized, punish the circle
         # if there are too many points outside.
-        d = numpy.concatenate((d,self.r,sum(resid>0)))
+        d = numpy.concatenate((resid,self.r,sum(resid>0)))
         return d
 
     def __call__(self, p):
-        xc,yc,r = p
+        _xc,_yc,r = p
         resid = self._residuals(p)
         # Penalties are the number
         # Add additional penalties for each point outside the circle

@@ -51,4 +51,5 @@ class MeshgridService(Service):
 
 # === Client interface ===
 def meshgrid(f, p, dims, steps):
-    r = Request('MeshGridService',0.0,problem=(f,b),dims=dims,steps=steps)
+    r = Request('MeshGridService',0.0,problem=(f,p),dims=dims,steps=steps)
+    return r

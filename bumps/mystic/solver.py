@@ -109,11 +109,9 @@ Accumulated properties::
 
 import time
 import os
-import inspect
 
 import numpy
 
-from . import stop
 from .history import History
 
 def cpu_time():
@@ -193,7 +191,7 @@ class Minimizer:
         Collect statistics on time and resources
         """
         if hasattr(values,'__cpu_time__'):
-            self.remote_time += result.__cpu_time__
+            self.remote_time += values.__cpu_time__
 
         # Locate the best member of the population
         values = numpy.asarray(values)

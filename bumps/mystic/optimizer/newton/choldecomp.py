@@ -4,8 +4,7 @@ Created on Nov 23, 2009
 
 @author: Ismet Sahin and Christopher Meeting
 '''
-from numpy import *
-from pylab import *
+from numpy import sqrt, diag, zeros, array
 
 def choldecomp(n, H, maxoffl, macheps):
     minl = (macheps)**(0.25) * maxoffl

@@ -30,8 +30,7 @@ Created on Nov 23, 2009
 %              10     0     3]
 '''
 
-from numpy import *
-from pylab import *
+from numpy import sqrt, diag, Inf, ones, array
 import choldecomp as chol
 
 def modelhess(n, H, s, macheps):
