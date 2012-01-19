@@ -23,7 +23,7 @@ def profile(fn, *args, **kw):
     """
     Profile a function called with the given arguments.
     """
-    import cProfile, pstats, os
+    import cProfile, pstats
     global call_result
     def call():
         global call_result
@@ -47,9 +47,8 @@ def kbhit():
     """
     try: # Windows
         import msvcrt
-        return msvcrt.kbhit()
+        return msvcrt.kbhit() #@UndefinedVariable windows only
     except: # Unix
-        import sys
         import select
         i,_,_ = select.select([sys.stdin],[],[],0.0001)
         return sys.stdin in i

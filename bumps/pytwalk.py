@@ -95,10 +95,7 @@ class pytwalk:
         #### Make local references for less writing
         n = self.n
         Output = self.Output
-        U = self.U
-        Supp = self.Supp
         Acc = self.Acc
-        Fw = self.Fw
 
         Output[ 0, 0:n] = x.copy()
         Output[ 0, n] = u
@@ -156,7 +153,6 @@ class pytwalk:
         """
 
         #### Make local references for less writing
-        n = self.n
         U = self.U
         Supp = self.Supp
         Fw = self.Fw
@@ -477,7 +473,7 @@ class pytwalk:
            The function g provides a transformation to be applied to the data,
            eg g=(lambda x: abs(x[0]-x[1]) would plot a histogram of the distance
            between parameters 0 and 1, etc."""
-        from pylab import hist, xlabel, ylabel, title
+        from pylab import hist, xlabel
 
         if (end == 0):
             end = self.T

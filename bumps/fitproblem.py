@@ -12,23 +12,14 @@ parameters associated with the model.  Within fit problems, self.parameters
 is a list of fitted parameters only.
 """
 from __future__ import division, with_statement
-import os
 import sys
 import time
 
-# Use dill if it is available since it can pickle functions
-try:
-    import dill
-    def deepcopy(obj): return dill.loads(dill.dumps(obj))
-except:
-    from copy import deepcopy
-
-from numpy import inf, nan, isnan
+from numpy import inf, isnan
 import numpy
 
-from . import parameter, bounds as mbounds, monitor
+from . import parameter, bounds as mbounds
 from .formatnum import format_uncertainty
-from .history import History
 
 
 def preview(models=[], weights=None):
@@ -108,25 +99,13 @@ def show_correlations(pars, points, fid=None):
     """
     List correlations between parameters in descending order.
     """
-    if 1: # Use correlation coefficient
-        R = numpy.corrcoef(points.T)
-        corr = [(i,j,R[i,j])
-                for i in range(len(pars))
-                for j in range(i+1, len(pars))]
-        # Trim those which are not significant
-        corr = [(i,j,r) for i,j,r in corr if abs(r) > 0.2]
-        corr = list(sorted(corr, cmp=lambda x,y: cmp(abs(y[2]),abs(x[2]))))
-
-    else: # Use ??
-        z = util.zscore(points, axis=0)
-        # Compute all cross correlations
-        corr = [(i,j,xcorr(z[i],z[j]))
-                for i in range(j+1, len(pars))
-                for j in range(len(pars))]
-        # Trim those which are not significant
-        corr = [(i,j,r) for i,j,r in corr if abs(r-2) > 0.5]
-        # Sort the remaining list
-        corr = list(sorted(corr, cmp=lambda x,y: cmp(abs(y[2]-2),abs(x[2]-2))))
+    R = numpy.corrcoef(points.T)
+    corr = [(i,j,R[i,j])
+            for i in range(len(pars))
+            for j in range(i+1, len(pars))]
+    # Trim those which are not significant
+    corr = [(i,j,r) for i,j,r in corr if abs(r) > 0.2]
+    corr = list(sorted(corr, cmp=lambda x,y: cmp(abs(y[2]),abs(x[2]))))
 
     # Print the remaining correlations
     if len(corr) > 0:
@@ -588,7 +567,7 @@ class FitProblem(object):
         #              = inv(V') inv(S S) inv(V)
         #              = V inv (S S) V'
         J = self.jacobian(pvec, step=step)
-        u,s,vh = numpy.linalg.svd(J,0)
+        _u,s,vh = numpy.linalg.svd(J,0)
         s[s<=tol] = tol
         JTJinv = numpy.dot(vh.T.conj()/s**2,vh)
         return JTJinv

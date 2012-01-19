@@ -3,7 +3,7 @@ Monotonic spline modeling
 """
 
 from __future__ import division
-from numpy import (diff, hstack, sqrt, searchsorted, asarray, cumsum,
+from numpy import (diff, hstack, sqrt, searchsorted, asarray,
                    nonzero, linspace, isnan)
 from . import numpyerrors
 

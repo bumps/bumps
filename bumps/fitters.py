@@ -1,6 +1,4 @@
-import sys
 import time
-import math
 from copy import deepcopy
 
 import numpy
@@ -179,7 +177,7 @@ class PSFit(FitBase):
         NP = int(cfo['n']*options['pop'])
 
         result = particle_swarm(cfo, NP, maxiter=options['steps'])
-        satisfied_sc, n_feval, f_best, x_best = result
+        _satisfied_sc, _n_feval, f_best, x_best = result
 
         return x_best, f_best
 
@@ -211,7 +209,7 @@ class RLFit(FitBase):
 
         result = random_lines(cfo, NP, maxiter=options['steps'],
                               CR=options['CR'])
-        satisfied_sc, n_feval, f_best, x_best = result
+        _satisfied_sc, _n_feval, f_best, x_best = result
 
         return x_best, f_best
 
@@ -284,7 +282,7 @@ class SnobFit(FitBase):
     def solve(self, monitors=None, mapper=None, **options):
         _fill_defaults(options, self.settings)
         # TODO: no mapper??
-        from snobfit.snobfit import snobfit
+        from snobfit.snobfit import snobfit #@UnresolvedImport snobfit is optional
         self._update = MonitorRunner(problem=self.problem,
                                      monitors=monitors)
         bounds = numpy.array([p.bounds.limits
@@ -396,17 +394,17 @@ class DreamFit(FitBase):
 class Resampler(FitBase):
     #TODO: why isn't cli.resynth using this?
     def __init__(self, fitter):
+        raise NotImplementedError
         self.fitter = fitter
-        self.problem = fitter.problem
     def solve(self, **options):
         starts = options.pop('starts',1)
         restart = options.pop('restart',False)
         x,fx = self.fitter.solve(**options)
-        points = _resampler(fitter, x, samples=starts,
+        _points = _resampler(self.fitter, x, samples=starts,
                             restart=restart, **options)
         return x,fx
 
-def _resampler(fitter, x, samples=100, restart=False, **options):
+def _resampler(fitter, xinit, samples=100, restart=False, **options):
     """
     Refit the result multiple times with resynthesized data, building
     up an array in Result.samples which contains the best fit to the
@@ -414,29 +412,28 @@ def _resampler(fitter, x, samples=100, restart=False, **options):
     *fitter* is the (local) optimizer to use. **kw are the parameters
     for the optimizer.
     """
-    opt = fitter(self.problem)
+    x = xinit
     points = []
     try: # TODO: some solvers already catch KeyboardInterrupt
-        for i in range(samples):
+        for _ in range(samples):
             #print "== resynth %d of %d" % (i, samples)
-            self.problem.resynth_data()
+            fitter.problem.resynth_data()
             if restart:
-                parameter.randomize(self.problem.parameters)
+                parameter.randomize(fitter.problem.parameters)
             else:
-                self.problem.setp(self.solution)
-            x = fitter.solve(**options)
-            nllf = self.problem.nllf(x) # TODO: don't recalculate!
-            points.append(numpy.hstack((nllf,x)))
+                fitter.problem.setp(x)
+            x, fx = fitter.solve(**options)
+            points.append(numpy.hstack((fx,x)))
             #print parameter.summarize(self.problem.parameters)
             #print "[chisq=%g]" % (nllf*2/self.problem.dof)
     except KeyboardInterrupt:
         pass
     finally:
         # Restore the state of the problem
-        problem.restore_data()
-        problem.setp(x)
-        problem.model_update()
-    points = numpy.vstack([self.points] + points)
+        fitter.problem.restore_data()
+        fitter.problem.setp(xinit)
+        fitter.problem.model_update()
+    return points
 
 
 class FitDriver(object):
@@ -510,7 +507,7 @@ class FitOptions(object):
         self.options = dict(fitclass.settings)
     def set_from_cli(self, opts):
         # Convert supplied options to the correct types and save them in value
-        for field,reset_value in self.fitclass.settings:
+        for field,_reset_value in self.fitclass.settings:
             value = getattr(opts,field,None)
             dtype = FitOptions.FIELDS[field][1]
             if value is not None:
@@ -527,13 +524,13 @@ class FitOptions(object):
 
 # List of (parameter,factory value) required for each algorithm
 FIT_OPTIONS = dict(
-    amoeba = FitOptions(AmoebaFit),
-    de     = FitOptions(DEFit),
-    dream  = FitOptions(DreamFit),
-    newton = FitOptions(BFGSFit),
-    ps     = FitOptions(PSFit),
-    pt     = FitOptions(PTFit),
-    rl     = FitOptions(RLFit),
+    amoeba  = FitOptions(AmoebaFit),
+    de      = FitOptions(DEFit),
+    dream   = FitOptions(DreamFit),
+    newton  = FitOptions(BFGSFit),
+    ps      = FitOptions(PSFit),
+    pt      = FitOptions(PTFit),
+    rl      = FitOptions(RLFit),
     snobfit = FitOptions(SnobFit),
     )
 

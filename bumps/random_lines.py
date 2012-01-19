@@ -18,15 +18,12 @@ def random_lines(cfo, NP, CR = 0.9, epsilon = 1e-10, maxiter = 1000):
     else:
         mapper = lambda v: asarray(map(cfo['cost'],v.T),'d')
     monitor = cfo.get('monitor',print_every_five)
-    satisfied_sc = -1
-    n_feval = -1
 
     n = cfo['n']
 
     X = rand(n, NP)            # will hold original vectors
     fk = 1e300 * ones(NP)
 
-    n_no_improvement = 0
     satisfied_sc = 0
 
     # CREATE FIRST GENERATION WITH LEGAL PARAMETER VALUES AND EVALUATE COSTS
@@ -130,7 +127,6 @@ def particle_swarm(cfo, NP, epsilon = 1e-10, maxiter = 1000):
     else:
         mapper = lambda v: asarray(map(cfo['cost'],v.T),'d')
     monitor = cfo.get('monitor',print_every_five)
-    satisfied_sc = -1
 
     n = cfo['n']
     c1 = 2.8;
@@ -141,7 +137,6 @@ def particle_swarm(cfo, NP, epsilon = 1e-10, maxiter = 1000):
     X = rand(n, NP)            # will hold original vectors
     V = zeros((n, NP))
 
-    n_no_improvement = 0
     satisfied_sc = 0
 
     # CREATE FIRST GENERATION WITH LEGAL PARAMETER VALUES AND EVALUATE COSTS
@@ -201,34 +196,7 @@ def example_call(optimizer=random_lines):
     satisfied_sc, n_feval, f_best, x_best = optimizer(cfo, NP)
     print satisfied_sc, "n:%d"%n_feval, f_best, x_best
 
-def example_call_spline():
-    from numpy import linspace
-    from numpy.random import seed
-    import splinedemo as sp
-    m = 6
-    #dx = rand(m-1)*20
-    dx = asarray([3.0,   6.0,  16.0,  15.0,   10.0])
-
-    y = linspace(1,3,m) # Freeform interface
-    M = sp.spline_model(dx,y)
-    D = sp.simulate(M)
-    #p = hstack((dx,y))
-
-    n = 11
-    x1 = 0 * ones(n)
-    x2 = asarray([17, 17, 17, 17, 17, 4, 4, 4, 4, 4, 4])
-    cfo = {'cost':cost, 'n':n, 'x1':x1, 'x2':x2};
-    #print "chisq",cost.chisq(p)
-    #cost.plot(p)
-    #import pylab; pylab.show()
-
-    NP = 5 * n
-    satisfied_sc, n_feval, f_best, x_best = random_lines(cfo, NP)
-    print satisfied_sc, n_feval, f_best, x_best
-
-
 def main():
-    #example_call_spline()
     print "=== Random Lines"
     example_call(random_lines)
     print "=== Particle Swarm"

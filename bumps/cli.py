@@ -4,20 +4,20 @@ import sys
 import os
 
 import shutil
-import subprocess
 try:
-    import dill as pickle
+    import dill #@UnresolvedImport dill pickler is optional
+    pickle = dill
 except:
-    import cPickle as pickle
+    import cPickle
+    pickle = cPickle
 
 import numpy
 
 from . import fitters
 from .fitters import FIT_OPTIONS, FitDriver, StepMonitor, ConsoleMonitor
-from .fitproblem import FitProblem, load_problem as load_script
+from .fitproblem import load_problem as load_script
 from .mapper import MPMapper, AMQPMapper, SerialMapper
 from . import util
-from . import parameter
 from . import initpop
 from . import __version__
 from . import plugin
@@ -152,7 +152,7 @@ def run_profile(problem, steps):
     Using the GPU for abeles/convolution will only give us 2-3x speedup.
     """
     from .util import profile
-    p = initpop.random(N=steps, pars=problem.parameters)
+    p = initpop.random_init(N=steps, pars=problem.parameters)
 
     # The cost of
     # To get good information from the profiler, you wil
@@ -453,7 +453,7 @@ def beep():
     Audio signal that fit is complete.
     """
     if sys.platform == "win32":
-        import winsound
+        import winsound #@UnresolvedImport windows only
         winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
     else:
         print >>sys.__stdout__,"\a"
@@ -526,9 +526,9 @@ def main():
                                StepMonitor(problem,fid,fields=['step','value'])]
 
         fitdriver.mapper = mapper.start_mapper(problem, opts.args)
-        best, fbest = fitdriver.fit()
+        best, _fbest = fitdriver.fit()
         remember_best(fitdriver, problem, best)
-        if opts.cov: print cov(problem)
+        if opts.cov: print problem.cov()
         beep()
         if not opts.batch:
             import pylab

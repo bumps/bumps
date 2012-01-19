@@ -1,5 +1,4 @@
 import os
-from copy import deepcopy
 
 ## {{{ http://code.activestate.com/recipes/496767/ (r1)
 ## Converted to use ctypes by Paul Kienzle
@@ -21,10 +20,10 @@ def setpriority(pid=None,priority=1):
                        0x100,  # REALTIME_PRIORITY_CLASS
                        ]
     if pid == None:
-        pid = windll.kernel32.GetCurrentProcessId()
+        pid = windll.kernel32.GetCurrentProcessId() #@UndefinedVariable windows only
     PROCESS_ALL_ACCESS = 0x1F0FFF
-    handle = windll.kernel32.OpenProcess(PROCESS_ALL_ACCESS, True, pid)
-    windll.kernel32.SetPriorityClass(handle, priorityclasses[priority])
+    handle = windll.kernel32.OpenProcess(PROCESS_ALL_ACCESS, True, pid) #@UndefinedVariable windows only
+    windll.kernel32.SetPriorityClass(handle, priorityclasses[priority]) #@UndefinedVariable windows only
 ## end of http://code.activestate.com/recipes/496767/ }}}
 def nice():
     if os.name == 'nt':
@@ -82,7 +81,9 @@ class AMQPMapper(object):
 
     @staticmethod
     def start_mapper(problem, modelargs):
+        import sys
         import multiprocessing
+        import subprocess
         from .amqp_map.config import SERVICE_HOST
         from .amqp_map.core import connect, Mapper
 

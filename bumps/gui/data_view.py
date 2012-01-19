@@ -210,7 +210,7 @@ class DataView(wx.Panel):
         Individual problems may want more control, e.g., between computing theory
         and resolution.
         """
-        cost = problem.nllf()
+        _ = problem.nllf()
         wx.Yield()
 
 def set_xrange(ax, xrange):

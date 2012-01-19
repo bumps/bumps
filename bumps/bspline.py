@@ -6,7 +6,6 @@ Given a set of knots, compute the degree 3 B-spline and any derivatives
 that are required.
 """
 from __future__ import division
-import warnings
 import numpy
 
 def max(a,b):
@@ -196,7 +195,7 @@ def speed_check():
     y = [9,11,2,3,8,0,2]
     t = numpy.linspace(0,1,400)
     t0 = time.time()
-    for i in range(1000): bspline(y,t,flat=True)
+    for _ in range(1000): bspline(y,t,flat=True)
     print "bspline (ms)",(time.time()-t0)/1000
 
 def _check(expected,got,tol):
@@ -366,8 +365,8 @@ def demo_interp():
     yc = bspline_control(y,clamp=True)
     xc = linspace(x[0],x[-1],9)
     plot(xc,yc,':oy',xeq,y,'xg')
-    knot = numpy.hstack((0, numpy.linspace(0,1,len(y)), 1))
-    # fy = _bspline3(knot,yc,t)
+    #knot = numpy.hstack((0, numpy.linspace(0,1,len(y)), 1))
+    #fy = _bspline3(knot,yc,t)
     fy = bspline(yc,t,clamp=True)
     plot(t,fy,'-.y')
     show()

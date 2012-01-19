@@ -140,7 +140,6 @@ class LinearModel(object):
     def _std(self):
         return N.sqrt(self._var())
     def _p(self):
-        from scipy import stats
         return stats.chi2.sf(self.rnorm**2,self.DoF)
 
     cov = property(_cov,doc="covariance matrix")
@@ -228,7 +227,6 @@ def wsolve(A,y,dy=1,rcond=1e-12):
 
     # Make sure inputs are arrays
     A,y,dy = N.asarray(A),N.asarray(y),N.asarray(dy)
-    result_dims = y.ndim
     if dy.ndim == 1: dy = dy[:,N.newaxis]
     if y.ndim == 1: y = y[:,N.newaxis]
 
@@ -405,7 +403,7 @@ def test():
     dy = N.array([ 1.7,  2.4,  3.6,  4.8,  6.2],'d')
     poly = wpolyfit(x,y,dy,1)
     px = N.array([1.5],'d')
-    py,pi = poly.pi(px)
+    _ ,pi = poly.pi(px) # Same y is returend from pi and ci
     py,ci = poly.ci(px)
 
     ## Uncomment these to show target values

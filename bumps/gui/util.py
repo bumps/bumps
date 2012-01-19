@@ -43,7 +43,7 @@ class Validator(wx.PyValidator):
         evt.Skip()
 
 def nice(v, digits = 4):
-    from math import log, log10, ceil, floor
+    from math import log10, floor
     """Fix v to a value with a given number of digits of precision"""
     try:
         sign = v/abs(v)

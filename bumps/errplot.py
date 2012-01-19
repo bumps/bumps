@@ -1,4 +1,8 @@
+import os
+from .dream.state import load_state
 from . import plugin
+from .cli import load_problem, recall_best
+
 
 import numpy
 
@@ -19,14 +23,10 @@ def reload_errors(model, store, nshown=50, random=True):
 
     See :func:`calc_errors` for details on the return values.
     """
-    import os
-    import dream.state
-    from refl1d.cli import load_problem, recall_best
-
     problem = load_problem([model])
     recall_best(problem, os.path.join(store, model[:-3]+".par"))
-    state = dream.state.load_state(os.path.join(store, model[:-3]))
-    dream.state.mark_outliers()
+    state = load_state(os.path.join(store, model[:-3]))
+    state.mark_outliers()
     return calc_errors_from_state(problem, state,
                                   nshown=nshown, random=random)
 
@@ -49,7 +49,7 @@ def calc_errors_from_state(problem, state, nshown=50, random=True):
 
     See :func:`calc_errors` for details on the return values.
     """
-    points, logp = state.sample()
+    points, _logp = state.sample()
     if points.shape[0] < nshown: nshown = points.shape[0]
     # randomize the draw; skip the last point since state.keep_best() put
     # the best point at the end.

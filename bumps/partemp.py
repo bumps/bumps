@@ -18,7 +18,7 @@ from numpy.linalg import norm
 from numpy.random import rand,randn, randint, permutation
 
 def every_ten(step,x,fx,P,E):
-    if step%10: print step, fx[k], x[k]
+    if step%10: print step, fx[step], x[step]
 
 def parallel_tempering(nllf, p, bounds, T=None, steps=1000,
                        CR=0.9, burn=1000,

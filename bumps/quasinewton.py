@@ -466,6 +466,10 @@ def linesearch(cost_func, n, xc, fc, g, p, Sx, maxstep, steptol):
                 # first backtrack with one dimensional quadratic fit
                 lambda_temp = -initslope / (2.0*(fp-fc-initslope))
                 #print "L1",lambda_temp
+
+                lambda_prev = lambdaM
+                fp_prev = fp
+
             else:
                 # perform second and following backtracks with cubic fit
                 Mt = array([[1.0/(lambdaM**2), -1.0/(lambda_prev**2)], [-lambda_prev/(lambdaM**2), lambdaM/(lambda_prev**2)]])
@@ -487,8 +491,9 @@ def linesearch(cost_func, n, xc, fc, g, p, Sx, maxstep, steptol):
                     lambda_temp = 0.5 * lambdaM
                     #print "L4",lambda_temp
 
-            lambda_prev = lambdaM
-            fp_prev = fp
+                lambda_prev = lambdaM
+                fp_prev = fp
+
             if lambda_temp <= 0.1 * lambdaM:
                 # smaller than 1/10 th of previous lambda is not allowed.
                 lambdaM = 0.1 * lambdaM
@@ -714,7 +719,7 @@ a termination condition which is satisfied.
 # algorithm will approach it.
 
 def umstop0(n, x0, f, g, Sx, typf, gradtol):
-    consecmax = 0
+    #consecmax = 0
     if max(abs(g) * maximum(abs(x0), 1/Sx) / max(abs(f), typf)) <= 1e-3 * gradtol :
         termcode = 1
     else :
@@ -726,8 +731,6 @@ def umstop0(n, x0, f, g, Sx, typf, gradtol):
 
 def example_call():
     print '***********************************'
-
-    n = 2;
 
     # Rosenbrock function
     fn = lambda p: (1-p[0])**2 + 100*(p[1]-p[0]**2)**2
