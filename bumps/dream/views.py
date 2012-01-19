@@ -4,11 +4,10 @@ __all__ = ['plot_all', 'plot_corr', 'plot_corrmatrix',
            'plot_R','plot_logp', 'format_vars']
 import math
 import numpy
-from numpy import arange, squeeze, reshape, linspace, meshgrid, vstack, NaN, inf
+from numpy import arange, squeeze, linspace, meshgrid, vstack, inf
 from . import corrplot
 from .stats import credible_interval, stats
 from .formatnum import format_uncertainty
-from .util import console
 
 def plot_all(state, portion=None, figfile=None):
     from pylab import figure, savefig, suptitle
@@ -121,7 +120,6 @@ def _plot_var(points, logp, index=None, label="P", nbins=50, ci=0.95):
     histbest = [numpy.max(logp[edge[i]:edge[i+1]])
                 if edge[i]<edge[i+1] else -inf
                 for i in range(nbins)]
-    density = kde_1d(points)
 
     # scale to marginalized probability with peak the same height as hist
     histbest = numpy.exp(histbest-maxlogp)
@@ -133,6 +131,7 @@ def _plot_var(points, logp, index=None, label="P", nbins=50, ci=0.95):
     pylab.bar(bins[:-1], hist, width=bins[1]-bins[0])
 
     # Plot the kernel density estimate
+    #density = kde_1d(points)
     #x = linspace(bins[0],bins[-1],100)
     #pylab.plot(x, density(x), '-k', hold=True)
 

@@ -5,7 +5,7 @@ Mahalanobis distance calculator
 """
 
 from numpy import dot, mean, sum
-from numpy.linalg import qr, solve, svd
+from numpy.linalg import svd
 
 def mahalanobis(Y,X):
     """

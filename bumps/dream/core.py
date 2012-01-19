@@ -185,7 +185,7 @@ def run_dream(dream):
         raise ValueError("initial population not defined")
 
     # Remember the problem dimensions
-    Ngen, Nchain, Nvar = dream.population.shape
+    Ngen, Nchain, _Nvar = dream.population.shape
     Npop = Ngen*Nchain
 
     if dream.CR == None:
@@ -301,7 +301,7 @@ def allocate_state(dream):
     Estimate the size of the output
     """
     # Determine problem dimensions from the initial population
-    Npop, Nchain, Nvar = dream.population.shape
+    _Npop, Nchain, Nvar = dream.population.shape
     steps = dream.DE_steps
     thinning = dream.thinning
     Ncr = len(dream.CR.CR)

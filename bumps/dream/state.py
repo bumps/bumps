@@ -756,8 +756,8 @@ def test():
     accept = rand(Ngen,Npop) < 0.8
     CRin = rand(Nupdate,Ncr)
     Rin = rand(Nupdate,1)
-    thinning = 2
-    Nthin = int(Ngen/thinning)
+    #thinning = 2
+    #Nthin = int(Ngen/thinning)
 
     # Put it into a state
     thinning = 2

@@ -88,6 +88,7 @@ numbers from 10 to 19, column 2 from 20 to 29, etc.  The columns are in
 random order with a random fractional part.
 """
     pop = lhs_init(N=10, bounds=(arange(1,5),arange(2,6)))*10
+    print pop
 
 if __name__ == "__main__":
     demo()

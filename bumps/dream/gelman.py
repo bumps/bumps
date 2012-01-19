@@ -50,7 +50,7 @@ def gelman(sequences, portion=0.5):
     return R_stat
 
 def test():
-    from numpy import reshape, arange, array, transpose
+    from numpy import reshape, arange, transpose
     from numpy.linalg import norm
     # Targe values computed from octave:
     #    format long

@@ -1,6 +1,6 @@
 from __future__ import division
-from numpy import zeros, ones, empty, dot, cov, eye, sqrt, sum, all
-from numpy import arange, reshape, where, select
+from numpy import zeros, ones, dot, cov, eye, sqrt, sum, all
+from numpy import where, select
 from numpy.linalg import norm, cholesky, LinAlgError
 from .util import draw
 from numpy import random as RNG
@@ -131,7 +131,7 @@ def _check():
     pop = 100*numpy.arange(Npop*Nvar).reshape((Npop,Nvar))
     pop += RNG.rand(*pop.shape)*1e-6
     CR = 1./(RNG.randint(4,size=Nvar)+1)
-    x_new, step_alpha, used = de_step(Nchain,pop,CR,max_pairs=2,eps=0.05)
+    x_new, _step_alpha, used = de_step(Nchain,pop,CR,max_pairs=2,eps=0.05)
     print """\
 The following table shows the expected portion of the dimensions that
 are changed and the rounded value of the change for each point in the
@@ -139,7 +139,7 @@ population.
 """
     for r,i,u in zip(CR,range(8),used):
         rstr = ("%3d%%"%(r*100)) if u else "full"
-        vstr = " ".join("%4d"%(int(v/100+0.5)) for v in x_new[i]-x[i])
+        vstr = " ".join("%4d"%(int(v/100+0.5)) for v in x_new[i]-pop[i])
         print rstr, vstr
 
 if __name__ == "__main__":
