@@ -27,7 +27,6 @@ GUI for the Bumps application including a basic menu, tool bar, and status bar.
 
 #==============================================================================
 
-import os
 import sys
 
 import wx
@@ -89,13 +88,14 @@ class AppFrame(wx.Frame):
         """
 
         # Save the system default font information before we make any changes.
-        fontname = default_fontname = self.GetFont().GetFaceName()
-        fontsize = default_fontsize = self.GetFont().GetPointSize()
+        default_fontname = self.GetFont().GetFaceName()
+        default_fontsize = self.GetFont().GetPointSize()
 
         # If requested, override the font name to use.  Note that:
         # - the MS Windows default font appears to be the same as Tahoma
         # - Arial tends to be narrower and taller than Tahoma.
         # - Verdana tends to be wider and shorter than Tahoma.
+        fontname = default_fontname
         if len(sys.argv) > 1:
             if '--tahoma' in sys.argv[1:]: fontname = "Tahoma"
             if '--arial' in sys.argv[1:]: fontname = "Arial"

@@ -50,9 +50,7 @@ Options for controlling the development and testing environment:
 
 #==============================================================================
 
-import os
 import sys
-import time
 
 import wx
 

@@ -76,7 +76,7 @@ def choose_fontsize(fontname=None):
         frame.SetFont(wx.Font(fontsize, wx.SWISS, wx.NORMAL, wx.NORMAL, False,
                               fontname))
         benchmark = wx.StaticText(frame, wx.ID_ANY, label="")
-        w, h = benchmark.GetTextExtent(BENCHMARK_TEXT)
+        w, _ = benchmark.GetTextExtent(BENCHMARK_TEXT)
         benchmark.Destroy()
         if w <= max_width: break
 
@@ -105,7 +105,7 @@ def display_fontsize(fontname=None, benchmark_text=BENCHMARK_TEXT,
                               fontname))
     fontname = frame.GetFont().GetFaceName()
 
-    x, y = wx.ClientDC(frame).GetPPI()
+    x, _ = wx.ClientDC(frame).GetPPI()
     print "*** Benchmark text width and height in pixels = %4d %2d"\
           %(benchmark_width, benchmark_height)
     print "*** Compare against %s font with dpi resolution of %d:"\
@@ -173,7 +173,7 @@ def resource_dir():
     # Check for data path in the environment
     key = 'BUMPS_DATA'
     if os.environ.has_key(key):
-        path = os.path.join(os.environ[key],data)
+        path = os.path.join(os.environ[key],"data")
         if not os.path.isdir(path):
             raise RuntimeError('Path in environment %s not a directory'%key)
         _RESOURCE_DIR = path
@@ -261,9 +261,7 @@ class StatusBarInfo():
         frame = wx.FindWindowByName("AppFrame", parent=None)
         self.sb = frame.GetStatusBar()
         self.cnt = self.sb.GetFieldsCount()
-        self.field = []
-        for index in range(self.cnt):
-            self.field.append("")
+        self.field = ["" for _ in range(self.cnt)]
 
 
     def write(self, index=0, text=""):
@@ -295,7 +293,7 @@ class ExecuteInThread():
     """
 
     def __init__(self, callback, function, *args, **kwargs):
-        if callback is None: callback = _callback
+        if callback is None: callback = self._callback
         #print "*** ExecuteInThread init:", callback, function, args, kwargs
         delayedresult.startWorker(consumer=callback, workerFn=function,
                                   wargs=args, wkwargs=kwargs)
@@ -408,7 +406,7 @@ class TimeStamp():
 
     def log_timestamp(self, text=""):
         # Prints timestamp and optional comment.
-        t, d, e = self.gettime3()
+        t, _d, _e = self.gettime3()
         print "==> %s  %s" %(t, text)
 
 

@@ -1,7 +1,6 @@
 import wx
-import sys
 
-import wx.lib.scrolledpanel as scrolled
+#import wx.lib.scrolledpanel as scrolled
 
 
 IS_MAC = (wx.Platform == '__WXMAC__')

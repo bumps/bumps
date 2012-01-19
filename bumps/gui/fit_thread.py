@@ -1,6 +1,3 @@
-import time
-import threading
-import wx
 import wx.lib.newevent
 
 from copy import deepcopy

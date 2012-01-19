@@ -27,7 +27,6 @@ This module implements the Parameter View panel.
 #==============================================================================
 
 import wx
-import sys
 
 import wx.gizmos as gizmos
 
@@ -46,14 +45,14 @@ class ParameterView(wx.Panel):
 
         #sizers
         vbox = wx.BoxSizer(wx.VERTICAL)
-        text_hbox = wx.BoxSizer(wx.HORIZONTAL)
+        _text_hbox = wx.BoxSizer(wx.HORIZONTAL)
 
         self.tree = gizmos.TreeListCtrl(self, -1, style =
                                         wx.TR_DEFAULT_STYLE
                                         | wx.TR_HAS_BUTTONS
                                         | wx.TR_TWIST_BUTTONS
                                         | wx.TR_ROW_LINES
-                                        | wx.TR_COLUMN_LINES
+                                        #| wx.TR_COLUMN_LINES
                                         | wx.TR_NO_LINES
                                         | wx.TR_FULL_ROW_HIGHLIGHT
                                        )
@@ -209,7 +208,7 @@ class ParameterView(wx.Panel):
 
     def OnRightUp(self, evt):
         pos = evt.GetPosition()
-        branch, flags, column = self.tree.HitTest(pos)
+        branch, _flags, column = self.tree.HitTest(pos)
         if column == 5:
             par = self.tree.GetItemPyData(branch)
             if par is None: return

@@ -1,11 +1,7 @@
 from __future__ import with_statement
 
-import numpy
-
 from ..dream import views as dream_views
-from .. import monitor
 from .. import errplot
-from ..plotutil import coordinated_colors
 from .plot_view import PlotView
 from .signal import log_message
 

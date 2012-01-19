@@ -29,16 +29,14 @@ of the frame of the GUI for the Bumps application.
 
 from __future__ import division
 import os
-import sys
-import traceback
 
-import wx
 import wx.aui
 
 from .. import fitters
 from .. import plugin
 from ..cli import load_problem
 from ..util import redirect_console
+from .plot_view import PlotView
 from .summary_view import SummaryView
 from .parameter_view import ParameterView
 from .log_view import LogView
@@ -115,7 +113,7 @@ class AppPanel(wx.Panel):
 
         file_menu_id = mb.FindMenu("File")
         file_menu = mb.GetMenu(file_menu_id)
-        help_menu = mb.GetMenu(mb.FindMenu("Help"))
+        #help_menu = mb.GetMenu(mb.FindMenu("Help"))
 
         # Add items to the "File" menu (prepending them in reverse order).
         # Grey out items that are not currently implemented.
@@ -329,9 +327,9 @@ class AppPanel(wx.Panel):
                 v.update_model(model)
 
     def OnModelSetpar(self, model):
-        for k,v in self.view.items():
+        for _k,v in self.view.items():
             if hasattr(v, 'update_parameters'):
-                #print "updating",k
+                #print "updating",_k
                 v.update_parameters(model)
 
     def OnFileNew(self, event):
@@ -471,7 +469,7 @@ class AppPanel(wx.Panel):
             raise ValueError("Unknown fit progress message "+event.message)
 
     def new_model(self):
-        from ..profileview.fitplugin import new_model as gen
+        from ..plugin import new_model as gen
         self.set_model(gen())
 
     def load_model(self, path):

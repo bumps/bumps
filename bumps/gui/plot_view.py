@@ -107,7 +107,6 @@ class PlotView(wx.Panel):
     '''
 
     def OnShow(self, event):
-        import pylab
         #print "theory show"
         if not event.Show: return
         #print "showing theory"

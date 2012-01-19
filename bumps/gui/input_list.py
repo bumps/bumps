@@ -384,7 +384,7 @@ class InputListPanel(ScrolledPanel):
             # Create the text label widget.
             self.labels.append(wx.StaticText(self, wx.ID_ANY, label=text,
                                style=wx.ALIGN_LEFT))
-            w, h = self.labels[x].GetSize()
+            w, _ = self.labels[x].GetSize()
             if w > self.widest: self.widest = w
 
             # Create the input box widget (combo box or simple data entry box)
@@ -770,7 +770,7 @@ class InputListDialog(wx.Dialog):
             # Create the text label widget.
             self.labels.append(wx.StaticText(self, wx.ID_ANY, label=text,
                                style=wx.ALIGN_LEFT))
-            w, h = self.labels[x].GetSize()
+            w, _ = self.labels[x].GetSize()
             if w > self.widest: self.widest = w
 
             # Create the input box widget (combo box or simple data entry box)
