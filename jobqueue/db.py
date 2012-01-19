@@ -5,14 +5,14 @@ from datetime import datetime
 import sqlalchemy as db
 from sqlalchemy import Column, ForeignKey, Sequence
 from sqlalchemy import String, Integer, DateTime, Float, Enum
-from sqlalchemy.orm import (relationship, backref)
+from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
 DB_URI = 'sqlite:///'+os.path.expanduser('~/.jobqueue.db')
 DEBUG = False
 
 Record = declarative_base()
-Session = db.orm.sessionmaker(autocommit=False)
+Session = sessionmaker(autocommit=False)
 def connect():
     engine = db.create_engine(DB_URI, echo=DEBUG)
     Record.metadata.create_all(engine)

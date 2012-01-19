@@ -1,14 +1,14 @@
 # TODO: Add /jobs/<id>/data.zip to fetch all files at once in a zip file format
 # TODO: Store completed work in /path/to/store/<id>.zip
 
-import os, sys
+import os
 import logging
 import json
 import cPickle as pickle
 import flask
 from flask import redirect, url_for, flash
 from flask import send_from_directory
-from werkzeug import secure_filename
+from werkzeug.utils import  secure_filename
 
 from jobqueue import store
 
@@ -18,7 +18,7 @@ app = flask.Flask(__name__)
 # By uploading files into a temporary file provided by store, we
 # can then move the files directly into place on the store rather
 # than copy them.  This gives us reduced storage, reduced memory
-# and reduced cpu.
+# and reduced CPU.
 class Request(flask.Request):
     # Upload directly into temporary files.
     def _get_file_stream(self, total_content_length, content_type,
@@ -28,7 +28,7 @@ class Request(flask.Request):
 app.request_class = Request
 
 
-# ==== Format download specialialization ===
+# ==== Format download specialization ===
 def _format_response(response, format='json', template=None):
     """
     Return response as a particular format.
@@ -94,9 +94,9 @@ def create_job(format='json'):
     Job details is simply a copy of the original request.
 
     """
-    request = flask.request.json
+    request = flask.request.json #@UndefinedVariable in request proxy
     if request is None: flask.abort(415) # Unsupported media
-    id = SCHEDULER.submit(request, origin=flask.request.remote_addr)
+    id = SCHEDULER.submit(request, origin=flask.request.remote_addr) #@UndefinedVariable in request proxy
     flash('Job %s scheduled' % id)
     response = {'id': id, 'job': SCHEDULER.info(id)}
     #return redirect(url_for('show_job', id=id, format=format))
@@ -177,7 +177,7 @@ def delete_job(id, format='json'):
 @app.route('/jobs/nextjob.<format>', methods=['POST'])
 def fetch_work(format='json'):
     # TODO: verify signature
-    request = flask.request.json
+    request = flask.request.json #@UndefinedVariable in request proxy
     if request is None: flask.abort(415) # Unsupported media
     job = SCHEDULER.nextjob(queue=request['queue'])
     return _format_response(job, format=format)
@@ -188,18 +188,18 @@ def return_work(id):
     # TODO: verify that work not already returned by another client
     try:
         #print "decoding <%s>"%flask.request.form['results']
-        results = json.loads(flask.request.form['results'])
+        results = json.loads(flask.request.form['results']) #@UndefinedVariable in request proxy
     except:
         import traceback;
         logging.error(traceback.format_exc())
         results = {
             'status': 'ERROR',
             'error': 'No results returned from the server',
-            'trace': flask.request.form['results'],
+            'trace': flask.request.form['results'], #@UndefinedVariable in request proxy
         }
     _transfer_files(id)
     SCHEDULER.postjob(id, results)
-    # Should be signalling code 204: No content
+    # Should be signaling code 204: No content
     return _format_response({},format="json")
 
 @app.route('/jobs/<int:id>/data/index.<format>')
@@ -218,7 +218,7 @@ def listfiles(id, format):
 # TODO: don't allow putfiles without authentication
 #@app.route('/jobs/<int:id>/data/', methods=['GET','PUT'])
 def putfiles(id):
-    if flask.request.method=='PUT':
+    if flask.request.method=='PUT': #@UndefinedVariable in request proxy
         # TODO: verify signature
         _transfer_files(id)
     return redirect(url_for('getfile',id=id,filename='index.html'))
@@ -267,7 +267,7 @@ def getfile(id, filename):
 
 def _transfer_files(jobid):
     logging.warn("XSS attacks possible if stored file is mimetype html")
-    for file in flask.request.files.getlist('file'):
+    for file in flask.request.files.getlist('file'): #@UndefinedVariable in request proxy
         if not file: continue
         filename = secure_filename(os.path.split(file.filename)[1])
         # Because we used named temporary files that aren't deleted on
@@ -280,14 +280,17 @@ def _transfer_files(jobid):
 
 def init_scheduler(conf):
     if conf == 'slurm':
-        from slurm import Scheduler
+        from . import slurm
+        Scheduler = slurm.Scheduler
     elif conf == 'direct':
         logging.warn("direct scheduler is not a good choice!")
         try: os.nice(19)
         except: pass
-        from simplequeue import Scheduler
+        from . import simplequeue
+        Scheduler = simplequeue.Scheduler
     elif conf == 'dispatch':
-        from dispatcher import Scheduler
+        from . import dispatcher
+        Scheduler = dispatcher.Scheduler
     else:
         raise ValueError("unknown scheduler %s"%conf)
     return Scheduler()
@@ -304,15 +307,15 @@ def configure(jobstore=None, jobkey=None, jobdb=None, scheduler=None):
     if jobkey:
         app.config['SECRET_KEY'] = open(fullpath(jobkey)).read()
     if jobdb:
-        import jobqueue.db
-        jobqueue.db.DB_URI = jobdb
+        from . import db
+        db.DB_URI = jobdb
 
     SCHEDULER = init_scheduler(scheduler)
 
 if __name__ == '__main__':
     configure(jobstore='/tmp/server/%s',
               jobdb='sqlite:///tmp/jobqueue.db',
-              jobkey='~/.bumps/key',
+              jobkey='~/.reflserve/key',
               scheduler='dispatch',
               )
     app.config['DEBUG'] = True

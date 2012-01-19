@@ -3,8 +3,6 @@ import json
 import shutil
 from tempfile import NamedTemporaryFile
 
-import traceback
-
 ROOT = '/var/lib/jobqueue/server/%s'
 
 def tempfile():

@@ -4,7 +4,6 @@ import traceback
 import time
 import thread
 from multiprocessing import Process
-import logging
 
 from jobqueue import runjob, store
 from jobqueue.client import connect
@@ -13,9 +12,6 @@ store.ROOT = '/tmp/worker/%s'
 DEFAULT_DISPATCHER = 'http://reflectometry.org/queue'
 POLLRATE = 10
 
-import sys
-import logging
-import traceback
 def log_errors(f):
     def wrapped(*args, **kw):
         try:
@@ -27,27 +23,27 @@ def log_errors(f):
             logging.error(message+trace)
     return wrapped
 
-def wait_for_result(remote, id, process):
+def wait_for_result(remote, id, process, queue):
     """
     Wait for job processing to finish.  Meanwhile, prefetch the next
     request.
     """
     next_request = { 'request': None }
-    cancelling = False
+    canceling = False
     while True:
         # Check if process is complete
         process.join(POLLRATE)
         if not process.is_alive(): break
 
         # Check that the job is still active, and that it hasn't been
-        # cancelled, or results reported back from a second worker.
+        # canceled, or results reported back from a second worker.
         # If remote server is down, assume the job is still active.
         try: response = remote.status(id)
         except: response = None
         if response and response['status'] != 'ACTIVE':
-            #print "cancelling process"
+            #print "canceling process"
             process.terminate()
-            cancelling = True
+            canceling = True
             break
 
         # Prefetch the next job; this strategy works well if there is
@@ -62,8 +58,8 @@ def wait_for_result(remote, id, process):
     try:
         results = runjob.results(id)
     except KeyError:
-        if cancelling:
-            results = { 'status': 'CANCEL', 'message': 'Job cancelled' }
+        if canceling:
+            results = { 'status': 'CANCEL', 'message': 'Job canceled' }
         else:
             results = { 'status': 'ERROR', 'message': 'Results not found' }
 
@@ -108,11 +104,11 @@ def serve(dispatcher, queue):
                 logging.error('request has no job id')
                 next_request = {'request': None}
                 continue
-            logging.inform('processing job %s'%jobid)
+            logging.info('processing job %s'%jobid)
             process = Process(target=runjob.run,
                               args=(jobid,next_request['request']))
             process.start()
-            results, next_request = wait_for_result(remote, jobid, process)
+            results, next_request = wait_for_result(remote, jobid, process, queue)
             thread.start_new_thread(update_remote,
                                     (dispatcher, jobid, queue, results))
         else:

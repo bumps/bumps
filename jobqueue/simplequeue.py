@@ -1,6 +1,4 @@
-import os
 import threading
-import Queue
 from multiprocessing import Process
 
 from . import runjob, jobid, store

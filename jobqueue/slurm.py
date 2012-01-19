@@ -70,7 +70,7 @@ class Scheduler(object):
 #                     "srun -n %d -K -o kernel.out nice -n 19 %s"%(num_workers,kernel)]
         create_batchfile(script,commands)
 
-        out,err = _slurm_exec('sbatch',
+        _out,err = _slurm_exec('sbatch',
                             '-n',str(num_workers), # Number of tasks
                             #'-K', # Kill if any process returns error
                             #'-o', 'job%j.out',  # output file
@@ -149,7 +149,7 @@ class Scheduler(object):
         _slurm_exec('scancel',slurmid)
 
     def delete(self, jobid):
-        jobdir = store.path(jobid)
+        #jobdir = store.path(jobid)
         self.cancel(jobid)
         store.destroy(jobid)
 

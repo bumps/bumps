@@ -27,11 +27,11 @@ def tweet(user, msg):
     twitter.direct_messages.new(user=user, text=msg)
 
 def open_twitter(authfile):
-    from twitter import Twitter, OAuth
+    from twitter import Twitter, OAuth #@UnresolvedImport twitter is optional
+    # Load credentials from authfile
     for line in open(os.path.expanduser(authfile)).readlines():
         exec line
-    auth = OAuth(access_token, access_secret,
-                 consumer_key, consumer_secret)
+    auth = OAuth(access_token, access_secret, consumer_key, consumer_secret) #@UndefinedVariable comes from authfile
     return Twitter(auth=auth)
 
 

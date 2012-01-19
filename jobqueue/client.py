@@ -131,6 +131,7 @@ class Connection(object):
         # TODO: sign request
         response = self.rest.putfiles('/jobs/%s/data/'%id,
                                       files=files)
+        return _process_response(response)
 
 def _process_response(response):
     headers, body = response

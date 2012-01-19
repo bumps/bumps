@@ -18,8 +18,8 @@
 
 import httplib2
 import mimetools, mimetypes
-import os, stat
 from cStringIO import StringIO
+import urllib
 
 
 

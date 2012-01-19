@@ -1,14 +1,13 @@
 
-import os
 from datetime import datetime, timedelta
-from random import random
+import logging
 
-from sqlalchemy import and_, or_, not_, func, select, alias
+from sqlalchemy import and_, or_, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
-from jobqueue import runjob, jobid, store, db, notify
-from jobqueue.db import Job, ActiveJob
+from . import runjob, store, db, notify
+from .db import Job, ActiveJob
 
 class Scheduler(object):
     def __init__(self):
@@ -104,7 +103,7 @@ class Scheduler(object):
                         and_(Job.priority == _priority,
                              Job.status == 'PENDING'))
 
-        for i in range(10): # Repeat if conflict over next job
+        for _ in range(10): # Repeat if conflict over next job
             # Get the next job, if there is one
             try:
                 job = session.query(Job).filter(Job.id==min_id).one()
