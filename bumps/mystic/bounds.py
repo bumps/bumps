@@ -56,7 +56,7 @@ __all__ = ['pm','pmp','pm_raw','pmp_raw', 'nice_range', 'init_bounds',
 
 import math
 import numpy
-from numpy import (isinf, inf, nan, e, pi, log, sqrt, exp)
+from numpy import isinf, inf, pi, log, sqrt
 RNG = numpy.random
 
 try:

@@ -300,6 +300,7 @@ class FitProblem(object):
     def __init__(self, fitness):
         self.fitness = fitness
         self.model_reset()
+
     def model_reset(self):
         """
         Prepare for the fit.
@@ -579,6 +580,12 @@ class FitProblem(object):
         This is just the sqrt diagonal of covariance matrix inv(J'J) at point p.
         """
         return numpy.sqrt(numpy.diag(self.cov(pvec, step=step)))
+
+    def __getstate__(self):
+        return self.fitness
+    def __setstate__(self, state):
+        self.fitness = state
+        self.model_reset()
 
 
 
