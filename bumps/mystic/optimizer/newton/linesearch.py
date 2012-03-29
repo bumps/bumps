@@ -74,7 +74,7 @@ def linesearch(cost_func, n, xc, fc, g, p, Sx, maxstep, steptol):
     # finding an optimal lambda based on one dimensional quadratic and cubic models
     while retcode < 2.0:                # 10 starts.
         xp = xc + lambdaM * p                                    # next point candidate
-        fp,_gp = cost_func(xp)                                    # function value at xp
+        fp,gp = cost_func(xp)                                    # function value at xp
         if fp <= fc + alfa * lambdaM * initslope:
             # satisfactory xp is found
             retcode = 0.0
@@ -91,9 +91,6 @@ def linesearch(cost_func, n, xc, fc, g, p, Sx, maxstep, steptol):
             if lambdaM == 1.0:
                 # first backtrack with one dimensional quadratic fit
                 lambda_temp = -initslope / (2.0*(fp-fc-initslope))
-
-                lambda_prev = lambdaM
-                fp_prev = fp
             else:
                 # ISMET : I added the following if statements
                 if lambdaM == lambda_prev:
@@ -118,8 +115,8 @@ def linesearch(cost_func, n, xc, fc, g, p, Sx, maxstep, steptol):
                     # larger than half of previous lambda is not allowed.
                     lambda_temp = 0.5 * lambdaM
 
-                lambda_prev = lambdaM
-                fp_prev = fp
+            lambda_prev = lambdaM
+            fp_prev = fp
 
             if lambda_temp <= 0.1 * lambdaM:
                 # smaller than 1/10 th of previous lambda is not allowed.

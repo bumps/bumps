@@ -230,7 +230,7 @@ class DifferentialEvolution(solver.Strategy):
 
         best = history.point[0]
         pop = history.population_points[0]
-        _pop_size,ndim = pop.shape
+        pop_size,ndim = pop.shape
 
         trial = pop.copy()
         for idx,vec in enumerate(trial):

@@ -30,19 +30,20 @@ of the frame of the GUI for the Bumps application.
 from __future__ import division
 import os
 
+import wx
 import wx.aui
 
-from .. import fitters
 from .. import plugin
+from .. import fitters
 from ..cli import load_problem
 from ..util import redirect_console
+
 from .plot_view import PlotView
 from .summary_view import SummaryView
 from .parameter_view import ParameterView
 from .log_view import LogView
 from .convergence_view import ConvergenceView
-from .uncertainty_view import (CorrelationView, UncertaintyView,
-                               TraceView, ModelErrorView)
+from .uncertainty_view import CorrelationView, UncertaintyView, TraceView, ModelErrorView
 from .fit_dialog import OpenFitOptions
 from .fit_thread import (FitThread, EVT_FIT_PROGRESS, EVT_FIT_COMPLETE)
 from .util import nice
@@ -327,9 +328,9 @@ class AppPanel(wx.Panel):
                 v.update_model(model)
 
     def OnModelSetpar(self, model):
-        for _k,v in self.view.items():
+        for _,v in self.view.items():
             if hasattr(v, 'update_parameters'):
-                #print "updating",_k
+                #print "updating",_
                 v.update_parameters(model)
 
     def OnFileNew(self, event):
@@ -571,8 +572,10 @@ def beep():
     """
     Play fit completion sound.
     """
-    global SOUND
-    if SOUND is None:
-        SOUND = wx.Sound(resource('done.wav'))
-    if SOUND.IsOk():
-        SOUND.Play(wx.SOUND_ASYNC)
+    wx.Bell()
+    ## FIXME why doesn't sound work?
+    #global SOUND
+    #if SOUND is None:
+    #    SOUND = wx.Sound(resource('done.wav'))
+    #if SOUND.IsOk():
+    #    SOUND.Play(wx.SOUND_ASYNC)

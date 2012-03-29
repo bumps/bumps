@@ -47,7 +47,7 @@ def kbhit():
     """
     try: # Windows
         import msvcrt
-        return msvcrt.kbhit() #@UndefinedVariable windows only
+        return msvcrt.kbhit()
     except: # Unix
         import select
         i,_,_ = select.select([sys.stdin],[],[],0.0001)

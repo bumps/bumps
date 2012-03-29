@@ -297,8 +297,9 @@ class Fitness(object):
 
 
 class FitProblem(object):
-    def __init__(self, fitness):
+    def __init__(self, fitness, name="FitProblem"):
         self.fitness = fitness
+        self.name = name
         self.model_reset()
 
     def model_reset(self):
@@ -336,16 +337,13 @@ class FitProblem(object):
         """
         Update the model according to the changed parameters.
         """
-        self.updating = True
         if hasattr(self.fitness, 'update'):
             self.fitness.update()
     def model_nllf(self):
         """
         Negative log likelihood of seeing data given model.
         """
-        cost = self.fitness.nllf()
-        self.updating = False
-        return cost
+        return self.fitness.nllf()
 
     def simulate_data(self, noise=None):
         """Simulate data with added noise"""
@@ -568,7 +566,7 @@ class FitProblem(object):
         #              = inv(V') inv(S S) inv(V)
         #              = V inv (S S) V'
         J = self.jacobian(pvec, step=step)
-        _u,s,vh = numpy.linalg.svd(J,0)
+        u,s,vh = numpy.linalg.svd(J,0)
         s[s<=tol] = tol
         JTJinv = numpy.dot(vh.T.conj()/s**2,vh)
         return JTJinv
@@ -582,9 +580,9 @@ class FitProblem(object):
         return numpy.sqrt(numpy.diag(self.cov(pvec, step=step)))
 
     def __getstate__(self):
-        return self.fitness
+        return self.fitness,self.name
     def __setstate__(self, state):
-        self.fitness = state
+        self.fitness,self.name = state
         self.model_reset()
 
 
@@ -593,12 +591,13 @@ class MultiFitProblem(FitProblem):
     """
     Weighted fits for multiple models.
     """
-    def __init__(self, models, weights=None):
+    def __init__(self, models, weights=None, name="MultiFitProblem"):
         self.models = [FitProblem(m) for m in models]
         if weights is None:
             weights = [1 for m in models]
         self.weights = weights
         self.model_reset()
+
     def model_parameters(self):
         """Return parameters from all models"""
         return [f.model_parameters() for f in self.models]
@@ -649,6 +648,13 @@ class MultiFitProblem(FitProblem):
             pylab.suptitle('Model %d'%i)
             if figfile != None:
                 pylab.savefig(figfile+"-model%d.png"%i, format='png')
+
+    def __getstate__(self):
+        return self.__dict__
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+
 
 def load_problem(file, options=[]):
     """

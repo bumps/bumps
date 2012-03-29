@@ -14,10 +14,10 @@ from . import __version__
 
 # Site configurate determines what kind of mapper to use
 # This should be true in cli.py as well
-from .mapper import MPMapper as mapper
-from .fitters import FitDriver
-from . import monitor
 from . import parameter
+from .mapper import MPMapper as mapper
+from . import monitor
+from .fitters import FitDriver
 
 def fitservice(request):
     matplotlib.use('Agg')

@@ -82,7 +82,7 @@ LOGTIM = True if (len(sys.argv) > 1 and '--time' in sys.argv[1:]) else False
 
 #==============================================================================
 
-class GUIApp(wx.App):
+class MainApp(wx.App):
     """
     This class builds the wxPython GUI for the Bumps Modeler application.
 
@@ -268,7 +268,7 @@ def _protected_main():
     if LOGTIM: log_time("Starting Bumps")
 
     # Instantiate the application class and give control to wxPython.
-    app = GUIApp(redirect=0)
+    app = MainApp(redirect=0)
 
     # Enter event loop which allows the user to interact with the application.
     if LOGTIM: log_time("Entering the event loop")

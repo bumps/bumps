@@ -5,11 +5,9 @@ import os
 
 import shutil
 try:
-    import dill #@UnresolvedImport dill pickler is optional
-    pickle = dill
+    import dill as pickle
 except:
-    import cPickle
-    pickle = cPickle
+    import cPickle as pickle
 
 import numpy
 
@@ -453,7 +451,7 @@ def beep():
     Audio signal that fit is complete.
     """
     if sys.platform == "win32":
-        import winsound #@UnresolvedImport windows only
+        import winsound
         winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
     else:
         print >>sys.__stdout__,"\a"
@@ -526,7 +524,7 @@ def main():
                                StepMonitor(problem,fid,fields=['step','value'])]
 
         fitdriver.mapper = mapper.start_mapper(problem, opts.args)
-        best, _fbest = fitdriver.fit()
+        best, fbest = fitdriver.fit()
         remember_best(fitdriver, problem, best)
         if opts.cov: print problem.cov()
         beep()

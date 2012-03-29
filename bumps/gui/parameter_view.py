@@ -45,7 +45,7 @@ class ParameterView(wx.Panel):
 
         #sizers
         vbox = wx.BoxSizer(wx.VERTICAL)
-        _text_hbox = wx.BoxSizer(wx.HORIZONTAL)
+        text_hbox = wx.BoxSizer(wx.HORIZONTAL)
 
         self.tree = gizmos.TreeListCtrl(self, -1, style =
                                         wx.TR_DEFAULT_STYLE
@@ -208,7 +208,7 @@ class ParameterView(wx.Panel):
 
     def OnRightUp(self, evt):
         pos = evt.GetPosition()
-        branch, _flags, column = self.tree.HitTest(pos)
+        branch, flags, column = self.tree.HitTest(pos)
         if column == 5:
             par = self.tree.GetItemPyData(branch)
             if par is None: return

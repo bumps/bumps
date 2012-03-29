@@ -27,14 +27,14 @@ def genpoints(coeffs, npts=20):
 
     NOTE: if npts == None, constrain all points to circle of given radius
     """
-    xo,yo,_R = coeffs
+    xo,yo,R = coeffs
     # Radial density varies as sqrt(x)
     r,theta = sqrt(random.rand(npts)), 2*pi*(random.rand(npts))
     x,y = r*cos(theta)+xo, r*sin(theta)+yo
     return x,y
 
 def gendensity(coeffs,density=0.1):
-    _xo,_yo,R = coeffs
+    xo,yo,R = coeffs
     npts = int(0.2*pi*R**2)
     return genpoints(coeffs,npts)
 
@@ -68,7 +68,7 @@ class MinimumCircle(Fitness):
         return d
 
     def __call__(self, p):
-        _xc,_yc,r = p
+        xc,yc,r = p
         resid = self._residuals(p)
         # Penalties are the number
         # Add additional penalties for each point outside the circle

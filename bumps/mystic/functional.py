@@ -112,7 +112,7 @@ def minimizer_function(strategy=None, **kw):
 
     # Get the keyword arguments from the strategy; note that the first
     # argument is self.
-    args, _varargs, _varkw, defaults = inspect.getargspec(strategy.__init__)
+    args, varargs, varkw, defaults = inspect.getargspec(strategy.__init__)
     if len(args) != len(defaults)+1:
         raise TypeError("Strategy init has positional arguments")
     if any([(k in problem_args) for k in args[1:]]):

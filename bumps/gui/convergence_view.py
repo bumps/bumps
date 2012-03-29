@@ -3,8 +3,8 @@ from __future__ import with_statement
 import numpy
 
 from .. import monitor
-from .plot_view import PlotView
 from ..plotutil import coordinated_colors
+from .plot_view import PlotView
 
 
 class ConvergenceMonitor(monitor.Monitor):

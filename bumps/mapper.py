@@ -20,10 +20,10 @@ def setpriority(pid=None,priority=1):
                        0x100,  # REALTIME_PRIORITY_CLASS
                        ]
     if pid == None:
-        pid = windll.kernel32.GetCurrentProcessId() #@UndefinedVariable windows only
+        pid = windll.kernel32.GetCurrentProcessId()
     PROCESS_ALL_ACCESS = 0x1F0FFF
-    handle = windll.kernel32.OpenProcess(PROCESS_ALL_ACCESS, True, pid) #@UndefinedVariable windows only
-    windll.kernel32.SetPriorityClass(handle, priorityclasses[priority]) #@UndefinedVariable windows only
+    handle = windll.kernel32.OpenProcess(PROCESS_ALL_ACCESS, True, pid)
+    windll.kernel32.SetPriorityClass(handle, priorityclasses[priority])
 ## end of http://code.activestate.com/recipes/496767/ }}}
 def nice():
     if os.name == 'nt':
@@ -49,18 +49,24 @@ def _MP_set_problem(problem):
 def _MP_run_problem(point):
     global _problem
     return _problem.nllf(point)
+    
 class MPMapper(object):
+    pool = None
+    
     @staticmethod
     def start_worker(problem):
         pass
+
     @staticmethod
     def start_mapper(problem, modelargs, cpus=None):
         import multiprocessing
         if cpus is None:
             cpus = multiprocessing.cpu_count()
-        pool = multiprocessing.Pool(cpus,_MP_set_problem,(problem,))
-        mapper = lambda points: pool.map(_MP_run_problem, points)
+        if MPMapper.pool is None:
+            MPMapper.pool = multiprocessing.Pool(cpus,_MP_set_problem,(problem,))
+        mapper = lambda points: MPMapper.pool.map(_MP_run_problem, points)
         return mapper
+        
     @staticmethod
     def stop_mapper(mapper):
         pass

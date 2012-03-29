@@ -7,7 +7,7 @@ def auto_shift(offset):
     from matplotlib.transforms import ScaledTranslation
     import pylab
     ax = pylab.gca()
-    if ax.lines:
+    if ax.lines and hasattr(ax, '_auto_shift'):
         ax._auto_shift += offset
     else:
         ax._auto_shift = 0

@@ -1,15 +1,11 @@
 import wx
 
-#import wx.lib.scrolledpanel as scrolled
-
-
 IS_MAC = (wx.Platform == '__WXMAC__')
 
-class LogView(wx.Panel): #scrolled.ScrolledPanel):
+class LogView(wx.Panel):
     title = 'Log'
     default_size = (600,200)
     def __init__(self, *args, **kw):
-        #scrolled.ScrolledPanel.__init__(self, *args, **kw)
         wx.Panel.__init__(self, *args, **kw)
 
         self.log_info = []

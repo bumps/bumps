@@ -4,8 +4,8 @@ from copy import deepcopy
 import numpy
 
 from . import monitor, parameter
-from . import initpop
 from .history import History
+from . import initpop
 
 class ConsoleMonitor(monitor.TimedUpdate):
     """
@@ -177,7 +177,7 @@ class PSFit(FitBase):
         NP = int(cfo['n']*options['pop'])
 
         result = particle_swarm(cfo, NP, maxiter=options['steps'])
-        _satisfied_sc, _n_feval, f_best, x_best = result
+        satisfied_sc, n_feval, f_best, x_best = result
 
         return x_best, f_best
 
@@ -209,7 +209,7 @@ class RLFit(FitBase):
 
         result = random_lines(cfo, NP, maxiter=options['steps'],
                               CR=options['CR'])
-        _satisfied_sc, _n_feval, f_best, x_best = result
+        satisfied_sc, n_feval, f_best, x_best = result
 
         return x_best, f_best
 
@@ -301,7 +301,7 @@ except:
     MCMCModel = object
 class DreamModel(MCMCModel):
     """
-    DREAM wrapper for bumps models.
+    DREAM wrapper for fit problems.
     """
     def __init__(self, problem=None, mapper=None):
         """
@@ -328,7 +328,7 @@ class DreamModel(MCMCModel):
 
 class DreamFit(FitBase):
     name = "DREAM"
-    settings = [('steps',500),  ('burn', 0), ('pop', 10), ('init', 'lhs')]
+    settings = [('steps',500),  ('burn', 0), ('pop', 10), ('init', 'eps')]
     def __init__(self, problem):
         self.dream_model = DreamModel(problem)
 
@@ -400,7 +400,7 @@ class Resampler(FitBase):
         starts = options.pop('starts',1)
         restart = options.pop('restart',False)
         x,fx = self.fitter.solve(**options)
-        _points = _resampler(self.fitter, x, samples=starts,
+        points = _resampler(self.fitter, x, samples=starts,
                             restart=restart, **options)
         return x,fx
 
@@ -493,7 +493,7 @@ class FitOptions(object):
         steps  = ("Steps",           "int"),
         burn   = ("Burn-in Steps",   "int"),
         pop    = ("Population",      "float"),
-        init   = ("Initializer",     ("lhs","cov","random","eps")),
+        init   = ("Initializer",     ("eps","lhs","cov","random")),
         CR     = ("Crossover Ratio", "float"),
         F      = ("Scale",           "float"),
         nT     = ("# Temperatures",  "int"),
@@ -507,7 +507,7 @@ class FitOptions(object):
         self.options = dict(fitclass.settings)
     def set_from_cli(self, opts):
         # Convert supplied options to the correct types and save them in value
-        for field,_reset_value in self.fitclass.settings:
+        for field,reset_value in self.fitclass.settings:
             value = getattr(opts,field,None)
             dtype = FitOptions.FIELDS[field][1]
             if value is not None:
