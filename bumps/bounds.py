@@ -56,7 +56,7 @@ __all__ = ['pm','pmp','pm_raw','pmp_raw', 'nice_range', 'init_bounds',
 
 import math
 import numpy
-from numpy import (isinf, inf, nan, e, pi, log, sqrt, exp)
+from numpy import (isinf, inf, pi, log, sqrt)
 RNG = numpy.random
 
 try:
@@ -451,7 +451,7 @@ class Distribution(Bounds):
     def random(self, n=1):
         return self.dist.rvs(n)
     def nllf(self, value):
-        return self.dist.nnlf(value)
+        return -self.dist.logpdf(value)
     def residual(self, value):
         return self.N.ppf(self.dist.cdf(value))
     def get01(self, x):
