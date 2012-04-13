@@ -1,6 +1,7 @@
 /* This program is public domain. */
 
 //#include <Python.h>
+#include <stdint.h>
 #include "methods.h"
 
 #include "rebin.h"
@@ -59,7 +60,7 @@ PyObject* Prebin2d(PyObject *obj, PyObject *args)
   INVECTOR(yout_obj,yout,nyout);
   OUTVECTOR(Iout_obj,Iout,nIout);
   if ((nxin-1)*(nyin-1) != nIin || (nxout-1)*(nyout-1) != nIout) {
-    //printf("%d %d %d %d %d %d\n",nxin,nyin,nIin,nxout,nyout,nIout);
+    /* printf("%ld %ld %ld %ld %ld %ld\n",nxin,nyin,nIin,nxout,nyout,nIout); */
     PyErr_SetString(PyExc_ValueError,
         "_reduction.rebin2d: must have one more bin edges than bins");
     return NULL;
@@ -83,35 +84,45 @@ static PyMethodDef methods[] = {
 
 
 	    {"rebin_uint8",
-	     &Prebin<unsigned char>,
+	     &Prebin<uint8_t>,
 	     METH_VARARGS,
 	     "rebin_uint8(xi,Ii,xo,Io): rebin from bin edges xi to bin edges xo"
 	    },
 	    {"rebin2d_uint8",
-	     &Prebin2d<unsigned char>,
+	     &Prebin2d<uint8_t>,
 	     METH_VARARGS,
 	     "rebin2d_uint8(xi,yi,Ii,xo,yo,Io): 2-D rebin from (xi,yi) to (xo,yo)"
 	    },
 	    {"rebin_uint16",
-	     &Prebin<unsigned short>,
+	     &Prebin<uint16_t>,
 	     METH_VARARGS,
 	     "rebin_uint16(xi,Ii,xo,Io): rebin from bin edges xi to bin edges xo"
 	    },
 	    {"rebin2d_uint16",
-	     &Prebin2d<unsigned short>,
+	     &Prebin2d<uint16_t>,
 	     METH_VARARGS,
 	     "rebin2d_uint16(xi,yi,Ii,xo,yo,Io): 2-D rebin from (xi,yi) to (xo,yo)"
 	    },
 	    {"rebin_uint32",
-	     &Prebin<unsigned long>,
+	     &Prebin<uint32_t>,
 	     METH_VARARGS,
 	     "rebin_uint32(xi,Ii,xo,Io): rebin from bin edges xi to bin edges xo"
 	    },
 	    {"rebin2d_uint32",
-	     &Prebin2d<unsigned long>,
+	     &Prebin2d<uint32_t>,
 	     METH_VARARGS,
 	     "rebin2d_uint32(xi,yi,Ii,xo,yo,Io): 2-D rebin from (xi,yi) to (xo,yo)"
 	    },
+            {"rebin_uint64",
+             &Prebin<uint64_t>,
+             METH_VARARGS,
+             "rebin_uint32(xi,Ii,xo,Io): rebin from bin edges xi to bin edges xo"
+            },
+            {"rebin2d_uint64",
+             &Prebin2d<uint64_t>,
+             METH_VARARGS,
+             "rebin2d_uint32(xi,yi,Ii,xo,yo,Io): 2-D rebin from (xi,yi) to (xo,yo)"
+            },
 	    {"rebin_float32",
 	     &Prebin<float>,
 	     METH_VARARGS,

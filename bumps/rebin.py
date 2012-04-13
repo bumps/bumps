@@ -5,6 +5,73 @@ import numpy
 
 from . import bumpsmodule as _reduction
 
+
+def bin_edges(C):
+    r"""
+    Construct bin edges *E* from equally spaced bin centers *C*.
+
+    Assumes the edges lie half way between the centers.  This will only
+    be true if the centers are evenly spaced, but may be good enough for
+    visualization purposes even when they are not.  Ideally analysis would
+    be performed on the raw data without rebinning.
+    """
+    E = 0.5*(C[:-1]+C[1:])
+    return numpy.hstack((C[0]-2*(E[0]-C[0]), E, C[-1]+2*(C[-1]-E[-1])))
+
+def logbin_edges(L):
+    r"""
+    Construct bin edges *E* from logarithmically spaced bin centers *L*.
+
+    Assuming fixed $\omega = \Delta\lambda/\lambda$ in the bins, the
+    edges will be spaced logarithmically at:
+
+    .. math::
+
+        E_0     &= \min \lambda \\
+        E_{i+1} &= E_i + \omega E_i = E_i (1+\omega)
+
+    with centers $L$ half way between the edges:
+
+    .. math::
+
+        L_i = (E_i+E_{i+1})/2
+            = (E_i + E_i (1+\omega))/2
+            = E_i (2 + \omega)/2
+
+    Solving for $E_i$, we can recover the edges from the centers:
+
+    .. math::
+
+        E_i = L_i \frac{2}{2+\omega}
+
+    The final edge, $E_{n+1}$, does not have a corresponding center
+    $L_{n+1}$ so we must determine it from the previous edge $E_n$:
+
+    .. math::
+
+        E_{n+1} = L_n \frac{2}{2+\omega}(1+\omega)
+
+    The fixed $\omega$ can be retrieved from the ratio of any pair
+    of bin centers using:
+
+    .. math::
+
+        \frac{L_{i+1}}{L_i} = \frac{ (E_{i+2}+E_{i+1})/2 }{ (E_{i+1}+E_i)/2 }
+                          = \frac{ (E_{i+1}(1+\omega)+E_{i+1} }
+                                  { (E_i(1+\omega)+E_i }
+                          = \frac{E_{i+1}}{E_i}
+                          = \frac{E_i(1+\omega)}{E_i} = 1 + \omega
+    """
+    if L[1] > L[0]:
+        dLoL = L[1]/L[0] - 1
+        last = (1+dLoL)
+    else:
+        dLoL = L[0]/L[1] - 1
+        last = 1./(1+dLoL)
+    E = L*2/(2+dLoL)
+    return numpy.hstack((E,E[-1]*last))
+
+
 def rebin(x,I,xo,Io=None,dtype=numpy.float64):
     """
     Rebin a vector.
@@ -110,6 +177,8 @@ def rebin2d(x,y,I,xo,yo,Io=None,dtype=None):
     except AttributeError:
         raise TypeError("rebin2d supports uint8 uint16 uint32 float32 float64, not "
                         + I.dtype.name)
+    #print x.shape,y.shape,I.shape,xo.shape,yo.shape,Io.shape
+    #print x.dtype,y.dtype,I.dtype,xo.dtype,yo.dtype,Io.dtype
     rebincore(x,y,I,xo,yo,Io)
     return Io
 
@@ -138,7 +207,7 @@ def _output(v, shape, dtype=numpy.float64):
 
 # ================ Test code ==================
 # TODO: move test code to its own file
-def _check1d(from_bins,val,to_bins,target):
+def _check_one_1d(from_bins,val,to_bins,target):
     target = _input(target)
     for (f,F) in [(from_bins,val), (from_bins[::-1],val[::-1])]:
         for (t,T) in [(to_bins,target), (to_bins[::-1],target[::-1])]:
@@ -146,37 +215,40 @@ def _check1d(from_bins,val,to_bins,target):
             assert numpy.linalg.norm(T-result) < 1e-14, \
                 "rebin failed for %s->%s %s"%(f,t,result)
 
-def _test1d():
+def _check_all_1d():
     # Split a value
-    _check1d([1,2,3,4],[10,20,30],[1,2.5,4],[20,40])
+    _check_one_1d([1,2,3,4],[10,20,30],[1,2.5,4],[20,40])
 
     # bin is a superset of rebin
-    _check1d([0,1,2,3,4],[5,10,20,30],[1,2.5,3],[20,10]);
+    _check_one_1d([0,1,2,3,4],[5,10,20,30],[1,2.5,3],[20,10]);
 
     # bin is a subset of rebin
-    _check1d([ 1,   2,   3,   4,   5,  6],
+    _check_one_1d([ 1,   2,   3,   4,   5,  6],
              [   10,  20,  30,  40,  50],
              [ 2.5, 3.5], [25])
 
     # one bin to many
-    _check1d([1,   2,   3,   4,   5,  6],
+    _check_one_1d([1,   2,   3,   4,   5,  6],
              [10,  20,  30,  40,  50],
              [2.1, 2.2, 2.3, 2.4 ],
              [2, 2, 2]);
 
     # many bins to one
-    _check1d([1,   2,   3,   4,   5,  6],
+    _check_one_1d([1,   2,   3,   4,   5,  6],
              [10,  20,  30,  40,  50],
              [ 2.5, 4.5 ],
              [60])
 
-def _check2d(x,y,z,xo,yo,zo):
+def _check_one_2d(x,y,z,xo,yo,zo):
+    #print "checking"
+    #print x,y,z
+    #print xo,yo,zo
     result = rebin2d(x,y,z,xo,yo)
     target = numpy.array(zo,dtype=result.dtype)
     assert numpy.linalg.norm(target-result) < 1e-14, \
         "rebin2d failed for %s,%s->%s,%s\n%s\n%s\n%s"%(x,y,z,xo,yo,zo)
 
-def _uniform_test(x,y):
+def _check_uniform_2d(x,y):
     z = numpy.array([y],'d') * numpy.array([x],'d').T
     xedges = numpy.concatenate([(0,),numpy.cumsum(x)])
     yedges = numpy.concatenate([(0,),numpy.cumsum(y)])
@@ -185,40 +257,49 @@ def _uniform_test(x,y):
     ox = numpy.arange(nx+1)
     oy = numpy.arange(ny+1)
     target = numpy.ones([nx,ny],'d')
-    _check2d(xedges,yedges,z,ox,oy,target)
+    _check_one_2d(xedges,yedges,z,ox,oy,target)
 
-def _test2d():
+def _check_all_2d():
     x,y,I = [0,3,5,7], [0,1,3], [[3,6],[2,4],[2,4]]
     xo,yo,Io = range(8), range(4), [[1]*3]*7
     x,y,I,xo,yo,Io = [numpy.array(A,'d') for A in [x,y,I,xo,yo,Io]]
 
     # Try various types and orders on a non-square matrix
-    _check2d(x,y,I,xo,yo,Io)
-    _check2d(x[::-1],y,I[::-1,:],xo,yo,Io)
-    _check2d(x,y[::-1],I[:,::-1],xo,yo,Io)
-    _check2d(x,y,I,[7,3,0],yo,[[4]*3,[3]*3])
-    _check2d(x,y,I,xo,[3,2,0],[[1,2]]*7)
-    _check2d(y,x,I.T,yo,xo,Io.T)  # C vs. Fortran ordering
+    _check_one_2d(x,y,I,xo,yo,Io)
+    _check_one_2d(x[::-1],y,I[::-1,:],xo,yo,Io)
+    _check_one_2d(x,y[::-1],I[:,::-1],xo,yo,Io)
+    _check_one_2d(x,y,I,[7,3,0],yo,[[4]*3,[3]*3])
+    _check_one_2d(x,y,I,xo,[3,2,0],[[1,2]]*7)
+    _check_one_2d(y,x,I.T,yo,xo,Io.T)  # C vs. Fortran ordering
 
     # Test smallest possible result
-    _check2d([-1,2,4], [0,1,3], [[3,6],[2,4]],
+    _check_one_2d([-1,2,4], [0,1,3], [[3,6],[2,4]],
              [1,2], [1,2], [1])
     # subset/superset
-    _check2d([0,1,2,3], [0,1,2,3], [[1]*3]*3,
+    _check_one_2d([0,1,2,3], [0,1,2,3], [[1]*3]*3,
              [0.5,1.5,2.5], [0.5,1.5,2.5], [[1]*2]*2)
     for dtype in ['uint8','uint16','uint32','float32','float64']:
-        _check2d([0,1,2,3,4], [0,1,2,3,4],
+        _check_one_2d([0,1,2,3,4], [0,1,2,3,4],
                  numpy.array([[1]*4]*4, dtype=dtype),
                  [-2,-1,2,5,6], [-2,-1,2,5,6],
                  numpy.array([[0,0,0,0],[0,4,4,0],[0,4,4,0],[0,0,0,0]],
                              dtype=dtype)
                  )
     # non-square test
-    _uniform_test([1,2.5,4,0.5],[3,1,2.5,1,3.5])
-    _uniform_test([3,2],[1,2])
+    _check_uniform_2d([1,2.5,4,0.5],[3,1,2.5,1,3.5])
+    _check_uniform_2d([3,2],[1,2])
+
+def _bin_edges():
+    log_edges = numpy.asarray([2*1.2**c for c in range(10)])
+    log_centers = (log_edges[1:] + log_edges[:1])/2
+    assert numpy.linalg.norm(logbin_edges(log_centers) - log_edges) < 1e-10
+
+    lin_edges = numpy.linspace(2,10,10)
+    lin_centers = (lin_edges[1:] + lin_edges[:1])/2
+    assert numpy.linalg.norm(bin_edges(lin_centers) - lin_edges) < 1e-10
 
 def test():
-    _test1d()
-    _test2d()
+    _check_all_1d()
+    _check_all_2d()
 
 if __name__ == "__main__": test()
