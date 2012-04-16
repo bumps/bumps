@@ -8,11 +8,11 @@
 
 template <typename T> void
 print_bins(const std::string &message,
-	   unsigned int nx, unsigned int ny, const T z[])
+	   size_t nx, size_t ny, const T z[])
 {
   std::cout << message << std::endl;
-  for (unsigned int i=0; i < nx; i++) {
-    for (unsigned int j=0; j < ny; j++) {
+  for (size_t i=0; i < nx; i++) {
+    for (size_t j=0; j < ny; j++) {
       std::cout << " " << z[i+j*nx];
     }
     std::cout << std::endl;
@@ -25,8 +25,8 @@ print_bins(const std::string &message,
 	   const std::vector<double> &y,
 	   const std::vector<T> &z)
 {
-  unsigned int nx = x.size()-1;
-  unsigned int ny = y.size()-1;
+  size_t nx = x.size()-1;
+  size_t ny = y.size()-1;
   assert(nx*ny == z.size());
   print_bins(message,nx,ny,&z[0]);
 }
@@ -42,16 +42,16 @@ print_bins(const std::string &message,
 //    Inew[Nxnew*Nynew] result array
 template <typename T> void
 rebin_counts_2D(
-        const int Nxold, const double xold[],
-	const int Nyold, const double yold[],
+        const size_t Nxold, const double xold[],
+	const size_t Nyold, const double yold[],
 	const T Iold[],
-	const int Nxnew, const double xnew[],
-	const int Nynew, const double ynew[],
+	const size_t Nxnew, const double xnew[],
+	const size_t Nynew, const double ynew[],
 	T Inew[])
 {
 
   // Clear the new bins
-  for (int i=0; i < Nxnew*Nynew; i++) Inew[i] = 0;
+  for (size_t i=0; i < Nxnew*Nynew; i++) Inew[i] = 0;
 
   // Traverse both sets of bin edges; if there is an overlap, add the portion
   // of the overlapping old bin to the new bin.  Scale this by the portion

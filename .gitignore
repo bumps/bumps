@@ -1,0 +1,16 @@
+.settings
+.coverage
+.mplconfig
+.project
+.pydevproject
+*.pyd
+*.pyc
+*.swp
+*.so
+*.bak
+build/
+dist/
+bumps.egg-info/
+bumps.iss-include
+_build/
+doc/api/

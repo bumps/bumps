@@ -97,7 +97,7 @@ regular spacing when you are undersampling?
 
 /* Trapezoid rule for numerical integration of convolution */
 double
-convolve_point(const double xin[], const double yin[], int k, int n,
+convolve_point(const double xin[], const double yin[], size_t k, size_t n,
         double xo, double limit, double sigma)
 {
   const double two_sigma_sq = 2. * sigma * sigma;
@@ -139,7 +139,7 @@ convolve_point(const double xin[], const double yin[], int k, int n,
 /* Analytic convolution of gaussian with linear spline */
 /* More expensive but more reliable */
 double
-convolve_point(const double xin[], const double yin[], int k, int n,
+convolve_point(const double xin[], const double yin[], size_t k, size_t n,
                double xo, double limit, double sigma)
 {
   const double two_sigma_sq = 2. * sigma * sigma;
@@ -196,10 +196,10 @@ convolve_point(const double xin[], const double yin[], int k, int n,
 #endif /* !USE_TRAPEZOID_RULE */
 
 void
-convolve(int Nin, const double xin[], const double yin[],
-         int N, const double x[], const double dx[], double y[])
+convolve(size_t Nin, const double xin[], const double yin[],
+         size_t N, const double x[], const double dx[], double y[])
 {
-  int lo,out;
+  size_t lo,out;
 
   /* FIXME fails if xin are not sorted; slow if x not sorted */
   assert(Nin>1);

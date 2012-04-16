@@ -6,8 +6,8 @@
 #include "methods.h"
 
 extern "C" void
-convolve(int Nin, const double xin[], const double yin[],
-         int N, const double x[], const double dx[], double y[]);
+convolve(size_t Nin, const double xin[], const double yin[],
+         size_t N, const double x[], const double dx[], double y[]);
 
 #if defined(PY_VERSION_HEX) &&  (PY_VERSION_HEX < 0x02050000)
 typedef int Py_ssize_t;
@@ -53,7 +53,6 @@ PyObject* Perf(PyObject*obj,PyObject*args)
   PyObject *data_obj, *result_obj;
   const double *data;
   double *result;
-  int i;
   Py_ssize_t ndata, nresult;
 
   if (!PyArg_ParseTuple(args, "OO:erf",
@@ -67,7 +66,7 @@ PyObject* Perf(PyObject*obj,PyObject*args)
 #endif
     return NULL;
   }
-  for(i=0; i < ndata; i++)
+  for(int i=0; i < ndata; i++)
     result[i] = erf(data[i]);
   return Py_BuildValue("");
 }

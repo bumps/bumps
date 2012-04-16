@@ -9,13 +9,13 @@
 template <typename T>
 class BinIter {
   bool forward;
-  int n;
+  size_t n;
   const T *edges;
 public:
-  int bin;     // Index of the corresponding bin
+  size_t bin;     // Index of the corresponding bin
   double lo, hi; // Low and high values for the bin edges.
   bool atend;  // True when we increment beyond the final bin.
-  BinIter(int _n, const T *_edges) {
+  BinIter(size_t _n, const T *_edges) {
     // n is number of bins, which is #edges-1
     // edges are the values of the bin edges.
     n = _n; edges = _edges;
@@ -58,8 +58,8 @@ public:
 // Do the rebinning.  The ND_portion parameter scales each bin by the
 // given amount, which is useful when doing multidimensional rebinning.
 template <typename T> void
-rebin_counts_portion(const int Nold, const double vold[], const T Iold[],
-                     const int Nnew, const double vnew[], T Inew[],
+rebin_counts_portion(const size_t Nold, const double vold[], const T Iold[],
+                     const size_t Nnew, const double vnew[], T Inew[],
                      const double ND_portion)
 {
   // Note: inspired by rebin from OpenGenie, but using counts per bin
@@ -96,14 +96,14 @@ rebin_counts_portion(const int Nold, const double vold[], const T Iold[],
 //    y[Ny+1] is a vector of bin edges
 //    I[Ny] is a vector of counts
 template <typename T> void
-rebin_counts(const int Nold, const double xold[], const T Iold[],
-             const int Nnew, const double xnew[], T Inew[])
+rebin_counts(const size_t Nold, const double xold[], const T Iold[],
+             const size_t Nnew, const double xnew[], T Inew[])
 {
   // Note: inspired by rebin from OpenGenie, but using counts per bin
   // rather than rates.
 
   // Clear the new bins
-  for (int i=0; i < Nnew; i++) Inew[i] = 0;
+  for (size_t i=0; i < Nnew; i++) Inew[i] = 0;
 
   rebin_counts_portion(Nold, xold, Iold, Nnew, xnew, Inew, 1.);
 }
@@ -122,15 +122,15 @@ rebin_counts(const std::vector<double> &xold, const std::vector<T> &Iold,
 // Like rebin_counts, but includes uncertainty.  This could of course be
 // done separately, but it will be faster to rebin both at the same time.
 template <typename T> void
-rebin_intensity(const int Nold, const double xold[],
+rebin_intensity(const size_t Nold, const double xold[],
 		const T Iold[], const T dIold[],
-		const int Nnew, const double xnew[],
+		const size_t Nnew, const double xnew[],
 		T Inew[], T dInew[])
 {
   // Note: inspired by rebin from OpenGenie, but using counts per bin rather than rates.
 
   // Clear the new bins
-  for (int i=0; i < Nnew; i++) dInew[i] = Inew[i] = 0;
+  for (size_t i=0; i < Nnew; i++) dInew[i] = Inew[i] = 0;
 
   // Traverse both sets of bin edges; if there is an overlap, add the portion
   // of the overlapping old bin to the new bin.
@@ -153,7 +153,7 @@ rebin_intensity(const int Nold, const double xold[],
   }
 
   // Convert variance to standard deviation.
-  for (int i=0; i < Nnew; i++) dInew[i] = sqrt(dInew[i]);
+  for (size_t i=0; i < Nnew; i++) dInew[i] = sqrt(dInew[i]);
 }
 
 template <typename T> inline void
