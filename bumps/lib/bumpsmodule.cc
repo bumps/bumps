@@ -1,6 +1,6 @@
 /* This program is public domain. */
 
-//#include <Python.h>
+#include <Python.h>
 #include <stdint.h>
 #include "methods.h"
 

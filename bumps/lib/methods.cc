@@ -1,5 +1,6 @@
 /* This program is public domain. */
 
+#include <Python.h>
 #include <math.h>
 #include <stdio.h>
 #include <iostream>

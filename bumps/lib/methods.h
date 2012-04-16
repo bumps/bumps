@@ -1,7 +1,5 @@
 /* This program is public domain. */
 
-#include <Python.h>
-
 // Vector binding glue
 #define REF(obj,name  ) PyObject_GetAttrString(obj,#name)
 #define SET(obj,name,v) PyObject_SetAttrString(obj,#name,v)
