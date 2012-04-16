@@ -157,7 +157,7 @@ def package_data():
     """
     return { 'bumps.gui': _finddata() }
 
-_RESOURCE_DIR = None
+self_cached_path = None
 def resource_dir():
     """
     Return the path to the application data.
@@ -167,8 +167,8 @@ def resource_dir():
     bumps-data.
     """
     # If we already found it, then we are done
-    global _RESOURCE_DIR
-    if _RESOURCE_DIR is not None: return _RESOURCE_DIR
+    global self_cached_path
+    if self_cached_path is not None: return self_cached_path
 
     # Check for data path in the environment
     key = 'BUMPS_DATA'
@@ -176,31 +176,31 @@ def resource_dir():
         path = os.path.join(os.environ[key],"data")
         if not os.path.isdir(path):
             raise RuntimeError('Path in environment %s not a directory'%key)
-        _RESOURCE_DIR = path
-        return _RESOURCE_DIR
+        self_cached_path = path
+        return self_cached_path
 
     # Check for data path in the package
     path = os.path.join(os.path.dirname(__file__), 'resources')
     #print >>sys.stderr, "checking for resource in",path
     if os.path.isdir(path):
-        _RESOURCE_DIR = path
-        return _RESOURCE_DIR
+        self_cached_path = path
+        return self_cached_path
 
     # Check for data path next to exe/zip file.
     exepath = os.path.dirname(sys.executable)
     path = os.path.join(exepath,'bumps-data')
     #print >>sys.stderr, "checking for resource in",path
     if os.path.isdir(path):
-        _RESOURCE_DIR = path
-        return _RESOURCE_DIR
+        self_cached_path = path
+        return self_cached_path
 
     # py2app puts the data in Contents/Resources, but the executable
     # is in Contents/MacOS.
     path = os.path.join(exepath,'..','Resources','bumps-data')
     #print >>sys.stderr, "checking for resource in",path
     if os.path.isdir(path):
-        _RESOURCE_DIR = path
-        return _RESOURCE_DIR
+        self_cached_path = path
+        return self_cached_path
 
     raise RuntimeError('Could not find the Bumps data files')
 

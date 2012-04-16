@@ -8,6 +8,7 @@ from setuptools import setup, find_packages, Extension
 
 sys.path.insert(0,os.path.dirname(__file__))
 import bumps
+from bumps.gui.resources import resources as gui_resources
 
 packages = find_packages(exclude=['amqp_map','models'])
 
@@ -44,7 +45,7 @@ dist = setup(
             'Topic :: Scientific/Engineering :: Physics',
             ],
         packages = packages,
-        package_data = bumps.package_data(),
+        package_data = gui_resources.package_data(),
         scripts = ['bin/bumps_workerd','bin/bumps'],
         ext_modules = [bumpsmodule()],
         install_requires = ['httplib2'],

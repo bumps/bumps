@@ -76,6 +76,7 @@ import periodictable
 # Retrieve the application version string.
 import bumps
 version = bumps.__version__
+from bumps.gui.resources import resources as gui_resources
 
 # A manifest is required to be included in a py2exe image (or accessible as a
 # file in the image directory) when wxPython is included so that the Windows XP
@@ -178,7 +179,7 @@ data_files.append( ('.', [os.path.join('.', 'README.txt')]) )
 data_files.append( ('.', [os.path.join('.', 'bin', 'bumps_launch.bat')]) )
 
 # Add application specific data files from the bumps\bumps-data folder.
-data_files += bumps.data_files()
+data_files += gui_resources.data_files()
 
 # Add data files from the matplotlib\mpl-data folder and its subfolders.
 # For matploblib prior to version 0.99 see the examples at the end of the file.

@@ -4,7 +4,7 @@ Setup file for constructing OS X applications.
 
 Run using::
 
-    % python setup-app.py
+    % python setup_py2app.py
 """
 
 import os
@@ -45,21 +45,20 @@ includes = []
 excludes = ['Tkinter', 'PyQt4', '_ssl', '_tkagg', 'numpy.distutils.test']
 PACKAGE_DATA = {}
 
-import refl1d
-import periodictable
-from refl1d.gui.utilities import resource as refl1d_resource
+import bumps
+from bumps.gui.resources import resources as gui_resources
 
-NAME = 'Refl1D'
+NAME = 'Bumps'
 # Until we figure out why packages=... doesn't work reliably,
 # use py2app_main with explicit imports of everything we
 # might need.
 #SCRIPT = 'py2app_main.py'
-SCRIPT = 'bin/refl1d_gui.py'
-VERSION = refl1d.__version__
-ICON = 'extra/refl1d.icns'
-ID = 'Refl1D'
+SCRIPT = 'bin/bumps_gui.py'
+VERSION = bumps.__version__
+ICON = 'extra/bumps.icns'
+ID = 'Bumps'
 COPYRIGHT = 'This program is public domain'
-DATA_FILES = refl1d.data_files() + periodictable.data_files()
+DATA_FILES = gui_resources.data_files()
 
 plist = dict(
     CFBundleIconFile            = ICON,
