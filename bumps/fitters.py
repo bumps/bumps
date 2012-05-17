@@ -1,3 +1,4 @@
+import sys
 import time
 from copy import deepcopy
 
@@ -18,10 +19,12 @@ class ConsoleMonitor(monitor.TimedUpdate):
     def show_progress(self, history):
         print "step", history.step[0], \
             "cost", 2*history.value[0]/self.problem.dof
+        sys.stdout.flush()
     def show_improvement(self, history):
         #print "step",history.step[0],"chisq",history.value[0]
         self.problem.setp(history.point[0])
         print parameter.summarize(self.problem.parameters)
+        sys.stdout.flush()
 
 class StepMonitor(monitor.Monitor):
     """
