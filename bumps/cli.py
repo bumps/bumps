@@ -19,6 +19,7 @@ from . import util
 from . import initpop
 from . import __version__
 from . import plugin
+from . import parameter
 
 from .util import pushdir
 
@@ -386,11 +387,8 @@ def initial_model(opts):
         if opts.random:
             problem.randomize()
         if opts.simulate:
-            problem.simulate_data(noise=float(opts.noise))
-            # If fitting, then generate a random starting point different
-            # from the simulation
-            if not (opts.chisq or opts.preview):
-                problem.randomize()
+            noise = None if opts.noise == "data" else float(opts.noise)
+            problem.simulate_data(noise=noise)
     else:
         problem = None
     return problem
@@ -514,6 +512,14 @@ def main():
 
     else:
         make_store(problem,opts,exists_handler=store_overwrite_query)
+
+        # If fitting, then generate a random starting point different
+        # from the simulation
+        if opts.random and opts.simulate:
+            print "simulation parameters"
+            print parameter.summarize(problem.parameters)
+            print "chisq at simulation",problem.chisq()
+            problem.randomize()
 
         # Show command line arguments and initial model
         print "#"," ".join(sys.argv)
