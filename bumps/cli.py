@@ -28,15 +28,16 @@ def install_plugin(p):
             setattr(plugin, symbol, getattr(p, symbol))
 
 def mesh(problem, vars=None, n=40):
-    x,y = [numpy.linspace(p.bounds.limits[0],p.bounds.limits[1],n) for p in vars]
+    x,y = [numpy.linspace(p.bounds.limits[0], p.bounds.limits[1], n)
+           for p in vars]
     p1, p2 = vars
     def fn(xi,yi):
-        p1.value, p2.value = xi,yi
+        p1.value, p2.value = xi, yi
         problem.model_update()
         #parameter.summarize(problem.parameters)
         return problem.chisq()
     z = [[fn(xi,yi) for xi in x] for yi in y]
-    return x,y,numpy.asarray(z)
+    return x, y, numpy.asarray(z)
 
 # ===== Model manipulation ====
 
@@ -96,7 +97,8 @@ def recall_best(problem, path):
 
 def store_overwrite_query_gui(path):
     import wx
-    msg_dlg = wx.MessageDialog(None,path+" Already exists. Press 'yes' to overwrite, or 'No' to abort and restart with newpath",'Overwrite Directory',wx.YES_NO | wx.ICON_QUESTION)
+    msg_dlg = wx.MessageDialog(None,path+" already exists. Press 'yes' to overwrite, or 'No' to abort and restart with newpath",'Overwrite Directory',
+                               wx.YES_NO | wx.ICON_QUESTION)
     retCode = msg_dlg.ShowModal()
     msg_dlg.Destroy()
     if retCode != wx.ID_YES:
@@ -111,7 +113,7 @@ def store_overwrite_query(path):
 
 def make_store(problem, opts, exists_handler):
     # Determine if command line override
-    if opts.store != None:
+    if opts.store:
         problem.store = opts.store
     problem.output_path = os.path.join(problem.store,problem.name)
 
@@ -200,18 +202,23 @@ class ParseOpts:
         self._parse(args)
 
     def _parse(self, args):
-        flagargs = [v for v in sys.argv[1:] if v.startswith('--') and not '=' in v]
+        flagargs = [v
+                    for v in sys.argv[1:]
+                    if v.startswith('--') and not '=' in v]
         flags = set(v[2:] for v in flagargs)
         if 'help' in flags or '-h' in sys.argv[1:] or '-?' in sys.argv[1:]:
             print self.USAGE
             sys.exit()
         unknown = flags - self.FLAGS
         if any(unknown):
-            raise ValueError("Unknown options --%s.  Use -? for help."%", --".join(unknown))
+            raise ValueError("Unknown options --%s.  Use -? for help."
+                             % ", --".join(unknown))
         for f in self.FLAGS:
             setattr(self, f, (f in flags))
 
-        valueargs = [v for v in sys.argv[1:] if v.startswith('--') and '=' in v]
+        valueargs = [v
+                     for v in sys.argv[1:]
+                     if v.startswith('--') and '=' in v]
         for f in valueargs:
             idx = f.find('=')
             name = f[2:idx]
@@ -232,7 +239,7 @@ class BumpsOpts(ParseOpts):
                  "cov", "remote", "staj", "edit",
                  "multiprocessing-fork", # passed in when app is a frozen image
                ))
-    VALUES = set(("plot", "store", "fit", "noise", "seed", "pars",
+    VALUES = set(("plot", "store", "resume", "fit", "noise", "seed", "pars",
                   "resynth", "transport", "notify", "queue",
                   #"mesh","meshsteps",
                 ))
@@ -279,6 +286,8 @@ Options:
         output directory for plots and models
     --overwrite
         if store already exists, replace it
+    --resume=path
+        resume a fit from previous stored state (only works on some fitters)
     --parallel
         run fit using all processors
     --batch
@@ -348,6 +357,7 @@ Options:
         self._plot = value
     plot = property(fget=lambda self: self._plot, fset=_set_plot)
     store = None
+    resume = None
     _fitter = fitters.FIT_DEFAULT
     def _set_fitter(self, value):
         if value not in set(FIT_OPTIONS.keys()):
@@ -513,6 +523,11 @@ def main():
         print "remote job:", job['id']
 
     else:
+        if opts.resume:
+            resume_path = os.path.join(opts.resume, problem.name)
+        else:
+            resume_path = None
+
         make_store(problem,opts,exists_handler=store_overwrite_query)
 
         # Show command line arguments and initial model
@@ -524,7 +539,7 @@ def main():
                                StepMonitor(problem,fid,fields=['step','value'])]
 
         fitdriver.mapper = mapper.start_mapper(problem, opts.args)
-        best, fbest = fitdriver.fit()
+        best, fbest = fitdriver.fit(resume=resume_path)
         remember_best(fitdriver, problem, best)
         if opts.cov: print problem.cov()
         beep()

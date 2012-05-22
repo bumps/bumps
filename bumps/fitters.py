@@ -334,6 +334,7 @@ class DreamFit(FitBase):
     settings = [('steps',500),  ('burn', 0), ('pop', 10), ('init', 'eps')]
     def __init__(self, problem):
         self.dream_model = DreamModel(problem)
+        self.state = None
 
     def solve(self, monitors=None, mapper=None, **options):
         _fill_defaults(options, self.settings)
@@ -352,7 +353,7 @@ class DreamFit(FitBase):
                               monitor = self._monitor,
                               DE_noise = 1e-6)
 
-        self.state = sampler.sample()
+        self.state = sampler.sample(state=self.state)
         self.state.mark_outliers()
         self.state.keep_best()
         self.state.title = self.dream_model.problem.name
@@ -372,6 +373,10 @@ class DreamFit(FitBase):
         self._update(step=step, point=x, value=-fx,
                      population_points=pop, population_values=-logp)
         return True
+
+    def load(self, input_path):
+        from . import dream
+        self.state = dream.state.load_state(input_path)
 
     def save(self, output_path):
         self.state.save(output_path)
@@ -448,8 +453,10 @@ class FitDriver(object):
         self.monitors = monitors
         self.mapper = mapper if mapper else lambda p: map(problem.nllf,p)
 
-    def fit(self):
+    def fit(self, resume=None):
         fitter = self.fitclass(self.problem)
+        if resume:
+            fitter.load(resume)
         starts = self.options.get('starts', 1)
         if starts > 1:
             fitter = MultiStart(fitter)
@@ -475,6 +482,13 @@ class FitDriver(object):
             self.problem.save(output_path)
         if hasattr(self.fitter, 'save'):
             self.fitter.save(output_path)
+
+    def load(self, input_path):
+        #print "calling driver save"
+        if hasattr(self.problem, 'load'):
+            self.problem.load(input_path)
+        if hasattr(self.fitter, 'load'):
+            self.fitter.load(input_path)
 
     def plot(self, output_path):
         #print "calling fitter.plot"
