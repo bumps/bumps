@@ -5,7 +5,7 @@ MCMC keeps track of a number of things during sampling.
 
 The results may be queried as follows::
 
-    draws, generation, thinning, burnin
+    draws, generation, thinning
     sample(condition) returns draws, points, logp
     logp()            returns draws, logp
     acceptance_rate() returns draws, AR
@@ -24,8 +24,6 @@ draws is the total number of draws from the sampler.
 generation is the total number of generations.
 
 thinning is the number of generations per stored sample.
-
-burnin is the number of generations of burnin before recording starts.
 
 draws[i] is the number of draws including those required to produce the
 information in the corresponding return vector.  Note that draw numbers
@@ -185,18 +183,20 @@ def load_state(filename, skip=0, report=0):
 
     # Create empty draw and fill it with loaded data
     state = MCMCDraw(0,0,0,0,0,0,thinning)
+    state.draws = Ngen * Nvar * Npop
     state.generation = Ngen
-    state._gen_index = Ngen
+    state._gen_index = 0
     state._gen_draws = chain[:,0]
     state._gen_acceptance_rate = chain[:,1]
     state._gen_logp = chain[:,2:]
     state.thinning = thinning
-    state._thin_counter = Ngen%thinning
-    state._thin_index = Nthin
+    state._thin_count = Ngen//thinning
+    state._thin_index = 0
     state._thin_draws = state._gen_draws[(skip+1)*thinning-1::thinning]
     state._thin_logp = point[:,0].reshape( (Nthin,Npop) )
     state._thin_point = reshape(point[:,1:], (Nthin,Npop,Nvar) )
-    state._update_index = Nupdate
+    state._update_count = Nupdate
+    state._update_index = 0
     state._update_draws = stats[:,0]
     state._update_R_stat = stats[:,1:Nvar+1]
     state._update_CR_weight = stats[:,Nvar+1:]
@@ -216,7 +216,6 @@ class MCMCDraw(object):
     def __init__(self, Ngen, Nthin, Nupdate, Nvar, Npop, Ncr, thinning):
         # Total number of draws so far
         self.draws = 0
-        self.burnin = 0
 
         # Maximum observed likelihood
         self._best_x = None
@@ -259,12 +258,35 @@ class MCMCDraw(object):
         # outlier chains from the set.
         self._good_chains = slice(None,None)
 
+    def resize(self, Ngen, Nthin, Nupdate, Nvar, Npop, Ncr, thinning):
+        self.thinning = thinning
+        self._gen_draws = numpy.resize(self._gen_draws, Ngen)
+        self._gen_logp = numpy.resize(self._gen_logp,  (Ngen,Npop) )
+        self._gen_acceptance_rate = numpy.resize(self._gen_acceptance_rate, Ngen)
+        self._thin_draws = numpy.resize(self._thin_draws, Nthin)
+        self._thin_point = numpy.resize(self._thin_point,  (Nthin, Npop, Nvar) )
+        self._thin_logp = numpy.resize(self._thin_logp,  (Nthin, Npop) )
+        self._update_draws = numpy.resize(self._update_draws, Nupdate)
+        self._update_R_stat = numpy.resize(self._update_R_stat,  (Nupdate, Nvar) )
+        self._update_CR_weight = numpy.resize(self._update_CR_weight,  (Nupdate, Ncr) )
+
     def save(self, filename):
         save_state(self,filename)
 
-    def show(self, portion=None, figfile=None):
+    def show(self, portion=1.0, figfile=None):
         from views import plot_all
         plot_all(self, portion=portion, figfile=figfile)
+
+    def _last_gen(self):
+        """
+        Returns x, logp for most recent generation to dream.py.
+        """
+        # Note: if generation number has wrapped and _gen_index is 0
+        # (the usual case when this function is called to resume an
+        # existing chain), then this returns the last row in the array.
+        return (self._thin_point[self._thin_index-1],
+                self._thin_logp[self._thin_index-1])
+
 
     def _generation(self, new_draws, x, logp, accept, force_keep=False):
         """
@@ -276,8 +298,6 @@ class MCMCDraw(object):
         # draws taken so far, including the current draw.
         self.draws += new_draws
         self.generation += 1
-        if self._gen_index < self.generation:
-            self.burnin += 1
 
         # Record if this is the best so far
         maxid = argmax(logp)
@@ -380,6 +400,7 @@ class MCMCDraw(object):
         if self._gen_current != None:
             pop[:Nchain] = self._gen_current
         else:
+            #print pop.shape, points.shape, chains.shape
             pop[:Nchain] = points[cursor:cursor+Nchain]
 
         if Npop > Nchain:
@@ -459,7 +480,7 @@ class MCMCDraw(object):
             x[old,:] = x[new,:]
             logp[old] = logp[new]
 
-    def mark_outliers(self, test='IQR', portion=None):
+    def mark_outliers(self, test='IQR', portion=1.0):
         """
         Mark some chains as outliers but don't remove them.  This can happen
         after drawing is complete, so that chains that did not converge are
@@ -467,17 +488,15 @@ class MCMCDraw(object):
 
         *test* is 'IQR', 'Mahol' or 'none'.
 
-        *portion* is 0.5 if burnin=0, otherwise it should be 1.0
+        *portion* indicates what portion of the samples should be included
+        in the outlier test.  The default is to include all of them.
         """
         _, chains, logp = self.chains()
         if test=='none':
             self._good_chains = slice(None,None)
         else:
             Ngen = chains.shape[0]
-            if portion is None:
-                start = Ngen//2 if self.burnin==0 else 0
-            else:
-                start = int(Ngen*portion)
+            start = int(Ngen*portion)
             outliers = identify_outliers(test, logp[start:], chains[-1])
             #print "outliers",outliers
             #print logp.shape, chains.shape
@@ -609,7 +628,7 @@ class MCMCDraw(object):
 
         Because the Markov chain is designed to wander the parameter
         space, the best individual seen during the random walk may have
-        been observed during the burnin period, and may no longer be
+        been observed during the burn-in period, and may no longer be
         present in the chain.  If this is the case, replace the final
         point with the best, otherwise swap the positions of the final
         and the best.
@@ -716,8 +735,6 @@ def _sample(state, portion, vars, selection):
     """
     Return a sample from a set of chains.
     """
-    if portion == None:
-        portion = 0.8 if state.burnin == 0 else 1.0
     draw, chains, logp = state.chains()
     start = int((1-portion)*len(draw))
 

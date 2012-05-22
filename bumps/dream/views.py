@@ -9,7 +9,7 @@ from . import corrplot
 from .stats import credible_interval, stats
 from .formatnum import format_uncertainty
 
-def plot_all(state, portion=None, figfile=None):
+def plot_all(state, portion=1.0, figfile=None):
     from pylab import figure, savefig, suptitle
 
     figure(); vstats = plot_vars(state, portion=portion)
@@ -35,7 +35,7 @@ def plot_var(state, var=0, portion=None, selection=None, **kw):
     _plot_var(points.flatten(), logp, label=state.labels[var], **kw)
 
 # TODO: separate var stats calculation from plotting and printing
-def plot_vars(state, vars=None, portion=None, selection=None, **kw):
+def plot_vars(state, vars=None, portion=1.0, selection=None, **kw):
     from pylab import subplot
 
     points, logp = state.sample(portion=portion, vars=vars,

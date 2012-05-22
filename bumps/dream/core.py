@@ -163,12 +163,13 @@ class Dream(object):
 
         self._initialized = False
 
-    def sample(self):
+    def sample(self, state=None):
         """
         Pull the requisite number of samples from the distribution
         """
         if not self._initialized:
             self._initialized = True
+        self.state = state
         try:
             run_dream(self)
         except KeyboardInterrupt:
@@ -196,23 +197,28 @@ def run_dream(dream):
                                        style=dream.bounds_style)
 
     # Record initial state
-    dream.state = state = allocate_state(dream)
+    allocate_state(dream)
+    state = dream.state
     state.labels = dream.model.labels
-    for x in dream.population:
-        apply_bounds(x)
+    previous_draws = state.draws
+    if previous_draws:
+        x, logp = state._last_gen()
+    else:
+        # No initial state, so evaluate initial population
+        for x in dream.population:
+            apply_bounds(x)
 # ********************** MAP *****************************
-        logp = dream.model.map(x)
-        state._generation(new_draws=Nchain, x=x,
-                          logp=logp, accept=Nchain,
-                          force_keep=True)
-        dream.monitor(state, x, logp)
-
+            logp = dream.model.map(x)
+            state._generation(new_draws=Nchain, x=x,
+                              logp=logp, accept=Nchain,
+                              force_keep=True)
+            dream.monitor(state, x, logp)
 
     # Skip R_stat and pCR until we have some data data to analyze
     state._update(R_stat=-2, CR_weight=dream.CR.weight)
 
     # Now start drawing samples
-    while state.draws < dream.draws + dream.burn:
+    while state.draws - previous_draws < dream.draws + dream.burn:
 
         # Age the population using differential evolution
         dream.CR.reset(Nsteps=dream.DE_steps, Npop=Nchain)
@@ -312,4 +318,7 @@ def allocate_state(dream):
     Nthin = int(Ngen/thinning) + 1
     #print Ngen, Nthin, Nupdate, draws, steps, Npop, Nvar
 
-    return MCMCDraw(Ngen, Nthin, Nupdate, Nvar, Nchain, Ncr, thinning)
+    if dream.state != None:
+        dream.state.resize(Ngen, Nthin, Nupdate, Nvar, Nchain, Ncr, thinning)
+    else:
+        dream.state = MCMCDraw(Ngen, Nthin, Nupdate, Nvar, Nchain, Ncr, thinning)

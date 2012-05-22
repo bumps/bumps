@@ -126,7 +126,7 @@ class AdaptiveCrossover(object):
         # Compute the Euclidean distance between new X and old X
         d = sum(((xold - xnew)/r)**2,axis=1)
         # Use this information to update sum_p2 to update N_CR
-        N,Sd = distance_per_CR(self.CR, d, self._CR_samples[N,used])
+        N,Sd = distance_per_CR(self.CR, d, self._CR_samples[N],used)
         self._distance += Sd
         self._count += N
 
@@ -171,15 +171,15 @@ def gen_CR(CR, weight, Nsteps, Npop):
     return sample
 
 
-def distance_per_CR(available_CRs, distances, CRs_used):
+def distance_per_CR(available_CRs, distances, CRs, used):
     """
     Accumulate normalized Euclidean distance for each crossover value
 
     Returns the number of times each available CR was used and the total
     distance for that CR.
     """
-    total = array([sum(distances[CRs_used==p]) for p in available_CRs])
-    count = array([sum(CRs_used==p) for p in available_CRs])
+    total = array([sum(distances[(CRs==p)&used]) for p in available_CRs])
+    count = array([sum((CRs==p)&used) for p in available_CRs])
     return count, total
 
 
