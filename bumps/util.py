@@ -8,6 +8,46 @@ import os
 import numpy
 from numpy import ascontiguousarray as _dense
 
+def parse_errfile(errfile):
+    """
+    Parse dream statistics from a particular fit.
+
+    Returns overall chisq, list of chisq for individual models and
+    a parameter dictionary with attributes for number, name, mean, median,
+    p68 for 68% credible interval and p95 for 95% credible interval.
+
+    The parameter dictionary is keyed by parameter name.
+
+    Usually there is only one errfile in a directory, which can be
+    retrieved using::
+
+        import glob
+        errfile = glob.glob(path+'/*.err')[0]
+    """
+    from .dream.views import parse_var
+    pars=[]
+    chisq=[]
+    overall=None
+    with open(errfile) as fid:
+        for line in fid:
+            if line.startswith("[overall"):
+                overall = float(line.split()[1][6:-1])
+                continue
+
+            if line.startswith("[chisq"):
+                chisq.append(float(line.split()[0][7:-1]))
+                continue
+
+            p = parse_var(line)
+            if p is not None:
+                pars.append(p)
+
+    if overall is None:
+        overall = chisq[0]
+    pardict = dict((p.name,p) for p in pars)
+    return overall, chisq, pardict
+
+
 def erf(x):
     """
     Error function calculator.

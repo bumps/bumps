@@ -2,7 +2,10 @@ from __future__ import division
 __all__ = ['plot_all', 'plot_corr', 'plot_corrmatrix',
            'plot_trace', 'plot_vars', 'plot_var',
            'plot_R','plot_logp', 'format_vars']
+
 import math
+import re
+
 import numpy
 from numpy import arange, squeeze, linspace, meshgrid, vstack, inf
 from . import corrplot
@@ -199,6 +202,44 @@ def format_vars(varstats, ci=0.95):
 
     return "\n".join(s)
 
+VAR_PATTERN = re.compile(r"""
+   ^\ *
+   (?P<parnum>[0-9]+)\ +
+   (?P<parname>.+?)\ +
+   (?P<mean>[0-9.-]+?)
+   \((?P<err>[0-9]+)\)
+   (e(?P<exp>[+-]?[0-9]+))?\ +
+   (?P<median>[0-9.eE+-]+?)\ +
+   (?P<best>[0-9.eE+-]+?)\ +
+   \[\ *(?P<lo68>[0-9.eE+-]+?)\ +
+   (?P<hi68>[0-9.eE+-]+?)\]\ +
+   \[\ *(?P<lo95>[0-9.eE+-]+?)\ +
+   (?P<hi95>[0-9.eE+-]+?)\]
+   \ *$
+   """, re.VERBOSE)
+
+class VarStats(object):
+    def __init__(self, **kw):
+        self.__dict__ = kw
+
+def parse_var(line):
+    """
+    Parse a line returned by format_vars back into the statistics for the
+    variable on that line.
+    """
+    m = VAR_PATTERN.match(line)
+    if m:
+        exp = int(m.group('exp')) if m.group('exp') else 0
+        return VarStats(number = int(m.group('parnum')),
+                        name = m.group('parname'),
+                        mean = float(m.group('mean')) * 10**exp,
+                        median = float(m.group('median')),
+                        best = float(m.group('best')),
+                        p68 = (float(m.group('lo68')), float(m.group('hi68'))),
+                        p95 = (float(m.group('lo95')), float(m.group('hi95'))),
+                        )
+    else:
+        return None
 
 
 def plot_corrmatrix(state, vars=None, portion=None, selection=None):
