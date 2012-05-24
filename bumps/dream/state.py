@@ -259,6 +259,7 @@ class MCMCDraw(object):
         self._good_chains = slice(None,None)
 
     def resize(self, Ngen, Nthin, Nupdate, Nvar, Npop, Ncr, thinning):
+        # TODO: resize should throw away head, not tail
         self.thinning = thinning
         self._gen_draws = numpy.resize(self._gen_draws, Ngen)
         self._gen_logp = numpy.resize(self._gen_logp,  (Ngen,Npop) )
