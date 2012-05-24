@@ -16,7 +16,7 @@ def bin_edges(C):
     be performed on the raw data without rebinning.
     """
     E = 0.5*(C[:-1]+C[1:])
-    return numpy.hstack((C[0]-2*(E[0]-C[0]), E, C[-1]+2*(C[-1]-E[-1])))
+    return numpy.hstack((C[0]-(E[0]-C[0]), E, C[-1]+(C[-1]-E[-1])))
 
 def logbin_edges(L):
     r"""
