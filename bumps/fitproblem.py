@@ -297,10 +297,13 @@ class Fitness(object):
 
 
 class FitProblem(object):
-    def __init__(self, fitness, name="FitProblem"):
+    def __init__(self, fitness, name="FitProblem", constraints=None, 
+                 penalty_limit=numpy.inf):
         self.fitness = fitness
         self.name = name
         self.model_reset()
+        self.constraints = constraints if constraints is not None else lambda:0
+        self.penalty_limit = penalty_limit
 
     def model_reset(self):
         """
@@ -396,15 +399,22 @@ class FitProblem(object):
         """
         Returns negative log likelihood of seeing parameters p.
         """
-        s = numpy.sum(p.nllf() for p in self.bounded)
+        s = sum(p.nllf() for p in self.bounded)
         #print "\n".join("%s %g"%(p,p.nllf()) for p in self.bounded)
         return s
+
+    def constraints_nllf(self):
+        """
+        Returns the cost of all constraints.
+        """
+        return self.constraints()
 
     def parameter_residuals(self):
         """
         Returns negative log likelihood of seeing parameters p.
         """
         return [p.residual() for p in self.bounded]
+
     def residuals(self):
         """
         Return the model residuals.
@@ -445,7 +455,13 @@ class FitProblem(object):
                 print "Parameter nllf is wrong"
                 for p in self.bounded:
                     print p, p.nllf()
-            cost = self.model_nllf() + self.parameter_nllf()
+            #print self.model_nllf(),"+",self.parameter_nllf(),"+",self.constraints_nllf()
+            cost = self.parameter_nllf() + self.constraints_nllf()
+            #print "cost",cost,self.penalty_limit*self.dof
+            if cost < self.penalty_limit*self.dof:
+                cost += self.model_nllf()
+            else:
+                cost += self.penalty_limit*self.dof
         except KeyboardInterrupt:
             raise
         except:
@@ -591,19 +607,22 @@ class MultiFitProblem(FitProblem):
     """
     Weighted fits for multiple models.
     """
-    def __init__(self, models, weights=None, name="MultiFitProblem"):
+    def __init__(self, models, weights=None, name="MultiFitProblem",
+                 constraints=None, penalty_limit=numpy.inf):
         self.models = [FitProblem(m) for m in models]
         if weights is None:
             weights = [1 for m in models]
         self.weights = weights
         self.model_reset()
+        self.constraints = constraints if constraints is not None else lambda:0
+        self.penalty_limit = penalty_limit
 
     def model_parameters(self):
         """Return parameters from all models"""
         return [f.model_parameters() for f in self.models]
     def model_points(self):
         """Return number of points in all models"""
-        return numpy.sum(f.model_points() for f in self.models)
+        return sum(f.model_points() for f in self.models)
     def model_update(self):
         """Let all models know they need to be recalculated"""
         # TODO: consider an "on changed" signal for model updates.
@@ -616,7 +635,10 @@ class MultiFitProblem(FitProblem):
         for f in self.models: f.model_update()
     def model_nllf(self):
         """Return cost function for all data sets"""
-        return numpy.sum(f.model_nllf() for f in self.models)
+        return sum(f.model_nllf() for f in self.models)
+    def constraints_nllf(self):
+        """Return the cost function for all constraints"""
+        return sum(f.constraints_nllf() for f in self.models) + FitProblem.constraints_nllf(self)
     def simulate_data(self, noise=None):
         """Simulate data with added noise"""
         for f in self.models: f.simulate_data(noise=noise)
