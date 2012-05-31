@@ -301,9 +301,9 @@ class FitProblem(object):
                  penalty_limit=numpy.inf):
         self.fitness = fitness
         self.name = name
-        self.model_reset()
         self.constraints = constraints if constraints is not None else lambda:0
         self.penalty_limit = penalty_limit
+        self.model_reset()
 
     def model_reset(self):
         """
@@ -596,9 +596,9 @@ class FitProblem(object):
         return numpy.sqrt(numpy.diag(self.cov(pvec, step=step)))
 
     def __getstate__(self):
-        return self.fitness,self.name
+        return self.fitness,self.name,self.penalty_limit,self.constraints
     def __setstate__(self, state):
-        self.fitness,self.name = state
+        self.fitness,self.name,self.penalty_limit,self.constraints = state
         self.model_reset()
 
 
