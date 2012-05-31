@@ -500,13 +500,16 @@ def format(p, indent=0):
     else:
         return "None"
 
-def summarize(pars):
+def summarize(pars, sorted=False):
     """
     Return a stylized list of parameter names and values with range bars
     suitable for printing.
+
+    If sorted, then print the parameters sorted alphabetically by name.
     """
     output = []
-    for p in sorted(pars, cmp=lambda x,y: cmp(x.name,y.name)):
+    if sorted: pars = sorted(pars, cmp=lambda x,y: cmp(x.name,y.name))
+    for p in pars:
         if not numpy.isfinite(p.value):
             bar = "*invalid* "
         else:

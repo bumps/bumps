@@ -131,8 +131,9 @@ class SummaryView(scrolled.ScrolledPanel):
         line = wx.StaticLine(self, wx.ID_ANY)
         self.sizer.Add(line, pos=(2,0), flag=wx.EXPAND|wx.RIGHT, border=5)
 
-        for p in sorted(self.model.parameters,
-                        cmp=lambda x,y: cmp(x.name,y.name)):
+        pars = self.model.parameters
+        #pars = sorted(pars, cmp=lambda x,y: cmp(x.name, y.name))
+        for p in pars:
             self.display_list.append(ParameterSummary(self, p, self.model))
 
         for index, item in enumerate(self.display_list):
