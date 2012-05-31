@@ -376,7 +376,8 @@ class DreamFit(FitBase):
 
     def load(self, input_path):
         from . import dream
-        self.state = dream.state.load_state(input_path)
+        print "loading saved state (this might take awhile) ..."
+        self.state = dream.state.load_state(input_path,report=100)
 
     def save(self, output_path):
         self.state.save(output_path)

@@ -218,7 +218,8 @@ def run_dream(dream):
     state._update(R_stat=-2, CR_weight=dream.CR.weight)
 
     # Now start drawing samples
-    while state.draws - previous_draws < dream.draws + dream.burn:
+    #print "previous draws", previous_draws, "new draws",dream.draws + dream.burn
+    while state.draws < dream.draws + dream.burn:
 
         # Age the population using differential evolution
         dream.CR.reset(Nsteps=dream.DE_steps, Npop=Nchain)
