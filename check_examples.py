@@ -2,30 +2,7 @@
 import sys, os
 
 examples = [
-    "distribution/dist-example.py",
-    "ex1/nifilm-web.py",
-    "ex1/nifilm-fit-web.py",
-    "ex1/nifilm-data-web.py",
-    "ex1/nifilm-tof-web.py",
-    "freemag/pmf.py",
-    "ill_posed/anticor.py",
-    "ill_posed/tethered.py",
-    "interface/model.py",
-    "mixed/mixed-web.py",
-    "mixed/mixed_magnetic.py",
     "peaks/model.py",
-    "polymer/tethered-web.py",
-    "polymer/freeform.py",
-    "spinvalve/n101G.py",
-    "staj/De2_VATR.py",
-    "superlattice/freeform.py",
-    "superlattice/NiTi-web.py",
-    "superlattice/PEMU-web.py",
-    "thick/nifilm.py",
-    "TOF/du53.py",
-    "xray/mlayer.staj",
-    "xray/model.py",
-    "xray/staj.py",
     ]
 
 ROOT = os.path.abspath(os.path.dirname(__file__))
@@ -35,7 +12,7 @@ if os.name == 'nt':
 else:
     os.environ['PYTHONPATH'] = ROOT+":"+ROOT+"/dream"
 PYTHON = sys.executable
-CLI = "%s %s/bin/refl1d_cli.py %%s %%s"%(PYTHON,ROOT)
+CLI = "%s %s/bin/bumps %%s %%s"%(PYTHON,ROOT)
 
 class Commands(object):
     @staticmethod
