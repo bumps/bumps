@@ -28,9 +28,10 @@ def plot_all(state, portion=1.0, figfile=None):
     figure(); plot_logp(state, portion=portion)
     if state.title: suptitle(state.title)
     if figfile != None: savefig(figfile+"-logp")
-    figure(); plot_corrmatrix(state, portion=portion)
-    if state.title: suptitle(state.title)
-    if figfile != None: savefig(figfile+"-corr")
+    if state.Nvar <= 15:
+        figure(); plot_corrmatrix(state, portion=portion)
+        if state.title: suptitle(state.title)
+        if figfile != None: savefig(figfile+"-corr")
 
 def plot_var(state, var=0, portion=None, selection=None, **kw):
     points, logp = state.sample(portion=portion, vars=[var],
@@ -306,10 +307,8 @@ def plot_corr(state, vars=(0,1), portion=None, selection=None):
 def plot_trace(state, var=0, portion=None):
     from pylab import plot, title, xlabel, ylabel
 
-    if portion == None:
-        portion = 0.8 if state.burnin == 0 else 1
     draw, points, _ = state.chains()
-    start = int((1-portion)*len(draw))
+    start = int((1-portion)*len(draw)) if portion else 0
     plot(arange(start,len(points))*state.thinning,
          squeeze(points[start:,state._good_chains,var]))
     title('Parameter history for variable %d'%(var+1))
@@ -319,10 +318,8 @@ def plot_trace(state, var=0, portion=None):
 def plot_R(state, portion=None):
     from pylab import plot, title, legend, xlabel, ylabel
 
-    if portion == None:
-        portion = 0.8 if state.burnin == 0 else 1
     draw, R = state.R_stat()
-    start = int((1-portion)*len(draw))
+    start = int((1-portion)*len(draw)) if portion else 0
     plot(arange(start,len(R)), R[start:])
     title('Convergence history')
     legend(['P%d'%i for i in range(1,R.shape[1]+1)])
@@ -332,10 +329,8 @@ def plot_R(state, portion=None):
 def plot_logp(state, portion=None):
     from pylab import plot, title, xlabel, ylabel
 
-    if portion == None:
-        portion = 0.8 if state.burnin == 0 else 1
     draw, logp = state.logp()
-    start = int((1-portion)*len(draw))
+    start = int((1-portion)*len(draw)) if portion else 0
     plot(arange(start,len(logp)), logp[start:], '.', markersize=1)
     title(r'Log Likelihood History')
     xlabel('Generation number')

@@ -325,6 +325,8 @@ class FitProblem(object):
         self.bounded = [p for p in all_parameters
                        if not isinstance(p.bounds, mbounds.Unbounded)]
         self.dof = self.model_points() - len(self.parameters)
+        if self.dof <= 0:
+            raise ValueError("Need more data points than fitting parameters")
         #self.constraints = pars.constraints()
     def model_parameters(self):
         """

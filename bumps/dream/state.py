@@ -214,6 +214,11 @@ class MCMCDraw(object):
     """
     _labels = None
     title = None
+    @property
+    def Nvar(self):
+        """Number of parameters in the fit"""
+        return self._thin_point.shape[2]
+
     def __init__(self, Ngen, Nthin, Nupdate, Nvar, Npop, Ncr, thinning):
         # Total number of draws so far
         self.draws = 0
@@ -533,7 +538,7 @@ class MCMCDraw(object):
             self._good_chains = slice(None,None)
         else:
             Ngen = chains.shape[0]
-            start = int(Ngen*portion)
+            start = int(Ngen*(1-portion)) if portion else 0
             outliers = identify_outliers(test, logp[start:], chains[-1])
             #print "outliers",outliers
             #print logp.shape, chains.shape
@@ -773,7 +778,7 @@ def _sample(state, portion, vars, selection):
     Return a sample from a set of chains.
     """
     draw, chains, logp = state.chains()
-    start = int((1-portion)*len(draw))
+    start = int((1-portion)*len(draw)) if portion else 0
 
     # Collect the subset we are interested in
     chains = chains[start:,state._good_chains,:]

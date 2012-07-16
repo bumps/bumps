@@ -12,7 +12,7 @@ def monospline(x, y, xt):
     r"""
     Monotonic cubic hermite interpolation.
 
-    Returns $p(x_t)$ where $p(x_i)= y_i$ and $p(x) \leq p(xi)$
+    Returns $p(x_t)$ where $p(x_i)= y_i$ and $p(x) \leq p(x_i)$
     if $y_i \leq y_{i+1}$ for all $y_i$.  Also works for decreasing
     values $y$, resulting in decreasing $p(x)$.  If $y$ is not monotonic,
     then $p(x)$ may peak higher than any $y$, so this function is not

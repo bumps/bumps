@@ -81,6 +81,9 @@ def _plot(fig, hists, labels, N, show_ticks=False):
     """
     Plot pair-wise correlation histograms
     """
+    if N<=1: 
+        fig.text(0.5,0.5,"No correlation plots when only one variable",ha="center",va="center") 
+        return
     vmin, vmax = inf, -inf
     for data,_,_ in hists.values():
         positive = data[data>0]

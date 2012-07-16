@@ -26,6 +26,8 @@ class CorrelationView(PlotView):
     title = "Correlations"
     def plot(self):
         if not self.plot_state: return
+        # suppress correlation plot if too many variables
+        if self.plot_state.Nvar > 15: return
         history = self.plot_state
         import pylab
         with self.pylab_interface:
