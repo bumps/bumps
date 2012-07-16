@@ -7,6 +7,8 @@ import numpy
 from . import monitor, parameter
 from .history import History
 from . import initpop
+from .dream import MCMCModel
+
 
 class ConsoleMonitor(monitor.TimedUpdate):
     """
@@ -16,15 +18,18 @@ class ConsoleMonitor(monitor.TimedUpdate):
         monitor.TimedUpdate.__init__(self, progress=progress,
                                      improvement=improvement)
         self.problem = deepcopy(problem)
+
     def show_progress(self, history):
         print "step", history.step[0], \
-            "cost", 2*history.value[0]/self.problem.dof
+            "cost", 2 * history.value[0] / self.problem.dof
         sys.stdout.flush()
+
     def show_improvement(self, history):
         #print "step",history.step[0],"chisq",history.value[0]
         self.problem.setp(history.point[0])
         print parameter.summarize(self.problem.parameters)
         sys.stdout.flush()
+
 
 class StepMonitor(monitor.Monitor):
     """
@@ -36,6 +41,7 @@ class StepMonitor(monitor.Monitor):
     The point field should be last in the list.
     """
     FIELDS = ['step', 'time', 'value', 'point']
+
     def __init__(self, problem, fid, fields=FIELDS):
         if any(f not in self.FIELDS for f in fields):
             raise ValueError("invalid monitor field")
@@ -43,16 +49,18 @@ class StepMonitor(monitor.Monitor):
         self.fid = fid
         self.fields = fields
         self._pattern = "%%(%s)s\n" % (")s %(".join(fields))
-        fid.write("# "+' '.join(fields)+'\n')
+        fid.write("# " + ' '.join(fields) + '\n')
+
     def config_history(self, history):
         history.requires(time=1, value=1, point=1, step=1)
+
     def __call__(self, history):
-        point = " ".join("%.15g"%v for v in history.point[0])
-        time = "%g"%history.time[0]
-        step = "%d"%history.step[0]
-        value = "%.15g"%(2*history.value[0]/self.dof)
-        out = self._pattern%dict(point=point, time=time,
-                                 value=value, step=step)
+        point = " ".join("%.15g" % v for v in history.point[0])
+        time = "%g" % history.time[0]
+        step = "%d" % history.step[0]
+        value = "%.15g" % (2 * history.value[0] / self.dof)
+        out = self._pattern % dict(point=point, time=time,
+                                   value=value, step=step)
         self.fid.write(out)
 
 
@@ -64,43 +72,49 @@ class MonitorRunner(object):
         if monitors == None:
             monitors = [ConsoleMonitor(problem)]
         self.monitors = monitors
-        self.history = History(time=1,step=1,point=1,value=1,
+        self.history = History(time=1, step=1, point=1, value=1,
                                population_points=1, population_values=1)
         for M in self.monitors:
             M.config_history(self.history)
         self._start = time.time()
+
     def __call__(self, step, point, value,
                  population_points=None, population_values=None):
-        self.history.update(time=time.time()-self._start,
+        self.history.update(time=time.time() - self._start,
                             step=step, point=point, value=value,
                             population_points=population_points,
                             population_values=population_values)
         for M in self.monitors:
             M(self.history)
 
+
 class FitBase(object):
     def __init__(self, problem):
         """Fit the models and show the results"""
         self.problem = problem
+
     def solve(self, monitors=None, mapper=None, **options):
         raise NotImplementedError
+
 
 class MultiStart(FitBase):
     name = "Multistart Monte Carlo"
     settings = [('starts', 100)]
+
     def __init__(self, fitter):
         self.fitter = fitter
         self.problem = fitter.problem
+
     def solve(self, monitors=None, mapper=None, **options):
-        starts = options.pop('starts',1)
-        reset = not options.pop('keep_best',True)
+        starts = options.pop('starts', 1)
+        reset = not options.pop('keep_best', True)
         f_best = numpy.inf
-        for _ in range(max(starts,1)):
+        for _ in range(max(starts, 1)):
             print "round",_
-            x,fx = self.fitter.solve(monitors=monitors, mapper=mapper,
-                                     **options)
+            x, fx = self.fitter.solve(monitors=monitors, mapper=mapper,
+                                      **options)
             if fx < f_best:
-                x_best, f_best = x,fx
+                x_best, f_best = x, fx
                 print x_best, fx
             if reset:
                 self.problem.randomize()
@@ -112,9 +126,11 @@ class MultiStart(FitBase):
                 self.problem.setp(pop[0])
         return x_best, f_best
 
+
 class DEFit(FitBase):
     name = "Differential Evolution"
-    settings = [('steps',1000), ('pop', 10), ('CR', 0.9), ('F', 2.0) ]
+    settings = [('steps', 1000), ('pop', 10), ('CR', 0.9), ('F', 2.0)]
+
     def solve(self, monitors=None, mapper=None, **options):
         _fill_defaults(options, self.settings)
         from .mystic.optimizer import de
@@ -123,9 +139,9 @@ class DEFit(FitBase):
         if monitors == None:
             monitors = [ConsoleMonitor(self.problem)]
         if mapper is not None:
-            _mapper = lambda p,x: mapper(x)
+            _mapper = lambda p, x: mapper(x)
         else:
-            _mapper = lambda p,x: map(self.problem.nllf,x)
+            _mapper = lambda p, x: map(self.problem.nllf, x)
         strategy = de.DifferentialEvolution(npop=options['pop'],
                                             CR=options['CR'],
                                             F=options['F'])
@@ -138,7 +154,8 @@ class DEFit(FitBase):
 
 class BFGSFit(FitBase):
     name = "Quasi-Newton BFGS"
-    settings = [('steps',3000), ('starts',100) ]
+    settings = [('steps', 3000), ('starts', 100)]
+
     def solve(self, monitors=None, mapper=None, **options):
         _fill_defaults(options, self.settings)
         from quasinewton import quasinewton, STATUS
@@ -146,38 +163,41 @@ class BFGSFit(FitBase):
                                      monitors=monitors)
         result = quasinewton(fn=self.problem.nllf,
                              x0=self.problem.getp(),
-                             monitor = self._monitor,
-                             itnlimit = options['steps'],
+                             monitor=self._monitor,
+                             itnlimit=options['steps'],
                              )
         code = result['status']
         print "%d: %s" % (code, STATUS[code])
         return result['x'], result['fx']
+
     def _monitor(self, step, x, fx):
         self._update(step=step, point=x, value=fx,
                      population_points=[x],
                      population_values=[fx])
         return True
 
+
 class PSFit(FitBase):
     name = "Particle Swarm"
-    settings = [('steps',3000), ('pop', 1) ]
+    settings = [('steps', 3000), ('pop', 1)]
+
     def solve(self, monitors=None, mapper=None, **options):
         _fill_defaults(options, self.settings)
         if mapper is None:
-            mapper = lambda x: map(self.problem.nllf,x)
+            mapper = lambda x: map(self.problem.nllf, x)
         from random_lines import particle_swarm
         self._update = MonitorRunner(problem=self.problem,
                                      monitors=monitors)
         bounds = numpy.array([p.bounds.limits
                               for p in self.problem.parameters]).T
         cfo = dict(parallel_cost=mapper,
-                   n = len(bounds[0]),
-                   x0 = self.problem.getp(),
-                   x1 = bounds[0],
-                   x2 = bounds[1],
-                   f_opt = 0,
-                   monitor = self._monitor)
-        NP = int(cfo['n']*options['pop'])
+                   n=len(bounds[0]),
+                   x0=self.problem.getp(),
+                   x1=bounds[0],
+                   x2=bounds[1],
+                   f_opt=0,
+                   monitor=self._monitor)
+        NP = int(cfo['n'] * options['pop'])
 
         result = particle_swarm(cfo, NP, maxiter=options['steps'])
         satisfied_sc, n_feval, f_best, x_best = result
@@ -185,30 +205,32 @@ class PSFit(FitBase):
         return x_best, f_best
 
     def _monitor(self, step, x, fx, k):
-        self._update(step=step, point=x[:,k], value=fx[k],
+        self._update(step=step, point=x[:, k], value=fx[k],
                      population_points=x.T, population_values=fx)
         return True
 
+
 class RLFit(FitBase):
     name = "Random Lines"
-    settings = [('steps',3000), ('starts',20), ('pop', 0.5), ('CR', 0.9)]
+    settings = [('steps', 3000), ('starts', 20), ('pop', 0.5), ('CR', 0.9)]
+
     def solve(self, monitors=None, mapper=None, **options):
         _fill_defaults(options, self.settings)
         if mapper is None:
-            mapper = lambda x: map(self.problem.nllf,x)
+            mapper = lambda x: map(self.problem.nllf, x)
         from random_lines import random_lines
         self._update = MonitorRunner(problem=self.problem,
                                      monitors=monitors)
         bounds = numpy.array([p.bounds.limits
                               for p in self.problem.parameters]).T
         cfo = dict(parallel_cost=mapper,
-                   n = len(bounds[0]),
-                   x0 = self.problem.getp(),
-                   x1 = bounds[0],
-                   x2 = bounds[1],
-                   f_opt = 0,
-                   monitor = self._monitor)
-        NP = max(int(cfo['n']*options['pop']),3)
+                   n=len(bounds[0]),
+                   x0=self.problem.getp(),
+                   x1=bounds[0],
+                   x2=bounds[1],
+                   f_opt=0,
+                   monitor=self._monitor)
+        NP = max(int(cfo['n'] * options['pop']), 3)
 
         result = random_lines(cfo, NP, maxiter=options['steps'],
                               CR=options['CR'])
@@ -218,15 +240,16 @@ class RLFit(FitBase):
 
     def _monitor(self, step, x, fx, k):
         #print "rl best",k, x.shape,fx.shape
-        self._update(step=step, point=x[:,k], value=fx[k],
+        self._update(step=step, point=x[:, k], value=fx[k],
                      population_points=x.T, population_values=fx)
         return True
 
 
 class PTFit(FitBase):
     name = "Parallel Tempering"
-    settings = [('steps',1000), ('nT', 25), ('CR', 0.9),
-                ('burn',4000),  ('Tmin', 0.1), ('Tmax', 10)]
+    settings = [('steps', 1000), ('nT', 25), ('CR', 0.9),
+                ('burn', 4000), ('Tmin', 0.1), ('Tmax', 10)]
+
     def solve(self, monitors=None, mapper=None, **options):
         _fill_defaults(options, self.settings)
         # TODO: no mapper??
@@ -248,14 +271,17 @@ class PTFit(FitBase):
                                     burn=options['burn'],
                                     monitor=self._monitor)
         return history.best_point, history.best
+
     def _monitor(self, step, x, fx, P, E):
         self._update(step=step, point=x, value=fx,
                      population_points=P, population_values=E)
         return True
 
+
 class AmoebaFit(FitBase):
     name = "Nelder-Mead Simplex"
-    settings = [ ('steps',1000), ('starts',1), ('radius',0.15) ]
+    settings = [('steps', 1000), ('starts', 1), ('radius', 0.15)]
+
     def solve(self, monitors=None, mapper=None, **options):
         _fill_defaults(options, self.settings)
         # TODO: no mapper??
@@ -274,18 +300,21 @@ class AmoebaFit(FitBase):
         # used, the fit can get stuck in a local minimum.
         self.problem.setp(result.next_start)
         return result.x, result.fx
+
     def _monitor(self, k, n, x, fx):
         self._update(step=k, point=x[0], value=fx[0],
                      population_points=x, population_values=fx)
         return True
 
+
 class SnobFit(FitBase):
     name = "SNOBFIT"
-    settings = [('steps',200)]
+    settings = [('steps', 200)]
+
     def solve(self, monitors=None, mapper=None, **options):
         _fill_defaults(options, self.settings)
         # TODO: no mapper??
-        from snobfit.snobfit import snobfit #@UnresolvedImport snobfit is optional
+        from snobfit.snobfit import snobfit
         self._update = MonitorRunner(problem=self.problem,
                                      monitors=monitors)
         bounds = numpy.array([p.bounds.limits
@@ -293,15 +322,13 @@ class SnobFit(FitBase):
         x, fx, _ = snobfit(self.problem, self.problem.getp(), bounds,
                           fglob=0, callback=self._monitor)
         return x, fx
+
     def _monitor(self, k, x, fx, improved):
         # TODO: snobfit does have a population...
         self._update(step=k, point=x, value=fx,
                      population_points=[x], population_values=[fx])
 
-try:
-    from .dream import MCMCModel
-except:
-    MCMCModel = object
+
 class DreamModel(MCMCModel):
     """
     DREAM wrapper for fit problems.
@@ -315,7 +342,7 @@ class DreamModel(MCMCModel):
         self.bounds = zip(*[p.bounds.limits for p in problem.parameters])
         self.labels = [p.name for p in problem.parameters]
 
-        self.mapper = mapper if mapper else lambda p: map(self.nllf,p)
+        self.mapper = mapper if mapper else lambda p: map(self.nllf, p)
 
     def log_density(self, x):
         return -self.nllf(x)
@@ -329,9 +356,11 @@ class DreamModel(MCMCModel):
         #print "calling mapper",self.mapper
         return -numpy.array(self.mapper(pop))
 
+
 class DreamFit(FitBase):
     name = "DREAM"
-    settings = [('steps',500),  ('burn', 0), ('pop', 10), ('init', 'eps')]
+    settings = [('steps', 500), ('burn', 0), ('pop', 10), ('init', 'eps')]
+
     def __init__(self, problem):
         self.dream_model = DreamModel(problem)
         self.state = None
@@ -340,36 +369,39 @@ class DreamFit(FitBase):
         _fill_defaults(options, self.settings)
         from . import dream
 
-        if mapper: self.dream_model.mapper = mapper
+        if mapper:
+            self.dream_model.mapper = mapper
         self._update = MonitorRunner(problem=self.dream_model.problem,
                                      monitors=monitors)
 
         population = initpop.generate(self.dream_model.problem, **options)
         pop_size = population.shape[0]
-        population = population[None,:,:]
+        population = population[None, :, :]
         sampler = dream.Dream(model=self.dream_model, population=population,
-                              draws = pop_size*options['steps'],
-                              burn = pop_size*options['burn'],
-                              monitor = self._monitor,
-                              DE_noise = 1e-6)
+                              draws=pop_size * options['steps'],
+                              burn=pop_size * options['burn'],
+                              monitor=self._monitor,
+                              DE_noise=1e-6)
 
         self.state = sampler.sample(state=self.state)
         self.state.mark_outliers()
         self.state.keep_best()
         self.state.title = self.dream_model.problem.name
 
-        x,fx = self.state.best()
+        x, fx = self.state.best()
 
-        points,logp = self.state.sample()
+        # Check that the last point is the best point
+        points, logp = self.state.sample()
         assert logp[-1] == fx
-        assert all(points[-1,i]==xi for i,xi in enumerate(x))
+        assert all(points[-1, i] == xi for i, xi in enumerate(x))
 
-        return x,-fx
+        return x, -fx
 
     def _monitor(self, state, pop, logp):
-        self._update.history.uncertainty_state = state # Get an early copy of the state
+        # Get an early copy of the state
+        self._update.history.uncertainty_state = state
         step = state.generation
-        x,fx = state.best()
+        x, fx = state.best()
         self._update(step=step, point=x, value=-fx,
                      population_points=pop, population_values=-logp)
         return True
@@ -377,7 +409,7 @@ class DreamFit(FitBase):
     def load(self, input_path):
         from . import dream
         print "loading saved state (this might take awhile) ..."
-        self.state = dream.state.load_state(input_path,report=100)
+        self.state = dream.state.load_state(input_path, report=100)
 
     def save(self, output_path):
         self.state.save(output_path)
@@ -391,27 +423,32 @@ class DreamFit(FitBase):
 
     def error_plot(self, figfile):
         # Produce error plot
-        import errplot, pylab
+        import pylab
+        import errplot
         # TODO: shouldn't mix calc and display!
         res = errplot.calc_errors_from_state(self.dream_model.problem,
                                             self.state)
         if res is not None:
             pylab.figure()
             errplot.show_errors(res)
-            pylab.savefig(figfile+"-errors.png", format='png')
+            pylab.savefig(figfile + "-errors.png", format='png')
+
 
 class Resampler(FitBase):
     #TODO: why isn't cli.resynth using this?
     def __init__(self, fitter):
         raise NotImplementedError
         self.fitter = fitter
+
     def solve(self, **options):
-        starts = options.pop('starts',1)
-        restart = options.pop('restart',False)
-        x,fx = self.fitter.solve(**options)
+        starts = options.pop('starts', 1)
+        restart = options.pop('restart', False)
+        x, fx = self.fitter.solve(**options)
         points = _resampler(self.fitter, x, samples=starts,
                             restart=restart, **options)
-        return x,fx
+        self.points = points  # save points for later plotting
+        return x, fx
+
 
 def _resampler(fitter, xinit, samples=100, restart=False, **options):
     """
@@ -423,7 +460,7 @@ def _resampler(fitter, xinit, samples=100, restart=False, **options):
     """
     x = xinit
     points = []
-    try: # TODO: some solvers already catch KeyboardInterrupt
+    try:  # TODO: some solvers already catch KeyboardInterrupt
         for _ in range(samples):
             #print "== resynth %d of %d" % (i, samples)
             fitter.problem.resynth_data()
@@ -432,7 +469,7 @@ def _resampler(fitter, xinit, samples=100, restart=False, **options):
             else:
                 fitter.problem.setp(x)
             x, fx = fitter.solve(**options)
-            points.append(numpy.hstack((fx,x)))
+            points.append(numpy.hstack((fx, x)))
             #print parameter.summarize(self.problem.parameters)
             #print "[chisq=%g]" % (nllf*2/self.problem.dof)
     except KeyboardInterrupt:
@@ -452,7 +489,7 @@ class FitDriver(object):
         self.problem = problem
         self.options = options
         self.monitors = monitors
-        self.mapper = mapper if mapper else lambda p: map(problem.nllf,p)
+        self.mapper = mapper if mapper else lambda p: map(problem.nllf, p)
 
     def fit(self, resume=None):
         fitter = self.fitclass(self.problem)
@@ -500,9 +537,10 @@ class FitDriver(object):
 
 
 def _fill_defaults(options, settings):
-    for field,value in settings:
+    for field, value in settings:
         if field not in options:
             options[field] = value
+
 
 class FitOptions(object):
     # Field labels and types for all possible fields
@@ -511,7 +549,7 @@ class FitOptions(object):
         steps  = ("Steps",           "int"),
         burn   = ("Burn-in Steps",   "int"),
         pop    = ("Population",      "float"),
-        init   = ("Initializer",     ("eps","lhs","cov","random")),
+        init   = ("Initializer",     ("eps", "lhs", "cov", "random")),
         CR     = ("Crossover Ratio", "float"),
         F      = ("Scale",           "float"),
         nT     = ("# Temperatures",  "int"),
@@ -523,17 +561,18 @@ class FitOptions(object):
     def __init__(self, fitclass):
         self.fitclass = fitclass
         self.options = dict(fitclass.settings)
+
     def set_from_cli(self, opts):
         # Convert supplied options to the correct types and save them in value
-        for field,reset_value in self.fitclass.settings:
-            value = getattr(opts,field,None)
+        for field, reset_value in self.fitclass.settings:
+            value = getattr(opts, field, None)
             dtype = FitOptions.FIELDS[field][1]
             if value is not None:
                 if dtype == 'int':
                     self.options[field] = int(value)
                 elif dtype == 'float':
                     self.options[field] = float(value)
-                else: # string
+                else:  # string
                     if not value in dtype:
                         raise ValueError('invalid option "%s" for %s: use '
                                          % (value, field)

@@ -73,7 +73,7 @@ def build_problem():
 
     # Peak shape is the same across all peaks
     peak1.s1.range(0.002,0.02)
-    peak1.s2.range(0.002,0.02)
+    peak1.s2.range(0.001,0.02)
     peak1.theta.range(-90, -0)
     for peak in M.parts[1:-1]:
         peak.s1 = peak1.s1
