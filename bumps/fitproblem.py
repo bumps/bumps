@@ -296,12 +296,16 @@ class Fitness(object):
         pass
 
 
+def no_constraints(): 
+    """default constraints function for FitProblem"""
+    return 0
+
 class FitProblem(object):
-    def __init__(self, fitness, name="FitProblem", constraints=None, 
+    def __init__(self, fitness, name="FitProblem", constraints=no_constraints, 
                  penalty_limit=numpy.inf):
         self.fitness = fitness
         self.name = name
-        self.constraints = constraints if constraints is not None else lambda:0
+        self.constraints = constraints
         self.penalty_limit = penalty_limit
         self.model_reset()
 
