@@ -88,7 +88,7 @@ CREATE = open
 
 def save_state(state, filename):
     # Build 2-D data structures
-    draws, logp = state.logp()
+    draws, logp = state.logp(full=True)
     _, AR = state.acceptance_rate()
     chain = hstack((draws[:,None], AR[:,None], logp))
 
@@ -547,7 +547,7 @@ class MCMCDraw(object):
             #print self._good_chains
 
 
-    def logp(self):
+    def logp(self, full=False):
         """
         Return the iteration number and the log likelihood for each point in
         the individual sequences in that iteration.
@@ -559,13 +559,15 @@ class MCMCDraw(object):
 
         Note that draw[i] represents the total number of samples taken,
         including those for the samples in logp[i].
+
+        If full is True, then return all chains, not just good chains.
         """
         self._unroll()
         retval = self._gen_draws, self._gen_logp
         if self.generation == self._gen_index:
             retval = [v[:self.generation] for v in retval]
         draws,logp = retval
-        return draws,logp[:,self._good_chains]
+        return draws,(logp if full else logp[:,self._good_chains])
 
     def acceptance_rate(self):
         """
