@@ -25,7 +25,7 @@ class ModelFunction(object):
     par=value to define the parameter) or is set to zero if no default is
     given in the function.
     """
-    def __init__(self, fn, name="", **kw):
+    def __init__(self, fn, name="", plot=None, **kw):
         # Make every name a parameter; initialize the parameters
         # with the default value if function is defined with keyword
         # initializers; override the initializers with any keyword
@@ -40,7 +40,7 @@ class ModelFunction(object):
             init.update(zip(pnames[-len(pvalues):],pvalues))
         # Regardless, use any values specified in the constructor, but first
         # check that they exist as function parameters.
-        invalid = set(pnames) - set(kw.keys())
+        invalid = set(kw.keys()) - set(pnames)
         if invalid:
             raise TypeError("Invalid initializers: %s"%", ".join(sorted(invalid)))
         init.update(kw)
@@ -57,6 +57,7 @@ class ModelFunction(object):
         # Remember the function, parameters, and number of parameters
         self._function = fn
         self._parameters = pars
+        self._plot = plot
 
     def parameters(self):
         """
@@ -80,6 +81,11 @@ class ModelFunction(object):
         Parameters changed; clear cached values.
         """
         pass
+
+    def plot(self, view=None):
+        if self._plot:
+            kw = dict( (k,v.value) for k,v in self._parameters.items() )
+            self._plot(view=view, **kw)
 
     def numpoints(self):
         return len(self._parameters)+1

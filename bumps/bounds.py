@@ -165,10 +165,11 @@ def init_bounds(v):
     except TypeError:
         return v
 
-    # if it is a tuple
+    # if it is a tuple, then determine what kind of bounds we have
     if lo == None: lo = -inf
     if hi == None: hi = inf
-    if lo >= hi: raise ValueError("invalid bounds")
+    # TODO: consider issuing a warning instead of correcting reversed bounds
+    if lo >= hi: lo, hi = hi, lo
     if isinf(lo) and isinf(hi):
         return Unbounded()
     elif isinf(lo):
