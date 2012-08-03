@@ -13,11 +13,12 @@ def plot2d(fn,args,range=(-10,10)):
         pylab.pcolormesh(x+r,y+r,nllf(**kw))
         pylab.plot(x,y,'o',hold=True, markersize=6,markerfacecolor='red',markeredgecolor='black',markeredgewidth=1, alpha=0.7)
     return plotter 
-def fxy(fn):
+def f2(fn):
     def cost(x,y): return fn((x,y))
     return cost
-def fxyz(fn):
-    def cost(x,y,z): return fn((x,y,z))
+def fk(fn,k):
+    args = ",".join("z%d"%j for j in range(k-2))
+    eval("def cost(x,y,%s): return fn((x,y,%s))"%(args,args))
     return cost
 
 def sin_plus_quadratic(x=0,y=0): 
@@ -48,12 +49,32 @@ def rosenbrock(x):
     n = len(x)
     return sum((1-x[i])**2 + 100*(x[i+1]-x[i]**2)**2 for i in range(n-1))
 
-#nllf = sin_plus_quadratic
-#nllf = fxy(ackley)
-#nllf = fxy(griewank)
-#nllf = fxy(rastrigin)
-#nllf = fxy(rosenbrock)
-nllf = fxyz(rosenbrock)
+def gauss(x):
+    n = len(x)
+    return 1+0.5*sum(x[i]**2 for i in range(n))
+
+try:
+    nllf = fxy(rosenbrock) if len(sys.argv) < 2 else eval(sys.argv[1])
+except:
+    usage = """\
+Provide a valid fitting function definition with x,y as fitting parameters,
+such as:
+
+    lambda x,y: (x+y-10)**2
+
+A number of k-dimensional test functions are provided:
+
+    ackley, griewank, rastrigin, rosenbrock, gauss
+
+These can be selected using:
+
+    f2(function)
+
+or for the k-dimensional version:
+
+    fk(function,k)
+"""
+    raise ValueError("Invalid function.\n"+usage)
 plot=plot2d(nllf,('x','y'),range=(-1,1))
 M = ModelFunction(nllf,plot=plot)
 for p in M.parameters().values():

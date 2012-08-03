@@ -10,6 +10,7 @@ except:
     import cPickle as pickle
 
 import numpy
+#numpy.seterr(all="raise")
 
 from . import fitters
 from .fitters import FIT_OPTIONS, FitDriver, StepMonitor, ConsoleMonitor
