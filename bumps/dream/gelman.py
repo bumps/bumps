@@ -1,10 +1,12 @@
+
 """
 Convergence test statistic from Gelman and Rubin, 1992.
 """
 
 from __future__ import division
 
-from numpy import var, mean, ones, sqrt
+from numpy import var, mean, ones, sqrt,sum,transpose,reshape,cov,corrcoef
+
 def gelman(sequences, portion=0.5):
     """
     Calculates the R-statistic convergence diagnostic
@@ -17,12 +19,13 @@ def gelman(sequences, portion=0.5):
 
     # Find the size of the sample
     chain_len,Nchains,Nvar = sequences.shape
+    #print sequences[:20,0,0]
 
     # Only use the last portion of the sample
     chain_len = int(chain_len*portion)
     sequences = sequences[-chain_len:]
 
-    if chain_len < 10:
+    if chain_len < 2:
         # Set the R-statistic to a large value
         R_stat = -2 * ones(Nvar)
     else:
@@ -46,6 +49,8 @@ def gelman(sequences, portion=0.5):
 
         # Step 5: Compute the R-statistic
         R_stat = sqrt((Nchains + 1)/Nchains * sigma2 / W - (chain_len-1)/Nchains/chain_len);
+        #par=2
+        #print chain_len,B[par],varSeq[...,par],W[par],R_stat[par]
 
     return R_stat
 
@@ -61,6 +66,7 @@ def test():
     target = [1.06169861367116,   2.75325774624905,   4.46256647696399,
               6.12792266170178,   7.74538715553575,   9.31276519155232]
     R = gelman(S, portion=1)
+    #print R
     #print "target", array(target), "\nactual", R
     assert norm(R-target) < 1e-14
     R = gelman(S, portion=.1)

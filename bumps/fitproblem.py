@@ -301,10 +301,17 @@ def no_constraints():
     return 0
 
 class FitProblem(object):
-    def __init__(self, fitness, name="FitProblem", constraints=no_constraints, 
+    def __init__(self, fitness, name=None, constraints=no_constraints, 
                  penalty_limit=numpy.inf):
         self.fitness = fitness
-        self.name = name
+        if name is not None:
+            self.name = name
+        else:
+            try:
+                self.name = fitness.name
+            except:
+                self.name = 'FitProblem'
+               
         self.constraints = constraints
         self.penalty_limit = penalty_limit
         self.model_reset()
@@ -665,7 +672,7 @@ class MultiFitProblem(FitProblem):
 
     def show(self):
         for i, f in enumerate(self.models):
-            print "-- Model %d" % i
+            print "-- Model %d" % i, f.name
             f.show()
         print "[overall chisq=%g, nllf=%g]" % (self.chisq(), self.nllf())
 
@@ -673,7 +680,7 @@ class MultiFitProblem(FitProblem):
         import pylab
         for i, f in enumerate(self.models):
             f.plot(fignum=i+fignum)
-            pylab.suptitle('Model %d'%i)
+            pylab.suptitle('Model %d - %s'%(i,f.name))
             if figfile != None:
                 pylab.savefig(figfile+"-model%d.png"%i, format='png')
 
