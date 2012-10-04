@@ -2,6 +2,7 @@ from __future__ import with_statement
 
 import sys
 import os
+import StringIO
 
 import shutil
 try:
@@ -236,7 +237,8 @@ class ParseOpts:
 
 class BumpsOpts(ParseOpts):
     MINARGS = 1
-    FLAGS = set(("preview", "chisq", "profile", "random", "simulate",
+    FLAGS = set(("preview", "chisq", "profile", 
+                 "simulate", "simrandom", "shake",
                  "worker", "batch", "overwrite", "parallel", "stepmon",
                  "cov", "remote", "staj", "edit",
                  "multiprocessing-fork", # passed in when app is a frozen image
@@ -271,12 +273,16 @@ Options:
         initial parameter values; fit results are saved as <modelname>.par
     --plot=log      [%(plotter)s]
         type of plot to display
-    --random
-        use a random initial configuration
     --simulate
-        simulate the data to fit
+        simulate a dataset using the initial problem parameters
+    --simrandom
+        simulate a dataset using random problem parameters
+    --shake
+        set random parameters before fitting
     --noise=5%%
         percent noise to add to the simulated data
+    --seed=integer
+        random number seed
     --cov
         compute the covariance matrix for the model when done
     --staj
@@ -296,8 +302,8 @@ Options:
         batch mode; don't show plots after fit
     --remote
         queue fit to run on remote server
-    --notify=user@email OR @twitterid
-        remote fit notification (twitter users must follow @reflfit)
+    --notify=user@email
+        remote fit notification
     --queue=http://reflectometry.org
         remote job queue
 
@@ -320,6 +326,7 @@ Options:
         number of times to run the fit from random starting points
     --init=lhs      [dream]
         population initialization method:
+          eps:    ball around initial parameter set
           lhs:    latin hypercube sampling
           cov:    normally distributed according to covariance matrix
           random: uniformly distributed within parameter ranges
@@ -388,6 +395,17 @@ def getopts():
 # ==== Main ====
 
 def initial_model(opts):
+    # Capture stdout from problem definition
+    stdout = sys.stdout
+    try:
+        sys.stdout = StringIO.StringIO()
+        problem = _initial_model(opts)
+        output = sys.stdout.getvalue()
+    finally:
+        sys.stdout = stdout
+    return problem, output.strip()
+
+def _initial_model(opts):
     if opts.seed is not None:
         numpy.random.seed(opts.seed)
 
@@ -395,11 +413,16 @@ def initial_model(opts):
         problem = load_problem(opts.args)
         if opts.pars is not None:
             recall_best(problem, opts.pars)
-        if opts.random:
+        if opts.simrandom:
             problem.randomize()
-        if opts.simulate:
+        if opts.simulate or opts.simrandom:
             noise = None if opts.noise == "data" else float(opts.noise)
             problem.simulate_data(noise=noise)
+            print "simulation parameters"
+            print parameter.summarize(problem.parameters)
+            print "chisq at simulation",problem.chisq()
+        if opts.shake: 
+            problem.randomize()
     else:
         problem = None
     return problem
@@ -480,7 +503,7 @@ def main():
     # Set up the matplotlib backend to minimize the wx dependency.
     config_matplotlib('Agg' if opts.batch or opts.remote else 'WXAgg')
 
-    problem = initial_model(opts)
+    problem, problem_output = initial_model(opts)
 
     # TODO: AMQP mapper as implemented requires workers started up with
     # the particular problem; need to be able to transport the problem
@@ -504,12 +527,15 @@ def main():
     elif opts.worker:
         mapper.start_worker(problem)
     elif opts.chisq:
+        print problem_output
         if opts.cov: print problem.cov()
         print "chisq",problem()
     elif opts.preview:
+        print problem_output
         if opts.cov: print problem.cov()
         preview(problem)
     elif opts.resynth > 0:
+        print problem_output
         resynth(fitdriver, problem, mapper, opts)
 
     elif opts.remote:
@@ -529,16 +555,9 @@ def main():
 
         make_store(problem,opts,exists_handler=store_overwrite_query)
 
-        # If fitting, then generate a random starting point different
-        # from the simulation
-        if opts.random and opts.simulate:
-            print "simulation parameters"
-            print parameter.summarize(problem.parameters)
-            print "chisq at simulation",problem.chisq()
-            problem.randomize()
-
         # Show command line arguments and initial model
         print "#"," ".join(sys.argv)
+        print problem_output
         problem.show()
         if opts.stepmon:
             fid = open(problem.output_path+'.log', 'w')

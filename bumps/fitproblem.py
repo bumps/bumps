@@ -303,6 +303,7 @@ def no_constraints():
 class FitProblem(object):
     def __init__(self, fitness, name=None, constraints=no_constraints, 
                  penalty_limit=numpy.inf):
+        self.constraints = constraints
         self.fitness = fitness
         if name is not None:
             self.name = name
@@ -312,7 +313,6 @@ class FitProblem(object):
             except:
                 self.name = 'FitProblem'
                
-        self.constraints = constraints
         self.penalty_limit = penalty_limit
         self.model_reset()
 
@@ -407,6 +407,7 @@ class FitProblem(object):
         """
         for p in self.parameters:
             p.value = p.bounds.random(1)[0]
+        self.model_update()
 
     def parameter_nllf(self):
         """
@@ -445,8 +446,9 @@ class FitProblem(object):
         Note that this does not include cost factors due to constraints on
         the parameters, such as sample_offset ~ N(0,0.01).
         """
-        #model_dof = self.model_points() - len(self.parameters)
+        #print "calc chisq"
         return numpy.sum(self.residuals()**2) / self.dof
+        #return 2*self.nllf()/self.dof
     def nllf(self, pvec=None):
         """
         Compute the cost function for a new parameter set p.
@@ -488,6 +490,7 @@ class FitProblem(object):
             #print "point evaluates to NaN"
             #print parameter.summarize(self.parameters)
             return inf
+        #print "calc cost",cost, 2*cost/self.dof
         return cost
 
     def __call__(self, pvec=None):
@@ -621,13 +624,13 @@ class MultiFitProblem(FitProblem):
     Weighted fits for multiple models.
     """
     def __init__(self, models, weights=None, name="MultiFitProblem",
-                 constraints=None, penalty_limit=numpy.inf):
+                 constraints=no_constraints, penalty_limit=numpy.inf):
+        self.constraints = constraints
         self.models = [FitProblem(m) for m in models]
         if weights is None:
             weights = [1 for m in models]
         self.weights = weights
         self.model_reset()
-        self.constraints = constraints if constraints is not None else lambda:0
         self.penalty_limit = penalty_limit
 
     def model_parameters(self):
