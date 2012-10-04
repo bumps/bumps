@@ -219,6 +219,7 @@ class MainApp(wx.App):
         event.Skip()
 
     def after_show(self):
+        from . import signal
         from .. import cli
         sys.excepthook = excepthook
 
@@ -242,8 +243,9 @@ class MainApp(wx.App):
                 print "%5d  %s" %(i, p)
 
         # Put up the initial model
-        model = cli.initial_model(opts)
+        model,output = cli.initial_model(opts)
         if not model: model = plugin.new_model()
+        signal.log_message(message=output)
         panel.set_model(model=model)
 
 
