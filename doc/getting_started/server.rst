@@ -6,7 +6,7 @@ Server installation
 
 .. contents:: :local:
 
-Refl-1D jobs can be submitted to a remote batch queue for processing.  This
+Bumps jobs can be submitted to a remote batch queue for processing.  This
 allows users to share large clusters for faster processing of the data.  The
 queue consists of several components.
 
@@ -26,26 +26,27 @@ queue consists of several components.
 
    mechanism for evaluating R(x_i) for different x_i on separate CPUs
 
-If you are setting up a local cluster for performing reflectometry
-fits, then you will need to read this section, otherwise you can
-continue to the next section.
+If you are setting up a local cluster for performing Bumps analysis then you 
+will need to read this section, otherwise you can continue to the next section.
 
 
-Assuming that the refl1d server is installed as user reflectometry in
-a virtualenv of ~/reflserv, MPLCONFIGDIR is set to ~/reflserve/.matplotlib,
-and reflworkd has been configured, you can start with the following profile::
+Assuming that the bumps server is installed as user 'bumps' in a virtualenv 
+of ~/bumpserve, MPLCONFIGDIR is set to ~/bumpserve/.matplotlib,
+and bumpworkd has been configured, you can start with the following profile::
 
 
 Job Controller
 ==============
 
-:mod:`jobqueue` is an independent package within refl1d.  It implements
+:mod:`jobqueue` is an independent package within bumps.  It implements
 an http API for interacting with jobs.
 
 It is implemented as a WSGI python application using
 `Flask <http://flask.pocoo.org>`_
 
-<VirtualHost *:80>
+Here is our WSGI setup for apache for our reflectometry modeling service::
+
+    <VirtualHost *:80>
         ServerAdmin pkienzle@nist.gov
         ServerName www.reflectometry.org
         ServerAlias reflectometry.org
@@ -67,7 +68,7 @@ It is implemented as a WSGI python application using
                 AllowOverride All
         </Directory>
 
-</VirtualHost>
+    </VirtualHost>
 
 
 There is a choice of two different queuing systems to configure.  If your
@@ -90,7 +91,7 @@ Cluster
 
 If you are using the dispatcher queuing system, you will need to set up
 a work daemon on your cluster to pull jobs from the queue.  This requires
-adding reflworkerd to your OS initialization scripts.
+adding bumpworkd to your OS initialization scripts.
 
 Security
 ========
@@ -100,13 +101,6 @@ especially concerned about the security of our system.  Techniques
 such as AppArmor or virtual machines with memory mapped file systems
 provide a relatively safe environment to support anonymous computing.
 
-.. note::
-
-  It easy to add authentication to flask, but we can avoid it if our
-  community plays nice --- every beamline should supply sufficient
-  compute power to host their user base, either directly or through one of
-  the many cloud computing services.
-
 To successfully set up AppArmor, there are a few operations you need.
 
 Each protected application needs a profile, usually stored in
@@ -114,37 +108,32 @@ Each protected application needs a profile, usually stored in
 environment in the reflectometry user, the following profile
 would be appropriate for the worker daemon::
 
-    -- /etc/apparmor.d/home.reflectometry.reflenv.bin.reflworkd
+    -- /etc/apparmor.d/home.bumps.bumpsenv.bin.bumpworkd
     #include <tunables/global>
 
-    /home/reflectometry/reflenv/bin/reflworkd {
+    /home/bumps/bumpsenv/bin/bumpworkd {
      #include <abstractions/base>
      #include <abstractions/python>
 
      /bin/dash cx,
-     /home/reflectometry/reflenv/bin/python cx,
-     /home/reflectometry/reflenv/** r,
-     /home/reflectometry/reflenv/**.{so,pyd} mr,
-     /home/reflectometry/.reflserve/.matplotlib/* rw,
-     /home/reflectometry/.reflserve/worker/** rw,
+     /home/bumps/bumpsenv/bin/python cx,
+     /home/bumps/bumpsenv/** r,
+     /home/bumps/bumpsenv/**.{so,pyd} mr,
+     /home/bumps/.bumpserve/.matplotlib/* rw,
+     /home/bumps/.bumpserve/worker/** rw,
     }
 
-This gives read access/execute access to python and its C extensions,
-and read access to everything else in the virtual environment.
+This gives read/execute access to python and its C extensions,
+and read access to everything else in the bumps virtual environment.
 
-The rw access to .reflserve is potentially problematic.  Hostile
+The rw access to .bumpserve is potentially problematic.  Hostile
 models can interfere with each other if they are running at the same time.
-In particular, they can inject html into the returned data set which can
+In particular, they could inject html into the returned data set which can
 effectively steal authentication credentials from other users through
-cross site scripting attacks, and so would not be appropriate on a closed
-server.  Restricting the model to .reflserve/worker/jobid/** would reduce
-this risk, but this author does not know how to do so without elevating
-reflworkd privileges to root.
-
-
-A similar profile could be created for the job server, and indeed, any web
-service you have on your machine, but this is less critical since it is not
-running user models.
+cross site scripting attacks, and so would not be appropriate on an 
+authenticated service.  Restricting individual models to their own job
+directory at .bumpserve/worker/jobid/** would reduce this risk, but this 
+author does not know how to do so without elevating bumpworkd privileges to root.
 
 Once the profile is in place, restart the apparmor.d daemon to enable it::
 
@@ -175,3 +164,9 @@ To delete a profile that you no longer need::
 
      sudo rm /etc/apparmor.d/path.to.application
      sudo service apparmor restart
+
+Similar profiles could be created for the job server, and indeed, any web
+service you have on your machine to reduce the risk that bugs in your code
+can be used to compromise your security, but this is less critical since 
+your code is not running in general running with arbitrary user defined functions.
+

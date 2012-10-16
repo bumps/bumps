@@ -36,8 +36,8 @@ def show_errors(*args, **kw):
 
 def calc_errors_from_state(problem, state, nshown=50, random=True):
     """
-    Align the sample profiles and compute the residual difference from the
-    measured reflectivity for a set of points returned from DREAM.
+    Align the sample profiles and compute the residual difference from 
+    the measured data for a set of points returned from DREAM.
 
     *nshown* is the number of samples to include from the state.
 
@@ -59,7 +59,7 @@ def calc_errors_from_state(problem, state, nshown=50, random=True):
 def calc_errors(problem, points):
     """
     Align the sample profiles and compute the residual difference from the
-    measured reflectivity for a set of points.
+    measured data for a set of points.
 
     Return value is arbitrary.  It is passed through to show_errors() for
     the application.

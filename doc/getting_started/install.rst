@@ -29,12 +29,12 @@ may work.
 
 Our base scientific python environment contains:
 
-	- Python 2.6 (not 3.x)
+	- Python 2.7 (not 3.x)
 	- Matplotlib 1.0.0
 	- Numpy 1.3.0
 	- Scipy 0.7.0
 	- WxPython 2.8.10.1
-	- SetupTools 0.6c9
+	- distribute 0.6.28
 	- gcc 3.4.4
 
 To run tests you will need:
@@ -51,7 +51,10 @@ To build the HTML documentation you will need:
 
 The PDF documentation requires a working LaTeX installation.
 
-Platform specific details for setting up your environment are given below.
+We are working to put the bumps package on PyPI. First try "pip install bumps"
+as appropriate for your operating environment.  If this fails, then follow the
+instructions to install from the source archive directly. Platform specific 
+details for setting up your environment are given below. 
 
 Windows
 -------
@@ -69,15 +72,6 @@ not set it as the default compiler.  To do this you will need to create
 
 	[build]
 	compiler=mingw32
-
-Once python is prepared, you can install the periodic table package using
-the Windows console.  To start the console, click the "Start" icon on your
-task bar and select "Run...".  In the Run box, type "cmd".  Enter the
-following command in the console::
-
-	python -m easy_install periodictable
-
-This should install periodictable and pyparsing.
 
 Next change to the directory containing the source.  This will be a command
 like the following::
@@ -108,7 +102,6 @@ nose and sphinx.
 
 From a terminal, change to the directory containing the source and type::
 
-	python -m easy_install periodictable
 	python setup.py install
 	python test.py
 
@@ -140,6 +133,7 @@ To run the program use::
 
 	bumps -h
 
+.. _docbuild:
 
 Building Documentation
 ======================
@@ -151,14 +145,14 @@ can then build the documentation as follows::
 
     (cd doc && make clean html pdf)
 
-Note that this only works under cygwin/msys for now since we are
-using *make*.  There is a skeleton *make.bat* in the directory
+Windows users please note that this only works under cygwin/msys for now 
+since we are using *make*.  There is a skeleton *make.bat* in the directory
 that will work using *cmd* but it doesn't yet build PDF files.
 
 You can see the result by pointing your browser to::
 
     bumps/doc/_build/html/index.html
-    bumps/doc/_build/latex/Refl1D.pdf
+    bumps/doc/_build/latex/Bumps.pdf
 
 As of this writing, the \\AA LaTeX command for the Angstrom symbol is not
 available in the MathJax distribution. We patched jax/input/TeX/jax.js
@@ -198,7 +192,7 @@ Windows Installer
 
 To build a windows standalone executable with py2exe you may first need
 to create an empty file named
-*C:\\Python26\\Lib\\numpy\\distutils\\tests\\__init__.py*.
+*C:\\Python27\\Lib\\numpy\\distutils\\tests\\__init__.py*.
 Without this file, py2exe raises an error when it is searching for
 the parts of the numpy package.  This may be fixed on recent versions
 of numpy. Next, update the __version__ tag in bumps/__init__.py to mark
@@ -225,7 +219,7 @@ Be careful to select the version that corresponds to the one used
 to build the Python interpreter --- different versions can have the
 same name.  For the Python 2.6 standard build, the file is 1.7 Mb
 and is dated 11/29/2007.  We have a copy (:slink:`%(vcredist)s`) on
-our website for your convenience.  Save it to the *C:\\Python26*
+our website for your convenience.  Save it to the *C:\\Python27*
 directory so the installer script can find it.
 
 Inno Setup creates the installer executable.  When installing Inno Setup,

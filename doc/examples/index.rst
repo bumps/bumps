@@ -11,4 +11,5 @@ complex models with many constraints relatively easily.
 .. toctree::
    :maxdepth: 2
 
+   /examples/test_functions/readme.rst
    /examples/peaks/readme.rst
