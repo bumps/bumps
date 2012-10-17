@@ -70,8 +70,8 @@ We can systematically incorporate prior information into our models.
 For example, if we characterize our instrumental uncertainty parameters 
 against a known sample, we can incorporate this uncertainty into our 
 models.  So if our sample angle control motor position follows
-a Gaussian distribution with a target position of 3\ |degrees| and an
-uncertainty of 0.2\ |degrees| with a Gaussian distribution, we can
+a Gaussian distribution with a target position of 3\ |deg| and an
+uncertainty of 0.2\ |deg| with a Gaussian distribution, we can
 set
 
 .. math::
@@ -80,7 +80,7 @@ set
 
 ignoring the scaling constant as before, and add this to $\chi^2/2$
 to get log of the product of the uncertainties.  Similarly, if we
-know that our sample should have a thickness of 100\ |pm| 3.5\ |Angstrom| 
+know that our sample should have a thickness of 100\ |pm| 3.5\ |Ang| 
 based on how we constructed the sample, we can incorporate this
 information into our model in the same way.
 
