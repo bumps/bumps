@@ -72,7 +72,7 @@ class ServiceMonitor(monitor.TimedUpdate):
             "pars":  history.point[0],
         }
         open(os.path.join(self.path,'status.json'),"wt").write(json.dumps(status))
-        status['table'] = parameter.summarize(self.problem.parameters)
+        status['table'] = self.problem.summarize()
         status['images'] = "\n".join('<img file="%s" alt="%s" />'%(f,f)
                                      for f in self.images)
         html = """\

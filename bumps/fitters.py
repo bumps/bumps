@@ -27,7 +27,7 @@ class ConsoleMonitor(monitor.TimedUpdate):
     def show_improvement(self, history):
         #print "step",history.step[0],"chisq",history.value[0]
         self.problem.setp(history.point[0])
-        print parameter.summarize(self.problem.parameters)
+        print self.problem.summarize()
         sys.stdout.flush()
 
 
@@ -121,7 +121,7 @@ class MultiStart(FitBase):
             elif 0:
                 # Jitter
                 self.problem.setp(x_best)
-                pop = initpop.eps_init(1, self.problem.parameters,
+                pop = initpop.eps_init(1, self.problem.getp(), self.problem.bounds(),
                                        include_current=False, eps=1e-5)
                 self.problem.setp(pop[0])
         return x_best, f_best
@@ -188,13 +188,12 @@ class PSFit(FitBase):
         from random_lines import particle_swarm
         self._update = MonitorRunner(problem=self.problem,
                                      monitors=monitors)
-        bounds = numpy.array([p.bounds.limits
-                              for p in self.problem.parameters]).T
+        low,high = self.problem.bounds()
         cfo = dict(parallel_cost=mapper,
-                   n=len(bounds[0]),
+                   n=len(low),
                    x0=self.problem.getp(),
-                   x1=bounds[0],
-                   x2=bounds[1],
+                   x1=low,
+                   x2=high,
                    f_opt=0,
                    monitor=self._monitor)
         NP = int(cfo['n'] * options['pop'])
@@ -221,13 +220,12 @@ class RLFit(FitBase):
         from random_lines import random_lines
         self._update = MonitorRunner(problem=self.problem,
                                      monitors=monitors)
-        bounds = numpy.array([p.bounds.limits
-                              for p in self.problem.parameters]).T
+        low,high = self.problem.bounds()
         cfo = dict(parallel_cost=mapper,
-                   n=len(bounds[0]),
+                   n=len(low),
                    x0=self.problem.getp(),
-                   x1=bounds[0],
-                   x2=bounds[1],
+                   x1=low,
+                   x2=high,
                    f_opt=0,
                    monitor=self._monitor)
         NP = max(int(cfo['n'] * options['pop']), 3)
@@ -256,14 +254,12 @@ class PTFit(FitBase):
         from partemp import parallel_tempering
         self._update = MonitorRunner(problem=self.problem,
                                      monitors=monitors)
-        bounds = numpy.array([p.bounds.limits
-                              for p in self.problem.parameters]).T
         T = numpy.logspace(numpy.log10(options['Tmin']),
                            numpy.log10(options['Tmax']),
                            options['nT'])
         history = parallel_tempering(nllf=self.problem.nllf,
                                     p=self.problem.getp(),
-                                    bounds=bounds,
+                                    bounds=self.problem.bounds(),
                                     #logfile="partemp.dat",
                                     T=T,
                                     CR=options['CR'],
@@ -288,10 +284,9 @@ class AmoebaFit(FitBase):
         from simplex import simplex
         self._update = MonitorRunner(problem=self.problem,
                                      monitors=monitors)
-        bounds = numpy.array([p.bounds.limits
-                              for p in self.problem.parameters]).T
+        print "bounds",self.problem.bounds()
         result = simplex(f=self.problem.nllf, x0=self.problem.getp(),
-                         bounds=bounds,
+                         bounds=self.problem.bounds(),
                          update_handler=self._monitor,
                          maxiter=options['steps'],
                          radius=options['radius'])
@@ -317,9 +312,8 @@ class SnobFit(FitBase):
         from snobfit.snobfit import snobfit
         self._update = MonitorRunner(problem=self.problem,
                                      monitors=monitors)
-        bounds = numpy.array([p.bounds.limits
-                              for p in self.problem.parameters]).T
-        x, fx, _ = snobfit(self.problem, self.problem.getp(), bounds,
+        x, fx, _ = snobfit(self.problem, self.problem.getp(), 
+                          self.problem.bounds(),
                           fglob=0, callback=self._monitor)
         return x, fx
 
@@ -339,8 +333,8 @@ class DreamModel(MCMCModel):
         represented by the problem set using dream.
         """
         self.problem = problem
-        self.bounds = zip(*[p.bounds.limits for p in problem.parameters])
-        self.labels = [p.name for p in problem.parameters]
+        self.bounds = self.problem.bounds()
+        self.labels = self.problem.labels()
 
         self.mapper = mapper if mapper else lambda p: map(self.nllf, p)
 
@@ -348,7 +342,7 @@ class DreamModel(MCMCModel):
         return -self.nllf(x)
 
     def nllf(self, x):
-        """Negative log likelihood of seeing models given parameters *x*"""
+        """Negative log likelihood of seeing models given *x*"""
         #print "eval",x; sys.stdout.flush()
         return self.problem.nllf(x)
 
@@ -465,12 +459,12 @@ def _resampler(fitter, xinit, samples=100, restart=False, **options):
             #print "== resynth %d of %d" % (i, samples)
             fitter.problem.resynth_data()
             if restart:
-                parameter.randomize(fitter.problem.parameters)
+                fitter.problem.randomize()
             else:
                 fitter.problem.setp(x)
             x, fx = fitter.solve(**options)
             points.append(numpy.hstack((fx, x)))
-            #print parameter.summarize(self.problem.parameters)
+            #print self.problem.summarize()
             #print "[chisq=%g]" % (nllf*2/self.problem.dof)
     except KeyboardInterrupt:
         pass

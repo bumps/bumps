@@ -31,13 +31,13 @@ def install_plugin(p):
             setattr(plugin, symbol, getattr(p, symbol))
 
 def mesh(problem, vars=None, n=40):
-    x,y = [numpy.linspace(p.bounds.limits[0], p.bounds.limits[1], n)
-           for p in vars]
+    x,y = [numpy.linspace(low, high, n)
+           for low,high in problem.bounds().T]
     p1, p2 = vars
     def fn(xi,yi):
         p1.value, p2.value = xi, yi
         problem.model_update()
-        #parameter.summarize(problem.parameters)
+        #print problem.summarize()
         return problem.chisq()
     z = [[fn(xi,yi) for xi in x] for yi in y]
     return x, y, numpy.asarray(z)
@@ -81,8 +81,8 @@ def remember_best(fitdriver, problem, best):
     # Make sure the problem contains the best value
     problem.setp(best)
     #print "remembering best"
-    pardata = "".join("%s %.15g\n"%(p.name, p.value)
-                      for p in problem.parameters)
+    pardata = "".join("%s %.15g\n"%(name, value)
+                      for name,value in zip(problem.labels(),problem.getp()))
     open(problem.output_path+".par",'wt').write(pardata)
 
     fitdriver.save(problem.output_path)
@@ -95,8 +95,9 @@ def remember_best(fitdriver, problem, best):
 
 def recall_best(problem, path):
     data = open(path,'rt').readlines()
-    for par,line in zip(problem.parameters, data):
-        par.value = float(line.split()[-1])
+    labels,values = zip(line.split() for line in data)
+    assert labels == problem.labels()
+    problem.setp(float(v) for v in values)
 
 def store_overwrite_query_gui(path):
     import wx
@@ -155,7 +156,7 @@ def run_profile(problem, steps):
     Using the GPU for abeles/convolution will only give us 2-3x speedup.
     """
     from .util import profile
-    p = initpop.random_init(N=steps, pars=problem.parameters)
+    p = initpop.random_init(steps, problem)
 
     # The cost of
     # To get good information from the profiler, you wil
@@ -419,7 +420,7 @@ def _initial_model(opts):
             noise = None if opts.noise == "data" else float(opts.noise)
             problem.simulate_data(noise=noise)
             print "simulation parameters"
-            print parameter.summarize(problem.parameters)
+            print problem.summarize()
             print "chisq at simulation",problem.chisq()
         if opts.shake: 
             problem.randomize()

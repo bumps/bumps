@@ -6,10 +6,6 @@ Interface between the models and the fitters.
 :class:`FitProblem` wraps a fitness function for use in the fitters.
 
 :class:`MultiFitProblem` allows simultaneous fitting of multiple functions.
-
-*WARNING* within models self.parameters() returns a tree of all possible
-parameters associated with the model.  Within fit problems, self.parameters
-is a list of fitted parameters only.
 """
 from __future__ import division, with_statement
 import sys
@@ -38,7 +34,7 @@ def mesh(models=[], weights=None, vars=None, n=40):
     def fn(xi,yi):
         p1.value, p2.value = xi,yi
         problem.model_update()
-        #print parameter.summarize(problem.parameters)
+        #print problem.summarize()
         return problem.chisq()
     z = [[fn(xi,yi) for xi in x] for yi in y]
     return x,y,numpy.asarray(z)
@@ -118,7 +114,7 @@ def show_correlations(pars, points, fid=None):
 import pytwalk
 class TWalk:
     def __init__(self, problem):
-        self.twalk = pytwalk.pytwalk(n=len(problem.parameters),
+        self.twalk = pytwalk.pytwalk(n=len(problem.getp()),
                                      U=problem.nllf,
                                      Supp=problem.valid)
     def run(self, N, x0, x1):
@@ -141,7 +137,7 @@ class Result:
 
         opt = walker(self.problem)
         x0 = numpy.array(self.solution)
-        parameter.randomize(self.problem.parameters)
+        self.problem.randomize()
         x1 = self.problem.getp()
         points = opt.run(N=samples, x0=x0, x1=x1)
         self.points = numpy.vstack((self.points, points[burnin:]))
@@ -162,13 +158,13 @@ class Result:
                 print "== resynth %d of %d" % (i, samples)
                 self.problem.resynth_data()
                 if restart:
-                    parameter.randomize(self.problem.parameters)
+                    self.problem.randomize()
                 else:
                     self.problem.setp(self.solution)
                 x = opt.solve(**kw)
                 nllf = self.problem.nllf(x) # TODO: don't recalculate!
                 points.append(numpy.hstack((nllf,x)))
-                print parameter.summarize(self.problem.parameters)
+                print self.problem.summarize()
                 print "[chisq=%g]" % (nllf*2/self.problem.dof)
         except KeyboardInterrupt:
             pass
@@ -194,7 +190,7 @@ class Result:
         # fits). Same in showmodel()
         self.problem.setp(self.solution)
         fid = open(basename + ".par", "w")
-        print >>fid, parameter.summarize(self.problem.parameters)
+        print >>fid, self.problem.summarize()
         fid.close()
         self.problem.save(basename)
         if self.points.shape[0] > 1:
@@ -225,7 +221,7 @@ class Result:
     def showpars(self):
         print "== Fitted parameters =="
         self.problem.setp(self.solution)
-        print parameter.summarize(self.problem.parameters)
+        print self.problem.summarize()
 
 
 def _make_problem(models=[], weights=None):
@@ -331,11 +327,11 @@ class FitProblem(object):
         #print self.model_parameters()
         all_parameters = parameter.unique(self.model_parameters())
         #print "all_parameters",all_parameters
-        self.parameters = parameter.varying(all_parameters)
-        #print "varying",self.parameters
+        self._parameters = parameter.varying(all_parameters)
+        #print "varying",self._parameters
         self.bounded = [p for p in all_parameters
                        if not isinstance(p.bounds, mbounds.Unbounded)]
-        self.dof = self.model_points() - len(self.parameters)
+        self.dof = self.model_points() - len(self._parameters)
         if self.dof <= 0:
             raise ValueError("Need more data points than fitting parameters")
         #self.constraints = pars.constraints()
@@ -371,7 +367,7 @@ class FitProblem(object):
         """Restore original data after resynthesis."""
         self.fitness.restore_data()
     def valid(self, pvec):
-        return all(v in p.bounds for p,v in zip(self.parameters,pvec))
+        return all(v in p.bounds for p,v in zip(self._parameters,pvec))
 
     def setp(self, pvec):
         """
@@ -391,7 +387,7 @@ class FitProblem(object):
         # related to others via expressions, and so a dependency
         # tree needs to be generated.  Whether this is better than
         # clicker() from SrFit I do not know.
-        for v, p in zip(pvec, self.parameters):
+        for v, p in zip(pvec, self._parameters):
             p.value = v
         #self.constraints()
         self.model_update()
@@ -399,13 +395,16 @@ class FitProblem(object):
         """
         Returns the current value of the parameter vector.
         """
-        return numpy.array([p.value for p in self.parameters], 'd')
+        return numpy.array([p.value for p in self._parameters], 'd')
+
+    def bounds(self):
+        return numpy.array([p.bounds.limits for p in self._parameters],'d').T
 
     def randomize(self):
         """
         Generates a random model.
         """
-        for p in self.parameters:
+        for p in self._parameters:
             p.value = p.bounds.random(1)[0]
         self.model_update()
 
@@ -483,12 +482,12 @@ class FitProblem(object):
             #TODO: make sure errors get back to the user
             import traceback
             traceback.print_exc()
-            print parameter.summarize(self.parameters)
+            print parameter.summarize(self._parameters)
             return inf
         if isnan(cost):
             #TODO: make sure errors get back to the user
             #print "point evaluates to NaN"
-            #print parameter.summarize(self.parameters)
+            #print parameter.summarize(self._parameters)
             return inf
         #print "calc cost",cost, 2*cost/self.dof
         return cost
@@ -507,7 +506,9 @@ class FitProblem(object):
     def show(self):
         print parameter.format(self.model_parameters())
         print "[chisq=%g, nllf=%g]" % (self.chisq(), self.nllf())
-        print parameter.summarize(self.parameters)
+        print self.summarize()
+    def summarize(self):
+        return parameter.summarize(self._parameters)
 
     def save(self, basename):
         if hasattr(self.fitness, 'save'):
@@ -537,7 +538,7 @@ class FitProblem(object):
         if step is None: step = 1e-8
         # Make sure the input vector is an array
         if pvec is None:
-            pvec = [p.value for p in self.parameters]
+            pvec = [p.value for p in self._parameters]
         pvec = numpy.asarray(pvec)
         # We are being lazy here.  We can precompute the bounds, we can
         # use the residuals_deriv from the sub-models which have analytic
@@ -547,7 +548,7 @@ class FitProblem(object):
         # three point formula.
         # We are not checking that the varied parameter in numeric
         # differentiation is indeed feasible in the interval of interest.
-        range = zip(*[p.bounds.limits for p in self.parameters])
+        range = zip(*[p.bounds.limits for p in self._parameters])
         lo,hi = [numpy.asarray(v) for v in range]
         delta = (hi-lo)*step
         # For infinite ranges, use p*1e-8 for the step size
@@ -558,21 +559,21 @@ class FitProblem(object):
 
         # Set the initial value
         for k,v in enumerate(pvec):
-            self.parameters[k].value = v
+            self._parameters[k].value = v
         # Gather the residuals
         r = []
         for k,v in enumerate(pvec):
             # Center point formula:
             #     df/dv = lim_{h->0} ( f(v+h)-f(v-h) ) / ( 2h )
             h = delta[k]
-            self.parameters[k].value = v + h
+            self._parameters[k].value = v + h
             self.model_update()
             rk = self.residuals()
-            self.parameters[k].value = v - h
+            self._parameters[k].value = v - h
             self.model_update()
             rk -= self.residuals()
             r.append(rk/(2*h))
-            self.parameters[k].value = v
+            self._parameters[k].value = v
         self.model_update()  # Restore model parameters
         # return the jacobian
         return numpy.vstack(r).T

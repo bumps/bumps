@@ -35,24 +35,25 @@ def generate(problem, **options):
     Population initializer.  Takes a problem and a set of initialization
     options.
     """
-    pars = problem.parameters
-    pop_size = int(math.ceil(options['pop']*len(pars)))
+    initial = problem.getp()
+    bounds = problem.bounds()
+    pop_size = int(math.ceil(options['pop']*len(initial)))
     # TODO: really need a continue option
     if options['init'] == 'random':
-        population = random_init(N=pop_size, pars=pars, include_current=True)
+        population = random_init(pop_size, problem, include_current=True)
     elif options['init'] == 'cov':
         cov = problem.cov()
-        population = cov_init(N=pop_size, pars=pars, include_current=True, cov=cov)
+        population = cov_init(pop_size, initial, bounds, include_current=True, cov=cov)
     elif options['init'] == 'lhs':
-        population = lhs_init(N=pop_size, pars=pars, include_current=True)
+        population = lhs_init(pop_size, initial, bounds, include_current=True)
     elif options['init'] == 'eps':
-        population = eps_init(N=pop_size, pars=pars, include_current=True, eps=1e-6)
+        population = eps_init(pop_size, initial, bounds, include_current=True, eps=1e-6)
     else:
         raise ValueError("Unknown population initializer '%s'"
                          %options['init'])
     return population
 
-def lhs_init(N, pars, include_current=False):
+def lhs_init(N, bounds, include_current=False):
     """
     Latin Hypercube Sampling
 
@@ -72,7 +73,7 @@ def lhs_init(N, pars, include_current=False):
     Note: Indefinite ranges are not supported.
     """
 
-    xmin,xmax = zip(*[p.bounds.limits for p in pars])
+    xmin,xmax = bounds
 
     # Define the size of xmin
     nvar = len(xmin)
@@ -105,7 +106,7 @@ def lhs_init(N, pars, include_current=False):
 
     return s
 
-def cov_init(N, pars, include_current=False, cov=None, dx=None):
+def cov_init(N, initial, bounds, include_current=False, cov=None, dx=None):
     """
     Initialize *N* sets of random variables from a gaussian model.
 
@@ -121,20 +122,19 @@ def cov_init(N, pars, include_current=False, cov=None, dx=None):
     If include_current is True, then the current value of the parameters
     is returned as the first point in the population.
     """
-    x = array([p.value for p in pars])
     #return mean + dot(RNG.randn(N,len(mean)), chol(cov))
     if cov == None and dx == None:
-        cov = eye(len(x))
+        cov = eye(len(inital))
     elif cov == None:
         cov = diag(asarray(dx)**2)
-    population = numpy.random.multivariate_normal(mean=x, cov=cov, size=N)
+    population = numpy.random.multivariate_normal(mean=initial, cov=cov, size=N)
     if include_current:
-        population[0] = [p.value for p in pars]
+        population[0] = initial
     # Make sure values are in bounds.
-    population = numpy.clip(population, *zip(*[p.bounds.limits for p in pars]))
+    population = numpy.clip(population, *bounds)
     return population
 
-def random_init(N, pars, include_current=False):
+def random_init(N, problem, include_current=False):
     """
     Generate a random population from the problem parameters.
 
@@ -145,13 +145,13 @@ def random_init(N, pars, include_current=False):
     If include_current is True, then the current value of the parameters
     is returned as the first point in the population.
     """
-    population = [p.bounds.random(N) for p in pars]
-    population = array(population).T
+    initial = problem.initial()
+    population = problem.randomize(N).T
     if include_current:
-        population[0] = [p.value for p in pars]
+        population[0] = problem.getp()
     return population
 
-def eps_init(N, pars, include_current=False, eps=1e-6):
+def eps_init(N, initial, bounds, include_current=False, eps=1e-6):
     """
     Generate a random population using an epsilon ball around the current
     value.
@@ -167,8 +167,8 @@ def eps_init(N, pars, include_current=False, eps=1e-6):
     If include_current is True, then the current value of the parameters
     is returned as the first point in the population.
     """
-    x = array([p.value for p in pars],'d')
-    xmin,xmax = [array(v,'d') for v in zip(*[p.bounds.limits for p in pars])]
+    x = initial
+    xmin,xmax = bounds
     dx = (xmax-xmin)*eps
     dx[isinf(dx)] = eps
     population = x+dx*(2*numpy.random.rand(N,len(xmin))-1)
