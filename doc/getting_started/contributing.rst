@@ -6,78 +6,48 @@ Contributing Changes
 
 .. contents:: :local:
 
-The best way to contribute to the Bumps package is to work
-from a copy of the source tree in the revision control system.
+The best way to contribute to the Bumps package is to work from a copy of 
+the source tree in the revision control system.
 
 The bumps project is hosted on github at:
 
-    http://github.com/reflectometry/bumps
+    http://github.com/bumps
 
 You can obtain a copy via git using::
 
-    git clone https://github.com/reflectometry/bumps.git
-	cd bumps
-	python setup.py develop
+    git clone https://github.com/bumps/bumps.git
+    cd bumps
+    python setup.py develop
 
 By using the *develop* keyword on setup.py, changes to the files in the
-package are immediately available without the need to run setup.py
-install each time.
+package are immediately available without the need to run setup each time
+you change the code.
 
 Track updates to the original package using::
 
     git pull
 
 If you find you need to modify the package, please update the documentation 
-and add tests for your changes.  We use doctests on all of our examples 
-that we know our documentation is correct.  More thorough tests are found 
-in test directory.  Using the the nose test package, you can run both sets 
-of tests::
+and add tests for your changes.  We use doctests on all of our examples to 
+help keep the documentation synchronized with the code.  More thorough tests 
+are found in the test directory.  Using the the nose test package, you can 
+run both sets of tests::
 
-    easy_install nose
+    pip install nose
     python2.5 tests.py
     python2.6 tests.py
 
-When all the tests run, generate a patch and send it to the 
-`DANSE <http://danse.us>`_ Project mailing list at danse-dev@cacr.caltech.edu::
+When all the tests run, generate a patch and send it to pkienzle@nist.gov::
 
     git diff > patch
-
-Alternatively, create a project fork at github and we can pull your
-changes directly from your repository.
 
 Windows user can use `TortoiseGit <http://code.google.com/p/tortoisegit/>`_ 
 package which provides similar operations.
 
-Building the package documentation requires a working sphinx installation 
-and in addition, a copy of `MathJax <http://www.mathjax.org/>`_ to view 
-the equations.  Download and unzip the MathJax package into the doc/sphinx
-directory to install MathJax.  You can then build the documentation as follows::
+Instead of sending patches, you can set up your own github account and create 
+your own bumps fork.  This allows you to develop code at your leisure with
+the safety of source control, and issue pull requests when your code is ready
+to merge with the main repository.
 
-    (cd doc && make clean html pdf)
-
-You can see the result by pointing your browser to::
-
-    bumps/doc/_build/html/index.html
-    bumps/doc/_build/latex/Bumps.pdf
-
-As of this writing, the \\AA LaTeX command for the Angstrom symbol is not
-available in the MathJax distribution. We patched jax/input/TeX/jax.js
-with the additional symbol AA using::
-
-    // Ord symbols
-    S:            '00A7',
-  + AA:           '212B',
-    aleph:        ['2135',{mathvariant: MML.VARIANT.NORMAL}],
-
-If you are using unusual math characters, you may need similar patches 
-for your own documentation.
-
-ReStructured text format does not have a nice syntax for superscripts and
-subscripts.  Units such as |g/cm^3| are entered using macros such as
-\|g/cm^3| to hide the details.  The complete list of macros is available in
-
-        doc/rst_prolog
-
-In addition to macros for units, we also define cdot, angstrom and degrees 
-unicode characters here.  The corresponding latex symbols are defined in 
-doc/conf.py.
+Please make sure that the documentation is up to date, and can be properly
+processed by the sphinx documentation system.  See `_docbuild` for details.

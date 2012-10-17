@@ -9,23 +9,21 @@ Fitting
 
 Obtaining a good fit depends foremost on having the correct model to fit.
 
-Too many layers, too few layers, too limited fit ranges, too open fit
-ranges, all of these can make fitting difficult.  For example, forgetting
-the SiOx layer on the silicon substrate will distort the model of a
-polymer film.
+For example, if you are modeling a curve with spline, you will overfit
+the data if you have too many spline points, or underfit it if you do not
+have enough.  If the underlying data is ultimately an exponential, then
+the spline order required to model it will require many more parameters
+than the corresponding exponential.
 
 Even with the correct model, there are systematic errors to address
-(see `_data_guide`). A warped sample can lead to broader resolution than
-expected near the critical edge, and *sample_broadening=value* must be
-specified when loading the data.  Small errors in alignment of the sample or
-the slits will move the measured critical edge, and so *probe.theta_offset*
-may need to be fitted.  Points near the critical edge are difficult to
-compute correctly with resolution because the reflectivity varies so quickly.
-Using :meth:`refl1d.probe.Probe.critical_edge`, the density of the
-points used to compute the resolution near the critical edge can be
-increased.  For thick samples  the resolution will integrate over
-multiple Kissig fringes, and :meth:`refl1d.probe.Probe.over_sample`
-will be needed to average across them and avoid aliasing effects.
+(see `_data_guide`).  A distorted sample can lead to broader resolution than
+expected for the measurement technique, and you will need to adjust your
+resolution function.  Imprecise instrument control will lead to uncertainty
+in the position of the sample, and corresponding changes to the measured
+values.  For high precision experiments, your models will need to incorporate
+these instrument effects so that the uncertainty in instrument configuration
+can be properly accounted for in the uncertainty in the fitted parameter
+values.
 
 Quick Fit
 =========
@@ -35,21 +33,20 @@ of quick fits.  The Nelder-Mead simplex algorithm (fit=amoeba) works well
 for this.  You will want to run it with steps between 1000 and 3000 so
 the algorithm has a chance to converge.  Restarting a number of times
 (somewhere between 3 and 100) gives a reasonably thorough search of the
-fit space.  From the graphical user interface (refl_gui), using starts=1
+fit space.  From the graphical user interface, using starts=1
 and clicking the fit button to improve the fit as needed works pretty well.
-From the command line interface (refl_cli), the command line will be
-something like::
+From the command line interface, the command line will be something like::
 
-    refl1d --fit=amoeba --steps=1000 --starts=20 --parallel model.py --store=T1
+    bumps --fit=amoeba --steps=1000 --starts=20 --parallel model.py --store=T1
 
 The command line result can be improved by using the previous fit value as
 the starting point for the next fit::
 
-    refl1d --fit=amoeba --steps=1000 --starts=20 --parallel model.py --store=T1 --pars=T1/model.par
+    bumps --fit=amoeba --steps=1000 --starts=20 --parallel model.py --store=T1 --pars=T1/model.par
 
 Differential evolution (fit=de) and random lines (fit=rl) are alternatives
 to amoeba, perhaps a little more likely to find the global minimum but
-somewhat slower. These are population based algorithms in which several
+somewhat slower.  These are population based algorithms in which several
 points from the current population are selected, and based on their
 position and value, a new point is generated.  The population is specified
 as a multiplier on the number of parameters in the model, so for example
@@ -59,10 +56,10 @@ is not good at finding isolated minima away from the general trend, so its
 population defaults to pop=0.5.  These algorithms can be called from the
 command line as follows::
 
-    refl1d --fit=de --steps=3000 --parallel model.py --store=T1
-    refl1d --fit=rl --steps=3000 --starts=200 --reset --parellel model.py --store=T1
+    bumps --fit=de --steps=3000 --parallel model.py --store=T1
+    bumps --fit=rl --steps=3000 --starts=200 --reset --parellel model.py --store=T1
 
-Of course, --pars can be used to start from a previously completed fit.
+Again, --pars can be used to start from a previously completed fit.
 
 Uncertainty Analysis
 ====================
@@ -102,10 +99,10 @@ points can be used to estimate uncertainty on parameters.
 
 A common command line for running DREAM is::
 
-   refl1d --fit=dream --burn=1000 --steps=1000 --init=cov --parallel --pars=T1/model.par model.py --store=T2
+   bumps --fit=dream --burn=1000 --steps=1000 --init=cov --parallel --pars=T1/model.par model.py --store=T2
 
 
-Bayesian uncertainty analysis us described in the GUM Supplement 1,[8]
+Bayesian uncertainty analysis is described in the GUM Supplement 1,[8]
 and is a valid technique for reporting parameter uncertainties in NIST
 publications.   Given sufficient burn time, points in the search space
 will be visited with probability proportional to the goodness of fit.
@@ -191,14 +188,20 @@ Markov process has converged on the best result.  It is practically
 impossible to rule out a deep minimum with a narrow acceptance
 region in an otherwise unpromising part of the search space.
 
-In order to assess the DREAM algorithm for suitability for reflectometry
-fitting we did a number of tests.  Given that the fit surface is
+In order to assess the DREAM algorithm for suitability for our
+problem space we did a number of tests.  Given that our fit surface is
 multimodal, we need to know that the uncertainty analysis can return
 multiple modes.  Because the fit problems may also be ill-conditioned,
 with strong correlations or anti-correlations between some parameters,
-the uncertainty analysis  needs to be able to correctly indicate that
+the uncertainty analysis needs to be able to correctly indicate that
 the correlations exist. Simple Metropolis-Hastings sampling does not
-work well in these conditions, but DREAM is able to handle them.
+work well in these conditions, but we found that DREAM is able to 
+handle them.  We are still affected by the curse of dimensionality.
+For correlated parameters in high dimensional spaces, even DREAM has
+difficulty taking steps which lead to improved likelihood.  For
+example, we can recover an eight point spline with generous ranges
+on its 14 free parameters close to 100% of the time, but a 10 point
+spline is rarely recovered.
 
 
 
@@ -210,8 +213,8 @@ operations after the fact::
 
     $ ipython -pylab
 
-    >>> import dream.state
-    >>> state = dream.state.load_state(modelname)
+    >>> from bumps.dream.state import load_state
+    >>> state = load_state(modelname)
     >>> state.mark_outliers() # ignore outlier chains
     >>> state.show()  # Plot statistics
 
@@ -220,7 +223,7 @@ You can restrict a variable to a certain range when doing plots.
 For example, to restrict the third parameter to [0.8-1.0] and the
 fifth to [0.2-0.4]::
 
-    >>> from dream import views
+    >>> from bumps.dream import views
     >>> selection={2: (0.8,1.0), 4:(0.2,0.4),...}
     >>> views.plot_vars(state, selection=selection)
     >>> views.plot_corrmatrix(state, selection=selection)
@@ -254,7 +257,7 @@ need for a one-off plot, the replot the graph::
 
 Be sure to restore the original versions when you are done.  If the change
 is so good that everyone should use it, be sure to feed it back to the
-community via https://github.com/reflectometry/refl1d.
+community via the bumps source control system at https://github.com/bumps.
 
 Publication Graphics
 ====================
@@ -269,7 +272,7 @@ you need.
 The model file (call it plot.py) will start with the following::
 
     import sys
-    from refl1d.cli import load_problem, recall_best
+    from bumps.cli import load_problem, recall_best
 
     model, store = sys.argv[1:3]
 
@@ -282,30 +285,29 @@ The model file (call it plot.py) will start with the following::
 Assuming your model script is in model.py and you have run a fit with
 --store=X5, you can run this file using::
 
-    $ refl1d plot.py model.py X5
+    $ bumps plot.py model.py X5
 
 Now model.py is loaded and the best fit parameters are set.
 
 To produce plots, you will need access to the data and the theory.  This
 can be complex depending on how many models you are fitting and how many
-datasets there are per model.  For :class:`refl1d.fitproblem.FitProblem`
-models, the :class:`refl1d.experiment.Experiment` object is referenced
-by *problem.fitness*.  For :class:`refl1d.fitproblem.MultiFitProblem` models,
-you need to use *problem.models[k].fitness* to access the experiment for
-model *k*.  Profiles and reflectivity theory are returned from methods
-in experiment.  The :class:`refl1d.probe.Probe` data for the experiment is
-referenced by *experiment.probe*.  This will have attributes for *Q*, *dQ*,
-*R*, *dR*, *T*, *dT*, and *L*, *dL*, as well as methods for plotting
-the data.   This is not quite so simple: the sample may be non uniform,
-and composed of multiple samples for the same probe, and at the same time
-the probe may be composed of independent measurements kept separate so that
-you can fit alignment angle and overall intensity.  Magnetism adds
-another level of complexity, with extra profiles associated with each
-sample and separate reflectivities for the different spin states.
+datasets there are per model.  For single experiment models defined
+by :class:`bumps.fitproblem.FitProblem`, your original experiment object 
+is referenced by *problem.fitness*.  For simultaneous refinement defined
+by :class:`bumps.fitproblem.MultiFitProblem`, you need to 
+use *problem.models[k].fitness* to access the experiment for
+model *k*.  Your experiment object should provide methods for retrieving
+the data and plotting data vs. theory.
 
-How does this work in practice?  Consider a simple model such as nifilm-fit
-from the example directory.  We can access the parts by extending plot.py
-as follows:
+How does this work in practice?  Consider the reflectivity modeling
+problem where we have a simple model such as nickel film on a silicon
+substrate.  We measure the specular reflectivity as various angles and
+try to recover the film thickness.  We want to make sure that our
+model fits the data within the uncertainty of our measurements, and
+we want some graphical representation of the uncertainty in our film
+of interest.  The refl1d package provides tools for generating the
+sample profile uncertainty plots.  We access the experiment information
+as follows::
 
     experiment = problem.fitness
     z,rho,irho = experiment.smooth_profile(dz=0.2)
@@ -318,31 +320,29 @@ as follows:
 Next we can reload the the error sample data from the DREAM MCMC sequence::
 
     import dream.state
-    from refl1d.errors import calc_errors_from_state, align_profiles
+    from bumps.errplot import calc_errors_from_state, align_profiles
 
-    state = dream.state.load_state(os.path.join(store, model[:-3]))
+    state = load_state(os.path.join(store, model[:-3]))
     state.mark_outliers()
     # ... insert correlation plots, etc. here ...
     profiles,slabs,Q,residuals = calc_errors_from_state(problem, state)
     aligned_profiles = align_profiles(profiles, slabs, 2.5)
     # ... insert profile and residuals uncertainty plots here ...
 
-The function :func:`refl1d.errors.calc_errors` details on the data
-structures for *profiles*, *Q* and *residuals*.  Look at the source in
-refl1d/errors.py to see how this data is used to produce the error plots
-with _profiles_overplot, _profiles_contour, _residuals_overplot and
-_residuals_contour.  The source is available from:
-
-    https://github.com/reflectometry/refl1d
+The function :func:`bumps.errplot.calc_errors_from_state` calls the
+calc_errors function defined by the reflectivity model.  The return value is
+arbitrary, but should be suitable for the show_errors function defined
+by the reflectivity model.
 
 Putting the pieces together, here is a skeleton for a specialized
 plotting script::
 
     import sys
     import pylab
-    import dream.state
-    from refl1d.cli import load_problem, recall_best
-    from refl1d.errors import calc_errors_from_state, align_profiles
+    from bumps.dream.state import load_state
+    from bumps.cli import load_problem, recall_best
+    from bumps.errplot import calc_errors_from_state
+    from refl1d.align import align_profiles
 
     model, store = sys.argv[1:3]
 
@@ -359,7 +359,7 @@ plotting script::
         # ... insert reflectivity plotting code here ...
 
     if 1:  # Loading errors is expensive; may not want to do so all the time.
-        state = dream.state.load_state(os.path.join(store, model[:-3]))
+        state = load_state(os.path.join(store, model[:-3]))
         state.mark_outliers()
         # ... insert correlation plots, etc. here ...
         profiles,slabs,Q,residuals = calc_errors_from_state(problem, state)
@@ -369,41 +369,22 @@ plotting script::
     pylab.show()
     raise Exception()  # We are just plotting; don't run the model
 
-For the common problem of generating profile error plots aligned on
-a particular interface, you can use the simpler align.py model:
-
-    from refl1d.names import *
-    align_errors(model="", store="", align='auto')
-
-If you are using the command line then you should be able to type the
-following at the command prompt to generate the plots:
-
-    $ refl1d align.py <model>.py <store> [<align>] [1|2|n]
-
-If you are using the GUI, you will have to set model, store and
-align directly in align.py each time you run.
-
-Align is either auto for the current behaviour, or it is an interface
-number. You can align on the center of a layer by adding 0.5 to the
-interface number. You can count interfaces from the surface by prefixing
-with R.  For example, 0 is the substrate interface, R1 is the surface
-interface, 2.5 is the the middle of layer 2 above the substrate.
-
-You can plot the profiles and residuals on one plot by setting plots to 1,
-on two separate plots by setting plots to 2, or each curve on its own
-plot by setting plots to n. Output is saved in <store>/<model>-err#.png.
-
-
-
 Tough Problems
 ==============
 
-With the toughest fits, for example freeform models with many control
-points, parallel tempering (fit=pt) is the most promising algorithm.  This
-implementation is an extension of DREAM.  Whereas DREAM runs with a
-constant temperature, T=1, parallel tempering runs with multiple
-temperatures concurrently.   The high temperature points are able to walk
-up steep hills in the search space, possibly crossing over into a
+.. note::
+
+   DREAM is currently our most robust fitting algorithm.  We are
+   exploring other algorithms such as parallel tempering, but they
+   are not currently competitive with DREAM.
+
+With the toughest fits, for example freeform models with arbitrary 
+control points, DREAM only succeeds if the model is small or the 
+control points are constrained.  We have developed a parallel 
+tempering (fit=pt) extension to DREAM.  Whereas DREAM runs with a 
+constant temperature, T=1, parallel tempering runs with multiple 
+temperatures concurrently.   The high temperature points are able to 
+walk up steep hills in the search space, possibly crossing over into a
 neighbouring valley.  The low temperature points agressively seek the
 nearest local minimum, rejecting any proposed point that is worse than
 the current.  Differential evolution helps adapt the steps to the shape
@@ -422,19 +403,32 @@ by DREAM.  The state is retained along the temperature for each point,
 but the code to generate histograms from points weighted by inverse
 temperature has not yet been written.
 
+Parallel tempering performance has been disappointing.  In theory it
+should be more robust than DREAM, but in practice, we are using a
+restricted version of differential evolution with the population
+defined by the current chain rather than a set of chains running in
+parallel.  When the Markov chain has converged these populations
+should be equivalent, but apparently this optimization interferes
+with convergence.  Time permitting, we will improve this algorithm
+and look for other ways to improve upon the robustness of DREAM.
+
+
 Command Line
 ============
 
-The GUI version is slower because it frequently updates the graphs
+The GUI version of Bumps is slower because it frequently updates the graphs
 showing the best current fit.
 
 Run multiple models overnight, starting one after the last is complete
 by creating a batch file (e.g., run.bat) with one line per model.  Append
 the parameter --batch to the end of the command lines so the program
-doesn't stop to show interactive graphs.  You can view the fitted
-results in the GUI using::
+doesn't stop to show interactive graphs::
 
-    refl1d --edit model.py --pars=T1/model.par
+    bumps model.py ... --parallel --batch
+
+You can view the fitted results in the GUI the next morning using::
+
+    bumps --edit model.py --pars=T1/model.par
 
 Other optimizers
 ================
@@ -442,19 +436,17 @@ Other optimizers
 There are several other optimizers that are included but aren't frequently used.
 
 BFGS (fit=newton) is a quasi-newton optimizer relying on numerical derivatives
-to find the nearest local minimum.  Because the reflectometry problem
-often has correlated parameters, the resulting matrices can be ill-conditioned
-and the fit isn't robust.
+to find the nearest local minimum.  For problem spaces with correlated parameters, 
+the resulting matrices can be ill-conditioned and the fit isn't robust.
 
 Particle swarm optimization (fit=ps) is another population based algorithm,
-but it does not appear to perform well for high dimensional problem spaces
-that frequently occur in reflectivity.
+but it does not appear to perform well for high dimensional problem spaces.
 
 SNOBFIT (fit=snobfit) attempts to construct a locally quadratic model of
 the entire search space.  While promising because it can begin to offer
 some guarantees that the search is complete given reasonable assumptions
 about the fitting surface, initial trials did not perform well and the
-algorithm has not yet been tuned to the reflectivity problem.
+algorithm has not yet been tuned to our problems.
 
 References
 ==========

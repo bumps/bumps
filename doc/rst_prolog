@@ -1,4 +1,5 @@
 .. |Ang| unicode:: U+212B
+.. |pm| unicode:: U+00B1
 .. |cdot| unicode:: U+00B7
 .. |deg| unicode:: U+00B0
 .. |cm^2| replace:: cm\ :sup:`2`

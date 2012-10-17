@@ -51,12 +51,11 @@ its user community.
 Please cite:
 
         Kienzle, P.A., Krycka, J., Patel, N., & Sahin, I. (2011).
-        Refl1D (Version |release|) [Computer Software].
+        Bumps (Version |release|) [Computer Software].
         College Park, MD: University of Maryland.  Retrieved |today|.
 
         Available from http://reflectometry.org/danse
 
 We are grateful for the existence of many fine open source packages such
-as `Pyparsing <http://pyparsing.wikispaces.com/>`_,
-`NumPy <http://numpy.scipy.org/>`_ and `Python <http://www.python.org/>`_
+as `NumPy <http://numpy.scipy.org/>`_ and `Python <http://www.python.org/>`_
 without which this package would be much more difficult to write.
