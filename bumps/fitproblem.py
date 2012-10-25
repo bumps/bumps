@@ -509,6 +509,8 @@ class FitProblem(object):
         print self.summarize()
     def summarize(self):
         return parameter.summarize(self._parameters)
+    def labels(self):
+        return [p.name for p in self._parameters]
 
     def save(self, basename):
         if hasattr(self.fitness, 'save'):

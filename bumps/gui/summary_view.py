@@ -131,7 +131,8 @@ class SummaryView(scrolled.ScrolledPanel):
         line = wx.StaticLine(self, wx.ID_ANY)
         self.sizer.Add(line, pos=(2,0), flag=wx.EXPAND|wx.RIGHT, border=5)
 
-        pars = self.model.parameters
+        # TODO: better interface to fittable parameters
+        pars = self.model._parameters
         #pars = sorted(pars, cmp=lambda x,y: cmp(x.name, y.name))
         for p in pars:
             self.display_list.append(ParameterSummary(self, p, self.model))

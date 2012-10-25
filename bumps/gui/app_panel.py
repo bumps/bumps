@@ -407,7 +407,8 @@ class AppPanel(wx.Panel):
         if self.fit_thread:
             self.sb.SetStatusText("Error: Fit already running")
             return
-        if len(self.model.parameters) == 0:
+        # TODO: better access to model parameters
+        if len(self.model._parameters) == 0:
             raise ValueError ("Problem has no fittable parameters")
 
         # Start a new thread worker and give fit problem to the worker.
@@ -498,9 +499,9 @@ class AppPanel(wx.Panel):
         # Save the current state of the parameters
         with redirect_console(output_path+".out"):
             self.model.show()
-        pardata = "".join("%s %.15g\n"%(p.name, p.value)
-                          for p in self.model.parameters)
-        open(output_path+".par",'wt').write(pardata)
+        #pardata = "".join("%s %.15g\n"%(p.name, p.value)
+        #                  for p in self.model.parameters)
+        open(output_path+".par","wt").write(self.model.summarize())
 
         # Produce model plots
         self.model.plot(figfile=output_path)
