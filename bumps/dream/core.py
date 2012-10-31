@@ -151,6 +151,18 @@ class Dream(object):
     # Delay rejection parameters
     use_delayed_rejection = False
     DR_scale = 1 # 1-sigma step size using cov of population
+    # Local optimizer best fit injection  The optimizer has
+    # the following interface:
+    #    x,fx = goalseek(mapper, bounds_handler, pop, fpop)
+    # where:
+    #    x,fx are the local optimum point and its value
+    #    pop is the starting population
+    #    fpop is the nllf for each point in pop
+    #    mapper is a function which takes pop and returns fpop
+    #    bounds_handler takes pop and forces all points into the range
+    goalseek_optimizer=None
+    goalseek_interval=1e100 # close enough to never
+    goalseek_minburn=1000
 
 
     def __init__(self, **kw):
@@ -219,6 +231,9 @@ def run_dream(dream):
 
     # Now start drawing samples
     #print "previous draws", previous_draws, "new draws",dream.draws + dream.burn
+    last_goalseek = (dream.draws + dream.burn)/Npop - dream.goalseek_minburn
+    next_goalseek = state.generation + dream.goalseek_interval if dream.goalseek_optimizer else 1e100
+    
     while state.draws < dream.draws + dream.burn:
 
         # Age the population using differential evolution
@@ -236,6 +251,14 @@ def run_dream(dream):
                           eps=dream.DE_eps,
                           snooker_rate=dream.DE_snooker_rate,
                           noise=dream.DE_noise)
+
+            # PAK: Try a local optimizer every N generations
+            if next_goalseek <= state.generation <= last_goalseek:
+                best, logp_best = dream.goalseek_optimizer(dream.model.map, apply_bounds, xold, logp_old)
+                xtry[0] = best
+                # Note: it is slightly inefficient to throw away logp_best, but it makes the
+                # the code cleaner if we do
+                next_goalseek += dream.goalseek_interval
 
             # Compute the likelihood of the candidates
             apply_bounds(xtry)
