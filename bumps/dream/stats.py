@@ -2,15 +2,27 @@ import numpy
 from numpy import mean, std
 
 def stats(x, weights=None):
+    """
+    Find mean, standard deviation and median of an ordered sample from 
+    a distribution.
+
+    Note that the median is not strictly correct (we choose an endpoint
+    of the sample for the case where the median falls between two values
+    in the sample), but this is good enough when the sample size is large.
+    """
     if weights == None:
         mean, std = numpy.mean(x), numpy.std(x,ddof=1)
+        median = x[int(len(x)/2)]
     else:
         mean = numpy.mean(x*weights)/numpy.sum(weights)
         # TODO: this is biased by selection of mean; need an unbiased formula
         var = numpy.sum((weights*(x-mean))**2)/numpy.sum(weights)
         std = numpy.sqrt(var)
+        cumulative = numpy.cumsum(weights)
+        midpoint = 0.5*cumulative[-1]
+        median = x[numpy.searchsorted(cumulative,midpoint)]
 
-    return mean, std
+    return mean, std, median
 
 
 

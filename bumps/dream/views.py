@@ -105,9 +105,7 @@ def _plot_var(points, logp, index=None, label="P", nbins=50, ci=0.95):
     rangeci,range68 = credible_interval(x=points, weights=weights,
                                         ci=[ci,1-2*ONE_SIGMA])
 
-    # Compute stats
-    median = points[int(len(points)/2)]
-    mean, std = stats(x=points, weights=weights)
+    mean, std, median = stats(x=points, weights=weights)
 
     vstats = dict(label=label, index=index, rangeci=rangeci, range68=range68,
                   median=median, mean=mean, std=std, best=best)
@@ -120,11 +118,29 @@ def _plot_var(points, logp, index=None, label="P", nbins=50, ci=0.95):
 
 def _decorate_histogram(vstats):
     import pylab
+    from matplotlib.transforms import blended_transform_factory as blend
     # Shade things inside 1-sigma
-    pylab.axvspan(vstats['range68'][0],vstats['range68'][1],alpha=0.1)
-    pylab.axvline(vstats['median'])
-    pylab.axvline(vstats['mean'])
-    pylab.axvline(vstats['best'])
+    pylab.axvspan(vstats['range68'][0],vstats['range68'][1],
+                  color='gold',alpha=0.3,zorder=-1)
+    # build transform with x=data, y=axes(0,1)
+    ax = pylab.gca()
+    transform = blend(ax.transData, ax.transAxes)
+
+    pylab.text(vstats['median'], 0.95, '|',
+               verticalalignment='top',
+               horizontalalignment='center',
+               transform=transform)
+    pylab.text(vstats['mean'], 0.95, 'E',
+               verticalalignment='top',
+               horizontalalignment='center',
+               transform=transform)
+    pylab.text(vstats['best'], 0.95, '*',
+               verticalalignment='top',
+               horizontalalignment='center',
+               transform=transform)
+    #pylab.axvline(vstats['median'])
+    #pylab.axvline(vstats['mean'])
+    #pylab.axvline(vstats['best'])
     if 0:
         statsbox = """\
 mean   = %(mean)s
@@ -148,7 +164,6 @@ best   = %(best)s
     pylab.setp([pylab.gca().get_yticklabels()],visible=False)
 
 
-
 def _make_logp_histogram(points, logp, nbins, rangeci, weights):
     if weights == None: weights = numpy.ones_like(logp)
     slogp = numpy.sort(logp)
@@ -168,13 +183,14 @@ def _make_logp_histogram(points, logp, nbins, rangeci, weights):
         x = numpy.array([xlo,xhi],'d')
         y = numpy.hstack((0,numpy.cumsum(pw)))  
         z = pv[pidx][:,None]
-        if 1:
+        if 0:
             delta = (maxz-minz)*0.5
             z = numpy.log10(z-(minz-delta))
             vmin,vmax = numpy.log10(delta),numpy.log10(maxz-(minz-delta))
         else:
             vmin,vmax = minz,maxz
-        pylab.pcolormesh(x,y,z,vmin=vmin,vmax=vmax,hold=True)
+        pylab.pcolormesh(x,y,z,vmin=vmin,vmax=vmax,hold=True,
+                         cmap=pylab.cm.copper)
 
 def _make_var_histogram(points, logp, nbins, rangeci, weights):
     # Produce a histogram
