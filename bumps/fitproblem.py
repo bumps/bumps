@@ -301,6 +301,7 @@ class FitProblem(object):
                  penalty_limit=numpy.inf, partial=False):
         self.constraints = constraints
         self.fitness = fitness
+        self.partial = partial
         if name is not None:
             self.name = name
         else:
@@ -310,9 +311,9 @@ class FitProblem(object):
                 self.name = 'FitProblem'
                
         self.penalty_limit = penalty_limit
-        self.model_reset(partial)
+        self.model_reset()
 
-    def model_reset(self, partial=False):
+    def model_reset(self):
         """
         Prepare for the fit.
 
@@ -331,7 +332,8 @@ class FitProblem(object):
         #print "varying",self._parameters
         self.bounded = [p for p in all_parameters
                         if not isinstance(p.bounds, mbounds.Unbounded)]
-        self.dof = self.model_points() - (0 if partial else len(self._parameters))
+        self.dof = self.model_points()
+        if not self.partial: self.dof -= len(self._parameters)
         if self.dof <= 0:
             raise ValueError("Need more data points than fitting parameters")
         #self.constraints = pars.constraints()
@@ -615,9 +617,9 @@ class FitProblem(object):
         return numpy.sqrt(numpy.diag(self.cov(pvec, step=step)))
 
     def __getstate__(self):
-        return self.fitness,self.name,self.penalty_limit,self.constraints
+        return self.fitness,self.partial,self.name,self.penalty_limit,self.constraints
     def __setstate__(self, state):
-        self.fitness,self.name,self.penalty_limit,self.constraints = state
+        self.fitness,self.partial,self.name,self.penalty_limit,self.constraints = state
         self.model_reset()
 
 
@@ -628,6 +630,7 @@ class MultiFitProblem(FitProblem):
     """
     def __init__(self, models, weights=None, name="MultiFitProblem",
                  constraints=no_constraints, penalty_limit=numpy.inf):
+        self.partial = False
         self.constraints = constraints
         self.models = [FitProblem(m,partial=True) for m in models]
         if weights is None:
