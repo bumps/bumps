@@ -167,7 +167,8 @@ best   = %(best)s
 def _make_logp_histogram(points, logp, nbins, rangeci, weights):
     if weights == None: weights = numpy.ones_like(logp)
     slogp = numpy.sort(logp)
-    minz,maxz = -slogp[-1],-slogp[len(logp)//20] # robust range
+    minz,maxz = -slogp[-1],-slogp[-1]+4
+    #minz,maxz = -slogp[-1],-slogp[len(logp)//20] # robust range
     #minz,maxz = -max(logp),-min(logp)
     edges = numpy.linspace(rangeci[0],rangeci[1],nbins+1)
     idx = numpy.searchsorted(points, edges)
