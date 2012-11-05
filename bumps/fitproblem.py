@@ -298,7 +298,7 @@ def no_constraints():
 
 class FitProblem(object):
     def __init__(self, fitness, name=None, constraints=no_constraints, 
-                 penalty_limit=numpy.inf):
+                 penalty_limit=numpy.inf, partial=False):
         self.constraints = constraints
         self.fitness = fitness
         if name is not None:
@@ -310,9 +310,9 @@ class FitProblem(object):
                 self.name = 'FitProblem'
                
         self.penalty_limit = penalty_limit
-        self.model_reset()
+        self.model_reset(partial)
 
-    def model_reset(self):
+    def model_reset(self, partial=False):
         """
         Prepare for the fit.
 
@@ -330,8 +330,8 @@ class FitProblem(object):
         self._parameters = parameter.varying(all_parameters)
         #print "varying",self._parameters
         self.bounded = [p for p in all_parameters
-                       if not isinstance(p.bounds, mbounds.Unbounded)]
-        self.dof = self.model_points() - len(self._parameters)
+                        if not isinstance(p.bounds, mbounds.Unbounded)]
+        self.dof = self.model_points() - (0 if partial else len(self._parameters))
         if self.dof <= 0:
             raise ValueError("Need more data points than fitting parameters")
         #self.constraints = pars.constraints()
@@ -629,7 +629,7 @@ class MultiFitProblem(FitProblem):
     def __init__(self, models, weights=None, name="MultiFitProblem",
                  constraints=no_constraints, penalty_limit=numpy.inf):
         self.constraints = constraints
-        self.models = [FitProblem(m) for m in models]
+        self.models = [FitProblem(m,partial=True) for m in models]
         if weights is None:
             weights = [1 for m in models]
         self.weights = weights
