@@ -402,13 +402,17 @@ class FitProblem(object):
     def bounds(self):
         return numpy.array([p.bounds.limits for p in self._parameters],'d').T
 
-    def randomize(self):
+    def randomize(self, N=None):
         """
         Generates a random model.
         """
-        for p in self._parameters:
-            p.value = p.bounds.random(1)[0]
-        self.model_update()
+        if N is not None:
+            return numpy.array([p.bounds.random(N) for p in self._parameters]).T
+        else:
+            # TODO: see if we need the pure randomize form with model update
+            for p in self._parameters:
+                p.value = p.bounds.random(1)[0]
+            self.model_update()
 
     def parameter_nllf(self):
         """

@@ -179,7 +179,7 @@ class Minimizer:
         # later adding cpu_time back to remote_time to get the total cost
         # of local and remote computation.
 
-        if len(self.problem.parameters) == 0:
+        if len(self.problem.getp()) == 0:
             raise ValueError("Problem has no fittable parameters")
 
         self.time = time.time()
