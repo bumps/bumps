@@ -10,7 +10,7 @@ import numpy
 from numpy import arange, squeeze, linspace, meshgrid, vstack, inf
 from . import corrplot
 from .stats import credible_interval, stats
-from .formatnum import format_uncertainty
+from .formatnum import format_uncertainty, format_value
 
 def plot_all(state, portion=1.0, figfile=None):
     from pylab import figure, savefig, suptitle
@@ -40,7 +40,7 @@ def plot_var(state, var=0, portion=None, selection=None, **kw):
 
 # TODO: separate var stats calculation from plotting and printing
 def plot_vars(state, vars=None, portion=1.0, selection=None, **kw):
-    from pylab import subplot
+    from pylab import subplot,cm
 
     points, logp = state.sample(portion=portion, vars=vars,
                                 selection=selection)
@@ -48,9 +48,10 @@ def plot_vars(state, vars=None, portion=1.0, selection=None, **kw):
         vars = range(points.shape[1])
     nw,nh = tile_axes(len(vars))
     vstats = []
+    cbar = _make_fig_colorbar(logp)
     for k,v in enumerate(vars):
         subplot(nw,nh,k+1)
-        vstats.append(_plot_var(points[:,k].flatten(), logp,
+        vstats.append(_plot_var(points[:,k].flatten(), logp, cbar,
                                   label=state.labels[v], index=k, **kw))
     return vstats
 
@@ -86,7 +87,7 @@ def tile_axes(n, size=None):
     return nw,nh
 
 
-def _plot_var(points, logp, index=None, label="P", nbins=50, ci=0.95):
+def _plot_var(points, logp, cbar, index=None, label="P", nbins=30, ci=0.95):
     # Sort the data
     idx = numpy.argsort(points)
     points = points[idx]
@@ -112,7 +113,7 @@ def _plot_var(points, logp, index=None, label="P", nbins=50, ci=0.95):
 
 
     #_make_var_histogram(points, logp, nbins, rangeci, weights)
-    _make_logp_histogram(points, logp, nbins, rangeci, weights)
+    _make_logp_histogram(points, logp, nbins, rangeci, weights, cbar)
     _decorate_histogram(vstats)
     return vstats
 
@@ -121,77 +122,117 @@ def _decorate_histogram(vstats):
     from matplotlib.transforms import blended_transform_factory as blend
     # Shade things inside 1-sigma
     pylab.axvspan(vstats['range68'][0],vstats['range68'][1],
-                  color='gold',alpha=0.3,zorder=-1)
+                  color='gold',alpha=0.5,zorder=-1)
     # build transform with x=data, y=axes(0,1)
     ax = pylab.gca()
     transform = blend(ax.transData, ax.transAxes)
 
-    pylab.text(vstats['median'], 0.95, '|',
-               verticalalignment='top',
-               horizontalalignment='center',
-               transform=transform)
-    pylab.text(vstats['mean'], 0.95, 'E',
-               verticalalignment='top',
-               horizontalalignment='center',
-               transform=transform)
-    pylab.text(vstats['best'], 0.95, '*',
-               verticalalignment='top',
-               horizontalalignment='center',
-               transform=transform)
-    #pylab.axvline(vstats['median'])
-    #pylab.axvline(vstats['mean'])
-    #pylab.axvline(vstats['best'])
-    if 0:
-        statsbox = """\
-mean   = %(mean)s
-median = %(median)s
-best   = %(best)s
-68%% interval  = [%(lo68)s %(hi68)s]
-%(ci)s interval  = [%(loci)s %(hici)s]\
-"""%stats
-        pylab.text(0.01, 0.95, statsbox,
-                   backgroundcolor=(1,1,0,0.2),
-                   verticalalignment='top',
-                   horizontalalignment='left',
-                   transform=pylab.gca().transAxes)
-        pylab.xlabel(vstats['label'])
-    else:
-        pylab.text(0.01, 0.95, vstats['label'],
-                   backgroundcolor=(1,1,0,0.2),
-                   verticalalignment='top',
-                   horizontalalignment='left',
-                   transform=pylab.gca().transAxes)
+    lci,hci = vstats['rangeci']
+    l68,h68 = vstats['range68']
+    mean,median,best = vstats['mean'],vstats['median'],vstats['best']
+    def marker(s,v):
+        if v < lci: s,v,ha = '<'+s,lci,'left'
+        elif v > hci: s,v,ha = '>'+s,hci,'right'
+        else: ha='center'
+        pylab.text(v, 0.95, s, va='top', ha=ha,
+                   transform=transform, zorder=3, color='g')
+        #pylab.axvline(v)
+    marker('|',median)
+    marker('E',mean)
+    marker('*',best)
+
+    pylab.text(0.01, 0.95, vstats['label'], zorder=2,
+        backgroundcolor=(1,1,0,0.2),
+        verticalalignment='top',
+        horizontalalignment='left',
+        transform=pylab.gca().transAxes)
     pylab.setp([pylab.gca().get_yticklabels()],visible=False)
+    ticks = (lci, l68, median, h68, hci)
+    labels = [format_value(v,h68-l68) for v in ticks]
+    if len(labels[0]) > 4:
+        # Drop 68% values if too many digits
+        ticks,labels= ticks[0::2],labels[0::2]
+    pylab.xticks(ticks, labels)
+
+def _make_fig_colorbar(logp):
+    import matplotlib as mpl
+    import pylab
+
+    # Option 1: min to min + 4
+    #vmin=-max(logp); vmax=vmin+4
+    # Option 1b: min to min log10(num samples)
+    #vmin=-max(logp); vmax=vmin+log10(len(logp))
+    # Option 2: full range of best 98%
+    snllf = pylab.sort(-logp)
+    vmin,vmax = snllf[0],snllf[int(0.98*(len(snllf)-1))] # robust range
+    # Option 3: full range
+    #vmin,vmax = -max(logp),-min(logp)
+
+    fig = pylab.gcf()
+    ax = fig.add_axes([0.60, 0.95, 0.35, 0.05])
+    cmap = pylab.cm.copper
+
+    # Set the colormap and norm to correspond to the data for which
+    # the colorbar will be used.
+    norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
+
+    # ColorbarBase derives from ScalarMappable and puts a colorbar
+    # in a specified axes, so it has everything needed for a
+    # standalone colorbar.  There are many more kwargs, but the
+    # following gives a basic continuous colorbar with ticks
+    # and labels.
+    class MinDigitsFormatter(mpl.ticker.Formatter):
+        def __init__(self, vmin, vmax):
+            self.delta = vmax-vmin
+        def __call__(self, x, pos=None):
+            return format_value(x, self.delta)
+    ticks = (vmin,vmax)
+    formatter = MinDigitsFormatter(vmin,vmax)
+    cb = mpl.colorbar.ColorbarBase(ax, cmap=cmap, norm=norm, 
+                                   ticks=ticks, format=formatter,
+                                   orientation='horizontal')
+    #cb.set_ticks(ticks)
+    #cb.set_ticklabels(labels)
+    #cb.set_label('negative log likelihood')
+
+    return vmin,vmax,cmap
 
 
-def _make_logp_histogram(points, logp, nbins, rangeci, weights):
-    if weights == None: weights = numpy.ones_like(logp)
-    slogp = numpy.sort(logp)
-    minz,maxz = -slogp[-1],-slogp[-1]+4
-    #minz,maxz = -slogp[-1],-slogp[len(logp)//20] # robust range
-    #minz,maxz = -max(logp),-min(logp)
-    edges = numpy.linspace(rangeci[0],rangeci[1],nbins+1)
-    idx = numpy.searchsorted(points, edges)
-    weightsum = numpy.cumsum(weights)
-    heights = numpy.diff(weightsum[idx])/weightsum[-1]  # normalized weights
+
+def _make_logp_histogram(points, logp, nbins, rangeci, weights, cbar):
+    from numpy import (ones_like, searchsorted, linspace, cumsum, diff, 
+        sort, argsort, array, hstack, log10, exp)
+    if weights == None: weights = ones_like(logp)
+    edges = linspace(rangeci[0],rangeci[1],nbins+1)
+    idx = searchsorted(points, edges)
+    weightsum = cumsum(weights)
+    heights = diff(weightsum[idx])/weightsum[-1]  # normalized weights
 
     import pylab
+    vmin,vmax,cmap = cbar
+    cmap_steps = linspace(vmin,vmax,cmap.N+1)
+    bins = [] # marginalized maximum likelihood
+    fid=open('/tmp/junk','w')
     for h,s,e,xlo,xhi in zip(heights,idx[:-1],idx[1:],edges[:-1],edges[1:]):
         if s == e: continue
         pv = -logp[s:e]
-        pidx = numpy.argsort(pv)
+        pidx = argsort(pv)
         pw = weights[s:e][pidx]
-        x = numpy.array([xlo,xhi],'d')
-        y = numpy.hstack((0,numpy.cumsum(pw)))  
+        x = array([xlo,xhi],'d')
+        y = hstack((0,cumsum(pw)))  
         z = pv[pidx][:,None]
-        if 0:
-            delta = (maxz-minz)*0.5
-            z = numpy.log10(z-(minz-delta))
-            vmin,vmax = numpy.log10(delta),numpy.log10(maxz-(minz-delta))
-        else:
-            vmin,vmax = minz,maxz
-        pylab.pcolormesh(x,y,z,vmin=vmin,vmax=vmax,hold=True,
-                         cmap=pylab.cm.copper)
+        # centerpoint, histogram height, maximum likelihood for each bin
+        bins.append(((xlo+xhi)/2,y[-1],exp(vmin-z[0])))
+        if len(z) > cmap.N:
+           # downsample histogram bar according to number of colors
+           print >>fid,'z',z.shape,z
+           print >>fid,'cmap_steps',cmap_steps.shape
+           pidx = searchsorted(z[1:-1].flatten(), cmap_steps)
+           if pidx[-1] < len(z)-1: pidx = hstack((pidx,-1))
+           y,z = y[pidx],z[pidx]
+        pylab.pcolormesh(x,y,z,vmin=vmin,vmax=vmax,hold=True,cmap=cmap)
+    centers,height,maxlikelihood = array(bins).T
+    pylab.plot(centers, maxlikelihood*max(height), '-g', hold=True)
 
 def _make_var_histogram(points, logp, nbins, rangeci, weights):
     # Produce a histogram
@@ -199,7 +240,7 @@ def _make_var_histogram(points, logp, nbins, rangeci, weights):
                                  #new=True,
                                  normed=True, weights=weights)
 
-    # Find the max likelihood for values in this bin
+    # Find the max likelihood for values in each bin
     edge = numpy.searchsorted(points,bins)
     histbest = [numpy.max(logp[edge[i]:edge[i+1]])
                 if edge[i]<edge[i+1] else -inf
