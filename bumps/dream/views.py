@@ -148,8 +148,8 @@ def _decorate_histogram(vstats):
         transform=pylab.gca().transAxes)
     pylab.setp([pylab.gca().get_yticklabels()],visible=False)
     ticks = (lci, l68, median, h68, hci)
-    labels = [format_value(v,h68-l68) for v in ticks]
-    if len(labels[0]) > 4:
+    labels = [format_value(v,hci-lci) for v in ticks]
+    if len(labels[2]) > 5:
         # Drop 68% values if too many digits
         ticks,labels= ticks[0::2],labels[0::2]
     pylab.xticks(ticks, labels)
@@ -212,7 +212,6 @@ def _make_logp_histogram(points, logp, nbins, rangeci, weights, cbar):
     vmin,vmax,cmap = cbar
     cmap_steps = linspace(vmin,vmax,cmap.N+1)
     bins = [] # marginalized maximum likelihood
-    fid=open('/tmp/junk','w')
     for h,s,e,xlo,xhi in zip(heights,idx[:-1],idx[1:],edges[:-1],edges[1:]):
         if s == e: continue
         pv = -logp[s:e]
@@ -225,12 +224,12 @@ def _make_logp_histogram(points, logp, nbins, rangeci, weights, cbar):
         bins.append(((xlo+xhi)/2,y[-1],exp(vmin-z[0])))
         if len(z) > cmap.N:
            # downsample histogram bar according to number of colors
-           print >>fid,'z',z.shape,z
-           print >>fid,'cmap_steps',cmap_steps.shape
            pidx = searchsorted(z[1:-1].flatten(), cmap_steps)
            if pidx[-1] < len(z)-1: pidx = hstack((pidx,-1))
            y,z = y[pidx],z[pidx]
         pylab.pcolormesh(x,y,z,vmin=vmin,vmax=vmax,hold=True,cmap=cmap)
+        # Draw bars around each histogram bin
+        #pylab.plot([xlo,xlo,xhi,xhi],[y[0],y[-1],y[-1],y[0]],'-k',linewidth=0.1,hold=True)
     centers,height,maxlikelihood = array(bins).T
     pylab.plot(centers, maxlikelihood*max(height), '-g', hold=True)
 
