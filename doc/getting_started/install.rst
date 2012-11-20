@@ -24,8 +24,9 @@ Building the application from source requires some preparation.
 
 First you will need to set up your python environment.  We depend on
 numerous external packages.  The versions listed below are a snapshot
-of a configuration that we are using. Both older or more recent versions
-may work.
+of a configuration that we are using.  The program may work with older
+versions of the package, and we will try to keep it compatible with
+the latest versions.
 
 Our base scientific python environment contains:
 
@@ -115,11 +116,11 @@ OS/X
 ----
 
 Building a useful python environment on OS/X is somewhat involved, and
-this documentation will be expanded to provide more detail.
+frequently evolving so this document will likely be out of date.
 
 You will need to download python, numpy, scipy, wx and matplotlib
-packages from their respective sites (use the links above).  Setuptools
-will need to be installed by hand.
+packages from their respective sites (use the links above).  The distribute
+package will need to be installed by hand (not easy_install!).
 
 From a terminal, change to the directory containing the source and type::
 
@@ -132,6 +133,26 @@ This should install the application somewhere on your path.
 To run the program use::
 
 	bumps -h
+
+On OS X 10.7 Lion the situation is particularly complicated because the
+prebuilt distributions for scipy, numpy, etc. don't work as of this writing,
+and Lion does not ship with compilers installed.  First you need to get
+XCode 4.5 from the app store.  You will need to run XCode preferences and
+install the command line tools from the Downloads tab in order to put the
+compilers on your executable path.  Next download gfortran from
+r.research.att.com/tools (scroll down to the Apple Xcode gcc-42 add-ons).
+This sets up the basic development environment.
+
+At this point I used the egg packages available from the scipy superpack
+repository, but installed them by hand rather than following the scipy
+superpack instructions.  That's because I already had the fortran compilers
+and I did not want easy_install.  There were many complaints installing the
+egg packages, but the result was successful in the end.
+
+You will need to use a development version of wxPython (2.9), which is
+compiled for 64-bit.  Scroll down on the wxPython download page to the
+development section.  I used the Cocoa build.
+
 
 .. _docbuild:
 
