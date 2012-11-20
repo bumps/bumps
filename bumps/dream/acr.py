@@ -25,7 +25,7 @@ Table A.6 of Rencher (2002). Also with any given significance level (alpha).
 
 Example::
 
-    >>> print ACR(3, 25, 0.01)
+    >>> print "%.4f"%ACR(3, 25, 0.01)
     13.1753
 
 Created by A. Trujillo-Ortiz, R. Hernandez-Walls, A. Castro-Perez and K. Barba-Rojo

@@ -298,9 +298,10 @@ def no_constraints():
 
 class FitProblem(object):
     def __init__(self, fitness, name=None, constraints=no_constraints, 
-                 penalty_limit=numpy.inf):
+                 penalty_limit=numpy.inf, partial=False):
         self.constraints = constraints
         self.fitness = fitness
+        self.partial = partial
         if name is not None:
             self.name = name
         else:
@@ -330,8 +331,9 @@ class FitProblem(object):
         self._parameters = parameter.varying(all_parameters)
         #print "varying",self._parameters
         self.bounded = [p for p in all_parameters
-                       if not isinstance(p.bounds, mbounds.Unbounded)]
-        self.dof = self.model_points() - len(self._parameters)
+                        if not isinstance(p.bounds, mbounds.Unbounded)]
+        self.dof = self.model_points()
+        if not self.partial: self.dof -= len(self._parameters)
         if self.dof <= 0:
             raise ValueError("Need more data points than fitting parameters")
         #self.constraints = pars.constraints()
@@ -400,13 +402,17 @@ class FitProblem(object):
     def bounds(self):
         return numpy.array([p.bounds.limits for p in self._parameters],'d').T
 
-    def randomize(self):
+    def randomize(self, N=None):
         """
         Generates a random model.
         """
-        for p in self._parameters:
-            p.value = p.bounds.random(1)[0]
-        self.model_update()
+        if N is not None:
+            return numpy.array([p.bounds.random(N) for p in self._parameters]).T
+        else:
+            # TODO: see if we need the pure randomize form with model update
+            for p in self._parameters:
+                p.value = p.bounds.random(1)[0]
+            self.model_update()
 
     def parameter_nllf(self):
         """
@@ -615,9 +621,9 @@ class FitProblem(object):
         return numpy.sqrt(numpy.diag(self.cov(pvec, step=step)))
 
     def __getstate__(self):
-        return self.fitness,self.name,self.penalty_limit,self.constraints
+        return self.fitness,self.partial,self.name,self.penalty_limit,self.constraints
     def __setstate__(self, state):
-        self.fitness,self.name,self.penalty_limit,self.constraints = state
+        self.fitness,self.partial,self.name,self.penalty_limit,self.constraints = state
         self.model_reset()
 
 
@@ -628,8 +634,9 @@ class MultiFitProblem(FitProblem):
     """
     def __init__(self, models, weights=None, name="MultiFitProblem",
                  constraints=no_constraints, penalty_limit=numpy.inf):
+        self.partial = False
         self.constraints = constraints
-        self.models = [FitProblem(m) for m in models]
+        self.models = [FitProblem(m,partial=True) for m in models]
         if weights is None:
             weights = [1 for m in models]
         self.weights = weights

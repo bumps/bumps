@@ -18,8 +18,7 @@ def f2(fn):
     return cost
 def fk(fn,k):
     args = ",".join("z%d"%j for j in range(k-2))
-    eval("def cost(x,y,%s): return fn((x,y,%s))"%(args,args))
-    return cost
+    return eval("lambda x,y,%s: fn((x,y,%s))"%(args,args),{'fn':fn})
 
 def sin_plus_quadratic(x=0,y=0): 
     fx,fy = 2,3      # x,y frequency and between bowl barer height
@@ -74,7 +73,8 @@ or for the k-dimensional version:
 
     fk(function,k)
 """
-    raise ValueError("Invalid function.\n"+usage)
+    print >>sys.stderr,usage
+    raise
 plot=plot2d(nllf,('x','y'),range=(-1,1))
 M = ModelFunction(nllf,plot=plot)
 for p in M.parameters().values():

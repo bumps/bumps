@@ -24,7 +24,7 @@ Additional options are random box: rand(M,N) or random scatter: randn(M,N).
 
 from __future__ import division
 
-__all__ = ['lhs_init', 'cov_init', 'random_init']
+__all__ = ['lhs_init', 'cov_init', 'random_init', 'eps_init', 'generate']
 
 import math
 import numpy
@@ -40,7 +40,7 @@ def generate(problem, **options):
     pop_size = int(math.ceil(options['pop']*len(initial)))
     # TODO: really need a continue option
     if options['init'] == 'random':
-        population = random_init(pop_size, problem, include_current=True)
+        population = random_init(pop_size, initial, problem, include_current=True)
     elif options['init'] == 'cov':
         cov = problem.cov()
         population = cov_init(pop_size, initial, bounds, include_current=True, cov=cov)
@@ -53,7 +53,7 @@ def generate(problem, **options):
                          %options['init'])
     return population
 
-def lhs_init(N, bounds, include_current=False):
+def lhs_init(N, initial, bounds, include_current=False):
     """
     Latin Hypercube Sampling
 
@@ -88,9 +88,9 @@ def lhs_init(N, bounds, include_current=False):
     for j in range(nvar):
         if include_current:
             # Put current value at position 0 in population
-            s[0,j] = p.value
+            s[0,j] = initial[j]
             # Find which bin the current value belongs in
-            xidx = int(N*p.value/(xmax[j]-xmin[j]))
+            xidx = int(N*initial[j]/(xmax[j]-xmin[j]))
             # Generate random permutation of remaining bins
             idx = numpy.random.permutation(N-1)
             idx[idx>=xidx] += 1  # exclude current value bin
@@ -134,7 +134,7 @@ def cov_init(N, initial, bounds, include_current=False, cov=None, dx=None):
     population = numpy.clip(population, *bounds)
     return population
 
-def random_init(N, problem, include_current=False):
+def random_init(N, initial, problem, include_current=False):
     """
     Generate a random population from the problem parameters.
 
@@ -145,10 +145,9 @@ def random_init(N, problem, include_current=False):
     If include_current is True, then the current value of the parameters
     is returned as the first point in the population.
     """
-    initial = problem.initial()
-    population = problem.randomize(N).T
+    population = problem.randomize(N)
     if include_current:
-        population[0] = problem.getp()
+        population[0] = initial
     return population
 
 def eps_init(N, initial, bounds, include_current=False, eps=1e-6):

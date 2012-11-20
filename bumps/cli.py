@@ -3,6 +3,7 @@ from __future__ import with_statement
 import sys
 import os
 import StringIO
+import re
 
 import shutil
 try:
@@ -93,11 +94,16 @@ def remember_best(fitdriver, problem, best):
     #print "plotting"
 
 
+PARS_PATTERN = re.compile(r"^(?P<label>.*) (?P<value>[^ ]*)\n$")
 def recall_best(problem, path):
-    data = open(path,'rt').readlines()
-    labels,values = zip(line.split() for line in data)
+    labels,values = [],[]
+    with open(path,'rt') as fid:
+        for line in fid:
+            m = PARS_PATTERN.match(line)
+            labels.append(m.group('label'))
+            values.append(float(m.group('value')))
     assert labels == problem.labels()
-    problem.setp(float(v) for v in values)
+    problem.setp(values)
 
 def store_overwrite_query_gui(path):
     import wx

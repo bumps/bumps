@@ -1,7 +1,12 @@
 # This program is public domain
 # Author: Paul Kienzle
 """
+Number formatting
+=================
+
 Format values and uncertainties nicely for printing.
+
+:func:`format_value` produces the value format v with no uncertainty.
 
 :func:`format_uncertainty_pm` produces the expanded format v +/- err.
 
@@ -61,6 +66,13 @@ __all__ = ['format_uncertainty', 'format_uncertainty_pm',
 # composite units such as 2.3e-3 m**2 -> 2300 mm**2, and with volumes
 # such as 1 g/cm**3 -> 1 kg/L.
 
+def format_value(value, uncertainty):
+    """
+    Given *value* v and *uncertainty* dv, return a string v which is
+    the value formatted with the appropriate number of digits.
+    """
+    return _format_uncertainty(value, uncertainty, compact=None)
+
 def format_uncertainty_pm(value, uncertainty):
     """
     Given *value* v and *uncertainty* dv, return a string v +/- dv.
@@ -105,7 +117,9 @@ def _format_uncertainty(value, uncertainty, compact):
     if uncertainty is None or uncertainty<=0 or numpy.isnan(uncertainty):
         return "%g"%value
     if numpy.isinf(uncertainty):
-        if compact:
+        if compact is None:
+            return "%.2g"%value
+        elif compact:
             return "%.2g(inf)"%value
         else:
             return "%.2g +/- inf"%value
@@ -143,9 +157,13 @@ def _format_uncertainty(value, uncertainty, compact):
 
     # Format the result
     digits_after_decimal = abs(val_place - err_place + 1)
+    ## Only use one digit of uncertainty if no precision included in result
+    #if compact is None: digits_after_decimal -= 1
     val_str = "%.*f"%(digits_after_decimal,value/10.**val_place)
     exp_str = "e%d"%val_place if val_place != 0 else ""
-    if compact:
+    if compact is None:
+        result = "".join((sign,val_str,exp_str))
+    elif compact:
         err_str = "(%2d)"%int(uncertainty/10.**(err_place-1)+0.5)
         result = "".join((sign,val_str,err_str,exp_str))
     else:

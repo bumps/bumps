@@ -187,7 +187,7 @@ class DifferentialEvolution(solver.Strategy):
     def default_termination_conditions(self, problem):
         success = stop.Cf(tol=1e-7,scaled=False)
         #maxiter = 100
-        maxiter = len(problem.parameters)*200
+        maxiter = len(problem.getp())*200
         #maxfun  = self.npop*maxiter
         failure = stop.Steps(maxiter)
         return success,failure
@@ -205,15 +205,10 @@ class DifferentialEvolution(solver.Strategy):
         Returns a matrix *P* of points to be evaluated.
         """
         # Generate a random population
-        ndim = len(problem.parameters)
-        pop_size = int(self.npop * ndim)
-        population = [p.bounds.random(pop_size) for p in problem.parameters]
-        population = numpy.array(population).T
-
-        # Plug in the initial guess
-        for i,p in enumerate(problem.parameters):
-            if p.value in p.bounds:
-                population[0,i] = p.value
+        current = problem.getp()
+        ndim = len(current)
+        population = problem.randomize(self.npop * ndim)
+        population[0] = current
 
         # Return the population
         return population
