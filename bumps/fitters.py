@@ -503,24 +503,24 @@ class FitDriver(object):
         return x, fx
 
     def show(self):
-        if hasattr(self.problem, 'show'):
-            self.problem.show()
         if hasattr(self.fitter, 'show'):
             self.fitter.show()
+        if hasattr(self.problem, 'show'):
+            self.problem.show()
 
     def save(self, output_path):
         #print "calling driver save"
-        if hasattr(self.problem, 'save'):
-            self.problem.save(output_path)
         if hasattr(self.fitter, 'save'):
             self.fitter.save(output_path)
+        if hasattr(self.problem, 'save'):
+            self.problem.save(output_path)
 
     def load(self, input_path):
         #print "calling driver save"
-        if hasattr(self.problem, 'load'):
-            self.problem.load(input_path)
         if hasattr(self.fitter, 'load'):
             self.fitter.load(input_path)
+        if hasattr(self.problem, 'load'):
+            self.problem.load(input_path)
 
     def plot(self, output_path):
         #print "calling fitter.plot"
