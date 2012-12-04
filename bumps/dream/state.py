@@ -725,6 +725,11 @@ class MCMCDraw(object):
             idx = idx[0]
             logp[final],logp[idx] = logp[idx], logp[final]
             points[final,:],points[idx,:] = points[idx,:],points[final,:]
+        # For multiple minima, arbitrarily choose one of them
+        # TODO: this will lead to possible confusion when the best value
+        # spontaneously changes when the fit is complete.
+        self._best_p = points[final]
+        self._best_logp = logp[final]
 
     def sample(self, portion=1, vars=None, selection=None):
         """

@@ -474,11 +474,11 @@ class FitProblem(object):
                 print "Parameter nllf is wrong"
                 for p in self.bounded:
                     print p, p.nllf()
-            penalty = self.penalty_limit
-            pcost = self.parameter_nllf()
-            ccost = self.constraints_nllf()
-            mcost = self.model_nllf() if pcost+ccost < penalty else penalty
-            cost = pcost + ccost + mcost
+            penalty_limit = self.penalty_limit
+            pparameter = self.parameter_nllf()
+            pconstraint = self.constraints_nllf()
+            pmodel = self.model_nllf() if pparameter+pconstraint < penalty_limit else penalty_limit
+            cost = pparameter + pconstraint + pmodel
         except KeyboardInterrupt:
             raise
         except:
@@ -492,6 +492,7 @@ class FitProblem(object):
             #print "point evaluates to NaN"
             #print parameter.summarize(self._parameters)
             return inf
+        # print "cost",cost,"=",pparameter,"+",pconstraint,"+",pmodel
         return cost
 
     def __call__(self, pvec=None):

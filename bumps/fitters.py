@@ -332,6 +332,7 @@ class DreamModel(MCMCModel):
         Create a sampling from the multidimensional likelihood function
         represented by the problem set using dream.
         """
+        #print "dream"
         self.problem = problem
         self.bounds = self.problem.bounds()
         self.labels = self.problem.labels()
@@ -343,6 +344,8 @@ class DreamModel(MCMCModel):
 
     def nllf(self, x):
         """Negative log likelihood of seeing models given *x*"""
+        # Note: usually we will be going through the provided mapper, and
+        # this function will never be called.
         #print "eval",x; sys.stdout.flush()
         return self.problem.nllf(x)
 
@@ -353,7 +356,7 @@ class DreamModel(MCMCModel):
 
 class DreamFit(FitBase):
     name = "DREAM"
-    settings = [('steps', 500), ('burn', 0), ('pop', 10), ('init', 'eps')]
+    settings = [('steps', 500), ('burn', 0), ('pop', 10), ('init', 'eps'), ('thin', 1)]
 
     def __init__(self, problem):
         self.dream_model = DreamModel(problem)
@@ -374,6 +377,7 @@ class DreamFit(FitBase):
         sampler = dream.Dream(model=self.dream_model, population=population,
                               draws=pop_size * options['steps'],
                               burn=pop_size * options['burn'],
+                              thinning=options['thin'],
                               monitor=self._monitor,
                               DE_noise=1e-6)
 
@@ -541,6 +545,7 @@ class FitOptions(object):
     FIELDS = dict(
         starts = ("Starts",          "int"),
         steps  = ("Steps",           "int"),
+        thin   = ("Thinning",        "int"),
         burn   = ("Burn-in Steps",   "int"),
         pop    = ("Population",      "float"),
         init   = ("Initializer",     ("eps", "lhs", "cov", "random")),

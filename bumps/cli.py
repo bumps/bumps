@@ -322,6 +322,8 @@ Options:
         population size
     --burn=0        [dream, pt]
         number of burn-in iterations before accumulating stats
+    --thin=1        [dream]
+        number of fit iterations between steps
     --nT=25
     --Tmin=0.1
     --Tmax=10       [pt]

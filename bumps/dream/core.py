@@ -298,6 +298,11 @@ def run_dream(dream):
                                   xold[reject], logp_old[reject],
                                   alpha[reject], R)
 
+            #print "pop","\n ".join((("%12.3e "*(len(el)-1))%el[:-1])
+            #                       +("T " if el[-3]<=el[-2] else "  ")
+            #                       +("accept" if el[-1] else "")
+            #                       for el in zip(logp_old,logp_try,logp,x[:,-2],x[:,-1],accept))
+
             # Update Sequences with the new population.
             state._generation(draws, x, logp, accept)
 # ********************** NOTIFY **************************
