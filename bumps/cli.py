@@ -509,9 +509,16 @@ def main():
         gui()
         return
 
-    # Set up the matplotlib backend to minimize the wx dependency.
-    config_matplotlib('Agg' if opts.batch or opts.remote else 'WXAgg')
-
+    # Set up the matplotlib backend to minimize the wx/gui dependency.
+    # If no GUI specified and not editing, then use the default mpl
+    # backend for the python version.
+    if opts.edit: # full interactivity
+        config_matplotlib('WXAgg')
+    elif opts.batch or opts.remote: # no interactivity
+        config_matplotlib('Agg')
+    else: # preview
+        pass
+ 
     problem, problem_output = initial_model(opts)
 
     # TODO: AMQP mapper as implemented requires workers started up with
