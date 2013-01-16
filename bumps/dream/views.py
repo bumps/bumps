@@ -28,7 +28,7 @@ def plot_all(state, portion=1.0, figfile=None):
     figure(); plot_logp(state, portion=portion)
     if state.title: suptitle(state.title)
     if figfile != None: savefig(figfile+"-logp")
-    if state.Nvar <= 15:
+    if state.Nvar <= 25:
         figure(); plot_corrmatrix(state, portion=portion)
         if state.title: suptitle(state.title)
         if figfile != None: savefig(figfile+"-corr")
