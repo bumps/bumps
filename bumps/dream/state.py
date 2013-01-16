@@ -281,50 +281,56 @@ class MCMCDraw(object):
         # outlier chains from the set.
         self._good_chains = slice(None,None)
 
-    def resize(self, Ngen, Nthin, Nupdate, Nvar, Npop, Ncr, thinning):
-        pNgen = self._gen_draws.shape[0]
-        pNthin = self._thin_draws.shape[0]
-        pNupdate = self._update_draws.shape[0]
-        pNvar = self._thin_point.shape[2]
-        pNpop = self._gen_logp.shape[1]
-        pNcr = self._update_CR_weight.shape[1]
+    @property
+    def Ngen(self): return self._gen_draws.shape[0]
+    @property
+    def Nthin(self): return self._thin_draws.shape[0]
+    @property
+    def Nupdate(self): return self._update_draws.shape[0]
+    @property
+    def Nvar(self): return self._thin_point.shape[2]
+    @property
+    def Npop(self): return self._gen_logp.shape[1]
+    @property
+    def Ncr(self): return self._update_CR_weight.shape[1]
 
-        if pNvar != Nvar or pNpop != Npop or pNcr != Ncr:
+    def resize(self, Ngen, Nthin, Nupdate, Nvar, Npop, Ncr, thinning):
+        if self.Nvar != Nvar or self.Npop != Npop or self.Ncr != Ncr:
             raise ValueError("Cannot change Nvar, Npop or Ncr on resize")
 
         # For now, only handle the case where the we have one complete frame of data, such
         # as on reloading the state vector
         assert self._gen_index == 0 and self._update_index == 0 and self._thin_index == 0
-        assert self.generation == pNgen and self._update_count == pNupdate and self._thin_count == pNthin
+        assert self.generation == self.Ngen and self._update_count == self.Nupdate and self._thin_count == self.Nthin
 
         self.thinning = thinning
 
-        if Ngen > pNgen:
+        if Ngen > self.Ngen:
+            self._gen_index = self.Ngen # must happen before resize!!
             self._gen_draws = numpy.resize(self._gen_draws, Ngen)
             self._gen_logp = numpy.resize(self._gen_logp,  (Ngen,Npop) )
             self._gen_acceptance_rate = numpy.resize(self._gen_acceptance_rate, Ngen)
-            self._gen_index = pNgen
-        elif Ngen < pNgen:
+        elif Ngen < self.Ngen:
             self._gen_draws = self._gen_draws[-Ngen:].copy()
             self._gen_logp = self._gen_logp[-Ngen:,:].copy()
             self._gen_acceptance_rate = self._gen_acceptance_rate[-Ngen:].copy()
 
-        if Nthin > pNthin:
+        if Nthin > self.Nthin:
+            self._thin_index = self.Nthin # must happen before resize!!
             self._thin_draws = numpy.resize(self._thin_draws, Nthin)
             self._thin_point = numpy.resize(self._thin_point,  (Nthin, Npop, Nvar) )
             self._thin_logp = numpy.resize(self._thin_logp,  (Nthin, Npop) )
-            self._thin_index = pNthin
-        elif Nthin < pNthin:
+        elif Nthin < self.Nthin:
             self._thin_draws = self._thin_draws[-Nthin:].copy()
             self._thin_point = self._thin_point[-Nthin:,:,:].copy()
             self._thin_logp = self._thin_logp[-Nthin:,:].copy()
 
-        if Nupdate > pNupdate:
+        if Nupdate > self.Nupdate:
+            self._update_count = self.Nupdate # must happen before resize!!
             self._update_draws = numpy.resize(self._update_draws, Nupdate)
             self._update_R_stat = numpy.resize(self._update_R_stat,  (Nupdate, Nvar) )
             self._update_CR_weight = numpy.resize(self._update_CR_weight,  (Nupdate, Ncr) )
-            self._update_count = pNupdate
-        elif Nupdate < pNupdate:
+        elif Nupdate < self.Nupdate:
             self._update_draws = self._update_draws[-Nupdate:].copy()
             self._update_R_stat = self._update_R_stat[-Nupdate:,:].copy()
             self._update_CR_weight = self._update_CR_weight[-Nupdate:,:].copy()
@@ -719,6 +725,11 @@ class MCMCDraw(object):
             idx = idx[0]
             logp[final],logp[idx] = logp[idx], logp[final]
             points[final,:],points[idx,:] = points[idx,:],points[final,:]
+        # For multiple minima, arbitrarily choose one of them
+        # TODO: this will lead to possible confusion when the best value
+        # spontaneously changes when the fit is complete.
+        self._best_p = points[final]
+        self._best_logp = logp[final]
 
     def sample(self, portion=1, vars=None, selection=None):
         """

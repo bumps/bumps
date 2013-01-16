@@ -451,7 +451,6 @@ class FitProblem(object):
         Note that this does not include cost factors due to constraints on
         the parameters, such as sample_offset ~ N(0,0.01).
         """
-        #print "calc chisq"
         return numpy.sum(self.residuals()**2) / self.dof
         #return 2*self.nllf()/self.dof
     def nllf(self, pvec=None):
@@ -475,13 +474,11 @@ class FitProblem(object):
                 print "Parameter nllf is wrong"
                 for p in self.bounded:
                     print p, p.nllf()
-            #print self.model_nllf(),"+",self.parameter_nllf(),"+",self.constraints_nllf()
-            cost = self.parameter_nllf() + self.constraints_nllf()
-            #print "cost",cost,self.penalty_limit*self.dof
-            if cost < self.penalty_limit*self.dof:
-                cost += self.model_nllf()
-            else:
-                cost += self.penalty_limit*self.dof
+            penalty_limit = self.penalty_limit
+            pparameter = self.parameter_nllf()
+            pconstraint = self.constraints_nllf()
+            pmodel = self.model_nllf() if pparameter+pconstraint < penalty_limit else penalty_limit
+            cost = pparameter + pconstraint + pmodel
         except KeyboardInterrupt:
             raise
         except:
@@ -495,7 +492,7 @@ class FitProblem(object):
             #print "point evaluates to NaN"
             #print parameter.summarize(self._parameters)
             return inf
-        #print "calc cost",cost, 2*cost/self.dof
+        # print "cost",cost,"=",pparameter,"+",pconstraint,"+",pmodel
         return cost
 
     def __call__(self, pvec=None):

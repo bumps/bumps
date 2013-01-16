@@ -40,8 +40,9 @@ def plot_var(state, var=0, portion=None, selection=None, **kw):
 
 # TODO: separate var stats calculation from plotting and printing
 def plot_vars(state, vars=None, portion=1.0, selection=None, **kw):
-    from pylab import subplot,cm
+    from pylab import subplot,cm,clf
 
+    clf()
     points, logp = state.sample(portion=portion, vars=vars,
                                 selection=selection)
     if vars==None:
