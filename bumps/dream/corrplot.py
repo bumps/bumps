@@ -57,6 +57,7 @@ class Corr2d:
         """
         import pylab
 
+        pylab.clf()
         fig = pylab.gcf()
         if title != None:
             fig.text(0.5, 0.95, title,

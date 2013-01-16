@@ -6,6 +6,7 @@
 *.pyd
 *.pyc
 *.swp
+*~
 *.so
 *.bak
 build/

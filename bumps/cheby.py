@@ -72,7 +72,6 @@ the bounds.  Bounds on the oscillation are easier to control using
 # - Newton methods: Hessian should point back to domain
 # - Direct methods: random walk should be biased toward the domain
 # - moderately complicated
-
 __all__ = ["profile","cheby_approx","cheby_val","cheby_points","cheby_coeff"]
 
 import numpy

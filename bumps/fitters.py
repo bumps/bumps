@@ -284,7 +284,7 @@ class AmoebaFit(FitBase):
         from simplex import simplex
         self._update = MonitorRunner(problem=self.problem,
                                      monitors=monitors)
-        print "bounds",self.problem.bounds()
+        #print "bounds",self.problem.bounds()
         result = simplex(f=self.problem.nllf, x0=self.problem.getp(),
                          bounds=self.problem.bounds(),
                          update_handler=self._monitor,
