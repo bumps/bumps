@@ -10,7 +10,7 @@ sys.path.insert(0,os.path.dirname(__file__))
 import bumps
 from bumps.gui.resources import resources as gui_resources
 
-packages = find_packages(exclude=['amqp_map','models'])
+packages = find_packages(exclude=['amqp_map','fit_functions'])
 
 if len(sys.argv) == 1:
     sys.argv.append('install')
