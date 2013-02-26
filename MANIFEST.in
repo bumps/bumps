@@ -11,6 +11,7 @@
 # 'python setup.py install'.  Typically these extra files are build related.
 include MANIFEST.in  # this file
 include master_builder.py
+include bumps.iss
 include setup_py2exe.py
 
 # Delete files
