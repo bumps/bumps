@@ -10,7 +10,7 @@ sys.path.insert(0,os.path.dirname(__file__))
 import bumps
 from bumps.gui.resources import resources as gui_resources
 
-packages = find_packages(exclude=['amqp_map','fit_functions'])
+packages = find_packages(exclude=['amqp_map','fit_functions','jobqueue'])
 
 if len(sys.argv) == 1:
     sys.argv.append('install')
@@ -46,9 +46,9 @@ dist = setup(
             ],
         packages = packages,
         package_data = gui_resources.package_data(),
-        scripts = ['bin/bumps_workerd','bin/bumps'],
+        scripts = ['bin/bumps'],
         ext_modules = [bumpsmodule()],
-        install_requires = ['httplib2'],
+        #install_requires = ['httplib2'],
         )
 
 # End of file
