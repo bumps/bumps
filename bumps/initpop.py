@@ -58,7 +58,7 @@ def lhs_init(N, initial, bounds, include_current=False):
     Latin Hypercube Sampling
 
     Returns an array whose columns and rows each have *N* samples from
-    equally spaced bins between *bounds*=(xmin, xmax) for the column.
+    equally spaced bins between *bounds=(xmin, xmax)* for the column.
     Unlike random, this method guarantees a certain amount of coverage
     of the parameter space.  Consider, though that the diagonal matrix
     satisfies the LHS condition, and you can see that the guarantees are
