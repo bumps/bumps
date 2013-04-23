@@ -298,7 +298,7 @@ def no_constraints():
 
 class FitProblem(object):
     def __init__(self, fitness, name=None, constraints=no_constraints, 
-                 penalty_limit=numpy.inf, partial=False):
+                 penalty_nllf=1e6, soft_limit=numpy.inf, partial=False):
         self.constraints = constraints
         self.fitness = fitness
         self.partial = partial
@@ -310,7 +310,8 @@ class FitProblem(object):
             except:
                 self.name = 'FitProblem'
                
-        self.penalty_limit = penalty_limit
+        self.soft_limit = soft_limit
+        self.penalty_nllf = penalty_nllf
         self.model_reset()
 
     def model_reset(self):
@@ -419,7 +420,7 @@ class FitProblem(object):
         Returns negative log likelihood of seeing parameters p.
         """
         s = sum(p.nllf() for p in self.bounded)
-        #print "\n".join("%s %g"%(p,p.nllf()) for p in self.bounded)
+        #print "; ".join("%s %g %g"%(p,p.value,p.nllf()) for p in self.bounded)
         return s
 
     def constraints_nllf(self):
@@ -462,6 +463,10 @@ class FitProblem(object):
         the negative log likelihood of seeing the model.  The individual
         likelihoods are scaled by 1/max(P) so that normalization constants
         can be ignored.
+
+        The model is not actually calculated if the parameter nllf plus the
+        constraint nllf are bigger than *soft_limit*, but instead it is
+        assigned a value of *penalty_nllf*.
         """
         if pvec is not None:
             if self.valid(pvec):
@@ -474,11 +479,11 @@ class FitProblem(object):
                 print "Parameter nllf is wrong"
                 for p in self.bounded:
                     print p, p.nllf()
-            penalty_limit = self.penalty_limit
             pparameter = self.parameter_nllf()
             pconstraint = self.constraints_nllf()
-            pmodel = self.model_nllf() if pparameter+pconstraint < penalty_limit else penalty_limit
+            pmodel = self.model_nllf() if pparameter+pconstraint <= self.soft_limit else self.penalty_nllf
             cost = pparameter + pconstraint + pmodel
+            #print "cost",cost,"=",pparameter,pconstraint,pmodel,self.penalty_nllf
         except KeyboardInterrupt:
             raise
         except:
@@ -618,9 +623,9 @@ class FitProblem(object):
         return numpy.sqrt(numpy.diag(self.cov(pvec, step=step)))
 
     def __getstate__(self):
-        return self.fitness,self.partial,self.name,self.penalty_limit,self.constraints
+        return self.fitness,self.partial,self.name,self.penalty_nllf,self.soft_limit,self.constraints
     def __setstate__(self, state):
-        self.fitness,self.partial,self.name,self.penalty_limit,self.constraints = state
+        self.fitness,self.partial,self.name,self.penalty_nllf,self.soft_limit,self.constraints = state
         self.model_reset()
 
 
@@ -630,7 +635,7 @@ class MultiFitProblem(FitProblem):
     Weighted fits for multiple models.
     """
     def __init__(self, models, weights=None, name="MultiFitProblem",
-                 constraints=no_constraints, penalty_limit=numpy.inf):
+                 constraints=no_constraints, soft_limit=numpy.inf, penalty_nllf=1e6):
         self.partial = False
         self.constraints = constraints
         self.models = [FitProblem(m,partial=True) for m in models]
@@ -638,7 +643,8 @@ class MultiFitProblem(FitProblem):
             weights = [1 for m in models]
         self.weights = weights
         self.model_reset()
-        self.penalty_limit = penalty_limit
+        self.penalty_nllf = penalty_nllf
+        self.soft_limit = soft_limit
 
     def model_parameters(self):
         """Return parameters from all models"""

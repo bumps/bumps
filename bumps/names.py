@@ -16,6 +16,7 @@ import numpy as np
 
 from . import pmath
 from .parameter import Parameter
+from .bounds import Distribution
 from .modelfn import ModelFunction
 from .curve import Curve, PoissonCurve
 from .fitproblem import preview, fit, mesh, FitProblem, MultiFitProblem

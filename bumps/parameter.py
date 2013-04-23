@@ -41,7 +41,8 @@ class BaseParameter(object):
     fixed = True
     fittable = False
     discrete = False
-    bounds = mbounds.Unbounded()
+    _bounds = mbounds.Unbounded()
+    name = None
 
     # Parameters may be dependent on other parameters, and the
     # fit engine will need to access them.
@@ -57,7 +58,6 @@ class BaseParameter(object):
 
         This uses nice numbers for the resulting range.
         """
-        if self.fittable: self.fixed = False
         self.bounds = mbounds.Bounded(*mbounds.pmp(self.value, *args))
         return self
     def pm(self, *args):
@@ -69,10 +69,9 @@ class BaseParameter(object):
 
         This uses nice numbers for the resulting range.
         """
-        if self.fittable: self.fixed = False
         self.bounds = mbounds.Bounded(*mbounds.pm(self.value, *args))
         return self
-    def dev(self, sigma=1, mu=None):
+    def dev(self, sigma=1, mu=None, limits=None):
         """
         Allow the parameter to vary according to a normal distribution, with
         deviations added to the overall cost function:
@@ -80,18 +79,39 @@ class BaseParameter(object):
             dev(sigma, mu) -> Normal(mean=mu,std=sigma)
 
         If mu is None, then it defaults to the current parameter value.
+
+        If limits is not None, then use the truncated normal distribution.
         """
-        if self.fittable: self.fixed = False
         if mu is None: mu = self.value
-        self.bounds = mbounds.Normal(mu,sigma)
+        if limits is None:
+            self.bounds = mbounds.Normal(mu,sigma)
+        else:
+            self.bounds = mbounds.BoundedNormal(mu,sigma,limits)
+        return self
+    def rv(self, dist):
+        """
+        Allow the parameter to vary according to any continuous SciPy
+        stats distribution.
+        """
+        self.bounds = mbounds.Distribution(dist)
         return self
     def range(self, low, high):
         """
         Allow the parameter to vary within the given range.
         """
-        if self.fittable: self.fixed = False
         self.bounds = mbounds.init_bounds((low,high))
         return self
+
+    @property
+    def bounds(self):
+        """Fit bounds"""
+        #print "getting bounds for",self,self._bounds
+        return self._bounds
+    @bounds.setter
+    def bounds(self, b):
+        #print "setting bounds for",self
+        if self.fittable: self.fixed = (b is None)
+        self._bounds = b
 
     # Functional form of parameter value access
     def __call__(self): return self.value

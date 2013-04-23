@@ -24,16 +24,16 @@ Predefined bounds are::
         range (-inf, base)
     Bounded
         range (low, high)
-    SoftBounded
-        range (low, high) with gaussian probability sigma
     Normal
         range (-inf, inf) with gaussian probability
-
-Using :func:`int_bounds` you can create the appropriate bounded
-or unbounded object for the kind of input.
+    BoundedNormal
+        range (low, high) with gaussian probability within
+    SoftBounded
+        range (low, high) with gaussian probability outside
 
 New bounds can be defined following the abstract base class
-interface defined in :class:`Bounds`.
+interface defined in :class:`Bounds`, or using Distribution(rv)
+where rv is a scipy.stats constinuous distribution.
 
 For generating bounds given a value, we provide a few helper
 functions::
@@ -52,11 +52,11 @@ functions::
 from __future__ import division
 __all__ = ['pm','pmp','pm_raw','pmp_raw', 'nice_range', 'init_bounds',
            'Unbounded', 'Bounded', 'BoundedAbove', 'BoundedBelow',
-           'Distribution', 'Normal', 'SoftBounded']
+           'Distribution', 'Normal', 'BoundedNormal', 'SoftBounded']
 
 import math
 import numpy
-from numpy import (isinf, inf, pi, log, sqrt)
+from numpy import (isinf, inf, pi, log, sqrt, clip)
 RNG = numpy.random
 
 try:
@@ -446,13 +446,17 @@ class Distribution(Bounds):
     attributes args and dist.name.
     """
     def __init__(self, dist):
+        # This should be a normal class attribute so that that residual
+        # can compute the percent point function, but we don't not want
+        # to force a scipy dependency if the normal distribution is not
+        # needed.
         if not hasattr(Distribution, "N"):
             Distribution.N = normal_distribution(0,1)
         self.dist = dist
     def random(self, n=1):
         return self.dist.rvs(n)
     def nllf(self, value):
-        return -self.dist.logpdf(value)
+        return -log(self.dist.pdf(value))
     def residual(self, value):
         return self.N.ppf(self.dist.cdf(value))
     def get01(self, x):
@@ -503,6 +507,84 @@ class Normal(Distribution):
     def __setstate__(self, state):
         mean,std = state
         self.__init__(mean=mean,std=std)
+
+class BoundedNormal(Bounds):
+    """
+    truncated normal bounds
+    """
+    def __init__(self, sigma=1, mu=0, limits=(-inf,inf)):
+        self.limits = limits
+        self.sigma, self.mu = sigma, mu
+
+        self._left = normal_distribution.cdf((limits[0]-mu)/sigma)
+        self._delta = normal_distribution.cdf((limits[1]-mu)/sigma) - self._left
+        self._nllf_scale = log(sqrt(2*pi*sigma**2)) + log(self._delta)
+
+    def get01(self, x):
+        """
+        Convert the value into [0,1] for optimizers which are bounds constrained.
+
+        This can also be used as a scale bar to show approximately how close to
+        the end of the range the value is.
+        """
+        v = (normal_distribution.cdf((x-self.mu)/self.sigma) - self._left)/self._delta
+        return clip(v, 0, 1)
+    def put01(self, v):
+        """
+        Convert [0,1] into the value for optimizers which are bounds constrained.
+        """
+        x = v * self._delta + self._left
+        return normal_distribution.ppf(x)*self.sigma + self.mu
+    def getfull(self, x):
+        """
+        Convert the value into (-inf,inf) for optimizers which are unconstrained.
+        """
+        raise NotImplementedError
+    def putfull(self, v):
+        """
+        Convert (-inf,inf) into the value for optimizers which are unconstrained.
+        """
+        raise NotImplementedError
+    def random(self, n=1):
+        """
+        Return a randomly generated valid value, or an array of values
+        """
+        return self.get01(rand(n))
+    def nllf(self, value):
+        """
+        Return the negative log likelihood of seeing this value, with
+        likelihood scaled so that the maximum probability is one.
+        """
+        if value in self:
+            return 0.5*((value-self.mu)/self.sigma)**2 + self._nllf_scale
+        else:
+            return inf
+
+    def residual(self, value):
+        """
+        Return the parameter 'residual' in a way that is consistent with
+        residuals in the normal distribution.  The primary purpose is to
+        graphically display exceptional values in a way that is familiar
+        to the user.  For fitting, the scaled likelihood should be used.
+
+        For the truncated normal distribution, we can just use the normal
+        residuals.
+        """
+        mean,std = self.dist.args
+        return (value-mean)/std
+    def start_value(self):
+        """
+        Return a default starting value if none given.
+        """
+        return self.put01(0.5)
+    def __contains__(self, v):
+        return self.limits[0] <= v <= self.limits[1]
+    def __str__(self):
+        vals = ( 
+            self.limits[0], self.limits[1], 
+            self.mu, self.sigma,
+            )
+        return "(%s,%s), norm(%s,%s)"%tuple(num_format(v) for v in vals)
 
 class SoftBounded(Bounds):
     """
