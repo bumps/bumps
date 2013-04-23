@@ -396,14 +396,6 @@ def check_dependencies():
 
     # ------------------------------------------------------
     try:
-        from periodictable import __version__ as ptab_ver
-    except:
-        ptab_ver = "0"
-    finally:
-        req_pkg["periodictable"] = (ptab_ver, MIN_PERIODICTABLE)
-
-    # ------------------------------------------------------
-    try:
         from nose import __version__ as nose_ver
     except:
         nose_ver = "0"
