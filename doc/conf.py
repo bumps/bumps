@@ -203,6 +203,8 @@ html_use_smartypants = True
 htmlhelp_basename = 'Bumps'
 
 
+program_title = 'Bumps: Curve Fitting and Uncertainty Analysis'
+
 # -- Options for LaTeX output --------------------------------------------------
 
 # The paper size ('letter' or 'a4').
@@ -214,8 +216,7 @@ htmlhelp_basename = 'Bumps'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'Bumps.tex', 'Bayesian Uncertainty Modeling for Parameteric Systems',
-   'Paul Kienzle', 'manual'),
+  ('index', 'Bumps.tex', program_title, 'Paul Kienzle', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -269,6 +270,5 @@ slink_vars=dict(version=release, htmlroot=htmlroot,
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'bumps', 'Bayesian Uncertainty Modeling for Parameteric Systems',
-     ['Paul Kienzle'], 1)
+    ('index', 'bumps', program_title, ['Paul Kienzle'], 1)
 ]

@@ -6,18 +6,8 @@ Data Representation
 
 .. contents:: :local:
 
-Data is represented using :class:`Probe <refl1d.probe.Probe>` objects.
-The probe defines the Q values and the resolution of the individual
-measurements, returning the scattering factors associated with the
-different materials in the sample.  If the measurement has already
-been performed, the probe stores the measured reflectivity and its
-estimated uncertainty.
+Data is x,y,dy.  Anything more complicated you will need to do yourself.
 
-Probe objects are independent of the underlying instrument.  When
-data is loaded, it is converted to angle $(\theta, \Delta \theta)$,
-wavelength $(\lambda, \Delta \lambda)$ and reflectivity
-$(R, \Delta R)$, with :class:`NeutronProbe <refl1d.probe.NeutronProbe>`
-used for neutron radiation and :class:`XrayProbe <refl1d.probe.XrayProbe>`
-used for X-ray radiation.  Additional properties,
-
-
+We do provide a convolution function for data in which each point has 
+an independent gaussian resolution width, and a rebinning function for
+1-D and 2D whcih can addjust a matrix of counts to lie on a different grid.

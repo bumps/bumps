@@ -20,7 +20,7 @@ Fundamentally, the curve fitting problem can be expressed as:
 
 .. math::
 
-    P({\rm model}|{\rm data}) &=& \frac{P({\rm data}|{\rm model})P({\rm model})}{P({\rm data})}
+    P({\rm model}|{\rm data}) = \frac{P({\rm data}|{\rm model})P({\rm model})}{P({\rm data})}
 
 That is, the probability of seeing a particular sample descrition given 
 the observed data depends on the probability of seeing the measured
@@ -46,8 +46,8 @@ the given set of sample parameters is
 
 .. math::
 
-   -\log \prod_i{P(y_i|f(x_i;p))} &=& \frac{1}{2}\sum_i{\frac{(y_i-f(x_i;p))^2}{\sigma_i^2}} - \frac{1}{2}\sum_i{\log 2 \pi \sigma^2}
-                                &=& \frac{1}{2}\chi^2 + C
+   -\log \prod_i{P(y_i|f(x_i;p))} = \frac{1}{2}\sum_i{\frac{(y_i-f(x_i;p))^2}{\sigma_i^2}} - \frac{1}{2}\sum_i{\log 2 \pi \sigma^2}
+                                = \frac{1}{2}\chi^2 + C
 
 Note that this is the unnormalized $\chi^2$, whose expected value is the 
 number of degrees of freedom in the model, not the reduced $\chi^2_R$ whose
@@ -99,12 +99,12 @@ uncertainty, you would turn this into a bumps model file using::
 
     # 3 column data file with x, y and uncertainty
     x,y,dy = numpy.loadtxt('line.txt').T  
-    M = DataFunction(line, x, y, dy)
+    M = Curve(line, x, y, dy)
 
 Using the magic of python introspection, 
-:class:`DataFunction <bumps.modelfn.DataFunction>` is able to determine
+:class:`Curve <bumps.curve.Curve>` is able to determine
 the names of the fittable parameters from the arguments to the
-function.  This are converted to 
+function.  These are converted to 
 :class:`Parameter <bumps.parameter.Parameter>` objects, the 
 basis of the Bumps modeling system.  For each parameter, we can set
 bounds or values::
@@ -138,6 +138,9 @@ must provide a method which returns a list of
 :class:`Parameter <bumps.parameter.Parameter>` objects.  These
 parameters are the basis of the Bumps model
 to define models and constraints.  
+
+For counts data, :class:`PoissonCurve <bumps.curve.PoissonCurve>` is also
+available.
 
 External constraints
 ====================
