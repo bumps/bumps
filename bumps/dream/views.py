@@ -366,13 +366,13 @@ def plot_corr(state, vars=(0,1), portion=None, selection=None):
     points, _ = state.sample(portion=portion, vars=vars, selection=selection)
 
     # Form kernel density estimates of the parameters
-    xmin,xmax = min(points[:,p1]),max(points[:,p1])
-    density_x = kde_1d(points[:,p1])
+    xmin,xmax = min(points[:,0]),max(points[:,0])
+    density_x = kde_1d(points[:,0])
     x = linspace(xmin, xmax, 100)
     px = density_x(x)
 
-    density_y = kde_1d(points[:,p2])
-    ymin,ymax = min(points[:,p2]),max(points[:,p2])
+    density_y = kde_1d(points[:,1])
+    ymin,ymax = min(points[:,1]),max(points[:,1])
     y = linspace(ymin, ymax, 100)
     py = density_y(y)
 
@@ -383,16 +383,16 @@ def plot_corr(state, vars=(0,1), portion=None, selection=None):
     #dxy = density_xy(x,y)*points.shape[0]
     #axData.pcolorfast(x,y,dxy,cmap=cm.gist_earth_r) #@UndefinedVariable
 
-    axData.plot(points[:,p1], points[:,p2], 'k.', markersize=1)
-    axData.set_xlabel(labels[p1])
-    axData.set_ylabel(labels[p2])
+    axData.plot(points[:,0], points[:,1], 'k.', markersize=1)
+    axData.set_xlabel(labels[0])
+    axData.set_ylabel(labels[1])
     axHistX = axes([0.1,0.75,0.63,0.2],sharex=axData)
-    axHistX.hist(points[:,p1],nbins,orientation='vertical',normed=1)
+    axHistX.hist(points[:,0],nbins,orientation='vertical',normed=1)
     axHistX.plot(x,px,'k-')
     axHistX.yaxis.set_major_locator(MaxNLocator(4,prune="both"))
     setp(axHistX.get_xticklabels(), visible=False,)
     axHistY = axes([0.75,0.1,0.2,0.63],sharey=axData)
-    axHistY.hist(points[:,p2],nbins,orientation='horizontal',normed=1)
+    axHistY.hist(points[:,1],nbins,orientation='horizontal',normed=1)
     axHistY.plot(py,y,'k-')
     axHistY.xaxis.set_major_locator(MaxNLocator(4,prune="both"))
     setp(axHistY.get_yticklabels(), visible=False)
