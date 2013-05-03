@@ -3,9 +3,10 @@ Interface between the models and the fitters.
 
 :class:`Fitness` defines the interface that new model definitions must follow.
 
-:class:`FitProblem` wraps a fitness function for use in the fitters.
+:class:`FitProblem` defines the fitness function(s) for use in the fitters.
 
-:class:`MultiFitProblem` allows simultaneous fitting of multiple functions.
+:class:`FreeVariables` allows parameter boxes to be shared across models, but
+have unique values for each model.
 """
 from __future__ import division, with_statement
 import sys
@@ -28,7 +29,7 @@ def preview(models=[], weights=None):
 def mesh(models=[], weights=None, vars=None, n=40):
     problem = _make_problem(models=models, weights=weights)
 
-    print "initial chisq",problem.chisq()
+    #print "initial chisq",problem.chisq()
     x,y = [numpy.linspace(p.bounds.limits[0],p.bounds.limits[1],n) for p in vars]
     p1, p2 = vars
     def fn(xi,yi):
@@ -296,7 +297,53 @@ def no_constraints():
     """default constraints function for FitProblem"""
     return 0
 
-class FitProblem(object):
+# TODO: refactor FitProblem definition
+# deprecate the direct use of MultiFitProblem
+def FitProblem(*args, **kw):
+    """
+    Return a fit problem instance for the fitness function(s).
+
+    For an individual model:
+
+        *fitness* is a :class:`Fitness` instance.
+
+    For a set of models:
+
+        *models* is a sequence of :class:`Fitness` instances.
+
+        *weights* is an optional scale factor for each model
+
+        *freevars* is :class:`FreeVariables` instance defining the per-model parameter assignments
+
+    Common parameters:
+
+        *name* name of the problem
+
+        *constraints* is a function which returns the negative log likelihood of seeing the parameters
+        independent from the fitness function.  Use this for example to check for feasible regions of
+        the search space, or to add constraints that cannot be easily calculated per parameter.
+
+        *soft_limit* is the constraints function cutoff, beyond which the *penalty_nllf* will be returned
+        instead of the *fitness* nllf.
+
+        *penalty_nllf* is the nllf to use for *fitness* when *constraints* is greater than *soft_limit*
+
+    """
+    if len(args)>0:
+        try:
+            models = list(args[0])
+        except TypeError:
+            models = args[0]
+        if isinstance(models, list):
+            return MultiFitProblem(models, *args[1:], **kw)
+        else:
+            return BaseFitProblem(*args, **kw)
+    if 'fitness' in kw:
+        return BaseFitProblem(*args, **kw)
+    else:
+        return MultiFitProblem(*args, **kw)
+
+class BaseFitProblem(object):
     def __init__(self, fitness, name=None, constraints=no_constraints, 
                  penalty_nllf=1e6, soft_limit=numpy.inf, partial=False):
         self.constraints = constraints
@@ -629,26 +676,66 @@ class FitProblem(object):
         self.model_reset()
 
 
+class ParSet(object):
+    def __init__(self, **kw):
+        self.__dict__ = kw
+class FreeVariables(object):
+    def __init__(self, **kw):
+        # Slots to hold the free variables that can be referenced by
+        # the individual models definitions.  These are set as constants
+        # so that the don't show up as fittable parameters in the model.
+        self.__dict__ = dict((k,parameter.Constant(0., name=k)) for k in kw.keys())
 
-class MultiFitProblem(FitProblem):
+        self._parameters = dict((k,[parameter.Parameter.default(name="M%d %s"%(i,k),value=vi)
+                                    for i,vi in enumerate(v)]) 
+                                for k,v in kw.items())
+
+    def __getitem__(self, i):
+        return ParSet(**dict((k,pset[i]) for k,pset in self._parameters.items()))
+
+    def _set_values(self, i):
+        for k,pset in self._parameters.items():
+            getattr(self,k)._value = pset[i].value
+
+class MultiFitProblem(BaseFitProblem):
     """
     Weighted fits for multiple models.
     """
     def __init__(self, models, weights=None, name="MultiFitProblem",
-                 constraints=no_constraints, soft_limit=numpy.inf, penalty_nllf=1e6):
+                 constraints=no_constraints, 
+                 soft_limit=numpy.inf, penalty_nllf=1e6,
+                 freevars=FreeVariables()):
         self.partial = False
         self.constraints = constraints
-        self.models = [FitProblem(m,partial=True) for m in models]
+        self.freevars = freevars
+        self._models = [BaseFitProblem(m,partial=True) for m in models]
         if weights is None:
             weights = [1 for m in models]
         self.weights = weights
-        self.model_reset()
         self.penalty_nllf = penalty_nllf
         self.soft_limit = soft_limit
+        self.set_model(0)
+        self.model_reset()
+
+    @property
+    def models(self):
+        """Iterate over models, with free parameters set from model specific values"""
+        for i,f in enumerate(self._models):
+            self.freevars._set_values(i)
+            yield f
+        # Restore the active model after cycling
+        self.set_model(self._active_model_index)
+
+    def set_model(self, i):
+        """Use free parameters from model *i*"""
+        self._active_model_index = i
+        self.active_model = self._models[i]
+        self.freevars._set_values(i)
 
     def model_parameters(self):
         """Return parameters from all models"""
-        return [f.model_parameters() for f in self.models]
+        return [f.model_parameters() for f in self.models] \
+            + [self.freevars._parameters]
     def model_points(self):
         """Return number of points in all models"""
         return sum(f.model_points() for f in self.models)
@@ -661,13 +748,15 @@ class MultiFitProblem(FitProblem):
         # where the fit can quickly explore a subspace where the
         # computation is cheap before jumping to a more expensive
         # subspace.  SrFit does this.
-        for f in self.models: f.model_update()
+        for f in self.models:
+            f.model_update()
     def model_nllf(self):
         """Return cost function for all data sets"""
         return sum(f.model_nllf() for f in self.models)
     def constraints_nllf(self):
         """Return the cost function for all constraints"""
-        return sum(f.constraints_nllf() for f in self.models) + FitProblem.constraints_nllf(self)
+        return sum(f.constraints_nllf() for f in self.models) \
+            + BaseFitProblem.constraints_nllf(self)
     def simulate_data(self, noise=None):
         """Simulate data with added noise"""
         for f in self.models: f.simulate_data(noise=noise)

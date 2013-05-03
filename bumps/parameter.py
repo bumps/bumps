@@ -11,7 +11,7 @@ fitting engine does not need to be aware of the structure of the model.
 Users can also perform calculations with parameters, tying together different
 parts of the model, or different models.
 """
-#__all__ = [ 'Parameter', 'ParameterSet']
+#__all__ = [ 'Parameter']
 
 import numpy
 
@@ -231,9 +231,8 @@ class Parameter(BaseParameter):
     def __init__(self, value=None, bounds=None, fixed=None, name=None, **kw):
         # UI nicities:
         # 1. check if we are started with value=range or bounds=range; if we are given bounds, then assume
-        # this is a fittable parameter, otherwise the parameter
-        # defaults to fixed; if value is not set, use the midpoint
-        # of the range.
+        # this is a fitted parameter, otherwise the parameter defaults to fixed; if value is not set, use 
+        # the midpoint of the range.
         if bounds is None:
             try:
                 lo, hi = value
@@ -597,28 +596,11 @@ def current(s):
 
 # ========= trash ===================
 
-class ParameterSet:
-    def __init__(self, **kw):
-        self.__dict__ = kw
-    def flatten(self, prefix=""):
-        L = []
-        for k,v in self.__dict__:
-            if isinstance(v, ParameterSet):
-                L.extend(v.flatten(prefix=prefix+k+"."))
-            elif isinstance(v, list):
-                L.extend((prefix+k+"[%d]"%i,p) for i,p in enumerate(v))
-            else:
-                L.append((prefix+k,v))
-        return L
-
 class IntegerParameter(Parameter):
     discrete = True
     def _get_value(self): return self._value
     def _set_value(self, value): self._value = int(value)
     value = property(_get_value, _set_value)
-
-class VectorParameter(Parameter):
-    pass
 
 class Alias(object):
     """
@@ -628,6 +610,8 @@ class Alias(object):
     allow the parameter to exist outside the model. The resulting
     parameter will have the full parameter semantics, including
     the ability to replace a fixed value with a parameter expression.
+
+    # TODO: how is this any different from Reference above?
     """
     def __init__(self, obj, attr, p=None, name=None):
         self.obj = obj
