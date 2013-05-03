@@ -680,14 +680,23 @@ class ParSet(object):
     def __init__(self, **kw):
         self.__dict__ = kw
 class FreeVariables(object):
-    def __init__(self, **kw):
+    def __init__(self, names=None, **kw):
         # Slots to hold the free variables that can be referenced by
         # the individual models definitions.  These are set as constants
         # so that the don't show up as fittable parameters in the model.
-        self.__dict__ = dict((k,parameter.Constant(0., name=k)) for k in kw.keys())
+        self.__dict__ = dict((k,parameter.Constant(0., name=k)) 
+                             for k in kw.keys())
 
-        self._parameters = dict((k,[parameter.Parameter.default(name="M%d %s"%(i,k),value=vi)
-                                    for i,vi in enumerate(v)]) 
+        # Construct free parameter from model name and parameter name 
+        length = max(len(v) for v in kw.values()) if kw else 0
+        if names is None:
+            names = ["M%d"%k for k in range(length)]
+        def par(model_idx, par_name, par_value):
+            return parameter.Parameter.default(
+                       name=" ".join((names[model_idx],par_name)),
+                       value=par_value)
+
+        self._parameters = dict((k,[par(i,k,vi) for i,vi in enumerate(v)]) 
                                 for k,v in kw.items())
 
     def __getitem__(self, i):
