@@ -41,9 +41,11 @@ public:
       atend = (bin >= n);
       if (!atend) hi = edges[bin+1];
     } else {
-      bin--;
-      atend = (bin < 0);
-      if (!atend) hi = edges[bin];
+      atend = (bin == 0);
+      if (!atend) {
+        bin--;
+        hi = edges[bin];
+      }
     }
     return *this;
   }
