@@ -683,6 +683,8 @@ class MultiFitProblem(BaseFitProblem):
                  freevars=None):
         self.partial = False
         self.constraints = constraints
+        if freevars is None:
+            freevars = parameter.FreeVariables(names=["M%d"%i for i,_ in enumerate(models)])
         self.freevars = freevars
         self._models = [BaseFitProblem(m,partial=True) for m in models]
         if weights is None:
@@ -696,22 +698,17 @@ class MultiFitProblem(BaseFitProblem):
     @property
     def models(self):
         """Iterate over models, with free parameters set from model specific values"""
-        if self.freevars is not None:
-            for i,f in enumerate(self._models):
-                self.freevars.set_model(i)
-                yield f
-            # Restore the active model after cycling
-            self.freevars.set_model(self._active_model_index)
-        else:
-            for f in self._models:
-                yield f
+        for i,f in enumerate(self._models):
+            self.freevars.set_model(i)
+            yield f
+        # Restore the active model after cycling
+        self.freevars.set_model(self._active_model_index)
 
     def set_active_model(self, i):
         """Use free parameters from model *i*"""
         self._active_model_index = i
         self.active_model = self._models[i]
-        if self.freevars is not None:
-            self.freevars.set_model(i)
+        self.freevars.set_model(i)
 
     def model_parameters(self):
         """Return parameters from all models"""
