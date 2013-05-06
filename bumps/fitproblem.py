@@ -4,9 +4,6 @@ Interface between the models and the fitters.
 :class:`Fitness` defines the interface that new model definitions must follow.
 
 :class:`FitProblem` defines the fitness function(s) for use in the fitters.
-
-:class:`FreeVariables` allows parameter boxes to be shared across models, but
-have unique values for each model.
 """
 from __future__ import division, with_statement
 import sys
@@ -313,7 +310,7 @@ def FitProblem(*args, **kw):
 
         *weights* is an optional scale factor for each model
 
-        *freevars* is :class:`FreeVariables` instance defining the per-model parameter assignments
+        *freevars* is :class:`parameter.FreeVariables` instance defining the per-model parameter assignments
 
     Common parameters:
 
@@ -676,36 +673,6 @@ class BaseFitProblem(object):
         self.model_reset()
 
 
-class ParSet(object):
-    def __init__(self, **kw):
-        self.__dict__ = kw
-class FreeVariables(object):
-    def __init__(self, names=None, **kw):
-        # Slots to hold the free variables that can be referenced by
-        # the individual models definitions.  These are set as constants
-        # so that the don't show up as fittable parameters in the model.
-        self.__dict__ = dict((k,parameter.Constant(0., name=k)) 
-                             for k in kw.keys())
-
-        # Construct free parameter from model name and parameter name 
-        length = max(len(v) for v in kw.values()) if kw else 0
-        if names is None:
-            names = ["M%d"%k for k in range(length)]
-        def par(model_idx, par_name, par_value):
-            return parameter.Parameter.default(
-                       name=" ".join((names[model_idx],par_name)),
-                       value=par_value)
-
-        self._parameters = dict((k,[par(i,k,vi) for i,vi in enumerate(v)]) 
-                                for k,v in kw.items())
-
-    def __getitem__(self, i):
-        return ParSet(**dict((k,pset[i]) for k,pset in self._parameters.items()))
-
-    def _set_values(self, i):
-        for k,pset in self._parameters.items():
-            getattr(self,k)._value = pset[i].value
-
 class MultiFitProblem(BaseFitProblem):
     """
     Weighted fits for multiple models.
@@ -713,7 +680,7 @@ class MultiFitProblem(BaseFitProblem):
     def __init__(self, models, weights=None, name="MultiFitProblem",
                  constraints=no_constraints, 
                  soft_limit=numpy.inf, penalty_nllf=1e6,
-                 freevars=FreeVariables()):
+                 freevars=None):
         self.partial = False
         self.constraints = constraints
         self.freevars = freevars
@@ -723,28 +690,33 @@ class MultiFitProblem(BaseFitProblem):
         self.weights = weights
         self.penalty_nllf = penalty_nllf
         self.soft_limit = soft_limit
-        self.set_model(0)
+        self.set_active_model(0) # Set the active model to model 0
         self.model_reset()
 
     @property
     def models(self):
         """Iterate over models, with free parameters set from model specific values"""
-        for i,f in enumerate(self._models):
-            self.freevars._set_values(i)
-            yield f
-        # Restore the active model after cycling
-        self.set_model(self._active_model_index)
+        if self.freevars is not None:
+            for i,f in enumerate(self._models):
+                self.freevars.set_model(i)
+                yield f
+            # Restore the active model after cycling
+            self.freevars.set_model(self._active_model_index)
+        else:
+            for f in self._models:
+                yield f
 
-    def set_model(self, i):
+    def set_active_model(self, i):
         """Use free parameters from model *i*"""
         self._active_model_index = i
         self.active_model = self._models[i]
-        self.freevars._set_values(i)
+        if self.freevars is not None:
+            self.freevars.set_model(i)
 
     def model_parameters(self):
         """Return parameters from all models"""
         return [f.model_parameters() for f in self.models] \
-            + [self.freevars._parameters]
+            + [self.freevars.parameters()]
     def model_points(self):
         """Return number of points in all models"""
         return sum(f.model_points() for f in self.models)

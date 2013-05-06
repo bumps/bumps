@@ -13,6 +13,8 @@ parts of the model, or different models.
 """
 #__all__ = [ 'Parameter']
 
+from copy import copy
+
 import numpy
 
 from numpy import inf
@@ -88,7 +90,7 @@ class BaseParameter(object):
         else:
             self.bounds = mbounds.BoundedNormal(mu,sigma,limits)
         return self
-    def rv(self, dist):
+    def pdf(self, dist):
         """
         Allow the parameter to vary according to any continuous SciPy
         stats distribution.
@@ -249,11 +251,11 @@ class Parameter(BaseParameter):
         # Store whatever values the user needs to associate with the parameter
         # Models should set units and tool tips so the user interface has
         # something to work with.
-        limits = kw.pop('limits',(-inf,inf))
+        limits = kw.get('limits',(-inf,inf))
         for k,v in kw.items():
             setattr(self,k,v)
 
-        # The real initialization
+        # Initialize bounds, with limits clipped to the hard limits for the parameter
         def clip(x,a,b): return min(max(x,a),b)
         self.bounds = bounds
         self.bounds.limits = (clip(self.bounds.limits[0],*limits),
@@ -286,18 +288,138 @@ class Reference(Parameter):
     attributes cannot be assigned to parameter expressions without some
     trigger to update the values of the attributes in the model.
     """
-    def __init__(self, obj, attr, name=None):
+    def __init__(self, obj, attr, **kw):
         self.obj = obj
         self.attr = attr
-        if name is not None:
-            self.name = name
-        else:
-            self.name = ".".join([obj.__class__.__name__, attr])
-    def _getvalue(self):
+        kw.setdefault('name', ".".join([obj.__class__.__name__, attr]))
+        Parameter.__init__(self, **kw)
+
+    @property
+    def value(self):
         return getattr(self.obj, self.attr)
-    def _setvalue(self, value):
+    @value.setter
+    def value(self, value):
         setattr(self.obj, self.attr, value)
-    value = property(_getvalue, _setvalue)
+
+class ParameterSet(object):
+    """
+    A parameter that depends on the model.
+    """
+    def __init__(self, reference, names=None):
+        """
+        Create a parameter set, with one parameter for each model name.
+
+        *names* is the list of model names.
+
+        *reference* is the underlying :class:`parameter.Parameter` that will be set when the
+            model is selected.
+
+        *parameters* will be created, with one parameter per model.
+        """
+        self.names = names
+        self.reference = reference
+        self.parameters = [copy(reference) for _ in names]
+        for p,n in zip(self.parameters,names):
+            p.name = " ".join((n,p.name))
+        self.reference.fittable = False  # Reference is no longer directly fittable
+
+    def __getitem__(self, i): 
+        """
+        Return the underlying parameter for the model index.  Index can either be
+        an integer or a model name.
+        """
+        # Try looking up the free variable by model name rather than model index
+        # If this fails, assume index is a model index
+        try: i = self.names.index(i)
+        except ValueError: pass
+        return self.parameters[i]
+
+    def set(self, index):
+        """
+        Set the underlying model parameter to the value of the nth model.
+        """
+        self.reference.value = self.parameters[index].value
+
+    @property
+    def values(self):
+        return [p.value for p in self.parameters]
+    @values.setter
+    def values(self, values):
+        for p,v in zip(self.parameters,values): p.value = v
+
+    @property
+    def value(self):
+        raise NotImplementedError("Use parameterset.values to get the current value set")
+
+    @property
+    def value(self, v):
+        for p in self.parameters: p.value = v
+
+    def range(self, *args, **kw):
+        """
+        Like :method:`parameter.Parameter.range`, but applied to all models.
+        """
+        for p in self.parameters: p.range(*args, **kw)
+
+    def pm(self, *args, **kw):
+        """
+        Like :method:`parameter.Parameter.pm`, but applied to all models.
+        """
+        for p in self.parameters: p.pm(*args, **kw)
+
+    def pmp(self, *args, **kw):
+        """
+        Like :method:`parameter.Parameter.pmp`, but applied to all models.
+        """
+        for p in self.parameters: p.pmp(*args, **kw)
+
+class FreeVariables(object):
+    """
+    A collection of parameter sets for a group of models.
+
+    *names* is the set of model names.
+
+    The parameters themselves are specified as key=value pairs, with key being
+    the attribute name which is used to retrieve the parameter set and value being
+    a :class:`Parameter` containing the parameter that is shared between the models.
+
+    In order to evaluate the log likelihood of all models simultaneously, the fitting 
+    program will need to call set_model with the model index for each model in turn.
+    This substitutes the values from the free variables into the model.  This allows
+    us to share a common sample across multiple data sets, with each dataset having
+    its own values for some of the sample parameters.  The alternative is to copy
+    the entire sample structure, sharing references to common parameters and creating
+    new parameters for each model for the free parameters.  Setting up these copies
+    was inconvenient.
+    """
+    def __init__(self, names=None, **kw):
+        if names is None:
+            raise TypeError("FreeVariables needs name=[model1, model2, ...]")
+        self.names = names
+
+        # Create slots to hold the free variables
+        self._parameters = dict((k,ParameterSet(v, names=names)) 
+                                for k,v in kw.items())
+
+    def __getattr__(self, k):
+        """
+        Return the parameter set for the given free parameter.
+        """
+        return self._parameters[k]
+
+    def parameters(self):
+        """
+        Return the set of free variables for all the models.
+        """
+        return dict((k,v.parameters) for k,v in self._parameters.items())
+
+    def set_model(self, i):
+        """
+        Set the reference parameters for model *i*.
+        """
+        for p in self._parameters.values():
+            p.set(i)
+
 
 # Current implementation computes values on the fly, so you only
 # need to plug the values into the parameters and the parameters
