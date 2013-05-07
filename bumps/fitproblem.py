@@ -712,8 +712,11 @@ class MultiFitProblem(BaseFitProblem):
 
     def model_parameters(self):
         """Return parameters from all models"""
-        return [f.model_parameters() for f in self.models] \
-            + [self.freevars.parameters()]
+        pars = { 'models':[f.model_parameters() for f in self.models] }
+        free = self.freevars.parameters()
+        if free: pars['freevars'] = free
+        return pars
+
     def model_points(self):
         """Return number of points in all models"""
         return sum(f.model_points() for f in self.models)
