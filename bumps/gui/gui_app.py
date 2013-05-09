@@ -73,7 +73,7 @@ FRAME_HEIGHT = 900
 # Note that it is best to start with an image having the desired dimensions or
 # larger.  If image is smaller the image conversion time may be noticeable.
 SPLASH_FILE = "bumps_splash.jpg"
-SPLASH_TIMEOUT = 3000  # in miliseconds
+SPLASH_TIMEOUT = 30  # in miliseconds
 SPLASH_WIDTH = 720
 SPLASH_HEIGHT = 540
 
@@ -119,7 +119,9 @@ class MainApp(wx.App):
         # Create the application frame, but it will not be shown until the
         # splash screen terminates.  Note that import of AppFrame is done here
         # while the user is viewing the splash screen.
-        if LOGTIM: log_time("Starting to build the GUI application")        # Can't delay matplotlib configuration any longer
+        if LOGTIM: log_time("Starting to build the GUI application")
+
+        # Can't delay matplotlib configuration any longer
         from bumps.cli import config_matplotlib
         config_matplotlib('WXAgg')
 
@@ -133,6 +135,7 @@ class MainApp(wx.App):
         # To have the frame visible behind the spash screen, comment out the
         # line below.
         #self.frame.Show(True)
+        #wx.CallAfter(self.after_show)
 
         # To test that the splash screen will not go away until the frame
         # initialization is complete, simulate an increase in startup time
