@@ -334,6 +334,11 @@ class ParameterSet(object):
         except ValueError: pass
         return self.parameters[i]
 
+    def __setitem__(self, i, v):
+        try: i = self.names.index(i)
+        except ValueError: pass
+        self.parameters[i] = v
+
     def set(self, index):
         """
         Set the underlying model parameter to the value of the nth model.
