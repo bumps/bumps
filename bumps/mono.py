@@ -3,8 +3,9 @@ Monotonic spline modeling
 """
 
 from __future__ import division
+import numpy
 from numpy import (diff, hstack, sqrt, searchsorted, asarray,
-                   nonzero, linspace, isnan)
+                   nonzero, linspace, isinf, isnan)
 from . import numpyerrors
 
 @numpyerrors.ignored
@@ -25,14 +26,18 @@ def monospline(x, y, xt):
     y = hstack((y[0], y, y[-1]))
     dx = diff(x)
     dy = diff(y)
+    dx[abs(dx)<1e-10] = 1e-10
     delta = dy/dx
     m = (delta[1:]+delta[:-1])/2
     m = hstack( (0, m, 0) )
     alpha, beta = m[:-1]/delta, m[1:]/delta
     d = alpha**2+beta**2
 
+    #print "ma",m
     for i in range(len(m)-1):
-        if dy[i] == 0 or alpha[i] == 0 or beta[i] == 0:
+        if isnan(delta[i]):
+            m[i] = delta[i+1]
+        elif dy[i] == 0 or alpha[i] == 0 or beta[i] == 0:
             m[i] = m[i+1] = 0
         elif d[i] > 9:
             tau = 3./sqrt(d[i])
@@ -43,7 +48,12 @@ def monospline(x, y, xt):
         #elif numpy.isnan(m[i]):
         #    print i,"isnan",delta[i],dy[i]
     #m[ dy[1:]*dy[:-1]<0 ] = 0
-    m[isnan(m)] = 0
+    #if numpy.any(isnan(m)|isinf(m)):
+    #    print "mono still has bad values"
+    #    print "m",m
+    #    print "delta",delta
+    #    print "dx,dy",list(zip(dx,dy))
+    #    m[isnan(m)|isinf(m)] = 0
 
     return hermite(x,y,m,xt)
 
