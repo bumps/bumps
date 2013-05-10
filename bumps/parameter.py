@@ -410,7 +410,10 @@ class FreeVariables(object):
         """
         Return the parameter set for the given free parameter.
         """
-        return self._parameters[k]
+        try: 
+            return self._parameters[k]
+        except KeyError: 
+            raise AttributeError('FreeVariables has no attribute %r'%k)
 
     def parameters(self):
         """
