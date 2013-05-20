@@ -17,7 +17,7 @@ import numpy
 from . import fitters
 from .fitters import FIT_OPTIONS, FitDriver, StepMonitor, ConsoleMonitor
 from .fitproblem import load_problem as load_script
-from .mapper import MPMapper, AMQPMapper, SerialMapper
+from .mapper import MPMapper, AMQPMapper, MPIMapper, SerialMapper
 from . import util
 from . import initpop
 from . import __version__
@@ -247,7 +247,7 @@ class BumpsOpts(ParseOpts):
     FLAGS = set(("preview", "chisq", "profile", 
                  "simulate", "simrandom", "shake",
                  "worker", "batch", "overwrite", "parallel", "stepmon",
-                 "cov", "remote", "staj", "edit",
+                 "cov", "remote", "staj", "edit", "mpi",
                  "multiprocessing-fork", # passed in when app is a frozen image
                ))
     VALUES = set(("plot", "store", "resume", "fit", "noise", "seed", "pars",
@@ -304,7 +304,9 @@ Options:
     --resume=path
         resume a fit from previous stored state (only works on some fitters)
     --parallel
-        run fit using all processors
+        run fit using multiprocessing for parallelism
+    --mpi
+        run fit using MPI for parallelism (use command "mpirun -n cpus ...")
     --batch
         batch mode; don't show plots after fit
     --remote
@@ -498,6 +500,9 @@ def beep():
         print >>sys.__stdout__,"\a"
 
 def main():
+    if "--mpi" in sys.argv:
+        MPIMapper.start_worker()
+ 
     if len(sys.argv) == 1:
         sys.argv.append("-?")
         print "\nNo modelfile parameter was specified.\n"
@@ -525,13 +530,13 @@ def main():
     # the particular problem; need to be able to transport the problem
     # to the worker instead.  Until that happens, the GUI shouldn't use
     # the AMQP mapper.
-    if opts.parallel or opts.worker:
+    if opts.mpi:
+        mapper = MPIMapper
+    elif opts.parallel or opts.worker:
         if opts.transport == 'amqp':
             mapper = AMQPMapper
         elif opts.transport == 'mp':
             mapper = MPMapper
-        elif opts.transport == 'mpi':
-            raise NotImplementedError("mpi transport not implemented")
     else:
         mapper = SerialMapper
 
@@ -588,6 +593,7 @@ def main():
         if not opts.batch:
             import pylab
             pylab.show()
+
 
 # Allow  "$python -m bumps.cli args" calling pattern
 if __name__ == "__main__": main()

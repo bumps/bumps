@@ -71,6 +71,65 @@ class MPMapper(object):
     def stop_mapper(mapper):
         pass
 
+
+def _MPI_set_problem(comm, problem, root=0):
+    global _problem
+    _problem = comm.bcast(problem)
+def _MPI_run_problem(point):
+    global _problem
+    return _problem.nllf(point) 
+def _MPI_map(comm, points, root=0):
+    import numpy
+    from mpi4py import MPI
+    # Send number of points and number of variables per point
+    npoints, nvars = comm.bcast(points.shape if comm.rank==root else None, root=root)
+
+    # Divvy points equally across all processes
+    whole = points if comm.rank==root else None
+    idx = numpy.arange(comm.size)
+    size = numpy.ones(comm.size,idx.dtype)*(npoints//comm.size) + (idx<npoints%comm.size)
+    offset = numpy.cumsum(numpy.hstack((0,size[:-1])))
+    part = numpy.empty((size[comm.rank],nvars), dtype='d')
+    comm.Scatterv((whole,(size*nvars,offset*nvars),MPI.DOUBLE),
+                  (part,MPI.DOUBLE),
+                  root=root)
+
+    # Evaluate models assigned to each processor
+    partial_result = numpy.array([_MPI_run_problem(pi) for pi in part],dtype='d')
+
+    # Collect results
+    result = numpy.empty(npoints,dtype='d') if comm.rank==root else None
+    comm.Barrier()
+    comm.Gatherv((partial_result,MPI.DOUBLE),
+                 (result,(size,offset),MPI.DOUBLE),
+                 root=root)
+    comm.Barrier()
+    return result   
+
+class MPIMapper(object):
+    @staticmethod
+    def start_worker():
+        from mpi4py import MPI
+        root = 0
+        # If master, then return to main program
+        if MPI.COMM_WORLD.rank==root: return
+        # If slave, then set problem and wait in map loop
+        _MPI_set_problem(MPI.COMM_WORLD, None, root=root)
+        while True: _MPI_map(MPI.COMM_WORLD, None, root=root)
+
+    @staticmethod
+    def start_mapper(problem, modelargs):
+        # Slave started from start_worker, so it never gets here
+        # Slave expects _MPI_set_problem followed by a series
+        # of map requests
+        from mpi4py import MPI
+        _MPI_set_problem(MPI.COMM_WORLD, problem)
+        return lambda points: _MPI_map(MPI.COMM_WORLD, points)
+
+    @staticmethod
+    def stop_mapper(mapper):
+        pass
+
 class AMQPMapper(object):
 
     @staticmethod
@@ -120,3 +179,4 @@ class AMQPMapper(object):
     def stop_mapper(mapper):
         for pipe in mapper.pipes:
             pipe.terminate()
+
