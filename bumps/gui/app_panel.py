@@ -499,9 +499,9 @@ class AppPanel(wx.Panel):
         # Save the current state of the parameters
         with redirect_console(output_path+".out"):
             self.model.show()
-        #pardata = "".join("%s %.15g\n"%(p.name, p.value)
-        #                  for p in self.model.parameters)
-        open(output_path+".par","wt").write(self.model.summarize())
+        pardata = "".join("%s %.15g\n"%(p.name, p.value)
+                          for p in self.model._parameters)
+        open(output_path+".par",'wt').write(pardata)
 
         # Produce model plots
         self.model.plot(figfile=output_path)

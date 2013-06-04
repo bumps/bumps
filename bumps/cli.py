@@ -54,10 +54,10 @@ def load_problem(args):
         problem = plugin.load_model(filename)
         if problem is None:
             #print "loading",filename,"from",directory
-            try:
+            if filename.endswith('pickle'):
                 # First see if it is a pickle
                 problem = pickle.load(open(filename, 'rb'))
-            except:
+            else:
                 # Then see if it is a model
                 options = args[1:]
                 problem = load_script(filename, options=options)
