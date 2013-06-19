@@ -123,8 +123,8 @@ class FitThread(Thread):
 
         Thread.__init__(self)
         self.win = win
-        self.fitLock = fitLock;
-        self.abort_test = abort_test;
+        self.fitLock = fitLock
+        self.abort_test = abort_test
         self.problem = problem
         self.fitclass = fitclass
         self.options = options
@@ -160,10 +160,10 @@ class FitThread(Thread):
         problem = deepcopy(self.problem)
         #print "fitclass id",id(self.fitclass),self.fitclass,threading.current_thread()
         def abort_wrapper():
-            self.fitLock.acquire();
-            stat = self.abort_test();
-            self.fitLock.release();
-            return stat==1;
+            self.fitLock.acquire()
+            stat = self.abort_test()
+            self.fitLock.release()
+            return stat==1
         driver = FitDriver(self.fitclass, problem=problem,
                            monitors=monitors, abort_test = abort_wrapper,
                            mapper = mapper.start_mapper(problem, []),

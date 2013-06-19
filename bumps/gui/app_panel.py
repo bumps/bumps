@@ -414,11 +414,11 @@ class AppPanel(wx.Panel):
 
         # Start a new thread worker and give fit problem to the worker.
         fitopts = fitters.FIT_OPTIONS[fitters.FIT_DEFAULT]
-        self.fitLock = threading.Lock();
-        self.fitAbort = 0;
+        self.fitLock = threading.Lock()
+        self.fitAbort = 0
         
         def abort_test():
-            return self.fitAbort;
+            return self.fitAbort
         self.fit_thread = FitThread(win=self, fitLock=self.fitLock,
                                     abort_test=abort_test,
                                     problem=self.model,
@@ -428,9 +428,9 @@ class AppPanel(wx.Panel):
 
     def OnFitStop(self, event):
         print "Clicked on stop fit ..." # not implemented
-        self.fitLock.acquire();
-        self.fitAbort = 1;
-        self.fitLock.release();
+        self.fitLock.acquire()
+        self.fitAbort = 1
+        self.fitLock.release()
 
     def OnFitComplete(self, event):
         self.fit_thread = None

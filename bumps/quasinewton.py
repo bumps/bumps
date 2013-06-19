@@ -169,7 +169,7 @@ def quasinewton(fn, x0 = [], grad = [], Sx = [], typf = 1, macheps = [], eta = [
         termcode = umstop(n, xc, xp, fp, gp, Sx, typf, retcode, gradtol,
                           steptol, itncount, itnlimit, consecmax)
 
-        if abort_test(): termcode = 6;
+        if abort_test(): termcode = 6
         
         # STEP 10.6
         # If termcode is larger than zero, we found a point satisfying one of the
