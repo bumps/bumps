@@ -12,7 +12,7 @@ def print_every_five(step, x, fx, k):
     if step%5 == 0:
         print step,":",fx[k],x[k]
 
-def random_lines(cfo, NP, CR = 0.9, epsilon = 1e-10, maxiter = 1000):
+def random_lines(cfo, NP, CR = 0.9, epsilon = 1e-10, abort_test=None, maxiter = 1000):
     if 'parallel_cost' in cfo:
         mapper = lambda v: asarray(cfo['parallel_cost'](v.T),'d')
     else:
@@ -115,6 +115,7 @@ def random_lines(cfo, NP, CR = 0.9, epsilon = 1e-10, maxiter = 1000):
             satisfied_sc = 1
             x_best = X[:,i_best]
             return satisfied_sc, n_feval, f_best, x_best
+        if abort_test(): break;
 
         monitor(L,X, f, i_best)
 

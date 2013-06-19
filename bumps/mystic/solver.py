@@ -135,7 +135,7 @@ class Minimizer:
         self.monitors = monitors
         self.reset()
 
-    def minimize(self, mapper=map):
+    def minimize(self, mapper=map, abort_test=None):
         """
         Run the solver to completion, returning the best point.
 
@@ -148,7 +148,8 @@ class Minimizer:
                 #print "map result",result
                 self.update(population, result)
                 #print self.history.step, self.history.value
-                if self.isdone(): break
+                if self.isdone(): break         #STOPHERE combine
+                if abort_test(): break;
                 population = self.next()
         except KeyboardInterrupt:
             pass

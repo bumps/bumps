@@ -311,6 +311,8 @@ def run_dream(dream):
 
             # Keep track of which CR ratios were successful
             dream.CR.update(gen, xold, x, used)
+            
+            #STOPHERE
 
         # End of differential evolution aging
         # ---------------------------------------------------------------------

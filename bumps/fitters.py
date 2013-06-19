@@ -156,7 +156,7 @@ class BFGSFit(FitBase):
     name = "Quasi-Newton BFGS"
     settings = [('steps', 3000), ('starts', 100)]
 
-    def solve(self, monitors=None, mapper=None, **options):
+    def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         _fill_defaults(options, self.settings)
         from quasinewton import quasinewton, STATUS
         self._update = MonitorRunner(problem=self.problem,
@@ -164,6 +164,7 @@ class BFGSFit(FitBase):
         result = quasinewton(fn=self.problem.nllf,
                              x0=self.problem.getp(),
                              monitor=self._monitor,
+                             abort_test=abort_test,
                              itnlimit=options['steps'],
                              )
         code = result['status']
@@ -213,7 +214,7 @@ class RLFit(FitBase):
     name = "Random Lines"
     settings = [('steps', 3000), ('starts', 20), ('pop', 0.5), ('CR', 0.9)]
 
-    def solve(self, monitors=None, mapper=None, **options):
+    def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         _fill_defaults(options, self.settings)
         if mapper is None:
             mapper = lambda x: map(self.problem.nllf, x)
@@ -230,7 +231,7 @@ class RLFit(FitBase):
                    monitor=self._monitor)
         NP = max(int(cfo['n'] * options['pop']), 3)
 
-        result = random_lines(cfo, NP, maxiter=options['steps'],
+        result = random_lines(cfo, NP, abort_test=abort_test, maxiter=options['steps'],
                               CR=options['CR'])
         satisfied_sc, n_feval, f_best, x_best = result
 
@@ -278,7 +279,7 @@ class AmoebaFit(FitBase):
     name = "Nelder-Mead Simplex"
     settings = [('steps', 1000), ('starts', 1), ('radius', 0.15)]
 
-    def solve(self, monitors=None, mapper=None, **options):
+    def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         _fill_defaults(options, self.settings)
         # TODO: no mapper??
         from simplex import simplex
@@ -287,6 +288,7 @@ class AmoebaFit(FitBase):
         #print "bounds",self.problem.bounds()
         result = simplex(f=self.problem.nllf, x0=self.problem.getp(),
                          bounds=self.problem.bounds(),
+                         abort_test=abort_test,
                          update_handler=self._monitor,
                          maxiter=options['steps'],
                          radius=options['radius'])
@@ -481,12 +483,13 @@ def _resampler(fitter, xinit, samples=100, restart=False, **options):
 
 
 class FitDriver(object):
-    def __init__(self, fitclass=None, problem=None, monitors=None,
+    def __init__(self, fitclass=None, problem=None, monitors=None, abort_test=None,
                  mapper=None, **options):
         self.fitclass = fitclass
         self.problem = problem
         self.options = options
         self.monitors = monitors
+        self.abort_test = abort_test
         self.mapper = mapper if mapper else lambda p: map(problem.nllf, p)
 
     def fit(self, resume=None):
@@ -498,6 +501,7 @@ class FitDriver(object):
             fitter = MultiStart(fitter)
         t0 = time.clock()
         x, fx = fitter.solve(monitors=self.monitors,
+                             abort_test=self.abort_test,
                              mapper=self.mapper,
                              **self.options)
         self.fitter = fitter

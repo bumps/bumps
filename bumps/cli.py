@@ -421,6 +421,7 @@ def _initial_model(opts):
         numpy.random.seed(opts.seed)
 
     if opts.args:
+        print opts.args
         problem = load_problem(opts.args)
         if opts.pars is not None:
             recall_best(problem, opts.pars)
