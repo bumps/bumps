@@ -175,7 +175,7 @@ class Dream(object):
 
         self._initialized = False
 
-    def sample(self, state=None):
+    def sample(self, state=None, abort_test=None):
         """
         Pull the requisite number of samples from the distribution
         """
@@ -183,12 +183,12 @@ class Dream(object):
             self._initialized = True
         self.state = state
         try:
-            run_dream(self)
+            run_dream(self, abort_test=abort_test)
         except KeyboardInterrupt:
             pass
         return self.state
 
-def run_dream(dream):
+def run_dream(dream, abort_test=None):
 
     # Step 1: Sample s points in the parameter space
     # [PAK] I moved this out of dream so that the user can use whatever
@@ -312,7 +312,7 @@ def run_dream(dream):
             # Keep track of which CR ratios were successful
             dream.CR.update(gen, xold, x, used)
             
-            #STOPHERE
+            if abort_test(): break
 
         # End of differential evolution aging
         # ---------------------------------------------------------------------
@@ -330,6 +330,8 @@ def run_dream(dream):
 
         # Save update information
         state._update(R_stat=R_stat, CR_weight=dream.CR.weight)
+        
+        if abort_test(): break
 
 
 

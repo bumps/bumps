@@ -131,7 +131,7 @@ class DEFit(FitBase):
     name = "Differential Evolution"
     settings = [('steps', 1000), ('pop', 10), ('CR', 0.9), ('F', 2.0)]
 
-    def solve(self, monitors=None, mapper=None, **options):
+    def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         _fill_defaults(options, self.settings)
         from .mystic.optimizer import de
         from .mystic.solver import Minimizer
@@ -148,7 +148,7 @@ class DEFit(FitBase):
         minimize = Minimizer(strategy=strategy, problem=self.problem,
                              monitors=monitors,
                              failure=Steps(options['steps']))
-        x = minimize(mapper=_mapper)
+        x = minimize(mapper=_mapper, abort_test=abort_test)
         return x, minimize.history.value[0]
 
 
@@ -364,7 +364,7 @@ class DreamFit(FitBase):
         self.dream_model = DreamModel(problem)
         self.state = None
 
-    def solve(self, monitors=None, mapper=None, **options):
+    def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         _fill_defaults(options, self.settings)
         from . import dream
 
@@ -383,7 +383,7 @@ class DreamFit(FitBase):
                               monitor=self._monitor,
                               DE_noise=1e-6)
 
-        self.state = sampler.sample(state=self.state)
+        self.state = sampler.sample(state=self.state, abort_test=abort_test)
         self.state.mark_outliers()
         self.state.keep_best()
         self.state.title = self.dream_model.problem.name

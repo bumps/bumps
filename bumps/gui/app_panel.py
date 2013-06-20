@@ -427,7 +427,7 @@ class AppPanel(wx.Panel):
         self.sb.SetStatusText("Fit status: Running", 3)
 
     def OnFitStop(self, event):
-        print "Clicked on stop fit ..." # not implemented
+        #print "Clicked on stop fit ..."
         self.fitLock.acquire()
         self.fitAbort = 1
         self.fitLock.release()
