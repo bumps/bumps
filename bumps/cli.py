@@ -541,7 +541,7 @@ def main():
         mapper = SerialMapper
 
     fitopts = FIT_OPTIONS[opts.fit]
-    fitdriver = FitDriver(fitopts.fitclass, problem=problem, **fitopts.options)
+    fitdriver = FitDriver(fitopts.fitclass, problem=problem, abort_test=lambda: False, **fitopts.options)
 
     if opts.profile:
         run_profile(problem, steps=opts.steps)
