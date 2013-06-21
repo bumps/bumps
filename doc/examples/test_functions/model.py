@@ -53,7 +53,7 @@ def gauss(x):
     return 1+0.5*sum(x[i]**2 for i in range(n))
 
 try:
-    nllf = fxy(rosenbrock) if len(sys.argv) < 2 else eval(sys.argv[1])
+    nllf = f2(rosenbrock) if len(sys.argv) < 2 else eval(sys.argv[1])
 except:
     usage = """\
 Provide a valid fitting function definition with x,y as fitting parameters,
@@ -75,7 +75,7 @@ or for the k-dimensional version:
 """
     print >>sys.stderr,usage
     raise
-plot=plot2d(nllf,('x','y'),range=(-1,1))
+plot=plot2d(nllf,('x','y'),range=(-10,10))
 M = ModelFunction(nllf,plot=plot)
 for p in M.parameters().values():
     p.value = 200

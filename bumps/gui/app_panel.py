@@ -29,6 +29,7 @@ of the frame of the GUI for the Bumps application.
 
 from __future__ import division
 import os
+import threading
 
 import wx
 import wx.aui
@@ -413,13 +414,21 @@ class AppPanel(wx.Panel):
 
         # Start a new thread worker and give fit problem to the worker.
         fitopts = fitters.FIT_OPTIONS[fitters.FIT_DEFAULT]
-        self.fit_thread = FitThread(win=self, problem=self.model,
+        self.fitLock = threading.Lock()
+        self.fitAbort = 0
+        
+        def abort_test():
+            return self.fitAbort
+        self.fit_thread = FitThread(win=self, fitLock=self.fitLock,
+                                    abort_test=abort_test,
+                                    problem=self.model,
                                     fitclass=fitopts.fitclass,
                                     options=fitopts.options)
         self.sb.SetStatusText("Fit status: Running", 3)
 
     def OnFitStop(self, event):
-        print "Clicked on stop fit ..." # not implemented
+        with self.fitLock:
+            self.fitAbort = 1
 
     def OnFitComplete(self, event):
         self.fit_thread = None
@@ -555,12 +564,12 @@ class AppPanel(wx.Panel):
 
         # Enable appropriate menu items.
         self.fit_menu.Enable(id=self.fit_menu_start.GetId(), enable=True)
-        #self.fit_menu.Enable(id=self.fit_menu_stop.GetId(), enable=True)
+        self.fit_menu.Enable(id=self.fit_menu_stop.GetId(), enable=True)
         self.fit_menu.Enable(id=self.fit_menu_options.GetId(), enable=True)
 
         # Enable appropriate toolbar items.
         self.tb.EnableTool(id=self.tb_start.GetId(), enable=True)
-        #self.tb.EnableTool(id=self.tb_stop.GetId(), enable=True)
+        self.tb.EnableTool(id=self.tb_stop.GetId(), enable=True)
         if hasattr(model, 'path'):
             signal.log_message(message="loaded "+model.path)
             self.GetTopLevelParent().SetTitle("Bumps: %s"%model.name)

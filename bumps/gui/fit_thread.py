@@ -116,13 +116,15 @@ class DreamMonitor(monitor.Monitor):
 
 class FitThread(Thread):
     """Run the fit in a separate thread from the GUI thread."""
-    def __init__(self, win, problem=None,
+    def __init__(self, win, fitLock=None, abort_test=None, problem=None,
                  fitclass=None, options=None, mapper=None):
         # base class initialization
         #Process.__init__(self)
 
         Thread.__init__(self)
         self.win = win
+        self.fitLock = fitLock
+        self.abort_test = abort_test
         self.problem = problem
         self.fitclass = fitclass
         self.options = options
@@ -157,8 +159,11 @@ class FitThread(Thread):
         #print "fitclass",self.fitclass
         problem = deepcopy(self.problem)
         #print "fitclass id",id(self.fitclass),self.fitclass,threading.current_thread()
+        def abort_wrapper():
+            with self.fitLock:
+                return self.abort_test()
         driver = FitDriver(self.fitclass, problem=problem,
-                           monitors=monitors,
+                           monitors=monitors, abort_test = abort_wrapper,
                            mapper = mapper.start_mapper(problem, []),
                            **self.options)
 
