@@ -160,10 +160,8 @@ class FitThread(Thread):
         problem = deepcopy(self.problem)
         #print "fitclass id",id(self.fitclass),self.fitclass,threading.current_thread()
         def abort_wrapper():
-            self.fitLock.acquire()
-            stat = self.abort_test()
-            self.fitLock.release()
-            return stat==1
+            with self.fitLock:
+                return self.abort_test()
         driver = FitDriver(self.fitclass, problem=problem,
                            monitors=monitors, abort_test = abort_wrapper,
                            mapper = mapper.start_mapper(problem, []),
