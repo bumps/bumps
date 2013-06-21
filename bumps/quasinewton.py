@@ -65,6 +65,7 @@ STATUS = {
 
 def quasinewton(fn, x0 = [], grad = [], Sx = [], typf = 1, macheps = [], eta = [],
               maxstep = 100, gradtol = 1e-6, steptol = 1e-12, itnlimit = 2000,
+              abort_test = None,
               monitor = lambda **kw: True) :
     """
     Run a quasinewton optimization on the problem.
@@ -168,6 +169,8 @@ def quasinewton(fn, x0 = [], grad = [], Sx = [], typf = 1, macheps = [], eta = [
         termcode = umstop(n, xc, xp, fp, gp, Sx, typf, retcode, gradtol,
                           steptol, itncount, itnlimit, consecmax)
 
+        if abort_test(): termcode = 6
+        
         # STEP 10.6
         # If termcode is larger than zero, we found a point satisfying one of the
         # termination criteria, return from here.  Otherwise evaluate the next
@@ -184,6 +187,7 @@ def quasinewton(fn, x0 = [], grad = [], Sx = [], typf = 1, macheps = [], eta = [
             xc = xp
             fc = fp
             gc = gp
+        #STOPHERE
 
     return dict(status=termcode, x=xf, fx=ff,
                 iterations=itncount, evals=fcount, linesearch_evals=fcount_ls)
