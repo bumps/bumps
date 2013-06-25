@@ -81,14 +81,14 @@ class Curve(object):
 
         # Remember the function, parameters, and number of parameters
         self._function = fn
-        self._parameters = pars
+        self._pnames = pnames
         self._cached_theory = None
 
     def update(self):
         self._cached_theory = None
         
     def parameters(self):
-        return self._parameters
+        return dict((p,getattr(self, p)) for p in self._pnames)
 
     def numpoints(self):
         return numpy.prod(self.y.shape)
@@ -96,7 +96,7 @@ class Curve(object):
     def theory(self, x=None):
         if self._cached_theory is None:
             if x is None: x = self.x
-            kw = dict( (k,v.value) for k,v in self._parameters.items() )
+            kw = dict( (p,getattr(self,p).value) for p in self._pnames )
             self._cached_theory = self._function(x, **kw)
         return self._cached_theory
 
