@@ -21,7 +21,7 @@ def fn(x, a, b): return (a+b)*x
 
 # Fake data
 sigma = 1
-x = numpy.linspace(-10., 10, 40)
+x = numpy.linspace(-1., 1, 40)
 dy = sigma*numpy.ones_like(x)
 y = fn(x,5,5) + numpy.random.randn(*x.shape)*dy
 
