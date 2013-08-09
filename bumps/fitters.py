@@ -149,7 +149,7 @@ class DEFit(FitBase):
                              monitors=monitors, success=success,
                              failure=Steps(options['steps']))
         x = minimize(mapper=_mapper, abort_test=abort_test)
-        with open("/tmp/evals","a") as fid: print >>fid,minimize.history.value[0],minimize.history.step[0],minimize.history.step[0]*options['pop']*len(self.problem.getp())
+        #with open("/tmp/evals","a") as fid: print >>fid,minimize.history.value[0],minimize.history.step[0],minimize.history.step[0]*options['pop']*len(self.problem.getp())
         return x, minimize.history.value[0]
 
 
