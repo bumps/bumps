@@ -7,7 +7,7 @@ import numpy
 
 from .parameter import Parameter
 
-class ModelFunction(object):
+class PDF(object):
     """
     Build a model from a function.
 
@@ -56,17 +56,17 @@ class ModelFunction(object):
 
         # Remember the function, parameters, and number of parameters
         self._function = fn
-        self._parameters = pars
+        self._pnames = pnames
         self._plot = plot
 
     def parameters(self):
         """
         Fittable parameters.
         """
-        return self._parameters
+        return dict((p,getattr(self, p)) for p in self._pnames)
 
     def __call__(self):
-        kw = dict( (k,v.value) for k,v in self._parameters.items() )
+        kw = dict( (p,getattr(self,p).value) for p in self._pnames )
         #print kw
         return self._function(**kw)
 
@@ -84,11 +84,11 @@ class ModelFunction(object):
 
     def plot(self, view=None):
         if self._plot:
-            kw = dict( (k,v.value) for k,v in self._parameters.items() )
+            kw = dict( (p,getattr(self,p).value) for p in self._pnames )
             self._plot(view=view, **kw)
 
     def numpoints(self):
-        return len(self._parameters)+1
+        return len(self._pnames)+1
 
     def residuals(self):
         """

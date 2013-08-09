@@ -1,11 +1,12 @@
-import pylab
 from numpy import sin, cos, linspace, meshgrid, e, pi, sqrt, array, exp
+from numpy.random import randn
 from bumps.names import *
 
 def prod(L):
     return reduce(lambda x,y: x*y, L, 1) 
 def plot2d(fn,args,range=(-10,10)):
     def plotter(view=None, **kw):
+        import pylab
         x,y = kw[args[0]],kw[args[1]]
         r = linspace(range[0],range[1],200)
         X,Y = meshgrid(x+r,y+r)
@@ -17,8 +18,11 @@ def f2(fn):
     def cost(x,y): return fn((x,y))
     return cost
 def fk(fn,k):
-    args = ",".join("z%d"%j for j in range(k-2))
+    args = ",".join("z%d"%j for j in range(2,k))
     return eval("lambda x,y,%s: fn((x,y,%s))"%(args,args),{'fn':fn})
+
+def sphere(x):
+    return sum(xi**2 for xi in x)
 
 def sin_plus_quadratic(x=0,y=0): 
     fx,fy = 2,3      # x,y frequency and between bowl barer height
@@ -76,8 +80,8 @@ or for the k-dimensional version:
     print >>sys.stderr,usage
     raise
 plot=plot2d(nllf,('x','y'),range=(-10,10))
-M = ModelFunction(nllf,plot=plot)
+M = PDF(nllf,plot=plot)
 for p in M.parameters().values():
-    p.value = 200
+    p.value = randn()
     p.range(-200,200)
 problem = FitProblem(M)
