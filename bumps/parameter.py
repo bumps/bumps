@@ -406,6 +406,11 @@ class FreeVariables(object):
         self._parameters = dict((k,ParameterSet(v, names=names)) 
                                 for k,v in kw.items())
 
+    def __getstate__(self):
+        return self.__dict__
+    def __setstate__(self, state):
+        self.__dict__ = state
+
     def __getattr__(self, k):
         """
         Return the parameter set for the given free parameter.
