@@ -123,7 +123,6 @@ class MPIMapper(object):
             while True: _MPI_map(MPI.COMM_WORLD, None, root=root)
         except StopIteration:
             pass
-        print "finalizing"
         MPI.Finalize()
         sys.exit(0)
 
