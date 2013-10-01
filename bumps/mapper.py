@@ -1,3 +1,4 @@
+import sys
 import os
 
 ## {{{ http://code.activestate.com/recipes/496767/ (r1)
@@ -122,6 +123,9 @@ class MPIMapper(object):
             while True: _MPI_map(MPI.COMM_WORLD, None, root=root)
         except StopIteration:
             pass
+        print "finalizing"
+        MPI.Finalize()
+        sys.exit(0)
 
     @staticmethod
     def start_mapper(problem, modelargs):
@@ -134,6 +138,7 @@ class MPIMapper(object):
 
     @staticmethod
     def stop_mapper(mapper):
+        from mpi4py import MPI
         import numpy
         # Send an empty point list to stop the iteration
         try:
@@ -141,6 +146,7 @@ class MPIMapper(object):
             raise RuntimeException("expected StopIteration")
         except StopIteration: 
             pass
+        MPI.Finalize()
 
 class AMQPMapper(object):
 
