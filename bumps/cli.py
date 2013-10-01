@@ -500,9 +500,6 @@ def beep():
         print >>sys.__stdout__,"\a"
 
 def main():
-    if "--mpi" in sys.argv:
-        MPIMapper.start_worker()
- 
     if len(sys.argv) == 1:
         sys.argv.append("-?")
         print "\nNo modelfile parameter was specified.\n"
@@ -531,6 +528,7 @@ def main():
     # to the worker instead.  Until that happens, the GUI shouldn't use
     # the AMQP mapper.
     if opts.mpi:
+        MPIMapper.start_worker(problem)
         mapper = MPIMapper
     elif opts.parallel or opts.worker:
         if opts.transport == 'amqp':

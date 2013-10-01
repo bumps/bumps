@@ -108,13 +108,15 @@ def _MPI_map(comm, points, root=0):
 
 class MPIMapper(object):
     @staticmethod
-    def start_worker():
+    def start_worker(problem):
+        global _problem
+        _problem = problem
         from mpi4py import MPI
         root = 0
         # If master, then return to main program
         if MPI.COMM_WORLD.rank==root: return
         # If slave, then set problem and wait in map loop
-        _MPI_set_problem(MPI.COMM_WORLD, None, root=root)
+        #_MPI_set_problem(MPI.COMM_WORLD, None, root=root)
         while True: _MPI_map(MPI.COMM_WORLD, None, root=root)
 
     @staticmethod
@@ -123,7 +125,7 @@ class MPIMapper(object):
         # Slave expects _MPI_set_problem followed by a series
         # of map requests
         from mpi4py import MPI
-        _MPI_set_problem(MPI.COMM_WORLD, problem)
+        #_MPI_set_problem(MPI.COMM_WORLD, problem)
         return lambda points: _MPI_map(MPI.COMM_WORLD, points)
 
     @staticmethod
