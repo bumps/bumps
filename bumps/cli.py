@@ -587,8 +587,9 @@ def main():
         best, fbest = fitdriver.fit(resume=resume_path)
         remember_best(fitdriver, problem, best)
         if opts.cov: print problem.cov()
+        mapper.stop_mapper(fitdriver.mapper)
         beep()
-        if not opts.batch:
+        if not opts.batch and not opts.mpi:
             import pylab
             pylab.show()
 

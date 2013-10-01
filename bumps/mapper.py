@@ -83,6 +83,7 @@ def _MPI_map(comm, points, root=0):
     from mpi4py import MPI
     # Send number of points and number of variables per point
     npoints, nvars = comm.bcast(points.shape if comm.rank==root else None, root=root)
+    if npoints == 0: raise StopIteration
 
     # Divvy points equally across all processes
     whole = points if comm.rank==root else None
@@ -117,7 +118,10 @@ class MPIMapper(object):
         if MPI.COMM_WORLD.rank==root: return
         # If slave, then set problem and wait in map loop
         #_MPI_set_problem(MPI.COMM_WORLD, None, root=root)
-        while True: _MPI_map(MPI.COMM_WORLD, None, root=root)
+        try:
+            while True: _MPI_map(MPI.COMM_WORLD, None, root=root)
+        except StopIteration:
+            pass
 
     @staticmethod
     def start_mapper(problem, modelargs):
@@ -130,7 +134,13 @@ class MPIMapper(object):
 
     @staticmethod
     def stop_mapper(mapper):
-        pass
+        import numpy
+        # Send an empty point list to stop the iteration
+        try:
+            mapper(numpy.empty((0,0),'d'))
+            raise RuntimeException("expected StopIteration")
+        except StopIteration: 
+            pass
 
 class AMQPMapper(object):
 
