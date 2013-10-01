@@ -410,8 +410,10 @@ class FreeVariables(object):
     # chokes without it.
     def __getstate__(self):
         return self.__dict__
+
     def __setstate__(self, state):
         self.__dict__ = state
+
     def __getattr__(self, k):
         """
         Return the parameter set for the given free parameter.

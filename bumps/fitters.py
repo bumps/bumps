@@ -126,16 +126,15 @@ class MultiStart(FitBase):
                 self.problem.setp(pop[0])
         return x_best, f_best
 
-
 class DEFit(FitBase):
     name = "Differential Evolution"
-    settings = [('steps', 1000), ('pop', 10), ('CR', 0.9), ('F', 2.0)]
+    settings = [('steps', 1000), ('pop', 10), ('CR', 0.9), ('F', 2.0), ('stop', '')]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         _fill_defaults(options, self.settings)
         from .mystic.optimizer import de
         from .mystic.solver import Minimizer
-        from .mystic.stop import Steps
+        from .mystic.stop import Steps, parse_condition
         if monitors == None:
             monitors = [ConsoleMonitor(self.problem)]
         if mapper is not None:
@@ -145,10 +144,12 @@ class DEFit(FitBase):
         strategy = de.DifferentialEvolution(npop=options['pop'],
                                             CR=options['CR'],
                                             F=options['F'])
+        success = parse_condition(options['stop']) if options['stop'] else None
         minimize = Minimizer(strategy=strategy, problem=self.problem,
-                             monitors=monitors,
+                             monitors=monitors, success=success,
                              failure=Steps(options['steps']))
         x = minimize(mapper=_mapper, abort_test=abort_test)
+        #with open("/tmp/evals","a") as fid: print >>fid,minimize.history.value[0],minimize.history.step[0],minimize.history.step[0]*options['pop']*len(self.problem.getp())
         return x, minimize.history.value[0]
 
 
@@ -549,6 +550,7 @@ class FitOptions(object):
     FIELDS = dict(
         starts = ("Starts",          "int"),
         steps  = ("Steps",           "int"),
+        stop   = ("Stopping criteria", "str"),
         thin   = ("Thinning",        "int"),
         burn   = ("Burn-in Steps",   "int"),
         pop    = ("Population",      "float"),
@@ -575,12 +577,16 @@ class FitOptions(object):
                     self.options[field] = int(value)
                 elif dtype == 'float':
                     self.options[field] = float(value)
-                else:  # string
+                elif dtype == 'str':
+                    self.options[field] = value
+                elif isinstance(dtype, tuple):  # tuple
                     if not value in dtype:
                         raise ValueError('invalid option "%s" for %s: use '
                                          % (value, field)
                                          + '|'.join(dtype))
                     self.options[field] = value
+                else:
+                    raise TypeError("unkonwn argument type %s for field %s"%(str(dtype),field))
 
 # List of (parameter,factory value) required for each algorithm
 FIT_OPTIONS = dict(

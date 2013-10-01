@@ -818,7 +818,7 @@ class Time(Condition):
         return "time >= %g"%self.time
 
 
-class CPUTime(Condition):
+class CPU(Condition):
     """
     CPU time.
 
@@ -857,3 +857,10 @@ class Invalid: values are well defined
 
     for y in population
 """
+
+
+def parse_condition(cond):
+    import math
+    from . import stop 
+    return eval(cond, stop.__dict__.copy().update(math.__dict__))
+
