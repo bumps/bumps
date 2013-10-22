@@ -32,7 +32,7 @@ dist = setup(
         author='Paul Kienzle',
         author_email='pkienzle@nist.gov',
         url='http://www.reflectometry.org/danse/model1d.html',
-        description='Bayesian uncertainty modeling of parametric systems',
+        description='Data fitting and Bayesian uncertainty modeling for inverse problems',
         long_description=open('README.txt').read(),
         classifiers=[
             'Development Status :: 4 - Beta',

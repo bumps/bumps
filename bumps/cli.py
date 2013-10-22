@@ -301,8 +301,8 @@ Options:
         output directory for plots and models
     --overwrite
         if store already exists, replace it
-    --resume=path
-        resume a fit from previous stored state (only works on some fitters)
+    --resume=path    [dream]
+        resume a fit from previous stored state
     --parallel
         run fit using multiprocessing for parallelism
     --mpi
@@ -320,6 +320,10 @@ Options:
         fitting engine to use; see manual for details
     --steps=1000    [%(fitter)s]
         number of fit iterations after any burn-in time
+    --xtol=1e-4     [de, amoeba]
+        minimum population diameter
+    --ftol=1e-4     [de, amoeba]
+        minimum population flatness
     --pop=10        [dream, de, rl, ps]
         population size
     --burn=0        [dream, pt]

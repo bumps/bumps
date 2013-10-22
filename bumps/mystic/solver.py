@@ -112,7 +112,6 @@ import os
 
 import numpy
 
-from .history import History
 
 def cpu_time():
     """Current cpu time for this process"""
@@ -124,7 +123,7 @@ class Minimizer:
     Perform a minimization.
     """
     def __init__(self, problem=None, strategy=None, monitors=[],
-                 success=None, failure=None):
+                 history=None, success=None, failure=None):
         self.problem = problem
         self.strategy = strategy
         # Ask strategy to fill in the default termination conditions
@@ -133,15 +132,18 @@ class Minimizer:
         self.success = success if success is not None else defsucc
         self.failure = failure if failure is not None else deffail
         self.monitors = monitors
+        self.history = history
         self.reset()
 
-    def minimize(self, mapper=map, abort_test=None):
+    def minimize(self, mapper=map, abort_test=None, resume=False):
         """
         Run the solver to completion, returning the best point.
 
         Note: only used stand-alone, not within fit service
         """
-        population = self.start()
+        self.time = time.time()
+        self.remote_time = -cpu_time()
+        population = self.next() if resume else self.start()
         try:
             while True:
                 result = mapper(self.problem, population)
@@ -161,15 +163,15 @@ class Minimizer:
         """
         Clear the solver history.
         """
-        self.history = h = History()
-        h.provides(calls=1, time=1, cpu_time=1, step=1,
+        self.history.clear()
+        self.history.provides(calls=1, time=1, cpu_time=1, step=1,
                    point=1, value=1,
                    population_points=0, population_values=0)
         for c in self.success.primitives()|self.failure.primitives():
-            c.config_history(h)
+            c.config_history(self.history)
         for m in self.monitors:
-            m.config_history(h)
-        self.strategy.config_history(h)
+            m.config_history(self.history)
+        self.strategy.config_history(self.history)
 
     def start(self):
         """
@@ -183,8 +185,6 @@ class Minimizer:
         if len(self.problem.getp()) == 0:
             raise ValueError("Problem has no fittable parameters")
 
-        self.time = time.time()
-        self.remote_time = -cpu_time()
         return self.strategy.start(self.problem)
 
     def update(self, points, values):
@@ -250,6 +250,13 @@ class Minimizer:
         self.successful, self.success_cond = self.success.status(self.history)
         self.failed, self.failure_cond = self.failure.status(self.history)
         return self.successful or self.failed
+
+    def termination_condition(self):
+        if self.successful:
+            return "succeeded with "+", ".join(str(c) for c in self.success_cond)
+        else:
+            return ("failed with "+", ".join(str(c) for c in self.failure_cond)
+                    +" and "+", ".join(str(c) for c in self.success_cond))
 
 class Strategy:
     """

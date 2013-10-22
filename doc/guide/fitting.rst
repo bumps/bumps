@@ -30,36 +30,47 @@ Quick Fit
 
 While generating an appropriate model, you will want to perform a number
 of quick fits.  The Nelder-Mead simplex algorithm (fit=amoeba) works well
-for this.  You will want to run it with steps between 1000 and 3000 so
+for this.  You will want to run enough iterations (steps=1000-3000) so
 the algorithm has a chance to converge.  Restarting a number of times
-(somewhere between 3 and 100) gives a reasonably thorough search of the
-fit space.  From the graphical user interface, using starts=1
-and clicking the fit button to improve the fit as needed works pretty well.
-From the command line interface, the command line will be something like::
+(starts=3-100) gives a reasonably thorough search of the fit space.  Once
+the fit converges, additional starts are very quick.  From the
+graphical user interface, using starts=1 and clicking the fit button to
+improve the fit as needed works pretty well. From the command line interface,
+the command line will be something like::
 
     bumps --fit=amoeba --steps=1000 --starts=20 --parallel model.py --store=T1
 
-The command line result can be improved by using the previous fit value as
-the starting point for the next fit::
+Here, the results are kept in a directory (store=T1) relative to the current
+directory, with files containing the current model (in model.py), the fit
+result (in model.par) and a plots (in model-*.png).  The parallel option
+indicates that multiple cores should be used on the cpu when running the fit.
+other information provided by the fitter.
+
+The fit may be able to be improved by using the current best fit value as
+the starting point for a new fit::
 
     bumps --fit=amoeba --steps=1000 --starts=20 --parallel model.py --store=T1 --pars=T1/model.par
 
-Differential evolution (fit=de) and random lines (fit=rl) are alternatives
-to amoeba, perhaps a little more likely to find the global minimum but
-somewhat slower.  These are population based algorithms in which several
-points from the current population are selected, and based on their
-position and value, a new point is generated.  The population is specified
-as a multiplier on the number of parameters in the model, so for example
-an 8 parameter model with DE's default population (pop=10) would create 80
-points each generation.  Random lines with a large population is fast but
-is not good at finding isolated minima away from the general trend, so its
-population defaults to pop=0.5.  These algorithms can be called from the
-command line as follows::
+If the fit is well behaved, and a numerical derivative exists, then
+switching to the BFGS quasi-newton algorithm (fit=newton) is useful, in
+that it will very rapidly converge to a nearby local minimum.
+
+    bumps --fit=newton model.py --pars=T1/model.par --store=T1
+
+Differential evolution (fit=de) is an alternative to amoeba, perhaps a little
+more likely to find the global minimum but somewhat slower.  This is a
+population based algorithms in which several points from the current
+population are selected, and based on the position and value, a new point
+is generated.  The population is specified as a multiplier on the number
+of parameters in the model, so for example an 8 parameter model with
+DE's default population (pop=10) would create 80 points each generation.
+This algorithms can be called from the command line as follows::
 
     bumps --fit=de --steps=3000 --parallel model.py --store=T1
-    bumps --fit=rl --steps=3000 --starts=200 --reset --parellel model.py --store=T1
 
-Again, --pars can be used to start from a previously completed fit.
+Restarting differential evolution from
+Some fitters save the complete state of the fitter on termination so that
+the fit can be resumed.  Use --resume=store/path
 
 Uncertainty Analysis
 ====================

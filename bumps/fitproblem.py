@@ -541,7 +541,7 @@ class BaseFitProblem(object):
             #print "point evaluates to NaN"
             #print parameter.summarize(self._parameters)
             return inf
-        # print "cost",cost,"=",pparameter,"+",pconstraint,"+",pmodel
+        # print pvec, "cost",cost,"=",pparameter,"+",pconstraint,"+",pmodel
         return cost
 
     def __call__(self, pvec=None):

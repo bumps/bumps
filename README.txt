@@ -1,6 +1,5 @@
-Bayesian uncertainty modeling for parametric systems, or peak fitting with error bars.
-
-Bumps has a variety of optimization algorithms available for locating
+Bumps provides data fitting and Bayesian uncertainty modeling for inverse
+problems.  It has a variety of optimization algorithms available for locating
 the most like value for function parameters given data, and for exploring
 the uncertainty around the minimum.
 
@@ -19,5 +18,3 @@ This allows you to say:
 Once the system is installed, you can verify that it is working with: 
 
     bumps doc/examples/peaks/model.py --chisq
-
-

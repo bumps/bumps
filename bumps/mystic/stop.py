@@ -438,7 +438,7 @@ class r_centroid:
         self.norm = norm
     def __call__(self, population, best, scale):
         P = numpy.asarray(population)
-        c_i = sum(P,index=1)/P.shape[1]
+        c_i = numpy.mean(P,axis=0)
         r = max(self.norm(p - c_i)/scale for p in P)
         return r
 
@@ -466,7 +466,7 @@ class r_hull:
         r = 0
         for i,y1 in enumerate(population):
             for y2 in population[i+1:]:
-                d = self.norm(y2-y1)
+                d = self.norm(y2-y1)/scale
                 if d > r: r = d
         return r/2
 
@@ -513,22 +513,26 @@ class Rx(Condition):
         *condition* (f(history) : boolean)
             a callable returning true if the condition is met
     """
-    def __init__(self, tol=0, radius=r_centroid(norm_2), scaled=True):
+    def __init__(self, tol=0, radius=r_centroid(norm_2), scaled=False):
         self.tol = tol
         self.radius = radius
         self.scaled = scaled
     def _scaled_condition(self, history):
-        P = numpy.asarray(history.population_points)
+        P = numpy.asarray(history.population_points[0])
         scale = history.upper_bound - history.lower_bound
         idx = isinf(scale)
         if any(idx):
-            range = sum(abs(P),index=0)/P.shape[0]
+            range = numpy.sum(abs(P),axis=0)/P.shape[0]
             scale[idx] = range[idx]
         scale[scale == 0] = 1
-        return self.radius(P, history.point, scale)
+        r = self.radius(P, history.point[0], scale)
+        #print "Rx=%g, scale=%g"%(r,scale)
+        return r
     def _raw_condition(self, history):
-        P = numpy.asarray(history.population_points)
-        return self.radius(P, history.point, 1)
+        P = numpy.asarray(history.population_points[0])
+        r = self.radius(P, history.point[0], scale=1.)
+        #print "Rx=%g"%r
+        return r
     def config_history(self, history):
         """
         Needs the previous n points from history.
@@ -581,10 +585,14 @@ class Rf(Condition):
         Pf = numpy.asarray(history.population_values)
         scale = numpy.mean(abs(Pf))
         if scale == 0: scale = 1
-        return float(max(Pf) - min(Pf))/scale
+        r = float(numpy.max(Pf) - numpy.min(Pf))/scale
+        #print "Rf = %g, scale=%g"%(r,scale)
+        return r
     def _raw_condition(self, history):
         P = numpy.asarray(history.population_values)
-        return max(P) - min(P)
+        r = numpy.max(P) - numpy.min(P)
+        #print "Rf = %g"%r
+        return r
     def config_history(self, history):
         """
         Needs the previous n points from history.

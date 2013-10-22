@@ -20,7 +20,7 @@ allows you to use names like :class:`Parameter <bumps.parameter.Parameter>` dire
 This pattern of importing all names from a file,  while convenient for
 simple scripts, makes the code more difficult to understand later, and
 can lead to unexpected results when the same name is used in multiple
-modules.  A safer, though slightly more verbose pattern is to use:
+modules.  The preferred pattern to use is:
 
     >>> import bumps.names as bmp
     >>> s = bmp.Parameter(name="P1", value=3.5, range=(2,6))

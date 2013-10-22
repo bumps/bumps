@@ -128,6 +128,12 @@ class History(object):
             except AttributeError:
                 raise AttributeError(k+" is not being traced")
 
+    def clear(self):
+        """
+        Clear history, removing all traces
+        """
+        self.__dict__.clear()
+
     def _new_trace(self, keep=None, name=None):
         """
         Create a new trace.  We use a factory method here so that
@@ -149,6 +155,22 @@ class History(object):
         traces = sorted(self._traces(), lambda x,y: cmp(x.name,y.name))
         return "\n".join(str(l) for l in traces)
 
+    def snapshot(self):
+        """
+        Return a dictionary of traces { 'name':  [v[n], v[n-1], ..., v[0]] }
+        """
+        return dict((trace.name,trace.snapshot()) for trace in self._traces())
+
+    def restore(self, state):
+        """
+        Restore history to the state returned by a call to snapshot
+        """
+        for k,v in state.items():
+            try:
+                getattr(self,k).restore(v)
+            except KeyError:
+                pass
+
 
 class Trace(object):
     """
@@ -162,11 +184,18 @@ class Trace(object):
     trace.requires(n) says how much history to keep
     trace.put(value) stores value
     trace.accumulate(value) adds value to the previous value before storing
+    state = trace.snapeshot() returns the values as a stack, most recent last
+    trace.restore(state) restores a snapshot
+
+    Note that snapshot/restore uses lists to represent numpy arrays, which may cause
+    problems if the trace is capturing lists.
     """
     # Implementation note:
     # Traces are stored in reverse order because append is faster than insert.
     # This detail is hidden from the caller since __getitem__ returns the
     # appropriate value.
+    # TODO: convert to circular buffer unless keeping the full trace
+    # TODO: use numpy arrays for history
     def __init__(self, keep=1, name="trace"):
         self.keep = keep
         self._storage = []
@@ -175,6 +204,8 @@ class Trace(object):
         """
         Set the trace length to be at least n.
         """
+        # Note: never shorten the trace, since another algorithm/condition/monitor
+        # may still require the longer trace.
         if n > self.keep:
             self.keep = n
     def accumulate(self, value):
@@ -208,3 +239,27 @@ class Trace(object):
     def __str__(self):
         return ("Trace " + self.name + ": "
                 + ", ".join([str(k) for k in reversed(self._storage)]))
+    def snapshot(self):
+        """
+        Capture state of the trace.
+
+        Numpy arrays are converted to lists so that the trace can be easily converted to json.
+        """
+        import numpy
+        if isinstance(self._storage[0], numpy.ndarray):
+            return [v.tolist() for v in self._storage]
+        else:
+            return self._storage[:]
+    def restore(self, state):
+        """
+        Restore a trace from a captured snapshot.
+
+        Lists are converted to numpy arrays.
+        """
+        import numpy
+        if isinstance(state[0], list):
+            state = [numpy.asarray(v) for v in state]
+        if len(state) > self.keep:
+            self._storage = state[-self.keep:]
+        else:
+            self._storage = state[:]

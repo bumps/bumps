@@ -128,30 +128,70 @@ class MultiStart(FitBase):
 
 class DEFit(FitBase):
     name = "Differential Evolution"
-    settings = [('steps', 1000), ('pop', 10), ('CR', 0.9), ('F', 2.0), ('stop', '')]
+    settings = [('steps', 1000), ('pop', 10), ('CR', 0.9), ('F', 2.0),
+                ('xtol', 1e-4), ('ftol', 1e-8), ('stop', '')]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         _fill_defaults(options, self.settings)
         from .mystic.optimizer import de
         from .mystic.solver import Minimizer
-        from .mystic.stop import Steps, parse_condition
+        from .mystic import stop
         if monitors == None:
             monitors = [ConsoleMonitor(self.problem)]
         if mapper is not None:
             _mapper = lambda p, x: mapper(x)
         else:
             _mapper = lambda p, x: map(self.problem.nllf, x)
+        resume = hasattr(self, 'state')
+        steps = options['steps'] + (self.state['step'][-1] if resume else 0)
         strategy = de.DifferentialEvolution(npop=options['pop'],
                                             CR=options['CR'],
                                             F=options['F'])
-        success = parse_condition(options['stop']) if options['stop'] else None
-        minimize = Minimizer(strategy=strategy, problem=self.problem,
-                             monitors=monitors, success=success,
-                             failure=Steps(options['steps']))
-        x = minimize(mapper=_mapper, abort_test=abort_test)
+        success = parse_tolerance(options)
+        failure = stop.Steps(steps)
+        #success = parse_condition(options['stop']) if options['stop'] else None
+        self.history = History()
+        # Step adds to current step number if resume
+        minimize = Minimizer(strategy=strategy, problem=self.problem, history=self.history,
+                             monitors=monitors, success=success, failure=failure)
+        if resume: self.history.restore(self.state)
+        x = minimize(mapper=_mapper, abort_test=abort_test, resume=resume)
+        print minimize.termination_condition()
         #with open("/tmp/evals","a") as fid: print >>fid,minimize.history.value[0],minimize.history.step[0],minimize.history.step[0]*options['pop']*len(self.problem.getp())
-        return x, minimize.history.value[0]
+        return x, self.history.value[0]
 
+    def load(self, input_path):
+        self.state = load_history(input_path)
+
+    def save(self, output_path):
+        save_history(output_path, self.history.snapshot())
+
+def parse_tolerance(options):
+    from .mystic import stop
+    if options['stop']:
+        return stop.parse_condition(options['stop'])
+
+    xtol,ftol = options['xtol'], options['ftol']
+    if xtol == 0:
+        if ftol == 0: return None
+        if ftol < 0: return stop.Rf(-ftol,scaled=True)
+        return stop.Rf(ftol,scaled=False)
+    else:
+        if xtol == 0: return None
+        if xtol < 0: return stop.Rx(-xtol,scaled=True)
+        return stop.Rx(xtol,scaled=False)
+
+def _history_file(path): return path+"-history.json"
+
+def load_history(path):
+    import json
+    with open(_history_file(path), "r") as fid:
+        return json.load(fid)
+
+def save_history(path, state):
+    import json
+    with open(_history_file(path), "w") as fid:
+        json.dump(state, fid)
 
 class BFGSFit(FitBase):
     name = "Quasi-Newton BFGS"
@@ -278,7 +318,7 @@ class PTFit(FitBase):
 
 class AmoebaFit(FitBase):
     name = "Nelder-Mead Simplex"
-    settings = [('steps', 1000), ('starts', 1), ('radius', 0.15)]
+    settings = [('steps', 1000), ('starts', 1), ('radius', 0.15), ('xtol', 1e-5), ('ftol', 1e-8)]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         _fill_defaults(options, self.settings)
@@ -292,7 +332,9 @@ class AmoebaFit(FitBase):
                          abort_test=abort_test,
                          update_handler=self._monitor,
                          maxiter=options['steps'],
-                         radius=options['radius'])
+                         radius=options['radius'],
+                         xtol=options['xtol'],
+                         ftol=options['ftol'])
         # Let simplex propose the starting point for the next amoeba
         # fit in a multistart amoeba context.  If the best is always
         # used, the fit can get stuck in a local minimum.
@@ -550,6 +592,8 @@ class FitOptions(object):
     FIELDS = dict(
         starts = ("Starts",          "int"),
         steps  = ("Steps",           "int"),
+        xtol   = ("Minimum population diameter", "float"),
+        ftol   = ("Minimum population flatness", "float"),
         stop   = ("Stopping criteria", "str"),
         thin   = ("Thinning",        "int"),
         burn   = ("Burn-in Steps",   "int"),
