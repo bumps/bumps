@@ -14,7 +14,7 @@ PAPEROPT_a4     = -D latex_paper_size=a4
 PAPEROPT_letter = -D latex_paper_size=letter
 ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 
-EXWEB=examples-web
+EXWEB=_examples
 EXDIR=examples
 WEB_FILES = $(wildcard $(EXWEB)/*/*-web.py)
 WEB2RST_FILES = $(patsubst $(EXWEB)/%-web.py,$(EXDIR)/%.rst,$(WEB_FILES))
@@ -50,8 +50,8 @@ help:
 clean:
 	# Cleaning matplotlib plots from build
 	# Cleaning html/pdf from $(BUILDDIR)
-	# Resetting api/ and genex/
-	-rm -rf $(BUILDDIR)/* build api $(EXDIR)
+	# Resetting api/ and examples/
+	-rm -rf $(BUILDDIR) build api $(EXDIR)
 
 api: genmods.py
 	-rm -rf api
