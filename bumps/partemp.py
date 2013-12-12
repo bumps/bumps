@@ -1,7 +1,7 @@
 # This program is public domain
 # Author: Paul Kienzle
 """
-Parallel tempering for continuous function optimization and uncertainty analysis
+Parallel tempering for continuous function optimization and uncertainty analysis.
 
 The program performs Markov chain Monte Carlo exploration of a probability
 density function using a combination of random and differential evolution

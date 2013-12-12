@@ -15,6 +15,6 @@ Contents
    :maxdepth: 2
 
    getting_started/index.rst
-   examples/index.rst
+   tutorial.rst
    guide/index.rst
    api/index.rst

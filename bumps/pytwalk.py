@@ -1,5 +1,5 @@
 """
-T-walk self adjusting MCMC
+T-walk self adjusting MCMC.
 """
 
 # Author: By Andres Christen.

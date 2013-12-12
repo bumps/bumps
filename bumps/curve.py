@@ -1,5 +1,5 @@
 """
-Build a BUMPS model from a function f and data x,y,dy
+Build a bumps model from a function f and data x,y,dy.
 """
 __all__ = [ "Curve", "PoissonCurve" ]
 
@@ -32,7 +32,7 @@ class Curve(object):
     par=value to define the parameter) or is set to zero if no default is
     given in the function.
     """
-    def __init__(self, fn, x, y, dy, name="", **fnkw):
+    def __init__(self, fn, x, y, dy=None, name="", **fnkw):
         self.x, self.y = numpy.asarray(x), numpy.asarray(y)
         if dy is None:
             self.dy = 1

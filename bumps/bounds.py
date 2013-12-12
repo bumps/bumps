@@ -1,7 +1,7 @@
 # This program is in the public domain
 # Author: Paul Kienzle
 """
-Parameter bounds.
+Parameter bounds>
 
 Parameter bounds encompass several features of our optimizers.
 

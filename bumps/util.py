@@ -1,3 +1,6 @@
+"""
+Miscellaneous utility functions.
+"""
 from __future__ import division
 
 __all__ = ["erf", "profile", "kbhit", "redirect_console", "pushdir", "push_seed"]

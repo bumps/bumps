@@ -46,7 +46,7 @@ the given set of sample parameters is
 
 .. math::
 
-   -\log \prod_i{P(y_i|f(x_i;p))} = \frac{1}{2}\sum_i{\frac{(y_i-f(x_i;p))^2}{\sigma_i^2}} - \frac{1}{2}\sum_i{\log 2 \pi \sigma^2}
+   -\log \prod_i{P(y_i|f(x_i;p))} = \frac{1}{2}\sum_i{\frac{(y_i-f(x_i;p))^2}{\sigma_i^2}} - \frac{1}{2}\sum_i{\log 2 \pi \sigma_i^2}
                                 = \frac{1}{2}\chi^2 + C
 
 Note that this is the unnormalized $\chi^2$, whose expected value is the 
@@ -115,15 +115,18 @@ bounds or values::
 We could even set a parameter to a probability distribution, using
 *parameter.dev()* for Gaussian distributions or setting
 parameter.bounds = :class:`Distribution <bumps.bounds.Distribution>`
-for other distributions.  
+for other distributions.
+
+For counts data, :class:`PoissonCurve <bumps.curve.PoissonCurve>` is also
+available.
 
 If you are already have the negative log likelihood function, you can use
-it with :class:`ModelFunction <bumps.modelfn.ModelFunction>`::
+it with :class:`<bumps.pdfwrapper.PDF>`::
 
     x,y,dy = numpy.loadtxt('line.txt').T
     def nllf(m, b):
         return numpy.sum(((y - (m*x + b))/dy)**2)
-    M = ModelFunction(nllf)
+    M = PDF(nllf)
 
 Once you have defined your models and your parameter ranges, your
 model file must define the fitting problem::
@@ -138,9 +141,6 @@ must provide a method which returns a list of
 :class:`Parameter <bumps.parameter.Parameter>` objects.  These
 parameters are the basis of the Bumps model
 to define models and constraints.  
-
-For counts data, :class:`PoissonCurve <bumps.curve.PoissonCurve>` is also
-available.
 
 External constraints
 ====================

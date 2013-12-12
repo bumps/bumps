@@ -1,5 +1,5 @@
 """
-Exported names
+Exported names.
 
 In model definition scripts, rather than importing symbols one by one, you
 can simply perform:

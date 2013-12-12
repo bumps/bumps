@@ -1,6 +1,6 @@
 # This program is in the public domain
 """
-Process monitors
+Process monitors.
 
 Process monitors accept a history object each cycle and
 perform some sort of work on it.

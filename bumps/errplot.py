@@ -1,3 +1,6 @@
+"""
+Estimate model uncertainty from random sample.
+"""
 import os
 from .dream.state import load_state
 from . import plugin

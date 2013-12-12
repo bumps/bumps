@@ -1,9 +1,6 @@
 # This program is public domain
 # Author: Paul Kienzle
 """
-Number formatting
-=================
-
 Format values and uncertainties nicely for printing.
 
 :func:`format_value` produces the value format v with no uncertainty.

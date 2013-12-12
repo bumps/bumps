@@ -4,7 +4,8 @@
 # You can set these variables from the command line.
 PYTHON        ?= python
 SPHINXOPTS    =
-SPHINXBUILD   = sphinx-build
+SPHINXBUILD   = $(PYTHON) -m sphinx.__init__
+#sphinx-build
 PAPER         =
 BUILDDIR      = _build
 
@@ -13,13 +14,14 @@ PAPEROPT_a4     = -D latex_paper_size=a4
 PAPEROPT_letter = -D latex_paper_size=letter
 ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 
-%.rst: %-web.py
+EXWEB=examples-web
+EXDIR=examples
+WEB_FILES = $(wildcard $(EXWEB)/*/*-web.py)
+WEB2RST_FILES = $(patsubst $(EXWEB)/%-web.py,$(EXDIR)/%.rst,$(WEB_FILES))
+
+$(EXDIR)/%.rst: $(EXWEB)/%-web.py
 	$(PYTHON) pylit.py $< $@
 	$(PYTHON) pylit.py $@ $(patsubst %.rst,%.py,$@) -s -t
-
-WEBFILES = 
-
-WEBDEPS = $(patsubst %,examples/%.rst,$(WEBFILES))
 
 .PHONY: help clean html dirhtml singlehtml pickle json htmlhelp qthelp \
         devhelp epub latex pdf text man changes linkcheck doctest generated
@@ -47,22 +49,27 @@ help:
 
 clean:
 	# Cleaning matplotlib plots from build
-	# Cleaning html/pdf from _build
-	# Resetting api/
-	-rm -rf $(BUILDDIR)/* build api
+	# Cleaning html/pdf from $(BUILDDIR)
+	# Resetting api/ and genex/
+	-rm -rf $(BUILDDIR)/* build api $(EXDIR)
 
 api: genmods.py
 	-rm -rf api
 	$(PYTHON) genmods.py
 
+$(EXDIR):
+	mkdir -p $(EXDIR)
+	-cp -rp $(EXWEB)/* $(EXDIR)
 
-_build/html:
-	mkdir -p _build/html/_static
-	-cp -r MathJax _build/html/_static/MathJax
 
-generated: api $(WEBDEPS)
+## MathJax now uses CDN by default
+#$(BUILDDIR)/html:
+#	mkdir -p $(BUILDDIR)/html/_static
+#	-cp -r MathJax $(BUILDDIR)/html/_static/MathJax
 
-html: _build/html generated
+generated: api $(EXDIR) $(WEB2RST_FILES)
+
+html: generated
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
@@ -157,6 +164,6 @@ doctest: generated
 	      "results in $(BUILDDIR)/doctest/output.txt."
 
 install:
-	scp _build/html/*.pdf reflectometry.org:web/danse/download
+	scp $(BUILDDIR)/html/*.pdf reflectometry.org:web/danse/download
 	ssh reflectometry.org rm -rf web/danse/docs/bumps
-	scp -r _build/html reflectometry.org:web/danse/docs/bumps
+	scp -r $(BUILDDIR)/html reflectometry.org:web/danse/docs/bumps

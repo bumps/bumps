@@ -52,10 +52,13 @@ To build the HTML documentation you will need:
 
 The PDF documentation requires a working LaTeX installation.
 
-We are working to put the bumps package on PyPI. First try "pip install bumps"
-as appropriate for your operating environment.  If this fails, then follow the
-instructions to install from the source archive directly. Platform specific 
-details for setting up your environment are given below. 
+You can install directly from PyPI using pip::
+
+    pip install bumps
+
+If this fails, then follow the instructions to install from the source
+archive directly. Platform specific details for setting up your environment
+are given below.
 
 Windows
 -------
@@ -71,8 +74,8 @@ The Python(x,y) package supplies a C/C++ compiler, but the package does
 not set it as the default compiler.  To do this you will need to create
 *C:\\Python26\\Lib\\distutils\\distutils.cfg* with the following content::
 
-	[build]
-	compiler=mingw32
+    [build]
+    compiler=mingw32
 
 Next change to the directory containing the source.  This will be a command
 like the following::
@@ -86,11 +89,11 @@ Now type the command to build and install::
 
 Now change to your data directory::
 
-	cd "C:\Documents and Settings\<username>\My Documents\data"
+    cd "C:\Documents and Settings\<username>\My Documents\data"
 
 To run the program use::
 
-	python "C:\Python26\Scripts\bumps" -h
+    python "C:\Python26\Scripts\bumps" -h
 
 Linux
 -----
@@ -98,19 +101,19 @@ Linux
 Many linux distributions will provide the base required packages.  You
 will need to refer to your distribution documentation for details.
 
-On ubuntu you can use apt-get to install matplotlib, numpy, scipy, wx,
+On Ubuntu you can use apt-get to install matplotlib, numpy, scipy, wx,
 nose and sphinx.
 
 From a terminal, change to the directory containing the source and type::
 
-	python setup.py install
-	python test.py
+    python setup.py install
+    python test.py
 
 This should install the application somewhere on your path.
 
 To run the program use::
 
-	bumps_cli -h
+    bumps_cli -h
 
 OS/X
 ----
@@ -118,40 +121,95 @@ OS/X
 Building a useful python environment on OS/X is somewhat involved, and
 frequently evolving so this document will likely be out of date.
 
-You will need to download python, numpy, scipy, wx and matplotlib
-packages from their respective sites (use the links above).  The distribute
-package will need to be installed by hand (not easy_install!).
+We've had success using the `Anaconda <https://store.continuum.io/cshop/anaconda/>`_
+64-bit python 2.7 environment from Continuum Analytics, which provides most
+of the required packages, but other distributions should work as well.
+You will need to install XCode from the app store, and set the preferences
+to install the command line tools so that a C compiler is available (look
+in the Downloads tab of the preferences window).  If any of your models
+require fortran, you can download gfortran from r.research.att.com/tools
+(scroll down to the  Apple Xcode gcc-42 add-ons). This sets up the basic
+development environment.
+
+wxPython
+~~~~~~~~
+
+The wxPython package is missing from Anaconda, so we built our own
+(:slink:`%(wx4osx)s`).  Download the package and install using::
+
+    conda install wx-2.9.5.0-py27_0.tar.bz2
+
+We built the  wx package from the development release (2.9.5.0) at
+`<http://wxpython.org/download.php>`_ using the following commands::
+
+
+    #### Setup virtual environment with anaconda
+    conda create -n wx nose
+    source activate wx
+    # confirm that there are no untracked files in the environment
+    conda package -u
+
+    #### Fetch, build and install wxPython
+    curl -LO http://downloads.sourceforge.net/wxpython/wxPython-src-2.9.5.0.tar.bz2
+    tar xjf wxPython-src-2.9.5.0.tar.bz2
+    cd wxPython-src-2.9.5.0/wxPython
+    python build-wxpython.py --build_dir=/tmp/wx --osx_cocoa
+    # Note: building with "--prefix=<virtualenvpath> --install" should install
+    # all the pieces into the virtual environment:
+    #    --prefix=`python -c "import sys;print sys.prefix"` --install
+    # This didn't work, so we instead install by hand.
+    WXDEST=`python -c "import sys;print sys.prefix"`
+    cp -r wx $WXDEST/lib/python2.7/site-packages/wx
+    cp wxversion/wxversion.py $WXDEST/lib/python2.7/site-packages
+    cp -r /tmp/wx/cocoa/lib/* $WXDEST/lib
+    python -m compileall $WXDEST/lib/python2.7/site-packages/wx
+    python -m compileall $WXDEST/lib/python2.7/site-packages/wxversion.py
+    # optional scripts, #!/usr/bin/env python -> #!/usr/bin/env pythonw
+    cd scripts
+    for f in `ls | grep -v "[.]py"`; do
+        sed -e"s/env python/env pythonw/" $f > $WXDEST/bin/$f
+        chmod a+x $WXDEST/bin/$f
+    done
+    # return to root
+    cd ../../..
+
+    #### Construct a conda binary distribution for wx package and clean up
+    cd ../../..
+    conda package -u  # show what will be in the wx package
+    conda package --pkg-name wx --pkg-version 2.9.5.0
+    source deactivate
+    conda remove -n wx --all
+    rm -rf /tmp/wx
+
+
+The resulting package can be installed into an environment using::
+
+    conda install wx-2.9.5.0-py27_0.tar.bz2
+
+bumps
+~~~~~
+
 
 From a terminal, change to the directory containing the source and type::
 
-	python -m easy_install periodictable nose sphinx
-	python setup.py install
-	python test.py
+    conda create -n bumps numpy scipy matplotlib nose sphinx
+    source activate bumps
+    conda install wx-2.9.5.0-py27_0.tar.bz2
+    python setup.py install
+    python test.py
+    cd ..
 
-This should install the application somewhere on your path.
+    # Optional: create a bumps binary package and clean up
+    conda package --pkg-name wx --pkg-version `python -c "import bumps;print bumps.__version__"`
 
-To run the program use::
+    # Optional: allow bumps to run from outside the bumps environment
+	mkdir ~/bin # create user terminal app directory if it doesn't already exist
+    ln -s `python -c "import sys;print sys.prefix"`/bin/bumps ~/bin
 
-	bumps -h
 
-On OS X 10.7 Lion the situation is particularly complicated because the
-prebuilt distributions for scipy, numpy, etc. don't work as of this writing,
-and Lion does not ship with compilers installed.  First you need to get
-XCode 4.5 from the app store.  You will need to run XCode preferences and
-install the command line tools from the Downloads tab in order to put the
-compilers on your executable path.  Next download gfortran from
-r.research.att.com/tools (scroll down to the Apple Xcode gcc-42 add-ons).
-This sets up the basic development environment.
+To run the program, start a new Terminal shell and type::
 
-At this point I used the egg packages available from the scipy superpack
-repository, but installed them by hand rather than following the scipy
-superpack instructions.  That's because I already had the fortran compilers
-and I did not want easy_install.  There were many complaints installing the
-egg packages, but the result was successful in the end.
-
-You will need to use a development version of wxPython (2.9), which is
-compiled for 64-bit.  Scroll down on the wxPython download page to the
-development section.  I used the Cocoa build.
+    bumps -h
 
 
 .. _docbuild:
@@ -161,7 +219,7 @@ Building Documentation
 
 Building the package documentation requires a working Sphinx installation,
 a working LaTex installation and a copy of MathJax.  Download and unzip
-the MathJax package into the doc/sphinx directory to install MathJax.  You
+the MathJax package into the doc directory to install MathJax.  You
 can then build the documentation as follows::
 
     (cd doc && make clean html pdf)
@@ -174,18 +232,6 @@ You can see the result by pointing your browser to::
 
     bumps/doc/_build/html/index.html
     bumps/doc/_build/latex/Bumps.pdf
-
-As of this writing, the \\AA LaTeX command for the Angstrom symbol is not
-available in the MathJax distribution. We patched jax/input/TeX/jax.js
-with the additional symbol AA using::
-
-    // Ord symbols
-    S:            '00A7',
-  + AA:           '212B',
-    aleph:        ['2135',{mathvariant: MML.VARIANT.NORMAL}],
-
-If you are using unusual math characters, you may need similar patches
-for your own documentation.
 
 ReStructured text format does not have a nice syntax for superscripts and
 subscripts.  Units such as |g/cm^3| are entered using macros such as

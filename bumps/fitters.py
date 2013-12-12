@@ -1,3 +1,6 @@
+"""
+Interfaces to various optimizers.
+"""
 import sys
 import time
 from copy import deepcopy

@@ -14,7 +14,7 @@ of up to 100 parameters with tight constraints on the parameters.
 Bumps uses Markov chain Monte Carlo to explore the parameter space.  Although
 it was created for curve fitting problems, Bumps can explore any probability 
 density function, such as those defined by pyMCMC.  Unlike PyMCMC, Bumps 
-includes a number of addional local and global optimizers, and a stepper which 
+includes a number of additional local and global optimizers, and a stepper which
 can operate effectively on correlated parameter spaces.
 
 Bumps can be used as a library within your own applications, or as a framework

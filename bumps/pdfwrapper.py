@@ -1,5 +1,5 @@
 """
-Build a BUMPS model from a function.
+Build a bumps model from a function.
 """
 import inspect
 

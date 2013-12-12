@@ -1,8 +1,7 @@
 # This program is public domain
 # Author: Paul Kienzle
 """
-Model parameters
-================
+Fitting parameter objects.
 
 Parameters are a big part of the interface between the model and the fitting
 engine.  By saving and retrieving values and ranges from the parameter, the
@@ -362,19 +361,19 @@ class ParameterSet(object):
 
     def range(self, *args, **kw):
         """
-        Like :method:`parameter.Parameter.range`, but applied to all models.
+        Like :meth:`parameter.Parameter.range`, but applied to all models.
         """
         for p in self.parameters: p.range(*args, **kw)
 
     def pm(self, *args, **kw):
         """
-        Like :method:`parameter.Parameter.pm`, but applied to all models.
+        Like :meth:`parameter.Parameter.pm`, but applied to all models.
         """
         for p in self.parameters: p.pm(*args, **kw)
 
     def pmp(self, *args, **kw):
         """
-        Like :method:`parameter.Parameter.pmp`, but applied to all models.
+        Like :meth:`parameter.Parameter.pmp`, but applied to all models.
         """
         for p in self.parameters: p.pmp(*args, **kw)
 

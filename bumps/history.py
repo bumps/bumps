@@ -1,7 +1,7 @@
 # This program is in the public domain
 # Author: Paul Kienzle
 """
-Value history
+Value history.
 
 Each cycle through a computation, a process can update its history,
 adding information about the number of function evaluations, the

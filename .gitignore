@@ -15,3 +15,4 @@ bumps.egg-info/
 bumps.iss-include
 _build/
 doc/api/
+doc/examples/

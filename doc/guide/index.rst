@@ -19,12 +19,12 @@ The complexity comes from multiple sources:
      information from other sources.
 
 
-`Introduction <intro>`_
+`Introduction <intro.html>`_
 
      Model scripts associate a sample description with data and fitting
      options to define the system you wish to refine.
 
-`Parameters <parameter>`_
+`Parameters <parameter.html>`_
 
      The adjustable values in each component of the system are defined
      by :class:`Parameter <bumps.parameter>` objects.  When you
@@ -32,7 +32,7 @@ The complexity comes from multiple sources:
      adjust the value in order to find the best match between theory
      and data.
 
-`Data <data>`_
+`Data <data.html>`_
 
      Data is loaded from instrument specific file
      formats into a generic :class:`Probe <bumps.data.Probe>`.  The
@@ -41,7 +41,7 @@ The complexity comes from multiple sources:
      and controls the set of theory points that must be evaluated
      in order to computed the expected value at each point.
 
-`Experiments <experiment>`_
+`Experiments <experiment.html>`_
 
      Sample descriptions and data sets are combined into an
      :class:`Experiment <bumps.experiment.Experiment>` object,
@@ -52,7 +52,7 @@ The complexity comes from multiple sources:
      of the probe, you may need to model your measurement with a
      :class:`CompositeExperiment <bumps.experiment.CompositeExperiment>`.
 
-`Fitting <fitting>`_
+`Fitting <fitting.html>`_
 
      One or more experiments can be combined into a
      :class:`FitProblem <refl1d.fitter.FitProblem>`.  This is then

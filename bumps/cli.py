@@ -1,3 +1,6 @@
+"""
+Bumps command line interface.
+"""
 from __future__ import with_statement
 
 import sys

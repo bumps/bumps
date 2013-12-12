@@ -42,7 +42,7 @@ the command line will be something like::
 
 Here, the results are kept in a directory (store=T1) relative to the current
 directory, with files containing the current model (in model.py), the fit
-result (in model.par) and a plots (in model-*.png).  The parallel option
+result (in model.par) and a plots (in model-\*.png).  The parallel option
 indicates that multiple cores should be used on the cpu when running the fit.
 other information provided by the fitter.
 
@@ -54,6 +54,8 @@ the starting point for a new fit::
 If the fit is well behaved, and a numerical derivative exists, then
 switching to the BFGS quasi-newton algorithm (fit=newton) is useful, in
 that it will very rapidly converge to a nearby local minimum.
+
+::
 
     bumps --fit=newton model.py --pars=T1/model.par --store=T1
 
@@ -68,7 +70,8 @@ This algorithms can be called from the command line as follows::
 
     bumps --fit=de --steps=3000 --parallel model.py --store=T1
 
-Restarting differential evolution from
+In addition to restarting differential evolution from
+
 Some fitters save the complete state of the fitter on termination so that
 the fit can be resumed.  Use --resume=store/path
 

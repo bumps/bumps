@@ -1,3 +1,6 @@
+"""
+Data handling utilities.
+"""
 from __future__ import division
 
 __all__ = ["convolve", "parse_file", "indfloat"]

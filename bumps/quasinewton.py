@@ -20,6 +20,8 @@
 
 # Author: Ismet Sahin
 """
+BFGS quasi-newton optimizer.
+
 All modules in this file are implemented from the book
 "Numerical Methods for Unconstrained Optimization and Nonlinear Equations" by
 J.E. Dennis and Robert B. Schnabel (Only a few minor modifications are done).

@@ -1,3 +1,6 @@
+"""
+Parallel and serial mapper implementations.
+"""
 import sys
 import os
 

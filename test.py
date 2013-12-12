@@ -13,6 +13,7 @@ Usage:
 """
 
 import os, sys, subprocess
+from glob import glob
 import nose
 import matplotlib
 matplotlib.use('Agg')
@@ -33,7 +34,7 @@ if not os.path.exists(mplconfig): os.mkdir(mplconfig)
 import pylab; pylab.hold(False)
 
 # Build bumpsmodule.pyd if it has not already been built in the source tree.
-if not os.path.exists(os.path.join(path, 'bumps', 'bumpsmodule.pyd')):
+if not glob(os.path.join(path, 'bumps', 'bumpsmodule.*')):
     print "-"*70
     print "Building bumpsmodule.pyd ..."
     print "-"*70
@@ -43,18 +44,13 @@ if not os.path.exists(os.path.join(path, 'bumps', 'bumpsmodule.pyd')):
     print "-"*70
 
 # Run the source tests with the system path augmented such that imports can
-# be performed 'from bumps..." and 'from dream...'.  By manipulating the
+# be performed 'from bumps...".  By manipulating the
 # system path in this way, we can test without having to build and install.
-# We are adding doc/sphinx to the path because the periodic table extension
-# doctests need to be able to find the example extensions.
 sys.path.insert(0, path)
 nose_args = [__file__, '-v', '--with-doctest', '--doctest-extension=.rst',
-             '--cover-package=bumps']
+             '--cover-package=bumps', '-e.*amqp_map.*']
 nose_args += sys.argv[1:]  # allow coverage arguments
-nose_args += [#os.path.join('tests', 'bumps'),
-              'bumps',
-              #'doc/sphinx/guide'
-             ]
+nose_args += [ 'bumps', ]
 '''
 nose_args += ['tests/bumps', 'bumps',
               #'doc/sphinx/guide'

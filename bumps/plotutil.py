@@ -1,3 +1,6 @@
+"""
+Pylab plotting utilities.
+"""
 from __future__ import division
 
 __all__ = ["auto_shift", "next_color", "coordinated_colors", "dhsv",

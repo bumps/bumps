@@ -1,5 +1,5 @@
 r"""
-Freeform modeling with Chebyshev polynomials
+Freeform modeling with Chebyshev polynomials.
 
 `Chebyshev polynomials <http://en.wikipedia.org/wiki/Chebyshev_polynomials>`_
 $T_k$ form a basis set for functions over $[-1,1]$.  The truncated

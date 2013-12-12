@@ -29,11 +29,11 @@ queue consists of several components.
 If you are setting up a local cluster for performing Bumps analysis then you 
 will need to read this section, otherwise you can continue to the next section.
 
-
 Assuming that the bumps server is installed as user 'bumps' in a virtualenv 
 of ~/bumpserve, MPLCONFIGDIR is set to ~/bumpserve/.matplotlib,
 and bumpworkd has been configured, you can start with the following profile::
 
+    TODO: fill in some details on bumps server
 
 Job Controller
 ==============

@@ -1,4 +1,6 @@
-
+"""
+Standard math functions for parameter expressions.
+"""
 import math
 import __builtin__
 from .parameter import function

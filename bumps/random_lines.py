@@ -1,5 +1,8 @@
+"""
+Random Lines Algorithm finds the optimal minima of a function.
+"""
+
 # Author : Ismet Sahin
-# Random Lines Algorithm finds the optimal minima of a function
 
 __all__ = [ "random_lines"]
 

@@ -1,5 +1,5 @@
 """
-BUMPS plugin architecture.
+Bumps plugin architecture.
 
 With sophisticated models, developers need to be able to provide tools
 such as model builders and data viewers.
