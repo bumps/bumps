@@ -48,7 +48,6 @@ To build the HTML documentation you will need:
 	- DocUtils 0.5
 	- Pyments 1.0
 	- Jinja2 2.5.2
-	- `MathJax <http://www.mathjax.org/download/>`_ 1.0.1
 
 The PDF documentation requires a working LaTeX installation.
 
@@ -217,10 +216,14 @@ To run the program, start a new Terminal shell and type::
 Building Documentation
 ======================
 
-Building the package documentation requires a working Sphinx installation,
-a working LaTex installation and a copy of MathJax.  Download and unzip
-the MathJax package into the doc directory to install MathJax.  You
-can then build the documentation as follows::
+Building the package documentation requires a working Sphinx installation and
+a working LaTex installation.  Your latex distribution should include the
+following packages:
+
+    multirow, titlesec, framed, threeparttable, wrapfig,
+    collection-fontsrecommended
+
+You can then build the documentation as follows::
 
     (cd doc && make clean html pdf)
 
@@ -284,7 +287,7 @@ interpreter for Windows.  It is available as vcredist_x86.exe from the
 `Microsoft Download Center <http://www.microsoft.com/downloads/>`_.
 Be careful to select the version that corresponds to the one used
 to build the Python interpreter --- different versions can have the
-same name.  For the Python 2.6 standard build, the file is 1.7 Mb
+same name.  For the Python 2.7 standard build, the file is 1.7 Mb
 and is dated 11/29/2007.  We have a copy (:slink:`%(vcredist)s`) on
 our website for your convenience.  Save it to the *C:\\Python27*
 directory so the installer script can find it.

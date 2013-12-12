@@ -29,20 +29,23 @@ def example_dir():
     # containing the plot.
     import inspect
     frame = inspect.currentframe()
-    while frame and 'rstdir' not in frame.f_locals:
+    RSTDIR='rst_dir'
+    while frame and RSTDIR not in frame.f_locals:
         frame = frame.f_back
         #print "checking",frame.f_code.co_name
     if not frame:
-        raise RuntimeException('plot directive changed: rstdir no longer defined')
-    return frame.f_locals['rstdir'] if frame else ""
+        raise RuntimeError('plot directive changed: %r no longer defined'%RSTDIR)
+    return frame.f_locals[RSTDIR] if frame else ""
 
 def plot_model(filename):
+    #import sys; print >>sys.stderr, "in plot with",filename, example_dir()
     numpy.random.seed(SEED)
     p = load_problem([os.path.join(example_dir(), filename)])
     p.plot()
     pylab.show()
 
 def fit_model(filename):
+    #import sys; print >>sys.stderr, "in plot with",filename, example_dir()
     numpy.random.seed(SEED)
     p =load_problem([os.path.join(example_dir(),filename)])
     #x.fx = RLFit(p).solve(steps=1000, burn=99)

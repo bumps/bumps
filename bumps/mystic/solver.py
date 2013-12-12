@@ -151,7 +151,7 @@ class Minimizer:
                 self.update(population, result)
                 #print self.history.step, self.history.value
                 if self.isdone(): break         #STOPHERE combine
-                if abort_test(): break
+                if abort_test is not None and abort_test(): break
                 population = self.next()
         except KeyboardInterrupt:
             pass
