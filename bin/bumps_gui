@@ -3,7 +3,7 @@
 # Authors: Paul Kienzle and James Krycka
 
 """
-This script starts the command line interface of the Refl1D Reflectometry
+This script starts the command line interface of the Bumps
 Modeler application to process the command just entered.
 """
 
@@ -16,5 +16,5 @@ if __name__ == "__main__":
     import multiprocessing
     multiprocessing.freeze_support()
 
-    import bumps.cli
-    bumps.cli.main()
+    import bumps.gui.gui_app
+    bumps.gui.gui_app.main()

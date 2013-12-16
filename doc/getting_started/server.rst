@@ -50,21 +50,21 @@ Here is our WSGI setup for apache for our reflectometry modeling service::
         ServerAdmin pkienzle@nist.gov
         ServerName www.reflectometry.org
         ServerAlias reflectometry.org
-        ErrorLog logs/reflectometry-error_log
-        CustomLog logs/reflectometry-access_log common
+        ErrorLog logs/bumps-error_log
+        CustomLog logs/bumps-access_log common
 
-        WSGIDaemonProcess reflserve user=pkienzle group=refl threads=3
-        WSGIScriptAlias /queue /home/pkienzle/reflserve/www/jobqueue.wsgi
+        WSGIDaemonProcess bumps_serve user=pkienzle group=refl threads=3
+        WSGIScriptAlias /queue /home/pkienzle/bumps/www/jobqueue.wsgi
 
-        <Directory "/home/pkienzle/reflserve/www">
-                WSGIProcessGroup reflserve
+        <Directory "/home/pkienzle/bumps/www">
+                WSGIProcessGroup bumps_serve
                 WSGIApplicationGroup %{GLOBAL}
                 Order deny,allow
                 Allow from all
         </Directory>
 
-        DocumentRoot /var/www/reflectometry
-        <Directory "/var/www/reflectometry/">
+        DocumentRoot /var/www/bumps
+        <Directory "/var/www/bumps/">
                 AllowOverride All
         </Directory>
 

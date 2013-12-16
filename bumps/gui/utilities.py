@@ -173,15 +173,22 @@ def resource_dir():
     # Check for data path in the environment
     key = 'BUMPS_DATA'
     if os.environ.has_key(key):
-        path = os.path.join(os.environ[key],"data")
+        path = os.environ[key]
         if not os.path.isdir(path):
             raise RuntimeError('Path in environment %s not a directory'%key)
         self_cached_path = path
         return self_cached_path
 
     # Check for data path in the package
-    path = os.path.join(os.path.dirname(__file__), 'resources')
+    path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'resources'))
     #print >>sys.stderr, "checking for resource in",path
+    if os.path.isdir(path):
+        self_cached_path = path
+        return self_cached_path
+
+    # Check in package root, which is where pyinstaller puts it
+    root = os.path.dirname(os.path.dirname(os.path.dirname(path)))
+    path = os.path.join(root, 'bumps-data')
     if os.path.isdir(path):
         self_cached_path = path
         return self_cached_path

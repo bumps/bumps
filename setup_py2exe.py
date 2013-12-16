@@ -256,7 +256,7 @@ dll_excludes = ['libgdk_pixbuf-2.0-0.dll',
                 'w9xpopen.exe',
                 'cygwin1.dll']
 
-class Target():
+class Target(object):
     """This class stores metadata about the distribution in a dictionary."""
 
     def __init__(self, **kw):

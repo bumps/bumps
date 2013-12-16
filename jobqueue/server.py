@@ -315,7 +315,7 @@ def configure(jobstore=None, jobkey=None, jobdb=None, scheduler=None):
 if __name__ == '__main__':
     configure(jobstore='/tmp/server/%s',
               jobdb='sqlite:///tmp/jobqueue.db',
-              jobkey='~/.reflserve/key',
+              jobkey='~/.bumps/key',
               scheduler='dispatch',
               )
     app.config['DEBUG'] = True

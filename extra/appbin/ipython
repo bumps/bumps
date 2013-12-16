@@ -1,0 +1,22 @@
+#!/bin/sh
+
+# Find directory of the original file, following symlinks.
+# The ${parameter%/*} expansion strips the filename portion.
+LINK=`readlink "${0}"`
+if [ -z "${LINK}" ]; then BASE="${0%/*}"; else BASE="${LINK%/*}"; fi
+ROOT=`(cd "${BASE}" 2>/dev/null && pwd)`
+#echo LINK: ${LINK}
+#echo BASE: ${BASE}
+#echo ROOT: ${ROOT}
+
+PYTHON="$ROOT/Contents/MacOS/python"
+PYTHONHOME="$ROOT/Contents/Resources"
+PYTHONPATH="$ROOT/Contents/Resources"
+DYLD_FRAMEWORK_PATH="$ROOT/Contents/Frameworks"
+DYLD_LIBRARAY_PATH="$ROOT/Contents/Frameworks"
+export PYTHONHOME PYTHONPATH DYLD_FRAMWORK_PATH DYLD_LIBRARY_PATH
+
+cmd="from IPython.frontend.terminal.ipapp import launch_new_instance as _; _()"
+#cmd="import IPython.Shell; IPython.Shell.start().mainloop()"
+
+exec "$PYTHON" -c "$cmd"
