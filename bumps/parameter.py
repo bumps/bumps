@@ -11,6 +11,7 @@ Users can also perform calculations with parameters, tying together different
 parts of the model, or different models.
 """
 #__all__ = [ 'Parameter']
+from six.moves import reduce
 
 from copy import copy
 
@@ -479,12 +480,12 @@ class Constraint%(name)s(Constraint):
         return "(%%s %(op)s %%s)"%%(self.a,self.b)
 '''%dict(name=name,op=op)
 
-exec _gen_constraint('GT','>')
-exec _gen_constraint('GE','>=')
-exec _gen_constraint('LE','<=')
-exec _gen_constraint('LT','<')
-exec _gen_constraint('EQ','==')
-exec _gen_constraint('NE','!=')
+exec(_gen_constraint('GT','>'))
+exec(_gen_constraint('GE','>='))
+exec(_gen_constraint('LE','<='))
+exec(_gen_constraint('LT','<'))
+exec(_gen_constraint('EQ','=='))
+exec(_gen_constraint('NE','!='))
 
 
 # ==== Arithmetic operators ===
@@ -516,11 +517,11 @@ class Operator%(name)s(BaseParameter):
         return "(%%s %(op)s %%s)"%%(self.a,self.b)
 '''%dict(name=name,op=op)
 
-exec _gen_binop('Add','+')
-exec _gen_binop('Sub','-')
-exec _gen_binop('Mul','*')
-exec _gen_binop('Div','/')
-exec _gen_binop('Pow','**')
+exec(_gen_binop('Add','+'))
+exec(_gen_binop('Sub','-'))
+exec(_gen_binop('Mul','*'))
+exec(_gen_binop('Div','/'))
+exec(_gen_binop('Pow','**'))
 
 
 def substitute(a):

@@ -5,7 +5,8 @@ BSpline calculator.
 Given a set of knots, compute the degree 3 B-spline and any derivatives
 that are required.
 """
-from __future__ import division
+from __future__ import division, print_function
+
 import numpy
 
 def max(a,b):
@@ -102,7 +103,7 @@ def _bspline3(knot,control,t,nderiv=0):
     Evaluate the B-spline specified by the given knot sequence and
     control values at the parametric points t.
     """
-    knot,control,t = [numpy.asarray(v) for v in knot, control, t]
+    knot,control,t = [numpy.asarray(v) for v in (knot, control, t)]
 
     # Deal with values outside the range
     valid = (t > knot[0]) & (t <= knot[-1])
@@ -196,7 +197,7 @@ def speed_check():
     t = numpy.linspace(0,1,400)
     t0 = time.time()
     for _ in range(1000): bspline(y,t,flat=True)
-    print "bspline (ms)",(time.time()-t0)/1000
+    print("bspline (ms)",(time.time()-t0)/1000)
 
 def _check(expected,got,tol):
     relative = (numpy.isscalar(expected) and expected!=0) \
@@ -208,9 +209,9 @@ def _check(expected,got,tol):
     try:
         assert norm < tol
     except:
-        print "expected",expected
-        print "got",got
-        print "tol",tol,"norm",norm
+        print("expected",expected)
+        print("got",got)
+        print("tol",tol,"norm",norm)
         raise
 
 def _derivs(x,y):
@@ -324,8 +325,8 @@ def test():
 
     # ==== Check interpolator
     yc = bspline_control(y)
-    print "y",y
-    print "p(yc)",bspline(yc,xeq)
+    print("y",y)
+    print("p(yc)",bspline(yc,xeq))
 
 def demo():
     from pylab import hold, linspace, plot, show

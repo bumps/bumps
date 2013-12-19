@@ -11,6 +11,8 @@
 Downhill simplex optimizer.
 """
 
+from __future__ import print_function
+
 __all__ = ['simplex']
 
 __docformat__ = "restructuredtext en"
@@ -133,7 +135,7 @@ def simplex(f, x0=None, bounds=None, radius=0.05,
     N = len(x0)
     rank = len(x0.shape)
     if not -1 < rank < 2:
-        raise ValueError, "Initial guess must be a scalar or rank-1 sequence."
+        raise ValueError("Initial guess must be a scalar or rank-1 sequence.")
 
     if maxiter is None:
         maxiter = N * 200
@@ -248,7 +250,7 @@ def simplex(f, x0=None, bounds=None, radius=0.05,
                         doshrink = 1
 
                 if doshrink:
-                    for j in xrange(1,N+1):
+                    for j in range(1,N+1):
                         sim[j] = sim[0] + sigma*(sim[j] - sim[0])
                         fsim[j] = func(sim[j])
 
@@ -272,65 +274,65 @@ def main():
 
 
     x0 = [0.8,1.2,0.7]
-    print "Nelder-Mead Simplex"
-    print "==================="
+    print("Nelder-Mead Simplex")
+    print("===================")
     start = time.time()
     x = simplex(rosen,x0)
-    print x
-    print "Time:",time.time() - start
+    print(x)
+    print("Time:",time.time() - start)
 
     x0 = [0]*3
-    print "Nelder-Mead Simplex"
-    print "==================="
-    print "starting at zero"
+    print("Nelder-Mead Simplex")
+    print("===================")
+    print("starting at zero")
     start = time.time()
     x = simplex(rosen,x0)
-    print x
-    print "Time:",time.time() - start
+    print(x)
+    print("Time:",time.time() - start)
 
     x0 = [0.8,1.2,0.7]
     lo,hi = [0]*3, [1]*3
-    print "Bounded Nelder-Mead Simplex"
-    print "==========================="
+    print("Bounded Nelder-Mead Simplex")
+    print("===========================")
     start = time.time()
     x = simplex(rosen,x0,bounds=(lo,hi))
-    print x
-    print "Time:",time.time() - start
+    print(x)
+    print("Time:",time.time() - start)
 
 
     x0 = [0.8,1.2,0.7]
     lo,hi = [0.999]*3, [1.001]*3
-    print "Bounded Nelder-Mead Simplex"
-    print "==========================="
-    print "tight bounds"
-    print "simplex is smaller than 1e-7 in every dimension, but you can't"
-    print "see this without uncommenting the print statement simplex function"
+    print("Bounded Nelder-Mead Simplex")
+    print("===========================")
+    print("tight bounds")
+    print("simplex is smaller than 1e-7 in every dimension, but you can't")
+    print("see this without uncommenting the print statement simplex function")
     start = time.time()
     x = simplex(rosen,x0,bounds=(lo,hi),xtol=1e-4)
-    print x
-    print "Time:",time.time() - start
+    print(x)
+    print("Time:",time.time() - start)
 
 
     x0 = [0]*3
     hi,lo = [-0.999]*3, [-1.001]*3
-    print "Bounded Nelder-Mead Simplex"
-    print "==========================="
-    print "tight bounds, x0=0 outside bounds from above"
+    print("Bounded Nelder-Mead Simplex")
+    print("===========================")
+    print("tight bounds, x0=0 outside bounds from above")
     start = time.time()
     x = simplex(lambda x:rosen(-x),x0,bounds=(lo,hi),xtol=1e-4)
-    print x
-    print "Time:",time.time() - start
+    print(x)
+    print("Time:",time.time() - start)
 
 
     x0 = [0.8,1.2,0.7]
     lo,hi = [-numpy.inf]*3, [numpy.inf]*3
-    print "Bounded Nelder-Mead Simplex"
-    print "==========================="
-    print "infinite bounds"
+    print("Bounded Nelder-Mead Simplex")
+    print("===========================")
+    print("infinite bounds")
     start = time.time()
     x = simplex(rosen,x0,bounds=(lo,hi),xtol=1e-4)
-    print x
-    print "Time:",time.time() - start
+    print(x)
+    print("Time:",time.time() - start)
 
 if __name__ == "__main__":
     main()

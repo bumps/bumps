@@ -7,7 +7,7 @@ The program performs Markov chain Monte Carlo exploration of a probability
 density function using a combination of random and differential evolution
 updates.
 """
-from __future__ import division
+from __future__ import division, print_function
 
 __all__ = ["parallel_tempering"]
 
@@ -18,7 +18,7 @@ from numpy.linalg import norm
 from numpy.random import rand,randn, randint, permutation
 
 def every_ten(step,x,fx,P,E):
-    if step%10: print step, fx[step], x[step]
+    if step%10: print(step, fx[step], x[step])
 
 def parallel_tempering(nllf, p, bounds, T=None, steps=1000,
                        CR=0.9, burn=1000,
@@ -139,12 +139,12 @@ def parallel_tempering(nllf, p, bounds, T=None, steps=1000,
         monitor(step, history.best_point, history.best, P, E)
         interval = 100
         if 0 and step%interval == 0:
-            print "max r",max(["%.1f"%numpy.linalg.norm(p-P[0]) for p in  P[1:]])
+            print("max r",max(["%.1f"%numpy.linalg.norm(p-P[0]) for p in  P[1:]]))
             #print "min AR",argmin(total_accept),min(total_accept)
             #print "min SR",argmin(total_swap),min(total_swap)
-            print "AR",total_accept
-            print "SR",total_swap
-            print "s(d)",[int(std([p[i] for p in P])) for i in 3,7,11,-1]
+            print("AR",total_accept)
+            print("SR",total_swap)
+            print("s(d)",[int(std([p[i] for p in P])) for i in (3,7,11,-1)])
             total_accept *= 0
             total_swap *= 0
 
@@ -158,7 +158,7 @@ class History(object):
         # Prepare log file
         if logfile != None:
             self.log = open(logfile,'w')
-            print >>self.log, "# Step Temperature Energy Point"
+            print("# Step Temperature Energy Point", file=self.log)
         else:
             self.log = None
         # Track the optimum
@@ -185,7 +185,7 @@ class History(object):
         # Log to file
         if self.log:
             point_str = " ".join("%.6g"%v for v in P)
-            print >>self.log,step,T,E,point_str
+            print(step,T,E,point_str, file=self.log)
             self.log.flush()
 
     def draw(self, stream, k):
@@ -256,7 +256,7 @@ class Stepper(object):
         pair = self.history.draw(stream, 2)
         delta = pair[0][3] - pair[1][3]
         if norm(delta) == 0:
-            print "direct should never return identical points!!"
+            print("direct should never return identical points!!")
             return self.random(p)
         assert norm(delta) != 0
         return p + delta
@@ -288,7 +288,7 @@ class ReflectBounds(object):
     Reflect parameter values into bounded region
     """
     def __init__(self, low, high):
-        self.low, self.high = [asarray(v,'d') for v in low, high]
+        self.low, self.high = [asarray(v,'d') for v in (low, high)]
 
     def apply(self, y):
         """
@@ -319,5 +319,5 @@ def choose(n, k):
             s.add(randint(n))
         idx = array([si for si in s])
     if len(set(idx)) != len(idx):
-        print "choose(n,k) contains dups!!",n,k
+        print("choose(n,k) contains dups!!",n,k)
     return idx

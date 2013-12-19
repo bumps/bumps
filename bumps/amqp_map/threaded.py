@@ -138,7 +138,7 @@ def threaded(fn):
     instance = itertools.count(1)
     @wraps(fn)
     def wrapper(*args, **kw):
-        name = "%s-%d"%(fn.func_name,instance.next())
+        name = "%s-%d"%(fn.__name__,next(instance))
         thread = AfterThread(target=fn,args=args,kwargs=kw,name=name)
         thread.start()
         return thread
@@ -156,7 +156,7 @@ def daemon(fn):
     instance_counter = itertools.count(1)
     @wraps(fn)
     def wrapper(*args, **kw):
-        name = "%s-%d"%(fn.func_name,instance_counter.next())
+        name = "%s-%d"%(fn.__name__,next(instance_counter))
         thread = threading.Thread(target=fn,args=args,kwargs=kw,name=name)
         thread.setDaemon(True)
         thread.start()

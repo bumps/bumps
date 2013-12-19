@@ -1,4 +1,5 @@
-from __future__ import division
+from __future__ import division, print_function
+
 import sys
 from math import degrees, radians, sin, cos
 
@@ -52,8 +53,8 @@ class Gaussian(object):
         #print "norm",np.sum(Zf)*normalization
         total = np.sum(Zf)
         if np.isnan(total) or total==0:
-            print "G(A,s1,s2,t,xc,yc) ->",total,(height,s1,s2,t,xc,yc)
-            print "a,b,c",a,b,c
+            print("G(A,s1,s2,t,xc,yc) ->",total,(height,s1,s2,t,xc,yc))
+            print("a,b,c",a,b,c)
         return Zf/total*abs(height) if total>0 else np.zeros_like(x)
 
 class Background(object):

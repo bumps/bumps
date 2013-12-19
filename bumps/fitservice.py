@@ -1,10 +1,12 @@
 """
 Fit job definition for the distributed job queue.
 """
+from __future__ import print_function
+
 import os
 import sys
 import json
-import cPickle as pickle
+import pickle
 from copy import deepcopy
 
 import matplotlib
@@ -48,7 +50,7 @@ def fitservice(request):
 
     fitdriver.mapper = mapper.start_mapper(problem, options.args)
     problem.show()
-    print "#", " ".join(sys.argv)
+    print("#", " ".join(sys.argv))
     best, fbest = fitdriver.fit()
     cli.remember_best(fitdriver, problem, best)
     matplotlib.pyplot.show()

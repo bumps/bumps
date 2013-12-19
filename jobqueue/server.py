@@ -4,7 +4,7 @@
 import os
 import logging
 import json
-import cPickle as pickle
+import pickle
 import flask
 from flask import redirect, url_for, flash
 from flask import send_from_directory

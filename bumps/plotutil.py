@@ -23,7 +23,7 @@ def auto_shift(offset):
 def next_color():
     import pylab
     try:
-        base = pylab.gca()._get_lines.color_cycle.next()
+        base = next(pylab.gca()._get_lines.color_cycle)
     except: # Cruft 1.3 and earlier
         base = pylab.gca()._get_lines._get_next_cycle_color()
     return base
@@ -54,7 +54,7 @@ def dhsv(color, dh=0, ds=0, dv=0, da=0):
     Make sea green 10% darker:
 
         >>> darker = dhsv('seagreen', dv=-0.1)
-        >>> print [int(v*255) for v in darker]
+        >>> print([int(v*255) for v in darker])
         [37, 113, 71, 255]
     """
     from matplotlib.colors import colorConverter
@@ -63,7 +63,7 @@ def dhsv(color, dh=0, ds=0, dv=0, da=0):
     r,g,b,a = colorConverter.to_rgba(color)
     #print "from color",r,g,b,a
     h,s,v = rgb_to_hsv(r,g,b)
-    s,v,a = [clip(val,0.,1.) for val in s+ds,v+dv,a+da]
+    s,v,a = [clip(val,0.,1.) for val in (s+ds,v+dv,a+da)]
     h = fmod(h+dh,1.)
     r,g,b = hsv_to_rgb(h,s,v)
     #print "to color",r,g,b,a

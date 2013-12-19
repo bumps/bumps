@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import os
 import time
 
@@ -15,7 +17,7 @@ def setupdb(uri):
     if uri.startswith("sqlite"):
         try: os.unlink(uri[10:])
         except:
-            print "could not unlink",uri[10:]
+            print("could not unlink",uri[10:])
             pass
     queue = dispatcher.Scheduler()
     return queue
@@ -36,7 +38,7 @@ def checkspeed(uri=URI):
         for j in range(10):
             request = queue.nextjob(queue='cue')
             queue.postjob(1, {'status': 'COMPLETE', 'result': 0})
-        print 10*(i+1), time.time()-t
+        print(10*(i+1), time.time()-t)
         t = time.time()
 
 def test(uri=URI):
@@ -46,7 +48,7 @@ def test(uri=URI):
         qpending = queue.jobs('PENDING')
         qactive = queue.jobs('ACTIVE')
         qcomplete = queue.jobs('COMPLETE')
-        if DEBUG: print "pending",qpending,"active",qactive,"complete",qcomplete
+        if DEBUG: print("pending",qpending,"active",qactive,"complete",qcomplete)
         assert pending == qpending
         assert active == qactive
         assert complete == qcomplete
@@ -59,36 +61,36 @@ def test(uri=URI):
     # No jobs available for running initially
     checkqueue([],[],[])
     request = queue.nextjob(queue='cue')
-    if DEBUG: print "nextjob",request
+    if DEBUG: print("nextjob",request)
     assert request['request'] is None
 
     #jobs = queue.jobs()
     #print "initially empty job list", jobs
     #assert jobs == []
     job1 = queue.submit(test1, origin="here")
-    if DEBUG: print "first job id",job1
+    if DEBUG: print("first job id",job1)
     assert job1 == 1
     job2 = queue.submit(test2, origin="here")
     assert job2 == 2
     checkqueue([1,2],[],[])
 
-    if DEBUG: print "status(0)",queue.status(1)
+    if DEBUG: print("status(0)",queue.status(1))
     assert queue.status(1) == 'PENDING'
 
-    if DEBUG: print "status(3)",queue.status(3)
+    if DEBUG: print("status(3)",queue.status(3))
     assert queue.status(3) == 'UNKNOWN'
 
-    if DEBUG: print "info(0)", queue.info(1)
+    if DEBUG: print("info(0)", queue.info(1))
     assert queue.info(1)['name'] == test1['name']
 
     request = queue.nextjob(queue='cue')
-    if DEBUG: print "nextjob",request
+    if DEBUG: print("nextjob",request)
     assert request['request']['name'] == test1['name']
     checkqueue([2],[1],[])
 
     job2 = queue.submit(test3, origin="there")
     request = queue.nextjob(queue='cue')
-    if DEBUG: print "nextjob",request
+    if DEBUG: print("nextjob",request)
     assert request['request']['name'] == test3['name']
     checkqueue([2],[1,3],[])
 

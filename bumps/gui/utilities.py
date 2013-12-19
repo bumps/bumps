@@ -25,6 +25,7 @@ This module contains utility functions and classes for the application.
 """
 
 #==============================================================================
+from __future__ import print_function
 
 import os
 import sys
@@ -72,7 +73,7 @@ def choose_fontsize(fontname=None):
         fontname = frame.GetFont().GetFaceName()
     max_width = BENCHMARK_WIDTH + BENCHMARK_WIDTH/100
 
-    for fontsize in xrange(12, 5, -1):
+    for fontsize in range(12, 5, -1):
         frame.SetFont(wx.Font(fontsize, wx.SWISS, wx.NORMAL, wx.NORMAL, False,
                               fontname))
         benchmark = wx.StaticText(frame, wx.ID_ANY, label="")
@@ -106,19 +107,19 @@ def display_fontsize(fontname=None, benchmark_text=BENCHMARK_TEXT,
     fontname = frame.GetFont().GetFaceName()
 
     x, y = wx.ClientDC(frame).GetPPI()
-    print "*** Benchmark text width and height in pixels = %4d %2d"\
-          %(benchmark_width, benchmark_height)
-    print "*** Compare against %s font with dpi resolution of %d:"\
-          %(fontname, x)
+    print("*** Benchmark text width and height in pixels = %4d %2d"\
+          %(benchmark_width, benchmark_height))
+    print("*** Compare against %s font with dpi resolution of %d:"\
+          %(fontname, x))
 
-    for fontsize in xrange(12, 5, -1):
+    for fontsize in range(12, 5, -1):
         frame.SetFont(wx.Font(fontsize, wx.SWISS, wx.NORMAL, wx.NORMAL, False,
                               fontname))
         benchmark = wx.StaticText(frame, wx.ID_ANY, label="")
         w, h = benchmark.GetTextExtent(benchmark_text)
         benchmark.Destroy()
-        print "      For point size %2d, benchmark text w, h = %4d  %2d"\
-              %(fontsize, w, h)
+        print("      For point size %2d, benchmark text w, h = %4d  %2d"\
+              %(fontsize, w, h))
 
     frame.Destroy()
 
@@ -172,7 +173,7 @@ def resource_dir():
 
     # Check for data path in the environment
     key = 'BUMPS_DATA'
-    if os.environ.has_key(key):
+    if key in os.environ:
         path = os.environ[key]
         if not os.path.isdir(path):
             raise RuntimeError('Path in environment %s not a directory'%key)
@@ -408,60 +409,60 @@ class TimeStamp():
     def log_time_info(self, text=""):
         # Prints timestamp, delta time, elapsed time, and optional comment.
         t, d, e = self.gettime3()
-        print "==> %s%9.3fs%9.3fs  %s" %(t, d, e, text)
+        print("==> %s%9.3fs%9.3fs  %s" %(t, d, e, text))
 
 
     def log_timestamp(self, text=""):
         # Prints timestamp and optional comment.
         t, d, e = self.gettime3()
-        print "==> %s  %s" %(t, text)
+        print("==> %s  %s" %(t, text))
 
 
     def log_interval(self, text=""):
         # Prints elapsed time, delta time, and optional comment.
         d, e = self.gettime2()
-        print "==>%9.3fs%9.3fs  %s" %(d, e, text)
+        print("==>%9.3fs%9.3fs  %s" %(d, e, text))
 
 #==============================================================================
 
 if __name__ == '__main__':
     # Test the display_fontsize and choose_fontsize functions.
     app = wx.PySimpleApp()
-    print "For Arial font:"
+    print("For Arial font:")
     display_fontsize(fontname="Arial")
-    print "    Calculated font size =", choose_fontsize(fontname="Arial")
+    print("    Calculated font size =", choose_fontsize(fontname="Arial"))
     app.Destroy()
 
-    print ""
-    print "*** Data directory is:          ", resource_dir()
+    print("")
+    print("*** Data directory is:          ", resource_dir())
 
     # Test the TimeStamp class and the convenience function.
-    print ""
+    print("")
     log_time("Using log_time() function")
-    print "Sleeping for 0.54 seconds ..."
+    print("Sleeping for 0.54 seconds ...")
     time.sleep(0.54)
     log_time("Using log_time() function")
-    print "Sleeping for 0.83 seconds ..."
+    print("Sleeping for 0.83 seconds ...")
     time.sleep(0.83)
     log_time("Using log_time() function")
-    print "Creating an instance of TimeStamp (as the second timing class)"
+    print("Creating an instance of TimeStamp (as the second timing class)")
     ts = TimeStamp()
-    print "Sleeping for 0.66 seconds ..."
+    print("Sleeping for 0.66 seconds ...")
     time.sleep(0.66)
     ts.log_time_info(text="Using log_time_info() method")
     ts.log_timestamp(text="Using log_timestamp() method")
     ts.log_interval(text="Using log_interval() method")
-    print "Sleeping for 0.35 seconds ..."
+    print("Sleeping for 0.35 seconds ...")
     time.sleep(0.35)
     ts.log_interval(text="Using log_interval() method")
-    print "Sleeping for 0.42 seconds ..."
+    print("Sleeping for 0.42 seconds ...")
     time.sleep(0.42)
     ts.log_interval(text="Using log_interval() method")
-    print "Resetting the clock ..."
+    print("Resetting the clock ...")
     ts.reset()
     ts.log_interval(text="Using log_interval() method")
-    print "Sleeping for 0.33 seconds ..."
+    print("Sleeping for 0.33 seconds ...")
     time.sleep(0.33)
     ts.log_interval(text="Using log_interval() method")
-    print "Switch back to the first timing class"
+    print("Switch back to the first timing class")
     log_time("Using log_time() function")

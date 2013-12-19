@@ -1,6 +1,8 @@
 """
 Interfaces to various optimizers.
 """
+from __future__ import print_function
+
 import sys
 import time
 from copy import deepcopy
@@ -23,14 +25,14 @@ class ConsoleMonitor(monitor.TimedUpdate):
         self.problem = deepcopy(problem)
 
     def show_progress(self, history):
-        print "step", history.step[0], \
-            "cost", 2 * history.value[0] / self.problem.dof
+        print("step", history.step[0],
+            "cost", 2 * history.value[0] / self.problem.dof)
         sys.stdout.flush()
 
     def show_improvement(self, history):
         #print "step",history.step[0],"chisq",history.value[0]
         self.problem.setp(history.point[0])
-        print self.problem.summarize()
+        print(self.problem.summarize())
         sys.stdout.flush()
 
 
@@ -113,12 +115,12 @@ class MultiStart(FitBase):
         reset = not options.pop('keep_best', True)
         f_best = numpy.inf
         for _ in range(max(starts, 1)):
-            print "round",_
+            print("round")
             x, fx = self.fitter.solve(monitors=monitors, mapper=mapper,
                                       **options)
             if fx < f_best:
                 x_best, f_best = x, fx
-                print x_best, fx
+                print(x_best, fx)
             if reset:
                 self.problem.randomize()
             elif 0:
@@ -159,7 +161,7 @@ class DEFit(FitBase):
                              monitors=monitors, success=success, failure=failure)
         if resume: self.history.restore(self.state)
         x = minimize(mapper=_mapper, abort_test=abort_test, resume=resume)
-        print minimize.termination_condition()
+        print(minimize.termination_condition())
         #with open("/tmp/evals","a") as fid: print >>fid,minimize.history.value[0],minimize.history.step[0],minimize.history.step[0]*options['pop']*len(self.problem.getp())
         return x, self.history.value[0]
 
@@ -202,7 +204,7 @@ class BFGSFit(FitBase):
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         _fill_defaults(options, self.settings)
-        from quasinewton import quasinewton, STATUS
+        from .quasinewton import quasinewton, STATUS
         self._update = MonitorRunner(problem=self.problem,
                                      monitors=monitors)
         result = quasinewton(fn=self.problem.nllf,
@@ -212,7 +214,7 @@ class BFGSFit(FitBase):
                              itnlimit=options['steps'],
                              )
         code = result['status']
-        print "%d: %s" % (code, STATUS[code])
+        print("%d: %s" % (code, STATUS[code]))
         return result['x'], result['fx']
 
     def _monitor(self, step, x, fx):
@@ -230,7 +232,7 @@ class PSFit(FitBase):
         _fill_defaults(options, self.settings)
         if mapper is None:
             mapper = lambda x: map(self.problem.nllf, x)
-        from random_lines import particle_swarm
+        from .random_lines import particle_swarm
         self._update = MonitorRunner(problem=self.problem,
                                      monitors=monitors)
         low,high = self.problem.bounds()
@@ -262,7 +264,7 @@ class RLFit(FitBase):
         _fill_defaults(options, self.settings)
         if mapper is None:
             mapper = lambda x: map(self.problem.nllf, x)
-        from random_lines import random_lines
+        from .random_lines import random_lines
         self._update = MonitorRunner(problem=self.problem,
                                      monitors=monitors)
         low,high = self.problem.bounds()
@@ -296,7 +298,7 @@ class PTFit(FitBase):
     def solve(self, monitors=None, mapper=None, **options):
         _fill_defaults(options, self.settings)
         # TODO: no mapper??
-        from partemp import parallel_tempering
+        from .partemp import parallel_tempering
         self._update = MonitorRunner(problem=self.problem,
                                      monitors=monitors)
         T = numpy.logspace(numpy.log10(options['Tmin']),
@@ -326,7 +328,7 @@ class AmoebaFit(FitBase):
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         _fill_defaults(options, self.settings)
         # TODO: no mapper??
-        from simplex import simplex
+        from .simplex import simplex
         self._update = MonitorRunner(problem=self.problem,
                                      monitors=monitors)
         #print "bounds",self.problem.bounds()
@@ -454,7 +456,7 @@ class DreamFit(FitBase):
 
     def load(self, input_path):
         from . import dream
-        print "loading saved state (this might take awhile) ..."
+        print("loading saved state (this might take awhile) ...")
         self.state = dream.state.load_state(input_path, report=100)
 
     def save(self, output_path):
@@ -470,7 +472,7 @@ class DreamFit(FitBase):
     def error_plot(self, figfile):
         # Produce error plot
         import pylab
-        import errplot
+        from . import errplot
         # TODO: shouldn't mix calc and display!
         res = errplot.calc_errors_from_state(self.dream_model.problem,
                                             self.state)

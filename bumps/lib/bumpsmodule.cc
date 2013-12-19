@@ -147,17 +147,45 @@ static PyMethodDef methods[] = {
 	{0}
 } ;
 
+#define MODULE_NAME "bumpsmodule"
+#define MODULE_DOC "Bumps C Library"
+#if PY_MAJOR_VERSION >= 3
+static struct PyModuleDef moduledef = {
+    PyModuleDef_HEAD_INIT,
+    MODULE_NAME,         /* m_name */
+    MODULE_DOC,          /* m_doc */
+    -1,                  /* m_size */
+    methods,             /* m_methods */
+    NULL,                /* m_reload */
+    NULL,                /* m_traverse */
+    NULL,                /* m_clear */
+    NULL,                /* m_free */
+};
+#endif
+
+
+#if PY_MAJOR_VERSION >= 3
+    #define MODULE_INIT(name) extern "C" PyMODINIT_FUNC PyInit_##name(void)
+#else
+    #define MODULE_INIT(name) extern "C" PyMODINIT_FUNC init##name(void)
+#endif
+
+
 
 #if defined(WIN32) && !defined(__MINGW32__)
 __declspec(dllexport)
 #endif
 
+MODULE_INIT(bumpsmodule) {
+#if PY_MAJOR_VERSION >= 3
+    return PyModule_Create(&moduledef);
 
-extern "C" void initbumpsmodule(void) {
-  Py_InitModule4("bumpsmodule",
+#else
+    Py_InitModule4("bumpsmodule",
 		 methods,
 		 "Bumps C Library",
 		 0,
 		 PYTHON_API_VERSION
 		 );
+#endif
 }

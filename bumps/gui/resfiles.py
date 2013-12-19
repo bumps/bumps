@@ -126,7 +126,7 @@ class Resources(object):
 
         # Check for data path in the environment.  If the environment variable
         # is specified, then the resources have to be there, or the program fails.
-        if self.env and os.environ.has_key(self.env):
+        if self.env and self.env in os.environ:
             if not self._cache_resource_path(os.environ[self.env]):
                 raise RuntimeError('Environment %s not a directory'%self.env)
             return self._cached_path

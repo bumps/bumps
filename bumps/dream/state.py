@@ -68,7 +68,7 @@ best_x is the corresponding point at which it was observed.
 generation is the last generation number
 """
 #TODO: state should be collected in files as we go
-from __future__ import division
+from __future__ import division, print_function
 
 __all__ = ['MCMCDraw','load_state','save_state']
 
@@ -148,7 +148,7 @@ def loadtxt(file, report=0):
     """
     if not hasattr(file,'readline'):
         if file.endswith('.gz'):
-            #print "opening with gzip"
+            #print("opening with gzip")
             fh = gzip.open(file, 'r')
         else:
             fh = open(file, 'r')
@@ -160,7 +160,7 @@ def loadtxt(file, report=0):
     for line in fh:
         lineno += 1
         if report and lineno%report==0:
-            print "read",section*report
+            print("read",section*report)
             section += 1
         IND_PAT.sub('nan', line)
         INF_PAT.sub('inf', line)
@@ -170,7 +170,7 @@ def loadtxt(file, report=0):
             try:
                 res.append([float(v) for v in values])
             except:
-                print "Parse error:",values
+                print("Parse error:",values)
     if fh != file:
         fh.close()
     return asarray(res)
@@ -200,7 +200,7 @@ def load_state(filename, skip=0, report=0):
 
     # Create empty draw and fill it with loaded data
     state = MCMCDraw(0,0,0,0,0,0,thinning)
-    #print "gen,var,pop",Ngen,Nvar,Npop
+    #print("gen,var,pop",Ngen,Nvar,Npop)
     state.draws = Ngen * Npop
     state.generation = Ngen
     state._gen_index = 0
@@ -339,7 +339,7 @@ class MCMCDraw(object):
         save_state(self,filename)
 
     def show(self, portion=1.0, figfile=None):
-        from views import plot_all
+        from .views import plot_all
         plot_all(self, portion=portion, figfile=figfile)
 
     def _last_gen(self):
@@ -372,7 +372,7 @@ class MCMCDraw(object):
 
         # Record acceptance rate and cost
         i = self._gen_index
-        #print "generation",i,self.draws,"\n x",x,"\n logp",logp,"\n accept",accept
+        #print("generation",i,self.draws,"\n x",x,"\n logp",logp,"\n accept",accept)
         self._gen_draws[i] = self.draws
         self._gen_acceptance_rate[i] = 100*sum(accept)/new_draws
         self._gen_logp[i] = logp
@@ -405,7 +405,7 @@ class MCMCDraw(object):
         """
         self._update_count += 1
         i = self._update_index
-        #print "update",i,self.draws,"\n Rstat",R_stat,"\n CR weight",CR_weight
+        #print("update",i,self.draws,"\n Rstat",R_stat,"\n CR weight",CR_weight)
         self._update_draws[i] = self.draws
         self._update_R_stat[i] = R_stat
         self._update_CR_weight[i] = CR_weight
@@ -465,7 +465,7 @@ class MCMCDraw(object):
         if self._gen_current != None:
             pop[:Nchain] = self._gen_current
         else:
-            #print pop.shape, points.shape, chains.shape
+            #print(pop.shape, points.shape, chains.shape)
             pop[:Nchain] = points[cursor:cursor+Nchain]
 
         if Npop > Nchain:
@@ -475,7 +475,7 @@ class MCMCDraw(object):
             # be shifted by Nchains to avoid the cursor.
             perm = draw(Npop-Nchain,pool_size)
             perm[perm>=cursor] += Nchain
-            #print "perm",perm; raw_input('wait')
+            #print("perm",perm; raw_input('wait'))
             pop[Nchain:] = points[perm]
 
         return pop
@@ -563,11 +563,11 @@ class MCMCDraw(object):
             Ngen = chains.shape[0]
             start = int(Ngen*(1-portion)) if portion else 0
             outliers = identify_outliers(test, logp[start:], chains[-1])
-            #print "outliers",outliers
-            #print logp.shape, chains.shape
+            #print("outliers",outliers)
+            #print(logp.shape, chains.shape)
             self._good_chains = numpy.array([i for i in range(logp.shape[1])
                                              if i not in outliers])
-            #print self._good_chains
+            #print(self._good_chains)
 
 
     def logp(self, full=False):

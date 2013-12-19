@@ -24,7 +24,7 @@ import threading
 #import os
 
 #from dill import loads, dumps
-from cPickle import loads, dumps
+from pickle import loads, dumps
 import sys
 
 from amqplib import client_0_8 as amqp #@UnresolvedImport if amqp isn't available
@@ -72,7 +72,7 @@ def start_worker(server, mapid, work):
         #os.system("echo 'processing %s' >> /home/pkienzle/map.%d"%(body['value'],me))
         try:
             result = work(body['value'])
-        except Exception,_exc:
+        except Exception as _exc:
             #os.system("echo 'error %s' >> /home/pkienzle/map.%d"%(_exc,me))
             result = None
         #os.system("echo 'returning %s' >> /home/pkienzle/map.%d"%(result,me))

@@ -6,6 +6,7 @@ Defines NumpyConsole class.
 TODO: Fix cut/paste for multiline commands
 TODO: Trigger change notification when numpy array has changed
 """
+from __future__ import print_function
 
 import wx, wx.py
 import numpy
@@ -54,7 +55,7 @@ plot(x,y)
 
         # Print welcome message.
         # TODO: replace this when (if?) ShellFrame allows introText=msg
-        print >>self.shell, msg
+        print(msg, file=self.shell)
         self.shell.prompt()
 
         # Initialize the interpreter namespace with useful commands
@@ -93,7 +94,7 @@ plot(x,y)
         Return the list of key,value pairs for all locals not ignored.
         """
         locals = self.shell.interp.locals
-        for (k,v) in locals.iteritems():
+        for (k,v) in locals.items():
             if self.filter(k,v): yield k,v
 
     def update(self, *args, **kw):
@@ -143,12 +144,12 @@ plot(x,y)
         use a deep comparison to see if it has changed.
         """
         for var in added:
-            print >>self.shell, "added",var
+            print("added",var, file=self.shell)
         for var in changed:
-            print >>self.shell, "changed",var
+            print("changed",var, file=self.shell)
         for var in removed:
-            print >>self.shell, "deleted",var
-        print >>self.shell, "override the OnChanged message to update your application state"
+            print("deleted",var, file=self.shell)
+        print("override the OnChanged message to update your application state", file=self.shell)
 
     def _print_vars(self):
         """
@@ -158,7 +159,7 @@ plot(x,y)
         """
         locals = self.shell.interp.locals
         for (k,v) in self.items():
-            print >>self.shell, k, shapestr(v)
+            print(k, shapestr(v), file=self.shell)
 
 
     def _onPush(self,**kw):
@@ -179,9 +180,9 @@ plot(x,y)
             pylab.show()
             self._dirty.clear()
 
-        items = dict(self.items())
-        oldkeys = set(self._existing.iterkeys())
-        newkeys = set(items.iterkeys())
+        items = dict(list(self.items()))
+        oldkeys = set(self._existing.keys())
+        newkeys = set(items.keys())
         added   = newkeys - oldkeys
         removed = oldkeys - newkeys
         changed = set(k for k in (oldkeys&newkeys)

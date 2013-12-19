@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import numpy
 from numpy import inf
 from bumps.names import FitProblem
@@ -35,11 +37,11 @@ class PymcProblem(object):
         return numpy.array([p.value for p in self.pars])
     def show(self):
         # maybe print graph of model
-        print "[chisq=%g, nllf=%g]" % (self.chisq(), self.nllf())
-        print self.summarize()
+        print("[chisq=%g, nllf=%g]" % (self.chisq(), self.nllf()))
+        print(self.summarize())
     def summarize(self):
         for p in self.pars:
-            print p.__name__, p.value
+            print(p.__name__, p.value)
     def labels(self):
         return [p.__name__ for p in self.pars]
     def randomize(self, N=None):

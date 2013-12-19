@@ -15,11 +15,11 @@
 #     Will Holcomb <wholcomb@gmail.com>
 #   python-rest-client
 #     Benjamin O'Steen
+from six import StringIO
+from six.moves.urllib import parse
 
 import httplib2
 import mimetools, mimetypes
-from cStringIO import StringIO
-import urllib
 
 
 
@@ -64,9 +64,9 @@ def _request(http, verb, location, fields=None,
         boundary = mimetools.choose_boundary()
         buf = StringIO()
         for key,value in fields.items():
-            buf.write('--%s\r\n'%boundary)
-            buf.write('Content-Disposition: form-data; name="%s"' % key)
-            buf.write('\r\n\r\n%s\r\n'%value)
+            buf.write(u'--%s\r\n'%boundary)
+            buf.write(u'Content-Disposition: form-data; name="%s"' % key)
+            buf.write(u'\r\n\r\n%s\r\n'%value)
         for key,filename in enumerate(files):
             content_type = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
             buf.write(u'--%s\r\n'%boundary)
@@ -76,7 +76,7 @@ def _request(http, verb, location, fields=None,
             buf.write(u'\r\n')
         buf.write(u'--%s--\r\n'%boundary)
         body = buf.getvalue()
-        headers['Content-Type']='multipart/form-data; boundary='+boundary
+        headers['Content-Type'] = 'multipart/form-data; boundary='+boundary
         headers['Content-Length'] = str(len(body))
         #print "===== body =====\n",body
     elif body:
@@ -86,11 +86,11 @@ def _request(http, verb, location, fields=None,
         headers['Content-Length'] = str(len(body))
     elif fields:
         if verb == "GET":
-            location += u'?' + urllib.urlencode(fields)
+            location += u'?' + parse.urlencode(fields)
             body = u''
         else:
             headers['Content-Type'] = 'application/x-www-form-urlencoded'
-            body = urllib.urlencode(fields)
+            body = parse.urlencode(fields)
 
     #print "uri",location
     #print "body",body

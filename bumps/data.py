@@ -16,7 +16,7 @@ def convolve(xi,yi,x,dx):
 
     Returns convolution y[k] of width dx[k] at points x[k].
     """
-    from bumpsmodule import _convolve
+    from .bumpsmodule import _convolve
     y = numpy.empty(x.shape, 'd')
     _convolve(_dense(xi), _dense(yi), _dense(x), _dense(dx), y)
     return y
@@ -104,11 +104,11 @@ def indfloat(s):
     Example::
 
         >>> import numpy
-        >>> print numpy.isinf(indfloat('inf'))
+        >>> print(numpy.isinf(indfloat('inf')))
         True
-        >>> print numpy.isinf(indfloat('-inf'))
+        >>> print(numpy.isinf(indfloat('-inf')))
         True
-        >>> print numpy.isnan(indfloat('nan'))
+        >>> print(numpy.isnan(indfloat('nan')))
         True
     """
     try:

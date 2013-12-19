@@ -32,7 +32,7 @@ def choose_without_replacement(m,n,repeats=None):
     else:
         r = repeats
     if n>m:
-        raise ValueError, "Cannot find %d nonnegative integers less than %d" %(n,m)
+        raise ValueError("Cannot find %d nonnegative integers less than %d" %(n,m))
     elif n>m/2:
         res = numpy.sort(numpy.random.rand(m,r).argsort(axis=0)[:n,:],axis=0)
     else:

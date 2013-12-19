@@ -262,7 +262,7 @@ def _check_uniform_2d(x,y):
 def _check_all_2d():
     x,y,I = [0,3,5,7], [0,1,3], [[3,6],[2,4],[2,4]]
     xo,yo,Io = range(8), range(4), [[1]*3]*7
-    x,y,I,xo,yo,Io = [numpy.array(A,'d') for A in [x,y,I,xo,yo,Io]]
+    x,y,I,xo,yo,Io = [numpy.array(A,'d') for A in (x,y,I,xo,yo,Io)]
 
     # Try various types and orders on a non-square matrix
     _check_one_2d(x,y,I,xo,yo,Io)

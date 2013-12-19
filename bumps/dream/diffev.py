@@ -1,4 +1,5 @@
 from __future__ import division
+
 from numpy import zeros, ones, dot, cov, eye, sqrt, sum, all
 from numpy import where, select
 from numpy.linalg import norm, cholesky, LinAlgError
@@ -108,7 +109,7 @@ def de_step(Nchain,pop,CR,max_pairs=2,eps=0.05,snooker_rate=0.1,noise=1e-6):
                 # Generate jump using multinormal distribution
                 delta_x[qq] = dot(RNG.randn(*(1,Nvar)), R)
             except LinAlgError:
-                print "Bad cholesky"
+                print("Bad cholesky")
                 delta_x[qq] = RNG.randn(Nvar)
 
 
@@ -132,15 +133,15 @@ def _check():
     pop += RNG.rand(*pop.shape)*1e-6
     CR = 1./(RNG.randint(4,size=Nvar)+1)
     x_new, _step_alpha, used = de_step(Nchain,pop,CR,max_pairs=2,eps=0.05)
-    print """\
+    print("""\
 The following table shows the expected portion of the dimensions that
 are changed and the rounded value of the change for each point in the
 population.
-"""
+""")
     for r,i,u in zip(CR,range(8),used):
-        rstr = ("%3d%%"%(r*100)) if u else "full"
+        rstr = ("%3d%% "%(r*100)) if u else "full "
         vstr = " ".join("%4d"%(int(v/100+0.5)) for v in x_new[i]-pop[i])
-        print rstr, vstr
+        print(rstr+vstr)
 
 if __name__ == "__main__":
     _check()

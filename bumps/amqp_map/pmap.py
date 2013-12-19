@@ -1,4 +1,5 @@
-raise NotImplementedError  # This code is still a work in progress
+raise NotImplementedError("This code is still a work in progress")
+
 
 import threading
 import dill as pickle
@@ -196,7 +197,7 @@ class PickleMapper(object, RPCMixin):
                     else:
                         pass # ignore late responders
                 else:
-                    print "ignoring unexpected message"
+                    print("ignoring unexpected message")
             result = self._reply['result']
             #print "received %d %g"%(idx,result)
             self.num_processed = i

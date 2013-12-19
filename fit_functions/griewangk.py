@@ -12,6 +12,7 @@ References::
     (Same title as above, but as a technical report.)
     http://www.icsi.berkeley.edu/~storn/deshort1.ps
 """
+from six.moves import reduce
 
 from math import cos, sqrt
 

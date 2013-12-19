@@ -25,14 +25,14 @@ Infinite and indefinite numbers are represented as inf and NaN.
 Example::
 
     >>> v,dv = 757.2356,0.01032
-    >>> print format_uncertainty_pm(v,dv)
+    >>> print(format_uncertainty_pm(v,dv))
     757.236 +/- 0.010
-    >>> print format_uncertainty_compact(v,dv)
+    >>> print(format_uncertainty_compact(v,dv))
     757.236(10)
-    >>> print format_uncertainty(v,dv)
+    >>> print(format_uncertainty(v,dv))
     757.236(10)
     >>> format_uncertainty.compact = False
-    >>> print format_uncertainty(v,dv)
+    >>> print(format_uncertainty(v,dv))
     757.236 +/- 0.010
 
 UncertaintyFormatter() returns a private formatter with its own

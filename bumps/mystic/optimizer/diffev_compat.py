@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from ..solver import Minimizer
 from ...parameter import Parameter
 from .. import stop
@@ -127,7 +129,7 @@ Returns:: (xopt, {fopt, iter, funcalls, status}, [allvecs])
     Iterations: %d
     Function evaluations: %d"""%(hist.point[0],hist.value[0],
                                  hist.step[0],hist.calls[0])
-    if disp: print msg
+    if disp: print(msg)
     if not full_output and not retall:
         ret = hist.point[0]
     elif full_output:

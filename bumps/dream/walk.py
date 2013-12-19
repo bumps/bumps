@@ -46,7 +46,7 @@ def walk(n=1000, mu=0, sigma=1, alpha=0.01, s0=NaN):
         sigma = [0.138, 0.31, 0.45, 0.85, 1]
         alpha = [0.01,  0.05, 0.1,  0.5,  1]
     """
-    s0,mu,sigma,alpha = [asarray(v) for v in s0,mu,sigma,alpha]
+    s0,mu,sigma,alpha = [asarray(v) for v in (s0,mu,sigma,alpha)]
     nchains = mu.shape[0] if mu.ndim > 0 else 1
 
     if mu.ndim < 2:

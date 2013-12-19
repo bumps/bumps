@@ -5,7 +5,8 @@ Interface between the models and the fitters.
 
 :class:`FitProblem` defines the fitness function(s) for use in the fitters.
 """
-from __future__ import division, with_statement
+from __future__ import division, with_statement, print_function
+
 import sys
 import time
 
@@ -47,7 +48,7 @@ def fit(models=[], weights=None, fitter=None, **kw):
         t0 = time.clock()
         opt = fitter(problem)
         x = opt.solve(**kw)
-        print "time", time.clock() - t0
+        print("time", time.clock() - t0)
     else:
         x = problem.getp()
     result = Result(problem, x)
@@ -67,7 +68,7 @@ def show_chisq(chisq, fid=None):
     lo, hi = min(chisq), max(chisq)
 
     valstr = format_uncertainty(v, dv)
-    print >>fid, "Chisq for samples: %s,  [min,max] = [%g,%g]" % (valstr,lo,hi)
+    print("Chisq for samples: %s,  [min,max] = [%g,%g]" % (valstr,lo,hi), file=fid)
 
 def show_stats(pars, points, fid=None):
     """
@@ -87,7 +88,7 @@ def show_stats(pars, points, fid=None):
         else: bar[position] = '|'
         bar = "".join(bar)
         valstr = format_uncertainty(v,dv)
-        print >>fid, ("%40s %s %-15s in %s"%(name,bar,valstr,bounds))
+        print(("%40s %s %-15s in %s"%(name,bar,valstr,bounds)), file=fid)
 
 def show_correlations(pars, points, fid=None):
     """
@@ -103,13 +104,13 @@ def show_correlations(pars, points, fid=None):
 
     # Print the remaining correlations
     if len(corr) > 0:
-        print >>fid, "== Parameter correlations =="
+        print("== Parameter correlations ==", file=fid)
         for i,j,r in corr:
-            print >>fid, pars[i].name, "X", pars[j].name, ":", r
+            print(pars[i].name, "X", pars[j].name, ":", r, file=fid)
 
 
 
-import pytwalk
+from . import pytwalk
 class TWalk:
     def __init__(self, problem):
         self.twalk = pytwalk.pytwalk(n=len(problem.getp()),
@@ -153,7 +154,7 @@ class Result:
         points = []
         try: # TODO: some solvers already catch KeyboardInterrupt
             for i in range(samples):
-                print "== resynth %d of %d" % (i, samples)
+                print("== resynth %d of %d" % (i, samples))
                 self.problem.resynth_data()
                 if restart:
                     self.problem.randomize()
@@ -162,8 +163,8 @@ class Result:
                 x = opt.solve(**kw)
                 nllf = self.problem.nllf(x) # TODO: don't recalculate!
                 points.append(numpy.hstack((nllf,x)))
-                print self.problem.summarize()
-                print "[chisq=%g]" % (nllf*2/self.problem.dof)
+                print(self.problem.summarize())
+                print("[chisq=%g]" % (nllf*2/self.problem.dof))
         except KeyboardInterrupt:
             pass
         self.points = numpy.vstack([self.points] + points)
@@ -188,7 +189,7 @@ class Result:
         # fits). Same in showmodel()
         self.problem.setp(self.solution)
         fid = open(basename + ".par", "w")
-        print >>fid, self.problem.summarize()
+        print(self.problem.summarize(), file=fid)
         fid.close()
         self.problem.save(basename)
         if self.points.shape[0] > 1:
@@ -212,14 +213,14 @@ class Result:
         return self
 
     def showmodel(self):
-        print "== Model parameters =="
+        print("== Model parameters ==")
         self.problem.setp(self.solution)
         self.problem.show()
 
     def showpars(self):
-        print "== Fitted parameters =="
+        print("== Fitted parameters ==")
         self.problem.setp(self.solution)
-        print self.problem.summarize()
+        print(self.problem.summarize())
 
 
 def _make_problem(models=[], weights=None):
@@ -520,9 +521,9 @@ class BaseFitProblem(object):
 
         try:
             if isnan(self.parameter_nllf()):
-                print "Parameter nllf is wrong"
+                print("Parameter nllf is wrong")
                 for p in self.bounded:
-                    print p, p.nllf()
+                    print(p, p.nllf())
             pparameter = self.parameter_nllf()
             pconstraint = self.constraints_nllf()
             pmodel = self.model_nllf() if pparameter+pconstraint <= self.soft_limit else self.penalty_nllf
@@ -534,7 +535,7 @@ class BaseFitProblem(object):
             #TODO: make sure errors get back to the user
             import traceback
             traceback.print_exc()
-            print parameter.summarize(self._parameters)
+            print(parameter.summarize(self._parameters))
             return inf
         if isnan(cost):
             #TODO: make sure errors get back to the user
@@ -556,9 +557,9 @@ class BaseFitProblem(object):
         return 2*self.nllf(pvec)/self.dof
 
     def show(self):
-        print parameter.format(self.model_parameters())
-        print "[chisq=%g, nllf=%g]" % (self.chisq(), self.nllf())
-        print self.summarize()
+        print(parameter.format(self.model_parameters()))
+        print("[chisq=%g, nllf=%g]" % (self.chisq(), self.nllf()))
+        print(self.summarize())
     def summarize(self):
         return parameter.summarize(self._parameters)
     def labels(self):
@@ -758,9 +759,9 @@ class MultiFitProblem(BaseFitProblem):
 
     def show(self):
         for i, f in enumerate(self.models):
-            print "-- Model %d" % i, f.name
+            print("-- Model %d" % i, f.name)
             f.show()
-        print "[overall chisq=%g, nllf=%g]" % (self.chisq(), self.nllf())
+        print("[overall chisq=%g, nllf=%g]" % (self.chisq(), self.nllf()))
 
     def plot(self,fignum=1,figfile=None):
         import pylab
@@ -790,12 +791,11 @@ def load_problem(file, options=[]):
     ctx = dict(__file__=file)
     argv = sys.argv
     sys.argv = [file] + options
-    execfile(file, ctx) # 2.x
-    #exec(compile(open(model_file).read(), model_file, 'exec'), ctx) # 3.0
+    exec(compile(open(file).read(), file, 'exec'), ctx)
     sys.argv = argv
     try:
         problem = ctx["problem"]
-    except AttributeError:
+    except KeyError:
         raise ValueError(file+" does not define 'problem=FitProblem(...)'")
 
     return problem

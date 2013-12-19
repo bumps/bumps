@@ -17,7 +17,7 @@ from glob import glob
 import nose
 import matplotlib
 matplotlib.use('Agg')
-print matplotlib.__file__
+print(matplotlib.__file__)
 
 sys.stderr = sys.stdout # Doctest doesn't see sys.stderr
 #import numpy; numpy.seterr(all='raise')
@@ -35,13 +35,13 @@ import pylab; pylab.hold(False)
 
 # Build bumpsmodule.pyd if it has not already been built in the source tree.
 if not glob(os.path.join(path, 'bumps', 'bumpsmodule.*')):
-    print "-"*70
-    print "Building bumpsmodule.pyd ..."
-    print "-"*70
+    print("-"*70)
+    print("Building bumpsmodule.pyd ...")
+    print("-"*70)
     if os.name == 'nt': flag = False
     else:               flag = True
     subprocess.call("python setup.py build_ext --inplace", shell=flag)
-    print "-"*70
+    print("-"*70)
 
 # Run the source tests with the system path augmented such that imports can
 # be performed 'from bumps...".  By manipulating the

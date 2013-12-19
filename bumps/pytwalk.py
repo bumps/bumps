@@ -14,7 +14,7 @@ __all__ = [ "pytwalk" ]
 
 from numpy.random import uniform, normal
 from numpy import ones, zeros, cumsum, shape, mat, cov, mean, ceil, matrix, sqrt
-from numpy import floor, exp, log, sum, pi
+from numpy import floor, exp, log, sum, pi, arange
 
 #### Some auxiliary functions and constants
 ## square of the norm.
@@ -68,22 +68,22 @@ class pytwalk:
            ***each entry of x0 and xp0 most be different***.
         """
 
-        print "twalk: Running the twalk with %d iterations." % T
+        print("twalk: Running the twalk with %d iterations." % T)
         ### Check x0 and xp0 in the support
         x = x0                ### Reference, so we can retrieve the last values used
         if not(self.Supp(x)):
-            print "twalk: ERROR, initial point x0 = %12.4g out of support." % x0
+            print("twalk: ERROR, initial point x0 = %12.4g out of support." % x0)
             return 0
         u = self.U(x)
 
         xp = xp0
         if not(self.Supp(xp)):
-            print "twalk: ERROR, initial point xp0 = %12.4g out of support." % xp0
+            print("twalk: ERROR, initial point xp0 = %12.4g out of support." % xp0)
             return 0
         up = self.U(xp)
 
         if any(abs(x0 -xp0) <= 0):
-            print "twalk: ERROR, not all entries of initial values different."
+            print("twalk: ERROR, not all entries of initial values different.")
             return 0
 
         ### Set the array to place the iterations and the U's ... we donot save up's
@@ -127,7 +127,7 @@ class pytwalk:
 
 
         if (Acc[5] == 0):
-            print "twalk: WARNING,  all propolsals were rejected!"
+            print("twalk: WARNING,  all propolsals were rejected!")
             return 0
 
         for i in range(6):
@@ -424,8 +424,8 @@ class pytwalk:
             end = self.T
 
         if (self.Acc[5] == 0):
-            print "twalk: IAT: WARNING,  all proposals were rejected!"
-            print "twalk: IAT: Cannot calculate IAT, fixing it to the sample size."
+            print("twalk: IAT: WARNING,  all proposals were rejected!")
+            print("twalk: IAT: Cannot calculate IAT, fixing it to the sample size.")
             return self.T
 
         iat = IAT( self.Output, cols=par, maxlag=maxlag, start=start, end=end)
@@ -444,10 +444,10 @@ class pytwalk:
             end = self.T
 
         if (par == self.n):
-            plot( range( start, end), -1*self.Output[ start:end, par])
+            plot( arange( start, end), -1*self.Output[ start:end, par])
             ylabel("Log of Objective")
         else:
-            plot( range( start, end), self.Output[ start:end, par])
+            plot( arange( start, end), self.Output[ start:end, par])
             ylabel("Parameter %d" % par)
         xlabel("Iteration")
 
@@ -459,11 +459,11 @@ class pytwalk:
         if (end == 0):
             end = self.T
 
-        print "Acceptance rates for the Walk, Traverse, Blow and Hop kernels:" + str(self.Acc[1:5])
-        print "Global acceptance rate: %7.5f" % self.Acc[5]
+        print("Acceptance rates for the Walk, Traverse, Blow and Hop kernels:" + str(self.Acc[1:5]))
+        print("Global acceptance rate: %7.5f" % self.Acc[5])
 
         iat = self.IAT( par=par, start=start, end=end)
-        print "Integrated Autocorrelation Time: %7.1f, IAT/n: %7.1f" % (iat, iat/self.n)
+        print("Integrated Autocorrelation Time: %7.1f, IAT/n: %7.1f" % (iat, iat/self.n))
 
         self.TS( par=par, start=start, end=end)
 
@@ -483,20 +483,20 @@ class pytwalk:
             for it in range(end-start):
                 ser[it] = g(self.Output[ it+start, :])
             xlabel(xlab)
-            print "Mean for %s= %f" % ( xlab, mean(ser))
+            print("Mean for %s= %f" % ( xlab, mean(ser)))
         else:
             ser = self.Output[ start:end, par]
             xlabel("Parameter %d" % par)
-            print "Mean for par %d= %f" % ( par, mean(ser))
+            print("Mean for par %d= %f" % ( par, mean(ser)))
 
         hist( ser, bins=bins)
-        print "Do:\nfrom pylab import show\nshow()"
+        print("Do:\nfrom pylab import show\nshow()")
 
 
 
     def Save( self, fnam, start=0, thin=1):
         """Saves the Output as a text file, starting at start (burn in), with thinning (thin)."""
-        print("Saving output, all pars. plus the U's in file", fnam)
+        print(("Saving output, all pars. plus the U's in file", fnam))
 
         from numpy import  savetxt
 
@@ -507,7 +507,7 @@ class pytwalk:
     def RunRWMH( self, T, x0, sigma):
         """Run a simple Random Walk M-H"""
 
-        print "twalk: This is the Random Walk M-H running with %d iterations." % T
+        print("twalk: This is the Random Walk M-H running with %d iterations." % T)
         ### Local variables
         x = x0.copy()
         if not(self.Supp(x)):
@@ -658,15 +658,15 @@ def AutoMaxlag( Ser, c, rholimit=0.05, maxmaxlag=20000):
 
     if (maxlag >= min(T/2,maxmaxlag)): ###not enough data
         fixmaxlag = min(min( T/2, maxlag), maxmaxlag)
-        print "AutoMaxlag: Warning: maxlag= %d > min(T/2,maxmaxlag=%d), fixing it to %d" % (maxlag, maxmaxlag, fixmaxlag)
+        print("AutoMaxlag: Warning: maxlag= %d > min(T/2,maxmaxlag=%d), fixing it to %d" % (maxlag, maxmaxlag, fixmaxlag))
         return fixmaxlag
 
     if (maxlag <= 1):
         fixmaxlag = 10
-        print "AutoMaxlag: Warning: maxlag= %d ?!, fixing it to %d" % (maxlag, fixmaxlag)
+        print("AutoMaxlag: Warning: maxlag= %d ?!, fixing it to %d" % (maxlag, fixmaxlag))
         return fixmaxlag
 
-    print "AutoMaxlag: maxlag= %d." % maxlag
+    print("AutoMaxlag: maxlag= %d." % maxlag)
     return maxlag
 
 

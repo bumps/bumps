@@ -30,7 +30,7 @@ requires the best value on the two previous cycles in order to do its work:
 
 Initially the history is empty:
 
-    >>> print len(h.value)
+    >>> print(len(h.value))
     0
 
 After three updates we see that only two values are kept:
@@ -38,14 +38,14 @@ After three updates we see that only two values are kept:
     >>> h.update(value=2,point=[1,1,1])
     >>> h.update(value=1,point=[1,0.5,1])
     >>> h.update(value=0.5,point=[1,0.5,0.9])
-    >>> print h.value
+    >>> print(h.value)
     Trace value: 0.5, 1
-    >>> print len(h.value)
+    >>> print(len(h.value))
     2
 
 Note that point is not monitored since it is not required:
 
-    >>> print h.point[0]
+    >>> print(h.point[0])
     Traceback (most recent call last):
         ...
     IndexError: point has not accumulated enough history
@@ -58,7 +58,7 @@ For example:
     >>> h.provides(step=1)
     >>> h.accumulate(step=1)
     >>> h.accumulate(step=1)
-    >>> print h.step[0]
+    >>> print(h.step[0])
     2
 """
 

@@ -41,7 +41,7 @@ def setup(app):
 
         try:
             text = text%app.config.slink_vars
-        except Exception,exc:
+        except Exception as exc:
             #err = traceback.format_exc(0).strip()
             err = traceback.format_exception_only(exc.__class__, exc)[0]
             warn(err.strip())

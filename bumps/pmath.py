@@ -1,8 +1,8 @@
 """
 Standard math functions for parameter expressions.
 """
+from six.moves import reduce, builtins
 import math
-import __builtin__
 from .parameter import function
 __all__ = [
     'exp', 'log', 'log10', 'sqrt',
@@ -50,7 +50,7 @@ cosh = function(math.cosh)
 tanh = function(math.tanh)
 
 def _prod(s): return reduce(lambda x,y: x*y, s, 1)
-sum = function(__builtin__.sum)
+sum = function(builtins.sum)
 prod = function(_prod)
 
 # Define pickler for numpy ufuncs

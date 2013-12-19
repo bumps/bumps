@@ -3,17 +3,18 @@ Random Lines Algorithm finds the optimal minima of a function.
 """
 
 # Author : Ismet Sahin
+from __future__ import print_function
 
 __all__ = [ "random_lines"]
 
-from numpy import zeros, ones, asarray, sqrt
+from numpy import zeros, ones, asarray, sqrt, arange
 from numpy.random import rand, random_integers
 from copy import deepcopy
-from itertools import count, izip
+from itertools import count
 
 def print_every_five(step, x, fx, k):
     if step%5 == 0:
-        print step,":",fx[k],x[k]
+        print(step,":",fx[k],x[k])
 
 def random_lines(cfo, NP, CR = 0.9, epsilon = 1e-10, abort_test=None, maxiter = 1000):
     if 'parallel_cost' in cfo:
@@ -36,7 +37,7 @@ def random_lines(cfo, NP, CR = 0.9, epsilon = 1e-10, abort_test=None, maxiter = 
     f = mapper(X)
 
     n_feval = NP
-    f_best, i_best = min(izip(f, count()))
+    f_best, i_best = min(zip(f, count()))
 
     # CHECK INITIAL STOPPING CRITERIA
     if abs(cfo['f_opt']-f_best) < epsilon:
@@ -49,7 +50,7 @@ def random_lines(cfo, NP, CR = 0.9, epsilon = 1e-10, abort_test=None, maxiter = 
 
         # finding destination vector
         i_Xj = random_integers(0,NP-2,NP)
-        i_ge = (i_Xj >= range(0,NP))
+        i_ge = (i_Xj >= arange(0,NP))
         i_Xj[i_ge] = i_Xj[i_ge] + 1
 
         # choosing muk
@@ -69,7 +70,7 @@ def random_lines(cfo, NP, CR = 0.9, epsilon = 1e-10, abort_test=None, maxiter = 
         if any(muk == 0) or any(muk == 1):
             satisfied_sc = 0
             x_best = X[:,i_best]
-            print 'muk cannot be zero or one !!!'
+            print('muk cannot be zero or one !!!')
             return satisfied_sc, n_feval, f_best, x_best
 
         fi = f
@@ -113,7 +114,7 @@ def random_lines(cfo, NP, CR = 0.9, epsilon = 1e-10, abort_test=None, maxiter = 
             X[:,idx[update]] = xstar[update,:].T
 
         # CHECKING STOPPING CRITERIA
-        f_best, i_best = min(izip(f, count()))
+        f_best, i_best = min(zip(f, count()))
         if abs(cfo['f_opt']-f_best) < epsilon:
             satisfied_sc = 1
             x_best = X[:,i_best]
@@ -156,7 +157,7 @@ def particle_swarm(cfo, NP, epsilon = 1e-10, maxiter = 1000):
     n_feval = NP
     P = deepcopy(X)
 
-    f_best, i_best = min(izip(f, count()))
+    f_best, i_best = min(zip(f, count()))
     for L in range(2,maxiter+1):
 
         rn2 = rand(n, NP)
@@ -176,7 +177,7 @@ def particle_swarm(cfo, NP, epsilon = 1e-10, maxiter = 1000):
         n_feval = n_feval + NP
 
         # CHECKING STOPPING CRITERIA
-        f_best, i_best = min(izip(f, count()))
+        f_best, i_best = min(zip(f, count()))
         if abs(cfo['f_opt']-f_best) < epsilon:
             satisfied_sc = 1
             x_best = X[:,i_best]
@@ -198,12 +199,12 @@ def example_call(optimizer=random_lines):
 
     NP = 10 * n
     satisfied_sc, n_feval, f_best, x_best = optimizer(cfo, NP)
-    print satisfied_sc, "n:%d"%n_feval, f_best, x_best
+    print(satisfied_sc, "n:%d"%n_feval, f_best, x_best)
 
 def main():
-    print "=== Random Lines"
+    print("=== Random Lines")
     example_call(random_lines)
-    print "=== Particle Swarm"
+    print("=== Particle Swarm")
     example_call(particle_swarm)
 
 if __name__ == "__main__":

@@ -1,18 +1,19 @@
 """
 Bumps command line interface.
 """
-from __future__ import with_statement
+from __future__ import with_statement, print_function
+from six import StringIO
 
 import sys
 import os
-import StringIO
 import re
 
 import shutil
 try:
     import dill as pickle
 except:
-    import cPickle as pickle
+    import pickle
+
 
 import numpy
 #numpy.seterr(all="raise")
@@ -118,9 +119,9 @@ def store_overwrite_query_gui(path):
         raise RuntimeError("Could not create path")
 
 def store_overwrite_query(path):
-    print path,"already exists."
-    print "Press 'y' to overwrite, or 'n' to abort and restart with --store=newpath"
-    ans = raw_input("Overwrite [y/n]? ")
+    print(path,"already exists.")
+    print("Press 'y' to overwrite, or 'n' to abort and restart with --store=newpath")
+    ans = input("Overwrite [y/n]? ")
     if ans not in ("y","Y","yes"):
         sys.exit(1)
 
@@ -133,7 +134,7 @@ def make_store(problem, opts, exists_handler):
     # Check if already exists
     if not opts.overwrite and os.path.exists(problem.output_path+'.out'):
         if opts.batch:
-            print >>sys.stderr, problem.store+" already exists.  Use --overwrite to replace."
+            print(problem.store+" already exists.  Use --overwrite to replace.", file=sys.stderr)
             sys.exit(1)
         exists_handler(problem.output_path)
 
@@ -220,7 +221,7 @@ class ParseOpts:
                     if v.startswith('--') and not '=' in v]
         flags = set(v[2:] for v in flagargs)
         if 'help' in flags or '-h' in sys.argv[1:] or '-?' in sys.argv[1:]:
-            print self.USAGE
+            print(self.USAGE)
             sys.exit()
         unknown = flags - self.FLAGS
         if any(unknown):
@@ -416,7 +417,7 @@ def initial_model(opts):
     # Capture stdout from problem definition
     stdout = sys.stdout
     try:
-        sys.stdout = StringIO.StringIO()
+        sys.stdout = StringIO()
         problem = _initial_model(opts)
         output = sys.stdout.getvalue()
     finally:
@@ -436,9 +437,9 @@ def _initial_model(opts):
         if opts.simulate or opts.simrandom:
             noise = None if opts.noise == "data" else float(opts.noise)
             problem.simulate_data(noise=noise)
-            print "simulation parameters"
-            print problem.summarize()
-            print "chisq at simulation",problem.chisq()
+            print("simulation parameters")
+            print(problem.summarize())
+            print("chisq at simulation",problem.chisq())
         if opts.shake: 
             problem.randomize()
     else:
@@ -452,7 +453,7 @@ def resynth(fitdriver, problem, mapper, opts):
     for i in range(opts.resynth):
         problem.resynth_data()
         best, fbest = fitdriver.fit()
-        print "step %d chisq %g"%(i,2*fbest/problem.dof)
+        print("step %d chisq %g"%(i,2*fbest/problem.dof))
         fid.write('%.15g '%(2*fbest/problem.dof))
         fid.write(' '.join('%.15g'%v for v in best))
         fid.write('\n')
@@ -504,12 +505,12 @@ def beep():
         import winsound
         winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
     else:
-        print >>sys.__stdout__,"\a"
+        print("\a", file=sys.__stdout__)
 
 def main():
     if len(sys.argv) == 1:
         sys.argv.append("-?")
-        print "\nNo modelfile parameter was specified.\n"
+        print("\nNo modelfile parameter was specified.\n")
 
     opts = getopts()
 
@@ -553,25 +554,25 @@ def main():
     elif opts.worker:
         mapper.start_worker(problem)
     elif opts.chisq:
-        print problem_output
-        if opts.cov: print problem.cov()
-        print "chisq",problem()
+        print(problem_output)
+        if opts.cov: print(problem.cov())
+        print("chisq",problem())
     elif opts.preview:
-        print problem_output
-        if opts.cov: print problem.cov()
+        print(problem_output)
+        if opts.cov: print(problem.cov())
         preview(problem)
     elif opts.resynth > 0:
-        print problem_output
+        print(problem_output)
         resynth(fitdriver, problem, mapper, opts)
 
     elif opts.remote:
 
         # Check that problem runs before submitting it remotely
         chisq = problem()
-        print "initial chisq:", chisq
+        print("initial chisq:", chisq)
         job = start_remote_fit(problem, opts,
                                queue=opts.queue, notify=opts.notify)
-        print "remote job:", job['id']
+        print("remote job:", job['id'])
 
     else:
         if opts.resume:
@@ -582,8 +583,8 @@ def main():
         make_store(problem,opts,exists_handler=store_overwrite_query)
 
         # Show command line arguments and initial model
-        print "#"," ".join(sys.argv)
-        print problem_output
+        print("#"," ".join(sys.argv))
+        print(problem_output)
         problem.show()
         if opts.stepmon:
             fid = open(problem.output_path+'.log', 'w')
@@ -593,7 +594,7 @@ def main():
         fitdriver.mapper = mapper.start_mapper(problem, opts.args)
         best, fbest = fitdriver.fit(resume=resume_path)
         remember_best(fitdriver, problem, best)
-        if opts.cov: print problem.cov()
+        if opts.cov: print(problem.cov())
         mapper.stop_mapper(fitdriver.mapper)
         beep()
         if not opts.batch and not opts.mpi:

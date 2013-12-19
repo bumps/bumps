@@ -44,6 +44,7 @@ implicit root (i.e. top-level) directory.
   E:/work/test1/bumps/master_builder.py
                /bumps/...
 """
+from six.moves import input
 
 import os
 import sys
@@ -191,8 +192,8 @@ def build_it():
 def checkout_code():
     # Checkout the application code from the repository into a directory tree
     # under the top level directory.
-    print SEPARATOR
-    print "\nStep 1 - Checking out application code from the repository ...\n"
+    print(SEPARATOR)
+    print("\nStep 1 - Checking out application code from the repository ...\n")
 
     if RUN_DIR == TOP_DIR:
         os.chdir(TOP_DIR)
@@ -205,15 +206,15 @@ def checkout_code():
 def create_archive(version=None):
     # Create zip and tar archives of the source code and a manifest file
     # containing the names of all files.
-    print SEPARATOR
-    print "\nStep 2 - Creating an archive of the source code ...\n"
+    print(SEPARATOR)
+    print("\nStep 2 - Creating an archive of the source code ...\n")
     os.chdir(SRC_DIR)
 
     try:
         # Create zip and tar archives in the dist subdirectory.
         exec_cmd("%s setup.py sdist --formats=zip,gztar" %(PYTHON))
     except:
-        print "*** Failed to create source archive ***"
+        print("*** Failed to create source archive ***")
     else:
         # Copy the archives and its source listing to the top-level directory.
         # The location of the file that contains the source listing and the
@@ -233,17 +234,17 @@ def install_package():
     # Install the application package in a private directory tree.
     # If the INS_DIR directory already exists, warn the user.
     # Intermediate work files are stored in the <SRC_DIR>/build directory tree.
-    print SEPARATOR
-    print "\nStep 3 - Installing the %s package in %s...\n" %(PKG_NAME, INS_DIR)
+    print(SEPARATOR)
+    print("\nStep 3 - Installing the %s package in %s...\n" %(PKG_NAME, INS_DIR))
     os.chdir(SRC_DIR)
 
     if os.path.isdir(INS_DIR):
-        print "WARNING: In order to build", APP_NAME, "cleanly, the local build"
-        print "directory", INS_DIR, "needs to be deleted."
-        print "Do you want to delete this directory and continue (D)"
-        print "            or leave contents intact and continue (C)"
-        print "            or exit the build script (E)"
-        answer = raw_input("Please choose either (D|C|E)? [E]: ")
+        print("WARNING: In order to build %s cleanly, the local build"%APP_NAME)
+        print("directory %s needs to be deleted."%INS_DIR)
+        print("Do you want to delete this directory and continue (D)")
+        print("            or leave contents intact and continue (C)")
+        print("            or exit the build script (E)")
+        answer = input("Please choose either (D|C|E)? [E]: ")
         if answer.upper() == "D":
             shutil.rmtree(INS_DIR, ignore_errors=True)
         elif answer.upper() == "C":
@@ -262,8 +263,8 @@ def install_package():
 
 def build_documentation():
     # Run the Sphinx utility to build the application's documentation.
-    print SEPARATOR
-    print "\nStep 4 - Running the Sphinx utility to build documentation ...\n"
+    print(SEPARATOR)
+    print("\nStep 4 - Running the Sphinx utility to build documentation ...\n")
     os.chdir(os.path.join(SRC_DIR, "doc"))
 
     # Delete any left over files from a previous build.
@@ -278,8 +279,8 @@ def build_documentation():
 def create_windows_exe():
     # Use py2exe to create a Win32 executable along with auxiliary files in the
     # <SRC_DIR>/dist directory tree.
-    print SEPARATOR
-    print "\nStep 5 - Using py2exe to create a Win32 executable ...\n"
+    print(SEPARATOR)
+    print("\nStep 5 - Using py2exe to create a Win32 executable ...\n")
     os.chdir(SRC_DIR)
 
     exec_cmd("%s setup_py2exe.py" %PYTHON)
@@ -288,9 +289,9 @@ def create_windows_exe():
 def create_windows_installer(version=None):
     # Run the Inno Setup Compiler to create a Win32 installer/uninstaller for
     # the application.
-    print SEPARATOR
-    print "\nStep 6 - Running Inno Setup Compiler to create Win32 "\
-          "installer/uninstaller ...\n"
+    print(SEPARATOR)
+    print("\nStep 6 - Running Inno Setup Compiler to create Win32 "
+          "installer/uninstaller ...\n")
     os.chdir(SRC_DIR)
 
     # First create an include file to convey the application's version
@@ -308,8 +309,8 @@ def create_windows_installer(version=None):
 def run_tests():
     # Run unittests and doctests using a test script.
     # Running from a test script allows customization of the system path.
-    print SEPARATOR
-    print "\nStep 7 - Running tests from test.py (using Nose) ...\n"
+    print(SEPARATOR)
+    print("\nStep 7 - Running tests from test.py (using Nose) ...\n")
     #os.chdir(os.path.join(INS_DIR, PKG_NAME))
     os.chdir(SRC_DIR)
 
@@ -325,11 +326,11 @@ def check_dependencies():
 
     # ------------------------------------------------------
     python_ver = platform.python_version()
-    print "Using Python", python_ver
-    print ""
+    print("Using Python " + python_ver)
+    print("")
     if PV(python_ver) < PV(MIN_PYTHON) or PV(python_ver) >= PV(MAX_PYTHON):
-        print "ERROR - build requires Python >= %s, but < %s" %(MIN_PYTHON,
-                                                                MAX_PYTHON)
+        print("ERROR - build requires Python >= %s, but < %s"
+              %(MIN_PYTHON, MAX_PYTHON))
         sys.exit()
 
     req_pkg = {}
@@ -452,24 +453,24 @@ def check_dependencies():
     error = False
     for key, values in req_pkg.items():
         if req_pkg[key][0] == "0":
-            print "====> %s not found; version %s or later is required - ERROR" \
-                %(key, req_pkg[key][1])
+            print("====> %s not found; version %s or later is required - ERROR"
+                %(key, req_pkg[key][1]))
             error = True
         elif req_pkg[key][0] == "?":
-            print "Found %s" %(key)  # version is unknown
+            print("Found %s" %(key))  # version is unknown
         elif PV(req_pkg[key][0]) >= PV(req_pkg[key][1]):
-            print "Found %s %s" %(key, req_pkg[key][0])
+            print("Found %s %s" %(key, req_pkg[key][0]))
         else:
-            print "Found %s %s but minimum tested version is %s - WARNING" \
-                %(key, req_pkg[key][0], req_pkg[key][1])
+            print("Found %s %s but minimum tested version is %s - WARNING"
+                %(key, req_pkg[key][0], req_pkg[key][1]))
             error = True
 
     if error:
-        ans = raw_input("\nDo you want to continue (Y|N)? [N]: ")
+        ans = input("\nDo you want to continue (Y|N)? [N]: ")
         if ans.upper() != "Y":
             sys.exit()
     else:
-        print "\nSoftware dependencies have been satisfied"
+        print("\nSoftware dependencies have been satisfied")
 
 
 def exec_cmd(command):
@@ -478,7 +479,7 @@ def exec_cmd(command):
     if os.name == 'nt': flag = False
     else:               flag = True
 
-    print "$",command
+    print("$ "+command)
     subprocess.call(command, shell=flag)
 
 
@@ -489,25 +490,25 @@ if __name__ == "__main__":
     if len(sys.argv)>1:
         # Display help if requested.
         if len(sys.argv) > 1 and sys.argv[1] not in START_POINTS:
-            print "\nUsage: python master_builder.py [<start>] [only]\n"
-            print "Build start points:"
-            print "  deps       check dependencies"
-            print "  update     update archive"
-            print "  build      build package"
-            print "  test       test package"
-            print "  docs       build docs"
-            print "  zip        build source archive"
-            print "  exe        build executable"
-            print "  installer  build installer"
-            print "Add 'only' to the command to only perform a single step"
+            print("\nUsage: python master_builder.py [<start>] [only]\n")
+            print("Build start points:")
+            print("  deps       check dependencies")
+            print("  update     update archive")
+            print("  build      build package")
+            print("  test       test package")
+            print("  docs       build docs")
+            print("  zip        build source archive")
+            print("  exe        build executable")
+            print("  installer  build installer")
+            print("Add 'only' to the command to only perform a single step")
             sys.exit()
 
-    print "\nBuilding the %s application from the %s repository ...\n" \
-        %(APP_NAME, PKG_NAME)
-    print "Current working directory  =", RUN_DIR
-    print "Top-level (root) directory =", TOP_DIR
-    print "Package (source) directory =", SRC_DIR
-    print "Installation directory     =", INS_DIR
-    print ""
+    print("\nBuilding the %s application from the %s repository ...\n"
+          %(APP_NAME, PKG_NAME))
+    print("Current working directory  = " + RUN_DIR)
+    print("Top-level (root) directory = " + TOP_DIR)
+    print("Package (source) directory = " + SRC_DIR)
+    print("Installation directory     = " + INS_DIR)
+    print("")
 
     build_it()
