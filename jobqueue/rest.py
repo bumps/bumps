@@ -18,8 +18,10 @@
 from six import StringIO
 from six.moves.urllib import parse
 
+import email
 import httplib2
-import mimetools, mimetypes
+import mimetypes
+import uuid
 
 
 
@@ -61,7 +63,7 @@ def _request(http, verb, location, fields=None,
         if body:
             raise TypeError("Use fields instead of body with file upload")
         # Note: this section is public domain; the old code wasn't working
-        boundary = mimetools.choose_boundary()
+        boundary = uuid.uuid4().hex
         buf = StringIO()
         for key,value in fields.items():
             buf.write(u'--%s\r\n'%boundary)

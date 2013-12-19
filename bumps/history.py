@@ -25,6 +25,7 @@ New traces are provided using :meth:`History.provides`.  For example,
 the following adds traces for 'value' and 'point' to the history, and
 requires the best value on the two previous cycles in order to do its work:
 
+    >>> from bumps.history import History
     >>> h = History()
     >>> h.provides(value=2, point=0)
 

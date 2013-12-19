@@ -53,7 +53,9 @@ clean:
 	# Resetting api/ and examples/
 	-rm -rf $(BUILDDIR) build api $(EXDIR)
 
-api: genmods.py
+app_build:
+	-cd .. && $(PYTHON) setup.py build
+api: app_build genmods.py
 	-rm -rf api
 	$(PYTHON) genmods.py
 

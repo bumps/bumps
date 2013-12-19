@@ -53,6 +53,7 @@ def dhsv(color, dh=0, ds=0, dv=0, da=0):
 
     Make sea green 10% darker:
 
+        >>> from bumps.plotutil import dhsv
         >>> darker = dhsv('seagreen', dv=-0.1)
         >>> print([int(v*255) for v in darker])
         [37, 113, 71, 255]

@@ -61,6 +61,11 @@ def erf(x):
     _erf(input,output)
     return output
 
+def _erf_test():
+    assert erf(5)== 2
+    assert erf(0.) == 0.
+    assert (erf(numpy.array([0.,0.]))==0.).all()
+    assert abs(erf(3.)-0.99997790950300136) < 1e-14
 
 def profile(fn, *args, **kw):
     """
@@ -104,6 +109,7 @@ class redirect_console(object):
 
     :Example:
 
+        >>> from bumps.util import redirect_console
         >>> print("hello")
         hello
         >>> with redirect_console("redirect_out.log"):

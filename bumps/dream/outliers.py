@@ -109,7 +109,7 @@ def test():
     Ngen, Npop = chains.shape
     Npop, Nvar = x.shape
     state = MCMCDraw(Ngen=Ngen, Nthin=Ngen, Nupdate=0,
-                     Nvar=Nvar, Npop=Npop, Ncr=0, thin_rate=0)
+                     Nvar=Nvar, Npop=Npop, Ncr=0, thinning=0)
     # Fill it with chains
     for i in range(Ngen):
         state._generation(new_draws=Npop, x=x, logp=chains[i], accept=Npop)
@@ -117,7 +117,7 @@ def test():
     # Make a copy of the current state so we can check it was updated
     nx, nlogp = x+0,chains[-1]+0
     # Remove outliers
-    remove_outliers(state, nx, nlogp, test='IQR', portion=0.5)
+    state.remove_outliers(nx, nlogp, test='IQR', portion=0.5)
     # Check that the outliers were removed
     outliers = state.outliers()
     assert outliers.shape[0] == Nbad

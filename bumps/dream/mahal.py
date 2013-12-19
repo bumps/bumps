@@ -35,7 +35,7 @@ def test():
     from numpy.linalg import norm
     d = mahalanobis(array([[2,3,4],[2,3,4]]),
                     array([[1,0,0],[2,1,0],[1,1,0],[2,0,1]]))
-    assert norm(d-[290.25,290.25]) < 1e-14
+    assert norm(d-[290.25,290.25]) < 1e-12, "diff=%s"%str(d-[290.25,290.25])
 
 if __name__ == "__main__":
     test()
