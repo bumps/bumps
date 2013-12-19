@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 
 __all__ = ['plot_all', 'plot_corr', 'plot_corrmatrix',
            'plot_trace', 'plot_vars', 'plot_var',
@@ -425,7 +425,7 @@ def plot_logp(state, portion=None):
 
     draw, logp = state.logp()
     start = int((1-portion)*len(draw)) if portion else 0
-    plot(arange(start,len(logp)), logp[start:], '.', markersize=1)
+    plot(arange(start,len(logp)), logp[start:], ',', markersize=1)
     title(r'Log Likelihood History')
     xlabel('Generation number')
     ylabel('Log likelihood at x[k]')
