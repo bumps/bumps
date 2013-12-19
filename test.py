@@ -51,7 +51,7 @@ sys.path.insert(0, build_path)
 # we can test without having to install.
 nose_args = ['-v', '--all-modules', '--cover-package=bumps',
              '-m(^_?test_|_test$|^test$)', '-I.*amqp_map.*']
-if sys.version_info.major >= 3:
+if sys.version_info[0] >= 3:
     nose_args.append('-I.*gui.*')
 nose_args += sys.argv[1:]  # allow coverage arguments
 nose_args.append(build_path)

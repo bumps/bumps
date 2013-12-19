@@ -1479,8 +1479,8 @@ def open_streams(infile = '-', outfile = '-', overwrite='update', **keyw):
 
     open_streams(infile, outfile) -> (in_stream, out_stream)
 
-    in_stream   --  file(infile) or sys.stdin
-    out_stream  --  file(outfile) or sys.stdout
+    in_stream   --  open(infile) or sys.stdin
+    out_stream  --  open(outfile) or sys.stdout
     overwrite   --  'yes': overwrite eventually existing `outfile`,
                     'update': fail if the `outfile` is newer than `infile`,
                     'no': fail if `outfile` exists.
@@ -1493,7 +1493,7 @@ def open_streams(infile = '-', outfile = '-', overwrite='update', **keyw):
     if infile == '-':
         in_stream = sys.stdin
     else:
-        in_stream = file(infile, 'r')
+        in_stream = open(infile, 'r')
     if outfile == '-':
         out_stream = sys.stdout
     elif overwrite == 'no' and os.path.exists(outfile):
@@ -1501,7 +1501,7 @@ def open_streams(infile = '-', outfile = '-', overwrite='update', **keyw):
     elif overwrite == 'update' and is_newer(outfile, infile):
         raise IOError(1, "Output file is newer than input file!", outfile)
     else:
-        out_stream = file(outfile, 'w')
+        out_stream = open(outfile, 'w')
     return (in_stream, out_stream)
 
 # is_newer
@@ -1617,7 +1617,7 @@ def diff(infile='-', outfile='-', txt2code=True, **keyw):
 
     import difflib
 
-    instream = file(infile)
+    instream = open(infile)
     # for diffing, we need a copy of the data as list::
     data = instream.readlines()
     # convert
@@ -1625,7 +1625,7 @@ def diff(infile='-', outfile='-', txt2code=True, **keyw):
     new = converter()
 
     if outfile != '-' and os.path.exists(outfile):
-        outstream = file(outfile)
+        outstream = open(outfile)
         old = outstream.readlines()
         oldname = outfile
         newname = "<conversion of %s>"%infile
@@ -1665,7 +1665,7 @@ def execute(infile="-", txt2code=True, **keyw):
     """Execute the input file. Convert first, if it is a text source.
     """
 
-    data = file(infile)
+    data = open(infile)
     if txt2code:
         data = str(Text2Code(data, **keyw))
     # print "executing " + options.infile
