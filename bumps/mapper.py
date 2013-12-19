@@ -156,8 +156,8 @@ class AMQPMapper(object):
     def start_worker(problem):
         #sys.stderr = open("bumps-%d.log"%os.getpid(),"w")
         #print >>sys.stderr,"worker is starting"; sys.stdout.flush()
-        from .amqp_map.config import SERVICE_HOST
-        from .amqp_map.core import connect, start_worker as serve
+        from amqp_map.config import SERVICE_HOST
+        from amqp_map.core import connect, start_worker as serve
         server = connect(SERVICE_HOST)
         #os.system("echo 'serving' > /tmp/map.%d"%(os.getpid()))
         #print "worker is serving"; sys.stdout.flush()
@@ -169,8 +169,8 @@ class AMQPMapper(object):
         import sys
         import multiprocessing
         import subprocess
-        from .amqp_map.config import SERVICE_HOST
-        from .amqp_map.core import connect, Mapper
+        from amqp_map.config import SERVICE_HOST
+        from amqp_map.core import connect, Mapper
 
         server = connect(SERVICE_HOST)
         mapper = Mapper(server, "bumps")
