@@ -1,11 +1,13 @@
 /* This program is public domain. */
 // MSVC 2008 doesn't define cstdint
-#define MISSING_STDINT defined(_MSC_VER) && _MSC_VER<=1500
+#if defined(_MSC_VER) && _MSC_VER<=1500
+ #define MISSING_STDINT
+#endif
 
 #include <Python.h>
 
 /* Visual Studio 2008 is missing cstdint */
-#if !MISSING_STDINT
+#ifndef MISSING_STDINT
   #include <stdint.h>
 #else
   typedef signed char        int8_t;
@@ -16,7 +18,7 @@
   typedef unsigned short     uint16_t;
   typedef unsigned int       uint32_t;
   typedef unsigned long long uint64_t;
-#endif
+#endif /* !MISSING_STDINT */
 
 #include "methods.h"
 #include "rebin.h"

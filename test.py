@@ -52,11 +52,11 @@ sys.path.insert(0, build_path)
 # be performed 'from bumps...".  By manipulating the system path in this way,
 # we can test without having to install.
 nose_args = ['-v', '--all-modules', '--cover-package=bumps',
-             '-m(^_?test_|_test$|^test$)', '-I.*amqp_map.*']
+             '-m(^_?test_|_test$|^test$)', '-e.*amqp_map.*']
 
 # exclude gui subdirectory if wx is not available
 try: import wx
-except ImportError: nose_args.append('-I/gui')
+except ImportError: nose_args.append('-egui')
 
 nose_args += sys.argv[1:]  # allow coverage arguments
 nose_args.append(build_path)

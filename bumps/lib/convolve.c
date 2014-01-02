@@ -1,10 +1,10 @@
 /* This program is public domain. */
 
 // MSVC 2008 doesn't define erf()
-#if defined(_MSC_VER) && _MSC_VER<=1500
-#define const
-#define __LITTLE_ENDIAN
-#include "erf.c"
+#if defined(_MSC_VER) && _MSC_VER<=1600
+  #define const
+  #define __LITTLE_ENDIAN
+  #include "erf.c"
 #endif
 
 #include <stdio.h>
