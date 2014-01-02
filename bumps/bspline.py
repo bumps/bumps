@@ -55,11 +55,11 @@ def pbs(x, y, t, clamp=True, parametric=False):
     # Find parametric t values corresponding to given z values
     # First try a few newton steps
     xt = numpy.interp(t,x,numpy.linspace(0,1,len(x)))
-    for _ in range(6):
-        Pt,dPt = _bspline3(knot,cx,xt,nderiv=1)
-        idx = dPt!=0
-        xt[idx] = (xt - (Pt-t)/dPt)[idx]
-    # Use bisection when newton failed
+    with numpy.errstate(divide='ignore'):
+        for _ in range(6):
+            Pt,dPt = _bspline3(knot,cx,xt,nderiv=1)
+            xt -= (Pt-t)/dPt
+    # Use bisection when newton fails
     idx = numpy.isnan(xt) | (abs(_bspline3(knot,cx,xt)-t)>1e-9)
     if idx.any():
         missing = t[idx]
