@@ -53,7 +53,7 @@ def fit_model(filename):
     #x,fx = PTFit(p).solve(steps=100,burn=400)
     #x.fx = BFGSFit(p).solve(steps=200)
     chisq = p(x)
-    print "chisq=",chisq
+    print("chisq=%g"%chisq)
     if chisq>2:
         raise RuntimeError("Fit did not converge")
     p.plot()

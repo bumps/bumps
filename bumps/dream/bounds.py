@@ -65,7 +65,7 @@ class ReflectBounds(Bounds):
     Reflect parameter values into bounded region
     """
     def __init__(self, low, high):
-        self.low, self.high = [asarray(v,'d') for v in low, high]
+        self.low, self.high = [asarray(v,'d') for v in (low, high)]
 
     def apply(self, y):
         """
@@ -89,7 +89,7 @@ class ClipBounds(Bounds):
     Clip values to bounded region
     """
     def __init__(self, low, high):
-        self.low, self.high = [asarray(v,'d') for v in low, high]
+        self.low, self.high = [asarray(v,'d') for v in (low, high)]
 
     def apply(self, y):
         minn, maxn = self.low, self.high
@@ -103,7 +103,7 @@ class FoldBounds(Bounds):
     Wrap values into the bounded region
     """
     def __init__(self, low, high):
-        self.low, self.high = [asarray(v,'d') for v in low, high]
+        self.low, self.high = [asarray(v,'d') for v in (low, high)]
 
     def apply(self, y):
         minn, maxn = self.low, self.high
@@ -127,7 +127,7 @@ class RandomBounds(Bounds):
     Randomize values into the bounded region
     """
     def __init__(self, low, high):
-        self.low, self.high = [asarray(v,'d') for v in low, high]
+        self.low, self.high = [asarray(v,'d') for v in (low, high)]
 
     def apply(self, y):
         minn, maxn = self.low, self.high
@@ -147,7 +147,7 @@ class IgnoreBounds(Bounds):
     Leave values outside the bounded region
     """
     def __init__(self, low=None, high=None):
-        self.low, self.high = [asarray(v,'d') for v in low, high]
+        self.low, self.high = [asarray(v,'d') for v in (low, high)]
 
     def apply(self, y):
         return y

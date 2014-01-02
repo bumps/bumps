@@ -72,7 +72,7 @@ def calc_errors(problem, points):
         ret = plugin.calc_errors(problem, points)
     except:
         import traceback
-        print "error calculating distribution on model"
+        print("error calculating distribution on model")
         traceback.print_exc()
         ret = None
     finally:

@@ -100,7 +100,7 @@
 2010-04-20 Paul Kienzle
 * Convert to python
 """
-from __future__ import division
+from __future__ import division, print_function
 import sys
 import time
 
@@ -116,15 +116,15 @@ LAST_TIME = 0
 def console_monitor(state, pop, logp):
     global LAST_TIME
     if state.generation == 1:
-        print "#gen", "logp(x)", " ".join("<%s>"%par
-                                          for par in state.labels)
+        print("#gen", "logp(x)",
+              " ".join("<%s>"%par for par in state.labels))
         LAST_TIME = time.time()
 
     current_time = time.time()
     if current_time >= LAST_TIME + 1:
         LAST_TIME = current_time
-        print state.generation, state._best_logp, \
-            " ".join("%.15g"%v for v in state._best_x)
+        print(state.generation, state._best_logp,
+              " ".join("%.15g"%v for v in state._best_x))
         sys.stdout.flush()
 
 

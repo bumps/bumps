@@ -41,15 +41,15 @@ and generating parameters if they are available:
 """
 
 # models
-from mogi import mogi
-from br8 import dual_exponential as decay, data as decay_data
-from lorentzian import lorentzian, data as lorentzian_data, coeff as lorenztian_pars
-from circle import disk_coverage, simulate_circle, simulate_disk
+from .mogi import mogi
+from .br8 import dual_exponential as decay, data as decay_data
+from .lorentzian import lorentzian, data as lorentzian_data, coeff as lorenztian_pars
+from .circle import disk_coverage, simulate_circle, simulate_disk
 
 # functions
-from dejong import rosenbrock, step, quartic, shekel
-from corana import corana1d, corana2d, corana3d, corana4d
-from fosc3d import fOsc3D
-from griewangk import griewangk
-from zimmermann import zimmermann
-from wavy import wavy1, wavy2
+from .dejong import rosenbrock, step, quartic, shekel
+from .corana import corana1d, corana2d, corana3d, corana4d
+from .fosc3d import fOsc3D
+from .griewangk import griewangk
+from .zimmermann import zimmermann
+from .wavy import wavy1, wavy2

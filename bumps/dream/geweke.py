@@ -4,19 +4,18 @@ Convergence test statistic from Gelman and Rubin, 1992.
 
 from __future__ import division
 
-from numpy import var, mean, ones, sqrt,sum,transpose,reshape,array,log10,abs
-from random import random
+from numpy import var, mean, ones, sqrt,reshape,log10,abs
+
 def geweke(sequences, portion=0.25):
     """
-Calculates the Geweke convergence diagnostic
+    Calculates the Geweke convergence diagnostic
 
-Refer to: 
+    Refer to:
 
-
-    pymc-devs.github.com/pymc/modelchecking.html#informal-methods
-    support.sas.com/documentation/cdl/en/statug/63033/HTML/default/viewer.htm#statug_introbayes_sect008.html
+        pymc-devs.github.com/pymc/modelchecking.html#informal-methods
+        support.sas.com/documentation/cdl/en/statug/63033/HTML/default/viewer.htm#statug_introbayes_sect008.html
     
-"""
+    """
 
     # Find the size of the sample
     chain_len,Nchains,Nvar = sequences.shape
@@ -56,12 +55,5 @@ Refer to:
             return Z_stat.flatten().tolist()
         Avg_Z = Z_stat
         #Print absolute value log so it looks cleaner
-        
-        
-        
-    return LAvg_Z.tolist()
-def test():
-    raise NotImplementedError
 
-if __name__ == "__main__":
-    test()
+    return LAvg_Z.tolist()

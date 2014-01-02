@@ -1,6 +1,9 @@
+from __future__ import print_function
+
 from numpy import sin, cos, linspace, meshgrid, e, pi, sqrt, array, exp
 from numpy.random import randn
 from bumps.names import *
+from functools import reduce
 
 def prod(L):
     return reduce(lambda x,y: x*y, L, 1) 
@@ -77,7 +80,7 @@ or for the k-dimensional version:
 
     fk(function,k)
 """
-    print >>sys.stderr,usage
+    print(usage, file=sys.stderr)
     raise
 plot=plot2d(nllf,('x','y'),range=(-10,10))
 M = PDF(nllf,plot=plot)

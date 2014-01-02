@@ -213,7 +213,7 @@ class DifferentialEvolution(solver.Strategy):
         # Return the population
         return population
 
-    def next(self, history):
+    def step(self, history):
         """
         Generate the next population.
 

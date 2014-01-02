@@ -124,11 +124,11 @@ class AppFrame(wx.Frame):
 
         # If requested, display font and miscellaneous platform information.
         if len(sys.argv) > 1 and '--platform' in sys.argv[1:]:
-            print "*** Platform =", wx.PlatformInfo
-            print "*** Default font is %s  Chosen font is %s"\
-                  %(default_fontname, self.GetFont().GetFaceName())
-            print "*** Default point size = %d  Chosen point size = %d"\
-                  %(default_fontsize, self.GetFont().GetPointSize())
+            print("*** Platform =", wx.PlatformInfo)
+            print("*** Default font is %s  Chosen font is %s"\
+                  %(default_fontname, self.GetFont().GetFaceName()))
+            print("*** Default point size = %d  Chosen point size = %d"\
+                  %(default_fontsize, self.GetFont().GetPointSize()))
             display_fontsize(fontname=fontname)
 
 

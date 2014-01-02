@@ -134,7 +134,7 @@ def setup(MCMCPar, ParRange, Measurement, ModelName, Extra, option):
     else:
         try:
             # Try matlab style of having the function in the same named file.
-            exec "from "+ModelName+" import "+ModelName+" as f"
+            exec("from "+ModelName+" import "+ModelName+" as f")
         except ImportError:
             # The import failed; hope the caller supplied a function instead.
             f = ModelName
@@ -222,6 +222,9 @@ def convert_state(state):
 
     return Sequences, Sequences, X, out, hist_logp
 
+def execfile(filename):
+    exec(compile(open(sys.argv[1]).read(), sys.argv[1], 'exec'))
+
 class Banana:
     """
     Banana shaped function.
@@ -245,4 +248,4 @@ if __name__ == "__main__":
         execfile(sys.argv[1])
         import IPython; IPython.Shell.IPShell(user_ns=locals()).mainloop()
     else:
-        print "usage: python -m dream.matlab model.m"
+        print("usage: python -m dream.matlab model.m")

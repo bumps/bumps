@@ -17,7 +17,9 @@ from glob import glob
 import nose
 import matplotlib
 matplotlib.use('Agg')
-print matplotlib.__file__
+print(matplotlib.__file__)
+
+sys.dont_write_bytecode = True
 
 sys.stderr = sys.stdout # Doctest doesn't see sys.stderr
 #import numpy; numpy.seterr(all='raise')
@@ -33,38 +35,43 @@ os.putenv('MPLCONFIGDIR', mplconfig)
 if not os.path.exists(mplconfig): os.mkdir(mplconfig)
 import pylab; pylab.hold(False)
 
-# Build bumpsmodule.pyd if it has not already been built in the source tree.
-if not glob(os.path.join(path, 'bumps', 'bumpsmodule.*')):
-    print "-"*70
-    print "Building bumpsmodule.pyd ..."
-    print "-"*70
-    if os.name == 'nt': flag = False
-    else:               flag = True
-    subprocess.call("python setup.py build_ext --inplace", shell=flag)
-    print "-"*70
+# Force a rebuild
+print("-"*70)
+print("Building bumps ...")
+print("-"*70)
+subprocess.call((sys.executable, "setup.py", "build"), shell=False)
+print("-"*70)
+
+# Add the build dir to the system path
+from distutils.util import get_platform
+platform = '.%s-%s'%(get_platform(),sys.version[:3])
+build_path = os.path.abspath('build/lib'+platform)
+sys.path.insert(0, build_path)
 
 # Run the source tests with the system path augmented such that imports can
-# be performed 'from bumps...".  By manipulating the
-# system path in this way, we can test without having to build and install.
-sys.path.insert(0, path)
-nose_args = [__file__, '-v', '--with-doctest', '--doctest-extension=.rst',
-             '--cover-package=bumps', '-e.*amqp_map.*']
+# be performed 'from bumps...".  By manipulating the system path in this way,
+# we can test without having to install.
+nose_args = ['-v', '--all-modules', '--cover-package=bumps',
+             '-m(^_?test_|_test$|^test$)', '-I.*amqp_map.*']
+if sys.version_info[0] >= 3:
+    nose_args.append('-I.*gui.*')
 nose_args += sys.argv[1:]  # allow coverage arguments
-nose_args += [ 'bumps', ]
+nose_args.append(build_path)
 '''
 nose_args += ['tests/bumps', 'bumps',
               #'doc/sphinx/guide'
              ]
 '''
+print("nosetests "+" ".join(nose_args))
 if not nose.run(argv=nose_args): sys.exit(1)
 
 # Run isolated tests in their own environment.  In this case we will have
 # to set the PYTHONPATH environment variable before running since it is
 # happening in a separate process.
 if 'PYTHONPATH' in os.environ:
-    PYTHONPATH = path + ":" + os.environ['PYTHONPATH']
+    PYTHONPATH = build_path + ":" + os.environ['PYTHONPATH']
 else:
-    PYTHONPATH = path
+    PYTHONPATH = build_path
 os.putenv('PYTHONPATH', PYTHONPATH)
 
 ## Run the command line version of Refl1D which should display help text.

@@ -15,7 +15,9 @@ plot_formats configuration variable.
 
 # Note: adapted from matplotlib.sphinxext.plot_directive by Paul Kienzle
 
-import sys, os, glob, shutil, hashlib, imp, warnings, cStringIO
+from six.moves import StringIO
+
+import sys, os, glob, shutil, hashlib, imp, warnings
 import re
 try:
     from hashlib import md5
@@ -56,22 +58,22 @@ else:
         """
 
         if not os.path.exists(target):
-            raise OSError, 'Target does not exist: '+target
+            raise OSError('Target does not exist: '+target)
 
         if not os.path.isdir(base):
-            raise OSError, 'Base is not a directory or does not exist: '+base
+            raise OSError('Base is not a directory or does not exist: '+base)
 
         base_list = (os.path.abspath(base)).split(os.sep)
         target_list = (os.path.abspath(target)).split(os.sep)
 
         # On the windows platform the target may be on a completely different drive from the base.
-        if os.name in ['nt','dos','os2'] and base_list[0] <> target_list[0]:
-            raise OSError, 'Target is on a different drive to base. Target: '+target_list[0].upper()+', base: '+base_list[0].upper()
+        if os.name in ('nt','dos','os2') and base_list[0] != target_list[0]:
+            raise OSError('Target is on a different drive to base. Target: '+target_list[0].upper()+', base: '+base_list[0].upper())
 
         # Starting from the filepath root, work out how much of the filepath is
         # shared by base and target.
         for i in range(min(len(base_list), len(target_list))):
-            if base_list[i] <> target_list[i]: break
+            if base_list[i] != target_list[i]: break
         else:
             # If we broke out of the loop, i is pointing to the first differing path elements.
             # If we didn't break out of the loop, i is pointing to identical path elements.
@@ -125,7 +127,7 @@ def runfile(fullpath):
     path, fname = os.path.split(fullpath)
     sys.path.insert(0, os.path.abspath(path))
     stdout = sys.stdout
-    sys.stdout = cStringIO.StringIO()
+    sys.stdout = StringIO()
     os.chdir(path)
     try:
         fd = open(fname)
@@ -373,7 +375,7 @@ def wx_directive(name, arguments, options, content, lineno,
     success = make_image(reference, content, tmpdir, context=context,
                          options=options)
 
-    if options.has_key('include-source'):
+    if 'include-source' in options:
         if content is None:
             content = open(reference, 'r').read()
         lines = ['::', ''] + ['    %s'%row.rstrip() for row in content.split('\n')]
@@ -382,8 +384,7 @@ def wx_directive(name, arguments, options, content, lineno,
         lines = []
 
     if success:
-        options = ['      :%s: %s' % (key, val) for key, val in
-                   options.items()]
+        options = ['      :%s: %s' % (key, val) for key, val in options.items()]
         options = "\n".join(options)
         if fname is not None:
             try:

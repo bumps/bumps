@@ -30,6 +30,7 @@ of the frame of the GUI for the Bumps application.
 from __future__ import division
 import os
 import threading
+import pickle
 
 import wx
 import wx.aui
@@ -489,8 +490,7 @@ class AppPanel(wx.Panel):
         signal.model_new(model=model)
 
     def save_model(self, path):
-        import cPickle as serialize
-        serialize.dump(self.model, open(path,'wb'))
+        pickle.dump(self.model, open(path,'wb'))
 
     def save_results(self, path):
         output_path = os.path.join(path, self.model.name)

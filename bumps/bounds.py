@@ -71,7 +71,7 @@ def pm(v, *args):
     to the value of expr.  For example::
 
         >>> r = pm(0.78421, 0.0023145)
-        >>> print "%g - %g"%r
+        >>> print("%g - %g"%r)
         0.7818 - 0.7866
 
     If called as pm(value, +dp, -dm) or pm(value, -dm, +dp),
@@ -85,10 +85,10 @@ def pmp(v, *args):
     the value of expr.  For example::
 
         >>> r = pmp(0.78421, 10)
-        >>> print "%g - %g"%r
+        >>> print("%g - %g"%r)
         0.7 - 0.87
         >>> r = pmp(0.78421, 0.1)
-        >>> print "%g - %g"%r
+        >>> print("%g - %g"%r)
         0.7834 - 0.785
 
     If called as pmp(value, +pp, -pm) or pmp(value, -pm, +pp),

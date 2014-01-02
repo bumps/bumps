@@ -45,6 +45,7 @@ For Extra.pCR != 'Update' in the matlab interface use::
 
 """
 from __future__ import division
+
 from numpy import hstack, empty, ones, zeros, cumsum, arange, \
     reshape, array, isscalar, asarray, std, sum
 from . import util
@@ -61,7 +62,7 @@ class Crossover(object):
     def __init__(self, CR, weight=None):
         if isscalar(CR):
             CR, weight = [CR], [1]
-        CR, weight = [asarray(v,'d') for v in CR, weight]
+        CR, weight = [asarray(v,'d') for v in (CR, weight)]
         self.CR, self.weight = CR, weight/sum(weight)
 
     def reset(self, Nsteps, Npop):
@@ -185,5 +186,5 @@ def distance_per_CR(available_CRs, distances, CRs, used):
 
 if __name__ == "__main__":
     CR, weight = array([.25, .5, .75, .1]), array([.1, .6, .2, .1])
-    print gen_CR(CR, weight, 5, 4)
+    print(gen_CR(CR, weight, 5, 4))
     # TODO: needs actual tests

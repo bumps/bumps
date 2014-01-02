@@ -60,6 +60,6 @@ sampler = Dream(model=model,
                 thinning=1)
 mc = sampler.sample()
 stats = plot_vars(mc, ci=1, nbins=9*max(x));
-print format_vars(stats)
+print(format_vars(stats))
 plot_all(mc)
 show()

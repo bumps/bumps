@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-15 -*-
-'''
+"""
 Disk And Execution MONitor (Daemon)
 
 daemonize()
@@ -44,7 +44,7 @@ W. Richard Stevens, 1992, Addison-Wesley, ISBN 0-201-56317-7.
 History
 =======
 
-* 2001/07/10 by JÃ¼rgen Hermann
+* 2001/07/10 by Jürgen Hermann
 * 2002/08/28 by Noah Spurrier
 * 2003/02/24 by Clark Evans
 * 2005/10/03 by Chad J. Schroeder
@@ -52,7 +52,7 @@ History
 * 2009/03/15 by Paul Kienzle (restructured text; fix links)
 
 Based on http://code.activestate.com/recipes/66012/
-'''
+"""
 
 # TODO: generalize for windows and os x
 #
@@ -162,8 +162,8 @@ def daemonize(stdout=REDIRECT_TO, stderr=None, stdin=REDIRECT_TO,
     try:
         pid = os.fork()
         if pid > 0: exit(0) # Exit first parent.
-    except OSError, e:
-        raise Exception, "[%d] %s" % (e.errno, e.strerror)
+    except OSError as e:
+        raise Exception("[%d] %s" % (e.errno, e.strerror))
 
     # Decouple from parent environment.
     os.chdir(WORKDIR)  # Make sure we are not holding a directory open
@@ -181,8 +181,8 @@ def daemonize(stdout=REDIRECT_TO, stderr=None, stdin=REDIRECT_TO,
     try:
         pid = os.fork()
         if pid > 0: exit(0) # Exit second parent.
-    except OSError, e:
-        raise Exception, "[%d] %s" % (e.errno, e.strerror)
+    except OSError as e:
+        raise Exception("[%d] %s" % (e.errno, e.strerror))
 
     # Save pid
     pid = str(os.getpid())
@@ -231,7 +231,7 @@ def process_is_running(pid):
     try:
         os.kill(pid, 0)
         return 1
-    except OSError, err:
+    except OSError as err:
         return err.errno == errno.EPERM
 
 def startstop(stdout=REDIRECT_TO, stderr=None, stdin=REDIRECT_TO,
@@ -255,7 +255,7 @@ def startstop(stdout=REDIRECT_TO, stderr=None, stdin=REDIRECT_TO,
                 while 1:
                     os.kill(pid,SIGTERM)
                     time.sleep(1)
-            except OSError, err:
+            except OSError as err:
                 err = str(err)
                 if err.find("No such process") > 0:
                     os.remove(pidfile)
@@ -288,7 +288,7 @@ def startstop(stdout=REDIRECT_TO, stderr=None, stdin=REDIRECT_TO,
             sys.stderr.write('Status: %s\n'%status)
             sys.exit(0)
 
-    print "usage: %s start|stop|restart|status|run" % sys.argv[0]
+    print("usage: %s start|stop|restart|status|run" % sys.argv[0])
     sys.exit(2)
 
 def test():

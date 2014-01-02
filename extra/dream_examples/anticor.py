@@ -13,6 +13,8 @@ simulations.
 The expected distribution for p1+p2 can be determined from the linear model
 y = a*x.  This is reported along with the values estimated from MCMC.
 """
+from __future__ import print_function
+
 from pylab import *  # Numeric functions and plotting
 from dream import *  # sampler functions
 
@@ -42,9 +44,9 @@ mc.derive_vars(lambda p: (p[0]+p[1]), labels=['x+y'])
 # Compare the MCMC estimate for the derived parameter to a least squares fit
 from wsolve import wpolyfit
 poly = wpolyfit(x,data,degree=1,origin=True)
-print "x+y from linear fit", poly.coeff[0], poly.std[0]
+print("x+y from linear fit", poly.coeff[0], poly.std[0])
 points,logp = mc.sample(portion=0.5)
-print "x+y from MCMC",mean(points[:,2]), std(points[:,2],ddof=1)
+print("x+y from MCMC",mean(points[:,2]), std(points[:,2],ddof=1))
 
 # Plot the samples
 plot_all(mc, portion=0.5)

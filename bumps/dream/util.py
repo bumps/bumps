@@ -11,7 +11,7 @@ def draw(k,n):
     else:
         s = set()
         result = numpy.empty(k,'i')
-        for i in xrange(k):
+        for i in range(k):
             p = RNG.randint(n)
             while p in s: p = RNG.randint(n)
             s.add(p)
@@ -26,7 +26,7 @@ def _check_uniform_draw():
     k,n = 50,400
     counts = numpy.zeros(n*k)
     idx = numpy.arange(k)
-    for _ in xrange(100000):
+    for _ in range(100000):
         t = draw(k,n)
         counts[k*t+idx] += 1
     pylab.subplot(211)

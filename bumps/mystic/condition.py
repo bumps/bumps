@@ -24,7 +24,7 @@ number is in the open interval (0,1)::
     ...    def __call__(self, test): return test<self.base
     ...    def __str__(self): return "x<%g"%self.base
     >>> test = lt(1) & gt(0)
-    >>> print test
+    >>> print(test)
     (x<1 and x>0)
     >>> test(0.5)
     True
@@ -66,10 +66,10 @@ saying which conditions are responsible.  For example::
     >>> converge = stepsize(0.001)
     >>> diverge = iters(100)
     >>> result,why = converge.status(dict(stepsize=21.2,iters=20))
-    >>> print result,", ".join(str(c) for c in why)
+    >>> print("%s %s"%(result, ", ".join(str(c) for c in why)))
     False not stepsize<0.001
     >>> result,why = diverge.status(dict(stepsize=21.2,iters=129))
-    >>> print result,", ".join(str(c) for c in why)
+    >>> print("%s %s"%(result, ", ".join(str(c) for c in why)))
     True iters>100
 
 Note that status will be less efficient than direct evaluation

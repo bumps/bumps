@@ -47,6 +47,7 @@ EXAMPLE CALL::
     print "iterations, function calls, linesearch function calls",\
           result['iterations'],result['evals'],result['linesearch_evals']
 """
+from __future__ import print_function
 
 __all__ = [ "quasinewton" ]
 
@@ -731,7 +732,7 @@ def umstop0(n, x0, f, g, Sx, typf, gradtol):
 #------------------------------------------------------------------------------
 
 def example_call():
-    print '***********************************'
+    print('***********************************')
 
     # Rosenbrock function
     fn = lambda p: (1-p[0])**2 + 100*(p[1]-p[0]**2)**2
@@ -742,8 +743,8 @@ def example_call():
     result = quasinewton(fn=fn, x0=x0, grad=grad)
     #result = quasinewton(fn=fn, x0=x0)
 
-    print '\n\nInitial point x0 = ', x0, ', f(x0) = ', fn(x0)
-    for k in sorted(result.keys()): print k,"=",result[k]
+    print('\n\nInitial point x0 = ', x0, ', f(x0) = ', fn(x0))
+    for k in sorted(result.keys()): print(k,"=",result[k])
 
 
 if __name__ == "__main__": example_call()

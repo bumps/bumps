@@ -6,7 +6,7 @@ try:
     from signal import signal, SIGXCPU, SIG_IGN
     from resource import setrlimit, RLIMIT_CPU, RLIMIT_FSIZE, RLIMIT_DATA
 except:
-    print "limits not supported"
+    print("limits not supported")
     RLIMIT_CPU=RLIMIT_FSIZE=RLIMIT_DATA=0
     SIGXCPU = SIG_IGN = 0
     def setrlimit(resource,limits): pass

@@ -170,8 +170,8 @@ class MainApp(wx.App):
         h -= 20  # to make room for Mac window decorations
         if len(sys.argv) > 1 and '--platform' in sys.argv[1:]:
             j, k = wx.DisplaySize()  # size includes task bar area
-            print "*** Reported screen size including taskbar is %d x %d"%(j, k)
-            print "*** Reported screen size excluding taskbar is %d x %d"%(w, h)
+            print("*** Reported screen size including taskbar is %d x %d"%(j, k))
+            print("*** Reported screen size excluding taskbar is %d x %d"%(w, h))
 
         if w > 1920: w = 1280  # display on left side, not centered on screen
         if w > desired_width:  xpos = x + (w - desired_width)/2
@@ -240,10 +240,10 @@ class MainApp(wx.App):
         if opts.inspect: inspect()
 
         if opts.syspath:
-            print "*** Resource directory:  ", resource_dir()
-            print "*** Python path is:"
+            print("*** Resource directory:  "+resource_dir())
+            print("*** Python path is:")
             for i, p in enumerate(sys.path):
-                print "%5d  %s" %(i, p)
+                print("%5d  %s" %(i, p))
 
         # Put up the initial model
         model,output = cli.initial_model(opts)

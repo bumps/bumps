@@ -3,7 +3,7 @@
 Parse URLs
 """
 
-import urllib
+from six.moves.urllib import parse
 
 class URL(object):
     """
@@ -65,14 +65,14 @@ class URL(object):
             parameters = [pair.split('=') for pair in pars.split('&')]
             if any(len(pair) > 2 for pair in parameters):
                 raise ValueError(errmsg)
-            parameters = [[urllib.unquote_plus(p) for p in pair]
+            parameters = [[parse.unquote_plus(p) for p in pair]
                           for pair in parameters]
         self.protocol = protocol
         self.user = user
         self.password = password
         self.host = host
         self.port = port
-        self.path = urllib.unquote_plus(path)
+        self.path = parse.unquote_plus(path)
         self.parameters = parameters[:]
 
     def __str__(self):
@@ -88,9 +88,9 @@ class URL(object):
         if self.port:
             result.extend( (':', str(self.port)) )
         if self.path or len(self.parameters) > 0:
-            result.extend( ('/', urllib.quote_plus(self.path)) )
+            result.extend( ('/', parse.quote_plus(self.path)) )
         if len(self.parameters) > 0:
-            pars = '&'.join('='.join(urllib.quote_plus(p) for p in parts)
+            pars = '&'.join('='.join(parse.quote_plus(p) for p in parts)
                             for parts in self.parameters)
             result.extend( ('?', pars) )
         return ''.join(result)

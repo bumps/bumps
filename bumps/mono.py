@@ -65,7 +65,7 @@ def hermite(x,y,m,xt):
     m_i at the point.
     """
     with numpy.errstate(all='ignore'):
-        x,y,m,xt = [asarray(v,'d') for v in x,y,m,xt]
+        x,y,m,xt = [asarray(v,'d') for v in (x,y,m,xt)]
         idx = searchsorted(x[1:-1],xt)
         h = x[idx+1] - x[idx]
         h[h<=1e-10]=1e-10

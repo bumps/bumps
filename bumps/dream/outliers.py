@@ -8,8 +8,8 @@ from numpy import mean, std, sqrt, argsort, where, argmin, arange
 from matplotlib.mlab import prctile
 from scipy.stats import t as student_t
 tinv = student_t.ppf
-from mahal import mahalanobis
-from acr import ACR
+from .mahal import mahalanobis
+from .acr import ACR
 from . import util
 
 def identify_outliers(test, chains, x):
@@ -70,7 +70,7 @@ def identify_outliers(test, chains, x):
     return outliers
 
 def test():
-    from walk import walk
+    from .walk import walk
     from numpy.random import multivariate_normal, seed
     from numpy import vstack, ones, eye
     seed(2) # Remove uncertainty on tests
@@ -82,8 +82,8 @@ def test():
     chains = walk(1000, mu=[1]*Nbad+[5]*Ngood, sigma=0.45, alpha=0.1)
 
     # Check IQR and Grubbs
-    assert (identify_outliers('IQR',chains,None) == range(Nbad)).all()
-    assert (identify_outliers('Grubbs',chains,None) == range(Nbad)).all()
+    assert (identify_outliers('IQR',chains,None) == arange(Nbad)).all()
+    assert (identify_outliers('Grubbs',chains,None) == arange(Nbad)).all()
 
     # Put points for 'bad' chains at [-1,...,-1] and 'good' chains at [1,...,1]
     x = vstack( (multivariate_normal(-ones(4),.1*eye(4),size=Nbad),
@@ -105,11 +105,11 @@ def test():
 
     # Construct a state object
     from numpy.linalg import norm
-    from state import MCMCDraw
+    from .state import MCMCDraw
     Ngen, Npop = chains.shape
     Npop, Nvar = x.shape
     state = MCMCDraw(Ngen=Ngen, Nthin=Ngen, Nupdate=0,
-                     Nvar=Nvar, Npop=Npop, Ncr=0, thin_rate=0)
+                     Nvar=Nvar, Npop=Npop, Ncr=0, thinning=0)
     # Fill it with chains
     for i in range(Ngen):
         state._generation(new_draws=Npop, x=x, logp=chains[i], accept=Npop)
@@ -117,7 +117,7 @@ def test():
     # Make a copy of the current state so we can check it was updated
     nx, nlogp = x+0,chains[-1]+0
     # Remove outliers
-    remove_outliers(state, nx, nlogp, test='IQR', portion=0.5)
+    state.remove_outliers(nx, nlogp, test='IQR', portion=0.5)
     # Check that the outliers were removed
     outliers = state.outliers()
     assert outliers.shape[0] == Nbad

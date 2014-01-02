@@ -1,5 +1,6 @@
-import wx
 import sys
+
+import wx
 
 class FitView(wx.Panel):
     def __init__(self, parent):
@@ -46,7 +47,7 @@ class FitView(wx.Panel):
             send("fit", store=self.store)
 
         else:
-            print 'stop logic goes here'
+            print('stop logic goes here')
             self.btn_fit.SetLabel("Fit")
             pass
 

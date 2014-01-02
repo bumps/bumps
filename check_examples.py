@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import sys, os
 
+sys.dont_write_bytecode = True
+
 examples = [
     "peaks/model.py",
     ]
@@ -29,11 +31,11 @@ class Commands(object):
 
 def main():
     if len(sys.argv) == 1 or not hasattr(Commands, sys.argv[1]):
-        print "usage: check_examples.py [preview|edit|chisq]"
+        print("usage: check_examples.py [preview|edit|chisq]")
     else:
         command = getattr(Commands, sys.argv[1])
         for f in examples:
-            print "Example",f
+            print("Example %s"%f)
             command(os.path.join(EXAMPLEDIR,f))
 
 if __name__ == "__main__": main()

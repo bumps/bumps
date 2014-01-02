@@ -55,12 +55,17 @@ def erf(x):
     """
     Error function calculator.
     """
-    from bumpsmodule import _erf
+    from .bumpsmodule import _erf
     input = _dense(x,'d')
     output = numpy.empty_like(input)
     _erf(input,output)
     return output
 
+def _erf_test():
+    assert erf(5)== 2
+    assert erf(0.) == 0.
+    assert (erf(numpy.array([0.,0.]))==0.).all()
+    assert abs(erf(3.)-0.99997790950300136) < 1e-14
 
 def profile(fn, *args, **kw):
     """
@@ -104,13 +109,14 @@ class redirect_console(object):
 
     :Example:
 
-        >>> print "hello"
+        >>> from bumps.util import redirect_console
+        >>> print("hello")
         hello
         >>> with redirect_console("redirect_out.log"):
-        ...     print "hello"
-        >>> print "hello"
+        ...     print("hello")
+        >>> print("hello")
         hello
-        >>> print open("redirect_out.log").read()[:-1]
+        >>> print(open("redirect_out.log").read()[:-1])
         hello
         >>> import os; os.unlink("redirect_out.log")
     """
@@ -180,7 +186,7 @@ class push_seed(object):
         >>> import numpy
         >>> push_seed(24) # doctest:+ELLIPSIS
         <...push_seed object at...>
-        >>> print numpy.random.randint(0,1000000,3)
+        >>> print(numpy.random.randint(0,1000000,3))
         [242082    899 211136]
 
     Seed can also be used in a with statement, which sets the random
@@ -188,17 +194,17 @@ class push_seed(object):
     it to the previous state on completion::
 
         >>> with push_seed(24):
-        ...    print numpy.random.randint(0,1000000,3)
+        ...    print(numpy.random.randint(0,1000000,3))
         [242082    899 211136]
 
     Using nested contexts, we can demonstrate that state is indeed
     restored after the block completes::
 
         >>> with push_seed(24):
-        ...    print numpy.random.randint(0,1000000)
+        ...    print(numpy.random.randint(0,1000000))
         ...    with push_seed(24):
-        ...        print numpy.random.randint(0,1000000,3)
-        ...    print numpy.random.randint(0,1000000)
+        ...        print(numpy.random.randint(0,1000000,3))
+        ...    print(numpy.random.randint(0,1000000))
         242082
         [242082    899 211136]
         899
@@ -206,14 +212,14 @@ class push_seed(object):
     The restore step is protected against exceptions in the block::
 
         >>> with push_seed(24):
-        ...    print numpy.random.randint(0,1000000)
+        ...    print(numpy.random.randint(0,1000000))
         ...    try:
         ...        with push_seed(24):
-        ...            print numpy.random.randint(0,1000000,3)
+        ...            print(numpy.random.randint(0,1000000,3))
         ...            raise Exception()
         ...    except:
-        ...        print "Exception raised"
-        ...    print numpy.random.randint(0,1000000)
+        ...        print("Exception raised")
+        ...    print(numpy.random.randint(0,1000000))
         242082
         [242082    899 211136]
         Exception raised

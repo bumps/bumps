@@ -1,4 +1,5 @@
-from __future__ import division
+from __future__ import division, print_function
+
 __all__ = ['plot_all', 'plot_corr', 'plot_corrmatrix',
            'plot_trace', 'plot_vars', 'plot_var',
            'plot_R','plot_logp', 'format_vars']
@@ -17,7 +18,7 @@ def plot_all(state, portion=1.0, figfile=None):
 
     figure(); vstats = plot_vars(state, portion=portion)
     if state.title: suptitle(state.title)
-    print format_vars(vstats)
+    print(format_vars(vstats))
     if figfile != None: savefig(figfile+"-vars")
     figure(); plot_trace(state, portion=portion)
     if state.title: suptitle(state.title)
@@ -46,7 +47,7 @@ def plot_vars(state, vars=None, portion=1.0, selection=None, **kw):
     points, logp = state.sample(portion=portion, vars=vars,
                                 selection=selection)
     if vars==None:
-        vars = range(points.shape[1])
+        vars = list(range(points.shape[1]))
     nw,nh = tile_axes(len(vars))
     vstats = []
     cbar = _make_fig_colorbar(logp)
@@ -424,7 +425,7 @@ def plot_logp(state, portion=None):
 
     draw, logp = state.logp()
     start = int((1-portion)*len(draw)) if portion else 0
-    plot(arange(start,len(logp)), logp[start:], '.', markersize=1)
+    plot(arange(start,len(logp)), logp[start:], ',', markersize=1)
     title(r'Log Likelihood History')
     xlabel('Generation number')
     ylabel('Log likelihood at x[k]')

@@ -1,8 +1,10 @@
+try: from _thread import start_new_thread
+except: from thread import start_new_thread
+
 import os, sys
 import logging
 import traceback
 import time
-import thread
 from multiprocessing import Process
 
 from jobqueue import runjob, store
@@ -109,8 +111,8 @@ def serve(dispatcher, queue):
                               args=(jobid,next_request['request']))
             process.start()
             results, next_request = wait_for_result(remote, jobid, process, queue)
-            thread.start_new_thread(update_remote,
-                                    (dispatcher, jobid, queue, results))
+            start_new_thread(update_remote,
+                             (dispatcher, jobid, queue, results))
         else:
             time.sleep(POLLRATE)
 
@@ -118,7 +120,7 @@ def main():
     try: os.nice(19)
     except: pass
     if len(sys.argv) <= 1:
-        print "Requires queue name"
+        print("Requires queue name")
     queue = sys.argv[1]
     dispatcher = sys.argv[2] if len(sys.argv) > 2 else DEFAULT_DISPATCHER
     serve(queue=queue, dispatcher=dispatcher)

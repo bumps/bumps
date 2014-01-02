@@ -11,6 +11,8 @@ import os
 import sys
 import shutil
 
+sys.dont_write_bytecode = True
+
 # Force build before continuing
 os.system('"%s" setup.py build'%sys.executable)
 
@@ -38,11 +40,10 @@ sys.path.insert(0, build_lib)
 
 
 # TODO: Combine with setup-py2exe so that consistency is easier.
-packages = ['numpy', 'scipy', 'matplotlib', 'pytz',
-            'periodictable', 'dream'
-            ]
+packages = ['numpy', 'scipy', 'matplotlib', 'pytz']
 includes = []
-excludes = ['Tkinter', 'PyQt4', '_ssl', '_tkagg', 'numpy.distutils.test']
+excludes = ['Tkinter', 'PyQt4', '_ssl', '_tkagg', 'numpy.distutils.test',
+            'sphinx', 'docutils', 'jinja2', ]
 PACKAGE_DATA = {}
 
 import bumps
@@ -53,7 +54,7 @@ NAME = 'Bumps'
 # use py2app_main with explicit imports of everything we
 # might need.
 #SCRIPT = 'py2app_main.py'
-SCRIPT = 'bin/bumps_gui.py'
+SCRIPT = 'bin/bumps_gui'
 VERSION = bumps.__version__
 ICON = 'extra/bumps.icns'
 ID = 'Bumps'
@@ -66,7 +67,7 @@ plist = dict(
     CFBundleShortVersionString  = ' '.join([NAME, VERSION]),
     CFBundleGetInfoString       = NAME,
     CFBundleExecutable          = NAME,
-    CFBundleIdentifier          = 'gov.nist.ncnr.%s' % ID,
+    CFBundleIdentifier          = 'org.reflectometry.%s' % ID,
     NSHumanReadableCopyright    = COPYRIGHT
 )
 
@@ -87,6 +88,8 @@ def build_app():
           app = [app_data],
           options = options,
           )
+    # Add cli interface to the app directory
+    os.system('cp -p extra/appbin/* "dist/%s.app"'%NAME)
 
 def build_dmg():
     """DMG builder; should include docs"""

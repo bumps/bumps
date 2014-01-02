@@ -4,7 +4,7 @@
 import os
 import logging
 import json
-import cPickle as pickle
+import pickle
 import flask
 from flask import redirect, url_for, flash
 from flask import send_from_directory
@@ -315,7 +315,7 @@ def configure(jobstore=None, jobkey=None, jobdb=None, scheduler=None):
 if __name__ == '__main__':
     configure(jobstore='/tmp/server/%s',
               jobdb='sqlite:///tmp/jobqueue.db',
-              jobkey='~/.reflserve/key',
+              jobkey='~/.bumps/key',
               scheduler='dispatch',
               )
     app.config['DEBUG'] = True

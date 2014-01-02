@@ -2,6 +2,8 @@
 import sys
 import os
 
+sys.dont_write_bytecode = True
+
 #from distutils.core import Extension
 from setuptools import setup, find_packages, Extension
 #import fix_setuptools_chmod

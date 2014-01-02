@@ -13,7 +13,7 @@ The general optimization algorithm is as follows::
         result = map(fit.problem, population)
         fit.update(population, result)
         if fit.isdone(): break
-        population = fit.next()
+        population = fit.step()
 
     if fit.successful:
         print "Converged"
@@ -107,8 +107,11 @@ Accumulated properties::
 # Want to use surrogate models for the expensive models when far from the
 # minimum, only calculating the real model when near the minimum.
 
+from __future__ import print_function
+
 import time
 import os
+import sys
 
 import numpy
 
@@ -143,7 +146,7 @@ class Minimizer:
         """
         self.time = time.time()
         self.remote_time = -cpu_time()
-        population = self.next() if resume else self.start()
+        population = self.step() if resume else self.start()
         try:
             while True:
                 result = mapper(self.problem, population)
@@ -152,7 +155,7 @@ class Minimizer:
                 #print self.history.step, self.history.value
                 if self.isdone(): break         #STOPHERE combine
                 if abort_test is not None and abort_test(): break
-                population = self.next()
+                population = self.step()
         except KeyboardInterrupt:
             pass
         return self.history.point[0]
@@ -196,6 +199,7 @@ class Minimizer:
 
         # Locate the best member of the population
         values = numpy.asarray(values)
+        #print("values",values,file=sys.stderr)
 
         # Update the history
         self.history.update(
@@ -218,11 +222,11 @@ class Minimizer:
         for m in self.monitors:
             m(self.history)
 
-    def next(self):
+    def step(self):
         """
         Generate the next population to evaluate.
         """
-        return self.strategy.next(self.history)
+        return self.strategy.step(self.history)
 
     def isdone(self):
         """
@@ -312,7 +316,7 @@ class Strategy:
         """
         raise NotImplementedError
 
-    def next(self, history):
+    def step(self, history):
         """
         Generate the next population.
 

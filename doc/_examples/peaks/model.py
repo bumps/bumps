@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 # Look for the peak fitter in the same file as the modeller
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -81,10 +83,10 @@ def build_problem():
         peak.theta = peak1.theta
 
     if 1:
-        print "shape",peak1.s1.value,peak1.s2.value,peak1.theta.value
-        print "centers theta,delta",theta.value,delta.value
-        print "centers",(peak1.xc.value,peak1.yc.value),\
-            (M.parts[1].xc.value,M.parts[1].yc.value)
+        print("shape",peak1.s1.value,peak1.s2.value,peak1.theta.value)
+        print("centers theta,delta",theta.value,delta.value)
+        print("centers",(peak1.xc.value,peak1.yc.value),
+              (M.parts[1].xc.value,M.parts[1].yc.value))
     return FitProblem(M)
 
 problem = build_problem()

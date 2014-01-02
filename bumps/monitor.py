@@ -5,6 +5,8 @@ Process monitors.
 Process monitors accept a history object each cycle and
 perform some sort of work on it.
 """
+from __future__ import print_function
+
 from numpy import inf
 
 class Monitor(object):
@@ -79,7 +81,7 @@ class TimedUpdate(Monitor):
         history.requires(time=1, value=1, point=1, step=1)
 
     def show_improvement(self, history):
-        print "step", history.step, "value", history.value
+        print("step", history.step, "value", history.value)
 
     def show_progress(self, history):
         pass
