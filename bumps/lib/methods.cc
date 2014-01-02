@@ -1,5 +1,8 @@
 /* This program is public domain. */
 
+// MSVC 2008 doesn't define erf()
+#define NEED_ERF defined(_MSC_VER) && _MSC_VER<1000
+
 #include <Python.h>
 #include <math.h>
 #include <stdio.h>
@@ -9,6 +12,10 @@
 extern "C" void
 convolve(size_t Nin, const double xin[], const double yin[],
          size_t N, const double x[], const double dx[], double y[]);
+
+#ifdef NEED_ERF
+extern "C" double erf(double);
+#endif /* NEED_ERF */
 
 #if defined(PY_VERSION_HEX) &&  (PY_VERSION_HEX < 0x02050000)
 typedef int Py_ssize_t;
@@ -71,3 +78,5 @@ PyObject* Perf(PyObject*obj,PyObject*args)
     result[i] = erf(data[i]);
   return Py_BuildValue("");
 }
+
+

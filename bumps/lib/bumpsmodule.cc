@@ -1,9 +1,24 @@
 /* This program is public domain. */
+// MSVC 2008 doesn't define cstdint
+#define MISSING_STDINT defined(_MSC_VER) && _MSC_VER<=1500
 
 #include <Python.h>
-#include <stdint.h>
-#include "methods.h"
 
+/* Visual Studio 2008 is missing cstdint */
+#if !MISSING_STDINT
+  #include <stdint.h>
+#else
+  typedef signed char        int8_t;
+  typedef short              int16_t;
+  typedef int                int32_t;
+  typedef long long          int64_t;
+  typedef unsigned char      uint8_t;
+  typedef unsigned short     uint16_t;
+  typedef unsigned int       uint32_t;
+  typedef unsigned long long uint64_t;
+#endif
+
+#include "methods.h"
 #include "rebin.h"
 #include "rebin2D.h"
 
@@ -113,16 +128,16 @@ static PyMethodDef methods[] = {
 	     METH_VARARGS,
 	     "rebin2d_uint32(xi,yi,Ii,xo,yo,Io): 2-D rebin from (xi,yi) to (xo,yo)"
 	    },
-            {"rebin_uint64",
-             &Prebin<uint64_t>,
-             METH_VARARGS,
-             "rebin_uint32(xi,Ii,xo,Io): rebin from bin edges xi to bin edges xo"
-            },
-            {"rebin2d_uint64",
-             &Prebin2d<uint64_t>,
-             METH_VARARGS,
-             "rebin2d_uint32(xi,yi,Ii,xo,yo,Io): 2-D rebin from (xi,yi) to (xo,yo)"
-            },
+	    {"rebin_uint64",
+	     &Prebin<uint64_t>,
+	     METH_VARARGS,
+	     "rebin_uint32(xi,Ii,xo,Io): rebin from bin edges xi to bin edges xo"
+	    },
+	    {"rebin2d_uint64",
+	     &Prebin2d<uint64_t>,
+	     METH_VARARGS,
+	     "rebin2d_uint32(xi,yi,Ii,xo,yo,Io): 2-D rebin from (xi,yi) to (xo,yo)"
+	    },
 	    {"rebin_float32",
 	     &Prebin<float>,
 	     METH_VARARGS,

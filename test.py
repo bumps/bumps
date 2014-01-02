@@ -53,8 +53,11 @@ sys.path.insert(0, build_path)
 # we can test without having to install.
 nose_args = ['-v', '--all-modules', '--cover-package=bumps',
              '-m(^_?test_|_test$|^test$)', '-I.*amqp_map.*']
-if sys.version_info[0] >= 3:
-    nose_args.append('-I.*gui.*')
+
+# exclude gui subdirectory if wx is not available
+try: import wx
+except ImportError: nose_args.append('-I/gui')
+
 nose_args += sys.argv[1:]  # allow coverage arguments
 nose_args.append(build_path)
 '''
@@ -63,7 +66,8 @@ nose_args += ['tests/bumps', 'bumps',
              ]
 '''
 print("nosetests "+" ".join(nose_args))
-if not nose.run(argv=nose_args): sys.exit(1)
+if not nose.run(argv=nose_args):
+    sys.exit(1)
 
 # Run isolated tests in their own environment.  In this case we will have
 # to set the PYTHONPATH environment variable before running since it is
@@ -74,7 +78,7 @@ else:
     PYTHONPATH = build_path
 os.putenv('PYTHONPATH', PYTHONPATH)
 
-## Run the command line version of Refl1D which should display help text.
-#for p in ['bumps_cli.py']:
-#    ret = os.system(" ".join( (sys.executable, os.path.join('bin', '%s'%p)) ))
-#    if ret != 0: sys.exit()
+## Run the command line version of bumps which should display help text.
+for p in ['bin/bumps']:
+    ret = os.system((sys.executable, '%s'%p))
+    if ret != 0: sys.exit()

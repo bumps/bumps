@@ -1,5 +1,12 @@
 /* This program is public domain. */
 
+// MSVC 2008 doesn't define erf()
+#if defined(_MSC_VER) && _MSC_VER<=1500
+#define const
+#define __LITTLE_ENDIAN
+#include "erf.c"
+#endif
+
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
@@ -7,6 +14,7 @@
 #ifdef SGI
 #include <ieeefp.h>
 #endif
+
 
 /* What to do at the endpoints --- USE_TRUNCATED_NORMALIZATION will
  * avoid the assumption that the data is zero where it hasn't been
@@ -150,9 +158,9 @@ convolve_point(const double xin[], const double yin[], size_t k, size_t n,
   erfmin = erflo = erf(-z/(SQRT2*sigma));
   y = 0.;
   /* printf("%5.3f: (%5.3f,%11.5g)",xo,xin[k],yin[k]); */
-  while (++k < n) {
+  while ((++k < n) && (xin[k] != xin[k-1])) {
   	/* No additional contribution from duplicate points. */
-  	if (xin[k] == xin[k-1]) continue;
+  	//if (xin[k] == xin[k-1]) continue;
 
     /* Compute the next endpoint */
     const double zhi = xo - xin[k];
