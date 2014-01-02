@@ -19,6 +19,8 @@ import matplotlib
 matplotlib.use('Agg')
 print(matplotlib.__file__)
 
+sys.dont_write_bytecode = True
+
 sys.stderr = sys.stdout # Doctest doesn't see sys.stderr
 #import numpy; numpy.seterr(all='raise')
 

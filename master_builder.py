@@ -51,6 +51,8 @@ import sys
 import shutil
 import subprocess
 
+sys.dont_write_bytecode = True
+
 # Windows commands to run utilities
 GIT = r"C:\Program Files\Git\bin\git.exe"
 REPO_NEW = '"%s" clone git@github.com:reflectometry/bumps.git'%GIT

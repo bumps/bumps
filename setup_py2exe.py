@@ -39,6 +39,8 @@ bumps_gui.exe can be run from the dist directory.
 import os
 import sys
 
+sys.dont_write_bytecode = True
+
 # Force build before continuing
 os.system('"%s" setup.py build'%sys.executable)
 

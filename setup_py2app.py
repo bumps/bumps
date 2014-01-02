@@ -11,6 +11,8 @@ import os
 import sys
 import shutil
 
+sys.dont_write_bytecode = True
+
 # Force build before continuing
 os.system('"%s" setup.py build'%sys.executable)
 

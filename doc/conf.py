@@ -13,6 +13,7 @@
 from __future__ import print_function, with_statement
 
 import sys, os
+sys.dont_write_bytecode = True
 print("python",sys.executable)
 
 # If extensions (or modules to document with autodoc) are in another directory,

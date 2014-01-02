@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import sys, os
 
+sys.dont_write_bytecode = True
+
 examples = [
     "peaks/model.py",
     ]
