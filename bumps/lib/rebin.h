@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <stdexcept>
+#include <algorithm>
 
 // Define a bin iterator to adapt to either forward or reversed inputs.
 template <typename T>
