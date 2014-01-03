@@ -8,11 +8,17 @@ examples = [
     ]
 
 ROOT = os.path.abspath(os.path.dirname(__file__))
-EXAMPLEDIR = os.path.join(ROOT,'doc','examples')
+EXAMPLEDIR = os.path.join(ROOT,'doc','_examples')
+
+# Add the build dir to the system path
+from distutils.util import get_platform
+platform = '.%s-%s'%(get_platform(),sys.version[:3])
+build_path = os.path.abspath(os.path.join(ROOT,'build','lib'+platform))
+
 if os.name == 'nt':
-    os.environ['PYTHONPATH'] = ROOT+";"+ROOT+"/dream"
+    os.environ['PYTHONPATH'] = build_path
 else:
-    os.environ['PYTHONPATH'] = ROOT+":"+ROOT+"/dream"
+    os.environ['PYTHONPATH'] = build_path
 PYTHON = sys.executable
 CLI = "%s %s/bin/bumps %%s %%s"%(PYTHON,ROOT)
 
