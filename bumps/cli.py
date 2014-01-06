@@ -545,16 +545,17 @@ def main():
             mapper = MPMapper
     else:
         mapper = SerialMapper
+    if opts.worker:
+        mapper.start_worker(problem)
+        return
 
     fitopts = FIT_OPTIONS[opts.fit]
     fitdriver = FitDriver(fitopts.fitclass, problem=problem, abort_test=lambda: False, **fitopts.options)
 
+    if problem_output: print(problem_output)
     if opts.profile:
         run_profile(problem, steps=opts.steps)
-    elif opts.worker:
-        mapper.start_worker(problem)
     elif opts.chisq:
-        print(problem_output)
         if opts.cov: print(problem.cov())
         print("chisq",problem())
     elif opts.preview:
@@ -584,7 +585,6 @@ def main():
 
         # Show command line arguments and initial model
         print("#"," ".join(sys.argv))
-        print(problem_output)
         problem.show()
         if opts.stepmon:
             fid = open(problem.output_path+'.log', 'w')
