@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Run nose tests for Bumps.
+Run tests for bumps.
 
 Usage:
 
@@ -15,25 +15,39 @@ Usage:
 import os, sys, subprocess
 from glob import glob
 import nose
+
+from distutils.util import get_platform
+platform = '.%s-%s'%(get_platform(),sys.version[:3])
+
+# Make sure that we have a private version of mplconfig
+mplconfig = os.path.join(os.getcwd(), '.mplconfig')
+os.environ['MPLCONFIGDIR'] = mplconfig
+if not os.path.exists(mplconfig): os.mkdir(mplconfig)
 import matplotlib
 matplotlib.use('Agg')
-print(matplotlib.__file__)
+#print(matplotlib.__file__)
+import pylab; pylab.hold(False)
 
-sys.dont_write_bytecode = True
+def addpath(path):
+    """
+    Add a directory to the python path environment variable, but don't
+    """
+    path = os.path.abspath(path)
+    if 'PYTHONPATH' in os.environ:
+        PYTHONPATH = path + os.pathsep + os.environ['PYTHONPATH']
+    else:
+        PYTHONPATH = path
+    os.environ['PYTHONPATH'] = PYTHONPATH
+    sys.path.insert(0,path)
+
+#sys.dont_write_bytecode = True
 
 sys.stderr = sys.stdout # Doctest doesn't see sys.stderr
 #import numpy; numpy.seterr(all='raise')
 
 # Check that we are running from the root.
-path = os.path.abspath(os.getcwd())
-assert os.path.exists(os.path.join(path, 'bumps', 'cli.py'))
-
-# Make sure that we have a private version of mplconfig
-mplconfig = os.path.join(os.getcwd(), '.mplconfig')
-os.environ['MPLCONFIGDIR'] = mplconfig
-os.putenv('MPLCONFIGDIR', mplconfig)
-if not os.path.exists(mplconfig): os.mkdir(mplconfig)
-import pylab; pylab.hold(False)
+root = os.path.abspath(os.getcwd())
+assert os.path.exists(os.path.join(root, 'bumps', 'cli.py')), "Not in bumps root"
 
 # Force a rebuild
 print("-"*70)
@@ -43,42 +57,35 @@ subprocess.call((sys.executable, "setup.py", "build"), shell=False)
 print("-"*70)
 
 # Add the build dir to the system path
-from distutils.util import get_platform
-platform = '.%s-%s'%(get_platform(),sys.version[:3])
-build_path = os.path.abspath('build/lib'+platform)
-sys.path.insert(0, build_path)
+build_path = os.path.join('build','lib'+platform)
+addpath(build_path)
 
-# Run the source tests with the system path augmented such that imports can
-# be performed 'from bumps...".  By manipulating the system path in this way,
-# we can test without having to install.
-nose_args = ['-v', '--all-modules', '--cover-package=bumps',
-             '-m(^_?test_|_test$|^test$)', '-e.*amqp_map.*']
+# Set the nosetest args
+nose_args = ['-v', '--all-modules',
+             '-m(^_?test_|_test$|^test$)',
+             '--with-doctest', '--doctest-extension=rst',
+             '--cover-package=bumps',
+             '-e.*amqp_map.*',
+             ]
 
 # exclude gui subdirectory if wx is not available
 try: import wx
 except ImportError: nose_args.append('-egui')
 
 nose_args += sys.argv[1:]  # allow coverage arguments
-nose_args.append(build_path)
-'''
-nose_args += ['tests/bumps', 'bumps',
-              #'doc/sphinx/guide'
-             ]
-'''
+paths  = [#'tests/bumps',
+          build_path,
+          ]
+nose_args += paths
+nose_args += glob('doc/g*/*.rst')
+nose_args += glob('doc/_examples/*/*.rst')
+
 print("nosetests "+" ".join(nose_args))
+#os.chdir('/tmp')
 if not nose.run(argv=nose_args):
     sys.exit(1)
 
-# Run isolated tests in their own environment.  In this case we will have
-# to set the PYTHONPATH environment variable before running since it is
-# happening in a separate process.
-if 'PYTHONPATH' in os.environ:
-    PYTHONPATH = build_path + ":" + os.environ['PYTHONPATH']
-else:
-    PYTHONPATH = build_path
-os.putenv('PYTHONPATH', PYTHONPATH)
-
 ## Run the command line version of bumps which should display help text.
-for p in ['bin/bumps']:
-    ret = os.system((sys.executable, '%s'%p))
-    if ret != 0: sys.exit()
+#for p in ['bin/bumps']:
+#    ret = subprocess.call((sys.executable, p), shell=False)
+#    if ret != 0: sys.exit()
