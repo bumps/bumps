@@ -216,11 +216,11 @@ def _check(expected,got,tol):
 
 def _derivs(x,y):
     # difference formula
-    #return (y[1]-y[0])/(x[1]-x[0]), (y[-1]-y[-2])/(x[-1]-x[-2])
+    return (y[1]-y[0])/(x[1]-x[0]), (y[-1]-y[-2])/(x[-1]-x[-2])
     # 5-point difference formula
-    left = (y[0]-8*y[1]+8*y[3]-y[4]) / 12 / (x[1]-x[0])
-    right = (y[-5]-8*y[-4]+8*y[-2]-y[-1]) / 12 / (x[-1]-x[-2])
-    return left,right
+    #left = (y[0]-8*y[1]+8*y[3]-y[4]) / 12 / (x[1]-x[0])
+    #right = (y[-5]-8*y[-4]+8*y[-2]-y[-1]) / 12 / (x[-1]-x[-2])
+    #return left,right
 
 def test():
     h=1e-10
@@ -324,16 +324,16 @@ def test():
 
 
     # ==== Check interpolator
-    yc = bspline_control(y)
-    print("y",y)
-    print("p(yc)",bspline(yc,xeq))
+    #yc = bspline_control(y)
+    #print("y",y)
+    #print("p(yc)",bspline(yc,xeq))
 
 def demo():
-    from pylab import hold, linspace, plot, show
+    from pylab import hold, linspace, subplot, plot, legend, show
     hold(True)
     #y = [9,6,1,3,8,4,2]
     #y = [9,11,13,3,-2,0,2]
-    y = [9,11,2,3,8,0,2]
+    y = [9,11,2,3,8,0]
     #y = [9,9,1,3,8,2,2]
     xeq = linspace(0,1,len(y))
     x = xeq+0
@@ -343,17 +343,23 @@ def demo():
     #x[1],x[-2] = x[2]-0.001,x[-2]+0.001
     #x[1],x[-2] = x[1]-x[1]/2,x[-1]-x[1]/2
     t = linspace(x[0],x[-1],400)
-    plot(xeq,y,':oy')
-    plot(t,bspline(y,t,clamp=False),'-.y') # bspline
-    plot(t,bspline(y,t,clamp=True),'-y') # bspline
+    subplot(211)
+    plot(t,bspline(y,t,clamp=False),'-.y', label="unclamped bspline") # bspline
+    plot(t,bspline(y,t,clamp=True),'-y', label="clamped bspline") # bspline
+    plot(sorted(x),y,':oy', label="control points")
+    legend()
+    left,right = _derivs(t,bspline(y,t,clamp=False))
+    print(left, (y[1] - y[0])/(x[1]-x[0]))
 
+    subplot(212)
     xt,yt = pbs(x,y,t,clamp=False)
-    plot(xt,yt,'-.b') # pbs
+    plot(xt,yt,'-.b',label="unclamped pbs") # pbs
     xt,yt = pbs(x,y,t,clamp=True)
-    plot(xt,yt,'-b') # pbs
+    plot(xt,yt,'-b', label="clamped pbs") # pbs
     #xt,yt = pbs(x,y,t,clamp=True, parametric=True)
     #plot(xt,yt,'-g') # pbs
-    plot(sorted(x),y,':ob')
+    plot(sorted(x),y,':ob', label="control points")
+    legend()
     show()
 
 def demo_interp():
