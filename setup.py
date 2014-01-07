@@ -5,8 +5,10 @@ import os
 if len(sys.argv) == 1:
     sys.argv.append('install')
 
+# Use our own nose-based test harness
 if sys.argv[1] == 'test':
-    sys.exit(os.system(" ".join((sys.executable, 'test.py'))))
+    from subprocess import call
+    sys.exit(call([sys.executable, 'test.py']+sys.argv[2:]))
 
 sys.dont_write_bytecode = True
 

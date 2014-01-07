@@ -38,9 +38,9 @@ def addpath(path):
     else:
         PYTHONPATH = path
     os.environ['PYTHONPATH'] = PYTHONPATH
-    sys.path.insert(0,path)
+    sys.path.insert(0, path)
 
-#sys.dont_write_bytecode = True
+sys.dont_write_bytecode = True
 
 sys.stderr = sys.stdout # Doctest doesn't see sys.stderr
 #import numpy; numpy.seterr(all='raise')
@@ -63,7 +63,7 @@ addpath(build_path)
 # Set the nosetest args
 nose_args = ['-v', '--all-modules',
              '-m(^_?test_|_test$|^test$)',
-             '--with-doctest', '--doctest-extension=rst',
+             '--with-doctest', '--doctest-extension=.rst',
              '--cover-package=bumps',
              '-e.*amqp_map.*',
              ]
@@ -73,10 +73,9 @@ try: import wx
 except ImportError: nose_args.append('-egui')
 
 nose_args += sys.argv[1:]  # allow coverage arguments
-paths  = [#'tests/bumps',
-          build_path,
-          ]
-nose_args += paths
+
+# Add targets
+nose_args += [build_path]
 nose_args += glob('doc/g*/*.rst')
 nose_args += glob('doc/_examples/*/*.rst')
 
