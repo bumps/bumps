@@ -2,6 +2,12 @@
 import sys
 import os
 
+if len(sys.argv) == 1:
+    sys.argv.append('install')
+
+if sys.argv[1] == 'test':
+    sys.exit(os.system(" ".join((sys.executable, 'test.py'))))
+
 sys.dont_write_bytecode = True
 
 #from distutils.core import Extension
@@ -13,9 +19,6 @@ import bumps
 from bumps.gui.resources import resources as gui_resources
 
 packages = find_packages(exclude=['amqp_map','fit_functions','jobqueue'])
-
-if len(sys.argv) == 1:
-    sys.argv.append('install')
 
 def bumpsmodule():
     sources = [os.path.join('bumps','lib',f)
