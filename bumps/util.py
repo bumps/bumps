@@ -55,7 +55,7 @@ def erf(x):
     """
     Error function calculator.
     """
-    from .bumpsmodule import _erf
+    from ._reduction import _erf
     input = _dense(x,'d')
     output = numpy.empty_like(input)
     _erf(input,output)

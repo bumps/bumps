@@ -23,7 +23,7 @@ packages = find_packages(exclude=['amqp_map','fit_functions','jobqueue'])
 def bumpsmodule():
     sources = [os.path.join('bumps','lib',f)
                for f in ("bumpsmodule.cc","methods.cc","convolve.c")]
-    module = Extension('bumps.bumpsmodule', sources=sources)
+    module = Extension('bumps._reduction', sources=sources)
     return module
 
 #TODO: write a proper dependency checker for packages which cannot be

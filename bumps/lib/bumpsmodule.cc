@@ -166,9 +166,9 @@ static PyMethodDef methods[] = {
 
 
 #define MODULE_DOC "Bumps C Library"
-#define MODULE_NAME "bumpsmodule"
-#define MODULE_INIT2 initbumpsmodule
-#define MODULE_INIT3 PyInit_bumpsmodule
+#define MODULE_NAME "_reduction"
+#define MODULE_INIT2 init_reduction
+#define MODULE_INIT3 PyInit__reduction
 #define MODULE_METHODS methods
 
 /* ==== boilerplate python 2/3 interface bootstrap ==== */
