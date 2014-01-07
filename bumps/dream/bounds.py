@@ -155,7 +155,7 @@ class IgnoreBounds(Bounds):
 def test():
     from numpy.linalg import norm
     from numpy import array
-    bounds = zip( [5,10], [-inf,-10], [-5,inf], [-inf,inf] )
+    bounds = list(zip( [5,10], [-inf,-10], [-5,inf], [-inf,inf] ))
     v = asarray([6,-12, 6,-12],'d')
     for t in 'none', 'reflect', 'clip', 'fold', 'randomize':
         assert norm(make_bounds_handler(bounds, t).apply(v+0) - v) == 0
