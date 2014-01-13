@@ -460,17 +460,8 @@ def config_matplotlib(backend):
     of a module, and only in the functions that call it: if you are
     concerned about speed, then you shouldn't be using pylab :-)
     """
-    # If we are running from an image built by py2exe, keep the frozen
-    # environment self contained by having matplotlib use a private directory
-    # instead of using .matplotlib under the user's home directory for storing
-    # shared data files such as fontList.cache.  Note that a Windows
-    # installer/uninstaller such as Inno Setup should explicitly delete this
-    # private directory on uninstall.
-    if hasattr(sys, 'frozen'):
-        mplconfigdir = os.path.join(sys.prefix, '.matplotlib')
-        if not os.path.exists(mplconfigdir):
-            os.mkdir(mplconfigdir)
-        os.environ['MPLCONFIGDIR'] = mplconfigdir
+    if hasattr(sys, 'frozen') and 'MPLCONFIGDIR' not in os.environ:
+        raise RuntimeError("MPLCONFIGDIR should be set to e.g., %LOCALAPPDATA%\YourApp\mplconfig")
 
     import matplotlib
 
