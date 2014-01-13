@@ -3,15 +3,7 @@
 """
 import numpy
 
-import sys
-print(sys.modules['bumps'])
-print(sys.modules['bumps'].__file__)
-import bumps
-print(bumps.__file__)
-
 from . import _reduction
-
-print(bumps.__file__)
 
 def bin_edges(C):
     r"""

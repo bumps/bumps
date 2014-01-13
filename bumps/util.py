@@ -184,7 +184,7 @@ class push_seed(object):
     Seed can be used directly to set the seed::
 
         >>> import numpy
-        >>> push_seed(24) # doctest:+ELLIPSIS
+        >>> push_seed(24)
         <...push_seed object at...>
         >>> print(numpy.random.randint(0,1000000,3))
         [242082    899 211136]

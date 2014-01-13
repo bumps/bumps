@@ -33,6 +33,7 @@ def bumpsmodule():
 #dependency_check('numpy>=1.0', 'scipy>=0.6', 'matplotlib>=1.0', 'wx>=2.8.9')
 #print bumps.package_data()
 
+sys.dont_write_bytecode = False
 dist = setup(
         name = 'bumps',
         version = bumps.__version__,

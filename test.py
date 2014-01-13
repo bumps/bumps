@@ -30,7 +30,8 @@ import pylab; pylab.hold(False)
 
 def addpath(path):
     """
-    Add a directory to the python path environment variable, but don't
+    Add a directory to the python path environment, and to the PYTHONPATH
+    environment variable for subprocesses.
     """
     path = os.path.abspath(path)
     if 'PYTHONPATH' in os.environ:
@@ -60,10 +61,14 @@ print("-"*70)
 build_path = os.path.join('build','lib'+platform)
 addpath(build_path)
 
+# Make sample data and models available
+os.environ['BUMPS_DATA'] = os.path.join(root,'doc','_examples')
+
 # Set the nosetest args
 nose_args = ['-v', '--all-modules',
              '-m(^_?test_|_test$|^test$)',
              '--with-doctest', '--doctest-extension=.rst',
+             '--doctest-options=+ELLIPSIS,+NORMALIZE_WHITESPACE',
              '--cover-package=bumps',
              '-e.*amqp_map.*',
              ]
@@ -80,9 +85,7 @@ nose_args += glob('doc/g*/*.rst')
 nose_args += glob('doc/_examples/*/*.rst')
 
 print("nosetests "+" ".join(nose_args))
-#os.chdir('/tmp')
-if not nose.run(argv=nose_args):
-    sys.exit(1)
+if not nose.run(argv=nose_args): sys.exit(1)
 
 ## Run the command line version of bumps which should display help text.
 #for p in ['bin/bumps']:
