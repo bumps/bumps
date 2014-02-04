@@ -7,7 +7,6 @@ import os
 import sys
 import json
 import pickle
-from copy import deepcopy
 
 import matplotlib
 
@@ -64,17 +63,24 @@ class ServiceMonitor(monitor.TimedUpdate):
         monitor.TimedUpdate.__init__(self, progress=progress,
                                      improvement=improvement)
         self.path = path
-        self.problem = deepcopy(problem)
+        self.problem = problem
         self.images = []
     def show_progress(self, history):
-        self.problem.setp(history.point[0])
+        p = self.problem.getp()
+        try:
+            self.problem.setp(history.point[0])
+            dof = self.problem.dof
+            summary = self.problem.summarize()
+        finally:
+            self.problem.setp(p)
+
         status = {
             "step":  history.step[0],
-            "cost":  history.value[0]/self.problem.dof,
+            "cost":  history.value[0]/dof,
             "pars":  history.point[0],
         }
         open(os.path.join(self.path,'status.json'),"wt").write(json.dumps(status))
-        status['table'] = self.problem.summarize()
+        status['table'] = summary
         status['images'] = "\n".join('<img file="%s" alt="%s" />'%(f,f)
                                      for f in self.images)
         html = """\

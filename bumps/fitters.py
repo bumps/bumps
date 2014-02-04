@@ -5,7 +5,6 @@ from __future__ import print_function
 
 import sys
 import time
-from copy import deepcopy
 
 import numpy
 
@@ -22,7 +21,7 @@ class ConsoleMonitor(monitor.TimedUpdate):
     def __init__(self, problem, progress=1, improvement=30):
         monitor.TimedUpdate.__init__(self, progress=progress,
                                      improvement=improvement)
-        self.problem = deepcopy(problem)
+        self.problem = problem
 
     def show_progress(self, history):
         print("step", history.step[0],
@@ -31,8 +30,12 @@ class ConsoleMonitor(monitor.TimedUpdate):
 
     def show_improvement(self, history):
         #print "step",history.step[0],"chisq",history.value[0]
-        self.problem.setp(history.point[0])
-        print(self.problem.summarize())
+        p = self.problem.getp()
+        try:
+            self.problem.setp(history.point[0])
+            print(self.problem.summarize())
+        finally:
+            self.problem.setp(p)
         sys.stdout.flush()
 
 

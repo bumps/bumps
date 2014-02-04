@@ -9,7 +9,6 @@ __all__ = [ "random_lines"]
 
 from numpy import zeros, ones, asarray, sqrt, arange
 from numpy.random import rand, random_integers
-from copy import deepcopy
 from itertools import count
 
 def print_every_five(step, x, fx, k):
@@ -155,7 +154,7 @@ def particle_swarm(cfo, NP, epsilon = 1e-10, maxiter = 1000):
     f = mapper(X)
 
     n_feval = NP
-    P = deepcopy(X)
+    P = X[:]
 
     f_best, i_best = min(zip(f, count()))
     for L in range(2,maxiter+1):
