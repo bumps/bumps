@@ -51,10 +51,12 @@ Options for controlling the development and testing environment:
 #==============================================================================
 
 import sys
+import traceback
+from StringIO import StringIO
 
 import wx
 
-from .. import plugin
+from .. import plugin, cli
 
 from .about import APP_TITLE
 from .utilities import resource_dir, resource, log_time
@@ -182,7 +184,6 @@ class MainApp(wx.App):
 
     def display_splash_screen(self, img_name=None, pos=None, size=(320, 240)):
         """Displays a splash screen and the specified position and size."""
-
         # Prepare the picture.
         w, h = size
         image = wx.Image(img_name, wx.BITMAP_TYPE_JPEG)
@@ -246,7 +247,7 @@ class MainApp(wx.App):
                 print("%5d  %s" %(i, p))
 
         # Put up the initial model
-        model,output = cli.initial_model(opts)
+        model,output = initial_model(opts)
         if not model: model = plugin.new_model()
         signal.log_message(message=output)
         panel.set_model(model=model)
@@ -255,13 +256,31 @@ class MainApp(wx.App):
 
 #==============================================================================
 
+def initial_model(opts):
+    # Capture stdout from problem definition
+    stdout = sys.stdout
+    try:
+        sys.stdout = StringIO()
+        problem = cli.initial_model(opts)
+        error = ''
+    except:
+        problem = None
+        limit = len(traceback.extract_stack())-4
+        sys.stderr.write("limit=%d\n"%limit)
+        sys.stderr.write(repr(traceback.extract_stack()))
+        error = traceback.format_exc(limit)
+    finally:
+        output = sys.stdout.getvalue()
+        sys.stdout = stdout
+    return problem, output.strip()+error
+
+
 def inspect():
     import wx.lib.inspection
     wx.lib.inspection.InspectionTool().Show()
 
 
 def excepthook(type, value, tb):
-    import traceback
     from . import signal
     error = traceback.format_exception(type, value, tb)
     indented = "   "+"\n   ".join(error)
@@ -283,7 +302,6 @@ def main():
     try:
         _protected_main()
     except:
-        import traceback
         traceback.print_exc()
         sys.exit()
 
