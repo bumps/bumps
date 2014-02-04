@@ -5,7 +5,7 @@ Interface between the models and the fitters.
 
 :class:`FitProblem` defines the fitness function(s) for use in the fitters.
 """
-from __future__ import division, with_statement, print_function
+from __future__ import division, with_statement
 
 import sys
 import time
@@ -48,7 +48,7 @@ def fit(models=[], weights=None, fitter=None, **kw):
         t0 = time.clock()
         opt = fitter(problem)
         x = opt.solve(**kw)
-        print("time", time.clock() - t0)
+        print("time %g"%(time.clock() - t0))
     else:
         x = problem.getp()
     result = Result(problem, x)
@@ -68,7 +68,7 @@ def show_chisq(chisq, fid=None):
     lo, hi = min(chisq), max(chisq)
 
     valstr = format_uncertainty(v, dv)
-    print("Chisq for samples: %s,  [min,max] = [%g,%g]" % (valstr,lo,hi), file=fid)
+    fid.write("Chisq for samples: %s,  [min,max] = [%g,%g]\n" % (valstr,lo,hi))
 
 def show_stats(pars, points, fid=None):
     """
@@ -88,7 +88,7 @@ def show_stats(pars, points, fid=None):
         else: bar[position] = '|'
         bar = "".join(bar)
         valstr = format_uncertainty(v,dv)
-        print(("%40s %s %-15s in %s"%(name,bar,valstr,bounds)), file=fid)
+        fid.write("%40s %s %-15s in %s\n"%(name,bar,valstr,bounds))
 
 def show_correlations(pars, points, fid=None):
     """
@@ -104,9 +104,9 @@ def show_correlations(pars, points, fid=None):
 
     # Print the remaining correlations
     if len(corr) > 0:
-        print("== Parameter correlations ==", file=fid)
+        fid.write("== Parameter correlations ==\n")
         for i,j,r in corr:
-            print(pars[i].name, "X", pars[j].name, ":", r, file=fid)
+            fid.write("%s X %s: %g\n"%(pars[i].name, pars[j].name, r))
 
 
 
@@ -189,7 +189,7 @@ class Result:
         # fits). Same in showmodel()
         self.problem.setp(self.solution)
         fid = open(basename + ".par", "w")
-        print(self.problem.summarize(), file=fid)
+        fid.write(self.problem.summarize()+"\n")
         fid.close()
         self.problem.save(basename)
         if self.points.shape[0] > 1:
@@ -523,7 +523,7 @@ class BaseFitProblem(object):
             if isnan(self.parameter_nllf()):
                 print("Parameter nllf is wrong")
                 for p in self.bounded:
-                    print(p, p.nllf())
+                    print("%s %g"%(p, p.nllf()))
             pparameter = self.parameter_nllf()
             pconstraint = self.constraints_nllf()
             pmodel = self.model_nllf() if pparameter+pconstraint <= self.soft_limit else self.penalty_nllf
@@ -759,7 +759,7 @@ class MultiFitProblem(BaseFitProblem):
 
     def show(self):
         for i, f in enumerate(self.models):
-            print("-- Model %d" % i, f.name)
+            print("-- Model %d %s"%(i, f.name))
             f.show()
         print("[overall chisq=%g, nllf=%g]" % (self.chisq(), self.nllf()))
 

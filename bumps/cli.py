@@ -20,7 +20,7 @@ import numpy
 
 from . import fitters
 from .fitters import FIT_OPTIONS, FitDriver, StepMonitor, ConsoleMonitor
-from .fitproblem import load_problem as load_script
+from .fitproblem import load_problem
 from .mapper import MPMapper, AMQPMapper, MPIMapper, SerialMapper
 from . import util
 from . import initpop
@@ -49,7 +49,7 @@ def mesh(problem, vars=None, n=40):
 
 # ===== Model manipulation ====
 
-def load_problem(args):
+def load_model(args):
     path, options = args[0], args[1:]
 
     directory,filename = os.path.split(path)
@@ -62,9 +62,9 @@ def load_problem(args):
                 # First see if it is a pickle
                 problem = pickle.load(open(filename, 'rb'))
             else:
-                # Then see if it is a model
+                # Then see if it is a python model script
                 options = args[1:]
-                problem = load_script(filename, options=options)
+                problem = load_problem(filename, options=options)
                 # Guard against the user changing parameters after defining
                 # the problem.
 
@@ -414,22 +414,11 @@ def getopts():
 # ==== Main ====
 
 def initial_model(opts):
-    # Capture stdout from problem definition
-    stdout = sys.stdout
-    try:
-        sys.stdout = StringIO()
-        problem = _initial_model(opts)
-        output = sys.stdout.getvalue()
-    finally:
-        sys.stdout = stdout
-    return problem, output.strip()
-
-def _initial_model(opts):
     if opts.seed is not None:
         numpy.random.seed(opts.seed)
 
     if opts.args:
-        problem = load_problem(opts.args)
+        problem = load_model(opts.args)
         if opts.pars is not None:
             recall_best(problem, opts.pars)
         if opts.simrandom:
@@ -529,7 +518,7 @@ def main():
     else: # preview
         pass
  
-    problem, problem_output = initial_model(opts)
+    problem = initial_model(opts)
 
     # TODO: AMQP mapper as implemented requires workers started up with
     # the particular problem; need to be able to transport the problem
@@ -552,18 +541,15 @@ def main():
     fitopts = FIT_OPTIONS[opts.fit]
     fitdriver = FitDriver(fitopts.fitclass, problem=problem, abort_test=lambda: False, **fitopts.options)
 
-    if problem_output: print(problem_output)
     if opts.profile:
         run_profile(problem, steps=opts.steps)
     elif opts.chisq:
         if opts.cov: print(problem.cov())
         print("chisq",problem())
     elif opts.preview:
-        print(problem_output)
         if opts.cov: print(problem.cov())
         preview(problem)
     elif opts.resynth > 0:
-        print(problem_output)
         resynth(fitdriver, problem, mapper, opts)
 
     elif opts.remote:
