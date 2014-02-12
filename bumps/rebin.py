@@ -68,10 +68,10 @@ def logbin_edges(L):
         dLoL = L[0]/L[1] - 1
         last = 1./(1+dLoL)
     E = L*2/(2+dLoL)
-    return numpy.hstack((E,E[-1]*last))
+    return numpy.hstack((E, E[-1]*last))
 
 
-def rebin(x,I,xo,Io=None,dtype=numpy.float64):
+def rebin(x, I, xo, Io=None, dtype=numpy.float64):
     """
     Rebin a vector.
 
@@ -91,7 +91,7 @@ def rebin(x,I,xo,Io=None,dtype=numpy.float64):
     average by half the total number of bins.
     """
     # Coerce axes to float arrays
-    x,xo = _input(x,dtype='d'),_input(xo,dtype='d')
+    x,xo = _input(x, dtype='d'), _input(xo, dtype='d')
     shape_in = numpy.array([x.shape[0]-1])
     shape_out = numpy.array([xo.shape[0]-1])
 
@@ -106,18 +106,18 @@ def rebin(x,I,xo,Io=None,dtype=numpy.float64):
         raise TypeError("input array incorrect shape %s"%I.shape)
 
     # Create output vector
-    Io = _output(Io,shape_out,dtype=dtype)
+    Io = _output(Io, shape_out, dtype=dtype)
 
     # Call rebin on type if it is available
     try:
-        rebincore = getattr(_reduction,'rebin_'+I.dtype.name)
+        rebincore = getattr(_reduction, 'rebin_'+I.dtype.name)
     except AttributeError:
         raise TypeError("rebin supports uint8 uint16 uint32 float32 float64, not "
                         + I.dtype.name)
-    rebincore(x,I,xo,Io)
+    rebincore(x, I, xo, Io)
     return Io
 
-def rebin2d(x,y,I,xo,yo,Io=None,dtype=None):
+def rebin2d(x, y, I, xo, yo, Io=None, dtype=None):
     """
     Rebin a matrix.
 
@@ -131,12 +131,12 @@ def rebin2d(x,y,I,xo,yo,Io=None,dtype=None):
 
         >>> #from bumps.rebin import rebin2d
         >>> x,y = [0,2,4,5], [0,1,3]
-        >>> z = [[2,2,1],[4,4,2]]
+        >>> z = [[2,2,1], [4,4,2]]
 
     We can check this by rebinning with uniform size bins::
 
-        >>> xo,yo = range(6), range(4)
-        >>> rebin2d(y,x,z,yo,xo)
+        >>> xo,yo = range(6),range(4)
+        >>> rebin2d(y, x, z, yo, xo)
         array([[ 1.,  1.,  1.,  1.,  1.],
                [ 1.,  1.,  1.,  1.,  1.],
                [ 1.,  1.,  1.,  1.,  1.]])
@@ -155,9 +155,9 @@ def rebin2d(x,y,I,xo,yo,Io=None,dtype=None):
     ordered matrix without making copies.
     """
     # Coerce axes to float arrays
-    x,y,xo,yo = [_input(v, dtype='d') for v in (x,y,xo,yo)]
-    shape_in = numpy.array([x.shape[0]-1,y.shape[0]-1])
-    shape_out = numpy.array([xo.shape[0]-1,yo.shape[0]-1])
+    x,y,xo,yo = [_input(v, dtype='d') for v in (x, y, xo, yo)]
+    shape_in = numpy.array([x.shape[0]-1, y.shape[0]-1])
+    shape_out = numpy.array([xo.shape[0]-1, yo.shape[0]-1])
 
     # Coerce counts to correct type and check shape
     if dtype is None:
@@ -168,17 +168,17 @@ def rebin2d(x,y,I,xo,yo,Io=None,dtype=None):
         raise TypeError("input array incorrect shape %s"%str(I.shape))
 
     # Create output vector
-    Io = _output(Io,shape_out,dtype=dtype)
+    Io = _output(Io, shape_out, dtype=dtype)
 
     # Call rebin on type if it is available
     try:
-        rebincore = getattr(_reduction,'rebin2d_'+I.dtype.name)
+        rebincore = getattr(_reduction, 'rebin2d_'+I.dtype.name)
     except AttributeError:
         raise TypeError("rebin2d supports uint8 uint16 uint32 float32 float64, not "
                         + I.dtype.name)
-    #print x.shape,y.shape,I.shape,xo.shape,yo.shape,Io.shape
-    #print x.dtype,y.dtype,I.dtype,xo.dtype,yo.dtype,Io.dtype
-    rebincore(x,y,I,xo,yo,Io)
+    #print x.shape, y.shape, I.shape, xo.shape, yo.shape, Io.shape
+    #print x.dtype, y.dtype, I.dtype, xo.dtype, yo.dtype, Io.dtype
+    rebincore(x, y, I, xo, yo, Io)
     return Io
 
 def _input(v, dtype='d'):
@@ -186,7 +186,7 @@ def _input(v, dtype='d'):
     Force v to be a contiguous array of the correct type, avoiding copies
     if possible.
     """
-    return numpy.ascontiguousarray(v,dtype=dtype)
+    return numpy.ascontiguousarray(v, dtype=dtype)
 
 def _output(v, shape, dtype=numpy.float64):
     """
@@ -194,106 +194,107 @@ def _output(v, shape, dtype=numpy.float64):
     returned array, reusing an existing array if possible.
     """
     if v is None:
-        return numpy.empty(shape,dtype=dtype)
-    if not (isinstance(v,numpy.ndarray)
+        return numpy.empty(shape, dtype=dtype)
+    if not (isinstance(v, numpy.ndarray)
             and v.dtype == numpy.dtype(dtype)
             and (v.shape == shape).all()
             and v.flags.contiguous):
         raise TypeError("output vector must be contiguous %s of size %s"
-                        %(dtype,shape))
+                        %(dtype, shape))
     return v
 
 
 # ================ Test code ==================
 # TODO: move test code to its own file
-def _check_one_1d(from_bins,val,to_bins,target):
+def _check_one_1d(from_bins, val, to_bins, target):
     target = _input(target)
     for (f,F) in [(from_bins,val), (from_bins[::-1],val[::-1])]:
         for (t,T) in [(to_bins,target), (to_bins[::-1],target[::-1])]:
-            result = rebin(f,F,t)
+            result = rebin(f, F, t)
             assert numpy.linalg.norm(T-result) < 1e-14, \
-                "rebin failed for %s->%s %s"%(f,t,result)
+                "rebin failed for %s->%s %s"%(f, t, result)
 
 def _check_all_1d():
     # Split a value
-    _check_one_1d([1,2,3,4],[10,20,30],[1,2.5,4],[20,40])
+    _check_one_1d([1,2,3,4], [10,20,30], [1,2.5,4], [20,40])
 
     # bin is a superset of rebin
-    _check_one_1d([0,1,2,3,4],[5,10,20,30],[1,2.5,3],[20,10]);
+    _check_one_1d([0,1,2,3,4], [5,10,20,30], [1,2.5,3], [20,10]);
 
     # bin is a subset of rebin
-    _check_one_1d([ 1,   2,   3,   4,   5,  6],
-             [   10,  20,  30,  40,  50],
-             [ 2.5, 3.5], [25])
+    _check_one_1d([1,   2,   3,   4,   5,   6],
+                  [  10,  20,  30,  40,  50  ],
+                  [      2.5,  3.5           ], 
+                  [          25              ])
 
     # one bin to many
     _check_one_1d([1,   2,   3,   4,   5,  6],
-             [10,  20,  30,  40,  50],
-             [2.1, 2.2, 2.3, 2.4 ],
-             [2, 2, 2]);
+                  [  10,  20,  30,  40,  50 ],
+                  [   2.1, 2.2, 2.3, 2.4    ],
+                  [       2,   2,   2       ]);
 
     # many bins to one
     _check_one_1d([1,   2,   3,   4,   5,  6],
-             [10,  20,  30,  40,  50],
-             [ 2.5, 4.5 ],
-             [60])
+                  [  10,  20,  30,  40,  50 ],
+                  [       2.5,      4.5     ],
+                  [             60          ])
 
-def _check_one_2d(x,y,z,xo,yo,zo):
+def _check_one_2d(x, y, z, xo, yo, zo):
     #print "checking"
-    #print x,y,z
-    #print xo,yo,zo
-    result = rebin2d(x,y,z,xo,yo)
-    target = numpy.array(zo,dtype=result.dtype)
+    #print x, y, z
+    #print xo, yo, zo
+    result = rebin2d(x, y, z, xo, yo)
+    target = numpy.array(zo, dtype=result.dtype)
     assert numpy.linalg.norm(target-result) < 1e-14, \
-        "rebin2d failed for %s,%s->%s,%s\n%s\n%s\n%s"%(x,y,z,xo,yo,zo)
+        "rebin2d failed for %s,%s->%s,%s\n%s\n%s\n%s"%(x, y, z, xo, yo, zo)
 
-def _check_uniform_2d(x,y):
-    z = numpy.array([y],'d') * numpy.array([x],'d').T
-    xedges = numpy.concatenate([(0,),numpy.cumsum(x)])
-    yedges = numpy.concatenate([(0,),numpy.cumsum(y)])
+def _check_uniform_2d(x, y):
+    z = numpy.array([y], 'd') * numpy.array([x], 'd').T
+    xedges = numpy.concatenate([(0,), numpy.cumsum(x)])
+    yedges = numpy.concatenate([(0,), numpy.cumsum(y)])
     nx = numpy.round(xedges[-1])
     ny = numpy.round(yedges[-1])
     ox = numpy.arange(nx+1)
     oy = numpy.arange(ny+1)
-    target = numpy.ones([nx,ny],'d')
-    _check_one_2d(xedges,yedges,z,ox,oy,target)
+    target = numpy.ones([nx,ny], 'd')
+    _check_one_2d(xedges, yedges, z, ox, oy, target)
 
 def _check_all_2d():
     x,y,I = [0,3,5,7], [0,1,3], [[3,6],[2,4],[2,4]]
     xo,yo,Io = range(8), range(4), [[1]*3]*7
-    x,y,I,xo,yo,Io = [numpy.array(A,'d') for A in (x,y,I,xo,yo,Io)]
+    x,y,I,xo,yo,Io = [numpy.array(A,'d') for A in (x, y, I, xo, yo, Io)]
 
     # Try various types and orders on a non-square matrix
-    _check_one_2d(x,y,I,xo,yo,Io)
-    _check_one_2d(x[::-1],y,I[::-1,:],xo,yo,Io)
-    _check_one_2d(x,y[::-1],I[:,::-1],xo,yo,Io)
-    _check_one_2d(x,y,I,[7,3,0],yo,[[4]*3,[3]*3])
-    _check_one_2d(x,y,I,xo,[3,2,0],[[1,2]]*7)
-    _check_one_2d(y,x,I.T,yo,xo,Io.T)  # C vs. Fortran ordering
+    _check_one_2d(x, y, I, xo, yo, Io)
+    _check_one_2d(x[::-1], y, I[::-1,:], xo, yo, Io)
+    _check_one_2d(x, y[::-1], I[:,::-1], xo, yo, Io)
+    _check_one_2d(x, y, I, [7,3,0], yo, [[4]*3,[3]*3])
+    _check_one_2d(x, y, I, xo, [3,2,0], [[1,2]]*7)
+    _check_one_2d(y, x, I.T, yo, xo, Io.T)  # C vs. Fortran ordering
 
     # Test smallest possible result
-    _check_one_2d([-1,2,4], [0,1,3], [[3,6],[2,4]],
-             [1,2], [1,2], [1])
+    _check_one_2d([-1, 2,4], [0,1,3], [[3,6],[2,4]],
+                  [  1,2  ], [ 1,2 ], [     1     ])
     # subset/superset
     _check_one_2d([0,1,2,3], [0,1,2,3], [[1]*3]*3,
              [0.5,1.5,2.5], [0.5,1.5,2.5], [[1]*2]*2)
-    for dtype in ['uint8','uint16','uint32','float32','float64']:
+    for dtype in ['uint8', 'uint16', 'uint32', 'float32', 'float64']:
         _check_one_2d([0,1,2,3,4], [0,1,2,3,4],
                  numpy.array([[1]*4]*4, dtype=dtype),
                  [-2,-1,2,5,6], [-2,-1,2,5,6],
-                 numpy.array([[0,0,0,0],[0,4,4,0],[0,4,4,0],[0,0,0,0]],
+                 numpy.array([[0,0,0,0], [0,4,4,0], [0,4,4,0], [0,0,0,0]],
                              dtype=dtype)
                  )
     # non-square test
-    _check_uniform_2d([1,2.5,4,0.5],[3,1,2.5,1,3.5])
-    _check_uniform_2d([3,2],[1,2])
+    _check_uniform_2d([1,2.5,4,0.5], [3,1,2.5,1,3.5])
+    _check_uniform_2d([3,2], [1,2])
 
 def _bin_edges():
     log_edges = numpy.asarray([2*1.2**c for c in range(10)])
     log_centers = (log_edges[1:] + log_edges[:1])/2
     assert numpy.linalg.norm(logbin_edges(log_centers) - log_edges) < 1e-10
 
-    lin_edges = numpy.linspace(2,10,10)
+    lin_edges = numpy.linspace(2, 10, 10)
     lin_centers = (lin_edges[1:] + lin_edges[:1])/2
     assert numpy.linalg.norm(bin_edges(lin_centers) - lin_edges) < 1e-10
 
