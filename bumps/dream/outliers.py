@@ -5,7 +5,7 @@ Given a
 """
 
 from numpy import mean, std, sqrt, argsort, where, argmin, arange
-from matplotlib.mlab import prctile
+from scipy.stats import scoreatpercentile as prctile
 from scipy.stats import t as student_t
 tinv = student_t.ppf
 from .mahal import mahalanobis
