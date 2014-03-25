@@ -61,9 +61,6 @@ print("-"*70)
 build_path = os.path.join('build','lib'+platform)
 addpath(build_path)
 
-# Make sample data and models available
-os.environ['BUMPS_DATA'] = os.path.join(root,'doc','_examples')
-
 # Set the nosetest args
 nose_args = ['-v', '--all-modules',
              '-m(^_?test_|_test$|^test$)',

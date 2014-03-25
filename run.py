@@ -57,9 +57,6 @@ with cd(root):
 build_path = os.path.join(root, 'build','lib'+platform)
 addpath(build_path)
 
-# Make sample data and models available
-os.environ['BUMPS_DATA'] = os.path.join(root,'bumps','gui','resources')
-
 import multiprocessing
 multiprocessing.freeze_support()
 import bumps.cli
