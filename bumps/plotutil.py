@@ -92,7 +92,11 @@ def plot_quantiles(x, y, contours, color, alpha=None):
 
 def _convert_contours_to_probabilities(contours):
     """
-    given [a,b,c] return [100-a, a, 100-b, b, 100-c, c]/100
+    Given confidence intervals [a, b,...] as percents, return quantiles for
+    each interval [a_low, a_high, b_low, b_high, ...].
     """
     import numpy
-    return numpy.hstack( [(100.-v, v) for v in contours] )/100
+    # lower quantile for ci in percent = (100 - ci)/2
+    # upper quantile = 100 - lower quantile = 100 - (100-ci)/2 = (100 + ci)/2
+    # divide by an additional 100 to get proportion from 0 to 1
+    return numpy.hstack( [(100.0-p,100.0+p) for p in contours] )/200.0
