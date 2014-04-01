@@ -46,6 +46,9 @@ class SerialMapper(object):
     def stop_mapper(mapper):
         pass
 
+def _MP_load_problem(*modelargs):
+    from .fitproblem import load_problem
+    _MP_set_problem(load_problem(*modelargs))
 def _MP_set_problem(problem):
     global _problem
     nice()
@@ -66,15 +69,16 @@ class MPMapper(object):
         import multiprocessing
         if cpus is None:
             cpus = multiprocessing.cpu_count()
-        if MPMapper.pool is None:
-            MPMapper.pool = multiprocessing.Pool(cpus,_MP_set_problem,(problem,))
+        if MPMapper.pool is not None:
+            MPMapper.pool.terminate()
+        #MPMapper.pool = multiprocessing.Pool(cpus,_MP_load_problem,modelargs)
+        MPMapper.pool = multiprocessing.Pool(cpus,_MP_set_problem, (problem,))
         mapper = lambda points: MPMapper.pool.map(_MP_run_problem, points)
         return mapper
         
     @staticmethod
     def stop_mapper(mapper):
         pass
-
 
 def _MPI_set_problem(comm, problem, root=0):
     global _problem
