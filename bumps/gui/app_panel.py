@@ -472,6 +472,7 @@ class AppPanel(wx.Panel):
             self.view['convergence'].OnFitProgress(event)
         elif event.message in ('uncertainty_update', 'uncertainty_final'):
             self.uncertainty_state = event.uncertainty_state
+            self.console['state'] = self.uncertainty_state
             self.view['uncertainty'].OnFitProgress(event)
             self.view['correlation'].OnFitProgress(event)
             self.view['trace'].OnFitProgress(event)

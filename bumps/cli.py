@@ -577,8 +577,10 @@ def main():
             fitdriver.monitors = [ConsoleMonitor(problem),
                                StepMonitor(problem,fid,fields=['step','value'])]
 
+        #import time; t0=time.clock()
         fitdriver.mapper = mapper.start_mapper(problem, opts.args)
         best, fbest = fitdriver.fit(resume=resume_path)
+        #print("time=%g"%(time.clock()-t0),file=sys.__stdout__)
         remember_best(fitdriver, problem, best)
         if opts.cov: print(problem.cov())
         mapper.stop_mapper(fitdriver.mapper)
