@@ -1,0 +1,393 @@
+<?xml version="1.0" ?>
+<SASroot version="1.0" xmlns="cansas1d/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="cansas1d/1.0 http://svn.smallangles.net/svn/canSAS/1dwg/trunk/cansas1d.xsd">
+	<SASentry>
+		<Title>
+			cyl_400_20.txt
+		</Title>
+		<Run>
+			cyl_400_20.txt
+		</Run>
+		<SASdata>
+			<Idata>
+				<Q unit="1/A">
+					0.025
+				</Q>
+				<I unit="1/cm">
+					125.852
+				</I>
+				<Idev unit="1/cm">
+					0.0
+				</Idev>
+				<Qdev unit="1/A">
+					0.0
+				</Qdev>
+			</Idata>
+			<Idata>
+				<Q unit="1/A">
+					0.05
+				</Q>
+				<I unit="1/cm">
+					53.6662
+				</I>
+				<Idev unit="1/cm">
+					0.0
+				</Idev>
+				<Qdev unit="1/A">
+					0.0
+				</Qdev>
+			</Idata>
+			<Idata>
+				<Q unit="1/A">
+					0.075
+				</Q>
+				<I unit="1/cm">
+					26.0733
+				</I>
+				<Idev unit="1/cm">
+					0.0
+				</Idev>
+				<Qdev unit="1/A">
+					0.0
+				</Qdev>
+			</Idata>
+			<Idata>
+				<Q unit="1/A">
+					0.1
+				</Q>
+				<I unit="1/cm">
+					11.8935
+				</I>
+				<Idev unit="1/cm">
+					0.0
+				</Idev>
+				<Qdev unit="1/A">
+					0.0
+				</Qdev>
+			</Idata>
+			<Idata>
+				<Q unit="1/A">
+					0.125
+				</Q>
+				<I unit="1/cm">
+					4.61714
+				</I>
+				<Idev unit="1/cm">
+					0.0
+				</Idev>
+				<Qdev unit="1/A">
+					0.0
+				</Qdev>
+			</Idata>
+			<Idata>
+				<Q unit="1/A">
+					0.15
+				</Q>
+				<I unit="1/cm">
+					1.29983
+				</I>
+				<Idev unit="1/cm">
+					0.0
+				</Idev>
+				<Qdev unit="1/A">
+					0.0
+				</Qdev>
+			</Idata>
+			<Idata>
+				<Q unit="1/A">
+					0.175
+				</Q>
+				<I unit="1/cm">
+					0.171347
+				</I>
+				<Idev unit="1/cm">
+					0.0
+				</Idev>
+				<Qdev unit="1/A">
+					0.0
+				</Qdev>
+			</Idata>
+			<Idata>
+				<Q unit="1/A">
+					0.2
+				</Q>
+				<I unit="1/cm">
+					0.0417614
+				</I>
+				<Idev unit="1/cm">
+					0.0
+				</Idev>
+				<Qdev unit="1/A">
+					0.0
+				</Qdev>
+			</Idata>
+			<Idata>
+				<Q unit="1/A">
+					0.225
+				</Q>
+				<I unit="1/cm">
+					0.172719
+				</I>
+				<Idev unit="1/cm">
+					0.0
+				</Idev>
+				<Qdev unit="1/A">
+					0.0
+				</Qdev>
+			</Idata>
+			<Idata>
+				<Q unit="1/A">
+					0.25
+				</Q>
+				<I unit="1/cm">
+					0.247876
+				</I>
+				<Idev unit="1/cm">
+					0.0
+				</Idev>
+				<Qdev unit="1/A">
+					0.0
+				</Qdev>
+			</Idata>
+			<Idata>
+				<Q unit="1/A">
+					0.275
+				</Q>
+				<I unit="1/cm">
+					0.20301
+				</I>
+				<Idev unit="1/cm">
+					0.0
+				</Idev>
+				<Qdev unit="1/A">
+					0.0
+				</Qdev>
+			</Idata>
+			<Idata>
+				<Q unit="1/A">
+					0.3
+				</Q>
+				<I unit="1/cm">
+					0.104599
+				</I>
+				<Idev unit="1/cm">
+					0.0
+				</Idev>
+				<Qdev unit="1/A">
+					0.0
+				</Qdev>
+			</Idata>
+			<Idata>
+				<Q unit="1/A">
+					0.325
+				</Q>
+				<I unit="1/cm">
+					0.0285595
+				</I>
+				<Idev unit="1/cm">
+					0.0
+				</Idev>
+				<Qdev unit="1/A">
+					0.0
+				</Qdev>
+			</Idata>
+			<Idata>
+				<Q unit="1/A">
+					0.35
+				</Q>
+				<I unit="1/cm">
+					0.00213344
+				</I>
+				<Idev unit="1/cm">
+					0.0
+				</Idev>
+				<Qdev unit="1/A">
+					0.0
+				</Qdev>
+			</Idata>
+			<Idata>
+				<Q unit="1/A">
+					0.375
+				</Q>
+				<I unit="1/cm">
+					0.0137511
+				</I>
+				<Idev unit="1/cm">
+					0.0
+				</Idev>
+				<Qdev unit="1/A">
+					0.0
+				</Qdev>
+			</Idata>
+			<Idata>
+				<Q unit="1/A">
+					0.4
+				</Q>
+				<I unit="1/cm">
+					0.0312374
+				</I>
+				<Idev unit="1/cm">
+					0.0
+				</Idev>
+				<Qdev unit="1/A">
+					0.0
+				</Qdev>
+			</Idata>
+			<Idata>
+				<Q unit="1/A">
+					0.425
+				</Q>
+				<I unit="1/cm">
+					0.0350328
+				</I>
+				<Idev unit="1/cm">
+					0.0
+				</Idev>
+				<Qdev unit="1/A">
+					0.0
+				</Qdev>
+			</Idata>
+			<Idata>
+				<Q unit="1/A">
+					0.45
+				</Q>
+				<I unit="1/cm">
+					0.0243172
+				</I>
+				<Idev unit="1/cm">
+					0.0
+				</Idev>
+				<Qdev unit="1/A">
+					0.0
+				</Qdev>
+			</Idata>
+			<Idata>
+				<Q unit="1/A">
+					0.475
+				</Q>
+				<I unit="1/cm">
+					0.00923067
+				</I>
+				<Idev unit="1/cm">
+					0.0
+				</Idev>
+				<Qdev unit="1/A">
+					0.0
+				</Qdev>
+			</Idata>
+			<Idata>
+				<Q unit="1/A">
+					0.5
+				</Q>
+				<I unit="1/cm">
+					0.00121297
+				</I>
+				<Idev unit="1/cm">
+					0.0
+				</Idev>
+				<Qdev unit="1/A">
+					0.0
+				</Qdev>
+			</Idata>
+		</SASdata>
+		<SASsample name="">
+			<ID>
+				
+			</ID>
+		</SASsample>
+		<SASinstrument>
+			<name>
+				
+			</name>
+			<SASsource/>
+		</SASinstrument>
+		<SASnote/>
+		<fitting_plug_in version="1.0">
+			<filename>
+				cyl_400_20.txt
+			</filename>
+			<timestamp epoch="1389997943.92">
+				Fri Jan 17 17:32:23 2014
+			</timestamp>
+			<Attributes>
+				<is_data is_data="True"/>
+				<group_id group_id="287"/>
+				<data_name data_name="cyl_400_20.txt"/>
+				<data_id data_id="cyl_400_20.txt1389997565.29"/>
+				<name name=""/>
+				<data_name data_name="cyl_400_20.txt"/>
+				<engine_type engine_type="scipy"/>
+				<qmin qmin="0.025"/>
+				<qmax qmax="0.5"/>
+				<npts npts="50"/>
+				<categorycombobox categorycombobox="Shapes"/>
+				<formfactorcombobox formfactorcombobox="CylinderModel"/>
+				<structurecombobox structurecombobox="None"/>
+				<multi_factor multi_factor="None"/>
+				<magnetic_on magnetic_on="False"/>
+				<enable_smearer enable_smearer="False"/>
+				<disable_smearer disable_smearer="True"/>
+				<pinhole_smearer pinhole_smearer="False"/>
+				<slit_smearer slit_smearer="False"/>
+				<enable_disp enable_disp="True"/>
+				<disable_disp disable_disp="False"/>
+				<dI_noweight dI_noweight="True"/>
+				<dI_didata dI_didata="False"/>
+				<dI_sqrdata dI_sqrdata="False"/>
+				<dI_idata dI_idata="False"/>
+				<enable2D enable2D="False"/>
+				<cb1 cb1="False"/>
+				<tcChi tcChi="2.4299e-11"/>
+				<smearer smearer="None"/>
+				<smear_type smear_type="None"/>
+				<dq_l dq_l="None"/>
+				<dq_r dq_r="None"/>
+				<dx_max dx_max="0.0"/>
+				<dx_min dx_min="0.0"/>
+				<dxl dxl="0.0"/>
+				<dxw dxw=""/>
+				<values/>
+				<weights/>
+				<disp_obj_dict/>
+				<parameters>
+					<parameter error_displayed="True" error_value="" maximum_displayed="True" maximum_value="" minimum_displayed="True" minimum_value="" name="background" selected_to_fit="False" unit="[1/cm]" value="0"/>
+					<parameter error_displayed="True" error_value="91.191" maximum_displayed="True" maximum_value="" minimum_displayed="True" minimum_value="" name="length" selected_to_fit="True" unit="[A]" value="399.99"/>
+					<parameter error_displayed="True" error_value="0.62637" maximum_displayed="True" maximum_value="" minimum_displayed="True" minimum_value="" name="radius" selected_to_fit="True" unit="[A]" value="20"/>
+					<parameter error_displayed="True" error_value="" maximum_displayed="True" maximum_value="" minimum_displayed="True" minimum_value="" name="scale" selected_to_fit="False" unit="" value="1"/>
+					<parameter error_displayed="True" error_value="6.3206e-08" maximum_displayed="True" maximum_value="" minimum_displayed="True" minimum_value="" name="sldCyl" selected_to_fit="True" unit="[1/A^(2)]" value="4e-06"/>
+					<parameter error_displayed="True" error_value="" maximum_displayed="True" maximum_value="" minimum_displayed="True" minimum_value="" name="sldSolv" selected_to_fit="False" unit="[1/A^(2)]" value="1e-06"/>
+					<parameter error_displayed="False" error_value="" maximum_displayed="False" maximum_value="" minimum_displayed="False" minimum_value="" name="cyl_phi" selected_to_fit="True" unit="[deg]" value="60"/>
+					<parameter error_displayed="False" error_value="" maximum_displayed="False" maximum_value="" minimum_displayed="False" minimum_value="" name="cyl_theta" selected_to_fit="True" unit="[deg]" value="60"/>
+				</parameters>
+				<str_parameters/>
+				<orientation_parameters>
+					<parameter error_displayed="False" error_value="" maximum_displayed="False" maximum_value="" minimum_displayed="False" minimum_value="" name="cyl_phi" selected_to_fit="True" unit="[deg]" value="60"/>
+					<parameter error_displayed="False" error_value="" maximum_displayed="False" maximum_value="" minimum_displayed="False" minimum_value="" name="cyl_theta" selected_to_fit="True" unit="[deg]" value="60"/>
+				</orientation_parameters>
+				<dispersity_parameters>
+					<parameter error_displayed="None" error_value="None" maximum_displayed="None" maximum_value="None" minimum_displayed="None" minimum_value="None" name="cyl_theta.npts" selected_to_fit="None" unit="None" value="35"/>
+					<parameter error_displayed="None" error_value="None" maximum_displayed="None" maximum_value="None" minimum_displayed="None" minimum_value="None" name="cyl_theta.nsigmas" selected_to_fit="None" unit="None" value="3"/>
+					<parameter error_displayed="False" error_value="" maximum_displayed="False" maximum_value="" minimum_displayed="False" minimum_value="" name="cyl_theta.width" selected_to_fit="False" unit="" value="0"/>
+					<parameter error_displayed="None" error_value="None" maximum_displayed="None" maximum_value="None" minimum_displayed="None" minimum_value="None" name="cyl_phi.npts" selected_to_fit="None" unit="None" value="35"/>
+					<parameter error_displayed="None" error_value="None" maximum_displayed="None" maximum_value="None" minimum_displayed="None" minimum_value="None" name="cyl_phi.nsigmas" selected_to_fit="None" unit="None" value="3"/>
+					<parameter error_displayed="False" error_value="" maximum_displayed="False" maximum_value="" minimum_displayed="False" minimum_value="" name="cyl_phi.width" selected_to_fit="False" unit="" value="0"/>
+				</dispersity_parameters>
+				<fixed_param>
+					<parameter error_displayed="None" error_value="None" maximum_displayed="None" maximum_value="None" minimum_displayed="None" minimum_value="None" name="length.npts" selected_to_fit="None" unit="None" value="35"/>
+					<parameter error_displayed="None" error_value="None" maximum_displayed="None" maximum_value="None" minimum_displayed="None" minimum_value="None" name="length.nsigmas" selected_to_fit="None" unit="None" value="3"/>
+					<parameter error_displayed="None" error_value="None" maximum_displayed="None" maximum_value="None" minimum_displayed="None" minimum_value="None" name="radius.npts" selected_to_fit="None" unit="None" value="35"/>
+					<parameter error_displayed="None" error_value="None" maximum_displayed="None" maximum_value="None" minimum_displayed="None" minimum_value="None" name="radius.nsigmas" selected_to_fit="None" unit="None" value="3"/>
+					<parameter error_displayed="None" error_value="None" maximum_displayed="None" maximum_value="None" minimum_displayed="None" minimum_value="None" name="cyl_theta.npts" selected_to_fit="None" unit="None" value="35"/>
+					<parameter error_displayed="None" error_value="None" maximum_displayed="None" maximum_value="None" minimum_displayed="None" minimum_value="None" name="cyl_theta.nsigmas" selected_to_fit="None" unit="None" value="3"/>
+					<parameter error_displayed="None" error_value="None" maximum_displayed="None" maximum_value="None" minimum_displayed="None" minimum_value="None" name="cyl_phi.npts" selected_to_fit="None" unit="None" value="35"/>
+					<parameter error_displayed="None" error_value="None" maximum_displayed="None" maximum_value="None" minimum_displayed="None" minimum_value="None" name="cyl_phi.nsigmas" selected_to_fit="None" unit="None" value="3"/>
+				</fixed_param>
+				<fittable_param>
+					<parameter error_displayed="True" error_value="" maximum_displayed="True" maximum_value="" minimum_displayed="True" minimum_value="" name="length.width" selected_to_fit="False" unit="" value="0"/>
+					<parameter error_displayed="True" error_value="1.6546e+06" maximum_displayed="True" maximum_value="" minimum_displayed="True" minimum_value="" name="radius.width" selected_to_fit="True" unit="" value="0"/>
+					<parameter error_displayed="False" error_value="" maximum_displayed="False" maximum_value="" minimum_displayed="False" minimum_value="" name="cyl_theta.width" selected_to_fit="False" unit="" value="0"/>
+					<parameter error_displayed="False" error_value="" maximum_displayed="False" maximum_value="" minimum_displayed="False" minimum_value="" name="cyl_phi.width" selected_to_fit="False" unit="" value="0"/>
+				</fittable_param>
+			</Attributes>
+		</fitting_plug_in>
+	</SASentry>
+</SASroot>

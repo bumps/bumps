@@ -67,3 +67,4 @@ if __name__ == "__main__":
     prepare()
     import bumps.cli
     bumps.cli.main()
+

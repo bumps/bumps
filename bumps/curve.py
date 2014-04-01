@@ -107,6 +107,10 @@ class Curve(object):
         R = self.residuals()
         return 0.5*numpy.sum(R**2)
 
+    def save(self, basename):
+        data = numpy.vstack((self.x,self.y,self.dy,self.theory()))
+        numpy.savetxt(basename+'.dat', data.T)
+
     def plot(self, view=None):
         import pylab
         pylab.errorbar(self.x, self.y, yerr=self.dy, fmt='.')
