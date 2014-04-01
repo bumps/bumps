@@ -788,10 +788,11 @@ def load_problem(file, options=[]):
 
     Raises ValueError if the script does not define problem.
     """
-    ctx = dict(__file__=file)
+    ctx = dict(__file__=file,__name__="bumps_model")
     argv = sys.argv
     sys.argv = [file] + options
-    exec(compile(open(file).read(), file, 'exec'), ctx)
+    code = compile(open(file).read(), file, 'exec')
+    exec(code, ctx)
     sys.argv = argv
     try:
         problem = ctx["problem"]
