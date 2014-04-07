@@ -132,8 +132,11 @@ def logfactorial(n):
 
 
 class PoissonCurve(Curve):
-    """
-    Model the measurement of a Poisson process, where dy is approx. sqrt(y).
+    r"""
+    Model the measurement of a Poisson process.
+
+    The nllf is calculated using Poisson probabilities, but the curve itself
+    is displayed using the approximation that $\sigma_y \approx \sqrt(y)$.
     
     See :class:`Curve` for details.
     """
