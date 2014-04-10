@@ -5,20 +5,22 @@ __all__ = ['plot_all', 'plot_corr', 'plot_corrmatrix',
            'plot_R','plot_logp', 'format_vars']
 
 import math
-import re
 
 import numpy
 from numpy import arange, squeeze, linspace, meshgrid, vstack, inf
+
 from . import corrplot
-from .stats import credible_interval, stats
-from .formatnum import format_uncertainty, format_value
+from .formatnum import format_value
+from .stats import var_stats, format_vars
 
 def plot_all(state, portion=1.0, figfile=None):
     from pylab import figure, savefig, suptitle
 
-    figure(); vstats = plot_vars(state, portion=portion)
+    draw = state.draw(portion=portion)
+    all_vstats = var_stats(draw)
+    figure(); plot_vars(draw, all_vstats)
     if state.title: suptitle(state.title)
-    print(format_vars(vstats))
+    print(format_vars(all_vstats))
     if figfile != None: savefig(figfile+"-vars")
     figure(); plot_trace(state, portion=portion)
     if state.title: suptitle(state.title)
@@ -30,32 +32,20 @@ def plot_all(state, portion=1.0, figfile=None):
     if state.title: suptitle(state.title)
     if figfile != None: savefig(figfile+"-logp")
     if state.Nvar <= 25:
-        figure(); plot_corrmatrix(state, portion=portion)
+        figure(); plot_corrmatrix(draw)
         if state.title: suptitle(state.title)
         if figfile != None: savefig(figfile+"-corr")
 
-def plot_var(state, var=0, portion=None, selection=None, **kw):
-    points, logp = state.sample(portion=portion, vars=[var],
-                                selection=selection)
-    _plot_var(points.flatten(), logp, label=state.labels[var], **kw)
 
-# TODO: separate var stats calculation from plotting and printing
-def plot_vars(state, vars=None, portion=1.0, selection=None, **kw):
-    from pylab import subplot,cm,clf
+def plot_vars(draw, all_vstats, **kw):
+    from pylab import subplot,clf
 
     clf()
-    points, logp = state.sample(portion=portion, vars=vars,
-                                selection=selection)
-    if vars==None:
-        vars = list(range(points.shape[1]))
-    nw,nh = tile_axes(len(vars))
-    vstats = []
-    cbar = _make_fig_colorbar(logp)
-    for k,v in enumerate(vars):
+    nw,nh = tile_axes(len(all_vstats))
+    cbar = _make_fig_colorbar(draw.logp)
+    for k,vstats in enumerate(all_vstats):
         subplot(nw,nh,k+1)
-        vstats.append(_plot_var(points[:,k].flatten(), logp, cbar,
-                                  label=state.labels[v], index=k, **kw))
-    return vstats
+        plot_var(draw, vstats, k, cbar, **kw)
 
 def tile_axes(n, size=None):
     """
@@ -89,68 +79,42 @@ def tile_axes(n, size=None):
     return nw,nh
 
 
-def _plot_var(points, logp, cbar, index=None, label="P", nbins=30, ci=0.95):
-    # Sort the data
-    idx = numpy.argsort(points)
-    points = points[idx]
-    logp=logp[idx]
-    idx = numpy.argmax(logp)
-    maxlogp = logp[idx]
-    best = points[idx]
-
-    # If weighted, use the relative probability from the marginal distribution
-    # as the weight
-    #weights = numpy.exp(logp-maxlogp) if weighted else None
-    weights = None
-
-    # Choose the interval for the histogram
-    ONE_SIGMA = 0.15865525393145705
-    rangeci,range68 = credible_interval(x=points, weights=weights,
-                                        ci=[ci,1-2*ONE_SIGMA])
-
-    mean, std, median = stats(x=points, weights=weights)
-
-    vstats = dict(label=label, index=index, rangeci=rangeci, range68=range68,
-                  median=median, mean=mean, std=std, best=best)
-
-
-    #_make_var_histogram(points, logp, nbins, rangeci, weights)
-    _make_logp_histogram(points, logp, nbins, rangeci, weights, cbar)
+def plot_var(draw, vstats, var, cbar, nbins=30):
+    values = draw.points[:,var].flatten()
+    _make_logp_histogram(values, draw.logp, nbins, vstats.p95, draw.weights, cbar)
     _decorate_histogram(vstats)
-    return vstats
 
 def _decorate_histogram(vstats):
     import pylab
     from matplotlib.transforms import blended_transform_factory as blend
     # Shade things inside 1-sigma
-    pylab.axvspan(vstats['range68'][0],vstats['range68'][1],
+    pylab.axvspan(vstats.p68[0],vstats.p68[1],
                   color='gold',alpha=0.5,zorder=-1)
     # build transform with x=data, y=axes(0,1)
     ax = pylab.gca()
     transform = blend(ax.transData, ax.transAxes)
 
-    lci,hci = vstats['rangeci']
-    l68,h68 = vstats['range68']
-    mean,median,best = vstats['mean'],vstats['median'],vstats['best']
+    l95,h95 = vstats.p95
+    l68,h68 = vstats.p68
     def marker(s,v):
-        if v < lci: s,v,ha = '<'+s,lci,'left'
-        elif v > hci: s,v,ha = '>'+s,hci,'right'
+        if v < l95: s,v,ha = '<'+s,l95,'left'
+        elif v > h95: s,v,ha = '>'+s,h95,'right'
         else: ha='center'
         pylab.text(v, 0.95, s, va='top', ha=ha,
                    transform=transform, zorder=3, color='g')
         #pylab.axvline(v)
-    marker('|',median)
-    marker('E',mean)
-    marker('*',best)
+    marker('|',vstats.median)
+    marker('E',vstats.mean)
+    marker('*',vstats.best)
 
-    pylab.text(0.01, 0.95, vstats['label'], zorder=2,
+    pylab.text(0.01, 0.95, vstats.label, zorder=2,
         backgroundcolor=(1,1,0,0.2),
         verticalalignment='top',
         horizontalalignment='left',
         transform=pylab.gca().transAxes)
     pylab.setp([pylab.gca().get_yticklabels()],visible=False)
-    ticks = (lci, l68, median, h68, hci)
-    labels = [format_value(v,hci-lci) for v in ticks]
+    ticks = (l95, l68, vstats.median, h68, h95)
+    labels = [format_value(v,h95-l95) for v in ticks]
     if len(labels[2]) > 5:
         # Drop 68% values if too many digits
         ticks,labels= ticks[0::2],labels[0::2]
@@ -199,14 +163,16 @@ def _make_fig_colorbar(logp):
 
     return vmin,vmax,cmap
 
-
-
-def _make_logp_histogram(points, logp, nbins, rangeci, weights, cbar):
+def _make_logp_histogram(values, logp, nbins, ci, weights, cbar):
     from numpy import (ones_like, searchsorted, linspace, cumsum, diff, 
-        sort, argsort, array, hstack, log10, exp)
+        argsort, array, hstack, exp)
     if weights == None: weights = ones_like(logp)
-    edges = linspace(rangeci[0],rangeci[1],nbins+1)
-    idx = searchsorted(points, edges)
+    # TODO: values are being sorted to collect stats and again to plot
+    idx = argsort(values)
+    values, weights, logp = values[idx], weights[idx], logp[idx]
+    #open('/tmp/out','a').write("ci=%s, range=%s\n"%(ci,(min(values),max(values))))
+    edges = linspace(ci[0],ci[1],nbins+1)
+    idx = searchsorted(values, edges)
     weightsum = cumsum(weights)
     heights = diff(weightsum[idx])/weightsum[-1]  # normalized weights
 
@@ -235,20 +201,20 @@ def _make_logp_histogram(points, logp, nbins, rangeci, weights, cbar):
     centers,height,maxlikelihood = array(bins).T
     pylab.plot(centers, maxlikelihood*max(height), '-g', hold=True)
 
-def _make_var_histogram(points, logp, nbins, rangeci, weights):
+def _make_var_histogram(values, logp, nbins, ci, weights):
     # Produce a histogram
-    hist, bins = numpy.histogram(points, bins=nbins, range=rangeci,
+    hist, bins = numpy.histogram(values, bins=nbins, range=ci,
                                  #new=True,
                                  normed=True, weights=weights)
 
     # Find the max likelihood for values in each bin
-    edge = numpy.searchsorted(points,bins)
-    histbest = [numpy.max(logp[edge[i]:edge[i+1]])
-                if edge[i]<edge[i+1] else -inf
+    edges = numpy.searchsorted(values,bins)
+    histbest = [numpy.max(logp[edges[i]:edges[i+1]])
+                if edges[i]<edges[i+1] else -inf
                 for i in range(nbins)]
 
     # scale to marginalized probability with peak the same height as hist
-    histbest = numpy.exp(histbest-maxlogp)
+    histbest = numpy.exp(histbest - max(logp))
     histbest *= numpy.max(hist)
 
 
@@ -257,7 +223,7 @@ def _make_var_histogram(points, logp, nbins, rangeci, weights):
     pylab.bar(bins[:-1], hist, width=bins[1]-bins[0])
 
     # Plot the kernel density estimate
-    #density = kde_1d(points)
+    #density = kde_1d(values)
     #x = linspace(bins[0],bins[-1],100)
     #pylab.plot(x, density(x), '-k', hold=True)
 
@@ -265,82 +231,8 @@ def _make_var_histogram(points, logp, nbins, rangeci, weights):
     centers = (bins[:-1]+bins[1:])/2
     pylab.plot(centers, histbest, '-g', hold=True)
 
-def format_num(x, place):
-    precision = 10**place
-    digits_after_decimal = abs(place) if place < 0 else 0
-    return "%.*f"%(digits_after_decimal,
-                   numpy.round(x/precision)*precision)
-
-def format_vars(varstats, ci=0.95):
-    v = dict(parameter="Parameter",
-             mean="mean", median="median", best="best",
-             interval68="68% interval",
-             intervalci="%g%% interval"%(100*ci))
-    s = ["   %(parameter)20s %(mean)10s %(median)7s %(best)7s [%(interval68)15s] [%(intervalci)15s]"%v]
-    for v in varstats:
-        label,index = v['label'],v['index']
-        rangeci,range68 = v['rangeci'],v['range68']
-        median, mean, std, best = v['median'],v['mean'],v['std'],v['best']
-        # Make sure numbers are formatted with the appropriate precision
-        place = int(numpy.log10(rangeci[1]-rangeci[0]))-2
-        summary = dict(mean=format_uncertainty(mean,std),
-                       median=format_num(median,place-1),
-                       best=format_num(best,place-1),
-                       lo68=format_num(range68[0],place),
-                       hi68=format_num(range68[1],place),
-                       ci="%g%%"%(100*ci),
-                       loci=format_num(rangeci[0],place),
-                       hici=format_num(rangeci[1],place),
-                       parameter=label,
-                       index=index+1)
-        s.append("%(index)2d %(parameter)20s %(mean)10s %(median)7s %(best)7s [%(lo68)7s %(hi68)7s] [%(loci)7s %(hici)7s]"%summary)
-
-    return "\n".join(s)
-
-VAR_PATTERN = re.compile(r"""
-   ^\ *
-   (?P<parnum>[0-9]+)\ +
-   (?P<parname>.+?)\ +
-   (?P<mean>[0-9.-]+?)
-   \((?P<err>[0-9]+)\)
-   (e(?P<exp>[+-]?[0-9]+))?\ +
-   (?P<median>[0-9.eE+-]+?)\ +
-   (?P<best>[0-9.eE+-]+?)\ +
-   \[\ *(?P<lo68>[0-9.eE+-]+?)\ +
-   (?P<hi68>[0-9.eE+-]+?)\]\ +
-   \[\ *(?P<lo95>[0-9.eE+-]+?)\ +
-   (?P<hi95>[0-9.eE+-]+?)\]
-   \ *$
-   """, re.VERBOSE)
-
-class VarStats(object):
-    def __init__(self, **kw):
-        self.__dict__ = kw
-
-def parse_var(line):
-    """
-    Parse a line returned by format_vars back into the statistics for the
-    variable on that line.
-    """
-    m = VAR_PATTERN.match(line)
-    if m:
-        exp = int(m.group('exp')) if m.group('exp') else 0
-        return VarStats(number = int(m.group('parnum')),
-                        name = m.group('parname'),
-                        mean = float(m.group('mean')) * 10**exp,
-                        median = float(m.group('median')),
-                        best = float(m.group('best')),
-                        p68 = (float(m.group('lo68')), float(m.group('hi68'))),
-                        p95 = (float(m.group('lo95')), float(m.group('hi95'))),
-                        )
-    else:
-        return None
-
-
-def plot_corrmatrix(state, vars=None, portion=None, selection=None):
-    points, _ = state.sample(portion=portion, vars=vars, selection=selection)
-    labels = state.labels if vars==None else [state.labels[v] for v in vars]
-    c = corrplot.Corr2d(points.T, bins=50, labels=labels)
+def plot_corrmatrix(draw):
+    c = corrplot.Corr2d(draw.points.T, bins=50, labels=draw.labels)
     c.plot()
     #print "Correlation matrix\n",c.R()
 
@@ -359,41 +251,41 @@ class kde_2d(kde.gaussian_kde):
         return dxy.reshape(X.shape)
     __call__ = evalxy
 
-def plot_corr(state, vars=(0,1), portion=None, selection=None):
+def plot_corr(draw, vars=(0,1)):
     from pylab import axes, setp, MaxNLocator
 
     p1,p2 = vars
-    labels = [state.labels[v] for v in vars]
-    points, _ = state.sample(portion=portion, vars=vars, selection=selection)
+    labels = [draw.labels[v] for v in vars]
+    values = [draw.points[:,v] for v in vars]
 
     # Form kernel density estimates of the parameters
-    xmin,xmax = min(points[:,0]),max(points[:,0])
-    density_x = kde_1d(points[:,0])
+    xmin,xmax = min(values[0]),max(values[0])
+    density_x = kde_1d(values[0])
     x = linspace(xmin, xmax, 100)
     px = density_x(x)
 
-    density_y = kde_1d(points[:,1])
-    ymin,ymax = min(points[:,1]),max(points[:,1])
+    density_y = kde_1d(values[1])
+    ymin,ymax = min(values[1]),max(values[1])
     y = linspace(ymin, ymax, 100)
     py = density_y(y)
 
     nbins = 50
     axData = axes([0.1,0.1,0.63,0.63]) # x,y,w,h
 
-    #density_xy = kde_2d(points[:,vars])
+    #density_xy = kde_2d(values[vars])
     #dxy = density_xy(x,y)*points.shape[0]
     #axData.pcolorfast(x,y,dxy,cmap=cm.gist_earth_r) #@UndefinedVariable
 
-    axData.plot(points[:,0], points[:,1], 'k.', markersize=1)
+    axData.plot(values[0], values[1], 'k.', markersize=1)
     axData.set_xlabel(labels[0])
     axData.set_ylabel(labels[1])
     axHistX = axes([0.1,0.75,0.63,0.2],sharex=axData)
-    axHistX.hist(points[:,0],nbins,orientation='vertical',normed=1)
+    axHistX.hist(values[0],nbins,orientation='vertical',normed=1)
     axHistX.plot(x,px,'k-')
     axHistX.yaxis.set_major_locator(MaxNLocator(4,prune="both"))
     setp(axHistX.get_xticklabels(), visible=False,)
     axHistY = axes([0.75,0.1,0.2,0.63],sharey=axData)
-    axHistY.hist(points[:,1],nbins,orientation='horizontal',normed=1)
+    axHistY.hist(values[1],nbins,orientation='horizontal',normed=1)
     axHistY.plot(py,y,'k-')
     axHistY.xaxis.set_major_locator(MaxNLocator(4,prune="both"))
     setp(axHistY.get_yticklabels(), visible=False)

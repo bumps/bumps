@@ -557,6 +557,7 @@ class MCMCDraw(object):
         in the outlier test.  The default is to include all of them.
         """
         _, chains, logp = self.chains()
+
         if test=='none':
             self._good_chains = slice(None,None)
         else:
@@ -565,8 +566,11 @@ class MCMCDraw(object):
             outliers = identify_outliers(test, logp[start:], chains[-1])
             #print("outliers",outliers)
             #print(logp.shape, chains.shape)
-            self._good_chains = numpy.array([i for i in range(logp.shape[1])
-                                             if i not in outliers])
+            if len(outliers) > 0:
+                self._good_chains = numpy.array([i for i in range(logp.shape[1])
+                                                 if i not in outliers])
+            else:
+                self._good_chains = slice(None,None)
             #print(self._good_chains)
 
 
@@ -731,7 +735,16 @@ class MCMCDraw(object):
         self._best_p = points[final]
         self._best_logp = logp[final]
 
-    def sample(self, portion=1, vars=None, selection=None):
+    def sample(self, **kw):
+        """
+        Return a sample from the posterior distribution.
+
+        **Deprecated** use :meth:`draw` instead.
+        """
+        draw = self.draw(**kw)
+        return draw.points, draw.logp
+
+    def draw(self, portion=1, vars=None, selection=None):
         """
         Return a sample from the posterior distribution.
 
@@ -745,16 +758,16 @@ class MCMCDraw(object):
 
         To plot the distribution for parameter p1::
 
-            points, logp = state.sample()
-            hist(points[:,0])
+            draw = state.draw()
+            hist(draw.points[:,0])
 
         To plot the interdependence of p1 and p2::
 
-            draw, points, logp = state.sample()
-            plot(points[:,0],points[:,1],'.')
-
+            draw = state.sample()
+            plot(draw.points[:,0],draw.points[:,1],'.')
         """
-        return _sample(self, portion, vars, selection)
+        return Draw(self, portion=portion, vars=vars, selection=selection)
+
 
     def derive_vars(self, fn, labels=None):
         """
@@ -802,6 +815,16 @@ class MCMCDraw(object):
         else: # no labels specified, old or new
             pass
 
+class Draw(object):
+    def __init__(self, state, vars=None, portion=None, selection=None):
+        self.state = state
+        self.vars = vars
+        self.portion = portion
+        self.selection = selection
+        self.points, self.logp = _sample(state, portion=portion, vars=vars, selection=selection)
+        self.labels = state.labels if vars is None else [state.labels[v] for v in vars]
+        self._stats = None
+        self.weights = None
 
 def _sample(state, portion, vars, selection):
     """
@@ -892,6 +915,10 @@ def test():
     #assert norm(sample[:,2,:] - xin[thinning-1::thinning,2,:]) == 0
     #assert norm(logp[:,1] - pin[thinning-1::thinning,2]) == 0
     #assert norm(logp[:,2] - pin[thinning-1::thinning,2]) == 0
+
+    from .stats import var_stats, format_vars
+    vstats = var_stats(state.draw())
+    print (format_vars(vstats))
 
 if __name__ == "__main__":
     test()

@@ -1,10 +1,8 @@
 """
 Chain outlier tests.
-
-Given a
 """
 
-from numpy import mean, std, sqrt, argsort, where, argmin, arange
+from numpy import mean, std, sqrt, argsort, where, argmin, arange, array
 from scipy.stats import scoreatpercentile as prctile
 from scipy.stats import t as student_t
 tinv = student_t.ppf
@@ -21,7 +19,7 @@ def identify_outliers(test, chains, x):
     *chains* is a set of log likelihood values of shape (chain len, num chains)
     *x* is the current population of shape (num vars, num chains)
 
-    See :module:`outliers` for details.
+    Returns an integer array of outlier indices.
     """
     # Determine the mean log density of the active chains
     v = mean(chains, axis=0)
@@ -59,10 +57,10 @@ def identify_outliers(test, chains, x):
         d1 = mahalanobis(x[minidx,:], x[minidx!=arange(Npop),:])
         #print "d1",d1,"minidx",minidx
         # and see if it is an outlier
-        outliers = [minidx] if d1 > Gcrit else []
+        outliers = array([minidx]) if d1 > Gcrit else array([])
 
     elif test == 'none':
-        outliers = []
+        outliers = array([])
 
     else:
         raise ValueError("Unknown outlier test "+test)
@@ -92,12 +90,12 @@ def test():
 
     # Put points for _all_ chains at [1,...,1] and check that mahal return []
     xsame = multivariate_normal(ones(4),.2*eye(4),size=Ngood+Nbad)
-    assert identify_outliers('Mahal',chains,xsame) == []
+    assert len(identify_outliers('Mahal',chains,xsame)) == 0
 
     # Check again with large variance
     x = vstack( (multivariate_normal(-3*ones(4),eye(4),size=Nbad),
                  multivariate_normal(ones(4),10*eye(4),size=Ngood)) )
-    assert identify_outliers('Mahal',chains,x) == []
+    assert len(identify_outliers('Mahal',chains,x)) == 0
 
 
     # =====================================================================
