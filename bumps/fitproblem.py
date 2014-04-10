@@ -582,90 +582,10 @@ class BaseFitProblem(object):
         if figfile != None:
             pylab.savefig(figfile+"-model.png", format='png')
 
-    def jacobian(self, pvec=None, step=None):
-        """
-        Returns the derivative wrt the fit parameters at point p.
-
-        Numeric derivatives are calculated based on step, where step is
-        the portion of the total range for parameter j, or the portion of
-        point value p_j if the range on parameter j is infinite.
-        """
-        if step is None: step = 1e-8
-        # Make sure the input vector is an array
-        if pvec is None:
-            pvec = [p.value for p in self._parameters]
-        pvec = numpy.asarray(pvec)
-        # We are being lazy here.  We can precompute the bounds, we can
-        # use the residuals_deriv from the sub-models which have analytic
-        # derivatives and we need only recompute the models which depend
-        # on the varying parameters.
-        # Meanwhile, let's compute the numeric derivative using the
-        # three point formula.
-        # We are not checking that the varied parameter in numeric
-        # differentiation is indeed feasible in the interval of interest.
-        range = zip(*[p.bounds.limits for p in self._parameters])
-        lo,hi = [numpy.asarray(v) for v in range]
-        delta = (hi-lo)*step
-        # For infinite ranges, use p*1e-8 for the step size
-        idx = numpy.isinf(delta)
-        #print "J",idx,delta,pvec,type(idx),type(delta),type(pvec)
-        delta[idx] = pvec[idx]*step
-        delta[delta==0] = step
-
-        # Set the initial value
-        for k,v in enumerate(pvec):
-            self._parameters[k].value = v
-        # Gather the residuals
-        r = []
-        for k,v in enumerate(pvec):
-            # Center point formula:
-            #     df/dv = lim_{h->0} ( f(v+h)-f(v-h) ) / ( 2h )
-            h = delta[k]
-            self._parameters[k].value = v + h
-            self.model_update()
-            rk = self.residuals()
-            self._parameters[k].value = v - h
-            self.model_update()
-            rk -= self.residuals()
-            r.append(rk/(2*h))
-            self._parameters[k].value = v
-        self.model_update()  # Restore model parameters
-        # return the jacobian
-        return numpy.vstack(r).T
-
-
-    def cov(self, pvec=None, step=None, tol=1e-8):
-        """
-        Return the covariance matrix inv(J'J) at point p.
-
-        We provide some protection against singular matrices by setting
-        singular values smaller than tolerance *tol* to the tolerance
-        value.
-        """
-
-        # Find cov of f at p
-        #     cov(f,p) = inv(J'J)
-        # Use SVD
-        #     J = U S V'
-        #     J'J = (U S V')' (U S V')
-        #         = V S' U' U S V'
-        #         = V S S V'
-        #     inv(J'J) = inv(V S S V')
-        #              = inv(V') inv(S S) inv(V)
-        #              = V inv (S S) V'
-        J = self.jacobian(pvec, step=step)
-        u,s,vh = numpy.linalg.svd(J,0)
-        s[s<=tol] = tol
-        JTJinv = numpy.dot(vh.T.conj()/s**2,vh)
-        return JTJinv
-
-    def stderr(self, pvec=None, step=None):
-        """
-        Return parameter uncertainty.
-
-        This is just the sqrt diagonal of covariance matrix inv(J'J) at point p.
-        """
-        return numpy.sqrt(numpy.diag(self.cov(pvec, step=step)))
+    def stderr(self):
+        from lsqerror import jacobian, cov, corr, stderr
+        C = cov(jacobian(self))
+        return stderr(C), corr(C)
 
     def __getstate__(self):
         return self.fitness,self.partial,self.name,self.penalty_nllf,self.soft_limit,self.constraints
@@ -776,7 +696,6 @@ class MultiFitProblem(BaseFitProblem):
 
     def __setstate__(self, state):
         self.__dict__ = state
-
 
 def load_problem(file, options=[]):
     """

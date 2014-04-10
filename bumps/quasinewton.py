@@ -26,7 +26,8 @@ All modules in this file are implemented from the book
 "Numerical Methods for Unconstrained Optimization and Nonlinear Equations" by
 J.E. Dennis and Robert B. Schnabel (Only a few minor modifications are done).
 
-EXAMPLE CALL::
+The interface is through the :func:`quasinewton` function.  Here is an
+example call::
 
     n = 2
     x0 = [-0.9 0.9]'
@@ -41,7 +42,7 @@ EXAMPLE CALL::
     steptol = 1e-12                # do not let steptol larger than 1e-9
     itnlimit = 1000
     result = quasinewton(fn, x0, grad, Sx, typf,
-                         macheps, eta, maxstep, gradtol, steptol, itnlimit)
+                         macheps, eta, maxstep, gradtola, steptol, itnlimit)
     print "status code",result['status']
     print "x_min, f(x_min)",result['x'],result['fx']
     print "iterations, function calls, linesearch function calls",\
@@ -51,7 +52,7 @@ from __future__ import print_function
 
 __all__ = [ "quasinewton" ]
 
-from numpy import inf, sqrt, isnan, isinf
+from numpy import inf, sqrt, isnan, isinf, finfo
 from numpy import diag, zeros, ones, array, linalg, inner, outer, dot, amax, maximum
 
 STATUS = {
@@ -72,6 +73,68 @@ def quasinewton(fn, x0 = [], grad = [], Sx = [], typf = 1, macheps = [], eta = [
               monitor = lambda **kw: True) :
     """
     Run a quasinewton optimization on the problem.
+
+    *fn(x)* is the cost function, which takes a point x and returns a scalar fx.
+
+    *x0* is the initial point
+
+    *Sx* is a scale vector indicating the typical values for parameters in
+    the fitted result. This is used for a variety of things such as setting
+    the step size in the finite difference approximation to the gradient, and
+    controlling numerical accuracy in calculating the Hessian matrix.  If for
+    example some of your model parameters are in the order of 1e-6, then Sx
+    for those parameters should be set to 1e-6. Default: [1, ...]
+
+    *typf* is the typical value for f(x) near the minimum.  This is used along
+    with gradtol to check the gradient stopping condition.  Default: 1
+
+    *macheps* is the minimum value that can be added to 1 to produce a number
+    not equal to 1.  Default: numpy.finfo(float).eps
+
+    *eta* adapts the numerical gradient calculations to machine precision.
+    Default: *macheps*
+
+    *maxstep* is the maximum step size in any gradient step, after normalizing
+    by *Sx*. Default: 100
+
+    *gradtol* is a stopping condition for the fit based on the amount of
+    improvement expected at the next step.  Default: 1e-6
+
+    *steptol* is a stopping condition for the fit based on the size
+    of the step. Default: 1e-12
+
+    *itnlimit* is the maximum number of steps to take before stopping.
+    Default: 2000
+
+    *abort_test* is a function which tests whether the user has requested
+    abort. Default: None.
+
+    *monitor(x,fx,step)* is called every iteration so that a user interface
+    function can monitor the progress of the fit.  Default: lambda **kw: True
+
+
+    Returns the fit result as a dictionary:
+
+    *status* is a status code indicating why the fit terminated.  Turn the
+    status code into a string with *STATUS[result.status]*.  Status values
+    vary from 1 to 9, with 1 and 2 indicating convergence and the remaining
+    codes indicating some form of premature termination.
+
+    *x* is the minimum point
+
+    *fx* is the value fn(x) at the minimum
+
+    *H* is the approximate Hessian matrix, which is the inverse of the
+    covariance matrix
+
+    *L* is the cholesky decomposition of H+D, where D is a small correction
+    to force H+D to be positive definite.  To compute parameter uncertainty
+
+    *iterations* is the number of iterations
+
+    *evals* is the number of function evaluations
+
+    *linesearch_evals* is the number of function evaluations for line search
     """
     #print "starting QN"
     # If some input parameters are not specified, define default values for them
@@ -94,7 +157,8 @@ def quasinewton(fn, x0 = [], grad = [], Sx = [], typf = 1, macheps = [], eta = [
         raise ValueError("sizes of x0 and Sx must be the same")
 
     if macheps == [] :
-        macheps = machineeps()
+        # PAK: use numpy.finfo rather than macheps
+        macheps = finfo('d').eps
 
     if eta == [] :
         eta = macheps
@@ -192,7 +256,7 @@ def quasinewton(fn, x0 = [], grad = [], Sx = [], typf = 1, macheps = [], eta = [
             gc = gp
         #STOPHERE
 
-    return dict(status=termcode, x=xf, fx=ff,
+    return dict(status=termcode, x=xf, fx=ff, H=H, L=L,
                 iterations=itncount, evals=fcount, linesearch_evals=fcount_ls)
 
 #------------------------------------------------------------------------------

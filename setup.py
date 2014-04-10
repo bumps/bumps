@@ -56,6 +56,7 @@ dist = setup(
         package_data = gui_resources.package_data(),
         scripts = ['bin/bumps'],
         ext_modules = [bumpsmodule()],
+        install_requires = ['numdifftools'],
         #install_requires = ['httplib2'],
         )
 

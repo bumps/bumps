@@ -11,6 +11,8 @@ import numpy
 from . import monitor, parameter
 from .history import History
 from . import initpop
+from . import lsqerror
+
 from .dream import MCMCModel
 
 
@@ -97,6 +99,52 @@ class MonitorRunner(object):
 
 
 class FitBase(object):
+    """
+    FitBase defines the interface from bumps models to the various fitting
+    engines available within bumps.
+
+    Each engine is defined in its own class with a specific set of attributes
+    and methods.
+
+    The *name* attribute is the name of the optimizer.  This is just a simple
+    string.
+
+    The *settings* attribute is a list of pairs (name, default), where the
+    names are defined as fields in FitOptions.  A best attempt should be
+    made to map the fit options for the optimizer to the standard fit options,
+    since each of these becomes a new command line option when running
+    bumps.  If that is not possible, then a new option should be added
+    to FitOptions.  A plugin architecture might be appropriate here, if
+    there are reasons why specific problem domains might need custom fitters,
+    but this is not yet supported.
+
+    Each engine takes a fit problem in its constructor.
+
+    The :meth:`solve` method runs the fit.  It accepts a
+    monitor to track updates, a mapper to distribute work and
+    key-value pairs defining the settings.
+
+    There are a number of optional methods for the fitting engines.  Basically,
+    all the methods in :class:`FitDriver` first check if they are specialized
+    in the fit engine before performing a default action.
+
+    The *load*/*save* methods load and save the fitter state in a given
+    directory with a specific base file name.  The fitter can choose a file
+    extension, with care to be sure that it doesn't overwrite standard
+    extensions such as .mon for the fit monitor.
+
+    The *plot* method shows any plots to help understand the performance of
+    the fitter, such as a convergence plot showing the the range of values
+    in the population over time, as well as plots of the parameter uncertainty
+    if available.
+
+    The *stderr*/*cov* methods should provide summary statistics for the
+    parameter uncertainties.  Some fitters, such as MCMC, will compute these
+    directly from the population.  Others, such as BFGS, will produce an
+    estimate of the uncertainty as they go along.  If the fitter does not
+    provide these estimates, then they will be computed from numerical
+    derivatives at the minimum in the FitDriver method.
+    """
     def __init__(self, problem):
         """Fit the models and show the results"""
         self.problem = problem
@@ -137,7 +185,7 @@ class MultiStart(FitBase):
 class DEFit(FitBase):
     name = "Differential Evolution"
     settings = [('steps', 1000), ('pop', 10), ('CR', 0.9), ('F', 2.0),
-                ('xtol', 1e-4), ('ftol', 1e-8), ('stop', '')]
+                ('xtol', 1e-6), ('ftol', 1e-8), ('stop', '')]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         _fill_defaults(options, self.settings)
@@ -164,7 +212,7 @@ class DEFit(FitBase):
                              monitors=monitors, success=success, failure=failure)
         if resume: self.history.restore(self.state)
         x = minimize(mapper=_mapper, abort_test=abort_test, resume=resume)
-        print(minimize.termination_condition())
+        #print(minimize.termination_condition())
         #with open("/tmp/evals","a") as fid: print >>fid,minimize.history.value[0],minimize.history.step[0],minimize.history.step[0]*options['pop']*len(self.problem.getp())
         return x, self.history.value[0]
 
@@ -203,7 +251,7 @@ def save_history(path, state):
 
 class BFGSFit(FitBase):
     name = "Quasi-Newton BFGS"
-    settings = [('steps', 3000), ('starts', 100)]
+    settings = [('steps', 3000), ('starts', 1)]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         _fill_defaults(options, self.settings)
@@ -216,9 +264,20 @@ class BFGSFit(FitBase):
                              abort_test=abort_test,
                              itnlimit=options['steps'],
                              )
-        code = result['status']
-        print("%d: %s" % (code, STATUS[code]))
+        self.result = result
+        #code = result['status']
+        #print("%d: %s, x=%s, fx=%s" % (code, STATUS[code], result['x'], result['fx']))
         return result['x'], result['fx']
+
+    # BFGS estimates hessian and its cholesky decomposition, but initial
+    # tests give uncertainties quite different from the directly computed
+    # jacobian in levenburg-marquardt or the hessian estimated at the
+    # minimum by numdifftools
+    def Hstderr(self):
+        return lsqerror.chol_stderr(self.result['L'])
+
+    def Hcov(self):
+        return lsqerror.chol_cov(self.result['L'])
 
     def _monitor(self, step, x, fx):
         self._update(step=step, point=x, value=fx,
@@ -326,7 +385,7 @@ class PTFit(FitBase):
 
 class AmoebaFit(FitBase):
     name = "Nelder-Mead Simplex"
-    settings = [('steps', 1000), ('starts', 1), ('radius', 0.15), ('xtol', 1e-5), ('ftol', 1e-8)]
+    settings = [('steps', 1000), ('starts', 1), ('radius', 0.15), ('xtol', 1e-6), ('ftol', 1e-8)]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         _fill_defaults(options, self.settings)
@@ -347,6 +406,7 @@ class AmoebaFit(FitBase):
         # fit in a multistart amoeba context.  If the best is always
         # used, the fit can get stuck in a local minimum.
         self.problem.setp(result.next_start)
+        #print("amoeba %s %s"%(result.x,result.fx))
         return result.x, result.fx
 
     def _monitor(self, k, n, x, fx):
@@ -457,6 +517,17 @@ class DreamFit(FitBase):
                      population_points=pop, population_values=-logp)
         return True
 
+    def stderr(self):
+        """
+        Approximate standard error as 1/2 the 68% interval fo the sample,
+        which is a more robust measure than the mean of the sample for
+        non-normal distributions.
+        """
+        from .dream.stats import var_stats
+
+        vstats = var_stats(self.state.draw())
+        return [(v.p68[1]-v.p68[0])/2 for v in vstats]
+
     def load(self, input_path):
         from . import dream
         print("loading saved state (this might take awhile) ...")
@@ -560,6 +631,48 @@ class FitDriver(object):
         self.result = x, fx
         self.problem.setp(x)
         return x, fx
+
+    def cov(self):
+        """
+        Return an estimate of the covariance of the fit.
+
+        Depending on the fitter and the problem, this may be computed from
+        existing evaluations within the fitter, or from numerical
+        differentiation around the minimum.  The numerical differentiation
+        will use the Hessian estimated from nllf.   If the problem uses
+        $\chi^2/2$ as its nllf, then you may want to instead compute
+        the covariance from the Jacobian::
+
+            J = lsqerror.jacobian(fitdriver.result[0])
+            cov = lsqerror.cov(J)
+
+        This should be faster and more accurate than the Hessian of nllf
+        when you can use it.
+        """
+        if not hasattr(self, '_cov'):
+            if hasattr(self.fitter, 'cov'):
+                self._cov = self.fitter.cov()
+            else:
+                H = lsqerror.hessian(self.problem, self.result[0])
+                H,L = lsqerror.perturbed_hessian(H)
+                self._cov = lsqerror.chol_cov(L)
+        return self._cov
+
+    def stderr(self):
+        """
+        Return an estimate of the standard error of the fit.
+
+        Depending on the fitter and the problem, this may be computed from
+        existing evaluations within the fitter, or from numerical
+        differentiation around the minimum.
+        """
+        if not hasattr(self, '_stderr'):
+            # calculate the value
+            if hasattr(self.fitter, 'stderr'):
+                self._stderr = self.fitter.stderr()
+            else:
+                self._stderr = lsqerror.stderr(self.cov())
+        return self._stderr
 
     def show(self):
         if hasattr(self.fitter, 'show'):
