@@ -39,6 +39,7 @@ from .. import plugin
 from .. import fitters
 from ..cli import load_problem
 from ..util import redirect_console
+from ..dream import stats as dream_stats
 
 from .plot_view import PlotView
 from .summary_view import SummaryView
@@ -478,6 +479,10 @@ class AppPanel(wx.Panel):
             self.view['trace'].OnFitProgress(event)
             if event.message == 'uncertainty_final':
                 self.view['error'].OnFitProgress(event)
+            # variable stats are needed in order to plot UncertaintyView, and
+            # so are computed therein.  Format them nicely and show them on
+            # the console as well.
+            signal.log_message(dream_stats.format_vars(self.view['uncertainty'].stats))
         else:
             raise ValueError("Unknown fit progress message "+event.message)
 

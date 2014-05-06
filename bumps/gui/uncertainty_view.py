@@ -1,26 +1,26 @@
 from __future__ import with_statement
 
 from ..dream import views as dream_views
+from ..dream import stats as dream_stats
 from .. import errplot
 from .plot_view import PlotView
-from .signal import log_message
 
 class UncertaintyView(PlotView):
     title = "Uncertainty"
     def plot(self):
         if not self.plot_state: return
         history = self.plot_state
-        import pylab
-        with self.pylab_interface:
-            stats = dream_views.plot_vars(history)
+        with self.pylab_interface as pylab:
+            pylab.clf()
+            dream_views.plot_vars(history.draw(), self.stats)
             pylab.draw()
-            # TODO: separate calculation of parameter uncertainty from plotting
-            self.model.parameter_uncertainty = stats
-            log_message(dream_views.format_vars(stats))
+    def update(self, state):
+        self.plot_state = state
+        self.stats = dream_stats.var_stats(state.draw())
+        self.plot()
     def OnFitProgress(self, event):
         if event.problem != self.model: return
-        self.plot_state = event.uncertainty_state
-        self.plot()
+        self.update(event.uncertainty_state)
 
 class CorrelationView(PlotView):
     title = "Correlations"
@@ -29,14 +29,16 @@ class CorrelationView(PlotView):
         # suppress correlation plot if too many variables
         if self.plot_state.Nvar > 15: return
         history = self.plot_state
-        import pylab
-        with self.pylab_interface:
-            dream_views.plot_corrmatrix(history)
+        with self.pylab_interface as pylab:
+            pylab.clf()
+            dream_views.plot_corrmatrix(history.draw())
             pylab.draw()
+    def update(self, state):
+        self.plot_state = state
+        self.plot()
     def OnFitProgress(self, event):
         if event.problem != self.model: return
-        self.plot_state = event.uncertainty_state
-        self.plot()
+        self.update(event.uncertainty_state)
 
 
 class TraceView(PlotView):
@@ -44,10 +46,13 @@ class TraceView(PlotView):
     def plot(self):
         if not self.plot_state: return
         history = self.plot_state
-        import pylab
-        with self.pylab_interface:
+        with self.pylab_interface as pylab:
+            pylab.clf()
             dream_views.plot_trace(history)
             pylab.draw()
+    def update(self, state):
+        self.plot_state = state
+        self.plot()
     def OnFitProgress(self, event):
         if event.problem != self.model: return
         self.plot_state = event.uncertainty_state
@@ -57,16 +62,15 @@ class ModelErrorView(PlotView):
     title = "Model Uncertainty"
     def plot(self):
         if not self.plot_state: return
-        import pylab
-        with self.pylab_interface:
+        with self.pylab_interface as pylab:
             pylab.clf()
             # Won't get here if plot_state is None
             errplot.show_errors(self.plot_state)
             pylab.draw()
     def OnFitProgress(self, event):
         if event.problem != self.model: return
-        self.new_state(event.problem, event.uncertainty_state)
-    def new_state(self, problem, state):
+        self.update(event.problem, event.uncertainty_state)
+    def update(self, problem, state):
         # Should happen in a separate process
         self.plot_state = errplot.calc_errors_from_state(problem, state)
         self.plot()

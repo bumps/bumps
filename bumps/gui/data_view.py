@@ -12,8 +12,6 @@ from matplotlib.backends.backend_wxagg import NavigationToolbar2Wx as Toolbar
 # The Figure object is used to create backend-independent plot representations.
 from matplotlib.figure import Figure
 
-import pylab
-
 from ..fitproblem import MultiFitProblem
 
 from .util import EmbeddedPylab
@@ -166,7 +164,7 @@ class DataView(wx.Panel):
 
             # Redraw the canvas with newly calculated theory
             # TODO: drawing is 10x too slow!
-            with self.pylab_interface:
+            with self.pylab_interface as pylab:
                 ax = pylab.gca()
                 #print "reset",reset, ax.get_autoscalex_on(), ax.get_xlim()
                 reset = reset or ax.get_autoscalex_on()

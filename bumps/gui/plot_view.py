@@ -10,7 +10,7 @@ from matplotlib.backends.backend_wxagg import NavigationToolbar2Wx as Toolbar
 from matplotlib.figure import Figure
 
 
-from ..gui.util import EmbeddedPylab
+from .util import EmbeddedPylab
 
 
 class PlotView(wx.Panel):
@@ -143,7 +143,6 @@ class PlotView(wx.Panel):
 
     def _redraw(self, newmodel=False):
         self._need_newmodel = newmodel
-        import pylab
         if self._calculating:
             # That means that I've entered the thread through a
             # wx.Yield for the currently executing redraw.  I need
@@ -153,7 +152,7 @@ class PlotView(wx.Panel):
             #print "canceling calculation"
             return
 
-        with self.pylab_interface:
+        with self.pylab_interface as pylab:
             self._calculating = True
 
             #print "calling again"
