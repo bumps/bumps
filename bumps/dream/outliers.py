@@ -3,12 +3,19 @@ Chain outlier tests.
 """
 
 from numpy import mean, std, sqrt, argsort, where, argmin, arange, array
-from scipy.stats import scoreatpercentile as prctile
 from scipy.stats import t as student_t
-tinv = student_t.ppf
 from .mahal import mahalanobis
 from .acr import ACR
 from . import util
+
+tinv = student_t.ppf
+# from scipy.stats import scoreatpercentile as prctile
+# CRUFT: scoreatpercentile not accepting array arguments in older scipy
+def prctile(v, Q):
+    from numpy import sort
+    from scipy.stats import scoreatpercentile
+    v = sort(v)
+    return [scoreatpercentile(v, Qi) for Qi in Q]
 
 def identify_outliers(test, chains, x):
     """
@@ -28,7 +35,7 @@ def identify_outliers(test, chains, x):
     test = test.lower()
     if test == 'iqr':
         # Derive the upper and lower quartile of the chain averages
-        Q1,Q3 = prctile(v,[25,75])
+        Q1,Q3 = prctile(v,[25.,75.])
         # Derive the Inter Quartile Range (IQR)
         IQR = Q3 - Q1
         # See whether there are any outlier chains

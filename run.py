@@ -50,8 +50,7 @@ def prepare():
 
     # Force a rebuild
     import subprocess
-    devnull = open('/dev/null', 'w') if not sys.platform.startswith('win') else None
-    with cd(root):
+    with cd(root), open(os.devnull, 'w') as devnull:
         subprocess.call((sys.executable, "setup.py", "build"), shell=False, stdout=devnull)
 
     # Add the build dir to the system path
