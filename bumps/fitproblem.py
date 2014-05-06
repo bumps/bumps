@@ -708,11 +708,12 @@ def load_problem(file, options=[]):
     Raises ValueError if the script does not define problem.
     """
     ctx = dict(__file__=file,__name__="bumps_model")
-    argv = sys.argv
+    old_argv = sys.argv
     sys.argv = [file] + options
-    code = compile(open(file).read(), file, 'exec')
+    source = open(file).read()
+    code = compile(source, file, 'exec')
     exec(code, ctx)
-    sys.argv = argv
+    sys.argv = old_argv
     try:
         problem = ctx["problem"]
     except KeyError:

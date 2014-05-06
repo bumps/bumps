@@ -26,7 +26,6 @@ from . import util
 from . import initpop
 from . import __version__
 from . import plugin
-from . import parameter
 
 from .util import pushdir
 

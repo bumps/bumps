@@ -266,8 +266,8 @@ def initial_model(opts):
     except:
         problem = None
         limit = len(traceback.extract_stack())-4
-        sys.stderr.write("limit=%d\n"%limit)
-        sys.stderr.write(repr(traceback.extract_stack()))
+        #sys.stderr.write("limit=%d\n"%limit)
+        #sys.stderr.write(repr(traceback.extract_stack()))
         error = traceback.format_exc(limit)
     finally:
         output = sys.stdout.getvalue()
