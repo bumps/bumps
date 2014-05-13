@@ -86,57 +86,64 @@ from .util import draw, RNG
 EXT = ".mc"
 CREATE = open
 
+class NoTrace:
+    def write(self, data): pass
+    def flush(self): pass
+    def close(self): pass
+
 def save_state(state, filename):
-    trace = open(filename+"-trace.mc","w")
-    trace.write("starting trace\n"); trace.flush();
+    trace = NoTrace()
+    #trace = open(filename+"-trace.mc","w")
+
+    trace.write("starting trace\n"); trace.flush()
     # Build 2-D data structures
-    trace.write("extracting draws, logp\n"); trace.flush();
+    trace.write("extracting draws, logp\n"); trace.flush()
     draws, logp = state.logp(full=True)
-    trace.write("extracting acceptance rate\n"); trace.flush();
+    trace.write("extracting acceptance rate\n"); trace.flush()
     _, AR = state.acceptance_rate()
-    trace.write("building chain from draws, AR and logp\n"); trace.flush();
+    trace.write("building chain from draws, AR and logp\n"); trace.flush()
     chain = hstack((draws[:,None], AR[:,None], logp))
 
-    trace.write("extracting point, logp\n"); trace.flush();
+    trace.write("extracting point, logp\n"); trace.flush()
     _, point, logp = state.chains()
     Nthin,Npop,Nvar = point.shape
-    trace.write("shape is %d,%d,%d\n"%(Nthin,Npop,Nvar)); trace.flush();
-    trace.write("adding logp to point\n"); trace.flush();
+    trace.write("shape is %d,%d,%d\n"%(Nthin,Npop,Nvar)); trace.flush()
+    trace.write("adding logp to point\n"); trace.flush()
     point = dstack((logp[:,:,None], point))
-    trace.write("collapsing to draws x point\n"); trace.flush();
+    trace.write("collapsing to draws x point\n"); trace.flush()
     point = reshape(point, (point.shape[0]*point.shape[1],point.shape[2]))
 
-    trace.write("extracting R_stat\n"); trace.flush();
+    trace.write("extracting R_stat\n"); trace.flush()
     draws, R_stat = state.R_stat()
-    trace.write("extracting CR_weight\n"); trace.flush();
+    trace.write("extracting CR_weight\n"); trace.flush()
     _, CR_weight = state.CR_weight()
     _, Ncr = CR_weight.shape
-    trace.write("building stats\n"); trace.flush();
+    trace.write("building stats\n"); trace.flush()
     stats = hstack((draws[:,None], R_stat, CR_weight))
 
     #TODO: missing _outliers from save_state
 
     # Write convergence info
-    trace.write("writing chain\n"); trace.flush();
+    trace.write("writing chain\n"); trace.flush()
     file = CREATE(filename+'-chain'+EXT,'w')
     file.write('# draws acceptance_rate %d*logp\n'%Npop)
     savetxt(file,chain)
     file.close()
 
     # Write point info
-    trace.write("writing point\n"); trace.flush();
+    trace.write("writing point\n"); trace.flush()
     file=CREATE(filename+'-point'+EXT,'w')
     file.write('# logp point (Nthin x Npop x Nvar = [%d,%d,%d])\n'%(Nthin,Npop,Nvar))
     savetxt(file,point)
     file.close()
 
     # Write stats
-    trace.write("writing stats\n"); trace.flush();
+    trace.write("writing stats\n"); trace.flush()
     file=CREATE(filename+'-stats'+EXT,'w')
     file.write('# draws %d*R-stat %d*CR_weight\n'%(Nvar,Ncr))
     savetxt(file,stats)
     file.close()
-    trace.write("done state save\n"); trace.flush();
+    trace.write("done state save\n"); trace.flush()
     trace.close()
 
 IND_PAT = re.compile('-1#IND')

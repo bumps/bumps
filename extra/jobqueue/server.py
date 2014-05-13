@@ -10,7 +10,7 @@ from flask import redirect, url_for, flash
 from flask import send_from_directory
 from werkzeug.utils import  secure_filename
 
-from jobqueue import store
+from . import store
 
 app = flask.Flask(__name__)
 

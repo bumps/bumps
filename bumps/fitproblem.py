@@ -311,21 +311,31 @@ def FitProblem(*args, **kw):
 
         *weights* is an optional scale factor for each model
 
-        *freevars* is :class:`parameter.FreeVariables` instance defining the per-model parameter assignments
+        *freevars* is :class:`parameter.FreeVariables` instance defining the
+        per-model parameter assignments.  See `freevariables`_ for details.
 
-    Common parameters:
+
+    Additional parameters:
 
         *name* name of the problem
 
-        *constraints* is a function which returns the negative log likelihood of seeing the parameters
-        independent from the fitness function.  Use this for example to check for feasible regions of
-        the search space, or to add constraints that cannot be easily calculated per parameter.
+        *constraints* is a function which returns the negative log likelihood
+        of seeing the parameters independent from the fitness function.  Use
+        this for example to check for feasible regions of the search space, or
+        to add constraints that cannot be easily calculated per parameter.
+        Ideally, the constraints nllf will increase as you go farther from
+        the feasible region so that the fit will be directed toward feasible
+        values.
 
-        *soft_limit* is the constraints function cutoff, beyond which the *penalty_nllf* will be returned
-        instead of the *fitness* nllf.
+        *soft_limit* is the constraints function cutoff, beyond which the
+        *penalty_nllf* will be used and *fitness* nllf will not be calculated.
 
-        *penalty_nllf* is the nllf to use for *fitness* when *constraints* is greater than *soft_limit*
+        *penalty_nllf* is the nllf to use for *fitness* when *constraints*
+        is greater than *soft_limit*.
 
+    Total nllf is the sum of the parameter nllf, the constraints nllf and the
+    depending on whether constraints is greater than soft_limit, either the
+    fitness nllf or the penalty nllf.
     """
     if len(args)>0:
         try:
@@ -342,6 +352,9 @@ def FitProblem(*args, **kw):
         return MultiFitProblem(*args, **kw)
 
 class BaseFitProblem(object):
+    """
+    See :func:`FitProblem`
+    """
     def __init__(self, fitness, name=None, constraints=no_constraints, 
                  penalty_nllf=1e6, soft_limit=numpy.inf, partial=False):
         self.constraints = constraints

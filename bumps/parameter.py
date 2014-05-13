@@ -323,6 +323,7 @@ class ParameterSet(object):
             p.name = " ".join((n,p.name))
         self.reference.fittable = False  # Reference is no longer directly fittable
 
+    # Make the parameter set act like a list
     def __getitem__(self, i): 
         """
         Return the underlying parameter for the model index.  Index can either be
@@ -339,7 +340,13 @@ class ParameterSet(object):
         except ValueError: pass
         self.parameters[i] = v
 
-    def set(self, index):
+    def __iter__(self):
+        return iter(self.parameters)
+
+    def __len__(self):
+        return len(self.parameters)
+
+    def set_model(self, index):
         """
         Set the underlying model parameter to the value of the nth model.
         """
@@ -351,14 +358,6 @@ class ParameterSet(object):
     @values.setter
     def values(self, values):
         for p,v in zip(self.parameters,values): p.value = v
-
-    @property
-    def value(self):
-        raise NotImplementedError("Use parameterset.values to get the current value set")
-
-    @property
-    def value(self, v):
-        for p in self.parameters: p.value = v
 
     def range(self, *args, **kw):
         """
@@ -403,7 +402,7 @@ class FreeVariables(object):
         self.names = names
 
         # Create slots to hold the free variables
-        self._parameters = dict((k,ParameterSet(v, names=names)) 
+        self._parametersets = dict((k,ParameterSet(v, names=names))
                                 for k,v in kw.items())
 
     # Shouldn't need explicit __getstate__/__setstate__ but mpi4py pickle
@@ -419,7 +418,7 @@ class FreeVariables(object):
         Return the parameter set for the given free parameter.
         """
         try: 
-            return self._parameters[k]
+            return self._parametersets[k]
         except KeyError: 
             raise AttributeError('FreeVariables has no attribute %r'%k)
 
@@ -427,14 +426,14 @@ class FreeVariables(object):
         """
         Return the set of free variables for all the models.
         """
-        return dict((k,v.parameters) for k,v in self._parameters.items())
+        return dict((k,v.parameters) for k,v in self._parametersets.items())
 
     def set_model(self, i):
         """
         Set the reference parameters for model *i*.
         """
-        for p in self._parameters.values():
-            p.set(i)
+        for p in self._parametersets.values():
+            p.set_model(i)
 
 
 # Current implementation computes values on the fly, so you only

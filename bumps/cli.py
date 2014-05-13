@@ -392,7 +392,7 @@ Options:
                              %(value,"|".join(sorted(FIT_OPTIONS.keys()))))
         self._fitter = value
     fit = property(fget=lambda self: self._fitter, fset=_set_fitter)
-    TRANSPORTS = 'amqp','mp','mpi'
+    TRANSPORTS = 'amqp','mp','mpi','celery'
     _transport = 'mp'
     def _set_transport(self, value):
         if value not in self.TRANSPORTS:
@@ -522,6 +522,8 @@ def main():
             mapper = AMQPMapper
         elif opts.transport == 'mp':
             mapper = MPMapper
+        elif opts.transport == 'celery':
+            mapper = CeleryMapper
     else:
         mapper = SerialMapper
     if opts.worker:
