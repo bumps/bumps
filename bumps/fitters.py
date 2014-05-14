@@ -388,9 +388,9 @@ class AmoebaFit(FitBase):
     settings = [('steps', 1000), ('starts', 1), ('radius', 0.15), ('xtol', 1e-6), ('ftol', 1e-8)]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
+        from .simplex import simplex
         _fill_defaults(options, self.settings)
         # TODO: no mapper??
-        from .simplex import simplex
         self._update = MonitorRunner(problem=self.problem,
                                      monitors=monitors)
         #print "bounds",self.problem.bounds()
@@ -413,6 +413,55 @@ class AmoebaFit(FitBase):
         self._update(step=k, point=x[0], value=fx[0],
                      population_points=x, population_values=fx)
         return True
+
+class LevenbergMarquardtFit(FitBase):
+    name = "Levenberg-Marquardt"
+    settings = [('steps', 1000), ('ftol', 1.5e-8), ('xtol', 1.5e-8)]
+    # LM also has
+    #    gtol: orthoganality between jacobian columns
+    #    epsfcn: numerical derivative step size
+    #    factor: initial radius
+    #    diag: variable scale factors to bring them near 1
+    def solve(self, monitors=None, abort_test=None, mapper=None, **options):
+        from scipy import optimize
+        _fill_defaults(options, self.settings)
+        self._low,self._high = self.problem.bounds()
+        self._update = MonitorRunner(problem=self.problem,
+                                     monitors=monitors)
+
+        result = optimize.leastsq(self._bounded_residuals,
+                                  self.problem.getp(),
+                                  ftol=options['ftol'],
+                                  xtol=options['xtol'],
+                                  full_output=1)
+        x, cov_x, info, mesg, success = result
+        # compute one last time with x forced inside the boundary, and using
+        # problem.nllf as returned by other optimizers.  We will ignore the
+        # covariance output and calculate it again ourselves.  Not ideal if
+        # f is expensive, but it will be consistent with other optimizers.
+        self.problem.setp(x + self._stray_delta(x))
+        fx = self.problem.nllf()
+        return x, fx
+
+    def _bounded_residuals(self, p):
+        from numpy import sum, where
+        # Force the fit point into the valid region
+        stray = self._stray_delta(p)
+        self.problem.setp(p+stray)
+        # treat prior probabilities on the parameters as additional measurements
+        residuals = numpy.hstack((self.problem.residuals().flat,self.problem.parameter_residuals()))
+        # Tally costs for straying outside the boundaries plus other costs
+        extra_cost = numpy.sum(stray**2) + self.problem.constraints_nllf()
+        # Spread the cost over the residuals.  Since we are smoothly increasing
+        # residuals as we leave the boundary, this should push us back into the
+        # boundary (within tolerance) during the lm fit.
+        residuals += numpy.sign(residuals)*(extra_cost/len(residuals))
+        return residuals
+
+    def _stray_delta(self, p):
+        """calculate how far point is outside the distance outside the boundary"""
+        return (numpy.where(p<self._low, self._low-p, 0)
+                 + numpy.where(p>self._high, self._high-p, 0))
 
 
 class SnobFit(FitBase):
@@ -526,7 +575,7 @@ class DreamFit(FitBase):
         from .dream.stats import var_stats
 
         vstats = var_stats(self.state.draw())
-        return [(v.p68[1]-v.p68[0])/2 for v in vstats]
+        return numpy.array([(v.p68[1]-v.p68[0])/2 for v in vstats],'d')
 
     def load(self, input_path):
         from . import dream
@@ -759,10 +808,11 @@ FIT_OPTIONS = dict(
     de      = FitOptions(DEFit),
     dream   = FitOptions(DreamFit),
     newton  = FitOptions(BFGSFit),
-    ps      = FitOptions(PSFit),
-    pt      = FitOptions(PTFit),
-    rl      = FitOptions(RLFit),
-    snobfit = FitOptions(SnobFit),
+    #ps      = FitOptions(PSFit),
+    #pt      = FitOptions(PTFit),
+    #rl      = FitOptions(RLFit),
+    #snobfit = FitOptions(SnobFit),
+    lm      = FitOptions(LevenbergMarquardtFit),
     )
 
 FIT_DEFAULT = 'amoeba'

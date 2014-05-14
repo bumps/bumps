@@ -28,7 +28,7 @@ class ConvergenceMonitor(monitor.Monitor):
             self.pop.append((best, ))
     def progress(self):
         if not self.pop:
-            return dict(pop=numpy.empty(0,1))
+            return dict(pop=numpy.empty((0,1),'d'))
         else:
             return dict(pop=numpy.array(self.pop))
 

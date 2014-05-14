@@ -89,6 +89,26 @@ def hessian(problem, p=None, step=None):
     problem.setp(p_init)
     return H
 
+def hessian_diag(problem, p=None, step=None):
+    """
+    Returns the derivative wrt to the fit parameters at point p.
+    """
+    p_init = problem.getp()
+    if p is None: p = p_init
+    p = numpy.asarray(p)
+    try:
+        import numdifftools as nd
+        H = nd.Hessdiag(problem.nllf)(p)
+        #bounds = getattr(problem, 'bounds', lambda: None)()
+        #H2 = _simple_hessian(problem.nllf, p, step=step, bounds=bounds)
+        #print(H-H2)
+    except:
+        bounds = getattr(problem, 'bounds', lambda: None)()
+        H = _simple_hdiag(problem.nllf, p, step=step, bounds=bounds)
+        raise NotImplementedError("install the numdifftools library or fix _simple_hessian so it gives good enough results")
+    problem.setp(p_init)
+    return H
+
 def _simple_jacobian(fn, p, step=None, bounds=None):
     # We are being lazy here.  We can precompute the bounds, we can
     # use the residuals_deriv from the sub-models which have analytic

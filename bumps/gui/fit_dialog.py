@@ -233,7 +233,7 @@ def OpenFitOptions():
     # The fields are displayed in the order of the factory settings.
     FIELD = fitters.FitOptions.FIELDS
     plist = {}
-    for fit in fitters.FIT_OPTIONS.values():
+    for fit in sorted(fitters.FIT_OPTIONS.values()):
         items = [(FIELD[name][0],
                   setting,
                   fit.options[name],
