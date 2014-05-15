@@ -346,10 +346,11 @@ def FitProblem(*args, **kw):
             return MultiFitProblem(models, *args[1:], **kw)
         else:
             return BaseFitProblem(*args, **kw)
-    if 'fitness' in kw:
-        return BaseFitProblem(*args, **kw)
     else:
-        return MultiFitProblem(*args, **kw)
+        if 'fitness' in kw:
+            return BaseFitProblem(*args, **kw)
+        else:
+            return MultiFitProblem(*args, **kw)
 
 class BaseFitProblem(object):
     """
@@ -611,7 +612,7 @@ class MultiFitProblem(BaseFitProblem):
     """
     Weighted fits for multiple models.
     """
-    def __init__(self, models, weights=None, name="MultiFitProblem",
+    def __init__(self, models, weights=None, name=None,
                  constraints=no_constraints, 
                  soft_limit=numpy.inf, penalty_nllf=1e6,
                  freevars=None):
@@ -628,6 +629,7 @@ class MultiFitProblem(BaseFitProblem):
         self.soft_limit = soft_limit
         self.set_active_model(0) # Set the active model to model 0
         self.model_reset()
+        self.name = name
 
     @property
     def models(self):
