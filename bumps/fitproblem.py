@@ -465,14 +465,15 @@ class BaseFitProblem(object):
     def randomize(self, N=None):
         """
         Generates a random model.
+
+        *randomize(N)* returns a population of N random models.
         """
+        # TODO: split into two: randomize and random_pop
         if N is not None:
             return numpy.array([p.bounds.random(N) for p in self._parameters]).T
         else:
-            # TODO: see if we need the pure randomize form with model update
-            for p in self._parameters:
-                p.value = p.bounds.random(1)[0]
-            self.model_update()
+            # Need to go through setp when updating model.
+            self.setp([p.bounds.random(1)[0] for p in self._parameters])
 
     def parameter_nllf(self):
         """
