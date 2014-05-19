@@ -525,7 +525,7 @@ class DreamModel(MCMCModel):
 
 class DreamFit(FitBase):
     name = "DREAM"
-    settings = [('steps', 500), ('burn', 0), ('pop', 10), ('init', 'eps'), ('thin', 1)]
+    settings = [('steps', 400), ('burn', 100), ('pop', 10), ('init', 'eps'), ('thin', 1)]
 
     def __init__(self, problem):
         self.dream_model = DreamModel(problem)
