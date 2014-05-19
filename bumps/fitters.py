@@ -435,6 +435,7 @@ class LevenbergMarquardtFit(FitBase):
                                   xtol=options['xtol'],
                                   full_output=1)
         x, cov_x, info, mesg, success = result
+        self._cov = cov_x
         # compute one last time with x forced inside the boundary, and using
         # problem.nllf as returned by other optimizers.  We will ignore the
         # covariance output and calculate it again ourselves.  Not ideal if
@@ -463,6 +464,12 @@ class LevenbergMarquardtFit(FitBase):
         return (numpy.where(p<self._low, self._low-p, 0)
                  + numpy.where(p>self._high, self._high-p, 0))
 
+
+    def stderr(self):
+        return numpy.sqrt(numpy.diag(self._cov))
+
+    def cov(self):
+        return self._cov
 
 class SnobFit(FitBase):
     name = "SNOBFIT"

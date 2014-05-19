@@ -261,10 +261,21 @@ def max_correlation(Rsq):
     return numpy.max(numpy.tril(Rsq, k=-1))
 
 def stderr(C):
-    """
+    r"""
     Return parameter uncertainty from the covariance matrix C.
 
     This is just the square root of the diagonal, without any correction
     for covariance.
+
+    If measurement uncertainty is unknown, scale the returned uncertainties
+    by $\sqrt{\chi^2_N$}$, where $\chi^2_N$ is the sum squared residuals
+    divided by the degrees  of freedom.  This will match the uncertainty on
+    the parameters to the observed scatter assuming the model is correct and
+    the fit is optimal.  This will also be appropriate for weighted fits
+    when the true measurement uncertainty dy_i is known up to a scaling
+    constant for all y_i.
+
+    Standard error on scipy.optimize.curve_fit always includes the chisq
+    correction, whereas scipy.optimize.leastsq never does.
     """
     return numpy.sqrt(numpy.diag(C))
