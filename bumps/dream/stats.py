@@ -20,14 +20,14 @@ def _var_stats_one(draw, var):
     best = values[best_idx]
 
     # Choose the interval for the histogram
-    p95,p68 = credible_intervals(x=values, weights=weights, ci=[0.95,ONE_SIGMA])
-    #open('/tmp/out','a').write("in vstats: p68=%s, p95=%s, value range=%s\n"%(p68,p95,(min(values),max(values))))
+    p95,p68,p0 = credible_intervals(x=values, weights=weights, ci=[0.95,ONE_SIGMA,0.0])
+    #open('/tmp/out','a').write("in vstats: p68=%s, p95=%s, p0=%s, value range=%s\n"%(p68,p95,p0,(min(values),max(values))))
+    #if p0[0] != p0[1]: raise RuntimeError("wrong median %s"%(str(p0),))
 
-
-    mean, std, median = stats(x=values, weights=weights)
+    mean, std = stats(x=values, weights=weights)
 
     vstats = VarStats(label=draw.labels[var], index=var+1, p95=p95, p68=p68,
-                      median=median, mean=mean, std=std, best=best)
+                      median=p0[0], mean=mean, std=std, best=best)
 
     return vstats
 
@@ -97,27 +97,22 @@ def parse_var(line):
 
 def stats(x, weights=None):
     """
-    Find mean, standard deviation and median of an ordered sample from 
-    a distribution.
+    Find mean and standard deviation of a set of weighted samples.
 
     Note that the median is not strictly correct (we choose an endpoint
     of the sample for the case where the median falls between two values
     in the sample), but this is good enough when the sample size is large.
     """
     if weights == None:
+        x = numpy.sort(x)
         mean, std = numpy.mean(x), numpy.std(x,ddof=1)
-        median = x[int(len(x)/2)]
     else:
         mean = numpy.mean(x*weights)/numpy.sum(weights)
         # TODO: this is biased by selection of mean; need an unbiased formula
         var = numpy.sum((weights*(x-mean))**2)/numpy.sum(weights)
         std = numpy.sqrt(var)
-        cumulative = numpy.cumsum(weights)
-        midpoint = 0.5*cumulative[-1]
-        median = x[numpy.searchsorted(cumulative,midpoint)]
 
-    return mean, std, median
-
+    return mean, std
 
 
 def credible_intervals(x, ci, weights=None):
@@ -145,9 +140,8 @@ def credible_intervals(x, ci, weights=None):
     target = (1 + vstack((-ci, +ci))).T/2
 
     if weights is None:
-        x = sort(x)
-        idx = round(target*(x.size-1))
-        return x[clip(idx,0,x.size-1).astype('i')]
+        idx = clip(round(target*(x.size-1)), 0, x.size-1).astype('i')
+        return sort(x)[idx]
     else:
         idx = numpy.argsort(x)
         x, weights = x[idx], weights[idx]
