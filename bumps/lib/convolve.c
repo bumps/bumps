@@ -11,10 +11,10 @@
 #include <assert.h>
 #include <string.h>
 #include <math.h>
+
 #ifdef SGI
 #include <ieeefp.h>
 #endif
-
 
 /* What to do at the endpoints --- USE_TRUNCATED_NORMALIZATION will
  * avoid the assumption that the data is zero where it hasn't been
@@ -207,13 +207,29 @@ void
 convolve(size_t Nin, const double xin[], const double yin[],
          size_t N, const double x[], const double dx[], double y[])
 {
-  size_t lo,out;
+  size_t in,out;
 
   /* FIXME fails if xin are not sorted; slow if x not sorted */
   assert(Nin>1);
 
   /* Scan through all x values to be calculated */
-  lo = 0;
+  /* Re: omp, each thread is going through the entire input array,
+   * independently, computing the resolution from the neighbourhood
+   * around its individual output points.  The firstprivate(in)
+   * clause sets each thread to keep its own copy of in, initialized
+   * at in's initial value of zero.  The "schedule(static,1)" clause
+   * puts neighbouring points in separate threads, which is a benefit
+   * since there will be less backtracking if resolution width increases
+   * from point to point.  Because the schedule is static, this does not
+   * significantly increase the parallelization overhead.  Because the
+   * threads are operating on interleaved points, there should be fewer cache
+   * misses than if each thread were given different stretches of x to
+   * convolve.
+   */
+  in = 0;
+  #ifdef _OPENMP
+  #pragma omp parallel for firstprivate(in) schedule(static,1)
+  #endif
   for (out=0; out < N; out++) {
     /* width of resolution window for x is w = 2 dx^2. */
     const double sigma = dx[out];
@@ -228,21 +244,21 @@ convolve(size_t Nin, const double xin[], const double yin[],
     /* dx or if the x are not sorted, then it may be before */
     /* the current position. */
     /* FIXME verify that the convolution window is just right */
-    while (lo < Nin-1 && xin[lo] < xo-limit) lo++;
-    while (lo > 0 && xin[lo] > xo-limit) lo--;
+    while (in < Nin-1 && xin[in] < xo-limit) in++;
+    while (in > 0 && xin[in] > xo-limit) in--;
 
     /* Special handling to avoid 0/0 for w=0. */
     if (sigma > 0.) {
-      y[out] = convolve_point(xin,yin,lo,Nin,xo,limit,sigma);
-    } else if (lo < Nin-1) {
+      y[out] = convolve_point(xin,yin,in,Nin,xo,limit,sigma);
+    } else if (in < Nin-1) {
       /* Linear interpolation */
-      double m = (yin[lo+1]-yin[lo])/(xin[lo+1]-xin[lo]);
-      double b = yin[lo] - m*xin[lo];
+      double m = (yin[in+1]-yin[in])/(xin[in+1]-xin[in]);
+      double b = yin[in] - m*xin[in];
       y[out] = m*xo + b;
-    } else if (lo > 0) {
+    } else if (in > 0) {
       /* Linear extrapolation */
-      double m = (yin[lo]-yin[lo-1])/(xin[lo]-xin[lo-1]);
-      double b = yin[lo] - m*xin[lo];
+      double m = (yin[in]-yin[in-1])/(xin[in]-xin[in-1]);
+      double b = yin[in] - m*xin[in];
       y[out] = m*xo + b;
     } else {
       /* Can't happen because there is more than one point in xin. */

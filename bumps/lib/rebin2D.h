@@ -70,7 +70,7 @@ rebin_counts_2D(
       if (to.hi > from.hi) ++from;
       else ++to;
     }
-  }
+ }
 
 }
 

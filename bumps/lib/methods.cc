@@ -9,6 +9,7 @@ extern "C" double erf(double);
 #include <math.h>
 #include <stdio.h>
 #include <iostream>
+
 #include "methods.h"
 
 extern "C" void
@@ -72,8 +73,10 @@ PyObject* Perf(PyObject*obj,PyObject*args)
 #endif
     return NULL;
   }
-  for(int i=0; i < ndata; i++)
-    result[i] = erf(data[i]);
+  #ifdef _OPENMP
+  #pragma omp parallel for
+  #endif
+  for(int i=0; i < ndata; i++) result[i] = erf(data[i]);
   return Py_BuildValue("");
 }
 
