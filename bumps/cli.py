@@ -147,11 +147,11 @@ def make_store(problem, opts, exists_handler):
         sys.stdout = open(problem.output_path+".mon","w")
 
 
-def run_profile(problem, steps):
+def run_profiler(problem, steps):
     """
-    Model execution time profiler.
+    Model execution profiler.
 
-    Run the program with "--profile --steps=N" to generate a function
+    Run the program with "--profiler --steps=N" to generate a function
     profile chart breaking down the cost of evaluating N models.
 
     Here is the findings from one profiling session::
@@ -166,22 +166,20 @@ def run_profile(problem, steps):
     """
     from .util import profile
     p = initpop.random_init(int(steps), None, problem)
-
-    # The cost of
-    # To get good information from the profiler, you wil
-    # Modify this function to obtain different information
-
-    # For gathering stats on just the rendering.
-    fits = getattr(problem,'fits',[problem])
-    def rendering(p):
-        problem.setp(p)
-        for f in fits:
-            f.fitness._render_slabs()
-
-    #profile(map,rendering,p)
     profile(map,problem.nllf,p)
-    #map(problem.nllf,p)
 
+def run_timer(mapper, problem, steps):
+    """
+    Model execution timer.
+
+    Run the program with "--timer --steps=N" to determine the average
+    run time of the model.  If --parallel is included, then the model
+    will be run in parallel on separate cores.
+    """
+    import time; T0 = time.time()
+    p = initpop.random_init(int(steps), None, problem)
+    mapper(p)
+    print("time per model eval: %g ms"%(1000*(time.time()-T0)/steps,))
 
 def start_remote_fit(problem, options, queue, notify):
     """
@@ -247,7 +245,7 @@ class ParseOpts:
 
 class BumpsOpts(ParseOpts):
     MINARGS = 1
-    FLAGS = set(("preview", "chisq", "profile", 
+    FLAGS = set(("preview", "chisq", "profiler", "timer",
                  "simulate", "simrandom", "shake",
                  "worker", "batch", "overwrite", "parallel", "stepmon",
                  "cov", "remote", "staj", "edit", "mpi",
@@ -353,6 +351,11 @@ Options:
     --resynth=0
         run resynthesis error analysis for n generations
 
+    --timer
+        run the model --steps tim
+    --profiler
+        run the python profiler on the model; use --steps to run multiple
+        models for better statistics
     --chisq
         print the model description and chisq value and exit
     -?/-h/--help
@@ -533,8 +536,10 @@ def main():
     fitopts = FIT_OPTIONS[opts.fit]
     fitdriver = FitDriver(fitopts.fitclass, problem=problem, abort_test=lambda: False, **fitopts.options)
 
-    if opts.profile:
-        run_profile(problem, steps=opts.steps)
+    if opts.timer:
+        run_timer(mapper.start_mapper(problem, opts.args), problem, steps=int(opts.steps))
+    elif opts.profiler:
+        run_profiler(problem, steps=int(opts.steps))
     elif opts.chisq:
         if opts.cov: print(problem.cov())
         print("chisq",problem())
