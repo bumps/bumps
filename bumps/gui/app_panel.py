@@ -263,9 +263,10 @@ class AppPanel(wx.Panel):
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.aui, 1, wx.EXPAND)
         self.SetSizer(sizer)
+        self.Layout()
         # Move this to gui_app.after_show since the sizing doesn't work
         # right until the frame is rendered.
-        #self.aui.Split(0, wx.TOP)
+        self.aui.Split(0, wx.TOP)
 
     def show_view(self, tag):
         if self.view[tag].Parent == self.aui:

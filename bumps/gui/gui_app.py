@@ -227,11 +227,6 @@ class MainApp(wx.App):
         from .. import cli
         sys.excepthook = excepthook
 
-        # TODO: only way I could find to set initial split
-        panel = self.frame.panel
-        panel.aui.Split(0, wx.TOP)
-        #wx.GetApp().frame.panel.show_view('log')
-
         # Process options
         cli.BumpsOpts.FLAGS |= set(('inspect','syspath'))
         opts = cli.getopts()
@@ -250,7 +245,8 @@ class MainApp(wx.App):
         model,output = initial_model(opts)
         if not model: model = plugin.new_model()
         signal.log_message(message=output)
-        panel.set_model(model=model)
+        #self.frame.panel.show_view('log')
+        self.frame.panel.set_model(model=model)
 
 
 

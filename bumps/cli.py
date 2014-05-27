@@ -497,7 +497,6 @@ def main():
     opts = getopts()
 
     if opts.edit:
-        config_matplotlib('WXAgg')
         from .gui.gui_app import main as gui
         gui()
         return
