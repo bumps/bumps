@@ -109,9 +109,9 @@ class MainApp(wx.App):
         # Display the splash screen.  It will remain visible until the caller
         # executes app.MainLoop() AND either the splash screen timeout expires
         # or the user left clicks over the splash screen.
-        if LOGTIM: log_time("Starting to display the splash screen")
-        pic = resource(SPLASH_FILE)
-        self.display_splash_screen(img_name=pic, pos=pos, size=size)
+        #if LOGTIM: log_time("Starting to display the splash screen")
+        #pic = resource(SPLASH_FILE)
+        #self.display_splash_screen(img_name=pic, pos=pos, size=size)
 
         # Determine the position and size of the application frame based on the
         # desired size and screen real estate that we have to work with.
@@ -134,10 +134,8 @@ class MainApp(wx.App):
         # Declare the application frame to be the top window.
         self.SetTopWindow(self.frame)
 
-        # To have the frame visible behind the spash screen, comment out the
-        # line below.
-        #self.frame.Show(True)
-        #wx.CallAfter(self.after_show)
+        # To have the frame visible behind the spash screen, comment out the following
+        wx.CallAfter(self.after_show)
 
         # To test that the splash screen will not go away until the frame
         # initialization is complete, simulate an increase in startup time
@@ -217,7 +215,6 @@ class MainApp(wx.App):
 
         # To show the frame earlier, uncomment Show() code in OnInit.
         if LOGTIM: log_time("Terminating the splash screen and showing the GUI")
-        self.frame.Show(True)
         #self.after_show()
         wx.CallAfter(self.after_show)
         event.Skip()
@@ -247,6 +244,10 @@ class MainApp(wx.App):
         signal.log_message(message=output)
         #self.frame.panel.show_view('log')
         self.frame.panel.set_model(model=model)
+
+        self.frame.Show(True)
+        self.frame.Layout()
+        self.frame.panel.aui.Split(0, wx.TOP)
 
 
 
