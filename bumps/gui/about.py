@@ -49,7 +49,7 @@ PROG_ICON = "bumps.ico"
 # one string without newline characters.
 APP_NAME = "Bumps"
 
-APP_TITLE = "Bumps - Bayesian Uncertainty Modelling of Parametric Systems"
+APP_TITLE = "Bumps: curve fitter with uncertainty estimation"
 
 APP_COPYRIGHT = "(C) 2011 University of Maryland"
 

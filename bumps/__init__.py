@@ -1,7 +1,7 @@
 # This program is in the public domain
 # Author: Paul Kienzle
 """
-BUMPS: Bayesian Uncertainty Modeling for Parametric Systems
+Bumps: curve fitter with uncertainty estimation
 
 This package provides tools for modeling parametric systems in a Bayesian
 context, with routines for finding the maximum likelihood and the
