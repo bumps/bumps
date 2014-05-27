@@ -497,6 +497,7 @@ def main():
     opts = getopts()
 
     if opts.edit:
+        config_matplotlib('WXAgg')
         from .gui.gui_app import main as gui
         gui()
         return
@@ -504,11 +505,9 @@ def main():
     # Set up the matplotlib backend to minimize the wx/gui dependency.
     # If no GUI specified and not editing, then use the default mpl
     # backend for the python version.
-    if opts.edit: # full interactivity
-        config_matplotlib('WXAgg')
-    elif opts.batch or opts.remote: # no interactivity
+    if opts.batch or opts.remote: # no interactivity
         config_matplotlib('Agg')
-    else: # preview
+    else: # let preview use default graphs
         pass
  
     problem = initial_model(opts)
