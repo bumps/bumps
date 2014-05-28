@@ -89,7 +89,6 @@ class AppPanel(wx.Panel):
         # Reconfigure the status bar.
         self.init_statusbar(frame, [-34, -50, -16, -16])
 
-        #frame.Show()
         # Create the model views
         self.init_views()
 
@@ -264,10 +263,6 @@ class AppPanel(wx.Panel):
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.aui, 1, wx.EXPAND)
         self.SetSizer(sizer)
-        # Move this to gui_app.after_show since the sizing doesn't work
-        # right until the frame is rendered.
-        #self.Layout()
-        #self.aui.Split(0, wx.TOP)
 
     def show_view(self, tag):
         if self.view[tag].Parent == self.aui:

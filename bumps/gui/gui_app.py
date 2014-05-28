@@ -245,9 +245,14 @@ class MainApp(wx.App):
         #self.frame.panel.show_view('log')
         self.frame.panel.set_model(model=model)
 
-        self.frame.Show(True)
-        self.frame.Layout()
+        # When setting initial aui panel split:
+        #     mac layout fails if frame is already shown
+        #     windows/unix layout fails if frame is not shown
+        isMac = "cocoa" in wx.version()
+        if not isMac: self.frame.Show()
+        self.frame.panel.Layout()
         self.frame.panel.aui.Split(0, wx.TOP)
+        if isMac: self.frame.Show()
 
 
 
