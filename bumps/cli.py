@@ -451,16 +451,29 @@ def resynth(fitdriver, problem, mapper, opts):
     problem.restore_data()
     fid.close()
 
+def set_mplconfig(appdatadir):
+    r"""
+    Point the matplotlib config dir to %LOCALAPPDATA%\{appdatadir}\mplconfig.
+    """
+    import os,sys
+    if hasattr(sys, 'frozen'):
+        mplconfigdir = os.path.join(os.environ['LOCALAPPDATA'], appdatadir, 'mplconfig')
+        mplconfigdir = os.environ.setdefault('MPLCONFIGDIR',mplconfigdir)
+        if not os.path.exists(mplconfigdir): os.makedirs(mplconfigdir)
+
 def config_matplotlib(backend):
     """
-    Setup matplotlib.
+    Setup matplotlib to use a particular backend.
 
-    The backend should be WXAgg for interactive use, or 'Agg' for batch.
+    The backend should be 'WXAgg' for interactive use, or 'Agg' for batch.
+    This distinction allows us to run in environments such as cluster computers
+    which do not have wx installed on the compute nodes.
 
-    This must be called before any imports to pylab.  We've done this by
-    making sure that pylab is never (rarely?) imported at the top level
-    of a module, and only in the functions that call it: if you are
-    concerned about speed, then you shouldn't be using pylab :-)
+    This function must be called before any imports to pylab.  To allow
+    this, modules should not import pylab at the module level, but instead
+    import it for each function/method that uses it.  Exceptions can be made
+    for modules which are completely dedicated to plotting, but these modules
+    should never be imported at the module level.
     """
     if hasattr(sys, 'frozen') and 'MPLCONFIGDIR' not in os.environ:
         raise RuntimeError("MPLCONFIGDIR should be set to e.g., %LOCALAPPDATA%\YourApp\mplconfig")
