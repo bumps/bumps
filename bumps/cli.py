@@ -250,9 +250,11 @@ class BumpsOpts(ParseOpts):
                  "worker", "batch", "overwrite", "parallel", "stepmon",
                  "cov", "remote", "staj", "edit", "mpi",
                  "multiprocessing-fork", # passed in when app is a frozen image
+                 "i",
                ))
     VALUES = set(("plot", "store", "resume", "fit", "noise", "seed", "pars",
                   "resynth", "transport", "notify", "queue",
+                  "m", "c", "p",
                   #"mesh","meshsteps",
                 ))
     # Add in parameters from the fitters
@@ -266,7 +268,7 @@ class BumpsOpts(ParseOpts):
     seed=""
     PLOTTERS="linear", "log", "residuals"
     USAGE = """\
-Usage: bumps modelfile [modelargs] [options]
+Usage: bumps [options] modelfile [modelargs]
 
 The modelfile is a Python script (i.e., a series of Python commands)
 which sets up the data, the models, and the fittable parameters.
@@ -358,6 +360,13 @@ Options:
         models for better statistics
     --chisq
         print the model description and chisq value and exit
+    -m/-c/-p command
+        run the python interpreter with bumps on the path:
+            m: command is a module such as bumps.cli, run as __main__
+            c: command is a python one-line command
+            p: command is the name of a python script
+    -i
+        start the interactive interpreter
     -?/-h/--help
         display this help
 """%{'fitter':'|'.join(sorted(FIT_OPTIONS.keys())),
@@ -502,10 +511,32 @@ def beep():
     else:
         print("\a", file=sys.__stdout__)
 
+def run_command(c):
+    exec(c, globals())
+
 def main():
     if len(sys.argv) == 1:
         sys.argv.append("-?")
         print("\nNo modelfile parameter was specified.\n")
+
+    # run command with bumps in the environment
+    if sys.argv[1] == '-m':
+        import runpy
+        sys.argv = sys.argv[2:]
+        runpy.run_module(sys.argv[0], run_name="__main__")
+        sys.exit()
+    elif sys.argv[1] == '-p':
+        import runpy
+        sys.argv = sys.argv[2:]
+        runpy.run_path(sys.argv[0], run_name="__main__")
+        sys.exit()
+    elif sys.argv[1] == '-c':
+        run_command(sys.argv[2])
+        sys.exit()
+    elif sys.argv[1] == '-i':
+        sys.argv = ["ipython", "--pylab"]
+        from IPython import start_ipython
+        sys.exit(start_ipython())
 
     opts = getopts()
 
@@ -599,4 +630,5 @@ def main():
 
 
 # Allow  "$python -m bumps.cli args" calling pattern
-if __name__ == "__main__": main()
+if __name__ == "__main__":
+    main()
