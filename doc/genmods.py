@@ -87,7 +87,7 @@ modules=[
     #('__init__', 'Top level namespace'),
     ('bounds', 'Parameter constraints'),
     ('bspline', 'B-Spline interpolation library'),
-    ('bumpsmodule','Low level calculations'),
+    ('_reduction','Low level calculations'),
     ('cheby', 'Freeform - Chebyshev'),
     ('cli', 'Command line interface'),
     ('curve', 'Model y=f(x) against data'),

@@ -15,6 +15,10 @@ extern "C" double erf(double);
 extern "C" void
 convolve(size_t Nin, const double xin[], const double yin[],
          size_t N, const double x[], const double dx[], double y[]);
+extern "C" void
+convolve_sampled(size_t Nin, const double xin[], const double yin[],
+         size_t Np, const double xp[], const double yp[],
+         size_t N, const double x[], const double dx[], double y[]);
 
 #if defined(PY_VERSION_HEX) &&  (PY_VERSION_HEX < 0x02050000)
 typedef int Py_ssize_t;
@@ -51,6 +55,44 @@ PyObject* Pconvolve(PyObject *obj, PyObject *args)
     return NULL;
   }
   convolve(nxi,xi,yi,nx,x,dx,y);
+  return Py_BuildValue("");
+}
+
+PyObject* Pconvolve_sampled(PyObject *obj, PyObject *args)
+{
+  PyObject *xi_obj,*yi_obj,*xp_obj,*yp_obj,*x_obj,*dx_obj,*y_obj;
+  const double *xi, *yi, *xp, *yp, *x, *dx;
+  double *y;
+  Py_ssize_t nxi, nyi, nxp, nyp, nx, ndx, ny;
+
+  if (!PyArg_ParseTuple(args, "OOOOOOO:convolve",
+	   &xi_obj,&yi_obj,&xp_obj,&yp_obj,&x_obj,&dx_obj,&y_obj)) return NULL;
+  INVECTOR(xi_obj,xi,nxi);
+  INVECTOR(yi_obj,yi,nyi);
+  INVECTOR(xp_obj,xp,nxp);
+  INVECTOR(yp_obj,yp,nyp);
+  INVECTOR(x_obj,x,nx);
+  INVECTOR(dx_obj,dx,ndx);
+  OUTVECTOR(y_obj,y,ny);
+  if (nxi != nyi) {
+#ifndef BROKEN_EXCEPTIONS
+    PyErr_SetString(PyExc_ValueError, "convolve: xi and yi have different lengths");
+#endif
+    return NULL;
+  }
+  if (nxp != nyp) {
+#ifndef BROKEN_EXCEPTIONS
+    PyErr_SetString(PyExc_ValueError, "convolve: xp and yp have different lengths");
+#endif
+    return NULL;
+  }
+  if (nx != ndx || nx != ny) {
+#ifndef BROKEN_EXCEPTIONS
+    PyErr_SetString(PyExc_ValueError, "convolve: x, dx and y have different lengths");
+#endif
+    return NULL;
+  }
+  convolve_sampled(nxi,xi,yi,nxp,xp,yp,nx,x,dx,y);
   return Py_BuildValue("");
 }
 

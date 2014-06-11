@@ -26,7 +26,7 @@ packages = find_packages(exclude=['amqp_map','fit_functions','jobqueue'])
 
 def bumpsmodule():
     sources = [os.path.join('bumps','lib',f)
-               for f in ("bumpsmodule.cc","methods.cc","convolve.c")]
+               for f in ("bumpsmodule.cc","methods.cc","convolve.c","convolve_sampled.c")]
     module = Extension('bumps._reduction', sources=sources)
     return module
 

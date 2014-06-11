@@ -92,7 +92,12 @@ static PyMethodDef methods[] = {
 	{"_convolve",
 	 Pconvolve,
 	 METH_VARARGS,
-	 "_convolve(xi,yi,x,dx,y): compute convolution of width dx[k] at points x[k], returned in y[k]"},
+	 "_convolve(xi,yi,x,dx,y): compute convolution of width dx[k] at points x[k],\nreturned in y[k]"},
+
+	{"_convolve_sampled",
+	 Pconvolve_sampled,
+	 METH_VARARGS,
+	 "_convolve_sampled(xi,yi,xp,yp,x,dx,y): compute convolution with sampled\ndistribution of width dx[k] at points x[k], returned in y[k]"},
 
 	{"_erf",
 	 Perf,
@@ -100,66 +105,66 @@ static PyMethodDef methods[] = {
 	 "erf(data, result): get the erf of a set of data points"},
 
 
-	    {"rebin_uint8",
-	     &Prebin<uint8_t>,
-	     METH_VARARGS,
-	     "rebin_uint8(xi,Ii,xo,Io): rebin from bin edges xi to bin edges xo"
-	    },
-	    {"rebin2d_uint8",
-	     &Prebin2d<uint8_t>,
-	     METH_VARARGS,
-	     "rebin2d_uint8(xi,yi,Ii,xo,yo,Io): 2-D rebin from (xi,yi) to (xo,yo)"
-	    },
-	    {"rebin_uint16",
-	     &Prebin<uint16_t>,
-	     METH_VARARGS,
-	     "rebin_uint16(xi,Ii,xo,Io): rebin from bin edges xi to bin edges xo"
-	    },
-	    {"rebin2d_uint16",
-	     &Prebin2d<uint16_t>,
-	     METH_VARARGS,
-	     "rebin2d_uint16(xi,yi,Ii,xo,yo,Io): 2-D rebin from (xi,yi) to (xo,yo)"
-	    },
-	    {"rebin_uint32",
-	     &Prebin<uint32_t>,
-	     METH_VARARGS,
-	     "rebin_uint32(xi,Ii,xo,Io): rebin from bin edges xi to bin edges xo"
-	    },
-	    {"rebin2d_uint32",
-	     &Prebin2d<uint32_t>,
-	     METH_VARARGS,
-	     "rebin2d_uint32(xi,yi,Ii,xo,yo,Io): 2-D rebin from (xi,yi) to (xo,yo)"
-	    },
-	    {"rebin_uint64",
-	     &Prebin<uint64_t>,
-	     METH_VARARGS,
-	     "rebin_uint32(xi,Ii,xo,Io): rebin from bin edges xi to bin edges xo"
-	    },
-	    {"rebin2d_uint64",
-	     &Prebin2d<uint64_t>,
-	     METH_VARARGS,
-	     "rebin2d_uint32(xi,yi,Ii,xo,yo,Io): 2-D rebin from (xi,yi) to (xo,yo)"
-	    },
-	    {"rebin_float32",
-	     &Prebin<float>,
-	     METH_VARARGS,
-	     "rebin_float32(xi,Ii,xo,Io): rebin from bin edges xi to bin edges xo"
-	    },
-	    {"rebin2d_float32",
-	     &Prebin2d<float>,
-	     METH_VARARGS,
-	     "rebin2d_float32(xi,yi,Ii,xo,yo,Io): 2-D rebin from (xi,yi) to (xo,yo)"
-	    },
-	    {"rebin_float64",
-	     &Prebin<double>,
-	     METH_VARARGS,
-	     "rebin_float64(xi,Ii,xo,Io): rebin from bin edges xi to bin edges xo"
-	    },
-	    {"rebin2d_float64",
-	     &Prebin2d<double>,
-	     METH_VARARGS,
-	     "rebin2d_float64(xi,yi,Ii,xo,yo,Io): 2-D rebin from (xi,yi) to (xo,yo)"
-	    },
+	{"rebin_uint8",
+	 &Prebin<uint8_t>,
+	 METH_VARARGS,
+	 "rebin_uint8(xi,Ii,xo,Io): rebin from bin edges xi to bin edges xo"
+	},
+	{"rebin2d_uint8",
+	 &Prebin2d<uint8_t>,
+	 METH_VARARGS,
+	 "rebin2d_uint8(xi,yi,Ii,xo,yo,Io): 2-D rebin from (xi,yi) to (xo,yo)"
+	},
+	{"rebin_uint16",
+	 &Prebin<uint16_t>,
+	 METH_VARARGS,
+	 "rebin_uint16(xi,Ii,xo,Io): rebin from bin edges xi to bin edges xo"
+	},
+	{"rebin2d_uint16",
+	 &Prebin2d<uint16_t>,
+	 METH_VARARGS,
+	 "rebin2d_uint16(xi,yi,Ii,xo,yo,Io): 2-D rebin from (xi,yi) to (xo,yo)"
+	},
+	{"rebin_uint32",
+	 &Prebin<uint32_t>,
+	 METH_VARARGS,
+	 "rebin_uint32(xi,Ii,xo,Io): rebin from bin edges xi to bin edges xo"
+	},
+	{"rebin2d_uint32",
+	 &Prebin2d<uint32_t>,
+	 METH_VARARGS,
+	 "rebin2d_uint32(xi,yi,Ii,xo,yo,Io): 2-D rebin from (xi,yi) to (xo,yo)"
+	},
+	{"rebin_uint64",
+	 &Prebin<uint64_t>,
+	 METH_VARARGS,
+	 "rebin_uint32(xi,Ii,xo,Io): rebin from bin edges xi to bin edges xo"
+	},
+	{"rebin2d_uint64",
+	 &Prebin2d<uint64_t>,
+	 METH_VARARGS,
+	 "rebin2d_uint32(xi,yi,Ii,xo,yo,Io): 2-D rebin from (xi,yi) to (xo,yo)"
+	},
+	{"rebin_float32",
+	 &Prebin<float>,
+	 METH_VARARGS,
+	 "rebin_float32(xi,Ii,xo,Io): rebin from bin edges xi to bin edges xo"
+	},
+	{"rebin2d_float32",
+	 &Prebin2d<float>,
+	 METH_VARARGS,
+	 "rebin2d_float32(xi,yi,Ii,xo,yo,Io): 2-D rebin from (xi,yi) to (xo,yo)"
+	},
+	{"rebin_float64",
+	 &Prebin<double>,
+	 METH_VARARGS,
+	 "rebin_float64(xi,Ii,xo,Io): rebin from bin edges xi to bin edges xo"
+	},
+	{"rebin2d_float64",
+	 &Prebin2d<double>,
+	 METH_VARARGS,
+	 "rebin2d_float64(xi,yi,Ii,xo,yo,Io): 2-D rebin from (xi,yi) to (xo,yo)"
+	},
 
 	{0}
 } ;

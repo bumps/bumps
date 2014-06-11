@@ -23,3 +23,4 @@
 
 PyObject* Perf(PyObject*obj,PyObject*args);
 PyObject* Pconvolve(PyObject*obj,PyObject*args);
+PyObject* Pconvolve_sampled(PyObject*obj,PyObject*args);
