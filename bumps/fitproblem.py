@@ -451,7 +451,10 @@ class BaseFitProblem(object):
         # clicker() from SrFit I do not know.
         for v, p in zip(pvec, self._parameters):
             p.value = v
-        #self.constraints()
+        # TODO: setp_hook is a hack to support parameter expressions in sasview
+        # Don't depend on this existing long term.
+        setp_hook = getattr(self, 'setp_hook', no_constraints)
+        setp_hook()
         self.model_update()
     def getp(self):
         """
@@ -707,6 +710,8 @@ class MultiFitProblem(BaseFitProblem):
             if figfile != None:
                 pylab.savefig(figfile+"-model%d.png"%i, format='png')
 
+    # Note: restore default behaviour of getstate/setstate rather than
+    # inheriting from BaseFitProblem
     def __getstate__(self):
         return self.__dict__
 

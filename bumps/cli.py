@@ -470,7 +470,7 @@ def set_mplconfig(appdatadir):
         mplconfigdir = os.environ.setdefault('MPLCONFIGDIR',mplconfigdir)
         if not os.path.exists(mplconfigdir): os.makedirs(mplconfigdir)
 
-def config_matplotlib(backend):
+def config_matplotlib(backend=None):
     """
     Setup matplotlib to use a particular backend.
 
@@ -484,15 +484,23 @@ def config_matplotlib(backend):
     for modules which are completely dedicated to plotting, but these modules
     should never be imported at the module level.
     """
-    if hasattr(sys, 'frozen') and 'MPLCONFIGDIR' not in os.environ:
-        raise RuntimeError("MPLCONFIGDIR should be set to e.g., %LOCALAPPDATA%\YourApp\mplconfig")
+
+    # When running from a frozen environment created by py2exe, we will not
+    # have a range of backends available, and must set the default to WXAgg.
+    # With a full matplotlib distribution we can use whatever the user prefers.
+    if hasattr(sys, 'frozen'):
+        if 'MPLCONFIGDIR' not in os.environ:
+            raise RuntimeError("MPLCONFIGDIR should be set to e.g., %LOCALAPPDATA%\YourApp\mplconfig")
+        if backend is None:
+            backend = 'WXAgg'
 
     import matplotlib
 
     # Specify the backend to use for plotting and import backend dependent
     # classes. Note that this must be done before importing pyplot to have an
-    # effect.
-    matplotlib.use(backend)
+    # effect.  If no backend is given, let pyplot use the default.
+    if backend is not None:
+        matplotlib.use(backend)
 
     # Disable interactive mode so that plots are only updated on show() or
     # draw(). Note that the interactive function must be called before
@@ -549,10 +557,10 @@ def main():
     # If no GUI specified and not editing, then use the default mpl
     # backend for the python version.
     if opts.batch or opts.remote: # no interactivity
-        config_matplotlib('Agg')
+        config_matplotlib(backend='Agg')
     else: # let preview use default graphs
-        pass
- 
+        config_matplotlib()
+
     problem = initial_model(opts)
 
     # TODO: AMQP mapper as implemented requires workers started up with
