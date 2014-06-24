@@ -479,7 +479,7 @@ class AppPanel(wx.Panel):
             # variable stats are needed in order to plot UncertaintyView, and
             # so are computed therein.  Format them nicely and show them on
             # the console as well.
-            signal.log_message(dream_stats.format_vars(self.view['uncertainty'].stats))
+            signal.log_message(dream_stats.format_vars(self.view['uncertainty'].plot_state[1]))
         else:
             raise ValueError("Unknown fit progress message "+event.message)
 
