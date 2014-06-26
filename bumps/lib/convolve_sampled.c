@@ -21,11 +21,17 @@ double convolve_point_sampled(
     // in both curves piece-wise, integrating from knot to knot in the union
     // of the two knot sets.
 
-    const double NaN = 0./0.;
+    // Need an undefined value in case the algorithm is broken and we don't
+    // initialize the initial lines.  This would ideal be NaN, but that isn't
+    // available in MSVC, so set it to something very large.  In order to avoid
+    // normalizing that very large value to 1., only set the theory line to
+    // undefined, and set the resolution line to 0.
+    //const double undefined = 0./0.;
+    const double undefined = 1e308;
+    double m1=undefined, b1=undefined, m2=0., b2=0.;
     double sum = 0.;
     double norm = 0.;
     size_t p;
-    double m1=NaN,b1=NaN,m2=NaN,b2=NaN;
     double delta,delta2,delta3;
     double x, next_x, next_xin, next_xp;
 
