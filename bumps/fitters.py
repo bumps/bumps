@@ -569,7 +569,7 @@ class DreamFit(FitBase):
             print("Calculating entropy...")
             S,dS = self.entropy()
             print("Entropy: %s bits"%format_uncertainty(S,dS))
-            import sys; sys.exit()
+            #import sys; sys.exit()
 
         return x, -fx
 
