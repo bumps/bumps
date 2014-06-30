@@ -525,7 +525,8 @@ class DreamModel(MCMCModel):
 
 class DreamFit(FitBase):
     name = "DREAM"
-    settings = [('steps', 400), ('burn', 100), ('pop', 10), ('init', 'eps'), ('thin', 1)]
+    settings = [('steps', 400), ('burn', 100), ('pop', 10),
+                ('init', 'eps'), ('thin', 1), ('entropy', False)]
 
     def __init__(self, problem):
         self.dream_model = DreamModel(problem)
@@ -562,7 +563,20 @@ class DreamFit(FitBase):
         assert logp[-1] == fx
         assert all(points[-1, i] == xi for i, xi in enumerate(x))
 
+        if options['entropy']:
+            # TODO: need a better way to display entropy
+            from .formatnum import format_uncertainty
+            print("Calculating entropy...")
+            S,dS = self.entropy()
+            print("Entropy: %s bits"%format_uncertainty(S,dS))
+            import sys; sys.exit()
+
         return x, -fx
+
+    def entropy(self):
+        from .dream.entropy import entropy
+        S,dS = entropy(self.state, N_data=10000, N_sample=2500)
+        return S,dS
 
     def _monitor(self, state, pop, logp):
         # Get an early copy of the state
@@ -763,25 +777,42 @@ def _fill_defaults(options, settings):
         if field not in options:
             options[field] = value
 
+class ChoiceList(object):
+    def __init__(self, *choices):
+        self.choices = choices
+    def __call__(self, value):
+        if not value in self.choices:
+            raise ValueError('invalid option "%s": use %s'
+                             % (value, '|'.join(self.choices)))
+        else:
+            return value
+
+def yesno(value):
+    if value in ('true','yes','on','1'):
+        return True
+    elif value in ('false','no','off','0'):
+        return False
+    raise ValueError('invalid option "%s": use yes|no')
 
 class FitOptions(object):
     # Field labels and types for all possible fields
     FIELDS = dict(
-        starts = ("Starts",          "int"),
-        steps  = ("Steps",           "int"),
-        xtol   = ("Minimum population diameter", "float"),
-        ftol   = ("Minimum population flatness", "float"),
-        stop   = ("Stopping criteria", "str"),
-        thin   = ("Thinning",        "int"),
-        burn   = ("Burn-in Steps",   "int"),
-        pop    = ("Population",      "float"),
-        init   = ("Initializer",     ("eps", "lhs", "cov", "random")),
-        CR     = ("Crossover Ratio", "float"),
-        F      = ("Scale",           "float"),
-        nT     = ("# Temperatures",  "int"),
-        Tmin   = ("Min Temperature", "float"),
-        Tmax   = ("Max Temperature", "float"),
-        radius = ("Simplex Radius",  "float"),
+        starts = ("Starts",          int),
+        steps  = ("Steps",           int),
+        xtol   = ("Minimum population diameter", float),
+        ftol   = ("Minimum population flatness", float),
+        stop   = ("Stopping criteria", str),
+        thin   = ("Thinning",        int),
+        burn   = ("Burn-in Steps",   int),
+        pop    = ("Population",      float),
+        init   = ("Initializer",     ChoiceList("eps", "lhs", "cov", "random")),
+        CR     = ("Crossover Ratio", float),
+        F      = ("Scale",           float),
+        nT     = ("# Temperatures",  int),
+        Tmin   = ("Min Temperature", float),
+        Tmax   = ("Max Temperature", float),
+        radius = ("Simplex Radius",  float),
+        entropy = ("Calculate entropy", yesno),
         )
 
     def __init__(self, fitclass):
@@ -792,22 +823,13 @@ class FitOptions(object):
         # Convert supplied options to the correct types and save them in value
         for field, reset_value in self.fitclass.settings:
             value = getattr(opts, field, None)
-            dtype = FitOptions.FIELDS[field][1]
+            parse = FitOptions.FIELDS[field][1]
             if value is not None:
-                if dtype == 'int':
-                    self.options[field] = int(value)
-                elif dtype == 'float':
-                    self.options[field] = float(value)
-                elif dtype == 'str':
-                    self.options[field] = value
-                elif isinstance(dtype, tuple):  # tuple
-                    if not value in dtype:
-                        raise ValueError('invalid option "%s" for %s: use '
-                                         % (value, field)
-                                         + '|'.join(dtype))
-                    self.options[field] = value
-                else:
-                    raise TypeError("unkonwn argument type %s for field %s"%(str(dtype),field))
+                try:
+                    self.options[field] = parse(value)
+                except Exception as exc:
+                    raise ValueError("error in --%s: %s"%(field,str(exc)))
+        print("options=%s"%(str(self.options)))
 
 # List of (parameter,factory value) required for each algorithm
 FIT_OPTIONS = dict(

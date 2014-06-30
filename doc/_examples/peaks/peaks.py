@@ -52,7 +52,7 @@ class Gaussian(object):
         #normalization=1.0/(2*np.pi*s1*s2)
         #print "norm",np.sum(Zf)*normalization
         total = np.sum(Zf)
-        if np.isnan(total) or total==0:
+        if False and (np.isnan(total) or total==0):
             print("G(A,s1,s2,t,xc,yc) ->",total,(height,s1,s2,t,xc,yc))
             print("a,b,c",a,b,c)
         return Zf/total*abs(height) if total>0 else np.zeros_like(x)

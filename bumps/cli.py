@@ -333,6 +333,8 @@ Options:
         number of burn-in iterations before accumulating stats
     --thin=1        [dream]
         number of fit iterations between steps
+    --entropy=no    [dream]
+        compute entropy from MCMC chain
     --nT=25
     --Tmin=0.1
     --Tmax=10       [pt]

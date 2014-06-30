@@ -71,18 +71,39 @@ def build_problem():
 
     # Peak intensity varies
     for peak in M.parts[:-1]:
-        peak.A.range(0.25*signal,1.1*signal)
+        peak.A.range(0.1*signal,1.1*signal)
 
-    # Peak shape is the same across all peaks
     peak1.s1.range(0.002,0.02)
     peak1.s2.range(0.001,0.02)
     peak1.theta.range(-90, -0)
-    for peak in M.parts[1:-1]:
-        peak.s1 = peak1.s1
-        peak.s2 = peak1.s2
-        peak.theta = peak1.theta
 
     if 1:
+        # Peak shape is the same across all peaks
+        for peak in M.parts[1:-1]:
+            peak.s1 = peak1.s1
+            peak.s2 = peak1.s2
+            peak.theta = peak1.theta
+    else:
+        for peak in M.parts[1:-1]:
+            peak.s1.range(*peak1.s1.bounds.limits)
+            peak.s2.range(*peak1.s2.bounds.limits)
+            peak.theta.range(*peak1.theta.bounds.limits)
+
+    if 1:
+        M.parts[-1].C.pmp(100.0)
+
+    if 1:
+        for peak in M.parts[:-1]:
+            peak.s1.value = 0.006
+            peak.s2.value = 0.002
+            peak.theta.value = -60.0
+            peak.A.value = signal/2
+        M.parts[0].xc.value = 0.500
+        M.parts[0].yc.value = -0.485
+        M.parts[1].xc.value = 0.495
+        M.parts[1].yc.value = -0.495
+
+    if 0:
         print("shape",peak1.s1.value,peak1.s2.value,peak1.theta.value)
         print("centers theta,delta",theta.value,delta.value)
         print("centers",(peak1.xc.value,peak1.yc.value),
