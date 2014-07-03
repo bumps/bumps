@@ -47,9 +47,9 @@ class ItemListValidator(wx.PyValidator):
     wx.TextCtrl or a wx.ComboBox widget).  Parameters are:
 
     - datatype of the field (used when validating user input) as follows:
-      o 'int'       => signed or unsigned integer value
-      o 'float'     => floating point value
-      o 'str'       => string of characters
+      o int       => signed or unsigned integer value
+      o float     => floating point value
+      o str       => string of characters
       o 'str_alpha' => string of alphabetic characters {A-Z, a-z}
       o 'str_alnum' => string of alphanumeric characters {A-Z, a-z, 0-9}
       o 'str_id'    => string identifier consisting of {A-Z, a-z, 0-9, _, -}
@@ -84,7 +84,7 @@ class ItemListValidator(wx.PyValidator):
         text = text_ctrl.GetValue().strip()
 
         try:
-            if self.datatype == "int":
+            if self.datatype == int:
                 if len(text) == 0:
                     self.value = 0
                     self.value_alt = None
@@ -92,7 +92,7 @@ class ItemListValidator(wx.PyValidator):
                         raise RuntimeError("input required")
                 else:
                     self.value = self.value_alt = int(text)
-            elif self.datatype == "float":
+            elif self.datatype == float:
                 if len(text) == 0:
                     self.value = 0.0
                     self.value_alt = None
@@ -344,24 +344,24 @@ class InputListPanel(ScrolledPanel):
 
             # Process the flags parameter.
             required = False
-            if flags.find('R') >= 0: required = True
+            if 'R' in flags: required = True
             editable = False
-            if flags.find('E') >= 0: editable = True
+            if 'E' in flags: editable = True
             combo = False
-            if flags.find('C') >= 0: combo = True
+            if 'C' in flags: combo = True
             line = False
-            if flags.find('L') >= 0: line = True
+            if 'L' in flags: line = True
             hdr = False
-            if flags.find('H') >= 0 and header is not None: hdr = True
+            if 'H' in flags and header is not None: hdr = True
             if hdr:
                 delta_pts = 0
-                if flags.find('1') >= 0: delta_pts = 1  # large
-                if flags.find('2') >= 0: delta_pts = 2  # X-large
-                if flags.find('3') >= 0: delta_pts = 3  # 2X-large
+                if '1' in flags: delta_pts = 1  # large
+                if '2' in flags: delta_pts = 2  # X-large
+                if '3' in flags: delta_pts = 3  # 2X-large
                 weight = wx.NORMAL
-                if flags.find('B') >= 0: weight = wx.BOLD
+                if 'B' in flags: weight = wx.BOLD
                 underlined = False
-                if flags.find('U') >= 0: underlined = True
+                if 'U' in flags: underlined = True
 
             # Optionally, create a header widget to display above the input box.
             # A dividing line is treated as a special case header.
@@ -983,24 +983,24 @@ class AppTestFrame(wx.Frame):
 
         # Define fields for both InputListPanel and InputListDialog to display.
         self.fields = [
-            ["Integer (int, optional):", 12345, "int", 'EH3', None,
+            ["Integer (int, optional):", 12345, int, 'EH3', None,
                 "Test Header (2X-large)"],
             # Test specification of integer default value as a string
-            ["Integer (int, optional):", "-60", "int", 'E', None],
+            ["Integer (int, optional):", "-60", int, 'E', None],
             # Default value is null, so the required field should be highlighted
-            ["Integer (int, required):", "", "int", 'RE', None],
-            ["Floating Point (float, optional):", 2.34567e-5, "float", 'EHB1', None,
+            ["Integer (int, required):", "", int, 'RE', None],
+            ["Floating Point (float, optional):", 2.34567e-5, float, 'EHB1', None,
                 "Test Header (large, bold)"],
-            ["Floating Point (float, optional):", "", "float", 'E', None],
-            ["Floating Point (float, required):", 1.0, "float", 'RE', None],
+            ["Floating Point (float, optional):", "", float, 'E', None],
+            ["Floating Point (float, required):", 1.0, float, 'RE', None],
             # Test unknown datatype which should be treated as 'str'
             ["String (str, optional):", "DANSE", "foo", 'EHU', None,
                 "Test Header (%dpt font, underlined)"%pt_size],
-            ["String (str, reqiured):", "delete me", "str", 'RE', None],
-            ["Non-editable field:", "Cannot be changed!", "str", '', None],
-            ["ComboBox String:", "Two", "str", 'CREL', ("One", "Two", "Three")],
+            ["String (str, reqiured):", "delete me", str, 'RE', None],
+            ["Non-editable field:", "Cannot be changed!", str, '', None],
+            ["ComboBox String:", "Two", str, 'CREL', ("One", "Two", "Three")],
             # ComboBox items must be specified as strings
-            ["ComboBox String:", "", "int", 'CE', ("100", "200", "300")],
+            ["ComboBox Integer:", "", int, 'CE', ("100", "200", "300")],
             ["String (alphabetic):", "Aa", "str_alpha", 'E', None],
             ["String (alphanumeric):", "Aa1", "str_alnum", 'E', None],
             ["String (A-Z, a-z, 0-9, _, -):", "A-1_a", "str_id", 'E', None],

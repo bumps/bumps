@@ -36,17 +36,22 @@ def build_problem():
     M.parts[-1].C.value = background
     peak1 = M.parts[0]
 
+    peak1.xc.range(0.45,0.55)
+    peak1.yc.range(-0.55,-0.4)
+    peak1.xc.value = 0.500
+    peak1.yc.value = -0.485
+
     if 0:
         # Peak centers are independent
-        for peak in M.parts[:-1]:
+        for peak in M.parts[1:-1]:
             peak.xc.range(0.45,0.55)
             peak.yc.range(-0.55,-0.4)
+        M.parts[1].xc.value = 0.495
+        M.parts[1].yc.value = -0.495
     else:
         # Peak centers lie on a line
         theta=Parameter(45, name="theta")
         theta.range(0,90)
-        peak1.xc.range(0.45,0.55)
-        peak1.yc.range(-0.55,-0.4)
         for i,peak in enumerate(M.parts[1:-1]):
             delta=Parameter(.0045, name="delta-%d"%(i+1))
             delta.range(0.0,0.015)
@@ -57,7 +62,6 @@ def build_problem():
         cx, cy = 0.4996-0.4957, -0.4849+0.4917
         theta.value = np.degrees(np.arctan2(cy,cx))
         delta.value = np.sqrt(cx**2+cy**2)
-        peak1.xc.value,peak1.yc.value = 0.4957,-0.4917
 
     # Initial values
     for peak in M.parts[:-1]:
@@ -98,10 +102,6 @@ def build_problem():
             peak.s2.value = 0.002
             peak.theta.value = -60.0
             peak.A.value = signal/2
-        M.parts[0].xc.value = 0.500
-        M.parts[0].yc.value = -0.485
-        M.parts[1].xc.value = 0.495
-        M.parts[1].yc.value = -0.495
 
     if 0:
         print("shape",peak1.s1.value,peak1.s2.value,peak1.theta.value)

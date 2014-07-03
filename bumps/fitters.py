@@ -788,9 +788,9 @@ class ChoiceList(object):
             return value
 
 def yesno(value):
-    if value in ('true','yes','on','1'):
+    if value.lower() in ('true','yes','on','1'):
         return True
-    elif value in ('false','no','off','0'):
+    elif value.lower() in ('false','no','off','0'):
         return False
     raise ValueError('invalid option "%s": use yes|no')
 
@@ -829,7 +829,7 @@ class FitOptions(object):
                     self.options[field] = parse(value)
                 except Exception as exc:
                     raise ValueError("error in --%s: %s"%(field,str(exc)))
-        print("options=%s"%(str(self.options)))
+        #print("options=%s"%(str(self.options)))
 
 # List of (parameter,factory value) required for each algorithm
 FIT_OPTIONS = dict(
