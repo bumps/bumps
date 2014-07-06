@@ -7,17 +7,17 @@ problem and N is the number of individuals in the population.
 
 Three functions are provided:
 
-1. lhs_init(N, pars) returns a latin hypercube sampling, which tests every
-parameter at each of N levels.
+1. lhs_init(n, pars) returns a latin hypercube sampling, which tests every
+parameter at each of *n* levels.
 
-2. cov_init(N, pars, cov) returns a Gaussian sample along the ellipse
+2. cov_init(n, pars, cov) returns a Gaussian sample along the ellipse
 defined by the covariance matrix, cov.  Covariance defaults to
 diag(dx) if dx is provided as a parameter, or to I if it is not.
 
-3. rand_init(N, pars) returns a random population following the
+3. rand_init(n, pars) returns a random population following the
 prior distribution of the parameter values.
 
-Additional options are random box: rand(M,N) or random scatter: randn(M,N).
+Additional options are random box: rand(m,n) or random scatter: randn(m,n).
 """
 
 # Note: borrowed from DREAM and extended.
@@ -28,7 +28,7 @@ __all__ = ['lhs_init', 'cov_init', 'random_init', 'eps_init', 'generate']
 
 import math
 import numpy
-from numpy import eye, diag, asarray, array, empty, isinf, clip
+from numpy import eye, diag, asarray, empty, isinf, clip
 
 def generate(problem, **options):
     """
@@ -49,15 +49,14 @@ def generate(problem, **options):
     elif options['init'] == 'eps':
         population = eps_init(pop_size, initial, bounds, include_current=True, eps=1e-6)
     else:
-        raise ValueError("Unknown population initializer '%s'"
-                         %options['init'])
+        raise ValueError("Unknown population initializer '%s'" % options['init'])
     return population
 
-def lhs_init(N, initial, bounds, include_current=False):
+def lhs_init(n, initial, bounds, include_current=False):
     """
     Latin Hypercube Sampling
 
-    Returns an array whose columns and rows each have *N* samples from
+    Returns an array whose columns and rows each have *n* samples from
     equally spaced bins between *bounds=(xmin, xmax)* for the column.
     Unlike random, this method guarantees a certain amount of coverage
     of the parameter space.  Consider, though that the diagonal matrix
@@ -79,10 +78,10 @@ def lhs_init(N, initial, bounds, include_current=False):
     nvar = len(xmin)
 
     # Initialize array ran with random numbers
-    ran = numpy.random.rand(N,nvar)
+    ran = numpy.random.rand(n,nvar)
 
     # Initialize array s with zeros
-    s = empty((N,nvar))
+    s = empty((n,nvar))
 
     # Now fill s
     for j in range(nvar):
@@ -90,25 +89,25 @@ def lhs_init(N, initial, bounds, include_current=False):
             # Put current value at position 0 in population
             s[0,j] = initial[j]
             # Find which bin the current value belongs in
-            xidx = int(N*initial[j]/(xmax[j]-xmin[j]))
+            xidx = int(n*initial[j]/(xmax[j]-xmin[j]))
             # Generate random permutation of remaining bins
-            idx = numpy.random.permutation(N-1)
+            idx = numpy.random.permutation(n-1)
             idx[idx>=xidx] += 1  # exclude current value bin
             # Assign random value within each bin
-            P = (idx+ran[1:,j])/N
+            P = (idx+ran[1:,j])/n
             s[1:,j] = xmin[j] + P*(xmax[j]-xmin[j])
         else:
             # Random permutation of bins
-            idx = numpy.random.permutation(N)
+            idx = numpy.random.permutation(n)
             # Assign random value within each bin
-            P = (idx+ran[:,j])/N
+            P = (idx+ran[:,j])/n
             s[:,j] = xmin[j] + P*(xmax[j]-xmin[j])
 
     return s
 
-def cov_init(N, initial, bounds, include_current=False, cov=None, dx=None):
+def cov_init(n, initial, bounds, include_current=False, cov=None, dx=None):
     """
-    Initialize *N* sets of random variables from a gaussian model.
+    Initialize *n* sets of random variables from a gaussian model.
 
     The center is at *x* with an uncertainty ellipse specified by the
     1-sigma independent uncertainty values *dx* or the full covariance
@@ -117,24 +116,24 @@ def cov_init(N, initial, bounds, include_current=False, cov=None, dx=None):
     For example, create an initial population for 20 sequences for a
     model with local minimum x with covariance matrix C::
 
-        pop = cov_init(cov=C, pars=p, N=20)
+        pop = cov_init(cov=C, pars=p, n=20)
 
     If include_current is True, then the current value of the parameters
     is returned as the first point in the population.
     """
-    #return mean + dot(RNG.randn(N,len(mean)), chol(cov))
+    #return mean + dot(RNG.randn(n,len(mean)), chol(cov))
     if cov == None and dx == None:
         cov = eye(len(inital))
     elif cov == None:
         cov = diag(asarray(dx)**2)
-    population = numpy.random.multivariate_normal(mean=initial, cov=cov, size=N)
+    population = numpy.random.multivariate_normal(mean=initial, cov=cov, size=n)
     if include_current:
         population[0] = initial
     # Make sure values are in bounds.
     population = numpy.clip(population, *bounds)
     return population
 
-def random_init(N, initial, problem, include_current=False):
+def random_init(n, initial, problem, include_current=False):
     """
     Generate a random population from the problem parameters.
 
@@ -145,12 +144,12 @@ def random_init(N, initial, problem, include_current=False):
     If include_current is True, then the current value of the parameters
     is returned as the first point in the population.
     """
-    population = problem.randomize(N)
+    population = problem.randomize(n)
     if include_current:
         population[0] = initial
     return population
 
-def eps_init(N, initial, bounds, include_current=False, eps=1e-6):
+def eps_init(n, initial, bounds, include_current=False, eps=1e-6):
     """
     Generate a random population using an epsilon ball around the current
     value.
@@ -170,7 +169,7 @@ def eps_init(N, initial, bounds, include_current=False, eps=1e-6):
     xmin,xmax = bounds
     dx = (xmax-xmin)*eps
     dx[isinf(dx)] = eps
-    population = x+dx*(2*numpy.random.rand(N,len(xmin))-1)
+    population = x+dx*(2*numpy.random.rand(n,len(xmin))-1)
     population = clip(population,xmin,xmax)
     if include_current:
         population[0] = x

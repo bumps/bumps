@@ -19,5 +19,5 @@ from .parameter import Parameter, FreeVariables
 from .bounds import Distribution
 from .pdfwrapper import PDF
 from .curve import Curve, PoissonCurve
-from .fitproblem import preview, fit, mesh, FitProblem, MultiFitProblem
+from .fitproblem import FitProblem, MultiFitProblem
 
