@@ -14,7 +14,7 @@ import shutil
 sys.dont_write_bytecode = True
 
 # Force build before continuing
-os.system('"%s" setup.py build'%sys.executable)
+os.system('"%s" setup.py build' % sys.executable)
 
 # Remove the current directory from the python path
 here = os.path.abspath(os.path.dirname(__file__))
@@ -30,13 +30,12 @@ if len(sys.argv) == 1:
 # Put the build lib on the start of the path.
 # For packages with binary extensions, need platform.  If it is a pure
 # script library, use an empty platform string.
-platform = '.%s-%s'%(get_platform(),sys.version[:3])
+platform = '.%s-%s' % (get_platform(), sys.version[:3])
 #platform = ''
-build_lib = os.path.abspath('build/lib'+platform)
+build_lib = os.path.abspath('build/lib' + platform)
 sys.path.insert(0, build_lib)
 
-#print "\n".join(sys.path)
-
+# print "\n".join(sys.path)
 
 
 # TODO: Combine with setup-py2exe so that consistency is easier.
@@ -62,13 +61,13 @@ COPYRIGHT = 'This program is public domain'
 DATA_FILES = gui_resources.data_files()
 
 plist = dict(
-    CFBundleIconFile            = ICON,
-    CFBundleName                = NAME,
-    CFBundleShortVersionString  = ' '.join([NAME, VERSION]),
-    CFBundleGetInfoString       = NAME,
-    CFBundleExecutable          = NAME,
-    CFBundleIdentifier          = 'org.reflectometry.%s' % ID,
-    NSHumanReadableCopyright    = COPYRIGHT
+    CFBundleIconFile=ICON,
+    CFBundleName=NAME,
+    CFBundleShortVersionString=' '.join([NAME, VERSION]),
+    CFBundleGetInfoString=NAME,
+    CFBundleExecutable=NAME,
+    CFBundleIdentifier='org.reflectometry.%s' % ID,
+    NSHumanReadableCopyright=COPYRIGHT
 )
 
 
@@ -81,28 +80,33 @@ py2app_opt = dict(argv_emulation=True,
                   optimize=2)
 options = dict(py2app=py2app_opt,)
 
+
 def build_app():
     setup(
-          data_files = DATA_FILES,
-          package_data = PACKAGE_DATA,
-          app = [app_data],
-          options = options,
-          )
+        data_files=DATA_FILES,
+        package_data=PACKAGE_DATA,
+        app=[app_data],
+        options=options,
+    )
     # Add cli interface to the app directory
-    os.system('cp -p extra/appbin/* "dist/%s.app"'%NAME)
+    os.system('cp -p extra/appbin/* "dist/%s.app"' % NAME)
+
 
 def build_dmg():
     """DMG builder; should include docs"""
-    PRODUCT = NAME+" "+VERSION
-    PRODUCTDASH = NAME+"-"+VERSION
-    APP="dist/%s.app"%PRODUCT
-    DMG="dist/%s.dmg"%PRODUCTDASH
+    PRODUCT = NAME + " " + VERSION
+    PRODUCTDASH = NAME + "-" + VERSION
+    APP = "dist/%s.app" % PRODUCT
+    DMG = "dist/%s.dmg" % PRODUCTDASH
     # Remove previous build if it is still sitting there
-    if os.path.exists(APP): shutil.rmtree(APP)
-    if os.path.exists(DMG): os.unlink(DMG)
-    os.rename("dist/%s.app"%NAME, APP)
-    os.system('cd dist && ../extra/dmgpack.sh "%s" "%s.app" ../doc/_build/html ../doc/examples'%(PRODUCTDASH,PRODUCT))
-    os.system('chmod a+r "%s"'%DMG)
+    if os.path.exists(APP):
+        shutil.rmtree(APP)
+    if os.path.exists(DMG):
+        os.unlink(DMG)
+    os.rename("dist/%s.app" % NAME, APP)
+    os.system('cd dist && ../extra/dmgpack.sh "%s" "%s.app" ../doc/_build/html ../doc/examples' %
+              (PRODUCTDASH, PRODUCT))
+    os.system('chmod a+r "%s"' % DMG)
 
 if __name__ == "__main__":
     build_app()

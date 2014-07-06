@@ -42,7 +42,7 @@ import sys
 sys.dont_write_bytecode = True
 
 # Force build before continuing
-os.system('"%s" setup.py build'%sys.executable)
+os.system('"%s" setup.py build' % sys.executable)
 
 # Remove the current directory from the python path
 here = os.path.abspath(os.path.dirname(__file__))
@@ -63,12 +63,12 @@ if len(sys.argv) == 1:
 # Put the build lib on the start of the path.
 # For packages with binary extensions, need platform.  If it is a pure
 # script library, use an empty platform string.
-platform = '.%s-%s'%(get_platform(),sys.version[:3])
+platform = '.%s-%s' % (get_platform(), sys.version[:3])
 #platform = ''
-build_lib = os.path.abspath('build/lib'+platform)
+build_lib = os.path.abspath('build/lib' + platform)
 sys.path.insert(0, build_lib)
 
-#print "\n".join(sys.path)
+# print "\n".join(sys.path)
 
 import wx
 import matplotlib
@@ -176,9 +176,9 @@ elif sys.version_info >= (2, 5):
 data_files = []
 
 # Add resource files that need to reside in the same directory as the image.
-data_files.append( ('.', [os.path.join('.', 'LICENSE.txt')]) )
-data_files.append( ('.', [os.path.join('.', 'README.txt')]) )
-data_files.append( ('.', [os.path.join('.', 'bin', 'bumps_launch.bat')]) )
+data_files.append(('.', [os.path.join('.', 'LICENSE.txt')]))
+data_files.append(('.', [os.path.join('.', 'README.txt')]))
+data_files.append(('.', [os.path.join('.', 'bin', 'bumps_launch.bat')]))
 
 # Add application specific data files from the bumps\bumps-data folder.
 data_files += gui_resources.data_files()
@@ -196,23 +196,23 @@ data_files += periodictable.data_files()
 for path in glob.glob(os.path.join('examples', '*')):
     if os.path.isdir(path):
         for file in glob.glob(os.path.join(path, '*.*')):
-            data_files.append( (path, [file]) )
+            data_files.append((path, [file]))
     else:
-        data_files.append( ('examples', [path]) )
+        data_files.append(('examples', [path]))
 
 for path in glob.glob(os.path.join('doc', 'examples', '*')):
     if os.path.isdir(path):
         for file in glob.glob(os.path.join(path, '*.*')):
-            data_files.append( (path, [file]) )
+            data_files.append((path, [file]))
     else:
-        data_files.append( ('doc', [path]) )
+        data_files.append(('doc', [path]))
 
 # Add PDF documentation to the dist staging directory.
 pdf = os.path.join('doc', 'Bumps.pdf')
 if os.path.isfile(pdf):
-    data_files.append( ('doc', [pdf]) )
+    data_files.append(('doc', [pdf]))
 else:
-    print("*** %s not found - building frozen image without it ***" %pdf)
+    print("*** %s not found - building frozen image without it ***" % pdf)
 
 # Add the Microsoft Visual C++ 2008 redistributable kit if we are building with
 # Python 2.6 or 2.7.  This kit will be installed on the target system as part
@@ -223,7 +223,7 @@ else:
 # appropriate dll must be present on the target system at runtime.
 if sys.version_info >= (2, 6):
     pypath = os.path.dirname(sys.executable)
-    data_files.append( ('.', [os.path.join(pypath, 'vcredist_x86.exe')]) )
+    data_files.append(('.', [os.path.join(pypath, 'vcredist_x86.exe')]))
 
 # Specify required packages to bundle in the executable image.
 packages = ['numpy', 'scipy', 'matplotlib', 'pytz', 'pyparsing',
@@ -258,7 +258,9 @@ dll_excludes = ['libgdk_pixbuf-2.0-0.dll',
                 'w9xpopen.exe',
                 'cygwin1.dll']
 
+
 class Target(object):
+
     """This class stores metadata about the distribution in a dictionary."""
 
     def __init__(self, **kw):
@@ -266,22 +268,28 @@ class Target(object):
         self.version = version
 
 clientCLI = Target(
-    name = 'Bumps',
-    description = 'Bumps CLI application',
-    script = os.path.join('bin', 'bumps_cli.py'),  # module to run on application start
-    dest_base = 'bumps',  # file name part of the exe file to create
-    icon_resources = [(1, os.path.join('bumps', 'gui', 'resources', 'bumps.ico'))],  # also need to specify in data_files
-    bitmap_resources = [],
-    other_resources = [(24, 1, manifest % dict(prog='Bumps'))] )
+    name='Bumps',
+    description='Bumps CLI application',
+    # module to run on application start
+    script=os.path.join('bin', 'bumps_cli.py'),
+    dest_base='bumps',  # file name part of the exe file to create
+    # also need to specify in data_files
+    icon_resources=[
+        (1, os.path.join('bumps', 'gui', 'resources', 'bumps.ico'))],
+    bitmap_resources=[],
+    other_resources=[(24, 1, manifest % dict(prog='Bumps'))])
 
 clientGUI = Target(
-    name = 'Bumps',
-    description = 'Bumps GUI application',
-    script = os.path.join('bin', 'bumps_gui.py'),  # module to run on application start
-    dest_base = 'bumps_gui',  # file name part of the exe file to create
-    icon_resources = [(1, os.path.join('bumps', 'gui', 'resources', 'bumps.ico'))],  # also need to specify in data_files
-    bitmap_resources = [],
-    other_resources = [(24, 1, manifest % dict(prog='Bumps'))] )
+    name='Bumps',
+    description='Bumps GUI application',
+    # module to run on application start
+    script=os.path.join('bin', 'bumps_gui.py'),
+    dest_base='bumps_gui',  # file name part of the exe file to create
+    # also need to specify in data_files
+    icon_resources=[
+        (1, os.path.join('bumps', 'gui', 'resources', 'bumps.ico'))],
+    bitmap_resources=[],
+    other_resources=[(24, 1, manifest % dict(prog='Bumps'))])
 
 # Now we do the work to create a standalone distribution using py2exe.
 #
@@ -293,22 +301,22 @@ clientGUI = Target(
 # window and no console window will be provided.  Output to stderr will be
 # written to <app-image-name>.log.
 setup(
-      console=[clientCLI],
-      windows=[clientGUI],
-      options={'py2exe': {
-                   'packages': packages,
-                   'includes': includes,
-                   'excludes': excludes,
-                   'dll_excludes': dll_excludes,
-                   'compressed': 1,   # standard compression
-                   'optimize': 0,     # no byte-code optimization
-                   'dist_dir': "dist",# where to put py2exe results
-                   'xref': False,     # display cross reference (as html doc)
-                   'bundle_files': 1, # bundle python25.dll in library.zip
-                         }
-              },
-      # Since we are building two exe's, do not put the shared library in each
-      # of them.  Instead create a single, separate library.zip file.
-      ### zipfile=None,               # bundle library.zip in exe
-      data_files=data_files           # list of files to copy to dist directory
-     )
+    console=[clientCLI],
+    windows=[clientGUI],
+    options={'py2exe': {
+        'packages': packages,
+        'includes': includes,
+        'excludes': excludes,
+        'dll_excludes': dll_excludes,
+        'compressed': 1,   # standard compression
+        'optimize': 0,     # no byte-code optimization
+        'dist_dir': "dist",  # where to put py2exe results
+        'xref': False,     # display cross reference (as html doc)
+        'bundle_files': 1,  # bundle python25.dll in library.zip
+    }
+    },
+    # Since we are building two exe's, do not put the shared library in each
+    # of them.  Instead create a single, separate library.zip file.
+    # zipfile=None,               # bundle library.zip in exe
+    data_files=data_files           # list of files to copy to dist directory
+)
