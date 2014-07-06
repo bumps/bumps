@@ -43,7 +43,11 @@ def prepare():
     from distutils.util import get_platform
     platform = '.%s-%s'%(get_platform(),sys.version[:3])
 
-    sys.dont_write_bytecode = True
+    # To avoid cluttering the source tree with .pyc or __pycache__ files, you
+    # can suppress the bytecode generation when running in place. Unfortunately
+    # this is a pretty big performance hit on Windows, so we are going to
+    # suppress this behaviour and rely on .gitignore instead
+    #sys.dont_write_bytecode = True
 
     #import numpy; numpy.seterr(all='raise')
     root = os.path.abspath(os.path.dirname(__file__))

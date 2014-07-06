@@ -1,18 +1,34 @@
-.settings
-.coverage
-.mplconfig
+# Eclipse/pycharm settings files
+.idea
 .project
 .pydevproject
-*.pyd
-*.pyc
+
+# editor backup files
 *.swp
 *~
-*.so
 *.bak
-build/
-dist/
-bumps.egg-info/
+
+# build/test
+.settings
+.coverage
+/build/
+/dist/
+/bumps.egg-info/
 bumps.iss-include
-_build/
-doc/api/
-doc/examples/
+
+# doc targets
+/doc/_build/
+/doc/api/
+/doc/examples/
+
+# python droppings from running in place
+__pycache__/
+*.pyc
+*.pyo
+*.so
+*.pyd
+*.dll
+*.dyld
+
+# run in place sets .mplconfig
+.mplconfig
