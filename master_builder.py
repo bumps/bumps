@@ -55,10 +55,10 @@ sys.dont_write_bytecode = True
 
 # Windows commands to run utilities
 GIT = r"C:\Program Files\Git\bin\git.exe"
-REPO_NEW = '"%s" clone git@github.com:reflectometry/bumps.git'%GIT
-REPO_UPDATE = '"%s" pull origin master'%GIT
+REPO_NEW = '"%s" clone git@github.com:reflectometry/bumps.git' % GIT
+REPO_UPDATE = '"%s" pull origin master' % GIT
 
-INNO   = r"C:\Program Files\Inno Setup 5\ISCC.exe"  # command line operation
+INNO = r"C:\Program Files\Inno Setup 5\ISCC.exe"  # command line operation
 
 # Name of the package
 PKG_NAME = "bumps"
@@ -91,7 +91,7 @@ MIN_PY2EXE = "0.6.9"
 MIN_INNO = "5.3.10"
 
 # Create a line separator string for printing
-SEPARATOR = "\n" + "/"*79
+SEPARATOR = "\n" + "/" * 79
 
 # Relative path for local install under our build tree; this is used in place
 # of the default installation path on Windows of C:\PythonNN\Lib\site-packages
@@ -113,9 +113,10 @@ INS_DIR = os.path.join(TOP_DIR, LOCAL_INSTALL)
 # corresponding script directory (for nose, sphinx, pip, etc) to the path.
 PYTHON = sys.executable
 PYTHONDIR = os.path.dirname(os.path.abspath(PYTHON))
-SCRIPTDIR = os.path.join(PYTHONDIR,'Scripts')
-os.environ['PATH'] = ";".join((PYTHONDIR,SCRIPTDIR,os.environ['PATH']))
+SCRIPTDIR = os.path.join(PYTHONDIR, 'Scripts')
+os.environ['PATH'] = ";".join((PYTHONDIR, SCRIPTDIR, os.environ['PATH']))
 os.environ['PYTHON'] = "/".join(PYTHON.split("\\"))
+
 
 def get_version():
     # Get the version string of the application for use later.
@@ -129,66 +130,83 @@ def get_version():
 
     global PKG_VERSION, EGG_NAME, PKG_DIR
     PKG_VERSION = __version__
-    EGG_NAME = "%s-%s-py%d.%d-%s.egg"%(PKG_NAME,PKG_VERSION,
-                                       sys.version_info[0],
-                                       sys.version_info[1],
-                                       sys.platform)
+    EGG_NAME = "%s-%s-py%d.%d-%s.egg" % (PKG_NAME, PKG_VERSION,
+                                         sys.version_info[0],
+                                         sys.version_info[1],
+                                         sys.platform)
     PKG_DIR = os.path.join(INS_DIR, EGG_NAME)
     # Add the local site packages to the python path
     os.environ['PYTHONPATH'] = PKG_DIR
 
 #==============================================================================
 
+
 def build_it():
     # If no arguments, start at the first step
-    start_with = sys.argv[1] if len(sys.argv)>1 else 'deps'
+    start_with = sys.argv[1] if len(sys.argv) > 1 else 'deps'
     started = False
-    only = len(sys.argv)>2 and sys.argv[2] == "only"
+    only = len(sys.argv) > 2 and sys.argv[2] == "only"
 
     # Check the system for all required dependent packages.
     started = started or start_with == 'deps'
-    if started: check_dependencies()
-    if started and only: return
+    if started:
+        check_dependencies()
+    if started and only:
+        return
 
     # Checkout code from repository.
     started = started or start_with in ('co', 'checkout', 'update')
-    if started: checkout_code()
-    if started and only: return
+    if started:
+        checkout_code()
+    if started and only:
+        return
 
     # Version may have been updated on another repository
     get_version()
 
     # Install the application in a local directory tree.
     started = started or start_with == 'build'
-    if started: install_package()
-    if started and only: return
+    if started:
+        install_package()
+    if started and only:
+        return
 
     # Run unittests and doctests using a test script.
     started = started or start_with == 'test'
-    if started: run_tests()
-    if started and only: return
+    if started:
+        run_tests()
+    if started and only:
+        return
 
     # Build HTML and PDF documentaton using sphinx.
     # This step is done before building the Windows installer so that PDF
     # documentation can be included in the installable product.
     started = started or start_with == 'docs'
-    if started: build_documentation()
-    if started and only: return
+    if started:
+        build_documentation()
+    if started and only:
+        return
 
     # Create an archive of the source code.
     started = started or start_with == 'zip'
-    if started: create_archive(PKG_VERSION)
-    if started and only: return
+    if started:
+        create_archive(PKG_VERSION)
+    if started and only:
+        return
 
     # Create a Windows executable file using py2exe.
     started = started or start_with == 'exe'
-    if started and os.name == 'nt': create_windows_exe()
-    if started and only: return
+    if started and os.name == 'nt':
+        create_windows_exe()
+    if started and only:
+        return
 
     # Create a Windows installer/uninstaller exe using the Inno Setup Compiler.
     started = started or start_with == 'installer'
-    if started and os.name == 'nt': create_windows_installer(PKG_VERSION)
-    if started and only: return
+    if started and os.name == 'nt':
+        create_windows_installer(PKG_VERSION)
+    if started and only:
+        return
 
 
 def checkout_code():
@@ -214,22 +232,23 @@ def create_archive(version=None):
 
     try:
         # Create zip and tar archives in the dist subdirectory.
-        exec_cmd("%s setup.py sdist --formats=zip,gztar" %(PYTHON))
+        exec_cmd("%s setup.py sdist --formats=zip,gztar" % (PYTHON))
     except:
         print("*** Failed to create source archive ***")
     else:
         # Copy the archives and its source listing to the top-level directory.
         # The location of the file that contains the source listing and the
         # name of the file varies depending on what package is used to import
-        # setup, so its copy is made optional while we are making setup changes.
-        shutil.move(os.path.join("dist", PKG_NAME+"-"+str(version)+".zip"),
-                    os.path.join(TOP_DIR, PKG_NAME+"-"+str(version)+"-source.zip"))
-        shutil.move(os.path.join("dist", PKG_NAME+"-"+str(version)+".tar.gz"),
-                    os.path.join(TOP_DIR, PKG_NAME+"-"+str(version)+"-source.tar.gz"))
-        listing = os.path.join(SRC_DIR, PKG_NAME+".egg-info", "SOURCES.txt")
+        # setup, so its copy is made optional while we are making setup
+        # changes.
+        shutil.move(os.path.join("dist", PKG_NAME + "-" + str(version) + ".zip"),
+                    os.path.join(TOP_DIR, PKG_NAME + "-" + str(version) + "-source.zip"))
+        shutil.move(os.path.join("dist", PKG_NAME + "-" + str(version) + ".tar.gz"),
+                    os.path.join(TOP_DIR, PKG_NAME + "-" + str(version) + "-source.tar.gz"))
+        listing = os.path.join(SRC_DIR, PKG_NAME + ".egg-info", "SOURCES.txt")
         if os.path.isfile(listing):
             shutil.copy(listing,
-                os.path.join(TOP_DIR, PKG_NAME+"-"+str(version)+"-source-list.txt"))
+                        os.path.join(TOP_DIR, PKG_NAME + "-" + str(version) + "-source-list.txt"))
 
 
 def install_package():
@@ -237,12 +256,14 @@ def install_package():
     # If the INS_DIR directory already exists, warn the user.
     # Intermediate work files are stored in the <SRC_DIR>/build directory tree.
     print(SEPARATOR)
-    print("\nStep 3 - Installing the %s package in %s...\n" %(PKG_NAME, INS_DIR))
+    print("\nStep 3 - Installing the %s package in %s...\n" %
+          (PKG_NAME, INS_DIR))
     os.chdir(SRC_DIR)
 
     if os.path.isdir(INS_DIR):
-        print("WARNING: In order to build %s cleanly, the local build"%APP_NAME)
-        print("directory %s needs to be deleted."%INS_DIR)
+        print("WARNING: In order to build %s cleanly, the local build" %
+              APP_NAME)
+        print("directory %s needs to be deleted." % INS_DIR)
         print("Do you want to delete this directory and continue (D)")
         print("            or leave contents intact and continue (C)")
         print("            or exit the build script (E)")
@@ -260,7 +281,7 @@ def install_package():
     os.environ["PYTHONPATH"] = INS_DIR
     if not os.path.exists(INS_DIR):
         os.makedirs(INS_DIR)
-    exec_cmd("%s setup.py -q install --install-lib=%s" %(PYTHON, INS_DIR))
+    exec_cmd("%s setup.py -q install --install-lib=%s" % (PYTHON, INS_DIR))
 
 
 def build_documentation():
@@ -273,7 +294,7 @@ def build_documentation():
     # Create documentation in HTML and PDF format.
     exec_cmd("make clean html pdf")
     # Copy PDF to the doc directory where the py2exe script will look for it.
-    pdf = os.path.join("_build", "latex", APP_NAME+".pdf")
+    pdf = os.path.join("_build", "latex", APP_NAME + ".pdf")
     if os.path.isfile(pdf):
         shutil.copy(pdf, ".")
 
@@ -285,7 +306,7 @@ def create_windows_exe():
     print("\nStep 5 - Using py2exe to create a Win32 executable ...\n")
     os.chdir(SRC_DIR)
 
-    exec_cmd("%s setup_py2exe.py" %PYTHON)
+    exec_cmd("%s setup_py2exe.py" % PYTHON)
 
 
 def create_windows_installer(version=None):
@@ -299,13 +320,13 @@ def create_windows_installer(version=None):
     # First create an include file to convey the application's version
     # information to the Inno Setup compiler.
     f = open("iss-version", "w")
-    f.write('#define MyAppVersion "%s"\n' %version)  # version must be quoted
+    f.write('#define MyAppVersion "%s"\n' % version)  # version must be quoted
     f.close()
 
     # Run the Inno Setup Compiler to create a Win32 installer/uninstaller.
     # Override the output specification in <PKG_NAME>.iss to put the executable
     # and the manifest file in the top-level directory.
-    exec_cmd("%s /Q /O%s %s.iss" %(INNO, TOP_DIR, PKG_NAME))
+    exec_cmd("%s /Q /O%s %s.iss" % (INNO, TOP_DIR, PKG_NAME))
 
 
 def run_tests():
@@ -316,7 +337,8 @@ def run_tests():
     #os.chdir(os.path.join(INS_DIR, PKG_NAME))
     os.chdir(SRC_DIR)
 
-    exec_cmd("%s test.py" %PYTHON)
+    exec_cmd("%s test.py" % PYTHON)
+
 
 def check_dependencies():
     """
@@ -332,7 +354,7 @@ def check_dependencies():
     print("")
     if PV(python_ver) < PV(MIN_PYTHON) or PV(python_ver) >= PV(MAX_PYTHON):
         print("ERROR - build requires Python >= %s, but < %s"
-              %(MIN_PYTHON, MAX_PYTHON))
+              % (MIN_PYTHON, MAX_PYTHON))
         sys.exit()
 
     req_pkg = {}
@@ -379,8 +401,7 @@ def check_dependencies():
 
     # ------------------------------------------------------
     try:
-        if os.name == 'nt': flag = False
-        else:               flag = True
+        flag = (os.name != 'nt')
         p = subprocess.Popen("gcc -dumpversion", stdout=subprocess.PIPE,
                              shell=flag)
         gcc_ver = p.stdout.read().strip()
@@ -456,15 +477,15 @@ def check_dependencies():
     for key, values in req_pkg.items():
         if req_pkg[key][0] == "0":
             print("====> %s not found; version %s or later is required - ERROR"
-                %(key, req_pkg[key][1]))
+                  % (key, req_pkg[key][1]))
             error = True
         elif req_pkg[key][0] == "?":
-            print("Found %s" %(key))  # version is unknown
+            print("Found %s" % (key))  # version is unknown
         elif PV(req_pkg[key][0]) >= PV(req_pkg[key][1]):
-            print("Found %s %s" %(key, req_pkg[key][0]))
+            print("Found %s %s" % (key, req_pkg[key][0]))
         else:
             print("Found %s %s but minimum tested version is %s - WARNING"
-                %(key, req_pkg[key][0], req_pkg[key][1]))
+                  % (key, req_pkg[key][0], req_pkg[key][1]))
             error = True
 
     if error:
@@ -478,10 +499,9 @@ def check_dependencies():
 def exec_cmd(command):
     """Runs the specified command in a subprocess."""
 
-    if os.name == 'nt': flag = False
-    else:               flag = True
+    flag = (os.name != 'nt')
 
-    print("$ "+command)
+    print("$ " + command)
     subprocess.call(command, shell=flag)
 
 
@@ -489,7 +509,7 @@ if __name__ == "__main__":
     START_POINTS = ('deps', 'co', 'checkout', 'update', 'build', 'test',
                     'docs', 'zip', 'exe', 'installer')
 
-    if len(sys.argv)>1:
+    if len(sys.argv) > 1:
         # Display help if requested.
         if len(sys.argv) > 1 and sys.argv[1] not in START_POINTS:
             print("\nUsage: python master_builder.py [<start>] [only]\n")
@@ -506,7 +526,7 @@ if __name__ == "__main__":
             sys.exit()
 
     print("\nBuilding the %s application from the %s repository ...\n"
-          %(APP_NAME, PKG_NAME))
+          % (APP_NAME, PKG_NAME))
     print("Current working directory  = " + RUN_DIR)
     print("Top-level (root) directory = " + TOP_DIR)
     print("Package (source) directory = " + SRC_DIR)
