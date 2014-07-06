@@ -202,9 +202,8 @@ class AlgorithmParameter(wx.Panel):
             label, default_value, curr_value, datatype = parameter
             if not label.endswith(':'):
                 label += ':'
-            if isinstance(datatype, tuple):
-                extra = datatype
-                datatype = 'str'
+            if hasattr(datatype, 'choices'):
+                extra = [str(v) for v in datatype.choices]
                 mode = 'CRE'
             else:
                 mode = 'RE'
@@ -270,7 +269,9 @@ def OpenFitOptions():
                     break
             # Update all values in factory settings order.
             for (field, _), value in zip(record.fitclass.settings, pars):
-                record.options[field] = value
+                #print "parse",field,_,value,type(value),FIELD[field]
+                parse = FIELD[field][1]
+                record.options[field] = parse(value)
 
     fit_dlg.Destroy()
 
