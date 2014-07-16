@@ -27,7 +27,7 @@ def reload_errors(model, store, nshown=50, random=True):
     See :func:`calc_errors` for details on the return values.
     """
     problem = load_problem([model])
-    recall_best(problem, os.path.join(store, model[:-3]+".par"))
+    recall_best(problem, os.path.join(store, model[:-3] + ".par"))
     state = load_state(os.path.join(store, model[:-3]))
     state.mark_outliers()
     return calc_errors_from_state(problem, state,
@@ -36,6 +36,7 @@ def reload_errors(model, store, nshown=50, random=True):
 
 def show_errors(*args, **kw):
     return plugin.show_errors(*args, **kw)
+
 
 def calc_errors_from_state(problem, state, nshown=50, random=True):
     """
@@ -53,11 +54,14 @@ def calc_errors_from_state(problem, state, nshown=50, random=True):
     See :func:`calc_errors` for details on the return values.
     """
     points, _logp = state.sample()
-    if points.shape[0] < nshown: nshown = points.shape[0]
+    if points.shape[0] < nshown:
+        nshown = points.shape[0]
     # randomize the draw; skip the last point since state.keep_best() put
     # the best point at the end.
-    if random: points = points[numpy.random.permutation(len(points)-1)]
+    if random:
+        points = points[numpy.random.permutation(len(points) - 1)]
     return calc_errors(problem, points[-nshown:-1])
+
 
 def calc_errors(problem, points):
     """

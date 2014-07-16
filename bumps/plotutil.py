@@ -6,6 +6,7 @@ from __future__ import division
 __all__ = ["auto_shift", "next_color", "coordinated_colors", "dhsv",
            "plot_quantiles"]
 
+
 def auto_shift(offset):
     from matplotlib.transforms import ScaledTranslation
     import pylab
@@ -16,27 +17,32 @@ def auto_shift(offset):
         ax._auto_shift = 0
     trans = pylab.gca().transData
     if ax._auto_shift:
-        trans += ScaledTranslation(0,ax._auto_shift/72,
+        trans += ScaledTranslation(0, ax._auto_shift / 72,
                                    pylab.gcf().dpi_scale_trans)
     return trans
+
 
 def next_color():
     import pylab
     try:
         base = next(pylab.gca()._get_lines.color_cycle)
-    except: # Cruft 1.3 and earlier
+    except:  # Cruft 1.3 and earlier
         base = pylab.gca()._get_lines._get_next_cycle_color()
     return base
 
+
 def coordinated_colors(base=None):
-    if base is None: base = next_color()
+    if base is None:
+        base = next_color()
     return dict(base=base,
-                light = dhsv(base, dv=+0.3, ds=-0.2),
-                dark = dhsv(base, dv=-0.25, ds=+0.35),
+                light=dhsv(base, dv=+0.3, ds=-0.2),
+                dark=dhsv(base, dv=-0.25, ds=+0.35),
                 )
 
 # Color functions
-def dhsv(color, dh=0, ds=0, dv=0, da=0):
+
+
+def dhsv(color, dh=0., ds=0., dv=0., da=0.):
     """
     Modify color on hsv scale.
 
@@ -61,14 +67,14 @@ def dhsv(color, dh=0, ds=0, dv=0, da=0):
     from matplotlib.colors import colorConverter
     from colorsys import rgb_to_hsv, hsv_to_rgb
     from numpy import clip, array, fmod
-    r,g,b,a = colorConverter.to_rgba(color)
-    #print "from color",r,g,b,a
-    h,s,v = rgb_to_hsv(r,g,b)
-    s,v,a = [clip(val,0.,1.) for val in (s+ds,v+dv,a+da)]
-    h = fmod(h+dh,1.)
-    r,g,b = hsv_to_rgb(h,s,v)
-    #print "to color",r,g,b,a
-    return array((r,g,b,a))
+    r, g, b, a = colorConverter.to_rgba(color)
+    # print "from color",r,g,b,a
+    h, s, v = rgb_to_hsv(r, g, b)
+    s, v, a = [clip(val, 0., 1.) for val in (s + ds, v + dv, a + da)]
+    h = fmod(h + dh, 1.)
+    r, g, b = hsv_to_rgb(h, s, v)
+    # print "to color",r,g,b,a
+    return array((r, g, b, a))
 
 
 # ==== Quantiles plotter =====
@@ -78,17 +84,19 @@ def plot_quantiles(x, y, contours, color, alpha=None):
     import numpy
     from scipy.stats.mstats import mquantiles
     p = _convert_contours_to_probabilities(reversed(sorted(contours)))
-    q = mquantiles(y, prob = p, axis=0)
+    q = mquantiles(y, prob=p, axis=0)
     q = numpy.reshape(q, (-1, 2, len(x)))
-    #print "p",p
-    #print "q",q[:,:,0]
-    #print "y",y[:,0]
-    if alpha is None: alpha = 2./(len(contours) + 1)
-    edgecolor = dhsv(color, ds = -(1-alpha), dv = (1-alpha))
-    for lo,hi in q:
+    # print "p",p
+    # print "q",q[:,:,0]
+    # print "y",y[:,0]
+    if alpha is None:
+        alpha = 2. / (len(contours) + 1)
+    edgecolor = dhsv(color, ds=-(1 - alpha), dv=(1 - alpha))
+    for lo, hi in q:
         pylab.fill_between(x, lo, hi,
                            facecolor=color, edgecolor=edgecolor,
                            alpha=alpha, hold=True)
+
 
 def _convert_contours_to_probabilities(contours):
     """
@@ -99,4 +107,4 @@ def _convert_contours_to_probabilities(contours):
     # lower quantile for ci in percent = (100 - ci)/2
     # upper quantile = 100 - lower quantile = 100 - (100-ci)/2 = (100 + ci)/2
     # divide by an additional 100 to get proportion from 0 to 1
-    return numpy.hstack( [(100.0-p,100.0+p) for p in contours] )/200.0
+    return numpy.hstack([(100.0 - p, 100.0 + p) for p in contours]) / 200.0

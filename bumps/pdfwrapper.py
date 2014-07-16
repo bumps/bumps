@@ -7,7 +7,9 @@ import numpy
 
 from .parameter import Parameter
 
+
 class PDF(object):
+
     """
     Build a model from a function.
 
@@ -25,33 +27,37 @@ class PDF(object):
     par=value to define the parameter) or is set to zero if no default is
     given in the function.
     """
+
     def __init__(self, fn, name="", plot=None, **kw):
         # Make every name a parameter; initialize the parameters
         # with the default value if function is defined with keyword
         # initializers; override the initializers with any keyword
         # arguments specified in the fit function constructor.
-        pnames,vararg,varkw,pvalues = inspect.getargspec(fn)
+        pnames, vararg, varkw, pvalues = inspect.getargspec(fn)
         if vararg or varkw:
-            raise TypeError("Function cannot have *args or **kwargs in declaration")
+            raise TypeError(
+                "Function cannot have *args or **kwargs in declaration")
         # Parameters default to zero
-        init = dict( (p,0) for p in pnames)
+        init = dict((p, 0) for p in pnames)
         # If the function provides default values, use those
         if pvalues:
-            init.update(zip(pnames[-len(pvalues):],pvalues))
+            init.update(zip(pnames[-len(pvalues):], pvalues))
         # Regardless, use any values specified in the constructor, but first
         # check that they exist as function parameters.
         invalid = set(kw.keys()) - set(pnames)
         if invalid:
-            raise TypeError("Invalid initializers: %s"%", ".join(sorted(invalid)))
+            raise TypeError("Invalid initializers: %s" %
+                            ", ".join(sorted(invalid)))
         init.update(kw)
 
         # Build parameters out of ranges and initial values
-        pars = dict( (p,Parameter.default(init[p],name=name+p)) for p in pnames)
+        pars = dict(
+            (p, Parameter.default(init[p], name=name + p)) for p in pnames)
 
         # Make parameters accessible as model attributes
-        for k,v in pars.items():
-            if hasattr(self,k):
-                raise TypeError("Parameter cannot be named %s"%k)
+        for k, v in pars.items():
+            if hasattr(self, k):
+                raise TypeError("Parameter cannot be named %s" % k)
             setattr(self, k, v)
 
         # Remember the function, parameters, and number of parameters
@@ -63,11 +69,11 @@ class PDF(object):
         """
         Fittable parameters.
         """
-        return dict((p,getattr(self, p)) for p in self._pnames)
+        return dict((p, getattr(self, p)) for p in self._pnames)
 
     def __call__(self):
-        kw = dict( (p,getattr(self,p).value) for p in self._pnames )
-        #print kw
+        kw = dict((p, getattr(self, p).value) for p in self._pnames)
+        # print kw
         return self._function(**kw)
 
     def nllf(self):
@@ -84,11 +90,11 @@ class PDF(object):
 
     def plot(self, view=None):
         if self._plot:
-            kw = dict( (p,getattr(self,p).value) for p in self._pnames )
+            kw = dict((p, getattr(self, p).value) for p in self._pnames)
             self._plot(view=view, **kw)
 
     def numpoints(self):
-        return len(self._pnames)+1
+        return len(self._pnames) + 1
 
     def residuals(self):
         """

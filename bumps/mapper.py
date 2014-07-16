@@ -4,9 +4,14 @@ Parallel and serial mapper implementations.
 import sys
 import os
 
-## {{{ http://code.activestate.com/recipes/496767/ (r1)
-## Converted to use ctypes by Paul Kienzle
-def setpriority(pid=None,priority=1):
+# {{{ http://code.activestate.com/recipes/496767/ (r1)
+# Converted to use ctypes by Paul Kienzle
+
+
+PROCESS_ALL_ACCESS = 0x1F0FFF
+
+
+def setpriority(pid=None, priority=1):
     """
     Set The Priority of a Windows Process.  Priority is a value between 0-5
     where 2 is normal priority and 5 is maximum.  Default sets the priority
@@ -17,49 +22,60 @@ def setpriority(pid=None,priority=1):
     from ctypes import windll
 
     priorityclasses = [0x40,   # IDLE_PRIORITY_CLASS,
-                       0x4000, # BELOW_NORMAL_PRIORITY_CLASS,
+                       0x4000,  # BELOW_NORMAL_PRIORITY_CLASS,
                        0x20,   # NORMAL_PRIORITY_CLASS,
-                       0x8000, # ABOVE_NORMAL_PRIORITY_CLASS,
+                       0x8000,  # ABOVE_NORMAL_PRIORITY_CLASS,
                        0x80,   # HIGH_PRIORITY_CLASS,
                        0x100,  # REALTIME_PRIORITY_CLASS
                        ]
-    if pid == None:
+    if pid is None:
         pid = windll.kernel32.GetCurrentProcessId()
-    PROCESS_ALL_ACCESS = 0x1F0FFF
     handle = windll.kernel32.OpenProcess(PROCESS_ALL_ACCESS, True, pid)
     windll.kernel32.SetPriorityClass(handle, priorityclasses[priority])
-## end of http://code.activestate.com/recipes/496767/ }}}
+# end of http://code.activestate.com/recipes/496767/ }}}
+
+
 def nice():
     if os.name == 'nt':
         setpriority(priority=1)
     else:
         os.nice(5)
 
+
 class SerialMapper(object):
+
     @staticmethod
     def start_worker(problem):
         pass
+
     @staticmethod
     def start_mapper(problem, modelargs):
         return lambda points: map(problem.nllf, points)
+
     @staticmethod
     def stop_mapper(mapper):
         pass
 
+
 def _MP_load_problem(*modelargs):
     from .fitproblem import load_problem
     _MP_set_problem(load_problem(*modelargs))
+
+
 def _MP_set_problem(problem):
     global _problem
     nice()
     _problem = problem
+
+
 def _MP_run_problem(point):
     global _problem
     return _problem.nllf(point)
-    
+
+
 class MPMapper(object):
     pool = None
-    
+
     @staticmethod
     def start_worker(problem):
         pass
@@ -72,50 +88,61 @@ class MPMapper(object):
         if MPMapper.pool is not None:
             MPMapper.pool.terminate()
         #MPMapper.pool = multiprocessing.Pool(cpus,_MP_load_problem,modelargs)
-        MPMapper.pool = multiprocessing.Pool(cpus,_MP_set_problem, (problem,))
+        MPMapper.pool = multiprocessing.Pool(cpus, _MP_set_problem, (problem,))
         mapper = lambda points: MPMapper.pool.map(_MP_run_problem, points)
         return mapper
-        
+
     @staticmethod
     def stop_mapper(mapper):
         pass
 
+
 def _MPI_set_problem(comm, problem, root=0):
     global _problem
     _problem = comm.bcast(problem)
+
+
 def _MPI_run_problem(point):
     global _problem
-    return _problem.nllf(point) 
+    return _problem.nllf(point)
+
+
 def _MPI_map(comm, points, root=0):
     import numpy
     from mpi4py import MPI
     # Send number of points and number of variables per point
-    npoints, nvars = comm.bcast(points.shape if comm.rank==root else None, root=root)
-    if npoints == 0: raise StopIteration
+    npoints, nvars = comm.bcast(
+        points.shape if comm.rank == root else None, root=root)
+    if npoints == 0:
+        raise StopIteration
 
     # Divvy points equally across all processes
-    whole = points if comm.rank==root else None
+    whole = points if comm.rank == root else None
     idx = numpy.arange(comm.size)
-    size = numpy.ones(comm.size,idx.dtype)*(npoints//comm.size) + (idx<npoints%comm.size)
-    offset = numpy.cumsum(numpy.hstack((0,size[:-1])))
-    part = numpy.empty((size[comm.rank],nvars), dtype='d')
-    comm.Scatterv((whole,(size*nvars,offset*nvars),MPI.DOUBLE),
-                  (part,MPI.DOUBLE),
+    size = numpy.ones(comm.size, idx.dtype) * \
+        (npoints // comm.size) + (idx < npoints % comm.size)
+    offset = numpy.cumsum(numpy.hstack((0, size[:-1])))
+    part = numpy.empty((size[comm.rank], nvars), dtype='d')
+    comm.Scatterv((whole, (size * nvars, offset * nvars), MPI.DOUBLE),
+                  (part, MPI.DOUBLE),
                   root=root)
 
     # Evaluate models assigned to each processor
-    partial_result = numpy.array([_MPI_run_problem(pi) for pi in part],dtype='d')
+    partial_result = numpy.array([_MPI_run_problem(pi) for pi in part],
+                                 dtype='d')
 
     # Collect results
-    result = numpy.empty(npoints,dtype='d') if comm.rank==root else None
+    result = numpy.empty(npoints, dtype='d') if comm.rank == root else None
     comm.Barrier()
-    comm.Gatherv((partial_result,MPI.DOUBLE),
-                 (result,(size,offset),MPI.DOUBLE),
+    comm.Gatherv((partial_result, MPI.DOUBLE),
+                 (result, (size, offset), MPI.DOUBLE),
                  root=root)
     comm.Barrier()
-    return result   
+    return result
+
 
 class MPIMapper(object):
+
     @staticmethod
     def start_worker(problem):
         global _problem
@@ -123,11 +150,13 @@ class MPIMapper(object):
         from mpi4py import MPI
         root = 0
         # If master, then return to main program
-        if MPI.COMM_WORLD.rank==root: return
+        if MPI.COMM_WORLD.rank == root:
+            return
         # If slave, then set problem and wait in map loop
         #_MPI_set_problem(MPI.COMM_WORLD, None, root=root)
         try:
-            while True: _MPI_map(MPI.COMM_WORLD, None, root=root)
+            while True:
+                _MPI_map(MPI.COMM_WORLD, None, root=root)
         except StopIteration:
             pass
         MPI.Finalize()
@@ -148,11 +177,12 @@ class MPIMapper(object):
         import numpy
         # Send an empty point list to stop the iteration
         try:
-            mapper(numpy.empty((0,0),'d'))
+            mapper(numpy.empty((0, 0), 'd'))
             raise RuntimeException("expected StopIteration")
-        except StopIteration: 
+        except StopIteration:
             pass
         MPI.Finalize()
+
 
 class AMQPMapper(object):
 
@@ -164,7 +194,7 @@ class AMQPMapper(object):
         from amqp_map.core import connect, start_worker as serve
         server = connect(SERVICE_HOST)
         #os.system("echo 'serving' > /tmp/map.%d"%(os.getpid()))
-        #print "worker is serving"; sys.stdout.flush()
+        # print "worker is serving"; sys.stdout.flush()
         serve(server, "bumps", problem.nllf)
         #print >>sys.stderr,"worker ended"; sys.stdout.flush()
 
@@ -182,25 +212,26 @@ class AMQPMapper(object):
         pipes = []
         for _ in range(cpus):
             cmd = [sys.argv[0], "--worker"] + modelargs
-            #print "starting",sys.argv[0],"in",os.getcwd(),"with",cmd
+            # print "starting",sys.argv[0],"in",os.getcwd(),"with",cmd
             pipe = subprocess.Popen(cmd, universal_newlines=True,
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             pipes.append(pipe)
         for pipe in pipes:
             if pipe.poll() > 0:
                 raise RuntimeError("subprocess returned %d\nout: %s\nerr: %s"
-                                   % (pipe.returncode, pipe.stdout, pipe.stderr))
+                    % (pipe.returncode, pipe.stdout, pipe.stderr))
         #os.system(" ".join(cmd+["&"]))
         import atexit
+
         def exit_fun():
-            for p in pipes: p.terminate()
+            for p in pipes:
+                p.terminate()
         atexit.register(exit_fun)
 
-        #print "returning mapper",mapper
+        # print "returning mapper",mapper
         return mapper
 
     @staticmethod
     def stop_mapper(mapper):
         for pipe in mapper.pipes:
             pipe.terminate()
-

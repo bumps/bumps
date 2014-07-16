@@ -3,13 +3,15 @@ Miscellaneous utility functions.
 """
 from __future__ import division
 
-__all__ = ["erf", "profile", "kbhit", "redirect_console", "pushdir", "push_seed"]
+__all__ = ["erf", "profile", "kbhit",
+           "redirect_console", "pushdir", "push_seed"]
 
 import sys
 import os
 
 import numpy
 from numpy import ascontiguousarray as _dense
+
 
 def parse_errfile(errfile):
     """
@@ -27,10 +29,10 @@ def parse_errfile(errfile):
         import glob
         errfile = glob.glob(path+'/*.err')[0]
     """
-    from .dream.views import parse_var
-    pars=[]
-    chisq=[]
-    overall=None
+    from .dream.stats import parse_var
+    pars = []
+    chisq = []
+    overall = None
     with open(errfile) as fid:
         for line in fid:
             if line.startswith("[overall"):
@@ -47,7 +49,7 @@ def parse_errfile(errfile):
 
     if overall is None:
         overall = chisq[0]
-    pardict = dict((p.name,p) for p in pars)
+    pardict = dict((p.name, p) for p in pars)
     return overall, chisq, pardict
 
 
@@ -56,33 +58,37 @@ def erf(x):
     Error function calculator.
     """
     from ._reduction import _erf
-    input = _dense(x,'d')
+    input = _dense(x, 'd')
     output = numpy.empty_like(input)
-    _erf(input,output)
+    _erf(input, output)
     return output
 
+
 def _erf_test():
-    assert erf(5)== 2
+    assert erf(5) == 2
     assert erf(0.) == 0.
-    assert (erf(numpy.array([0.,0.]))==0.).all()
-    assert abs(erf(3.)-0.99997790950300136) < 1e-14
+    assert (erf(numpy.array([0., 0.])) == 0.).all()
+    assert abs(erf(3.) - 0.99997790950300136) < 1e-14
+
 
 def profile(fn, *args, **kw):
     """
     Profile a function called with the given arguments.
     """
-    import cProfile, pstats
+    import cProfile
+    import pstats
     global call_result
+
     def call():
         global call_result
         call_result = fn(*args, **kw)
     datafile = 'profile.out'
     cProfile.runctx('call()', dict(call=call), {}, datafile)
     stats = pstats.Stats(datafile)
-    #order='calls'
-    order='cumulative'
-    #order='pcalls'
-    #order='time'
+    # order='calls'
+    order = 'cumulative'
+    # order='pcalls'
+    # order='time'
     stats.sort_stats(order)
     stats.print_stats()
     os.unlink(datafile)
@@ -93,15 +99,17 @@ def kbhit():
     """
     Check whether a key has been pressed on the console.
     """
-    try: # Windows
+    try:  # Windows
         import msvcrt
         return msvcrt.kbhit()
-    except: # Unix
+    except ImportError:  # Unix
         import select
-        i,_,_ = select.select([sys.stdin],[],[],0.0001)
+        i, _, _ = select.select([sys.stdin], [], [], 0.0001)
         return sys.stdin in i
 
+
 class redirect_console(object):
+
     """
     Console output redirection context
 
@@ -120,6 +128,7 @@ class redirect_console(object):
         hello
         >>> import os; os.unlink("redirect_out.log")
     """
+
     def __init__(self, stdout=None, stderr=None):
         if stdout is None:
             raise TypeError("stdout must be a path or file object")
@@ -138,7 +147,7 @@ class redirect_console(object):
         elif hasattr(stderr, 'write'):
             self.stderr = stderr
         else:
-            self.open_files.append(open(stderr,'w'))
+            self.open_files.append(open(stderr, 'w'))
             self.stderr = self.open_files[-1]
 
     def __del__(self):
@@ -158,16 +167,22 @@ class redirect_console(object):
         del self.sys_stderr[-1]
         return False
 
+
 class pushdir(object):
+
     def __init__(self, path):
         self.path = os.path.abspath(path)
+
     def __enter__(self):
         self._cwd = os.getcwd()
         os.chdir(self.path)
+
     def __exit__(self, *args):
         os.chdir(self._cwd)
 
+
 class push_seed(object):
+
     """
     Set the seed value for the random number generator.
 
@@ -225,11 +240,14 @@ class push_seed(object):
         Exception raised
         899
     """
+
     def __init__(self, seed=None):
         self._state = numpy.random.get_state()
         numpy.random.seed(seed)
+
     def __enter__(self):
         return None
+
     def __exit__(self, *args):
         numpy.random.set_state(self._state)
         pass

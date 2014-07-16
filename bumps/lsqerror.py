@@ -58,7 +58,8 @@ def jacobian(problem, p=None, step=None):
     point value p_j if the range on parameter j is infinite.
     """
     p_init = problem.getp()
-    if p is None: p = p_init
+    if p is None:
+        p = p_init
     p = numpy.asarray(p)
     try:
         import numdifftools as nd
@@ -69,45 +70,52 @@ def jacobian(problem, p=None, step=None):
     problem.setp(p_init)
     return J
 
+
 def hessian(problem, p=None, step=None):
     """
     Returns the derivative wrt to the fit parameters at point p.
     """
     p_init = problem.getp()
-    if p is None: p = p_init
+    if p is None:
+        p = p_init
     p = numpy.asarray(p)
     try:
         import numdifftools as nd
         H = nd.Hessian(problem.nllf)(p)
         #bounds = getattr(problem, 'bounds', lambda: None)()
         #H2 = _simple_hessian(problem.nllf, p, step=step, bounds=bounds)
-        #print(H-H2)
+        # print(H-H2)
     except:
         bounds = getattr(problem, 'bounds', lambda: None)()
         H = _simple_hessian(problem.nllf, p, step=step, bounds=bounds)
-        raise NotImplementedError("install the numdifftools library or fix _simple_hessian so it gives good enough results")
+        raise NotImplementedError(
+            "install the numdifftools library or fix _simple_hessian so it gives good enough results")
     problem.setp(p_init)
     return H
+
 
 def hessian_diag(problem, p=None, step=None):
     """
     Returns the derivative wrt to the fit parameters at point p.
     """
     p_init = problem.getp()
-    if p is None: p = p_init
+    if p is None:
+        p = p_init
     p = numpy.asarray(p)
     try:
         import numdifftools as nd
         H = nd.Hessdiag(problem.nllf)(p)
         #bounds = getattr(problem, 'bounds', lambda: None)()
         #H2 = _simple_hessian(problem.nllf, p, step=step, bounds=bounds)
-        #print(H-H2)
+        # print(H-H2)
     except:
         bounds = getattr(problem, 'bounds', lambda: None)()
         H = _simple_hdiag(problem.nllf, p, step=step, bounds=bounds)
-        raise NotImplementedError("install the numdifftools library or fix _simple_hessian so it gives good enough results")
+        raise NotImplementedError(
+            "install the numdifftools library or fix _simple_hessian so it gives good enough results")
     problem.setp(p_init)
     return H
+
 
 def _simple_jacobian(fn, p, step=None, bounds=None):
     # We are being lazy here.  We can precompute the bounds, we can
@@ -121,7 +129,7 @@ def _simple_jacobian(fn, p, step=None, bounds=None):
     # Gather the residuals
     d = _delta(p, bounds, step)
     r = []
-    for k,v in enumerate(p):
+    for k, v in enumerate(p):
         # Center point formula:
         #     df/dv = lim_{h->0} ( f(v+h)-f(v-h) ) / ( 2h )
         h = d[k]
@@ -129,65 +137,71 @@ def _simple_jacobian(fn, p, step=None, bounds=None):
         rk = fn(p)
         p[k] = v - h
         rk -= fn(p)
-        r.append(rk/(2*h))
+        r.append(rk / (2 * h))
         p[k] = v
     # return the jacobian
     return numpy.vstack(r).T
 
+
 def _simple_hessian(fn, p, step=None, bounds=None):
     Hdiag = _simple_hdiag(fn, p, step, bounds)
     H = _simple_hoff(fn, p, step, bounds)
-    for i,vi in enumerate(Hdiag): H[i,i] = vi
+    for i, vi in enumerate(Hdiag):
+        H[i, i] = vi
     return H
+
 
 def _simple_hdiag(fn, p, step=None, bounds=None):
     # center point formula
     h = _delta(p, bounds, step)
-    Hdiag = numpy.empty(len(p),'d')
+    Hdiag = numpy.empty(len(p), 'd')
     f = fn(p)
-    for i,vi in enumerate(p):
+    for i, vi in enumerate(p):
         hi = h[i]
         p[i] = vi + hi
-        ri_plus = fn(p)-f
+        ri_plus = fn(p) - f
         p[i] = vi - hi
-        ri_minus = fn(p)-f
+        ri_minus = fn(p) - f
         #print("%s + %s"%(ri_plus,ri_minus))
-        Hdiag[i] = (ri_plus+ri_minus)/(hi*hi)
+        Hdiag[i] = (ri_plus + ri_minus) / (hi * hi)
     return Hdiag
+
 
 def _simple_hoff(fn, p, step=None, bounds=None):
     # center point formula
     h = _delta(p, bounds, step)
-    H = numpy.empty([len(p),len(p)], 'd')
-    for i,vi in enumerate(p):
+    H = numpy.empty([len(p), len(p)], 'd')
+    for i, vi in enumerate(p):
         hi = h[i]
-        for j,vj in enumerate(p[:i]):
+        for j, vj in enumerate(p[:i]):
             hj = h[j]
-            p[i], p[j] = vi+hi, vj+hj
+            p[i], p[j] = vi + hi, vj + hj
             rij = fn(p)
-            p[i], p[j] = vi-hi, vj-hj
+            p[i], p[j] = vi - hi, vj - hj
             rij += fn(p)
-            p[i], p[j] = vi-hi, vj+hj
+            p[i], p[j] = vi - hi, vj + hj
             rij -= fn(p)
-            p[i], p[j] = vi+hi, vj-hj
+            p[i], p[j] = vi + hi, vj - hj
             rij -= fn(p)
-            H[j,i] = H[i,j] = rij / (4*hi*hj)
+            H[j, i] = H[i, j] = rij / (4 * hi * hj)
     return H
 
 
 def _delta(p, bounds, step):
-    if step is None: step = 1e-8
+    if step is None:
+        step = 1e-8
     if bounds is not None:
-        lo,hi = bounds
-        delta = (hi-lo)*step
+        lo, hi = bounds
+        delta = (hi - lo) * step
         # For infinite ranges, use p*1e-8 for the step size
         idx = numpy.isinf(delta)
-        #print "J",idx,delta,p,type(idx),type(delta),type(p)
-        delta[idx] = p[idx]*step
+        # print "J",idx,delta,p,type(idx),type(delta),type(p)
+        delta[idx] = p[idx] * step
     else:
-        delta = p*step
-    delta[delta==0] = step
+        delta = p * step
+    delta[delta == 0] = step
     return delta
+
 
 def perturbed_hessian(H, scale=None):
     """
@@ -197,9 +211,11 @@ def perturbed_hessian(H, scale=None):
     """
     from .quasinewton import modelhess
     n = H.shape[0]
-    if scale is None: scale = numpy.ones(n)
+    if scale is None:
+        scale = numpy.ones(n)
     macheps = numpy.finfo('d').eps
     return modelhess(n, scale, macheps, H)
+
 
 def chol_stderr(L):
     """
@@ -208,7 +224,8 @@ def chol_stderr(L):
     or as calculated from :func:`perturbed_hessian` on the output of
     :func:`hessian` applied to the cost function problem.nllf.
     """
-    return numpy.sqrt(1./numpy.diag(L))
+    return numpy.sqrt(1. / numpy.diag(L))
+
 
 def chol_cov(L):
     """
@@ -238,10 +255,11 @@ def cov(J, tol=1e-8):
     #     inv(J'J) = inv(V S S V')
     #              = inv(V') inv(S S) inv(V)
     #              = V inv (S S) V'
-    u,s,vh = numpy.linalg.svd(J,0)
-    s[s<=tol] = tol
-    JTJinv = numpy.dot(vh.T.conj()/s**2,vh)
+    u, s, vh = numpy.linalg.svd(J, 0)
+    s[s <= tol] = tol
+    JTJinv = numpy.dot(vh.T.conj() / s ** 2, vh)
     return JTJinv
+
 
 def corr(C):
     """
@@ -250,8 +268,9 @@ def corr(C):
     Uses $R = D^{-1} C D^{-1}$ where $D$ is the square root of the diagonal
     of the covariance matrix, or the standard error of each variable.
     """
-    Dinv = 1./stderr(cov)
+    Dinv = 1. / stderr(cov)
     return numpy.dot(Dinv, numpy.dot(cov, Dinv))
+
 
 def max_correlation(Rsq):
     """
@@ -259,6 +278,7 @@ def max_correlation(Rsq):
     in correlation matrix Rsq.
     """
     return numpy.max(numpy.tril(Rsq, k=-1))
+
 
 def stderr(C):
     r"""
