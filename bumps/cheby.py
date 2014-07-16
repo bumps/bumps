@@ -24,7 +24,7 @@ control using 'interp', but the function may oscillate wildly outside
 the bounds.  Bounds on the oscillation are easier to control using
 'direct', but the shape of the profile is difficult to control.
 """
-#TODO: clipping volume fraction to [0,1] distorts parameter space
+# TODO: clipping volume fraction to [0,1] distorts parameter space
 # Option 0: clip to [0,1]
 # - Bayesian analysis: parameter values outside the domain will be equally
 #   probable out to infinity
@@ -72,11 +72,13 @@ the bounds.  Bounds on the oscillation are easier to control using
 # - Newton methods: Hessian should point back to domain
 # - Direct methods: random walk should be biased toward the domain
 # - moderately complicated
-__all__ = ["profile","cheby_approx","cheby_val","cheby_points","cheby_coeff"]
+__all__ = ["profile", "cheby_approx",
+           "cheby_val", "cheby_points", "cheby_coeff"]
 
 import numpy
-from numpy import inf, real, imag, exp, pi, cos, hstack, arange, asarray
+from numpy import real, exp, pi, cos, arange, asarray
 from numpy.fft import fft
+
 
 def profile(c, t, method):
     r"""
@@ -93,7 +95,8 @@ def profile(c, t, method):
         c = cheby_coeff(c)
     return cheby_val(c, t)
 
-def cheby_approx(n, f, range=[0,1]):
+
+def cheby_approx(n, f, range=(0, 1)):
     """
     Return the coefficients for the order n chebyshev approximation to
     function f evaluated over the range [low,high].
@@ -101,7 +104,8 @@ def cheby_approx(n, f, range=[0,1]):
     fx = f(cheby_points(n, range=range))
     return cheby_coeff(fx)
 
-def cheby_val(c, x, method='direct'):
+
+def cheby_val(c, x):
     r"""
     Evaluate the chebyshev approximation c at points x.
 
@@ -109,16 +113,18 @@ def cheby_val(c, x, method='direct'):
     polynomials $T_i$ yielding $p(x) = \sum_i{c_i T_i(x)}$.
     """
     c = numpy.asarray(c)
-    if len(c) == 0: return 0*x
+    if len(c) == 0:
+        return 0 * x
 
     # Crenshaw recursion from numerical recipes sec. 5.8
-    y = 4*x - 2
+    y = 4 * x - 2
     d = dd = 0
     for c_j in c[:0:-1]:
-        d, dd = y*d + (c_j - dd), d
-    return y*(0.5*d) + (0.5*c[0] - dd)
+        d, dd = y * d + (c_j - dd), d
+    return y * (0.5 * d) + (0.5 * c[0] - dd)
 
-def cheby_points(n, range=[0,1]):
+
+def cheby_points(n, range=(0, 1)):
     r"""
     Return the points in at which a function must be evaluated to
     generate the order $n$ Chebyshev approximation function.
@@ -127,7 +133,9 @@ def cheby_points(n, range=[0,1]):
     Adjusting the range to $[x_L,x_R]$, the points become
     $x_k = \frac{1}{2} (p_k - x_L + 1)/(x_R-x_L)$.
     """
-    return 0.5*(cos(pi*(arange(n)+0.5)/n)-range[0]+1)/(range[1]-range[0])
+    return 0.5 * (cos(pi * (arange(n) + 0.5) / n)
+                  - range[0] + 1) / (range[1] - range[0])
+
 
 def cheby_coeff(fx):
     """
@@ -139,7 +147,7 @@ def cheby_coeff(fx):
     """
     fx = asarray(fx)
     n = len(fx)
-    w = exp((-0.5j*pi/n)*arange(n))
+    w = exp((-0.5j * pi / n) * arange(n))
     y = numpy.hstack((fx[0::2], fx[1::2][::-1]))
-    c = (2./n) * real(fft(y)*w)
+    c = (2. / n) * real(fft(y) * w)
     return c

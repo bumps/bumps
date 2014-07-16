@@ -9,10 +9,13 @@ from __future__ import print_function
 
 from numpy import inf
 
+
 class Monitor(object):
+
     """
     Generic monitor.
     """
+
     def config_history(self, history):
         """
         Indicate which fields are needed by the monitor and for what duration.
@@ -25,18 +28,21 @@ class Monitor(object):
         """
         pass
 
+
 def _getfield(history, field):
     """
     Return the last value in the trace, or None if there is no
     last value or no trace.
     """
-    trace = getattr(self, field, [])
+    trace = getattr(history, field, [])
     try:
         return trace[0]
     except IndexError:
         return None
 
+
 class Logger(Monitor):
+
     """
     Keeps a record of all values for the desired fields.
 
@@ -51,24 +57,28 @@ class Logger(Monitor):
     Call logger.config_history(history) before starting so that the correct
     fields are stored.
     """
-    def __init__(self, fields=[], table=None):
+
+    def __init__(self, fields=(), table=None):
         self.fields = fields
         self.table = table
+
     def config_history(self, history):
         """
         Make sure history records the each logged field.
         """
-        kwargs = dict((key,1) for key in self.fields)
+        kwargs = dict((key, 1) for key in self.fields)
         history.requires(**kwargs)
+
     def __call__(self, history):
         """
         Record the next piece of history.
         """
-        record = dict((f,_getfield(history,f)) for f in self.fields)
-        self.table.store(step=history.step,**record)
+        record = dict((f, _getfield(history, f)) for f in self.fields)
+        self.table.store(step=history.step, **record)
 
 
 class TimedUpdate(Monitor):
+
     def __init__(self, progress=60, improvement=5):
         self.progress_delta = progress
         self.improvement_delta = improvement

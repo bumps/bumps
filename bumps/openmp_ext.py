@@ -7,7 +7,8 @@ command line parameters to the C compiler for your system.
 import sys
 from distutils.command.build_ext import build_ext
 
-def openmp_build_ext(default=True):
+
+def openmp_ext(default=True):
     """
     Enable openmp.
 
@@ -40,17 +41,18 @@ def openmp_build_ext(default=True):
     if not with_openmp:
         return build_ext
 
-    compile_opts =  {
+    compile_opts = {
         'msvc': ['/openmp'],
-        'mingw32' : ['-fopenmp'],
-        'unix' : ['-fopenmp'],
-        }
-    link_opts =  {
-        'mingw32' : ['-fopenmp'],
-        'unix' : ['-lgomp'],
-        }
+        'mingw32': ['-fopenmp'],
+        'unix': ['-fopenmp'],
+    }
+    link_opts = {
+        'mingw32': ['-fopenmp'],
+        'unix': ['-lgomp'],
+    }
 
-    class build_ext_openmp(build_ext):
+    class OpenMPExt(build_ext):
+
         def build_extensions(self):
             c = self.compiler.compiler_type
             if c in compile_opts:
@@ -61,4 +63,4 @@ def openmp_build_ext(default=True):
                     e.extra_link_args = link_opts[c]
             build_ext.build_extensions(self)
 
-    return build_ext_openmp
+    return OpenMPExt

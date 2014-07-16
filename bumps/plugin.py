@@ -37,7 +37,7 @@ __all__ = [
     'show_errors',
     'data_view',
     'model_view',
-    ]
+]
 
 # TODO: refl1d wants to do the following after cli.getopts()
 #
@@ -47,6 +47,7 @@ __all__ = [
 # It also wants to modify the opts so that more plotters are available,
 # such as Fresnel.
 
+
 def new_model():
     """
     Return a new empty model or None.
@@ -55,6 +56,7 @@ def new_model():
     model.  Also triggered if GUI is started without a model.
     """
     return None
+
 
 def load_model(filename):
     """
@@ -70,6 +72,7 @@ def load_model(filename):
     """
     return None
 
+
 def calc_errors(problem, sample):
     """
     Gather data needed to display uncertainty in the model and the data.
@@ -78,6 +81,7 @@ def calc_errors(problem, sample):
     """
     return None
 
+
 def show_errors(errs):
     """
     Display the model and data uncertainty on the current figure.
@@ -85,6 +89,7 @@ def show_errors(errs):
     *errs* is the data returned from calc_errs.
     """
     pass
+
 
 def data_view():
     """
@@ -95,6 +100,7 @@ def data_view():
     """
     from .gui.data_view import DataView
     return DataView
+
 
 def model_view():
     """

@@ -17,6 +17,7 @@ from . import parameter, bounds as mbounds
 
 # Abstract base class
 class Fitness(object):
+
     def parameters(self):
         """
         Return the set of parameters in the model.
@@ -83,7 +84,7 @@ class Fitness(object):
         pass
 
 
-def no_constraints(): 
+def no_constraints():
     """default constraints function for FitProblem"""
     return 0
 
@@ -147,10 +148,12 @@ def FitProblem(*args, **kw):
 
 
 class BaseFitProblem(object):
+
     """
     See :func:`FitProblem`
     """
-    def __init__(self, fitness, name=None, constraints=no_constraints, 
+
+    def __init__(self, fitness, name=None, constraints=no_constraints,
                  penalty_nllf=1e6, soft_limit=numpy.inf, partial=False):
         self.constraints = constraints
         self.fitness = fitness
@@ -162,7 +165,7 @@ class BaseFitProblem(object):
                 self.name = fitness.name
             except AttributeError:
                 self.name = 'FitProblem'
-               
+
         self.soft_limit = soft_limit
         self.penalty_nllf = penalty_nllf
         self.model_reset()
@@ -180,11 +183,11 @@ class BaseFitProblem(object):
         If the set of fit parameters changes, then model_reset must
         be called.
         """
-        #print self.model_parameters()
+        # print self.model_parameters()
         all_parameters = parameter.unique(self.model_parameters())
-        #print "all_parameters",all_parameters
+        # print "all_parameters",all_parameters
         self._parameters = parameter.varying(all_parameters)
-        #print "varying",self._parameters
+        # print "varying",self._parameters
         self.bounded = [p for p in all_parameters
                         if not isinstance(p.bounds, mbounds.Unbounded)]
         self.dof = self.model_points()
@@ -243,7 +246,7 @@ class BaseFitProblem(object):
         Returns True if the value is valid and the parameters were set,
         otherwise returns False.
         """
-        #TODO: do we have to leave the model in an invalid state?
+        # TODO: do we have to leave the model in an invalid state?
         # WARNING: don't try to conditionally update the model
         # depending on whether any model parameters have changed.
         # For one thing, the model_update below probably calls
@@ -287,7 +290,8 @@ class BaseFitProblem(object):
         Returns negative log likelihood of seeing parameters p.
         """
         s = sum(p.nllf() for p in self.bounded)
-        #print "; ".join("%s %g %g"%(p,p.value,p.nllf()) for p in self.bounded)
+        # print "; ".join("%s %g %g"%(p,p.value,p.nllf()) for p in
+        # self.bounded)
         return s
 
     def constraints_nllf(self):
@@ -319,8 +323,8 @@ class BaseFitProblem(object):
         Note that this does not include cost factors due to constraints on
         the parameters, such as sample_offset ~ N(0,0.01).
         """
-        return numpy.sum(self.residuals()**2) / self.dof
-        #return 2*self.nllf()/self.dof
+        return numpy.sum(self.residuals() ** 2) / self.dof
+        # return 2*self.nllf()/self.dof
 
     def nllf(self, pvec=None):
         """
@@ -350,21 +354,21 @@ class BaseFitProblem(object):
             pparameter = self.parameter_nllf()
             pconstraint = self.constraints_nllf()
             pmodel = (self.model_nllf()
-                      if pparameter+pconstraint <= self.soft_limit
+                      if pparameter + pconstraint <= self.soft_limit
                       else self.penalty_nllf)
             cost = pparameter + pconstraint + pmodel
         except KeyboardInterrupt:
             raise
         except:
-            #TODO: make sure errors get back to the user
+            # TODO: make sure errors get back to the user
             import traceback
             traceback.print_exc()
             print(parameter.summarize(self._parameters))
             return inf
         if isnan(cost):
-            #TODO: make sure errors get back to the user
-            #print "point evaluates to NaN"
-            #print parameter.summarize(self._parameters)
+            # TODO: make sure errors get back to the user
+            # print "point evaluates to NaN"
+            # print parameter.summarize(self._parameters)
             return inf
         # print pvec, "cost",cost,"=",pparameter,"+",pconstraint,"+",pmodel
         return cost
@@ -378,7 +382,7 @@ class BaseFitProblem(object):
         scale factors will not affect the value of the minimum, though some
         care will be required when interpreting the uncertainty.
         """
-        return 2*self.nllf(pvec)/self.dof
+        return 2 * self.nllf(pvec) / self.dof
 
     def show(self):
         print(parameter.format(self.model_parameters()))
@@ -408,7 +412,7 @@ class BaseFitProblem(object):
         pylab.text(0, 0, 'chisq=%g' % self.chisq(),
                    transform=pylab.gca().transAxes)
         if figfile is not None:
-            pylab.savefig(figfile+"-model.png", format='png')
+            pylab.savefig(figfile + "-model.png", format='png')
 
     def stderr(self):
         from lsqerror import jacobian, cov, corr, stderr
@@ -426,11 +430,13 @@ class BaseFitProblem(object):
 
 
 class MultiFitProblem(BaseFitProblem):
+
     """
     Weighted fits for multiple models.
     """
+
     def __init__(self, models, weights=None, name=None,
-                 constraints=no_constraints, 
+                 constraints=no_constraints,
                  soft_limit=numpy.inf, penalty_nllf=1e6,
                  freevars=None):
         self.partial = False
@@ -533,7 +539,7 @@ class MultiFitProblem(BaseFitProblem):
         if p is not None:
             self.setp(p)
         for i, f in enumerate(self.models):
-            f.plot(fignum=i+fignum)
+            f.plot(fignum=i + fignum)
             pylab.suptitle('Model %d - %s' % (i, f.name))
             if figfile is not None:
                 pylab.savefig(figfile + "-model%d.png" % i, format='png')

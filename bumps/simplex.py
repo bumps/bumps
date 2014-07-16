@@ -18,18 +18,20 @@ __all__ = ['simplex']
 __docformat__ = "restructuredtext en"
 
 import numpy
-__version__="0.7"
+__version__ = "0.7"
+
 
 def wrap_function(function, bounds):
     ncalls = [0]
     if bounds is not None:
         lo, hi = [numpy.asarray(v) for v in bounds]
+
         def function_wrapper(x):
             ncalls[0] += 1
-            if numpy.any((x<lo)|(x>hi)):
+            if numpy.any((x < lo) | (x > hi)):
                 return numpy.inf
             else:
-                #function(x)
+                # function(x)
                 return function(x)
     else:
         def function_wrapper(x):
@@ -37,7 +39,9 @@ def wrap_function(function, bounds):
             return function(x)
     return ncalls, function_wrapper
 
+
 class Result:
+
     """
     Results from the fit.
 
@@ -53,16 +57,20 @@ class Result:
         True if the fit completed successful, false if terminated early
         because of too many iterations.
     """
+
     def __init__(self, x, fx, iters, calls, status):
-        self.x,self.fx,self.iters,self.calls=x,fx,iters,calls
+        self.x, self.fx, self.iters, self.calls = x, fx, iters, calls
         self.status = status
+
     def __str__(self):
         msg = "Converged" if self.status else "Aborted"
         return ("%s with %g at %s after %d calls"
                 % (msg, self.fx, self.x, self.calls))
 
 
-def dont_abort(): return False
+def dont_abort():
+    return False
+
 
 def simplex(f, x0=None, bounds=None, radius=0.05,
             xtol=1e-4, ftol=1e-4, maxiter=None,
@@ -131,7 +139,7 @@ def simplex(f, x0=None, bounds=None, radius=0.05,
     """
     fcalls, func = wrap_function(f, bounds)
     x0 = numpy.asfarray(x0).flatten()
-    #print "x0",x0
+    # print "x0",x0
     N = len(x0)
     rank = len(x0.shape)
     if not -1 < rank < 2:
@@ -140,13 +148,16 @@ def simplex(f, x0=None, bounds=None, radius=0.05,
     if maxiter is None:
         maxiter = N * 200
 
-    rho = 1; chi = 2; psi = 0.5; sigma = 0.5;
+    rho = 1
+    chi = 2
+    psi = 0.5
+    sigma = 0.5
 
     if rank == 0:
-        sim = numpy.zeros((N+1,), dtype=x0.dtype)
+        sim = numpy.zeros((N + 1,), dtype=x0.dtype)
     else:
-        sim = numpy.zeros((N+1,N), dtype=x0.dtype)
-    fsim = numpy.zeros((N+1,), float)
+        sim = numpy.zeros((N + 1, N), dtype=x0.dtype)
+    fsim = numpy.zeros((N + 1,), float)
     sim[0] = x0
     fsim[0] = func(x0)
 
@@ -155,17 +166,17 @@ def simplex(f, x0=None, bounds=None, radius=0.05,
     # change from the initial value, or just the radius if the initial
     # value is 0.  For bounded problems, the radius is a percentage of
     # the bounded range in dimension j.
-    val = x0*(1+radius)
+    val = x0 * (1 + radius)
     val[val == 0] = radius
     if bounds is not None:
-        radius = numpy.clip(radius,0,0.5)
-        lo,hi = [numpy.asarray(v) for v in bounds]
+        radius = numpy.clip(radius, 0, 0.5)
+        lo, hi = [numpy.asarray(v) for v in bounds]
 
         # Keep the initial simplex inside the bounds
-        x0 = numpy.select([x0<lo,x0>hi],[lo,hi], x0)
+        x0 = numpy.select([x0 < lo, x0 > hi], [lo, hi], x0)
         bounded = ~numpy.isinf(lo) & ~numpy.isinf(hi)
-        val[bounded] = x0[bounded] + (hi[bounded]-lo[bounded])*radius
-        val = numpy.select([val<lo,val>hi],[lo,hi], val)
+        val[bounded] = x0[bounded] + (hi[bounded] - lo[bounded]) * radius
+        val = numpy.select([val < lo, val > hi], [lo, hi], val)
 
         # If the initial point was at or beyond an upper bound, then bounds
         # projection will put x0 and x0+j*radius at the same point.  We
@@ -173,48 +184,49 @@ def simplex(f, x0=None, bounds=None, radius=0.05,
         # direction when such collisions occur.  The only time the collision
         # can occur at the lower bound is when upper and lower bound are
         # identical.  In that case, we are already done.
-        collision = val==x0
+        collision = val == x0
         if numpy.any(collision):
-            reverse = x0*(1-radius)
-            reverse[reverse==0] = -radius
-            reverse[bounded] = x0[bounded] - (hi[bounded]-lo[bounded])*radius
+            reverse = x0 * (1 - radius)
+            reverse[reverse == 0] = -radius
+            reverse[bounded] = x0[bounded] - \
+                (hi[bounded] - lo[bounded]) * radius
             val[collision] = reverse[collision]
 
         # Make tolerance relative for bounded parameters
-        tol = numpy.ones(x0.shape)*xtol
-        tol[bounded] = (hi[bounded]-lo[bounded])*xtol
+        tol = numpy.ones(x0.shape) * xtol
+        tol[bounded] = (hi[bounded] - lo[bounded]) * xtol
         xtol = tol
 
     # Compute values at the simplex vertices
-    for k in range(0,N):
-        y = x0+0
+    for k in range(0, N):
+        y = x0 + 0
         y[k] = val[k]
-        sim[k+1] = y
-        fsim[k+1] = func(y)
+        sim[k + 1] = y
+        fsim[k + 1] = func(y)
 
-    #print sim
+    # print sim
     ind = numpy.argsort(fsim)
-    fsim = numpy.take(fsim,ind,0)
+    fsim = numpy.take(fsim, ind, 0)
     # sort so sim[0,:] has the lowest function value
-    sim = numpy.take(sim,ind,0)
-    #print sim
+    sim = numpy.take(sim, ind, 0)
+    # print sim
 
     iterations = 1
     while iterations < maxiter:
-        if numpy.all(abs(sim[1:]-sim[0]) <= xtol) \
-            and max(abs(fsim[0]-fsim[1:])) <= ftol:
-            #print abs(sim[1:]-sim[0])
+        if numpy.all(abs(sim[1:] - sim[0]) <= xtol) \
+                and max(abs(fsim[0] - fsim[1:])) <= ftol:
+            # print abs(sim[1:]-sim[0])
             break
 
-        xbar = numpy.sum(sim[:-1],0) / N
-        xr = (1+rho)*xbar - rho*sim[-1]
-        #print "xbar" ,xbar,rho,sim[-1],N
-        #break
+        xbar = numpy.sum(sim[:-1], 0) / N
+        xr = (1 + rho) * xbar - rho * sim[-1]
+        # print "xbar" ,xbar,rho,sim[-1],N
+        # break
         fxr = func(xr)
         doshrink = 0
 
         if fxr < fsim[0]:
-            xe = (1+rho*chi)*xbar - rho*chi*sim[-1]
+            xe = (1 + rho * chi) * xbar - rho * chi * sim[-1]
             fxe = func(xe)
 
             if fxe < fxr:
@@ -223,24 +235,24 @@ def simplex(f, x0=None, bounds=None, radius=0.05,
             else:
                 sim[-1] = xr
                 fsim[-1] = fxr
-        else: # fsim[0] <= fxr
+        else:  # fsim[0] <= fxr
             if fxr < fsim[-2]:
                 sim[-1] = xr
                 fsim[-1] = fxr
-            else: # fxr >= fsim[-2]
+            else:  # fxr >= fsim[-2]
                 # Perform contraction
                 if fxr < fsim[-1]:
-                    xc = (1+psi*rho)*xbar - psi*rho*sim[-1]
+                    xc = (1 + psi * rho) * xbar - psi * rho * sim[-1]
                     fxc = func(xc)
 
                     if fxc <= fxr:
                         sim[-1] = xc
                         fsim[-1] = fxc
                     else:
-                        doshrink=1
+                        doshrink = 1
                 else:
                     # Perform an inside contraction
-                    xcc = (1-psi)*xbar + psi*sim[-1]
+                    xcc = (1 - psi) * xbar + psi * sim[-1]
                     fxcc = func(xcc)
 
                     if fxcc < fsim[-1]:
@@ -250,89 +262,88 @@ def simplex(f, x0=None, bounds=None, radius=0.05,
                         doshrink = 1
 
                 if doshrink:
-                    for j in range(1,N+1):
-                        sim[j] = sim[0] + sigma*(sim[j] - sim[0])
+                    for j in range(1, N + 1):
+                        sim[j] = sim[0] + sigma * (sim[j] - sim[0])
                         fsim[j] = func(sim[j])
 
         ind = numpy.argsort(fsim)
-        sim = numpy.take(sim,ind,0)
-        fsim = numpy.take(fsim,ind,0)
+        sim = numpy.take(sim, ind, 0)
+        fsim = numpy.take(fsim, ind, 0)
         if update_handler is not None:
             update_handler(iterations, maxiter, sim, fsim)
         iterations += 1
-        if abort_test(): break #STOPHERE
+        if abort_test():
+            break  # STOPHERE
 
     status = 0 if iterations < maxiter else 1
     res = Result(sim[0], fsim[0], iterations, fcalls[0], status)
     res.next_start = sim[numpy.random.randint(N)]
     return res
 
+
 def main():
     import time
+
     def rosen(x):  # The Rosenbrock function
-        return numpy.sum(100.0*(x[1:]-x[:-1]**2.0)**2.0 + (1-x[:-1])**2.0,axis=0)
+        return numpy.sum(100.0 * (x[1:] - x[:-1] ** 2.0) ** 2.0 + (1 - x[:-1]) ** 2.0, axis=0)
 
-
-    x0 = [0.8,1.2,0.7]
+    x0 = [0.8, 1.2, 0.7]
     print("Nelder-Mead Simplex")
     print("===================")
     start = time.time()
-    x = simplex(rosen,x0)
+    x = simplex(rosen, x0)
     print(x)
-    print("Time:",time.time() - start)
+    print("Time:", time.time() - start)
 
-    x0 = [0]*3
+    x0 = [0] * 3
     print("Nelder-Mead Simplex")
     print("===================")
     print("starting at zero")
     start = time.time()
-    x = simplex(rosen,x0)
+    x = simplex(rosen, x0)
     print(x)
-    print("Time:",time.time() - start)
+    print("Time:", time.time() - start)
 
-    x0 = [0.8,1.2,0.7]
-    lo,hi = [0]*3, [1]*3
+    x0 = [0.8, 1.2, 0.7]
+    lo, hi = [0] * 3, [1] * 3
     print("Bounded Nelder-Mead Simplex")
     print("===========================")
     start = time.time()
-    x = simplex(rosen,x0,bounds=(lo,hi))
+    x = simplex(rosen, x0, bounds=(lo, hi))
     print(x)
-    print("Time:",time.time() - start)
+    print("Time:", time.time() - start)
 
-
-    x0 = [0.8,1.2,0.7]
-    lo,hi = [0.999]*3, [1.001]*3
+    x0 = [0.8, 1.2, 0.7]
+    lo, hi = [0.999] * 3, [1.001] * 3
     print("Bounded Nelder-Mead Simplex")
     print("===========================")
     print("tight bounds")
     print("simplex is smaller than 1e-7 in every dimension, but you can't")
     print("see this without uncommenting the print statement simplex function")
     start = time.time()
-    x = simplex(rosen,x0,bounds=(lo,hi),xtol=1e-4)
+    x = simplex(rosen, x0, bounds=(lo, hi), xtol=1e-4)
     print(x)
-    print("Time:",time.time() - start)
+    print("Time:", time.time() - start)
 
-
-    x0 = [0]*3
-    hi,lo = [-0.999]*3, [-1.001]*3
+    x0 = [0] * 3
+    hi, lo = [-0.999] * 3, [-1.001] * 3
     print("Bounded Nelder-Mead Simplex")
     print("===========================")
     print("tight bounds, x0=0 outside bounds from above")
     start = time.time()
-    x = simplex(lambda x:rosen(-x),x0,bounds=(lo,hi),xtol=1e-4)
+    x = simplex(lambda x: rosen(-x), x0, bounds=(lo, hi), xtol=1e-4)
     print(x)
-    print("Time:",time.time() - start)
+    print("Time:", time.time() - start)
 
-
-    x0 = [0.8,1.2,0.7]
-    lo,hi = [-numpy.inf]*3, [numpy.inf]*3
+    x0 = [0.8, 1.2, 0.7]
+    lo, hi = [-numpy.inf] * 3, [numpy.inf] * 3
     print("Bounded Nelder-Mead Simplex")
     print("===========================")
     print("infinite bounds")
     start = time.time()
-    x = simplex(rosen,x0,bounds=(lo,hi),xtol=1e-4)
+    x = simplex(rosen, x0, bounds=(lo, hi), xtol=1e-4)
     print(x)
-    print("Time:",time.time() - start)
+    print("Time:", time.time() - start)
 
 if __name__ == "__main__":
     main()

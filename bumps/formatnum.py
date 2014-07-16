@@ -63,6 +63,7 @@ __all__ = ['format_uncertainty', 'format_uncertainty_pm',
 # composite units such as 2.3e-3 m**2 -> 2300 mm**2, and with volumes
 # such as 1 g/cm**3 -> 1 kg/L.
 
+
 def format_value(value, uncertainty):
     """
     Given *value* v and *uncertainty* dv, return a string v which is
@@ -70,11 +71,13 @@ def format_value(value, uncertainty):
     """
     return _format_uncertainty(value, uncertainty, compact=None)
 
+
 def format_uncertainty_pm(value, uncertainty):
     """
     Given *value* v and *uncertainty* dv, return a string v +/- dv.
     """
     return _format_uncertainty(value, uncertainty, compact=False)
+
 
 def format_uncertainty_compact(value, uncertainty):
     """
@@ -84,7 +87,9 @@ def format_uncertainty_compact(value, uncertainty):
     """
     return _format_uncertainty(value, uncertainty, compact=True)
 
+
 class UncertaintyFormatter:
+
     """
     Value and uncertainty formatter.
 
@@ -93,12 +98,14 @@ class UncertaintyFormatter:
     True or False.  The default is True.
     """
     compact = True
+
     def __call__(self, value, uncertainty):
         """
         Given *value* and *uncertainty*, return a string representation.
         """
         return _format_uncertainty(value, uncertainty, self.compact)
 format_uncertainty = UncertaintyFormatter()
+
 
 def _format_uncertainty(value, uncertainty, compact):
     """
@@ -111,15 +118,15 @@ def _format_uncertainty(value, uncertainty, compact):
         return "NaN"
 
     # Handle indefinite uncertainty
-    if uncertainty is None or uncertainty<=0 or numpy.isnan(uncertainty):
-        return "%g"%value
+    if uncertainty is None or uncertainty <= 0 or numpy.isnan(uncertainty):
+        return "%g" % value
     if numpy.isinf(uncertainty):
         if compact is None:
-            return "%.2g"%value
+            return "%.2g" % value
         elif compact:
-            return "%.2g(inf)"%value
+            return "%.2g(inf)" % value
         else:
-            return "%.2g +/- inf"%value
+            return "%.2g +/- inf" % value
 
     # Handle zero and negative values
     sign = "-" if value < 0 else ""
@@ -135,11 +142,11 @@ def _format_uncertainty(value, uncertainty, compact):
     if err_place > val_place:
         # Degenerate case: error bigger than value
         # The mantissa is 0.#(##)e#, 0.0#(##)e# or 0.00#(##)e#
-        val_place = err_place+2
+        val_place = err_place + 2
     elif err_place == val_place:
         # Degenerate case: error and value the same order of magnitude
         # The value is ##(##)e#, #.#(##)e# or 0.##(##)e#
-        val_place = err_place+1
+        val_place = err_place + 1
     elif err_place <= 1 and val_place >= -3:
         # Normal case: nice numbers and errors
         # The value is ###.###(##)
@@ -150,23 +157,24 @@ def _format_uncertainty(value, uncertainty, compact):
         pass
 
     # Force engineering notation, with exponent a multiple of 3
-    val_place = int(math.floor(val_place/3.))*3
+    val_place = int(math.floor(val_place / 3.)) * 3
 
     # Format the result
     digits_after_decimal = abs(val_place - err_place + 1)
-    ## Only use one digit of uncertainty if no precision included in result
+    # Only use one digit of uncertainty if no precision included in result
     #if compact is None: digits_after_decimal -= 1
-    val_str = "%.*f"%(digits_after_decimal,value/10.**val_place)
-    exp_str = "e%d"%val_place if val_place != 0 else ""
+    val_str = "%.*f" % (digits_after_decimal, value / 10. ** val_place)
+    exp_str = "e%d" % val_place if val_place != 0 else ""
     if compact is None:
-        result = "".join((sign,val_str,exp_str))
+        result = "".join((sign, val_str, exp_str))
     elif compact:
-        err_str = "(%2d)"%int(uncertainty/10.**(err_place-1)+0.5)
-        result = "".join((sign,val_str,err_str,exp_str))
+        err_str = "(%2d)" % int(uncertainty / 10. ** (err_place - 1) + 0.5)
+        result = "".join((sign, val_str, err_str, exp_str))
     else:
-        err_str = "%.*f"%(digits_after_decimal,uncertainty/10.**val_place)
-        result = "".join((sign,val_str,exp_str+" +/- ",err_str,exp_str))
-    #print sign,value, uncertainty, "=>", result
+        err_str = "%.*f" % (digits_after_decimal,
+                            uncertainty / 10. ** val_place)
+        result = "".join((sign, val_str, exp_str + " +/- ", err_str, exp_str))
+    # print sign,value, uncertainty, "=>", result
     return result
 
 
@@ -175,95 +183,95 @@ def test_compact():
     value_str = format_uncertainty_compact
 
     # val_place > err_place
-    assert value_str(1235670,766000) == "1.24(77)e6"
-    assert value_str(123567.,76600) == "124(77)e3"
-    assert value_str(12356.7,7660) == "12.4(77)e3"
-    assert value_str(1235.67,766) == "1.24(77)e3"
-    assert value_str(123.567,76.6) == "124(77)"
-    assert value_str(12.3567,7.66) == "12.4(77)"
-    assert value_str(1.23567,.766) == "1.24(77)"
-    assert value_str(.123567,.0766) == "0.124(77)"
-    assert value_str(.0123567,.00766) == "0.0124(77)"
-    assert value_str(.00123567,.000766) == "0.00124(77)"
-    assert value_str(.000123567,.0000766) == "124(77)e-6"
-    assert value_str(.0000123567,.00000766) == "12.4(77)e-6"
-    assert value_str(.00000123567,.000000766) == "1.24(77)e-6"
-    assert value_str(.000000123567,.0000000766) == "124(77)e-9"
-    assert value_str(.00000123567,.0000000766) == "1.236(77)e-6"
-    assert value_str(.0000123567,.0000000766) == "12.357(77)e-6"
-    assert value_str(.000123567,.0000000766) == "123.567(77)e-6"
-    assert value_str(.00123567,.000000766) == "0.00123567(77)"
-    assert value_str(.0123567,.00000766) == "0.0123567(77)"
-    assert value_str(.123567,.0000766) == "0.123567(77)"
-    assert value_str(1.23567,.000766) == "1.23567(77)"
-    assert value_str(12.3567,.00766) == "12.3567(77)"
-    assert value_str(123.567,.0764) == "123.567(76)"
-    assert value_str(1235.67,.764) == "1235.67(76)"
-    assert value_str(12356.7,7.64) == "12356.7(76)"
-    assert value_str(123567,76.4) == "123567(76)"
-    assert value_str(1235670,764) == "1.23567(76)e6"
-    assert value_str(12356700,764) == "12.35670(76)e6"
-    assert value_str(123567000,764) == "123.56700(76)e6"
-    assert value_str(123567000,7640) == "123.5670(76)e6"
-    assert value_str(1235670000,76400) == "1.235670(76)e9"
+    assert value_str(1235670, 766000) == "1.24(77)e6"
+    assert value_str(123567., 76600) == "124(77)e3"
+    assert value_str(12356.7, 7660) == "12.4(77)e3"
+    assert value_str(1235.67, 766) == "1.24(77)e3"
+    assert value_str(123.567, 76.6) == "124(77)"
+    assert value_str(12.3567, 7.66) == "12.4(77)"
+    assert value_str(1.23567, .766) == "1.24(77)"
+    assert value_str(.123567, .0766) == "0.124(77)"
+    assert value_str(.0123567, .00766) == "0.0124(77)"
+    assert value_str(.00123567, .000766) == "0.00124(77)"
+    assert value_str(.000123567, .0000766) == "124(77)e-6"
+    assert value_str(.0000123567, .00000766) == "12.4(77)e-6"
+    assert value_str(.00000123567, .000000766) == "1.24(77)e-6"
+    assert value_str(.000000123567, .0000000766) == "124(77)e-9"
+    assert value_str(.00000123567, .0000000766) == "1.236(77)e-6"
+    assert value_str(.0000123567, .0000000766) == "12.357(77)e-6"
+    assert value_str(.000123567, .0000000766) == "123.567(77)e-6"
+    assert value_str(.00123567, .000000766) == "0.00123567(77)"
+    assert value_str(.0123567, .00000766) == "0.0123567(77)"
+    assert value_str(.123567, .0000766) == "0.123567(77)"
+    assert value_str(1.23567, .000766) == "1.23567(77)"
+    assert value_str(12.3567, .00766) == "12.3567(77)"
+    assert value_str(123.567, .0764) == "123.567(76)"
+    assert value_str(1235.67, .764) == "1235.67(76)"
+    assert value_str(12356.7, 7.64) == "12356.7(76)"
+    assert value_str(123567, 76.4) == "123567(76)"
+    assert value_str(1235670, 764) == "1.23567(76)e6"
+    assert value_str(12356700, 764) == "12.35670(76)e6"
+    assert value_str(123567000, 764) == "123.56700(76)e6"
+    assert value_str(123567000, 7640) == "123.5670(76)e6"
+    assert value_str(1235670000, 76400) == "1.235670(76)e9"
 
     # val_place == err_place
-    assert value_str(123567,764000) == "0.12(76)e6"
-    assert value_str(12356.7,76400) == "12(76)e3"
-    assert value_str(1235.67,7640) == "1.2(76)e3"
-    assert value_str(123.567,764) == "0.12(76)e3"
-    assert value_str(12.3567,76.4) == "12(76)"
-    assert value_str(1.23567,7.64) == "1.2(76)"
-    assert value_str(.123567,.764) == "0.12(76)"
-    assert value_str(.0123567,.0764) == "12(76)e-3"
-    assert value_str(.00123567,.00764) == "1.2(76)e-3"
-    assert value_str(.000123567,.000764) == "0.12(76)e-3"
+    assert value_str(123567, 764000) == "0.12(76)e6"
+    assert value_str(12356.7, 76400) == "12(76)e3"
+    assert value_str(1235.67, 7640) == "1.2(76)e3"
+    assert value_str(123.567, 764) == "0.12(76)e3"
+    assert value_str(12.3567, 76.4) == "12(76)"
+    assert value_str(1.23567, 7.64) == "1.2(76)"
+    assert value_str(.123567, .764) == "0.12(76)"
+    assert value_str(.0123567, .0764) == "12(76)e-3"
+    assert value_str(.00123567, .00764) == "1.2(76)e-3"
+    assert value_str(.000123567, .000764) == "0.12(76)e-3"
 
     # val_place == err_place-1
-    assert value_str(123567,7640000) == "0.1(76)e6"
-    assert value_str(12356.7,764000) == "0.01(76)e6"
-    assert value_str(1235.67,76400) == "0.001(76)e6"
-    assert value_str(123.567,7640) == "0.1(76)e3"
-    assert value_str(12.3567,764) == "0.01(76)e3"
-    assert value_str(1.23567,76.4) == "0.001(76)e3"
-    assert value_str(.123567,7.64) == "0.1(76)"
-    assert value_str(.0123567,.764) == "0.01(76)"
-    assert value_str(.00123567,.0764) == "0.001(76)"
-    assert value_str(.000123567,.00764) == "0.1(76)e-3"
+    assert value_str(123567, 7640000) == "0.1(76)e6"
+    assert value_str(12356.7, 764000) == "0.01(76)e6"
+    assert value_str(1235.67, 76400) == "0.001(76)e6"
+    assert value_str(123.567, 7640) == "0.1(76)e3"
+    assert value_str(12.3567, 764) == "0.01(76)e3"
+    assert value_str(1.23567, 76.4) == "0.001(76)e3"
+    assert value_str(.123567, 7.64) == "0.1(76)"
+    assert value_str(.0123567, .764) == "0.01(76)"
+    assert value_str(.00123567, .0764) == "0.001(76)"
+    assert value_str(.000123567, .00764) == "0.1(76)e-3"
 
     # val_place == err_place-2
-    assert value_str(12356700,7640000000) == "0.0(76)e9"
-    assert value_str(1235670,764000000) == "0.00(76)e9"
-    assert value_str(123567,76400000) == "0.000(76)e9"
-    assert value_str(12356,7640000) == "0.0(76)e6"
-    assert value_str(1235,764000) == "0.00(76)e6"
-    assert value_str(123,76400) == "0.000(76)e6"
-    assert value_str(12,7640) == "0.0(76)e3"
-    assert value_str(1,764) == "0.00(76)e3"
-    assert value_str(0.1,76.4) == "0.000(76)e3"
-    assert value_str(0.01,7.64) == "0.0(76)"
-    assert value_str(0.001,0.764) == "0.00(76)"
-    assert value_str(0.0001,0.0764) == "0.000(76)"
-    assert value_str(0.00001,0.00764) == "0.0(76)e-3"
+    assert value_str(12356700, 7640000000) == "0.0(76)e9"
+    assert value_str(1235670, 764000000) == "0.00(76)e9"
+    assert value_str(123567, 76400000) == "0.000(76)e9"
+    assert value_str(12356, 7640000) == "0.0(76)e6"
+    assert value_str(1235, 764000) == "0.00(76)e6"
+    assert value_str(123, 76400) == "0.000(76)e6"
+    assert value_str(12, 7640) == "0.0(76)e3"
+    assert value_str(1, 764) == "0.00(76)e3"
+    assert value_str(0.1, 76.4) == "0.000(76)e3"
+    assert value_str(0.01, 7.64) == "0.0(76)"
+    assert value_str(0.001, 0.764) == "0.00(76)"
+    assert value_str(0.0001, 0.0764) == "0.000(76)"
+    assert value_str(0.00001, 0.00764) == "0.0(76)e-3"
 
     # val_place == err_place-3
-    assert value_str(12356700,76400000000) == "0.000(76)e12"
-    assert value_str(1235670,7640000000) == "0.0(76)e9"
-    assert value_str(123567,764000000) == "0.00(76)e9"
-    assert value_str(12356,76400000) == "0.000(76)e9"
-    assert value_str(1235,7640000) == "0.0(76)e6"
-    assert value_str(123,764000) == "0.00(76)e6"
-    assert value_str(12,76400) == "0.000(76)e6"
-    assert value_str(1,7640) == "0.0(76)e3"
-    assert value_str(0.1,764) == "0.00(76)e3"
-    assert value_str(0.01,76.4) == "0.000(76)e3"
-    assert value_str(0.001,7.64) == "0.0(76)"
-    assert value_str(0.0001,0.764) == "0.00(76)"
-    assert value_str(0.00001,0.0764) == "0.000(76)"
-    assert value_str(0.000001,0.00764) == "0.0(76)e-3"
+    assert value_str(12356700, 76400000000) == "0.000(76)e12"
+    assert value_str(1235670, 7640000000) == "0.0(76)e9"
+    assert value_str(123567, 764000000) == "0.00(76)e9"
+    assert value_str(12356, 76400000) == "0.000(76)e9"
+    assert value_str(1235, 7640000) == "0.0(76)e6"
+    assert value_str(123, 764000) == "0.00(76)e6"
+    assert value_str(12, 76400) == "0.000(76)e6"
+    assert value_str(1, 7640) == "0.0(76)e3"
+    assert value_str(0.1, 764) == "0.00(76)e3"
+    assert value_str(0.01, 76.4) == "0.000(76)e3"
+    assert value_str(0.001, 7.64) == "0.0(76)"
+    assert value_str(0.0001, 0.764) == "0.00(76)"
+    assert value_str(0.00001, 0.0764) == "0.000(76)"
+    assert value_str(0.000001, 0.00764) == "0.0(76)e-3"
 
     # Zero values
-    assert value_str(0,7640000) == "0.0(76)e6"
+    assert value_str(0, 7640000) == "0.0(76)e6"
     assert value_str(0, 764000) == "0.00(76)e6"
     assert value_str(0,  76400) == "0.000(76)e6"
     assert value_str(0,   7640) == "0.0(76)e3"
@@ -277,36 +285,37 @@ def test_compact():
     assert value_str(0,      0.0000764) == "0.000(76)e-3"
 
     # negative values
-    assert value_str(-1235670,765000) == "-1.24(77)e6"
-    assert value_str(-1.23567,.766) == "-1.24(77)"
-    assert value_str(-.00000123567,.0000000766) == "-1.236(77)e-6"
-    assert value_str(-12356.7,7.64) == "-12356.7(76)"
-    assert value_str(-123.567,764) == "-0.12(76)e3"
-    assert value_str(-1235.67,76400) == "-0.001(76)e6"
-    assert value_str(-.000123567,.00764) == "-0.1(76)e-3"
-    assert value_str(-12356,7640000) == "-0.0(76)e6"
-    assert value_str(-12,76400) == "-0.000(76)e6"
-    assert value_str(-0.0001,0.764) == "-0.00(76)"
+    assert value_str(-1235670, 765000) == "-1.24(77)e6"
+    assert value_str(-1.23567, .766) == "-1.24(77)"
+    assert value_str(-.00000123567, .0000000766) == "-1.236(77)e-6"
+    assert value_str(-12356.7, 7.64) == "-12356.7(76)"
+    assert value_str(-123.567, 764) == "-0.12(76)e3"
+    assert value_str(-1235.67, 76400) == "-0.001(76)e6"
+    assert value_str(-.000123567, .00764) == "-0.1(76)e-3"
+    assert value_str(-12356, 7640000) == "-0.0(76)e6"
+    assert value_str(-12, 76400) == "-0.000(76)e6"
+    assert value_str(-0.0001, 0.764) == "-0.00(76)"
 
     # non-finite values
-    assert value_str(-numpy.inf,None) == "-inf"
-    assert value_str(numpy.inf,None) == "inf"
-    assert value_str(numpy.NaN,None) == "NaN"
+    assert value_str(-numpy.inf, None) == "-inf"
+    assert value_str(numpy.inf, None) == "inf"
+    assert value_str(numpy.NaN, None) == "NaN"
 
     # bad or missing uncertainty
-    assert value_str(-1.23567,numpy.NaN) == "-1.23567"
-    assert value_str(-1.23567,-numpy.inf) == "-1.23567"
-    assert value_str(-1.23567,-0.1) == "-1.23567"
-    assert value_str(-1.23567,0) == "-1.23567"
-    assert value_str(-1.23567,None) == "-1.23567"
-    assert value_str(-1.23567,numpy.inf) == "-1.2(inf)"
+    assert value_str(-1.23567, numpy.NaN) == "-1.23567"
+    assert value_str(-1.23567, -numpy.inf) == "-1.23567"
+    assert value_str(-1.23567, -0.1) == "-1.23567"
+    assert value_str(-1.23567, 0) == "-1.23567"
+    assert value_str(-1.23567, None) == "-1.23567"
+    assert value_str(-1.23567, numpy.inf) == "-1.2(inf)"
+
 
 def test_pm():
     # Oops... renamed function after writing tests
     value_str = format_uncertainty_pm
 
     # val_place > err_place
-    assert value_str(1235670,766000) == "1.24e6 +/- 0.77e6"
+    assert value_str(1235670, 766000) == "1.24e6 +/- 0.77e6"
     assert value_str(123567., 76600) == "124e3 +/- 77e3"
     assert value_str(12356.7,  7660) == "12.4e3 +/- 7.7e3"
     assert value_str(1235.67,   766) == "1.24e3 +/- 0.77e3"
@@ -319,7 +328,7 @@ def test_pm():
     assert value_str(.000123567,   .0000766) == "124e-6 +/- 77e-6"
     assert value_str(.0000123567,  .00000766) == "12.4e-6 +/- 7.7e-6"
     assert value_str(.00000123567, .000000766) == "1.24e-6 +/- 0.77e-6"
-    assert value_str(.000000123567,.0000000766) == "124e-9 +/- 77e-9"
+    assert value_str(.000000123567, .0000000766) == "124e-9 +/- 77e-9"
     assert value_str(.00000123567, .0000000766) == "1.236e-6 +/- 0.077e-6"
     assert value_str(.0000123567,  .0000000766) == "12.357e-6 +/- 0.077e-6"
     assert value_str(.000123567,   .0000000766) == "123.567e-6 +/- 0.077e-6"
@@ -335,66 +344,66 @@ def test_pm():
     assert value_str(1235670,   764) == "1.23567e6 +/- 0.00076e6"
     assert value_str(12356700,  764) == "12.35670e6 +/- 0.00076e6"
     assert value_str(123567000, 764) == "123.56700e6 +/- 0.00076e6"
-    assert value_str(123567000,7640) == "123.5670e6 +/- 0.0076e6"
-    assert value_str(1235670000,76400) == "1.235670e9 +/- 0.000076e9"
+    assert value_str(123567000, 7640) == "123.5670e6 +/- 0.0076e6"
+    assert value_str(1235670000, 76400) == "1.235670e9 +/- 0.000076e9"
 
     # val_place == err_place
-    assert value_str(123567,764000) == "0.12e6 +/- 0.76e6"
-    assert value_str(12356.7,76400) == "12e3 +/- 76e3"
-    assert value_str(1235.67,7640) == "1.2e3 +/- 7.6e3"
-    assert value_str(123.567,764) == "0.12e3 +/- 0.76e3"
-    assert value_str(12.3567,76.4) == "12 +/- 76"
-    assert value_str(1.23567,7.64) == "1.2 +/- 7.6"
-    assert value_str(.123567,.764) == "0.12 +/- 0.76"
-    assert value_str(.0123567,.0764) == "12e-3 +/- 76e-3"
-    assert value_str(.00123567,.00764) == "1.2e-3 +/- 7.6e-3"
-    assert value_str(.000123567,.000764) == "0.12e-3 +/- 0.76e-3"
+    assert value_str(123567, 764000) == "0.12e6 +/- 0.76e6"
+    assert value_str(12356.7, 76400) == "12e3 +/- 76e3"
+    assert value_str(1235.67, 7640) == "1.2e3 +/- 7.6e3"
+    assert value_str(123.567, 764) == "0.12e3 +/- 0.76e3"
+    assert value_str(12.3567, 76.4) == "12 +/- 76"
+    assert value_str(1.23567, 7.64) == "1.2 +/- 7.6"
+    assert value_str(.123567, .764) == "0.12 +/- 0.76"
+    assert value_str(.0123567, .0764) == "12e-3 +/- 76e-3"
+    assert value_str(.00123567, .00764) == "1.2e-3 +/- 7.6e-3"
+    assert value_str(.000123567, .000764) == "0.12e-3 +/- 0.76e-3"
 
     # val_place == err_place-1
-    assert value_str(123567,7640000) == "0.1e6 +/- 7.6e6"
-    assert value_str(12356.7,764000) == "0.01e6 +/- 0.76e6"
-    assert value_str(1235.67,76400) == "0.001e6 +/- 0.076e6"
-    assert value_str(123.567,7640) == "0.1e3 +/- 7.6e3"
-    assert value_str(12.3567,764) == "0.01e3 +/- 0.76e3"
-    assert value_str(1.23567,76.4) == "0.001e3 +/- 0.076e3"
-    assert value_str(.123567,7.64) == "0.1 +/- 7.6"
-    assert value_str(.0123567,.764) == "0.01 +/- 0.76"
-    assert value_str(.00123567,.0764) == "0.001 +/- 0.076"
-    assert value_str(.000123567,.00764) == "0.1e-3 +/- 7.6e-3"
+    assert value_str(123567, 7640000) == "0.1e6 +/- 7.6e6"
+    assert value_str(12356.7, 764000) == "0.01e6 +/- 0.76e6"
+    assert value_str(1235.67, 76400) == "0.001e6 +/- 0.076e6"
+    assert value_str(123.567, 7640) == "0.1e3 +/- 7.6e3"
+    assert value_str(12.3567, 764) == "0.01e3 +/- 0.76e3"
+    assert value_str(1.23567, 76.4) == "0.001e3 +/- 0.076e3"
+    assert value_str(.123567, 7.64) == "0.1 +/- 7.6"
+    assert value_str(.0123567, .764) == "0.01 +/- 0.76"
+    assert value_str(.00123567, .0764) == "0.001 +/- 0.076"
+    assert value_str(.000123567, .00764) == "0.1e-3 +/- 7.6e-3"
 
     # val_place == err_place-2
-    assert value_str(12356700,7640000000) == "0.0e9 +/- 7.6e9"
-    assert value_str(1235670,764000000) == "0.00e9 +/- 0.76e9"
-    assert value_str(123567,76400000) == "0.000e9 +/- 0.076e9"
-    assert value_str(12356,7640000) == "0.0e6 +/- 7.6e6"
-    assert value_str(1235,764000) == "0.00e6 +/- 0.76e6"
-    assert value_str(123,76400) == "0.000e6 +/- 0.076e6"
-    assert value_str(12,7640) == "0.0e3 +/- 7.6e3"
-    assert value_str(1,764) == "0.00e3 +/- 0.76e3"
-    assert value_str(0.1,76.4) == "0.000e3 +/- 0.076e3"
-    assert value_str(0.01,7.64) == "0.0 +/- 7.6"
-    assert value_str(0.001,0.764) == "0.00 +/- 0.76"
-    assert value_str(0.0001,0.0764) == "0.000 +/- 0.076"
-    assert value_str(0.00001,0.00764) == "0.0e-3 +/- 7.6e-3"
+    assert value_str(12356700, 7640000000) == "0.0e9 +/- 7.6e9"
+    assert value_str(1235670, 764000000) == "0.00e9 +/- 0.76e9"
+    assert value_str(123567, 76400000) == "0.000e9 +/- 0.076e9"
+    assert value_str(12356, 7640000) == "0.0e6 +/- 7.6e6"
+    assert value_str(1235, 764000) == "0.00e6 +/- 0.76e6"
+    assert value_str(123, 76400) == "0.000e6 +/- 0.076e6"
+    assert value_str(12, 7640) == "0.0e3 +/- 7.6e3"
+    assert value_str(1, 764) == "0.00e3 +/- 0.76e3"
+    assert value_str(0.1, 76.4) == "0.000e3 +/- 0.076e3"
+    assert value_str(0.01, 7.64) == "0.0 +/- 7.6"
+    assert value_str(0.001, 0.764) == "0.00 +/- 0.76"
+    assert value_str(0.0001, 0.0764) == "0.000 +/- 0.076"
+    assert value_str(0.00001, 0.00764) == "0.0e-3 +/- 7.6e-3"
 
     # val_place == err_place-3
-    assert value_str(12356700,76400000000) == "0.000e12 +/- 0.076e12"
-    assert value_str(1235670,7640000000) == "0.0e9 +/- 7.6e9"
-    assert value_str(123567,764000000) == "0.00e9 +/- 0.76e9"
-    assert value_str(12356,76400000) == "0.000e9 +/- 0.076e9"
-    assert value_str(1235,7640000) == "0.0e6 +/- 7.6e6"
-    assert value_str(123,764000) == "0.00e6 +/- 0.76e6"
-    assert value_str(12,76400) == "0.000e6 +/- 0.076e6"
-    assert value_str(1,7640) == "0.0e3 +/- 7.6e3"
-    assert value_str(0.1,764) == "0.00e3 +/- 0.76e3"
-    assert value_str(0.01,76.4) == "0.000e3 +/- 0.076e3"
-    assert value_str(0.001,7.64) == "0.0 +/- 7.6"
-    assert value_str(0.0001,0.764) == "0.00 +/- 0.76"
-    assert value_str(0.00001,0.0764) == "0.000 +/- 0.076"
-    assert value_str(0.000001,0.00764) == "0.0e-3 +/- 7.6e-3"
+    assert value_str(12356700, 76400000000) == "0.000e12 +/- 0.076e12"
+    assert value_str(1235670, 7640000000) == "0.0e9 +/- 7.6e9"
+    assert value_str(123567, 764000000) == "0.00e9 +/- 0.76e9"
+    assert value_str(12356, 76400000) == "0.000e9 +/- 0.076e9"
+    assert value_str(1235, 7640000) == "0.0e6 +/- 7.6e6"
+    assert value_str(123, 764000) == "0.00e6 +/- 0.76e6"
+    assert value_str(12, 76400) == "0.000e6 +/- 0.076e6"
+    assert value_str(1, 7640) == "0.0e3 +/- 7.6e3"
+    assert value_str(0.1, 764) == "0.00e3 +/- 0.76e3"
+    assert value_str(0.01, 76.4) == "0.000e3 +/- 0.076e3"
+    assert value_str(0.001, 7.64) == "0.0 +/- 7.6"
+    assert value_str(0.0001, 0.764) == "0.00 +/- 0.76"
+    assert value_str(0.00001, 0.0764) == "0.000 +/- 0.076"
+    assert value_str(0.000001, 0.00764) == "0.0e-3 +/- 7.6e-3"
 
     # Zero values
-    assert value_str(0,7640000) == "0.0e6 +/- 7.6e6"
+    assert value_str(0, 7640000) == "0.0e6 +/- 7.6e6"
     assert value_str(0, 764000) == "0.00e6 +/- 0.76e6"
     assert value_str(0,  76400) == "0.000e6 +/- 0.076e6"
     assert value_str(0,   7640) == "0.0e3 +/- 7.6e3"
@@ -408,38 +417,40 @@ def test_pm():
     assert value_str(0,      0.0000764) == "0.000e-3 +/- 0.076e-3"
 
     # negative values
-    assert value_str(-1235670,766000) == "-1.24e6 +/- 0.77e6"
-    assert value_str(-1.23567,.766) == "-1.24 +/- 0.77"
-    assert value_str(-.00000123567,.0000000766) == "-1.236e-6 +/- 0.077e-6"
-    assert value_str(-12356.7,7.64) == "-12356.7 +/- 7.6"
-    assert value_str(-123.567,764) == "-0.12e3 +/- 0.76e3"
-    assert value_str(-1235.67,76400) == "-0.001e6 +/- 0.076e6"
-    assert value_str(-.000123567,.00764) == "-0.1e-3 +/- 7.6e-3"
-    assert value_str(-12356,7640000) == "-0.0e6 +/- 7.6e6"
-    assert value_str(-12,76400) == "-0.000e6 +/- 0.076e6"
-    assert value_str(-0.0001,0.764) == "-0.00 +/- 0.76"
+    assert value_str(-1235670, 766000) == "-1.24e6 +/- 0.77e6"
+    assert value_str(-1.23567, .766) == "-1.24 +/- 0.77"
+    assert value_str(-.00000123567, .0000000766) == "-1.236e-6 +/- 0.077e-6"
+    assert value_str(-12356.7, 7.64) == "-12356.7 +/- 7.6"
+    assert value_str(-123.567, 764) == "-0.12e3 +/- 0.76e3"
+    assert value_str(-1235.67, 76400) == "-0.001e6 +/- 0.076e6"
+    assert value_str(-.000123567, .00764) == "-0.1e-3 +/- 7.6e-3"
+    assert value_str(-12356, 7640000) == "-0.0e6 +/- 7.6e6"
+    assert value_str(-12, 76400) == "-0.000e6 +/- 0.076e6"
+    assert value_str(-0.0001, 0.764) == "-0.00 +/- 0.76"
 
     # non-finite values
-    assert value_str(-numpy.inf,None) == "-inf"
-    assert value_str(numpy.inf,None) == "inf"
-    assert value_str(numpy.NaN,None) == "NaN"
+    assert value_str(-numpy.inf, None) == "-inf"
+    assert value_str(numpy.inf, None) == "inf"
+    assert value_str(numpy.NaN, None) == "NaN"
 
     # bad or missing uncertainty
-    assert value_str(-1.23567,numpy.NaN) == "-1.23567"
-    assert value_str(-1.23567,-numpy.inf) == "-1.23567"
-    assert value_str(-1.23567,-0.1) == "-1.23567"
-    assert value_str(-1.23567,0) == "-1.23567"
-    assert value_str(-1.23567,None) == "-1.23567"
-    assert value_str(-1.23567,numpy.inf) == "-1.2 +/- inf"
+    assert value_str(-1.23567, numpy.NaN) == "-1.23567"
+    assert value_str(-1.23567, -numpy.inf) == "-1.23567"
+    assert value_str(-1.23567, -0.1) == "-1.23567"
+    assert value_str(-1.23567, 0) == "-1.23567"
+    assert value_str(-1.23567, None) == "-1.23567"
+    assert value_str(-1.23567, numpy.inf) == "-1.2 +/- inf"
+
 
 def test():
     # Check compact and plus/minus formats
     test_compact()
     test_pm()
     # Check that the default is the compact format
-    assert format_uncertainty(-1.23567,0.766) == "-1.24(77)"
+    assert format_uncertainty(-1.23567, 0.766) == "-1.24(77)"
 
     import doctest
     doctest.testmod()
 
-if __name__ == "__main__": test()
+if __name__ == "__main__":
+    test()

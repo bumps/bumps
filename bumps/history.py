@@ -68,12 +68,15 @@ For example:
 # 2. Do we want to support a skip option on traces, so that only every nth
 #    item is preserved?  This is probably too hard.
 
+
 class History(object):
+
     """
     Collection of traces.
 
     Provided traces can be specified as key word arguments, name=length.
     """
+
     def __init__(self, **kw):
         self.provides(**kw)
 
@@ -84,12 +87,12 @@ class History(object):
         Raises AttributeError if trace is already provided or if the trace
         name matches the name of one of the history methods.
         """
-        for k,v in kw.items():
+        for k, v in kw.items():
             # Make sure the additional trait is not already provided.
             # This test should also catch methods such as provides/requires
             # and static properties such as bounds that are set from outside.
             if hasattr(self, k):
-                raise AttributeError("history already provides "+k)
+                raise AttributeError("history already provides " + k)
             else:
                 mon = self._new_trace(keep=v, name=k)
                 setattr(self, k, mon)
@@ -98,7 +101,7 @@ class History(object):
         """
         Specify required fields, and their history length.
         """
-        for k,v in kw.items():
+        for k, v in kw.items():
             try:
                 mon = getattr(self, k)
                 mon.requires(v)
@@ -111,11 +114,11 @@ class History(object):
         Extend the given traces with the provided values.  The traced
         value will be the old value plus the new value.
         """
-        for k,v in kw.items():
+        for k, v in kw.items():
             try:
-                getattr(self,k).accumulate(v)
+                getattr(self, k).accumulate(v)
             except AttributeError:
-                raise AttributeError(k+" is not being traced")
+                raise AttributeError(k + " is not being traced")
 
     def update(self, **kw):
         """
@@ -123,11 +126,11 @@ class History(object):
         values are independent.  Use accumulate if you want to add the
         new value to the previous value in the trace.
         """
-        for k,v in kw.items():
+        for k, v in kw.items():
             try:
-                getattr(self,k).put(v)
+                getattr(self, k).put(v)
             except AttributeError:
-                raise AttributeError(k+" is not being traced")
+                raise AttributeError(k + " is not being traced")
 
     def clear(self):
         """
@@ -153,27 +156,28 @@ class History(object):
         return ", ".join(l for l in sorted(traces))
 
     def __str__(self):
-        traces = sorted(self._traces(), lambda x,y: cmp(x.name,y.name))
+        traces = sorted(self._traces(), lambda x, y: cmp(x.name, y.name))
         return "\n".join(str(l) for l in traces)
 
     def snapshot(self):
         """
         Return a dictionary of traces { 'name':  [v[n], v[n-1], ..., v[0]] }
         """
-        return dict((trace.name,trace.snapshot()) for trace in self._traces())
+        return dict((trace.name, trace.snapshot()) for trace in self._traces())
 
     def restore(self, state):
         """
         Restore history to the state returned by a call to snapshot
         """
-        for k,v in state.items():
+        for k, v in state.items():
             try:
-                getattr(self,k).restore(v)
+                getattr(self, k).restore(v)
             except KeyError:
                 pass
 
 
 class Trace(object):
+
     """
     Value trace.
 
@@ -188,8 +192,8 @@ class Trace(object):
     state = trace.snapeshot() returns the values as a stack, most recent last
     trace.restore(state) restores a snapshot
 
-    Note that snapshot/restore uses lists to represent numpy arrays, which may cause
-    problems if the trace is capturing lists.
+    Note that snapshot/restore uses lists to represent numpy arrays, which
+    may cause problems if the trace is capturing lists.
     """
     # Implementation note:
     # Traces are stored in reverse order because append is faster than insert.
@@ -197,60 +201,73 @@ class Trace(object):
     # appropriate value.
     # TODO: convert to circular buffer unless keeping the full trace
     # TODO: use numpy arrays for history
+
     def __init__(self, keep=1, name="trace"):
         self.keep = keep
         self._storage = []
         self.name = name
+
     def requires(self, n):
         """
         Set the trace length to be at least n.
         """
-        # Note: never shorten the trace, since another algorithm/condition/monitor
-        # may still require the longer trace.
+        # Note: never shorten the trace since another algorithm, condition,
+        # or monitor may require the longer trace.
         if n > self.keep:
             self.keep = n
+
     def accumulate(self, value):
-        if self.keep < 1: return
+        if self.keep < 1:
+            return
         try:
             value = self._storage[-1] + value
         except IndexError:
-            pass # Value is 0 + value => 0
+            pass  # Value is 0 + value => 0
         self.put(value)
+
     def put(self, value):
         """
         Add an item to the trace, shifting off from the beginning
         when the trace is full.
         """
-        if self.keep < 1: return
+        if self.keep < 1:
+            return
         if len(self._storage) == self.keep:
             self._storage = self._storage[1:]
         self._storage.append(value)
+
     def __len__(self):
         return len(self._storage)
+
     def __getitem__(self, key):
         if key < 0:
             raise IndexError(self.name
                              + " can only be accessed from the beginning")
         try:
-            return self._storage[-key-1]
+            return self._storage[-key - 1]
         except IndexError:
             raise IndexError(self.name + " has not accumulated enough history")
+
     def __setitem__(self, key, value):
         raise TypeError("cannot write directly to a trace; use put instead")
+
     def __str__(self):
         return ("Trace " + self.name + ": "
                 + ", ".join([str(k) for k in reversed(self._storage)]))
+
     def snapshot(self):
         """
         Capture state of the trace.
 
-        Numpy arrays are converted to lists so that the trace can be easily converted to json.
+        Numpy arrays are converted to lists so that the trace can be easily
+        converted to json.
         """
         import numpy
         if isinstance(self._storage[0], numpy.ndarray):
             return [v.tolist() for v in self._storage]
         else:
             return self._storage[:]
+
     def restore(self, state):
         """
         Restore a trace from a captured snapshot.

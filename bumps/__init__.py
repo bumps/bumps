@@ -14,6 +14,7 @@ See http://www.reflectometry.org/danse/reflectometry for online manuals.
 
 __version__ = "0.7.4"
 
+
 def data_files():
     """
     Return the data files associated with the package for setup_py2exe.py.
@@ -27,6 +28,7 @@ def data_files():
     """
     from .gui.utilities import data_files
     return data_files()
+
 
 def package_data():
     """

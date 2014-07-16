@@ -30,6 +30,7 @@ import math
 import numpy
 from numpy import eye, diag, asarray, empty, isinf, clip
 
+
 def generate(problem, **options):
     """
     Population initializer.  Takes a problem and a set of initialization
@@ -37,20 +38,26 @@ def generate(problem, **options):
     """
     initial = problem.getp()
     bounds = problem.bounds()
-    pop_size = int(math.ceil(options['pop']*len(initial)))
+    pop_size = int(math.ceil(options['pop'] * len(initial)))
     # TODO: really need a continue option
     if options['init'] == 'random':
-        population = random_init(pop_size, initial, problem, include_current=True)
+        population = random_init(
+            pop_size, initial, problem, include_current=True)
     elif options['init'] == 'cov':
         cov = problem.cov()
-        population = cov_init(pop_size, initial, bounds, include_current=True, cov=cov)
+        population = cov_init(
+            pop_size, initial, bounds, include_current=True, cov=cov)
     elif options['init'] == 'lhs':
-        population = lhs_init(pop_size, initial, bounds, include_current=True)
+        population = lhs_init(
+            pop_size, initial, bounds, include_current=True)
     elif options['init'] == 'eps':
-        population = eps_init(pop_size, initial, bounds, include_current=True, eps=1e-6)
+        population = eps_init(
+            pop_size, initial, bounds, include_current=True, eps=1e-6)
     else:
-        raise ValueError("Unknown population initializer '%s'" % options['init'])
+        raise ValueError(
+            "Unknown population initializer '%s'" % options['init'])
     return population
+
 
 def lhs_init(n, initial, bounds, include_current=False):
     """
@@ -71,39 +78,39 @@ def lhs_init(n, initial, bounds, include_current=False):
 
     Note: Indefinite ranges are not supported.
     """
-
-    xmin,xmax = bounds
+    xmin, xmax = bounds
 
     # Define the size of xmin
     nvar = len(xmin)
 
     # Initialize array ran with random numbers
-    ran = numpy.random.rand(n,nvar)
+    ran = numpy.random.rand(n, nvar)
 
     # Initialize array s with zeros
-    s = empty((n,nvar))
+    s = empty((n, nvar))
 
     # Now fill s
     for j in range(nvar):
         if include_current:
             # Put current value at position 0 in population
-            s[0,j] = initial[j]
+            s[0, j] = initial[j]
             # Find which bin the current value belongs in
-            xidx = int(n*initial[j]/(xmax[j]-xmin[j]))
+            xidx = int(n * initial[j] / (xmax[j] - xmin[j]))
             # Generate random permutation of remaining bins
-            idx = numpy.random.permutation(n-1)
-            idx[idx>=xidx] += 1  # exclude current value bin
+            idx = numpy.random.permutation(n - 1)
+            idx[idx >= xidx] += 1  # exclude current value bin
             # Assign random value within each bin
-            P = (idx+ran[1:,j])/n
-            s[1:,j] = xmin[j] + P*(xmax[j]-xmin[j])
+            p = (idx + ran[1:, j]) / n
+            s[1:, j] = xmin[j] + p * (xmax[j] - xmin[j])
         else:
             # Random permutation of bins
             idx = numpy.random.permutation(n)
             # Assign random value within each bin
-            P = (idx+ran[:,j])/n
-            s[:,j] = xmin[j] + P*(xmax[j]-xmin[j])
+            p = (idx + ran[:, j]) / n
+            s[:, j] = xmin[j] + p * (xmax[j] - xmin[j])
 
     return s
+
 
 def cov_init(n, initial, bounds, include_current=False, cov=None, dx=None):
     """
@@ -121,17 +128,19 @@ def cov_init(n, initial, bounds, include_current=False, cov=None, dx=None):
     If include_current is True, then the current value of the parameters
     is returned as the first point in the population.
     """
-    #return mean + dot(RNG.randn(n,len(mean)), chol(cov))
-    if cov == None and dx == None:
-        cov = eye(len(inital))
-    elif cov == None:
-        cov = diag(asarray(dx)**2)
-    population = numpy.random.multivariate_normal(mean=initial, cov=cov, size=n)
+    # return mean + dot(RNG.randn(n,len(mean)), chol(cov))
+    if cov is None and dx is None:
+        cov = eye(len(initial))
+    elif cov is None:
+        cov = diag(asarray(dx) ** 2)
+    population = numpy.random.multivariate_normal(
+        mean=initial, cov=cov, size=n)
     if include_current:
         population[0] = initial
     # Make sure values are in bounds.
     population = numpy.clip(population, *bounds)
     return population
+
 
 def random_init(n, initial, problem, include_current=False):
     """
@@ -148,6 +157,7 @@ def random_init(n, initial, problem, include_current=False):
     if include_current:
         population[0] = initial
     return population
+
 
 def eps_init(n, initial, bounds, include_current=False, eps=1e-6):
     """
@@ -166,11 +176,11 @@ def eps_init(n, initial, bounds, include_current=False, eps=1e-6):
     is returned as the first point in the population.
     """
     x = initial
-    xmin,xmax = bounds
-    dx = (xmax-xmin)*eps
+    xmin, xmax = bounds
+    dx = (xmax - xmin) * eps
     dx[isinf(dx)] = eps
-    population = x+dx*(2*numpy.random.rand(n,len(xmin))-1)
-    population = clip(population,xmin,xmax)
+    population = x + dx * (2 * numpy.random.rand(n, len(xmin)) - 1)
+    population = clip(population, xmin, xmax)
     if include_current:
         population[0] = x
     return population

@@ -16,7 +16,7 @@ except:
 
 
 import numpy
-#numpy.seterr(all="raise")
+# numpy.seterr(all="raise")
 
 from . import fitters
 from .fitters import FIT_OPTIONS, FitDriver, StepMonitor, ConsoleMonitor
@@ -29,34 +29,38 @@ from . import plugin
 
 from .util import pushdir
 
+
 def install_plugin(p):
     for symbol in plugin.__all__:
         if hasattr(p, symbol):
             setattr(plugin, symbol, getattr(p, symbol))
 
+
 def mesh(problem, vars=None, n=40):
-    x,y = [numpy.linspace(low, high, n)
-           for low,high in problem.bounds().T]
+    x, y = [numpy.linspace(low, high, n)
+            for low, high in problem.bounds().T]
     p1, p2 = vars
-    def fn(xi,yi):
+
+    def fn(xi, yi):
         p1.value, p2.value = xi, yi
         problem.model_update()
-        #print problem.summarize()
+        # print problem.summarize()
         return problem.chisq()
-    z = [[fn(xi,yi) for xi in x] for yi in y]
+    z = [[fn(xi, yi) for xi in x] for yi in y]
     return x, y, numpy.asarray(z)
 
 # ===== Model manipulation ====
 
+
 def load_model(args):
     path, options = args[0], args[1:]
 
-    directory,filename = os.path.split(path)
+    directory, filename = os.path.split(path)
     with pushdir(directory):
         # Try a specialized model loader
         problem = plugin.load_model(filename)
         if problem is None:
-            #print "loading",filename,"from",directory
+            # print "loading",filename,"from",directory
             if filename.endswith('pickle'):
                 # First see if it is a pickle
                 problem = pickle.load(open(filename, 'rb'))
@@ -69,11 +73,12 @@ def load_model(args):
 
     problem.model_reset()
     problem.path = os.path.abspath(path)
-    if not hasattr(problem,'title'):
+    if not hasattr(problem, 'title'):
         problem.title = filename
     problem.name, _ = os.path.splitext(filename)
     problem.options = options
     return problem
+
 
 def preview(problem):
     import pylab
@@ -81,26 +86,29 @@ def preview(problem):
     problem.plot()
     pylab.show()
 
+
 def remember_best(fitdriver, problem, best):
     # Make sure the problem contains the best value
     problem.setp(best)
-    #print "remembering best"
-    pardata = "".join("%s %.15g\n"%(name, value)
-                      for name,value in zip(problem.labels(),problem.getp()))
-    open(problem.output_path+".par",'wt').write(pardata)
+    # print "remembering best"
+    pardata = "".join("%s %.15g\n" % (name, value)
+                      for name, value in zip(problem.labels(), problem.getp()))
+    open(problem.output_path + ".par", 'wt').write(pardata)
 
     fitdriver.save(problem.output_path)
-    with util.redirect_console(problem.output_path+".err"):
+    with util.redirect_console(problem.output_path + ".err"):
         fitdriver.show()
         fitdriver.plot(problem.output_path)
     fitdriver.show()
-    #print "plotting"
+    # print "plotting"
 
 
 PARS_PATTERN = re.compile(r"^(?P<label>.*) (?P<value>[^ ]*)\n$")
+
+
 def recall_best(problem, path):
-    labels,values = [],[]
-    with open(path,'rt') as fid:
+    labels, values = [], []
+    with open(path, 'rt') as fid:
         for line in fid:
             m = PARS_PATTERN.match(line)
             labels.append(m.group('label'))
@@ -108,43 +116,50 @@ def recall_best(problem, path):
     assert labels == problem.labels()
     problem.setp(values)
 
+
 def store_overwrite_query_gui(path):
     import wx
-    msg_dlg = wx.MessageDialog(None,path+" already exists. Press 'yes' to overwrite, or 'No' to abort and restart with newpath",'Overwrite Directory',
+    msg_dlg = wx.MessageDialog(None, path + " already exists. Press 'yes' to overwrite, or 'No' to abort and restart with newpath", 'Overwrite Directory',
                                wx.YES_NO | wx.ICON_QUESTION)
     retCode = msg_dlg.ShowModal()
     msg_dlg.Destroy()
     if retCode != wx.ID_YES:
         raise RuntimeError("Could not create path")
 
+
 def store_overwrite_query(path):
-    print(path,"already exists.")
-    print("Press 'y' to overwrite, or 'n' to abort and restart with --store=newpath")
+    print(path, "already exists.")
+    print(
+        "Press 'y' to overwrite, or 'n' to abort and restart with --store=newpath")
     ans = input("Overwrite [y/n]? ")
-    if ans not in ("y","Y","yes"):
+    if ans not in ("y", "Y", "yes"):
         sys.exit(1)
+
 
 def make_store(problem, opts, exists_handler):
     # Determine if command line override
     if opts.store:
         problem.store = opts.store
-    problem.output_path = os.path.join(problem.store,problem.name)
+    problem.output_path = os.path.join(problem.store, problem.name)
 
     # Check if already exists
-    if not opts.overwrite and os.path.exists(problem.output_path+'.out'):
+    if not opts.overwrite and os.path.exists(problem.output_path + '.out'):
         if opts.batch:
-            print(problem.store+" already exists.  Use --overwrite to replace.", file=sys.stderr)
+            print(
+                problem.store + " already exists.  Use --overwrite to replace.", file=sys.stderr)
             sys.exit(1)
         exists_handler(problem.output_path)
 
     # Create it and copy model
-    try: os.mkdir(problem.store)
-    except: pass
+    try:
+        os.mkdir(problem.store)
+    except:
+        pass
     shutil.copy2(problem.path, problem.store)
 
     # Redirect sys.stdout to capture progress
     if opts.batch:
-        sys.stdout = open(problem.output_path+".mon","w")
+        sys.stdout = open(problem.output_path + ".mon", "w")
 
 
 def run_profiler(problem, steps):
@@ -166,7 +181,8 @@ def run_profiler(problem, steps):
     """
     from .util import profile
     p = initpop.random_init(int(steps), None, problem)
-    profile(map,problem.nllf,p)
+    profile(map, problem.nllf, p)
+
 
 def run_timer(mapper, problem, steps):
     """
@@ -176,10 +192,12 @@ def run_timer(mapper, problem, steps):
     run time of the model.  If --parallel is included, then the model
     will be run in parallel on separate cores.
     """
-    import time; T0 = time.time()
+    import time
+    T0 = time.time()
     p = initpop.random_init(int(steps), None, problem)
     mapper(p)
-    print("time per model eval: %g ms"%(1000*(time.time()-T0)/steps,))
+    print("time per model eval: %g ms" % (1000 * (time.time() - T0) / steps,))
+
 
 def start_remote_fit(problem, options, queue, notify):
     """
@@ -192,7 +210,7 @@ def start_remote_fit(problem, options, queue, notify):
                 problem=pickle.dumps(problem),
                 options=pickle.dumps(options))
     request = dict(service='fitter',
-                   version=__version__, # fitter service version
+                   version=__version__,  # fitter service version
                    notify=notify,
                    name=problem.title,
                    data=data)
@@ -209,6 +227,7 @@ class ParseOpts:
     FLAGS = set()
     VALUES = set()
     USAGE = ""
+
     def __init__(self, args):
         self._parse(args)
 
@@ -233,14 +252,14 @@ class ParseOpts:
         for f in valueargs:
             idx = f.find('=')
             name = f[2:idx]
-            value = f[idx+1:]
+            value = f[idx + 1:]
             if name not in self.VALUES:
-                raise ValueError("Unknown option --%s. Use -? for help."%name)
+                raise ValueError(
+                    "Unknown option --%s. Use -? for help." % name)
             setattr(self, name, value)
 
         positionargs = [v for v in sys.argv[1:] if not v.startswith('-')]
         self.args = positionargs
-
 
 
 class BumpsOpts(ParseOpts):
@@ -249,24 +268,25 @@ class BumpsOpts(ParseOpts):
                  "simulate", "simrandom", "shake",
                  "worker", "batch", "overwrite", "parallel", "stepmon",
                  "cov", "remote", "staj", "edit", "mpi",
-                 "multiprocessing-fork", # passed in when app is a frozen image
+                 # passed in when app is a frozen image
+                 "multiprocessing-fork",
                  "i",
-               ))
+                 ))
     VALUES = set(("plot", "store", "resume", "fit", "noise", "seed", "pars",
                   "resynth", "transport", "notify", "queue",
                   "m", "c", "p",
                   #"mesh","meshsteps",
-                ))
+                  ))
     # Add in parameters from the fitters
     VALUES |= set(fitters.FitOptions.FIELDS.keys())
-    pars=None
-    notify=""
-    queue="http://reflectometry.org/queue"
-    resynth="0"
-    noise="5"
-    starts="1"
-    seed=""
-    PLOTTERS="linear", "log", "residuals"
+    pars = None
+    notify = ""
+    queue = "http://reflectometry.org/queue"
+    resynth = "0"
+    noise = "5"
+    starts = "1"
+    seed = ""
+    PLOTTERS = "linear", "log", "residuals"
     USAGE = """\
 Usage: bumps [options] modelfile [modelargs]
 
@@ -371,9 +391,9 @@ Options:
         start the interactive interpreter
     -?/-h/--help
         display this help
-"""%{'fitter':'|'.join(sorted(FIT_OPTIONS.keys())),
-     'plotter':'|'.join(PLOTTERS),
-     }
+""" % {'fitter': '|'.join(sorted(FIT_OPTIONS.keys())),
+       'plotter': '|'.join(PLOTTERS),
+       }
 
 #    --transport=mp  {amqp|mp|mpi}
 #        use amqp/multiprocessing/mpi for parallel evaluation
@@ -381,40 +401,45 @@ Options:
 #        plot chisq line or plane
 #    --meshsteps=n
 #        number of steps in the mesh
-#For mesh plots, var can be a fitting parameter with optional
-#range specifier, such as:
+# For mesh plots, var can be a fitting parameter with optional
+# range specifier, such as:
 #
 #   P[0].range(3,6)
 #
-#or the complete path to a model parameter:
+# or the complete path to a model parameter:
 #
 #   M[0].sample[1].material.rho.pm(1)
 
     _plot = 'log'
+
     def _set_plot(self, value):
         if value not in set(self.PLOTTERS):
             raise ValueError("unknown plot type %s; use %s"
-                             %(value,"|".join(self.PLOTTERS)))
+                             % (value, "|".join(self.PLOTTERS)))
         self._plot = value
     plot = property(fget=lambda self: self._plot, fset=_set_plot)
     store = None
     resume = None
     _fitter = fitters.FIT_DEFAULT
+
     def _set_fitter(self, value):
         if value not in set(FIT_OPTIONS.keys()):
             raise ValueError("unknown fitter %s; use %s"
-                             %(value,"|".join(sorted(FIT_OPTIONS.keys()))))
+                             % (value, "|".join(sorted(FIT_OPTIONS.keys()))))
         self._fitter = value
     fit = property(fget=lambda self: self._fitter, fset=_set_fitter)
-    TRANSPORTS = 'amqp','mp','mpi','celery'
+    TRANSPORTS = 'amqp', 'mp', 'mpi', 'celery'
     _transport = 'mp'
+
     def _set_transport(self, value):
         if value not in self.TRANSPORTS:
             raise ValueError("unknown transport %s; use %s"
-                             %(value,"|".join(self.TRANSPORTS)))
+                             % (value, "|".join(self.TRANSPORTS)))
         self._transport = value
-    transport = property(fget=lambda self: self._transport, fset=_set_transport)
+    transport = property(
+        fget=lambda self: self._transport, fset=_set_transport)
     meshsteps = 40
+
 
 def getopts():
     opts = BumpsOpts(sys.argv)
@@ -425,6 +450,7 @@ def getopts():
     return opts
 
 # ==== Main ====
+
 
 def initial_model(opts):
     if opts.seed is not None:
@@ -441,36 +467,42 @@ def initial_model(opts):
             problem.simulate_data(noise=noise)
             print("simulation parameters")
             print(problem.summarize())
-            print("chisq at simulation",problem.chisq())
-        if opts.shake: 
+            print("chisq at simulation", problem.chisq())
+        if opts.shake:
             problem.randomize()
     else:
         problem = None
     return problem
 
+
 def resynth(fitdriver, problem, mapper, opts):
-    make_store(problem,opts,exists_handler=store_overwrite_query)
-    fid = open(problem.output_path+".rsy",'at')
+    make_store(problem, opts, exists_handler=store_overwrite_query)
+    fid = open(problem.output_path + ".rsy", 'at')
     fitdriver.mapper = mapper.start_mapper(problem, opts.args)
     for i in range(opts.resynth):
         problem.resynth_data()
         best, fbest = fitdriver.fit()
-        print("step %d chisq %g"%(i,2*fbest/problem.dof))
-        fid.write('%.15g '%(2*fbest/problem.dof))
-        fid.write(' '.join('%.15g'%v for v in best))
+        print("step %d chisq %g" % (i, 2 * fbest / problem.dof))
+        fid.write('%.15g ' % (2 * fbest / problem.dof))
+        fid.write(' '.join('%.15g' % v for v in best))
         fid.write('\n')
     problem.restore_data()
     fid.close()
+
 
 def set_mplconfig(appdatadir):
     r"""
     Point the matplotlib config dir to %LOCALAPPDATA%\{appdatadir}\mplconfig.
     """
-    import os,sys
+    import os
+    import sys
     if hasattr(sys, 'frozen'):
-        mplconfigdir = os.path.join(os.environ['LOCALAPPDATA'], appdatadir, 'mplconfig')
-        mplconfigdir = os.environ.setdefault('MPLCONFIGDIR',mplconfigdir)
-        if not os.path.exists(mplconfigdir): os.makedirs(mplconfigdir)
+        mplconfigdir = os.path.join(
+            os.environ['LOCALAPPDATA'], appdatadir, 'mplconfig')
+        mplconfigdir = os.environ.setdefault('MPLCONFIGDIR', mplconfigdir)
+        if not os.path.exists(mplconfigdir):
+            os.makedirs(mplconfigdir)
+
 
 def config_matplotlib(backend=None):
     """
@@ -492,7 +524,8 @@ def config_matplotlib(backend=None):
     # With a full matplotlib distribution we can use whatever the user prefers.
     if hasattr(sys, 'frozen'):
         if 'MPLCONFIGDIR' not in os.environ:
-            raise RuntimeError("MPLCONFIGDIR should be set to e.g., %LOCALAPPDATA%\YourApp\mplconfig")
+            raise RuntimeError(
+                "MPLCONFIGDIR should be set to e.g., %LOCALAPPDATA%\YourApp\mplconfig")
         if backend is None:
             backend = 'WXAgg'
 
@@ -511,6 +544,7 @@ def config_matplotlib(backend=None):
 
     matplotlib.interactive(False)
 
+
 def beep():
     """
     Audio signal that fit is complete.
@@ -521,8 +555,10 @@ def beep():
     else:
         print("\a", file=sys.__stdout__)
 
+
 def run_command(c):
     exec(c, globals())
+
 
 def main():
     if len(sys.argv) == 1:
@@ -558,9 +594,9 @@ def main():
     # Set up the matplotlib backend to minimize the wx/gui dependency.
     # If no GUI specified and not editing, then use the default mpl
     # backend for the python version.
-    if opts.batch or opts.remote: # no interactivity
+    if opts.batch or opts.remote:  # no interactivity
         config_matplotlib(backend='Agg')
-    else: # let preview use default graphs
+    else:  # let preview use default graphs
         config_matplotlib()
 
     problem = initial_model(opts)
@@ -586,17 +622,21 @@ def main():
         return
 
     fitopts = FIT_OPTIONS[opts.fit]
-    fitdriver = FitDriver(fitopts.fitclass, problem=problem, abort_test=lambda: False, **fitopts.options)
+    fitdriver = FitDriver(
+        fitopts.fitclass, problem=problem, abort_test=lambda: False, **fitopts.options)
 
     if opts.timer:
-        run_timer(mapper.start_mapper(problem, opts.args), problem, steps=int(opts.steps))
+        run_timer(mapper.start_mapper(problem, opts.args),
+                  problem, steps=int(opts.steps))
     elif opts.profiler:
         run_profiler(problem, steps=int(opts.steps))
     elif opts.chisq:
-        if opts.cov: print(problem.cov())
-        print("chisq",problem())
+        if opts.cov:
+            print(problem.cov())
+        print("chisq", problem())
     elif opts.preview:
-        if opts.cov: print(problem.cov())
+        if opts.cov:
+            print(problem.cov())
         preview(problem)
     elif opts.resynth > 0:
         resynth(fitdriver, problem, mapper, opts)
@@ -616,22 +656,23 @@ def main():
         else:
             resume_path = None
 
-        make_store(problem,opts,exists_handler=store_overwrite_query)
+        make_store(problem, opts, exists_handler=store_overwrite_query)
 
         # Show command line arguments and initial model
-        print("#"," ".join(sys.argv))
+        print("#", " ".join(sys.argv))
         problem.show()
         if opts.stepmon:
-            fid = open(problem.output_path+'.log', 'w')
+            fid = open(problem.output_path + '.log', 'w')
             fitdriver.monitors = [ConsoleMonitor(problem),
-                               StepMonitor(problem,fid,fields=['step','value'])]
+                                  StepMonitor(problem, fid, fields=['step', 'value'])]
 
         #import time; t0=time.clock()
         fitdriver.mapper = mapper.start_mapper(problem, opts.args)
         best, fbest = fitdriver.fit(resume=resume_path)
-        #print("time=%g"%(time.clock()-t0),file=sys.__stdout__)
+        # print("time=%g"%(time.clock()-t0),file=sys.__stdout__)
         remember_best(fitdriver, problem, best)
-        if opts.cov: print(problem.cov())
+        if opts.cov:
+            print(problem.cov())
         mapper.stop_mapper(fitdriver.mapper)
         beep()
         if not opts.batch and not opts.mpi:

@@ -19,7 +19,7 @@ from setuptools import setup, find_packages, Extension
 sys.path.insert(0, os.path.dirname(__file__))
 import bumps
 from bumps.gui.resources import resources as gui_resources
-from bumps.openmp_ext import openmp_build_ext
+from bumps.openmp_ext import openmp_ext
 
 packages = find_packages(exclude=['amqp_map', 'fit_functions', 'jobqueue'])
 
@@ -60,7 +60,7 @@ dist = setup(
     ext_modules=[bumpsmodule()],
     install_requires=['numdifftools'],
     #install_requires = ['httplib2'],
-    cmdclass={'build_ext': openmp_build_ext(default=False)},
+    cmdclass={'build_ext': openmp_ext(default=False)},
 )
 
 # End of file
