@@ -752,7 +752,7 @@ def format(p, indent=0):
         if p.fixed:
             bounds = ""
         else:
-            bounds = ", bounds=(%g,%g)" %  p.bounds.limits[0]
+            bounds = ", bounds=(%g,%g)" %  p.bounds.limits
         return "Parameter(%g, name='%s'%s)" % (p.value, str(p), bounds)
     elif isinstance(p, BaseParameter):
         return str(p)
