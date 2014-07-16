@@ -276,6 +276,26 @@ def OpenFitOptions():
 
 
 if __name__=="__main__":
+    # Gather together information about option x from three sources:
+    #   name and type come from the FIELDS - name,type mapping
+    #   algorithm and factory settings comes from fitter.name, fitter.settings
+    #   current value comes from FitOptions.options[x]
+    # The fields are displayed in the order of the factory settings.
+    FIELD = fitters.FitOptions.FIELDS
+    plist = {}
+    for fit in sorted(fitters.FIT_OPTIONS.values()):
+        items = [(FIELD[name][0],
+                  setting,
+                  fit.options[name],
+                  FIELD[name][1])
+                 for name,setting in fit.fitclass.settings]
+        plist[fit.fitclass.name] = items
+    #print "****** plist =\n", plist
+
+    algorithm_name = fitters.FIT_OPTIONS[fitters.FIT_DEFAULT].fitclass.name
+
     app = wx.App()
-    FitControl(None, -1, 'Fit Control')
+    fit_dlg = FitControl(parent=-1, id=wx.ID_ANY, title="Fit Control",
+                         plist=plist,
+                         default_algo=algorithm_name)
     app.MainLoop()
