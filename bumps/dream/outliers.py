@@ -4,9 +4,9 @@ Chain outlier tests.
 
 from numpy import mean, std, sqrt, argsort, where, argmin, arange, array
 from scipy.stats import t as student_t
+
 from .mahal import mahalanobis
 from .acr import ACR
-from . import util
 
 tinv = student_t.ppf
 # from scipy.stats import scoreatpercentile as prctile

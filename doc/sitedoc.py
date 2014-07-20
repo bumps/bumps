@@ -1,6 +1,7 @@
 import os
-import numpy
-import pylab
+
+import numpy as np
+
 from bumps.fitters import BFGSFit, DEFit, RLFit, PTFit
 from bumps.cli import load_problem
 
@@ -38,15 +39,17 @@ def example_dir():
     return frame.f_locals[RSTDIR] if frame else ""
 
 def plot_model(filename):
+    from matplotlib import pyplot as plt
     #import sys; print >>sys.stderr, "in plot with",filename, example_dir()
-    numpy.random.seed(SEED)
+    np.random.seed(SEED)
     p = load_problem([os.path.join(example_dir(), filename)])
     p.plot()
-    pylab.show()
+    plt.show()
 
 def fit_model(filename):
+    from matplotlib import pyplot as plt
     #import sys; print >>sys.stderr, "in plot with",filename, example_dir()
-    numpy.random.seed(SEED)
+    np.random.seed(SEED)
     p =load_problem([os.path.join(example_dir(),filename)])
     #x.fx = RLFit(p).solve(steps=1000, burn=99)
     x,fx = DEFit(p).solve(steps=200, pop=10)
@@ -57,4 +60,4 @@ def fit_model(filename):
     if chisq>2:
         raise RuntimeError("Fit did not converge")
     p.plot()
-    pylab.show()
+    plt.show()

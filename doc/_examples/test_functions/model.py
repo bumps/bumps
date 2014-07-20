@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-from numpy import sin, cos, linspace, meshgrid, e, pi, sqrt, array, exp
+from numpy import sin, cos, linspace, meshgrid, e, pi, sqrt, exp
 from numpy.random import randn
 from bumps.names import *
 from functools import reduce

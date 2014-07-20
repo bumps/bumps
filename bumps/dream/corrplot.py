@@ -9,7 +9,7 @@ Uses false color plots of density.
 """
 __all__ = ['Corr2d']
 
-import numpy
+import numpy as np
 from numpy import inf
 
 from matplotlib import cm, colors, image, artist
@@ -41,7 +41,7 @@ class Corr2d:
         #    print k,(v[1][0],v[1][-1]),(v[2][0],v[2][-1])
 
     def R(self):
-        return numpy.corrcoef(self.data)
+        return np.corrcoef(self.data)
 
     def __getitem__(self, i, j):
         """
@@ -71,9 +71,9 @@ def _hists(data, ranges=None, **kw):
     """
     N = len(data)
     if ranges == None:
-        low,high = numpy.min(data,axis=1), numpy.max(data,axis=1)
+        low,high = np.min(data,axis=1), np.max(data,axis=1)
         ranges = [(l,h) for l,h in zip(low,high)]
-    return dict(((i,j), numpy.histogram2d(data[i], data[j],
+    return dict(((i,j), np.histogram2d(data[i], data[j],
                                     range=[ranges[i],ranges[j]], **kw))
                 for i in range(0,N)
                 for j in range(i+1,N))
@@ -89,12 +89,12 @@ def _plot(fig, hists, labels, N, show_ticks=False):
     for data,_,_ in hists.values():
         positive = data[data>0]
         if len(positive) > 0:
-            vmin = min(vmin,numpy.amin(positive))
-            vmax = max(vmax,numpy.amax(positive))
+            vmin = min(vmin,np.amin(positive))
+            vmax = max(vmax,np.amax(positive))
     norm = colors.LogNorm(vmin=vmin, vmax=vmax, clip=False)
     #norm = colors.Normalize(vmin=vmin, vmax=vmax)
     mapper = image.FigureImage(fig)
-    mapper.set_array(numpy.zeros(0))
+    mapper.set_array(np.zeros(0))
     mapper.set_cmap(cmap=COLORMAP)
     mapper.set_norm(norm)
 
@@ -110,7 +110,7 @@ def _plot(fig, hists, labels, N, show_ticks=False):
             a.xaxis.set_major_locator(MaxNLocator(4,steps=[1,2,4,5,10]))
             a.yaxis.set_major_locator(MaxNLocator(4,steps=[1,2,4,5,10]))
             data,x,y = hists[(i,j)]
-            data = numpy.clip(data,vmin,vmax)
+            data = np.clip(data,vmin,vmax)
             a.pcolorfast(y,x,data,cmap=COLORMAP,norm=norm)
             # Show labels or hide ticks
             if i != 0:

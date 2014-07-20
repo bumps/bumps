@@ -39,11 +39,13 @@ UncertaintyFormatter() returns a private formatter with its own
 formatter.compact flag.
 """
 from __future__ import division
-
 import math
-import numpy
+
+from numpy import isinf, isnan, inf, NaN
+
 __all__ = ['format_uncertainty', 'format_uncertainty_pm',
            'format_uncertainty_compact']
+
 
 # Coordinating scales across a set of numbers is not supported.  For easy
 # comparison a set of numbers should be shown in the same scale.  One could
@@ -112,15 +114,15 @@ def _format_uncertainty(value, uncertainty, compact):
     Implementation of both the compact and the +/- formats.
     """
     # Handle indefinite value
-    if numpy.isinf(value):
+    if isinf(value):
         return "inf" if value > 0 else "-inf"
-    if numpy.isnan(value):
+    if isnan(value):
         return "NaN"
 
     # Handle indefinite uncertainty
-    if uncertainty is None or uncertainty <= 0 or numpy.isnan(uncertainty):
+    if uncertainty is None or uncertainty <= 0 or isnan(uncertainty):
         return "%g" % value
-    if numpy.isinf(uncertainty):
+    if isinf(uncertainty):
         if compact is None:
             return "%.2g" % value
         elif compact:
@@ -297,17 +299,17 @@ def test_compact():
     assert value_str(-0.0001, 0.764) == "-0.00(76)"
 
     # non-finite values
-    assert value_str(-numpy.inf, None) == "-inf"
-    assert value_str(numpy.inf, None) == "inf"
-    assert value_str(numpy.NaN, None) == "NaN"
+    assert value_str(-inf, None) == "-inf"
+    assert value_str(inf, None) == "inf"
+    assert value_str(NaN, None) == "NaN"
 
     # bad or missing uncertainty
-    assert value_str(-1.23567, numpy.NaN) == "-1.23567"
-    assert value_str(-1.23567, -numpy.inf) == "-1.23567"
+    assert value_str(-1.23567, NaN) == "-1.23567"
+    assert value_str(-1.23567, -inf) == "-1.23567"
     assert value_str(-1.23567, -0.1) == "-1.23567"
     assert value_str(-1.23567, 0) == "-1.23567"
     assert value_str(-1.23567, None) == "-1.23567"
-    assert value_str(-1.23567, numpy.inf) == "-1.2(inf)"
+    assert value_str(-1.23567, inf) == "-1.2(inf)"
 
 
 def test_pm():
@@ -429,17 +431,17 @@ def test_pm():
     assert value_str(-0.0001, 0.764) == "-0.00 +/- 0.76"
 
     # non-finite values
-    assert value_str(-numpy.inf, None) == "-inf"
-    assert value_str(numpy.inf, None) == "inf"
-    assert value_str(numpy.NaN, None) == "NaN"
+    assert value_str(-inf, None) == "-inf"
+    assert value_str(inf, None) == "inf"
+    assert value_str(NaN, None) == "NaN"
 
     # bad or missing uncertainty
-    assert value_str(-1.23567, numpy.NaN) == "-1.23567"
-    assert value_str(-1.23567, -numpy.inf) == "-1.23567"
+    assert value_str(-1.23567, NaN) == "-1.23567"
+    assert value_str(-1.23567, -inf) == "-1.23567"
     assert value_str(-1.23567, -0.1) == "-1.23567"
     assert value_str(-1.23567, 0) == "-1.23567"
     assert value_str(-1.23567, None) == "-1.23567"
-    assert value_str(-1.23567, numpy.inf) == "-1.2 +/- inf"
+    assert value_str(-1.23567, inf) == "-1.2 +/- inf"
 
 
 def test():

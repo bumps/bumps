@@ -5,7 +5,7 @@ __all__ = ["Curve", "PoissonCurve"]
 
 import inspect
 
-import numpy
+import numpy as np
 from numpy import log, pi, sqrt
 
 from .parameter import Parameter
@@ -36,11 +36,11 @@ class Curve(object):
     """
 
     def __init__(self, fn, x, y, dy=None, name="", **fnkw):
-        self.x, self.y = numpy.asarray(x), numpy.asarray(y)
+        self.x, self.y = np.asarray(x), np.asarray(y)
         if dy is None:
             self.dy = 1
         else:
-            self.dy = numpy.asarray(dy)
+            self.dy = np.asarray(dy)
             if (self.dy <= 0).any():
                 raise ValueError("measurement uncertainty must be positive")
 
@@ -97,7 +97,7 @@ class Curve(object):
         return dict((p, getattr(self, p)) for p in self._pnames)
 
     def numpoints(self):
-        return numpy.prod(self.y.shape)
+        return np.prod(self.y.shape)
 
     def theory(self, x=None):
         if self._cached_theory is None:
@@ -112,11 +112,11 @@ class Curve(object):
 
     def nllf(self):
         r = self.residuals()
-        return 0.5 * numpy.sum(r ** 2)
+        return 0.5 * np.sum(r ** 2)
 
     def save(self, basename):
-        data = numpy.vstack((self.x, self.y, self.dy, self.theory()))
-        numpy.savetxt(basename + '.dat', data.T)
+        data = np.vstack((self.x, self.y, self.dy, self.theory()))
+        np.savetxt(basename + '.dat', data.T)
 
     def plot(self, view=None):
         import pylab
@@ -124,15 +124,15 @@ class Curve(object):
         pylab.plot(self.x, self.theory(), '-', hold=True)
 
 
-_LOGFACTORIAL = numpy.array([log(numpy.prod(numpy.arange(1., k + 1)))
+_LOGFACTORIAL = np.array([log(np.prod(np.arange(1., k + 1)))
                              for k in range(21)])
 
 
 def logfactorial(n):
     """Compute the log factorial for each element of an array"""
-    result = numpy.empty(n.shape, dtype='double')
+    result = np.empty(n.shape, dtype='double')
     idx = (n <= 20)
-    result[idx] = _LOGFACTORIAL[numpy.asarray(n[idx], 'int32')]
+    result[idx] = _LOGFACTORIAL[np.asarray(n[idx], 'int32')]
     n = n[~idx]
     result[~idx] = n * \
         log(n) - n + log(n * (1 + 4 * n * (1 + 2 * n))) / 6 + log(pi) / 2
@@ -152,7 +152,7 @@ class PoissonCurve(Curve):
 
     def __init__(self, fn, x, y, name="", **fnkw):
         Curve.__init__(self, fn, x, y, sqrt(y), name=name, **fnkw)
-        self._logfacty = numpy.sum(logfactorial(self.y))
+        self._logfacty = np.sum(logfactorial(self.y))
 
     def nllf(self):
         theory = self.theory()

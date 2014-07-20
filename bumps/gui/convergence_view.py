@@ -1,6 +1,6 @@
 from __future__ import with_statement
 
-import numpy
+import numpy as np
 
 from .. import monitor
 from ..plotutil import coordinated_colors
@@ -21,16 +21,16 @@ class ConvergenceMonitor(monitor.Monitor):
         try:
             pop = history.population_values[0]
             n = len(pop)
-            p = numpy.sort(pop)
+            p = np.sort(pop)
             QI,Qmid, = int(0.2*n),int(0.5*n)
             self.pop.append((best, p[0],p[QI],p[Qmid],p[-1-QI],p[-1]))
         except AttributeError:
             self.pop.append((best, ))
     def progress(self):
         if not self.pop:
-            return dict(pop=numpy.empty((0,1),'d'))
+            return dict(pop=np.empty((0,1),'d'))
         else:
-            return dict(pop=numpy.array(self.pop))
+            return dict(pop=np.array(self.pop))
 
 
 class ConvergenceView(PlotView):
@@ -41,7 +41,7 @@ class ConvergenceView(PlotView):
         with self.pylab_interface as pylab:
             pylab.clf()
             ni,np = pop.shape
-            iternum = numpy.arange(1,ni+1)
+            iternum = np.arange(1,ni+1)
             tail = int(0.25*ni)
             c = coordinated_colors(base=(0.4,0.8,0.2))
             if np==5:

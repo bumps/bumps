@@ -11,7 +11,7 @@ from __future__ import division, print_function
 
 __all__ = ["parallel_tempering"]
 
-import numpy
+import numpy as np
 from numpy import asarray, zeros, ones, exp, diff, std, inf, \
     array, nonzero, sqrt, zeros_like
 from numpy.linalg import norm
@@ -143,7 +143,7 @@ def parallel_tempering(nllf, p, bounds, T=None, steps=1000,
         interval = 100
         if 0 and step % interval == 0:
             print("max r",
-                  max(["%.1f" % numpy.linalg.norm(p - P[0]) for p in P[1:]]))
+                  max(["%.1f" % norm(p - P[0]) for p in P[1:]]))
             # print "min AR",argmin(total_accept),min(total_accept)
             # print "min SR",argmin(total_swap),min(total_swap)
             print("AR", total_accept)
@@ -243,7 +243,7 @@ class Stepper(object):
             vars = nonzero(rand(N) < CR)
             if len(vars) == 0:
                 vars = [randint(N)]
-            step = numpy.sum(pop[:k] - pop[k:], axis=0)
+            step = np.sum(pop[:k] - pop[k:], axis=0)
             if norm(step[vars]) > 0:
                 break
 

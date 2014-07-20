@@ -49,7 +49,7 @@ def addpath(path):
 sys.dont_write_bytecode = True
 
 sys.stderr = sys.stdout  # Doctest doesn't see sys.stderr
-#import numpy; numpy.seterr(all='raise')
+#import numpy as np; np.seterr(all='raise')
 
 # Check that we are running from the root.
 root = os.path.abspath(os.getcwd())

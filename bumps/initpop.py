@@ -27,7 +27,7 @@ from __future__ import division
 __all__ = ['lhs_init', 'cov_init', 'random_init', 'eps_init', 'generate']
 
 import math
-import numpy
+import numpy as np
 from numpy import eye, diag, asarray, empty, isinf, clip
 
 
@@ -84,7 +84,7 @@ def lhs_init(n, initial, bounds, include_current=False):
     nvar = len(xmin)
 
     # Initialize array ran with random numbers
-    ran = numpy.random.rand(n, nvar)
+    ran = np.random.rand(n, nvar)
 
     # Initialize array s with zeros
     s = empty((n, nvar))
@@ -97,14 +97,14 @@ def lhs_init(n, initial, bounds, include_current=False):
             # Find which bin the current value belongs in
             xidx = int(n * initial[j] / (xmax[j] - xmin[j]))
             # Generate random permutation of remaining bins
-            idx = numpy.random.permutation(n - 1)
+            idx = np.random.permutation(n - 1)
             idx[idx >= xidx] += 1  # exclude current value bin
             # Assign random value within each bin
             p = (idx + ran[1:, j]) / n
             s[1:, j] = xmin[j] + p * (xmax[j] - xmin[j])
         else:
             # Random permutation of bins
-            idx = numpy.random.permutation(n)
+            idx = np.random.permutation(n)
             # Assign random value within each bin
             p = (idx + ran[:, j]) / n
             s[:, j] = xmin[j] + p * (xmax[j] - xmin[j])
@@ -133,12 +133,12 @@ def cov_init(n, initial, bounds, include_current=False, cov=None, dx=None):
         cov = eye(len(initial))
     elif cov is None:
         cov = diag(asarray(dx) ** 2)
-    population = numpy.random.multivariate_normal(
+    population = np.random.multivariate_normal(
         mean=initial, cov=cov, size=n)
     if include_current:
         population[0] = initial
     # Make sure values are in bounds.
-    population = numpy.clip(population, *bounds)
+    population = clip(population, *bounds)
     return population
 
 
@@ -179,7 +179,7 @@ def eps_init(n, initial, bounds, include_current=False, eps=1e-6):
     xmin, xmax = bounds
     dx = (xmax - xmin) * eps
     dx[isinf(dx)] = eps
-    population = x + dx * (2 * numpy.random.rand(n, len(xmin)) - 1)
+    population = x + dx * (2 * np.random.rand(n, len(xmin)) - 1)
     population = clip(population, xmin, xmax)
     if include_current:
         population[0] = x

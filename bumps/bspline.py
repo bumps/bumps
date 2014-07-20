@@ -7,7 +7,7 @@ that are required.
 """
 from __future__ import division, print_function
 
-import numpy
+import numpy as np
 
 
 def max(a, b):
@@ -35,13 +35,13 @@ def pbs(x, y, t, clamp=True, parametric=False):
     to work.
     """
     x = list(sorted(x))
-    knot = numpy.hstack((0, 0, numpy.linspace(0, 1, len(y)), 1, 1))
-    cx = numpy.hstack((x[0], x[0], x[0], (2 * x[0] + x[1]) / 3,
+    knot = np.hstack((0, 0, np.linspace(0, 1, len(y)), 1, 1))
+    cx = np.hstack((x[0], x[0], x[0], (2 * x[0] + x[1]) / 3,
                        x[1:-1], (2 * x[-1] + x[-2]) / 3, x[-1]))
     if clamp:
-        cy = numpy.hstack((y[0], y[0], y[0], y, y[-1]))
+        cy = np.hstack((y[0], y[0], y[0], y, y[-1]))
     else:
-        cy = numpy.hstack((y[0], y[0], y[0],
+        cy = np.hstack((y[0], y[0], y[0],
                            y[0] + (y[1] - y[0]) / 3,
                            y[1:-1],
                            y[-1] + (y[-2] - y[-1]) / 3,
@@ -52,12 +52,12 @@ def pbs(x, y, t, clamp=True, parametric=False):
 
     # Find parametric t values corresponding to given z values
     # First try a few newton steps
-    xt = numpy.interp(t, x, numpy.linspace(0, 1, len(x)))
-    with numpy.errstate(all='ignore'):
+    xt = np.interp(t, x, np.linspace(0, 1, len(x)))
+    with np.errstate(all='ignore'):
         for _ in range(6):
             pt, dpt = _bspline3(knot, cx, xt, nderiv=1)
             xt -= (pt - t) / dpt
-        idx = numpy.isnan(xt) | (abs(_bspline3(knot, cx, xt) - t) > 1e-9)
+        idx = np.isnan(xt) | (abs(_bspline3(knot, cx, xt) - t) > 1e-9)
 
     # Use bisection when newton fails
     if idx.any():
@@ -71,7 +71,7 @@ def pbs(x, y, t, clamp=True, parametric=False):
             t_lo[tidx] = trial[tidx]
             t_hi[~tidx] = trial[~tidx]
         xt[idx] = (t_lo + t_hi) / 2
-    # print "err",numpy.max(abs(_bspline3(knot,cx,t)-xt))
+    # print "err",np.max(abs(_bspline3(knot,cx,t)-xt))
 
     # Return y evaluated at the interpolation points
     return _bspline3(knot, cx, xt), _bspline3(knot, cy, xt)
@@ -88,11 +88,11 @@ def bspline(y, xt, clamp=True):
     the derivative at the ends is equal to the slope connecting the final
     pair of control points.
     """
-    knot = numpy.hstack((0, 0, numpy.linspace(0, 1, len(y)), 1, 1))
+    knot = np.hstack((0, 0, np.linspace(0, 1, len(y)), 1, 1))
     if clamp:
-        cy = numpy.hstack(([y[0]] * 3, y, y[-1]))
+        cy = np.hstack(([y[0]] * 3, y, y[-1]))
     else:
-        cy = numpy.hstack((y[0], y[0], y[0],
+        cy = np.hstack((y[0], y[0], y[0],
                            y[0] + (y[1] - y[0]) / 3,
                            y[1:-1],
                            y[-1] + (y[-2] - y[-1]) / 3, y[-1]))
@@ -104,12 +104,12 @@ def _bspline3(knot, control, t, nderiv=0):
     Evaluate the B-spline specified by the given knot sequence and
     control values at the parametric points t.
     """
-    knot, control, t = [numpy.asarray(v) for v in (knot, control, t)]
+    knot, control, t = [np.asarray(v) for v in (knot, control, t)]
 
     # Deal with values outside the range
     valid = (t > knot[0]) & (t <= knot[-1])
     tv = t[valid]
-    f = numpy.zeros(t.shape)
+    f = np.zeros(t.shape)
     f[t <= knot[0]] = control[0]
     f[t >= knot[-1]] = control[-1]
 
@@ -142,10 +142,10 @@ def _bspline3(knot, control, t, nderiv=0):
         r3 = (q3 - q2) * 2 / (tp1 - tm1)
         if nderiv > 2:
             s4 = (r4 - r3) / (tp1 - tm0)
-            d3f = numpy.zeros(t.shape)
+            d3f = np.zeros(t.shape)
             d3f[valid] = s4
         r4 = ((tv - tm0) * r4 + (tp1 - tv) * r3) / (tp1 - tm0)
-        d2f = numpy.zeros(t.shape)
+        d2f = np.zeros(t.shape)
         d2f[valid] = r4
 
     # Compute function value and first derivative
@@ -155,7 +155,7 @@ def _bspline3(knot, control, t, nderiv=0):
     p4 = ((tv - tm0) * p4 + (tp2 - tv) * p3) / (tp2 - tm0)
     p3 = ((tv - tm1) * p3 + (tp1 - tv) * p2) / (tp1 - tm1)
     if nderiv >= 1:
-        df = numpy.zeros(t.shape)
+        df = np.zeros(t.shape)
         df[valid] = (p4 - p3) * 3 / (tp1 - tm0)
     p4 = ((tv - tm0) * p4 + (tp1 - tv) * p3) / (tp1 - tm0)
     f[valid] = p4
@@ -182,27 +182,27 @@ def _find_control(v, clamp=True):
     raise NotImplementedError("B-spline interpolation doesn't work yet")
     from scipy.linalg import solve_banded
     n = len(v)
-    udiag = numpy.hstack([0, 0, 0, [1 / 6] * (n - 3), 0.25, 0.3])
-    ldiag = numpy.hstack([-0.3, 0.25, [1 / 6] * (n - 3), 0, 0, 0])
-    mdiag = numpy.hstack([1, 0.3, 7 / 12, [2 / 3] * (n - 4), 7 / 12, -0.3, 1])
-    A = numpy.vstack([ldiag, mdiag, udiag])
+    udiag = np.hstack([0, 0, 0, [1 / 6] * (n - 3), 0.25, 0.3])
+    ldiag = np.hstack([-0.3, 0.25, [1 / 6] * (n - 3), 0, 0, 0])
+    mdiag = np.hstack([1, 0.3, 7 / 12, [2 / 3] * (n - 4), 7 / 12, -0.3, 1])
+    A = np.vstack([ldiag, mdiag, udiag])
     if clamp:
         # First derivative is zero at ends
         bl, br = 0, 0
     else:
         # First derivative at ends follows line between final control points
         bl, br = (v[1] - v[0]) * n, (v[-1] - v[-2]) * n
-    b = numpy.hstack([v[0], bl, v[1:n - 1], br, v[-1]])
+    b = np.hstack([v[0], bl, v[1:n - 1], br, v[-1]])
     x = solve_banded((1, 1), A, b)
     return x  # x[1:-1]
 
 
 def speed_check():
     import time
-    x = numpy.linspace(0, 1, 7)
+    x = np.linspace(0, 1, 7)
     x[1], x[-2] = x[2], x[-3]
     y = [9, 11, 2, 3, 8, 0, 2]
-    t = numpy.linspace(0, 1, 400)
+    t = np.linspace(0, 1, 400)
     t0 = time.time()
     for _ in range(1000):
         bspline(y, t, clamp=True)
@@ -210,12 +210,12 @@ def speed_check():
 
 
 def _check(expected, got, tol):
-    relative = (numpy.isscalar(expected) and expected != 0) \
-        or (not numpy.isscalar(expected) and all(expected != 0))
+    relative = (np.isscalar(expected) and expected != 0) \
+        or (not np.isscalar(expected) and all(expected != 0))
     if relative:
-        norm = numpy.linalg.norm((expected - got) / expected)
+        norm = np.linalg.norm((expected - got) / expected)
     else:
-        norm = numpy.linalg.norm(expected - got)
+        norm = np.linalg.norm(expected - got)
     try:
         assert norm < tol
     except:
@@ -236,15 +236,15 @@ def _derivs(x, y):
 
 def test():
     h = 1e-10
-    t = numpy.linspace(0, 1, 100)
-    dt = numpy.array([0, h, 2 * h, 3 * h, 4 * h,
+    t = np.linspace(0, 1, 100)
+    dt = np.array([0, h, 2 * h, 3 * h, 4 * h,
                       1 - 4 * h, 1 - 3 * h, 1 - 2 * h, 1 - h, 1])
     y = [9, 11, 2, 3, 8, 0, 2]
     n = len(y)
-    xeq = numpy.linspace(0, 1, n)
+    xeq = np.linspace(0, 1, n)
     x = xeq + 0
     x[0], x[-1] = (x[0] + x[1]) / 2, (x[-2] + x[-1]) / 2
-    dx = numpy.array([x[0], x[0] + h, x[0] + 2*h, x[0] + 3*h, x[0] + 4*h,
+    dx = np.array([x[0], x[0] + h, x[0] + 2*h, x[0] + 3*h, x[0] + 4*h,
                       x[-1] - 4*h, x[-1] - 3*h, x[-1] - 2*h, x[-1] - h, x[-1]])
 
     # ==== Check that bspline matches pbs with equally spaced x
@@ -379,7 +379,7 @@ def demo_interp():
     yc = bspline_control(y, clamp=True)
     xc = linspace(x[0], x[-1], 9)
     plot(xc, yc, ':oy', x, y, 'xg')
-    #knot = numpy.hstack((0, numpy.linspace(0,1,len(y)), 1))
+    #knot = np.hstack((0, np.linspace(0,1,len(y)), 1))
     #fy = _bspline3(knot,yc,t)
     fy = bspline(yc, t, clamp=True)
     plot(t, fy, '-.y')

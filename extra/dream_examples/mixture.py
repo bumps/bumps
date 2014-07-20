@@ -12,7 +12,6 @@ get lost.
 """
 from pylab import *
 from dream import *
-#import numpy; numpy.seterr(all='raise')
 
 n = 4
 pop = 10

@@ -37,8 +37,9 @@ import sphinx
 import wx
 # Matplotlib helper utilities
 import matplotlib.cbook as cbook
-import numpy
-import png
+import numpy as np
+
+from . import png
 
 
 sphinx_version = sphinx.__version__.split(".")
@@ -168,7 +169,7 @@ def capture_image(panel, labels):
     memdc.SelectObject(wx.NullBitmap)
 
     # Copy bitmap to a numpy array
-    img = numpy.empty((w,h,3),'uint8')
+    img = np.empty((w,h,3),'uint8')
     bmp.CopyToBuffer(buffer(img), format=wx.BitmapBufferFormat_RGB)
 
     # Destroy the frame
@@ -178,10 +179,10 @@ def capture_image(panel, labels):
 
 def write_png(outpath,img):
     w,h,p = img.shape
-    img = numpy.ascontiguousarray(img)
+    img = np.ascontiguousarray(img)
     writer = png.Writer(size=(w,h), alpha=False, bitdepth=8, compression=9)
     with open(outpath,'wb') as fid:
-        writer.write(fid, numpy.reshape(img,(h,w*p)))
+        writer.write(fid, np.reshape(img,(h,w*p)))
 
 def annotate(dc, widget, label, position='c', panelsize=(0,0)):
     """

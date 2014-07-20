@@ -37,11 +37,13 @@ For example::
         history.requires(points=3)
 
 When checking convergence, the programmer must still check that enough
-history is available for the test::
+history is available for the test. For example,
+::
 
     def __call__(self, history):
+        from numpy.linalg import norm
         if len(history.value) < 3: return False
-        return numpy.norm(history.value[0] - history.value[2]) < 0.001
+        return norm(history.value[0] - history.value[2]) < 0.001
 
 The optimizer will make sure that config_history is called for each
 condition before the fit starts::
@@ -111,9 +113,8 @@ from __future__ import print_function
 
 import time
 import os
-import sys
 
-import numpy
+import numpy as np
 
 
 def cpu_time():
@@ -198,7 +199,7 @@ class Minimizer:
             self.remote_time += values.__cpu_time__
 
         # Locate the best member of the population
-        values = numpy.asarray(values)
+        values = np.asarray(values)
         #print("values",values,file=sys.stderr)
 
         # Update the history
@@ -212,7 +213,7 @@ class Minimizer:
 
         self.strategy.update(self.history)
 
-        minidx = numpy.argmin(values)
+        minidx = np.argmin(values)
         self.history.update(
             point = points[minidx],
             value = values[minidx],

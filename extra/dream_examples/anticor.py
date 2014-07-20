@@ -42,7 +42,7 @@ mc.title = 'Strong anti-correlation'
 mc.derive_vars(lambda p: (p[0]+p[1]), labels=['x+y'])
 
 # Compare the MCMC estimate for the derived parameter to a least squares fit
-from wsolve import wpolyfit
+from bumps.wsolve import wpolyfit
 poly = wpolyfit(x,data,degree=1,origin=True)
 print("x+y from linear fit", poly.coeff[0], poly.std[0])
 points,logp = mc.sample(portion=0.5)

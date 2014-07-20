@@ -46,7 +46,7 @@ estimate step size.
 
 """
 
-import numpy
+import numpy as np
 
 
 def jacobian(problem, p=None, step=None):
@@ -60,7 +60,7 @@ def jacobian(problem, p=None, step=None):
     p_init = problem.getp()
     if p is None:
         p = p_init
-    p = numpy.asarray(p)
+    p = np.asarray(p)
     try:
         import numdifftools as nd
         J = nd.Jacobian(problem.residuals)(p)
@@ -78,7 +78,7 @@ def hessian(problem, p=None, step=None):
     p_init = problem.getp()
     if p is None:
         p = p_init
-    p = numpy.asarray(p)
+    p = np.asarray(p)
     try:
         import numdifftools as nd
         H = nd.Hessian(problem.nllf)(p)
@@ -101,7 +101,7 @@ def hessian_diag(problem, p=None, step=None):
     p_init = problem.getp()
     if p is None:
         p = p_init
-    p = numpy.asarray(p)
+    p = np.asarray(p)
     try:
         import numdifftools as nd
         H = nd.Hessdiag(problem.nllf)(p)
@@ -140,7 +140,7 @@ def _simple_jacobian(fn, p, step=None, bounds=None):
         r.append(rk / (2 * h))
         p[k] = v
     # return the jacobian
-    return numpy.vstack(r).T
+    return np.vstack(r).T
 
 
 def _simple_hessian(fn, p, step=None, bounds=None):
@@ -154,7 +154,7 @@ def _simple_hessian(fn, p, step=None, bounds=None):
 def _simple_hdiag(fn, p, step=None, bounds=None):
     # center point formula
     h = _delta(p, bounds, step)
-    Hdiag = numpy.empty(len(p), 'd')
+    Hdiag = np.empty(len(p), 'd')
     f = fn(p)
     for i, vi in enumerate(p):
         hi = h[i]
@@ -170,7 +170,7 @@ def _simple_hdiag(fn, p, step=None, bounds=None):
 def _simple_hoff(fn, p, step=None, bounds=None):
     # center point formula
     h = _delta(p, bounds, step)
-    H = numpy.empty([len(p), len(p)], 'd')
+    H = np.empty([len(p), len(p)], 'd')
     for i, vi in enumerate(p):
         hi = h[i]
         for j, vj in enumerate(p[:i]):
@@ -194,7 +194,7 @@ def _delta(p, bounds, step):
         lo, hi = bounds
         delta = (hi - lo) * step
         # For infinite ranges, use p*1e-8 for the step size
-        idx = numpy.isinf(delta)
+        idx = np.isinf(delta)
         # print "J",idx,delta,p,type(idx),type(delta),type(p)
         delta[idx] = p[idx] * step
     else:
@@ -212,8 +212,8 @@ def perturbed_hessian(H, scale=None):
     from .quasinewton import modelhess
     n = H.shape[0]
     if scale is None:
-        scale = numpy.ones(n)
-    macheps = numpy.finfo('d').eps
+        scale = np.ones(n)
+    macheps = np.finfo('d').eps
     return modelhess(n, scale, macheps, H)
 
 
@@ -224,7 +224,7 @@ def chol_stderr(L):
     or as calculated from :func:`perturbed_hessian` on the output of
     :func:`hessian` applied to the cost function problem.nllf.
     """
-    return numpy.sqrt(1. / numpy.diag(L))
+    return np.sqrt(1. / np.diag(L))
 
 
 def chol_cov(L):
@@ -232,8 +232,8 @@ def chol_cov(L):
     Given the cholesky decomposition of the Hessian matrix H, compute
     the covariance matrix $C = H^{-1}$
     """
-    Linv = numpy.linalg.inv(L)
-    return numpy.dot(Linv.T.conj(), Linv)
+    Linv = np.linalg.inv(L)
+    return np.dot(Linv.T.conj(), Linv)
 
 
 def cov(J, tol=1e-8):
@@ -255,9 +255,9 @@ def cov(J, tol=1e-8):
     #     inv(J'J) = inv(V S S V')
     #              = inv(V') inv(S S) inv(V)
     #              = V inv (S S) V'
-    u, s, vh = numpy.linalg.svd(J, 0)
+    u, s, vh = np.linalg.svd(J, 0)
     s[s <= tol] = tol
-    JTJinv = numpy.dot(vh.T.conj() / s ** 2, vh)
+    JTJinv = np.dot(vh.T.conj() / s ** 2, vh)
     return JTJinv
 
 
@@ -269,7 +269,7 @@ def corr(C):
     of the covariance matrix, or the standard error of each variable.
     """
     Dinv = 1. / stderr(cov)
-    return numpy.dot(Dinv, numpy.dot(cov, Dinv))
+    return np.dot(Dinv, np.dot(cov, Dinv))
 
 
 def max_correlation(Rsq):
@@ -277,7 +277,7 @@ def max_correlation(Rsq):
     Return the maximum correlation coefficient for any pair of variables
     in correlation matrix Rsq.
     """
-    return numpy.max(numpy.tril(Rsq, k=-1))
+    return np.max(np.tril(Rsq, k=-1))
 
 
 def stderr(C):
@@ -298,4 +298,4 @@ def stderr(C):
     Standard error on scipy.optimize.curve_fit always includes the chisq
     correction, whereas scipy.optimize.leastsq never does.
     """
-    return numpy.sqrt(numpy.diag(C))
+    return np.sqrt(np.diag(C))

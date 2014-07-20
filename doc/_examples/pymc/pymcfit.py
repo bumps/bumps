@@ -1,7 +1,6 @@
 from __future__ import print_function
 
-import numpy
-from numpy import inf
+from numpy import inf, array, asarray
 import pymc.distributions
 
 UNBOUNDED = lambda p: (-inf, inf)
@@ -32,7 +31,7 @@ class PymcProblem(object):
         for p,v in zip(self.pars,values):
             p.value = v
     def getp(self):
-        return numpy.array([p.value for p in self.pars])
+        return array([p.value for p in self.pars])
     def show(self):
         # maybe print graph of model
         print("[chisq=%g, nllf=%g]" % (self.chisq(), self.nllf()))
@@ -47,10 +46,10 @@ class PymcProblem(object):
             for p in self.pars:
                 p.value = p.random()
         else:
-            return numpy.asarray([[p.random() for _ in range(N)]
+            return asarray([[p.random() for _ in range(N)]
                                   for p in self.pars])
     def bounds(self):
-        return numpy.asarray([guess_bounds(p) for p in self.pars], 'd').T
+        return asarray([guess_bounds(p) for p in self.pars], 'd').T
                  
     def plot(self, p=None, fignum=None, figfile=None):
         pass

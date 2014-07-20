@@ -262,8 +262,8 @@ class Trace(object):
         Numpy arrays are converted to lists so that the trace can be easily
         converted to json.
         """
-        import numpy
-        if isinstance(self._storage[0], numpy.ndarray):
+        import numpy as np
+        if isinstance(self._storage[0], np.ndarray):
             return [v.tolist() for v in self._storage]
         else:
             return self._storage[:]
@@ -274,9 +274,9 @@ class Trace(object):
 
         Lists are converted to numpy arrays.
         """
-        import numpy
+        import numpy as np
         if isinstance(state[0], list):
-            state = [numpy.asarray(v) for v in state]
+            state = [np.asarray(v) for v in state]
         if len(state) > self.keep:
             self._storage = state[-self.keep:]
         else:

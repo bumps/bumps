@@ -40,7 +40,7 @@ A Practical Approach to Global Optimization. Springer, 1st Edition, 2005
 # Symbols required for simple interface
 __all__ = ['de','stop']
 
-import numpy
+import numpy as np
 
 from .. import stop
 from .. import solver
@@ -65,10 +65,10 @@ def c_exp(ndim, CR):
     """
     # Note: this is different from Patrick Hung's version in that it forces
     # at least one success.
-    L = min(abs(numpy.random.geometric(1-CR)),ndim)
-    idx = numpy.zeros(ndim,'bool')
-    n = numpy.random.randint(ndim)
-    idx[numpy.arange(n,n+L)%ndim] = True
+    L = min(abs(np.random.geometric(1-CR)),ndim)
+    idx = np.zeros(ndim,'bool')
+    n = np.random.randint(ndim)
+    idx[np.arange(n,n+L)%ndim] = True
     return idx
 
 def c_bin(ndim, CR):
@@ -78,8 +78,8 @@ def c_bin(ndim, CR):
     The probability of selecting any dimension is CR.  At least one dimension
     will be selected.
     """
-    n = numpy.random.randint(ndim)
-    idx = numpy.random.rand(ndim) < CR
+    n = np.random.randint(ndim)
+    idx = np.random.rand(ndim) < CR
     idx[n] = True
     return idx
 
@@ -96,7 +96,7 @@ def best1u(F, best, pop, idx, dims):
     Differential evolution mutation T = best + U*(r1-r2),  U ~ Uniform[0,F]
     """
     r1,r2 = _candidates(pop,2,exclude=idx)
-    return best[dims] + F*numpy.random.rand()*(r1[dims]-r2[dims])
+    return best[dims] + F*np.random.rand()*(r1[dims]-r2[dims])
 
 def best2(F, best, pop, idx, dims):
     """

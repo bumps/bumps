@@ -7,7 +7,7 @@ from . import plugin
 from .cli import load_problem, recall_best
 
 
-import numpy
+import numpy as np
 
 
 def reload_errors(model, store, nshown=50, random=True):
@@ -59,7 +59,7 @@ def calc_errors_from_state(problem, state, nshown=50, random=True):
     # randomize the draw; skip the last point since state.keep_best() put
     # the best point at the end.
     if random:
-        points = points[numpy.random.permutation(len(points) - 1)]
+        points = points[np.random.permutation(len(points) - 1)]
     return calc_errors(problem, points[-nshown:-1])
 
 

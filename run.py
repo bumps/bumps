@@ -55,7 +55,7 @@ def prepare():
     # suppress this behaviour and rely on .gitignore instead
     #sys.dont_write_bytecode = True
 
-    #import numpy; numpy.seterr(all='raise')
+    #import numpy as np; np.seterr(all='raise')
     root = os.path.abspath(os.path.dirname(__file__))
 
     # Force a rebuild

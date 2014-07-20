@@ -78,5 +78,5 @@ prod = function(_prod)
 # Define pickler for numpy ufuncs
 #import copy_reg
 #def udump(f): return f.__name__
-#def uload(name): return getattr(numpy, name)
-#copy_reg.pickle(numpy.ufunc, udump, uload)
+#def uload(name): return getattr(np, name)
+#copy_reg.pickle(np.ufunc, udump, uload)

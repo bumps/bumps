@@ -9,7 +9,7 @@ References::
     Second Edition, McGraw-Hill, Inc., New York.
 """
 
-import numpy
+import numpy as np
 from numpy import exp, inf, sqrt
 
 def dual_exponential(t,a):
@@ -19,11 +19,11 @@ def dual_exponential(t,a):
         y = a1 + a2 exp(-t/a3) + a4 exp(-t/a5)
     """
     a1,a2,a3,a4,a5 = a
-    t = numpy.asarray(t)
+    t = np.asarray(t)
     return a1 + a2*exp(-t/a4) + a3*exp(-t/a5)
 
 # data from Chapter 8 of [5].
-data = numpy.array([[15, 775], [30, 479], [45, 380], [60, 302],
+data = np.array([[15, 775], [30, 479], [45, 380], [60, 302],
 [75, 185], [90, 157], [105,137], [120, 119], [135, 110],
 [150, 89], [165, 74], [180, 61], [195, 66], [210, 68],
 [225, 48], [240, 54], [255, 51], [270, 46], [285, 55],

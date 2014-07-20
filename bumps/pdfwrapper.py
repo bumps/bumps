@@ -3,7 +3,7 @@ Build a bumps model from a function.
 """
 import inspect
 
-import numpy
+import numpy as np
 
 from .parameter import Parameter
 
@@ -100,4 +100,4 @@ class PDF(object):
         """
         Function residual.
         """
-        return numpy.array([self()])
+        return np.array([self()])

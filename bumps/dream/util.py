@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 import numpy.random as RNG
 
 def draw(k,n):
@@ -10,7 +10,7 @@ def draw(k,n):
         result = RNG.permutation(n)[:k]
     else:
         s = set()
-        result = numpy.empty(k,'i')
+        result = np.empty(k,'i')
         for i in range(k):
             p = RNG.randint(n)
             while p in s: p = RNG.randint(n)
@@ -24,13 +24,13 @@ def _check_uniform_draw():
     """
     import pylab
     k,n = 50,400
-    counts = numpy.zeros(n*k)
-    idx = numpy.arange(k)
+    counts = np.zeros(n*k)
+    idx = np.arange(k)
     for _ in range(100000):
         t = draw(k,n)
         counts[k*t+idx] += 1
     pylab.subplot(211)
-    pylab.pcolormesh(numpy.reshape(counts,(n,k)))
+    pylab.pcolormesh(np.reshape(counts,(n,k)))
     pylab.colorbar()
     pylab.title('drawn number vs. draw position')
     pylab.subplot(212)

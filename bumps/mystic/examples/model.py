@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 
 class Function(object):
     def __init__(self, f=None, limits=None, start=None):
@@ -33,7 +33,7 @@ class Fitness(object):
         return (self.profile(p) - self.y)/self.dy
 
     def __call__(self, p):
-        return numpy.sum(self.residuals(p)**2)
+        return np.sum(self.residuals(p)**2)
 
     def plot(self, p=None):
         """
@@ -73,5 +73,5 @@ def plot_response_surface(f, p, dims=[0,1]):
             p[xi] = pt[0]
             p[yi] = pt[1]
             return f(p)
-        z = numpy.array([list(map(value, [(v,w) for v in x])) for w in y])
+        z = np.array([list(map(value, [(v,w) for v in x])) for w in y])
         pylab.pcolor(x,y,z)
