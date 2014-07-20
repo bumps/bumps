@@ -11,6 +11,7 @@ References::
     http://www.icsi.berkeley.edu/~storn/deshort1.ps
 """
 from math import pow
+
 from numpy import sign, floor, inf
 
 def corana(coeffs):

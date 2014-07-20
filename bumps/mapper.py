@@ -108,7 +108,7 @@ def _MPI_run_problem(point):
 
 
 def _MPI_map(comm, points, root=0):
-    import numpy
+    import numpy as np
     from mpi4py import MPI
     # Send number of points and number of variables per point
     npoints, nvars = comm.bcast(
@@ -118,21 +118,21 @@ def _MPI_map(comm, points, root=0):
 
     # Divvy points equally across all processes
     whole = points if comm.rank == root else None
-    idx = numpy.arange(comm.size)
-    size = numpy.ones(comm.size, idx.dtype) * \
+    idx = np.arange(comm.size)
+    size = np.ones(comm.size, idx.dtype) * \
         (npoints // comm.size) + (idx < npoints % comm.size)
-    offset = numpy.cumsum(numpy.hstack((0, size[:-1])))
-    part = numpy.empty((size[comm.rank], nvars), dtype='d')
+    offset = np.cumsum(np.hstack((0, size[:-1])))
+    part = np.empty((size[comm.rank], nvars), dtype='d')
     comm.Scatterv((whole, (size * nvars, offset * nvars), MPI.DOUBLE),
                   (part, MPI.DOUBLE),
                   root=root)
 
     # Evaluate models assigned to each processor
-    partial_result = numpy.array([_MPI_run_problem(pi) for pi in part],
+    partial_result = np.array([_MPI_run_problem(pi) for pi in part],
                                  dtype='d')
 
     # Collect results
-    result = numpy.empty(npoints, dtype='d') if comm.rank == root else None
+    result = np.empty(npoints, dtype='d') if comm.rank == root else None
     comm.Barrier()
     comm.Gatherv((partial_result, MPI.DOUBLE),
                  (result, (size, offset), MPI.DOUBLE),
@@ -174,10 +174,10 @@ class MPIMapper(object):
     @staticmethod
     def stop_mapper(mapper):
         from mpi4py import MPI
-        import numpy
+        import numpy as np
         # Send an empty point list to stop the iteration
         try:
-            mapper(numpy.empty((0, 0), 'd'))
+            mapper(np.empty((0, 0), 'd'))
             raise RuntimeException("expected StopIteration")
         except StopIteration:
             pass

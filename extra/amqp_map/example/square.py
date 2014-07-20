@@ -1,5 +1,6 @@
 import time
-import numpy
+
+import numpy as np
 
 from amqp_map.config import SERVICE_HOST
 from amqp_map.core import connect, Mapper
@@ -21,5 +22,5 @@ print "direct time",1000*(time.time()-t0)/n,"ms/call"
 t0 = time.time()
 n=100
 print "start big",n
-square([x*numpy.ones(3) for x in xrange(n)])
+square([x*np.ones(3) for x in xrange(n)])
 print "remote time",1000*(time.time()-t0)/n,"ms/call"

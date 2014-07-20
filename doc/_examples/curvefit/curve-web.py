@@ -26,7 +26,7 @@ dy = [0.05,0.05,0.2,0.05,0.2,0.2]
 #
 # .. parsed-literal::
 #
-#    data = numpy.loadtxt("data.txt").T
+#    data = np.loadtxt("data.txt").T
 #    x,y,dy = data[0,:], data[1,:], data[2,:]
 #
 # The variations are endless --- cleaning the data so that it is

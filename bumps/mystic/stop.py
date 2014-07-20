@@ -115,7 +115,7 @@ percentage changes rather than absolute changes.
 
 import math
 
-import numpy
+import numpy as np
 from numpy import inf, isinf
 
 from .condition import Condition
@@ -123,10 +123,10 @@ from .condition import Condition
 # ==== Norms ====
 def norm_1(x):
     """1-norm: sum(|x_i|)"""
-    return numpy.sum(abs(x))
+    return np.sum(abs(x))
 def norm_2(x):
     """2-norm: sqrt(sum(|x_i|^2))"""
-    return math.sqrt(numpy.sum(abs(x)**2))
+    return math.sqrt(np.sum(abs(x)**2))
 def norm_inf(x):
     """inf-norm: max(|x_i|)"""
     return max(abs(x))
@@ -145,7 +145,7 @@ def norm_p(p):
     elif p == 2:
         return norm_2
     else:
-        return lambda x: numpy.sum(abs(x)**p)**(1/p)
+        return lambda x: np.sum(abs(x)**p)**(1/p)
 
 # ==== Conditions ====
 class Dx(Condition):
@@ -424,7 +424,7 @@ class r_best:
     def __init__(self, norm):
         self.norm = norm
     def __call__(self, population, best, scale):
-        P = numpy.asarray(population)
+        P = np.asarray(population)
         r = max(self.norm(p - best)/scale for p in P)
         return r
 
@@ -437,8 +437,8 @@ class r_centroid:
     def __init__(self, norm):
         self.norm = norm
     def __call__(self, population, best, scale):
-        P = numpy.asarray(population)
-        c_i = numpy.mean(P,axis=0)
+        P = np.asarray(population)
+        c_i = np.mean(P,axis=0)
         r = max(self.norm(p - c_i)/scale for p in P)
         return r
 
@@ -448,10 +448,10 @@ def r_boundingbox(population, best, scale):
 
         (product (max(y_i) - min(y_i))/scale)**1/k  for i in dimensions-k
     """
-    P = numpy.asarray(population)
+    P = np.asarray(population)
     lo = max(P,index=0)
     hi = max(P,index=0)
-    r = numpy.prod((hi-lo)/scale)**(1/len(hi))
+    r = np.prod((hi-lo)/scale)**(1/len(hi))
     return r
 
 class r_hull:
@@ -518,18 +518,18 @@ class Rx(Condition):
         self.radius = radius
         self.scaled = scaled
     def _scaled_condition(self, history):
-        P = numpy.asarray(history.population_points[0])
+        P = np.asarray(history.population_points[0])
         scale = history.upper_bound - history.lower_bound
         idx = isinf(scale)
         if any(idx):
-            range = numpy.sum(abs(P),axis=0)/P.shape[0]
+            range = np.sum(abs(P),axis=0)/P.shape[0]
             scale[idx] = range[idx]
         scale[scale == 0] = 1
         r = self.radius(P, history.point[0], scale)
         #print "Rx=%g, scale=%g"%(r,scale)
         return r
     def _raw_condition(self, history):
-        P = numpy.asarray(history.population_points[0])
+        P = np.asarray(history.population_points[0])
         r = self.radius(P, history.point[0], scale=1.)
         #print "Rx=%g"%r
         return r
@@ -582,15 +582,15 @@ class Rf(Condition):
         self.tol = tol
         self.scaled = scaled
     def _scaled_condition(self, history):
-        Pf = numpy.asarray(history.population_values)
-        scale = numpy.mean(abs(Pf))
+        Pf = np.asarray(history.population_values)
+        scale = np.mean(abs(Pf))
         if scale == 0: scale = 1
-        r = float(numpy.max(Pf) - numpy.min(Pf))/scale
+        r = float(np.max(Pf) - np.min(Pf))/scale
         #print "Rf = %g, scale=%g"%(r,scale)
         return r
     def _raw_condition(self, history):
-        P = numpy.asarray(history.population_values)
-        r = numpy.max(P) - numpy.min(P)
+        P = np.asarray(history.population_values)
+        r = np.max(P) - np.min(P)
         #print "Rf = %g"%r
         return r
     def config_history(self, history):
@@ -759,7 +759,7 @@ class Steps(Condition):
         *condition* (f(history) : boolean)
             a callable returning true if the condition is met
     """
-    def __init__(self, steps=numpy.inf):
+    def __init__(self, steps=np.inf):
         self.steps = steps
     def __call__(self, history):
         if len(history.step) < 1: return False
@@ -787,7 +787,7 @@ class Calls(Condition):
         *condition* (f(history) : boolean)
             a callable returning true if the condition is met
     """
-    def __init__(self, calls=numpy.inf):
+    def __init__(self, calls=np.inf):
         self.calls = calls
     def __call__(self, history):
         if len(history.calls) < 1: return False
@@ -844,7 +844,7 @@ class CPU(Condition):
         *condition* (f(history) : boolean)
             a callable returning true if the condition is met
     """
-    def __init__(self, time=numpy.inf):
+    def __init__(self, time=np.inf):
         self.time = time
     def __call__(self, history):
         if len(history.cpu_time) < 1: return False

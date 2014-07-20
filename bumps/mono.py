@@ -3,7 +3,8 @@ Monotonic spline modeling.
 """
 
 from __future__ import division
-import numpy
+
+import numpy as np
 from numpy import (diff, hstack, sqrt, searchsorted, asarray,
                    nonzero, linspace, isnan)
 
@@ -21,7 +22,7 @@ def monospline(x, y, xt):
 
     http://en.wikipedia.org/wiki/Monotone_cubic_interpolation
     """
-    with numpy.errstate(all='ignore'):
+    with np.errstate(all='ignore'):
         x = hstack((x[0] - 1, x, x[-1] + 1))
         y = hstack((y[0], y, y[-1]))
         dx = diff(x)
@@ -43,12 +44,12 @@ def monospline(x, y, xt):
                 tau = 3. / sqrt(d[i])
                 m[i] = tau * alpha[i] * delta[i]
                 m[i + 1] = tau * beta[i] * delta[i]
-                # if numpy.isnan(m[i]) or numpy.isnan(m[i+1]):
+                # if isnan(m[i]) or isnan(m[i+1]):
                 #    print i,"isnan",tau,d[i], alpha[i],beta[i],delta[i]
-            # elif numpy.isnan(m[i]):
+            # elif isnan(m[i]):
             #    print i,"isnan",delta[i],dy[i]
                 #m[ dy[1:]*dy[:-1]<0 ] = 0
-        # if numpy.any(isnan(m)|isinf(m)):
+        # if np.any(isnan(m)|isinf(m)):
         #    print "mono still has bad values"
         #    print "m",m
         #    print "delta",delta
@@ -65,7 +66,7 @@ def hermite(x, y, m, xt):
     The polynomial goes through all points (x_i,y_i) with slope
     m_i at the point.
     """
-    with numpy.errstate(all='ignore'):
+    with np.errstate(all='ignore'):
         x, y, m, xt = [asarray(v, 'd') for v in (x, y, m, xt)]
         idx = searchsorted(x[1:-1], xt)
         h = x[idx + 1] - x[idx]
@@ -83,7 +84,7 @@ def count_inflections(x, y):
     """
     Count the number of inflection points in the spline curve
     """
-    with numpy.errstate(all='ignore'):
+    with np.errstate(all='ignore'):
         m = (y[2:] - y[:-2]) / (x[2:] - x[:-2])
         b = y[2:] - m * x[2:]
         delta = y[1:-1] - (m * x[1:-1] + b)

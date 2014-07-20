@@ -75,9 +75,10 @@ __all__ = ['MCMCDraw','load_state','save_state']
 import re
 import gzip
 
-import numpy
+import numpy as np
 from numpy import empty, sum, asarray, inf, argmax, hstack, dstack
-from numpy import savetxt,loadtxt, reshape
+from numpy import savetxt, loadtxt, reshape
+
 from .outliers import identify_outliers
 from .util import draw, RNG
 
@@ -151,7 +152,7 @@ INF_PAT = re.compile('1#INF')
 
 def loadtxt(file, report=0):
     """
-    Like numpy.loadtxt, but adapted for windows non-finite numbers.
+    Like numpy loadtxt, but adapted for windows non-finite numbers.
     """
     if not hasattr(file,'readline'):
         if file.endswith('.gz'):
@@ -227,7 +228,7 @@ def load_state(filename, skip=0, report=0):
     state._update_CR_weight = stats[:,Nvar+1:]
     state._outliers = []
 
-    bestidx = numpy.argmax(point[:,0])
+    bestidx = np.argmax(point[:,0])
     state._best_logp = point[bestidx,0]
     state._best_x = point[bestidx,1:]
 
@@ -314,9 +315,9 @@ class MCMCDraw(object):
 
         if Ngen > self.Ngen:
             self._gen_index = self.Ngen # must happen before resize!!
-            self._gen_draws = numpy.resize(self._gen_draws, Ngen)
-            self._gen_logp = numpy.resize(self._gen_logp,  (Ngen,Npop) )
-            self._gen_acceptance_rate = numpy.resize(self._gen_acceptance_rate, Ngen)
+            self._gen_draws = np.resize(self._gen_draws, Ngen)
+            self._gen_logp = np.resize(self._gen_logp,  (Ngen,Npop) )
+            self._gen_acceptance_rate = np.resize(self._gen_acceptance_rate, Ngen)
         elif Ngen < self.Ngen:
             self._gen_draws = self._gen_draws[-Ngen:].copy()
             self._gen_logp = self._gen_logp[-Ngen:,:].copy()
@@ -324,9 +325,9 @@ class MCMCDraw(object):
 
         if Nthin > self.Nthin:
             self._thin_index = self.Nthin # must happen before resize!!
-            self._thin_draws = numpy.resize(self._thin_draws, Nthin)
-            self._thin_point = numpy.resize(self._thin_point,  (Nthin, Npop, Nvar) )
-            self._thin_logp = numpy.resize(self._thin_logp,  (Nthin, Npop) )
+            self._thin_draws = np.resize(self._thin_draws, Nthin)
+            self._thin_point = np.resize(self._thin_point,  (Nthin, Npop, Nvar) )
+            self._thin_logp = np.resize(self._thin_logp,  (Nthin, Npop) )
         elif Nthin < self.Nthin:
             self._thin_draws = self._thin_draws[-Nthin:].copy()
             self._thin_point = self._thin_point[-Nthin:,:,:].copy()
@@ -334,9 +335,9 @@ class MCMCDraw(object):
 
         if Nupdate > self.Nupdate:
             self._update_count = self.Nupdate # must happen before resize!!
-            self._update_draws = numpy.resize(self._update_draws, Nupdate)
-            self._update_R_stat = numpy.resize(self._update_R_stat,  (Nupdate, Nvar) )
-            self._update_CR_weight = numpy.resize(self._update_CR_weight,  (Nupdate, Ncr) )
+            self._update_draws = np.resize(self._update_draws, Nupdate)
+            self._update_R_stat = np.resize(self._update_R_stat,  (Nupdate, Nvar) )
+            self._update_CR_weight = np.resize(self._update_CR_weight,  (Nupdate, Ncr) )
         elif Nupdate < self.Nupdate:
             self._update_draws = self._update_draws[-Nupdate:].copy()
             self._update_R_stat = self._update_R_stat[-Nupdate:,:].copy()
@@ -495,29 +496,29 @@ class MCMCDraw(object):
         logp, sample, etc. assume the data is already unrolled.
         """
         if self.generation > self._gen_index > 0:
-            self._gen_draws[:] = numpy.roll(self._gen_draws,
+            self._gen_draws[:] = np.roll(self._gen_draws,
                                             -self._gen_index, axis=0)
-            self._gen_logp[:] = numpy.roll(self._gen_logp,
+            self._gen_logp[:] = np.roll(self._gen_logp,
                                            -self._gen_index, axis=0)
-            self._gen_acceptance_rate[:] = numpy.roll(self._gen_acceptance_rate,
+            self._gen_acceptance_rate[:] = np.roll(self._gen_acceptance_rate,
                                                       -self._gen_index, axis=0)
             self._gen_index = 0
 
         if self._thin_count > self._thin_index > 0:
-            self._thin_draws[:] = numpy.roll(self._thin_draws,
+            self._thin_draws[:] = np.roll(self._thin_draws,
                                              -self._thin_index, axis=0)
-            self._thin_point[:] = numpy.roll(self._thin_point,
+            self._thin_point[:] = np.roll(self._thin_point,
                                              -self._thin_index, axis=0)
-            self._thin_logp[:] = numpy.roll(self._thin_logp,
+            self._thin_logp[:] = np.roll(self._thin_logp,
                                             -self._thin_index, axis=0)
             self._thin_index = 0
 
         if self._update_count > self._update_index > 0:
-            self._update_draws[:] = numpy.roll(self._update_draws,
+            self._update_draws[:] = np.roll(self._update_draws,
                                                -self._update_index, axis=0)
-            self._update_R_stat[:] = numpy.roll(self._update_R_stat,
+            self._update_R_stat[:] = np.roll(self._update_R_stat,
                                                 -self._update_index, axis=0)
-            self._update_CR_weight[:] = numpy.roll(self._update_CR_weight,
+            self._update_CR_weight[:] = np.roll(self._update_CR_weight,
                                                    -self._update_index, axis=0)
             self._update_index = 0
 
@@ -574,7 +575,7 @@ class MCMCDraw(object):
             #print("outliers",outliers)
             #print(logp.shape, chains.shape)
             if len(outliers) > 0:
-                self._good_chains = numpy.array([i for i in range(logp.shape[1])
+                self._good_chains = np.array([i for i in range(logp.shape[1])
                                                  if i not in outliers])
             else:
                 self._good_chains = slice(None,None)
@@ -728,7 +729,7 @@ class MCMCDraw(object):
 
         # Find the location of the best point if it exists and swap with
         # the final position
-        idx = numpy.where(logp==self._best_logp)[0]
+        idx = np.where(logp==self._best_logp)[0]
         if len(idx) == 0:
             logp[final] = self._best_logp
             points[final,:] = self._best_x
@@ -808,7 +809,7 @@ class MCMCDraw(object):
 
         # Extend new variables to be the same length as the stored selection
         Nthin = self._thin_point.shape[0]
-        newvars = numpy.resize(newvars, (Nthin, Npop, Nnew))
+        newvars = np.resize(newvars, (Nthin, Npop, Nnew))
 
         # Add new variables to the points
         self._thin_point = dstack( (self._thin_point, newvars) )

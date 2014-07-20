@@ -5,8 +5,6 @@ The Rosenbrock banana function
 """
 from dream import *
 from pylab import *
-import numpy
-#numpy.seterr(all='raise')
 
 def rosen(x):
     x = asarray(x)

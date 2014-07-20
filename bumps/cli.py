@@ -15,8 +15,8 @@ except:
     import pickle
 
 
-import numpy
-# numpy.seterr(all="raise")
+import numpy as np
+# np.seterr(all="raise")
 
 from . import fitters
 from .fitters import FIT_OPTIONS, FitDriver, StepMonitor, ConsoleMonitor
@@ -37,7 +37,7 @@ def install_plugin(p):
 
 
 def mesh(problem, vars=None, n=40):
-    x, y = [numpy.linspace(low, high, n)
+    x, y = [np.linspace(low, high, n)
             for low, high in problem.bounds().T]
     p1, p2 = vars
 
@@ -47,7 +47,7 @@ def mesh(problem, vars=None, n=40):
         # print problem.summarize()
         return problem.chisq()
     z = [[fn(xi, yi) for xi in x] for yi in y]
-    return x, y, numpy.asarray(z)
+    return x, y, np.asarray(z)
 
 # ===== Model manipulation ====
 
@@ -454,7 +454,7 @@ def getopts():
 
 def initial_model(opts):
     if opts.seed is not None:
-        numpy.random.seed(opts.seed)
+        np.random.seed(opts.seed)
 
     if opts.args:
         problem = load_model(opts.args)

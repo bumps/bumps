@@ -1,6 +1,6 @@
 import re
 
-import numpy
+import numpy as np
 
 from .formatnum import format_uncertainty
 
@@ -16,7 +16,7 @@ ONE_SIGMA = 1 - 2*0.15865525393145705
 def _var_stats_one(draw, var):
     weights, values = draw.weights, draw.points[:, var].flatten()
 
-    best_idx = numpy.argmax(draw.logp)
+    best_idx = np.argmax(draw.logp)
     best = values[best_idx]
 
     # Choose the interval for the histogram
@@ -35,7 +35,7 @@ def format_num(x, place):
     precision = 10**place
     digits_after_decimal = abs(place) if place < 0 else 0
     return "%.*f"%(digits_after_decimal,
-                   numpy.round(x/precision)*precision)
+                   np.round(x/precision)*precision)
 
 def format_vars(all_vstats):
     v = dict(parameter="Parameter",
@@ -45,7 +45,7 @@ def format_vars(all_vstats):
     s = ["   %(parameter)20s %(mean)10s %(median)7s %(best)7s [%(interval68)15s] [%(interval95)15s]"%v]
     for v in all_vstats:
         # Make sure numbers are formatted with the appropriate precision
-        place = int(numpy.log10(v.p95[1]-v.p95[0]))-2
+        place = int(np.log10(v.p95[1]-v.p95[0]))-2
         summary = dict(mean=format_uncertainty(v.mean,v.std),
                        median=format_num(v.median,place-1),
                        best=format_num(v.best,place-1),
@@ -104,13 +104,13 @@ def stats(x, weights=None):
     in the sample), but this is good enough when the sample size is large.
     """
     if weights == None:
-        x = numpy.sort(x)
-        mean, std = numpy.mean(x), numpy.std(x,ddof=1)
+        x = np.sort(x)
+        mean, std = np.mean(x), np.std(x,ddof=1)
     else:
-        mean = numpy.mean(x*weights)/numpy.sum(weights)
+        mean = np.mean(x*weights)/np.sum(weights)
         # TODO: this is biased by selection of mean; need an unbiased formula
-        var = numpy.sum((weights*(x-mean))**2)/numpy.sum(weights)
-        std = numpy.sqrt(var)
+        var = np.sum((weights*(x-mean))**2)/np.sum(weights)
+        std = np.sqrt(var)
 
     return mean, std
 
@@ -143,7 +143,7 @@ def credible_intervals(x, ci, weights=None):
         idx = clip(round(target*(x.size-1)), 0, x.size-1).astype('i')
         return sort(x)[idx]
     else:
-        idx = numpy.argsort(x)
+        idx = np.argsort(x)
         x, weights = x[idx], weights[idx]
         # convert weights to cdf
         w = cumsum(weights/sum(weights))

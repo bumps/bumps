@@ -9,7 +9,6 @@ TODO: Trigger change notification when numpy array has changed
 from __future__ import print_function
 
 import wx, wx.py
-import numpy
 
 def shapestr(v):
     """Return shape string for numeric variables suitable for printing"""
@@ -193,11 +192,13 @@ plot(x,y)
 
 def demo():
     """Example use of the console."""
+    import numpy as np
     app = wx.App(redirect=False)
     ignored = { 'f': lambda x: 3+x }
     console = NumpyConsole(locals=ignored)
-    console.update({ 'x': numpy.array([[42,15],[-10,12]]), 'z': 42. })
+    console.update({ 'x': np.array([[42,15],[-10,12]]), 'z': 42. })
     console.Show(True)
     app.MainLoop()
 
-if __name__ == "__main__": demo()
+if __name__ == "__main__":
+    demo()

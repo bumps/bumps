@@ -239,7 +239,7 @@ class Bounds(object):
         """
         Return a randomly generated valid value.
 
-        The random number generator is assumed to follow the numpy.random
+        The random number generator is assumed to follow the numpy random
         interface.
         """
 

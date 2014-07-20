@@ -14,16 +14,15 @@ The expected distribution for p1+p2 can be determined from the linear model
 y = a*x.  This is reported along with the values estimated from MCMC.
 """
 from bumps.names import *
-import numpy
 
 # Anticorrelated function
 def fn(x, a, b): return (a+b)*x
 
 # Fake data
 sigma = 1
-x = numpy.linspace(-1., 1, 40)
-dy = sigma*numpy.ones_like(x)
-y = fn(x,5,5) + numpy.random.randn(*x.shape)*dy
+x = np.linspace(-1., 1, 40)
+dy = sigma*np.ones_like(x)
+y = fn(x,5,5) + np.random.randn(*x.shape)*dy
 
 # Wrap it in a curve fitter
 M = Curve(fn, x, y, dy, a=(-20,20), b=(-20,20))

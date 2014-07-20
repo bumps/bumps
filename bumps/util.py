@@ -9,7 +9,7 @@ __all__ = ["erf", "profile", "kbhit",
 import sys
 import os
 
-import numpy
+import numpy as np
 from numpy import ascontiguousarray as _dense
 
 
@@ -59,7 +59,7 @@ def erf(x):
     """
     from ._reduction import _erf
     input = _dense(x, 'd')
-    output = numpy.empty_like(input)
+    output = np.empty_like(input)
     _erf(input, output)
     return output
 
@@ -67,7 +67,7 @@ def erf(x):
 def _erf_test():
     assert erf(5) == 2
     assert erf(0.) == 0.
-    assert (erf(numpy.array([0., 0.])) == 0.).all()
+    assert (erf(np.array([0., 0.])) == 0.).all()
     assert abs(erf(3.) - 0.99997790950300136) < 1e-14
 
 
@@ -198,10 +198,10 @@ class push_seed(object):
 
     Seed can be used directly to set the seed::
 
-        >>> import numpy
+        >>> from numpy.random import randint
         >>> push_seed(24)
         <...push_seed object at...>
-        >>> print(numpy.random.randint(0,1000000,3))
+        >>> print(randint(0,1000000,3))
         [242082    899 211136]
 
     Seed can also be used in a with statement, which sets the random
@@ -209,17 +209,17 @@ class push_seed(object):
     it to the previous state on completion::
 
         >>> with push_seed(24):
-        ...    print(numpy.random.randint(0,1000000,3))
+        ...    print(randint(0,1000000,3))
         [242082    899 211136]
 
     Using nested contexts, we can demonstrate that state is indeed
     restored after the block completes::
 
         >>> with push_seed(24):
-        ...    print(numpy.random.randint(0,1000000))
+        ...    print(randint(0,1000000))
         ...    with push_seed(24):
-        ...        print(numpy.random.randint(0,1000000,3))
-        ...    print(numpy.random.randint(0,1000000))
+        ...        print(randint(0,1000000,3))
+        ...    print(randint(0,1000000))
         242082
         [242082    899 211136]
         899
@@ -227,14 +227,14 @@ class push_seed(object):
     The restore step is protected against exceptions in the block::
 
         >>> with push_seed(24):
-        ...    print(numpy.random.randint(0,1000000))
+        ...    print(randint(0,1000000))
         ...    try:
         ...        with push_seed(24):
-        ...            print(numpy.random.randint(0,1000000,3))
+        ...            print(randint(0,1000000,3))
         ...            raise Exception()
         ...    except:
         ...        print("Exception raised")
-        ...    print(numpy.random.randint(0,1000000))
+        ...    print(randint(0,1000000))
         242082
         [242082    899 211136]
         Exception raised
@@ -242,12 +242,12 @@ class push_seed(object):
     """
 
     def __init__(self, seed=None):
-        self._state = numpy.random.get_state()
-        numpy.random.seed(seed)
+        self._state = np.random.get_state()
+        np.random.seed(seed)
 
     def __enter__(self):
         return None
 
     def __exit__(self, *args):
-        numpy.random.set_state(self._state)
+        np.random.set_state(self._state)
         pass

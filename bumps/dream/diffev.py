@@ -126,10 +126,10 @@ def de_step(Nchain,pop,CR,max_pairs=2,eps=0.05,snooker_rate=0.1,noise=1e-6):
     return x_new, step_alpha, use_de_step
 
 def _check():
-    import numpy
+    from numpy import arange
     Nchain, Npop, Nvar = 4, 10, 3
 
-    pop = 100*numpy.arange(Npop*Nvar).reshape((Npop,Nvar))
+    pop = 100*arange(Npop*Nvar).reshape((Npop,Nvar))
     pop += RNG.rand(*pop.shape)*1e-6
     CR = 1./(RNG.randint(4,size=Nvar)+1)
     x_new, _step_alpha, used = de_step(Nchain,pop,CR,max_pairs=2,eps=0.05)

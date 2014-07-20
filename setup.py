@@ -58,8 +58,8 @@ dist = setup(
     package_data=gui_resources.package_data(),
     scripts=['bin/bumps'],
     ext_modules=[bumpsmodule()],
-    install_requires=['numdifftools'],
-    #install_requires = ['httplib2'],
+    install_requires=['six'],
+    #install_requires = ['httplib2', 'numdifftools'],
     cmdclass={'build_ext': openmp_ext(default=False)},
 )
 

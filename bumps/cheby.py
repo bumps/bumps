@@ -75,7 +75,7 @@ the bounds.  Bounds on the oscillation are easier to control using
 __all__ = ["profile", "cheby_approx",
            "cheby_val", "cheby_points", "cheby_coeff"]
 
-import numpy
+import numpy as np
 from numpy import real, exp, pi, cos, arange, asarray
 from numpy.fft import fft
 
@@ -112,7 +112,7 @@ def cheby_val(c, x):
     The values $c_i$ are the coefficients for the chebyshev
     polynomials $T_i$ yielding $p(x) = \sum_i{c_i T_i(x)}$.
     """
-    c = numpy.asarray(c)
+    c = np.asarray(c)
     if len(c) == 0:
         return 0 * x
 
@@ -148,6 +148,6 @@ def cheby_coeff(fx):
     fx = asarray(fx)
     n = len(fx)
     w = exp((-0.5j * pi / n) * arange(n))
-    y = numpy.hstack((fx[0::2], fx[1::2][::-1]))
+    y = np.hstack((fx[0::2], fx[1::2][::-1]))
     c = (2. / n) * real(fft(y) * w)
     return c

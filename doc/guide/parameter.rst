@@ -6,6 +6,7 @@ Parameters
 
 .. contents:: :local:
 
+.. _freevariables:
 
 Free Variables
 ==============

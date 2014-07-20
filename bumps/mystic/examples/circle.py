@@ -5,7 +5,7 @@ References::
     None
 """
 
-import numpy
+import numpy as np
 from numpy import arange
 from numpy import random, sin, cos, pi, inf, sqrt
 
@@ -64,7 +64,7 @@ class MinimumCircle(Fitness):
         resid = self._residuals(p)
         # Throw r in the residual so that it is minimized, punish the circle
         # if there are too many points outside.
-        d = numpy.concatenate((resid,self.r,sum(resid>0)))
+        d = np.concatenate((resid,self.r,sum(resid>0)))
         return d
 
     def __call__(self, p):

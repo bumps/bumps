@@ -6,7 +6,7 @@ from __future__ import print_function
 import sys
 import time
 
-import numpy
+import numpy as np
 
 from . import monitor
 from .history import History
@@ -171,7 +171,7 @@ class MultiStart(FitBase):
     def solve(self, monitors=None, mapper=None, **options):
         starts = options.pop('starts', 1)
         reset = not options.pop('keep_best', True)
-        f_best = numpy.inf
+        f_best = np.inf
         x_best = self.problem.getp()
         for _ in range(max(starts, 1)):
             print("round")
@@ -389,8 +389,8 @@ class PTFit(FitBase):
         from .partemp import parallel_tempering
         self._update = MonitorRunner(problem=self.problem,
                                      monitors=monitors)
-        t = numpy.logspace(numpy.log10(options['Tmin']),
-                           numpy.log10(options['Tmax']),
+        t = np.logspace(np.log10(options['Tmin']),
+                           np.log10(options['Tmax']),
                            options['nT'])
         history = parallel_tempering(nllf=self.problem.nllf,
                                      p=self.problem.getp(),
@@ -479,23 +479,23 @@ class LevenbergMarquardtFit(FitBase):
         self.problem.setp(p + stray)
         # treat prior probabilities on the parameters as additional
         # measurements
-        residuals = numpy.hstack(
+        residuals = np.hstack(
             (self.problem.residuals().flat, self.problem.parameter_residuals()))
         # Tally costs for straying outside the boundaries plus other costs
-        extra_cost = numpy.sum(stray ** 2) + self.problem.constraints_nllf()
+        extra_cost = np.sum(stray ** 2) + self.problem.constraints_nllf()
         # Spread the cost over the residuals.  Since we are smoothly increasing
         # residuals as we leave the boundary, this should push us back into the
         # boundary (within tolerance) during the lm fit.
-        residuals += numpy.sign(residuals) * (extra_cost / len(residuals))
+        residuals += np.sign(residuals) * (extra_cost / len(residuals))
         return residuals
 
     def _stray_delta(self, p):
         """calculate how far point is outside the boundary"""
-        return (numpy.where(p < self._low, self._low - p, 0)
-                + numpy.where(p > self._high, self._high - p, 0))
+        return (np.where(p < self._low, self._low - p, 0)
+                + np.where(p > self._high, self._high - p, 0))
 
     def stderr(self):
-        return numpy.sqrt(numpy.diag(self._cov))
+        return np.sqrt(np.diag(self._cov))
 
     def cov(self):
         return self._cov
@@ -552,7 +552,7 @@ class DreamModel(MCMCModel):
 
     def map(self, pop):
         # print "calling mapper",self.mapper
-        return -numpy.array(self.mapper(pop))
+        return -np.array(self.mapper(pop))
 
 
 class DreamFit(FitBase):
@@ -629,7 +629,7 @@ class DreamFit(FitBase):
         from .dream.stats import var_stats
 
         vstats = var_stats(self.state.draw())
-        return numpy.array([(v.p68[1] - v.p68[0]) / 2 for v in vstats], 'd')
+        return np.array([(v.p68[1] - v.p68[0]) / 2 for v in vstats], 'd')
 
     def load(self, input_path):
         from . import dream
@@ -695,7 +695,7 @@ def _resampler(fitter, xinit, samples=100, restart=False, **options):
             else:
                 fitter.problem.setp(x)
             x, fx = fitter.solve(**options)
-            points.append(numpy.hstack((fx, x)))
+            points.append(np.hstack((fx, x)))
             # print self.problem.summarize()
             # print "[chisq=%g]" % (nllf*2/self.problem.dof)
     except KeyboardInterrupt:

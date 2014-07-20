@@ -16,7 +16,7 @@ countunique(A)
     return the element and frequency of each unique value in an array
 """
 
-import numpy
+import numpy as np
 
 # Author: Anne Archibald
 # Re: [Numpy-discussion] Generating random samples without repeats
@@ -34,16 +34,16 @@ def choose_without_replacement(m,n,repeats=None):
     if n>m:
         raise ValueError("Cannot find %d nonnegative integers less than %d" %(n,m))
     elif n>m/2:
-        res = numpy.sort(numpy.random.rand(m,r).argsort(axis=0)[:n,:],axis=0)
+        res = np.sort(np.random.rand(m,r).argsort(axis=0)[:n,:],axis=0)
     else:
-        res = numpy.random.random_integers(0,m-1,size=(n,r))
+        res = np.random.random_integers(0,m-1,size=(n,r))
         while True:
-            res = numpy.sort(res,axis=0)
-            w = numpy.nonzero(numpy.diff(res,axis=0)==0)
+            res = np.sort(res,axis=0)
+            w = np.nonzero(np.diff(res,axis=0)==0)
             nr = len(w[0])
             if nr==0:
                 break
-            res[w] = numpy.random.random_integers(0,m-1,size=nr)
+            res[w] = np.random.random_integers(0,m-1,size=nr)
 
     if repeats is None:
         return res[:,0]
@@ -58,18 +58,18 @@ def runlength(v):
     See also countunique.
     """
     if len(v) == 0: return [],[]
-    diffs = numpy.diff(v)
-    steps = numpy.where(diffs!=0)[0]+1
-    ends = numpy.hstack([[0],steps,[len(v)]])
+    diffs = np.diff(v)
+    steps = np.where(diffs!=0)[0]+1
+    ends = np.hstack([[0],steps,[len(v)]])
     vals = v[ends[:-1]]
-    lens = numpy.diff(ends)
+    lens = np.diff(ends)
     return vals, lens
 
 def countunique(A):
     """
     Returns the unique elements in an array and their frequency.
     """
-    return runlength(numpy.sort(A.flatten()))
+    return runlength(np.sort(A.flatten()))
 
 def zscore(A, axis=None):
     """
@@ -78,4 +78,4 @@ def zscore(A, axis=None):
     Use *axis* to limit the calculation of mean and standard deviation to
     a particular axis.
     """
-    return (A - numpy.mean(A,axis=axis))/numpy.std(A,axis=axis,ddof=1)
+    return (A - np.mean(A,axis=axis)) / np.std(A,axis=axis,ddof=1)

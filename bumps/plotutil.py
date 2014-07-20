@@ -81,11 +81,11 @@ def dhsv(color, dh=0., ds=0., dv=0., da=0.):
 
 def plot_quantiles(x, y, contours, color, alpha=None):
     import pylab
-    import numpy
+    from numpy import reshape
     from scipy.stats.mstats import mquantiles
     p = _convert_contours_to_probabilities(reversed(sorted(contours)))
     q = mquantiles(y, prob=p, axis=0)
-    q = numpy.reshape(q, (-1, 2, len(x)))
+    q = reshape(q, (-1, 2, len(x)))
     # print "p",p
     # print "q",q[:,:,0]
     # print "y",y[:,0]
@@ -103,8 +103,8 @@ def _convert_contours_to_probabilities(contours):
     Given confidence intervals [a, b,...] as percents, return quantiles for
     each interval [a_low, a_high, b_low, b_high, ...].
     """
-    import numpy
+    from numpy import hstack
     # lower quantile for ci in percent = (100 - ci)/2
     # upper quantile = 100 - lower quantile = 100 - (100-ci)/2 = (100 + ci)/2
     # divide by an additional 100 to get proportion from 0 to 1
-    return numpy.hstack([(100.0 - p, 100.0 + p) for p in contours]) / 200.0
+    return hstack([(100.0 - p, 100.0 + p) for p in contours]) / 200.0

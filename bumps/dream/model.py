@@ -101,6 +101,7 @@ __all__ = ['MCMCModel','Density','LogDensity','Simulation','MVNormal','Mixture']
 from numpy import sum, ones_like, array
 from numpy import dot, diag, log, exp, pi, asarray, isscalar
 from numpy.linalg import cholesky, inv
+
 from . import util
 from . import exppow
 

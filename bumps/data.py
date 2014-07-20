@@ -5,13 +5,12 @@ from __future__ import division
 
 __all__ = ["convolve", "parse_file", "indfloat"]
 
-import numpy
+import numpy as np
 from numpy import inf, nan
-from numpy import ascontiguousarray
 
 
 def _dense(x):
-    return numpy.ascontiguousarray(x, 'd')
+    return np.ascontiguousarray(x, 'd')
 
 
 def convolve(xi, yi, x, dx):
@@ -29,7 +28,7 @@ def convolve(xi, yi, x, dx):
     """
     from ._reduction import _convolve
     x = _dense(x)
-    y = numpy.empty_like(x)
+    y = np.empty_like(x)
     _convolve(_dense(xi), _dense(yi), x, _dense(dx), y)
     return y
 
@@ -48,7 +47,7 @@ def convolve_sampled(xi, yi, xp, yp, x, dx):
     """
     from ._reduction import _convolve_sampled
     x = _dense(x)
-    y = numpy.empty_like(x)
+    y = np.empty_like(x)
     _convolve_sampled(_dense(xi), _dense(yi), _dense(xp), _dense(yp),
                       x, _dense(dx), y)
     return y
@@ -66,26 +65,26 @@ def test_convolve_sampled():
 
 
 def _check_convolution(name, x, y, xp, yp, dx):
-    ystar = convolve_sampled(x, y, xp, yp, x, dx=numpy.ones_like(x) * dx)
+    ystar = convolve_sampled(x, y, xp, yp, x, dx=np.ones_like(x) * dx)
 
-    xp = numpy.array(xp) * dx
+    xp = np.array(xp) * dx
     step = 0.0001
-    xpfine = numpy.arange(xp[0], xp[-1] + step / 10, step)
-    ypfine = numpy.interp(xpfine, xp, yp)
+    xpfine = np.arange(xp[0], xp[-1] + step / 10, step)
+    ypfine = np.interp(xpfine, xp, yp)
     # make sure xfine is wide enough by adding a couple of extra steps
     # at the end
-    xfine = numpy.arange(x[0] + xpfine[0], x[-1] + xpfine[-1] + 2 * step, step)
-    yfine = numpy.interp(xfine, x, y, left=0, right=0)
-    pidx = numpy.searchsorted(xfine, numpy.array(x) + xp[0])
-    left, right = numpy.searchsorted(xfine, [x[0], x[-1]])
+    xfine = np.arange(x[0] + xpfine[0], x[-1] + xpfine[-1] + 2 * step, step)
+    yfine = np.interp(xfine, x, y, left=0, right=0)
+    pidx = np.searchsorted(xfine, np.array(x) + xp[0])
+    left, right = np.searchsorted(xfine, [x[0], x[-1]])
 
     conv = []
     for pi in pidx:
         norm_start = max(0, left - pi)
         norm_end = min(len(xpfine), right - pi)
-        norm = step * numpy.sum(ypfine[norm_start:norm_end])
+        norm = step * np.sum(ypfine[norm_start:norm_end])
         conv.append(
-            step * numpy.sum(ypfine * yfine[pi:pi + len(xpfine)]) / norm)
+            step * np.sum(ypfine * yfine[pi:pi + len(xpfine)]) / norm)
 
     #print("checking convolution %s"%(name,))
     #print(" ".join("%7.4f"%yi for yi in ystar))
@@ -135,8 +134,8 @@ def parse_file(file):
         # For TOF data, the first column is the bin edge, which has one
         # more row than the remaining columns; fill those columns with
         # NaN so we get a square array.
-        data[-1] = data[-1] + [numpy.nan] * (len(data[0]) - 1)
-    return header, numpy.array(data).T
+        data[-1] = data[-1] + [np.nan] * (len(data[0]) - 1)
+    return header, np.array(data).T
 
 
 def string_like(s):
@@ -184,12 +183,12 @@ def indfloat(s):
 
     Example::
 
-        >>> import numpy
-        >>> print(numpy.isinf(indfloat('inf')))
+        >>> from numpy import isinf, isnan
+        >>> print(isinf(indfloat('inf')))
         True
-        >>> print(numpy.isinf(indfloat('-inf')))
+        >>> print(isinf(indfloat('-inf')))
         True
-        >>> print(numpy.isnan(indfloat('nan')))
+        >>> print(isnan(indfloat('nan')))
         True
     """
     try:

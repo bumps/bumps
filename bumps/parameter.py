@@ -15,9 +15,8 @@ from six.moves import reduce
 
 from copy import copy
 
-import numpy
+from numpy import inf, isinf, isfinite
 
-from numpy import inf
 from . import bounds as mbounds
 
 # TODO: avoid evaluation of subexpressions if parameters do not change.
@@ -214,7 +213,7 @@ class BaseParameter(object):
         """
         Return true if the parameter is within the valid range.
         """
-        return not numpy.isinf(self.nllf())
+        return not isinf(self.nllf())
 
     def format(self):
         """
@@ -771,7 +770,7 @@ def summarize(pars, sorted=False):
     if sorted:
         pars = sorted(pars, cmp=lambda x, y: cmp(x.name, y.name))
     for p in pars:
-        if not numpy.isfinite(p.value):
+        if not isfinite(p.value):
             bar = "*invalid* "
         else:
             position = int(p.bounds.get01(p.value) * 9.999999999)

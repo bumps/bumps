@@ -9,8 +9,8 @@ from __future__ import division, with_statement
 
 import sys
 
+import numpy as np
 from numpy import inf, isnan
-import numpy
 
 from . import parameter, bounds as mbounds
 
@@ -154,7 +154,7 @@ class BaseFitProblem(object):
     """
 
     def __init__(self, fitness, name=None, constraints=no_constraints,
-                 penalty_nllf=1e6, soft_limit=numpy.inf, partial=False):
+                 penalty_nllf=1e6, soft_limit=np.inf, partial=False):
         self.constraints = constraints
         self.fitness = fitness
         self.partial = partial
@@ -267,10 +267,10 @@ class BaseFitProblem(object):
         """
         Returns the current value of the parameter vector.
         """
-        return numpy.array([p.value for p in self._parameters], 'd')
+        return np.array([p.value for p in self._parameters], 'd')
 
     def bounds(self):
-        return numpy.array([p.bounds.limits for p in self._parameters], 'd').T
+        return np.array([p.bounds.limits for p in self._parameters], 'd').T
 
     def randomize(self, n=None):
         """
@@ -280,7 +280,7 @@ class BaseFitProblem(object):
         """
         # TODO: split into two: randomize and random_pop
         if n is not None:
-            return numpy.array([p.bounds.random(n) for p in self._parameters]).T
+            return np.array([p.bounds.random(n) for p in self._parameters]).T
         else:
             # Need to go through setp when updating model.
             self.setp([p.bounds.random(1)[0] for p in self._parameters])
@@ -323,7 +323,7 @@ class BaseFitProblem(object):
         Note that this does not include cost factors due to constraints on
         the parameters, such as sample_offset ~ N(0,0.01).
         """
-        return numpy.sum(self.residuals() ** 2) / self.dof
+        return np.sum(self.residuals() ** 2) / self.dof
         # return 2*self.nllf()/self.dof
 
     def nllf(self, pvec=None):
@@ -437,7 +437,7 @@ class MultiFitProblem(BaseFitProblem):
 
     def __init__(self, models, weights=None, name=None,
                  constraints=no_constraints,
-                 soft_limit=numpy.inf, penalty_nllf=1e6,
+                 soft_limit=np.inf, penalty_nllf=1e6,
                  freevars=None):
         self.partial = False
         self.constraints = constraints
@@ -520,7 +520,7 @@ class MultiFitProblem(BaseFitProblem):
             f.restore_data()
 
     def residuals(self):
-        resid = numpy.hstack([w * f.residuals()
+        resid = np.hstack([w * f.residuals()
                               for w, f in zip(self.weights, self.models)])
         return resid
 

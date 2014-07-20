@@ -6,7 +6,7 @@ __all__ = ['plot_all', 'plot_corr', 'plot_corrmatrix',
 
 import math
 
-import numpy
+import numpy as np
 from numpy import arange, squeeze, linspace, meshgrid, vstack, inf
 
 from . import corrplot
@@ -203,19 +203,19 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, cbar):
 
 def _make_var_histogram(values, logp, nbins, ci, weights):
     # Produce a histogram
-    hist, bins = numpy.histogram(values, bins=nbins, range=ci,
+    hist, bins = np.histogram(values, bins=nbins, range=ci,
                                  #new=True,
                                  normed=True, weights=weights)
 
     # Find the max likelihood for values in each bin
-    edges = numpy.searchsorted(values,bins)
-    histbest = [numpy.max(logp[edges[i]:edges[i+1]])
+    edges = np.searchsorted(values,bins)
+    histbest = [np.max(logp[edges[i]:edges[i+1]])
                 if edges[i]<edges[i+1] else -inf
                 for i in range(nbins)]
 
     # scale to marginalized probability with peak the same height as hist
-    histbest = numpy.exp(histbest - max(logp))
-    histbest *= numpy.max(hist)
+    histbest = np.exp(histbest - max(logp))
+    histbest *= np.max(hist)
 
 
     import pylab

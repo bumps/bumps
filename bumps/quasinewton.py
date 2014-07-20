@@ -71,7 +71,7 @@ STATUS = {
 def quasinewton(fn, x0=[], grad=[], Sx=[], typf=1, macheps=[], eta=[],
                 maxstep=100, gradtol=1e-6, steptol=1e-12, itnlimit=2000,
                 abort_test=None, monitor=lambda **kw: True):
-    """
+    r"""
     Run a quasinewton optimization on the problem.
 
     *fn(x)* is the cost function, which takes a point x and returns a scalar fx.
@@ -110,7 +110,7 @@ def quasinewton(fn, x0=[], grad=[], Sx=[], typf=1, macheps=[], eta=[],
     abort. Default: None.
 
     *monitor(x,fx,step)* is called every iteration so that a user interface
-    function can monitor the progress of the fit.  Default: lambda **kw: True
+    function can monitor the progress of the fit.  Default: lambda \*\*kw: True
 
 
     Returns the fit result as a dictionary:
@@ -159,7 +159,7 @@ def quasinewton(fn, x0=[], grad=[], Sx=[], typf=1, macheps=[], eta=[],
         raise ValueError("sizes of x0 and Sx must be the same")
 
     if macheps == []:
-        # PAK: use numpy.finfo rather than macheps
+        # PAK: use finfo rather than macheps
         macheps = finfo('d').eps
 
     if eta == []:

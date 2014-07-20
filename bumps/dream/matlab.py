@@ -88,8 +88,8 @@ This can be run from the command prompt::
 
 __all__ = ['struct', 'dream', 'setup', 'convert_output']
 
-import numpy
-from numpy import exp, dot
+import numpy as np
+from numpy import concatenate
 
 from .core import Dream
 from .model import Density, LogDensity, Simulation
@@ -202,19 +202,19 @@ def convert_state(state):
 
     _,points,logp = state.sample()
     logp = logp[:,:,None]
-    Sequences = numpy.concatenate( (points,exp(logp),logp), axis=2)
+    Sequences = concatenate( (points,exp(logp),logp), axis=2)
     X = Sequences[-1,:,:]
 
     draws, logp = state.logp()
-    hist_logp = numpy.concatenate( (draws[:,None], logp), axis=1 )
+    hist_logp = concatenate( (draws[:,None], logp), axis=1 )
 
     out = struct()
     draws, R = state.R_stat()
-    out.R_stat = numpy.concatenate( (draws[:,None], R), axis=1 )
+    out.R_stat = concatenate( (draws[:,None], R), axis=1 )
     draws, AR = state.acceptance_rate()
-    out.AR = numpy.concatenate( (draws[:,None], AR[:,None]), axis=1 )
+    out.AR = concatenate( (draws[:,None], AR[:,None]), axis=1 )
     draws, w = state.CR_weight()
-    out.CR = numpy.concatenate( (draws[:,None], w), axis=1 )
+    out.CR = concatenate( (draws[:,None], w), axis=1 )
     out.outlier = state.outliers()[:,:2]
 
     # save the dreamer state data structure  as well
@@ -235,7 +235,7 @@ class Banana:
     """
     def __init__(self, mu, bpar, cmat):
         self.mu, self.bpar, self.cmat = mu, bpar, cmat
-        self.imat = numpy.linalg.inv(cmat)
+        self.imat = np.linalg.inv(cmat)
     def __call__(self, x):
         x = x+0 # make a copy
         x[1] = x[1] + self.bpar*(x[0]**2 - 100)
