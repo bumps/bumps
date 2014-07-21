@@ -1,5 +1,5 @@
 """
-Build a bumps model from a function f and data x,y,dy.
+Build a bumps model from a function f and data.
 """
 __all__ = ["Curve", "PoissonCurve"]
 
@@ -12,9 +12,8 @@ from .parameter import Parameter
 
 
 class Curve(object):
-
     """
-    Build a model from a function and data.
+    Model a measurement with Gaussian uncertainty.
 
     This model can be fitted with any of the bumps optimizers.
 
@@ -142,7 +141,7 @@ def logfactorial(n):
 class PoissonCurve(Curve):
 
     r"""
-    Model the measurement of a Poisson process.
+    Model a measurement with Poisson uncertainty.
 
     The nllf is calculated using Poisson probabilities, but the curve itself
     is displayed using the approximation that $\sigma_y \approx \sqrt(y)$.
@@ -153,6 +152,12 @@ class PoissonCurve(Curve):
     def __init__(self, fn, x, y, name="", **fnkw):
         Curve.__init__(self, fn, x, y, sqrt(y), name=name, **fnkw)
         self._logfacty = np.sum(logfactorial(self.y))
+
+    def residuals(self):
+        # TODO: provide individual probabilities as residuals
+        # or perhaps the square roots --- whatever gives a better feel for
+        # which points are driving the fit
+        raise NotImplementedError
 
     def nllf(self):
         theory = self.theory()
