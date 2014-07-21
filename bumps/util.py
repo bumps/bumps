@@ -109,26 +109,29 @@ def kbhit():
 
 
 class redirect_console(object):
-
     """
     Console output redirection context
 
-    Redirect the console output to a path or file object.
+    The output can be redirected to an already opened file (anything with
+    a *write* attribute), or to a filename which will be opened for the
+    duration of the with context.  Unless *stderr* is specified, then both
+    standard output and standard error are redirected to the same file.
 
     :Example:
+
+    Show that output is captured in a file:
 
         >>> from bumps.util import redirect_console
         >>> print("hello")
         hello
         >>> with redirect_console("redirect_out.log"):
-        ...     print("hello")
+        ...     print("captured")
         >>> print("hello")
         hello
         >>> print(open("redirect_out.log").read()[:-1])
-        hello
+        captured
         >>> import os; os.unlink("redirect_out.log")
     """
-
     def __init__(self, stdout=None, stderr=None):
         if stdout is None:
             raise TypeError("stdout must be a path or file object")
@@ -169,7 +172,22 @@ class redirect_console(object):
 
 
 class pushdir(object):
+    """
+    Change directories for the duration of a with statement.
 
+    :Example:
+
+    Show that the original directory is restored::
+
+        >>> import sys, os
+        >>> original_wd = os.getcwd()
+        >>> with pushdir(sys.path[0]):
+        ...     pushed_wd = os.getcwd()
+        ...     first_site = os.path.abspath(sys.path[0])
+        ...     assert pushed_wd == first_site
+        >>> restored_wd = os.getcwd()
+        >>> assert original_wd == restored_wd
+    """
     def __init__(self, path):
         self.path = os.path.abspath(path)
 
@@ -182,7 +200,6 @@ class pushdir(object):
 
 
 class push_seed(object):
-
     """
     Set the seed value for the random number generator.
 
@@ -240,7 +257,6 @@ class push_seed(object):
         Exception raised
         899
     """
-
     def __init__(self, seed=None):
         self._state = np.random.get_state()
         np.random.seed(seed)
@@ -250,4 +266,3 @@ class push_seed(object):
 
     def __exit__(self, *args):
         np.random.set_state(self._state)
-        pass
