@@ -33,7 +33,7 @@ Weighted system::
     >>> dy = [0.2,0.01,0.1]
     >>> y = [ 14.16, 13.01, 6.15]
     >>> s = wsolve.wsolve(A,y,dy)
-    >>> print(", ".join("%0.2f +/- %0.2f"%(xi,dxi) for xi,dxi in zip(s.x,s.std)))
+    >>> print(", ".join("%0.2f +/- %0.2f"%(a,b) for a,b in zip(s.x,s.std)))
     1.05 +/- 0.17, 2.20 +/- 0.12, 2.91 +/- 0.12
 
 
@@ -129,19 +129,19 @@ class LinearModel(object):
         """covariance matrix [inv(A'A); O(n^3)]"""
         # FIXME: don't know if we need to scale by C, but it will
         # at least make things consistent
-        C = self.rnorm ** 2 / self.DoF if self.DoF > 0 else 1
+        C = self.rnorm**2/self.DoF if self.DoF > 0 else 1
         return C * np.dot(self._SVinv, self._SVinv.T)
 
     @property
     def var(self):
         """solution variance [diag(cov); O(n^2)]"""
-        C = self.rnorm ** 2 / self.DoF if self.DoF > 0 else 1
-        return C * np.sum(self._SVinv ** 2, axis=1)
+        C = self.rnorm**2/self.DoF if self.DoF > 0 else 1
+        return C * np.sum(self._SVinv**2, axis=1)
 
     @property
     def std(self):
         """solution standard deviation [sqrt(var); O(n^2)]"""
-        return np.sqrt(self._var())
+        return np.sqrt(self.var)
 
     @property
     def p(self):
@@ -180,9 +180,9 @@ class LinearModel(object):
         #
         from scipy.stats import t  # lazy import in case scipy not present
         y = np.dot(X, self.x).ravel()
-        s = t.ppf(1 - alpha / 2, self.DoF) * self.rnorm / np.sqrt(self.DoF)
+        s = t.ppf(1-alpha/2, self.DoF) * self.rnorm/np.sqrt(self.DoF)
         t = np.dot(X, self._SVinv)
-        dy = s * np.sqrt(pred + np.sum(t ** 2, axis=1))
+        dy = s * np.sqrt(pred + np.sum(t**2, axis=1))
         return y, dy
 
     def ci(self, A, sigma=1):
@@ -238,7 +238,7 @@ def wsolve(A, y, dy=1, rcond=1e-12):
     # Since dy is a row vector, this divides each row of A by the corresponding
     # element of dy.
     if dy.ndim == 2:
-        A, y = A / dy, y / dy
+        A, y = A/dy, y/dy
 
     # Singular value decomposition: A = U S V.H
     # Since A is an array, U, S, VH are also arrays
@@ -405,8 +405,8 @@ def test():
     Check that results are correct for a known problem.
     """
     x = np.array([0, 1, 2, 3, 4], 'd')
-    y = np.array([2.5,   7.9,  13.9,  21.1,  44.4], 'd')
-    dy = np.array([1.7,  2.4,  3.6,  4.8,  6.2], 'd')
+    y = np.array([2.5, 7.9, 13.9, 21.1, 44.4], 'd')
+    dy = np.array([1.7, 2.4, 3.6, 4.8, 6.2], 'd')
     poly = wpolyfit(x, y, dy, 1)
     px = np.array([1.5], 'd')
     _, pi = poly.pi(px)  # Same y is returend from pi and ci
