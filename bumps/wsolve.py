@@ -1,15 +1,17 @@
-"""
-Solve a potentially over-determined system with uncertainty in
-the values.
+r"""
+Weighted linear and polynomial solver with uncertainty.
 
-Given: A x = y +/- dy
-Use:   s = wsolve(A,y,dy)
+Given $A \bar x = \bar y \pm \delta \bar y$, solve using *s = wsolve(A,y,dy)*
 
-wsolve uses the singular value decomposition for increased accuracy.
+*wsolve* uses the singular value decomposition for increased accuracy.
+
+The uncertainty in the solution is estimated from the scatter in the data.
 Estimates the uncertainty for the solution from the scatter in the data.
 
-The returned model object s provides:
+The returned model object *s* provides:
 
+    ======== ============================================
+    ======== ============================================
     s.x      solution
     s.std    uncertainty estimate assuming no correlation
     s.rnorm  residual norm
@@ -18,21 +20,22 @@ The returned model object s provides:
     s.ci(p)  confidence intervals at point p
     s.pi(p)  prediction intervals at point p
     s(p)     predicted value at point p
+    ======== ============================================
 
 Example
 =======
 
 Weighted system::
 
-    import numpy as np
-    import wsolve
-    A = np.matrix("1,2,3;2,1,3;1,1,1",'d').A
-    xin = np.array([1,2,3],'d')
-    dy = np.array([0.2,0.01,0.1])
-    y = np.random.normal(np.dot(A,xin),dy)
-    print A,y,dy
-    s = wsolve.wsolve(A,y,dy)
-    print "xin,x,dx", xin, s.x, s.std
+    >>> import numpy as np
+    >>> import wsolve
+    >>> A = np.matrix("1,2,3;2,1,3;1,1,1",'d').A
+    >>> dy = [0.2,0.01,0.1]
+    >>> y = [ 14.16, 13.01, 6.15]
+    >>> s = wsolve.wsolve(A,y,dy)
+    >>> print(", ".join("%0.2f +/- %0.2f"%(xi,dxi) for xi,dxi in zip(s.x,s.std)))
+    1.05 +/- 0.17, 2.20 +/- 0.12, 2.91 +/- 0.12
+
 
 Note there is a counter-intuitive result that scaling the estimated
 uncertainty in the data does not affect the computed uncertainty in
@@ -61,95 +64,95 @@ import numpy as np
 
 
 class LinearModel(object):
+    r"""
+    Model evaluator for linear solution to $Ax = y$.
 
-    """
-    Model evaluator for linear solution to Ax = y.
+    Use *s(A)* to compute the predicted value of the linear model *s*
+    at points given on the rows of $A$.
 
     Computes a confidence interval (range of likely values for the
-    mean at x) or a prediction interval (range of likely values
-    seen when measuring at x).  The prediction interval tells
-    you the width of the distribution at x.  This should be the same
+    mean at $x$) or a prediction interval (range of likely values
+    seen when measuring at $x$).  The prediction interval gives
+    the width of the distribution at $x$.  This should be the same
     regardless of the number of measurements you have for the value
-    at x.  The confidence interval tells you how well you know the
-    mean at x.  It should get smaller as you increase the number of
+    at $x$.  The confidence interval gives the uncertainty in the
+    mean at $x$.  It should get smaller as you increase the number of
     measurements.  Error bars in the physical sciences usually show
-    a 1-alpha confidence value of erfc(1/sqrt(2)), representing
-    a 1-sigma standandard deviation of uncertainty in the mean.
+    a $1-\alpha$ confidence value of $\text{erfc}(1/\sqrt{2})$, representing
+    a $1-\sigma$ standand deviation of uncertainty in the mean.
 
-    Confidence intervals for linear system are given by::
+    Confidence intervals for the expected value of the linear system
+    evaluated at a new point $w$ are given by the $t$ distribution for
+    the selected interval $1-\alpha$, the solution $x$, and the number
+    of degrees of freedom $n-p$:
 
-        x' p +/- sqrt( Finv(1-a,1,df) var(x' p) )
+    .. math::
 
-    where for confidence intervals::
+        w^T x \pm t^{\alpha/2}_{n-p} \sqrt{ \text{var}(w) }
 
-        var(x' p) = sigma^2 (x' inv(A'A) x)
+    where the variance $\text{var}(w)$ is given by:
 
-    and for prediction intervals::
+    .. math::
 
-        var(x' p) = sigma^2 (1 + x' inv(A'A) x)
+        \text{var}(w) = \sigma^2 (w^T (A^TA)^{-1} w)
 
+    Prediction intervals are similar, except the variance term increases to
+    include both the uncertainty in the predicted value and the variance in
+    the data:
 
-    Stored properties::
+    .. math::
 
-        DoF = len(y)-len(x) = degrees of freedom
-        rnorm = 2-norm of the residuals y-Ax
-        x = solution to the equation Ax = y
-
-    Computed properties::
-
-        cov = covariance matrix [ inv(A'A); O(n^3) ]
-        var = parameter variance [ diag(cov); O(n^2)]
-        std = standard deviation of parameters [ sqrt(var); O(n^2) ]
-        p = test statistic for chisquare goodness of fit [ chi2.sf; O(1) ]
-
-    Methods::
-
-        ci(A,sigma=1):  return confidence interval evaluated at A
-        pi(A,alpha=0.05):  return prediction interval evaluated at A
-
+        \text{var}(w) = \sigma^2 (1 + w^T (A^TA)^{-1} w)
     """
-
     def __init__(self, x=None, DoF=None, SVinv=None, rnorm=None):
-        """
-
-        """
-        # V,S where USV' = A
+        # Note: SVinv should be computed from S,V where USV' = A
+        #: solution to the equation $Ax = y$
         self.x = x
+        #: number of degrees of freedom in the solution
         self.DoF = DoF
+        #: 2-norm of the residuals $||y-Ax||_2$
         self.rnorm = rnorm
         self._SVinv = SVinv
+
+    def __call__(self, A):
+        """
+        Return the prediction for a linear system at points in the rows of A.
+        """
+        return np.dot(np.asarray(A), self.x)
 
     # covariance matrix invC = A'A  = (USV')'USV' = VSU'USV' = VSSV'
     # C = inv(A'A) = inv(VSSV') = inv(V')inv(SS)inv(V) = Vinv(SS)V'
     # diag(inv(A'A)) is sum of the squares of the columns inv(S) V'
     # and is also the sum of the squares of the rows of V inv(S)
-    def _cov(self):
+    @property
+    def cov(self):
+        """covariance matrix [inv(A'A); O(n^3)]"""
         # FIXME: don't know if we need to scale by C, but it will
         # at least make things consistent
         C = self.rnorm ** 2 / self.DoF if self.DoF > 0 else 1
         return C * np.dot(self._SVinv, self._SVinv.T)
 
-    def _var(self):
+    @property
+    def var(self):
+        """solution variance [diag(cov); O(n^2)]"""
         C = self.rnorm ** 2 / self.DoF if self.DoF > 0 else 1
         return C * np.sum(self._SVinv ** 2, axis=1)
 
-    def _std(self):
+    @property
+    def std(self):
+        """solution standard deviation [sqrt(var); O(n^2)]"""
         return np.sqrt(self._var())
 
-    def _p(self):
+    @property
+    def p(self):
+        """p-value probability of rejection"""
         from scipy.stats import chi2  # lazy import in case scipy not present
         return chi2.sf(self.rnorm ** 2, self.DoF)
-
-    cov = property(_cov, doc="covariance matrix")
-    var = property(_var, doc="result variance")
-    std = property(_std, doc="result standard deviation")
-    p = property(_p, doc="probability of rejection")
 
     def _interval(self, X, alpha, pred):
         """
         Helper for computing prediction/confidence intervals.
         """
-
         # Comments from QR decomposition solution to Ax = y:
         #
         #   Rather than A'A we have R from the QR decomposition of A, but
@@ -177,51 +180,46 @@ class LinearModel(object):
         #
         from scipy.stats import t  # lazy import in case scipy not present
         y = np.dot(X, self.x).ravel()
-        s = t.ppf(1 - alpha / 2, self.DoF) * \
-            self.rnorm / np.sqrt(self.DoF)
+        s = t.ppf(1 - alpha / 2, self.DoF) * self.rnorm / np.sqrt(self.DoF)
         t = np.dot(X, self._SVinv)
         dy = s * np.sqrt(pred + np.sum(t ** 2, axis=1))
         return y, dy
 
-    def __call__(self, A):
-        """
-        Return the prediction for a linear system at points in the
-        rows of A.
-        """
-        return np.dot(np.asarray(A), self.x)
-
     def ci(self, A, sigma=1):
-        """
+        r"""
         Compute the calculated values and the confidence intervals
-        for the linear model evaluated at A.
+        for the linear model evaluated at $A$.
 
-        sigma=1 corresponds to a 1-sigma confidence interval
+        *sigma=1* corresponds to a $1-\sigma$ confidence interval
 
-        Confidence intervals are sometimes expressed as 1-alpha values,
-        where alpha = erfc(sigma/sqrt(2)).
+        Confidence intervals are sometimes expressed as $1-\alpha$ values,
+        where $\alpha = \text{erfc}(\sigma/\sqrt{2})$.
         """
         from scipy.special import erfc  # lazy import in case scipy not present
         alpha = erfc(sigma / np.sqrt(2))
         return self._interval(np.asarray(A), alpha, 0)
 
     def pi(self, A, p=0.05):
-        """
+        r"""
         Compute the calculated values and the prediction intervals
-        for the linear model evaluated at A.
+        for the linear model evaluated at $A$.
 
-        p = 1-alpha = 0.05 corresponds to 95% prediction interval
+        *p=0.05* corresponds to the 95% prediction interval.
         """
         return self._interval(np.asarray(A), p, 1)
 
 
 def wsolve(A, y, dy=1, rcond=1e-12):
-    """
-    Given a linear system y = A*x + e(dy), estimates x,dx
+    r"""
+    Given a linear system $y = A x + \delta y$, estimates $x$ and $\delta x$.
 
-    A is an n x m array
-    y is an n x k array or vector of length n
-    dy is a scalar or an n x 1 array
-    x is a m x k array
+    *A* is an n x m array of measurement points.
+
+    *y* is an n x k array or vector of length n of measured values at *A*.
+
+    *dy* is a scalar or an n x 1 array of uncertainties in the values at *A*.
+
+    Returns :class:`LinearModel`.
     """
     # The ugliness v[:,N.newaxis] transposes a vector
     # The ugliness N.dot(a,b) is a*b for a,b matrices
@@ -279,62 +277,51 @@ def _poly_matrix(x, degree, origin=False):
 
 
 class PolynomialModel(object):
+    r"""
+    Model evaluator for best fit polynomial $p(x) = y +/- \delta y$.
 
-    """
-    Model evaluator for best fit polynomial p(x) = y.
-
-    Stored properties::
-
-        DoF = len(y)-len(x) = degrees of freedom
-        rnorm = 2-norm of the residuals y-Ax
-        coeff = coefficients
-        degree = polynomial degree
-
-    Computed properties::
-
-        cov = covariance matrix [ inv(A'A); O(n^3) ]
-        var = coefficient variance [ diag(cov); O(n^2)]
-        std = standard deviation of coefficients [ sqrt(var); O(n^2) ]
-        p = test statistic for chisquare goodness of fit [ chi2.sf; O(1) ]
-
-    Methods::
-
-        __call__(x): return the polynomial evaluated at x
-        ci(x,sigma=1):  return confidence interval evaluated at x
-        pi(x,alpha=0.05):  return prediction interval evaluated at x
-
-    Note that the covariance matrix will not include the ones column if
-    the polynomial goes through the origin.
+    Use *p(x)* for PolynomialModel *p* to evaluate the polynomial at all
+    points in the vector *x*.
     """
 
     def __init__(self, s, origin=False):
+        #: True if polynomial goes through the origin
         self.origin = origin
+        #: polynomial coefficients
         self.coeff = np.ravel(s.x)
         if origin:
             self.coeff = np.hstack((self.coeff, 0))
+        #: polynomial degree
         self.degree = len(self.coeff) - 1
+        #: number of degrees of freedom in the solution
         self.DoF = s.DoF
+        #: 2-norm of the residuals $||y-Ax||_2$
         self.rnorm = s.rnorm
         self._conf = s
 
-    def _cov(self):
+    @property
+    def cov(self):
+        """
+        covariance matrix
+
+        Note that the ones column will be absent if *origin* is True.
+        """
         return self._conf.cov
 
-    def _std(self):
-        return np.sqrt(self._var())
+    @property
+    def var(self):
+        """solution variance"""
+        return self._conf.var
 
-    def _var(self):
-        var = np.ravel(self._conf.var)
-        if self.origin:
-            var = np.hstack((var, 0))
-        return var
+    @property
+    def std(self):
+        """solution standard deviation"""
+        return self._conf.std
 
-    def _p(self):
+    @property
+    def p(self):
+        """p-value probability of rejection"""
         return self._conf.p
-    cov = property(_cov, doc="covariance matrix")
-    var = property(_var, doc="result variance")
-    std = property(_std, doc="result standard deviation")
-    p = property(_p, doc="probability of rejection")
 
     def __call__(self, x):
         """
@@ -372,11 +359,12 @@ class PolynomialModel(object):
 
 
 def wpolyfit(x, y, dy=1, degree=None, origin=False):
-    """
-    Return the polynomial of degree n that
-    minimizes sum( (p(x_i) - y_i)**2/dy_i**2).
+    r"""
+    Return the polynomial of degree $n$ that minimizes $\sum(p(x_i) - y_i)^2/\sigma_i^2$.
 
     if origin is True, the fit should go through the origin.
+
+    Returns :class:`PolynomialModel`.
     """
     assert degree is not None, "Missing degree argument to wpolyfit"
 
@@ -386,6 +374,9 @@ def wpolyfit(x, y, dy=1, degree=None, origin=False):
 
 
 def demo():
+    """
+    Fit a random cubic polynomial.
+    """
     import pylab
 
     # Make fake data
@@ -411,8 +402,7 @@ def demo():
 
 def test():
     """
-    smoke test...make sure the function continues to return the same
-    result for a particular system.
+    Check that results are correct for a known problem.
     """
     x = np.array([0, 1, 2, 3, 4], 'd')
     y = np.array([2.5,   7.9,  13.9,  21.1,  44.4], 'd')
