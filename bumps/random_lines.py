@@ -1,11 +1,16 @@
 """
-Random Lines Algorithm finds the optimal minima of a function.
+Random Lines Algorithm finds the optimal minimum of a function.
+
+Sahin, I. (2013). Minimization over randomly selected lines.  An
+International  Journal Of Optimization And Control: Theories &
+Applications (IJOCTA), 3(2), 111-119.
+http://dx.doi.org/10.11121/ijocta.01.2013.00167
 """
 
 # Author : Ismet Sahin
 from __future__ import print_function
 
-__all__ = ["random_lines"]
+__all__ = ["random_lines", "particle_swarm"]
 
 from numpy import zeros, ones, asarray, sqrt, arange
 from numpy.random import rand, random_integers
@@ -18,6 +23,45 @@ def print_every_five(step, x, fx, k):
 
 
 def random_lines(cfo, NP, CR=0.9, epsilon=1e-10, abort_test=None, maxiter=1000):
+    """
+    Random lines is a population based optimizer which using quadratic
+    fits along randomly oriented directions.
+
+    *cfo* is the cost function object.  This is a dictionary which contains
+    the following keys:
+
+        *cost* is the function to be optimized.  If *parallel_cost* exists,
+        it should accept a list of points, not just a single point on each
+        evaluation.
+
+        *n* is the problem dimension
+
+        *x0* is the initial point
+
+        *x1* and *x2* are lower and upper bounds for each parameter
+
+        *monitor* is a callable which is called each iteration using
+        *callback(step, x, fx, k)*, where *step* is the iteration number,
+        *x* is the population, *fx* is value of the cost function for each
+        member of the population and *k* is the index of the best point in
+        the population.
+
+        *f_opt* is the target value of the optimization
+
+    *NP* is the number of fit parameters
+
+    *CR* is the cross-over ratio, which is the proportion of dimensions
+    that participate in any random orientation vector.
+
+    *epsilon* is the convergence criterion.
+
+    *abort_test* is a callable which indicates whether an external processes
+    requests the fit to stop.
+
+    *maxiter* is the maximum number of generations
+
+    Returns success, num_evals, f(x_best), x_best.
+    """
     if 'parallel_cost' in cfo:
         mapper = lambda v: asarray(cfo['parallel_cost'](v.T), 'd')
     else:
@@ -77,8 +121,7 @@ def random_lines(cfo, NP, CR=0.9, epsilon=1e-10, abort_test=None, maxiter=1000):
 
         fi = f
         fj = f[i_Xj]
-        b = (muk / (muk - 1)) * fj - ((muk + 1) / muk) * \
-            fi - (1 / (muk * (muk - 1))) * fk
+        b = (muk/(muk-1))*fj - ((muk+1)/muk)*fi - (1/(muk*(muk-1)))*fk
         a = fj - fi - b
 
         crossovers = []
@@ -131,6 +174,43 @@ def random_lines(cfo, NP, CR=0.9, epsilon=1e-10, abort_test=None, maxiter=1000):
 
 
 def particle_swarm(cfo, NP, epsilon=1e-10, maxiter=1000):
+    """
+    Particle swarm is a population based optimizer which uses force and
+    momentum to select candidate points.
+
+    *cfo* is the cost function object.  This is a dictionary which contains
+    the following keys:
+
+        *cost* is the function to be optimized.  If *parallel_cost* exists,
+        it should accept a list of points, not just a single point on each
+        evaluation.
+
+        *n* is the problem dimension
+
+        *x0* is the initial point
+
+        *x1* and *x2* are lower and upper bounds for each parameter
+
+        *monitor* is a callable which is called each iteration using
+        *callback(step, x, fx, k)*, where *step* is the iteration number,
+        *x* is the population, *fx* is value of the cost function for each
+        member of the population and *k* is the index of the best point in
+        the population.
+
+        *f_opt* is the target value of the optimization
+
+    *NP* is the number of fit parameters
+
+    *epsilon* is the convergence criterion.
+
+    *abort_test* is a callable which indicates whether an external processes
+    requests the fit to stop.
+
+    *maxiter* is the maximum number of generations
+
+    Returns success, num_evals, f(x_best), x_best.
+    """
+
     if 'parallel_cost' in cfo:
         mapper = lambda v: asarray(cfo['parallel_cost'](v.T), 'd')
     else:
