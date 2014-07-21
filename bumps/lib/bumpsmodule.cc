@@ -170,7 +170,7 @@ static PyMethodDef methods[] = {
 } ;
 
 
-#define MODULE_DOC "Bumps C Library"
+#define MODULE_DOC "C library for convolving models and rebinning data."
 #define MODULE_NAME "_reduction"
 #define MODULE_INIT2 init_reduction
 #define MODULE_INIT3 PyInit__reduction
