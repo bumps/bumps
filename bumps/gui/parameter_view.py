@@ -157,6 +157,7 @@ class ParameterView(wx.Panel):
     def _update_model(self):
         # Delete the previous tree (if any).
         self.tree.DeleteAllItems()
+        if self.model is None: return
         parameters = self.model.model_parameters()
         # Add a root node.
         self.root = self.tree.AddRoot("Model")

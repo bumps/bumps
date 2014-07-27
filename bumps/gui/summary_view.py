@@ -132,10 +132,11 @@ class SummaryView(scrolled.ScrolledPanel):
         self.sizer.Add(line, pos=(2,0), flag=wx.EXPAND|wx.RIGHT, border=5)
 
         # TODO: better interface to fittable parameters
-        pars = self.model._parameters
-        #pars = sorted(pars, cmp=lambda x,y: cmp(x.name, y.name))
-        for p in pars:
-            self.display_list.append(ParameterSummary(self, p, self.model))
+        if self.model is not None:
+            pars = self.model._parameters
+            #pars = sorted(pars, cmp=lambda x,y: cmp(x.name, y.name))
+            for p in pars:
+                self.display_list.append(ParameterSummary(self, p, self.model))
 
         for index, item in enumerate(self.display_list):
             self.sizer.Add(item, pos=(index+3,0))
