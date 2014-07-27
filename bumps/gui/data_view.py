@@ -150,6 +150,12 @@ class DataView(wx.Panel):
             # We are restarting the calculation, so clear the reset flag
             self._cancel_calculate = False
 
+            # clear graph and exit if problem is not defined
+            if self.problem is None:
+                with self.pylab_interface as pylab:
+                    pylab.clf() # clear the canvas
+                    break
+
             # Preform the calculation
             if isinstance(self.problem,MultiFitProblem):
                 #print "n=",len(self.problem.models)
@@ -173,7 +179,7 @@ class DataView(wx.Panel):
                 pylab.clf() # clear the canvas
                 #shift=20 if self.view == 'log' else 0
                 shift=0
-                if isinstance(self.problem,MultiFitProblem):
+                if isinstance(self.problem, MultiFitProblem):
                     for i,p in enumerate(self.problem.models):
                         if hasattr(p.fitness,'plot'):
                             p.fitness.plot(view=self.view)
