@@ -1,7 +1,45 @@
 """
-Build a bumps model from a function f and data.
+Build a bumps model from a function and data.
+
+Example
+-------
+
+Given a function *sin_model* which computes a sine wave at times *t*::
+
+    from numpy import sin
+    def sin_model(t, freq, phase):
+        return sin(2*pi*(freq*t + phase))
+
+and given data *(y,dy)* measured at times *t*, we can define the fit
+problem as follows::
+
+    from bumps.names import *
+    M = Curve(sin_model, t, y, dy, freq=20)
+
+The *freq* and *phase* keywords are optional initial values for the model
+parameters which otherwise default to zero.  The model parameters can be
+accessed as attributes on the model to set fit range::
+
+    M.freq.range(2, 100)
+    M.phase.range(0, 1)
+
+As usual, you can initialize or assign parameter expressions to the the
+parameters if you want to tie parameters together within or between models.
+
+Note: there is sometimes difficulty getting bumps to recognize the function
+during fits, which can be addressed by putting the definition in a separate
+file on the python path.  With the windows binary distribution of bumps,
+this can be done in the problem definition file with the following code::
+
+    import os
+    from bumps.names import *
+    sys.path.insert(0, os.getcwd())
+
+The model function can then be imported from the external module as usual::
+
+    from sin_model import sin_model
 """
-__all__ = ["Curve", "PoissonCurve"]
+__all__ = ["Curve", "PoissonCurve", "plot_err"]
 
 import inspect
 
@@ -33,9 +71,8 @@ class Curve(object):
     par=value to define the parameter) or is set to zero if no default is
     given in the function.
     """
-
-    def __init__(self, fn, x, y, dy=None, name="", **fnkw):
-        self.x, self.y = np.asarray(x), np.asarray(y)
+    def __init__(self, fn, x, y, dy=None, name="", plot=None, **fnkw):
+        self.x, self.y = x, np.asarray(y)
         if dy is None:
             self.dy = 1
         else:
@@ -88,6 +125,7 @@ class Curve(object):
         self._function = fn
         self._pnames = pnames
         self._cached_theory = None
+        self._plot = plot if plot is not None else plot_err
 
     def update(self):
         self._cached_theory = None
@@ -118,10 +156,26 @@ class Curve(object):
         np.savetxt(basename + '.dat', data.T)
 
     def plot(self, view=None):
-        import pylab
-        pylab.errorbar(self.x, self.y, yerr=self.dy, fmt='.')
-        pylab.plot(self.x, self.theory(), '-', hold=True)
+        self._plot(self.x, self.theory(), self.residuals(), view=view)
 
+def plot_err(x, y, dy, view=None):
+    """
+    Plot data *y* and error *dy* against *x*.
+
+    *view* is one of linear, log, logx or loglog.
+    """
+    import pylab
+    pylab.errorbar(x, y, yerr=dy, fmt='.')
+    pylab.plot(x, y, '-', hold=True)
+    if view is 'log':
+        pylab.xscale('linear')
+        pylab.yscale('log')
+    elif view is 'logx':
+        pylab.xscale('log')
+        pylab.yscale('linear')
+    elif view is 'loglog':
+        pylab.xscale('log')
+        pylab.yscale('log')
 
 _LOGFACTORIAL = np.array([log(np.prod(np.arange(1., k + 1)))
                              for k in range(21)])
@@ -139,7 +193,6 @@ def logfactorial(n):
 
 
 class PoissonCurve(Curve):
-
     r"""
     Model a measurement with Poisson uncertainty.
 
@@ -148,7 +201,6 @@ class PoissonCurve(Curve):
 
     See :class:`Curve` for details.
     """
-
     def __init__(self, fn, x, y, name="", **fnkw):
         Curve.__init__(self, fn, x, y, sqrt(y), name=name, **fnkw)
         self._logfacty = np.sum(logfactorial(self.y))
