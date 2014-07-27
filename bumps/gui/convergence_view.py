@@ -40,11 +40,11 @@ class ConvergenceView(PlotView):
         pop,best = self.plot_state
         with self.pylab_interface as pylab:
             pylab.clf()
-            ni,np = pop.shape
-            iternum = np.arange(1,ni+1)
+            ni,npop = pop.shape
+            iternum = npop.arange(1,ni+1)
             tail = int(0.25*ni)
             c = coordinated_colors(base=(0.4,0.8,0.2))
-            if np==5:
+            if npop==5:
                 pylab.fill_between(iternum[tail:], pop[tail:,1], pop[tail:,3],
                                    color=c['light'], label='_nolegend_')
                 pylab.plot(iternum[tail:],pop[tail:,2],
