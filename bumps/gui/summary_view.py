@@ -36,6 +36,8 @@ from . import signal
 
 IS_MAC = (wx.Platform == '__WXMAC__')
 
+NUMPIX = 400
+NUMTICKS = NUMPIX*5-1
 
 class SummaryView(scrolled.ScrolledPanel):
     """
@@ -166,8 +168,8 @@ class ParameterSummary(wx.Panel):
                                         str(self.parameter.name),
                                         size=(160,-1), style=wx.TE_LEFT)
         self.slider = wx.Slider(self, wx.ID_ANY,
-                                value=0, minValue=0, maxValue=100,
-                                size=(100,16), style=wx.SL_HORIZONTAL)
+                                value=0, minValue=0, maxValue=NUMPIX*5-1,
+                                size=(NUMPIX, 16), style=wx.SL_HORIZONTAL)
         self.value = wx.StaticText(self, wx.ID_ANY, str(self.parameter.value),
                                    size=(100,-1), style=wx.TE_LEFT)
         self.min_range = wx.StaticText(self, wx.ID_ANY, str(self.low),
@@ -188,7 +190,7 @@ class ParameterSummary(wx.Panel):
         self.update_slider()
 
     def update_slider(self):
-        slider_pos = int(self.parameter.bounds.get01(self.parameter.value)*100)
+        slider_pos = int(self.parameter.bounds.get01(self.parameter.value)*NUMTICKS)
         # Add line below if get01 doesn't protect against values out of range.
         #slider_pos = min(max(slider_pos,0),100)
         self.slider.SetValue(slider_pos)
@@ -204,7 +206,7 @@ class ParameterSummary(wx.Panel):
 
     def OnScroll(self, event):
         value = self.slider.GetValue()
-        new_value  = self.parameter.bounds.put01(value/100)
+        new_value  = self.parameter.bounds.put01(value/NUMTICKS)
         self.parameter.value = new_value
         self.value.SetLabel(str(nice(new_value)))
         signal.update_parameters(model=self.model)
