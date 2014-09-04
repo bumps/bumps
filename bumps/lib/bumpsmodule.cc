@@ -89,17 +89,17 @@ PyObject* Prebin2d(PyObject *obj, PyObject *args)
 
 static PyMethodDef methods[] = {
 
-	{"_convolve",
+	{"convolve",
 	 Pconvolve,
 	 METH_VARARGS,
-	 "_convolve(xi,yi,x,dx,y): compute convolution of width dx[k] at points x[k],\nreturned in y[k]"},
+	 "convolve(xi,yi,x,dx,y): compute convolution of width dx[k] at points x[k],\nreturned in y[k]"},
 
-	{"_convolve_sampled",
+	{"convolve_sampled",
 	 Pconvolve_sampled,
 	 METH_VARARGS,
-	 "_convolve_sampled(xi,yi,xp,yp,x,dx,y): compute convolution with sampled\ndistribution of width dx[k] at points x[k], returned in y[k]"},
+	 "convolve_sampled(xi,yi,xp,yp,x,dx,y): compute convolution with sampled\ndistribution of width dx[k] at points x[k], returned in y[k]"},
 
-	{"_erf",
+	{"erf",
 	 Perf,
 	 METH_VARARGS,
 	 "erf(data, result): get the erf of a set of data points"},
@@ -138,12 +138,12 @@ static PyMethodDef methods[] = {
 	{"rebin_uint64",
 	 &Prebin<uint64_t>,
 	 METH_VARARGS,
-	 "rebin_uint32(xi,Ii,xo,Io): rebin from bin edges xi to bin edges xo"
+	 "rebin_uint64(xi,Ii,xo,Io): rebin from bin edges xi to bin edges xo"
 	},
 	{"rebin2d_uint64",
 	 &Prebin2d<uint64_t>,
 	 METH_VARARGS,
-	 "rebin2d_uint32(xi,yi,Ii,xo,yo,Io): 2-D rebin from (xi,yi) to (xo,yo)"
+	 "rebin2d_uint64(xi,yi,Ii,xo,yo,Io): 2-D rebin from (xi,yi) to (xo,yo)"
 	},
 	{"rebin_float32",
 	 &Prebin<float>,

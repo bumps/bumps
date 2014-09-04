@@ -1,8 +1,8 @@
 """
 Exported names.
 
-In model definition scripts, rather than importing symbols one by one, you
-can simply perform:
+In model definition scripts, rather than importing symbols one by one,
+you can simply perform:
 
     from bumps.names import *
 
@@ -13,6 +13,7 @@ Numpy is available as np, and sys is available for sys.argv
 """
 import sys
 import numpy as np
+from numpy import inf, nan
 
 from . import pmath
 from .parameter import Parameter, FreeVariables

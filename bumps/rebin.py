@@ -2,6 +2,8 @@
 1-D and 2-D rebinning code.
 """
 
+__all__ = ["bin_edges", "logbin_edges", "rebin", "rebin2d"]
+
 import numpy as np
 
 from . import _reduction

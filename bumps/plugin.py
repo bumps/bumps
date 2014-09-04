@@ -27,7 +27,8 @@ You should be able to use this as a driver program for your application.
 
 Note: the plugin architecture is likely to change radically as more models
 are added to the system, particularly so that we can accommodate simultaneous
-fitting of data taken using different experimental techniques.
+fitting of data taken using different experimental techniques.  For now, only
+only one plugin at a time is supported.
 """
 
 __all__ = [
@@ -84,7 +85,7 @@ def calc_errors(problem, sample):
 
 def show_errors(errs):
     """
-    Display the model and data uncertainty on the current figure.
+    Display the model with uncertainty on the current figure.
 
     *errs* is the data returned from calc_errs.
     """

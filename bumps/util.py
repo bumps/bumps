@@ -3,8 +3,8 @@ Miscellaneous utility functions.
 """
 from __future__ import division
 
-__all__ = ["erf", "profile", "kbhit",
-           "redirect_console", "pushdir", "push_seed"]
+__all__ = ["erf", "kbhit", "profile",
+           "pushdir", "push_seed", "redirect_console"]
 
 import sys
 import os

@@ -2,50 +2,46 @@
 """
 BSpline calculator.
 
-Given a set of knots, compute the degree 3 B-spline and any derivatives
-that are required.
+Given a set of knots, compute the cubic B-spline interpolation.
 """
 from __future__ import division, print_function
 
+__all__ = ['bspline', 'pbs']
+
 import numpy as np
+from numpy import maximum as max, minimum as min
 
 
-def max(a, b):
-    return (a < b).choose(a, b)
-
-
-def min(a, b):
-    return (a > b).choose(a, b)
-
-
-def pbs(x, y, t, clamp=True, parametric=False):
+def pbs(x, y, t, clamp=True, parametric=True):
     """
-    Evaluate the parametric B-spline x(t),y(t) in [0,1].
+    Evaluate the parametric B-spline px(t),py(t).
 
-    The knots are assumed to be equally spaced within 0,1.  x values are
-    sorted.
+    *x* and *y* are the control points, and *t* are the points
+    in [0,1] at which they are evaluated.   The *x* values are
+    sorted so that the spline describes a function.
 
-    The spline goes through the control points at the ends.  If clamp is True,
-    the derivative of the spline at both ends is zero.  If clamp is False,
-    the derivative at the ends is equal to the slope connecting the final
-    pair of control points.
+    The spline goes through the control points at the ends. If *clamp*
+    is True, the derivative of the spline at both ends is zero. If *clamp*
+    is False, the derivative at the ends is equal to the slope connecting
+    the final pair of control points.
 
-    If parametric is False, then parametric points t' are chosen such that
-    x(t') = t.  The control points x must be linearly increasing for this
-    to work.
+    If *parametric* is False, then parametric points t' are chosen such
+    that x(t') = *t*.
+
+    The B-spline knots are chosen to be equally spaced within [0,1].
     """
     x = list(sorted(x))
     knot = np.hstack((0, 0, np.linspace(0, 1, len(y)), 1, 1))
     cx = np.hstack((x[0], x[0], x[0], (2 * x[0] + x[1]) / 3,
-                       x[1:-1], (2 * x[-1] + x[-2]) / 3, x[-1]))
+                    x[1:-1], (2 * x[-1] + x[-2]) / 3, x[-1]))
     if clamp:
         cy = np.hstack((y[0], y[0], y[0], y, y[-1]))
     else:
         cy = np.hstack((y[0], y[0], y[0],
-                           y[0] + (y[1] - y[0]) / 3,
-                           y[1:-1],
-                           y[-1] + (y[-2] - y[-1]) / 3,
-                           y[-1]))
+                        y[0] + (y[1] - y[0]) / 3,
+                        y[1:-1],
+                        y[-1] + (y[-2] - y[-1]) / 3,
+                        y[-1]))
 
     if parametric:
         return _bspline3(knot, cx, t), _bspline3(knot, cy, t)
@@ -79,14 +75,14 @@ def pbs(x, y, t, clamp=True, parametric=False):
 
 def bspline(y, xt, clamp=True):
     """
-    Evaluate the B-spline at positions xt in [0,1].
+    Evaluate the B-spline with control points *y* at positions *xt* in [0,1].
 
-    The knots are assumed to be equally spaced within 0,1.
+    The spline goes through the control points at the ends.  If *clamp*
+    is True, the derivative of the spline at both ends is zero.  If *clamp*
+    is False, the derivative at the ends is equal to the slope connecting
+    the final pair of control points.
 
-    The spline goes through the control points at the ends.  If clamp is True,
-    the derivative of the spline at both ends is zero.  If clamp is False,
-    the derivative at the ends is equal to the slope connecting the final
-    pair of control points.
+    B-spline knots are chosen to be equally spaced within [0,1].
     """
     knot = np.hstack((0, 0, np.linspace(0, 1, len(y)), 1, 1))
     if clamp:
@@ -101,8 +97,9 @@ def bspline(y, xt, clamp=True):
 
 def _bspline3(knot, control, t, nderiv=0):
     """
-    Evaluate the B-spline specified by the given knot sequence and
-    control values at the parametric points t.
+    Evaluate the B-spline specified by the given *knot* sequence and
+    *control* values at the parametric points *t*.  *nderiv* selects
+    the function or derivative to evaluate.
     """
     knot, control, t = [np.asarray(v) for v in (knot, control, t)]
 
@@ -196,8 +193,13 @@ def _find_control(v, clamp=True):
     x = solve_banded((1, 1), A, b)
     return x  # x[1:-1]
 
+# ===========================================================================
+# test code
 
 def speed_check():
+    """
+    Print the time to evaluate 400 points on a 7 knot spline.
+    """
     import time
     x = np.linspace(0, 1, 7)
     x[1], x[-2] = x[2], x[-3]
@@ -210,6 +212,11 @@ def speed_check():
 
 
 def _check(expected, got, tol):
+    """
+    Check that value matches expected within tolerance.
+
+    If *expected* is never zero, use relative error for tolerance.
+    """
     relative = (np.isscalar(expected) and expected != 0) \
         or (not np.isscalar(expected) and all(expected != 0))
     if relative:
@@ -226,6 +233,9 @@ def _check(expected, got, tol):
 
 
 def _derivs(x, y):
+    """
+    Compute numerical derivative for a function evaluated on a fine grid.
+    """
     # difference formula
     return (y[1] - y[0]) / (x[1] - x[0]), (y[-1] - y[-2]) / (x[-1] - x[-2])
     # 5-point difference formula
@@ -302,7 +312,6 @@ def test():
     _check(y[-1], yt[-1], 1e-8)
 
     # ==== Check f' at end points
-
     yt = bspline(y, dt, clamp=True)
     left, right = _derivs(dt, yt)
     _check(0, left, 1e-8)
@@ -371,6 +380,7 @@ def demo():
 
 
 def demo_interp():
+    # B-Spline control point inverse function is not yet implemented
     from pylab import hold, linspace, plot, show
     hold(True)
     x = linspace(0, 1, 7)

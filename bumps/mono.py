@@ -4,6 +4,8 @@ Monotonic spline modeling.
 
 from __future__ import division
 
+__all__ = ['monospline', 'hermite', 'count_inflections', 'plot_inflections']
+
 import numpy as np
 from numpy import (diff, hstack, sqrt, searchsorted, asarray,
                    nonzero, linspace, isnan)
@@ -61,10 +63,10 @@ def monospline(x, y, xt):
 
 def hermite(x, y, m, xt):
     """
-    Computes the cubic hermite polynomial p(xt).
+    Computes the cubic hermite polynomial $p(x_t)$.
 
-    The polynomial goes through all points (x_i,y_i) with slope
-    m_i at the point.
+    The polynomial goes through all points $(x_i,y_i)$ with slope
+    $m_i$ at the point.
     """
     with np.errstate(all='ignore'):
         x, y, m, xt = [asarray(v, 'd') for v in (x, y, m, xt)]
@@ -80,9 +82,10 @@ def hermite(x, y, m, xt):
     return ((c3 * v + c2) * v + c1) * v + c0
 
 
+# TODO: move inflection point code to data.py
 def count_inflections(x, y):
     """
-    Count the number of inflection points in the spline curve
+    Count the number of inflection points in a curve.
     """
     with np.errstate(all='ignore'):
         m = (y[2:] - y[:-2]) / (x[2:] - x[:-2])
@@ -96,7 +99,7 @@ def count_inflections(x, y):
 
 def plot_inflections(x, y):
     """
-    Plot inflection points in the spline curve.
+    Plot inflection points in a curve.
     """
     m = (y[2:] - y[:-2]) / (x[2:] - x[:-2])
     b = y[2:] - m * x[2:]

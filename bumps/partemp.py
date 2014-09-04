@@ -299,7 +299,6 @@ class Stepper(object):
 
 
 class ReflectBounds(object):
-
     """
     Reflect parameter values into bounded region
     """

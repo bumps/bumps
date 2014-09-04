@@ -65,7 +65,7 @@ PyObject* Pconvolve_sampled(PyObject *obj, PyObject *args)
   double *y;
   Py_ssize_t nxi, nyi, nxp, nyp, nx, ndx, ny;
 
-  if (!PyArg_ParseTuple(args, "OOOOOOO:convolve",
+  if (!PyArg_ParseTuple(args, "OOOOOOO:convolve_sampled",
 	   &xi_obj,&yi_obj,&xp_obj,&yp_obj,&x_obj,&dx_obj,&y_obj)) return NULL;
   INVECTOR(xi_obj,xi,nxi);
   INVECTOR(yi_obj,yi,nyi);
@@ -76,19 +76,19 @@ PyObject* Pconvolve_sampled(PyObject *obj, PyObject *args)
   OUTVECTOR(y_obj,y,ny);
   if (nxi != nyi) {
 #ifndef BROKEN_EXCEPTIONS
-    PyErr_SetString(PyExc_ValueError, "convolve: xi and yi have different lengths");
+    PyErr_SetString(PyExc_ValueError, "convolve_sampled: xi and yi have different lengths");
 #endif
     return NULL;
   }
   if (nxp != nyp) {
 #ifndef BROKEN_EXCEPTIONS
-    PyErr_SetString(PyExc_ValueError, "convolve: xp and yp have different lengths");
+    PyErr_SetString(PyExc_ValueError, "convolve_sampled: xp and yp have different lengths");
 #endif
     return NULL;
   }
   if (nx != ndx || nx != ny) {
 #ifndef BROKEN_EXCEPTIONS
-    PyErr_SetString(PyExc_ValueError, "convolve: x, dx and y have different lengths");
+    PyErr_SetString(PyExc_ValueError, "convolve_sampled: x, dx and y have different lengths");
 #endif
     return NULL;
   }

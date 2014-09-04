@@ -1,11 +1,14 @@
 """
 Interface between the models and the fitters.
 
-:class:`Fitness` defines the interface that new model definitions must follow.
-
-:class:`FitProblem` defines the fitness function(s) for use in the fitters.
+:class:`Fitness` defines the interface that model evaluators can follow.
+These models can be bundled together into a :func:`FitProblem` and sent
+to :class:`bumps.fitters.FitDriver` for optimization and uncertainty
+analysis.
 """
 from __future__ import division, with_statement
+
+__all__ = ['Fitness', 'FitProblem', 'load_problem']
 
 import sys
 
@@ -17,10 +20,17 @@ from . import parameter, bounds as mbounds
 
 # Abstract base class
 class Fitness(object):
+    """
+    Manage parameters, data, and theory function evaluation.
 
+    See :ref:`fitness` for a detailed explanation.
+    """
     def parameters(self):
         """
-        Return the set of parameters in the model.
+        Return the parameters in the model.
+
+        Model parameters are a hierarchical structure of lists and
+        dictionaries.
         """
         raise NotImplementedError
 
@@ -64,7 +74,6 @@ class Fitness(object):
         """
         raise NotImplementedError
 
-    # noinspection PyMethodMayBeStatic
     def save(self, basename):
         """
         Save the model to a file based on basename+extension.  This will point
@@ -74,8 +83,7 @@ class Fitness(object):
         """
         pass
 
-    # noinspection PyMethodMayBeStatic
-    def plot(self):
+    def plot(self, view='linear'):
         """
         Plot the model to the current figure.  You only get one figure, but you
         can make it as complex as you want.  This will be saved as a png on
@@ -106,7 +114,7 @@ def FitProblem(*args, **kw):
         *weights* is an optional scale factor for each model
 
         *freevars* is :class:`parameter.FreeVariables` instance defining the
-        per-model parameter assignments.  See `freevariables`_ for details.
+        per-model parameter assignments.  See :ref:`freevariables` for details.
 
 
     Additional parameters:
@@ -148,11 +156,9 @@ def FitProblem(*args, **kw):
 
 
 class BaseFitProblem(object):
-
     """
     See :func:`FitProblem`
     """
-
     def __init__(self, fitness, name=None, constraints=no_constraints,
                  penalty_nllf=1e6, soft_limit=np.inf, partial=False):
         self.constraints = constraints
@@ -430,11 +436,9 @@ class BaseFitProblem(object):
 
 
 class MultiFitProblem(BaseFitProblem):
-
     """
     Weighted fits for multiple models.
     """
-
     def __init__(self, models, weights=None, name=None,
                  constraints=no_constraints,
                  soft_limit=np.inf, penalty_nllf=1e6,

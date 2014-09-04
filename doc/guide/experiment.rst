@@ -120,30 +120,104 @@ for other distributions.
 For counts data, :class:`PoissonCurve <bumps.curve.PoissonCurve>` is also
 available.
 
-If you are already have the negative log likelihood function, you can use
-it with :class:`<bumps.pdfwrapper.PDF>`::
+Likelihood functions
+====================
+
+If you are already have the negative log likelihood function and you don't
+need to manage data, you can use it with :class:`<bumps.pdfwrapper.PDF>`::
 
     x,y,dy = numpy.loadtxt('line.txt').T
     def nllf(m, b):
         return numpy.sum(((y - (m*x + b))/dy)**2)
     M = PDF(nllf)
 
-Once you have defined your models and your parameter ranges, your
-model file must define the fitting problem::
- 
+You can use *M.m* and *M.b* to the parameter ranges as usual, then return
+the model as a fitting problem:
+
+    M.m.range(-inf,inf)
+    M.b.range(-inf,inf)
     problem = FitProblem(M)
+
+.. _fitness:
+
+Complex models
+==============
 
 More sophisticated models, with routines for data handling and specialized
 plotting should define the :class:`Fitness <bumps.fitproblem.Fitness>`
-interface.  `_example_peaks` sets up a problem for fitting multiple
-peaks plus a background against a 2-D data set.  The Fitness object
-must provide a method which returns a list of
-:class:`Parameter <bumps.parameter.Parameter>` objects.  These
-parameters are the basis of the Bumps model
-to define models and constraints.  
+interface.  :ref:`peaks_example` sets up a problem for fitting multiple
+peaks plus a background against a 2-D data set.
 
-External constraints
-====================
+Models are parameterized using :class:`Parameter <bumps.parameter.Parameter>`
+objects, which identify the fitted parameters in the model, and the bounds over
+which they may vary.  The fitness object must provide a set of fitting
+parameters to the fit problem using the
+:meth:`parameters <bumps.fitproblem.Fitness.parameters>`  method.
+Usually this returns a dictionary, with the key corresponding to the
+attribute name for the parameter and the value corresponding to a
+parameter object.  This allows the user of the model to guess that
+parameter "p1" for example can be referenced using *model.p1*.  If the
+model consists of parts, the parameters for each part must be returned.
+The usual approach is to define a *parameters* method for each part
+and build up the dictionary when needed (the *parameters* function is
+only called at the start of the fit, so it does not need to be efficient).
+This allows the user to guess that parameter "p1" of part "a" can be
+referenced using *model.a.p1*.  A set of related parameters, p1, p2, ...
+can be placed in a list and referenced using, e.g., *model.a.p[i]*.
+
+The fitness constructor should accept keyword arguments for each
+parameter giving reasonable defaults for the initial value.  The
+parameter attribute should be created using
+:meth:`Parameter.default <bumps.parameter.Parameter.default>`.
+This method allows the user to set an initial parameter value when the
+model is defined, or set the value to be another parameter in the fitting
+problem, or to a parameter expression.
+
+During an analysis, the optimizer will ask to evaluate a series of
+points in parameter space.  Once the parameters have been set, the
+:meth:`update <bumps.fitproblem.Fitness.update>` method will be called,
+if there is one.  This method should clear any cached results from the
+last fit point.  Next the :meth:`nllf <bumps.fitproblem.Fitness.nllf>`
+method will be called to compute the negative log likelihood of observing
+the data given the current values of the parameters.   This is usually
+just $\sum{(y_i - f(x_i))^2 / (2 \sigma_i^2)}$ for data measured with
+Gaussian uncertainty, but any probability  distribution can be used.
+
+For the Levenberg-Marquardt optimizer, the
+:meth:`residuals <bumps.fitproblem.Fitness.residuals>` method will be
+called instead of *nllf*.  If residuals are unavailable, then the L-M
+method cannot be used.
+
+The :meth:`numpoints <bumps.fitproblem.Fitness.numpoints>` method is used
+to report fitting progress.  With Gaussian measurement uncertainty, the
+*nllf* return value is $\chi^2/2$, which has an expected value of
+the number of degrees of freedom in the fit.  Since this is an awkward
+number, the noramlized chi-square,
+$\chi^2_N = \chi^2/\text{DoF} = -2 ln (P)/(n-p)$, is shown
+instead, where $-ln P$ is the *nllf* value, $n$ is the of points $n$
+and $p$ is the number of fitted parameters.  $\chi^2_N$ has a value near $1$
+for a good fit.  The same calculation is used for non-gaussian
+distributions even though *nllf* is not returning sum squared residuals.
+
+The :meth:`save <bumps.fitproblem.Fitness.save>` and
+:meth:`plot <bumps.fitproblem.Fitness.plot>` methods will  be called at
+the end of the fit.  The *save* method should save the model for the
+current point.  This may include things such as the calculated scattering
+curve and the real space model for scattering inverse problems, or it
+may be a save of the model parameters in a format that can be loaded by
+other programs.  The *plot* method should use the current matplotlib
+figure to draw the model, data, theory and residuals.
+
+The :meth:`resynth_data <bumps.fitproblem.Fitness.resynth_data>` method
+is used for an alternative monte carlo error analysis where random
+data sets are generated from the measured value and the uncertainty
+then fitted.  The resulting fitted parameters can be processed much
+like the MCMC datasets, yielding a different estimate on the uncertainties
+in the parameters.  The
+:meth:`restore_data <bumps.fitproblem.Fitness.restore_data>` method
+restores the data to the originally measured values.  These methods
+are optional, and only used if the alternative error analysis is
+requested.
 
 Foreign models
 ==============
@@ -156,3 +230,6 @@ interface.  This has been done already for
 :class:`PyMCMCProblem <bumps.pymcmc_model.PyMCMCProblem`
 and interested parties are directed therein for a working example.
 
+
+External constraints
+====================

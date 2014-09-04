@@ -2,9 +2,10 @@
    :Release: |version|
    :Date:    |today|
 
-   Printable manual: `Bumps.pdf <Bumps.pdf>`_
-   Windows installer: :slink:`%(winexe)s`
-   Apple installer: :slink:`%(macapp)s`
+
+   | Printable manual: `Bumps.pdf <Bumps.pdf>`_
+   | Windows installer: :slink:`%(winexe)s`
+   | Apple installer: :slink:`%(macapp)s`
 
    :ref:`Index <genindex>` :ref:`Search <search>`
 

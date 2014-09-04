@@ -3,7 +3,7 @@ Data handling utilities.
 """
 from __future__ import division
 
-__all__ = ["convolve", "parse_file", "indfloat"]
+__all__ = ["convolve", "convolve_sampled", "indfloat", "parse_file"]
 
 import numpy as np
 from numpy import inf, nan
@@ -26,10 +26,10 @@ def convolve(xi, yi, x, dx):
     tails is truncated and normalized to area of overlap between the resolution
     function in case the theory does not extend far enough.
     """
-    from ._reduction import _convolve
+    from . import _reduction
     x = _dense(x)
     y = np.empty_like(x)
-    _convolve(_dense(xi), _dense(yi), x, _dense(dx), y)
+    _reduction.convolve(_dense(xi), _dense(yi), x, _dense(dx), y)
     return y
 
 
@@ -39,17 +39,17 @@ def convolve_sampled(xi, yi, xp, yp, x, dx):
 
     Returns convolution y[k] of width dx[k] at points x[k].
 
-    Like :func:`convolve`, the theory (*xi*,*yi*) is represented as a
+    Like :func:`convolve`, the theory *(xi,yi)* is represented as a
     piece-wise linear spline which should extend beyond the data
     measurement points *x*.  Instead of a gaussian resolution function,
-    resolution (*xp*,*yp*) is also represented as a piece-wise linear
+    resolution *(xp,yp)* is also represented as a piece-wise linear
     spline.
     """
-    from ._reduction import _convolve_sampled
+    from . import _reduction
     x = _dense(x)
     y = np.empty_like(x)
-    _convolve_sampled(_dense(xi), _dense(yi), _dense(xp), _dense(yp),
-                      x, _dense(dx), y)
+    _reduction.convolve_sampled(_dense(xi), _dense(yi), _dense(xp), _dense(yp),
+                                x, _dense(dx), y)
     return y
 
 
@@ -104,7 +104,7 @@ def parse_file(file):
 
     Special hack for TOF data: if the first column contains bin edges, then
     the last row will only have the bin edge.  To make the array square,
-    we extend the last row with NaN.
+    we replace the bin edges with bin centers.
     """
     if hasattr(file, 'readline'):
         fh = file
@@ -133,12 +133,21 @@ def parse_file(file):
     if len(data[-1]) == 1:
         # For TOF data, the first column is the bin edge, which has one
         # more row than the remaining columns; fill those columns with
-        # NaN so we get a square array.
-        data[-1] = data[-1] + [np.nan] * (len(data[0]) - 1)
-    return header, np.array(data).T
+        # bin centers instead
+        last_edge = data[-1][0]
+        data = np.array(data[:-1]).T
+        edges = np.hstack((data[0],last_edge))
+        data[0] = 0.5*(edges[:-1] + edges[1:])
+    else:
+        data = np.array(data).T
+
+    return header, data
 
 
 def string_like(s):
+    """
+    Return True if s operates like a string.
+    """
     try:
         s + ''
     except:

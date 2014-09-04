@@ -34,7 +34,6 @@ from . import bounds as mbounds
 
 
 class BaseParameter(object):
-
     """
     Root of the parameter class, defining arithmetic on parameters
     """
@@ -230,7 +229,6 @@ class BaseParameter(object):
 
 
 class Constant(BaseParameter):
-
     """
     An unmodifiable value.
     """
@@ -247,7 +245,6 @@ class Constant(BaseParameter):
 
 
 class Parameter(BaseParameter):
-
     """
     A parameter is a symbolic value.
 
@@ -342,7 +339,6 @@ class Parameter(BaseParameter):
 
 
 class Reference(Parameter):
-
     """
     Create an adaptor so that a model attribute can be treated as if it
     were a parameter.  This allows only direct access, wherein the
@@ -371,7 +367,6 @@ class Reference(Parameter):
 
 
 class ParameterSet(object):
-
     """
     A parameter that depends on the model.
     """
@@ -460,7 +455,6 @@ class ParameterSet(object):
 
 
 class FreeVariables(object):
-
     """
     A collection of parameter sets for a group of models.
 
@@ -532,7 +526,6 @@ class FreeVariables(object):
 
 # ==== Comparison operators ===
 class Constraint:
-
     """
     Abstract base class for constraints.
     """
@@ -633,7 +626,6 @@ def substitute(a):
 
 
 class Function(BaseParameter):
-
     """
     Delayed function evaluator.
 
@@ -860,7 +852,6 @@ class IntegerParameter(Parameter):
 
 
 class Alias(object):
-
     """
     Parameter alias.
 

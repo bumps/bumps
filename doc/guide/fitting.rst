@@ -284,12 +284,12 @@ you need.
 The model file (call it plot.py) will start with the following::
 
     import sys
-    from bumps.cli import load_problem, recall_best
+    from bumps.cli import load_problem, load_best
 
     model, store = sys.argv[1:3]
 
     problem = load_problem([model])
-    recall_best(problem, os.path.join(store, model[:-3]+".par"))
+    load_best(problem, os.path.join(store, model[:-3]+".par"))
     chisq = problem.chisq
 
     print "chisq",chisq
@@ -352,14 +352,14 @@ plotting script::
     import sys
     import pylab
     from bumps.dream.state import load_state
-    from bumps.cli import load_problem, recall_best
+    from bumps.cli import load_problem, load_best
     from bumps.errplot import calc_errors_from_state
     from refl1d.align import align_profiles
 
     model, store = sys.argv[1:3]
 
     problem = load_problem([model])
-    recall_best(problem, os.path.join(store, model[:-3]+".par"))
+    load_best(problem, os.path.join(store, model[:-3]+".par"))
 
     chisq = problem.chisq
     experiment = problem.fitness

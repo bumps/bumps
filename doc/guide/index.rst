@@ -4,20 +4,36 @@
 User's Guide
 ############
 
-The complexity comes from multiple sources:
+Bumps is designed to determine the ideal model parameters for a given
+set of measurements, and provide uncertainty on the parameter values.
+This is an inverse problem, where data can be predicted from theory, but
+theory cannot be directly inferred from data.  This means that bumps must
+search through parameter space, calling the theory function many times,
+to find the parameter values that are most consistent with the data.
 
-   * We are solving inverse problems on landscape with multiple minima,
-     whose global minimum is small and often in an unpromising region.
-   * The solution is not unique:  multiple minima may be equally valid
-     solutions to the inversion problem.
-   * The measurement is sensitive to nuisance parameters such as sample
-     alignment.  That means the analysis program must include data
-     reduction steps, making data handling complicated.
-   * The models are complex.  Since the ideal profile is not unique and
-     is difficult to locate, we often constrain our search to feasible
-     physical models to limit the search space, and to account for
-     information from other sources.
+Unlike traditional Levenburg-Marquardt fitting programs, bumps does not
+require normally distributed measurement uncertainty.  If a measurement comes
+from counting statistics, for example, you can set your model to use
+poisson probability rather than gaussian probability.  Parameter values
+can have constraints.  For example, if the size of a sample is known to
+within 5%, the size parameter in the model can set to a gaussian distribution
+with a deviation of 5%.  Simple bounds are also supported.  Parameter
+expressions allow you to set the value of a parameter based on other
+parameters, which allows simultaneous fitting of multiple datasets to
+different models without having to define a specialized fit function.
 
+Bumps includes markov chain monte carlo (MCMC) methods to compute the
+joint distribution of parameter probabilities.  These methods require
+hundreds of thousand function calls to explore the search space, so
+for moderately complex problems, you need to run in parallel.  Bumps
+can fully utilize multiple cores on one computer, or through MPI, it
+runs on supercomputing clusters.
+
+In addition to inverse problem solving, bumps has acquired code for
+theory building and data handling.  For example, many problems have
+measurements in which the instrument resolution plays a role, and
+the theory function must be convolved with a data dependent resolution
+function.
 
 :ref:`intro-guide`
 
@@ -55,7 +71,7 @@ The complexity comes from multiple sources:
 :ref:`fitting-guide`
 
      One or more experiments can be combined into a
-     :class:`FitProblem <refl1d.fitter.FitProblem>`.  This is then
+     :class:`FitProblem <bumps.fitproblem.FitProblem>`.  This is then
      given to one of the many fitters, such as
      :class:`PTFit <refl1d.fitter.PTFit>`, which adjust the varying
      parameters, trying to find the best fit.  PTFit can also

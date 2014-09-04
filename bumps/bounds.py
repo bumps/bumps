@@ -51,7 +51,7 @@ functions::
 """
 from __future__ import division
 __all__ = ['pm', 'pmp', 'pm_raw', 'pmp_raw', 'nice_range', 'init_bounds',
-           'Unbounded', 'Bounded', 'BoundedAbove', 'BoundedBelow',
+           'Bounds', 'Unbounded', 'Bounded', 'BoundedAbove', 'BoundedBelow',
            'Distribution', 'Normal', 'BoundedNormal', 'SoftBounded']
 
 import math
@@ -312,10 +312,6 @@ class Unbounded(Bounds):
     The probability is uniformly 1/inf everywhere, which means the negative
     log likelihood of P is inf everywhere.  A value inf will interfere
     with optimization routines, and so we instead choose P == 1 everywhere.
-
-
-    Convert sign*m*2^e to sign*(e+1023+m), yielding a value in [-2048,2048].
-    This can then be converted to a value in [0,1].
     """
 
     def random(self, n=1):
@@ -355,8 +351,8 @@ class BoundedBelow(Bounds):
     converted to a value in [0,1].
 
     Note that the likelihood function is problematic: the true probability
-    of seeing any particular value in the range is infintesimal, and that
-    is indistinguishable from values outside the range.    Instead we say
+    of seeing any particular value in the range is infinitesimal, and that
+    is indistinguishable from values outside the range.  Instead we say
     that P = 1 in range, and 0 outside.
     """
 
@@ -378,14 +374,14 @@ class BoundedBelow(Bounds):
 
     def get01(self, x):
         m, e = math.frexp(x - self._base)
-        if m >= 0 and e <= _e_max:
-            v = (e + m) / (2. * _e_max)
+        if m >= 0 and e <= _E_MAX:
+            v = (e + m) / (2. * _E_MAX)
             return v
         else:
             return 0 if m < 0 else 1
 
     def put01(self, v):
-        v = v * 2 * _e_max
+        v = v * 2 * _E_MAX
         e = int(v)
         m = v - e
         x = math.ldexp(m, e) + self._base
@@ -413,8 +409,8 @@ class BoundedAbove(Bounds):
     converted to a value in [0,1].
 
     Note that the likelihood function is problematic: the true probability
-    of seeing any particular value in the range is infintesimal, and that
-    is indistinguishable from values outside the range.    Instead we say
+    of seeing any particular value in the range is infinitesimal, and that
+    is indistinguishable from values outside the range.  Instead we say
     that P = 1 in range, and 0 outside.
     """
 
@@ -436,14 +432,14 @@ class BoundedAbove(Bounds):
 
     def get01(self, x):
         m, e = math.frexp(self._base - x)
-        if m >= 0 and e <= _e_max:
-            v = (e + m) / (2. * _e_max)
+        if m >= 0 and e <= _E_MAX:
+            v = (e + m) / (2. * _E_MAX)
             return 1 - v
         else:
             return 1 if m < 0 else 0
 
     def put01(self, v):
-        v = (1 - v) * 2 * _e_max
+        v = (1 - v) * 2 * _E_MAX
         e = int(v)
         m = v - e
         x = -(math.ldexp(m, e) - self._base)
@@ -739,32 +735,46 @@ class SoftBounded(Bounds):
         return "box_norm(%g,%g,sigma=%g)" % (self._lo, self._hi, self._std)
 
 
-_e_min = -1023
-_e_max = 1024
-
+_E_MIN = -1023
+_E_MAX = 1024
 
 def _get01_inf(x):
+    """
+    Convert a floating point number to a value in [0,1].
+
+    The value sign*m*2^e to sign*(e+1023+m), yielding a value in [-2048,2048].
+    This can then be converted to a value in [0,1].
+
+    Sort order is preserved.  At least 14 bits of precision are lost from
+    the 53 bit mantissa.
+    """
     # Arctan alternative
     # Arctan is approximately linear in (-0.5, 0.5), but the
     # transform is only useful up to (-10**15,10**15).
     # return atan(x)/pi + 0.5
     m, e = math.frexp(x)
     s = math.copysign(1.0, m)
-    v = (e - _e_min + m * s) * s
-    v = v / (4. * _e_max) + 0.5
-    v = 0 if _e_min > e else (1 if _e_max < e else v)
+    v = (e - _E_MIN + m * s) * s
+    v = v / (4 * _E_MAX) + 0.5
+    v = 0 if _E_MIN > e else (1 if _E_MAX < e else v)
     return v
 
 
 def _put01_inf(v):
+    """
+    Convert a value in [0,1] to a full floating point number.
+
+    Sort order is preserved.  Reverses :func:`_get01_inf`, but with fewer
+    bits of precision.
+    """
     # Arctan alternative
     # return tan(pi*(v-0.5))
 
-    v = (v - 0.5) * 4 * _e_max
+    v = (v - 0.5) * 4 * _E_MAX
     s = math.copysign(1., v)
     v *= s
     e = int(v)
     m = v - e
-    x = math.ldexp(s * m, e + _e_min)
+    x = math.ldexp(s * m, e + _E_MIN)
     # print "< x,e,m,s,v",x,e+_e_min,s*m,s,v
     return x
