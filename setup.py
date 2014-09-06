@@ -42,8 +42,8 @@ dist = setup(
     author='Paul Kienzle',
     author_email='paul.kienzle@nist.gov',
     url='http://www.reflectometry.org/danse/software.html',
-    description='Data fitting and Bayesian uncertainty modeling for inverse problems',
-    long_description=open('README.txt').read(),
+    description='Data fitting with bayesian uncertainty analysis',
+    long_description=open('README.rst').read(),
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Console',
@@ -51,6 +51,8 @@ dist = setup(
         'License :: Public Domain',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
+        'Programming Language :: Python 3',
+        'Topic :: Scientific/Engineering',
         'Topic :: Scientific/Engineering :: Chemistry',
         'Topic :: Scientific/Engineering :: Physics',
     ],
@@ -58,7 +60,7 @@ dist = setup(
     package_data=gui_resources.package_data(),
     scripts=['bin/bumps'],
     ext_modules=[bumpsmodule()],
-    install_requires=['six'],
+    install_requires=['six', 'numdifftools'],
     #install_requires = ['httplib2', 'numdifftools'],
     cmdclass={'build_ext': openmp_ext(default=False)},
 )

@@ -1,0 +1,3 @@
+numpy>=1.0
+scipy>=0.7.0
+numdifftools

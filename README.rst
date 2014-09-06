@@ -18,3 +18,5 @@ This allows you to say:
 Once the system is installed, you can verify that it is working with: 
 
     bumps doc/examples/peaks/model.py --chisq
+
+Documentation is available at `readthedocs <http://bumps.readthedocs.org/en/latest>`_
