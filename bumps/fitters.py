@@ -1,7 +1,7 @@
 """
 Interfaces to various optimizers.
 """
-from __future__ import print_function
+from __future__ import print_function, division
 
 import sys
 import time
@@ -9,9 +9,11 @@ import time
 import numpy as np
 
 from . import monitor
-from .history import History
 from . import initpop
 from . import lsqerror
+
+from .history import History
+from .formatnum import format_uncertainty
 
 from .dream import MCMCModel
 
@@ -26,8 +28,9 @@ class ConsoleMonitor(monitor.TimedUpdate):
         self.problem = problem
 
     def show_progress(self, history):
-        print("step", history.step[0],
-              "cost", 2 * history.value[0] / self.problem.dof)
+        chisq = format_uncertainty(2*history.value[0]/self.problem.dof,
+                                   1./self.problem.dof)
+        print("step", history.step[0], "cost", chisq)
         sys.stdout.flush()
 
     def show_improvement(self, history):

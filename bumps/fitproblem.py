@@ -8,7 +8,8 @@ analysis.
 """
 from __future__ import division, with_statement
 
-__all__ = ['Fitness', 'FitProblem', 'load_problem']
+__all__ = ['Fitness', 'FitProblem', 'load_problem',
+           'BaseFitProblem', 'MultiFitProblem']
 
 import sys
 
@@ -16,6 +17,7 @@ import numpy as np
 from numpy import inf, isnan
 
 from . import parameter, bounds as mbounds
+from .formatnum import format_uncertainty
 
 
 # Abstract base class
@@ -392,7 +394,7 @@ class BaseFitProblem(object):
 
     def show(self):
         print(parameter.format(self.model_parameters()))
-        print("[chisq=%g, nllf=%g]" % (self.chisq(), self.nllf()))
+        print("[chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
         print(self.summarize())
 
     def summarize(self):
@@ -415,7 +417,7 @@ class BaseFitProblem(object):
         if p is not None:
             self.setp(p)
         self.fitness.plot()
-        pylab.text(0, 0, 'chisq=%g' % self.chisq(),
+        pylab.text(0, 0, 'chisq=%s' % self.chisq_str(),
                    transform=pylab.gca().transAxes)
         if figfile is not None:
             pylab.savefig(figfile + "-model.png", format='png')
@@ -433,6 +435,9 @@ class BaseFitProblem(object):
         self.fitness, self.partial, self.name, self.penalty_nllf, \
             self.soft_limit, self.constraints = state
         self.model_reset()
+
+    def chisq_str(self):
+        return format_uncertainty(self.chisq(), 1./self.dof)
 
 
 class MultiFitProblem(BaseFitProblem):
@@ -536,7 +541,7 @@ class MultiFitProblem(BaseFitProblem):
         for i, f in enumerate(self.models):
             print("-- Model %d %s" % (i, f.name))
             f.show()
-        print("[overall chisq=%g, nllf=%g]" % (self.chisq(), self.nllf()))
+        print("[overall chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
 
     def plot(self, p=None, fignum=1, figfile=None):
         import pylab
