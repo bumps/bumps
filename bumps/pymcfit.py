@@ -1,21 +1,27 @@
+r"""
+Bumps wrapper for PyMC models.
+"""
 from __future__ import print_function
 
-from numpy import inf, array, asarray
-import pymc.distributions
+__all__ = ["PyMCProblem"]
 
-UNBOUNDED = lambda p: (-inf, inf)
-PYMC_BOUNDS = {
-    pymc.distributions.DiscreteUniform: lambda p: (p['lower'],p['upper']),
-    pymc.distributions.Uniform: lambda p: (p['lower'],p['upper']),
-    pymc.distributions.Exponential: lambda p: (0,inf),
-}
+from numpy import inf, array, asarray
 
 def guess_bounds(p):
+    # Delay referencing
+    import pymc.distributions
+
+    UNBOUNDED = lambda p: (-inf, inf)
+    PYMC_BOUNDS = {
+        pymc.distributions.DiscreteUniform: lambda p: (p['lower'],p['upper']),
+        pymc.distributions.Uniform: lambda p: (p['lower'],p['upper']),
+        pymc.distributions.Exponential: lambda p: (0,inf),
+    }
     # pyMC doesn't provide info about bounds on the distributions
     # so we need a big table.
     return PYMC_BOUNDS.get(p.__class__, UNBOUNDED)(p.parents)
 
-class PymcProblem(object):
+class PyMCProblem(object):
     def __init__(self, pars, conds):
         self.pars = pars
         self.conds = conds

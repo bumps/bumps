@@ -78,7 +78,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'Bumps'
-copyright = '2006-2011, University of Maryland'
+copyright = '2006-2014, Public domain'
+#copyright = '2006-2011, University of Maryland'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

@@ -690,7 +690,7 @@ class SoftBounded(Bounds):
     constraints, and this acts just like the rectangular distribution.
     """
 
-    def __init__(self, lo, hi, std=1):
+    def __init__(self, lo, hi, std=None):
         self._lo, self._hi, self._std = lo, hi, std
         self._nllf_scale = log(hi - lo + sqrt(2 * pi * std))
 

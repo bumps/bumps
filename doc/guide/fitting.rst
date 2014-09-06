@@ -1,8 +1,8 @@
 .. _fitting-guide:
 
-*******************
+*******
 Fitting
-*******************
+*******
 
 .. contents:: :local:
 
@@ -16,7 +16,7 @@ the spline order required to model it will require many more parameters
 than the corresponding exponential.
 
 Even with the correct model, there are systematic errors to address
-(see `_data_guide`).  A distorted sample can lead to broader resolution than
+(see :ref:`data-guide`).  A distorted sample can lead to broader resolution than
 expected for the measurement technique, and you will need to adjust your
 resolution function.  Imprecise instrument control will lead to uncertainty
 in the position of the sample, and corresponding changes to the measured
@@ -269,7 +269,8 @@ need for a one-off plot, the replot the graph::
 
 Be sure to restore the original versions when you are done.  If the change
 is so good that everyone should use it, be sure to feed it back to the
-community via the bumps source control system at https://github.com/bumps.
+community via the bumps source control system at
+`github <https://github.com/bumps>`_.
 
 Publication Graphics
 ====================
@@ -277,7 +278,7 @@ Publication Graphics
 The matplotlib package is capable of producing publication quality
 graphics for your models and fit results, but it requires you to write
 scripts to get the control that you need.  These scripts can be run
-from the refl1d application by first loading the model and the fit
+from the Bumps application by first loading the model and the fit
 results then accessing their data directly to produce the plots that
 you need.
 
@@ -304,9 +305,9 @@ Now model.py is loaded and the best fit parameters are set.
 To produce plots, you will need access to the data and the theory.  This
 can be complex depending on how many models you are fitting and how many
 datasets there are per model.  For single experiment models defined
-by :class:`bumps.fitproblem.FitProblem`, your original experiment object 
-is referenced by *problem.fitness*.  For simultaneous refinement defined
-by :class:`bumps.fitproblem.MultiFitProblem`, you need to 
+by :func:`FitProblem <bumps.fitproblem.FitProblem>`, your original
+experiment object  is referenced by *problem.fitness*.  For simultaneous
+refinement defined by *FitProblem* with multiple *Fitness* objects,
 use *problem.models[k].fitness* to access the experiment for
 model *k*.  Your experiment object should provide methods for retrieving
 the data and plotting data vs. theory.
@@ -408,7 +409,7 @@ future versions should adapt the temperature based on the fitting problem.
 Parallel tempering is run like dream, but with optional temperature
 controls::
 
-   refl1d --fit=dream --burn=1000 --steps=1000 --init=cov --parallel --pars=T1/model.par model.py --store=T2
+   bumps --fit=dream --burn=1000 --steps=1000 --init=cov --parallel --pars=T1/model.par model.py --store=T2
 
 Parallel tempering does not yet generate the uncertainty plots provided
 by DREAM.  The state is retained along the temperature for each point,

@@ -723,7 +723,7 @@ def main():
     elif opts.chisq:
         if opts.cov:
             print(problem.cov())
-        print("chisq", problem())
+        print("chisq", problem.chisq_str())
     elif opts.preview:
         if opts.cov:
             print(problem.cov())

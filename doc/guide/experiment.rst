@@ -1,8 +1,8 @@
 .. _experiment-guide:
 
-*******************
+**********
 Experiment
-*******************
+**********
 
 .. contents:: :local:
 
@@ -20,16 +20,17 @@ Fundamentally, the curve fitting problem can be expressed as:
 
 .. math::
 
-    P({\rm model}|{\rm data}) = \frac{P({\rm data}|{\rm model})P({\rm model})}{P({\rm data})}
+    P(\text{model}\ |\ \text{data}) =
+        {P(\text{data}\ |\ \text{model})P(\text{model}) \over P(\text{data})}
 
-That is, the probability of seeing a particular sample descrition given 
-the observed data depends on the probability of seeing the measured
-data given a proposed sample parameters scaled by the probability of 
-those sample parameters and the probability of that data being measured.  
+That is, the probability of seeing a particular set of model parameter values
+given the observed data depends on the probability of seeing the measured
+data given a proposed set of parameter values scaled by the probability of
+those parameter values and the probability of that data being measured.
 The experiment definition must return the negative log likelihood as
 computed using the expression on the right.  Bumps will explore the
-space of the sample and instrument parameters, returning the maximum
-likelihood and confidence intervals on the parameters.
+space of the sample and instrument parameters in the model, returning the
+maximum likelihood and confidence intervals on the parameters.
 
 There is a strong relationship between the usual $\chi^2$ optimization
 problem and the maximum likelihood problem. Given Gaussian uncertainty
@@ -39,15 +40,18 @@ when the instrument is at position $x_i$ with probability
 
 .. math::
 
-    P(y_i|f(x_i;p)) = \frac{1}{\sqrt{2\pi\sigma_i^2}} e ^ {-\frac{(y_i-f(x_i;p))^2}{2\sigma_i^2}}
+    P(y_i\ |\ f(x_i;p)) = \frac{1}{\sqrt{2\pi\sigma_i^2}}
+        \exp\left(-\frac{(y_i-f(x_i;p))^2}{2\sigma_i^2}\right)
 
-and the log likelihood of observing all points in the data set for
+and the negative log likelihood of observing all points in the data set for
 the given set of sample parameters is
 
 .. math::
 
-   -\log \prod_i{P(y_i|f(x_i;p))} = \frac{1}{2}\sum_i{\frac{(y_i-f(x_i;p))^2}{\sigma_i^2}} - \frac{1}{2}\sum_i{\log 2 \pi \sigma_i^2}
-                                = \frac{1}{2}\chi^2 + C
+   -\log \prod_i{P(y_i\ |\ f(x_i;p))} =
+       \tfrac12 \sum_i{\frac{(y_i-f(x_i;p))^2}{\sigma_i^2}}
+       - \tfrac12 \sum_i{\log 2 \pi \sigma_i^2}
+       = \tfrac12 \chi^2 + C
 
 Note that this is the unnormalized $\chi^2$, whose expected value is the 
 number of degrees of freedom in the model, not the reduced $\chi^2_R$ whose
@@ -76,11 +80,11 @@ set
 
 .. math::
 
-   -log P(model) = -\frac{1}{2} \frac{(\theta-3)^2}{0.2^2}
+   -\log P(\text{model}) = -\frac{1}{2} \frac{(\theta-3)^2}{0.2^2}
 
 ignoring the scaling constant as before, and add this to $\chi^2/2$
 to get log of the product of the uncertainties.  Similarly, if we
-know that our sample should have a thickness of 100\ |pm| 3.5\ |Ang| 
+know that our sample should have a thickness of 100 |pm| 3.5 |Ang|
 based on how we constructed the sample, we can incorporate this
 information into our model in the same way.
 
@@ -145,8 +149,8 @@ Complex models
 
 More sophisticated models, with routines for data handling and specialized
 plotting should define the :class:`Fitness <bumps.fitproblem.Fitness>`
-interface.  :ref:`peaks_example` sets up a problem for fitting multiple
-peaks plus a background against a 2-D data set.
+interface.  The :ref:`peaks-example` example sets up a problem for fitting
+multiple peaks plus a background against a 2-D data set.
 
 Models are parameterized using :class:`Parameter <bumps.parameter.Parameter>`
 objects, which identify the fitted parameters in the model, and the bounds over
@@ -171,7 +175,12 @@ parameter attribute should be created using
 :meth:`Parameter.default <bumps.parameter.Parameter.default>`.
 This method allows the user to set an initial parameter value when the
 model is defined, or set the value to be another parameter in the fitting
-problem, or to a parameter expression.
+problem, or to a parameter expression. The name given to the *default*
+method should include the name of the model.  That way when the same
+type of model is used for different data sets, the two sets of parameters
+can be distinguished.  Ideally the model name would be based on the
+data set name so that you can more easily figure out which parameter
+goes with which data.
 
 During an analysis, the optimizer will ask to evaluate a series of
 points in parameter space.  Once the parameters have been set, the
@@ -192,10 +201,10 @@ The :meth:`numpoints <bumps.fitproblem.Fitness.numpoints>` method is used
 to report fitting progress.  With Gaussian measurement uncertainty, the
 *nllf* return value is $\chi^2/2$, which has an expected value of
 the number of degrees of freedom in the fit.  Since this is an awkward
-number, the noramlized chi-square,
-$\chi^2_N = \chi^2/\text{DoF} = -2 ln (P)/(n-p)$, is shown
-instead, where $-ln P$ is the *nllf* value, $n$ is the of points $n$
-and $p$ is the number of fitted parameters.  $\chi^2_N$ has a value near $1$
+number, the normalized chi-square,
+$\chi^2_N = \chi^2/\text{DoF} = -2 \ln (P)/(n-p)$, is shown
+instead, where $-\ln P$ is the *nllf* value, $n$ is the of points
+and $p$ is the number of fitted parameters.  $\chi^2_N$ has a value near 1
 for a good fit.  The same calculation is used for non-gaussian
 distributions even though *nllf* is not returning sum squared residuals.
 
@@ -223,11 +232,11 @@ Foreign models
 ==============
 
 If your modeling environment already contains a sophisticated parameter
-handling system (e.g. sympy or pyMCMC) you may want to tie into the Bumps
+handling system (e.g. sympy or PyMC) you may want to tie into the Bumps
 system at a higher level.  In this case you will need to define a
 class which implements the :class:`FitProblem <bumps.fitproblem.FitProblem>`
 interface.  This has been done already for 
-:class:`PyMCMCProblem <bumps.pymcmc_model.PyMCMCProblem`
+:class:`PyMCProblem <bumps.pymcfit.PyMCProblem`
 and interested parties are directed therein for a working example.
 
 

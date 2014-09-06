@@ -118,4 +118,4 @@ modules=[
     ('wsolve','Weighted linear and polynomial solver with uncertainty'),
 ]
 package='bumps'
-genfiles(package, modules)
+genfiles(package, modules, absolute=False)

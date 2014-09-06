@@ -11,6 +11,7 @@ import os
 
 import numpy as np
 from numpy import ascontiguousarray as _dense
+from scipy.special import erf
 
 
 def parse_errfile(errfile):
@@ -53,7 +54,7 @@ def parse_errfile(errfile):
     return overall, chisq, pardict
 
 
-def erf(x):
+def _c_erf(x):
     """
     Error function calculator.
     """
