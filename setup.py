@@ -42,7 +42,7 @@ dist = setup(
         'License :: Public Domain',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
-        'Programming Language :: Python 3',
+        'Programming Language :: Python :: 3',
         'Topic :: Scientific/Engineering',
         'Topic :: Scientific/Engineering :: Chemistry',
         'Topic :: Scientific/Engineering :: Physics',
