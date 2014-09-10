@@ -2,9 +2,6 @@
    :Release: |version|
    :Date:    |today|
 
-   | Windows installer: :slink:`%(winexe)s`
-   | Apple installer: :slink:`%(macapp)s`
-
    :ref:`Index <genindex>` :ref:`Search <search>`
 
 Contents

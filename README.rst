@@ -1,3 +1,7 @@
+==============================================
+Bumps: data fitting and uncertainty estimation
+==============================================
+
 Bumps provides data fitting and Bayesian uncertainty modeling for inverse
 problems.  It has a variety of optimization algorithms available for locating
 the most like value for function parameters given data, and for exploring
@@ -20,3 +24,11 @@ Once the system is installed, you can verify that it is working with:
     bumps doc/examples/peaks/model.py --chisq
 
 Documentation is available at `readthedocs <http://bumps.readthedocs.org/en/latest>`_
+
+Relaase notes
+=============
+
+0.7.5 2014-09-10
+----------------
+
+* Pure python release

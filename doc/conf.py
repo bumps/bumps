@@ -34,10 +34,7 @@ sys.path.insert(0, os.path.abspath('.')) # for sitedoc
 # Add the build directory for the project; this does mean we need to build
 # before updating the documents each time, but this can be handled by the
 # makefile
-from distutils.util import get_platform
-platform = '.%s-%s'%(get_platform(),sys.version[:3])
-build_lib = os.path.abspath('../build/lib'+platform)
-sys.path.insert(0, build_lib)
+sys.path.insert(0, os.path.abspath('..'))
 print("== path ==")
 print("\n".join(sys.path))
 

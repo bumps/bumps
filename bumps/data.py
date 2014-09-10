@@ -3,93 +3,10 @@ Data handling utilities.
 """
 from __future__ import division
 
-__all__ = ["convolve", "convolve_sampled", "indfloat", "parse_file"]
+__all__ = ["indfloat", "parse_file"]
 
 import numpy as np
 from numpy import inf, nan
-
-
-def _dense(x):
-    return np.ascontiguousarray(x, 'd')
-
-
-def convolve(xi, yi, x, dx):
-    """
-    Apply x-dependent gaussian resolution to the theory.
-
-    Returns convolution y[k] of width dx[k] at points x[k].
-
-    The theory function is a piece-wise linear spline which does not need to
-    be uniformly sampled.  The theory calculation points *xi* should be dense
-    enough to capture the "wiggle" in the theory function, and should extend
-    beyond the ends of the data measurement points *x*. Convolution at the
-    tails is truncated and normalized to area of overlap between the resolution
-    function in case the theory does not extend far enough.
-    """
-    from . import _reduction
-    x = _dense(x)
-    y = np.empty_like(x)
-    _reduction.convolve(_dense(xi), _dense(yi), x, _dense(dx), y)
-    return y
-
-
-def convolve_sampled(xi, yi, xp, yp, x, dx):
-    """
-    Apply x-dependent arbitrary resolution function to the theory.
-
-    Returns convolution y[k] of width dx[k] at points x[k].
-
-    Like :func:`convolve`, the theory *(xi,yi)* is represented as a
-    piece-wise linear spline which should extend beyond the data
-    measurement points *x*.  Instead of a gaussian resolution function,
-    resolution *(xp,yp)* is also represented as a piece-wise linear
-    spline.
-    """
-    from . import _reduction
-    x = _dense(x)
-    y = np.empty_like(x)
-    _reduction.convolve_sampled(_dense(xi), _dense(yi), _dense(xp), _dense(yp),
-                                x, _dense(dx), y)
-    return y
-
-
-def test_convolve_sampled():
-    x = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-    y = [1, 3, 1, 2, 1, 3, 1, 2, 1, 3]
-    xp = [-1, 0, 1, 2, 3]
-    yp = [1, 4, 3, 2, 1]
-    _check_convolution("aligned", x, y, xp, yp, dx=1)
-    _check_convolution("unaligned", x, y, _dense(xp) - 0.2000003, yp, dx=1)
-    _check_convolution("wide", x, y, xp, yp, dx=2)
-    _check_convolution("super wide", x, y, xp, yp, dx=10)
-
-
-def _check_convolution(name, x, y, xp, yp, dx):
-    ystar = convolve_sampled(x, y, xp, yp, x, dx=np.ones_like(x) * dx)
-
-    xp = np.array(xp) * dx
-    step = 0.0001
-    xpfine = np.arange(xp[0], xp[-1] + step / 10, step)
-    ypfine = np.interp(xpfine, xp, yp)
-    # make sure xfine is wide enough by adding a couple of extra steps
-    # at the end
-    xfine = np.arange(x[0] + xpfine[0], x[-1] + xpfine[-1] + 2 * step, step)
-    yfine = np.interp(xfine, x, y, left=0, right=0)
-    pidx = np.searchsorted(xfine, np.array(x) + xp[0])
-    left, right = np.searchsorted(xfine, [x[0], x[-1]])
-
-    conv = []
-    for pi in pidx:
-        norm_start = max(0, left - pi)
-        norm_end = min(len(xpfine), right - pi)
-        norm = step * np.sum(ypfine[norm_start:norm_end])
-        conv.append(
-            step * np.sum(ypfine * yfine[pi:pi + len(xpfine)]) / norm)
-
-    #print("checking convolution %s"%(name,))
-    #print(" ".join("%7.4f"%yi for yi in ystar))
-    #print(" ".join("%7.4f"%yi for yi in conv))
-    assert all(abs(yi - fi) < 0.0005 for (yi, fi) in zip(ystar, conv))
 
 
 def parse_file(file):
@@ -212,6 +129,3 @@ def indfloat(s):
             return nan
         raise
 
-
-if __name__ == "__main__":
-    test_convolve_sampled()
