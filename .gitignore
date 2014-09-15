@@ -19,7 +19,7 @@ bumps.iss-include
 # doc targets
 /doc/_build/
 /doc/api/
-/doc/tutorial/*/
+/doc/tutorial/
 
 # python droppings from running in place
 __pycache__/
