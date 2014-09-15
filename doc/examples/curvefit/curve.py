@@ -72,7 +72,7 @@ problem = FitProblem(M)
 # directory T1.
 #
 # As the fit progresses, we are shown an iteration number and a cost
-# value.  The cost value is approximately the normalized $\chis^2_N$.
+# value.  The cost value is approximately the normalized $\chi^2_N$.
 # The value in parentheses is like the uncertainty in $\chi^2_N$, in
 # that a 1-\ $\sigma$ change in parameter values should increase
 # $\chi^2_N$ by that amount.
