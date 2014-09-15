@@ -3,19 +3,21 @@
 """
 Format values and uncertainties nicely for printing.
 
-:func:`format_value` produces the value format v with no uncertainty.
+The formatted value uses only the number of digits warranted by
+the uncertainty in the measurement.
 
-:func:`format_uncertainty_pm` produces the expanded format v +/- err.
+:func:`format_value` shows the value without the uncertainty.
 
-:func:`format_uncertainty_compact` produces the compact format v(##),
+:func:`format_uncertainty_pm` shows the expanded format v +/- err.
+
+:func:`format_uncertainty_compact` shows the compact format v(##),
 where the number in parenthesis is the uncertainty in the last two digits of v.
 
 :func:`format_uncertainty` uses the compact format by default, but this
 can be changed to use the expanded +/- format by setting
-format_uncertainty.compact to False.
-
-The formatted string uses only the number of digits warranted by
-the uncertainty in the measurement.
+format_uncertainty.compact to False.  This is a global setting which should
+be considered a user preference.  Any library code that depends on a specific
+format style should use the corresponding formatting function.
 
 If the uncertainty is 0 or not otherwise provided, the simple
 %g floating point format option is used.
@@ -34,17 +36,15 @@ Example::
     >>> format_uncertainty.compact = False
     >>> print(format_uncertainty(v,dv))
     757.236 +/- 0.010
-
-UncertaintyFormatter() returns a private formatter with its own
-formatter.compact flag.
 """
 from __future__ import division
 import math
 
 from numpy import isinf, isnan, inf, NaN
 
-__all__ = ['format_uncertainty', 'format_uncertainty_pm',
-           'format_uncertainty_compact']
+__all__ = ['format_value', 'format_uncertainty',
+           'format_uncertainty_compact', 'format_uncertainty_pm',
+           ]
 
 
 # Coordinating scales across a set of numbers is not supported.  For easy
@@ -90,24 +90,16 @@ def format_uncertainty_compact(value, uncertainty):
     return _format_uncertainty(value, uncertainty, compact=True)
 
 
-class UncertaintyFormatter:
-
+def format_uncertainty(value, uncertainty):
     """
     Value and uncertainty formatter.
 
-    The *formatter* instance will use either the expanded v +/- dv form
-    or the compact v(##) form depending on whether *formatter.compact* is
-    True or False.  The default is True.
+    Either the expanded v +/- dv form or the compact v(##) form will be
+    used depending on whether *format_uncertainty.compact* is True or False.
+    The default is True.
     """
-    compact = True
-
-    def __call__(self, value, uncertainty):
-        """
-        Given *value* and *uncertainty*, return a string representation.
-        """
-        return _format_uncertainty(value, uncertainty, self.compact)
-format_uncertainty = UncertaintyFormatter()
-
+    return _format_uncertainty(value, uncertainty, format_uncertainty.compact)
+format_uncertainty.compact = True
 
 def _format_uncertainty(value, uncertainty, compact):
     """

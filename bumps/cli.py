@@ -1,8 +1,28 @@
 """
 Bumps command line interface.
+
+The functions in this module are used by the bumps command to implement
+the command line interface.  Bumps plugin models can use them to create
+stand alone applications with a similar interface.  For example, the
+Refl1D application uses the following::
+
+    from . import fitplugin
+    import bumps.cli
+    bumps.cli.set_mplconfig(appdatadir='Refl1D')
+    bumps.cli.install_plugin(fitplugin)
+    bumps.cli.main()
+
+After completing a set of fits on related systems, a post-analysis script
+can use :func:`load_model` to load the problem definition and
+:func:`load_best` to load the best value  found in the fit.  This can
+be used for example in experiment design, where you look at the expected
+parameter uncertainty when fitting simulated data from a range of experimental
+systems.
 """
 from __future__ import with_statement, print_function
-from six import StringIO
+
+__all__ = ["main", "install_plugin", "set_mplconfig", "config_matplotlib",
+           "load_model", "preview", "load_best", "save_best", "resynth"]
 
 import sys
 import os
@@ -13,7 +33,6 @@ try:
     import dill as pickle
 except:
     import pickle
-
 
 import numpy as np
 # np.seterr(all="raise")
@@ -31,30 +50,28 @@ from .util import pushdir
 
 
 def install_plugin(p):
+    """
+    Replace symbols in :mod:`bumps.plugin` with application specific
+    methods.
+    """
     for symbol in plugin.__all__:
         if hasattr(p, symbol):
             setattr(plugin, symbol, getattr(p, symbol))
 
 
-def mesh(problem, vars=None, n=40):
-    x, y = [np.linspace(low, high, n)
-            for low, high in problem.bounds().T]
-    p1, p2 = vars
-
-    def fn(xi, yi):
-        p1.value, p2.value = xi, yi
-        problem.model_update()
-        # print problem.summarize()
-        return problem.chisq()
-    z = [[fn(xi, yi) for xi in x] for yi in y]
-    return x, y, np.asarray(z)
-
-# ===== Model manipulation ====
-
-
 def load_model(args):
+    """
+    Load a model file.
+
+    *args* contains the command line arguments.  The first argument should
+    be the path to the model file.  The remaining arguments will be set
+    as the sys.args for the model.
+    """
     path, options = args[0], args[1:]
 
+    # Change to the target path before loading model so that data files
+    # can be given as relative paths in the model file.  This should also
+    # allow imports as expected from the model file.
     directory, filename = os.path.split(path)
     with pushdir(directory):
         # Try a specialized model loader
@@ -68,9 +85,8 @@ def load_model(args):
                 # Then see if it is a python model script
                 options = args[1:]
                 problem = load_problem(filename, options=options)
-                # Guard against the user changing parameters after defining
-                # the problem.
 
+    # Guard against the user changing parameters after defining the problem.
     problem.model_reset()
     problem.path = os.path.abspath(path)
     if not hasattr(problem, 'title'):
@@ -81,14 +97,27 @@ def load_model(args):
 
 
 def preview(problem):
+    """
+    Show the problem plots and parameters.
+    """
     import pylab
     problem.show()
     problem.plot()
     pylab.show()
 
 
-def remember_best(fitdriver, problem, best):
+def save_best(fitdriver, problem, best):
+    """
+    Save the fit data, including parameter values, uncertainties and plots.
+
+    *fitdriver* is the fitter that was used to drive the fit.
+
+    *problem* is a FitProblem instance.
+
+    *best* is the parameter set to save.
+    """
     # Make sure the problem contains the best value
+    # TODO: avoid recalculating if problem is already at best.
     problem.setp(best)
     # print "remembering best"
     pardata = "".join("%s %.15g\n" % (name, value)
@@ -104,9 +133,10 @@ def remember_best(fitdriver, problem, best):
 
 
 PARS_PATTERN = re.compile(r"^(?P<label>.*) (?P<value>[^ ]*)\n$")
-
-
-def recall_best(problem, path):
+def load_best(problem, path):
+    """
+    Load parameter values from a file.
+    """
     labels, values = [], []
     with open(path, 'rt') as fid:
         for line in fid:
@@ -115,9 +145,16 @@ def recall_best(problem, path):
             values.append(float(m.group('value')))
     assert labels == problem.labels()
     problem.setp(values)
+#CRUFT
+recall_best = load_best
 
 
 def store_overwrite_query_gui(path):
+    """
+    Ask if store path should be overwritten.
+
+    Use this in a call to :func:`make_store` from a graphical user interface.
+    """
     import wx
     msg_dlg = wx.MessageDialog(None, path + " already exists. Press 'yes' to overwrite, or 'No' to abort and restart with newpath", 'Overwrite Directory',
                                wx.YES_NO | wx.ICON_QUESTION)
@@ -128,6 +165,11 @@ def store_overwrite_query_gui(path):
 
 
 def store_overwrite_query(path):
+    """
+    Ask if store path should be overwritten.
+
+    Use this in a call to :func:`make_store` from a command line interface.
+    """
     print(path, "already exists.")
     print(
         "Press 'y' to overwrite, or 'n' to abort and restart with --store=newpath")
@@ -137,6 +179,9 @@ def store_overwrite_query(path):
 
 
 def make_store(problem, opts, exists_handler):
+    """
+    Create the store directory and populate it with the model definition file.
+    """
     # Determine if command line override
     if opts.store:
         problem.store = opts.store
@@ -168,17 +213,13 @@ def run_profiler(problem, steps):
 
     Run the program with "--profiler --steps=N" to generate a function
     profile chart breaking down the cost of evaluating N models.
-
-    Here is the findings from one profiling session::
-
-       23 ms total
-        6 ms rendering model
-        8 ms abeles
-        4 ms convolution
-        1 ms setting parameters and computing nllf
-
-    Using the GPU for abeles/convolution will only give us 2-3x speedup.
     """
+    # Here is the findings from one profiling session::
+    #   23 ms total
+    #    6 ms rendering model
+    #    8 ms abeles
+    #    4 ms convolution
+    #    1 ms setting parameters and computing nllf
     from .util import profile
     p = initpop.random_init(int(steps), None, problem)
     profile(map, problem.nllf, p)
@@ -223,6 +264,25 @@ def start_remote_fit(problem, options, queue, notify):
 # ==== option parser ====
 
 class ParseOpts:
+    """
+    Options parser.
+
+    Subclass should define *MINARGS*, *FLAGS*, *VALUES* and *USAGE*.
+
+    *MINARGS* is the minimum number of positional arguments.
+
+    *FLAGS* is a set of arguments that may be present or absent.
+
+    *VALUES* is a set of arguments that take values.  Value checking
+    can be done in the setter for each argument in the set.  Default
+    values should be set in the corresponding object attribute.
+
+    *USAGE* is the help string to display for option "help".
+
+    The constructor will invoke the command line parser, leaving the
+    values set by the command line as attribute values.   Flag options
+    will be True or False.
+    """
     MINARGS = 0
     FLAGS = set()
     VALUES = set()
@@ -263,6 +323,9 @@ class ParseOpts:
 
 
 class BumpsOpts(ParseOpts):
+    """
+    Option parser for bumps.
+    """
     MINARGS = 1
     FLAGS = set(("preview", "chisq", "profiler", "timer",
                  "simulate", "simrandom", "shake",
@@ -275,7 +338,6 @@ class BumpsOpts(ParseOpts):
     VALUES = set(("plot", "store", "resume", "fit", "noise", "seed", "pars",
                   "resynth", "transport", "notify", "queue",
                   "m", "c", "p",
-                  #"mesh","meshsteps",
                   ))
     # Add in parameters from the fitters
     VALUES |= set(fitters.FitOptions.FIELDS.keys())
@@ -397,18 +459,6 @@ Options:
 
 #    --transport=mp  {amqp|mp|mpi}
 #        use amqp/multiprocessing/mpi for parallel evaluation
-#    --mesh=var OR var+var
-#        plot chisq line or plane
-#    --meshsteps=n
-#        number of steps in the mesh
-# For mesh plots, var can be a fitting parameter with optional
-# range specifier, such as:
-#
-#   P[0].range(3,6)
-#
-# or the complete path to a model parameter:
-#
-#   M[0].sample[1].material.rho.pm(1)
 
     _plot = 'log'
 
@@ -442,6 +492,11 @@ Options:
 
 
 def getopts():
+    """
+    Process command line options.
+
+    Option values will be stored as attributes in the returned object.
+    """
     opts = BumpsOpts(sys.argv)
     opts.resynth = int(opts.resynth)
     opts.seed = int(opts.seed) if opts.seed != "" else None
@@ -453,13 +508,26 @@ def getopts():
 
 
 def initial_model(opts):
+    """
+    Load and initialize the model.
+
+    *opts* are the processed command line options.
+
+    If --pars is in opts, then load the parameters from a .par file.
+
+    If --simulate is in opts, then generate random data from the model.
+
+    If --simrandom is in opts, then generate random data from a random model.
+
+    If --shake is in opts, then use a random initial state for the fit.
+    """
     if opts.seed is not None:
         np.random.seed(opts.seed)
 
     if opts.args:
         problem = load_model(opts.args)
         if opts.pars is not None:
-            recall_best(problem, opts.pars)
+            load_best(problem, opts.pars)
         if opts.simrandom:
             problem.randomize()
         if opts.simulate or opts.simrandom:
@@ -476,6 +544,20 @@ def initial_model(opts):
 
 
 def resynth(fitdriver, problem, mapper, opts):
+    """
+    Generate maximum likelihood fits to resynthesized data sets.
+
+    *fitdriver* is a :class:`bumps.fitters.FitDriver` object with a fitter
+    already chosen.
+
+    *problem* is a :func:`bumps.fitproblem.FitProblem` object.  It should
+    be initialized with optimal values for the parameters.
+
+    *mapper* is one of the available :mod:`bumps.mapper` classes.
+
+    *opts* is a :class:`bumps.cli.BumpsOpts` object representing the command
+    line parameters.
+    """
     make_store(problem, opts, exists_handler=store_overwrite_query)
     fid = open(problem.output_path + ".rsy", 'at')
     fitdriver.mapper = mapper.start_mapper(problem, opts.args)
@@ -557,10 +639,18 @@ def beep():
 
 
 def run_command(c):
+    """
+    Run an arbitrary python command.
+    """
     exec(c, globals())
 
 
 def main():
+    """
+    Run the bumps program with the command line interface.
+
+    Input parameters are taken from sys.argv.
+    """
     if len(sys.argv) == 1:
         sys.argv.append("-?")
         print("\nNo modelfile parameter was specified.\n")
@@ -633,7 +723,7 @@ def main():
     elif opts.chisq:
         if opts.cov:
             print(problem.cov())
-        print("chisq", problem())
+        print("chisq", problem.chisq_str())
     elif opts.preview:
         if opts.cov:
             print(problem.cov())
@@ -670,7 +760,7 @@ def main():
         fitdriver.mapper = mapper.start_mapper(problem, opts.args)
         best, fbest = fitdriver.fit(resume=resume_path)
         # print("time=%g"%(time.clock()-t0),file=sys.__stdout__)
-        remember_best(fitdriver, problem, best)
+        save_best(fitdriver, problem, best)
         if opts.cov:
             print(problem.cov())
         mapper.stop_mapper(fitdriver.mapper)

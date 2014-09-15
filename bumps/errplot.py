@@ -1,18 +1,57 @@
 """
 Estimate model uncertainty from random sample.
-"""
-import os
-from .dream.state import load_state
-from . import plugin
-from .cli import load_problem, recall_best
 
+MCMC uncertainty analysis gives the uncertainty on the model parameters
+rather than the model itself.  For example, when fitting a line to a set
+of data, the uncertainty on the slope and the intercept does not directly
+give you the uncertainty in the expected value of *y* for a given value
+of *x*.
+
+The routines in bumps.errplot allow you to generate confidence intervals
+on  the model using a random sample of MCMC parameters.  After calculating
+the model *y* values for each sample, one can generate 68% and 95% contours
+for a set of sampling points *x*.  This can apply even to models which
+are not directly measured.  For example, in scattering inverse problems
+the scattered intensity is the value measured, but the fitting parameters
+describe the real space model that is being probed.  It is the uncertainty
+in the real space model that is of primary interest.
+
+Since bumps knows only the probability of seeing the measured value given
+the input parameters, it is up to the model itself to calculate and display
+the confidence intervals on the model and the expected values for the data
+points.  This is done using the :mod:`bumps.plugin` architecture, so
+application writers can provide the appropriate functions for their data
+types.  Eventually this capability will move to the model definition so
+that different types of models can be processed in the same fit.
+
+For a completed MCMC run, four steps are required:
+
+#. reload the fitting problem and the MCMC state
+#. select a set of sample points
+#. evaluate model confidence intervals from sample points
+#. show model confidence intervals
+
+:func:`reload_errors` performs steps 1, 2 and 3, returning *errs*.
+If the fitting problem and the MCMC state are already loaded, then use
+:func:`calc_errors_From_state` to perform steps 2 and 3, returning *errs*.
+If alternative sampling is desired, then use :func:`calc_errors` on a
+given set of points to perform step 3, returning *errs*.  Once *errs* has
+been calculated and returned by one of these methods, call
+:func:`show_errors` to perform step 4.
+"""
+__all__ = ["reload_errors", "calc_errors_from_state", "calc_errors",
+           "show_errors"]
+import os
 
 import numpy as np
 
+from .dream.state import load_state
+from . import plugin
+from .cli import load_problem, load_best
 
 def reload_errors(model, store, nshown=50, random=True):
     """
-    Reload the error information for a model.
+    Reload the MCMC state and compute the model confidence intervals.
 
     The loaded error data is a sample from the fit space according to the
     fit parameter uncertainty.  This is a subset of the samples returned
@@ -24,22 +63,19 @@ def reload_errors(model, store, nshown=50, random=True):
 
     *nshown* and *random* are as for :func:`calc_errors_from_state`.
 
-    See :func:`calc_errors` for details on the return values.
+    Returns *errs* for :func:`show_errors`.
     """
     problem = load_problem([model])
-    recall_best(problem, os.path.join(store, model[:-3] + ".par"))
+    load_best(problem, os.path.join(store, model[:-3] + ".par"))
     state = load_state(os.path.join(store, model[:-3]))
     state.mark_outliers()
     return calc_errors_from_state(problem, state,
                                   nshown=nshown, random=random)
 
 
-def show_errors(*args, **kw):
-    return plugin.show_errors(*args, **kw)
-
-
 def calc_errors_from_state(problem, state, nshown=50, random=True):
     """
+    Compute confidence regions for a problem from the
     Align the sample profiles and compute the residual difference from 
     the measured data for a set of points returned from DREAM.
 
@@ -51,7 +87,7 @@ def calc_errors_from_state(problem, state, nshown=50, random=True):
     to generation), but not random if your burn-in was too short, and
     you want to select from the end.
 
-    See :func:`calc_errors` for details on the return values.
+    Returns *errs* for :func:`show_errors`.
     """
     points, _logp = state.sample()
     if points.shape[0] < nshown:
@@ -68,8 +104,9 @@ def calc_errors(problem, points):
     Align the sample profiles and compute the residual difference from the
     measured data for a set of points.
 
-    Return value is arbitrary.  It is passed through to show_errors() for
-    the application.
+    The return value is arbitrary.  It is passed to the :func:`show_errors`
+    plugin for the application.
+    Returns *errs* for :func:`show_errors`.
     """
     original = problem.getp()
     try:
@@ -82,3 +119,14 @@ def calc_errors(problem, points):
     finally:
         problem.setp(original)
     return ret
+
+
+def show_errors(errs):
+    """
+    Display the confidence regions returned by :func:`calc_errors`.
+
+    The content of *errs* depends on the active plugin.
+    """
+    return plugin.show_errors(errs)
+
+

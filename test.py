@@ -55,17 +55,7 @@ sys.stderr = sys.stdout  # Doctest doesn't see sys.stderr
 root = os.path.abspath(os.getcwd())
 assert os.path.exists(
     os.path.join(root, 'bumps', 'cli.py')), "Not in bumps root"
-
-# Force a rebuild
-print("-" * 70)
-print("Building bumps ...")
-print("-" * 70)
-subprocess.call((sys.executable, "setup.py", "build"), shell=False)
-print("-" * 70)
-
-# Add the build dir to the system path
-build_path = os.path.join('build', 'lib' + platform)
-addpath(build_path)
+addpath(root)
 
 # Set the nosetest args
 nose_args = ['-v', '--all-modules',
@@ -85,7 +75,7 @@ except ImportError:
 nose_args += sys.argv[1:]  # allow coverage arguments
 
 # Add targets
-nose_args += [build_path]
+nose_args += [os.path.join(root,'bumps')]
 nose_args += glob('doc/g*/*.rst')
 nose_args += glob('doc/_examples/*/*.rst')
 

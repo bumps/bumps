@@ -5,24 +5,22 @@
 # parameters was the main reason that bumps was created, so it
 # should be very easy to do.  Let's see if it is.
 #
-# As usual, let's import the standard names:
+# First let's import the standard names:
 
 from bumps.names import *
 
-# Let's start with some data.  Here we have some x values, which
-# is the independent variable, and some y values, which represent
-# the value measured for condition x.  In this case x is 1-D, but
-# it could be a sequence of tuples instead.  We also need the
-# uncertainty on each measurement if we want to get a meaningful
+# Next we need some data.  The x values represent the independent variable,
+# and the y values represent the value measured for condition x.  In this
+# case x is 1-D, but it could be a sequence of tuples instead.  We also
+# need the uncertainty on each measurement if we want to get a meaningful
 # uncertainty on the fitted parameters.
 
 x = [1,2,3,4,5,6]
 y = [2.1,4.0,6.3,8.03,9.6,11.9]
 dy = [0.05,0.05,0.2,0.05,0.2,0.2]
 
-# In this case we entered the data as a set of lists, but we could
-# just as easily have loaded it from a three-column file using
-# something like:
+# Instead of using lists we could have loaded the data from a
+# three-column text file using:
 #
 # .. parsed-literal::
 #
@@ -32,7 +30,7 @@ dy = [0.05,0.05,0.2,0.05,0.2,0.2]
 # The variations are endless --- cleaning the data so that it is
 # in a fit state to model is often the hardest part in the analysis.
 
-# Next We will define the function we want to fit.  The first argument
+# We now define the function we want to fit.  The first argument
 # to the function names the independent variable, and the remaining
 # arguments are the fittable parameters.  The parameter arguments can
 # use a bare name, or they can use name=value to indicate the default
@@ -44,10 +42,10 @@ def line(x, m, b=0):
 
 # We can build a curve fitting object from our function and our data.
 # This assumes that the measurement uncertainty is normally
-# distributed, with a $1-\sigma$ confidence interval *dy* for each point.
-# We can specify initial values for $m$ and $b$ when we define the
-# model. We are going to constraint the fit so $m \in [0,4]$
-# and $b \in [-5,5]$.
+# distributed, with a 1-\ $\sigma$ confidence interval *dy* for each point.
+# We specify initial values for $m$ and $b$ when we define the
+# model, and then constrain the fit to $m \in [0,4]$ # and $b \in [-5,5]$
+# with the parameter :meth:`range <bumps.parameter.Parameter.range>` method.
 
 M = Curve(line,x,y,dy,m=2,b=2)
 M.m.range(0,4)
@@ -72,6 +70,12 @@ problem = FitProblem(M)
 # not more than 100 steps.  The ``--store=T1`` option says to store the
 # initial model, the fit results and any monitoring information in the
 # directory T1.
+#
+# As the fit progresses, we are shown an iteration number and a cost
+# value.  The cost value is approximately the normalized $\chis^2_N$.
+# The value in parentheses is like the uncertainty in $\chi^2_N$, in
+# that a 1-\ $\sigma$ change in parameter values should increase
+# $\chi^2_N$ by that amount.
 #
 # Here is the resulting fit:
 #

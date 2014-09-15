@@ -44,7 +44,7 @@ When all the tests run, generate a patch and send it to pkienzle@nist.gov::
 Windows user can use `TortoiseGit <http://code.google.com/p/tortoisegit/>`_ 
 package which provides similar operations.
 
-Instead of sending patches, you can set up your own github account and create 
+Instead of sending patches, you can set up a github account and create
 your own bumps fork.  This allows you to develop code at your leisure with
 the safety of source control, and issue pull requests when your code is ready
 to merge with the main repository.

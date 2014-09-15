@@ -1,4 +1,4 @@
-"""
+r"""
 Least squares error analysis.
 
 Given a data set with gaussian uncertainty on the points, and a model which
@@ -6,13 +6,13 @@ is differentiable at the minimum, the parameter uncertainty can be estimated
 from the covariance matrix at the minimum.  The model and data are wrapped in
 a problem object, which must define the following methods:
 
-    ============== =================================================
-    getp()         get the current value of the model
-    setp(p)        set a new value in the model
-    nllf(p)        negative log likelihood function
-    residuals(p)   residuals around its current value
-    bounds()       get the bounds on the parameter p     [optional]
-    ============== =================================================
+    ============ ============================================
+    getp()       get the current value of the model
+    setp(p)      set a new value in the model
+    nllf(p)      negative log likelihood function
+    residuals(p) residuals around its current value
+    bounds()     get the bounds on the parameter p [optional]
+    ============ ============================================
 
 :func:`jacobian` computes the Jacobian matrix $J$ using numerical
 differentiation on residuals. Derivatives are computed using the center
@@ -26,17 +26,17 @@ two evaluations for each (i,j) combination.
 
 :func:`cov` takes the Jacobian and computes the covariance matrix $C$.
 
+:func:`corr` uses the off-diagonal elements of $C$ to compute correlation
+coefficients $R^2_{ij}$ between the parameters.
+
 :func:`stderr` computes the uncertain $\sigma_i$ from covariance matrix $C$,
 assuming that the $C_\text{diag}$ contains $\sigma_i^2$, which should be
 the case for functions which are approximately linear near the minimum.
 
-:func:`corr` uses the off-diagonal elements of $C$ to compute correlation
-coefficients $R^2_{ij}$ between the parameters.
-
 :func:`max_correlation` takes $R^2$ and returns the maximum correlation.
 
 The user should be shown the uncertainty $\sigma_i$ for each parameter,
-and if there are strong parameter correlations (e.g., $R^2_\text{max} > 0.2$,
+and if there are strong parameter correlations (e.g., $R^2_\text{max} > 0.2$),
 the correlation matrix as well.
 
 The bounds method for the problem is optional, and is used only to determine

@@ -7,12 +7,12 @@ This package provides tools for modeling parametric systems in a Bayesian
 context, with routines for finding the maximum likelihood and the
 posterior probability density function.
 
-A graphical interface allows direct manipulation of the model paramaters.
+A graphical interface allows direct manipulation of the model parameters.
 
 See http://www.reflectometry.org/danse/reflectometry for online manuals.
 """
 
-__version__ = "0.7.4"
+__version__ = "0.7.5"
 
 
 def data_files():

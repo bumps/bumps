@@ -1,11 +1,14 @@
 """
 Compile openmp extensions with distutils.
 
-:func:`openmp_build_ext` returns a replacement *build_ext* command that adds
-command line parameters to the C compiler for your system.
+:func:`openmp_ext` returns a replacement *build_ext* command that adds
+OpenMP command line parameters to the C compiler for your system.  Use
+this is setup.py for any modules that need to be compiled for OpenMP.
 """
 import sys
 from distutils.command.build_ext import build_ext
+
+__all__ = ['openmp_ext']
 
 
 def openmp_ext(default=True):

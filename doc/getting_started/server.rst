@@ -4,6 +4,11 @@
 Server installation
 *******************
 
+.. warning::
+
+    The remote fitting feature is not actively maintained and will likely
+    not work.
+
 .. contents:: :local:
 
 Bumps jobs can be submitted to a remote batch queue for processing.  This

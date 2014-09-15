@@ -130,6 +130,9 @@ def simplex(f, x0=None, bounds=None, radius=0.05,
             where k is the current iteration, n is the maximum
             iteration, xk is the simplex and fxk is the value of
             the simplex vertices.  xk[0],fxk[0] is the current best.
+        abort_test : callable
+            Called after each iteration, as callback(), to see if
+            an external process has requested stop.
 
     *Notes*
 

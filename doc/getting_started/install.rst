@@ -8,9 +8,9 @@ Installing the application
 
 Bumps |version| is provided as a Windows installer or as source:
 
-	- Windows installer: :slink:`%(winexe)s`
-	- Apple installer: :slink:`%(macapp)s`
-	- Source: :slink:`%(srczip)s`
+    - Windows installer: :slink:`%(winexe)s`
+    - Apple installer: :slink:`%(macapp)s`
+    - Source: :slink:`%(srczip)s`
 
 Th Windows installer walks through the steps of setting the program up
 to run on your machine and provides the sample data to be used in the
@@ -23,31 +23,29 @@ Building from source
 Building the application from source requires some preparation.
 
 First you will need to set up your python environment.  We depend on
-numerous external packages.  The versions listed below are a snapshot
+many external packages.  The versions listed below are a snapshot
 of a configuration that we are using.  The program may work with older
 versions of the package, and we will try to keep it compatible with
 the latest versions.
 
 Our base scientific python environment contains:
 
-	- Python 2.7 (not 3.x)
-	- Matplotlib 1.0.0
-	- Numpy 1.3.0
-	- Scipy 0.7.0
-	- WxPython 2.8.10.1
-	- distribute 0.6.28
-	- gcc 3.4.4
+    - python 2.7 (also tested on 3.3)
+    - matplotlib 1.3.1
+    - numpy 1.8.1
+    - scipy 0.14.0
+    - wxPython 2.9.5.0
+    - setuptools 1.4
 
-To run tests you will need:
+To run tests we use:
 
-	- Nose 0.11
+    - nose 1.3.0
 
-To build the HTML documentation you will need:
+To build the HTML documentation we use:
 
-	- Sphinx 1.0.4
-	- DocUtils 0.5
-	- Pyments 1.0
-	- Jinja2 2.5.2
+    - sphinx 1.2
+    - docutils 0.11
+    - jinja2 2.7.1
 
 The PDF documentation requires a working LaTeX installation.
 
@@ -94,6 +92,11 @@ To run the program use::
 
     python "C:\Python26\Scripts\bumps" -h
 
+We have also built working versions using
+`WinPython <http://winpython.sourceforge.net/>`_,
+`Anaconda <https://store.continuum.io/cshop/anaconda/>`_ and
+from individually distributed python packages.
+
 Linux
 -----
 
@@ -103,7 +106,7 @@ will need to refer to your distribution documentation for details.
 On Ubuntu you can use apt-get to install matplotlib, numpy, scipy, wx,
 nose and sphinx.
 
-From a terminal, change to the directory containing the source and type::
+From a terminal, change to the directory containing the bumps source and type::
 
     python setup.py install
     python test.py
@@ -126,9 +129,10 @@ of the required packages, but other distributions should work as well.
 You will need to install XCode from the app store, and set the preferences
 to install the command line tools so that a C compiler is available (look
 in the Downloads tab of the preferences window).  If any of your models
-require fortran, you can download gfortran from r.research.att.com/tools
-(scroll down to the  Apple Xcode gcc-42 add-ons). This sets up the basic
-development environment.
+require fortran, you can download
+`gfortran binaries <http://r.research.att.com/tools/>`_ from
+r.research.att.com/tools (scroll down to the  Apple Xcode gcc-42 add-ons).
+This sets up the basic development environment.
 
 wxPython
 ~~~~~~~~
@@ -138,7 +142,7 @@ The wxPython package is missing from Anaconda, so we built our own
 
     conda install wx-2.9.5.0-py27_0.tar.bz2
 
-We built the  wx package from the development release (2.9.5.0) at
+We built the wx package from the development release (2.9.5.0) at
 `<http://wxpython.org/download.php>`_ using the following commands::
 
 
@@ -188,7 +192,6 @@ The resulting package can be installed into an environment using::
 bumps
 ~~~~~
 
-
 From a terminal, change to the directory containing the source and type::
 
     conda create -n bumps numpy scipy matplotlib nose sphinx
@@ -227,11 +230,12 @@ You can then build the documentation as follows::
 
     (cd doc && make clean html pdf)
 
-Windows users please note that this only works under cygwin/msys for now 
-since we are using *make*.  There is a skeleton *make.bat* in the directory
-that will work using *cmd* but it doesn't yet build PDF files.
+Windows users please note that this only works with a unix-like environment
+such as *gitbash*, *msys* or *cygwin*.  There is a skeleton *make.bat* in
+the directory that will work using the *cmd* console, but it doesn't yet
+build PDF files.
 
-You can see the result by pointing your browser to::
+You can see the result of the doc build by pointing your browser to::
 
     bumps/doc/_build/html/index.html
     bumps/doc/_build/latex/Bumps.pdf
@@ -246,16 +250,17 @@ In addition to macros for units, we also define cdot, angstrom and degrees
 unicode characters here.  The corresponding latex symbols are defined in
 doc/sphinx/conf.py.
 
-There is a bug in sphinx versions (1.0.7 as of this writing) in which
+There is a bug in older sphinx versions (1.0.7 as of this writing) in which
 latex tables cannot be created.  You can fix this by changing::
 
-	self.body.append(self.table.colspec)
+    self.body.append(self.table.colspec)
 
 to::
 
     self.body.append(self.table.colspec.lower())
 
-in site-packages/sphinx/writers/latex.py.
+in site-packages/sphinx/writers/latex.py.  This may have been fixed in
+newer versions.
 
 Windows Installer
 =================
@@ -278,8 +283,8 @@ all required packages.
 
 To build the Windows installer, you will need two more downloads:
 
-	- Visual C++ 2008 Redistributable Package (x86) 11/29/2007
-	- `Inno Setup <http://www.jrsoftware.org/isdl.php>`_ 5.3.10 QuickStart Pack
+    - Visual C++ 2008 Redistributable Package (x86) 11/29/2007
+    - `Inno Setup <http://www.jrsoftware.org/isdl.php>`_ 5.3.10 QuickStart Pack
 
 The C++ redistributable package is needed for programs compiled with the
 Microsoft Visual C++ compiler, including the standard build of the Python
@@ -299,7 +304,7 @@ With all the pieces in place, you can run through all steps of the
 build and install by changing to the top level python directory and
 typing::
 
-	python master_builder.py
+    python master_builder.py
 
 This creates the redistributable installer bumps-<version>-win32.exe for
 Windows one level up in the directory tree.  In addition, source archives

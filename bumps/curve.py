@@ -72,7 +72,7 @@ class Curve(object):
     given in the function.
     """
     def __init__(self, fn, x, y, dy=None, name="", plot=None, **fnkw):
-        self.x, self.y = x, np.asarray(y)
+        self.x, self.y = np.asarray(x), np.asarray(y)
         if dy is None:
             self.dy = 1
         else:

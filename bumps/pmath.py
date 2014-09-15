@@ -10,14 +10,55 @@ __all__ = [
     'sind', 'cosd', 'tand', 'asind', 'acosd', 'atand', 'atan2d',
     'sinh', 'cosh', 'tanh',
     'degrees', 'radians',
-    'sum', 'prod'
+    'sum', 'prod',
 ]
 
+def _cosd(v):
+    """Return the cosine of x (measured in in degrees)."""
+    return math.cos(math.radians(v))
+
+
+def _sind(v):
+    """Return the sine of x (measured in in degrees)."""
+    return math.sin(math.radians(v))
+
+
+def _tand(v):
+    """Return the tangent of x (measured in in degrees)."""
+    return math.tan(math.radians(v))
+
+
+def _acosd(v):
+    """Return the arc cosine (measured in in degrees) of x."""
+    return math.degrees(math.acos(v))
+
+
+def _asind(v):
+    """Return the arc sine (measured in in degrees) of x."""
+    return math.degrees(math.asin(v))
+
+
+def _atand(v):
+    """Return the arc tangent (measured in in degrees) of x."""
+    return math.degrees(math.atan(v))
+
+
+def _atan2d(dy, dx):
+    """Return the arc tangent (measured in in degrees) of y/x.
+    Unlike atan(y/x), the signs of both x and y are considered."""
+    return math.degrees(math.atan2(dy, dx))
+
+def _prod(s):
+    """Return the product of a sequence of numbers."""
+    return reduce(lambda x, y: x * y, s, 1)
 
 exp = function(math.exp)
 log = function(math.log)
 log10 = function(math.log10)
 sqrt = function(math.sqrt)
+
+degrees = function(math.degrees)
+radians = function(math.radians)
 
 sin = function(math.sin)
 cos = function(math.cos)
@@ -27,36 +68,6 @@ acos = function(math.acos)
 atan = function(math.atan)
 atan2 = function(math.atan2)
 
-degrees = function(math.degrees)
-radians = function(math.radians)
-
-
-def _cosd(v):
-    return math.cos(math.radians(v))
-
-
-def _sind(v):
-    return math.sin(math.radians(v))
-
-
-def _tand(v):
-    return math.tan(math.radians(v))
-
-
-def _acosd(v):
-    return math.degrees(math.acos(v))
-
-
-def _asind(v):
-    return math.degrees(math.asin(v))
-
-
-def _atand(v):
-    return math.degrees(math.atan(v))
-
-
-def _atan2d(dy, dx):
-    return math.degrees(math.atan2(dy, dx))
 sind = function(_sind)
 cosd = function(_cosd)
 tand = function(_tand)
@@ -69,9 +80,6 @@ sinh = function(math.sinh)
 cosh = function(math.cosh)
 tanh = function(math.tanh)
 
-
-def _prod(s):
-    return reduce(lambda x, y: x * y, s, 1)
 sum = function(builtins.sum)
 prod = function(_prod)
 

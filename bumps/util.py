@@ -3,14 +3,15 @@ Miscellaneous utility functions.
 """
 from __future__ import division
 
-__all__ = ["erf", "profile", "kbhit",
-           "redirect_console", "pushdir", "push_seed"]
+__all__ = ["erf", "kbhit", "profile",
+           "pushdir", "push_seed", "redirect_console"]
 
 import sys
 import os
 
 import numpy as np
 from numpy import ascontiguousarray as _dense
+from scipy.special import erf
 
 
 def parse_errfile(errfile):
@@ -53,7 +54,7 @@ def parse_errfile(errfile):
     return overall, chisq, pardict
 
 
-def erf(x):
+def _c_erf(x):
     """
     Error function calculator.
     """

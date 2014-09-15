@@ -2,20 +2,20 @@
 """
 Progress monitors.
 
-Process monitors accept a history object each cycle and
-perform some sort of work on it.
+Process monitors accept a :class:`bumps.history.History` object each cycle
+and perform some sort of work.
 """
 from __future__ import print_function
+
+__all__ = ['Monitor', 'Logger', 'TimedUpdate']
 
 from numpy import inf
 
 
 class Monitor(object):
-
     """
-    Generic monitor.
+    Base class for monitors.
     """
-
     def config_history(self, history):
         """
         Indicate which fields are needed by the monitor and for what duration.
@@ -42,29 +42,24 @@ def _getfield(history, field):
 
 
 class Logger(Monitor):
-
     """
     Keeps a record of all values for the desired fields.
 
-    Parameters::
+    *fields* is a list of history fields to store.
 
-        *fields*  ([strings] = [])
-            The field names to use from the history.
-        *table* (Table = None)
-            An object with a store method that takes a series of key-value
-            pairs, indexed by step=integer.
+    *table* is an object with a *store(field=value,...)* method, which gets
+    the current value of each field every time the history is updated.
 
-    Call logger.config_history(history) before starting so that the correct
-    fields are stored.
+    Call :meth:`config_history` with the :class:`bumps.history.History`
+    object before starting so that the correct fields are stored.
     """
-
     def __init__(self, fields=(), table=None):
         self.fields = fields
         self.table = table
 
     def config_history(self, history):
         """
-        Make sure history records the each logged field.
+        Make sure history records each logged field.
         """
         kwargs = dict((key, 1) for key in self.fields)
         history.requires(**kwargs)
@@ -74,11 +69,29 @@ class Logger(Monitor):
         Record the next piece of history.
         """
         record = dict((f, _getfield(history, f)) for f in self.fields)
-        self.table.store(step=history.step, **record)
+        self.table.store(**record)
 
 
 class TimedUpdate(Monitor):
+    """
+    Indicate progress every n seconds.
 
+    The process should provide time, value, point, and step to the
+    history update. Call :meth:`config_history` with the
+    :class:`bumps.history.History` object before starting so that
+    these fields are stored.
+
+    *progress* is the number of seconds to go before showing progress, such
+    as time or step number.
+
+    *improvement* is the number of seconds to go before showing
+    improvements to value.
+
+    By default, the updater only prints step number and improved value.
+    Subclass TimedUpdate with replaced :meth:`show_progress` and
+    :meth:`show_improvement` to trigger GUI updates or show parameter
+    values.
+    """
     def __init__(self, progress=60, improvement=5):
         self.progress_delta = progress
         self.improvement_delta = improvement

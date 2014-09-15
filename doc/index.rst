@@ -2,10 +2,6 @@
    :Release: |version|
    :Date:    |today|
 
-   Printable manual: `Bumps.pdf <Bumps.pdf>`_
-   Windows installer: :slink:`%(winexe)s`
-   Apple installer: :slink:`%(macapp)s`
-
    :ref:`Index <genindex>` :ref:`Search <search>`
 
 Contents
@@ -13,6 +9,7 @@ Contents
 
 .. toctree::
    :maxdepth: 2
+   :includehidden:
 
    getting_started/index.rst
    tutorial.rst

@@ -46,7 +46,6 @@ Reference
    :hidden:
 
    %(rsts)s
-**Modules defined within Bumps**
 
 .. currentmodule:: %(package)s
 
@@ -87,18 +86,19 @@ modules=[
     #('__init__', 'Top level namespace'),
     ('bounds', 'Parameter constraints'),
     ('bspline', 'B-Spline interpolation library'),
-    ('_reduction','Low level calculations'),
+    #('_reduction','Low level calculations'),
     ('cheby', 'Freeform - Chebyshev'),
     ('cli', 'Command line interface'),
-    ('curve', 'Model y=f(x) against data'),
+    ('curve', 'Model a fit function'),
     ('data', 'Data handling utilities'),
     ('errplot','Plot sample profile uncertainty'),
     ('fitproblem', 'Interface between models and fitters'),
     ('fitservice', 'Remote job plugin for fit jobs'),
     ('fitters', 'Wrappers for various optimization algorithms'),
     ('formatnum', 'Format numbers and uncertainties'),
-    ('initpop', 'Population initialization strategies'),
     ('history', 'Optimizer evaluation trace'),
+    ('initpop', 'Population initialization strategies'),
+    ('lsqerror', 'Least squares eorror analysis'),
     ('mapper', 'Parallel processing implementations'),
     ('monitor', 'Monitor fit progress'),
     ('mono', 'Freeform - Monotonic Spline'),
@@ -109,7 +109,7 @@ modules=[
     ('plotutil', 'Plotting utilities'),
     ('plugin', 'Domain branding'),
     ('pmath', 'Parametric versions of standard functions'),
-    ('pytwalk', 'MCMC error analysis using T-Walk steps'),
+    #('pytwalk', 'MCMC error analysis using T-Walk steps'),
     ('quasinewton', 'BFGS quasi-newton optimizer'),
     ('random_lines', 'Random lines and particle swarm optimizers'),
     ('rebin','1D and 2D rebinning'),
@@ -118,4 +118,4 @@ modules=[
     ('wsolve','Weighted linear and polynomial solver with uncertainty'),
 ]
 package='bumps'
-genfiles(package, modules)
+genfiles(package, modules, absolute=False)

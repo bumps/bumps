@@ -1,7 +1,7 @@
 """
 Interfaces to various optimizers.
 """
-from __future__ import print_function
+from __future__ import print_function, division
 
 import sys
 import time
@@ -9,27 +9,28 @@ import time
 import numpy as np
 
 from . import monitor
-from .history import History
 from . import initpop
 from . import lsqerror
+
+from .history import History
+from .formatnum import format_uncertainty
 
 from .dream import MCMCModel
 
 
 class ConsoleMonitor(monitor.TimedUpdate):
-
     """
     Display fit progress on the console
     """
-
     def __init__(self, problem, progress=1, improvement=30):
         monitor.TimedUpdate.__init__(self, progress=progress,
                                      improvement=improvement)
         self.problem = problem
 
     def show_progress(self, history):
-        print("step", history.step[0],
-              "cost", 2 * history.value[0] / self.problem.dof)
+        chisq = format_uncertainty(2*history.value[0]/self.problem.dof,
+                                   1./self.problem.dof)
+        print("step", history.step[0], "cost", chisq)
         sys.stdout.flush()
 
     def show_improvement(self, history):
@@ -44,7 +45,6 @@ class ConsoleMonitor(monitor.TimedUpdate):
 
 
 class StepMonitor(monitor.Monitor):
-
     """
     Collect information at every step of the fit and save it to a file.
 
@@ -78,11 +78,9 @@ class StepMonitor(monitor.Monitor):
 
 
 class MonitorRunner(object):
-
     """
     Adaptor which allows solvers to accept progress monitors.
     """
-
     def __init__(self, monitors, problem):
         if monitors is None:
             monitors = [ConsoleMonitor(problem)]
@@ -104,7 +102,6 @@ class MonitorRunner(object):
 
 
 class FitBase(object):
-
     """
     FitBase defines the interface from bumps models to the various fitting
     engines available within bumps.
@@ -136,13 +133,14 @@ class FitBase(object):
 
     The *load*/*save* methods load and save the fitter state in a given
     directory with a specific base file name.  The fitter can choose a file
-    extension, with care to be sure that it doesn't overwrite standard
-    extensions such as .mon for the fit monitor.
+    extension to add to the base name.  Some care is needed to be sure that
+    the extension doesn't collide with other extensions such as .mon for
+    the fit monitor.
 
     The *plot* method shows any plots to help understand the performance of
     the fitter, such as a convergence plot showing the the range of values
     in the population over time, as well as plots of the parameter uncertainty
-    if available.
+    if available.  The plot should work within  is given a figure canvas to work with
 
     The *stderr*/*cov* methods should provide summary statistics for the
     parameter uncertainties.  Some fitters, such as MCMC, will compute these
@@ -151,7 +149,6 @@ class FitBase(object):
     provide these estimates, then they will be computed from numerical
     derivatives at the minimum in the FitDriver method.
     """
-
     def __init__(self, problem):
         """Fit the models and show the results"""
         self.problem = problem
@@ -161,6 +158,14 @@ class FitBase(object):
 
 
 class MultiStart(FitBase):
+    """
+    Multi-start monte carlo fitter.
+
+    This fitter wraps a local optimizer, restarting it a number of times
+    to give it a chance to find a different local minimum.  If the keep_best
+    option is True, then restart near the best fit, otherwise restart at
+    random.
+    """
     name = "Multistart Monte Carlo"
     settings = [('starts', 100)]
 
@@ -187,12 +192,15 @@ class MultiStart(FitBase):
                 self.problem.setp(x_best)
                 pop = initpop.eps_init(1, self.problem.getp(),
                                        self.problem.bounds(),
-                                       include_current=False, eps=1e-3)
+                                       use_point=False, eps=1e-3)
                 self.problem.setp(pop[0])
         return x_best, f_best
 
 
 class DEFit(FitBase):
+    """
+    Classic Storn and Price differential evolution optimizer.
+    """
     name = "Differential Evolution"
     settings = [('steps', 1000), ('pop', 10), ('CR', 0.9), ('F', 2.0),
                 ('xtol', 1e-6), ('ftol', 1e-8), ('stop', '')]
@@ -262,18 +270,29 @@ def _history_file(path):
 
 
 def load_history(path):
+    """
+    Load fitter details from a history file.
+    """
     import json
     with open(_history_file(path), "r") as fid:
         return json.load(fid)
 
 
 def save_history(path, state):
+    """
+    Save fitter details to a history file as JSON.
+
+    The content of the details are fitter specific.
+    """
     import json
     with open(_history_file(path), "w") as fid:
         json.dump(state, fid)
 
 
 class BFGSFit(FitBase):
+    """
+    BFGS quasi-newton optimizer.
+    """
     name = "Quasi-Newton BFGS"
     settings = [('steps', 3000), ('starts', 1)]
 
@@ -313,6 +332,9 @@ class BFGSFit(FitBase):
 
 
 class PSFit(FitBase):
+    """
+    Particle swarm optimizer.
+    """
     name = "Particle Swarm"
     settings = [('steps', 3000), ('pop', 1)]
 
@@ -331,9 +353,9 @@ class PSFit(FitBase):
                    x2=high,
                    f_opt=0,
                    monitor=self._monitor)
-        np = int(cfo['n'] * options['pop'])
+        npop = int(cfo['n'] * options['pop'])
 
-        result = particle_swarm(cfo, np, maxiter=options['steps'])
+        result = particle_swarm(cfo, npop, maxiter=options['steps'])
         satisfied_sc, n_feval, f_best, x_best = result
 
         return x_best, f_best
@@ -345,6 +367,9 @@ class PSFit(FitBase):
 
 
 class RLFit(FitBase):
+    """
+    Random lines optimizer.
+    """
     name = "Random Lines"
     settings = [('steps', 3000), ('starts', 20), ('pop', 0.5), ('CR', 0.9)]
 
@@ -363,9 +388,9 @@ class RLFit(FitBase):
                    x2=high,
                    f_opt=0,
                    monitor=self._monitor)
-        np = max(int(cfo['n'] * options['pop']), 3)
+        npop = max(int(cfo['n'] * options['pop']), 3)
 
-        result = random_lines(cfo, np, abort_test=abort_test,
+        result = random_lines(cfo, npop, abort_test=abort_test,
                               maxiter=options['steps'], CR=options['CR'])
         satisfied_sc, n_feval, f_best, x_best = result
 
@@ -379,6 +404,9 @@ class RLFit(FitBase):
 
 
 class PTFit(FitBase):
+    """
+    Parallel tempering optimizer.
+    """
     name = "Parallel Tempering"
     settings = [('steps', 1000), ('nT', 25), ('CR', 0.9),
                 ('burn', 4000), ('Tmin', 0.1), ('Tmax', 10)]
@@ -410,6 +438,9 @@ class PTFit(FitBase):
 
 
 class AmoebaFit(FitBase):
+    """
+    Nelder-Mead simplex optimizer.
+    """
     name = "Nelder-Mead Simplex"
     settings = [('steps', 1000), ('starts', 1), ('radius', 0.15),
                 ('xtol', 1e-6), ('ftol', 1e-8)]
@@ -443,6 +474,9 @@ class AmoebaFit(FitBase):
 
 
 class LevenbergMarquardtFit(FitBase):
+    """
+    Levenberg-Marquardt optimizer.
+    """
     name = "Levenberg-Marquardt"
     settings = [('steps', 1000), ('ftol', 1.5e-8), ('xtol', 1.5e-8)]
     # LM also has

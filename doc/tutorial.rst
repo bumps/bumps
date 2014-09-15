@@ -12,3 +12,4 @@ complex models with many constraints relatively easily.
    :maxdepth: 2
 
    examples/curvefit/curve.rst
+   examples/peaks/readme.rst

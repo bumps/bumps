@@ -12,7 +12,7 @@ parts of the model, or different models.
 """
 #__all__ = [ 'Parameter']
 from six.moves import reduce
-
+import warnings
 from copy import copy
 
 from numpy import inf, isinf, isfinite
@@ -34,7 +34,6 @@ from . import bounds as mbounds
 
 
 class BaseParameter(object):
-
     """
     Root of the parameter class, defining arithmetic on parameters
     """
@@ -55,10 +54,14 @@ class BaseParameter(object):
         """
         Allow the parameter to vary as value +/- percent.
 
-        pmp(percent) -> [value*(100 - percent)/100, value*(100 + percent)/100]
-        pmp(plus,minus) -> [value*(100 - minus)/100, value*(100 + plus)/100]
+        pmp(*percent*) -> [value*(1-percent/100), value*(1+percent/100)]
 
-        This uses nice numbers for the resulting range.
+        pmp(*plus*, *minus*) -> [value*(1+minus/100), value*(1+plus/100)]
+
+        In the *plus/minus* form, one of the numbers should be plus and the
+        other minus, but it doesn't matter which.
+
+        The resulting range is converted to "nice" numbers.
         """
         self.bounds = mbounds.Bounded(*mbounds.pmp(self.value, *args))
         return self
@@ -67,37 +70,48 @@ class BaseParameter(object):
         """
         Allow the parameter to vary as value +/- delta.
 
-        pm(delta) -> [value-delta, value+delta]
-        pm(plus,minus) -> [value-minus, value+plus]
+        pm(*delta*) -> [value-delta, value+delta]
 
-        This uses nice numbers for the resulting range.
+        pm(*plus*, *minus*) -> [value+minus, value+plus]
+
+        In the *plus/minus* form, one of the numbers should be plus and the
+        other minus, but it doesn't matter which.
+
+        The resulting range is converted to "nice" numbers.
         """
         self.bounds = mbounds.Bounded(*mbounds.pm(self.value, *args))
         return self
 
-    def dev(self, sigma=1, mu=None, limits=None):
+    def dev(self, std, mean=0, limits=None, sigma=None, mu=None):
         """
         Allow the parameter to vary according to a normal distribution, with
-        deviations added to the overall cost function:
+        deviations from the mean added to the overall cost function for the
+        model.
 
-            dev(sigma, mu) -> Normal(mean=mu,std=sigma)
+        If *mean* is None, then it defaults to the current parameter value.
 
-        If mu is None, then it defaults to the current parameter value.
+        If *limits* are provide, then use a truncated normal distribution.
 
-        If limits is not None, then use the truncated normal distribution.
+        Note: *sigma* and *mu* have been replaced by *std* and *mean*, but
+        are left in for backward compatibility.
         """
-        if mu is None:
-            mu = self.value
+        if sigma is not None or mu is not None:
+            # CRUFT: remove sigma and mu parameters
+            warnings.warn(DeprecationWarning("use std,mean instead of mu,sigma in Parameter.dev"))
+            if sigma is not None: std = sigma
+            if mu is not None: mean = mu
+        if mean is None:
+            mean = self.value # Note: value is an attribute of the derived class
         if limits is None:
-            self.bounds = mbounds.Normal(mu, sigma)
+            self.bounds = mbounds.Normal(mean, std)
         else:
-            self.bounds = mbounds.BoundedNormal(mu, sigma, limits)
+            self.bounds = mbounds.BoundedNormal(mean, std, limits)
         return self
 
     def pdf(self, dist):
         """
-        Allow the parameter to vary according to any continuous SciPy
-        stats distribution.
+        Allow the parameter to vary according to any continuous scipy.stats
+        distribution.
         """
         self.bounds = mbounds.Distribution(dist)
         return self
@@ -108,6 +122,13 @@ class BaseParameter(object):
         """
         self.bounds = mbounds.init_bounds((low, high))
         return self
+
+    def soft_range(self, low, high, std):
+        """
+        Allow the parameter to vary within the given range, or with Gaussian
+        probability, stray from the range.
+        """
+        self.bounds = mbounds.SoftBounded(low, high, std)
 
     @property
     def bounds(self):
@@ -230,7 +251,6 @@ class BaseParameter(object):
 
 
 class Constant(BaseParameter):
-
     """
     An unmodifiable value.
     """
@@ -247,7 +267,6 @@ class Constant(BaseParameter):
 
 
 class Parameter(BaseParameter):
-
     """
     A parameter is a symbolic value.
 
@@ -271,6 +290,13 @@ class Parameter(BaseParameter):
 
     @classmethod
     def default(cls, value, **kw):
+        """
+        Create a new parameter with the *value* and *kw* attributes, or return
+        the existing parameter if *value* is already a parameter.
+
+        The attributes are the same as those for Parameter, or whatever
+        subclass *cls* of Parameter is being created.
+        """
         # Need to constrain the parameter to fit within fixed limits and
         # to receive a name if a name has not already been provided.
         if isinstance(value, BaseParameter):
@@ -300,6 +326,7 @@ class Parameter(BaseParameter):
         if bounds is None:
             try:
                 lo, hi = value
+                warnings.warn(DeprecationWarning("parameters can no longer be initialized with a fit range"))
                 bounds = lo, hi
                 value = None
             except TypeError:
@@ -328,11 +355,11 @@ class Parameter(BaseParameter):
         self.fixed = fixed
         self.name = name
 
-    def rand(self, rng=mbounds.RNG):
+    def randomize(self, rng=None):
         """
         Set a random value for the parameter.
         """
-        self.value = self.bounds.rand(rng)
+        self.value = self.bounds.rand(rng if rng is not None else mbounds.RNG)
 
     def feasible(self):
         """
@@ -342,7 +369,6 @@ class Parameter(BaseParameter):
 
 
 class Reference(Parameter):
-
     """
     Create an adaptor so that a model attribute can be treated as if it
     were a parameter.  This allows only direct access, wherein the
@@ -371,7 +397,6 @@ class Reference(Parameter):
 
 
 class ParameterSet(object):
-
     """
     A parameter that depends on the model.
     """
@@ -390,6 +415,7 @@ class ParameterSet(object):
         self.names = names
         self.reference = reference
         self.parameters = [copy(reference) for _ in names]
+        print self.reference, self.parameters
         for p, n in zip(self.parameters, names):
             p.name = " ".join((n, p.name))
         # Reference is no longer directly fittable
@@ -460,7 +486,6 @@ class ParameterSet(object):
 
 
 class FreeVariables(object):
-
     """
     A collection of parameter sets for a group of models.
 
@@ -473,7 +498,7 @@ class FreeVariables(object):
 
     In order to evaluate the log likelihood of all models simultaneously,
     the fitting program will need to call set_model with the model index
-    for each model in turn.  This substitutes the values from the free
+    for each model in turn in order to substitute the values from the free
     variables into the model.  This allows us to share a common sample
     across multiple data sets, with each dataset having its own values for
     some of the sample parameters.  The alternative is to copy the entire
@@ -532,7 +557,6 @@ class FreeVariables(object):
 
 # ==== Comparison operators ===
 class Constraint:
-
     """
     Abstract base class for constraints.
     """
@@ -633,7 +657,6 @@ def substitute(a):
 
 
 class Function(BaseParameter):
-
     """
     Delayed function evaluator.
 
@@ -860,7 +883,6 @@ class IntegerParameter(Parameter):
 
 
 class Alias(object):
-
     """
     Parameter alias.
 

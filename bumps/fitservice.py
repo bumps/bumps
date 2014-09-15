@@ -49,7 +49,7 @@ def fitservice(request):
     problem.show()
     print("#", " ".join(sys.argv))
     best, fbest = fitdriver.fit()
-    cli.remember_best(fitdriver, problem, best)
+    cli.save_best(fitdriver, problem, best)
     matplotlib.pyplot.show()
     return list(best), fbest
 

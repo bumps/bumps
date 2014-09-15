@@ -45,8 +45,8 @@ example call::
                          macheps, eta, maxstep, gradtola, steptol, itnlimit)
     print "status code",result['status']
     print "x_min, f(x_min)",result['x'],result['fx']
-    print "iterations, function calls, linesearch function calls",\
-          result['iterations'],result['evals'],result['linesearch_evals']
+    print "iterations, function calls, linesearch function calls",
+    print result['iterations'],result['evals'],result['linesearch_evals']
 """
 from __future__ import print_function
 
@@ -77,6 +77,8 @@ def quasinewton(fn, x0=[], grad=[], Sx=[], typf=1, macheps=[], eta=[],
     *fn(x)* is the cost function, which takes a point x and returns a scalar fx.
 
     *x0* is the initial point
+
+    *grad* is the analytic gradient (if available)
 
     *Sx* is a scale vector indicating the typical values for parameters in
     the fitted result. This is used for a variety of things such as setting

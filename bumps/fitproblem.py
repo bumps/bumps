@@ -1,11 +1,15 @@
 """
 Interface between the models and the fitters.
 
-:class:`Fitness` defines the interface that new model definitions must follow.
-
-:class:`FitProblem` defines the fitness function(s) for use in the fitters.
+:class:`Fitness` defines the interface that model evaluators can follow.
+These models can be bundled together into a :func:`FitProblem` and sent
+to :class:`bumps.fitters.FitDriver` for optimization and uncertainty
+analysis.
 """
 from __future__ import division, with_statement
+
+__all__ = ['Fitness', 'FitProblem', 'load_problem',
+           'BaseFitProblem', 'MultiFitProblem']
 
 import sys
 
@@ -13,14 +17,22 @@ import numpy as np
 from numpy import inf, isnan
 
 from . import parameter, bounds as mbounds
+from .formatnum import format_uncertainty
 
 
 # Abstract base class
 class Fitness(object):
+    """
+    Manage parameters, data, and theory function evaluation.
 
+    See :ref:`fitness` for a detailed explanation.
+    """
     def parameters(self):
         """
-        Return the set of parameters in the model.
+        Return the parameters in the model.
+
+        Model parameters are a hierarchical structure of lists and
+        dictionaries.
         """
         raise NotImplementedError
 
@@ -64,7 +76,6 @@ class Fitness(object):
         """
         raise NotImplementedError
 
-    # noinspection PyMethodMayBeStatic
     def save(self, basename):
         """
         Save the model to a file based on basename+extension.  This will point
@@ -74,8 +85,7 @@ class Fitness(object):
         """
         pass
 
-    # noinspection PyMethodMayBeStatic
-    def plot(self):
+    def plot(self, view='linear'):
         """
         Plot the model to the current figure.  You only get one figure, but you
         can make it as complex as you want.  This will be saved as a png on
@@ -106,7 +116,7 @@ def FitProblem(*args, **kw):
         *weights* is an optional scale factor for each model
 
         *freevars* is :class:`parameter.FreeVariables` instance defining the
-        per-model parameter assignments.  See `freevariables`_ for details.
+        per-model parameter assignments.  See :ref:`freevariables` for details.
 
 
     Additional parameters:
@@ -148,11 +158,9 @@ def FitProblem(*args, **kw):
 
 
 class BaseFitProblem(object):
-
     """
     See :func:`FitProblem`
     """
-
     def __init__(self, fitness, name=None, constraints=no_constraints,
                  penalty_nllf=1e6, soft_limit=np.inf, partial=False):
         self.constraints = constraints
@@ -386,7 +394,7 @@ class BaseFitProblem(object):
 
     def show(self):
         print(parameter.format(self.model_parameters()))
-        print("[chisq=%g, nllf=%g]" % (self.chisq(), self.nllf()))
+        print("[chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
         print(self.summarize())
 
     def summarize(self):
@@ -409,7 +417,7 @@ class BaseFitProblem(object):
         if p is not None:
             self.setp(p)
         self.fitness.plot()
-        pylab.text(0, 0, 'chisq=%g' % self.chisq(),
+        pylab.text(0, 0, 'chisq=%s' % self.chisq_str(),
                    transform=pylab.gca().transAxes)
         if figfile is not None:
             pylab.savefig(figfile + "-model.png", format='png')
@@ -428,13 +436,14 @@ class BaseFitProblem(object):
             self.soft_limit, self.constraints = state
         self.model_reset()
 
+    def chisq_str(self):
+        return format_uncertainty(self.chisq(), 1./self.dof)
+
 
 class MultiFitProblem(BaseFitProblem):
-
     """
     Weighted fits for multiple models.
     """
-
     def __init__(self, models, weights=None, name=None,
                  constraints=no_constraints,
                  soft_limit=np.inf, penalty_nllf=1e6,
@@ -532,7 +541,7 @@ class MultiFitProblem(BaseFitProblem):
         for i, f in enumerate(self.models):
             print("-- Model %d %s" % (i, f.name))
             f.show()
-        print("[overall chisq=%g, nllf=%g]" % (self.chisq(), self.nllf()))
+        print("[overall chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
 
     def plot(self, p=None, fignum=1, figfile=None):
         import pylab

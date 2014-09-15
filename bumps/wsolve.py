@@ -49,6 +49,8 @@ information about the variance in the data, and the weight vector
 serves only to provide relative weighting between the points.
 """
 
+__all__ = ['wsolve', 'wpolyfit', 'LinearModel', 'PolynomialModel']
+
 # FIXME: test second example
 #
 # Example 2: weighted overdetermined system  y = x1 + 2*x2 + 3*x3 + e
@@ -399,6 +401,24 @@ def demo():
                px, cy + cdy, 'r-.', px, cy - cdy, 'r-.')
     pylab.show()
 
+def demo2():
+    import pylab
+    x = [1,2,3]
+    y = [10, 8, 6]
+    dy = [1, 3, 1]
+    poly = wpolyfit(x,y,dy=dy, degree=1)
+
+    # Plot the result
+    pylab.errorbar(x, y, yerr=dy, fmt='x')
+    pylab.hold(True)
+    px = np.linspace(x[0], x[-1], 200)
+    py, pdy = poly.pi(px)
+    cy, cdy = poly.ci(px)
+    pylab.plot(px, py, 'g-',
+               px, py + pdy, 'g-.', px, py - pdy, 'g-.',
+               px, cy + cdy, 'r-.', px, cy - cdy, 'r-.')
+    pylab.show()
+
 
 def test():
     """
@@ -431,5 +451,6 @@ def test():
     assert py == poly(px), "direct call to poly function fails"
 
 if __name__ == "__main__":
-    test()
+#    test()
 #    demo()
+    demo2()
