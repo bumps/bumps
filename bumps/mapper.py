@@ -57,9 +57,10 @@ class SerialMapper(object):
         pass
 
 
-def _MP_load_problem(*modelargs):
-    from .fitproblem import load_problem
-    _MP_set_problem(load_problem(*modelargs))
+# Load the problem in the remote process rather than pickling
+#def _MP_load_problem(*modelargs):
+#    from .fitproblem import load_problem
+#    _MP_set_problem(load_problem(*modelargs))
 
 
 def _MP_set_problem(problem):

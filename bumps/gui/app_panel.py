@@ -489,7 +489,7 @@ class AppPanel(wx.Panel):
 
     def load_model(self, path):
         self._reload_path = path
-        model = load_model([path])
+        model = load_model(path)
         signal.model_new(model=model)
 
     def save_model(self, path):

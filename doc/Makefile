@@ -14,17 +14,8 @@ PAPEROPT_a4     = -D latex_paper_size=a4
 PAPEROPT_letter = -D latex_paper_size=letter
 ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 
-EXWEB=_examples
-EXDIR=examples
-WEB_FILES = $(wildcard $(EXWEB)/*/*-web.py)
-WEB2RST_FILES = $(patsubst $(EXWEB)/%-web.py,$(EXDIR)/%.rst,$(WEB_FILES))
-
-$(EXDIR)/%.rst: $(EXWEB)/%-web.py
-	$(PYTHON) pylit.py $< $@
-	$(PYTHON) pylit.py $@ $(patsubst %.rst,%.py,$@) -s -t
-
 .PHONY: help clean html dirhtml singlehtml pickle json htmlhelp qthelp \
-        devhelp epub latex pdf text man changes linkcheck doctest generated
+        devhelp epub latex pdf text man changes linkcheck doctest
 
 help:
 	@echo "Please use \`make <target>' where <target> is one of"
@@ -45,64 +36,45 @@ help:
 	@echo "  changes    to make an overview of all changed/added/deprecated items"
 	@echo "  linkcheck  to check all external links for integrity"
 	@echo "  doctest    to run all doctests embedded in the documentation (if enabled)"
-	@echo "  install   to upload the docs to the distribution site"
 
 clean:
 	# Cleaning matplotlib plots from build
 	# Cleaning html/pdf from $(BUILDDIR)
-	# Resetting api/ and examples/
-	-rm -rf $(BUILDDIR) build api $(EXDIR)
+	# Resetting api/ and tutorial/
+	-rm -rf $(BUILDDIR) build api tutorial/*
 
-app_build:
-	-cd .. && $(PYTHON) setup.py build
-api: app_build genmods.py
-	-rm -rf api
-	$(PYTHON) genmods.py
-
-$(EXDIR):
-	mkdir -p $(EXDIR)
-	-cp -rp $(EXWEB)/* $(EXDIR)
-
-
-## MathJax now uses CDN by default
-#$(BUILDDIR)/html:
-#	mkdir -p $(BUILDDIR)/html/_static
-#	-cp -r MathJax $(BUILDDIR)/html/_static/MathJax
-
-generated: api $(EXDIR) $(WEB2RST_FILES)
-
-html: generated
+html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 
-dirhtml: generated
+dirhtml:
 	$(SPHINXBUILD) -b dirhtml $(ALLSPHINXOPTS) $(BUILDDIR)/dirhtml
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/dirhtml."
 
-singlehtml: generated
+singlehtml:
 	$(SPHINXBUILD) -b singlehtml $(ALLSPHINXOPTS) $(BUILDDIR)/singlehtml
 	@echo
 	@echo "Build finished. The HTML page is in $(BUILDDIR)/singlehtml."
 
-pickle: generated
+pickle:
 	$(SPHINXBUILD) -b pickle $(ALLSPHINXOPTS) $(BUILDDIR)/pickle
 	@echo
 	@echo "Build finished; now you can process the pickle files."
 
-json: generated
+json:
 	$(SPHINXBUILD) -b json $(ALLSPHINXOPTS) $(BUILDDIR)/json
 	@echo
 	@echo "Build finished; now you can process the JSON files."
 
-htmlhelp: generated
+htmlhelp:
 	$(SPHINXBUILD) -b htmlhelp $(ALLSPHINXOPTS) $(BUILDDIR)/htmlhelp
 	@echo
 	@echo "Build finished; now you can run HTML Help Workshop with the" \
 	      ".hhp project file in $(BUILDDIR)/htmlhelp."
 
-qthelp: generated
+qthelp:
 	$(SPHINXBUILD) -b qthelp $(ALLSPHINXOPTS) $(BUILDDIR)/qthelp
 	@echo
 	@echo "Build finished; now you can run "qcollectiongenerator" with the" \
@@ -111,7 +83,7 @@ qthelp: generated
 	@echo "To view the help file:"
 	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/bumpsdocumentation.qhc"
 
-devhelp: generated
+devhelp:
 	$(SPHINXBUILD) -b devhelp $(ALLSPHINXOPTS) $(BUILDDIR)/devhelp
 	@echo
 	@echo "Build finished."
@@ -120,52 +92,48 @@ devhelp: generated
 	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/bumpsdocumentation"
 	@echo "# devhelp"
 
-epub: generated
+epub:
 	$(SPHINXBUILD) -b epub $(ALLSPHINXOPTS) $(BUILDDIR)/epub
 	@echo
 	@echo "Build finished. The epub file is in $(BUILDDIR)/epub."
 
-latex: generated
+latex:
 	$(SPHINXBUILD) -b latex $(ALLSPHINXOPTS) $(BUILDDIR)/latex
 	@echo
 	@echo "Build finished; the LaTeX files are in $(BUILDDIR)/latex."
 	@echo "Run \`make' in that directory to run these through (pdf)latex" \
 	      "(use \`make pdf' here to do that automatically)."
 
-pdf: generated
+pdf:
 	$(SPHINXBUILD) -b latex $(ALLSPHINXOPTS) $(BUILDDIR)/latex
 	@echo "Running LaTeX files through (pdf)latex..."
 	make -C $(BUILDDIR)/latex all-pdf
 	@echo "pdflatex finished; the PDF files are in $(BUILDDIR)/latex."
 	cp $(BUILDDIR)/latex/Bumps.pdf $(BUILDDIR)/html
 
-text: generated
+text:
 	$(SPHINXBUILD) -b text $(ALLSPHINXOPTS) $(BUILDDIR)/text
 	@echo
 	@echo "Build finished. The text files are in $(BUILDDIR)/text."
 
-man: generated
+man:
 	$(SPHINXBUILD) -b man $(ALLSPHINXOPTS) $(BUILDDIR)/man
 	@echo
 	@echo "Build finished. The manual pages are in $(BUILDDIR)/man."
 
-changes: generated
+changes:
 	$(SPHINXBUILD) -b changes $(ALLSPHINXOPTS) $(BUILDDIR)/changes
 	@echo
 	@echo "The overview file is in $(BUILDDIR)/changes."
 
-linkcheck: generated
+linkcheck:
 	$(SPHINXBUILD) -b linkcheck $(ALLSPHINXOPTS) $(BUILDDIR)/linkcheck
 	@echo
 	@echo "Link check complete; look for any errors in the above output " \
 	      "or in $(BUILDDIR)/linkcheck/output.txt."
 
-doctest: generated
+doctest:
 	$(SPHINXBUILD) -b doctest $(ALLSPHINXOPTS) $(BUILDDIR)/doctest
 	@echo "Testing of doctests in the sources finished, look at the " \
 	      "results in $(BUILDDIR)/doctest/output.txt."
 
-install:
-	scp $(BUILDDIR)/html/*.pdf reflectometry.org:web/danse/download
-	ssh reflectometry.org rm -rf web/danse/docs/bumps
-	scp -r $(BUILDDIR)/html reflectometry.org:web/danse/docs/bumps

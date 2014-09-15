@@ -102,7 +102,7 @@ print("#### Using bumps version %s in %s"%(release, bumps.__file__))
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_trees = ['_*','build','plots']
+exclude_trees = ['_*','build','plots','examples']
 
 # The reST default role (used for this markup: `text`) to use for all documents.
 #default_role = None
@@ -276,3 +276,11 @@ slink_vars=dict(version=release, htmlroot=htmlroot,
 man_pages = [
     ('index', 'bumps', program_title, ['Paul Kienzle'], 1)
 ]
+
+# Generate API docs
+import genmods
+genmods.make()
+
+# Generate tutorials
+import gentut
+gentut.make()

@@ -90,12 +90,13 @@ Now change to your data directory::
 
 To run the program use::
 
-    python "C:\Python26\Scripts\bumps" -h
+    python -m bumps.cli -h
 
 We have also built working versions using
 `WinPython <http://winpython.sourceforge.net/>`_,
-`Anaconda <https://store.continuum.io/cshop/anaconda/>`_ and
-from individually distributed python packages.
+`Anaconda <https://store.continuum.io/cshop/anaconda/>`_,
+`Canopy <https://www.enthought.com/products/canopy/>`_,
+and from individually distributed python packages.
 
 Linux
 -----
@@ -115,7 +116,7 @@ This should install the application somewhere on your path.
 
 To run the program use::
 
-    bumps_cli -h
+    bumps -h
 
 OS/X
 ----

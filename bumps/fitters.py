@@ -206,6 +206,8 @@ class DEFit(FitBase):
                 ('xtol', 1e-6), ('ftol', 1e-8), ('stop', '')]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
+        if abort_test is None:
+            abort_test = lambda: False
         _fill_defaults(options, self.settings)
         from .mystic.optimizer import de
         from .mystic.solver import Minimizer
@@ -297,6 +299,8 @@ class BFGSFit(FitBase):
     settings = [('steps', 3000), ('starts', 1)]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
+        if abort_test is None:
+            abort_test = lambda: False
         _fill_defaults(options, self.settings)
         from .quasinewton import quasinewton
         self._update = MonitorRunner(problem=self.problem,
@@ -374,6 +378,8 @@ class RLFit(FitBase):
     settings = [('steps', 3000), ('starts', 20), ('pop', 0.5), ('CR', 0.9)]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
+        if abort_test is None:
+            abort_test = lambda: False
         _fill_defaults(options, self.settings)
         if mapper is None:
             mapper = lambda x: map(self.problem.nllf, x)
@@ -447,6 +453,8 @@ class AmoebaFit(FitBase):
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         from .simplex import simplex
+        if abort_test is None:
+            abort_test = lambda: False
         _fill_defaults(options, self.settings)
         # TODO: no mapper??
         self._update = MonitorRunner(problem=self.problem,
@@ -487,6 +495,8 @@ class LevenbergMarquardtFit(FitBase):
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         from scipy import optimize
+        if abort_test is None:
+            abort_test = lambda: False
         _fill_defaults(options, self.settings)
         self._low, self._high = self.problem.bounds()
         self._update = MonitorRunner(problem=self.problem,
@@ -600,8 +610,10 @@ class DreamFit(FitBase):
         self.state = None
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
-        _fill_defaults(options, self.settings)
         from . import dream
+        if abort_test is None:
+            abort_test = lambda: False
+        _fill_defaults(options, self.settings)
 
         if mapper:
             self.dream_model.mapper = mapper

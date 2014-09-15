@@ -47,7 +47,7 @@ import numpy as np
 
 from .dream.state import load_state
 from . import plugin
-from .cli import load_problem, load_best
+from .cli import load_model, load_best
 
 def reload_errors(model, store, nshown=50, random=True):
     """
@@ -65,7 +65,7 @@ def reload_errors(model, store, nshown=50, random=True):
 
     Returns *errs* for :func:`show_errors`.
     """
-    problem = load_problem([model])
+    problem = load_model(model)
     load_best(problem, os.path.join(store, model[:-3] + ".par"))
     state = load_state(os.path.join(store, model[:-3]))
     state.mark_outliers()

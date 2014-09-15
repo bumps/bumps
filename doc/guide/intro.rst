@@ -8,7 +8,7 @@ Using Bumps
 
 The first step in using Bumps is to define a fit file.  This is python
 code defining the function, the fitting parameters and any data that is
-being fitted.  The `tutorial-index`_ walks through the process of creating
+being fitted.  The :ref:`tutorial-index` walks through the process of creating
 a model.
 
 A fit file usually starts with an import statement::

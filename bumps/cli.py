@@ -39,7 +39,6 @@ import numpy as np
 
 from . import fitters
 from .fitters import FIT_OPTIONS, FitDriver, StepMonitor, ConsoleMonitor
-from .fitproblem import load_problem
 from .mapper import MPMapper, AMQPMapper, MPIMapper, SerialMapper
 from . import util
 from . import initpop
@@ -59,15 +58,16 @@ def install_plugin(p):
             setattr(plugin, symbol, getattr(p, symbol))
 
 
-def load_model(args):
+def load_model(path, model_options=None):
     """
     Load a model file.
 
-    *args* contains the command line arguments.  The first argument should
-    be the path to the model file.  The remaining arguments will be set
-    as the sys.args for the model.
+    *path* contains the path to the model file.
+
+    *model_options* are any additional arguments to the model.  The sys.argv
+    variable will be set such that *sys.argv[1:] == model_options*.
     """
-    path, options = args[0], args[1:]
+    from .fitproblem import load_problem
 
     # Change to the target path before loading model so that data files
     # can be given as relative paths in the model file.  This should also
@@ -83,8 +83,7 @@ def load_model(args):
                 problem = pickle.load(open(filename, 'rb'))
             else:
                 # Then see if it is a python model script
-                options = args[1:]
-                problem = load_problem(filename, options=options)
+                problem = load_problem(filename, options=model_options)
 
     # Guard against the user changing parameters after defining the problem.
     problem.model_reset()
@@ -92,7 +91,7 @@ def load_model(args):
     if not hasattr(problem, 'title'):
         problem.title = filename
     problem.name, _ = os.path.splitext(filename)
-    problem.options = options
+    problem.options = model_options
     return problem
 
 
@@ -525,7 +524,7 @@ def initial_model(opts):
         np.random.seed(opts.seed)
 
     if opts.args:
-        problem = load_model(opts.args)
+        problem = load_model(opts.args[0],opts.args[1:])
         if opts.pars is not None:
             load_best(problem, opts.pars)
         if opts.simrandom:

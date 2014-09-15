@@ -12,6 +12,6 @@ Contents
    :includehidden:
 
    getting_started/index.rst
-   tutorial.rst
+   tutorial/index.rst
    guide/index.rst
    api/index.rst
