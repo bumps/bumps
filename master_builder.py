@@ -292,7 +292,9 @@ def build_documentation():
 
     # Delete any left over files from a previous build.
     # Create documentation in HTML and PDF format.
-    exec_cmd("make clean html pdf")
+    sphinx_cmd = '"%s" -m sphinx.__init__ -b %%s -d _build/doctrees -D latex_paper_size=letter .'
+    exec_cmd(sphinx_cmd%"html")
+    exec_cmd(sphinx_cmd%"pdf")
     # Copy PDF to the doc directory where the py2exe script will look for it.
     pdf = os.path.join("_build", "latex", APP_NAME + ".pdf")
     if os.path.isfile(pdf):

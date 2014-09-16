@@ -69,7 +69,7 @@ build a self contained release package.
 
 The Python(x,y) package supplies a C/C++ compiler, but the package does
 not set it as the default compiler.  To do this you will need to create
-*C:\\Python26\\Lib\\distutils\\distutils.cfg* with the following content::
+*C:\\Python27\\Lib\\distutils\\distutils.cfg* with the following content::
 
     [build]
     compiler=mingw32

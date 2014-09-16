@@ -1,4 +1,5 @@
 .. htmlonly::
+
    :Release: |version|
    :Date:    |today|
 

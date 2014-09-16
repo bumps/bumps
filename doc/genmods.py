@@ -27,9 +27,9 @@ OPTIONS = {
     'root': None, # Source directory for the package, or None for default
 }
 
-PACKAGE='bumps'
+PACKAGE = 'bumps'
 
-MODULES=[
+MODULES = [
     #('__init__', 'Top level namespace'),
     ('bounds', 'Parameter constraints'),
     ('bspline', 'B-Spline interpolation library'),

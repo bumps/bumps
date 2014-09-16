@@ -41,7 +41,7 @@ clean:
 	# Cleaning matplotlib plots from build
 	# Cleaning html/pdf from $(BUILDDIR)
 	# Resetting api/ and tutorial/
-	-rm -rf $(BUILDDIR) build api tutorial/*
+	-rm -rf $(BUILDDIR) api tutorial
 
 html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
