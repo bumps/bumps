@@ -41,7 +41,7 @@ class ConvergenceView(PlotView):
         with self.pylab_interface as pylab:
             pylab.clf()
             ni,npop = pop.shape
-            iternum = npop.arange(1,ni+1)
+            iternum = np.arange(1,ni+1)
             tail = int(0.25*ni)
             c = coordinated_colors(base=(0.4,0.8,0.2))
             if npop==5:
