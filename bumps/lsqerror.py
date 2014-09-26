@@ -47,6 +47,7 @@ estimate step size.
 """
 
 import numpy as np
+from . import numdifftools as nd
 
 
 def jacobian(problem, p=None, step=None):
@@ -61,12 +62,7 @@ def jacobian(problem, p=None, step=None):
     if p is None:
         p = p_init
     p = np.asarray(p)
-    try:
-        import numdifftools as nd
-        J = nd.Jacobian(problem.residuals)(p)
-    except ImportError:
-        bounds = getattr(problem, 'bounds', lambda: None)()
-        J = _simple_jacobian(problem.residuals, p, step=step, bounds=bounds)
+    J = nd.Jacobian(problem.residuals)(p)
     problem.setp(p_init)
     return J
 
@@ -79,17 +75,11 @@ def hessian(problem, p=None, step=None):
     if p is None:
         p = p_init
     p = np.asarray(p)
-    try:
-        import numdifftools as nd
-        H = nd.Hessian(problem.nllf)(p)
-        #bounds = getattr(problem, 'bounds', lambda: None)()
-        #H2 = _simple_hessian(problem.nllf, p, step=step, bounds=bounds)
-        # print(H-H2)
-    except:
-        bounds = getattr(problem, 'bounds', lambda: None)()
-        H = _simple_hessian(problem.nllf, p, step=step, bounds=bounds)
-        raise NotImplementedError(
-            "install the numdifftools library or fix _simple_hessian so it gives good enough results")
+    import numdifftools as nd
+    H = nd.Hessian(problem.nllf)(p)
+    #bounds = getattr(problem, 'bounds', lambda: None)()
+    #H2 = _simple_hessian(problem.nllf, p, step=step, bounds=bounds)
+    # print(H-H2)
     problem.setp(p_init)
     return H
 
@@ -102,90 +92,12 @@ def hessian_diag(problem, p=None, step=None):
     if p is None:
         p = p_init
     p = np.asarray(p)
-    try:
-        import numdifftools as nd
-        H = nd.Hessdiag(problem.nllf)(p)
-        #bounds = getattr(problem, 'bounds', lambda: None)()
-        #H2 = _simple_hessian(problem.nllf, p, step=step, bounds=bounds)
-        # print(H-H2)
-    except:
-        bounds = getattr(problem, 'bounds', lambda: None)()
-        H = _simple_hdiag(problem.nllf, p, step=step, bounds=bounds)
-        raise NotImplementedError(
-            "install the numdifftools library or fix _simple_hessian so it gives good enough results")
+    H = nd.Hessdiag(problem.nllf)(p)
+    #bounds = getattr(problem, 'bounds', lambda: None)()
+    #H2 = _simple_hessian(problem.nllf, p, step=step, bounds=bounds)
+    # print(H-H2)
     problem.setp(p_init)
     return H
-
-
-def _simple_jacobian(fn, p, step=None, bounds=None):
-    # We are being lazy here.  We can precompute the bounds, we can
-    # use the residuals_deriv from the sub-models which have analytic
-    # derivatives and we need only recompute the models which depend
-    # on the varying parameters.
-    # Meanwhile, let's compute the numeric derivative using the
-    # three point formula.
-    # We are not checking that the varied parameter in numeric
-    # differentiation is indeed feasible in the interval of interest.
-    # Gather the residuals
-    d = _delta(p, bounds, step)
-    r = []
-    for k, v in enumerate(p):
-        # Center point formula:
-        #     df/dv = lim_{h->0} ( f(v+h)-f(v-h) ) / ( 2h )
-        h = d[k]
-        p[k] = v + h
-        rk = fn(p)
-        p[k] = v - h
-        rk -= fn(p)
-        r.append(rk / (2 * h))
-        p[k] = v
-    # return the jacobian
-    return np.vstack(r).T
-
-
-def _simple_hessian(fn, p, step=None, bounds=None):
-    Hdiag = _simple_hdiag(fn, p, step, bounds)
-    H = _simple_hoff(fn, p, step, bounds)
-    for i, vi in enumerate(Hdiag):
-        H[i, i] = vi
-    return H
-
-
-def _simple_hdiag(fn, p, step=None, bounds=None):
-    # center point formula
-    h = _delta(p, bounds, step)
-    Hdiag = np.empty(len(p), 'd')
-    f = fn(p)
-    for i, vi in enumerate(p):
-        hi = h[i]
-        p[i] = vi + hi
-        ri_plus = fn(p) - f
-        p[i] = vi - hi
-        ri_minus = fn(p) - f
-        #print("%s + %s"%(ri_plus,ri_minus))
-        Hdiag[i] = (ri_plus + ri_minus) / (hi * hi)
-    return Hdiag
-
-
-def _simple_hoff(fn, p, step=None, bounds=None):
-    # center point formula
-    h = _delta(p, bounds, step)
-    H = np.empty([len(p), len(p)], 'd')
-    for i, vi in enumerate(p):
-        hi = h[i]
-        for j, vj in enumerate(p[:i]):
-            hj = h[j]
-            p[i], p[j] = vi + hi, vj + hj
-            rij = fn(p)
-            p[i], p[j] = vi - hi, vj - hj
-            rij += fn(p)
-            p[i], p[j] = vi - hi, vj + hj
-            rij -= fn(p)
-            p[i], p[j] = vi + hi, vj - hj
-            rij -= fn(p)
-            H[j, i] = H[i, j] = rij / (4 * hi * hj)
-    return H
-
 
 def _delta(p, bounds, step):
     if step is None:
