@@ -127,6 +127,8 @@ __all__ = [
     'dea3', 'Derivative', 'Jacobian', 'Gradient', 'Hessian', 'Hessdiag'
     ]
 
+__version__ = "0.6.0"
+
 _TINY =  np.finfo(float).tiny
 _EPS = np.finfo(float).eps
 
