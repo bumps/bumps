@@ -520,13 +520,15 @@ class LevenbergMarquardtFit(FitBase):
     def _bounded_residuals(self, p):
         # Force the fit point into the valid region
         stray = self._stray_delta(p)
+        stray_cost = np.sum(stray**2)
+        if stray_cost > 0: stray_cost += 1e6
         self.problem.setp(p + stray)
         # treat prior probabilities on the parameters as additional
         # measurements
         residuals = np.hstack(
             (self.problem.residuals().flat, self.problem.parameter_residuals()))
         # Tally costs for straying outside the boundaries plus other costs
-        extra_cost = np.sum(stray ** 2) + self.problem.constraints_nllf()
+        extra_cost = stray_cost + self.problem.constraints_nllf()
         # Spread the cost over the residuals.  Since we are smoothly increasing
         # residuals as we leave the boundary, this should push us back into the
         # boundary (within tolerance) during the lm fit.
@@ -539,7 +541,7 @@ class LevenbergMarquardtFit(FitBase):
                 + np.where(p > self._high, self._high - p, 0))
 
     def stderr(self):
-        return np.sqrt(np.diag(self._cov))
+        return np.sqrt(np.diag(self._cov)) if self._cov is not None else None
 
     def cov(self):
         return self._cov
@@ -804,9 +806,11 @@ class FitDriver(object):
             if hasattr(self.fitter, 'cov'):
                 self._cov = self.fitter.cov()
             else:
-                H = lsqerror.hessian(self.problem, self.result[0])
-                H, L = lsqerror.perturbed_hessian(H)
-                self._cov = lsqerror.chol_cov(L)
+                self._cov = None
+        if self._cov is None:
+            H = lsqerror.hessian(self.problem, self.result[0])
+            H, L = lsqerror.perturbed_hessian(H)
+            self._cov = lsqerror.chol_cov(L)
         return self._cov
 
     def stderr(self):
@@ -822,7 +826,9 @@ class FitDriver(object):
             if hasattr(self.fitter, 'stderr'):
                 self._stderr = self.fitter.stderr()
             else:
-                self._stderr = lsqerror.stderr(self.cov())
+                self._stderr = None
+        if self._stderr is None:
+            self._stderr = lsqerror.stderr(self.cov())
         return self._stderr
 
     def show(self):
