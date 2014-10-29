@@ -335,7 +335,7 @@ class BumpsOpts(ParseOpts):
                  "i",
                  ))
     VALUES = set(("plot", "store", "resume", "fit", "noise", "seed", "pars",
-                  "resynth", "transport", "notify", "queue",
+                  "resynth", "transport", "notify", "queue", "time",
                   "m", "c", "p",
                   ))
     # Add in parameters from the fitters
@@ -399,10 +399,12 @@ Options:
         remote fit notification
     --queue=http://reflectometry.org
         remote job queue
+    --time=inf
+        run for a maximum number of hours
 
     --fit=amoeba    [%(fitter)s]
         fitting engine to use; see manual for details
-    --steps=1000    [%(fitter)s]
+    --steps=400    [%(fitter)s]
         number of fit iterations after any burn-in time
     --xtol=1e-4     [de, amoeba]
         minimum population diameter
@@ -410,7 +412,7 @@ Options:
         minimum population flatness
     --pop=10        [dream, de, rl, ps]
         population size
-    --burn=0        [dream, pt]
+    --burn=100      [dream, pt]
         number of burn-in iterations before accumulating stats
     --thin=1        [dream]
         number of fit iterations between steps
@@ -711,8 +713,15 @@ def main():
         return
 
     fitopts = FIT_OPTIONS[opts.fit]
+    if np.isfinite(float(opts.time)):
+        import time
+        start_time = time.clock()
+        stop_time = start_time + float(opts.time)*3600
+        abort_test=lambda: time.clock() >= stop_time
+    else:
+        abort_test=lambda: False
     fitdriver = FitDriver(
-        fitopts.fitclass, problem=problem, abort_test=lambda: False, **fitopts.options)
+        fitopts.fitclass, problem=problem, abort_test=abort_test, **fitopts.options)
 
     if opts.timer:
         run_timer(mapper.start_mapper(problem, opts.args),
