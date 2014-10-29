@@ -243,7 +243,7 @@ class BaseParameter(object):
         return "%s=%g in %s" % (self, self.value, self.bounds)
 
     def __str__(self):
-        name = self.name if self.name != None else '?'
+        name = self.name if self.name is not None else '?'
         return name
 
     def __repr__(self):

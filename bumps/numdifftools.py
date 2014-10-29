@@ -114,7 +114,8 @@ scipy.misc.derivative
 # 2014-09-26 Paul Kienzle
 # * single file embeddable version
 # * loosen comparisons so tests pass (anaconda python 2.7 for os x)
-#
+# 2014-10-29 Paul Kienzle
+# * use is/is not None to check if a value is None
 
 from __future__ import division
 import numpy as np
@@ -302,12 +303,12 @@ class _Derivative(object):
 
         for name in ('step_max', 'step_num'):
             val = kwds[name]
-            if (val != None and ((len(atleast_1d(val)) > 1) or (val <= 0))):
+            if (val is not None and ((len(atleast_1d(val)) > 1) or (val <= 0))):
                 raise ValueError('%s must be None or a scalar, >0.' % name)
 
         validMethods = dict(c='central', f='forward', b='backward')
         method = validMethods.get(kwds['method'][0])
-        if method == None :
+        if method is None :
             t = 'Invalid method: Must start with one of c, f, b characters!'
             raise ValueError(t)
         if method[0] == 'c' and kwds['method'] in (1, 3):
@@ -901,7 +902,7 @@ class Jacobian(_Derivative):
         delta = self._delta
         nsteps = delta.size
 
-        if self.step_nom == None :
+        if self.step_nom is None :
             stepNom = np.maximum(np.abs(x0), 0.02)
         else:
             stepNom = self.step_nom

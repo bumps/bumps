@@ -14,7 +14,7 @@ class Function(object):
         return self.f(p)
 
     def response_surface(self, p=None, dims=[0,1]):
-        if p == None: p = self.start
+        if p is None: p = self.start
         plot_response_surface(self, p, dims)
 
 class Fitness(object):
@@ -40,16 +40,16 @@ class Fitness(object):
         Plot a profile for the given p
         """
         import pylab
-        if self.dy != None:
+        if self.dy is not None:
             pylab.errorbar(self.x, self.y, yerr=self.dy, fmt='x')
         else:
             pylab.plot(self.x, self.y, 'x')
-        if p == None: p = self.start
+        if p is None: p = self.start
         x,y = self.profile(p)
         pylab.plot(x,y)
 
     def response_surface(self, p=None, dims=[0,1]):
-        if p == None: p = self.start
+        if p is None: p = self.start
         plot_response_surface(self, p, dims)
 
 def plot_response_surface(f, p, dims=[0,1]):

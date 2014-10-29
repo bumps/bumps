@@ -435,7 +435,7 @@ class MCMCDraw(object):
         # are throwing way an entire chain?
 
     def _get_labels(self):
-        if self._labels == None:
+        if self._labels is None:
             return ["P%d"%i for i in range(self._thin_point.shape[2])]
         else:
             return self._labels
@@ -460,7 +460,7 @@ class MCMCDraw(object):
         # otherwise we need to exclude the current generation from
         # the pool.  If (2) happens, we need to increment everything
         # above the cursor by the number of chains.
-        if self._gen_current != None:
+        if self._gen_current is not None:
             pool_size = Ngen*Nchain
             cursor = pool_size  # infinite
         else:
@@ -470,7 +470,7 @@ class MCMCDraw(object):
 
         # Make a return population and fill it with the current generation
         pop = empty((Npop,Nvar),'d')
-        if self._gen_current != None:
+        if self._gen_current is not None:
             pop[:Nchain] = self._gen_current
         else:
             #print(pop.shape, points.shape, chains.shape)
@@ -815,9 +815,9 @@ class MCMCDraw(object):
         self._thin_point = dstack( (self._thin_point, newvars) )
 
         # Add labels for the new variables, if available.
-        if labels != None:
+        if labels is not None:
             self.labels = self.labels + labels
-        elif self._labels != None:
+        elif self._labels is not None:
             labels = ["P%d"%i for i in range(Nvar,Nvar+Nnew)]
             self.labels = self.labels + labels
         else: # no labels specified, old or new
@@ -857,7 +857,7 @@ def _sample(state, portion, vars, selection):
                 idx = idx & (points[:,v]>=r[0]) & (points[:,v]<=r[1])
         points = points[idx,:]
         logp = logp[idx]
-    if vars != None:
+    if vars is not None:
         points = points[:,vars]
     return points, logp
 
