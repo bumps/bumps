@@ -347,6 +347,7 @@ class BumpsOpts(ParseOpts):
     noise = "5"
     starts = "1"
     seed = ""
+    time = "inf"
     PLOTTERS = "linear", "log", "residuals"
     USAGE = """\
 Usage: bumps [options] modelfile [modelargs]
