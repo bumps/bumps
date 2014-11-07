@@ -428,7 +428,7 @@ Options:
         crossover ratio for population mixing
     --starts=1      [%(fitter)s]
         number of times to run the fit from random starting points
-    --init=lhs      [dream]
+    --init=eps      [dream]
         population initialization method:
           eps:    ball around initial parameter set
           lhs:    latin hypercube sampling
