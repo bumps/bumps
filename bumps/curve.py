@@ -55,15 +55,23 @@ class Curve(object):
 
     This model can be fitted with any of the bumps optimizers.
 
-    The function *fn(x,p1,p2,...)* should return the expected value y for 
-    each point x given the parameters p1, p2, ... .  Gaussian uncertainty
-    dy must be specified for each point.  If measurements are drawn from
-    some other uncertainty distribution, then subclass Curve and replace
-    nllf with the correct probability given the residuals.  See the
-    implementation of :class:`PoissonCurve` for an example.
+    The function *fn(x,p1,p2,...)* should return the expected value *y* for
+    each point *x* given the parameters p1, p2, ... .  Gaussian uncertainty
+    *dy* can be specified for each point.   If not given, *dy* defaults to 1.
 
-    The fittable parameters are derived from the function definition, with
-    the *name* prepended to each parameter if a name is given.
+    If measurements are drawn from some other uncertainty distribution, then
+    subclass Curve and replace nllf with the correct probability given the
+    residuals.  See the implementation of :class:`PoissonCurve` for an example.
+
+    The fittable parameters are derived from the parameter names in the
+    function definition *fn*, with the *name* prepended to each parameter.
+    You can use this to keep parameters straight when fitting multiple
+    datasets with the same function.
+
+    Plotting defaults to a 1-D plot with error bars for the data, and a line
+    for the function value.  You can replace it with a new function
+    *plot(x,y,dy,fy,view="linear")* which plots the data appropriate for
+    you measurement.
 
     Additional keyword arguments are treated as the initial values for
     the parameters, or initial ranges if par=(min,max).  Otherwise, the
@@ -156,9 +164,9 @@ class Curve(object):
         np.savetxt(basename + '.dat', data.T)
 
     def plot(self, view=None):
-        self._plot(self.x, self.theory(), self.residuals(), view=view)
+        self._plot(self.x, self.y, self.dy, self.theory(), view=view)
 
-def plot_err(x, y, dy, view=None):
+def plot_err(x, y, dy, fy, view=None):
     """
     Plot data *y* and error *dy* against *x*.
 
@@ -166,7 +174,7 @@ def plot_err(x, y, dy, view=None):
     """
     import pylab
     pylab.errorbar(x, y, yerr=dy, fmt='.')
-    pylab.plot(x, y, '-', hold=True)
+    pylab.plot(x, fy, '-', hold=True)
     if view is 'log':
         pylab.xscale('linear')
         pylab.yscale('log')
