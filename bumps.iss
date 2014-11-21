@@ -1,9 +1,9 @@
-; -- bumps.iss -- an Inno Setup Script for Refl1D
+; -- bumps.iss -- an Inno Setup Script for Bumps
 ; This script is used by the Inno Setup Compiler to build a Windows XP
-; installer/uninstaller for the DANSE Reflectometry application named Refl1D.
+; installer/uninstaller.
 ; The script is written to explicitly allow multiple versions of the
 ; application to be installed simulaneously in separate subdirectories such
-; as "Refl1D 0.5.0", "Refl1D 0.7.2", and "Refl1D 1.0" under a group directory.
+; as "Bumps 0.5.0", "Bumps 0.7.2", and "Bumps 1.0" under a group directory.
 
 ; NOTE: In order to support more than one version of the application
 ; installed simultaneously, the AppName, Desktop shortcut name, and Quick
@@ -11,23 +11,23 @@
 ; having unique names (in the more obvious places) for DefaultDirNam,
 ; DefaultGroupName, and output file name.
 
-; By default, when installing Refl1D:
-; - The destination folder will be "C:\Program Files\DANSE\Refl1D x.y.z"
-; - A desktop icon will be created with the label "Refl1D x.y.z"
+; By default, when installing:
+; - The destination folder will be "C:\Program Files\DANSE\Bumps x.y.z"
+; - A desktop icon will be created with the label "Bumps x.y.z"
 ; - A quickstart icon is optional
-; - A start menu folder will be created with the name DANSE -> Refl1D x.y.z
-; By default, when uninstalling Refl1D x.y.z
+; - A start menu folder will be created with the name DANSE -> Bumps x.y.z
+; By default, when uninstalling Bumps x.y.z
 ; - The uninstall can be initiated from either the:
-;   * Start menu via DANSE -> Refl1D x.y.z -> Uninstall Refl1D
-;   * Start menu via Control Panel - > Add or Remove Programs -> Refl1D x.y.z
-; - It will not delete the C:\Program Files\DANSE\Refl1D x.y.z folder if it
+;   * Start menu via DANSE -> Bumps x.y.z -> Uninstall Bumps
+;   * Start menu via Control Panel - > Add or Remove Programs -> Bumps x.y.z
+; - It will not delete the C:\Program Files\DANSE\Bumps x.y.z folder if it
 ;   contains any user created files
-; - It will delete any desktop or quickstart icons for Refl1D that were
+; - It will delete any desktop or quickstart icons for Bumps that were
 ;   created on installation
 
 ; NOTE: The Quick Start Pack for the Inno Setup Compiler needs to be installed
 ; with the Preprocessor add-on selected to support use of #define statements.
-#define MyAppName "Refl1D"
+#define MyAppName "Bumps"
 #define MyAppNameLowercase "bumps"
 #define MyGroupFolderName "DANSE"
 #define MyAppPublisher "NIST & University of Maryland"
@@ -36,10 +36,11 @@
 #define MyAppCLIFileName "launch.bat"
 #define MyAppGUIFileName "bumps.exe"
 #define MyIconFileName "bumps.ico"
+#define MyIconPath = "bumps-data/bumps.ico"
 #define MyReadmeFileName "README.txt"
 #define MyLicenseFileName "LICENSE.txt"
 #define Space " "
-; Use updated version string if present in the include file.  It is expected that the Refl1D
+; Use updated version string if present in the include file.  It is expected that the Bumps
 ; build script will create this file using the application's internal version string to create
 ; a define statement in the format shown below.
 #define MyAppVersion "0.0.0"
@@ -48,7 +49,7 @@
 #endif
 
 [Setup]
-; Make the AppName string unique so that other versions of the program can be installed simultaniously.
+; Make the AppName string unique so that other versions of the program can be installed simultaneously.
 ; This is done by using the name and version of the application together as the AppName.
 AppName={#MyAppName}{#Space}{#MyAppVersion}
 AppVerName={#MyAppName}{#Space}{#MyAppVersion}
@@ -85,7 +86,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 Source: "dist\*"; Excludes: "examples,doc"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ;Source: "dist\examples\*"; DestDir: "{userdocs}\{#MyAppName}\examples"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "dist\doc\examples\*"; DestDir: "{userdocs}\{#MyAppName}\examples"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "doc\tutorial\*"; DestDir: "{userdocs}\{#MyAppName}\examples"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; The following Pascal function checks for the presence of the VC++ 2008 DLL folder on the target system
 ; to determine if the VC++ 2008 Redistributable kit needs to be installed.
@@ -106,7 +107,7 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 ; - {userappdata} refers to shortcuts in the Quick Start menu on the tool bar.
 ;
 ; When running the application in command line mode, we want to keep the command window open when it
-; exits so that the user can run it again from the window.  Unfortunatley, this section does not have
+; exits so that the user can run it again from the window.  Unfortunately, this section does not have
 ; a flag for keeping the command window open on exit.  To accomplish this, a batch file is run that
 ; creates the command window and starts the Windows command interpreter.  This provides the same
 ; environment as starting a command window using the run dialog box from the Windows start menu and

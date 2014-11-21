@@ -76,3 +76,7 @@ def ispylit(f):
             line = fid.readline()
 
     return line.startswith("#")
+
+
+if __name__ == "__main__":
+    make()

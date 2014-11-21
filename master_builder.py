@@ -54,11 +54,11 @@ import subprocess
 sys.dont_write_bytecode = True
 
 # Windows commands to run utilities
-GIT = r"C:\Program Files\Git\bin\git.exe"
+GIT = r"C:\Program Files (x86)\Git\bin\git.exe"
 REPO_NEW = '"%s" clone git@github.com:reflectometry/bumps.git' % GIT
 REPO_UPDATE = '"%s" pull origin master' % GIT
 
-INNO = r"C:\Program Files\Inno Setup 5\ISCC.exe"  # command line operation
+INNO = r"C:\Program Files (x86)\Inno Setup 5\ISCC.exe"  # command line operation
 
 # Name of the package
 PKG_NAME = "bumps"
@@ -146,6 +146,13 @@ def build_it():
     start_with = sys.argv[1] if len(sys.argv) > 1 else 'deps'
     started = False
     only = len(sys.argv) > 2 and sys.argv[2] == "only"
+
+    # Clean the install tree
+    started = started or start_with == 'clean'
+    if started:
+        clean()
+    if started and only:
+        return
 
     # Check the system for all required dependent packages.
     started = started or start_with == 'deps'
@@ -250,6 +257,9 @@ def create_archive(version=None):
             shutil.copy(listing,
                         os.path.join(TOP_DIR, PKG_NAME + "-" + str(version) + "-source-list.txt"))
 
+def clean():
+    if os.path.isdir(INS_DIR):
+        shutil.rmtree(INS_DIR, ignore_errors=True)
 
 def install_package():
     # Install the application package in a private directory tree.
@@ -259,21 +269,6 @@ def install_package():
     print("\nStep 3 - Installing the %s package in %s...\n" %
           (PKG_NAME, INS_DIR))
     os.chdir(SRC_DIR)
-
-    if os.path.isdir(INS_DIR):
-        print("WARNING: In order to build %s cleanly, the local build" %
-              APP_NAME)
-        print("directory %s needs to be deleted." % INS_DIR)
-        print("Do you want to delete this directory and continue (D)")
-        print("            or leave contents intact and continue (C)")
-        print("            or exit the build script (E)")
-        answer = input("Please choose either (D|C|E)? [E]: ")
-        if answer.upper() == "D":
-            shutil.rmtree(INS_DIR, ignore_errors=True)
-        elif answer.upper() == "C":
-            pass
-        else:
-            sys.exit()
 
     # Perform the installation to a private directory tree and create the
     # PYTHONPATH environment variable to pass this info to the py2exe build
@@ -290,15 +285,19 @@ def build_documentation():
     print("\nStep 4 - Running the Sphinx utility to build documentation ...\n")
     os.chdir(os.path.join(SRC_DIR, "doc"))
 
-    # Delete any left over files from a previous build.
-    # Create documentation in HTML and PDF format.
-    sphinx_cmd = '"%s" -m sphinx.__init__ -b %%s -d _build/doctrees -D latex_paper_size=letter .'
-    exec_cmd(sphinx_cmd%"html")
-    exec_cmd(sphinx_cmd%"pdf")
-    # Copy PDF to the doc directory where the py2exe script will look for it.
-    pdf = os.path.join("_build", "latex", APP_NAME + ".pdf")
-    if os.path.isfile(pdf):
-        shutil.copy(pdf, ".")
+    # Run pylit on the examples directory, creating the tutorial directory
+    exec_cmd("%s gentut.py"%(PYTHON, ))
+
+    if False:
+        # Delete any left over files from a previous build.
+        # Create documentation in HTML and PDF format.
+        sphinx_cmd = '"%s" -m sphinx.__init__ -b %%s -d _build/doctrees -D latex_paper_size=letter .'
+        exec_cmd(sphinx_cmd%"html")
+        exec_cmd(sphinx_cmd%"pdf")
+        # Copy PDF to the doc directory where the py2exe script will look for it.
+        pdf = os.path.join("_build", "latex", APP_NAME + ".pdf")
+        if os.path.isfile(pdf):
+            shutil.copy(pdf, ".")
 
 
 def create_windows_exe():
@@ -508,14 +507,17 @@ def exec_cmd(command):
 
 
 if __name__ == "__main__":
-    START_POINTS = ('deps', 'co', 'checkout', 'update', 'build', 'test',
-                    'docs', 'zip', 'exe', 'installer')
+    START_POINTS = (
+        'clean', 'deps', 'co', 'checkout', 'update', 'build', 'test',
+        'docs', 'zip', 'exe', 'installer',
+    )
 
     if len(sys.argv) > 1:
         # Display help if requested.
         if len(sys.argv) > 1 and sys.argv[1] not in START_POINTS:
             print("\nUsage: python master_builder.py [<start>] [only]\n")
             print("Build start points:")
+            print("  clean      clean old build")
             print("  deps       check dependencies")
             print("  update     update archive")
             print("  build      build package")

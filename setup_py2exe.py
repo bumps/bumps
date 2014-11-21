@@ -39,7 +39,7 @@ bumps_gui.exe can be run from the dist directory.
 import os
 import sys
 
-sys.dont_write_bytecode = True
+#sys.dont_write_bytecode = True
 
 # Force build before continuing
 os.system('"%s" setup.py build' % sys.executable)
@@ -73,7 +73,6 @@ sys.path.insert(0, build_lib)
 import wx
 import matplotlib
 matplotlib.use('WXAgg')
-import periodictable
 
 # Retrieve the application version string.
 import bumps
@@ -162,13 +161,7 @@ manifest_for_python26 = """
 """
 
 # Select the appropriate manifest to use.
-if sys.version_info >= (3, 0) or sys.version_info < (2, 5):
-    print("*** This script only works with Python 2.5, 2.6, or 2.7.")
-    sys.exit()
-elif sys.version_info >= (2, 6):
-    manifest = manifest_for_python26
-elif sys.version_info >= (2, 5):
-    manifest = manifest_for_python25
+manifest = manifest_for_python26 if sys.version_info >= (2, 6) else manifest_for_python25
 
 # Create a list of all files to include along side the executable being built
 # in the dist directory tree.  Each element of the data_files list is a tuple
@@ -177,8 +170,8 @@ data_files = []
 
 # Add resource files that need to reside in the same directory as the image.
 data_files.append(('.', [os.path.join('.', 'LICENSE.txt')]))
-data_files.append(('.', [os.path.join('.', 'README.txt')]))
-data_files.append(('.', [os.path.join('.', 'bin', 'bumps_launch.bat')]))
+data_files.append(('.', [os.path.join('.', 'README.rst')]))
+data_files.append(('.', [os.path.join('.', 'bin', 'launch.bat')]))
 
 # Add application specific data files from the bumps\bumps-data folder.
 data_files += gui_resources.data_files()
@@ -187,20 +180,10 @@ data_files += gui_resources.data_files()
 # For matploblib prior to version 0.99 see the examples at the end of the file.
 data_files += matplotlib.get_py2exe_datafiles()
 
-# Add data files from the periodictable\xsf folder.
-data_files += periodictable.data_files()
-
 # Add example directories and their files.  An empty directory is ignored.
 # Note that Inno Setup will determine where these files will be placed such as
 # C:\My Documents\... instead of the installation folder.
-for path in glob.glob(os.path.join('examples', '*')):
-    if os.path.isdir(path):
-        for file in glob.glob(os.path.join(path, '*.*')):
-            data_files.append((path, [file]))
-    else:
-        data_files.append(('examples', [path]))
-
-for path in glob.glob(os.path.join('doc', 'examples', '*')):
+for path in glob.glob(os.path.join('doc', 'tutorial', '*')):
     if os.path.isdir(path):
         for file in glob.glob(os.path.join(path, '*.*')):
             data_files.append((path, [file]))
@@ -208,11 +191,11 @@ for path in glob.glob(os.path.join('doc', 'examples', '*')):
         data_files.append(('doc', [path]))
 
 # Add PDF documentation to the dist staging directory.
-pdf = os.path.join('doc', 'Bumps.pdf')
-if os.path.isfile(pdf):
-    data_files.append(('doc', [pdf]))
-else:
-    print("*** %s not found - building frozen image without it ***" % pdf)
+#pdf = os.path.join('doc', 'Bumps.pdf')
+#if os.path.isfile(pdf):
+#    data_files.append(('doc', [pdf]))
+#else:
+#    print("*** %s not found - building frozen image without it ***" % pdf)
 
 # Add the Microsoft Visual C++ 2008 redistributable kit if we are building with
 # Python 2.6 or 2.7.  This kit will be installed on the target system as part
@@ -226,9 +209,9 @@ if sys.version_info >= (2, 6):
     data_files.append(('.', [os.path.join(pypath, 'vcredist_x86.exe')]))
 
 # Specify required packages to bundle in the executable image.
-packages = ['numpy', 'scipy', 'matplotlib', 'pytz', 'pyparsing',
-            'periodictable', 'bumps.names', 'dream'
-            ]
+packages = [
+    'numpy', 'scipy', 'matplotlib', 'pytz', 'pyparsing', 'bumps',
+]
 
 # Specify files to include in the executable image.
 includes = []
@@ -244,19 +227,29 @@ includes = []
 # - Since we do not support Win 9x systems, w9xpopen.dll is not needed.
 # - For some reason cygwin1.dll gets included by default, but it is not needed.
 
-excludes = ['Tkinter', 'PyQt4', '_ssl', '_tkagg', 'numpy.distutils.test']
+excludes = [
+    'Tkinter', 'PyQt4', '_ssl', '_tkagg', 'numpy.distutils.test',
+    # don't know why sympy, etc, are being included...
+    'OpenGL', 'PIL', 'Pythonwin',
+    'colorama', 'docutils', 'jinja2', 'markupsafe', 'pygments',
+    'scipy.ndimage', 'scipy.signal', 'scipy.sparse',
+    'scipy.spatial', 'scipy.weave',
+    'simplejson', 'sklearn', 'sphinx',
+    'sympy', 'tornado', 'zmq',
+]
 
 dll_excludes = ['libgdk_pixbuf-2.0-0.dll',
                 'libgobject-2.0-0.dll',
                 'libgdk-win32-2.0-0.dll',
-                'tcl84.dll',
-                'tk84.dll',
+                'tcl85.dll',
+                'tk85.dll',
                 'QtGui4.dll',
                 'QtCore4.dll',
                 'msvcr71.dll',
                 'msvcp90.dll',
                 'w9xpopen.exe',
-                'cygwin1.dll']
+                'cygwin1.dll',
+]
 
 
 class Target(object):
@@ -271,7 +264,7 @@ clientCLI = Target(
     name='Bumps',
     description='Bumps CLI application',
     # module to run on application start
-    script=os.path.join('bin', 'bumps_cli.py'),
+    script=os.path.join('bin', 'bumps'),
     dest_base='bumps',  # file name part of the exe file to create
     # also need to specify in data_files
     icon_resources=[
@@ -283,7 +276,7 @@ clientGUI = Target(
     name='Bumps',
     description='Bumps GUI application',
     # module to run on application start
-    script=os.path.join('bin', 'bumps_gui.py'),
+    script=os.path.join('bin', 'bumps_gui'),
     dest_base='bumps_gui',  # file name part of the exe file to create
     # also need to specify in data_files
     icon_resources=[
