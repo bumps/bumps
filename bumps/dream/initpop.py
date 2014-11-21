@@ -70,9 +70,9 @@ def cov_init(N, x, cov=None, dx=None):
         pop = cov_init(cov=C, x=x, N=20)
     """
     #return mean + dot(RNG.randn(N,len(mean)), chol(cov))
-    if cov == None and dx == None:
+    if cov is None and dx is None:
         cov = eye(len(x))
-    elif cov == None:
+    elif cov is None:
         cov = diag(asarray(dx)**2)
     return util.RNG.multivariate_normal(mean=x, cov=cov, size=N)
 

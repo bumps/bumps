@@ -8,22 +8,22 @@ from .de import DifferentialEvolution, best1
 
 class Function(object):
     def __init__(self, f, ndim=None, po=None, bounds=None, args=()):
-        if bounds != None and po != None:
+        if bounds is not None and po is not None:
             self.parameters = [Parameter(value=v,bounds=b)
                                for v,b in zip(po,bounds)]
-        elif bounds != None:
+        elif bounds is not None:
             self.parameters = [Parameter(b) for b in bounds]
-        elif po != None:
+        elif po is not None:
             self.parameters = [Parameter(v) for v in po]
-        elif ndim != None:
+        elif ndim is not None:
             self.parameters = [Parameter() for _ in range(ndim)]
         else:
             raise TypeError("Need ndim, po or bounds to get problem dimension")
-        if ((ndim != None and ndim != len(self.parameters))
-            or (po != None and len(po) != len(self.parameters))
-            or (bounds != None and len(bounds) != len(self.parameters))):
+        if ((ndim is not None and ndim != len(self.parameters))
+            or (po is not None and len(po) != len(self.parameters))
+            or (bounds is not None and len(bounds) != len(self.parameters))):
             raise ValueError("Inconsistent dimensions for ndim, po and bounds")
-        if po == None:
+        if po is None:
             po = [p.start_value() for p in self.parameters]
 
         self.f = f
@@ -32,7 +32,7 @@ class Function(object):
         self.args = args
 
     def guess(self):
-        if self.po != None:
+        if self.po is not None:
             return self.po
         else:
             return [p.start_value() for p in self.parameters]

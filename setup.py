@@ -50,8 +50,8 @@ dist = setup(
     packages=packages,
     package_data=gui_resources.package_data(),
     scripts=['bin/bumps'],
-    install_requires=['six', 'numdifftools'],
-    #install_requires = ['httplib2', 'numdifftools'],
+    install_requires=['six'],
+    #install_requires = ['httplib2'],
 )
 
 # End of file

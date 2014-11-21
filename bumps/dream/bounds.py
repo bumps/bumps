@@ -32,7 +32,7 @@ def make_bounds_handler(bounds, style='reflect'):
     outside the bounds (which can happen if the step size is too large),
     and a random uniform value is used instead.
     """
-    if bounds == None:
+    if bounds is None:
         return IgnoreBounds()
 
     low,high = bounds
@@ -47,7 +47,7 @@ def make_bounds_handler(bounds, style='reflect'):
         f = FoldBounds(low, high)
     elif style == 'randomize':
         f = RandomBounds(low, high)
-    elif style == 'none' or style == None:
+    elif style == 'none' or style is None:
         f = IgnoreBounds()
     else:
         raise ValueError("bounds style %s is not valid"%style)

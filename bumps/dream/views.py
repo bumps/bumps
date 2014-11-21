@@ -21,20 +21,20 @@ def plot_all(state, portion=1.0, figfile=None):
     figure(); plot_vars(draw, all_vstats)
     if state.title: suptitle(state.title)
     print(format_vars(all_vstats))
-    if figfile != None: savefig(figfile+"-vars")
+    if figfile is not None: savefig(figfile+"-vars")
     figure(); plot_trace(state, portion=portion)
     if state.title: suptitle(state.title)
-    if figfile != None: savefig(figfile+"-trace")
+    if figfile is not None: savefig(figfile+"-trace")
     figure(); plot_R(state, portion=portion)
     if state.title: suptitle(state.title)
-    if figfile != None: savefig(figfile+"-R")
+    if figfile is not None: savefig(figfile+"-R")
     figure(); plot_logp(state, portion=portion)
     if state.title: suptitle(state.title)
-    if figfile != None: savefig(figfile+"-logp")
+    if figfile is not None: savefig(figfile+"-logp")
     if state.Nvar <= 25:
         figure(); plot_corrmatrix(draw)
         if state.title: suptitle(state.title)
-        if figfile != None: savefig(figfile+"-corr")
+        if figfile is not None: savefig(figfile+"-corr")
 
 
 def plot_vars(draw, all_vstats, **kw):
@@ -53,7 +53,7 @@ def tile_axes(n, size=None):
     possible while keeping the plot shape near the golden ratio.
     """
     from pylab import gcf
-    if size == None:
+    if size is None:
         size = gcf().get_size_inches()
     figwidth, figheight = size
     # Golden ratio phi is the preferred dimension
@@ -166,7 +166,7 @@ def _make_fig_colorbar(logp):
 def _make_logp_histogram(values, logp, nbins, ci, weights, cbar):
     from numpy import (ones_like, searchsorted, linspace, cumsum, diff, 
         argsort, array, hstack, exp)
-    if weights == None: weights = ones_like(logp)
+    if weights is None: weights = ones_like(logp)
     # TODO: values are being sorted to collect stats and again to plot
     idx = argsort(values)
     values, weights, logp = values[idx], weights[idx], logp[idx]

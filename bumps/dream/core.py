@@ -194,14 +194,14 @@ def run_dream(dream, abort_test=None):
     # [PAK] I moved this out of dream so that the user can use whatever
     # complicated sampling scheme they want.  Unfortunately, this means
     # the user needs to know some complex sampling scheme.
-    if dream.population == None:
+    if dream.population is None:
         raise ValueError("initial population not defined")
 
     # Remember the problem dimensions
     Ngen, Nchain, _Nvar = dream.population.shape
     Npop = Ngen*Nchain
 
-    if dream.CR == None:
+    if dream.CR is None:
         dream.CR = AdaptiveCrossover(3)
 
     # Step 2: Calculate posterior density associated with each value in x
@@ -351,7 +351,7 @@ def allocate_state(dream):
     Nthin = int(Ngen/thinning) + 1
     #print Ngen, Nthin, Nupdate, draws, steps, Npop, Nvar
 
-    if dream.state != None:
+    if dream.state is not None:
         dream.state.resize(Ngen, Nthin, Nupdate, Nvar, Nchain, Ncr, thinning)
     else:
         dream.state = MCMCDraw(Ngen, Nthin, Nupdate, Nvar, Nchain, Ncr, thinning)

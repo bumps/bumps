@@ -51,25 +51,40 @@ from .parameter import Parameter
 
 class Curve(object):
     """
-    Model a measurement with Gaussian uncertainty.
+    Model a measurement with a user defined function.
 
-    This model can be fitted with any of the bumps optimizers.
+    The function *fn(x,p1,p2,...)* should return the expected value *y* for
+    each point *x* given the parameters *p1*, *p2*, etc.  *dy* is the uncertainty
+    for each measured value *y*.  If not specified, it defaults to 1.
+    Initial values for the parameters can be set as *p=value* arguments to *Curve*.
+    If no value is set, then the initial value will be taken from the default
+    value given in the definition of *fn*, or set to 0 if the parameter is not
+    defined with an initial value.  Arbitrary non-fittable data can be passed
+    to the function as parameters, but only if the parameter is given a default
+    value of *None* in the function definition, and setting the initial value
+    as an argument to *Curve*.  Setting *state=dict(key=value, ...)* before
+    *Curve*, and calling *Curve* as *Curve(..., \*\*state)* works pretty well.
 
-    The function *fn(x,p1,p2,...)* should return the expected value y for 
-    each point x given the parameters p1, p2, ... .  Gaussian uncertainty
-    dy must be specified for each point.  If measurements are drawn from
-    some other uncertainty distribution, then subclass Curve and replace
-    nllf with the correct probability given the residuals.  See the
-    implementation of :class:`PoissonCurve` for an example.
+    *Curve* takes two special keyword arguments: *name* and *plot*.
+    *name* is added to each parameter name when the parameter is defined.
+    The filename for the data is a good choice, since this allows you to keep
+    the parameters straight when fitting multiple datasets simultaneously.
 
-    The fittable parameters are derived from the function definition, with
-    the *name* prepended to each parameter if a name is given.
+    Plotting defaults to a 1-D plot with error bars for the data, and a line
+    for the function value.  You can assign your own plot function with
+    the *plot* keyword.  The function should be defined as *plot(x,y,dy,fy,\*\*kw)*.
+    The keyword arguments will be filled with the values of the parameters
+    used to compute *fy*.  It will be easiest to list the parameters you
+    need to make your plot as positional arguments after *x,y,dy,fy* in the
+    plot function declaration.  For example, *plot(x,y,dy,fy,p3,\*\*kw)*
+    will make the value of parameter *p3* available as a variable in your
+    function.  The special keyword *view* will be a string containing
+    *linear*, *log*, *logx* or *loglog*.
 
-    Additional keyword arguments are treated as the initial values for
-    the parameters, or initial ranges if par=(min,max).  Otherwise, the
-    default is taken from the function definition (if the function uses
-    par=value to define the parameter) or is set to zero if no default is
-    given in the function.
+    The data uncertainty is assumed to follow a gaussian distribution.
+    If measurements draw from some other uncertainty distribution, then
+    subclass Curve and replace nllf with the correct probability given the
+    residuals.  See the implementation of :class:`PoissonCurve` for an example.
     """
     def __init__(self, fn, x, y, dy=None, name="", plot=None, **fnkw):
         self.x, self.y = np.asarray(x), np.asarray(y)
@@ -103,6 +118,8 @@ class Curve(object):
             if len(pvalues) > len(pnames):
                 pvalues = pvalues[1:]
             init.update(zip(pnames[-len(pvalues):], pvalues))
+        # Non-fittable parameters need to be sent in as None
+        state_vars = set(p for p,v in init.items() if v is None)
         # Regardless, use any values specified in the constructor, but first
         # check that they exist as function parameters.
         invalid = set(fnkw.keys()) - set(pnames)
@@ -113,7 +130,7 @@ class Curve(object):
 
         # Build parameters out of ranges and initial values
         pars = dict((p, Parameter.default(init[p], name=name + p))
-                    for p in pnames)
+                    for p in pnames if p not in state_vars)
 
         # Make parameters accessible as model attributes
         for k, v in pars.items():
@@ -123,9 +140,10 @@ class Curve(object):
 
         # Remember the function, parameters, and number of parameters
         self._function = fn
-        self._pnames = pnames
+        self._pnames = [p for p in pnames if not (p in state_vars)]
         self._cached_theory = None
         self._plot = plot if plot is not None else plot_err
+        self._state = dict((p,v) for p,v in init.items() if p in state_vars)
 
     def update(self):
         self._cached_theory = None
@@ -141,6 +159,7 @@ class Curve(object):
             if x is None:
                 x = self.x
             kw = dict((p, getattr(self, p).value) for p in self._pnames)
+            kw.update(self._state)
             self._cached_theory = self._function(x, **kw)
         return self._cached_theory
 
@@ -152,13 +171,18 @@ class Curve(object):
         return 0.5 * np.sum(r ** 2)
 
     def save(self, basename):
+        # TODO: need header line with state vars as json
+        # TODO: need to support nD x,y,dy
         data = np.vstack((self.x, self.y, self.dy, self.theory()))
         np.savetxt(basename + '.dat', data.T)
 
     def plot(self, view=None):
-        self._plot(self.x, self.theory(), self.residuals(), view=view)
+        kw = dict((p, getattr(self, p).value) for p in self._pnames)
+        kw.update(self._state)
+        print "kw_plot",kw
+        self._plot(self.x, self.y, self.dy, self.theory(), view=view, **kw)
 
-def plot_err(x, y, dy, view=None):
+def plot_err(x, y, dy, fy, view=None, **kw):
     """
     Plot data *y* and error *dy* against *x*.
 
@@ -166,7 +190,7 @@ def plot_err(x, y, dy, view=None):
     """
     import pylab
     pylab.errorbar(x, y, yerr=dy, fmt='.')
-    pylab.plot(x, y, '-', hold=True)
+    pylab.plot(x, fy, '-', hold=True)
     if view is 'log':
         pylab.xscale('linear')
         pylab.yscale('log')
@@ -176,6 +200,9 @@ def plot_err(x, y, dy, view=None):
     elif view is 'loglog':
         pylab.xscale('log')
         pylab.yscale('log')
+    else: # view is 'linear'
+        pylab.xscale('linear')
+        pylab.yscale('linear')
 
 _LOGFACTORIAL = np.array([log(np.prod(np.arange(1., k + 1)))
                              for k in range(21)])

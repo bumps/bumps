@@ -103,7 +103,7 @@ def stats(x, weights=None):
     of the sample for the case where the median falls between two values
     in the sample), but this is good enough when the sample size is large.
     """
-    if weights == None:
+    if weights is None:
         x = np.sort(x)
         mean, std = np.mean(x), np.std(x,ddof=1)
     else:

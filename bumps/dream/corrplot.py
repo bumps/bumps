@@ -31,7 +31,7 @@ class Corr2d:
     Generate and manage 2D correlation histograms.
     """
     def __init__(self, data, labels=None, **kw):
-        if labels == None:
+        if labels is None:
             labels = ["P"+str(i+1) for i,_ in enumerate(data)]
         self.N = len(data)
         self.labels = labels
@@ -59,7 +59,7 @@ class Corr2d:
 
         pylab.clf()
         fig = pylab.gcf()
-        if title != None:
+        if title is not None:
             fig.text(0.5, 0.95, title,
                      horizontalalignment='center',
                      fontproperties=FontProperties(size=16))
@@ -70,7 +70,7 @@ def _hists(data, ranges=None, **kw):
     Generate pair-wise correlation histograms
     """
     N = len(data)
-    if ranges == None:
+    if ranges is None:
         low,high = np.min(data,axis=1), np.max(data,axis=1)
         ranges = [(l,h) for l,h in zip(low,high)]
     return dict(((i,j), np.histogram2d(data[i], data[j],

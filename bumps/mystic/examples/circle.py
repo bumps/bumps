@@ -25,7 +25,7 @@ def genpoints(coeffs, npts=20):
     Generate a 2D dataset of npts enclosed in circle of given coeffs,
     where coeffs = (x,y,r).
 
-    NOTE: if npts == None, constrain all points to circle of given radius
+    NOTE: if npts is None, constrain all points to circle of given radius
     """
     xo,yo,R = coeffs
     # Radial density varies as sqrt(x)

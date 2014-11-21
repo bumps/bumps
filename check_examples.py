@@ -6,7 +6,7 @@ sys.dont_write_bytecode = True
 
 ROOT = os.path.abspath(os.path.dirname(__file__))
 CLI = "%s %s/bin/bumps %%s %%s" % (sys.executable, ROOT)
-EXAMPLEDIR = os.path.join(ROOT, 'doc', '_examples')
+EXAMPLEDIR = os.path.join(ROOT, 'doc', 'examples')
 
 # Add the build dir to the system path
 packages = [ROOT]
@@ -31,6 +31,11 @@ class Commands(object):
 
 examples = [
     "peaks/model.py",
+    "curvefit/curve.py",
+    "constraints/model.py",
+    "constraints/gmodel.py",
+    "test_functions/anticor.py",
+    "test_functions/model.py",
 ]
 
 
