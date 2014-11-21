@@ -25,7 +25,7 @@ A pdf file is also provided to explain the theory behind these tools.
 To test if the toolbox is working paste the following in an interactive
 python session::
 
-   import numdifftools as nd
+   from bumps import numdifftools as nd
    nd.test(coverage=True, doctests=True)
 
 Examples
@@ -33,7 +33,7 @@ Examples
 Compute 1'st and 2'nd derivative of exp(x), at x == 1::
 
     >>> import numpy as np
-    >>> import numdifftools as nd
+    >>> from bumps import numdifftools as nd
     >>> fd = nd.Derivative(np.exp)              # 1'st derivative
     >>> fdd = nd.Derivative(np.exp, n=2)  # 2'nd derivative
     >>> fd(1)
@@ -116,6 +116,8 @@ scipy.misc.derivative
 # * loosen comparisons so tests pass (anaconda python 2.7 for os x)
 # 2014-10-29 Paul Kienzle
 # * use is/is not None to check if a value is None
+# 2014-11-21 Paul Kienzle
+# * update tests to import from bumps package
 
 from __future__ import division
 import numpy as np
@@ -162,7 +164,7 @@ def dea3(v0, v1, v2):
      # integrate sin(x) from 0 to pi/2
 
      >>> import numpy as np
-     >>> import numdifftools as nd
+     >>> from bumps import numdifftools as nd
      >>> Ei= np.zeros(3)
      >>> linfun = lambda k : np.linspace(0,np.pi/2.,2.**(k+5)+1)
      >>> for k in np.arange(3): 
@@ -735,7 +737,7 @@ class Derivative(_Derivative):
     Examples
     --------
      >>> import numpy as np
-     >>> import numdifftools as nd
+     >>> from bumps import numdifftools as nd
      
      # 1'st and 2'nd derivative of exp(x), at x == 1
      >>> fd = nd.Derivative(np.exp)              # 1'st derivative
@@ -803,7 +805,7 @@ class Jacobian(_Derivative):
     Examples
     --------
     >>> import numpy as np
-    >>> import numdifftools as nd
+    >>> from bumps import numdifftools as nd
     
     #(nonlinear least squares)
     >>> xdata = np.reshape(np.arange(0,1,0.1),(-1,1))
@@ -960,7 +962,7 @@ class Gradient(_PartialDerivative):
     Examples
     --------
     >>> import numpy as np
-    >>> import numdifftools as nd
+    >>> from bumps import numdifftools as nd
     >>> fun = lambda x: np.sum(x**2)
     >>> dfun = nd.Gradient(fun)
     >>> dfun([1,2,3])
@@ -1053,7 +1055,7 @@ class Hessdiag(_PartialDerivative):
     Examples
     --------
     >>> import numpy as np
-    >>> import numdifftools as nd
+    >>> from bumps import numdifftools as nd
     >>> fun = lambda x : x[0] + x[1]**2 + x[2]**3
     >>> ddfun = lambda x : np.asarray((0, 2, 6*x[2]))
     >>> Hfun = nd.Hessdiag(fun)
@@ -1110,7 +1112,7 @@ class Hessian(Hessdiag):
     Examples
     --------
     >>> import numpy as np
-    >>> import numdifftools as nd
+    >>> from bumps import numdifftools as nd
     
     # Rosenbrock function, minimized at [1,1]
     >>> rosen = lambda x : (1.-x[0])**2 + 105*(x[1]-x[0]**2)**2

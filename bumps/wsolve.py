@@ -28,7 +28,7 @@ Example
 Weighted system::
 
     >>> import numpy as np
-    >>> import wsolve
+    >>> from bumps import wsolve
     >>> A = np.matrix("1,2,3;2,1,3;1,1,1",'d').A
     >>> dy = [0.2,0.01,0.1]
     >>> y = [ 14.16, 13.01, 6.15]

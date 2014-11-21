@@ -415,7 +415,7 @@ class ParameterSet(object):
         self.names = names
         self.reference = reference
         self.parameters = [copy(reference) for _ in names]
-        print self.reference, self.parameters
+        # print self.reference, self.parameters
         for p, n in zip(self.parameters, names):
             p.name = " ".join((n, p.name))
         # Reference is no longer directly fittable

@@ -179,7 +179,7 @@ class Curve(object):
     def plot(self, view=None):
         kw = dict((p, getattr(self, p).value) for p in self._pnames)
         kw.update(self._state)
-        print "kw_plot",kw
+        #print "kw_plot",kw
         self._plot(self.x, self.y, self.dy, self.theory(), view=view, **kw)
 
 def plot_err(x, y, dy, fy, view=None, **kw):
