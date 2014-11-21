@@ -15,6 +15,7 @@
 /dist/
 /bumps.egg-info/
 bumps.iss-include
+iss-version
 
 # doc targets
 /doc/_build/
