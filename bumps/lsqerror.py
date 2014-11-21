@@ -200,7 +200,7 @@ def stderr(C):
     for covariance.
 
     If measurement uncertainty is unknown, scale the returned uncertainties
-    by $\sqrt{\chi^2_N$}$, where $\chi^2_N$ is the sum squared residuals
+    by $\sqrt{\chi^2_N}$, where $\chi^2_N$ is the sum squared residuals
     divided by the degrees  of freedom.  This will match the uncertainty on
     the parameters to the observed scatter assuming the model is correct and
     the fit is optimal.  This will also be appropriate for weighted fits
