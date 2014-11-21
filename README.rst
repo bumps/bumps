@@ -28,7 +28,24 @@ Documentation is available at `readthedocs <http://bumps.readthedocs.org/en/late
 Relaase notes
 =============
 
-0.7.5 2014-09-10
-----------------
+v0.7.5.3 2014-11-12
+-------------------
+
+* use --time to stop after a given number of hours
+* Levenberg-Marquardt: fix "must be 1-d or 2-d" bug
+* improve curvefit interface
+
+v0.7.5.2 2014-09-26
+-------------------
+
+* pull numdifftools dependency into the repository
+
+v0.7.5.1 2014-09-25
+-------------------
+
+* improve the load_model interface
+
+v0.7.5 2014-09-10
+-----------------
 
 * Pure python release
