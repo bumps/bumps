@@ -174,17 +174,19 @@ class MultiStart(FitBase):
         self.fitter = fitter
 
     def solve(self, monitors=None, mapper=None, **options):
+        # TODO: need better way of tracking progress
+        import logging
         starts = options.pop('starts', 1)
         reset = not options.pop('keep_best', True)
         f_best = np.inf
         x_best = self.problem.getp()
         for _ in range(max(starts, 1)):
-            print("round")
+            logging.info("multistart round %d"%_)
             x, fx = self.fitter.solve(monitors=monitors, mapper=mapper,
                                       **options)
             if fx < f_best:
                 x_best, f_best = x, fx
-                print(x_best, fx)
+                logging.info("multistart f(x),x: %s %s"%(str(fx),str(x_best)))
             if reset:
                 self.problem.randomize()
             else:
@@ -646,10 +648,11 @@ class DreamFit(FitBase):
 
         if options['entropy']:
             # TODO: need a better way to display entropy
+            import logging
             from .formatnum import format_uncertainty
-            print("Calculating entropy...")
+            logging.info("Calculating entropy...")
             S, dS = self.entropy()
-            print("Entropy: %s bits" % format_uncertainty(S, dS))
+            logging.info("Entropy: %s bits" % format_uncertainty(S, dS))
             #import sys; sys.exit()
 
         return x, -fx
@@ -889,21 +892,21 @@ def yesno(value):
 class FitOptions(object):
     # Field labels and types for all possible fields
     FIELDS = dict(
-        starts=("Starts",          int),
-        steps = ("Steps",           int),
+        starts= ("Starts", int),
+        steps = ("Steps", int),
         xtol = ("x tolerance", float),
         ftol = ("f(x) tolerance", float),
         stop = ("Stopping criteria", str),
-        thin = ("Thinning",        int),
-        burn = ("Burn-in Steps",   int),
-        pop = ("Population",      float),
-        init = ("Initializer",     ChoiceList("eps", "lhs", "cov", "random")),
+        thin = ("Thinning", int),
+        burn = ("Burn-in Steps", int),
+        pop = ("Population", float),
+        init = ("Initializer", ChoiceList("eps", "lhs", "cov", "random")),
         CR = ("Crossover ratio", float),
-        F = ("Scale",           float),
-        nT = ("# Temperatures",  int),
+        F = ("Scale", float),
+        nT = ("# Temperatures", int),
         Tmin = ("Min temperature", float),
         Tmax = ("Max temperature", float),
-        radius = ("Simplex radius",  float),
+        radius = ("Simplex radius", float),
         entropy = ("Calculate entropy", yesno),
     )
 

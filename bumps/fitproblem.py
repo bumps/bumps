@@ -19,7 +19,6 @@ from numpy import inf, isnan
 from . import parameter, bounds as mbounds
 from .formatnum import format_uncertainty
 
-
 # Abstract base class
 class Fitness(object):
     """
@@ -356,9 +355,11 @@ class BaseFitProblem(object):
 
         try:
             if isnan(self.parameter_nllf()):
-                print("Parameter nllf is wrong")
-                for p in self.bounded:
-                    print("%s %g" % (p, p.nllf()))
+                # TODO: make sure errors get back to the user
+                import logging
+                info = ["Parameter nllf is wrong"]
+                info += ["%s %g" %(p,p.nllf()) for p in self.bounded]
+                logging.error("\n  ".join(info))
             pparameter = self.parameter_nllf()
             pconstraint = self.constraints_nllf()
             pmodel = (self.model_nllf()
@@ -369,9 +370,10 @@ class BaseFitProblem(object):
             raise
         except:
             # TODO: make sure errors get back to the user
-            import traceback
-            traceback.print_exc()
-            print(parameter.summarize(self._parameters))
+            import traceback, logging
+            info = (traceback.format_exc(),
+                    parameter.summarize(self._parameters))
+            logging.error("\n".join(info))
             return inf
         if isnan(cost):
             # TODO: make sure errors get back to the user
@@ -422,10 +424,16 @@ class BaseFitProblem(object):
         if figfile is not None:
             pylab.savefig(figfile + "-model.png", format='png')
 
+    def cov(self):
+        from . import lsqerror
+        H = lsqerror.hessian(self)
+        H, L = lsqerror.perturbed_hessian(H)
+        return lsqerror.chol_cov(L)
+
     def stderr(self):
-        from lsqerror import jacobian, cov, corr, stderr
-        c = cov(jacobian(self))
-        return stderr(c), corr(c)
+        from . import lsqerror
+        c = self.cov()
+        return lsqerror.stderr(c), lsqerror.corr(c)
 
     def __getstate__(self):
         return (self.fitness, self.partial, self.name, self.penalty_nllf,
