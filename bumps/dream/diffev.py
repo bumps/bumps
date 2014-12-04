@@ -6,6 +6,7 @@ from numpy.linalg import norm, cholesky, LinAlgError
 from .util import draw
 from numpy import random as RNG
 
+EPS = 1e-6
 def de_step(Nchain,pop,CR,max_pairs=2,eps=0.05,snooker_rate=0.1,noise=1e-6):
     """
     Generates offspring using METROPOLIS HASTINGS monte-carlo markov chain
@@ -37,7 +38,7 @@ def de_step(Nchain,pop,CR,max_pairs=2,eps=0.05,snooker_rate=0.1,noise=1e-6):
             # Select to number of vector pair differences to use in update
             # using k ~ discrete U[1,max pairs]
             k = RNG.randint(max_pairs)+1
-            # [PAK: same as k = DEversion[qq,1] in the old code]
+            # [PAK: same as k = DEversion[qq,1] in matlab version]
 
             # Select 2*k members at random different from the current member
             perm = draw(2*k, Npop-1)
@@ -75,8 +76,8 @@ def de_step(Nchain,pop,CR,max_pairs=2,eps=0.05,snooker_rate=0.1,noise=1e-6):
             # TODO: population sometimes not unique!
             step = xi - z
             denom = sum(step**2)
-            if denom == 0:
-                step = noise*RNG.randn(*step.shape)
+            if denom == 0: # identical points; should be extremely rare
+                step = EPS*RNG.randn(*step.shape)
                 denom = sum(step**2)
             scale = sum( (R1-R2)*step ) / denom
 
@@ -105,7 +106,7 @@ def de_step(Nchain,pop,CR,max_pairs=2,eps=0.05,snooker_rate=0.1,noise=1e-6):
             try:
                 #print "No step"
                 # Compute the Cholesky Decomposition of x_old
-                R = (2.38/sqrt(Nvar)) * cholesky(cov(pop.T) + noise*eye(Nvar))
+                R = (2.38/sqrt(Nvar)) * cholesky(cov(pop.T) + EPS*eye(Nvar))
                 # Generate jump using multinormal distribution
                 delta_x[qq] = dot(RNG.randn(*(1,Nvar)), R)
             except LinAlgError:
@@ -114,14 +115,21 @@ def de_step(Nchain,pop,CR,max_pairs=2,eps=0.05,snooker_rate=0.1,noise=1e-6):
 
 
     # Update x_old with delta_x and noise
-    x_new = pop[:Nchain] + delta_x + noise*RNG.randn(Nchain,Nvar)
 
     # [PAK] The noise term needs to depend on the fitting range
     # of the parameter rather than using a fixed noise value for all
     # parameters.  The  current parameter value is a pretty good proxy
     # in most cases, but it breaks down if the parameter is zero, or
     # if the range is something like 1 +/- eps.
-    #x_new = pop[:Nchain] * (1+1e-6*RNG.randn(Nchain,Nvar)) + delta_x
+
+    # absolute noise
+    #x_new = pop[:Nchain] + delta_x + noise*RNG.randn(Nchain,Nvar)
+
+    # relative noise
+    x_new = pop[:Nchain] * (1 + noise*RNG.randn(Nchain,Nvar)) + delta_x
+
+    # no noise
+    #x_new = pop[:Nchain] + delta_x
 
     return x_new, step_alpha, use_de_step
 
