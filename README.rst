@@ -28,7 +28,14 @@ Documentation is available at `readthedocs <http://bumps.readthedocs.org/en/late
 Relaase notes
 =============
 
-v0.7.5.3 2014-11-12
+v0.7.5.4 2014-12-05
+-------------------
+
+* use relative rather than absolute noise in dream, which lets us fit target
+  values in the order of 1e-6 or less.
+* fix covariance population initializer
+
+v0.7.5.3 2014-11-21
 -------------------
 
 * use --time to stop after a given number of hours
