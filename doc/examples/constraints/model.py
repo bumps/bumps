@@ -1,5 +1,3 @@
-import pylab
-from numpy import sin, cos, linspace, meshgrid, e, pi, sqrt, array, exp
 from bumps.names import *
 
 def line(x, m, b):
