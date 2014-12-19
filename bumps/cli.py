@@ -143,7 +143,7 @@ def load_best(problem, path):
             labels.append(m.group('label'))
             values.append(float(m.group('value')))
     assert labels == problem.labels()
-    problem.setp(values)
+    problem.setp(np.asarray(values))
 #CRUFT
 recall_best = load_best
 

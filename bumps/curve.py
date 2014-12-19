@@ -229,17 +229,24 @@ class PoissonCurve(Curve):
     See :class:`Curve` for details.
     """
     def __init__(self, fn, x, y, name="", **fnkw):
-        Curve.__init__(self, fn, x, y, sqrt(y), name=name, **fnkw)
+        Curve.__init__(self, fn, x, y, sqrt(y+1), name=name, **fnkw)
         self._logfacty = np.sum(logfactorial(self.y))
 
     def residuals(self):
         # TODO: provide individual probabilities as residuals
         # or perhaps the square roots --- whatever gives a better feel for
         # which points are driving the fit
-        raise NotImplementedError
+        theory = self.theory()
+        return np.sqrt(-(self.y * log(theory) - theory))
 
     def nllf(self):
         theory = self.theory()
         if (theory <= 0).any():
             return 1e308
         return -sum(self.y * log(theory) - theory) + self._logfacty
+
+    def save(self, basename):
+        # TODO: need header line with state vars as json
+        # TODO: need to support nD x,y,dy
+        data = np.vstack((self.x, self.y, self.theory()))
+        np.savetxt(basename + '.dat', data.T)
