@@ -6,18 +6,19 @@ User's Guide
 
 Bumps is designed to determine the ideal model parameters for a given
 set of measurements, and provide uncertainty on the parameter values.
-This is an inverse problem, where data can be predicted from theory, but
-theory cannot be directly inferred from data.  This means that bumps must
-search through parameter space, calling the theory function many times,
-to find the parameter values that are most consistent with the data.
+This is an inverse problem, where measured data can be predicted from
+theory, but theory cannot be directly inferred from measured data.  This
+means that bumps must search through parameter space, calling the theory
+function many times to find the parameter values that are most consistent
+with the data.
 
 Unlike traditional Levenburg-Marquardt fitting programs, Bumps does not
-require normally distributed measurement uncertainty.  If a measurement comes
-from counting statistics, for example, you can set your model to use
+require normally distributed measurement uncertainty.  If a measurement
+comes from counting statistics, for example, you can define your model with
 poisson probability rather than gaussian probability.  Parameter values
 can have constraints.  For example, if the size of a sample is known to
 within 5%, the size parameter in the model can set to a gaussian distribution
-with a deviation of 5%.  Simple bounds are also supported.  Parameter
+with a standard deviation of 5%.  Simple bounds are also supported.  Parameter
 expressions allow you to set the value of a parameter based on other
 parameters, which allows simultaneous fitting of multiple datasets to
 different models without having to define a specialized fit function.
@@ -29,6 +30,9 @@ for moderately complex problems, you need to run in parallel.  Bumps
 can fully utilize multiple cores on one computer, or through MPI, it
 runs on supercomputing clusters.
 
+..
+
+# Data handling has been removed so that we can ship a pure python package.
 In addition to inverse problem solving, bumps has acquired code for
 theory building and data handling.  For example, many problems have
 measurements in which the instrument resolution plays a role, and
