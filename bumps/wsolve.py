@@ -286,7 +286,8 @@ class PolynomialModel(object):
     points in the vector *x*.
     """
 
-    def __init__(self, s, origin=False):
+    def __init__(self, x, y, dy, s, origin=False):
+        self.x, self.y, self.dy = [np.asarray(v) for v in (x, y, dy)]
         #: True if polynomial goes through the origin
         self.origin = origin
         #: polynomial coefficients
@@ -360,6 +361,19 @@ class PolynomialModel(object):
         return "Polynomial(%s)" % self.coeff
 
 
+    def plot(self, ci=1, pi=0):
+        import pylab
+        x = np.linspace(np.min(self.x), np.max(self.x), 200)
+        y = self.__call__(x)
+        pylab.errorbar(self.x, self.y, self.dy, fmt='b.')
+        pylab.plot(x, y, 'b-', hold=True)
+        if ci > 0:
+            _, cdy = self.ci(x, ci)
+            pylab.plot(x, y + cdy, 'b-.', x, y - cdy, 'b-.', hold=True)
+        if pi > 0:
+            py, pdy = self.pi(x, pi)
+            pylab.plot(x, y + pdy, 'b-.', x, y - pdy, 'b-.', hold=True)
+
 def wpolyfit(x, y, dy=1, degree=None, origin=False):
     r"""
     Return the polynomial of degree $n$ that minimizes $\sum(p(x_i) - y_i)^2/\sigma_i^2$.
@@ -372,7 +386,7 @@ def wpolyfit(x, y, dy=1, degree=None, origin=False):
 
     A = _poly_matrix(x, degree, origin)
     s = wsolve(A, y, dy)
-    return PolynomialModel(s, origin=origin)
+    return PolynomialModel(x, y, dy, s, origin=origin)
 
 
 def demo():
@@ -389,16 +403,7 @@ def demo():
 
     # Fit to a polynomial
     poly = wpolyfit(x, y, dy=dy, degree=3)
-
-    # Plot the result
-    pylab.errorbar(x, y, yerr=dy, fmt='x')
-    pylab.hold(True)
-    px = np.linspace(x[0], x[-1], 200)
-    py, pdy = poly.pi(px)
-    cy, cdy = poly.ci(px)
-    pylab.plot(px, py, 'g-',
-               px, py + pdy, 'g-.', px, py - pdy, 'g-.',
-               px, cy + cdy, 'r-.', px, cy - cdy, 'r-.')
+    poly.plot()
     pylab.show()
 
 def demo2():
@@ -407,16 +412,7 @@ def demo2():
     y = [10, 8, 6]
     dy = [1, 3, 1]
     poly = wpolyfit(x,y,dy=dy, degree=1)
-
-    # Plot the result
-    pylab.errorbar(x, y, yerr=dy, fmt='x')
-    pylab.hold(True)
-    px = np.linspace(x[0], x[-1], 200)
-    py, pdy = poly.pi(px)
-    cy, cdy = poly.ci(px)
-    pylab.plot(px, py, 'g-',
-               px, py + pdy, 'g-.', px, py - pdy, 'g-.',
-               px, cy + cdy, 'r-.', px, cy - cdy, 'r-.')
+    poly.plot()
     pylab.show()
 
 
