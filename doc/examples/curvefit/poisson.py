@@ -55,31 +55,30 @@
 # on the detector.  It is then trivial to compute the probability of
 # seeing the observed counts from the expected counts and fit the parameters
 # using PoissonCurve.  Unfortunately, this means incorporating all
-# instrumental effects in the model rather than eliminating instrumental
-# effects so that the same fitting program can be used with data from
-# different machines.
+# instrumental effects when modelling the measurement rather than correcting
+# for instrumental effects in a data reduction program, and using a common
+# sample model independent of instrument.
 #
 # Setting $\lambda = k$ is good since that is the maximum likelihood value
-# for $\lambda$ given observed $k$.   This breaks down at $k=0$, giving zero
-# uncertainty and forcing any model to yield zero rate at that point, so we
-# need to do something else.
+# for $\lambda$ given observed $k$, but this breaks down at $k=0$, giving zero
+# uncertainty regardless of how long we measured.
 #
-# Since the distribution is slightly skew, a good estimate is $\lambda = k+1$
-# (this is option 1 above).  It follows from the formula for the expected
-# value, which says that the expected value:
+# Since the Poisson distribution is slightly skew, a good estimate is
+# $\lambda = k+1$ (option 1 above).  This follows from the formula for the
+# expected value of a distribution:
 #
 # .math ::
 #
 #    E[x] = \int_{-infty}^\infty x P(x) dx
 #
-# For the  poisson distribution, this is:
+# For the poisson distribution, this is:
 #
 # .math ::
 #
 #    E[\lambda] = \int^0^\infty \frac{\lambda \lambda^k e^{-\lambda}{{k!} d\lambda
 #
 # Running some simulations, we can see that $\hat\lambda=(k+1)\pm\sqrt{k+1}$
-# (see sim.py). The is the best fit gaussian distribution to the distribution
+# (see sim.py). This is the best fit rms value to the distribution
 # of possible $\lambda$ values that could give rise to the observed $k$.
 #
 # Convincing the world to accept $\lambda = k+1$ would be challenging since
@@ -126,31 +125,30 @@ y = np.random.poisson(peak(x, 3, 12, 1.5, 1))
 # bumps will make any option not preceded by "-" available to the model
 # file as elements of *sys.argv*.  *sys.argv[0]* is the model file itself.
 #
-# The options correspond to the five options listed above, though they may
-# be in a different order.  There is an additional option "poisson" which
-# is used to select PoissonCurve rather than Curve in the fit.
+# The options correspond to the five options listed above, with an additional
+# option "poisson" which is used to select PoissonCurve rather than Curve
+# in the fit.
 
 cond = sys.argv[1] if len(sys.argv) > 1 else "pearson"
-if cond=="pearson": # L = (y + 0.5)  +/- sqrt(y + 1/4)
+if cond=="poisson": # option 0: use PoissonCurve rather than Curve to fit
+    pass
+elif cond=="expected": # option 1: L = (y+1) +/- sqrt(y+1)
+    y += 1
+    dy = np.sqrt(y)
+elif cond=="pearson": # option 2: L = (y + 0.5)  +/- sqrt(y + 1/4)
     dy = np.sqrt(y+0.25)
     y += 0.5
-elif cond=="pearson_zero": # L = y +/- sqrt(y); L[0] = 0.5 +/- 0.5
+elif cond=="expected_mle": # option 3: L = y +/- sqrt(y+1)
+    dy = np.sqrt(y+1)
+elif cond=="pearson_zero": # option 4: L = y +/- sqrt(y); L[0] = 0.5 +/- 0.5
     dy = np.sqrt(y)
     y[y==0] = 0.5
     dy[y==0] = 0.5
-elif cond=="expected": # L = (y+1) +/- sqrt(y+1)
-    y += 1
+elif cond=="expected_zero": # option 5: L = y +/- sqrt(y);  L[0] = 0 +/- 1
     dy = np.sqrt(y)
-elif cond=="expected_zero": # L = y +/- sqrt(y);  L[0] = 0 +/- 1
-    dy = np.sqrt(y)
-    dy[dy==0] = 1.0
-elif cond=="expected_mle": # L = y +/- sqrt(y+1)
-    dy = np.sqrt(y+1)
-elif cond=="poisson": # use PoissonCurve rather than Curve to fit
-    pass
+    dy[y==0] = 1.0
 else:
     raise RuntimeError("Need to select uncertainty: pearson, pearson_zero, expected, expected_zero, expected_mle, poisson")
-#dy[dy==0] = 1.0
 
 # Build the fitter, and set the range on the fit parameters.
 
@@ -177,10 +175,12 @@ problem = FitProblem(M)
 #
 #    $ bumps.py poisson.py --fit=dream --burn=600 --store=/tmp/T1 COND
 #
-# Comparing the results for the various conditions, we can see that using
-# poisson statistics for the fit gives the proper result, and using the
-# traditional method of $\lambda = k \pm \sqrt{k}$ for $k>0$, and $0 \pm 1$
-# for $k=1$ gives the best gaussian approximation.
+# Comparing the results for the various conditions, we can see that all methods
+# yield a good fit to the underlying center, scale and width.  It is only the
+# background that causes problems.  Using poisson statistics for the fit gives
+# the proper background estimate, and using the traditional method of
+# $\lambda = k \pm \sqrt{k}$ for $k>0$, and $0 \pm 1$ for $k=1$ gives the
+# best gaussian approximation.
 #
 # ----------------- ----------
 # method            background
