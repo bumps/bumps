@@ -40,7 +40,7 @@ from numpy import inf
 from . import pmath
 from .parameter import Parameter, FreeVariables
 from .bounds import Distribution
-from .pdfwrapper import PDF
+from .pdfwrapper import PDF, DirectPDF
 from .curve import Curve, PoissonCurve
 from .fitproblem import FitProblem, MultiFitProblem
 

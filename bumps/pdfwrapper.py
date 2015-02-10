@@ -18,6 +18,7 @@ import numpy as np
 
 from .parameter import Parameter
 from .fitproblem import Fitness
+from .formatnum import format_uncertainty
 
 
 class PDF(object):
@@ -84,15 +85,19 @@ class PDF(object):
         return dict((p, getattr(self, p)) for p in self._pnames)
     parameters.__doc__ = Fitness.parameters.__doc__
 
-    def __call__(self):
+    def nllf(self):
         kw = dict((p, getattr(self, p).value) for p in self._pnames)
         return self._function(**kw)
-    __call__.__doc__ = Fitness.__call__.__doc__
+    nllf.__doc__ = Fitness.__call__.__doc__
 
-    def nllf(self):
-        return self()
-    nllf.__doc__ = Fitness.nllf.__doc__
 
+    def chisq(self):
+        return self.nllf()
+    #chisq.__doc__ = Fitness.chisq.__doc__
+    def chisq_str(self):
+        return "%g"%self.chisq()
+    #chisq_str.__doc__ = Fitness.chisq_str.__doc__
+    __call__ = chisq
     def plot(self, view=None):
         if self._plot:
             kw = dict((p, getattr(self, p).value) for p in self._pnames)
@@ -106,3 +111,51 @@ class PDF(object):
     def residuals(self):
         return np.array([self()])
     residuals.__doc__ = Fitness.residuals.__doc__
+
+class DirectPDF(object):
+    """
+    Build model from probability density function *f(p)*.
+
+    Vector *p* is of length *n*.  *bounds* defines limiting
+    values for *p*.  Unlike the *PDF* class, no parameter
+    objects are defined for the elements of *p*, so all
+    are fitting parameters, with range defined by *bounds*.
+    """
+    def __init__(self, f, n, bounds=None):
+        self.f = f
+        self.n = n
+        self.p = np.ones(n,'d')
+        if bounds is not None:
+            self._bounds = bounds
+        else:
+            self._bounds = np.tile((-np.inf,np.inf),(n,1)).T
+
+    def model_reset(self): pass
+    def chisq(self):
+        return self.nllf()
+    def chisq_str(self):
+        return "%g"%self.chisq()
+    __call__ = chisq
+    def nllf(self, pvec=None):
+        if pvec is not  None: self.setp(pvec)
+        return self.f(self.p)
+    def setp(self, p):
+        self.p = p
+    def getp(self):
+        return self.p
+    def show(self):
+        print("[nllf=%g]"%self.nllf())
+        print(self.summarize())
+    def summarize(self):
+        return str(self.getp())
+    def labels(self):
+        return ["P%d"%i for i in range(self.n)]
+    def randomize(self):
+        # TODO: doesn't respect bounds
+        self.p = np.random.rand(self.n)
+    def bounds(self):
+        return self._bounds
+    def plot(self, p=None, fignum=None, figfile=None):
+        pass
+        #def __deepcopy__(self, memo): return self
+
