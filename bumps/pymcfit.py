@@ -25,10 +25,12 @@ class PyMCProblem(object):
     def __init__(self, pars, conds):
         self.pars = pars
         self.conds = conds
-        self.dof = sum(len(c.value) for c in self.conds)
+        #self.dof = sum(len(c.value) for c in self.conds)
     def model_reset(self): pass
     def chisq(self):
-        return self.nllf()/self.dof
+        return self.nllf() # /self.dof
+    def chisq_str(self):
+        return "%g"%self.chisq()
     __call__ = chisq
     def nllf(self, pvec=None):
         if pvec is not None: self.setp(pvec)
