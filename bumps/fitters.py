@@ -28,8 +28,8 @@ class ConsoleMonitor(monitor.TimedUpdate):
         self.problem = problem
 
     def show_progress(self, history):
-        chisq = format_uncertainty(2*history.value[0]/self.problem.dof,
-                                   1./self.problem.dof)
+        scale, err = nllf_scale(self.problem)
+        chisq = format_uncertainty(scale*history.value[0], err)
         print("step", history.step[0], "cost", chisq)
         sys.stdout.flush()
 
@@ -58,7 +58,6 @@ class StepMonitor(monitor.Monitor):
     def __init__(self, problem, fid, fields=FIELDS):
         if any(f not in self.FIELDS for f in fields):
             raise ValueError("invalid monitor field")
-        self.dof = problem.dof
         self.fid = fid
         self.fields = fields
         self._pattern = "%%(%s)s\n" % (")s %(".join(fields))
@@ -71,11 +70,24 @@ class StepMonitor(monitor.Monitor):
         point = " ".join("%.15g" % v for v in history.point[0])
         time = "%g" % history.time[0]
         step = "%d" % history.step[0]
-        value = "%.15g" % (2 * history.value[0] / self.dof)
+        scale, _ = nllf_scale(self.problem)
+        value = "%.15g" % (scale * history.value[0])
         out = self._pattern % dict(point=point, time=time,
                                    value=value, step=step)
         self.fid.write(out)
 
+def nllf_scale(problem):
+    """
+    Return the scale factor for reporting the problem nllf as an approximate
+    normalized chisq, along with an associated "uncertainty".  The uncertainty
+    is the amount that chisq must change in order for the fit to be
+    significantly better.
+    """
+    dof = getattr(problem, 'dof', np.NaN)
+    if dof <= 0 or np.isnan(dof) or np.isinf(dof):
+        return 1., 0.
+    else:
+        return 2./dof, 1./dof
 
 class MonitorRunner(object):
     """
@@ -644,6 +656,7 @@ class DreamFit(FitBase):
         # Check that the last point is the best point
         points, logp = self.state.sample()
         assert logp[-1] == fx
+        #print(points[-1], x)
         assert all(points[-1, i] == xi for i, xi in enumerate(x))
 
         if options['entropy']:

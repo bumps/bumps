@@ -38,7 +38,7 @@ import numpy as np
 # np.seterr(all="raise")
 
 from . import fitters
-from .fitters import FIT_OPTIONS, FitDriver, StepMonitor, ConsoleMonitor
+from .fitters import FIT_OPTIONS, FitDriver, StepMonitor, ConsoleMonitor, nllf_scale
 from .mapper import MPMapper, AMQPMapper, MPIMapper, SerialMapper
 from . import util
 from . import initpop
@@ -566,8 +566,9 @@ def resynth(fitdriver, problem, mapper, opts):
     for i in range(opts.resynth):
         problem.resynth_data()
         best, fbest = fitdriver.fit()
-        print("step %d chisq %g" % (i, 2 * fbest / problem.dof))
-        fid.write('%.15g ' % (2 * fbest / problem.dof))
+        scale, err = nllf_scale(problem)
+        print("step %d chisq %g" % (i, scale * fbest))
+        fid.write('%.15g ' % (scale * fbest))
         fid.write(' '.join('%.15g' % v for v in best))
         fid.write('\n')
     problem.restore_data()
