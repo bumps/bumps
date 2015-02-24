@@ -5,4 +5,5 @@ set -x
 python setup.py build
 python test.py
 (cd doc && make html pdf)
-cp doc/_build/latex/bumps.pdf .
+# make sure the pdf got built by copying it to the current directory
+cp doc/_build/latex/Bumps.pdf .
