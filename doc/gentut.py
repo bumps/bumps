@@ -51,9 +51,9 @@ def weave(source, target):
             pyclean = joinpath(target, basename(f))
             if newer(rstfile, f):
                 # Convert executable literate file to rst file with embedded code
-                pylit.main([f, rstfile])
+                pylit.main(["--codeindent=4", f, rstfile])
                 # Convert rest file with embedded code to clean code file
-                pylit.main([rstfile,pyclean,"-s","-t"])
+                pylit.main([rstfile, pyclean, "-s", "-t"])
         else:
             dest = joinpath(target, basename(f))
             if newer(dest, f):
