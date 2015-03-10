@@ -47,7 +47,7 @@ For Extra.pCR != 'Update' in the matlab interface use::
 from __future__ import division
 
 from numpy import hstack, empty, ones, zeros, cumsum, arange, \
-    reshape, array, isscalar, asarray, std, sum
+    reshape, array, isscalar, asarray, std, sum, trunc, log10, logspace
 from . import util
 
 class Crossover(object):
@@ -100,7 +100,11 @@ class AdaptiveCrossover(object):
     def __init__(self, N):
         if N < 2:
             raise ValueError("Need more than one CR for AdaptiveCrossover")
-        self.CR = (arange(N)+1)/N  # Equally spaced CRs
+        self._set_CRs((arange(N)+1)/N)  # Equally spaced CRs
+
+    def _set_CRs(self, CR):
+        self.CR = CR
+        N = len(CR)
         self.weight = ones(N) / N  # Start with all CRs equally probable
         self._count = zeros(N)     # No statistics for adaptation
         self._distance = zeros(N)
@@ -136,8 +140,29 @@ class AdaptiveCrossover(object):
         Update CR weights based on the available adaptation data.
         """
         Npop = self._CR_samples.shape[1]
-        self.weight  = (self._distance/self._count) * (Npop/sum(self._distance))
+        self.weight = (self._distance/self._count) * (Npop/sum(self._distance))
+        self.weight /= sum(self.weight)
 
+# [PAK] Add log spaced adaptive cross-over for high dimensional tightly
+# constrained problems.
+class LogAdaptiveCrossover(AdaptiveCrossover):
+    """
+    Adapted weight crossover ratios, log-spaced.
+
+    *dim* is the number of dimensions in the problem.
+    *N* is the number of CRs to use per decade.
+
+    CR is set to [k/dim] where k is log-spaced from 1 to dim.
+    The CRs start equally weighted as [1, ..., 1]/len(CR).
+
+    *N* should be around 4.5.  This gives good low end density, with 1, 2, 3,
+    and 5 parameters changed at a time, and proceeds up to 60% and 100% of
+    parameters each time.  Lower values of *N* give too few high density CRs,
+    and higher values give too many low density CRs.
+    """
+    def __init__(self, dim, N=4.5):
+        # Log spaced CR from 1/dim to dim/dim
+        self._set_CRs(logspace(0, log10(dim), trunc(N*log10(dim)+1))/dim)
 
 def gen_CR(CR, weight, Nsteps, Npop):
     """

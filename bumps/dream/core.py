@@ -107,7 +107,7 @@ import time
 from .state import MCMCDraw
 from .metropolis import metropolis, metropolis_dr, dr_step
 from .gelman import gelman
-from .crossover import AdaptiveCrossover
+from .crossover import AdaptiveCrossover, LogAdaptiveCrossover
 from .diffev import de_step
 from .bounds import make_bounds_handler
 
@@ -148,6 +148,7 @@ class Dream(object):
     bounds_style = 'reflect'
     # Crossover parameters
     CR = None
+    CR_spacing = 'linear' # 'log' or 'linear'
     # Delay rejection parameters
     use_delayed_rejection = False
     DR_scale = 1 # 1-sigma step size using cov of population
@@ -198,11 +199,14 @@ def run_dream(dream, abort_test=None):
         raise ValueError("initial population not defined")
 
     # Remember the problem dimensions
-    Ngen, Nchain, _Nvar = dream.population.shape
+    Ngen, Nchain, Nvar = dream.population.shape
     Npop = Ngen*Nchain
 
     if dream.CR is None:
-        dream.CR = AdaptiveCrossover(3)
+        if dream.CR_spacing == 'log':
+            dream.CR = LogAdaptiveCrossover(Nvar)
+        else: # linear
+            dream.CR = AdaptiveCrossover(3)
 
     # Step 2: Calculate posterior density associated with each value in x
     apply_bounds = make_bounds_handler(dream.model.bounds,
@@ -321,7 +325,8 @@ def run_dream(dream, abort_test=None):
         _, points, _ = state.chains()
         R_stat = gelman(points, portion=0.5)
 
-        if state.draws <= 0.1 * dream.draws:
+        #if state.draws <= 0.1 * dream.draws:
+        if state.draws <= dream.burn:
             # Adapt the crossover ratio, but only during burn-in.
             dream.CR.adapt()
         #else:
