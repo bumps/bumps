@@ -741,7 +741,7 @@ Return codes:
 Note that return codes are nonnegative integers. When it is not zero, there is
 a termination condition which is satisfied.
    0 : None of the termination conditions is satisfied
-   1 : Magnitute of scaled grad is less than gradtol; this is the primary
+   1 : Magnitude of scaled grad is less than gradtol; this is the primary
        condition. The new point xp is most likely a local minimizer.  If gradtol
        is too large, then this condition can be satisfied easier and therefore
        xp may not be a local minimizer
@@ -755,9 +755,9 @@ a termination condition which is satisfied.
        estimation is not accurate, or steptol is too large.
    4 : Maximum number of iterations are completed
    5 : The maximum step length maxstep is taken for last ten consecutive
-       iterations.  This may happen if the funtion is not bounded from below, or
-       the function has a finite asympotote in some direction, or maxstep is too
-       small.
+       iterations.  This may happen if the function is not bounded from below,
+       or the function has a finite asymptote in some direction, or maxstep is
+       too small.
     """
 
     termcode = 0

@@ -217,7 +217,8 @@ class DEFit(FitBase):
     """
     name = "Differential Evolution"
     settings = [('steps', 1000), ('pop', 10), ('CR', 0.9), ('F', 2.0),
-                ('xtol', 1e-6), ('ftol', 1e-8), ('stop', '')]
+                ('ftol', 1e-8), ('xtol', 1e-6), #('stop', ''),
+                ]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         if abort_test is None:
@@ -236,10 +237,11 @@ class DEFit(FitBase):
         steps = options['steps'] + (self.state['step'][-1] if resume else 0)
         strategy = de.DifferentialEvolution(npop=options['pop'],
                                             CR=options['CR'],
-                                            F=options['F'])
+                                            F=options['F'],
+                                            crossover=de.c_bin,
+                                            mutate=de.rand1u)
         success = parse_tolerance(options)
         failure = stop.Steps(steps)
-        #success = parse_condition(options['stop']) if options['stop'] else None
         self.history = History()
         # Step adds to current step number if resume
         minimize = Minimizer(strategy=strategy, problem=self.problem,
@@ -263,7 +265,7 @@ class DEFit(FitBase):
 
 def parse_tolerance(options):
     from .mystic import stop
-    if options['stop']:
+    if options.get('stop', ''):
         return stop.parse_condition(options['stop'])
 
     xtol, ftol = options['xtol'], options['ftol']
@@ -310,7 +312,8 @@ class BFGSFit(FitBase):
     BFGS quasi-newton optimizer.
     """
     name = "Quasi-Newton BFGS"
-    settings = [('steps', 3000), ('starts', 1)]
+    settings = [('steps', 3000), ('starts', 1),
+                ('ftol', 1e-6), ('xtol', 1e-12)]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         if abort_test is None:
@@ -324,6 +327,8 @@ class BFGSFit(FitBase):
                              monitor=self._monitor,
                              abort_test=abort_test,
                              itnlimit=options['steps'],
+                             gradtol=options['ftol'],
+                             steptol=options['xtol'],
                              )
         self.result = result
         #code = result['status']

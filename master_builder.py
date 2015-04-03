@@ -43,6 +43,9 @@ directory is defined as one-level-up and the repository is not downloaded
 implicit root (i.e. top-level) directory.
   E:/work/test1/bumps/master_builder.py
                /bumps/...
+
+
+Need to update this for bumps rather refl1d standalone gui distribution.
 """
 from six.moves import input
 

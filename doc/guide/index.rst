@@ -77,10 +77,10 @@ function.
      One or more experiments can be combined into a
      :class:`FitProblem <bumps.fitproblem.FitProblem>`.  This is then
      given to one of the many fitters, such as
-     :class:`PTFit <refl1d.fitter.PTFit>`, which adjust the varying
-     parameters, trying to find the best fit.  PTFit can also
-     be used for Bayesian analysis in order to estimate the confidence
-     in which the parameter values are known.
+     :class:`DEFit <refl1d.fitter.PTFit>`, which adjust the fitting
+     parameters, trying to find the best fit.  See :ref:`optimizer-guide`
+     for a description of available optimizers and :ref:`option-guide` for
+     a description of the bumps options.
 
 
 .. toctree::
@@ -91,3 +91,5 @@ function.
     experiment.rst
     parameter.rst
     fitting.rst
+    optimizer.rst
+    options.rst

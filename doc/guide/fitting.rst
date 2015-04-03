@@ -25,6 +25,7 @@ these instrument effects so that the uncertainty in instrument configuration
 can be properly accounted for in the uncertainty in the fitted parameter
 values.
 
+
 Quick Fit
 =========
 
@@ -74,6 +75,10 @@ In addition to restarting differential evolution from
 
 Some fitters save the complete state of the fitter on termination so that
 the fit can be resumed.  Use --resume=store/path
+
+
+See `optimizer-guide`_ for a description of the available optimizers, and
+`option-guide`_ for a description of the bumps options.
 
 Uncertainty Analysis
 ====================

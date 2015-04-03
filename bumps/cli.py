@@ -329,9 +329,12 @@ class BumpsOpts(ParseOpts):
     FLAGS = set(("preview", "chisq", "profiler", "timer",
                  "simulate", "simrandom", "shake",
                  "worker", "batch", "overwrite", "parallel", "stepmon",
-                 "cov", "remote", "staj", "edit", "mpi",
+                 "cov", "remote", "staj", "edit", "mpi", "keep_best",
                  # passed in when app is a frozen image
                  "multiprocessing-fork",
+                 # passed when not running bumps, but instead using a
+                 # bundled application as a python distribution with domain
+                 # specific models pre-defined.
                  "i",
                  ))
     VALUES = set(("plot", "store", "resume", "fit", "noise", "seed", "pars",
@@ -427,7 +430,10 @@ Options:
     --CR=0.9        [de, rl, pt]
         crossover ratio for population mixing
     --starts=1      [%(fitter)s]
-        number of times to run the fit from random starting points
+        number of times to run the fit from random starting points.
+    --keep_best
+        when running with multiple starts, restart from a point near the
+        last minimum rather than using a completely random starting point.
     --init=eps      [dream]
         population initialization method:
           eps:    ball around initial parameter set
@@ -440,7 +446,7 @@ Options:
         run resynthesis error analysis for n generations
 
     --timer
-        run the model --steps tim
+        run the model --steps times in order to estimate total run time.
     --profiler
         run the python profiler on the model; use --steps to run multiple
         models for better statistics

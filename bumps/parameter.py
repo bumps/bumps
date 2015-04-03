@@ -22,7 +22,7 @@ from . import bounds as mbounds
 # TODO: avoid evaluation of subexpressions if parameters do not change.
 # This is especially important if the subexpression invokes an expensive
 # calculation via a parameterized function.  This will require a restructuring
-# of the parameter class.  The park-1.3 solution is viable: given a parameter
+# of the parameter claas.  The park-1.3 solution is viable: given a parameter
 # set, figure out which order the expressions need to be evaluated by
 # building up a dependency graph.  With a little care, we can check which
 # parameters have actually changed since the last calculation update, and

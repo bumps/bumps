@@ -119,6 +119,13 @@ def rand1(F, best, pop, idx, dims):
     r0,r1,r2 = _candidates(pop, 3, exclude=idx)
     return r0[dims] + F*(r1[dims]-r2[dims])
 
+def rand1u(F, best, pop, idx, dims):
+    """
+    Differential evolution mutation T = r0 + U*(r1-r2), U ~ Uniform[0,F]
+    """
+    r0,r1,r2 = _candidates(pop, 3, exclude=idx)
+    return r0[dims] + F*np.random.rand()*(r1[dims]-r2[dims])
+
 def rand2(F, best, pop, idx, dims):
     """
     Differential evolution mutation T = r0 + F*(r1+r2-r3-r4)
