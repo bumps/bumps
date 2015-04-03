@@ -182,12 +182,12 @@ problem = FitProblem(M)
 # $\lambda = k \pm \sqrt{k}$ for $k>0$, and $0 \pm 1$ for $k=1$ gives the
 # best gaussian approximation.
 #
-# ----------------- ----------
-# method            background
-# ----------------- ----------
-# poisson           1.0
-# expected_mle      0.75
-# expected_zero     0.55
-# expected          1.55
-# pearson_zero      0.34
-# pearson           0.16
+# - ----------------- ----------
+#   method            background
+# - ----------------- ----------
+# 0 poisson           1.0
+# 1 expected          1.55
+# 2 pearson           0.16
+# 3 expected_mle      0.55
+# 4 pearson_zero      0.34
+# 5 expected_zero     0.75
