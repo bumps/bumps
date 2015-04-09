@@ -14,6 +14,7 @@ from . import lsqerror
 
 from .history import History
 from .formatnum import format_uncertainty
+from .fitproblem import nllf_scale
 
 from .dream import MCMCModel
 
@@ -75,19 +76,6 @@ class StepMonitor(monitor.Monitor):
         out = self._pattern % dict(point=point, time=time,
                                    value=value, step=step)
         self.fid.write(out)
-
-def nllf_scale(problem):
-    """
-    Return the scale factor for reporting the problem nllf as an approximate
-    normalized chisq, along with an associated "uncertainty".  The uncertainty
-    is the amount that chisq must change in order for the fit to be
-    significantly better.
-    """
-    dof = getattr(problem, 'dof', np.NaN)
-    if dof <= 0 or np.isnan(dof) or np.isinf(dof):
-        return 1., 0.
-    else:
-        return 2./dof, 1./dof
 
 class MonitorRunner(object):
     """

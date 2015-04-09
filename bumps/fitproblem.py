@@ -445,7 +445,8 @@ class BaseFitProblem(object):
         self.model_reset()
 
     def chisq_str(self):
-        return format_uncertainty(self.chisq(), 1./self.dof)
+        _, err = nllf_scale(self)
+        return format_uncertainty(self.chisq(), err)
 
 
 class MultiFitProblem(BaseFitProblem):
@@ -569,6 +570,33 @@ class MultiFitProblem(BaseFitProblem):
     def __setstate__(self, state):
         self.__dict__ = state
 
+
+# TODO: consider adding nllf_scale to FitProblem.
+ONE_SIGMA=0.68268949213708585
+def nllf_scale(problem):
+    r"""
+    Return the scale factor for reporting the problem nllf as an approximate
+    normalized chisq, along with an associated "uncertainty".  The uncertainty
+    is the amount that chisq must change in order for the fit to be
+    significantly better.
+
+    From Numerical Recipes 15.6: *Confidence Limits on Estimated Model
+    Parameters*, the $1-\sigma$ contour in parameter space corresponds
+    to $\Delta\chi^2 = \text{invCDF}(1-\sigma,k)$ where
+    $1-\sigma \approx 0.6827$ and $k$ is the number of fitting parameters.
+    Since we are reporting the normalized $\chi^2$, this needs to be scaled
+    by the problem degrees of freedom, $n-k$, where $n$ is the number of
+    measurements.  To first approximation, the uncertainty in $\chi^2_N$
+    is $k/(n-k)$
+    """
+    dof = getattr(problem, 'dof', np.NaN)
+    if dof <= 0 or np.isnan(dof) or np.isinf(dof):
+        return 1., 0.
+    else:
+        #return 2./dof, 1./dof
+        from scipy.stats import chi2
+        npars = max(len(problem.getp()), 1)
+        return 2./dof, chi2.ppf(ONE_SIGMA, npars)/dof
 
 def load_problem(filename, options=None):
     """
