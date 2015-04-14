@@ -4,10 +4,8 @@ Pylab plotting utilities.
 from __future__ import division
 
 __all__ = ["auto_shift",
-           "coordinated_colors",
-           "dhsv",
-           "next_color",
-           "plot_quantiles"]
+           "coordinated_colors", "dhsv", "next_color",
+           "plot_quantiles", "form_quantiles"]
 
 
 def auto_shift(offset):
@@ -131,28 +129,37 @@ def plot_quantiles(x, y, contours, color, alpha=None):
     *alpha* is the transparency level to use for all fill regions.  The
     default value, alpha=2./(#contours+1), works pretty well.
     """
+    _plot_quantiles(x, form_quantiles(y, contours), color, alpha)
+
+def _plot_quantiles(x, q, color, alpha):
     import pylab
-    from numpy import reshape
-    from scipy.stats.mstats import mquantiles
-    p = _convert_contours_to_probabilities(reversed(sorted(contours)))
-    q = mquantiles(y, prob=p, axis=0)
-    q = reshape(q, (-1, 2, len(x)))
     # print "p",p
     # print "q",q[:,:,0]
     # print "y",y[:,0]
     if alpha is None:
-        alpha = 2. / (len(contours) + 1)
+        alpha = 2. / (len(q) + 1)
     edgecolor = dhsv(color, ds=-(1 - alpha), dv=(1 - alpha))
     for lo, hi in q:
         pylab.fill_between(x, lo, hi,
                            facecolor=color, edgecolor=edgecolor,
                            alpha=alpha, hold=True)
 
+def form_quantiles(y, contours):
+    """
+    Given confidence intervals [a, b,...] as percents, return quantiles for
+    each interval [[a_low, a_high], [b_low, b_high], ...] for each row in y.
+    """
+    from numpy import reshape
+    from scipy.stats.mstats import mquantiles
+    p = _convert_contours_to_probabilities(reversed(sorted(contours)))
+    q = mquantiles(y, prob=p, axis=0)
+    q = reshape(q, (-1, 2, len(y[0])))
+    return q
 
 def _convert_contours_to_probabilities(contours):
     """
-    Given confidence intervals [a, b,...] as percents, return quantiles for
-    each interval [a_low, a_high, b_low, b_high, ...].
+    Given confidence intervals [a, b,...] as percents, return probability
+    in [0,1] for each interval as [a_low, a_high, b_low, b_high, ...].
     """
     from numpy import hstack
     # lower quantile for ci in percent = (100 - ci)/2
