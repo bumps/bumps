@@ -129,7 +129,8 @@ def plot_quantiles(x, y, contours, color, alpha=None):
     *alpha* is the transparency level to use for all fill regions.  The
     default value, alpha=2./(#contours+1), works pretty well.
     """
-    _plot_quantiles(x, form_quantiles(y, contours), color, alpha)
+    _, q = form_quantiles(y, contours)
+    _plot_quantiles(x, q,  color, alpha)
 
 def _plot_quantiles(x, q, color, alpha):
     import pylab
@@ -146,15 +147,26 @@ def _plot_quantiles(x, q, color, alpha):
 
 def form_quantiles(y, contours):
     """
-    Given confidence intervals [a, b,...] as percents, return quantiles for
-    each interval [[a_low, a_high], [b_low, b_high], ...] for each row in y.
+    Return quantiles and values for a list of confidence intervals.
+
+    *contours* is a list of confidence interfaces [a, b,...] expressed as
+    percents.
+
+    Returns:
+
+    *quantiles* is a list of intervals [[a_low, a_high], [b_low, b_high], ...]
+    in [0,1].
+
+    *values* is a list of intervals [[A_low, A_high], ...] with one entry in
+    A for each row in y.
     """
     from numpy import reshape
     from scipy.stats.mstats import mquantiles
     p = _convert_contours_to_probabilities(reversed(sorted(contours)))
     q = mquantiles(y, prob=p, axis=0)
+    p = reshape(p, (2, -1))
     q = reshape(q, (-1, 2, len(y[0])))
-    return q
+    return p, q
 
 def _convert_contours_to_probabilities(contours):
     """
