@@ -61,8 +61,8 @@ class Curve(object):
     value given in the definition of *fn*, or set to 0 if the parameter is not
     defined with an initial value.  Arbitrary non-fittable data can be passed
     to the function as parameters, but only if the parameter is given a default
-    value of *None* in the function definition, and setting the initial value
-    as an argument to *Curve*.  Setting *state=dict(key=value, ...)* before
+    value of *None* in the function definition, and has the initial value set
+    as an argument to *Curve*.  Defining *state=dict(key=value, ...)* before
     *Curve*, and calling *Curve* as *Curve(..., \*\*state)* works pretty well.
 
     *Curve* takes two special keyword arguments: *name* and *plot*.
