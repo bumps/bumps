@@ -70,6 +70,10 @@ optimizer**
 Levenberg-Marquardt (lm)
 ========================
 
+.. image:: fit-lm.png
+    :alt: Levenberg-Marquardt option screen.
+    :align: left
+
 The Levenberg-Marquardt algorithm has been
 the standard method for non-linear data fitting.  As a gradient descent
 trust region method, it starts at the initial value of the function and
@@ -138,6 +142,10 @@ References
 Nelder-Mead Simplex (amoeba)
 ============================
 
+.. image:: fit-amoeba.png
+    :alt: Nelder-Mead Simplex option screen.
+    :align: left
+
 The Nelder-Mead Simplex algorithm is a robust optimizer which does not require
 the function to be continuous or differentiable.  It uses the relative values
 of the function at the corners of a simplex (an n-dimensional triangle) to
@@ -205,6 +213,10 @@ References
 Quasi-Newton BFGS (newton)
 ==========================
 
+.. image:: fit-newton.png
+    :alt: Quasi-Newton BFGS option screen.
+    :align: left
+
 Broyden-Fletcher-Goldfarb-Shanno is a gradient descent method which uses the
 gradient to determine the step direction and an approximation of the Hessian
 matrix to estimate the curvature and guess a step size.  The step is further
@@ -255,6 +267,10 @@ References
 
 Differential Evolution (de)
 ===========================
+
+.. image:: fit-de.png
+    :alt: Differential Evolution option screen.
+    :align: left
 
 Differential evolution is a population based algorithm which uses differences
 between points as a guide to selecting new points.  For each member of the
@@ -331,6 +347,10 @@ References
 DREAM
 =====
 
+.. image:: fit-dream.png
+    :alt: DREAM option screen.
+    :align: left
+
 DREAM is a population based algorithm like differential evolution, but
 instead of only keeping individuals which improve each generation, it
 will sometimes keep individuals which get worse.  Although it is not
@@ -374,7 +394,9 @@ Options
 
 :ref:`option-steps` is the number of iterations to include in the Markov
 chain.  Each iteration updates the full population.  The population size
-scales with the number of fitted parameters.
+scales with the number of fitted parameters.  Set steps so that the
+number of fit parameters times the population times steps is at least
+100,000.
 
 :ref:`option-burn` is the number of iterations to required for the Markov
 chain to converge to the equilibrium distribution.  If the fit ends
@@ -403,6 +425,48 @@ DREAM produces a number of different outputs, and there are a number of
 things to check before using its reported uncertainty values.  The main
 goal of selecting :ref:`option-burn` is to wait long enough to reach the
 equilibrium distribution.
+
+.. figure:: dream-incomplete.png
+    :alt: example of incomplete fit
+
+    This DREAM fit is incomplete, as can be seen on all four plots.  The
+    *Convergence* plot is still decreasing, *Parameter Trace* plot does not
+    show random mixing of Markov chain values, the *Correlations* plots are
+    fuzzy and mostly empty, the *Uncertainty* plot shows black histograms
+    (indicating that there are a few stray values far away from the best) and
+    green maximum likelihood spikes not matching the histogram (indicating
+    that the region around the best value has not been adequately explored).
+
+.. figure:: dream-complete.png
+    :alt: example of a completed fit
+
+    This DREAM fit completed successfully.  The *Convergence* plot is flat,
+    the *Parameter Trace* plot is flat and messy, the *Correlateions* plots
+    show nice blobs (and a bit of correlation between the *M1.radius* parameter
+    and the *M1.radius.width* parameter), and the uncertainty plots show
+    a narrow range of -log(P) values in the mostly brown histograms and
+    a good match to the green constrained maximum likelihood line.
+
+For each parameter in the fit, DREAM finds the mean, median and best value,
+as well as the 68% and 95% credible intervals.  The mean value is
+defined as $\int x P(x) dx$, which is just the expected value of the
+probability distribution for the parameter.  The median value is the 50%
+point in the probability distribution, and the best value is the maximum
+likelihood value seen in the random walk.  The credible intervals are the
+central intervals which capture 68% and 95% of the parameter values
+respectively.  You need approximately 100,000 samples to get two digits of
+precision on the 68% interval, and 1,000,000 samples for the 95% interval.
+
+.. table:: Example fit output
+
+    = =============== ============ ======== ======== ================= =================
+    #  Parameter         mean       median    best   [   68% interval] [   95% interval]
+    = =============== ============ ======== ======== ================= =================
+    1   M1.background 0.059925(41) 0.059924 0.059922 [0.05988 0.05997] [0.05985 0.06000]
+    2       M1.radius   2345.3(15) 2345.234 2345.174 [2343.83 2346.74] [2342.36 2348.29]
+    3 M1.radius.width  0.00775(41)  0.00774  0.00777 [ 0.0074  0.0081] [ 0.0070  0.0086]
+    4        M1.scale  0.21722(20) 0.217218 0.217244 [0.21702 0.21743] [0.21681 0.21761]
+    = =============== ============ ======== ======== ================= =================
 
 The *Convergence* plot shows the range of $\chi^2$ values in the population
 for each iteration.  The band shows the 68% of values around the median, and
@@ -439,7 +503,7 @@ These values along with the median are shown as labels along the x axis.
 The green asterisk represents the best value, the green *E* the mean value
 and the vertical green line the median value.  If the fit is not sensitive
 to a parameter, or if two parameters are strongly correlated, the parameter
-histogram will show a box rather than a hump.  Spikey shapes (either in the
+histogram will show a box rather than a hump.  Spiky shapes (either in the
 histogram or the maximum likelihood line) indicate lack of convergence or
 maybe not enough steps.  A chopped histograms indicates that the range for
 that parameter is too small.
