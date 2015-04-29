@@ -1,3 +1,6 @@
+# Cross-shaped anti-correlation
+# =============================
+#
 # Example model with strong correlations between the fitted parameters.
 #
 # In this case we define the probability density function (PDF) directly

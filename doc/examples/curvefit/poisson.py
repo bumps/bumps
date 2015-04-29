@@ -32,9 +32,9 @@
 #
 # In particular, the handling of zero counts can be problematic when treating
 # the measurement as gaussian.  You cannot simply drop the points with zero
-# counts. Once you’ve done various reduction steps, the resulting non-zero
+# counts. Once you've done various reduction steps, the resulting non-zero
 # value for the uncertainty will carry meaning.  The longer you count,
-# the smaller the uncertainty should be, once you’ve normalized for counting
+# the smaller the uncertainty should be, once you've normalized for counting
 # time or monitor.  Being off by a factor of 2 on the residuals is much
 # better than being off by a factor of infinity using uncertainty = zero,
 # and better than dropping the point altogether.
@@ -67,18 +67,18 @@
 # $\lambda = k+1$ (option 1 above).  This follows from the formula for the
 # expected value of a distribution:
 #
-# .math ::
+# .. math::
 #
 #    E[x] = \int_{-infty}^\infty x P(x) dx
 #
 # For the poisson distribution, this is:
 #
-# .math ::
+# .. math::
 #
-#    E[\lambda] = \int^0^\infty \frac{\lambda \lambda^k e^{-\lambda}{{k!} d\lambda
+#    E[\lambda] = \int_0^\infty \lambda \frac{\lambda^k e^{-\lambda}}{k!} d\lambda
 #
 # Running some simulations, we can see that $\hat\lambda=(k+1)\pm\sqrt{k+1}$
-# (see sim.py). This is the best fit rms value to the distribution
+# (see `sim.py <sim.html>`_). This is the best fit rms value to the distribution
 # of possible $\lambda$ values that could give rise to the observed $k$.
 #
 # Convincing the world to accept $\lambda = k+1$ would be challenging since
@@ -93,7 +93,7 @@
 # Another suggestion is to choose the center and bounds so that the
 # uncertainty covers $1-\sigma$ from the distribution (68%).  A simple
 # approximation which does this is $(n+1/2) \pm \sqrt{n+1/4}$
-# (see :ref:`http://www-cdf.fnal.gov/physics/statistics/notes/pois_eb.txt`).
+# (see `<http://www-cdf.fnal.gov/physics/statistics/notes/pois_eb.txt>`_).
 #
 # Again, hard to convince the world to do, so one could compromise and
 # choose $1/2 \pm 1/2$ for $k=0$, and the usual $k \pm \sqrt{k}$ otherwise.
@@ -182,12 +182,15 @@ problem = FitProblem(M)
 # $\lambda = k \pm \sqrt{k}$ for $k>0$, and $0 \pm 1$ for $k=1$ gives the
 # best gaussian approximation.
 #
-# - ----------------- ----------
-#   method            background
-# - ----------------- ----------
-# 0 poisson           1.0
-# 1 expected          1.55
-# 2 pearson           0.16
-# 3 expected_mle      0.55
-# 4 pearson_zero      0.34
-# 5 expected_zero     0.75
+# .. table:: Fit results
+#
+#     = ================= ==========
+#     # method            background
+#     = ================= ==========
+#     0 poisson           1.0
+#     1 expected          1.55
+#     2 pearson           0.16
+#     3 expected_mle      0.55
+#     4 pearson_zero      0.34
+#     5 expected_zero     0.75
+#     = ================= ==========

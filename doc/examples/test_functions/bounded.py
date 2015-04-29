@@ -1,3 +1,6 @@
+# Boundary check
+# ==============
+#
 # Check probability at boundaries.
 #
 # In this case we define the probability density function (PDF) directly

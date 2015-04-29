@@ -1,8 +1,6 @@
 from __future__ import division, print_function
 
-import sys
-from math import degrees, radians, sin, cos
-
+from math import radians, sin, cos
 
 import numpy as np
 

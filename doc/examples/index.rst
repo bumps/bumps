@@ -11,5 +11,6 @@ complex models with many constraints relatively easily.
 .. toctree::
    :maxdepth: 2
 
-   curvefit/curve.rst
+   curvefit/readme.rst
    peaks/readme.rst
+   test_functions/readme.rst
