@@ -214,7 +214,7 @@ References
 .. [Press1992]
    Press, W. H.; Flannery, B. P.; Teukolsky, S. A.; Vetterling, W. T.
    In *Numerical Recipes in C: The Art of Scientific Computing, Second Edition*;
-   Cambridge University Press: Cambridge ; New York, 1992; pp 408–412.
+   Cambridge University Press: Cambridge; New York, 1992; pp 408–412.
 
 
 .. _fit-newton:
