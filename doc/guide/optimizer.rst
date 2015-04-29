@@ -586,6 +586,13 @@ References
     2010; pp 493–498.
     DOI: `10.1109/CCA.2010.5611198 <http://dx.doi.org/10.1109/CCA.2010.5611198>`_
 
+.. [JCGM2008]
+    JCGM.
+    *Evaluation of measurement data — Supplement 1 to the “Guide to the
+    expression of uncertainty in measurement” — Propagation of distributions
+    using a Monte Carlo method*; Joint Committee for Guides in Metrology,
+    JCGM 101:2008; Geneva, Switzerland, 2008; p 90.
+    `<http://www.bipm.org/utils/common/documents/jcgm/JCGM_101_2008_E.pdf>`_
 
 
 
@@ -611,7 +618,7 @@ limits the amount of parallelism.
 Options
 -------
 
-``--steps=n` is the number of iterations.  Each step updates each member
+``--steps=n`` is the number of iterations.  Each step updates each member
 of the population.  The population size scales with the number of fitted
 parameters.
 
@@ -621,15 +628,17 @@ population scale factor.  The default scale factor is 1.
 
 Use ``--fit=ps`` to select particle swarm from the commandline.
 
+Add a few more lines
+
 References
 ----------
 
-.. [Kennedy1995] Kennedy, J.; Eberhart, R.
-    "Particle Swarm Optimization".
+.. [Kennedy1995]
+    Kennedy, J.; Eberhart, R.
+    Particle Swarm Optimization
     *Proceedings of IEEE International Conference on Neural Networks. IV.*
     1995; pp 1942–1948.
     DOI: `10.1109/ICNN.1995.48896 <http://dx.doi.org/810.1109/ICNN.1995.488968>`_
-
 
 
 .. _fit-rl:
@@ -737,3 +746,12 @@ References
     Replica Monte Carlo simulation of spin glasses
     *Physical Review Letters*
     1986, 57, 2607-2609
+
+
+..
+    SNOBFIT (fit=snobfit) attempts to construct a locally quadratic model of
+    the entire search space.  While promising because it can begin to offer
+    some guarantees that the search is complete given reasonable assumptions
+    about the fitting surface, initial trials did not perform well and the
+    algorithm has not yet been tuned to our problems.
+

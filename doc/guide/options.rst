@@ -46,8 +46,8 @@ Problem Setup
 
 .. _option-pars:
 
-pars
-----
+``--pars``
+----------
 
 Set initial parameter values from a previous fit.  The par file is a list
 of lines with parameter name followed by parameter value on each line.
@@ -57,8 +57,8 @@ model parameters.
 
 .. _option-shake:
 
-shake
------
+``--shake``
+-----------
 
 Set random initial values for the parameters in the model.  Note that
 shake happens after :ref:`option-simulate` so that you can simulate a random
@@ -66,8 +66,8 @@ model, shake it, then try to recover its initial values.
 
 .. _option-simulate:
 
-simulate
---------
+``--simulate``
+--------------
 
 Simulate a dataset using the initial problem parameters.  This is useful
 when setting up a model before an experiment to see what data it might
@@ -76,8 +76,8 @@ parameters of interest.
 
 .. _option-simrandom:
 
-simrandom
----------
+``--simrandom``
+---------------
 
 Simulate a dataset using random initial parameters.  Because :ref:`option-shake`
 is applied after :ref:`option-simulate`, we need a separate way to shake the
@@ -85,16 +85,16 @@ parameters before simulating the model.
 
 .. _option-noise:
 
-noise
------
+``--noise``
+-----------
 
 Set the noise percentage on the simulated data.  The default is 5 for 5%
 normally distributed uncertainty in the measured values.
 
 .. _option-seed:
 
-seed
-----
+``--seed``
+----------
 
 Set a specific seed to the random number generator.  This happens before
 shaking and simulating so that fitting tests, and particularly failures,
@@ -112,8 +112,8 @@ Stopping Conditions
 
 .. _option-steps:
 
-steps
------
+``--steps``
+-----------
 
 *Steps* is the number of iterations that the algorithm will perform.  The
 meaning of iterations will differ from optimizer to optimizer.  In the case
@@ -126,8 +126,8 @@ of iterations.
 
 .. _option-ftol:
 
-ftol
-----
+``--ftol``
+----------
 
 *f(x) tolerance* uses differences in the function value to decide when the
 fit is complete.  The different fitters will interpret this in different
@@ -140,8 +140,8 @@ maximum difference between highest and lowest value in the population.
 
 .. _option-xtol:
 
-xtol
-----
+``--xtol``
+----------
 
 *x tolerance* uses differences in the parameter value to decide when the
 fit is complete.  The different fitters will interpret this in different
@@ -155,7 +155,7 @@ maximum difference between highest and lowest parameter in the population.
 .. _option-time:
 
 time
-----
+----------
 
 *Max time* is the maximum running time of the optimizer.  This forces
 the optimizer to stop even if tolerance or steps conditions are not met.
@@ -176,21 +176,29 @@ Optimizer Controls
 
 .. _option-fit:
 
+``--fit``
+---------
+
 *Fit Algorithm* selects the optimizer.  The available optimizers are:
 
-    :ref:`fit-amoeba`
-    :ref:`fit-de`
-    :ref:`fit-dream`
-    :ref:`fit-lm`
-    :ref:`fit-newton`
+  ====== ================
+  amoeba :ref:`fit-amoeba`
+  de     :ref:`fit-de`
+  dream  :ref:`fit-dream`
+  lm     :ref:`fit-lm`
+  newton :ref:`fit-newton`
+  pt     :ref:`fit-pt`
+  ps     :ref:`fit-ps`
+  rl     :ref:`fit-rl`
+  ====== ================
 
-The default fit method is :ref:`fit-amoeba`.
+The default fit method is ``--fit=amoeba``.
 
 
 .. _option-pop:
 
-pop
----
+``--pop``
+---------
 
 *Population* determines the size of the population.  For :ref:`fit-de` and
 :ref:`fit-dream` it is a scale factor, where the number of individuals, $k$, is
@@ -201,8 +209,8 @@ determined by the size of the simplex.
 
 .. _option-init:
 
-init
-----
+``--init``
+----------
 
 *Initializer*  is used by population-based algorithms (:ref:`fit-dream`)
 to set the initial population.  The options are as follows:
@@ -230,8 +238,8 @@ parameter, if any.
 
 .. _option-burn:
 
-burn
-----
+``--burn``
+----------
 
 *Burn-in Steps* is the number of iterations to required for the Markov
 chain to converge to the equilibrium distribution.  If the fit ends
@@ -242,8 +250,8 @@ early, the tail of the burn will be saved to the start of the steps.
 
 .. _option-thin:
 
-thin
-----
+``--thin``
+----------
 
 *Thinning* is used by the Markov chain analysis to give samples time to
 wander to different points in parameter space.  In an ideal chain, there
@@ -258,8 +266,8 @@ for good mixing.
 
 .. _option-CR:
 
-CR
---
+``--CR``
+--------
 
 *Crossover ratio* indicates the proportion of mixing which occurs with
 each iteration.  This is a value in [0,1] giving the probability that
@@ -267,8 +275,8 @@ each individual dimension will be selected for update in the next generation.
 
 .. _option-F:
 
-F
--
+``--F``
+-------
 
 *Scale* is a factor applied to the difference vector before adding it to
 the parent in differential evolution.
@@ -276,47 +284,47 @@ the parent in differential evolution.
 
 .. _option-radius:
 
-radius
-------
+``--radius``
+------------
 
 *Simplex radius* is the radius of the initial simplex in :ref:`fit-amoeba`
 
 
 .. _option-nT:
 
-nT
---
+``--nT``
+--------
 
 *# Temperatures*  is the number of temperature chains to run using parallel
 tempering.  Default is 25.
 
 .. _option-Tmin:
 
-Tmin
-----
+``--Tmin``
+----------
 
 *Min temperature* is the minimum temperature in the log-spaced series of
 temperatures to run using parallel tempering.  Default is 0.1.
 
 .. _option-Tmax:
 
-Tmax
-----
+``--Tmax``
+----------
 
 *Max temperature* is the maximum temperature in the log-spaced series of
 temperatures to run using parallel tempering.  Default is 10.
 
 .. _option-starts:
 
-starts
-------
+``--starts``
+------------
 
 *Starts* is the number of times to run the fit from random starting points.
 
 .. _option-keep-best:
 
-keep_best
----------
+``--keep_best``
+---------------
 
 If *Keep best* is set, then the each subsequent restart for the multi-start
 fitter keeps the best value from the previous fit(s).
@@ -328,8 +336,8 @@ Execution Controls
 
 .. _option-store:
 
-store
------
+``--store``
+-----------
 
 Directory in which to store the results of the fit.  Fits produce multiple
 files and plots.  Rather than cluttering up the current directory, all the
@@ -340,8 +348,8 @@ file.
 
 .. _option-overwrite:
 
-overwrite
----------
+``--overwrite``
+---------------
 
 If the store directory already exists then you need to include overwrite on
 the command line to reuse it.  While inconvenient, this prevents accidental
@@ -350,29 +358,29 @@ overwriting of fits that may have taken hours to generate.
 
 .. _option-resume:
 
-resume
-------
+``--resume``
+------------
 
 Continue fit from a previous store directory.
 
 .. _option-parallel:
 
-parallel
---------
+``--parallel``
+--------------
 
 Run fit using multiprocessing for parallelism.
 
 .. _option-mpi:
 
-mpi
----
+``--mpi``
+---------
 
 Run fit using MPI for parallelism (use command "mpirun -n cpus ...")
 
 .. _option-batch:
 
-batch
------
+``--batch``
+-----------
 
 Run fit in batch mode.  Progress updates are sent to *STORE/MODEL.mon*, and
 can be monitored using *tail -f* (unix, mac).  When the fit is complete, the
@@ -385,8 +393,8 @@ when running with :ref:`option-mpi`.
 
 .. _option-stepmon:
 
-stepmon
--------
+``--stepmon``
+-------------
 
 Create a log file tracking each point examined during the fit.  This does
 not provide any real utility except for generating plots of the population
@@ -402,16 +410,16 @@ Output Controls
 
 .. _option-cov:
 
-cov
----
+``--cov``
+---------
 
 Compute the covariance matrix for the model at the minimum.
 
 
 .. _option-entropy:
 
-entropy
--------
+``--entropy``
+-------------
 
 *Calculate entropy* is a flag which indicates whether entropy should be
 computed for the final fit.  Entropy an estimate of the number of bits of
@@ -420,8 +428,8 @@ information available from the fit.
 
 .. _option-plot:
 
-plot
-----
+``--plot``
+----------
 
 For problems that have different view options for plotting, select the default
 option to display.  For example, when fitting a power law to a dataset, you
@@ -434,8 +442,8 @@ Bumps Controls
 
 .. _option-preview:
 
-preview
--------
+``--preview``
+-------------
 
 If the command contains *preview* then display model but do not perform
 a fitting operation.  Use this to see the initial model before running a fit.
@@ -443,16 +451,16 @@ It will also show the fit range.
 
 .. _option-chisq:
 
-chisq
------
+``--chisq``
+-----------
 
 If the command contains *chisq* then show $\chi^2$ and exit.  Use this to
 check that the model does not have any syntax errors.
 
 .. _option-edit:
 
-edit
-----
+``--edit``
+----------
 
 If the command contains *edit* then start the Bumps user interface so that
 you can interact with the model, adjusting fitted parameters with a slider
@@ -460,8 +468,8 @@ and seeing how they impact the result.
 
 .. _option-resynth:
 
-resynth
--------
+``--resynth``
+-------------
 
 Run a resynth uncertainty analysis on the model.  After finding a good
 minimum, you can rerun bumps with:
@@ -476,16 +484,16 @@ values can be loaded into python and averaged or histogrammed.
 
 .. _option-help:
 
-help
-----
+``--help``
+----------
 
 Use *?*, *h* or *help* to show a brief description of each command line option.
 
 
 .. _option-python:
 
-python
-------
+``--python``
+------------
 
 The bumps program can be used as a python interpreter with numpy, scipy,
 matplotlib and bumps included.  This is useful if you do not have python
@@ -507,8 +515,8 @@ The options are:
 
 .. _option-timer:
 
-timer
------
+``--timer``
+-----------
 
 Run the model :ref:`option-steps` times and find the average run time per step.
 If :ref:`option-parallel` is used, then the models will be run in parallel.
@@ -516,8 +524,8 @@ If :ref:`option-parallel` is used, then the models will be run in parallel.
 
 .. _option-profiler:
 
-profiler
---------
+``--profiler``
+--------------
 
 Run the model :ref:`option-steps` times using the python profiler.  This can
 be useful for identifying slow parts of your model definition, or

@@ -16,8 +16,8 @@ the spline order required to model it will require many more parameters
 than the corresponding exponential.
 
 Even with the correct model, there are systematic errors to address
-(see :ref:`data-guide`).  A distorted sample can lead to broader resolution than
-expected for the measurement technique, and you will need to adjust your
+(see :ref:`data-guide`).  A distorted sample can lead to broader resolution
+than expected for the measurement technique, and you will need to adjust your
 resolution function.  Imprecise instrument control will lead to uncertainty
 in the position of the sample, and corresponding changes to the measured
 values.  For high precision experiments, your models will need to incorporate
@@ -30,22 +30,21 @@ Quick Fit
 =========
 
 While generating an appropriate model, you will want to perform a number
-of quick fits.  The Nelder-Mead simplex algorithm (fit=amoeba) works well
-for this.  You will want to run enough iterations (steps=1000-3000) so
-the algorithm has a chance to converge.  Restarting a number of times
-(starts=3-100) gives a reasonably thorough search of the fit space.  Once
-the fit converges, additional starts are very quick.  From the
-graphical user interface, using starts=1 and clicking the fit button to
-improve the fit as needed works pretty well. From the command line interface,
-the command line will be something like::
+of quick fits.  The :ref:`fit-amoeba` works well for this.  You will want
+to run enough iterations ``--steps=1000`` so the algorithm has a
+chance to  converge.  Restarting a number of times ``--starts=10`` gives
+a reasonably thorough search of the fit space.  Once the fit converges,
+additional starts are very quick.  From the graphical user interface, using
+``--starts=1`` and clicking the fit button to improve the fit as needed works
+pretty well. From the command line interface, the command line will be
+something like::
 
     bumps --fit=amoeba --steps=1000 --starts=20 --parallel model.py --store=T1
 
-Here, the results are kept in a directory (store=T1) relative to the current
-directory, with files containing the current model (in model.py), the fit
-result (in model.par) and a plots (in model-\*.png).  The parallel option
+Here, the results are kept in a directory ``--store=T1`` relative to the current
+directory, with files containing the current model in *model.py*, the fit
+result in *model.par* and a plots in *model-\*.png*.  The parallel option
 indicates that multiple cores should be used on the cpu when running the fit.
-other information provided by the fitter.
 
 The fit may be able to be improved by using the current best fit value as
 the starting point for a new fit::
@@ -53,32 +52,33 @@ the starting point for a new fit::
     bumps --fit=amoeba --steps=1000 --starts=20 --parallel model.py --store=T1 --pars=T1/model.par
 
 If the fit is well behaved, and a numerical derivative exists, then
-switching to the BFGS quasi-newton algorithm (fit=newton) is useful, in
-that it will very rapidly converge to a nearby local minimum.
+switching to :ref:`fit-newton` is useful, in that it will very rapidly
+converge to a nearby local minimum.
 
 ::
 
     bumps --fit=newton model.py --pars=T1/model.par --store=T1
 
-Differential evolution (fit=de) is an alternative to amoeba, perhaps a little
+:ref:`fit-de` is an alternative to :ref:`fit-amoeba`, perhaps a little
 more likely to find the global minimum but somewhat slower.  This is a
 population based algorithms in which several points from the current
 population are selected, and based on the position and value, a new point
 is generated.  The population is specified as a multiplier on the number
 of parameters in the model, so for example an 8 parameter model with
-DE's default population (pop=10) would create 80 points each generation.
+DE's default population ``--pop=10`` would create 80 points each generation.
 This algorithms can be called from the command line as follows::
 
     bumps --fit=de --steps=3000 --parallel model.py --store=T1
 
-In addition to restarting differential evolution from
-
 Some fitters save the complete state of the fitter on termination so that
-the fit can be resumed.  Use --resume=store/path
+the fit can be resumed.  Use ``--resume=path/to/previous/store`` to resume.
+The resumed fit also needs a ``--store=path/to/store``, which could be the
+same as the resume path if you want to update it, or it could be a completely
+new path.
 
 
-See `optimizer-guide`_ for a description of the available optimizers, and
-`option-guide`_ for a description of the bumps options.
+See :ref:`optimizer-guide` for a description of the available optimizers, and
+:ref:`option-guide` for a description of all the bumps options.
 
 Uncertainty Analysis
 ====================
@@ -90,21 +90,21 @@ ourselves the ability to incorporate prior information into the fit
 systematically, but we also give ourselves a strong foundation for
 assessing the uncertainty of the parameters.
 
-Uncertainty analysis is performed using DREAM (fit=dream).  This is a
+Uncertainty analysis is performed using :ref:`fit-dream`.  This is a
 Markov chain Monte Carlo (MCMC) method with a differential evolution
 step generator.  Like simulated annealing, the MCMC explores the space
 using a random walk, always accepting a better point, but sometimes
 accepting a worse point depending on how much worse it is.
 
 DREAM can be started with a variety of initial populations.  The
-random population (init=random) distributes the initial points using
+random population ``--init=random`` distributes the initial points using
 a uniform distribution across the space of the parameters.  Latin
-hypersquares (init=lhs) improves on random by making sure that
+hypersquares ``--init=lhs`` improves on random by making sure that
 there is on value for each subrange of every variable. The covariance
-population (init=cov) selects points from the uncertainty ellipse
+population ``--init=cov`` selects points from the uncertainty ellipse
 computed from the derivative at the initial point.  This method
 will fail if the fitting parameters are highly correlated and the
-covariance matrix is singular.  The epsilon ball population (init=eps)
+covariance matrix is singular.  The $\epsilon$-ball population ``--init=eps``
 starts DREAM from a tiny region near the initial point and lets it
 expand from there.  It can be useful to start with an epsilon ball
 from the previous best point when DREAM fails to converge using
@@ -174,7 +174,7 @@ To assure ourselves that the uncertainties produced by DREAM do
 indeed correspond to the underlying uncertainty in the model, we perform
 a Monte Carlo forward uncertainty analysis by selecting 50 samples from
 the computed posterior distribution, computing the corresponding
-reflectivity and calculating the normalized residuals.  Assuming that
+theory function and calculating the normalized residuals.  Assuming that
 our measurement uncertainties are approximately normally distributed,
 approximately 68% of the normalized residuals should be within +/- 1 of
 the residual for the best model, and 98% should be within +/- 2. Note
@@ -187,15 +187,15 @@ we see that the precise details of the lamellae are uncertain but the
 total thickness of the lamellae structure is well determined.  Bayesian
 analysis can also be used to determine relative likelihood of different
 number of layers, but we have not yet performed this analysis.  This plot
-is stored in T1/model-errors.png.
+is stored in *T1/model-errors.png*.
 
-The trace plot, T1/model-trace.png, shows the mixing properties of the
+The trace plot, *T1/model-trace.png*, shows the mixing properties of the
 first fitting parameter.  If the Markov process is well behaved, the
 trace plot will show a lot of mixing.  If it is ill behaved, and each
 chain is stuck in its own separate local minimum, then distinct lines
 will be visible in this plot.
 
-The convergence plot, T1/model-logp.png, shows the log likelihood
+The convergence plot, *T1/model-logp.png*, shows the log likelihood
 values for each member of the population.  When the Markov process
 has converged, this plot will be flat with no distinct lines visible.
 If it shows a general upward sweep, then the burn time was not
@@ -237,8 +237,8 @@ operations after the fact::
 
 
 You can restrict a variable to a certain range when doing plots.
-For example, to restrict the third parameter to [0.8-1.0] and the
-fifth to [0.2-0.4]::
+For example, to restrict the third parameter to $[0.8,1.0]$ and the
+fifth to $[0.2,0.4]$::
 
     from bumps.dream import views
     selection={2: (0.8,1.0), 4:(0.2,0.4),...}
@@ -246,7 +246,7 @@ fifth to [0.2-0.4]::
     views.plot_corrmatrix(state, selection=selection)
 
 You can also add derived variables using a function to generate the
-derived variable.  For example, to add a parameter which is p[0]+p[1]
+derived variable.  For example, to add a parameter which is ``p[0]+p[1]``
 use::
 
     state.derive_vars(lambda p: p[0]+p[1], labels=["x+y"])
@@ -287,7 +287,7 @@ from the Bumps application by first loading the model and the fit
 results then accessing their data directly to produce the plots that
 you need.
 
-The model file (call it plot.py) will start with the following::
+The model file (call it *plot.py*) will start with the following::
 
     import sys
     from bumps.cli import load_problem, load_best
@@ -301,11 +301,11 @@ The model file (call it plot.py) will start with the following::
     print "chisq",chisq
 
 Assuming your model script is in model.py and you have run a fit with
---store=X5, you can run this file using::
+``--store=X5``, you can run this file using::
 
     $ bumps plot.py model.py X5
 
-Now model.py is loaded and the best fit parameters are set.
+Now *model.py* is loaded and the best fit parameters are set.
 
 To produce plots, you will need access to the data and the theory.  This
 can be complex depending on how many models you are fitting and how many
@@ -313,7 +313,7 @@ datasets there are per model.  For single experiment models defined
 by :func:`FitProblem <bumps.fitproblem.FitProblem>`, your original
 experiment object  is referenced by *problem.fitness*.  For simultaneous
 refinement defined by *FitProblem* with multiple *Fitness* objects,
-use *problem.models[k].fitness* to access the experiment for
+use ``problem.models[k].fitness`` to access the experiment for
 model *k*.  Your experiment object should provide methods for retrieving
 the data and plotting data vs. theory.
 
@@ -400,7 +400,7 @@ With the toughest fits, for example freeform models with arbitrary
 control points, DREAM only succeeds if the model is small or the 
 control points are constrained.  We have developed a parallel 
 tempering (fit=pt) extension to DREAM.  Whereas DREAM runs with a 
-constant temperature, T=1, parallel tempering runs with multiple 
+constant temperature, $T=1$, parallel tempering runs with multiple
 temperatures concurrently.   The high temperature points are able to 
 walk up steep hills in the search space, possibly crossing over into a
 neighbouring valley.  The low temperature points agressively seek the
@@ -408,8 +408,9 @@ nearest local minimum, rejecting any proposed point that is worse than
 the current.  Differential evolution helps adapt the steps to the shape
 of the search space, increasing the chances that the random step will be
 a step in the right direction.  The current implementation uses a fixed
-set of temperatures defaulting to Tmin=0.1 through Tmax=10 in nT=25 steps;
-future versions should adapt the temperature based on the fitting problem.
+set of temperatures defaulting to ``--Tmin=0.1`` through ``--Tmax=10`` in
+``--nT=25`` steps; future versions should adapt the temperature based
+on the fitting problem.
 
 Parallel tempering is run like dream, but with optional temperature
 controls::
@@ -447,43 +448,3 @@ doesn't stop to show interactive graphs::
 You can view the fitted results in the GUI the next morning using::
 
     bumps --edit model.py --pars=T1/model.par
-
-Other optimizers
-================
-
-There are several other optimizers that are included but aren't frequently used.
-
-BFGS (fit=newton) is a quasi-newton optimizer relying on numerical derivatives
-to find the nearest local minimum.  For problem spaces with correlated parameters, 
-the resulting matrices can be ill-conditioned and the fit isn't robust.
-
-Particle swarm optimization (fit=ps) is another population based algorithm,
-but it does not appear to perform well for high dimensional problem spaces.
-
-SNOBFIT (fit=snobfit) attempts to construct a locally quadratic model of
-the entire search space.  While promising because it can begin to offer
-some guarantees that the search is complete given reasonable assumptions
-about the fitting surface, initial trials did not perform well and the
-algorithm has not yet been tuned to our problems.
-
-References
-==========
-
-WH Press, BP Flannery, SA Teukolsky and WT Vetterling, Numerical Recipes in C, Cambridge University Press
-
-I. Sahin (2011) Random Lines: A Novel Population Set-Based Evolutionary Global Optimization Algorithm. Lecture Notes in Computer Science, 2011, Volume 6621/2011, 97-107
-DOI:10.1007/978-3-642-20407-4_9
-
-Vrugt, J. A., ter Braak, C. J. F., Diks, C. G. H., Higdon, D., Robinson, B. A., and Hyman, J. M.:Accelerating Markov chain Monte Carlo simulation by differential evolution with self-adaptive randomized subspace sampling, Int. J. Nonlin. Sci. Num., 10, 271–288, 2009.
-
-Kennedy, J.; Eberhart, R. (1995). "Particle Swarm Optimization". Proceedings of IEEE International Conference on Neural Networks. IV. pp. 1942–1948. doi:10.1109/ICNN.1995.488968
-
-W. Huyer and A. Neumaier, Snobfit - Stable Noisy Optimization by Branch and Fit, ACM Trans. Math. Software 35 (2008), Article 9.
-
-Storn, R.: System Design by Constraint Adaptation and Differential Evolution,
-Technical Report TR-96-039, International Computer Science Institute (November 1996)
-
-Swendsen RH and Wang JS (1986) Replica Monte Carlo simulation of spin glasses Physical Review Letters 57 : 2607-2609
-
-BIPM, IEC, IFCC, ILAC, ISO, IUPAC, IUPAP, and OIML. Evaluation of measurement data – Supplement 1 to the ‘Guide to the expression of uncertainty in measurement’ – Propagation of distributions using a Monte Carlo method. Joint Committee for Guides in Metrology, JCGM 101 <http://www.bipm.org/utils/common/documents/jcgm/JCGM_101_2008_E.pdf>, 2008.
-
