@@ -105,7 +105,8 @@ needs $2 m n$ function evaluations, where $n$ is the number of parameters and
 each function is evaluated and $m$ data points (assuming center point
 formula for finite difference estimate of the derivative).  The resulting
 linear equation is then solved, but for small $n$ and expensive function
-evaluation this overhead can be ignored.  Use ``--steps=n`` on the command line.
+evaluation this overhead can be ignored.  Use ``--steps=n`` from
+the command line.
 
 *f(x) tolerance* and *x tolerance* are used to determine when
 the fit has reached the point where no significant improvement is expected.
@@ -180,21 +181,21 @@ every value in the simplex. Use ``--steps=n`` from the command line.
 
 *Starts* tells the optimizer to restart a given number of times.
 Each time it restarts it uses a random starting point.   Use
-``--starts=n`` on the command line.
+``--starts=n`` from the command line.
 
 *Simplex radius* is the initial size of the simplex, as a portion of
 the bounds defining the parameter space.  If a parameter is unbounded, then
 the radius will be treated as a portion of the parameter value. Use
-``--radius=n`` on the command line.
+``--radius=n`` from the command line.
 
 *x tolerance* and *f(x) tolerance* are used to determine when the
 fit has reached the point where no significant improvement is expected.
 If the simplex is tiny (that is, the corners are close to each other) and
 flat (that is, the values at the corners are close to each other),
-then the fit will terminate.  Use ``--xtol=v`` and ``--ftol=v`` on
+then the fit will terminate.  Use ``--xtol=v`` and ``--ftol=v`` from
 the command line.
 
-On the command line, use ``--keep_best`` so that restarts are centered on a
+From the command line, use ``--keep_best`` so that restarts are centered on a
 value near the minimum rather than restarting from a random point within the
 parameter bounds.
 
@@ -260,7 +261,7 @@ the fit has reached the point where no significant improvement is expected.
 If the function is small or the step is too short then the fit
 will terminate.  Use ``--ftol=v`` and ``--xtol=v`` from the command line.
 
-On the command line, ``--keep_best`` uses a value near the previous minimum
+From the command line, ``--keep_best`` uses a value near the previous minimum
 when restarting instead of using a random value within the parameter bounds.
 
 Use ``--fit=newton`` to select BFGS from the commandline.
@@ -321,26 +322,26 @@ Options
 
 *Steps* is the number of iterations.  Each step updates each member
 of the population.  The population size scales with the number of fitted
-parameters. Use ``--steps=n`` on the command line.
+parameters. Use ``--steps=n`` from the command line.
 
 *Population* determines the size of the population.  The number of
 individuals, $k$, is equal to the number of fitted parameters times the
-population scale factor.  Use ``--pop=k`` on the command line.
+population scale factor.  Use ``--pop=k`` from the command line.
 
 *Crossover ratio* determines what proportion of the dimensions to update
 at each step.  Smaller values will likely lead to slower convergence, but
-more robust results.  Values must be between 0 and 1.  Use ``--CR=v`` on
+more robust results.  Values must be between 0 and 1.  Use ``--CR=v`` from
 the command line.
 
 *Scale* determines how much to scale each difference vector before adding
 it to the candidate point.  The selected mutation algorithm chooses a scale
-factor uniformly in $[0,F]$.  Use ``--F=v`` on the command line.
+factor uniformly in $[0,F]$.  Use ``--F=v`` from the command line.
 
 *f(x) tolerance* and *x tolerance* are used to determine when the
 fit has reached the point where no significant improvement is expected.
 If the population is flat (that is, the minimum and maximum values are
 within tolerance) and tiny (that is, all the points are close to each
-other) then the fit will terminate.  Use ``ftol=v`` and ``xtol=v`` on the
+other) then the fit will terminate.  Use ``ftol=v`` and ``xtol=v`` from the
 command line.
 
 Use ``--fit=de`` to select diffrential evolution from the commandline.
@@ -410,16 +411,16 @@ Options
 chain.  Each iteration updates the full population.  The population size
 scales with the number of fitted parameters.  Set steps so that the
 number of fit parameters times the population times steps is at least
-100,000.  Use ``--steps=n`` on the command line.
+100,000.  Use ``--steps=n`` from the command line.
 
 *Burn-in Steps* is the number of iterations to required for the Markov
 chain to converge to the equilibrium distribution.  If the fit ends
 early, the tail of the burn will be saved to the start of the steps.
-Use ``--burn=n`` on the command line.
+Use ``--burn=n`` from the command line.
 
 *Population* determines the size of the population.  The number of
 individuals, $k$, is equal to the number of fitted parameters times the
-population scale factor.  Use ``--pop=k`` on the command line.
+population scale factor.  Use ``--pop=k`` from the command line.
 
 *Initializer* determines how the population will be initialized.
 The options are as follows:
