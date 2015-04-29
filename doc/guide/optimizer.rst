@@ -12,9 +12,9 @@ control parameters:
 * :ref:`fit-dream`
 * :ref:`fit-de`
 * :ref:`fit-newton`
-* :ref:`fit-rl` (experimental)
-* :ref:`fit-ps` (experimental)
-* :ref:`fit-pt` (experimental)
+* :ref:`fit-rl` [experimental]
+* :ref:`fit-ps` [experimental]
+* :ref:`fit-pt` [experimental]
 
 In general there is a trade-off between convergence
 rate and robustness, with the fastest algorithms most likely to find a
@@ -60,15 +60,10 @@ particularly well on our problem sets.  However, they may be perfect
 for your problem, so we have left them in the package for you to explore.
 They are not available in the GUI selection.
 
-** Need to describe the array of output files produced by optimizers,
-particularly dream.  Some of them (convergence plot, model plot, par file,
-model file) are common to all.  Others (mcmc points) are specific to one
-optimizer**
-
 .. _fit-lm:
 
-Levenberg-Marquardt (lm)
-========================
+Levenberg-Marquardt
+===================
 
 .. image:: fit-lm.png
     :alt: Levenberg-Marquardt option screen.
@@ -104,24 +99,26 @@ This method uses *lmfit* from *scipy*, and does not run in parallel.
 Options
 -------
 
-:ref:`option-steps` is the number of gradient steps to take.  Each step requires
+*Steps* is the number of gradient steps to take.  Each step requires
 a calculation of the Jacobian matrix to determine the direction.  This
 needs $2 m n$ function evaluations, where $n$ is the number of parameters and
 each function is evaluated and $m$ data points (assuming center point
 formula for finite difference estimate of the derivative).  The resulting
 linear equation is then solved, but for small $n$ and expensive function
-evaluation this overhead can be ignored.
+evaluation this overhead can be ignored.  Use ``--steps=n`` on the command line.
 
-:ref:`option-ftol` and :ref:`option-xtol` are used to determine when
+*f(x) tolerance* and *x tolerance* are used to determine when
 the fit has reached the point where no significant improvement is expected.
 If the function value does not improve significantly within the step, or
-the step is too short, then the fit will terminate.
+the step is too short, then the fit will terminate.  Use ``--ftol=v`` and
+``--xtol=v`` from the command line.
 
-:ref:`option-starts` will automatically restart the algorithm after it has
-converged so that a slightly better value can be found. If
-:ref:`option-keep-best` is set then it will use a value near the minimum,
+From the command line, ``--starts=n`` will automatically restart the algorithm
+after it has converged so that a slightly better value can be found. If
+``--keep_best`` is included then restart will use a value near the minimum,
 otherwise it will restart the fit from a random point in the parameter space.
-These options are not available in the in the options dialog.
+
+Use ``--fit=lm`` to select the Levenberg-Marquardt fitter from the command line.
 
 References
 ----------
@@ -139,23 +136,24 @@ References
 
 .. _fit-amoeba:
 
-Nelder-Mead Simplex (amoeba)
-============================
+Nelder-Mead Simplex
+===================
 
 .. image:: fit-amoeba.png
     :alt: Nelder-Mead Simplex option screen.
     :align: left
 
-The Nelder-Mead Simplex algorithm is a robust optimizer which does not require
-the function to be continuous or differentiable.  It uses the relative values
-of the function at the corners of a simplex (an n-dimensional triangle) to
-decide which points of the simplex to update.  It will take the worst value
-and try moving it inward or outward, or reflect it through the centroid of the
-remaining values stopping if it finds a better value.  If none of these values
-are better, then it will shrink the simplex and start again.  The name amoeba
-comes from the book *Numerical Recipes* wherein they describe the search as
-acting like an amoeba, squeezing through narrow valleys as it makes its way
-down to the minimum.
+The Nelder-Mead downhill simplex algorithm is a robust optimizer which
+does not require the function to be continuous or differentiable.
+It uses the relative values of the function at the corners of a
+simplex (an n-dimensional triangle) to decide which points of the simplex
+to update.  It will take the worst value and try moving it inward or
+outward, or reflect it through the centroid of the remaining values
+stopping if it finds a better value.  If none of these values are
+better, then it will shrink the simplex and start again.  The name
+amoeba comes from the book *Numerical Recipes* [Press1992]_ wherein they
+describe the search as acting like an amoeba, squeezing through narrow valleys
+as it makes its way down to the minimum.
 
 When to use
 -----------
@@ -168,7 +166,7 @@ before fitting, or use a more robust method such
 as :ref:`fit-de` or :ref:`fit-dream`.
 
 The uncertainty reported comes from a numerical derivative estimate at the
-minimum
+minimum.
 
 This method requires a series of function updates, and does not benefit
 much from running in parallel.
@@ -176,26 +174,32 @@ much from running in parallel.
 Options
 -------
 
-:ref:`option-steps` is the simplex update iterations to perform.  Most updates
+*Steps* is the simplex update iterations to perform.  Most updates
 require one or two function evaluations, but shrinking the simplex evaluates
-every value in the simplex.
+every value in the simplex. Use ``--steps=n`` from the command line.
 
-:ref:`option-ftol` and :ref:`option-xtol` are used to determine when the
-fit has reached the point where no significant improvement is expected.
-If the simplex is flat (that is, the values at the corners are close
-to each other) and tiny (that is, the corners are close to each other),
-then the fit will terminate.
+*Starts* tells the optimizer to restart a given number of times.
+Each time it restarts it uses a random starting point.   Use
+``--starts=n`` on the command line.
 
-:ref:`option-radius` is the initial size of the simplex, as a portion of
+*Simplex radius* is the initial size of the simplex, as a portion of
 the bounds defining the parameter space.  If a parameter is unbounded, then
-the radius will be treated as a portion of the parameter value.
+the radius will be treated as a portion of the parameter value. Use
+``--radius=n`` on the command line.
 
-:ref:`option-starts` tells the optimizer to restart a given number of times.
-Each time it restarts it uses a random starting point.
+*x tolerance* and *f(x) tolerance* are used to determine when the
+fit has reached the point where no significant improvement is expected.
+If the simplex is tiny (that is, the corners are close to each other) and
+flat (that is, the values at the corners are close to each other),
+then the fit will terminate.  Use ``--xtol=v`` and ``--ftol=v`` on
+the command line.
 
-:ref:`option-keep-best` uses a value near the previous minimum when restarting
-instead of using a random value within the parameter bounds.  This option is
-not available in the options dialog.
+On the command line, use ``--keep_best`` so that restarts are centered on a
+value near the minimum rather than restarting from a random point within the
+parameter bounds.
+
+Use ``--fit=amoeba`` to select the Nelder-Mead simplex fitter from the
+command line.
 
 References
 ----------
@@ -206,12 +210,16 @@ References
     1965, 7 (4), 308–313.
     DOI: `10.1093/comjnl/7.4.308 <http://dx.doi.org/10.1093/comjnl/7.4.308>`_
 
+.. [Press1992]
+   Press, W. H.; Flannery, B. P.; Teukolsky, S. A.; Vetterling, W. T.
+   In *Numerical Recipes in C: The Art of Scientific Computing, Second Edition*;
+   Cambridge University Press: Cambridge ; New York, 1992; pp 408–412.
 
 
 .. _fit-newton:
 
-Quasi-Newton BFGS (newton)
-==========================
+Quasi-Newton BFGS
+=================
 
 .. image:: fit-newton.png
     :alt: Quasi-Newton BFGS option screen.
@@ -234,25 +242,28 @@ The $n$ partial derivatives are computed in parallel.
 Options
 -------
 
-:ref:`option-steps` is the number of gradient steps to take.  Each step requires
+*Steps* is the number of gradient steps to take.  Each step requires
 a calculation of the Jacobian matrix to determine the direction.  This
 needs $2 m n$ function evaluations, where $n$ is the number of parameters and
 each function is evaluated and $m$ data points (assuming center point
 formula for finite difference estimate of the derivative).  The resulting
 linear equation is then solved, but for small $n$ and expensive function
 evaluation this overhead can be ignored.
+Use ``--steps=n`` from the command line.
 
-:ref:`option-ftol` and :ref:`option-xtol` are used to determine when
+*Starts* tells the optimizer to restart a given number of times.
+Each time it restarts it uses a random starting point.
+Use ``--starts=n`` from the command line.
+
+*f(x) tolerance* and *x tolerance* are used to determine when
 the fit has reached the point where no significant improvement is expected.
 If the function is small or the step is too short then the fit
-will terminate.
+will terminate.  Use ``--ftol=v`` and ``--xtol=v`` from the command line.
 
-:ref:`option-starts` tells the optimizer to restart a given number of times.
-Each time it restarts it uses a random starting point.
+On the command line, ``--keep_best`` uses a value near the previous minimum
+when restarting instead of using a random value within the parameter bounds.
 
-:ref:`option-keep-best` uses a value near the previous minimum when restarting
-instead of using a random value within the parameter bounds.  This option is
-not available in the options dialog.
+Use ``--fit=newton`` to select BFGS from the commandline.
 
 References
 ----------
@@ -265,8 +276,8 @@ References
 
 .. _fit-de:
 
-Differential Evolution (de)
-===========================
+Differential Evolution
+======================
 
 .. image:: fit-de.png
     :alt: Differential Evolution option screen.
@@ -308,28 +319,31 @@ of the population.
 Options
 -------
 
-:ref:`option-steps` is the number of iterations.  Each step updates each member
+*Steps* is the number of iterations.  Each step updates each member
 of the population.  The population size scales with the number of fitted
-parameters.
+parameters. Use ``--steps=n`` on the command line.
 
-:ref:`option-pop` determines the size of the population.  The number of
+*Population* determines the size of the population.  The number of
 individuals, $k$, is equal to the number of fitted parameters times the
-population scale factor.
+population scale factor.  Use ``--pop=k`` on the command line.
 
-:ref:`option-CR` is the crossover ratio, determining what proportion of the
-dimensions to update at each step.  Smaller values will likely lead to slower
-convergence, but more robust results.  Values must be between 0 and 1.
+*Crossover ratio* determines what proportion of the dimensions to update
+at each step.  Smaller values will likely lead to slower convergence, but
+more robust results.  Values must be between 0 and 1.  Use ``--CR=v`` on
+the command line.
 
-:ref:`option-F` is the scale factor determining how much to scale each
-difference vector before adding it to the candidate point.  The selected
-mutation algorithm chooses a scale factor uniformly in $[0,F]$.
+*Scale* determines how much to scale each difference vector before adding
+it to the candidate point.  The selected mutation algorithm chooses a scale
+factor uniformly in $[0,F]$.  Use ``--F=v`` on the command line.
 
-
-:ref:`option-ftol` and :ref:`option-xtol` are used to determine when the
+*f(x) tolerance* and *x tolerance* are used to determine when the
 fit has reached the point where no significant improvement is expected.
 If the population is flat (that is, the minimum and maximum values are
 within tolerance) and tiny (that is, all the points are close to each
-other) then the fit will terminate.
+other) then the fit will terminate.  Use ``ftol=v`` and ``xtol=v`` on the
+command line.
+
+Use ``--fit=de`` to select diffrential evolution from the commandline.
 
 References
 ----------
@@ -392,31 +406,52 @@ where $k$ is the size of the population.
 Options
 -------
 
-:ref:`option-steps` is the number of iterations to include in the Markov
+*Steps* is the number of iterations to include in the Markov
 chain.  Each iteration updates the full population.  The population size
 scales with the number of fitted parameters.  Set steps so that the
 number of fit parameters times the population times steps is at least
-100,000.
+100,000.  Use ``--steps=n`` on the command line.
 
-:ref:`option-burn` is the number of iterations to required for the Markov
+*Burn-in Steps* is the number of iterations to required for the Markov
 chain to converge to the equilibrium distribution.  If the fit ends
 early, the tail of the burn will be saved to the start of the steps.
+Use ``--burn=n`` on the command line.
 
-:ref:`option-thin` is the amount of thinning to use when collecting the
+*Population* determines the size of the population.  The number of
+individuals, $k$, is equal to the number of fitted parameters times the
+population scale factor.  Use ``--pop=k`` on the command line.
+
+*Initializer* determines how the population will be initialized.
+The options are as follows:
+
+     *eps* (epsilon ball), in which the entire initial population is chosen
+     at random from within a tiny hypersphere centered about the initial point
+
+     *lhs* (latin hypersquare), which chops the bounds within each dimension
+     in $k$ equal sized chunks where $k$ is the size of the population and
+     makes sure that each parameter has at least one value within each chunk
+     across the population.
+
+     *cov* (covariance matrix), in which the uncertainty is estimated using
+     the covariance matrix at the initial point, and points are selected
+     at random from the corresponding gaussian ellipsoid
+
+     *random* (uniform random), in which the points are selected at random
+     within the bounds of the parameters
+
+Use ``--init=type`` from the command line.
+
+
+*Thinning* is the amount of thinning to use when collecting the
 population.  If the fit is somewhat stuck, with most steps not improving
 the fit, then you will need to thin the population to get proper
-statistics.
+statistics.  Use ``--thin=k`` from the command line.
 
-:ref:`option-pop` determines the size of the population.  The number of
-individuals, $k$, is equal to the number of fitted parameters times the
-population scale factor.
+*Calculate entropy*, if true, computes the entropy for the fit.  This is
+an estimate of the amount of information in the data.  Use ``--entropy``
+from the command line.
 
-:ref:`option-init` determines how the population will be initialized.  The
-options are *lhs* for latin hypersquare, *eps* for epsilon ball, *cov*
-for covariance matrix, and *rand* for uniform random.
-
-:ref:`option-entropy`, if true, computes the entropy for the fit.  This is
-an estimate of the amount of information in the data.
+Use ``--fit=dream`` to select DREAM from the commandline.
 
 Output
 ------
@@ -521,9 +556,8 @@ theory and data divided by uncertainty.  The residuals should be 2/3 within
 misses the data for long stretches.  This indicates some feature missing
 from the model, or a lack of convergence to the best model.
 
-If :ref:`option-entropy` is given on the command line then bumps will show
-the total number of bits of information in the fit.  This derives from
-the entropy term:
+If entropy is requested, then bumps will show the total number of bits of
+information in the fit.  This derives from the entropy term:
 
 .. math:
 
@@ -556,8 +590,8 @@ References
 
 .. _fit-ps:
 
-Particle Swarm (ps)
-===================
+Particle Swarm
+==============
 
 Inspired by bird flocking behaviour, the particle swarm algorithm is a
 population-based method which updates an individual according to its
@@ -576,13 +610,15 @@ limits the amount of parallelism.
 Options
 -------
 
-:ref:`option-steps` is the number of iterations.  Each step updates each member
+``--steps=n` is the number of iterations.  Each step updates each member
 of the population.  The population size scales with the number of fitted
 parameters.
 
-:ref:`option-pop` determines the size of the population.  The number of
+``--pop=k`` determines the size of the population.  The number of
 individuals, $k$, is equal to the number of fitted parameters times the
 population scale factor.  The default scale factor is 1.
+
+Use ``--fit=ps`` to select particle swarm from the commandline.
 
 References
 ----------
@@ -597,8 +633,8 @@ References
 
 .. _fit-rl:
 
-Random Lines (rl)
-=================
+Random Lines
+============
 
 Most of the population based algorithms ignore the value of the function
 when choosing the points in the next iteration.  Random lines is a new
@@ -620,23 +656,25 @@ The population updates can run in parallel.
 Options
 -------
 
-:ref:`option-steps` is the number of iterations.  Each step updates each member
+``--steps=n`` is the number of iterations.  Each step updates each member
 of the population.  The population size scales with the number of fitted
 parameters.
 
-:ref:`option-pop` determines the size of the population.  The number of
+``--pop=k`` determines the size of the population.  The number of
 individuals, $k$, is equal to the number of fitted parameters times the
 population scale factor.  The default scale factor is 0.5.
 
-:ref:`option-CR` is the crossover ratio, determining what proportion of the
+``--CR=v`` is the crossover ratio, determining what proportion of the
 dimensions to update at each step.  Values must be between 0 and 1.
 
-:ref:`option-starts` tells the optimizer to restart a given number of times.
+``--starts=n`` tells the optimizer to restart a given number of times.
 Each time it restarts it uses a random starting point.
 
-:ref:`option-keep-best` uses a value near the previous minimum when restarting
+``--keep_best`` uses a value near the previous minimum when restarting
 instead of using a random value within the parameter bounds.  This option is
 not available in the options dialog.
+
+Use ``--fit=rl`` to select random lines from the commandline.
 
 References
 ----------
@@ -651,8 +689,8 @@ References
 
 .. _fit-pt:
 
-Parallel Tempering (pt)
-=======================
+Parallel Tempering
+==================
 
 Parallel tempering is an MCMC algorithm for uncertainty analysis.  This
 version runs at multiple temperatures simultaneously, with chains at high
@@ -672,21 +710,23 @@ spaced local minima which dream cannot fit.
 Options
 -------
 
-:ref:`option-steps` is the number of iterations to include in the Markov
+``--steps=n`` is the number of iterations to include in the Markov
 chain.  Each iteration updates the full population.  The population size
 scales with the number of fitted parameters.
 
-:ref:`option-burn` is the number of iterations to required for the Markov
+``--burn=n`` is the number of iterations to required for the Markov
 chain to converge to the equilibrium distribution.  If the fit ends
 early, the tail of the burn will be saved to the start of the steps.
 
-:ref:`option-CR` is the differential evolution crossover ratio to use when
+``--CR=v`` is the differential evolution crossover ratio to use when
 computing step size and direction.  Use a small value to step through the
 dimensions one at a time, or a large value to step through all at once.
 
-:ref:`option-nT`, :ref:`option-Tmin` and :ref:`option-Tmax` specify a log-spaced
-initial distribution of temperatures.  The default is 25 points between
-0.1 and 10.  :ref:`fit-dream` runs at a temperature of 1.0.
+``-nT=k``, ``-Tmin=v`` and ``--Tmax=v`` specify a log-spaced initial
+distribution of temperatures.  The default is 25 points between
+0.1 and 10.  :ref:`fit-dream` runs at a fixed temperature of 1.0.
+
+Use ``--fit=pt`` to select parallel tempering from the commandline.
 
 References
 ----------

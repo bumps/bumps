@@ -17,9 +17,10 @@ and its controls and stopping conditions.  The long form name of the the
 option will be used on the form.  Not all controls will appear on the form,
 and will be set from the command line.
 
-
-
-
+**Need to describe the array of output files produced by optimizers,
+particularly dream.  Some of them (convergence plot, model plot, par file,
+model file) are common to all.  Others (mcmc points) are specific to one
+optimizer**
 
 
 Bumps Command Line
@@ -334,6 +335,8 @@ Directory in which to store the results of the fit.  Fits produce multiple
 files and plots.  Rather than cluttering up the current directory, all the
 outputs are written to the store directory along with a copy of the model
 file.
+
+
 
 .. _option-overwrite:
 
