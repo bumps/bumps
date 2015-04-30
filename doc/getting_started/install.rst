@@ -12,20 +12,17 @@ Bumps |version| is provided as a Windows installer or as source:
     - Apple installer: :slink:`%(macapp)s`
     - Source: :slink:`%(srczip)s`
 
-Th Windows installer walks through the steps of setting the program up
+The Windows installer walks through the steps of setting the program up
 to run on your machine and provides the sample data to be used in the
-tutorial.  Installers for other platforms are not yet available, and
-must be built from source.
+tutorial.
 
 Building from source
 ====================
 
-Building the application from source requires some preparation.
-
-First you will need to set up your python environment.  We depend on
-many external packages.  The versions listed below are a snapshot
-of a configuration that we are using.  The program may work with older
-versions of the package, and we will try to keep it compatible with
+Before building bumps, you will need to set up your python environment.
+We depend on many external packages.  The versions listed below are a
+snapshot of a configuration that we are using.  The program may work with
+older versions of the package, and we will try to keep it compatible with
 the latest versions.
 
 Our base scientific python environment contains:
@@ -60,22 +57,26 @@ are given below.
 Windows
 -------
 
-The `Python(X,Y) <http://code.google.com/p/pythonxy/>`_ package contains
-most of the pieces required to build the application.  You can select
-"Full Install" for convenience, or you can select "Custom Install" and make
-sure the above packages are selected.  In particular, wx is not selected
-by default.  Be sure to select py2exe as well, since you may want to
-build a self contained release package.
+There are a number of python environments for windows, including:
 
-The Python(x,y) package supplies a C/C++ compiler, but the package does
-not set it as the default compiler.  To do this you will need to create
-*C:\\Python27\\Lib\\distutils\\distutils.cfg* with the following content::
+* `Python(X,Y) <http://code.google.com/p/pythonxy/>`_
+* `WinPython <http://winpython.sourceforge.net/>`_
+* `Anaconda <https://store.continuum.io/cshop/anaconda/>`_
+* `Canopy <https://www.enthought.com/products/canopy/>`_
+
+You can also build your environment from the individually distributed
+python packages.
+
+The python environment may supply the MinGW C/C++ compiler, but fail to
+set it as the default compiler.  To do so you will need to create
+distutils configuration file in the python lib directory (usually
+*C:\Python27\Lib\distutils\distutils.cfg*) with the following content::
 
     [build]
     compiler=mingw32
 
-Next change to the directory containing the source.  This will be a command
-like the following::
+Next start a Windows command prompt in the directory containing the source.
+This will be a command like the following::
 
     cd "C:\Documents and Settings\<username>\My Documents\bumps-src"
 
@@ -92,11 +93,6 @@ To run the program use::
 
     python -m bumps.cli -h
 
-We have also built working versions using
-`WinPython <http://winpython.sourceforge.net/>`_,
-`Anaconda <https://store.continuum.io/cshop/anaconda/>`_,
-`Canopy <https://www.enthought.com/products/canopy/>`_,
-and from individually distributed python packages.
 
 Linux
 -----
@@ -104,13 +100,16 @@ Linux
 Many linux distributions will provide the base required packages.  You
 will need to refer to your distribution documentation for details.
 
-On Ubuntu you can use apt-get to install matplotlib, numpy, scipy, wx,
-nose and sphinx.
+On Ubuntu you can use:
+
+    sudo apt-get install python-matplotlib python-scipy python-nose python-sphinx
+    sudo apt-get install python-wxgtk2.8
 
 From a terminal, change to the directory containing the bumps source and type::
 
-    python setup.py install
+    python setup.py build
     python test.py
+    sudo python setup.py install
 
 This should install the application somewhere on your path.
 
@@ -125,8 +124,9 @@ Building a useful python environment on OS/X is somewhat involved, and
 frequently evolving so this document will likely be out of date.
 
 We've had success using the `Anaconda <https://store.continuum.io/cshop/anaconda/>`_
-64-bit python 2.7 environment from Continuum Analytics, which provides most
-of the required packages, but other distributions should work as well.
+64-bit python 2.7 environment from Continuum Analytics, which provides
+the required packages, but other distributions should work as well.
+
 You will need to install XCode from the app store, and set the preferences
 to install the command line tools so that a C compiler is available (look
 in the Downloads tab of the preferences window).  If any of your models
@@ -135,75 +135,13 @@ require fortran, you can download
 r.research.att.com/tools (scroll down to the  Apple Xcode gcc-42 add-ons).
 This sets up the basic development environment.
 
-wxPython
-~~~~~~~~
-
-The wxPython package is missing from Anaconda, so we built our own
-(:slink:`%(wx4osx)s`).  Download the package and install using::
-
-    conda install wx-2.9.5.0-py27_0.tar.bz2
-
-We built the wx package from the development release (2.9.5.0) at
-`<http://wxpython.org/download.php>`_ using the following commands::
-
-
-    #### Setup virtual environment with anaconda
-    conda create -n wx nose
-    source activate wx
-    # confirm that there are no untracked files in the environment
-    conda package -u
-
-    #### Fetch, build and install wxPython
-    curl -LO http://downloads.sourceforge.net/wxpython/wxPython-src-2.9.5.0.tar.bz2
-    tar xjf wxPython-src-2.9.5.0.tar.bz2
-    cd wxPython-src-2.9.5.0/wxPython
-    python build-wxpython.py --build_dir=/tmp/wx --osx_cocoa
-    # Note: building with "--prefix=<virtualenvpath> --install" should install
-    # all the pieces into the virtual environment:
-    #    --prefix=`python -c "import sys;print sys.prefix"` --install
-    # This didn't work, so we instead install by hand.
-    WXDEST=`python -c "import sys;print sys.prefix"`
-    cp -r wx $WXDEST/lib/python2.7/site-packages/wx
-    cp wxversion/wxversion.py $WXDEST/lib/python2.7/site-packages
-    cp -r /tmp/wx/cocoa/lib/* $WXDEST/lib
-    python -m compileall $WXDEST/lib/python2.7/site-packages/wx
-    python -m compileall $WXDEST/lib/python2.7/site-packages/wxversion.py
-    # optional scripts, #!/usr/bin/env python -> #!/usr/bin/env pythonw
-    cd scripts
-    for f in `ls | grep -v "[.]py"`; do
-        sed -e"s/env python/env pythonw/" $f > $WXDEST/bin/$f
-        chmod a+x $WXDEST/bin/$f
-    done
-    # return to root
-    cd ../../..
-
-    #### Construct a conda binary distribution for wx package and clean up
-    cd ../../..
-    conda package -u  # show what will be in the wx package
-    conda package --pkg-name wx --pkg-version 2.9.5.0
-    source deactivate
-    conda remove -n wx --all
-    rm -rf /tmp/wx
-
-
-The resulting package can be installed into an environment using::
-
-    conda install wx-2.9.5.0-py27_0.tar.bz2
-
-bumps
-~~~~~
-
 From a terminal, change to the directory containing the source and type::
 
-    conda create -n bumps numpy scipy matplotlib nose sphinx
+    conda create -n bumps numpy scipy matplotlib nose sphinx wxpython
     source activate bumps
-    conda install wx-2.9.5.0-py27_0.tar.bz2
     python setup.py install
     python test.py
     cd ..
-
-    # Optional: create a bumps binary package and clean up
-    conda package --pkg-name wx --pkg-version `python -c "import bumps;print bumps.__version__"`
 
     # Optional: allow bumps to run from outside the bumps environment
 	mkdir ~/bin # create user terminal app directory if it doesn't already exist

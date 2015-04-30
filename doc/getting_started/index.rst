@@ -18,8 +18,8 @@ Bumps includes several traditional local optimizers such as Nelder-Mead
 simplex, BFGS and differential evolution. Bumps uncertainty analysis uses
 Markov chain Monte Carlo to explore the parameter space. Although
 it was created for curve fitting problems, Bumps can explore any probability 
-density function, such as those defined by PyMC.  Unlike PyMC, the
-bumps stepper operates effectively on correlated parameter spaces.
+density function, such as those defined by PyMC.  In particular, the
+bumps uncertainty analysis works well with correlated parameters.
 
 Bumps can be used as a library within your own applications, or as a framework
 for fitting, complete with a graphical user interface to manage your models.

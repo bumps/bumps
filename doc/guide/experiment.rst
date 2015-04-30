@@ -10,13 +10,13 @@ It is the responsibility of the user to define their own experiment
 structure.  The usual definition will describe the sample of interest,
 the instrument configuration, and the measured data, and will provide
 a theory function which computes the expected data given the sample
-and instrument parameters.  The theory function frequently has an
-physics component for computing the ideal data given the sample, and
+and instrument parameters.  The theory function frequently has a
+physics component for computing the ideal data given the sample and
 an instrument effects component which computes the expected data from
 the ideal data.  Together, sample, instrument, and theory function
 define the fitting model which needs to match the data.
 
-Fundamentally, the curve fitting problem can be expressed as:
+The curve fitting problem can be expressed as:
 
 .. math::
 
@@ -43,7 +43,7 @@ when the instrument is at position $x_i$ with probability
     P(y_i\ |\ f(x_i;p)) = \frac{1}{\sqrt{2\pi\sigma_i^2}}
         \exp\left(-\frac{(y_i-f(x_i;p))^2}{2\sigma_i^2}\right)
 
-and the negative log likelihood of observing all points in the data set for
+The negative log likelihood of observing all points in the data set for
 the given set of sample parameters is
 
 .. math::
@@ -67,22 +67,19 @@ to overestimate the rate.  Furthermore, we can properly handle
 background rates since we can easily compute the probability of seeing
 the observed number of counts given the proposed signal plus background
 rate.  Gaussian modeling can lead to negative rates for signal or
-background, which is fundamentally wrong. See `_possion_example` for
+background, which is fundamentally wrong. See :ref:`poisson-fit` for
 a demonstration of this effect.
 
-We can systematically incorporate prior information into our models. 
-For example, if we characterize our instrumental uncertainty parameters 
-against a known sample, we can incorporate this uncertainty into our 
-models.  So if our sample angle control motor position follows
-a Gaussian distribution with a target position of 3\ |deg| and an
-uncertainty of 0.2\ |deg| with a Gaussian distribution, we can
-set
+We can systematically incorporate prior information into our models, such
+as uncertainty in instrument configuration.  For example,  if our sample
+angle control motor position follows a Gaussian distribution with a target
+position of 3\ |deg| and an uncertainty of 0.2\ |deg|, we can set
 
 .. math::
 
    -\log P(\text{model}) = -\frac{1}{2} \frac{(\theta-3)^2}{0.2^2}
 
-ignoring the scaling constant as before, and add this to $\chi^2/2$
+ignoring the scaling constant as before, and add this to $\tfrac12\chi^2$
 to get log of the product of the uncertainties.  Similarly, if we
 know that our sample should have a thickness of 100 |pm| 3.5 |Ang|
 based on how we constructed the sample, we can incorporate this
@@ -117,9 +114,14 @@ bounds or values::
     M.b.value = 1   # the intercept is set to 1.
 
 We could even set a parameter to a probability distribution, using
-*parameter.dev()* for Gaussian distributions or setting
-parameter.bounds = :class:`Distribution <bumps.bounds.Distribution>`
-for other distributions.
+:method:`Parameter.dev <bumps.parameter.Parameter.dev>` for Gaussian
+distributions or setting parameter.bounds to
+:class:`Distribution <bumps.bounds.Distribution>` for other distributions.
+
+Bumps includes code for polynomial interpolation including
+:func:`B-splines <bumps.bspline>`,
+:func:`monotonic splines <bumps.mono>`,
+and :func:`chebyshev polynomials <bumps.cheby>`.
 
 For counts data, :class:`PoissonCurve <bumps.curve.PoissonCurve>` is also
 available.
@@ -128,7 +130,7 @@ Likelihood functions
 ====================
 
 If you are already have the negative log likelihood function and you don't
-need to manage data, you can use it with :class:`<bumps.pdfwrapper.PDF>`::
+need to manage data, you can use it with :class:`PDF <bumps.pdfwrapper.PDF>`::
 
     x,y,dy = numpy.loadtxt('line.txt').T
     def nllf(m, b):
@@ -227,6 +229,16 @@ in the parameters.  The
 restores the data to the originally measured values.  These methods
 are optional, and only used if the alternative error analysis is
 requested.
+
+Linear models
+=============
+
+Linear problems with normally distributed measurement error can be
+solved directly.  Bumps provides :func:`bumps.wsolve.wsolve`, which weights
+values according to the uncertainty.  The corresponding
+:func:`bumps.wsolve.wpolyfit` function fits polynomials with measurement
+uncertainty.
+
 
 Foreign models
 ==============

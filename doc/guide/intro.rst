@@ -46,10 +46,11 @@ loads the fit file, retieves the *problem* symbol and feeds it to the selected
 :mod:`fitter <bumps.fitter>`.  Some fit files do not even use *FitProblem* to
 define *problem*, or use *Parameter* objects for the fitted parameters, so
 long as *problem* implements the
-:class:`BaseFitProblem <bumps.fitproblem.BaseFitProblem>` interface. which
+:class:`BaseFitProblem <bumps.fitproblem.BaseFitProblem>` interface, which
 provides *getp* to get the existing parameter vector, *setp* to set a new
 parameter vector, *bounds* to return the parameter bounds, and *nllf* to
-
+to compute the negative log likelihood function.  The remaining methods are
+optional.
 
 Note that the pattern of importing all names from a file using
 *from bumps.names import \**, while convenient for simple scripts, can

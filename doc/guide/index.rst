@@ -32,12 +32,12 @@ runs on supercomputing clusters.
 
 ..
 
-# Data handling has been removed so that we can ship a pure python package.
-In addition to inverse problem solving, bumps has acquired code for
-theory building and data handling.  For example, many problems have
-measurements in which the instrument resolution plays a role, and
-the theory function must be convolved with a data dependent resolution
-function.
+    # Data handling has been removed so that we can ship a pure python package.
+    In addition to inverse problem solving, bumps has acquired code for
+    theory building and data handling.  For example, many problems have
+    measurements in which the instrument resolution plays a role, and
+    the theory function must be convolved with a data dependent resolution
+    function.
 
 :ref:`intro-guide`
 

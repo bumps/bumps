@@ -1,3 +1,5 @@
+.. _poisson-fit:
+
 ****************
 Simple functions
 ****************
