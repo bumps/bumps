@@ -611,7 +611,8 @@ class DreamModel(MCMCModel):
 class DreamFit(FitBase):
     name = "DREAM"
     settings = [('steps', 400), ('burn', 100), ('pop', 10),
-                ('init', 'eps'), ('thin', 1), ('entropy', False)]
+                ('init', 'eps'), ('thin', 1), #('entropy', False),
+               ]
 
     def __init__(self, problem):
         FitBase.__init__(self, problem)
@@ -652,7 +653,7 @@ class DreamFit(FitBase):
         #print(points[-1], x)
         assert all(points[-1, i] == xi for i, xi in enumerate(x))
 
-        if options['entropy']:
+        if options.get('entropy', False):
             # TODO: need a better way to display entropy
             import logging
             from .formatnum import format_uncertainty
