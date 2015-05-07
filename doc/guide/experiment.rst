@@ -114,7 +114,7 @@ bounds or values::
     M.b.value = 1   # the intercept is set to 1.
 
 We could even set a parameter to a probability distribution, using
-:method:`Parameter.dev <bumps.parameter.Parameter.dev>` for Gaussian
+:meth:`Parameter.dev <bumps.parameter.Parameter.dev>` for Gaussian
 distributions or setting parameter.bounds to
 :class:`Distribution <bumps.bounds.Distribution>` for other distributions.
 
