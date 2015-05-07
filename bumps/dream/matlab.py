@@ -6,8 +6,8 @@ Usage
 
 This interface is identical to dream in matlab::
 
-    [Sequences,Reduced_Seq,X,output,hist_logp] = \
-      dream(MCMCPar,ParRange,Measurement,ModelName,Extra,option)
+    [Sequences, Reduced_Seq, X, output, hist_logp] = \
+      dream(MCMCPar, ParRange, Measurement, ModelName, Extra, option)
 
 With care, you will be able to use the same model definition file
 on both platforms, with only minor edits required to switch between them.
@@ -89,24 +89,26 @@ This can be run from the command prompt::
 __all__ = ['struct', 'dream', 'setup', 'convert_output']
 
 import numpy as np
-from numpy import concatenate
 
 from .core import Dream
 from .model import Density, LogDensity, Simulation
 from .initpop import cov_init, lhs_init
 from .crossover import Crossover, AdaptiveCrossover
 
+
 class struct:
     """
     Matlab compatible structure creation.
     """
     def __init__(self, *pairs, **kw):
-        for k,v in zip(pairs[::2],pairs[1::2]):
+        for k, v in zip(pairs[::2], pairs[1::2]):
             setattr(self, k, v)
-        for k,v in kw.items():
+        for k, v in kw.items():
             setattr(self, k, v)
+
     def __getattr__(self, k):
         return None
+
 
 def dream(MCMCPar, ParRange, Measurement, ModelName, Extra, option):
     """
@@ -116,6 +118,7 @@ def dream(MCMCPar, ParRange, Measurement, ModelName, Extra, option):
     dreamer.sample()
     return convert_state(dreamer.state)
 
+
 def setup(MCMCPar, ParRange, Measurement, ModelName, Extra, option):
     """
     Convert matlab dream models to a python Dream object.
@@ -124,15 +127,16 @@ def setup(MCMCPar, ParRange, Measurement, ModelName, Extra, option):
 
     # Problem specification
     bounds = ParRange.minn, ParRange.maxn
-    dreamer.bounds_style=Extra.BoundHandling
+    dreamer.bounds_style = Extra.BoundHandling
     if ModelName == 'Banshp':
         # specific properties of the banana function
         # Extra.imat is computed from cmat
         # MCMCPar.n is implicit in Extra.cmat
         f = Banana(mu=Extra.mu.flatten(), bpar=Extra.bpar, cmat=Extra.cmat)
-        option=4
+        option = 4
     else:
         try:
+            f = None  # keep lint happy
             # Try matlab style of having the function in the same named file.
             exec("from "+ModelName+" import "+ModelName+" as f")
         except ImportError:
@@ -143,12 +147,13 @@ def setup(MCMCPar, ParRange, Measurement, ModelName, Extra, option):
         model = Density(f, bounds=bounds)
     elif option == 4:
         model = LogDensity(f, bounds=bounds)
-    elif option in [2,3,5]:
+    elif option in [2, 3, 5]:
         # Measurement.N is implicit in Measurement.MeasData
         model = Simulation(f, data=Measurement.MeasData, bounds=bounds,
-                           sigma=Measurement.Sigma, gamma = MCMCPar.Gamma)
+                           sigma=Measurement.Sigma, gamma=MCMCPar.Gamma)
+    else:
+        raise ValueError("option should be in 1 to 5")
     dreamer.model = model
-
 
     # Sampling parameters
     if Extra.save_in_memory == 'Yes':
@@ -162,7 +167,8 @@ def setup(MCMCPar, ParRange, Measurement, ModelName, Extra, option):
 
     # Outlier detection
     T = MCMCPar.outlierTest
-    if T.endswith('_test'): T = T[:-5]
+    if T.endswith('_test'):
+        T = T[:-5]
     dreamer.outlier_test = T
 
     # DE parameters
@@ -175,6 +181,8 @@ def setup(MCMCPar, ParRange, Measurement, ModelName, Extra, option):
         pop = cov_init(N=MCMCPar.seq, x=Extra.muX.flatten(), cov=Extra.qcov)
     elif Extra.InitPopulation == 'LHS_BASED':
         pop = lhs_init(N=MCMCPar.seq, bounds=(ParRange.minn, ParRange.maxn))
+    else:
+        raise ValueError("Extra.InitPopulation must be COV_BASED or LHS_BASED")
     dreamer.population = pop
 
     # Crossover parameters
@@ -190,6 +198,7 @@ def setup(MCMCPar, ParRange, Measurement, ModelName, Extra, option):
 
     return dreamer
 
+
 def convert_state(state):
     """
     Convert a completed dreamer run into a form compatible with the
@@ -200,30 +209,32 @@ def convert_state(state):
     The original state is stored in out.state
     """
 
-    _,points,logp = state.sample()
-    logp = logp[:,:,None]
-    Sequences = concatenate( (points,exp(logp),logp), axis=2)
-    X = Sequences[-1,:,:]
+    _, points, logp = state.sample()
+    logp = logp[:, :, None]
+    Sequences = np.concatenate((points, np.exp(logp), logp), axis=2)
+    X = Sequences[-1, :, :]
 
     draws, logp = state.logp()
-    hist_logp = concatenate( (draws[:,None], logp), axis=1 )
+    hist_logp = np.concatenate((draws[:, None], logp), axis=1)
 
     out = struct()
     draws, R = state.R_stat()
-    out.R_stat = concatenate( (draws[:,None], R), axis=1 )
+    out.R_stat = np.concatenate((draws[:, None], R), axis=1)
     draws, AR = state.acceptance_rate()
-    out.AR = concatenate( (draws[:,None], AR[:,None]), axis=1 )
+    out.AR = np.concatenate((draws[:, None], AR[:, None]), axis=1)
     draws, w = state.CR_weight()
-    out.CR = concatenate( (draws[:,None], w), axis=1 )
-    out.outlier = state.outliers()[:,:2]
+    out.CR = np.concatenate((draws[:, None], w), axis=1)
+    out.outlier = state.outliers()[:, :2]
 
     # save the dreamer state data structure  as well
     out.state = state
 
     return Sequences, Sequences, X, out, hist_logp
 
-def execfile(filename):
-    exec(compile(open(sys.argv[1]).read(), sys.argv[1], 'exec'))
+
+def run_script(filename):
+    exec(compile(open(filename).read(), filename, 'exec'))
+
 
 class Banana:
     """
@@ -236,16 +247,24 @@ class Banana:
     def __init__(self, mu, bpar, cmat):
         self.mu, self.bpar, self.cmat = mu, bpar, cmat
         self.imat = np.linalg.inv(cmat)
+
     def __call__(self, x):
         x = x+0 # make a copy
-        x[1] = x[1] + self.bpar*(x[0]**2 - 100)
-        ret = -0.5*dot(dot(x[None,:],self.imat),x[:,None])
-        return ret[0,0]
+        x[1] += self.bpar*(x[0]**2 - 100)
+        ret = -0.5*np.dot(np.dot(x[None, :], self.imat), x[:, None])
+        return ret[0, 0]
 
-if __name__ == "__main__":
-    from pylab import *
+
+def main():
+    import sys
     if len(sys.argv) == 2:
-        execfile(sys.argv[1])
-        import IPython; IPython.Shell.IPShell(user_ns=locals()).mainloop()
+        import pylab
+        run_script(sys.argv[1])
+        user_ns = pylab.__dict__.copy().update(locals())
+        import IPython
+        IPython.Shell.IPShell(user_ns=user_ns).mainloop()
     else:
         print("usage: python -m dream.matlab model.m")
+
+if __name__ == "__main__":
+    main()

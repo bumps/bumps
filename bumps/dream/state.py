@@ -1,5 +1,5 @@
 """
-Sampling history for MCMC
+Sampling history for MCMC.
 
 MCMC keeps track of a number of things during sampling.
 
@@ -32,19 +32,19 @@ will result in a varying number of samples per generation.
 
 logp[i] is the set of log likelihoods, one for each member of the population.
 The logp() method returns the complete set, and the sample() method returns
-a thinned set, with on element of logp[i] for each vector point[i,:].
+a thinned set, with on element of logp[i] for each vector point[i, :].
 
 AR[i] is the acceptance rate at generation i, showing the proportion of
 proposed points which are accepted into the population.
 
-chains[i,:,:] is the set of points in the differential evolution population
+chains[i, :, :] is the set of points in the differential evolution population
 at thinned generation i.  Ideally, the thinning rate of the MCMC process
 is chosen so that thinned generations i and i+1 are independent samples
 from the posterior distribution, though there is a chance that this may
 not be the case, and indeed, some points in generation i+1 may be identical
 to those in generation i.  Actual generation number is i*thinning.
 
-points[i,:] is the ith point in a returned sample.  The i is just a place
+points[i, :] is the ith point in a returned sample.  The i is just a place
 holder; there is no inherent ordering to the sample once they have been
 extracted from the chains.  Note that the sample may be from a marginal
 distribution.
@@ -70,7 +70,7 @@ generation is the last generation number
 #TODO: state should be collected in files as we go
 from __future__ import division, print_function
 
-__all__ = ['MCMCDraw','load_state','save_state']
+__all__ = ['MCMCDraw', 'load_state', 'save_state']
 
 import re
 import gzip
@@ -80,81 +80,91 @@ from numpy import empty, sum, asarray, inf, argmax, hstack, dstack
 from numpy import savetxt, loadtxt, reshape
 
 from .outliers import identify_outliers
-from .util import draw, RNG
+from .util import draw, rng
 
 #EXT = ".mc.gz"
 #CREATE = gzip.open
 EXT = ".mc"
 CREATE = open
 
+
 class NoTrace:
-    def write(self, data): pass
-    def flush(self): pass
-    def close(self): pass
+    def write(self, data):
+        pass
+
+    def flush(self):
+        pass
+
+    def close(self):
+        pass
+
 
 def save_state(state, filename):
     trace = NoTrace()
-    #trace = open(filename+"-trace.mc","w")
+    #trace = open(filename+"-trace.mc", "w")
 
-    trace.write("starting trace\n"); trace.flush()
+    trace.write("starting trace\n")
     # Build 2-D data structures
-    trace.write("extracting draws, logp\n"); trace.flush()
+    trace.write("extracting draws, logp\n")
     draws, logp = state.logp(full=True)
-    trace.write("extracting acceptance rate\n"); trace.flush()
+    trace.write("extracting acceptance rate\n")
     _, AR = state.acceptance_rate()
-    trace.write("building chain from draws, AR and logp\n"); trace.flush()
-    chain = hstack((draws[:,None], AR[:,None], logp))
+    trace.write("building chain from draws, AR and logp\n")
+    chain = hstack((draws[:, None], AR[:, None], logp))
 
-    trace.write("extracting point, logp\n"); trace.flush()
+    trace.write("extracting point, logp\n")
     _, point, logp = state.chains()
-    Nthin,Npop,Nvar = point.shape
-    trace.write("shape is %d,%d,%d\n"%(Nthin,Npop,Nvar)); trace.flush()
-    trace.write("adding logp to point\n"); trace.flush()
-    point = dstack((logp[:,:,None], point))
-    trace.write("collapsing to draws x point\n"); trace.flush()
-    point = reshape(point, (point.shape[0]*point.shape[1],point.shape[2]))
+    Nthin, Npop, Nvar = point.shape
+    trace.write("shape is %d,%d,%d\n" % (Nthin, Npop, Nvar))
+    trace.write("adding logp to point\n")
+    point = dstack((logp[:, :, None], point))
+    trace.write("collapsing to draws x point\n")
+    point = reshape(point, (point.shape[0]*point.shape[1], point.shape[2]))
 
-    trace.write("extracting R_stat\n"); trace.flush()
+    trace.write("extracting R_stat\n")
     draws, R_stat = state.R_stat()
-    trace.write("extracting CR_weight\n"); trace.flush()
+    trace.write("extracting CR_weight\n")
     _, CR_weight = state.CR_weight()
     _, Ncr = CR_weight.shape
-    trace.write("building stats\n"); trace.flush()
-    stats = hstack((draws[:,None], R_stat, CR_weight))
+    trace.write("building stats\n")
+    stats = hstack((draws[:, None], R_stat, CR_weight))
 
     #TODO: missing _outliers from save_state
 
     # Write convergence info
-    trace.write("writing chain\n"); trace.flush()
-    file = CREATE(filename+'-chain'+EXT,'w')
-    file.write('# draws acceptance_rate %d*logp\n'%Npop)
-    savetxt(file,chain)
-    file.close()
+    trace.write("writing chain\n")
+    fid = CREATE(filename+'-chain'+EXT, 'w')
+    fid.write('# draws acceptance_rate %d*logp\n' % Npop)
+    savetxt(fid, chain)
+    fid.close()
 
     # Write point info
-    trace.write("writing point\n"); trace.flush()
-    file=CREATE(filename+'-point'+EXT,'w')
-    file.write('# logp point (Nthin x Npop x Nvar = [%d,%d,%d])\n'%(Nthin,Npop,Nvar))
-    savetxt(file,point)
-    file.close()
+    trace.write("writing point\n")
+    fid = CREATE(filename+'-point'+EXT, 'w')
+    fid.write('# logp point (Nthin x Npop x Nvar = [%d,%d,%d])\n'
+              % (Nthin, Npop, Nvar))
+    savetxt(fid, point)
+    fid.close()
 
     # Write stats
-    trace.write("writing stats\n"); trace.flush()
-    file=CREATE(filename+'-stats'+EXT,'w')
-    file.write('# draws %d*R-stat %d*CR_weight\n'%(Nvar,Ncr))
-    savetxt(file,stats)
-    file.close()
-    trace.write("done state save\n"); trace.flush()
+    trace.write("writing stats\n")
+    fid = CREATE(filename+'-stats'+EXT, 'w')
+    fid.write('# draws %d*R-stat %d*CR_weight\n' % (Nvar, Ncr))
+    savetxt(fid, stats)
+    fid.close()
+    trace.write("done state save\n")
     trace.close()
+
 
 IND_PAT = re.compile('-1#IND')
 INF_PAT = re.compile('1#INF')
+
 
 def loadtxt(file, report=0):
     """
     Like numpy loadtxt, but adapted for windows non-finite numbers.
     """
-    if not hasattr(file,'readline'):
+    if not hasattr(file, 'readline'):
         if file.endswith('.gz'):
             #print("opening with gzip")
             fh = gzip.open(file, 'r')
@@ -168,7 +178,7 @@ def loadtxt(file, report=0):
     for line in fh:
         lineno += 1
         if report and lineno%report==0:
-            print("read",section*report)
+            print("read", section*report)
             section += 1
         IND_PAT.sub('nan', line)
         INF_PAT.sub('inf', line)
@@ -178,23 +188,25 @@ def loadtxt(file, report=0):
             try:
                 res.append([float(v) for v in values])
             except:
-                print("Parse error:",values)
+                print("Parse error:", values)
     if fh != file:
         fh.close()
     return asarray(res)
+
 
 def load_state(filename, skip=0, report=0):
     # Read chain file
     chain = loadtxt(filename+'-chain'+EXT)
 
     # Read point file
-    file = open(filename+'-point'+EXT,'r')
-    line = file.readline()
+    fid = open(filename+'-point'+EXT, 'r')
+    line = fid.readline()
     point_dims = line[line.find('[')+1:line.find(']')]
-    Nthin,Npop,Nvar = eval(point_dims)
-    for _ in range(skip*Npop): file.readline()
-    point = loadtxt(file,report=report*Npop)
-    file.close()
+    Nthin, Npop, Nvar = eval(point_dims)
+    for _ in range(skip*Npop):
+        fid.readline()
+    point = loadtxt(fid, report=report*Npop)
+    fid.close()
 
     # Read stats file
     stats = loadtxt(filename+'-stats'+EXT)
@@ -207,32 +219,33 @@ def load_state(filename, skip=0, report=0):
     #Ncr = stats.shape[1] - Nvar - 1
 
     # Create empty draw and fill it with loaded data
-    state = MCMCDraw(0,0,0,0,0,0,thinning)
-    #print("gen,var,pop",Ngen,Nvar,Npop)
+    state = MCMCDraw(0, 0, 0, 0, 0, 0, thinning)
+    #print("gen, var, pop", Ngen, Nvar, Npop)
     state.draws = Ngen * Npop
     state.generation = Ngen
     state._gen_index = 0
-    state._gen_draws = chain[:,0]
-    state._gen_acceptance_rate = chain[:,1]
-    state._gen_logp = chain[:,2:]
+    state._gen_draws = chain[:, 0]
+    state._gen_acceptance_rate = chain[:, 1]
+    state._gen_logp = chain[:, 2:]
     state.thinning = thinning
     state._thin_count = Ngen//thinning
     state._thin_index = 0
     state._thin_draws = state._gen_draws[(skip+1)*thinning-1::thinning]
-    state._thin_logp = point[:,0].reshape( (Nthin,Npop) )
-    state._thin_point = reshape(point[:,1:], (Nthin,Npop,Nvar) )
+    state._thin_logp = point[:, 0].reshape((Nthin, Npop))
+    state._thin_point = reshape(point[:, 1:], (Nthin, Npop, Nvar))
     state._update_count = Nupdate
     state._update_index = 0
-    state._update_draws = stats[:,0]
-    state._update_R_stat = stats[:,1:Nvar+1]
-    state._update_CR_weight = stats[:,Nvar+1:]
+    state._update_draws = stats[:, 0]
+    state._update_R_stat = stats[:, 1:Nvar+1]
+    state._update_CR_weight = stats[:, Nvar+1:]
     state._outliers = []
 
-    bestidx = np.argmax(point[:,0])
-    state._best_logp = point[bestidx,0]
-    state._best_x = point[bestidx,1:]
+    bestidx = np.argmax(point[:, 0])
+    state._best_logp = point[bestidx, 0]
+    state._best_x = point[bestidx, 1:]
 
     return state
+
 
 class MCMCDraw(object):
     """
@@ -256,7 +269,7 @@ class MCMCDraw(object):
         self.generation = 0
         self._gen_index = 0
         self._gen_draws = empty(Ngen, 'i')
-        self._gen_logp = empty( (Ngen,Npop) )
+        self._gen_logp = empty( (Ngen, Npop) )
         self._gen_acceptance_rate = empty(Ngen)
 
         # If we are thinning, we need to keep the current generation
@@ -272,79 +285,98 @@ class MCMCDraw(object):
         self._thin_count = 0
         self._thin_timer = 0
         self._thin_draws = empty(Nthin, 'i')
-        self._thin_point = empty( (Nthin, Npop, Nvar) )
-        self._thin_logp = empty( (Nthin, Npop) )
+        self._thin_point = empty((Nthin, Npop, Nvar))
+        self._thin_logp = empty((Nthin, Npop))
 
         # Per update iteration
         self._update_index = 0
         self._update_count = 0
         self._update_draws = empty(Nupdate, 'i')
-        self._update_R_stat = empty( (Nupdate, Nvar) )
-        self._update_CR_weight = empty( (Nupdate, Ncr) )
+        self._update_R_stat = empty((Nupdate, Nvar) )
+        self._update_CR_weight = empty((Nupdate, Ncr))
 
         self._outliers = []
 
         # Query functions will not return outlier chains; initially, all
         # chains are marked as good.  Call mark_outliers to remove
         # outlier chains from the set.
-        self._good_chains = slice(None,None)
+        self._good_chains = slice(None, None)
 
     @property
-    def Ngen(self): return self._gen_draws.shape[0]
+    def Ngen(self):
+        return self._gen_draws.shape[0]
+
     @property
-    def Nthin(self): return self._thin_draws.shape[0]
+    def Nthin(self):
+        return self._thin_draws.shape[0]
+
     @property
-    def Nupdate(self): return self._update_draws.shape[0]
+    def Nupdate(self):
+        return self._update_draws.shape[0]
+
     @property
-    def Nvar(self): return self._thin_point.shape[2]
+    def Nvar(self):
+        return self._thin_point.shape[2]
+
     @property
-    def Npop(self): return self._gen_logp.shape[1]
+    def Npop(self):
+        return self._gen_logp.shape[1]
+
     @property
-    def Ncr(self): return self._update_CR_weight.shape[1]
+    def Ncr(self):
+        return self._update_CR_weight.shape[1]
 
     def resize(self, Ngen, Nthin, Nupdate, Nvar, Npop, Ncr, thinning):
         if self.Nvar != Nvar or self.Npop != Npop or self.Ncr != Ncr:
             raise ValueError("Cannot change Nvar, Npop or Ncr on resize")
 
-        # For now, only handle the case where the we have one complete frame of data, such
-        # as on reloading the state vector
-        assert self._gen_index == 0 and self._update_index == 0 and self._thin_index == 0
-        assert self.generation == self.Ngen and self._update_count == self.Nupdate and self._thin_count == self.Nthin
+        # For now, only handle the case where the we have one complete
+        # frame of data, such as on reloading the state vector
+        assert (self._gen_index == 0
+                and self._update_index == 0
+                and self._thin_index == 0)
+        assert (self.generation == self.Ngen
+                and self._update_count == self.Nupdate
+                and self._thin_count == self.Nthin)
 
         self.thinning = thinning
 
         if Ngen > self.Ngen:
-            self._gen_index = self.Ngen # must happen before resize!!
+            self._gen_index = self.Ngen  # must happen before resize!!
             self._gen_draws = np.resize(self._gen_draws, Ngen)
-            self._gen_logp = np.resize(self._gen_logp,  (Ngen,Npop) )
-            self._gen_acceptance_rate = np.resize(self._gen_acceptance_rate, Ngen)
+            self._gen_logp = np.resize(self._gen_logp,  (Ngen, Npop))
+            self._gen_acceptance_rate \
+                = np.resize(self._gen_acceptance_rate, Ngen)
         elif Ngen < self.Ngen:
             self._gen_draws = self._gen_draws[-Ngen:].copy()
-            self._gen_logp = self._gen_logp[-Ngen:,:].copy()
-            self._gen_acceptance_rate = self._gen_acceptance_rate[-Ngen:].copy()
+            self._gen_logp = self._gen_logp[-Ngen:, :].copy()
+            self._gen_acceptance_rate \
+                = self._gen_acceptance_rate[-Ngen:].copy()
 
         if Nthin > self.Nthin:
-            self._thin_index = self.Nthin # must happen before resize!!
+            self._thin_index = self.Nthin  # must happen before resize!!
             self._thin_draws = np.resize(self._thin_draws, Nthin)
-            self._thin_point = np.resize(self._thin_point,  (Nthin, Npop, Nvar) )
-            self._thin_logp = np.resize(self._thin_logp,  (Nthin, Npop) )
+            self._thin_point = np.resize(self._thin_point,  (Nthin, Npop, Nvar))
+            self._thin_logp = np.resize(self._thin_logp,  (Nthin, Npop))
         elif Nthin < self.Nthin:
             self._thin_draws = self._thin_draws[-Nthin:].copy()
-            self._thin_point = self._thin_point[-Nthin:,:,:].copy()
-            self._thin_logp = self._thin_logp[-Nthin:,:].copy()
+            self._thin_point = self._thin_point[-Nthin:, :, :].copy()
+            self._thin_logp = self._thin_logp[-Nthin:, :].copy()
 
         if Nupdate > self.Nupdate:
-            self._update_count = self.Nupdate # must happen before resize!!
+            self._update_count = self.Nupdate  # must happen before resize!!
             self._update_draws = np.resize(self._update_draws, Nupdate)
-            self._update_R_stat = np.resize(self._update_R_stat,  (Nupdate, Nvar) )
-            self._update_CR_weight = np.resize(self._update_CR_weight,  (Nupdate, Ncr) )
+            self._update_R_stat \
+                = np.resize(self._update_R_stat,  (Nupdate, Nvar))
+            self._update_CR_weight \
+                = np.resize(self._update_CR_weight,  (Nupdate, Ncr))
         elif Nupdate < self.Nupdate:
             self._update_draws = self._update_draws[-Nupdate:].copy()
-            self._update_R_stat = self._update_R_stat[-Nupdate:,:].copy()
-            self._update_CR_weight = self._update_CR_weight[-Nupdate:,:].copy()
+            self._update_R_stat = self._update_R_stat[-Nupdate:, :].copy()
+            self._update_CR_weight = self._update_CR_weight[-Nupdate:, :].copy()
 
     def save(self, filename):
-        save_state(self,filename)
+        save_state(self, filename)
 
     def show(self, portion=1.0, figfile=None):
         from .views import plot_all
@@ -359,7 +391,6 @@ class MCMCDraw(object):
         # existing chain), then this returns the last row in the array.
         return (self._thin_point[self._thin_index-1],
                 self._thin_logp[self._thin_index-1])
-
 
     def _generation(self, new_draws, x, logp, accept, force_keep=False):
         """
@@ -376,11 +407,11 @@ class MCMCDraw(object):
         maxid = argmax(logp)
         if logp[maxid] > self._best_logp:
             self._best_logp = logp[maxid]
-            self._best_x = x[maxid,:]+0 # Force a copy
+            self._best_x = x[maxid, :]+0 # Force a copy
 
         # Record acceptance rate and cost
         i = self._gen_index
-        #print("generation",i,self.draws,"\n x",x,"\n logp",logp,"\n accept",accept)
+        #print("generation", i, self.draws, "\n x", x, "\n logp", logp, "\n accept", accept)
         self._gen_draws[i] = self.draws
         self._gen_acceptance_rate[i] = 100*sum(accept)/new_draws
         self._gen_logp[i] = logp
@@ -405,7 +436,6 @@ class MCMCDraw(object):
         else:
             self._gen_current = x+0 # force a copy
 
-
     def _update(self, R_stat, CR_weight):
         """
         Called from dream.py when a series of DE steps is completed and
@@ -413,7 +443,7 @@ class MCMCDraw(object):
         """
         self._update_count += 1
         i = self._update_index
-        #print("update",i,self.draws,"\n Rstat",R_stat,"\n CR weight",CR_weight)
+        #print("update", i, self.draws, "\n Rstat", R_stat, "\n CR weight", CR_weight)
         self._update_draws[i] = self.draws
         self._update_R_stat[i] = R_stat
         self._update_CR_weight[i] = CR_weight
@@ -426,30 +456,32 @@ class MCMCDraw(object):
         Called from outliers.py when a chain is replaced by the
         clone of another.
         """
-        self._outliers.append((self._thin_index,old,new))
+        self._outliers.append((self._thin_index, old, new))
 
-        self._gen_logp[:,old] = self._gen_logp[:,new]
-        self._thin_logp[:,old] = self._thin_logp[:,new]
-        self._thin_point[:,old,:] = self._thin_point[:,new,:]
+        self._gen_logp[:, old] = self._gen_logp[:, new]
+        self._thin_logp[:, old] = self._thin_logp[:, new]
+        self._thin_point[:, old, :] = self._thin_point[:, new, :]
         # PAK: shouldn't we reduce the total number of draws since we
         # are throwing way an entire chain?
 
-    def _get_labels(self):
+    @property
+    def labels(self):
         if self._labels is None:
             return ["P%d"%i for i in range(self._thin_point.shape[2])]
         else:
             return self._labels
-    def _set_labels(self, v):
+
+    @labels.setter
+    def labels(self, v):
         self._labels = v
-    labels = property(fget=_get_labels,fset=_set_labels)
 
     def _draw_pop(self, Npop):
         """
         Generate a population from current generation and all history.
         """
         _, chains, _ = self.chains()
-        Ngen,Nchain,Nvar = chains.shape
-        points = reshape(chains,(Ngen*Nchain,Nvar))
+        Ngen, Nchain, Nvar = chains.shape
+        points = reshape(chains, (Ngen*Nchain, Nvar))
 
         # There are two complications with the history buffer:
         # (1) due to thinning, not every generation is stored
@@ -469,7 +501,7 @@ class MCMCDraw(object):
             cursor = Nchain*((k+self._thin_index-1)%k)
 
         # Make a return population and fill it with the current generation
-        pop = empty((Npop,Nvar),'d')
+        pop = empty((Npop, Nvar), 'd')
         if self._gen_current is not None:
             pop[:Nchain] = self._gen_current
         else:
@@ -481,9 +513,9 @@ class MCMCDraw(object):
             # Again, because this is a circular buffer, their may be random
             # numbers generated at or above the cursor.  All of these must
             # be shifted by Nchains to avoid the cursor.
-            perm = draw(Npop-Nchain,pool_size)
+            perm = draw(Npop-Nchain, pool_size)
             perm[perm>=cursor] += Nchain
-            #print("perm",perm; raw_input('wait'))
+            #print("perm", perm; raw_input('wait'))
             pop[Nchain:] = points[perm]
 
         return pop
@@ -497,29 +529,29 @@ class MCMCDraw(object):
         """
         if self.generation > self._gen_index > 0:
             self._gen_draws[:] = np.roll(self._gen_draws,
-                                            -self._gen_index, axis=0)
+                                         -self._gen_index, axis=0)
             self._gen_logp[:] = np.roll(self._gen_logp,
-                                           -self._gen_index, axis=0)
+                                        -self._gen_index, axis=0)
             self._gen_acceptance_rate[:] = np.roll(self._gen_acceptance_rate,
-                                                      -self._gen_index, axis=0)
+                                                   -self._gen_index, axis=0)
             self._gen_index = 0
 
         if self._thin_count > self._thin_index > 0:
             self._thin_draws[:] = np.roll(self._thin_draws,
-                                             -self._thin_index, axis=0)
+                                          -self._thin_index, axis=0)
             self._thin_point[:] = np.roll(self._thin_point,
-                                             -self._thin_index, axis=0)
+                                          -self._thin_index, axis=0)
             self._thin_logp[:] = np.roll(self._thin_logp,
-                                            -self._thin_index, axis=0)
+                                         -self._thin_index, axis=0)
             self._thin_index = 0
 
         if self._update_count > self._update_index > 0:
             self._update_draws[:] = np.roll(self._update_draws,
-                                               -self._update_index, axis=0)
+                                            -self._update_index, axis=0)
             self._update_R_stat[:] = np.roll(self._update_R_stat,
-                                                -self._update_index, axis=0)
+                                             -self._update_index, axis=0)
             self._update_CR_weight[:] = np.roll(self._update_CR_weight,
-                                                   -self._update_index, axis=0)
+                                                -self._update_index, axis=0)
             self._update_index = 0
 
     def remove_outliers(self, x, logp, test='IQR', portion=0.5):
@@ -528,14 +560,19 @@ class MCMCDraw(object):
         early in the sampling processes so the clones have an opportunity
         to evolve their own identity.
 
-        *state* contains the chains, with log likelihood for each point
-        *x*, *logp* is the current population and the corresponding log likelihoods
-        *test* is the name of the test to use (one of IQR, Grubbs, Mahal or none).
-        *portion* in (0,1] is the amount of the chain to use
+        *state* contains the chains, with log likelihood for each point.
+
+        *x*, *logp* are the current population and the corresponding
+        log likelihoods
+
+        *test* is the name of the test to use (one of IQR, Grubbs, Mahal
+        or none).
+
+        *portion* in (0, 1] is the amount of the chain to use
 
         Updates *state*, *x* and *logp* to reflect the changes.
 
-        See :module:`outliers` for details.
+        See :mod:`outliers` for details.
         """
         # Grab the last part of the chain histories
         _, chains = self.logp()
@@ -546,11 +583,12 @@ class MCMCDraw(object):
         for old in outliers:
             # Draw another chain at random, with replacement
             while True:
-                new = RNG.randint(Nchains)
-                if new not in outliers: break
+                new = rng.randint(Nchains)
+                if new not in outliers:
+                    break
             # Update the saved state and current population
-            self._replace_outlier(old=old,new=new)
-            x[old,:] = x[new,:]
+            self._replace_outlier(old=old, new=new)
+            x[old, :] = x[new, :]
             logp[old] = logp[new]
 
     def mark_outliers(self, test='IQR', portion=1.0):
@@ -566,21 +604,21 @@ class MCMCDraw(object):
         """
         _, chains, logp = self.chains()
 
-        if test=='none':
-            self._good_chains = slice(None,None)
+        if test == 'none':
+            self._good_chains = slice(None, None)
         else:
             Ngen = chains.shape[0]
             start = int(Ngen*(1-portion)) if portion else 0
             outliers = identify_outliers(test, logp[start:], chains[-1])
-            #print("outliers",outliers)
+            #print("outliers", outliers)
             #print(logp.shape, chains.shape)
             if len(outliers) > 0:
-                self._good_chains = np.array([i for i in range(logp.shape[1])
-                                                 if i not in outliers])
+                self._good_chains = np.array([i
+                                              for i in range(logp.shape[1])
+                                              if i not in outliers])
             else:
-                self._good_chains = slice(None,None)
+                self._good_chains = slice(None, None)
             #print(self._good_chains)
-
 
     def logp(self, full=False):
         """
@@ -601,8 +639,8 @@ class MCMCDraw(object):
         retval = self._gen_draws, self._gen_logp
         if self.generation == self._gen_index:
             retval = [v[:self.generation] for v in retval]
-        draws,logp = retval
-        return draws,(logp if full else logp[:,self._good_chains])
+        draws, logp = retval
+        return draws, (logp if full else logp[:, self._good_chains])
 
     def acceptance_rate(self):
         """
@@ -624,7 +662,7 @@ class MCMCDraw(object):
         """
         Returns the observed Markov chains and the corresponding likelihoods.
 
-        The return value is a tuple (*draws*,*chains*,*logp*).
+        The return value is a tuple (*draws*, *chains*, *logp*).
 
         *draws* is the number of samples taken up to and including the samples
         for the current generation.
@@ -652,14 +690,13 @@ class MCMCDraw(object):
             draw, R = state.R_stat()
             plot(draw, R)
 
-        See :module:`dream.gelman` and references detailed therein.
+        See :mod:`dream.gelman` and references detailed therein.
         """
         self._unroll()
         retval = self._update_draws, self._update_R_stat
         if self._update_count == self._update_index:
             retval = [v[:self._update_count] for v in retval]
         return retval
-
 
     def CR_weight(self):
         """
@@ -670,7 +707,7 @@ class MCMCDraw(object):
             draw, weight = state.CR_weight()
             plot(draw, weight)
 
-        See :module:`dream.crossover` for details.
+        See :mod:`dream.crossover` for details.
         """
         self._unroll()
         retval = self._update_draws, self._update_CR_weight
@@ -715,13 +752,13 @@ class MCMCDraw(object):
 
         # Get state as a 1D array
         _, chains, logp = self.chains()
-        Ngen,Npop,Nvar = chains.shape
-        points = reshape(chains,(Ngen*Npop,Nvar))
-        logp = reshape(logp,Ngen*Npop)
+        Ngen, Npop, Nvar = chains.shape
+        points = reshape(chains, (Ngen*Npop, Nvar))
+        logp = reshape(logp, Ngen*Npop)
 
         # Set the final position to the end of the last good chain.  If
         # mark_outliers has not been called, then _good_chains will
-        # just be slice(None,None)
+        # just be slice(None, None)
         if isinstance(self._good_chains, slice):
             final = -1
         else:
@@ -732,11 +769,11 @@ class MCMCDraw(object):
         idx = np.where(logp==self._best_logp)[0]
         if len(idx) == 0:
             logp[final] = self._best_logp
-            points[final,:] = self._best_x
+            points[final, :] = self._best_x
         else:
             idx = idx[0]
-            logp[final],logp[idx] = logp[idx], logp[final]
-            points[final,:],points[idx,:] = points[idx,:],points[final,:]
+            logp[final], logp[idx] = logp[idx], logp[final]
+            points[final, :], points[idx, :] = points[idx, :], points[final, :]
         # For multiple minima, arbitrarily choose one of them
         # TODO: this will lead to possible confusion when the best value
         # spontaneously changes when the fit is complete.
@@ -749,8 +786,8 @@ class MCMCDraw(object):
 
         **Deprecated** use :meth:`draw` instead.
         """
-        draw = self.draw(**kw)
-        return draw.points, draw.logp
+        drawn = self.draw(**kw)
+        return drawn.points, drawn.logp
 
     def draw(self, portion=1, vars=None, selection=None):
         """
@@ -760,22 +797,21 @@ class MCMCDraw(object):
         *vars* is a list of variables to return for each point
         *selection* sets the range for the returned marginal distribution
 
-        *selection* is a dictionary of {variable: (low,high)} to set the
+        *selection* is a dictionary of {variable: (low, high)} to set the
         range on each variable.  Missing variables default to the full
         range.
 
         To plot the distribution for parameter p1::
 
             draw = state.draw()
-            hist(draw.points[:,0])
+            hist(draw.points[:, 0])
 
         To plot the interdependence of p1 and p2::
 
             draw = state.sample()
-            plot(draw.points[:,0],draw.points[:,1],'.')
+            plot(draw.points[:, 0], draw.points[:, 1], '.')
         """
         return Draw(self, portion=portion, vars=vars, selection=selection)
-
 
     def derive_vars(self, fn, labels=None):
         """
@@ -784,7 +820,7 @@ class MCMCDraw(object):
 
         The new columns are treated as part of the sample.
 
-        *fn* is a function taking points p[:,k] for k in 0 ... samples and
+        *fn* is a function taking points p[:, k] for k in 0 ... samples and
         returning a set of derived variables pj[k] for each sample k.  The
         variables can be returned as any kind of sequence including an
         array or a tuple with one entry per variable.  The caller uses
@@ -799,8 +835,8 @@ class MCMCDraw(object):
         """
         # Grab all samples as a set of points
         _, chains, _ = self.chains()
-        Ngen,Npop,Nvar = chains.shape
-        points = reshape(chains,(Ngen*Npop,Nvar))
+        Ngen, Npop, Nvar = chains.shape
+        points = reshape(chains, (Ngen*Npop, Nvar))
 
         # Compute new variables from the points
         newvars = asarray(fn(points.T)).T
@@ -812,16 +848,17 @@ class MCMCDraw(object):
         newvars = np.resize(newvars, (Nthin, Npop, Nnew))
 
         # Add new variables to the points
-        self._thin_point = dstack( (self._thin_point, newvars) )
+        self._thin_point = dstack((self._thin_point, newvars))
 
         # Add labels for the new variables, if available.
         if labels is not None:
             self.labels = self.labels + labels
         elif self._labels is not None:
-            labels = ["P%d"%i for i in range(Nvar,Nvar+Nnew)]
+            labels = ["P%d" % i for i in range(Nvar, Nvar+Nnew)]
             self.labels = self.labels + labels
         else: # no labels specified, old or new
             pass
+
 
 class Draw(object):
     def __init__(self, state, vars=None, portion=None, selection=None):
@@ -829,10 +866,13 @@ class Draw(object):
         self.vars = vars
         self.portion = portion
         self.selection = selection
-        self.points, self.logp = _sample(state, portion=portion, vars=vars, selection=selection)
-        self.labels = state.labels if vars is None else [state.labels[v] for v in vars]
+        self.points, self.logp \
+            = _sample(state, portion=portion, vars=vars, selection=selection)
+        self.labels \
+            = state.labels if vars is None else [state.labels[v] for v in vars]
         self._stats = None
         self.weights = None
+
 
 def _sample(state, portion, vars, selection):
     """
@@ -842,23 +882,23 @@ def _sample(state, portion, vars, selection):
     start = int((1-portion)*len(draw)) if portion else 0
 
     # Collect the subset we are interested in
-    chains = chains[start:,state._good_chains,:]
-    logp = logp[start:,state._good_chains]
+    chains = chains[start:, state._good_chains, :]
+    logp = logp[start:, state._good_chains]
 
-    Ngen,Npop,Nvar = chains.shape
-    points = reshape(chains,(Ngen*Npop,Nvar))
-    logp = reshape(logp,(Ngen*Npop))
+    Ngen, Npop, Nvar = chains.shape
+    points = reshape(chains, (Ngen*Npop, Nvar))
+    logp = reshape(logp, (Ngen*Npop))
     if selection not in [None, {}]:
         idx = True
-        for v,r in selection.items():
+        for v, r in selection.items():
             if v == 'logp':
                 idx = idx & (logp>=r[0]) & (logp<=r[1])
             else:
-                idx = idx & (points[:,v]>=r[0]) & (points[:,v]<=r[1])
-        points = points[idx,:]
+                idx = idx & (points[:, v]>=r[0]) & (points[:, v]<=r[1])
+        points = points[idx, :]
         logp = logp[idx]
     if vars is not None:
-        points = points[:,vars]
+        points = points[:, vars]
     return points, logp
 
 
@@ -868,14 +908,14 @@ def test():
     from numpy import arange
 
     # Make some fake data
-    Nupdate,Nstep = 3,5
+    Nupdate, Nstep = 3, 5
     Ngen = Nupdate*Nstep
-    Nvar,Npop,Ncr = 3,6,2
-    xin = rand(Ngen,Npop,Nvar)
-    pin = rand(Ngen,Npop)
-    accept = rand(Ngen,Npop) < 0.8
-    CRin = rand(Nupdate,Ncr)
-    Rin = rand(Nupdate,1)
+    Nvar, Npop, Ncr = 3, 6, 2
+    xin = rand(Ngen, Npop, Nvar)
+    pin = rand(Ngen, Npop)
+    accept = rand(Ngen, Npop) < 0.8
+    CRin = rand(Nupdate, Ncr)
+    Rin = rand(Nupdate, 1)
     #thinning = 2
     #Nthin = int(Ngen/thinning)
 
@@ -885,44 +925,44 @@ def test():
     state = MCMCDraw(Ngen=Ngen, Nthin=Nthin, Nupdate=Nupdate,
                      Nvar=Nvar, Npop=Npop, Ncr=Ncr, thinning=thinning)
     for i in range(Nupdate):
-        state._update(R_stat=Rin[i],CR_weight=CRin[i])
+        state._update(R_stat=Rin[i], CR_weight=CRin[i])
         for j in range(Nstep):
             gen = i*Nstep+j
             state._generation(new_draws=Npop, x=xin[gen],
                               logp=pin[gen], accept=accept[gen])
 
     # Check that it got there
-    draws,logp = state.logp()
-    assert norm(draws - Npop*arange(1,Ngen+1)) == 0
+    draws, logp = state.logp()
+    assert norm(draws - Npop*arange(1, Ngen+1)) == 0
     assert norm(logp - pin) == 0
-    draws,AR = state.acceptance_rate()
-    assert norm(draws - Npop*arange(1,Ngen+1)) == 0
-    assert norm(AR - 100*sum(accept,axis=1)/Npop) == 0
-    draws,logp = state.sample()
-    #assert norm(draws - thinning*Npop*arange(1,Nthin+1)) == 0
+    draws, AR = state.acceptance_rate()
+    assert norm(draws - Npop*arange(1, Ngen+1)) == 0
+    assert norm(AR - 100*sum(accept, axis=1)/Npop) == 0
+    draws, logp = state.sample()
+    #assert norm(draws - thinning*Npop*arange(1, Nthin+1)) == 0
     #assert norm(sample - xin[thinning-1::thinning]) == 0
     #assert norm(logp - pin[thinning-1::thinning]) == 0
-    draws,R = state.R_stat()
+    draws, R = state.R_stat()
     assert norm(draws - Npop*Nstep*arange(Nupdate)) == 0
     assert norm(R-Rin) == 0
-    draws,CR = state.CR_weight()
+    draws, CR = state.CR_weight()
     assert norm(draws - Npop*Nstep*arange(Nupdate)) == 0
     assert norm(CR - CRin) == 0
-    x,p = state.best()
+    x, p = state.best()
     bestid = argmax(pin)
-    i,j = bestid//Npop, bestid%Npop
-    assert pin[i,j] == p
-    assert norm(xin[i,j,:]-x) == 0
+    i, j = bestid//Npop, bestid%Npop
+    assert pin[i, j] == p
+    assert norm(xin[i, j, :]-x) == 0
 
     # Check that outlier updates properly
-    state._replace_outlier(1,2)
+    state._replace_outlier(1, 2)
     outliers = state.outliers()
-    draws,logp = state.sample()
-    assert norm(outliers -  asarray([[state._thin_index,1,2]])) == 0
-    #assert norm(sample[:,1,:] - xin[thinning-1::thinning,2,:]) == 0
-    #assert norm(sample[:,2,:] - xin[thinning-1::thinning,2,:]) == 0
-    #assert norm(logp[:,1] - pin[thinning-1::thinning,2]) == 0
-    #assert norm(logp[:,2] - pin[thinning-1::thinning,2]) == 0
+    draws, logp = state.sample()
+    assert norm(outliers -  asarray([[state._thin_index, 1, 2]])) == 0
+    #assert norm(sample[:, 1, :] - xin[thinning-1::thinning, 2, :]) == 0
+    #assert norm(sample[:, 2, :] - xin[thinning-1::thinning, 2, :]) == 0
+    #assert norm(logp[:, 1] - pin[thinning-1::thinning, 2]) == 0
+    #assert norm(logp[:, 2] - pin[thinning-1::thinning, 2]) == 0
 
     from .stats import var_stats, format_vars
     vstats = var_stats(state.draw())

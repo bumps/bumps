@@ -5,7 +5,10 @@ Convergence test statistic from Gelman and Rubin, 1992.
 
 from __future__ import division
 
-from numpy import var, mean, ones, sqrt,sum,transpose,reshape,cov,corrcoef
+__all__ = ["gelman"]
+
+from numpy import var, mean, ones, sqrt
+
 
 def gelman(sequences, portion=0.5):
     """
@@ -18,8 +21,8 @@ def gelman(sequences, portion=0.5):
     """
 
     # Find the size of the sample
-    chain_len,Nchains,Nvar = sequences.shape
-    #print sequences[:20,0,0]
+    chain_len, nchains, nvar = sequences.shape
+    #print sequences[:20, 0, 0]
 
     # Only use the last portion of the sample
     chain_len = int(chain_len*portion)
@@ -27,50 +30,52 @@ def gelman(sequences, portion=0.5):
 
     if chain_len < 2:
         # Set the R-statistic to a large value
-        R_stat = -2 * ones(Nvar)
+        r_stat = -2 * ones(nvar)
     else:
         # Step 1: Determine the sequence means
-        meanSeq = mean(sequences, axis=0)
+        mean_seq = mean(sequences, axis=0)
 
         # Step 1: Determine the variance between the sequence means
-        B = chain_len * var(meanSeq, axis=0, ddof=1)
+        b = chain_len * var(mean_seq, axis=0, ddof=1)
 
         # Step 2: Compute the variance of the various sequences
-        varSeq = var(sequences, axis=0, ddof=1)
+        var_seq = var(sequences, axis=0, ddof=1)
 
         # Step 2: Calculate the average of the within sequence variances
-        W = mean(varSeq,axis=0)
+        w = mean(var_seq, axis=0)
 
         # Step 3: Estimate the target mean
-        #mu = mean(meanSeq)
+        #mu = mean(mean_seq)
 
         # Step 4: Estimate the target variance (Eq. 3)
-        sigma2 = ((chain_len - 1)/chain_len) * W + (1/chain_len) * B
+        sigma2 = ((chain_len - 1)/chain_len) * w + (1/chain_len) * b
 
         # Step 5: Compute the R-statistic
-        R_stat = sqrt((Nchains + 1)/Nchains * sigma2 / W - (chain_len-1)/Nchains/chain_len);
+        r_stat = sqrt((nchains + 1)/nchains * sigma2 / w
+                      - (chain_len-1)/nchains/chain_len)
         #par=2
-        #print chain_len,B[par],varSeq[...,par],W[par],R_stat[par]
+        #print chain_len,b[par],var_seq[...,par],w[par],r_stat[par]
 
-    return R_stat
+    return r_stat
+
 
 def test():
     from numpy import reshape, arange, transpose
     from numpy.linalg import norm
     # Targe values computed from octave:
     #    format long
-    #    S = reshape([1:15*6*7],[15,6,7]);
-    #    R = gelman(S,struct('n',6,'seq',7))
-    S = reshape(arange(1.,15*6*7+1)**-2, (15, 6, 7), order='F')
-    S = transpose(S, (0,2,1))
-    target = [1.06169861367116,   2.75325774624905,   4.46256647696399,
-              6.12792266170178,   7.74538715553575,   9.31276519155232]
-    R = gelman(S, portion=1)
-    #print R
-    #print "target", array(target), "\nactual", R
-    assert norm(R-target) < 1e-14
-    R = gelman(S, portion=.1)
-    assert norm(R - [-2, -2, -2, -2, -2, -2]) == 0
+    #    s = reshape([1:15*6*7],[15,6,7]);
+    #    r = gelman(s,struct('n',6,'seq',7))
+    s = reshape(arange(1.0, 15*6*7+1)**-2, (15, 6, 7), order='F')
+    s = transpose(s, [0, 2, 1])
+    target = [1.06169861367116, 2.75325774624905, 4.46256647696399,
+              6.12792266170178, 7.74538715553575, 9.31276519155232]
+    r = gelman(s, portion=1)
+    #print r
+    #print "target", array(target), "\nactual", r
+    assert norm(r-target) < 1e-14
+    r = gelman(s, portion=0.1)
+    assert norm(r - [-2, -2, -2, -2, -2, -2]) == 0
 
 if __name__ == "__main__":
     test()

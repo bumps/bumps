@@ -2,9 +2,9 @@
 Estimate entropy from an MCMC state vector.
 
 Uses probabilities computed by the MCMC sampler normalized by a scale factor
-computed from the kernel density estimate at a subset of the points.[#Kramer]
+computed from the kernel density estimate at a subset of the points.\ [#Kramer]_
 
-..[#Kramer]
+.. [#Kramer]
     Kramer, A., Hasenauer, J., Allgower, F., Radde, N., 2010.
     Computation of the posterior entropy in a Bayesian framework
     for parameter estimation in biological networks,
@@ -14,9 +14,12 @@ computed from the kernel density estimate at a subset of the points.[#Kramer]
     doi:10.1109/CCA.2010.5611198
 """
 
+__all__ = ["entropy"]
+
 from numpy import mean, std, exp, log, max
 from numpy.random import permutation
 LN2 = log(2)
+
 
 def scipy_stats_kde(data, points):
     from scipy.stats import gaussian_kde
@@ -29,16 +32,17 @@ def scipy_stats_kde(data, points):
     kde = gaussian_kde(data)
     return kde(points)
 
+
 def sklearn_kde(data, points):
     from sklearn.neighbors import KernelDensity
 
     # Silverman bandwidth estimator
-    n,d = data.shape
-    bandwidth =  (n * (d + 2) / 4.)**(-1. / (d + 4))
+    n, d = data.shape
+    bandwidth = (n * (d + 2) / 4.)**(-1. / (d + 4))
 
     # standardize data so that we can use uniform bandwidth
     mu, sigma = mean(data, axis=0), std(data, axis=0)
-    data,points = (data - mu)/sigma, (points - mu)/sigma
+    data, points = (data - mu)/sigma, (points - mu)/sigma
 
     #print("starting grid search for bandwidth over %d points"%n)
     #from sklearn.grid_search import GridSearchCV
@@ -58,21 +62,22 @@ def sklearn_kde(data, points):
     #print("T:%6.3f   done"%(time.time()-T0))
     return exp(log_pdf)
 
+
 # scipy kde fails with singular matrix, so we will use scikit.learn
 density = sklearn_kde
 #density = scipy_stats_kde
 
+
 def entropy(state, N_data=10000, N_sample=2500):
     r"""
-    Return entropy estimate $\hat S$ and uncertainty $\Delta \hat S$ from
-    an MCMC draw.
+    Return entropy estimate and uncertainty from an MCMC draw.
 
     *state* is the MCMC state vector, with sample points and log likelihoods.
 
     *N_size* is the number of points $k$ to use to estimate the entropy
     normalization factor $P(D) = \hat N$, converting from $\log( P(D|M) P(M) )$
-    to $log( P(D|M)P(M)/P(D) )$. The relative uncertainty $\Delta\hat S/\hat S$
-    scales with $\sqrt(k)$, with the default *N_size=2500* corresponding to 2%
+    to $\log( P(D|M)P(M)/P(D) )$. The relative uncertainty $\Delta\hat S/\hat S$
+    scales with $\sqrt{k}$, with the default *N_size=2500* corresponding to 2%
     relative uncertainty.  Computation cost is $O(nk)$ where $n$ is number of
     points in the draw.
 
@@ -102,9 +107,9 @@ def entropy(state, N_data=10000, N_sample=2500):
 
     # Compute entropy and uncertainty in nats
     frac = exp(logp_sample)/density(data, sample)
-    N_est, N_err = mean(frac), std(frac)
-    S_est = (-mean(logp_sample) + log(N_est))
-    S_err = N_err/N_est
+    n_est, n_err = mean(frac), std(frac)
+    s_est = (-mean(logp_sample) + log(n_est))
+    s_err = n_err/n_est
 
     # return entropy and uncertainty in bits
-    return S_est/LN2,S_err/LN2
+    return s_est/LN2, s_err/LN2

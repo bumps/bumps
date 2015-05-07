@@ -1,6 +1,12 @@
+"""
+Split a rectangle into n panes.
+"""
 from __future__ import division
 
+__all__ = ["max_tile_size"]
+
 import math
+
 
 def max_tile_size(tile_count, rect_size):
     """
@@ -46,4 +52,4 @@ def max_tile_size(tile_count, rect_size):
 
     return best_tile_size
 
-print(max_tile_size(6, (100, 100)))
+# print(max_tile_size(6, (100, 100)))

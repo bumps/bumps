@@ -4,7 +4,7 @@ MCMC model types
 Usage
 -----
 
-First create a :module:`bounds` object.  This stores the ranges available
+First create a :mod:`bounds` object.  This stores the ranges available
 on the parameters, and controls how values outside the range are handled::
 
     M_bounds = bounds(minx, maxx, style='reflect|clip|fold|randomize|none')
@@ -15,7 +15,8 @@ If your model *f* computes the probability density, use :class:`Density`::
 
     M = Density(f, bounds=M_bounds)
 
-If your model *f* computes the log probability density, use :class:`LogDensity`::
+If your model *f* computes the log probability density,
+use :class:`LogDensity`::
 
     M = LogDensity(f, bounds=M_bounds)
 
@@ -96,14 +97,15 @@ on the 1-sigma uncertainty, so use the style given in option 2 for this case.
 """
 from __future__ import division
 
-__all__ = ['MCMCModel','Density','LogDensity','Simulation','MVNormal','Mixture']
+__all__ = ['MCMCModel', 'Density', 'LogDensity', 'Simulation',
+           'MVNormal', 'Mixture']
 
 from numpy import sum, ones_like, array
 from numpy import dot, diag, log, exp, pi, asarray, isscalar
 from numpy.linalg import cholesky, inv
 
-from . import util
 from . import exppow
+
 
 class MCMCModel(object):
     """
@@ -115,14 +117,19 @@ class MCMCModel(object):
     """
     labels = None
     bounds = None
+
     def nllf(self, x):
         raise NotImplemented
+
     def log_density(self, x):
         return -self.nllf(x)
+
     def plot(self, x):
         pass
+
     def map(self, pop):
         return array([-self.log_density(x) for x in pop])
+
 
 class Density(MCMCModel):
     """
@@ -132,8 +139,10 @@ class Density(MCMCModel):
     """
     def __init__(self, f, bounds=None, labels=None):
         self.f, self.bounds, self.labels = f, bounds, labels
+
     def nllf(self, x):
         return -log(self.f(x))
+
 
 class LogDensity(MCMCModel):
     """
@@ -143,8 +152,10 @@ class LogDensity(MCMCModel):
     """
     def __init__(self, f, bounds=None, labels=None):
         self.f, self.bounds, self.labels = f, bounds, labels
+
     def nllf(self, x):
         return -self.f(x)
+
 
 class Simulation(MCMCModel):
     """
@@ -157,7 +168,7 @@ class Simulation(MCMCModel):
 
     Data is assumed to come from an exponential power density::
 
-        p(v|S,G) = w(G)/S exp(-c(G) |v/S|^(2/(1+G)))
+        p(v|S, G) = w(G)/S exp(-c(G) |v/S|^(2/(1+G)))
 
     where S is *sigma* and G is *gamma*.
 
@@ -173,20 +184,22 @@ class Simulation(MCMCModel):
                  labels=None):
         self.f, self.bounds, self.labels = f, bounds, labels
         self.data, self.sigma, self.gamma = data, sigma, gamma
-        cB, wB = exppow.exppow_pars(gamma)
-        self._offset = sum(log(wB/sigma * ones_like(data)))
-        self._cB = cB
+        cb, wb = exppow.exppow_pars(gamma)
+        self._offset = sum(log(wb/sigma * ones_like(data)))
+        self._cb = cb
         self._pow = 2/(1+gamma)
-        #print "cB",cB,"sqrt(2pi)*wB",sqrt(2*pi)*wB
-        #print "offset",self._offset
+        #print "cb", cb, "sqrt(2pi)*wb", sqrt(2*pi)*wb
+        #print "offset", self._offset
+
     def nllf(self, x):
         err = self.f(x) - self.data
-        log_p = self._offset - sum(self._cB * abs(err/self.sigma)**self._pow)
+        log_p = self._offset - sum(self._cb * abs(err/self.sigma)**self._pow)
         return log_p
+
     def plot(self, x):
         import pylab
         v = pylab.arange(len(self.data))
-        pylab.plot(v,self.data,'x',v,self.f(x),'-')
+        pylab.plot(v, self.data, 'x', v, self.f(x), '-')
 
 
 class MVNormal(MCMCModel):
@@ -198,11 +211,13 @@ class MVNormal(MCMCModel):
         # Precompute sigma contributions
         r = cholesky(sigma)
         self._rinv = inv(r)
-        self._C = 0.5*len(mu)*log(2*pi) + sum(diag(r))
+        self._c = 0.5*len(mu)*log(2*pi) + sum(diag(r))
+
     def nllf(self, x):
-        mu,C,rinv = self.mu, self._C, self._rinv
-        y = C + 0.5*sum( dot((x-mu), rinv)**2 )
+        mu, c, rinv = self.mu, self._c, self._rinv
+        y = c + 0.5*sum(dot((x-mu), rinv)**2)
         return y
+
 
 class Mixture(MCMCModel):
     """
@@ -217,13 +232,13 @@ class Mixture(MCMCModel):
 
         models = args[::2]
         weights = args[1::2]
-        if (len(args)%2 != 0
-            or not all(hasattr(M,'nllf') for M in models)
-            or not all(isscalar(w) for w in weights)):
-            raise TypeError("Expected MixtureModel(M1,w1,M2,w2,...)")
-        self.pairs = zip(models,weights)
+        if (len(args) % 2 != 0
+                or not all(hasattr(M, 'nllf') for M in models)
+                or not all(isscalar(w) for w in weights)):
+            raise TypeError("Expected MixtureModel(M1, w1, M2, w2, ...)")
+        self.pairs = zip(models, weights)
         self.weight = sum(w for w in weights)
 
     def nllf(self, x):
-        p = [w*exp(M.nllf(x)) for M,w in self.pairs]
-        return -log( sum(p)/self.weight )
+        p = [w*exp(M.nllf(x)) for M, w in self.pairs]
+        return -log(sum(p)/self.weight)

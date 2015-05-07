@@ -101,6 +101,7 @@ def format_uncertainty(value, uncertainty):
     return _format_uncertainty(value, uncertainty, format_uncertainty.compact)
 format_uncertainty.compact = True
 
+
 def _format_uncertainty(value, uncertainty, compact):
     """
     Implementation of both the compact and the +/- formats.
