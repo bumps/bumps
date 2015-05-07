@@ -16,3 +16,4 @@ Contents
    tutorial/index.rst
    guide/index.rst
    api/index.rst
+   dream/index.rst

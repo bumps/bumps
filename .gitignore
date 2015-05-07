@@ -21,6 +21,7 @@ iss-version
 /doc/_build/
 /doc/api/
 /doc/tutorial/
+/doc/dream/
 
 # python droppings from running in place
 __pycache__/
