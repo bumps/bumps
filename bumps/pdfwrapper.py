@@ -18,7 +18,6 @@ import numpy as np
 
 from .parameter import Parameter
 from .fitproblem import Fitness
-from .formatnum import format_uncertainty
 
 
 class PDF(object):
@@ -90,14 +89,16 @@ class PDF(object):
         return self._function(**kw)
     nllf.__doc__ = Fitness.__call__.__doc__
 
-
     def chisq(self):
         return self.nllf()
     #chisq.__doc__ = Fitness.chisq.__doc__
+
     def chisq_str(self):
-        return "%g"%self.chisq()
+        return "%g" % self.chisq()
     #chisq_str.__doc__ = Fitness.chisq_str.__doc__
+
     __call__ = chisq
+
     def plot(self, view=None):
         if self._plot:
             kw = dict((p, getattr(self, p).value) for p in self._pnames)
@@ -112,50 +113,67 @@ class PDF(object):
         return np.array([self()])
     residuals.__doc__ = Fitness.residuals.__doc__
 
+
 class DirectPDF(object):
     """
     Build model from probability density function *f(p)*.
 
-    Vector *p* is of length *n*.  *bounds* defines limiting
-    values for *p*.  Unlike the *PDF* class, no parameter
-    objects are defined for the elements of *p*, so all
-    are fitting parameters, with range defined by *bounds*.
-    """
-    def __init__(self, f, n, bounds=None):
-        self.f = f
-        self.n = n
-        self.p = np.ones(n,'d')
-        if bounds is not None:
-            self._bounds = bounds
-        else:
-            self._bounds = np.tile((-np.inf,np.inf),(n,1)).T
+    Vector *p0* of length *n* defines the initial value.
 
-    def model_reset(self): pass
+    *bounds* defines limiting values for *p* as
+    *[(p1_low, p1_high), (p2_low, p2_high), ...]*.  If all parameters are
+    have the same bounds, use *bounds=np.tile([low,high],[n,1])*.
+
+    Unlike :class:`PDF`, no parameter objects are defined for the elements
+    of *p*, so all are fitting parameters.
+    """
+    def __init__(self, f, p0, bounds=None):
+        self.f = f
+        self.n = len(p0)
+        self.p = np.asarray(p0, 'd')
+        if bounds is not None:
+            self._bounds = np.asarray(bounds, 'd')
+        else:
+            self._bounds = np.tile((-np.inf, np.inf), (self.n, 1)).T
+
+    def model_reset(self):
+        pass
+
     def chisq(self):
         return self.nllf()
+
     def chisq_str(self):
-        return "%g"%self.chisq()
+        return "%g" % self.chisq()
     __call__ = chisq
+
     def nllf(self, pvec=None):
-        if pvec is not  None: self.setp(pvec)
+        if pvec is not None:
+            self.setp(pvec)
         return self.f(self.p)
+
     def setp(self, p):
         self.p = p
+
     def getp(self):
         return self.p
+
     def show(self):
-        print("[nllf=%g]"%self.nllf())
+        print("[nllf=%g]" % self.nllf())
         print(self.summarize())
+
     def summarize(self):
         return str(self.getp())
+
     def labels(self):
-        return ["P%d"%i for i in range(self.n)]
+        return ["P%d" % i for i in range(self.n)]
+
     def randomize(self):
         # TODO: doesn't respect bounds
         self.p = np.random.rand(self.n)
+
     def bounds(self):
         return self._bounds
+
     def plot(self, p=None, fignum=None, figfile=None):
         pass
         #def __deepcopy__(self, memo): return self
-
