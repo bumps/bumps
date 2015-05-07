@@ -23,10 +23,16 @@ Once the system is installed, you can verify that it is working with:
 
     bumps doc/examples/peaks/model.py --chisq
 
-Documentation is available at `readthedocs <http://bumps.readthedocs.org/en/latest>`_
+Documentation is available at
+`readthedocs <http://bumps.readthedocs.org/en/latest>`_
 
 Relaase notes
 =============
+
+v0.7.5.5 2015-05-07
+-------------------
+
+* documentation updates
 
 v0.7.5.4 2014-12-05
 -------------------
