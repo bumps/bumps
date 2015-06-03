@@ -493,7 +493,7 @@ class LevenbergMarquardtFit(FitBase):
     Levenberg-Marquardt optimizer.
     """
     name = "Levenberg-Marquardt"
-    settings = [('steps', 1000), ('ftol', 1.5e-8), ('xtol', 1.5e-8)]
+    settings = [('steps', 200), ('ftol', 1.5e-8), ('xtol', 1.5e-8)]
     # LM also has
     #    gtol: orthoganality between jacobian columns
     #    epsfcn: numerical derivative step size
@@ -508,20 +508,34 @@ class LevenbergMarquardtFit(FitBase):
         self._low, self._high = self.problem.bounds()
         self._update = MonitorRunner(problem=self.problem,
                                      monitors=monitors)
-
+        x0 = self.problem.getp()
+        maxfev = options['steps']*(len(x0)+1)
         result = optimize.leastsq(self._bounded_residuals,
-                                  self.problem.getp(),
+                                  x0,
                                   ftol=options['ftol'],
                                   xtol=options['xtol'],
+                                  maxfev=maxfev,
                                   full_output=1)
         x, cov_x, info, mesg, success = result
-        self._cov = cov_x
+        if not 1 <= success <= 4:
+            # don't treat "reached maxfev" as a true failure
+            if "reached maxfev" in mesg:
+                # unless the x values are bad
+                if not np.all(np.isfinite(x)):
+                    x = None
+                    mesg = "Levenberg-Marquardt fit failed with bad values"
+            else:
+                x = None
+        self._cov = cov_x if x is not None else None
         # compute one last time with x forced inside the boundary, and using
         # problem.nllf as returned by other optimizers.  We will ignore the
         # covariance output and calculate it again ourselves.  Not ideal if
         # f is expensive, but it will be consistent with other optimizers.
-        self.problem.setp(x + self._stray_delta(x))
-        fx = self.problem.nllf()
+        if x is not None:
+            self.problem.setp(x + self._stray_delta(x))
+            fx = self.problem.nllf()
+        else:
+            fx = None
         return x, fx
 
     def _bounded_residuals(self, p):
@@ -546,9 +560,6 @@ class LevenbergMarquardtFit(FitBase):
         """calculate how far point is outside the boundary"""
         return (np.where(p < self._low, self._low - p, 0)
                 + np.where(p > self._high, self._high - p, 0))
-
-    def stderr(self):
-        return np.sqrt(np.diag(self._cov)) if self._cov is not None else None
 
     def cov(self):
         return self._cov
@@ -778,6 +789,9 @@ class FitDriver(object):
         self.mapper = mapper if mapper else lambda p: map(problem.nllf, p)
 
     def fit(self, resume=None):
+
+        if hasattr(self, '_cov'): del self._cov
+        if hasattr(self, '_stderr'): del self._stderr
         fitter = self.fitclass(self.problem)
         if resume:
             fitter.load(resume)
@@ -792,7 +806,8 @@ class FitDriver(object):
         self.fitter = fitter
         self.time = time.clock() - t0
         self.result = x, fx
-        self.problem.setp(x)
+        if x is not None:
+            self.problem.setp(x)
         return x, fx
 
     def cov(self):
@@ -813,10 +828,9 @@ class FitDriver(object):
         when you can use it.
         """
         if not hasattr(self, '_cov'):
+            self._cov = None
             if hasattr(self.fitter, 'cov'):
                 self._cov = self.fitter.cov()
-            else:
-                self._cov = None
         if self._cov is None:
             H = lsqerror.hessian(self.problem, self.result[0])
             H, L = lsqerror.perturbed_hessian(H)
@@ -832,13 +846,19 @@ class FitDriver(object):
         differentiation around the minimum.
         """
         if not hasattr(self, '_stderr'):
+            self._stderr = None
             # calculate the value
             if hasattr(self.fitter, 'stderr'):
                 self._stderr = self.fitter.stderr()
-            else:
-                self._stderr = None
+            elif hasattr(self.fitter, 'cov'):
+                # Use fitter provided covariance matrix, if it exists
+                self._cov = self.fitter.cov()
+                if self._cov is not None:
+                    self._stderr = lsqerror.stderr(self._cov)
         if self._stderr is None:
-            self._stderr = lsqerror.stderr(self.cov())
+            H = lsqerror.hessian(self.problem, self.result[0])
+            H, L = lsqerror.perturbed_hessian(H)
+            self._stderr = lsqerror.chol_stderr(L)
         return self._stderr
 
     def show(self):
