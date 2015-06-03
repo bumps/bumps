@@ -84,7 +84,7 @@ def ACR(p, n, alpha=0.05):
 
 
 def test():
-    assert abs(ACR(3, 25, 0.01) - 13.1753251622586) < 1e-14
+    assert abs(ACR(3, 25, 0.01) - 13.1753251622586) < 1e-13
 
 
 if __name__ == "__main__":
