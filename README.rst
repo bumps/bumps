@@ -29,6 +29,11 @@ Documentation is available at
 Relaase notes
 =============
 
+v0.7.5.6 2015-06-03
+-------------------
+
+* tweak uncertainty calculations so they don't fail on bad models
+
 v0.7.5.5 2015-05-07
 -------------------
 
