@@ -459,7 +459,7 @@ Output
 
 DREAM produces a number of different outputs, and there are a number of
 things to check before using its reported uncertainty values.  The main
-goal of selecting :ref:`option-burn` is to wait long enough to reach the
+goal of selecting ``--burn=n`` is to wait long enough to reach the
 equilibrium distribution.
 
 .. figure:: dream-incomplete.png
