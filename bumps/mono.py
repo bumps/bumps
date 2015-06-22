@@ -15,7 +15,7 @@ def monospline(x, y, xt):
     r"""
     Monotonic cubic hermite interpolation.
     
-    $x$ and $y$ serve as the control points and $xt$ are the points where the curve is evaluated. 
+    $x$ and $y$ serve as the control points and $xt$ are the points where the function is evaluated. 
     
     Returns $p(x_t)$ where $p(x_i)= y_i$ and $p(x) \leq p(x_i)$
     if $y_i \leq y_{i+1}$ for all $y_i$.  Also works for decreasing
