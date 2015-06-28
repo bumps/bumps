@@ -654,6 +654,10 @@ def run_command(c):
     exec(c, globals())
 
 
+def setup_logging():
+    import logging
+    logging.basicConfig(level=logging.INFO)
+
 def main():
     """
     Run the bumps program with the command line interface.
@@ -684,6 +688,7 @@ def main():
         sys.exit(start_ipython())
 
     opts = getopts()
+    setup_logging()
 
     if opts.edit:
         from .gui.gui_app import main as gui
@@ -783,7 +788,7 @@ def main():
         beep()
         if not opts.batch and not opts.mpi:
             import pylab
-            pylab.show()
+            #pylab.show()
 
 
 # Allow  "$python -m bumps.cli args" calling pattern

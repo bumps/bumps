@@ -18,6 +18,8 @@ from bumps.names import *
 
 scale = 10
 sigma = 0.1*scale
+#sigma = 0.001*scale  # Too small
+#sigma = 10*scale   # Too large
 
 # Simple gaussian cost function based on the distance to the closest ridge
 # *x=y* or *x=-y*.

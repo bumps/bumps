@@ -622,7 +622,7 @@ class DreamModel(MCMCModel):
 class DreamFit(FitBase):
     name = "DREAM"
     settings = [('steps', 400), ('burn', 100), ('pop', 10),
-                ('init', 'eps'), ('thin', 1), #('entropy', False),
+                ('init', 'eps'), ('thin', 1),  #('entropy', False),
                ]
 
     def __init__(self, problem):
@@ -677,7 +677,7 @@ class DreamFit(FitBase):
 
     def entropy(self):
         from .dream.entropy import entropy
-        S, dS = entropy(self.state, N_data=10000, N_sample=2500)
+        S, dS = entropy(self.state, N_entropy=10000, N_norm=2500)
         return S, dS
 
     def _monitor(self, state, pop, logp):
