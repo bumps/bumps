@@ -70,7 +70,7 @@ def sklearn_density(sample_points, evaluation_points):
     #print("T:%6.3f   estimating"%(time.time()-T0))
     log_pdf = kde.score_samples(points)
     #print("T:%6.3f   done"%(time.time()-T0))
-    return exp(log_pdf)/sigma  # undo the x scaling on the data pointssamin
+    return exp(log_pdf)/sigma  # undo the x scaling on the data points
 
 
 # scipy kde fails with singular matrix, so we will use scikit.learn
