@@ -91,7 +91,7 @@ When modeling the results of an experiment, the best fit value is an
 accident of the measurement.  Redo the same measurement, and the slightly
 different values you measure will lead to a different best fit.  The
 important quantity to report is the credible interval covering
-68%  ($1-\sigma$) or 95% ($2-\sigma$) of the range of
+68%  (1-\ $\sigma$) or 95% (2-\ $\sigma$\ ) of the range of
 parameter values that are somewhat consistent with the data.
 
 This method uses *lmfit* from *scipy*, and does not run in parallel.
@@ -513,15 +513,18 @@ then the remaining plots don't mean much.
 
 The *Correlations* plot shows cross correlation between each pair of
 parameters.  If the parameters are completely uncorrelated then the boxes
-should contain circles.  Diagonals indicate strong correlation.  square
+should contain circles.  Diagonals indicate strong correlation.  Square
 blocks indicate that the fit is not sensitive to one of the parameters.
 The range plotted on the correlation plot is determined by the 95% interval
-of the data.  If there are some chains that are wandering around away from
-the minimum, then the plot will look fuzzy, and not have a nice blob
-in the center.  If a correlation plot has multiple blobs, then there are
-multiple minima in your problem space, usually because there are symmetries
-in the problem definition.  For example, a model fitting $x + a**2$ will
-have identical solutions for $\pm a$.
+of the data.  The individual correlation plots are too small to show the
+range of values for the parameters.  These can instead be read from the
+*Uncertainty* plot for each parameter, which covers the same range of values
+and indicates 68% and 95% intervals.  If there are some chains that are
+wandering around away from the minimum, then the plot will look fuzzy, and
+not have a nice blob in the center.  If a correlation plot has multiple blobs,
+then there are multiple minima in your problem space, usually because there
+are symmetries in the problem definition.  For example, a model fitting
+$x + a^2$ will have identical solutions for $\pm\,a$.
 
 The *Uncertainty* plot shows histograms for each fitted parameter generated
 from the values for that parameter across all chains.  Within each histogram
@@ -551,7 +554,7 @@ problem is highly constrained with many tight and twisty values.
 
 The *Data and Theory* plot should show theory and data lining up pretty well,
 with the theory overlaying about 2/3 of the error bars on the data
-($1-\sigma = 68\%$).  The *Residuals* plot shows the difference between
+(1-\ $\sigma$ = 68%).  The *Residuals* plot shows the difference between
 theory and data divided by uncertainty.  The residuals should be 2/3 within
 [-1, 1], They should not show any structure, such as humps where the theory
 misses the data for long stretches.  This indicates some feature missing
