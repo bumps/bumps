@@ -14,14 +14,16 @@ from numpy import (diff, hstack, sqrt, searchsorted, asarray,
 def monospline(x, y, xt):
     r"""
     Monotonic cubic hermite interpolation.
-
+    
+    $x$ and $y$ serve as the control points and $xt$ are the points where the function is evaluated. 
+    
     Returns $p(x_t)$ where $p(x_i)= y_i$ and $p(x) \leq p(x_i)$
     if $y_i \leq y_{i+1}$ for all $y_i$.  Also works for decreasing
     values $y$, resulting in decreasing $p(x)$.  If $y$ is not monotonic,
     then $p(x)$ may peak higher than any $y$, so this function is not
     suitable for a strict constraint on the interpolated function when
     $y$ values are unconstrained.
-
+    
     http://en.wikipedia.org/wiki/Monotone_cubic_interpolation
     """
     with np.errstate(all='ignore'):
