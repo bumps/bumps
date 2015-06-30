@@ -48,7 +48,9 @@ def sklearn_density(sample_points, evaluation_points):
     n, d = sample_points.shape
     bandwidth = (n * (d + 2) / 4.)**(-1. / (d + 4))
 
-    # standardize data so that we can use uniform bandwidth
+    # Standardize data so that we can use uniform bandwidth.
+    # Note that we will need to scale the resulting density by sigma to
+    # correct the area.
     mu, sigma = mean(sample_points, axis=0), std(sample_points, axis=0)
     data, points = (sample_points - mu)/sigma, (evaluation_points - mu)/sigma
 
@@ -68,7 +70,7 @@ def sklearn_density(sample_points, evaluation_points):
     #print("T:%6.3f   estimating"%(time.time()-T0))
     log_pdf = kde.score_samples(points)
     #print("T:%6.3f   done"%(time.time()-T0))
-    return exp(log_pdf)
+    return exp(log_pdf)/sigma  # undo the x scaling on the data pointssamin
 
 
 # scipy kde fails with singular matrix, so we will use scikit.learn
