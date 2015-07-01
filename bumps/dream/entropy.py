@@ -16,7 +16,8 @@ computed from the kernel density estimate at a subset of the points.\ [#Kramer]_
 
 __all__ = ["entropy"]
 
-from numpy import mean, std, exp, log, max, pi, e
+import numpy as np
+from numpy import mean, std, exp, log, max
 from numpy.random import permutation
 LN2 = log(2)
 
@@ -70,7 +71,7 @@ def sklearn_density(sample_points, evaluation_points):
     #print("T:%6.3f   estimating"%(time.time()-T0))
     log_pdf = kde.score_samples(points)
     #print("T:%6.3f   done"%(time.time()-T0))
-    return exp(log_pdf)/sigma  # undo the x scaling on the data points
+    return exp(log_pdf)/np.prod(sigma)  # undo the x scaling on the data points
 
 
 # scipy kde fails with singular matrix, so we will use scikit.learn
@@ -163,19 +164,24 @@ def _entropy(points, logp, N_entropy=10000, N_norm=2500):
 
 
 def _check_entropy(D):
-    theta = D.rvs(size=(10000, 1))
+    """
+    Check if entropy from a random draw matches analytic entropy.
+    """
+    N=10000
+    theta = D.rvs(size=(N,1) if getattr(D, 'dim', 1) else N)
     logp_theta = D.logpdf(theta)
     logp_theta += 27  # throw in an arbitrary scale factor
     S, Serr = _entropy(theta, logp_theta)
     print(S, Serr, D.entropy()/LN2)
-    assert Serr  < 0.01
+    assert Serr < 0.05*S
     assert abs(S - D.entropy()/LN2) < Serr
 
 def test():
-    from scipy.stats.distributions import norm as normal
-    D = normal(100, 1)  # mu=100, sigma=8
-    _check_entropy(D)
+    from scipy import stats
+    _check_entropy(stats.norm(100,8))
+    _check_entropy(stats.multivariate_normal(cov=np.diag([1,12**2,0.2**2])))
 test.__test__ = False  # Suppress nosetests until test is fixed
+
 
 if __name__ == "__main__":
     test()
