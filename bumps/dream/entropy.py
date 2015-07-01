@@ -16,7 +16,7 @@ computed from the kernel density estimate at a subset of the points.\ [#Kramer]_
 
 __all__ = ["entropy"]
 
-from numpy import mean, std, exp, log, max
+from numpy import mean, std, exp, log, max, pi, e
 from numpy.random import permutation
 LN2 = log(2)
 
@@ -84,19 +84,22 @@ def entropy(state, N_entropy=10000, N_norm=2500):
 
     *state* is the MCMC state vector, with sample points and log likelihoods.
 
-    *N_norm* is the number of points $k$ to use to estimate the entropy
-    normalization factor $P(D) = \hat N$, converting from $\log( P(D|M) P(M) )$
-    to $\log( P(D|M)P(M)/P(D) )$. The relative uncertainty $\Delta\hat S/\hat S$
-    scales with $\sqrt{k}$, with the default *N_norm=2500* corresponding to 2%
-    relative uncertainty.  Computation cost is $O(nk)$ where $n$ is number of
-    points in the draw.
+    *N_norm* is the number of points $k$ to use to estimate the posterior
+    density normalization factor $P(D) = \hat N$, converting
+    from $\log( P(D|M) P(M) )$ to $\log( P(D|M)P(M)/P(D) )$. The relative
+    uncertainty $\Delta\hat S/\hat S$ scales with $\sqrt{k}$, with the
+    default *N_norm=2500* corresponding to 2% relative uncertainty.
+    Computation cost is $O(nk)$ where $n$ is number of points in the draw.
 
-    If *N_entropy* is the number of points used to compute the entropy
-    $\hat S = \int P(M|D) \log P(M|D)$ true, use a random draw from state when computing $\hat N$
-    rather than the last $k$ points in the draw.
+    *N_entropy* is the number of points used to estimate the entropy
+    $\hat S = - \int P(M|D) \log P(M|D)$ from the normalized log likelihood
+    values.
     """
     # Get the sample from the state
     points, logp = state.sample()
+    return _entropy(points, logp, N_entropy=N_entropy, N_norm=N_norm)
+
+def _entropy(points, logp, N_entropy=10000, N_norm=2500):
 
     # Use a random subset to estimate density
     if N_norm >= len(logp):
@@ -148,6 +151,35 @@ def entropy(state, N_entropy=10000, N_norm=2500):
     n_est, n_err = mean(frac), std(frac)
     s_est = (-mean(eval_logp) + log(n_est))
     s_err = n_err/n_est
+    #print(n_est, n_err, s_est, s_err)
+    #import pylab
+    #pylab.hist(points[:,0], bins=50, normed=True)
+    #idx = pylab.argsort(entropy_points[:,0])
+    #pylab.plot(entropy_points[idx,0], density(norm_points, entropy_points[idx]))
+    #pylab.show()
 
     # return entropy and uncertainty in bits
     return s_est/LN2, s_err/LN2
+
+
+def normal_entropy(mu, sigma):
+    """
+    Theoretical entropy of the normal distribution in bits.
+    """
+    return 0.5 * log(2 * pi * e * sigma**2) / log(2)
+
+
+def test():
+    from numpy.random import randn
+
+    mu, sigma = 100, 8
+    theta = mu + sigma*randn(10000, 1)
+    logp_theta = -0.5*((theta - mu)/sigma)**2   # with a constant scale factor
+    S, Serr = _entropy(theta, logp_theta)
+    print S, Serr, normal_entropy(mu, sigma)
+    assert Serr  < 0.01
+    assert abs(S - normal_entropy(mu, sigma)) < Serr
+test.__test__ = False  # Suppress nosetests until test is fixed
+
+if __name__ == "__main__":
+    test()
