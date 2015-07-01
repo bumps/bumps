@@ -162,23 +162,19 @@ def _entropy(points, logp, N_entropy=10000, N_norm=2500):
     return s_est/LN2, s_err/LN2
 
 
-def normal_entropy(mu, sigma):
-    """
-    Theoretical entropy of the normal distribution in bits.
-    """
-    return 0.5 * log(2 * pi * e * sigma**2) / log(2)
-
+def _check_entropy(D):
+    theta = D.rvs(size=(10000, 1))
+    logp_theta = D.logpdf(theta)
+    logp_theta += 27  # throw in an arbitrary scale factor
+    S, Serr = _entropy(theta, logp_theta)
+    print(S, Serr, D.entropy()/LN2)
+    assert Serr  < 0.01
+    assert abs(S - D.entropy()/LN2) < Serr
 
 def test():
-    from numpy.random import randn
-
-    mu, sigma = 100, 8
-    theta = mu + sigma*randn(10000, 1)
-    logp_theta = -0.5*((theta - mu)/sigma)**2   # with a constant scale factor
-    S, Serr = _entropy(theta, logp_theta)
-    print S, Serr, normal_entropy(mu, sigma)
-    assert Serr  < 0.01
-    assert abs(S - normal_entropy(mu, sigma)) < Serr
+    from scipy.stats.distributions import norm as normal
+    D = normal(100, 1)  # mu=100, sigma=8
+    _check_entropy(D)
 test.__test__ = False  # Suppress nosetests until test is fixed
 
 if __name__ == "__main__":
