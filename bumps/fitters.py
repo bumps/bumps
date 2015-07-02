@@ -5,6 +5,7 @@ from __future__ import print_function, division
 
 import sys
 import time
+from copy import copy
 
 import numpy as np
 
@@ -204,6 +205,7 @@ class DEFit(FitBase):
     Classic Storn and Price differential evolution optimizer.
     """
     name = "Differential Evolution"
+    id = "de"
     settings = [('steps', 1000), ('pop', 10), ('CR', 0.9), ('F', 2.0),
                 ('ftol', 1e-8), ('xtol', 1e-6), #('stop', ''),
                 ]
@@ -211,7 +213,7 @@ class DEFit(FitBase):
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         if abort_test is None:
             abort_test = lambda: False
-        _fill_defaults(options, self.settings)
+        options = _fill_defaults(options, self.settings)
         from .mystic.optimizer import de
         from .mystic.solver import Minimizer
         from .mystic import stop
@@ -300,13 +302,14 @@ class BFGSFit(FitBase):
     BFGS quasi-newton optimizer.
     """
     name = "Quasi-Newton BFGS"
+    id = "newton"
     settings = [('steps', 3000), ('starts', 1),
                 ('ftol', 1e-6), ('xtol', 1e-12)]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         if abort_test is None:
             abort_test = lambda: False
-        _fill_defaults(options, self.settings)
+        options = _fill_defaults(options, self.settings)
         from .quasinewton import quasinewton
         self._update = MonitorRunner(problem=self.problem,
                                      monitors=monitors)
@@ -347,10 +350,11 @@ class PSFit(FitBase):
     Particle swarm optimizer.
     """
     name = "Particle Swarm"
+    id = "ps"
     settings = [('steps', 3000), ('pop', 1)]
 
     def solve(self, monitors=None, mapper=None, **options):
-        _fill_defaults(options, self.settings)
+        options = _fill_defaults(options, self.settings)
         if mapper is None:
             mapper = lambda x: map(self.problem.nllf, x)
         from .random_lines import particle_swarm
@@ -382,12 +386,13 @@ class RLFit(FitBase):
     Random lines optimizer.
     """
     name = "Random Lines"
+    id = "rl"
     settings = [('steps', 3000), ('starts', 20), ('pop', 0.5), ('CR', 0.9)]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         if abort_test is None:
             abort_test = lambda: False
-        _fill_defaults(options, self.settings)
+        options = _fill_defaults(options, self.settings)
         if mapper is None:
             mapper = lambda x: map(self.problem.nllf, x)
         from .random_lines import random_lines
@@ -421,11 +426,12 @@ class PTFit(FitBase):
     Parallel tempering optimizer.
     """
     name = "Parallel Tempering"
+    id = "pt"
     settings = [('steps', 1000), ('nT', 25), ('CR', 0.9),
                 ('burn', 4000), ('Tmin', 0.1), ('Tmax', 10)]
 
     def solve(self, monitors=None, mapper=None, **options):
-        _fill_defaults(options, self.settings)
+        options = _fill_defaults(options, self.settings)
         # TODO: no mapper??
         from .partemp import parallel_tempering
         self._update = MonitorRunner(problem=self.problem,
@@ -455,6 +461,7 @@ class AmoebaFit(FitBase):
     Nelder-Mead simplex optimizer.
     """
     name = "Nelder-Mead Simplex"
+    id = "amoeba"
     settings = [('steps', 1000), ('starts', 1), ('radius', 0.15),
                 ('xtol', 1e-6), ('ftol', 1e-8)]
 
@@ -462,7 +469,7 @@ class AmoebaFit(FitBase):
         from .simplex import simplex
         if abort_test is None:
             abort_test = lambda: False
-        _fill_defaults(options, self.settings)
+        options = _fill_defaults(options, self.settings)
         # TODO: no mapper??
         self._update = MonitorRunner(problem=self.problem,
                                      monitors=monitors)
@@ -493,6 +500,7 @@ class LevenbergMarquardtFit(FitBase):
     Levenberg-Marquardt optimizer.
     """
     name = "Levenberg-Marquardt"
+    id = "lm"
     settings = [('steps', 200), ('ftol', 1.5e-8), ('xtol', 1.5e-8)]
     # LM also has
     #    gtol: orthoganality between jacobian columns
@@ -504,7 +512,7 @@ class LevenbergMarquardtFit(FitBase):
         from scipy import optimize
         if abort_test is None:
             abort_test = lambda: False
-        _fill_defaults(options, self.settings)
+        options = _fill_defaults(options, self.settings)
         self._low, self._high = self.problem.bounds()
         self._update = MonitorRunner(problem=self.problem,
                                      monitors=monitors)
@@ -567,10 +575,11 @@ class LevenbergMarquardtFit(FitBase):
 
 class SnobFit(FitBase):
     name = "SNOBFIT"
+    id = "snobfit"
     settings = [('steps', 200)]
 
     def solve(self, monitors=None, mapper=None, **options):
-        _fill_defaults(options, self.settings)
+        options = _fill_defaults(options, self.settings)
         # TODO: no mapper??
         from snobfit.snobfit import snobfit
         self._update = MonitorRunner(problem=self.problem,
@@ -621,6 +630,7 @@ class DreamModel(MCMCModel):
 
 class DreamFit(FitBase):
     name = "DREAM"
+    id = "dream"
     settings = [('steps', 400), ('burn', 100), ('pop', 10),
                 ('init', 'eps'), ('thin', 1),
                ]
@@ -634,7 +644,7 @@ class DreamFit(FitBase):
         from . import dream
         if abort_test is None:
             abort_test = lambda: False
-        _fill_defaults(options, self.settings)
+        options = _fill_defaults(options, self.settings)
 
         if mapper:
             self.dream_model.mapper = mapper
@@ -665,8 +675,8 @@ class DreamFit(FitBase):
         #assert all(points[-1, i] == xi for i, xi in enumerate(x))
         return x, -fx
 
-    def entropy(self):
-        return self.state.entropy()
+    def entropy(self, **kw):
+        return self.state.entropy(**kw)
 
     def _monitor(self, state, pop, logp):
         # Get an early copy of the state
@@ -798,6 +808,9 @@ class FitDriver(object):
             self.problem.setp(x)
         return x, fx
 
+    def entropy(self):
+        return self.fitter.entropy()
+
     def cov(self):
         """
         Return an estimate of the covariance of the fit.
@@ -878,79 +891,38 @@ class FitDriver(object):
 
 
 def _fill_defaults(options, settings):
-    for field, value in settings:
-        if field not in options:
-            options[field] = value
-
-
-class ChoiceList(object):
-
-    def __init__(self, *choices):
-        self.choices = choices
-
-    def __call__(self, value):
-        if not value in self.choices:
-            raise ValueError('invalid option "%s": use %s'
-                             % (value, '|'.join(self.choices)))
-        else:
-            return value
-
-
-def yesno(value):
-    if value.lower() in ('true', 'yes', 'on', '1'):
-        return True
-    elif value.lower() in ('false', 'no', 'off', '0'):
-        return False
-    raise ValueError('invalid option "%s": use yes|no')
-
-
-class FitOptions(object):
-    # Field labels and types for all possible fields
-    FIELDS = dict(
-        starts= ("Starts", int),
-        steps = ("Steps", int),
-        xtol = ("x tolerance", float),
-        ftol = ("f(x) tolerance", float),
-        stop = ("Stopping criteria", str),
-        thin = ("Thinning", int),
-        burn = ("Burn-in Steps", int),
-        pop = ("Population", float),
-        init = ("Initializer", ChoiceList("eps", "lhs", "cov", "random")),
-        CR = ("Crossover ratio", float),
-        F = ("Scale", float),
-        nT = ("# Temperatures", int),
-        Tmin = ("Min temperature", float),
-        Tmax = ("Max temperature", float),
-        radius = ("Simplex radius", float),
-    )
-
-    def __init__(self, fitclass):
-        self.fitclass = fitclass
-        self.options = dict(fitclass.settings)
-
-    def set_from_cli(self, opts):
-        # Convert supplied options to the correct types and save them in value
-        for field, reset_value in self.fitclass.settings:
-            value = getattr(opts, field, None)
-            parse = FitOptions.FIELDS[field][1]
-            if value is not None:
-                try:
-                    self.options[field] = parse(value)
-                except Exception as exc:
-                    raise ValueError("error in --%s: %s" % (field, str(exc)))
-        # print("options=%s"%(str(self.options)))
+    """
+    Returns options dict with missing values filled from settings.
+    """
+    result = dict(settings)  # settings is a list of (key,value) pairs
+    result.update(options)
+    return result
 
 # List of (parameter,factory value) required for each algorithm
-FIT_OPTIONS = dict(
-    amoeba=FitOptions(AmoebaFit),
-    de=FitOptions(DEFit),
-    dream=FitOptions(DreamFit),
-    newton=FitOptions(BFGSFit),
-    #ps      = FitOptions(PSFit),
-    #pt      = FitOptions(PTFit),
-    #rl      = FitOptions(RLFit),
-    #snobfit = FitOptions(SnobFit),
-    lm=FitOptions(LevenbergMarquardtFit),
-)
+FITTERS = [
+    AmoebaFit,
+    DEFit,
+    DreamFit,
+    BFGSFit,
+    LevenbergMarquardtFit,
+    PSFit,
+    PTFit,
+    RLFit,
+    SnobFit,
+    ]
 
-FIT_DEFAULT = 'amoeba'
+FIT_AVAILABLE_IDS = [f.id for f in FITTERS]
+
+
+FIT_ACTIVE_IDS = [
+    AmoebaFit.id,
+    DEFit.id,
+    DreamFit.id,
+    BFGSFit.id,
+    LevenbergMarquardtFit.id,
+    ]
+
+FIT_DEFAULT_ID = AmoebaFit.id
+
+assert FIT_DEFAULT_ID in FIT_ACTIVE_IDS
+assert all(f in FIT_AVAILABLE_IDS for f in FIT_ACTIVE_IDS)

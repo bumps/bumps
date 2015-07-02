@@ -184,6 +184,7 @@ def _check_entropy(D, seed=1, N=10000, N_entropy=10000, N_norm=2500):
     assert abs(S - D.entropy()/LN2) < Serr
 
 def test():
+    """check entropy estimates from known distributions"""
     from scipy import stats
     _check_entropy(stats.norm(100,8), N=2000)
     _check_entropy(stats.norm(100,8), N=12000)

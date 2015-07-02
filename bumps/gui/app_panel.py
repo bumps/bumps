@@ -47,7 +47,7 @@ from .parameter_view import ParameterView
 from .log_view import LogView
 from .convergence_view import ConvergenceView
 from .uncertainty_view import CorrelationView, UncertaintyView, TraceView, ModelErrorView
-from .fit_dialog import OpenFitOptions
+from .fit_dialog import UpdateFitOptions
 from .fit_thread import (FitThread, EVT_FIT_PROGRESS, EVT_FIT_COMPLETE)
 from .util import nice
 from . import signal
@@ -107,6 +107,7 @@ class AppPanel(wx.Panel):
         EVT_FIT_PROGRESS(self, self.OnFitProgress)
         EVT_FIT_COMPLETE(self, self.OnFitComplete)
         self.fit_thread = None
+        self.fit_config = None
 
     def init_menubar(self, frame):
         """
@@ -400,7 +401,11 @@ class AppPanel(wx.Panel):
             self.save_results(path)
 
     def OnFitOptions(self, event):
-        OpenFitOptions()
+        # If there is an error here, it is because fit_config was not set
+        # when the panel was created.  Since this will never happen, we
+        # won't put in a runtime check.  Option processing happens in
+        # gui_app.MainApp.after_show as of this writing.
+        UpdateFitOptions(self, self.fit_config)
 
     def OnFitStart(self, event):
         self.uncertainty_state = False
@@ -412,7 +417,8 @@ class AppPanel(wx.Panel):
             raise ValueError ("Problem has no fittable parameters")
 
         # Start a new thread worker and give fit problem to the worker.
-        fitopts = fitters.FIT_OPTIONS[fitters.FIT_DEFAULT]
+        fitclass = self.fit_config.selected_fitter
+        options = self.fit_config.selected_values
         self.fitLock = threading.Lock()
         self.fitAbort = 0
         
@@ -421,8 +427,8 @@ class AppPanel(wx.Panel):
         self.fit_thread = FitThread(win=self, fitLock=self.fitLock,
                                     abort_test=abort_test,
                                     problem=self.model,
-                                    fitclass=fitopts.fitclass,
-                                    options=fitopts.options)
+                                    fitclass=fitclass,
+                                    options=options)
         self.sb.SetStatusText("Fit status: Running", 3)
 
     def OnFitStop(self, event):

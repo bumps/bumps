@@ -38,13 +38,14 @@ import numpy as np
 # np.seterr(all="raise")
 
 from . import fitters
-from .fitters import FIT_OPTIONS, FitDriver, StepMonitor, ConsoleMonitor, nllf_scale
+from .fitters import FitDriver, StepMonitor, ConsoleMonitor, nllf_scale
 from .mapper import MPMapper, AMQPMapper, MPIMapper, SerialMapper
 from .formatnum import format_uncertainty
 from . import util
 from . import initpop
 from . import __version__
 from . import plugin
+from . import options
 
 from .util import pushdir
 
@@ -260,259 +261,6 @@ def start_remote_fit(problem, options, queue, notify):
     job = server.submit(request)
     return job
 
-
-# ==== option parser ====
-
-class ParseOpts:
-    """
-    Options parser.
-
-    Subclass should define *MINARGS*, *FLAGS*, *VALUES* and *USAGE*.
-
-    *MINARGS* is the minimum number of positional arguments.
-
-    *FLAGS* is a set of arguments that may be present or absent.
-
-    *VALUES* is a set of arguments that take values.  Value checking
-    can be done in the setter for each argument in the set.  Default
-    values should be set in the corresponding object attribute.
-
-    *USAGE* is the help string to display for option "help".
-
-    The constructor will invoke the command line parser, leaving the
-    values set by the command line as attribute values.   Flag options
-    will be True or False.
-    """
-    MINARGS = 0
-    FLAGS = set()
-    VALUES = set()
-    USAGE = ""
-
-    def __init__(self, args):
-        self._parse(args)
-
-    def _parse(self, args):
-        flagargs = [v
-                    for v in sys.argv[1:]
-                    if v.startswith('--') and not '=' in v]
-        flags = set(v[2:] for v in flagargs)
-        if 'help' in flags or '-h' in sys.argv[1:] or '-?' in sys.argv[1:]:
-            print(self.USAGE)
-            sys.exit()
-        unknown = flags - self.FLAGS
-        if any(unknown):
-            raise ValueError("Unknown options --%s.  Use -? for help."
-                             % ", --".join(unknown))
-        for f in self.FLAGS:
-            setattr(self, f, (f in flags))
-
-        valueargs = [v
-                     for v in sys.argv[1:]
-                     if v.startswith('--') and '=' in v]
-        for f in valueargs:
-            idx = f.find('=')
-            name = f[2:idx]
-            value = f[idx + 1:]
-            if name not in self.VALUES:
-                raise ValueError(
-                    "Unknown option --%s. Use -? for help." % name)
-            setattr(self, name, value)
-
-        positionargs = [v for v in sys.argv[1:] if not v.startswith('-')]
-        self.args = positionargs
-
-
-class BumpsOpts(ParseOpts):
-    """
-    Option parser for bumps.
-    """
-    MINARGS = 1
-    FLAGS = set(("preview", "chisq", "profiler", "timer",
-                 "simulate", "simrandom", "shake",
-                 "worker", "batch", "overwrite", "parallel", "stepmon",
-                 "cov", "entropy", "remote", "staj", "edit", "mpi", "keep_best",
-                 # passed in when app is a frozen image
-                 "multiprocessing-fork",
-                 # passed when not running bumps, but instead using a
-                 # bundled application as a python distribution with domain
-                 # specific models pre-defined.
-                 "i",
-                 ))
-    VALUES = set(("plot", "store", "resume", "fit", "noise", "seed", "pars",
-                  "resynth", "transport", "notify", "queue", "time",
-                  "m", "c", "p",
-                  ))
-    # Add in parameters from the fitters
-    VALUES |= set(fitters.FitOptions.FIELDS.keys())
-    pars = None
-    notify = ""
-    queue = "http://reflectometry.org/queue"
-    resynth = "0"
-    noise = "5"
-    starts = "1"
-    seed = ""
-    time = "inf"
-    PLOTTERS = "linear", "log", "residuals"
-    USAGE = """\
-Usage: bumps [options] modelfile [modelargs]
-
-The modelfile is a Python script (i.e., a series of Python commands)
-which sets up the data, the models, and the fittable parameters.
-The model arguments are available in the modelfile as sys.argv[1:].
-Model arguments may not start with '-'.
-
-Options:
-
-    --preview
-        display model but do not perform a fitting operation
-    --pars=filename
-        initial parameter values; fit results are saved as <modelname>.par
-    --plot=log      [%(plotter)s]
-        type of plot to display
-    --simulate
-        simulate a dataset using the initial problem parameters
-    --simrandom
-        simulate a dataset using random problem parameters
-    --shake
-        set random parameters before fitting
-    --noise=5%%
-        percent noise to add to the simulated data
-    --seed=integer
-        random number seed
-    --cov
-        compute the covariance matrix for the model when done
-    --entropy
-        compute the entropy for the model when done [dream only]
-    --staj
-        output staj file when done
-    --edit
-        start the gui
-
-    --store=path
-        output directory for plots and models
-    --overwrite
-        if store already exists, replace it
-    --resume=path    [dream]
-        resume a fit from previous stored state
-    --parallel
-        run fit using multiprocessing for parallelism
-    --mpi
-        run fit using MPI for parallelism (use command "mpirun -n cpus ...")
-    --batch
-        batch mode; don't show plots after fit
-    --remote
-        queue fit to run on remote server
-    --notify=user@email
-        remote fit notification
-    --queue=http://reflectometry.org
-        remote job queue
-    --time=inf
-        run for a maximum number of hours
-
-    --fit=amoeba    [%(fitter)s]
-        fitting engine to use; see manual for details
-    --steps=400    [%(fitter)s]
-        number of fit iterations after any burn-in time
-    --xtol=1e-4     [de, amoeba]
-        minimum population diameter
-    --ftol=1e-4     [de, amoeba]
-        minimum population flatness
-    --pop=10        [dream, de, rl, ps]
-        population size
-    --burn=100      [dream, pt]
-        number of burn-in iterations before accumulating stats
-    --thin=1        [dream]
-        number of fit iterations between steps
-    --nT=25
-    --Tmin=0.1
-    --Tmax=10       [pt]
-        temperatures vector; use a higher maximum temperature and a larger
-        nT if your fit is getting stuck in local minima
-    --CR=0.9        [de, rl, pt]
-        crossover ratio for population mixing
-    --starts=1      [%(fitter)s]
-        number of times to run the fit from random starting points.
-    --keep_best
-        when running with multiple starts, restart from a point near the
-        last minimum rather than using a completely random starting point.
-    --init=eps      [dream]
-        population initialization method:
-          eps:    ball around initial parameter set
-          lhs:    latin hypercube sampling
-          cov:    normally distributed according to covariance matrix
-          random: uniformly distributed within parameter ranges
-    --stepmon
-        show details for each step
-    --resynth=0
-        run resynthesis error analysis for n generations
-
-    --timer
-        run the model --steps times in order to estimate total run time.
-    --profiler
-        run the python profiler on the model; use --steps to run multiple
-        models for better statistics
-    --chisq
-        print the model description and chisq value and exit
-    -m/-c/-p command
-        run the python interpreter with bumps on the path:
-            m: command is a module such as bumps.cli, run as __main__
-            c: command is a python one-line command
-            p: command is the name of a python script
-    -i
-        start the interactive interpreter
-    -?/-h/--help
-        display this help
-""" % {'fitter': '|'.join(sorted(FIT_OPTIONS.keys())),
-       'plotter': '|'.join(PLOTTERS),
-       }
-
-#    --transport=mp  {amqp|mp|mpi}
-#        use amqp/multiprocessing/mpi for parallel evaluation
-
-    _plot = 'log'
-
-    def _set_plot(self, value):
-        if value not in set(self.PLOTTERS):
-            raise ValueError("unknown plot type %s; use %s"
-                             % (value, "|".join(self.PLOTTERS)))
-        self._plot = value
-    plot = property(fget=lambda self: self._plot, fset=_set_plot)
-    store = None
-    resume = None
-    _fitter = fitters.FIT_DEFAULT
-
-    def _set_fitter(self, value):
-        if value not in set(FIT_OPTIONS.keys()):
-            raise ValueError("unknown fitter %s; use %s"
-                             % (value, "|".join(sorted(FIT_OPTIONS.keys()))))
-        self._fitter = value
-    fit = property(fget=lambda self: self._fitter, fset=_set_fitter)
-    TRANSPORTS = 'amqp', 'mp', 'mpi', 'celery'
-    _transport = 'mp'
-
-    def _set_transport(self, value):
-        if value not in self.TRANSPORTS:
-            raise ValueError("unknown transport %s; use %s"
-                             % (value, "|".join(self.TRANSPORTS)))
-        self._transport = value
-    transport = property(
-        fget=lambda self: self._transport, fset=_set_transport)
-    meshsteps = 40
-
-
-def getopts():
-    """
-    Process command line options.
-
-    Option values will be stored as attributes in the returned object.
-    """
-    opts = BumpsOpts(sys.argv)
-    opts.resynth = int(opts.resynth)
-    opts.seed = int(opts.seed) if opts.seed != "" else None
-    fitters.FIT_DEFAULT = opts.fit
-    FIT_OPTIONS[opts.fit].set_from_cli(opts)
-    return opts
-
 # ==== Main ====
 
 
@@ -688,7 +436,7 @@ def main():
         from IPython import start_ipython
         sys.exit(start_ipython())
 
-    opts = getopts()
+    opts = options.getopts()
     setup_logging()
 
     if opts.edit:
@@ -726,7 +474,6 @@ def main():
         mapper.start_worker(problem)
         return
 
-    fitopts = FIT_OPTIONS[opts.fit]
     if np.isfinite(float(opts.time)):
         import time
         start_time = time.clock()
@@ -734,8 +481,10 @@ def main():
         abort_test=lambda: time.clock() >= stop_time
     else:
         abort_test=lambda: False
+
     fitdriver = FitDriver(
-        fitopts.fitclass, problem=problem, abort_test=abort_test, **fitopts.options)
+        opts.fit_config.selected_fitter, problem=problem, abort_test=abort_test,
+        **opts.fit_config.selected_values)
 
     if opts.timer:
         run_timer(mapper.start_mapper(problem, opts.args),

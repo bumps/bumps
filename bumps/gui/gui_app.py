@@ -56,7 +56,9 @@ from StringIO import StringIO
 
 import wx
 
-from .. import plugin, cli
+from bumps import plugin
+from bumps import cli
+from bumps import options as bumps_options
 
 from .about import APP_TITLE
 from .utilities import resource_dir, resource, log_time
@@ -124,8 +126,7 @@ class MainApp(wx.App):
         if LOGTIM: log_time("Starting to build the GUI application")
 
         # Can't delay matplotlib configuration any longer
-        from bumps.cli import config_matplotlib
-        config_matplotlib('WXAgg')
+        cli.config_matplotlib('WXAgg')
 
         from .app_frame import AppFrame
         self.frame = AppFrame(parent=None, title=APP_TITLE,
@@ -221,12 +222,11 @@ class MainApp(wx.App):
 
     def after_show(self):
         from . import signal
-        from .. import cli
         sys.excepthook = excepthook
 
         # Process options
-        cli.BumpsOpts.FLAGS |= set(('inspect','syspath'))
-        opts = cli.getopts()
+        bumps_options.BumpsOpts.FLAGS |= set(('inspect','syspath'))
+        opts = bumps_options.getopts()
 
         # For wx debugging, load the wxPython Widget Inspection Tool if requested.
         # It will cause a separate interactive debugger window to be displayed.
@@ -239,11 +239,12 @@ class MainApp(wx.App):
                 print("%5d  %s" %(i, p))
 
         # Put up the initial model
-        model,output = initial_model(opts)
+        model, output = initial_model(opts)
         if not model: model = plugin.new_model()
         signal.log_message(message=output)
         #self.frame.panel.show_view('log')
         self.frame.panel.set_model(model=model)
+        self.frame.panel.fit_config = opts.fit_config
 
         # When setting initial aui panel split:
         #     mac layout fails if frame is already shown
@@ -253,7 +254,7 @@ class MainApp(wx.App):
         self.frame.panel.Layout()
         self.frame.panel.aui.Split(0, wx.TOP)
         if isMac: self.frame.Show()
-
+        print "ready to go"
 
 
 #==============================================================================
@@ -308,4 +309,5 @@ def main():
         sys.exit()
 
 # Allow "python -m bumps.gui.gui_app options..."
-if __name__ == "__main__": main()
+if __name__ == "__main__":
+    main()
