@@ -789,6 +789,18 @@ class MCMCDraw(object):
         drawn = self.draw(**kw)
         return drawn.points, drawn.logp
 
+    def entropy(self, **kw):
+        """
+        Return entropy estimate and uncertainty from an MCMC draw.
+
+        See :func:`entropy.entropy` for details.
+        """
+        from .entropy import entropy
+
+        # Get the sample from the state
+        drawn = self.draw()
+        return entropy(drawn.points, drawn.logp, **kw)
+
     def draw(self, portion=1, vars=None, selection=None):
         """
         Return a sample from the posterior distribution.

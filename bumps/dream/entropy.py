@@ -22,7 +22,7 @@ from numpy.random import permutation
 LN2 = log(2)
 
 
-def scipy_stats_density(sample_points, evaluation_points):
+def scipy_stats_density(sample_points, evaluation_points):  # pragma: no cover
     """
     Estimate the probability density function from which a set of sample
     points was drawn and return the estimated density at the evaluation points.
@@ -79,11 +79,14 @@ def sklearn_density(sample_points, evaluation_points):
 density = sklearn_density
 
 
-def entropy(state, N_entropy=10000, N_norm=2500):
+def entropy(points, logp, N_entropy=10000, N_norm=2500):
     r"""
-    Return entropy estimate and uncertainty from an MCMC draw.
+    Return entropy estimate and uncertainty from a random sample.
 
-    *state* is the MCMC state vector, with sample points and log likelihoods.
+    *points* is a set of draws from an underlying distribution, as returned
+    by a Markov chain Monte Carlo process for example.
+
+    *logp* is the log-likelihood for each draw.
 
     *N_norm* is the number of points $k$ to use to estimate the posterior
     density normalization factor $P(D) = \hat N$, converting
@@ -96,11 +99,6 @@ def entropy(state, N_entropy=10000, N_norm=2500):
     $\hat S = - \int P(M|D) \log P(M|D)$ from the normalized log likelihood
     values.
     """
-    # Get the sample from the state
-    points, logp = state.sample()
-    return _entropy(points, logp, N_entropy=N_entropy, N_norm=N_norm)
-
-def _entropy(points, logp, N_entropy=10000, N_norm=2500):
 
     # Use a random subset to estimate density
     if N_norm >= len(logp):
@@ -148,40 +146,48 @@ def _entropy(points, logp, N_entropy=10000, N_norm=2500):
     eval_logp -= log_scale
 
     # Compute entropy and uncertainty in nats
-    frac = exp(eval_logp)/density(norm_points, entropy_points)
+    rho = density(norm_points, entropy_points)
+    frac = exp(eval_logp)/rho
     n_est, n_err = mean(frac), std(frac)
-    s_est = (-mean(eval_logp) + log(n_est))
+    s_est = log(n_est) - mean(eval_logp)
     s_err = n_err/n_est
-    #print(n_est, n_err, s_est, s_err)
+    #print(n_est, n_err, s_est/LN2, s_err/LN2)
     #import pylab
-    #pylab.hist(points[:,0], bins=50, normed=True)
     #idx = pylab.argsort(entropy_points[:,0])
-    #pylab.plot(entropy_points[idx,0], density(norm_points, entropy_points[idx]))
+    ##pylab.plot(entropy_points[idx,0], frac[idx])
+    #pylab.hist(points[:,0], bins=50, normed=True)
+    #pylab.plot(entropy_points[idx,0], rho[idx])
+    #pylab.plot(entropy_points[idx,0], exp(eval_logp+log_scale)[idx])
     #pylab.show()
 
     # return entropy and uncertainty in bits
     return s_est/LN2, s_err/LN2
 
 
-def _check_entropy(D):
+def _check_entropy(D, seed=1, N=10000, N_entropy=10000, N_norm=2500):
     """
     Check if entropy from a random draw matches analytic entropy.
     """
-    N=10000
-    theta = D.rvs(size=(N,1) if getattr(D, 'dim', 1) else N)
-    logp_theta = D.logpdf(theta)
-    logp_theta += 27  # throw in an arbitrary scale factor
-    S, Serr = _entropy(theta, logp_theta)
-    print(S, Serr, D.entropy()/LN2)
+    state = np.random.get_state()
+    np.random.seed(seed)
+    try:
+        theta = D.rvs(size=N)
+        logp_theta = D.logpdf(theta)
+        logp_theta += 27  # result should be independent of scale factor
+        if getattr(D, 'dim', 1) == 1:
+            theta = theta.reshape(N, 1)
+        S, Serr = entropy(theta, logp_theta, N_entropy=N_entropy, N_norm=N_norm)
+    finally:
+        np.random.set_state(state)
+    #print "entropy", S, Serr, "target", D.entropy()/LN2
     assert Serr < 0.05*S
     assert abs(S - D.entropy()/LN2) < Serr
 
 def test():
     from scipy import stats
-    _check_entropy(stats.norm(100,8))
+    _check_entropy(stats.norm(100,8), N=2000)
+    _check_entropy(stats.norm(100,8), N=12000)
     _check_entropy(stats.multivariate_normal(cov=np.diag([1,12**2,0.2**2])))
-test.__test__ = False  # Suppress nosetests until test is fixed
 
-
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     test()

@@ -622,7 +622,7 @@ class DreamModel(MCMCModel):
 class DreamFit(FitBase):
     name = "DREAM"
     settings = [('steps', 400), ('burn', 100), ('pop', 10),
-                ('init', 'eps'), ('thin', 1),  #('entropy', False),
+                ('init', 'eps'), ('thin', 1),
                ]
 
     def __init__(self, problem):
@@ -659,26 +659,14 @@ class DreamFit(FitBase):
         x, fx = self.state.best()
 
         # Check that the last point is the best point
-        points, logp = self.state.sample()
-        assert logp[-1] == fx
+        #points, logp = self.state.sample()
+        #assert logp[-1] == fx
         #print(points[-1], x)
-        assert all(points[-1, i] == xi for i, xi in enumerate(x))
-
-        if options.get('entropy', False):
-            # TODO: need a better way to display entropy
-            import logging
-            from .formatnum import format_uncertainty
-            logging.info("Calculating entropy...")
-            S, dS = self.entropy()
-            logging.info("Entropy: %s bits" % format_uncertainty(S, dS))
-            #import sys; sys.exit()
-
+        #assert all(points[-1, i] == xi for i, xi in enumerate(x))
         return x, -fx
 
     def entropy(self):
-        from .dream.entropy import entropy
-        S, dS = entropy(self.state, N_entropy=10000, N_norm=2500)
-        return S, dS
+        return self.state.entropy()
 
     def _monitor(self, state, pop, logp):
         # Get an early copy of the state
@@ -934,7 +922,6 @@ class FitOptions(object):
         Tmin = ("Min temperature", float),
         Tmax = ("Max temperature", float),
         radius = ("Simplex radius", float),
-        entropy = ("Calculate entropy", yesno),
     )
 
     def __init__(self, fitclass):

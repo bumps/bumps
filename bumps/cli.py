@@ -40,6 +40,7 @@ import numpy as np
 from . import fitters
 from .fitters import FIT_OPTIONS, FitDriver, StepMonitor, ConsoleMonitor, nllf_scale
 from .mapper import MPMapper, AMQPMapper, MPIMapper, SerialMapper
+from .formatnum import format_uncertainty
 from . import util
 from . import initpop
 from . import __version__
@@ -329,7 +330,7 @@ class BumpsOpts(ParseOpts):
     FLAGS = set(("preview", "chisq", "profiler", "timer",
                  "simulate", "simrandom", "shake",
                  "worker", "batch", "overwrite", "parallel", "stepmon",
-                 "cov", "remote", "staj", "edit", "mpi", "keep_best",
+                 "cov", "entropy", "remote", "staj", "edit", "mpi", "keep_best",
                  # passed in when app is a frozen image
                  "multiprocessing-fork",
                  # passed when not running bumps, but instead using a
@@ -380,6 +381,8 @@ Options:
         random number seed
     --cov
         compute the covariance matrix for the model when done
+    --entropy
+        compute the entropy for the model when done [dream only]
     --staj
         output staj file when done
     --edit
@@ -420,8 +423,6 @@ Options:
         number of burn-in iterations before accumulating stats
     --thin=1        [dream]
         number of fit iterations between steps
-    --entropy=no    [dream]
-        compute entropy from MCMC chain
     --nT=25
     --Tmin=0.1
     --Tmax=10       [pt]
@@ -784,6 +785,10 @@ def main():
         save_best(fitdriver, problem, best)
         if opts.cov:
             print(problem.cov())
+        if opts.entropy and hasattr(fitdriver.fitter, 'entropy'):
+            print("Calculating entropy...")
+            S, dS = fitdriver.fitter.entropy()
+            print("Entropy: %s bits" % format_uncertainty(S, dS))
         mapper.stop_mapper(fitdriver.mapper)
         beep()
         if not opts.batch and not opts.mpi:
