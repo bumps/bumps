@@ -115,7 +115,6 @@ def lhs_init(n, initial, bounds, use_point=False):
             # Assign random value within each bin
             p = (idx + ran[:, j]) / n
             s[:, j] = xmin[j] + p * (xmax[j] - xmin[j])
-
     return s
 
 

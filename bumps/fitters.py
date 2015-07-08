@@ -449,7 +449,38 @@ class PTFit(FitBase):
                      population_points=P, population_values=E)
         return True
 
+class PTFFit(FitBase):
+    """
+    Parallel tempering optimizer (Feedback).
+    """
+    name = "Parallel Tempering"
+    settings = [('steps', 1000), ('nT', 25), ('CR', 0.9),
+                ('burn', 4000), ('Tmin', 0.1), ('Tmax', 10)]
 
+    def solve(self, monitors=None, mapper=None, **options):
+        _fill_defaults(options, self.settings)
+        # TODO: no mapper??
+        from .partemp_feedback import parallel_tempering_feedback
+        self._update = MonitorRunner(problem=self.problem,
+                                     monitors=monitors)
+        t = np.logspace(np.log10(options['Tmin']),
+                           np.log10(options['Tmax']),
+                           options['nT'])
+        history = parallel_tempering_feedback(nllf=self.problem.nllf,
+                                     p=self.problem.getp(),
+                                     bounds=self.problem.bounds(),
+                                     # logfile="partemp.dat",
+                                     T=t,
+                                     CR=options['CR'],
+                                     steps=options['steps'],
+                                     burn=options['burn'],
+                                     monitor=self._monitor)
+        return history.best_point, history.best
+
+    def _monitor(self, step, x, fx, P, E):
+        self._update(step=step, point=x, value=fx,
+                     population_points=P, population_values=E)
+        return True
 class AmoebaFit(FitBase):
     """
     Nelder-Mead simplex optimizer.
@@ -621,7 +652,7 @@ class DreamModel(MCMCModel):
 
 class DreamFit(FitBase):
     name = "DREAM"
-    settings = [('steps', 400), ('burn', 100), ('pop', 10),
+    settings = [('steps', 400), ('burn', 100), ('pop', 10), ('subSpaces', 10),
                 ('init', 'eps'), ('thin', 1), #('entropy', False),
                ]
 
@@ -649,7 +680,8 @@ class DreamFit(FitBase):
                               burn=pop_size * options['burn'],
                               thinning=options['thin'],
                               monitor=self._monitor,
-                              DE_noise=1e-6)
+                              DE_noise=1e-6,
+                              subSpaces = options['subSpaces'])
 
         self.state = sampler.sample(state=self.state, abort_test=abort_test)
         self.state.mark_outliers()
@@ -924,6 +956,7 @@ class FitOptions(object):
         xtol = ("x tolerance", float),
         ftol = ("f(x) tolerance", float),
         stop = ("Stopping criteria", str),
+        subSpaces = ("Number of complexes", int),
         thin = ("Thinning", int),
         burn = ("Burn-in Steps", int),
         pop = ("Population", float),
@@ -959,10 +992,11 @@ FIT_OPTIONS = dict(
     de=FitOptions(DEFit),
     dream=FitOptions(DreamFit),
     newton=FitOptions(BFGSFit),
-    #ps      = FitOptions(PSFit),
-    #pt      = FitOptions(PTFit),
-    #rl      = FitOptions(RLFit),
-    #snobfit = FitOptions(SnobFit),
+    ps      = FitOptions(PSFit),
+    pt      = FitOptions(PTFit),
+    ptf     = FitOptions(PTFFit),
+    rl      = FitOptions(RLFit),
+    snobfit = FitOptions(SnobFit),
     lm=FitOptions(LevenbergMarquardtFit),
 )
 
