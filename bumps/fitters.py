@@ -449,6 +449,7 @@ class PTFit(FitBase):
                      population_points=P, population_values=E)
         return True
 
+
 class PTFFit(FitBase):
     """
     Parallel tempering optimizer (Feedback).
@@ -456,6 +457,12 @@ class PTFFit(FitBase):
     name = "Parallel Tempering"
     settings = [('steps', 1000), ('nT', 25), ('CR', 0.9),
                 ('burn', 4000), ('Tmin', 0.1), ('Tmax', 10)]
+
+    def __init__(self, problem):
+        self.history = None
+        self.update = None
+        self.problem = problem
+        self.labels = self.problem.labels()
 
     def solve(self, monitors=None, mapper=None, **options):
         _fill_defaults(options, self.settings)
@@ -466,21 +473,28 @@ class PTFFit(FitBase):
         t = np.logspace(np.log10(options['Tmin']),
                            np.log10(options['Tmax']),
                            options['nT'])
-        history = parallel_tempering_feedback(nllf=self.problem.nllf,
+
+        self.history = parallel_tempering_feedback(nllf=self.problem.nllf,
                                      p=self.problem.getp(),
                                      bounds=self.problem.bounds(),
-                                     # logfile="partemp.dat",
+                                     logfile="partemp.dat",
                                      T=t,
                                      CR=options['CR'],
                                      steps=options['steps'],
                                      burn=options['burn'],
-                                     monitor=self._monitor)
-        return history.best_point, history.best
+                                     monitor=self._monitor,
+                                     labels=self.labels)
+        return self.history.best_point, self.history.best
 
     def _monitor(self, step, x, fx, P, E):
         self._update(step=step, point=x, value=fx,
                      population_points=P, population_values=E)
         return True
+
+    def plot(self, output_path=None):
+        self.history.plot(output_path)
+
+
 class AmoebaFit(FitBase):
     """
     Nelder-Mead simplex optimizer.
@@ -652,7 +666,7 @@ class DreamModel(MCMCModel):
 
 class DreamFit(FitBase):
     name = "DREAM"
-    settings = [('steps', 400), ('burn', 100), ('pop', 10), ('subSpaces', 10),
+    settings = [('steps', 400), ('burn', 100), ('pop', 10),
                 ('init', 'eps'), ('thin', 1), #('entropy', False),
                ]
 
@@ -680,8 +694,7 @@ class DreamFit(FitBase):
                               burn=pop_size * options['burn'],
                               thinning=options['thin'],
                               monitor=self._monitor,
-                              DE_noise=1e-6,
-                              subSpaces = options['subSpaces'])
+                              DE_noise=1e-6)
 
         self.state = sampler.sample(state=self.state, abort_test=abort_test)
         self.state.mark_outliers()
