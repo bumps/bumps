@@ -17,35 +17,32 @@ from numpy import asarray, zeros, ones, exp, diff, std, inf, \
 from numpy.linalg import norm
 from numpy.random import rand, randn, randint, permutation
 from scipy.stats import linregress
-
+from pylab import plot, figure, suptitle, legend, semilogx
+from math import log
 def every_ten(step, x, fx, P, E):
     if step % 10:
         print(step, fx[step], x[step])
 
-def find_freq(temp, direction, histogram, f):
+def find_freq(temp, direction, histogram):
     '''
     Determines the fraction of chains which has visited a certain extreme.
-    
+
     :Parameters:
-    
+
     *Temp* : int
         The index of the specific temperature at which you are evalutating at.
-    
+
     *Direction* : int
         The extreme that the particles are diffusing to.
         *0* for up
         *1* for down
-        
+
     *Histogram* : array
         The histogram object of the current simulation
     '''
-    try:
-        value = histogram[temp][direction]/sum(histogram[temp])
-    except RuntimeWarning:
-        pass
+    value = histogram[temp][direction]/sum(histogram[temp])
     if np.isnan(value):
         value = 0
-    f.write("value: " + str(value) + " top: " + str(histogram[temp][direction]) + " bottom: " + str(sum(histogram[temp])) + "\n")
     return value
 
 def update_histogram(histogram, labels):
@@ -63,10 +60,10 @@ def update_labels(labels):
     labels[-2] = 2
     return labels
 
-def find_dif(T, histogram, f):
+def find_dif(T, histogram):
     freq = []
     for i in range(0, len(T)):
-        freq.append(find_freq(i, 0, histogram, f))
+        freq.append(find_freq(i, 0, histogram))
     slope, intercept, r_value, p_value, std_err = linregress(np.linspace(0, len(freq) - 1, len(freq)), freq)
     return slope
 
@@ -74,7 +71,6 @@ def find_constant(T, dif):
     total = 0
     for i in range(len(T) - 1):
         total += prob_dist(i, T, dif)*(T[i + 1] - T[i])
-        # print(total)
     return 1/total
 
 
@@ -108,8 +104,7 @@ def parallel_tempering_feedback(nllf, p, bounds, T=None, steps=1000,
                        CR=0.9, burn=1000,
                        monitor=every_ten,
                        logfile=None,
-                       labels=None):
-    f = open("data.txt","w")
+                       labels=None, mapper=None):
     r"""
     Perform a MCMC walk using multiple temperatures in parallel.
 
@@ -170,35 +165,92 @@ def parallel_tempering_feedback(nllf, p, bounds, T=None, steps=1000,
     stepper = Stepper(bounds, history)
     dT = diff(1. / asarray(T)) # Difference in temperatures
     P = asarray([p] * N)   # Points
-    E = ones(N) * nllf(p)  # Values   
+    E = ones(N) * nllf(p)  # Values
     labels = update_labels(zeros(N)) # 0 neither, 1 up, 2 down
     swap_history = asarray(np.linspace(0, N - 1, N))
     histograms = np.array([[0,0] for i in range(N)]) #0 up, 1 down
-    
+
     history.save(step=0, temperature=T, energy=E, point=P, swap_history=swap_history, labels=labels)
     total_accept = zeros(N) # Histogram of accept
     total_swap = zeros(N - 1) # Histogram of swap
-    swap_increment = 100
-    swap_step = swap_increment
+
+    swap_frequency = zeros(N)
+    acceptance_frequency = zeros(N)
+    step_size = zeros(N)
+    energy_change = zeros(N)
+    figure()
+    scale = 1
+    scale_history = [scale]
+    count = 1
+    accept_optimize = 200
+    swap_increment = accept_optimize*2
+    temperature_optimize = swap_increment
+    acceptance_history = []
+    step_history = []
+    avg_accept = []
     for step in range(1, steps + burn):
-        if step == swap_step:
-            f.write("Step: " + str(step) + "\n")
-            f.write("Histograms \n" + str(histograms) + "\n")
-            f.write("Temp \n" + str(T) + "\n")
+        if step == (steps+burn - 1):
+            suptitle("Acceptance")
+            legend()
+            figure()
+            plot(step_history, acceptance_history, ".")
+            suptitle("Median Acceptance")
+            figure()
+            plot(step_history, avg_accept, ".")
+            suptitle("Average Acceptance")
+            figure()
+            plot(T, step_size/step, '.')
+            suptitle("Step")
+            figure()
+            plot(T, energy_change/step, '.')
+            suptitle("Energy")
+            figure()
+            plot(np.linspace(0, len(scale_history) - 1, len(scale_history)), scale_history, '.')
+            suptitle("Scale")
+            figure()
 
-            dif = find_dif(T, histograms, f)
-            constant = find_constant(T, dif)
-            T = optimize_temperature(T, constant, dif)
+        if step == accept_optimize:
+            # Scale optimizer
+            scale *= .25/np.average(acceptance_frequency/swap_increment)
+            scale_history.append(scale)
+            semilogx(T, acceptance_frequency/swap_increment, hold=True, label=str(count), marker=',')
+            acceptance_history.append(np.median(acceptance_frequency/swap_increment))
+            avg_accept.append(np.average(acceptance_frequency/swap_increment))
+            step_history.append(step)
 
-            f.write("constant: " + str(constant) + "\n")
-            f.write("dif: " + str(dif) + "\n")
-            f.write("New temp \n" + str(T) + "\n")
+            # Max temperature
+            # T[-1] = T[-2] + (T[-1] - T[-2]) * min(2, .4/(acceptance_frequency[-1]/swap_increment))
+            # T[0] = min(abs(T[1] - 0.01), T[0] * .1/(acceptance_frequency[0]/swap_increment))
 
-            dT = diff(1. / asarray(T))
+            # T = np.logspace(log(T[0], 10), log(T[-1], 10), N)
+            # print(T[0])
+            # print(T[1])
+            # Reset graphs
             histograms = np.array([[0,0] for i in range(N)])
             labels = update_labels(zeros(N))
 
-            swap_step += swap_increment
+            acceptance_frequency = zeros(N)
+            swap_frequency = zeros(N)
+
+
+            # Increment
+            accept_optimize += swap_increment
+            count += 1
+
+        # if False:
+        if step == temperature_optimize:
+            # Feedback exchange
+            dif = find_dif(T, histograms)
+            constant = find_constant(T, dif)
+            T = optimize_temperature(T, constant, dif)
+            dT = diff(1. / asarray(T))
+
+            # Reset Graphs
+            acceptance_frequency = zeros(N)
+            swap_frequency = zeros(N)
+
+            # Increment
+            temperature_optimize += swap_increment
 
 #       Take a step
         R = rand()
@@ -208,30 +260,44 @@ def parallel_tempering_feedback(nllf, p, bounds, T=None, steps=1000,
         assert norm(delta) != 0
         return p + delta
         '''
-        if step < 20 or R < 0.2:
-            #action = 'jiggle'
-            Pnext = [stepper.jiggle(p, 0.01 * t / T[-1]) for p, t in zip(P, T)]
-        elif R < 0.4:
-            #action = 'direct'
-            Pnext = [stepper.direct(p, i) for i, p in enumerate(P)]
+        # delta = [stepper.jiggle(p, 0.01 * (t / T[-1])) for p, t in zip(P, T)]
+        if step < 20 or R < 0.4:
+            action = 'jiggle'
+            delta = [stepper.jiggle(p, 0.01 * t / T[-1]) for p, t in zip(P, T)]
+        elif R < 0.6:
+            action = 'direct'
+            delta = [stepper.direct(p, i) for i, p in enumerate(P)]
         else:
-            #action = 'diffev'
-            Pnext = [stepper.diffev(p, i, CR=CR) for i, p in enumerate(P)]
+            action = 'diffev'
+            delta = [stepper.diffev(p, i, CR=CR) for i, p in enumerate(P)]
 
         # Test constraints
+        Pnext = P + asarray(delta)/scale
         Pnext = asarray([bounder.apply(p) for p in Pnext])
-        
+        if(step > burn):
+            #print("Min", Pnext[0] - P[0])
+            #print("Max", Pnext[-1] - P[-1])
+            pass
+
         # Temperature dependent Metropolis update
-        Enext = asarray([nllf(p) for p in Pnext])
+        # Enext = asarray([nllf(p) for p in Pnext])
+        Enext = asarray(mapper(Pnext))
         accept = exp(-(Enext - E) / T) > rand(N)
         # print step,action
         # print "dP"," ".join("%.6f"%norm((pn-p)/stepper.step) for pn,p in zip(P,Pnext))
         # print "dE"," ".join("%.1f"%(en-e) for en,e in zip(E,Enext))
         # print "En"," ".join("%.1f"%e for e in Enext)
         # print "accept",accept
+        #print("T0 %12.2f %12.2f ... Tmax %12.2f %12.2f"%(Enext[0], (Enext[0] - E[0])/T[0] if Enext[0]>E[0] else 0,
+        #                                                 Enext[-1], (Enext[-1] - E[-1])/T[-1] if Enext[-1] > E[-1] else 0.),
+        #      action)
+        acceptance_frequency += accept
         E[accept] = Enext[accept]
         P[accept] = Pnext[accept]
-        total_accept += accept
+        if step > burn :
+            energy_change += Enext - E
+            step_size += np.abs(np.average(asarray(delta)/scale, axis=1))
+            total_accept += accept
         # print("point: \n", p)
         # Accumulate history for population based methods
         history.save(step, temperature=T, energy=E, point=P, swap_history=swap_history, labels=labels, changed=accept)
@@ -253,6 +319,8 @@ def parallel_tempering_feedback(nllf, p, bounds, T=None, steps=1000,
                     labels[i + 1], labels[i] = labels[i], labels[i + 1]
                     E[i + 1], E[i] = E[i], E[i + 1]
                     P[i + 1], P[i] = P[i] + 0, P[i + 1] + 0
+                    swap_frequency[i + 1] += 1
+                    swap_frequency[i] += 1
             total_swap += swap
             labels = update_labels(labels)
             histograms = update_histogram(histograms, labels)
@@ -272,8 +340,7 @@ def parallel_tempering_feedback(nllf, p, bounds, T=None, steps=1000,
                            for i in (3, 7, 11, -1)])
             total_accept *= 0
             total_swap *= 0
-            
-    f.close()
+
     return history
 
 
@@ -292,18 +359,30 @@ class History(object):
         # Track the optimum
         self.best = inf
         self.burn = burn
-        self.temperatures, self.points, self.energies, self.swap, self.norm_temperatures = [], [], [], [], []
+        self.temperatures, self.points, self.energies, self.swap, self.unnorm_points, self.unnorm_energy = [], [], [], [], [], []
         self.var_labels = var_labels
-        self.test = []
+        self.file = open("scale.txt", "w")
+        self.swap_hist = []
+        self.staggered_temp = []
+        self.slope = 0
+        self.intercept = 0
+    def swap_save(self, temp, value, slope, intercept):
+        self.swap_hist.extend(value)
+        self.staggered_temp.extend(temp)
+        self.intercept = intercept
+        self.slope = slope
 
     def save(self, step, temperature, energy, point, swap_history, labels, changed=None):
         if step > self.burn:
-            self.temperatures.append(temperature)
-            self.norm_temperatures.append(temperature[swap_history.argsort()])
-            self.points.append(point[swap_history.argsort()])
-            self.energies.append(energy[swap_history.argsort()])
-            self.swap.append(swap_history.argsort())
-            self.test.append(step)
+            swap = swap_history.argsort()
+            self.temperatures.append(temperature.tolist())
+            self.unnorm_points.append(point.tolist())
+            self.unnorm_energy.append(energy.tolist())
+
+            self.points.append(point[swap])
+            self.energies.append(energy[swap])
+
+            self.swap.append(swap)
 
         if changed is None:
             changed = ones(len(temperature), 'b')
@@ -350,24 +429,18 @@ class History(object):
     def plot(self, output_file=None):
         from pylab import plot, figure, semilogy, ylabel, xlabel, suptitle, gca, hist, subplot, legend, cm
         from dream import corrplot, views, stats
-
-        # # Temperature History
-        # figure()
-        # x = np.linspace(0, len(self.temperatures) - 1, len(self.temperatures))
-        # for i in range(len(self.temperatures[0])):
-        #     semilogy(x, map(lambda t: t[i], self.temperatures), hold=True)
-        # ylabel("Temperature")
-        # xlabel("Generation")
-        # suptitle("Temperature History")
+        from sklearn.preprocessing import normalize
+        from numpy import float64, array, delete
+        import math
 
         # Parameter History
         figure()
         gca().set_color_cycle([cm.gist_ncar(i) for i in np.linspace(0, 0.9, len(self.points[0][0]))])
-        x = np.linspace(0, len(self.points) - 1, len(self.points))
+        generation = np.linspace(0, len(self.points) - 1, len(self.points))
         graphs = []
         for i in range(len(self.points[0])):
             for j in range(len(self.points[0][0])-1, -1, -1):
-                graph, = plot(x, map(lambda p:p[i][j], self.points), hold=True, marker='.', markersize=1)
+                graph, = plot(generation, map(lambda p:p[i][j], self.points), hold=True, marker='.', markersize=1)
                 graphs.append(graph)
         group = [tuple(graphs[::i+1]) for i in range(len(self.points[0][0]))]
         legend(group, self.var_labels, markerscale=10)
@@ -377,9 +450,8 @@ class History(object):
 
         # Energy History
         figure()
-        # x = np.linspace(0, len(self.energies) - 1, len(self.energies))
         for i in range(len(self.energies[0])):
-            plot(x, map(lambda e:e[i]*-1, self.energies), ',', hold=True)
+            plot(generation, map(lambda e:e[i]*-1, self.energies), ',', hold=True)
         ylabel("Value")
         xlabel("Generation")
         suptitle("Log Likelihood")
@@ -387,79 +459,70 @@ class History(object):
         # Swap History
         figure()
         for i in range(len(self.swap[0])):
-            semilogy(x, map(lambda s,t:t[s[i]], self.swap, self.temperatures), hold=True)
+            semilogy(generation, map(lambda s,t:t[s[i]], self.swap, self.temperatures), hold=True)
         suptitle("Temperature Swap History")
         ylabel("Temperature")
         xlabel("Generation")
 
-        # 1D histograms
-        figure()
-        nw, nh = views.tile_axes(len(self.points[0][0]))
-        weights = (1./asarray(self.norm_temperatures)).flatten()
-        cbar = views._make_fig_colorbar(asarray(self.energies).flatten() * -1)
-        ONE_SIGMA = 1 - 2*0.15865525393145705
-        parameters = []
+        # figure()
+        # for i in range(len(self.unnorm_points[0][0])):
+        #     subplot(nw, nh, i+1)
+        #     parameter = []
+        #     map(lambda p:parameter.extend([t[i] for t in p]), self.unnorm_points)
+        #     semilogy(parameter, asarray(self.temperatures).flatten(), '.', hold=True)
+        # xlabel("Value")
+        # ylabel("Temperature")
 
-        f = open("Hello.txt", "w")
-        for i in range(len(self.points[0][0])):
-            parameter = []
-            map(lambda p:parameter.extend([t[i] for t in p][::-1]), self.points)
-            parameters.append(parameter)
-
-            subplot(nw, nh, i+1)
-            p95, p68, p0 = stats.credible_intervals(x=asarray(parameter), weights=weights, ci=[0.95, ONE_SIGMA, 0.0])
-            f.write("95 \n" + str(p95) + "\n 68 \n" + str(p68) + "\n  0 \n" + str(p0))
-            mean, std = stats.stats(x=asarray(parameter), weights=weights)
-            views._make_logp_histogram(asarray(parameter), asarray(self.energies).flatten() * -1, 30, p95, weights, cbar)
-            views._decorate_histogram(stats.VarStats(label=self.var_labels[i], index=i+1, p95=p95, p68=p68,
-                                      median=p0[0], mean=mean, std=std, best=self.best_point[i]))
-
-        suptitle("1/T")
-
-        # 1D histograms
-        figure()
-        nw, nh = views.tile_axes(len(self.points[0][0]))
-        weights = (asarray(self.norm_temperatures)).flatten()
-        cbar = views._make_fig_colorbar(asarray(self.energies).flatten() * -1)
-        parameters = []
-
-        for i in range(len(self.points[0][0])):
-            parameter = []
-            map(lambda p:parameter.extend([t[i] for t in p][::-1]), self.points)
-            parameters.append(parameter)
-
-            subplot(nw, nh, i+1)
-            p95, p68, p0 = stats.credible_intervals(x=asarray(parameter), weights=weights, ci=[0.95, ONE_SIGMA, 0.0])
-            mean, std = stats.stats(x=asarray(parameter), weights=weights)
-            views._make_logp_histogram(asarray(parameter), asarray(self.energies).flatten() * -1, 30, p95, weights, cbar)
-            views._decorate_histogram(stats.VarStats(label=self.var_labels[i], index=i+1, p95=p95, p68=p68,
-                                      median=p0[0], mean=mean, std=std, best=self.best_point[i]))
-        suptitle("T")
-
-        # 1D histograms
-        figure()
-        nw, nh = views.tile_axes(len(self.points[0][0]))
-        parameters = []
-        for i in range(len(self.points[0][0])):
-            parameter = []
-            map(lambda p:parameter.extend([t[i] for t in p]), self.points)
-            parameters.append(parameter)
-
-            subplot(nw, nh, i+1)
-            hist(parameter, 50, normed=1)
-            frame = gca()
-            frame.axes.get_yaxis().set_ticks([])
-
-        # 2D histograms
-        figure()
-        corrplot.Corr2d(parameters, bins=50, labels=self.var_labels).plot()
-        # for i in range(len(parameters) - 1):
-        #     for j in range(i + 1, len(parameters)):
-        #         subplot(len(parameters)-1, len(parameters)-1, i*(len(parameters)-1)+j)
-        #         hist2d(parameters[i], parameters[j], num_bins)
-        #         frame = gca()
-        #         frame.axes.get_yaxis().set_ticks([])
-        #         frame.axes.get_xaxis().set_ticks([])
+        # # 1D histograms
+        # figure()
+        # nw, nh = views.tile_axes(len(self.unnorm_points[0][0]))
+        # weights = None
+        # cbar = views._make_fig_colorbar(asarray(self.unnorm_energy).flatten() * -1)
+        # ONE_SIGMA = 1 - 2*0.15865525393145705
+        # parameters = []
+        #
+        # for i in range(len(self.unnorm_points[0][0])):
+        #     parameter = []
+        #     map(lambda p:parameter.extend([t[i] for t in p]), self.unnorm_points)
+        #     parameters.append(parameter)
+        #
+        #     subplot(nw, nh, i+1)
+        #     p100, p68, p0 = stats.credible_intervals(x=asarray(parameter), weights=weights, ci=[0.9999, ONE_SIGMA, 0.0])
+        #     mean, std = stats.stats(x=asarray(parameter), weights=weights)
+        #
+        #     views._make_logp_histogram(asarray(parameter), asarray(self.unnorm_energy).flatten() * -1, 80, p100, weights, cbar)
+        #
+        #     views._decorate_histogram(stats.VarStats(label=self.var_labels[i], index=i+1, p95=p100, p68=p68,
+        #                               median=p0[0], mean=mean, std=std, best=self.best_point[i]))
+        # suptitle("Inverted")
+        #
+        #
+        # # 1D histograms
+        # figure()
+        # nw, nh = views.tile_axes(len(self.unnorm_points[0][0]))
+        # weights = None
+        # cbar = views._make_fig_colorbar(asarray(self.unnorm_energy).flatten() * -1)
+        # ONE_SIGMA = 1 - 2*0.15865525393145705
+        # parameters = []
+        #
+        # for i in range(len(self.unnorm_points[0][0])):
+        #     parameter = []
+        #     map(lambda p:parameter.extend([t[i] for t in p]), self.unnorm_points)
+        #     parameters.append(parameter)
+        #
+        #     subplot(nw, nh, i+1)
+        #     p100, p68, p0 = stats.credible_intervals(x=asarray(parameter), weights=weights, ci=[0.9999, ONE_SIGMA, 0.0])
+        #     mean, std = stats.stats(x=asarray(parameter), weights=weights)
+        #
+        #     views._make_logp_histogram(asarray(parameter), asarray(self.unnorm_energy).flatten() * -1, 80, p100, weights, cbar)
+        #
+        #     views._decorate_histogram(stats.VarStats(label=self.var_labels[i], index=i+1, p95=p100, p68=p68,
+        #                               median=p0[0], mean=mean, std=std, best=self.best_point[i]))
+        # suptitle("unweighted")
+        #
+        # # 2D histograms
+        # figure()
+        # corrplot.Corr2d(parameters, bins=50, labels=self.var_labels).plot()
 
 
 class Stepper(object):
@@ -512,7 +575,7 @@ class Stepper(object):
         delta = zeros_like(p)
         delta[vars] = gamma * (eps * step)[vars]
         assert norm(delta) != 0
-        return p + delta
+        return delta
 
     def direct(self, p, stream):
         if len(self.history.buffer[stream]) < 20:
@@ -524,17 +587,17 @@ class Stepper(object):
             print("direct should never return identical points!!")
             return self.random(p)
         assert norm(delta) != 0
-        return p + delta
+        return delta
 
     def jiggle(self, p, noise):
         delta = randn(len(p)) * self.step * noise
         assert norm(delta) != 0
-        return p + delta
+        return delta
 
     def random(self, p):
         delta = rand(len(p)) * self.step + self.offset
         assert norm(delta) != 0
-        return p + delta
+        return delta
 
     def subspace_jiggle(self, p, noise, k):
         n = len(self.step)
@@ -546,7 +609,7 @@ class Stepper(object):
         delta = zeros_like(p)
         delta[idx] = randn(k) * self.step[idx] * noise
         assert norm(delta) != 0
-        return p + delta
+        return delta
 
 
 class ReflectBounds(object):
