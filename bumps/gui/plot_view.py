@@ -4,7 +4,7 @@ import wx
 IS_MAC = (wx.Platform == '__WXMAC__')
 
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
-from matplotlib.backends.backend_wxagg import NavigationToolbar2Wx as Toolbar
+from matplotlib.backends.backend_wxagg import NavigationToolbar2WxAgg as Toolbar
 
 # The Figure object is used to create backend-independent plot representations.
 from matplotlib.figure import Figure
@@ -15,12 +15,14 @@ from .util import EmbeddedPylab
 
 class PlotView(wx.Panel):
     title = 'Plot'
-    default_size = (600,400)
+    default_size = (600, 400)
+
     def __init__(self, *args, **kw):
         wx.Panel.__init__(self, *args, **kw)
 
         # Can specify name on
-        if 'title' in kw: self.title = kw['title']
+        if 'title' in kw:
+            self.title = kw['title']
 
         # Instantiate a figure object that will contain our plots.
         figure = Figure(figsize=(1,1), dpi=72)
@@ -55,9 +57,10 @@ class PlotView(wx.Panel):
         self._need_plot = self._need_newmodel = False
         self.Bind(wx.EVT_SHOW, self.OnShow)
         self.plot_state = None
+        self.model = None
 
 
-        _ = '''
+        '''
         # Add context menu and keyboard support to canvas
         canvas.Bind(wx.EVT_RIGHT_DOWN, self.OnContextMenu)
         #canvas.Bind(wx.EVT_LEFT_DOWN, lambda evt: canvas.SetFocus())
@@ -71,7 +74,9 @@ class PlotView(wx.Panel):
         status_update = lambda msg: self.statusbar.SetStatusText(msg)
 
         canvas.mpl_connect('motion_notify_event', self.OnMotion),
+        '''
 
+    '''
     def OnContextMenu(self,event):
         """
         Forward the context menu invocation to profile, if profile exists.
@@ -108,12 +113,13 @@ class PlotView(wx.Panel):
 
     def OnShow(self, event):
         #print "theory show"
-        if not event.Show: return
+        if not event.Show:
+            return
         #print "showing theory"
         if self._need_newmodel:
-            self._redraw(newmodel = True)
+            self._redraw(newmodel=True)
         elif self._need_plot:
-            self._redraw(newmodel = False)
+            self._redraw(newmodel=False)
 
 
     def set_model(self, model):
@@ -121,16 +127,17 @@ class PlotView(wx.Panel):
         if not IS_MAC and not self.IsShown():
             self._need_newmodel = True
         else:
-            self._redraw(newmodel = True)
+            self._redraw(newmodel=True)
 
     def update_model(self, model):
         #print "profile update model"
-        if self.model != model: return
+        if self.model != model:  # ignore updates to different models
+            return
 
         if not IS_MAC and not self.IsShown():
             self._need_newmodel = True
         else:
-            self._redraw(newmodel = True)
+            self._redraw(newmodel=True)
 
     def update_parameters(self, model):
         #print "profile update parameters"
@@ -139,7 +146,7 @@ class PlotView(wx.Panel):
         if not IS_MAC and not self.IsShown():
             self._need_plot = True
         else:
-            self._redraw(newmodel = self._need_newmodel)
+            self._redraw(newmodel=self._need_newmodel)
 
     def _redraw(self, newmodel=False):
         self._need_newmodel = newmodel
@@ -163,10 +170,12 @@ class PlotView(wx.Panel):
 
                 if self._need_newmodel:
                     self.newmodel()
-                    if self.cancel_calculation: continue
+                    if self.cancel_calculation:
+                        continue
                     self._need_newmodel = False
                 self.plot()
-                if self.cancel_calculation: continue
+                if self.cancel_calculation:
+                    continue
                 pylab.draw()
                 break
         self._need_plot = False
@@ -175,6 +184,7 @@ class PlotView(wx.Panel):
     def get_state(self):
         #print "returning state",self.model,self.plot_state
         return self.model, self.plot_state
+
     def set_state(self, state):
         self.model, self.plot_state = state
         #print "setting state",self.model,self.plot_state
