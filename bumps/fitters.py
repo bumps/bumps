@@ -455,7 +455,7 @@ class PTFFit(FitBase):
     Parallel tempering optimizer (Feedback).
     """
     name = "Parallel Tempering"
-    settings = [('steps', 1000), ('nT', 25), ('CR', 0.9),
+    settings = [('steps', 1000), ('nT', 50), ('CR', 0.9),
                 ('burn', 4000), ('Tmin', 0.1), ('Tmax', 10)]
 
     def __init__(self, problem):
@@ -473,7 +473,7 @@ class PTFFit(FitBase):
         t = np.logspace(np.log10(options['Tmin']),
                            np.log10(options['Tmax']),
                            options['nT'])
-
+        mapper= mapper if mapper else lambda p: map(self.nllf, p)
         self.history = parallel_tempering_feedback(nllf=self.problem.nllf,
                                      p=self.problem.getp(),
                                      bounds=self.problem.bounds(),
@@ -483,7 +483,8 @@ class PTFFit(FitBase):
                                      steps=options['steps'],
                                      burn=options['burn'],
                                      monitor=self._monitor,
-                                     labels=self.labels)
+                                     labels=self.labels,
+                                     mapper=mapper)
         return self.history.best_point, self.history.best
 
     def _monitor(self, step, x, fx, P, E):
