@@ -86,19 +86,22 @@ except:
 Provide a valid fitting function definition with x,y as fitting parameters,
 such as:
 
-    lambda x,y: (x+y-10)**2
+    "lambda x,y: (x+y-10)**2"
 
 A number of k-dimensional test functions are provided:
 
     ackley, griewank, rastrigin, rosenbrock, gauss
 
-These can be selected using:
+2-dimension versions can be selected using:
 
-    f2(function)
+    "f2(function)"
 
 or for the k-dimensional version:
 
-    fk(function,k)
+    "fk(function,k)"
+
+The quotes are required, otherwise your console command interpreter will
+by confused.
 """
     print(usage, file=sys.stderr)
     raise
