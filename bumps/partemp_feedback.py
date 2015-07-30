@@ -183,11 +183,14 @@ def parallel_tempering_feedback(nllf, p, bounds, T=None, steps=1000,
     scale_history = [scale]
     count = 1
     accept_optimize = 200
-    swap_increment = accept_optimize*2
-    temperature_optimize = swap_increment
+    swap_increment = accept_optimize*1
+    temperature_optimize = 0
     acceptance_history = []
     step_history = []
     avg_accept = []
+    percentage=1
+    formerBest = min(E)
+    difference = 0
     for step in range(1, steps + burn):
         if step == (steps+burn - 1):
             suptitle("Acceptance")
@@ -211,12 +214,19 @@ def parallel_tempering_feedback(nllf, p, bounds, T=None, steps=1000,
 
         if step == accept_optimize:
             # Scale optimizer
-            scale *= .25/np.average(acceptance_frequency/swap_increment)
+            scale *= .25/np.median(acceptance_frequency/swap_increment)
             scale_history.append(scale)
             semilogx(T, acceptance_frequency/swap_increment, hold=True, label=str(count), marker=',')
             acceptance_history.append(np.median(acceptance_frequency/swap_increment))
             avg_accept.append(np.average(acceptance_frequency/swap_increment))
             step_history.append(step)
+
+            #switch between steppers
+            # if (formerBest - history.best) <= difference * .3:
+            #     percentage = 1 - percentage
+            #
+            # difference = formerBest - history.best
+            # formerBest = history.best
 
             # Max temperature
             # T[-1] = T[-2] + (T[-1] - T[-2]) * min(2, .4/(acceptance_frequency[-1]/swap_increment))
@@ -254,12 +264,12 @@ def parallel_tempering_feedback(nllf, p, bounds, T=None, steps=1000,
 
 #       Take a step
         R = rand()
-        '''
-        def jiggle(self, p, noise):
-        delta = randn(len(p)) * self.step * noise
-        assert norm(delta) != 0
-        return p + delta
-        '''
+
+        # if step < 20 or percentage:
+        #     delta = [stepper.direct(p, i) for i, p in enumerate(P)]
+        # else:
+        #     delta = [stepper.diffev(p, i, CR=CR) for i, p in enumerate(P)]
+
         # delta = [stepper.jiggle(p, 0.01 * (t / T[-1])) for p, t in zip(P, T)]
         if step < 20 or R < 0.4:
             action = 'jiggle'

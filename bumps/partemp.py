@@ -9,24 +9,102 @@ updates.
 """
 from __future__ import division, print_function
 
-__all__ = ["parallel_tempering"]
+__all__ = ["parallel_tempering_feedback"]
 
 import numpy as np
 from numpy import asarray, zeros, ones, exp, diff, std, inf, \
     array, nonzero, sqrt, zeros_like
 from numpy.linalg import norm
 from numpy.random import rand, randn, randint, permutation
-
-
+from scipy.stats import linregress
+from pylab import plot, figure, suptitle, legend, semilogx
+from math import log
 def every_ten(step, x, fx, P, E):
     if step % 10:
         print(step, fx[step], x[step])
+
+def find_freq(temp, direction, histogram):
+    '''
+    Determines the fraction of chains which has visited a certain extreme.
+
+    :Parameters:
+
+    *Temp* : int
+        The index of the specific temperature at which you are evalutating at.
+
+    *Direction* : int
+        The extreme that the particles are diffusing to.
+        *0* for up
+        *1* for down
+
+    *Histogram* : array
+        The histogram object of the current simulation
+    '''
+    value = histogram[temp][direction]/sum(histogram[temp])
+    if np.isnan(value):
+        value = 0
+    return value
+
+def update_histogram(histogram, labels):
+    for i in range(len(labels)):
+        if labels[i] == 1:
+            histogram[i][0] = histogram[i][0] + 1
+        elif labels[i] == 2:
+            histogram[i][1] = histogram[i][1] + 1
+    return histogram
+
+def update_labels(labels):
+    labels[0] = 1
+    labels[1] = 1
+    labels[-1] = 2
+    labels[-2] = 2
+    return labels
+
+def find_dif(T, histogram):
+    freq = []
+    for i in range(0, len(T)):
+        freq.append(find_freq(i, 0, histogram))
+    slope, intercept, r_value, p_value, std_err = linregress(np.linspace(0, len(freq) - 1, len(freq)), freq)
+    return slope
+
+def find_constant(T, dif):
+    total = 0
+    for i in range(len(T) - 1):
+        total += prob_dist(i, T, dif)*(T[i + 1] - T[i])
+    return 1/total
+
+
+def prob_dist(index, T, dif):
+    return sqrt(abs(1/(T[index+1] - T[index]) * dif))
+
+def optimize_temperature(T, constant, dif):
+    new_temperature = [T[0]]
+    index = 0
+    target = 2/len(T)
+    current_interval = constant*prob_dist(index, T, dif)
+    rect = current_interval*(T[index+1] - T[index])
+    for i in range(1, len(T)-1):
+        while 1:
+            if rect < target:
+                target -= rect
+                index += 1
+                current_interval = constant*prob_dist(index, T, dif)
+                rect = current_interval*(T[index + 1] - T[index])
+            else:
+                new_temp = target/current_interval + new_temperature[i - 1]
+                new_temperature.append(new_temp)
+                rect -= target
+                target = ((i+2)/len(T)) - ((i+1)/len(T))
+                break
+    new_temperature.append(T[-1])
+    return asarray(new_temperature)
 
 
 def parallel_tempering(nllf, p, bounds, T=None, steps=1000,
                        CR=0.9, burn=1000,
                        monitor=every_ten,
-                       logfile=None):
+                       logfile=None,
+                       labels=None, mapper=None):
     r"""
     Perform a MCMC walk using multiple temperatures in parallel.
 
@@ -80,47 +158,163 @@ def parallel_tempering(nllf, p, bounds, T=None, steps=1000,
         which yielded *best*.  The list *buffer* contains lists of tuples
         (step, temperature, nllf, x) for each temperature.
     """
-    N = len(T)
-    history = History(logfile=logfile, streams=N, size=steps)
+    N = len(T)  # Number of temperatures
+    history = History(logfile=logfile, streams=N, size=steps, burn=burn, var_labels=labels)
     bounder = ReflectBounds(*bounds)
     #stepper = RandStepper(bounds, tol=0.2/T[-1])
     stepper = Stepper(bounds, history)
-    dT = diff(1. / asarray(T))
+    dT = diff(1. / asarray(T)) # Difference in temperatures
     P = asarray([p] * N)   # Points
     E = ones(N) * nllf(p)  # Values
-    history.save(step=0, temperature=T, energy=E, point=P)
-    total_accept = zeros(N)
-    total_swap = zeros(N - 1)
+    labels = update_labels(zeros(N)) # 0 neither, 1 up, 2 down
+    swap_history = asarray(np.linspace(0, N - 1, N))
+    histograms = np.array([[0,0] for i in range(N)]) #0 up, 1 down
+
+    history.save(step=0, temperature=T, energy=E, point=P, swap_history=swap_history, labels=labels)
+    total_accept = zeros(N) # Histogram of accept
+    total_swap = zeros(N - 1) # Histogram of swap
+
+    swap_frequency = zeros(N)
+    acceptance_frequency = zeros(N)
+    step_size = zeros(N)
+    energy_change = zeros(N)
+    figure()
+    scale = 1
+    scale_history = [scale]
+    count = 1
+    accept_optimize = 200
+    swap_increment = accept_optimize*2
+    temperature_optimize = swap_increment
+    acceptance_history = []
+    step_history = []
+    avg_accept = []
+    percentage=1
+    formerBest = min(E)
+    difference = 0
     for step in range(1, steps + burn):
-        # Take a step
+        if step == (steps+burn - 1):
+            suptitle("Acceptance")
+            legend()
+            figure()
+            plot(step_history, acceptance_history, ".")
+            suptitle("Median Acceptance")
+            figure()
+            plot(step_history, avg_accept, ".")
+            suptitle("Average Acceptance")
+            figure()
+            plot(T, step_size/step, '.')
+            suptitle("Step")
+            figure()
+            plot(T, energy_change/step, '.')
+            suptitle("Energy")
+            figure()
+            plot(np.linspace(0, len(scale_history) - 1, len(scale_history)), scale_history, '.')
+            suptitle("Scale")
+            figure()
+
+        if step == accept_optimize:
+            # Scale optimizer
+            scale *= .25/np.median(acceptance_frequency/swap_increment)
+            scale_history.append(scale)
+            semilogx(T, acceptance_frequency/swap_increment, hold=True, label=str(count), marker=',')
+            acceptance_history.append(np.median(acceptance_frequency/swap_increment))
+            avg_accept.append(np.average(acceptance_frequency/swap_increment))
+            step_history.append(step)
+
+            #switch between steppers
+            # print(formerBest - history.best)
+            # print(difference * .3)
+            # if (formerBest - history.best) <= difference * .3:
+            #     percentage = 1 - percentage
+            #
+            # print(percentage)
+            # difference = formerBest - history.best
+            # formerBest = history.best
+
+            # Max temperature
+            # T[-1] = T[-2] + (T[-1] - T[-2]) * min(2, .4/(acceptance_frequency[-1]/swap_increment))
+            # T[0] = min(abs(T[1] - 0.01), T[0] * .1/(acceptance_frequency[0]/swap_increment))
+
+            # T = np.logspace(log(T[0], 10), log(T[-1], 10), N)
+            # print(T[0])
+            # print(T[1])
+            # Reset graphs
+            histograms = np.array([[0,0] for i in range(N)])
+            labels = update_labels(zeros(N))
+
+            acceptance_frequency = zeros(N)
+            swap_frequency = zeros(N)
+
+
+            # Increment
+            accept_optimize += swap_increment
+            count += 1
+
+        # if False:
+        if step == temperature_optimize:
+            # Feedback exchange
+            dif = find_dif(T, histograms)
+            constant = find_constant(T, dif)
+            T = optimize_temperature(T, constant, dif)
+            dT = diff(1. / asarray(T))
+
+            # Reset Graphs
+            acceptance_frequency = zeros(N)
+            swap_frequency = zeros(N)
+
+            # Increment
+            temperature_optimize += swap_increment
+
+#       Take a step
         R = rand()
-        if step < 20 or R < 0.2:
-            #action = 'jiggle'
-            Pnext = [stepper.jiggle(p, 0.01 * t / T[-1]) for p, t in zip(P, T)]
-        elif R < 0.4:
-            #action = 'direct'
-            Pnext = [stepper.direct(p, i) for i, p in enumerate(P)]
+
+        # if step < 20 or percentage:
+        #     delta = [stepper.direct(p, i) for i, p in enumerate(P)]
+        # else:
+        #     delta = [stepper.diffev(p, i, CR=CR) for i, p in enumerate(P)]
+
+        # delta = [stepper.jiggle(p, 0.01 * (t / T[-1])) for p, t in zip(P, T)]
+        if step < 20 or R < 0.4:
+            action = 'jiggle'
+            delta = [stepper.jiggle(p, 0.01 * t / T[-1]) for p, t in zip(P, T)]
+        elif R < 0.6:
+            action = 'direct'
+            delta = [stepper.direct(p, i) for i, p in enumerate(P)]
         else:
-            #action = 'diffev'
-            Pnext = [stepper.diffev(p, i, CR=CR) for i, p in enumerate(P)]
+            action = 'diffev'
+            delta = [stepper.diffev(p, i, CR=CR) for i, p in enumerate(P)]
 
         # Test constraints
+        Pnext = P + asarray(delta)/scale
         Pnext = asarray([bounder.apply(p) for p in Pnext])
+        if(step > burn):
+            #print("Min", Pnext[0] - P[0])
+            #print("Max", Pnext[-1] - P[-1])
+            pass
 
         # Temperature dependent Metropolis update
-        Enext = asarray([nllf(p) for p in Pnext])
+        # Enext = asarray([nllf(p) for p in Pnext])
+        Enext = asarray(mapper(Pnext))
         accept = exp(-(Enext - E) / T) > rand(N)
         # print step,action
         # print "dP"," ".join("%.6f"%norm((pn-p)/stepper.step) for pn,p in zip(P,Pnext))
         # print "dE"," ".join("%.1f"%(en-e) for en,e in zip(E,Enext))
         # print "En"," ".join("%.1f"%e for e in Enext)
         # print "accept",accept
+        #print("T0 %12.2f %12.2f ... Tmax %12.2f %12.2f"%(Enext[0], (Enext[0] - E[0])/T[0] if Enext[0]>E[0] else 0,
+        #                                                 Enext[-1], (Enext[-1] - E[-1])/T[-1] if Enext[-1] > E[-1] else 0.),
+        #      action)
+        acceptance_frequency += accept
         E[accept] = Enext[accept]
         P[accept] = Pnext[accept]
-        total_accept += accept
-
+        if step > burn :
+            energy_change += Enext - E
+            step_size += np.abs(np.average(asarray(delta)/scale, axis=1))
+            total_accept += accept
+        # print("point: \n", p)
         # Accumulate history for population based methods
-        history.save(step, temperature=T, energy=E, point=P, changed=accept)
+        history.save(step, temperature=T, energy=E, point=P, swap_history=swap_history, labels=labels, changed=accept)
+
         # print "best",history.best
 
         # Swap chains across temperatures
@@ -128,15 +322,22 @@ def parallel_tempering(nllf, p, bounds, T=None, steps=1000,
         # point is found at a high temperature which push it immediately as
         # low as we can go rather than risk losing it at the next high temp
         # step.
-        swap = zeros(N - 1)
-        for i in range(N - 2, -1, -1):
-            # print "swap",E[i+1]-E[i],dT[i],exp((E[i+1]-E[i])*dT[i])
-            if exp((E[i + 1] - E[i]) * dT[i]) > rand():
-                swap[i] = 1
-                E[i + 1], E[i] = E[i], E[i + 1]
-                P[i + 1], P[i] = P[i] + 0, P[i + 1] + 0
-        total_swap += swap
-        #assert nllf(P[0]) == E[0]
+        if step % 1 == 0:
+            swap = zeros(N - 1)
+            for i in range(N - 2, -1, -1):
+                if exp((E[i + 1] - E[i]) * dT[i]) > rand():
+                    swap[i] = 1
+                    # switch the energy states around
+                    swap_history[i + 1], swap_history[i] = swap_history[i], swap_history[i + 1]
+                    labels[i + 1], labels[i] = labels[i], labels[i + 1]
+                    E[i + 1], E[i] = E[i], E[i + 1]
+                    P[i + 1], P[i] = P[i] + 0, P[i + 1] + 0
+                    swap_frequency[i + 1] += 1
+                    swap_frequency[i] += 1
+            total_swap += swap
+            labels = update_labels(labels)
+            histograms = update_histogram(histograms, labels)
+            #assert nllf(P[0]) == E[0]
 
         # Monitoring
         monitor(step, history.best_point, history.best, P, E)
@@ -158,7 +359,7 @@ def parallel_tempering(nllf, p, bounds, T=None, steps=1000,
 
 class History(object):
 
-    def __init__(self, streams=None, size=1000, logfile=None):
+    def __init__(self, streams=None, size=1000, logfile=None, burn=0, var_labels=None):
         # Allocate buffers
         self.size = size
         self.buffer = [[] for _ in range(streams)]
@@ -170,16 +371,40 @@ class History(object):
             self.log = None
         # Track the optimum
         self.best = inf
+        self.burn = burn
+        self.temperatures, self.points, self.energies, self.swap, self.unnorm_points, self.unnorm_energy = [], [], [], [], [], []
+        self.var_labels = var_labels
+        self.file = open("scale.txt", "w")
+        self.swap_hist = []
+        self.staggered_temp = []
+        self.slope = 0
+        self.intercept = 0
+    def swap_save(self, temp, value, slope, intercept):
+        self.swap_hist.extend(value)
+        self.staggered_temp.extend(temp)
+        self.intercept = intercept
+        self.slope = slope
 
-    def save(self, step, temperature, energy, point, changed=None):
+    def save(self, step, temperature, energy, point, swap_history, labels, changed=None):
+        if step > self.burn:
+            swap = swap_history.argsort()
+            self.temperatures.append(temperature.tolist())
+            self.unnorm_points.append(point.tolist())
+            self.unnorm_energy.append(energy.tolist())
+
+            self.points.append(point[swap])
+            self.energies.append(energy[swap])
+
+            self.swap.append(swap)
+
         if changed is None:
             changed = ones(len(temperature), 'b')
         for i, a in enumerate(changed):
             if a:
                 self._save_point(
-                    step, i, temperature[i], energy[i], point[i] + 0)
+                    step, i, temperature[i], energy[i], point[i] + 0, labels)
 
-    def _save_point(self, step, i, T, E, P):
+    def _save_point(self, step, i, T, E, P, labels):
         # Save in buffer
         S = self.buffer[i]
         if len(S) >= self.size:
@@ -188,7 +413,7 @@ class History(object):
             # print "P",P
             # print "S",S[-1][3]
             assert norm(P - S[-1][3]) != 0
-        S.append((step, T, E, P))
+        S.append((step, T, E, P, labels))
         # print "stream",i,"now len",len(S)
         # Track of the optimum
         if E < self.best:
@@ -196,8 +421,9 @@ class History(object):
             self.best_point = P
         # Log to file
         if self.log:
-            point_str = " ".join("%.6g" % v for v in P)
-            print(step, T, E, point_str, file=self.log)
+            point_str = " [" + "".join("%.6g" % v for v in P) + "]"
+            label_str = " [" + " ".join("%.6g" % v for v in labels) + "]"
+            print(step, T, E, point_str, label_str, file=self.log)
             self.log.flush()
 
     def draw(self, stream, k):
@@ -209,6 +435,107 @@ class History(object):
         S = self.buffer[stream]
         n = len(S)
         return [S[i] for i in choose(n, k)] if n > k else S[:]
+
+    def toString(self):
+        return self.buffer
+
+    def plot(self, output_file=None):
+        from pylab import plot, figure, semilogy, ylabel, xlabel, suptitle, gca, hist, subplot, legend, cm
+        from dream import corrplot, views, stats
+        from sklearn.preprocessing import normalize
+        from numpy import float64, array, delete
+        import math
+
+        # Parameter History
+        figure()
+        gca().set_color_cycle([cm.gist_ncar(i) for i in np.linspace(0, 0.9, len(self.points[0][0]))])
+        generation = np.linspace(0, len(self.points) - 1, len(self.points))
+        graphs = []
+        for i in range(len(self.points[0])):
+            for j in range(len(self.points[0][0])-1, -1, -1):
+                graph, = plot(generation, map(lambda p:p[i][j], self.points), hold=True, marker='.', markersize=1)
+                graphs.append(graph)
+        group = [tuple(graphs[::i+1]) for i in range(len(self.points[0][0]))]
+        legend(group, self.var_labels, markerscale=10)
+        ylabel("Value")
+        xlabel("Generation")
+        suptitle("Parameter History")
+
+        # Energy History
+        figure()
+        for i in range(len(self.energies[0])):
+            plot(generation, map(lambda e:e[i]*-1, self.energies), ',', hold=True)
+        ylabel("Value")
+        xlabel("Generation")
+        suptitle("Log Likelihood")
+
+        # Swap History
+        figure()
+        for i in range(len(self.swap[0])):
+            semilogy(generation, map(lambda s,t:t[s[i]], self.swap, self.temperatures), hold=True)
+        suptitle("Temperature Swap History")
+        ylabel("Temperature")
+        xlabel("Generation")
+
+        # figure()
+        # for i in range(len(self.unnorm_points[0][0])):
+        #     subplot(nw, nh, i+1)
+        #     parameter = []
+        #     map(lambda p:parameter.extend([t[i] for t in p]), self.unnorm_points)
+        #     semilogy(parameter, asarray(self.temperatures).flatten(), '.', hold=True)
+        # xlabel("Value")
+        # ylabel("Temperature")
+
+        # # 1D histograms
+        # figure()
+        # nw, nh = views.tile_axes(len(self.unnorm_points[0][0]))
+        # weights = None
+        # cbar = views._make_fig_colorbar(asarray(self.unnorm_energy).flatten() * -1)
+        # ONE_SIGMA = 1 - 2*0.15865525393145705
+        # parameters = []
+        #
+        # for i in range(len(self.unnorm_points[0][0])):
+        #     parameter = []
+        #     map(lambda p:parameter.extend([t[i] for t in p]), self.unnorm_points)
+        #     parameters.append(parameter)
+        #
+        #     subplot(nw, nh, i+1)
+        #     p100, p68, p0 = stats.credible_intervals(x=asarray(parameter), weights=weights, ci=[0.9999, ONE_SIGMA, 0.0])
+        #     mean, std = stats.stats(x=asarray(parameter), weights=weights)
+        #
+        #     views._make_logp_histogram(asarray(parameter), asarray(self.unnorm_energy).flatten() * -1, 80, p100, weights, cbar)
+        #
+        #     views._decorate_histogram(stats.VarStats(label=self.var_labels[i], index=i+1, p95=p100, p68=p68,
+        #                               median=p0[0], mean=mean, std=std, best=self.best_point[i]))
+        # suptitle("Inverted")
+        #
+        #
+        # # 1D histograms
+        # figure()
+        # nw, nh = views.tile_axes(len(self.unnorm_points[0][0]))
+        # weights = None
+        # cbar = views._make_fig_colorbar(asarray(self.unnorm_energy).flatten() * -1)
+        # ONE_SIGMA = 1 - 2*0.15865525393145705
+        # parameters = []
+        #
+        # for i in range(len(self.unnorm_points[0][0])):
+        #     parameter = []
+        #     map(lambda p:parameter.extend([t[i] for t in p]), self.unnorm_points)
+        #     parameters.append(parameter)
+        #
+        #     subplot(nw, nh, i+1)
+        #     p100, p68, p0 = stats.credible_intervals(x=asarray(parameter), weights=weights, ci=[0.9999, ONE_SIGMA, 0.0])
+        #     mean, std = stats.stats(x=asarray(parameter), weights=weights)
+        #
+        #     views._make_logp_histogram(asarray(parameter), asarray(self.unnorm_energy).flatten() * -1, 80, p100, weights, cbar)
+        #
+        #     views._decorate_histogram(stats.VarStats(label=self.var_labels[i], index=i+1, p95=p100, p68=p68,
+        #                               median=p0[0], mean=mean, std=std, best=self.best_point[i]))
+        # suptitle("unweighted")
+        #
+        # # 2D histograms
+        # figure()
+        # corrplot.Corr2d(parameters, bins=50, labels=self.var_labels).plot()
 
 
 class Stepper(object):
@@ -261,7 +588,7 @@ class Stepper(object):
         delta = zeros_like(p)
         delta[vars] = gamma * (eps * step)[vars]
         assert norm(delta) != 0
-        return p + delta
+        return delta
 
     def direct(self, p, stream):
         if len(self.history.buffer[stream]) < 20:
@@ -273,17 +600,17 @@ class Stepper(object):
             print("direct should never return identical points!!")
             return self.random(p)
         assert norm(delta) != 0
-        return p + delta
+        return delta
 
     def jiggle(self, p, noise):
         delta = randn(len(p)) * self.step * noise
         assert norm(delta) != 0
-        return p + delta
+        return delta
 
     def random(self, p):
         delta = rand(len(p)) * self.step + self.offset
         assert norm(delta) != 0
-        return p + delta
+        return delta
 
     def subspace_jiggle(self, p, noise, k):
         n = len(self.step)
@@ -295,7 +622,7 @@ class Stepper(object):
         delta = zeros_like(p)
         delta[idx] = randn(k) * self.step[idx] * noise
         assert norm(delta) != 0
-        return p + delta
+        return delta
 
 
 class ReflectBounds(object):
