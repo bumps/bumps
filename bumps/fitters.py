@@ -506,6 +506,97 @@ class PTFFit(FitBase):
     def plot(self, output_path=None):
         self.history.plot(output_path)
 
+
+class PTFFitJiggle(FitBase):
+    """
+    Parallel tempering optimizer (Feedback).
+    """
+    name = "Parallel Tempering"
+    settings = [('steps', 1000), ('nT', 48), ('CR', 0.9),
+                ('burn', 4000), ('Tmin', 0.1), ('Tmax', 10)]
+
+    def __init__(self, problem):
+        self.history = None
+        self.update = None
+        self.problem = problem
+        self.labels = self.problem.labels()
+
+    def solve(self, monitors=None, mapper=None, **options):
+        _fill_defaults(options, self.settings)
+        # TODO: no mapper??
+        from .partemp_feedback_temp import parallel_tempering_feedback_temp
+        self._update = MonitorRunner(problem=self.problem,
+                                     monitors=monitors)
+        t = np.logspace(np.log10(options['Tmin']),
+                           np.log10(options['Tmax']),
+                           options['nT'])
+        mapper= mapper if mapper else lambda p: map(self.nllf, p)
+        self.history = parallel_tempering_feedback_temp(nllf=self.problem.nllf,
+                                     p=self.problem.getp(),
+                                     bounds=self.problem.bounds(),
+                                     logfile="partemp.dat",
+                                     T=t,
+                                     CR=options['CR'],
+                                     steps=options['steps'],
+                                     burn=options['burn'],
+                                     monitor=self._monitor,
+                                     labels=self.labels,
+                                     mapper=mapper)
+        return self.history.best_point, self.history.best
+
+    def _monitor(self, step, x, fx, P, E):
+        self._update(step=step, point=x, value=fx,
+                     population_points=P, population_values=E)
+        return True
+
+    def plot(self, output_path=None):
+        self.history.plot(output_path)
+
+class PTFFitStepper(FitBase):
+    """
+    Parallel tempering optimizer (Feedback).
+    """
+    name = "Parallel Tempering"
+    settings = [('steps', 1000), ('nT', 48), ('CR', 0.9),
+                ('burn', 4000), ('Tmin', 0.1), ('Tmax', 10)]
+
+    def __init__(self, problem):
+        self.history = None
+        self.update = None
+        self.problem = problem
+        self.labels = self.problem.labels()
+
+    def solve(self, monitors=None, mapper=None, **options):
+        _fill_defaults(options, self.settings)
+        # TODO: no mapper??
+        from .partemp_feedback_stepper import parallel_tempering_feedback
+        self._update = MonitorRunner(problem=self.problem,
+                                     monitors=monitors)
+        t = np.logspace(np.log10(options['Tmin']),
+                           np.log10(options['Tmax']),
+                           options['nT'])
+        mapper= mapper if mapper else lambda p: map(self.nllf, p)
+        self.history = parallel_tempering_feedback(nllf=self.problem.nllf,
+                                     p=self.problem.getp(),
+                                     bounds=self.problem.bounds(),
+                                     logfile="partemp.dat",
+                                     T=t,
+                                     CR=options['CR'],
+                                     steps=options['steps'],
+                                     burn=options['burn'],
+                                     monitor=self._monitor,
+                                     labels=self.labels,
+                                     mapper=mapper)
+        return self.history.best_point, self.history.best
+
+    def _monitor(self, step, x, fx, P, E):
+        self._update(step=step, point=x, value=fx,
+                     population_points=P, population_values=E)
+        return True
+
+    def plot(self, output_path=None):
+        self.history.plot(output_path)
+
 class AmoebaFit(FitBase):
     """
     Nelder-Mead simplex optimizer.
@@ -1019,6 +1110,8 @@ FIT_OPTIONS = dict(
     ps      = FitOptions(PSFit),
     pt      = FitOptions(PTFit),
     ptf     = FitOptions(PTFFit),
+    ptfs     = FitOptions(PTFFitStepper),
+    ptfj     = FitOptions(PTFFitJiggle),
     rl      = FitOptions(RLFit),
     snobfit = FitOptions(SnobFit),
     lm=FitOptions(LevenbergMarquardtFit),
