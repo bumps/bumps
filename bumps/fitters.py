@@ -1249,7 +1249,6 @@ FIT_OPTIONS = dict(
     swappt      = FitOptions(PTFitSwap),
     swapptf     = FitOptions(PTFFitSwap),
     swapptfs     = FitOptions(PTFFitStepperSwap),
-    ptfj     = FitOptions(PTFFitJiggle
     rl      = FitOptions(RLFit),
     snobfit = FitOptions(SnobFit),
     lm=FitOptions(LevenbergMarquardtFit),
