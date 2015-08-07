@@ -18,7 +18,7 @@ from numpy.linalg import norm
 from numpy.random import rand, randn, randint, permutation
 from scipy.stats import linregress
 from pylab import plot, figure, suptitle, legend, semilogx
-from math import log
+import math
 def every_ten(step, x, fx, P, E):
     if step % 10:
         print(step, fx[step], x[step])
@@ -184,8 +184,8 @@ def parallel_tempering_feedback(nllf, p, bounds, T=None, steps=1000,
     scale_history = [scale]
     count = 1
     accept_optimize = 300
-    swap_increment = accept_optimize*1
-    temperature_optimize = 0
+    swap_increment = accept_optimize*2
+    temperature_optimize = swap_increment
     acceptance_history = []
     step_history = []
     avg_accept = []
@@ -194,6 +194,7 @@ def parallel_tempering_feedback(nllf, p, bounds, T=None, steps=1000,
     difference = 0
     reset = True
     averageEn = [difference]
+    part = 0.5
     for step in range(1, steps + burn):
         if step == (steps+burn - 1):
             suptitle("Acceptance")
@@ -227,19 +228,27 @@ def parallel_tempering_feedback(nllf, p, bounds, T=None, steps=1000,
             avg_accept.append(np.average(acceptance_frequency/swap_increment))
             step_history.append(step)
 
-            if difference == 0 and percentage == 2:
-                percentage = 1
-
             #switch between steppers
             directScale[percentage] = scale
-            if (formerBest - history.best) <= min(difference,150):
-                print("Swap")
-                percentage = 1 - percentage
-                scale = directScale[percentage]
-            if (formerBest - history.best) == 0:
+
+            if (formerBest - history.best) <= 10 and difference <= 0:
+                if percentage == 2:
+                    print("yes")
+                    print(part)
+                    part = min(N, part + .5)
+                    print(part)
                 print("Reset")
                 percentage = 2
-                scale = directScale[percentage]
+                print(part)
+            elif percentage == 2:
+                percentage = 0
+
+            if (formerBest - history.best) <= min(difference,150) and percentage != 2:
+                print("Swap")
+                percentage = 1 - percentage
+
+            scale = directScale[percentage]
+
 
             difference = formerBest - history.best
             averageEn.append(difference)
@@ -280,8 +289,7 @@ def parallel_tempering_feedback(nllf, p, bounds, T=None, steps=1000,
             temperature_optimize += swap_increment
 
 #       Take a step
-        R = rand()
-
+#         R = rand()
         if step < 20 or percentage:
             # print("jiggle")
             delta = [stepper.jiggle(p, 0.01 * t / T[-1]) for p, t in zip(P, T)]
@@ -290,7 +298,8 @@ def parallel_tempering_feedback(nllf, p, bounds, T=None, steps=1000,
             delta = [stepper.diffev(p, i, CR=CR) for i, p in enumerate(P)]
 
         if percentage == 2:
-            delta = [stepper.direct(p, i) for i, p in enumerate(P)]
+            # delta = [stepper.direct(p, i) for i, p in enumerate(P)]
+            delta = [stepper.subspace_jiggle(p, 0.01 * t / T[-1], 3) for p,t in zip(P,T)]
 
 
         # delta = [stepper.jiggle(p, 0.01 * (t / T[-1])) for p, t in zip(P, T)]
@@ -346,18 +355,23 @@ def parallel_tempering_feedback(nllf, p, bounds, T=None, steps=1000,
         # low as we can go rather than risk losing it at the next high temp
         # step.
         if step % 1 == 0:
-            swap = zeros(N - 1)
-            for i in range(N - 2, -1, -1):
-                if exp((E[i + 1] - E[i]) * dT[i]) > rand():
+            swap = zeros(N)
+            #for i in range(N - 2, -1, -1):
+            for i in np.random.permutation(N-1):
+                #if not swap[i+1] and exp((E[i + 1] - E[i])* dT[i]) > rand():
+                #if rand()>0.5 and exp((E[i + 1] - E[i])* dT[i]) > rand():
+                above = (i+1)%N
+                if exp((E[above] - E[i])* dT[i]) > rand():
                     swap[i] = 1
                     # switch the energy states around
-                    swap_history[i + 1], swap_history[i] = swap_history[i], swap_history[i + 1]
-                    labels[i + 1], labels[i] = labels[i], labels[i + 1]
-                    E[i + 1], E[i] = E[i], E[i + 1]
-                    P[i + 1], P[i] = P[i] + 0, P[i + 1] + 0
-                    swap_frequency[i + 1] += 1
+                    swap_history[above], swap_history[i] = swap_history[i], swap_history[above]
+                    labels[above], labels[i] = labels[i], labels[above]
+
+                    E[above], E[i] = E[i], E[above]
+                    P[above], P[i] = P[i] + 0, P[above] + 0
+                    swap_frequency[above] += 1
                     swap_frequency[i] += 1
-            total_swap += swap
+            total_swap += swap[:-1]
             labels = update_labels(labels)
             histograms = update_histogram(histograms, labels)
             #assert nllf(P[0]) == E[0]
@@ -463,11 +477,11 @@ class History(object):
         return self.buffer
 
     def plot(self, output_file=None):
-        from pylab import plot, figure, semilogy, ylabel, xlabel, suptitle, gca, hist, subplot, legend, cm
-        from dream import corrplot, views, stats
-        from sklearn.preprocessing import normalize
-        from numpy import float64, array, delete
-        import math
+        from pylab import plot, figure, semilogy, ylabel, xlabel, suptitle, gca, hist, subplot, legend, cm, quiver, yscale
+        from dream import  views
+        from numpy import array
+        from scipy import var
+        from statsmodels.robust.scale import mad
 
         # Parameter History
         figure()
@@ -500,14 +514,47 @@ class History(object):
         ylabel("Temperature")
         xlabel("Generation")
 
-        # figure()
-        # for i in range(len(self.unnorm_points[0][0])):
-        #     subplot(nw, nh, i+1)
-        #     parameter = []
-        #     map(lambda p:parameter.extend([t[i] for t in p]), self.unnorm_points)
-        #     semilogy(parameter, asarray(self.temperatures).flatten(), '.', hold=True)
-        # xlabel("Value")
-        # ylabel("Temperature")
+        def directed_plot(x,y):
+            x,y = x[-1000:], y[-1000:]
+            quiver(x[:-1],y[:-1],diff(x),diff(y), scale_units='xy', angles='xy', scale=1, width=0.001)
+        figure()
+        points = array(self.points)
+        for i in range(1):
+            print(points.shape)
+            # semilogy(points[:,i,0], map(lambda s,t : t[s[i]], self.swap, self.temperatures) )
+            directed_plot(points[:,i,0], map(lambda s,t : t[s[i]], self.swap, self.temperatures))
+        suptitle("Temperature Swap History")
+        yscale('log')
+        ylabel("Temperature")
+        xlabel("Generation")
+
+
+        nw, nh = views.tile_axes(len(self.unnorm_points[0][0]))
+        figure()
+        for i in range(len(self.unnorm_points[0][0])):
+            subplot(nw, nh, i+1)
+            parameter = []
+            map(lambda p:parameter.extend([t[i] for t in p]), self.unnorm_points)
+            semilogy(parameter, asarray(self.temperatures).flatten(), '.', hold=True)
+        xlabel("Value")
+        ylabel("Temperature")
+
+        rot = asarray(self.temperatures).flatten().argsort()
+
+        parameter = array(parameter)[rot]
+        parameters = np.split(parameter, len(self.temperatures[1]))
+
+        variance = [var(parameters[i]) for i in range(len(parameters))]
+        print(self.temperatures[1])
+        print(array(self.temperatures[1]))
+        z = np.polyfit((self.temperatures[1]), array(variance), 3)
+        p = np.poly1d(z)
+        x2 = np.linspace(self.temperatures[1][0], self.temperatures[1][-1], 1000)
+        y = p(x2)
+        figure()
+
+        semilogx(self.temperatures[1], variance, '.', hold=True)
+        semilogx(x2, y)
 
         # # 1D histograms
         # figure()
@@ -530,31 +577,7 @@ class History(object):
         #
         #     views._decorate_histogram(stats.VarStats(label=self.var_labels[i], index=i+1, p95=p100, p68=p68,
         #                               median=p0[0], mean=mean, std=std, best=self.best_point[i]))
-        # suptitle("Inverted")
-        #
-        #
-        # # 1D histograms
-        # figure()
-        # nw, nh = views.tile_axes(len(self.unnorm_points[0][0]))
-        # weights = None
-        # cbar = views._make_fig_colorbar(asarray(self.unnorm_energy).flatten() * -1)
-        # ONE_SIGMA = 1 - 2*0.15865525393145705
-        # parameters = []
-        #
-        # for i in range(len(self.unnorm_points[0][0])):
-        #     parameter = []
-        #     map(lambda p:parameter.extend([t[i] for t in p]), self.unnorm_points)
-        #     parameters.append(parameter)
-        #
-        #     subplot(nw, nh, i+1)
-        #     p100, p68, p0 = stats.credible_intervals(x=asarray(parameter), weights=weights, ci=[0.9999, ONE_SIGMA, 0.0])
-        #     mean, std = stats.stats(x=asarray(parameter), weights=weights)
-        #
-        #     views._make_logp_histogram(asarray(parameter), asarray(self.unnorm_energy).flatten() * -1, 80, p100, weights, cbar)
-        #
-        #     views._decorate_histogram(stats.VarStats(label=self.var_labels[i], index=i+1, p95=p100, p68=p68,
-        #                               median=p0[0], mean=mean, std=std, best=self.best_point[i]))
-        # suptitle("unweighted")
+
         #
         # # 2D histograms
         # figure()
