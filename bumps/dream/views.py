@@ -36,12 +36,13 @@ def plot_all(state, portion=1.0, figfile=None):
         suptitle(state.title)
     if figfile is not None:
         savefig(figfile+"-trace")
-    figure()
-    plot_R(state, portion=portion)
-    if state.title:
-        suptitle(state.title)
-    if figfile is not None:
-        savefig(figfile+"-R")
+    # Suppress R stat for now
+    #figure()
+    #plot_R(state, portion=portion)
+    #if state.title:
+    #    suptitle(state.title)
+    #if figfile is not None:
+    #    savefig(figfile+"-R")
     figure()
     plot_logp(state, portion=portion)
     if state.title:
