@@ -698,6 +698,9 @@ class DreamFit(FitBase):
         vstats = var_stats(self.state.draw())
         return np.array([(v.p68[1] - v.p68[0]) / 2 for v in vstats], 'd')
 
+    def cov(self):
+        return self.state.cov()
+
     def load(self, input_path):
         from . import dream
         print("loading saved state (this might take awhile) ...")
@@ -809,7 +812,11 @@ class FitDriver(object):
         return x, fx
 
     def entropy(self):
-        return self.fitter.entropy()
+        if hasattr(self.fitter, 'entropy'):
+            return self.fitter.entropy()
+        else:
+            from .dream import entropy
+            return entropy.cov_entropy(self.cov()), 0
 
     def cov(self):
         """

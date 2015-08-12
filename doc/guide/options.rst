@@ -89,7 +89,8 @@ parameters before simulating the model.
 -----------
 
 Set the noise percentage on the simulated data.  The default is 5 for 5%
-normally distributed uncertainty in the measured values.
+normally distributed uncertainty in the measured values.  Use ``--noise=data``
+to use the uncertainty on a dataset in the simulation.
 
 .. _option-seed:
 

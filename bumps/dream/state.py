@@ -662,10 +662,11 @@ class MCMCDraw(object):
             plot(draw, AR)
 
         """
-        self._unroll()
         retval = self._gen_draws, self._gen_acceptance_rate
         if self.generation == self._gen_index:
             retval = [v[:self.generation] for v in retval]
+        elif self._gen_index > 0:
+            retval = [np.roll(v, -self._gen_index, axis=0) for v in retval]
         return retval
 
     def chains(self):
@@ -805,11 +806,18 @@ class MCMCDraw(object):
 
         See :func:`entropy.entropy` for details.
         """
-        from .entropy import entropy
+        from .entropy import entropy, MVNEntropy
 
         # Get the sample from the state
         drawn = self.draw()
-        return entropy(drawn.points, drawn.logp, **kw)
+
+        M = MVNEntropy(drawn.points)
+        #print(M)
+        if M.reject_normal:
+            return entropy(drawn.points, drawn.logp, **kw)
+        else:
+            return M.entropy, 0
+
 
     def draw(self, portion=1, vars=None, selection=None):
         """

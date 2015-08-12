@@ -534,9 +534,9 @@ def main():
         save_best(fitdriver, problem, best)
         if opts.cov:
             print(problem.cov())
-        if opts.entropy and hasattr(fitdriver.fitter, 'entropy'):
+        if opts.entropy:
             print("Calculating entropy...")
-            S, dS = fitdriver.fitter.entropy()
+            S, dS = fitdriver.entropy()
             print("Entropy: %s bits" % format_uncertainty(S, dS))
         mapper.stop_mapper(fitdriver.mapper)
         beep()

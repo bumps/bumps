@@ -80,7 +80,8 @@ runs on supercomputing clusters.
      :class:`DEFit <refl1d.fitter.PTFit>`, which adjust the fitting
      parameters, trying to find the best fit.  See :ref:`optimizer-guide`
      for a description of available optimizers and :ref:`option-guide` for
-     a description of the bumps options.
+     a description of the bumps options.  Entropy can be calculated when
+     the fit is complete.  See :ref:`entropy-guide`.
 
 
 .. toctree::
@@ -93,3 +94,4 @@ runs on supercomputing clusters.
     fitting.rst
     optimizer.rst
     options.rst
+    entropy.rst
