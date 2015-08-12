@@ -15,7 +15,7 @@ _SNOOKER, _DE, _DIRECT = 0, 1, 2
 
 
 def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
-            snooker_rate=0.1, noise=1e-6):
+            snooker_rate=0.1, noise=1e-6, scale=1.0):
     """
     Generates offspring using METROPOLIS HASTINGS monte-carlo markov chain
 
@@ -87,11 +87,11 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
             if denom == 0:  # identical points; should be extremely rare
                 step = EPS*rng.randn(*step.shape)
                 denom = sum(step**2)
-            scale = sum((R1-R2)*step) / denom
+            step_scale = sum((R1-R2)*step) / denom
 
             # Step using gamma of 2.38/sqrt(2) + U(-0.5, 0.5)
             gamma = 1.2 + rng.rand()
-            delta_x[qq] = gamma * scale * step
+            delta_x[qq] = gamma * step_scale * step
 
             # Scale Metropolis probability by (||xi* - z||/||xi - z||)^(d-1)
             step_alpha[qq] = (norm(delta_x[qq]+step)/norm(step))**((Nvar-1)/2)
@@ -121,18 +121,19 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
                 delta_x[qq] = rng.randn(Nvar)
 
     # Update x_old with delta_x and noise
+    delta_x *= scale
 
     # [PAK] The noise term needs to depend on the fitting range
     # of the parameter rather than using a fixed noise value for all
     # parameters.  The  current parameter value is a pretty good proxy
-    # in most cases, but it breaks down if the parameter is zero, or
-    # if the range is something like 1 +/- eps.
+    # in most cases (i.e., relative noise), but it breaks down if the
+    # parameter is zero, or if the range is something like 1 +/- eps.
 
     # absolute noise
-    #x_new = pop[:Nchain] + delta_x + noise*rng.randn(Nchain, Nvar)
+    #x_new = pop[:Nchain] + delta_x + scale*noise*rng.randn(Nchain, Nvar)
 
     # relative noise
-    x_new = pop[:Nchain] * (1 + noise*rng.randn(Nchain, Nvar)) + delta_x
+    x_new = pop[:Nchain] * (1 + scale*noise*rng.randn(Nchain, Nvar)) + delta_x
 
     # no noise
     #x_new = pop[:Nchain] + delta_x

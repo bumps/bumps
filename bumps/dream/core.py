@@ -136,6 +136,8 @@ __all__ = ["Dream", "run_dream"]
 import sys
 import time
 
+import numpy as np
+
 from .state import MCMCDraw
 from .metropolis import metropolis, metropolis_dr, dr_step
 from .gelman import gelman
@@ -272,7 +274,9 @@ def run_dream(dream, abort_test=None):
     last_goalseek = (dream.draws + dream.burn)/n_pop - dream.goalseek_minburn
     next_goalseek = state.generation + dream.goalseek_interval \
         if dream.goalseek_optimizer else 1e100
-    
+
+    #need_outliers_removed = True
+    scale = 1.0
     while state.draws < dream.draws + dream.burn:
 
         # Age the population using differential evolution
@@ -289,7 +293,8 @@ def run_dream(dream, abort_test=None):
                           max_pairs=dream.DE_pairs,
                           eps=dream.DE_eps,
                           snooker_rate=dream.DE_snooker_rate,
-                          noise=dream.DE_noise)
+                          noise=dream.DE_noise,
+                          scale=scale)
 
             # PAK: Try a local optimizer every N generations
             if next_goalseek <= state.generation <= last_goalseek:
@@ -360,17 +365,31 @@ def run_dream(dream, abort_test=None):
         # ---------------------------------------------------------------------
 
         # Calculate Gelman and Rubin convergence diagnostic
-        _, points, _ = state.chains()
-        r_stat = gelman(points, portion=0.5)
+        #_, points, _ = state.chains()
+        #r_stat = gelman(points, portion=0.5)
+        r_stat = 0.  # Suppress for now since it is broken, and it costs to unroll
 
         #if state.draws <= 0.1 * dream.draws:
         if state.draws <= dream.burn:
             # Adapt the crossover ratio, but only during burn-in.
             dream.CR.adapt()
-        #else:
-        #    # See whether there are any outlier chains, and remove
-        #    # them to current best value of X
-        #    remove_outliers(state, x, logp, test=dream.outlier_test)
+        # See whether there are any outlier chains, and remove
+        # them to current best value of X
+        #if need_outliers_removed and state.draws > 0.5*dream.burn:
+        #    state.remove_outliers(x, logp, test=dream.outlier_test)
+        #    need_outliers_removed = False
+
+        if False:
+            # Suppress scale update until we have a chance to verify that it
+            # doesn't skew the resulting statistics.
+            _, r = state.acceptance_rate()
+            ravg = np.mean(r[-dream.DE_steps:])
+            if ravg > 0.4:
+                scale *= 1.01
+            elif ravg < 0.2:
+                scale /= 1.01
+
+
 
         # Save update information
         state._update(R_stat=r_stat, CR_weight=dream.CR.weight)
