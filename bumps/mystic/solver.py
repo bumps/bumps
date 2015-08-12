@@ -10,7 +10,7 @@ The general optimization algorithm is as follows::
                  failure=Calls(10000) | Steps(100))
     population = fit.start()
     while True:
-        result = map(fit.problem, population)
+        result = list(map(fit.problem, population))
         fit.update(population, result)
         if fit.isdone(): break
         population = fit.step()
@@ -116,6 +116,8 @@ import os
 
 import numpy as np
 
+def default_mapper(f, x):
+    return list(map(f, x))
 
 def cpu_time():
     """Current cpu time for this process"""
@@ -139,7 +141,7 @@ class Minimizer:
         self.history = history
         self.reset()
 
-    def minimize(self, mapper=map, abort_test=None, resume=False):
+    def minimize(self, mapper=default_mapper, abort_test=None, resume=False):
         """
         Run the solver to completion, returning the best point.
 

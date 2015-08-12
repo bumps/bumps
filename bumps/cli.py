@@ -207,7 +207,6 @@ def make_store(problem, opts, exists_handler):
     if opts.batch:
         sys.stdout = open(problem.output_path + ".mon", "w")
 
-
 def run_profiler(problem, steps):
     """
     Model execution profiler.
@@ -223,7 +222,8 @@ def run_profiler(problem, steps):
     #    1 ms setting parameters and computing nllf
     from .util import profile
     p = initpop.random_init(int(steps), None, problem)
-    profile(map, problem.nllf, p)
+    # Note: map is an iterator in python 3
+    profile(lambda *args: list(map(*args)), problem.nllf, p)
 
 
 def run_timer(mapper, problem, steps):

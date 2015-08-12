@@ -73,5 +73,5 @@ def plot_response_surface(f, p, dims=[0,1]):
             p[xi] = pt[0]
             p[yi] = pt[1]
             return f(p)
-        z = np.array([list(map(value, [(v,w) for v in x])) for w in y])
+        z = np.array([[value((v,w)) for v in x] for w in y])
         pylab.pcolor(x,y,z)

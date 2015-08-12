@@ -222,7 +222,7 @@ class DEFit(FitBase):
         if mapper is not None:
             _mapper = lambda p, v: mapper(v)
         else:
-            _mapper = lambda p, v: map(self.problem.nllf, v)
+            _mapper = lambda p, v: list(map(self.problem.nllf, v))
         resume = hasattr(self, 'state')
         steps = options['steps'] + (self.state['step'][-1] if resume else 0)
         strategy = de.DifferentialEvolution(npop=options['pop'],
@@ -356,7 +356,7 @@ class PSFit(FitBase):
     def solve(self, monitors=None, mapper=None, **options):
         options = _fill_defaults(options, self.settings)
         if mapper is None:
-            mapper = lambda x: map(self.problem.nllf, x)
+            mapper = lambda x: list(map(self.problem.nllf, x))
         from .random_lines import particle_swarm
         self._update = MonitorRunner(problem=self.problem,
                                      monitors=monitors)
@@ -394,7 +394,7 @@ class RLFit(FitBase):
             abort_test = lambda: False
         options = _fill_defaults(options, self.settings)
         if mapper is None:
-            mapper = lambda x: map(self.problem.nllf, x)
+            mapper = lambda x: list(map(self.problem.nllf, x))
         from .random_lines import random_lines
         self._update = MonitorRunner(problem=self.problem,
                                      monitors=monitors)
@@ -427,8 +427,8 @@ class PTFit(FitBase):
     """
     name = "Parallel Tempering"
     id = "pt"
-    settings = [('steps', 1000), ('nT', 25), ('CR', 0.9),
-                ('burn', 4000), ('Tmin', 0.1), ('Tmax', 10)]
+    settings = [('steps', 400), ('nT', 24), ('CR', 0.9),
+                ('burn', 100), ('Tmin', 0.1), ('Tmax', 10)]
 
     def solve(self, monitors=None, mapper=None, **options):
         options = _fill_defaults(options, self.settings)
@@ -611,7 +611,7 @@ class DreamModel(MCMCModel):
         self.bounds = self.problem.bounds()
         self.labels = self.problem.labels()
 
-        self.mapper = mapper if mapper else lambda p: map(self.nllf, p)
+        self.mapper = mapper if mapper else lambda p: list(map(self.nllf, p))
 
     def log_density(self, x):
         return -self.nllf(x)
@@ -784,7 +784,7 @@ class FitDriver(object):
         self.options = options
         self.monitors = monitors
         self.abort_test = abort_test
-        self.mapper = mapper if mapper else lambda p: map(problem.nllf, p)
+        self.mapper = mapper if mapper else lambda p: list(map(problem.nllf, p))
 
     def fit(self, resume=None):
 

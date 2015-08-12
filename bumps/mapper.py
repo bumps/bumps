@@ -50,7 +50,8 @@ class SerialMapper(object):
 
     @staticmethod
     def start_mapper(problem, modelargs):
-        return lambda points: map(problem.nllf, points)
+        # Note: map is n iterator in python 3.x
+        return lambda points: list(map(problem.nllf, points))
 
     @staticmethod
     def stop_mapper(mapper):

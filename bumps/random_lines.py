@@ -65,7 +65,7 @@ def random_lines(cfo, NP, CR=0.9, epsilon=1e-10, abort_test=None, maxiter=1000):
     if 'parallel_cost' in cfo:
         mapper = lambda v: asarray(cfo['parallel_cost'](v.T), 'd')
     else:
-        mapper = lambda v: asarray(map(cfo['cost'], v.T), 'd')
+        mapper = lambda v: asarray(list(map(cfo['cost'], v.T)), 'd')
     monitor = cfo.get('monitor', print_every_five)
 
     n = cfo['n']
@@ -214,7 +214,7 @@ def particle_swarm(cfo, NP, epsilon=1e-10, maxiter=1000):
     if 'parallel_cost' in cfo:
         mapper = lambda v: asarray(cfo['parallel_cost'](v.T), 'd')
     else:
-        mapper = lambda v: asarray(map(cfo['cost'], v.T), 'd')
+        mapper = lambda v: asarray(list(map(cfo['cost'], v.T)), 'd')
     monitor = cfo.get('monitor', print_every_five)
 
     n = cfo['n']

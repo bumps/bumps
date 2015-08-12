@@ -87,6 +87,16 @@ from .util import draw, rng
 EXT = ".mc"
 CREATE = open
 
+# CRUFT: python 2.x needs to convert unicode to bytes when writing to file
+try:
+    # python 2.x
+    unicode
+    def write(fid, s):
+        fid.write(s)
+except NameError:
+    # python 3.x
+    def write(fid, s):
+        fid.write(s.encode('utf-8') if isinstance(s, str) else s)
 
 class NoTrace:
     def write(self, data):
@@ -103,56 +113,56 @@ def save_state(state, filename):
     trace = NoTrace()
     #trace = open(filename+"-trace.mc", "w")
 
-    trace.write("starting trace\n")
+    write(trace, "starting trace\n")
     # Build 2-D data structures
-    trace.write("extracting draws, logp\n")
+    write(trace, "extracting draws, logp\n")
     draws, logp = state.logp(full=True)
-    trace.write("extracting acceptance rate\n")
+    write(trace, "extracting acceptance rate\n")
     _, AR = state.acceptance_rate()
-    trace.write("building chain from draws, AR and logp\n")
+    write(trace, "building chain from draws, AR and logp\n")
     chain = hstack((draws[:, None], AR[:, None], logp))
 
-    trace.write("extracting point, logp\n")
+    write(trace, "extracting point, logp\n")
     _, point, logp = state.chains()
     Nthin, Npop, Nvar = point.shape
-    trace.write("shape is %d,%d,%d\n" % (Nthin, Npop, Nvar))
-    trace.write("adding logp to point\n")
+    write(trace, "shape is %d,%d,%d\n" % (Nthin, Npop, Nvar))
+    write(trace, "adding logp to point\n")
     point = dstack((logp[:, :, None], point))
-    trace.write("collapsing to draws x point\n")
+    write(trace, "collapsing to draws x point\n")
     point = reshape(point, (point.shape[0]*point.shape[1], point.shape[2]))
 
-    trace.write("extracting R_stat\n")
+    write(trace, "extracting R_stat\n")
     draws, R_stat = state.R_stat()
-    trace.write("extracting CR_weight\n")
+    write(trace, "extracting CR_weight\n")
     _, CR_weight = state.CR_weight()
     _, Ncr = CR_weight.shape
-    trace.write("building stats\n")
+    write(trace, "building stats\n")
     stats = hstack((draws[:, None], R_stat, CR_weight))
 
     #TODO: missing _outliers from save_state
 
     # Write convergence info
-    trace.write("writing chain\n")
-    fid = CREATE(filename+'-chain'+EXT, 'w')
-    fid.write('# draws acceptance_rate %d*logp\n' % Npop)
+    write(trace, "writing chain\n")
+    fid = CREATE(filename+'-chain'+EXT, 'wb')
+    write(fid, '# draws acceptance_rate %d*logp\n' % Npop)
     savetxt(fid, chain)
     fid.close()
 
     # Write point info
-    trace.write("writing point\n")
-    fid = CREATE(filename+'-point'+EXT, 'w')
-    fid.write('# logp point (Nthin x Npop x Nvar = [%d,%d,%d])\n'
-              % (Nthin, Npop, Nvar))
+    write(trace, "writing point\n")
+    fid = CREATE(filename+'-point'+EXT, 'wb')
+    write(fid, '# logp point (Nthin x Npop x Nvar = [%d,%d,%d])\n'
+               % (Nthin, Npop, Nvar))
     savetxt(fid, point)
     fid.close()
 
     # Write stats
-    trace.write("writing stats\n")
-    fid = CREATE(filename+'-stats'+EXT, 'w')
-    fid.write('# draws %d*R-stat %d*CR_weight\n' % (Nvar, Ncr))
+    write(trace, "writing stats\n")
+    fid = CREATE(filename+'-stats'+EXT, 'wb')
+    write(fid, '# draws %d*R-stat %d*CR_weight\n' % (Nvar, Ncr))
     savetxt(fid, stats)
     fid.close()
-    trace.write("done state save\n")
+    write(trace, "done state save\n")
     trace.close()
 
 
