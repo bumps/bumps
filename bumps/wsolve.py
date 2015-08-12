@@ -166,13 +166,13 @@ class LinearModel(object):
         #
         # We have since switched to an SVD solver, which gives us
         #
-        #    invC = A'A  = (USV')'USV' = VSU'USV' = VSSV'
-        #    C = inv(A'A) = inv(VSSV') = inv(V')inv(SS)inv(V)
-        #      = Vinv(SS)V' = Vinv(S) inv(S)V'
+        #    invC = A' A  = (USV')' USV' = VSU' USV' = V S S V'
+        #    C = inv(A'A) = inv(VSSV') = inv(V') inv(S S) inv(V)
+        #      = V inv(S S) V' = V inv(S) inv(S) V'
         #
         # Substituting, we get
         #
-        #    x' inv(A'A) x = t t', for t = x' Vinv(S)
+        #    x' inv(A'A) x = t t', for t = x' V inv(S)
         #
         # Since x is a vector, t t' is the inner product sum(t**2).
         # Note that LAPACK allows us to do this simultaneously for many
