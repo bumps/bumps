@@ -163,6 +163,17 @@ class Curve(object):
             self._cached_theory = self._function(x, **kw)
         return self._cached_theory
 
+    def simulate_data(self, noise=None):
+        theory = self.theory()
+        if noise is not None:
+            if noise == 'data':
+                pass
+            elif noise < 0:
+                self.dy = -theory*noise*0.01
+            else:
+                self.dy = noise
+        self.y = theory + np.random.randn(*theory.shape)*self.dy
+
     def residuals(self):
         return (self.theory() - self.y) / self.dy
 
@@ -229,21 +240,31 @@ class PoissonCurve(Curve):
     See :class:`Curve` for details.
     """
     def __init__(self, fn, x, y, name="", **fnkw):
-        Curve.__init__(self, fn, x, y, sqrt(y+1), name=name, **fnkw)
-        self._logfacty = np.sum(logfactorial(self.y))
+        dy = sqrt(y) + (y==0) if y is not None else None
+        Curve.__init__(self, fn, x, y, dy, name=name, **fnkw)
+        self._logfacty = logfactorial(y) if y is not None else None
+        self._logfactysum = np.sum(self._logfacty)
 
-    def residuals(self):
-        # TODO: provide individual probabilities as residuals
-        # or perhaps the square roots --- whatever gives a better feel for
-        # which points are driving the fit
-        theory = self.theory()
-        return np.sqrt(-(self.y * log(theory) - theory))
+    ## Assume gaussian residuals for now
+    #def residuals(self):
+    #    # TODO: provide individual probabilities as residuals
+    #    # or perhaps the square roots --- whatever gives a better feel for
+    #    # which points are driving the fit
+    #    theory = self.theory()
+    #    return np.sqrt(self.y * log(theory) - theory - self._logfacty)
 
     def nllf(self):
         theory = self.theory()
         if (theory <= 0).any():
             return 1e308
-        return -sum(self.y * log(theory) - theory) + self._logfacty
+        return -sum(self.y * log(theory) - theory) + self._logfactysum
+
+    def simulate_data(self, noise=None):
+        theory = self.theory()
+        self.y = np.random.poisson(theory)
+        self.dy = sqrt(self.y) + (self.y==0)
+        self._logfacty = logfactorial(self.y)
+        self._logfactysum = np.sum(self._logfacty)
 
     def save(self, basename):
         # TODO: need header line with state vars as json

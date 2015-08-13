@@ -142,7 +142,7 @@ def _decorate_histogram(vstats):
                verticalalignment='top',
                horizontalalignment='left',
                transform=pylab.gca().transAxes)
-    #pylab.setp([pylab.gca().get_yticklabels()], visible=False)
+    pylab.setp([pylab.gca().get_yticklabels()], visible=False)
     ticks = (l95, l68, vstats.median, h68, h95)
     labels = [format_value(v, h95-l95) for v in ticks]
     if len(labels[2]) > 5:

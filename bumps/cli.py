@@ -539,8 +539,8 @@ def main():
             S, dS = fitdriver.entropy()
             print("Entropy: %s bits" % format_uncertainty(S, dS))
         mapper.stop_mapper(fitdriver.mapper)
-        beep()
-        if not opts.batch and not opts.mpi:
+        if not opts.batch and not opts.mpi and not opts.noshow:
+            beep()
             import pylab
             pylab.show()
 

@@ -209,8 +209,8 @@ class BumpsOpts(ParseOpts):
     """
     MINARGS = 1
     FLAGS = set(("preview", "chisq", "profiler", "timer",
-                 "simulate", "simrandom", "shake",
-                 "worker", "batch", "overwrite", "parallel", "stepmon",
+                 "simulate", "simrandom", "shake", "worker",
+                 "batch", "noshow", "overwrite", "parallel", "stepmon",
                  "cov", "entropy", "remote", "staj", "edit", "mpi", "keep_best",
                  # passed in when app is a frozen image
                  "multiprocessing-fork",
@@ -280,7 +280,9 @@ Options:
     --mpi
         run fit using MPI for parallelism (use command "mpirun -n cpus ...")
     --batch
-        batch mode; don't show plots after fit
+        batch mode; save output in .mon file and don't show plots after fit
+    --noshow
+        semi-batch; send output to console but don't show plots after fit
     --remote
         queue fit to run on remote server
     --notify=user@email

@@ -150,6 +150,17 @@ def entropy(points, logp, N_entropy=10000, N_norm=2500):
         idx = permutation(len(points))[:N_entropy]
         entropy_points, eval_logp = points[idx], logp[idx]
 
+    """
+    # Try again, just using the points from the high probability regions
+    # to determine the scale factor
+    N_norm = min(len(logp), 5000)
+    N_entropy = int(0.8*N_norm)
+    idx = np.argsort(logp)
+    norm_points = points[idx[-N_norm:]]
+    entropy_points = points[idx[-N_entropy:]]
+    eval_logp = logp[idx[-N_entropy:]]
+    """
+
     # Normalize p to a peak probability of 1 so that exp() doesn't underflow.
     #
     # This should be okay since for the normalizing constant C:
@@ -187,13 +198,27 @@ def entropy(points, logp, N_entropy=10000, N_norm=2500):
     s_est = log(n_est) - mean(eval_logp)
     s_err = n_err/n_est
     #print(n_est, n_err, s_est/LN2, s_err/LN2)
-    #import pylab
-    #idx = pylab.argsort(entropy_points[:,0])
-    ##pylab.plot(entropy_points[idx,0], frac[idx])
-    #pylab.hist(points[:,0], bins=50, normed=True)
-    #pylab.plot(entropy_points[idx,0], rho[idx])
-    #pylab.plot(entropy_points[idx,0], exp(eval_logp+log_scale)[idx])
-    #pylab.show()
+    ##print(np.median(frac), log(np.median(frac))/LN2, log(n_est)/LN2)
+    if False:
+        import pylab
+        idx = pylab.argsort(entropy_points[:,0])
+        pylab.figure()
+        pylab.subplot(221)
+        pylab.hist(points[:,0], bins=50, normed=True, log=True)
+        pylab.plot(entropy_points[idx,0], rho[idx], label='density')
+        pylab.plot(entropy_points[idx,0], exp(eval_logp+log_scale)[idx], label='p')
+        pylab.ylabel("p(x)")
+        pylab.legend()
+        pylab.subplot(222)
+        pylab.hist(points[:,0], bins=50, normed=True, log=False)
+        pylab.plot(entropy_points[idx,0], rho[idx], label='density')
+        pylab.plot(entropy_points[idx,0], exp(eval_logp+log_scale)[idx], label='p')
+        pylab.ylabel("p(x)")
+        pylab.legend()
+        pylab.subplot(212)
+        pylab.plot(entropy_points[idx,0], frac[idx], '.')
+        pylab.xlabel("P[0] value")
+        pylab.ylabel("p(x)/kernel density")
 
     # return entropy and uncertainty in bits
     return s_est/LN2, s_err/LN2
