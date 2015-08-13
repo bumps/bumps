@@ -52,7 +52,8 @@ def weave(source, target):
             if newer(rstfile, f):
                 # Convert executable literate file to rst file with embedded code
                 pylit.main(["--codeindent=4", f, rstfile])
-                # Convert rest file with embedded code to clean code file
+                attach_download(rstfile, basename(f))
+                # Convert rst file with embedded code to clean code file
                 pylit.main([rstfile, pyclean, "-s", "-t"])
         else:
             dest = joinpath(target, basename(f))
@@ -61,6 +62,10 @@ def weave(source, target):
                     print("Warning: file %r is not a pylit file"%(f,))
                 #print "copying",f,dest
                 copyfile(f, dest)
+
+def attach_download(rstfile, target):
+    with open(rstfile, "ab") as fid:
+        fid.write("\n.. only:: html\n\n   Download: :download:`%s <%s>`.\n"%(target, target))
 
 def ispylit(f):
     """

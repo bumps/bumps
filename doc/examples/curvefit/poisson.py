@@ -166,8 +166,6 @@ M.background.range(0,max(y))
 
 problem = FitProblem(M)
 
-# The complete model file: :download:`poisson.py <poisson.py>`.
-#
 # We can now load and run the fit.  Be sure to substitute COND for one of the
 # conditions defined above:
 #
