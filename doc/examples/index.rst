@@ -14,3 +14,4 @@ complex models with many constraints relatively easily.
    curvefit/readme.rst
    peaks/readme.rst
    test_functions/readme.rst
+   entropy/check_entropy.rst
