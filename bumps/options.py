@@ -60,7 +60,7 @@ class ParseOpts:
                     "Unknown option --%s. Use -? for help." % name)
             setattr(self, name, value)
 
-        positionargs = [v for v in sys.argv[1:] if not v.startswith('-')]
+        positionargs = [v for v in sys.argv[1:] if not v.startswith('--')]
         self.args = positionargs
 
 
