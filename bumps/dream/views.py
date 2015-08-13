@@ -142,7 +142,7 @@ def _decorate_histogram(vstats):
                verticalalignment='top',
                horizontalalignment='left',
                transform=pylab.gca().transAxes)
-    pylab.setp([pylab.gca().get_yticklabels()], visible=False)
+    #pylab.setp([pylab.gca().get_yticklabels()], visible=False)
     ticks = (l95, l68, vstats.median, h68, h95)
     labels = [format_value(v, h95-l95) for v in ticks]
     if len(labels[2]) > 5:
@@ -236,7 +236,8 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, cbar):
             y, z = y[pidx], z[pidx]
         pylab.pcolormesh(x, y, z, vmin=vmin, vmax=vmax, hold=True, cmap=cmap)
     centers, height, maxlikelihood = array(bins).T
-    pylab.plot(centers, maxlikelihood*max(height), '-g', hold=True)
+    scale = np.sum(height)/np.sum(maxlikelihood)
+    pylab.plot(centers, maxlikelihood*scale, '-g', hold=True)
 
 
 def _make_var_histogram(values, logp, nbins, ci, weights):
