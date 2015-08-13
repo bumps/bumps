@@ -812,7 +812,7 @@ class MCMCDraw(object):
         drawn = self.draw()
 
         M = MVNEntropy(drawn.points)
-        #print(M)
+        print("Entropy from MVN: %s"%str(M))
         if M.reject_normal:
             return entropy(drawn.points, drawn.logp, **kw)
         else:

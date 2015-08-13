@@ -230,7 +230,7 @@ class MVNEntropy(object):
         # compute Mardia test coefficient
         n, p = x.shape   # num points, num dimensions
         mu = np.mean(x, axis=0)
-        C = np.cov(x.T, bias=1)
+        C = np.cov(x.T, bias=1) if p>1 else np.array([[np.var(x.T, ddof=1)]])
         # squared Mahalanobis distance matrix
         # Note: this forms a full n x n matrix of distances, so will
         # fail for a large number of points.  Kurtosis only requires
