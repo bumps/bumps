@@ -542,7 +542,7 @@ def main():
         beep()
         if not opts.batch and not opts.mpi:
             import pylab
-            #pylab.show()
+            pylab.show()
 
 
 # Allow  "$python -m bumps.cli args" calling pattern
