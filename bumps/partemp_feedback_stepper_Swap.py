@@ -18,7 +18,7 @@ from numpy.linalg import norm
 from numpy.random import rand, randn, randint, permutation
 from scipy.stats import linregress
 from pylab import plot, figure, suptitle, legend, semilogx
-import math
+from sklearn.preprocessing import normalize
 def every_ten(step, x, fx, P, E):
     if step % 10:
         print(step, fx[step], x[step])
@@ -175,97 +175,90 @@ def parallel_tempering_feedback(nllf, p, bounds, T=None, steps=1000,
     total_swap = zeros(N - 1) # Histogram of swap
 
     swap_frequency = zeros(N)
-    acceptance_frequency = zeros(N)
+    acceptance_history = []
     step_size = zeros(N)
     energy_change = zeros(N)
     figure()
-    scale = 1
-    directScale = asarray([1.,1.,1.])
-    scale_history = [scale]
     count = 1
+
     accept_optimize = 300
     swap_increment = accept_optimize*2
     temperature_optimize = swap_increment
-    acceptance_history = []
+
     step_history = []
     avg_accept = []
-    percentage=0
-    formerBest = min(E)
-    difference = 0
-    reset = True
-    averageEn = [difference]
-    part = 0.5
+
+    numberofsteppers = 4
+    stepType = 0
+
+    chance = np.linspace(0,1,numberofsteppers+1)
+
+    energy, acceptance_frequency, stepCount = zeros(numberofsteppers), zeros(numberofsteppers), zeros(numberofsteppers)
+
+    scale = np.ones(numberofsteppers)
+    scale_history = [scale]
+
     for step in range(1, steps + burn):
-        if step == (steps+burn - 1):
-            suptitle("Acceptance")
-            legend()
-            figure()
-            plot(step_history, acceptance_history, ".")
-            suptitle("Median Acceptance")
-            figure()
-            plot(step_history, avg_accept, ".")
-            suptitle("Average Acceptance")
-            figure()
-            plot(T, step_size/step, '.')
-            suptitle("Step")
-            figure()
-            plot(T, energy_change/step, '.')
-            suptitle("Energy")
-            figure()
-            plot(np.linspace(0, len(scale_history) - 1, len(scale_history)), scale_history, '.')
-            suptitle("Scale")
-            figure()
+        # if step == (steps+burn - 1):
+        #     suptitle("Acceptance")
+        #     legend()
+        #     figure()
+        #     plot(step_history, acceptance_history, ".")
+        #     suptitle("Median Acceptance")
+        #     figure()
+        #     plot(step_history, avg_accept, ".")
+        #     suptitle("Average Acceptance")
+        #     figure()
+        #     plot(T, step_size/step, '.')
+        #     suptitle("Step")
+        #     figure()
+        #     plot(T, energy_change/step, '.')
+        #     suptitle("Energy")
+        #     figure()
+        #     plot(np.linspace(0, len(scale_history) - 1, len(scale_history)), scale_history, '.')
+        #     suptitle("Scale")
+        #     figure()
 
         if step == accept_optimize:
             # Scale optimizer
-            # print(acceptance_frequency)
-            # print ("med", np.median(acceptance_frequency/swap_increment))
-            if np.average(acceptance_frequency/swap_increment) != 0:
-                scale *= .234/np.average(acceptance_frequency/swap_increment)
-            scale_history.append(scale)
-            semilogx(T, acceptance_frequency/swap_increment, hold=True, label=str(count), marker=',')
-            acceptance_history.append(np.median(acceptance_frequency/swap_increment))
-            avg_accept.append(np.average(acceptance_frequency/swap_increment))
-            step_history.append(step)
+            for i in range(len(scale)):
+                if stepCount[i] != 0:
+                    scale[i] *= .234/np.average(acceptance_frequency[i]/(stepCount[i]*N))
 
-            #switch between steppers
-            directScale[percentage] = scale
+            # scale_history.append(scale)
+            # semilogx(T, acceptance_frequency/swap_increment, hold=True, label=str(count), marker=',')
+            # acceptance_history.append(np.median(acceptance_frequency/swap_increment))
+            # avg_accept.append(np.average(acceptance_frequency/swap_increment))
+            # step_history.append(step)
 
-            if (formerBest - history.best) <= 10 and difference <= 0:
-                if percentage == 2:
-                    print("yes")
-                    print(part)
-                    part = min(N, part + .5)
-                    print(part)
-                print("Reset")
-                percentage = 2
-                print(part)
-            elif percentage == 2:
-                percentage = 0
-
-            if (formerBest - history.best) <= min(difference,150) and percentage != 2:
-                print("Swap")
-                percentage = 1 - percentage
-
-            scale = directScale[percentage]
+            # Rebalance percentages
 
 
-            difference = formerBest - history.best
-            averageEn.append(difference)
-            formerBest = history.best
+            for i in range(len(stepCount)):
+                if stepCount[i] == 0:
+                    stepCount[i] = 1
 
-            # Max temperature
-            # T[-1] = T[-2] + (T[-1] - T[-2]) * min(2, .4/(acceptance_frequency[-1]/swap_increment))
-            # T[0] = min(abs(T[1] - 0.01), T[0] * .1/(acceptance_frequency[0]/swap_increment))
+            rebal = (energy/stepCount)/sum(energy/stepCount)
 
-            # T = np.logspace(log(T[0], 10), log(T[-1], 10), N)
-            # print(T[0])
-            # print(T[1])
-            # Reset graphs
+            for i in range(len(rebal)):
+                if rebal[i] < 0.1:
+                    rebal[i] = 0.1
+            rebal = rebal/sum(rebal)
+            print(energy/stepCount)
+            print(scale)
+
+            currentSum=0
+            for i in range(len(rebal)):
+                chance[i+1] = currentSum + rebal[i]
+                currentSum = chance[i+1]
+
+            print(chance)
+
+            # Reset histograms
             histograms = np.array([[0,0] for i in range(N)])
             labels = update_labels(zeros(N))
 
-            acceptance_frequency = zeros(N)
+            energy, acceptance_frequency, stepCount = zeros(numberofsteppers), zeros(numberofsteppers), zeros(numberofsteppers)
             swap_frequency = zeros(N)
 
 
@@ -273,7 +266,6 @@ def parallel_tempering_feedback(nllf, p, bounds, T=None, steps=1000,
             accept_optimize += swap_increment
             count += 1
 
-        # if False:
         if step == temperature_optimize:
             # Feedback exchange
             dif = find_dif(T, histograms)
@@ -281,69 +273,54 @@ def parallel_tempering_feedback(nllf, p, bounds, T=None, steps=1000,
             T = optimize_temperature(T, constant, dif)
             dT = diff(1. / asarray(T))
 
-            # Reset Graphs
-            acceptance_frequency = zeros(N)
+            # Reset histograms
+            histograms = np.array([[0,0] for i in range(N)])
+            labels = update_labels(zeros(N))
+
+            energy, acceptance_frequency, stepCount = zeros(numberofsteppers), zeros(numberofsteppers), zeros(numberofsteppers)
             swap_frequency = zeros(N)
 
             # Increment
             temperature_optimize += swap_increment
 
 #       Take a step
-#         R = rand()
-        if step < 20 or percentage:
-            # print("jiggle")
+        R = rand()
+
+        if R < chance[1]:
+            stepType = 0
             delta = [stepper.jiggle(p, 0.01 * t / T[-1]) for p, t in zip(P, T)]
+        elif R < chance[2]:
+            stepType = 1
+            delta = [stepper.direct(p, i) for i, p in enumerate(P)]
+        elif R < chance[3]:
+            stepType = 2
+            delta = [stepper.subspace_jiggle(p, 0.01 * t / T[-1], N // 4) for p, t in zip(P, T)]
         else:
-            # print("de")
+            stepType = 3
             delta = [stepper.diffev(p, i, CR=CR) for i, p in enumerate(P)]
 
-        if percentage == 2:
-            # delta = [stepper.direct(p, i) for i, p in enumerate(P)]
-            delta = [stepper.subspace_jiggle(p, 0.01 * t / T[-1], 3) for p,t in zip(P,T)]
-
-
-        # delta = [stepper.jiggle(p, 0.01 * (t / T[-1])) for p, t in zip(P, T)]
-
-        # delta = [stepper.diffev(p, i, CR=CR) for i, p in enumerate(P)]
-
-        # if step < 20 or R < 0.4:
-        #     action = 'jiggle'
-        #     delta = [stepper.jiggle(p, 0.01 * t / T[-1]) for p, t in zip(P, T)]
-        # elif R < 0.6:
-        #     action = 'direct'
-        #     delta = [stepper.direct(p, i) for i, p in enumerate(P)]
-        # else:
-        #     action = 'diffev'
-        #     delta = [stepper.diffev(p, i, CR=CR) for i, p in enumerate(P)]
-
         # Test constraints
-        Pnext = P + asarray(delta)/scale
+        Pnext = P + asarray(delta)/scale[stepType]
         Pnext = asarray([bounder.apply(p) for p in Pnext])
-        if(step > burn):
-            #print("Min", Pnext[0] - P[0])
-            #print("Max", Pnext[-1] - P[-1])
-            pass
 
         # Temperature dependent Metropolis update
-        # Enext = asarray([nllf(p) for p in Pnext])
         Enext = asarray(mapper(Pnext))
         accept = exp(-(Enext - E) / T) > rand(N)
-        # print step,action
-        # print "dP"," ".join("%.6f"%norm((pn-p)/stepper.step) for pn,p in zip(P,Pnext))
-        # print "dE"," ".join("%.1f"%(en-e) for en,e in zip(E,Enext))
-        # print "En"," ".join("%.1f"%e for e in Enext)
-        # print "accept",accept
-        #print("T0 %12.2f %12.2f ... Tmax %12.2f %12.2f"%(Enext[0], (Enext[0] - E[0])/T[0] if Enext[0]>E[0] else 0,
-        #                                                 Enext[-1], (Enext[-1] - E[-1])/T[-1] if Enext[-1] > E[-1] else 0.),
-        #      action)
-        acceptance_frequency += accept
+
         E[accept] = Enext[accept]
         P[accept] = Pnext[accept]
-        if step > burn :
-            energy_change += Enext - E
-            step_size += np.abs(np.average(asarray(delta)/scale, axis=1))
-            total_accept += accept
-        # print("point: \n", p)
+
+
+        # Update histograms
+        acceptance_frequency[stepType] += sum(accept)
+        stepCount[stepType] = stepCount[stepType] + 1
+        energy[stepType] += sum(Enext - E)
+
+        # if step > burn :
+        #     energy_change += Enext - E
+        #     step_size += np.abs(np.average(asarray(delta)/scale, axis=1))
+        #     total_accept += accept
+
         # Accumulate history for population based methods
         history.save(step, temperature=T, energy=E, point=P, swap_history=swap_history, labels=labels, changed=accept)
 
@@ -356,10 +333,7 @@ def parallel_tempering_feedback(nllf, p, bounds, T=None, steps=1000,
         # step.
         if step % 1 == 0:
             swap = zeros(N)
-            #for i in range(N - 2, -1, -1):
             for i in np.random.permutation(N-1):
-                #if not swap[i+1] and exp((E[i + 1] - E[i])* dT[i]) > rand():
-                #if rand()>0.5 and exp((E[i + 1] - E[i])* dT[i]) > rand():
                 above = (i+1)%N
                 if exp((E[above] - E[i])* dT[i]) > rand():
                     swap[i] = 1
@@ -374,7 +348,6 @@ def parallel_tempering_feedback(nllf, p, bounds, T=None, steps=1000,
             total_swap += swap[:-1]
             labels = update_labels(labels)
             histograms = update_histogram(histograms, labels)
-            #assert nllf(P[0]) == E[0]
 
         # Monitoring
         monitor(step, history.best_point, history.best, P, E)
