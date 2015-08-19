@@ -118,7 +118,7 @@ points can be used to estimate uncertainty on parameters.
 
 A common command line for running DREAM is::
 
-   bumps --fit=dream --burn=1000 --steps=1000 --init=cov --parallel --pars=T1/model.par model.py --store=T2
+   bumps --fit=dream --burn=1000 --samples=1e5 --init=cov --parallel --pars=T1/model.par model.py --store=T2
 
 
 Bayesian uncertainty analysis is described in the GUM Supplement 1,[8]
@@ -137,7 +137,7 @@ example, $24.9(28)$ is $24.9 \pm 2.8$.  Median is the best value in the
 distribution.  Best is the best value ever seen.  The 68% and 95%
 intervals are the shortest intervals that contain 68% and 95% of
 the points respectively.  In order to report 2 digits of precision on
-the 95% interval, approximately 1000000 draws from the distribution
+the 95% interval, approximately 1000000 samples drawn from the distribution
 are required, or steps = 1000000/(#parameters  #pop).  The 68% interval
 will require fewer draws, though how many has not yet been determined.
 
@@ -415,7 +415,7 @@ on the fitting problem.
 Parallel tempering is run like dream, but with optional temperature
 controls::
 
-   bumps --fit=dream --burn=1000 --steps=1000 --init=cov --parallel --pars=T1/model.par model.py --store=T2
+   bumps --fit=dream --burn=1000 --samples=1e5 --init=cov --parallel --pars=T1/model.par model.py --store=T2
 
 Parallel tempering does not yet generate the uncertainty plots provided
 by DREAM.  The state is retained along the temperature for each point,

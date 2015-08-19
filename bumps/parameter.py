@@ -620,12 +620,12 @@ class Operator%(name)s(BaseParameter):
         self.name = str(self)
     def parameters(self):
         return self._parameters
-    def _value(self):
+    @property
+    def value(self):
         return float(self.a) %(op)s float(self.b)
-    value = property(_value)
-    def _dvalue(self):
+    @property
+    def dvalue(self):
         return float(self.a)
-    dvalue = property(_dvalue)
     def __str__(self):
         return "(%%s %(op)s %%s)"%%(self.a,self.b)
 ''' % dict(name=name, op=op)
@@ -683,7 +683,6 @@ class Function(BaseParameter):
     def _value(self):
         # Expand args and kw, replacing instances of parameters
         # with their values
-        # return self.op(*[float(v) for v in self.args], **self.kw)
         return self.op(*substitute(self.args), **substitute(self.kw))
     value = property(_value)
 

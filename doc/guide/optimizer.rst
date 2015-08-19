@@ -407,11 +407,12 @@ where $k$ is the size of the population.
 Options
 -------
 
-*Steps* is the number of iterations to include in the Markov
-chain.  Each iteration updates the full population.  The population size
-scales with the number of fitted parameters.  Set steps so that the
-number of fit parameters times the population times steps is at least
-100,000.  Use ``--steps=n`` from the command line.
+*Samples* is the number of points to be drawn from the Markov chain.
+To estimate the 68% interval to two digits of precision, at least
+1e5 (or 100,000) samples are needed.  For the 95% interval, 1e6
+(or 1,000,000) samples are needed.  The default 1e4 samples
+gives a rough approximation of the uncertainty relatively quickly.
+Use ``--samples=n`` from the command line.
 
 *Burn-in Steps* is the number of iterations to required for the Markov
 chain to converge to the equilibrium distribution.  If the fit ends
@@ -451,6 +452,12 @@ statistics.  Use ``--thin=k`` from the command line.
 *Calculate entropy*, if true, computes the entropy for the fit.  This is
 an estimate of the amount of information in the data.  Use ``--entropy``
 from the command line.
+
+*Steps*, if not zero, determines the number of iterations to use for
+drawing samples after burn in. Each iteration updates the full population,
+which is (population x number of fitted parameters) points. This option
+is available for compatibility; it is more useful to set the number of
+samples directly.  Use ``--steps=n`` from the command line.
 
 Use ``--fit=dream`` to select DREAM from the commandline.
 

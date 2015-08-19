@@ -631,8 +631,9 @@ class DreamModel(MCMCModel):
 class DreamFit(FitBase):
     name = "DREAM"
     id = "dream"
-    settings = [('steps', 400), ('burn', 100), ('pop', 10),
+    settings = [('samples', 1e4), ('burn', 100), ('pop', 10),
                 ('init', 'eps'), ('thin', 1),
+                ('steps', 0),  # deprecated: use --samples instead
                ]
 
     def __init__(self, problem):
@@ -653,9 +654,15 @@ class DreamFit(FitBase):
 
         population = initpop.generate(self.dream_model.problem, **options)
         pop_size = population.shape[0]
+        draws, steps = int(options['samples']), options['steps']
+        if steps == 0:
+            steps = (draws + pop_size-1) // pop_size
+        # TODO: need a better way to announce number of steps
+        # maybe somehow print iteration # of # iters in the monitor?
+        print("# steps: %d, # draws: %d"%(steps, pop_size*steps))
         population = population[None, :, :]
         sampler = dream.Dream(model=self.dream_model, population=population,
-                              draws=pop_size * options['steps'],
+                              draws=pop_size * steps,
                               burn=pop_size * options['burn'],
                               thinning=options['thin'],
                               monitor=self._monitor,

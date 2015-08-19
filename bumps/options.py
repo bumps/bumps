@@ -89,6 +89,7 @@ def yesno(value):
 FIT_FIELDS = dict(
     starts= ("Starts", int),
     steps = ("Steps", int),
+    samples = ("Samples", float),  # so we can say 1e5
     xtol = ("x tolerance", float),
     ftol = ("f(x) tolerance", float),
     stop = ("Stopping criteria", str),
@@ -296,6 +297,8 @@ Options:
         fitting engine to use; see manual for details
     --steps=400    [%(fitter)s]
         number of fit iterations after any burn-in time
+    --samples=1e4   [dream]
+        set steps so the target number of samples is drawn
     --xtol=1e-4     [de, amoeba]
         minimum population diameter
     --ftol=1e-4     [de, amoeba]
