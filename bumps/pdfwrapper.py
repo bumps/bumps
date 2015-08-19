@@ -43,7 +43,8 @@ class PDF(object):
     par=value to define the parameter) or is set to zero if no default is
     given in the function.
     """
-    def __init__(self, fn, name="", plot=None, **kw):
+    def __init__(self, fn, name="", plot=None, dof=1, **kw):
+        self.dof = dof
         # Make every name a parameter; initialize the parameters
         # with the default value if function is defined with keyword
         # initializers; override the initializers with any keyword
@@ -90,7 +91,7 @@ class PDF(object):
     nllf.__doc__ = Fitness.__call__.__doc__
 
     def chisq(self):
-        return self.nllf()
+        return self.nllf()/self.dof
     #chisq.__doc__ = Fitness.chisq.__doc__
 
     def chisq_str(self):
@@ -127,20 +128,23 @@ class DirectPDF(object):
     Unlike :class:`PDF`, no parameter objects are defined for the elements
     of *p*, so all are fitting parameters.
     """
-    def __init__(self, f, p0, bounds=None):
+    def __init__(self, f, p0, bounds=None, dof=1, labels=None):
         self.f = f
         self.n = len(p0)
         self.p = np.asarray(p0, 'd')
+        self.dof = dof
         if bounds is not None:
             self._bounds = np.asarray(bounds, 'd')
         else:
             self._bounds = np.tile((-np.inf, np.inf), (self.n, 1)).T
 
+        self._labels = labels if labels else ["P%d" % i for i,_ in enumerate(p0)]
+
     def model_reset(self):
         pass
 
     def chisq(self):
-        return self.nllf()
+        return self.nllf()/self.dof
 
     def chisq_str(self):
         return "%g" % self.chisq()
@@ -162,10 +166,11 @@ class DirectPDF(object):
         print(self.summarize())
 
     def summarize(self):
-        return str(self.getp())
+        return "\n".join("%40s %g"%(name, value)
+                         for name, value in zip(self._labels, self.getp()))
 
     def labels(self):
-        return ["P%d" % i for i in range(self.n)]
+        return self._labels
 
     def randomize(self):
         # TODO: doesn't respect bounds
