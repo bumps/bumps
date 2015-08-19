@@ -236,8 +236,15 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, cbar):
             y, z = y[pidx], z[pidx]
         pylab.pcolormesh(x, y, z, vmin=vmin, vmax=vmax, hold=True, cmap=cmap)
     centers, height, maxlikelihood = array(bins).T
-    scale = np.sum(height)/np.sum(maxlikelihood)
-    pylab.plot(centers, maxlikelihood*scale, '-g', hold=True)
+    # Normalize maximum likelihood plot so it contains the same area as the
+    # histogram, unless it is really spikey, in which case make sure it has
+    # about the same height as the histogram.
+    maxlikelihood *= np.sum(height)/np.sum(maxlikelihood)
+    hist_peak = np.max(height)
+    ml_peak = np.max(maxlikelihood)
+    if ml_peak > hist_peak*1.3:
+        maxlikelihood *= hist_peak*1.3/ml_peak
+    pylab.plot(centers, maxlikelihood, '-g', hold=True)
 
 
 def _make_var_histogram(values, logp, nbins, ci, weights):
