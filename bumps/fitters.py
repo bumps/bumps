@@ -631,7 +631,7 @@ class DreamModel(MCMCModel):
 class DreamFit(FitBase):
     name = "DREAM"
     id = "dream"
-    settings = [('samples', 1e4), ('burn', 100), ('pop', 10),
+    settings = [('samples', int(1e4)), ('burn', 100), ('pop', 10),
                 ('init', 'eps'), ('thin', 1),
                 ('steps', 0),  # deprecated: use --samples instead
                ]

@@ -91,7 +91,10 @@ class ItemListValidator(wx.PyValidator):
                     if self.required:
                         raise RuntimeError("input required")
                 else:
-                    self.value = self.value_alt = int(text)
+                    float_value = float(text)
+                    if float_value != int(float_value):
+                        raise ValueError("input must be an integer")
+                    self.value = self.value_alt = int(float_value)
             elif self.datatype == float:
                 if len(text) == 0:
                     self.value = 0.0

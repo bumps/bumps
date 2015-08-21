@@ -255,18 +255,14 @@ class ParameterPanel(wx.Panel):
         values = [parameters[k] for k in self.fields]
         self.fit_params.update_items_in_panel(values)
 
-def GetFitOptions(parent, fit_config, help_callback=None):
-    #parent = wx.FindWindowByName("AppFrame")
-    fit_dlg = FitConfigDialog(parent=parent, id=wx.ID_ANY, title="Fit Control",
-        fit_config=fit_config, help_callback=help_callback)
-    if fit_dlg.ShowModal() == wx.ID_OK:
-        fitter, options = fit_dlg.get_options()
-    else:
-        fitter, options = None, None
-    fit_dlg.Destroy()
-    return fitter, options
-
 def UpdateFitOptions(parent, fit_config, help_callback=None):
+    """
+    Select a fitter and its fit options with the fit options dialog.
+
+    When complete, *fit_confg* is updated with the new fitter/options.
+    *fit_config.selected_fitter* is the fitter to use and
+    *fit_config.selected_values* are the options to call it with.
+    """
     fit_dlg = FitConfigDialog(parent=parent, id=wx.ID_ANY, title="Fit Control",
         fit_config=fit_config, help_callback=help_callback)
     if fit_dlg.ShowModal() == wx.ID_OK:

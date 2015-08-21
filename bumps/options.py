@@ -89,7 +89,7 @@ def yesno(value):
 FIT_FIELDS = dict(
     starts= ("Starts", int),
     steps = ("Steps", int),
-    samples = ("Samples", float),  # so we can say 1e5
+    samples = ("Samples", int),
     xtol = ("x tolerance", float),
     ftol = ("f(x) tolerance", float),
     stop = ("Stopping criteria", str),
