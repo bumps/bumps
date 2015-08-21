@@ -397,7 +397,7 @@ class BaseFitProblem(object):
     def show(self):
         print(parameter.format(self.model_parameters()))
         print("[chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
-        print(self.summarize())
+        #print(self.summarize())
 
     def summarize(self):
         return parameter.summarize(self._parameters)

@@ -673,6 +673,15 @@ class DreamFit(FitBase):
         self.state.keep_best()
         self.state.title = self.dream_model.problem.name
 
+        # TODO: Temporary hack to apply a post-mcmc action to the state vector
+        # The problem is that if we manipulate the state vector before saving
+        # it then we will not be able to use the --resume feature.  We can
+        # get around this by just not writing state for the derived variables,
+        # at which point we can remove this notice.
+        fn, labels = getattr(self.problem, 'derive_vars', (None, None))
+        if fn is not None:
+            self.state.derive_vars(fn, labels=labels)
+
         x, fx = self.state.best()
 
         # Check that the last point is the best point
@@ -705,8 +714,9 @@ class DreamFit(FitBase):
         vstats = var_stats(self.state.draw())
         return np.array([(v.p68[1] - v.p68[0]) / 2 for v in vstats], 'd')
 
-    def cov(self):
-        return self.state.cov()
+    #def cov(self):
+    #    # Covariance estimate from final 1000 points
+    #    return np.cov(self.state.draw().points[-1000:])
 
     def load(self, input_path):
         from . import dream
@@ -881,6 +891,14 @@ class FitDriver(object):
             self.fitter.show()
         if hasattr(self.problem, 'show'):
             self.problem.show()
+
+        # Display the error approximation from the numerical derivative
+        err = lsqerror.stderr(self.cov())/np.sqrt(self.problem.chisq())
+        print("=== Uncertainty estimated from curvature ===")
+        for name, value, err in zip(self.problem.labels(), self.problem.getp(), err):
+            print("%40s"%name, format_uncertainty(value, err))
+        print("============================================")
+
 
     def save(self, output_path):
         # print "calling driver save"
