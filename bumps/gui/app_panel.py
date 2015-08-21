@@ -47,7 +47,7 @@ from .parameter_view import ParameterView
 from .log_view import LogView
 from .convergence_view import ConvergenceView
 from .uncertainty_view import CorrelationView, UncertaintyView, TraceView, ModelErrorView
-from .fit_dialog import UpdateFitOptions
+from .fit_dialog import show_fit_config
 from .fit_thread import (FitThread, EVT_FIT_PROGRESS, EVT_FIT_COMPLETE)
 from .util import nice
 from . import signal
@@ -405,7 +405,7 @@ class AppPanel(wx.Panel):
         # when the panel was created.  Since this will never happen, we
         # won't put in a runtime check.  Option processing happens in
         # gui_app.MainApp.after_show as of this writing.
-        UpdateFitOptions(self, self.fit_config)
+        show_fit_config(self, self.fit_config)
 
     def OnFitStart(self, event):
         self.uncertainty_state = False

@@ -34,28 +34,28 @@ import wx
 from .. import options
 from .input_list import InputListPanel
 
-class FitConfigDialog(wx.Dialog):
+class FitConfig(wx.Frame):
     """
     FitControl lets the user set fitting options from a pop-up dialog box.
     """
     def __init__(self,
                  parent = None,
                  id     = wx.ID_ANY,
-                 title  = "Fit Parameters",
+                 title  = "Fit Options",
                  pos    = wx.DefaultPosition,
                  size   = wx.DefaultSize, # dialog box size will be calculated
                  style  = wx.DEFAULT_DIALOG_STYLE,
                  name   = "",
-                 fit_config = None,
-                 help_callback = None,
+                 config = None,
+                 help = None,
                  fontsize = None,
                 ):
-        wx.Dialog.__init__(self, parent, id, title, pos, size, style, name)
+        wx.Frame.__init__(self, parent, id, title, pos, size, style, name)
 
-        self.fit_config = fit_config
-        self.help_callback = help_callback
+        self.config = config
+        self.help = help
 
-        pairs = [(fit_config.names[id],id) for id in fit_config.active_ids]
+        pairs = [(config.names[id],id) for id in config.active_ids]
         self.active_ids = [id for _,id in sorted(pairs)]
 
         # Set the font for this window and all child windows (widgets) from the
@@ -83,7 +83,7 @@ class FitConfigDialog(wx.Dialog):
         self.fitter_button = {}
         for fitter in self.active_ids:
             button = wx.RadioButton(self.panel1, -1,
-                    label=fit_config.names[fitter], name=fitter)
+                    label=config.names[fitter], name=fitter)
             self.fitter_button[fitter] = button
             self.Bind(wx.EVT_RADIOBUTTON, self.OnRadio, id=button.GetId())
             flexsizer.Add(button, 0, 0)
@@ -102,53 +102,50 @@ class FitConfigDialog(wx.Dialog):
         for fitter in self.active_ids:
             items = [(options.FIT_FIELDS[field][0],
                       field,
-                      fit_config.values[fitter][field],
+                      config.values[fitter][field],
                       options.FIT_FIELDS[field][1])
-                     for field, default in fit_config.settings[fitter]]
+                     for field, default in config.settings[fitter]]
             #print fitter, items
-            panel = ParameterPanel(self, items, fit_config.names[fitter])
+            panel = ParameterPanel(self, items, config.names[fitter])
             self.fitter_panel[fitter] = panel
             self.vbox.Add(panel, 1, wx.EXPAND|wx.ALL, 10)
             panel.Hide()
 
         # Make the current panel active
-        self.fitter_button[fit_config.selected_id].SetValue(True)
-        self.fitter_panel[fit_config.selected_id].Show()
+        self.fitter_button[config.selected_id].SetValue(True)
+        self.fitter_panel[config.selected_id].Show()
 
         # Section 3
-        # Create the button controls (Reset, OK, Cancel) and bind their events.
+        # Create the button controls (Reset, Apply) and bind their events.
+        apply_btn = wx.Button(self, wx.ID_APPLY, "Apply")
+        apply_btn.SetToolTipString("Accept new options for the optimizer")
+        apply_btn.SetDefault()
         reset_btn = wx.Button(self, wx.ID_ANY, "Reset")
         reset_btn.SetToolTipString("Restore default options for the optimizer")
-        ok_btn = wx.Button(self, wx.ID_OK, "OK")
-        ok_btn.SetToolTipString("Accept new options for the optimizer")
-        ok_btn.SetDefault()
-        cancel_btn = wx.Button(self, wx.ID_CANCEL, "Cancel")
-        cancel_btn.SetToolTipString("Restore existing options for the optimizer")
-        if help_callback is not None:
+        if help is not None:
             help_btn = wx.Button(self, wx.ID_HELP, 'Help')
             #help_btn = wx.Button(self, wx.ID_ANY, 'Help')
             help_btn.SetToolTipString("Help on the options for the optimizer")
 
 
+        self.Bind(wx.EVT_BUTTON, self.OnApply, apply_btn)
         self.Bind(wx.EVT_BUTTON, self.OnReset, reset_btn)
-        self.Bind(wx.EVT_BUTTON, self.OnOk, ok_btn)
-        self.Bind(wx.EVT_BUTTON, self.OnCancel, cancel_btn)
-        if help_callback is not None:
+        if help is not None:
             self.Bind(wx.EVT_BUTTON, self.OnHelp, help_btn)
+
+        self.Bind(wx.EVT_CLOSE, self.OnClose)
 
         # Create the button sizer that will put the buttons in a row, right
         # justified, and with a fixed amount of space between them.  This
         # emulates the Windows convention for placing a set of buttons at the
         # bottom right of the window.
         btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        #btn_sizer.Add((10,20), 1)  # stretchable whitespace
-
-        btn_sizer.Add(reset_btn, 0)
         btn_sizer.Add((10,20), 1)  # stretchable whitespace
-        btn_sizer.Add(ok_btn, 0)
+        btn_sizer.Add(apply_btn, 0)
         btn_sizer.Add((10,20), 0)  # non-stretchable whitespace
-        btn_sizer.Add(cancel_btn, 0)
-        if help_callback is not None:
+        btn_sizer.Add(reset_btn, 0)
+        btn_sizer.Add((10,20), 0)  # non-stretchable whitespace
+        if help is not None:
             btn_sizer.Add((10,20), 0)  # non-stretchable whitespace
             btn_sizer.Add(help_btn, 0)
 
@@ -174,25 +171,39 @@ class FitConfigDialog(wx.Dialog):
 
     def OnReset(self, event):
         """
-        Reset parameter values for the currently selected fit algorithm to its
-        default values when the application was started.
+        Restore options for the selected fitter to the default values.
         """
-
-        fitter = self.get_fitter()
+        fitter = self._get_fitter()
         panel = self.fitter_panel[fitter]
-        panel.Parameters = dict(self.fit_config.settings[fitter])
+        panel.Parameters = dict(self.config.settings[fitter])
 
-    def OnOk(self, event):
-        event.Skip()
-
-    def OnCancel(self, event):
-        event.Skip()
+    def OnApply(self, event):
+        """
+        Save the current fitter and options to the fit config.
+        """
+        fitter = self._get_fitter()
+        options = self.fitter_panel[fitter].Parameters
+        self.config.selected_id = fitter
+        self.config.values[fitter] = options
 
     def OnHelp(self, event):
-        if self.help_callback is not None:
-            self.help_callback(self.get_fitter())
+        """
+        Provide help on the selected fitter.
+        """
+        if self.help is not None:
+            self.help(self._get_fitter())
 
-    def get_fitter(self):
+    def OnClose(self, event):
+        """
+        Don't close the window, just hide it.
+        """
+        if event.CanVeto():
+            self.Hide()
+            event.Veto()
+        else:
+            event.Skip()
+
+    def _get_fitter(self):
         """
         Returns the currently selected algorithm, or None if no algorithm is
         selected.
@@ -203,8 +214,8 @@ class FitConfigDialog(wx.Dialog):
         else:
             return None
 
-    def get_options(self):
-        fitter = self.get_fitter()
+    def _get_options(self):
+        fitter = self._get_fitter()
         options = self.fitter_panel[fitter].Parameters
 
         return fitter, options
@@ -255,34 +266,32 @@ class ParameterPanel(wx.Panel):
         values = [parameters[k] for k in self.fields]
         self.fit_params.update_items_in_panel(values)
 
-def UpdateFitOptions(parent, fit_config, help_callback=None):
-    """
-    Select a fitter and its fit options with the fit options dialog.
-
-    When complete, *fit_confg* is updated with the new fitter/options.
-    *fit_config.selected_fitter* is the fitter to use and
-    *fit_config.selected_values* are the options to call it with.
-    """
-    fit_dlg = FitConfigDialog(parent=parent, id=wx.ID_ANY, title="Fit Control",
-        fit_config=fit_config, help_callback=help_callback)
-    if fit_dlg.ShowModal() == wx.ID_OK:
-        fitter, options = fit_dlg.get_options()
-        fit_config.selected_id = fitter
-        fit_config.values[fitter] = options
-    fit_dlg.Destroy()
-
+_fit_config_frame = None
+def show_fit_config(parent, help=None):
+    global _fit_config_frame
+    if _fit_config_frame is None:
+        _fit_config_frame = FitConfig(parent=parent,
+                                      config=options.FIT_CONFIG, help=help)
+    _fit_config_frame.Show()
+    _fit_config_frame.Raise()
+    return _fit_config_frame
 
 if __name__=="__main__":
-    fit_config = options.FitConfig()
-    def _help_callback(algo):
+    opts = options.getopts()
+    def _help(algo):
         print("asking for help with "+algo)
-    def _on_options(event):
-        UpdateFitOptions(None, fit_config, help_callback=_help_callback)
-        print fit_config.selected_id, fit_config.selected_values
 
     app = wx.App()
     top = wx.Frame(None)
+    text = wx.TextCtrl(top, wx.ID_ANY, "some text")
     button = wx.Button(top, wx.ID_ANY, "Options...")
-    button.Bind(wx.EVT_BUTTON, _on_options)
+    button.Bind(wx.EVT_BUTTON,
+                lambda ev: show_fit_config(top, help=_help))
+
+    sizer = wx.BoxSizer(wx.VERTICAL)
+    sizer.Add(text)
+    sizer.Add(button)
+    sizer.Fit(top)
+    top.SetSizer(sizer)
     top.Show()
     app.MainLoop()

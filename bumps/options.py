@@ -86,20 +86,28 @@ def yesno(value):
         return False
     raise ValueError('invalid option "%s": use yes|no')
 
+
+def parse_int(value):
+    float_value = float(value)
+    if int(float_value) != float_value:
+        raise ValueError("integer expected")
+    return int(float_value)
+
+
 FIT_FIELDS = dict(
-    starts= ("Starts", int),
-    steps = ("Steps", int),
-    samples = ("Samples", int),
+    starts= ("Starts", parse_int),
+    steps = ("Steps", parse_int),
+    samples = ("Samples", parse_int),
     xtol = ("x tolerance", float),
     ftol = ("f(x) tolerance", float),
     stop = ("Stopping criteria", str),
-    thin = ("Thinning", int),
-    burn = ("Burn-in Steps", int),
+    thin = ("Thinning", parse_int),
+    burn = ("Burn-in Steps", parse_int),
     pop = ("Population", float),
     init = ("Initializer", ChoiceList("eps", "lhs", "cov", "random")),
     CR = ("Crossover ratio", float),
     F = ("Scale", float),
-    nT = ("# Temperatures", int),
+    nT = ("# Temperatures", parse_int),
     Tmin = ("Min temperature", float),
     Tmax = ("Max temperature", float),
     radius = ("Simplex radius", float),
@@ -178,6 +186,10 @@ class FitConfig(object):
         self.selected_id = default
 
     def set_from_cli(self, opts):
+        """
+        Use the BumpsOpts command line parser values to set the selected
+        fitter and its configuration options.
+        """
         fitter = opts.fit
         self.selected_id = fitter
         # Convert supplied options to the correct types and save them in value
@@ -202,6 +214,12 @@ class FitConfig(object):
     @property
     def selected_fitter(self):
         return self.fitters[self.selected_id]
+
+# FitConfig singleton for the common case in which only one config is needed.
+# There may be other use cases, such as saving the fit config along with the
+# rest of the state so that on resume the fit options are restored, but in that
+# case the application will not be using the singleton.
+FIT_CONFIG = FitConfig()
 
 # === Bumps options parsing ===
 class BumpsOpts(ParseOpts):
@@ -375,7 +393,7 @@ Options:
             raise ValueError("unknown fitter %s; use %s"
                              % (value, "|".join(sorted(FIT_AVAILABLE_IDS))))
         self._fit = value
-    fit_config = FitConfig()
+    fit_config = FIT_CONFIG
     TRANSPORTS = 'amqp', 'mp', 'mpi', 'celery'
     _transport = 'mp'
 
