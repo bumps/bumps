@@ -84,12 +84,12 @@ class ItemListValidator(wx.PyValidator):
         text = text_ctrl.GetValue().strip()
 
         try:
-            if self.datatype == int:
+            if callable(self.datatype):
+                self.value = self.value_alt = self.datatype(text)
+            elif self.datatype == int:
                 if len(text) == 0:
                     self.value = 0
                     self.value_alt = None
-                    if self.required:
-                        raise RuntimeError("input required")
                 else:
                     float_value = float(text)
                     if float_value != int(float_value):
@@ -99,8 +99,6 @@ class ItemListValidator(wx.PyValidator):
                 if len(text) == 0:
                     self.value = 0.0
                     self.value_alt = None
-                    if self.required:
-                        raise RuntimeError("input required")
                 else:
                     self.value = self.value_alt = float(text)
             elif self.datatype == 'str_alpha':
@@ -118,8 +116,6 @@ class ItemListValidator(wx.PyValidator):
                 if len(text) == 0:
                     self.value = ''
                     self.value_alt = None
-                    if self.required:
-                        raise RuntimeError("input required")
                 else:
                     if text.isalnum():
                         self.value = self.value_alt = str(text)
@@ -129,8 +125,6 @@ class ItemListValidator(wx.PyValidator):
                 if len(text) == 0:
                     self.value = ''
                     self.value_alt = None
-                    if self.required:
-                        raise RuntimeError("input required")
                 else:
                     temp = text.replace('_', 'a').replace('-','a')
                     if temp.isalnum():
@@ -141,10 +135,11 @@ class ItemListValidator(wx.PyValidator):
                 if len(text) == 0:
                     self.value = ''
                     self.value_alt = None
-                    if self.required:
-                        raise RuntimeError("input required")
                 else:
                     self.value = self.value_alt = str(text)
+
+            if len(text) == 0 and self.required:
+                raise RuntimeError("input required")
 
             text_ctrl.SetBackgroundColour(
                 wx.SystemSettings_GetColour(wx.SYS_COLOUR_WINDOW))
@@ -153,12 +148,14 @@ class ItemListValidator(wx.PyValidator):
             return True
 
         except RuntimeError:
+            from traceback import print_exc; print_exc()
             text_ctrl.SetBackgroundColour(PALE_YELLOW)
             text_ctrl.SetFocus()
             text_ctrl.Refresh()
             return False
 
         except:
+            from traceback import print_exc; print_exc()
             text_ctrl.SetBackgroundColour("PINK")
             text_ctrl.SetFocus()
             text_ctrl.Refresh()
