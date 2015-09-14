@@ -486,10 +486,10 @@ def main():
         opts.fit_config.selected_fitter, problem=problem, abort_test=abort_test,
         **opts.fit_config.selected_values)
 
-    if opts.timer:
+    if opts.time:
         run_timer(mapper.start_mapper(problem, opts.args),
                   problem, steps=int(opts.steps))
-    elif opts.profiler:
+    elif opts.profile:
         run_profiler(problem, steps=int(opts.steps))
     elif opts.chisq:
         if opts.cov:

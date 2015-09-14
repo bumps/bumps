@@ -227,7 +227,7 @@ class BumpsOpts(ParseOpts):
     Option parser for bumps.
     """
     MINARGS = 1
-    FLAGS = set(("preview", "chisq", "profiler", "timer",
+    FLAGS = set(("preview", "chisq", "profile", "time",
                  "simulate", "simrandom", "shake", "worker",
                  "batch", "noshow", "overwrite", "parallel", "stepmon",
                  "cov", "entropy", "remote", "staj", "edit", "mpi", "keep_best",
@@ -350,9 +350,9 @@ Options:
     --resynth=0
         run resynthesis error analysis for n generations
 
-    --timer
+    --time
         run the model --steps times in order to estimate total run time.
-    --profiler
+    --profile
         run the python profiler on the model; use --steps to run multiple
         models for better statistics
     --chisq
