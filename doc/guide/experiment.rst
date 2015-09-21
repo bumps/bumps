@@ -138,7 +138,7 @@ need to manage data, you can use it with :class:`PDF <bumps.pdfwrapper.PDF>`::
     M = PDF(nllf)
 
 You can use *M.m* and *M.b* to the parameter ranges as usual, then return
-the model as a fitting problem:
+the model as a fitting problem::
 
     M.m.range(-inf,inf)
     M.b.range(-inf,inf)

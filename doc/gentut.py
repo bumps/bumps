@@ -22,6 +22,17 @@ from glob import glob
 from shutil import copyfile
 import pylit
 
+# CRUFT: python 2.x needs to convert unicode to bytes when writing to file
+try:
+    # python 2.x
+    unicode
+    def write(fid, s):
+        fid.write(s)
+except NameError:
+    # python 3.x
+    def write(fid, s):
+        fid.write(s.encode('utf-8') if isinstance(s, str) else s)
+
 def make():
     if not exists(TARGET_PATH):
         makedirs(TARGET_PATH)
@@ -45,6 +56,9 @@ def weave(source, target):
     if not exists(target):
         makedirs(target)
     for f in glob(joinpath(source,'*')):
+        if f.endswith('__pycache__') or f.endswith('.pyc'):
+            # skip python runtime droppings
+            continue
         #print "processing",f
         if f.endswith(".py") and ispylit(f):
             rstfile = joinpath(target, basename(f).replace('.py','.rst'))
@@ -65,7 +79,7 @@ def weave(source, target):
 
 def attach_download(rstfile, target):
     with open(rstfile, "ab") as fid:
-        fid.write("\n.. only:: html\n\n   Download: :download:`%s <%s>`.\n"%(target, target))
+        write(fid, "\n\n.. only:: html\n\n   Download: :download:`%s <%s>`.\n"%(target, target))
 
 def ispylit(f):
     """

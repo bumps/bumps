@@ -6,7 +6,7 @@
 #
 # Usage:
 #
-# .. parse-literal::
+# .. parsed-literal::
 #
 #    bumps peak.py N --entropy --store=/tmp/T1 --fit=dream
 #

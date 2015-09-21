@@ -30,7 +30,7 @@ attribute is *True* if the MCMC sample is significantly different from normal.
     Trujillo-Ortiz, A. and R. Hernandez-Walls. (2003). Mskekur: Mardia's
         multivariate skewness and kurtosis coefficients and its hypotheses
         testing. A MATLAB file. [WWW document].
-        `http://www.mathworks.com/matlabcentral/fileexchange/loadFile.do?objectId=3519`_
+        `<http://www.mathworks.com/matlabcentral/fileexchange/loadFile.do?objectId=3519>`_
 
 .. [#Mardia1970]
     Mardia, K. V. (1970), Measures of multivariate skewnees and kurtosis with
