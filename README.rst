@@ -28,6 +28,14 @@ Documentation is available at `readthedocs <http://bumps.readthedocs.org>`_
 Relaase notes
 =============
 
+v0.7.5.7 2015-09-21
+-------------------
+
+* add entropy calculator (still unreliable for high dimensional problems)
+* adjust scaling of likelihood (the green line) to match histogram area
+* use --samples to specify the number of samples from the distribution
+* mark this and future releases with a DOI at zenodo.org
+
 v0.7.5.6 2015-06-03
 -------------------
 
