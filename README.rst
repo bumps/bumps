@@ -28,7 +28,7 @@ Documentation is available at `readthedocs <http://bumps.readthedocs.org>`_
 .. image:: https://zenodo.org/badge/18489/bumps/bumps.svg
    :target: https://zenodo.org/badge/latestdoi/18489/bumps/bumps
 
-Relaase notes
+Release notes
 =============
 
 v0.7.5.7 2015-09-21
