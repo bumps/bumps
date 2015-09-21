@@ -25,6 +25,9 @@ Once the system is installed, you can verify that it is working with:
 
 Documentation is available at `readthedocs <http://bumps.readthedocs.org>`_
 
+.. image:: https://zenodo.org/badge/18489/bumps/bumps.svg
+   :target: https://zenodo.org/badge/latestdoi/18489/bumps/bumps
+
 Relaase notes
 =============
 
