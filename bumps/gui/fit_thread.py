@@ -150,9 +150,13 @@ class FitThread(Thread):
                                  message="uncertainty_update",
                                  rate=30),
                     ]
-        if True: # Multiprocessing parallel
+        try:
+            # Only use parallel on windows if the problem can be pickled
+            if os.name == "nt":
+                import pickle
+                p = pickle.dumps(self.problem)
             mapper = MPMapper
-        else:
+        except:
             mapper = SerialMapper
 
         # Be safe and keep a private copy of the problem while fitting
