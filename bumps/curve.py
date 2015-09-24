@@ -129,6 +129,7 @@ class Curve(object):
         init.update(fnkw)
 
         # Build parameters out of ranges and initial values
+        # maybe:  name=(p+name if name.startswith('_') else name+p)
         pars = dict((p, Parameter.default(init[p], name=name + p))
                     for p in pnames if p not in state_vars)
 
@@ -191,7 +192,16 @@ class Curve(object):
         kw = dict((p, getattr(self, p).value) for p in self._pnames)
         kw.update(self._state)
         #print "kw_plot",kw
-        self._plot(self.x, self.y, self.dy, self.theory(), view=view, **kw)
+        if view == 'residual':
+            plot_resid(self.x, self.residuals())
+        else:
+            self._plot(self.x, self.y, self.dy, self.theory(), view=view, **kw)
+
+def plot_resid(x, resid):
+    import pylab
+    pylab.plot(x, resid, '.')
+    pylab.axhline(y=1, hold=True)
+    pylab.axhline(y=-1, hold=True)
 
 def plot_err(x, y, dy, fy, view=None, **kw):
     """
@@ -202,16 +212,16 @@ def plot_err(x, y, dy, fy, view=None, **kw):
     import pylab
     pylab.errorbar(x, y, yerr=dy, fmt='.')
     pylab.plot(x, fy, '-', hold=True)
-    if view is 'log':
+    if view == 'log':
         pylab.xscale('linear')
         pylab.yscale('log')
-    elif view is 'logx':
+    elif view == 'logx':
         pylab.xscale('log')
         pylab.yscale('linear')
-    elif view is 'loglog':
+    elif view == 'loglog':
         pylab.xscale('log')
         pylab.yscale('log')
-    else: # view is 'linear'
+    else: # view == 'linear'
         pylab.xscale('linear')
         pylab.yscale('linear')
 
