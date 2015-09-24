@@ -499,7 +499,14 @@ class AppPanel(wx.Panel):
         signal.model_new(model=model)
 
     def save_model(self, path):
-        pickle.dump(self.model, open(path,'wb'))
+        try:
+           s = pickle.dumps(self.model)
+           with open(path,'wb') as fid:
+               fid.write(s)
+        except:
+            import traceback
+            signal.log_message(message=traceback.format_exc())
+
 
     def save_results(self, path):
         output_path = os.path.join(path, self.model.name)

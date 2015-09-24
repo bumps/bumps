@@ -254,7 +254,6 @@ class MainApp(wx.App):
         self.frame.panel.Layout()
         self.frame.panel.aui.Split(0, wx.TOP)
         if isMac: self.frame.Show()
-        print "ready to go"
 
 
 #==============================================================================
