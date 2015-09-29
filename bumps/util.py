@@ -8,6 +8,7 @@ __all__ = ["erf", "kbhit", "profile",
 
 import sys
 import os
+from cStringIO import StringIO
 
 import numpy as np
 from numpy import ascontiguousarray as _dense
@@ -113,10 +114,17 @@ class redirect_console(object):
     """
     Console output redirection context
 
-    The output can be redirected to an already opened file (anything with
-    a *write* attribute), or to a filename which will be opened for the
-    duration of the with context.  Unless *stderr* is specified, then both
-    standard output and standard error are redirected to the same file.
+    The output can be redirected to a string, to an already opened file
+    (anything with a *write* attribute), or to a filename which will be
+    opened for the duration of the with context.  Unless *stderr* is
+    specified, then both standard output and standard error are
+    redirected to the same file.  The open file handle is returned on
+    enter, and (if it was not an already opened file) it is closed on exit.
+
+    If no file is specified, then output is redirected to a StringIO
+    object, which has a getvalue() method which can retrieve the string.
+    The StringIO object is deleted when the context ends, so be sure to
+    retrieve its value within the redirect_console context.
 
     :Example:
 
@@ -132,15 +140,25 @@ class redirect_console(object):
         >>> print(open("redirect_out.log").read()[:-1])
         captured
         >>> import os; os.unlink("redirect_out.log")
+
+    Output can also be captured to a string:
+
+        >>> with redirect_console() as fid:
+        ...    print("captured to string")
+        ...    captured_string = fid.getvalue()
+        >>> print(captured_string.strip())
+        captured to string
+
     """
     def __init__(self, stdout=None, stderr=None):
-        if stdout is None:
-            raise TypeError("stdout must be a path or file object")
         self.open_files = []
         self.sys_stdout = []
         self.sys_stderr = []
 
-        if hasattr(stdout, 'write'):
+        if stdout is None:
+            self.open_files.append(StringIO())
+            self.stdout = self.open_files[-1]
+        elif hasattr(stdout, 'write'):
             self.stdout = stdout
         else:
             self.open_files.append(open(stdout, 'w'))
@@ -163,6 +181,7 @@ class redirect_console(object):
         self.sys_stderr.append(sys.stderr)
         sys.stdout = self.stdout
         sys.stderr = self.stderr
+        return self.open_files[-1]
 
     def __exit__(self, *args):
         sys.stdout = self.sys_stdout[-1]

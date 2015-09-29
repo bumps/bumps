@@ -5,6 +5,7 @@ from threading import Thread
 from .. import monitor
 from ..fitters import FitDriver
 from ..mapper import  MPMapper, SerialMapper
+from ..util import redirect_console
 
 from .convergence_view import ConvergenceMonitor
 #==============================================================================
@@ -175,7 +176,13 @@ class FitThread(Thread):
         # Give final state message from monitors
         for M in monitors:
             if hasattr(M, 'final'): M.final()
+
+        with redirect_console() as fid:
+            driver.show()
+            captured_output = fid.getvalue()
+
         evt = FitCompleteEvent(problem=self.problem,
                                point=x,
-                               value=fx)
+                               value=fx,
+                               info=captured_output)
         wx.PostEvent(self.win, evt)

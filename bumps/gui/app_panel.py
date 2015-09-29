@@ -438,10 +438,10 @@ class AppPanel(wx.Panel):
     def OnFitComplete(self, event):
         self.fit_thread = None
         chisq = nice(2*event.value/event.problem.dof)
-        signal.log_message(message="done with chisq %g"%chisq)
         event.problem.setp(event.point)
         signal.update_parameters(model=event.problem)
-
+        signal.log_message(message="done with chisq %g"%chisq)
+        signal.log_message(message=event.info)
         self.sb.SetStatusText("Fit status: Complete", 3)
         beep()
 
