@@ -8,7 +8,10 @@ __all__ = ["erf", "kbhit", "profile",
 
 import sys
 import os
-from cStringIO import StringIO
+try:  # CRUFT: python 2.x
+    from cStringIO import StringIO
+except ImportError:
+    from io import StringIO
 
 import numpy as np
 from numpy import ascontiguousarray as _dense
