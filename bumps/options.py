@@ -34,6 +34,9 @@ class ParseOpts:
         self._parse(args)
 
     def _parse(self, args):
+        if self.VALUES & self.FLAGS:
+            raise TypeError("option used as both a flag and a value: %s"%
+                            ",".join(self.VALUES&self.FLAGS))
         flagargs = [v
                     for v in sys.argv[1:]
                     if v.startswith('--') and not '=' in v]
@@ -227,7 +230,7 @@ class BumpsOpts(ParseOpts):
     Option parser for bumps.
     """
     MINARGS = 1
-    FLAGS = set(("preview", "chisq", "profile", "time",
+    FLAGS = set(("preview", "chisq", "profile", "time_model",
                  "simulate", "simrandom", "shake", "worker",
                  "batch", "noshow", "overwrite", "parallel", "stepmon",
                  "cov", "entropy", "remote", "staj", "edit", "mpi", "keep_best",
@@ -350,7 +353,7 @@ Options:
     --resynth=0
         run resynthesis error analysis for n generations
 
-    --time
+    --time_model
         run the model --steps times in order to estimate total run time.
     --profile
         run the python profiler on the model; use --steps to run multiple

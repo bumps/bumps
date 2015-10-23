@@ -486,7 +486,7 @@ def main():
         opts.fit_config.selected_fitter, problem=problem, abort_test=abort_test,
         **opts.fit_config.selected_values)
 
-    if opts.time:
+    if opts.time_model:
         run_timer(mapper.start_mapper(problem, opts.args),
                   problem, steps=int(opts.steps))
     elif opts.profile:
