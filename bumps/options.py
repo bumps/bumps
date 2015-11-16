@@ -233,7 +233,8 @@ class BumpsOpts(ParseOpts):
     FLAGS = set(("preview", "chisq", "profile", "time_model",
                  "simulate", "simrandom", "shake", "worker",
                  "batch", "noshow", "overwrite", "parallel", "stepmon",
-                 "cov", "entropy", "remote", "staj", "edit", "mpi", "keep_best",
+                 "err", "cov", "entropy",
+                 "remote", "staj", "edit", "mpi", "keep_best",
                  # passed in when app is a frozen image
                  "multiprocessing-fork",
                  # passed when not running bumps, but instead using a
@@ -282,8 +283,10 @@ Options:
         percent noise to add to the simulated data
     --seed=integer
         random number seed
+    --err
+        show uncertainty estimate from curvature at the minimum
     --cov
-        compute the covariance matrix for the model when done
+        show the covariance matrix for the model when done
     --entropy
         compute entropy for the model when done [dream only]
     --staj

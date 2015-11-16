@@ -532,6 +532,8 @@ def main():
         best, fbest = fitdriver.fit(resume=resume_path)
         # print("time=%g"%(time.clock()-t0),file=sys.__stdout__)
         save_best(fitdriver, problem, best)
+        if opts.err:
+            fitdriver.show_err()
         if opts.cov:
             print(problem.cov())
         if opts.entropy:
