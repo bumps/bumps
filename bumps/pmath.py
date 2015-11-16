@@ -83,6 +83,9 @@ tanh = function(math.tanh)
 sum = function(builtins.sum)
 prod = function(_prod)
 
+min = function(builtins.min)
+max = function(builtins.max)
+
 # Define pickler for numpy ufuncs
 #import copy_reg
 #def udump(f): return f.__name__
