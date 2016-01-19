@@ -476,9 +476,9 @@ def main():
 
     if np.isfinite(float(opts.time)):
         import time
-        start_time = time.clock()
+        start_time = time.time()
         stop_time = start_time + float(opts.time)*3600
-        abort_test=lambda: time.clock() >= stop_time
+        abort_test=lambda: time.time() >= stop_time
     else:
         abort_test=lambda: False
 
