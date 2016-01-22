@@ -447,7 +447,7 @@ def main():
     # Set up the matplotlib backend to minimize the wx/gui dependency.
     # If no GUI specified and not editing, then use the default mpl
     # backend for the python version.
-    if opts.batch or opts.remote:  # no interactivity
+    if opts.batch or opts.remote or opts.noshow:  # no interactivity
         config_matplotlib(backend='Agg')
     else:  # let preview use default graphs
         config_matplotlib()

@@ -340,7 +340,7 @@ Options:
         nT if your fit is getting stuck in local minima
     --CR=0.9        [de, rl, pt]
         crossover ratio for population mixing
-    --starts=1      [%(fitter)s]
+    --starts=1      [newton, rl, amoeba]
         number of times to run the fit from random starting points.
     --keep_best
         when running with multiple starts, restart from a point near the
