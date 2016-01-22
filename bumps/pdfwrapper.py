@@ -18,6 +18,7 @@ import numpy as np
 
 from .parameter import Parameter
 from .fitproblem import Fitness
+from .bounds import init_bounds
 
 
 class PDF(object):
@@ -172,9 +173,13 @@ class DirectPDF(object):
     def labels(self):
         return self._labels
 
-    def randomize(self):
-        # TODO: doesn't respect bounds
-        self.p = np.random.rand(self.n)
+    def randomize(self, n=None):
+        bounds = [init_bounds(b) for b in self._bounds.T]
+        if n is not None:
+            return np.array([b.random(n) for b in bounds]).T
+        else:
+            # Need to go through setp when updating model.
+            self.setp([b.random(1)[0] for b in bounds])
 
     def bounds(self):
         return self._bounds
