@@ -48,6 +48,9 @@
 #   4) $\lambda = k \pm \sqrt{k}$ for $k>0$, $1/2 \pm 1/2$ for $k = 0$
 #   5) $\lambda = k \pm \sqrt{k}$ for $k>0$, $0 \pm 1$ for $k = 0$
 #
+# See the notes from the CDF Statistics Committee for details at
+# `<http://www-cdf.fnal.gov/physics/statistics/notes/pois_eb.txt>`_.
+#
 # Of these, option 5 works slightly better for fitting, giving the best
 # estimate of the background.
 #
@@ -92,8 +95,7 @@
 #
 # Another suggestion is to choose the center and bounds so that the
 # uncertainty covers $1-\sigma$ from the distribution (68%).  A simple
-# approximation which does this is $(n+1/2) \pm \sqrt{n+1/4}$
-# (see `<http://www-cdf.fnal.gov/physics/statistics/notes/pois_eb.txt>`_).
+# approximation which does this is $(n+1/2) \pm \sqrt{n+1/4}$.
 #
 # Again, hard to convince the world to do, so one could compromise and
 # choose $1/2 \pm 1/2$ for $k=0$, and the usual $k \pm \sqrt{k}$ otherwise.
@@ -118,6 +120,7 @@ def peak(x, scale, center, width, background):
 
 x = np.linspace(5,20,345)
 #y = np.random.poisson(peak(x, 1000, 12, 1.0, 1))
+#y = np.random.poisson(peak(x, 300, 12, 1.5, 1))
 y = np.random.poisson(peak(x, 3, 12, 1.5, 1))
 
 # Define the various conditions.  These can be selected on the command
