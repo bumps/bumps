@@ -681,6 +681,9 @@ class DreamFit(FitBase):
         fn, labels = getattr(self.problem, 'derive_vars', (None, None))
         if fn is not None:
             self.state.derive_vars(fn, labels=labels)
+        visible = getattr(self.problem, 'visible_vars', None)
+        if visible is not None:
+            self.state.set_visible_vars(visible)
 
         x, fx = self.state.best()
 

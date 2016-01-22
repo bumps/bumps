@@ -841,7 +841,14 @@ class MCMCDraw(object):
             draw = state.sample()
             plot(draw.points[:, 0], draw.points[:, 1], '.')
         """
+        vars = vars if vars is not None else getattr(self, '_shown', None)
         return Draw(self, portion=portion, vars=vars, selection=selection)
+
+    def set_visible_vars(self, labels):
+        self._shown = [self.labels.index(v) for v in labels]
+        #print("\n".join(str(pair) for pair in enumerate(self.labels)))
+        #print(labels)
+        #print(self._shown)
 
     def derive_vars(self, fn, labels=None):
         """
