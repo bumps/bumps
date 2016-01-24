@@ -850,6 +850,21 @@ class MCMCDraw(object):
         #print(labels)
         #print(self._shown)
 
+    def integer_vars(self, labels):
+        """
+        Set variables to integer variables by rounding their values to the
+        nearest integer.
+
+        Note that this cannot be done ahead of time unless DREAM gets an
+        integer stepper, but it can be done before generating statistics.
+        DREAM on the OpenBUGS Asia model does not return the same results
+        as OpenBUGS, so the analysis of integer parameters should not yet
+        be trusted.  No other tests have been done to this point.
+        """
+        for var in labels:
+            idx = self.labels.index(var)
+            self._thin_point[:,:,idx] = np.round(self._thin_point[:,:,idx])
+
     def derive_vars(self, fn, labels=None):
         """
         Generate derived variables from the current sample, adding columns

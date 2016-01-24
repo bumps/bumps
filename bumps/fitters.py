@@ -678,12 +678,16 @@ class DreamFit(FitBase):
         # it then we will not be able to use the --resume feature.  We can
         # get around this by just not writing state for the derived variables,
         # at which point we can remove this notice.
+        # TODO: Add derived/visible variable support to other optimizers
         fn, labels = getattr(self.problem, 'derive_vars', (None, None))
         if fn is not None:
             self.state.derive_vars(fn, labels=labels)
-        visible = getattr(self.problem, 'visible_vars', None)
-        if visible is not None:
-            self.state.set_visible_vars(visible)
+        visible_vars = getattr(self.problem, 'visible_vars', None)
+        if visible_vars is not None:
+            self.state.set_visible_vars(visible_vars)
+        integer_vars = getattr(self.problem, 'integer_vars', None)
+        if integer_vars is not None:
+            self.state.integer_vars(integer_vars)
 
         x, fx = self.state.best()
 
