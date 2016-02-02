@@ -45,6 +45,8 @@ def generate(problem, init='eps', pop=10, use_point=True, **options):
     """
     initial = problem.getp()
     bounds = problem.bounds()
+    undefined = np.isnan(initial)
+    initial[undefined] = 1.
     pop_size = int(math.ceil(pop * len(initial)))
     # TODO: really need a continue option
     if init == 'random':
@@ -63,6 +65,11 @@ def generate(problem, init='eps', pop=10, use_point=True, **options):
     else:
         raise ValueError(
             "Unknown population initializer '%s'" % init)
+
+    if undefined.any():
+        population[:, undefined] = lhs_init(
+            pop_size, initial[undefined], bounds[:, undefined], use_point=False)
+
     return population
 
 

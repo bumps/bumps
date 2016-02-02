@@ -138,13 +138,15 @@ def load_best(problem, path):
     """
     Load parameter values from a file.
     """
-    labels, values = [], []
+    #targets = dict(zip(problem.labels(), problem.getp()))
+    targets = dict((name, np.NaN) for name in problem.labels())
     with open(path, 'rt') as fid:
         for line in fid:
             m = PARS_PATTERN.match(line)
-            labels.append(m.group('label'))
-            values.append(float(m.group('value')))
-    assert labels == problem.labels()
+            label, value = m.group('label'), float(m.group('value'))
+            if label in targets:
+                targets[label] = value
+    values = [targets[label] for label in problem.labels()]
     problem.setp(np.asarray(values))
 #CRUFT
 recall_best = load_best
