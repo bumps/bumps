@@ -209,4 +209,4 @@ class ParameterSummary(wx.Panel):
         new_value  = self.parameter.bounds.put01(value/NUMTICKS)
         self.parameter.value = new_value
         self.value.SetLabel(str(nice(new_value)))
-        signal.update_parameters(model=self.model)
+        signal.update_parameters(model=self.model, delay=1)
