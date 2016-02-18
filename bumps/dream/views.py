@@ -49,7 +49,7 @@ def plot_all(state, portion=1.0, figfile=None):
         suptitle(state.title)
     if figfile is not None:
         savefig(figfile+"-logp")
-    if state.Nvar <= 25:
+    if draw.num_vars <= 25:
         figure()
         plot_corrmatrix(draw)
         if state.title:

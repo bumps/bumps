@@ -924,6 +924,7 @@ class Draw(object):
             = state.labels if vars is None else [state.labels[v] for v in vars]
         self._stats = None
         self.weights = None
+        self.num_vars = len(self.labels)
 
 
 def _sample(state, portion, vars, selection):
