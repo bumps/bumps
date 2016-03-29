@@ -356,7 +356,8 @@ def run_dream(dream, abort_test=None):
             #print state.generation, ":", state._best_logp
 
             # Keep track of which CR ratios were successful
-            dream.CR.update(gen, xold, x, used)
+            if state.draws <= dream.burn:
+                dream.CR.update(gen, xold, x, used)
             
             if abort_test():
                 break
