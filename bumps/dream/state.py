@@ -243,6 +243,7 @@ def load_state(filename, skip=0, report=0):
     state._thin_draws = state._gen_draws[(skip+1)*thinning-1::thinning]
     state._thin_logp = point[:, 0].reshape((Nthin, Npop))
     state._thin_point = reshape(point[:, 1:], (Nthin, Npop, Nvar))
+    state._gen_current = state._thin_point[-1]
     state._update_count = Nupdate
     state._update_index = 0
     state._update_draws = stats[:, 0]
