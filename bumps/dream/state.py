@@ -442,7 +442,7 @@ class MCMCDraw(object):
             i = i+1
             if i == len(self._thin_draws): i = 0
             self._thin_index = i
-            self._gen_current = None
+            self._gen_current = x+0 # force a copy
         else:
             self._gen_current = x+0 # force a copy
 
@@ -485,10 +485,13 @@ class MCMCDraw(object):
     def labels(self, v):
         self._labels = v
 
-    def _draw_pop(self, Npop):
+    def _draw_pop(self):
         """
-        Generate a population from current generation and all history.
+        Return the current population.
         """
+        return self._gen_current
+
+    def _draw_large_pop(self, Npop):
         _, chains, _ = self.chains()
         Ngen, Nchain, Nvar = chains.shape
         points = reshape(chains, (Ngen*Nchain, Nvar))

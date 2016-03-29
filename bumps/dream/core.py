@@ -285,7 +285,7 @@ def run_dream(dream, abort_test=None):
 
             # Define the current locations and associated posterior densities
             xold, logp_old = x, logp
-            pop = state._draw_pop(n_pop)
+            pop = state._draw_pop()
 
             # Generate candidates for each sequence
             xtry, step_alpha, used \
