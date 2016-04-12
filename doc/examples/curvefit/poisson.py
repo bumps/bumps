@@ -140,11 +140,12 @@ elif cond=="expected": # option 1: L = (y+1) +/- sqrt(y+1)
     dy = np.sqrt(y)
 elif cond=="pearson": # option 2: L = (y + 0.5)  +/- sqrt(y + 1/4)
     dy = np.sqrt(y+0.25)
-    y += 0.5
+    y = y + 0.5
 elif cond=="expected_mle": # option 3: L = y +/- sqrt(y+1)
     dy = np.sqrt(y+1)
 elif cond=="pearson_zero": # option 4: L = y +/- sqrt(y); L[0] = 0.5 +/- 0.5
     dy = np.sqrt(y)
+    y = np.asarray(y, 'd')
     y[y==0] = 0.5
     dy[y==0] = 0.5
 elif cond=="expected_zero": # option 5: L = y +/- sqrt(y);  L[0] = 0 +/- 1
