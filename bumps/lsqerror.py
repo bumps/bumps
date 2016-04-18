@@ -57,6 +57,8 @@ def jacobian(problem, p=None, step=None):
     Numeric derivatives are calculated based on step, where step is
     the portion of the total range for parameter j, or the portion of
     point value p_j if the range on parameter j is infinite.
+
+    The current point is preserved.
     """
     p_init = problem.getp()
     if p is None:
@@ -70,6 +72,8 @@ def jacobian(problem, p=None, step=None):
 def hessian(problem, p=None, step=None):
     """
     Returns the derivative wrt to the fit parameters at point p.
+
+    The current point is preserved.
     """
     p_init = problem.getp()
     if p is None:
@@ -86,6 +90,8 @@ def hessian(problem, p=None, step=None):
 def hessian_diag(problem, p=None, step=None):
     """
     Returns the derivative wrt to the fit parameters at point p.
+
+    The current point is preserved.
     """
     p_init = problem.getp()
     if p is None:

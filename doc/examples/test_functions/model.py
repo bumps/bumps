@@ -11,7 +11,6 @@ import inspect
 
 import numpy as np
 from numpy import sin, cos, linspace, meshgrid, e, pi, sqrt, exp, inf
-from numpy.random import randn
 from bumps.names import *
 
 class ModelFunction(object):
@@ -235,7 +234,7 @@ M = PDF(nllf, plot=plot)
 for p in M.parameters().values():
     # TODO: really should pull value and range out of the bounds for the
     # function, if any are provided.
-    p.value = 400*(randn()-0.5)
+    p.value = 400*(np.random.rand()-0.5)
     p.range(-200,200)
 
 problem = FitProblem(M)
