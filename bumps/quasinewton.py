@@ -189,6 +189,7 @@ def quasinewton(fn, x0=[], grad=[], Sx=[], typf=1, macheps=[], eta=[],
         # Approximately x0 is a critical point
         xf = x0
         ff = fc
+        H = L = None
     else:
         H = inithessunfac(n, fc, typf, Sx)
 
