@@ -75,7 +75,6 @@ def hessian(problem, p=None, step=None):
     if p is None:
         p = p_init
     p = np.asarray(p)
-    import numdifftools as nd
     H = nd.Hessian(problem.nllf)(p)
     #bounds = getattr(problem, 'bounds', lambda: None)()
     #H2 = _simple_hessian(problem.nllf, p, step=step, bounds=bounds)
