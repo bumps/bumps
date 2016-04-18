@@ -235,7 +235,7 @@ M = PDF(nllf, plot=plot)
 for p in M.parameters().values():
     # TODO: really should pull value and range out of the bounds for the
     # function, if any are provided.
-    p.value = 10*randn()
+    p.value = 400*(randn()-0.5)
     p.range(-200,200)
 
 problem = FitProblem(M)
