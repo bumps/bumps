@@ -534,10 +534,13 @@ def main():
         best, fbest = fitdriver.fit(resume=resume_path)
         # print("time=%g"%(time.clock()-t0),file=sys.__stdout__)
         save_best(fitdriver, problem, best)
-        if opts.err:
+        if opts.err or opts.cov:
             fitdriver.show_err()
         if opts.cov:
+            np.set_printoptions(linewidth=1e6)
+            print("=== Covariance matrix ===")
             print(problem.cov())
+            print("=========================")
         if opts.entropy:
             print("Calculating entropy...")
             S, dS = fitdriver.entropy()

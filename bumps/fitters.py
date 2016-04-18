@@ -901,11 +901,14 @@ class FitDriver(object):
 
     def show_err(self):
         # Display the error approximation from the numerical derivative
-        err = lsqerror.stderr(self.cov())/np.sqrt(self.problem.chisq())
-        print("=== Uncertainty estimated from curvature, normalized by root chisq ===")
+        err = lsqerror.stderr(self.cov())
+        norm = np.sqrt(self.problem.chisq())
+        print("=== Uncertainty est. from curvature: par    dx           dx/sqrt(chisq) ===")
         for name, value, err in zip(self.problem.labels(), self.problem.getp(), err):
-            print("%40s"%name, format_uncertainty(value, err))
-        print("======================================================================")
+            print("%40s %-15s %-15s" %(name,
+                                       format_uncertainty(value, err),
+                                       format_uncertainty(value, err/norm)))
+        print("="*75)
 
     def save(self, output_path):
         # print "calling driver save"
