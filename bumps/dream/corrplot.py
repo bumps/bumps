@@ -78,7 +78,7 @@ def _hists(data, ranges=None, **kw):
                 for j in range(i+1, n))
 
 
-def _plot(fig, hists, labels, n, show_ticks=False):
+def _plot(fig, hists, labels, n, show_ticks=None):
     """
     Plot pair-wise correlation histograms
     """
@@ -99,6 +99,8 @@ def _plot(fig, hists, labels, n, show_ticks=False):
     mapper.set_cmap(cmap=COLORMAP)
     mapper.set_norm(norm)
 
+    if show_ticks is None:
+        show_ticks = n < 3
     ax = {}
     Nr = Nc = n-1
     for i in range(0, n-1):
