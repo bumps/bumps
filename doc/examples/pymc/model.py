@@ -1,12 +1,11 @@
+import sys
+from importlib import import_module
 from bumps.pymcfit import PyMCProblem
-from pymc.examples import disaster_model
 
-pars = (
-    disaster_model.switchpoint,
-    disaster_model.early_mean,
-    disaster_model.late_mean
-    )
-conds = (
-    disaster_model.disasters,
-    )
-problem = PyMCProblem(pars=pars, conds=conds)
+if len(sys.argv) != 2:
+    raise ValueError("Expected name of pymc file containing a model")
+
+module =sys.argv[1]
+__name__ = module.split('.')[-1]
+model = import_module(module)
+problem = PyMCProblem(model)
