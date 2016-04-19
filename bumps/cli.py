@@ -27,6 +27,8 @@ __all__ = ["main", "install_plugin", "set_mplconfig", "config_matplotlib",
 import sys
 import os
 import re
+import warnings
+import traceback
 
 import shutil
 try:
@@ -407,12 +409,23 @@ def setup_logging():
     import logging
     logging.basicConfig(level=logging.INFO)
 
+# from http://stackoverflow.com/questions/22373927/get-traceback-of-warnings
+# answered by mgab (2014-03-13)
+# edited by Gareth Rees (2015-11-28)
+def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
+    traceback.print_stack()
+    log = file if hasattr(file, 'write') else sys.stderr
+    log.write(warnings.formatwarning(message, category, filename, lineno, line))
+
 def main():
     """
     Run the bumps program with the command line interface.
 
     Input parameters are taken from sys.argv.
     """
+    # add full traceback to warnings
+    #warnings.showwarning = warn_with_traceback
+
     if len(sys.argv) == 1:
         sys.argv.append("-?")
         print("\nNo modelfile parameter was specified.\n")

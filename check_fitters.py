@@ -44,10 +44,17 @@ def clear_directory(path, recursive=False):
 def run_fit(fit_args, model_args, store, seed=1):
     command_parts = ([sys.executable, RUNPY] + fit_args + model_args
                      + ['--store='+store, '--seed=%d'%seed, '--batch'])
-    output = subprocess.check_output(command_parts, stderr=subprocess.STDOUT)
-    print(output)
-    if "KeyboardInterrupt" in output:
-        raise KeyboardInterrupt()
+    try:
+        output = subprocess.check_output(command_parts, stderr=subprocess.STDOUT)
+        output = output.strip()
+        if output: print(output.strip())
+    except subprocess.CalledProcessError as exc:
+        output = exc.output.strip()
+        if output: print(output)
+        if "KeyboardInterrupt" in output:
+            raise KeyboardInterrupt()
+        else:
+            raise RuntimeError("fit failed:\n"%(" ".join(command_parts)))
 
 def check_fit(fitter, store, targets):
     errfiles = glob.glob(joinpath(store, "*.err"))
@@ -75,24 +82,25 @@ def run_fits(model_args, store, fitters=FIT_AVAILABLE_IDS, seed=1):
         try:
             run_fit(["--fit="+f], model_args, store, seed=seed)
             check_fit(f, store, [0.0])
-        except Exception:
-            traceback.print_exc()
+        except Exception as exc:
+            print(exc)
             failed.append(f)
         clear_directory(store)
     return failed
 
 def main():
+    fitters = sys.argv[1:] if len(sys.argv) > 1 else FIT_AVAILABLE_IDS
     store = tempfile.mkdtemp(prefix="bumps-test-")
     model = joinpath(EXAMPLEDIR, "test_functions", "model.py")
     #model_args = [model, '"fk(rosenbrock, 3)"']
     model_args = [model, 'sphere', '3']
     seed = 1
-    fitters = FIT_AVAILABLE_IDS
     failed = run_fits(model_args, store, fitters=fitters, seed=seed)
     shutil.rmtree(store)
     if failed:
         print("======")
-        raise RuntimeError("Fits failed for: %s"%(", ".join(failed),))
+        print("Fits failed for: %s"%(", ".join(failed),))
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

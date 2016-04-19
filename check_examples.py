@@ -35,7 +35,7 @@ examples = [
     "constraints/model.py",
     "constraints/gmodel.py",
     "test_functions/anticor.py",
-    "test_functions/model.py",
+    #"test_functions/model.py",
 ]
 
 
