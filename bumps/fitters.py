@@ -900,12 +900,22 @@ class FitDriver(object):
             self.problem.show()
 
     def show_err(self):
-        # Display the error approximation from the numerical derivative
-        err = lsqerror.stderr(self.cov())/np.sqrt(self.problem.chisq())
-        print("=== Uncertainty estimated from curvature, normalized by root chisq ===")
-        for name, value, err in zip(self.problem.labels(), self.problem.getp(), err):
-            print("%40s"%name, format_uncertainty(value, err))
-        print("======================================================================")
+        """
+        Display the error approximation from the numerical derivative.
+
+        Warning: cost grows as the cube of the number of parameters.
+        """
+        # TODO: need cheaper uncertainty estimate
+        # Note: error estimated from hessian diagonal is insufficient.
+        err = lsqerror.stderr(self.cov())
+        norm = np.sqrt(self.problem.chisq())
+        print("=== Uncertainty est. from curvature: par    dx           dx/sqrt(chisq) ===")
+        for k, v, dv in zip(self.problem.labels(), self.problem.getp(), err):
+            print("%40s %-15s %-15s" %(k,
+                                       format_uncertainty(v, dv),
+                                       format_uncertainty(v, dv/norm),
+                                       ))
+        print("="*75)
 
     def save(self, output_path):
         # print "calling driver save"

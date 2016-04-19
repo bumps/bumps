@@ -189,19 +189,31 @@ class Curve(object):
         np.savetxt(basename + '.dat', data.T)
 
     def plot(self, view=None):
+        import pylab
         kw = dict((p, getattr(self, p).value) for p in self._pnames)
         kw.update(self._state)
         #print "kw_plot",kw
         if view == 'residual':
             plot_resid(self.x, self.residuals())
         else:
+            plot_ratio = 4
+            h = pylab.subplot2grid((plot_ratio,1), (0,0), rowspan=plot_ratio-1)
             self._plot(self.x, self.y, self.dy, self.theory(), view=view, **kw)
+            for tick_label in pylab.gca().get_xticklabels():
+                tick_label.set_visible(False)
+            #pylab.gca().xaxis.set_visible(False)
+            #pylab.gca().spines['bottom'].set_visible(False)
+            #pylab.gca().set_xticks([])
+            pylab.subplot2grid((plot_ratio,1), (plot_ratio-1,0), sharex=h)
+            plot_resid(self.x, self.residuals())
 
 def plot_resid(x, resid):
     import pylab
     pylab.plot(x, resid, '.')
-    pylab.axhline(y=1, hold=True)
-    pylab.axhline(y=-1, hold=True)
+    pylab.gca().locator_params(axis='y', tight=True, nbins=4)
+    pylab.axhline(y=1, hold=True, ls='dotted')
+    pylab.axhline(y=-1, hold=True, ls='dotted')
+    pylab.ylabel("Residuals")
 
 def plot_err(x, y, dy, fy, view=None, **kw):
     """

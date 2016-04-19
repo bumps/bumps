@@ -82,11 +82,10 @@ def profile(fn, *args, **kw):
     """
     import cProfile
     import pstats
-    global call_result
 
+    result = [None]
     def call():
-        global call_result
-        call_result = fn(*args, **kw)
+        result[0] = fn(*args, **kw)
     datafile = 'profile.out'
     cProfile.runctx('call()', dict(call=call), {}, datafile)
     stats = pstats.Stats(datafile)
@@ -97,7 +96,7 @@ def profile(fn, *args, **kw):
     stats.sort_stats(order)
     stats.print_stats()
     os.unlink(datafile)
-    return call_result
+    return result[0]
 
 
 def kbhit():

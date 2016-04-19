@@ -243,6 +243,7 @@ def load_state(filename, skip=0, report=0):
     state._thin_draws = state._gen_draws[(skip+1)*thinning-1::thinning]
     state._thin_logp = point[:, 0].reshape((Nthin, Npop))
     state._thin_point = reshape(point[:, 1:], (Nthin, Npop, Nvar))
+    state._gen_current = state._thin_point[-1]
     state._update_count = Nupdate
     state._update_index = 0
     state._update_draws = stats[:, 0]
@@ -442,7 +443,7 @@ class MCMCDraw(object):
             i = i+1
             if i == len(self._thin_draws): i = 0
             self._thin_index = i
-            self._gen_current = None
+            self._gen_current = x+0 # force a copy
         else:
             self._gen_current = x+0 # force a copy
 
@@ -485,10 +486,13 @@ class MCMCDraw(object):
     def labels(self, v):
         self._labels = v
 
-    def _draw_pop(self, Npop):
+    def _draw_pop(self):
         """
-        Generate a population from current generation and all history.
+        Return the current population.
         """
+        return self._gen_current
+
+    def _draw_large_pop(self, Npop):
         _, chains, _ = self.chains()
         Ngen, Nchain, Nvar = chains.shape
         points = reshape(chains, (Ngen*Nchain, Nvar))
@@ -924,6 +928,7 @@ class Draw(object):
             = state.labels if vars is None else [state.labels[v] for v in vars]
         self._stats = None
         self.weights = None
+        self.num_vars = len(self.labels)
 
 
 def _sample(state, portion, vars, selection):

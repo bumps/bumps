@@ -185,11 +185,13 @@ def quasinewton(fn, x0=[], grad=[], Sx=[], typf=1, macheps=[], eta=[],
     # Check if the initial guess is a local minimizer
     termcode = umstop0(n, x0, fc, gc, Sx, typf, gradtol)
     consecmax = 0
-    if termcode > 0:
-        # Approximately x0 is a critical point
-        xf = x0
-        ff = fc
-    else:
+
+    # Value to return if we fail early
+    # Approximately x0 is a critical point
+    xf = x0
+    ff = fc
+    H = L = None
+    if termcode == 0:
         H = inithessunfac(n, fc, typf, Sx)
 
     # STEP 9.

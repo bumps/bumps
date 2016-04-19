@@ -277,6 +277,8 @@ def run_dream(dream, abort_test=None):
 
     #need_outliers_removed = True
     scale = 1.0
+    #serial_time = parallel_time = 0.
+    #last_time = time.time()
     while state.draws < dream.draws + dream.burn:
 
         # Age the population using differential evolution
@@ -285,7 +287,7 @@ def run_dream(dream, abort_test=None):
 
             # Define the current locations and associated posterior densities
             xold, logp_old = x, logp
-            pop = state._draw_pop(n_pop)
+            pop = state._draw_pop()
 
             # Generate candidates for each sequence
             xtry, step_alpha, used \
@@ -308,7 +310,13 @@ def run_dream(dream, abort_test=None):
             # Compute the likelihood of the candidates
             apply_bounds(xtry)
 # ********************** MAP *****************************
+            #next_time = time.time()
+            #serial_time += next_time - last_time
+            #last_time = next_time
             logp_try = dream.model.map(xtry)
+            #next_time = time.time()
+            #parallel_time  += next_time - last_time
+            #last_time = next_time
             draws = len(logp_try)
 
             # Apply the metropolis acceptance/rejection rule
@@ -356,11 +364,13 @@ def run_dream(dream, abort_test=None):
             #print state.generation, ":", state._best_logp
 
             # Keep track of which CR ratios were successful
-            dream.CR.update(gen, xold, x, used)
+            if state.draws <= dream.burn:
+                dream.CR.update(gen, xold, x, used)
             
             if abort_test():
                 break
 
+        #print("serial&parallel",serial_time,parallel_time)
         # End of differential evolution aging
         # ---------------------------------------------------------------------
 
