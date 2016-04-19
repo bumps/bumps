@@ -30,13 +30,12 @@ of the frame of the GUI for the Bumps application.
 from __future__ import division
 import os
 import threading
-import pickle
+import cPickle as pickle
 
 import wx
 import wx.aui
 
 from .. import plugin
-from .. import fitters
 from ..cli import load_model
 from ..util import redirect_console
 from ..dream import stats as dream_stats
@@ -51,7 +50,7 @@ from .fit_dialog import show_fit_config
 from .fit_thread import (FitThread, EVT_FIT_PROGRESS, EVT_FIT_COMPLETE)
 from .util import nice
 from . import signal
-from .utilities import get_bitmap, resource
+from .utilities import get_bitmap
 
 # File selection strings.
 MODEL_EXT = ".pickle"
@@ -356,8 +355,7 @@ class AppPanel(wx.Panel):
             self.load_model(path)
 
     def OnFileReload(self, event):
-        try:    path = self._reload_path
-        except: path = self.model.path
+        path = getattr(self, '_reload_path', self.model.path)
         self.load_model(path)
 
     def OnFileSave(self, event):
@@ -500,10 +498,9 @@ class AppPanel(wx.Panel):
 
     def save_model(self, path):
         try:
-           s = pickle.dumps(self.model)
            with open(path,'wb') as fid:
-               fid.write(s)
-        except:
+               pickle.dump(self.model, fid)
+        except Exception:
             import traceback
             signal.log_message(message=traceback.format_exc())
 
@@ -512,8 +509,8 @@ class AppPanel(wx.Panel):
         output_path = os.path.join(path, self.model.name)
 
         # Storage directory
-        try: os.mkdir(path)
-        except: pass
+        if not os.path.exists(path):
+            os.mkdir(path)
 
         # Ask model to save its information
         self.model.save(output_path)

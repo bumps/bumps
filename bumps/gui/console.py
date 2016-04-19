@@ -13,9 +13,11 @@ import wx, wx.py
 def shapestr(v):
     """Return shape string for numeric variables suitable for printing"""
     try:
-        return "array "+"x".join([str(i) for i in v.shape])
-    except:
+        shape = v.shape
+    except AttributeError:
         return "scalar"
+    else:
+        return "array "+"x".join([str(i) for i in shape])
 
 class NumpyConsole(wx.py.shell.ShellFrame):
     """
@@ -121,8 +123,10 @@ plot(x,y)
         Delete a variable from the interpreter.
         """
         del self.shell.interp.locals[var]
-        try: del self._existing[var]
-        except: pass
+        try:
+            del self._existing[var]
+        except KeyError:
+            pass
 
     # Stream interface
     def write(self, msg):

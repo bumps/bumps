@@ -67,7 +67,7 @@ def string_like(s):
     """
     try:
         s + ''
-    except:
+    except Exception:
         return False
     return True
 
@@ -119,7 +119,7 @@ def indfloat(s):
     """
     try:
         return float(s)
-    except:
+    except Exception:
         s = s.lower()
         if s == 'inf':
             return inf

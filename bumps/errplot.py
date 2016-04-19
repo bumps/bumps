@@ -111,7 +111,7 @@ def calc_errors(problem, points):
     original = problem.getp()
     try:
         ret = plugin.calc_errors(problem, points)
-    except:
+    except Exception:
         import traceback, logging
         info = ["error calculating distribution on model",
                 traceback.format_exc()]

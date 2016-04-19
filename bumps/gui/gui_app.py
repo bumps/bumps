@@ -260,12 +260,12 @@ class MainApp(wx.App):
 
 def initial_model(opts):
     # Capture stdout from problem definition
-    stdout = sys.stdout
+    saved_stdout = sys.stdout
+    sys.stdout = StringIO()
     try:
-        sys.stdout = StringIO()
         problem = cli.initial_model(opts)
         error = ''
-    except:
+    except Exception:
         problem = None
         limit = len(traceback.extract_stack())-4
         #sys.stderr.write("limit=%d\n"%limit)
@@ -273,7 +273,7 @@ def initial_model(opts):
         error = traceback.format_exc(limit)
     finally:
         output = sys.stdout.getvalue()
-        sys.stdout = stdout
+        sys.stdout = saved_stdout
     return problem, output.strip()+error
 
 
@@ -303,7 +303,7 @@ def _protected_main():
 def main():
     try:
         _protected_main()
-    except:
+    except:  # make sure traceback is printed
         traceback.print_exc()
         sys.exit()
 

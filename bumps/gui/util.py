@@ -1,10 +1,10 @@
-import wx
+"""
+Wx-Pylab magic for displaying plots within an application's window.
+"""
+from math import log10, floor
 import string
 
-# Wx-Pylab magic for displaying plots within an application's window.
-from matplotlib._pylab_helpers import Gcf
-from matplotlib.backend_bases import FigureManagerBase
-import pylab
+import wx
 
 class EmbeddedPylab(object):
     """
@@ -55,14 +55,23 @@ class EmbeddedPylab(object):
     with other GUI toolkits.
     """
     def __init__(self, canvas):
+        # delay loading pylab until matplotlib.use() is called
+        from matplotlib.backend_bases import FigureManagerBase
         self.fm = FigureManagerBase(canvas, -1)
     def __enter__(self):
+        # delay loading pylab until matplotlib.use() is called
+        import pylab
+        from matplotlib._pylab_helpers import Gcf
         Gcf.set_active(self.fm)
         return pylab
     def __exit__(self, *args, **kw):
+        # delay loading pylab until matplotlib.use() is called
+        from matplotlib._pylab_helpers import Gcf
         Gcf._activeQue = [f for f in Gcf._activeQue if f is not self.fm]
-        try: del Gcf.figs[-1]
-        except: pass
+        try:
+            del Gcf.figs[-1]
+        except KeyError:
+            pass
 
 class Validator(wx.PyValidator):
     def __init__(self, flag):
@@ -85,13 +94,12 @@ class Validator(wx.PyValidator):
             return
         evt.Skip()
 
-def nice(v, digits = 4):
-    from math import log10, floor
+def nice(v, digits=4):
     """Fix v to a value with a given number of digits of precision"""
-    try:
+    if v == 0.:
+        return v
+    else:
         sign = v/abs(v)
         place = floor(log10(abs(v)))
         scale = 10**(place-(digits-1))
         return sign*floor(abs(v)/scale+0.5)*scale
-    except:  # Too many possible math errors to struggle through
-        return v

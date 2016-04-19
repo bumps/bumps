@@ -223,13 +223,13 @@ def _check(expected, got, tol):
         norm = np.linalg.norm((expected - got) / expected)
     else:
         norm = np.linalg.norm(expected - got)
-    try:
-        assert norm < tol
-    except:
-        print("expected", expected)
-        print("got", got)
-        print("tol", tol, "norm", norm)
-        raise
+    if norm >= tol:
+        msg = [
+            "expected %s"%str(expected),
+            "got %s"%str(got),
+            "tol %s norm %s"%(tol, norm),
+        ]
+        raise ValueError("\n".join(msg))
 
 
 def _derivs(x, y):

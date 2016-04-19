@@ -65,7 +65,7 @@ def console():
     # For eclipse, just show the plots.
     try:
         tty = os.isatty(sys.stdin.fileno())
-    except:
+    except Exception:
         tty = False
 
     if tty:

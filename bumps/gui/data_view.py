@@ -194,11 +194,15 @@ class DataView(wx.Panel):
                 try:
                     # If we can calculate chisq, then put it on the graph.
                     text = "chisq=%g"%self.problem.chisq()
-                    constraints = self.problem.parameter_nllf() + self.problem.constraints_nllf()
-                    if constraints > 0: text+= " constraints=%g"%constraints
-                    pylab.text(0.01, 0.01, text, transform=pylab.gca().transAxes)
-                except:
-                    pass
+                    constraints = (self.problem.parameter_nllf()
+                                   + self.problem.constraints_nllf())
+                except Exception:
+                    # Otherwise indicate that chisq could not be calculated.
+                    text = "chisq=--"
+                    constraints = 0.
+                if constraints > 0.:
+                    text+= " constraints=%g"%constraints
+                pylab.text(0.01, 0.01, text, transform=pylab.gca().transAxes)
                 #print "drawing"
                 if not reset:
                     self.toolbar.push_current()

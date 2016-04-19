@@ -52,13 +52,14 @@ def next_color():
         plt.plot(x, y, '-', color=dhsv(color, dv=-0.2))
     """
     import pylab
+    lines = pylab.gca()._get_lines
     try:
-        base = next(pylab.gca()._get_lines.prop_cycler)['color']
-    except:
+        base = next(lines.prop_cycler)['color']
+    except Exception:
         try: # Cruft 1.4-1.6?
-            base = next(pylab.gca()._get_lines.color_cycle)
-        except:  # Cruft 1.3 and earlier
-            base = pylab.gca()._get_lines._get_next_cycle_color()
+            base = next(lines.color_cycle)
+        except Exception:  # Cruft 1.3 and earlier
+            base = lines._get_next_cycle_color()
     return base
 
 

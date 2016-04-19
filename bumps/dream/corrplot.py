@@ -19,7 +19,7 @@ from matplotlib.ticker import MaxNLocator
 try:
     COLORMAP = colors.LinearSegmentedColormap.from_list(
         'density', ('w', 'y', 'g', 'b', 'r'))
-except:
+except Exception:
     COLORMAP = cm.gist_earth_r
 
 

@@ -1,7 +1,10 @@
-import wx.lib.newevent
 
 from copy import deepcopy
 from threading import Thread
+import os
+
+import wx.lib.newevent
+
 from .. import monitor
 from ..fitters import FitDriver
 from ..mapper import  MPMapper, SerialMapper
@@ -154,10 +157,10 @@ class FitThread(Thread):
         try:
             # Only use parallel on windows if the problem can be pickled
             if os.name == "nt":
-                import pickle
-                p = pickle.dumps(self.problem)
+                import cPickle as pickle
+                pickle.dumps(self.problem)
             mapper = MPMapper
-        except:
+        except Exception:
             mapper = SerialMapper
 
         # Be safe and keep a private copy of the problem while fitting

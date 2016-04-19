@@ -141,12 +141,6 @@ class ItemListValidator(wx.PyValidator):
             if len(text) == 0 and self.required:
                 raise RuntimeError("input required")
 
-            text_ctrl.SetBackgroundColour(
-                wx.SystemSettings_GetColour(wx.SYS_COLOUR_WINDOW))
-            text_ctrl.Refresh()
-            self.TransferFromWindow()
-            return True
-
         except RuntimeError:
             from traceback import print_exc; print_exc()
             text_ctrl.SetBackgroundColour(PALE_YELLOW)
@@ -154,12 +148,19 @@ class ItemListValidator(wx.PyValidator):
             text_ctrl.Refresh()
             return False
 
-        except:
+        except Exception:
             from traceback import print_exc; print_exc()
             text_ctrl.SetBackgroundColour("PINK")
             text_ctrl.SetFocus()
             text_ctrl.Refresh()
             return False
+
+        else:
+            text_ctrl.SetBackgroundColour(
+                wx.SystemSettings_GetColour(wx.SYS_COLOUR_WINDOW))
+            text_ctrl.Refresh()
+            self.TransferFromWindow()
+            return True
 
 
     def TransferToWindow(self):

@@ -36,9 +36,9 @@ def lhs_init(N, bounds):
     Note: Indefinite ranges are not supported.
     """
     try:
-        xmin, xmax = bounds
-    except:
         xmin, xmax = bounds.low, bounds.high
+    except AttributeError:
+        xmin, xmax = bounds
 
     # Define the size of xmin
     nvar = len(xmin)

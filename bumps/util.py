@@ -271,7 +271,7 @@ class push_seed(object):
         ...        with push_seed(24):
         ...            print(randint(0,1000000,3))
         ...            raise Exception()
-        ...    except:
+        ...    except Exception:
         ...        print("Exception raised")
         ...    print(randint(0,1000000))
         242082

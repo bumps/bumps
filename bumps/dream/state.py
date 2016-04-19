@@ -77,7 +77,7 @@ import gzip
 
 import numpy as np
 from numpy import empty, sum, asarray, inf, argmax, hstack, dstack
-from numpy import savetxt, loadtxt, reshape
+from numpy import savetxt, reshape
 
 from .outliers import identify_outliers
 from .util import draw, rng
@@ -197,7 +197,7 @@ def loadtxt(file, report=0):
         if len(values) > 0:
             try:
                 res.append([float(v) for v in values])
-            except:
+            except ValueError:
                 print("Parse error:", values)
     if fh != file:
         fh.close()

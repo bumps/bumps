@@ -5,7 +5,7 @@ In practice, the main window is the only listener, and it forwards the
 messages to the appropriate views.
 """
 import wx
-from wx.py.dispatcher import send, connect
+from wx.py.dispatcher import send
 
 def model_new(model):
     """
@@ -32,13 +32,19 @@ def update_parameters(model, delay=100):
     """
     # signaller is responsible for marking the model as needing recalculation
     model.model_update()
-    try:
-        _DELAYED_SIGNAL[model].Restart(delay)
-    except:
+    # TODO: potential race condition
+    # Future call mat be occurring at the time that restart is triggered.
+    # Not sure we can do anything about it from outside wx...
+    signal = _DELAYED_SIGNAL.get(model, None)
+    if signal is not None:
+        # signal is already active, so delay it some more
+        signal.Restart(delay)
+    else:
+        # activate a new signal, and call when back at GUI loop
         def _send_signal():
             #print "sending update parameters",model
             del _DELAYED_SIGNAL[model]
-            wx.CallAfter(send,'model.update_parameters',model=model)
+            wx.CallAfter(send, 'model.update_parameters', model=model)
         _DELAYED_SIGNAL[model] = wx.FutureCall(delay, _send_signal)
 
 def log_message(message):

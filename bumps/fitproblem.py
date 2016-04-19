@@ -366,9 +366,7 @@ class BaseFitProblem(object):
                       if pparameter + pconstraint <= self.soft_limit
                       else self.penalty_nllf)
             cost = pparameter + pconstraint + pmodel
-        except KeyboardInterrupt:
-            raise
-        except:
+        except Exception:
             # TODO: make sure errors get back to the user
             import traceback, logging
             info = (traceback.format_exc(),

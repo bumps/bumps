@@ -793,6 +793,8 @@ def _resampler(fitter, xinit, samples=100, restart=False, **options):
             # print self.problem.summarize()
             # print "[chisq=%g]" % (nllf*2/self.problem.dof)
     except KeyboardInterrupt:
+        # On keyboard interrupt we can declare that we are finished sampling
+        # without it being an error condition, so let this exception pass.
         pass
     finally:
         # Restore the state of the problem

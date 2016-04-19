@@ -31,7 +31,7 @@ import re
 import shutil
 try:
     import dill as pickle
-except:
+except ImportError:
     import pickle
 
 import numpy as np
@@ -199,10 +199,8 @@ def make_store(problem, opts, exists_handler):
         exists_handler(problem.output_path)
 
     # Create it and copy model
-    try:
+    if not os.path.exists(problem.store):
         os.mkdir(problem.store)
-    except:
-        pass
     shutil.copy2(problem.path, problem.store)
 
     # Redirect sys.stdout to capture progress
