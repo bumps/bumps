@@ -3,13 +3,16 @@
 Run each fitter on the 3 dimensional Rosenbrock function to make sure they
 all converge.
 """
+from __future__ import print_function
+
 import sys
 import os
 import tempfile
 import shutil
 import glob
-import traceback
 from os.path import join as joinpath, realpath, dirname
+import traceback
+import subprocess
 
 sys.dont_write_bytecode = True
 
@@ -41,8 +44,10 @@ def clear_directory(path, recursive=False):
 def run_fit(fit_args, model_args, store, seed=1):
     command_parts = ([sys.executable, RUNPY] + fit_args + model_args
                      + ['--store='+store, '--seed=%d'%seed, '--batch'])
-    command = " ".join(command_parts)
-    os.system(command)
+    output = subprocess.check_output(command_parts, stderr=subprocess.STDOUT)
+    print(output)
+    if "KeyboardInterrupt" in output:
+        raise KeyboardInterrupt()
 
 def check_fit(fitter, store, targets):
     errfiles = glob.glob(joinpath(store, "*.err"))
@@ -70,7 +75,7 @@ def run_fits(model_args, store, fitters=FIT_AVAILABLE_IDS, seed=1):
         try:
             run_fit(["--fit="+f], model_args, store, seed=seed)
             check_fit(f, store, [0.0])
-        except:
+        except Exception:
             traceback.print_exc()
             failed.append(f)
         clear_directory(store)
@@ -80,7 +85,7 @@ def main():
     store = tempfile.mkdtemp(prefix="bumps-test-")
     model = joinpath(EXAMPLEDIR, "test_functions", "model.py")
     #model_args = [model, '"fk(rosenbrock, 3)"']
-    model_args = [model, '"fk(sphere, 3)"']
+    model_args = [model, 'sphere', '3']
     seed = 1
     fitters = FIT_AVAILABLE_IDS
     failed = run_fits(model_args, store, fitters=fitters, seed=seed)
