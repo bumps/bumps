@@ -212,7 +212,7 @@ def dea3(v0, v1, v2, symmetric=False):
      # integrate sin(x) from 0 to pi/2
 
      >>> import numpy as np
-     >>> import numdifftools as nd
+     >>> from bumps import numdifftools as nd
      >>> Ei= np.zeros(3)
      >>> linfun = lambda i : np.linspace(0, np.pi/2., 2**(i+5)+1)
      >>> for k in np.arange(3):
@@ -273,7 +273,7 @@ class Richardson(object):
     Example
     -------
     >>> import numpy as np
-    >>> import numdifftools as nd
+    >>> from bumps import numdifftools as nd
     >>> n = 3
     >>> Ei = np.zeros((n,1))
     >>> h = np.zeros((n,1))

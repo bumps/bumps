@@ -52,7 +52,7 @@ Getting Started
 Compute 1'st and 2'nd derivative of exp(x), at x == 1::
 
     >>> import numpy as np
-    >>> import numdifftools as nd
+    >>> from bumps import numdifftools as nd
     >>> fd = nd.Derivative(np.exp)        # 1'st derivative
     >>> fdd = nd.Derivative(np.exp, n=2)  # 2'nd derivative
     >>> np.allclose(fd(1), 2.7182818284590424)
@@ -76,39 +76,13 @@ Compute gradient of sum(x**2)::
     >>> dfun([1,2,3])
     array([ 2.,  4.,  6.])
 
-Compute the same with the easy to use interface to AlgoPy::
-
-    >>> import numdifftools.nd_algopy as nda
-    >>> import numpy as np
-    >>> fd = nda.Derivative(np.exp)        # 1'st derivative
-    >>> fdd = nda.Derivative(np.exp, n=2)  # 2'nd derivative
-    >>> np.allclose(fd(1), 2.7182818284590424)
-    True
-    >>> np.allclose(fdd(1), 2.7182818284590424)
-    True
-
-Nonlinear least squares::
-
-    >>> xdata = np.reshape(np.arange(0,1,0.1),(-1,1))
-    >>> ydata = 1+2*np.exp(0.75*xdata)
-    >>> fun = lambda c: (c[0]+c[1]*np.exp(c[2]*xdata) - ydata)**2
-    >>> Jfun = nda.Jacobian(fun, method='reverse')
-    >>> np.allclose(np.abs(Jfun([1,2,0.75])), 0) # should be numerically zero
-    True
-
-Compute gradient of sum(x**2)::
-
-    >>> fun = lambda x: np.sum(x**2)
-    >>> dfun = nda.Gradient(fun)
-    >>> dfun([1,2,3])
-    array([ 2.,  4.,  6.])
-
 See also
 --------
 scipy.misc.derivative
 
 """
 
+# 2016-04-19 PAK remove docs on algopy interface
 
 def test_docstrings():
     import doctest

@@ -675,7 +675,7 @@ class Derivative(_Derivative):
     Example
     -------
     >>> import numpy as np
-    >>> import numdifftools as nd
+    >>> from bumps import numdifftools as nd
 
     # 1'st derivative of exp(x), at x == 1
 
@@ -953,7 +953,7 @@ class Gradient(Derivative):
     Example
     -------
     >>> import numpy as np
-    >>> import numdifftools as nd
+    >>> from bumps import numdifftools as nd
     >>> fun = lambda x: np.sum(x**2)
     >>> dfun = nd.Gradient(fun)
     >>> dfun([1,2,3])
@@ -1058,7 +1058,7 @@ class Jacobian(Gradient):
     """, example="""
     Example
     -------
-    >>> import numdifftools as nd
+    >>> from bumps import numdifftools as nd
 
     #(nonlinear least squares)
 
@@ -1105,7 +1105,7 @@ class Hessdiag(Derivative):
     Example
     -------
     >>> import numpy as np
-    >>> import numdifftools as nd
+    >>> from bumps import numdifftools as nd
     >>> fun = lambda x : x[0] + x[1]**2 + x[2]**3
     >>> Hfun = nd.Hessdiag(fun, full_output=True)
     >>> hd, info = Hfun([1,2,3])
@@ -1213,7 +1213,7 @@ class Hessian(_Derivative):
     Example
     -------
     >>> import numpy as np
-    >>> import numdifftools as nd
+    >>> from bumps import numdifftools as nd
 
     # Rosenbrock function, minimized at [1,1]
 
