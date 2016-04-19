@@ -12,9 +12,10 @@ from __future__ import print_function
 
 __all__ = ["random_lines", "particle_swarm"]
 
-from numpy import zeros, ones, asarray, sqrt, arange
-from numpy.random import rand, random_integers
 from itertools import count
+
+from numpy import zeros, ones, asarray, sqrt, arange, isfinite
+from numpy.random import rand, random_integers
 
 
 def print_every_five(step, x, fx, k):
@@ -71,9 +72,6 @@ def random_lines(cfo, NP, CR=0.9, epsilon=1e-10, abort_test=None, maxiter=1000):
     n = cfo['n']
 
     X = rand(n, NP)            # will hold original vectors
-    fk = 1e300 * ones(NP)
-
-    satisfied_sc = 0
 
     # CREATE FIRST GENERATION WITH LEGAL PARAMETER VALUES AND EVALUATE COSTS
     # m th member of the population
@@ -126,7 +124,9 @@ def random_lines(cfo, NP, CR=0.9, epsilon=1e-10, abort_test=None, maxiter=1000):
 
         crossovers = []
         for k in range(0, NP):
-            if abs(a[k]) < 1e-30 or (a[k] < 0 and fk[k] > fi[k] and fk[k] > fj[k]):
+            if (abs(a[k]) < 1e-30
+                or (a[k] < 0 and fk[k] > fi[k] and fk[k] > fj[k])
+                or not isfinite(a[k])):
                 # xi survives
                 continue
             else:
