@@ -24,7 +24,7 @@ Release notes
 =============
 
 v0.7.5.8 2016-04-18
------------------
+-------------------
 
 * accept model.par output from a different model
 * show residuals with curve fit output
