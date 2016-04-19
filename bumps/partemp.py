@@ -91,67 +91,68 @@ def parallel_tempering(nllf, p, bounds, T=None, steps=1000,
     history.save(step=0, temperature=T, energy=E, point=P)
     total_accept = zeros(N)
     total_swap = zeros(N - 1)
-    for step in range(1, steps + burn):
-        # Take a step
-        R = rand()
-        if step < 20 or R < 0.2:
-            #action = 'jiggle'
-            Pnext = [stepper.jiggle(p, 0.01 * t / T[-1]) for p, t in zip(P, T)]
-        elif R < 0.4:
-            #action = 'direct'
-            Pnext = [stepper.direct(p, i) for i, p in enumerate(P)]
-        else:
-            #action = 'diffev'
-            Pnext = [stepper.diffev(p, i, CR=CR) for i, p in enumerate(P)]
+    with np.errstate(over='ignore'):
+        for step in range(1, steps + burn):
+            # Take a step
+            R = rand()
+            if step < 20 or R < 0.2:
+                #action = 'jiggle'
+                Pnext = [stepper.jiggle(p, 0.01 * t / T[-1]) for p, t in zip(P, T)]
+            elif R < 0.4:
+                #action = 'direct'
+                Pnext = [stepper.direct(p, i) for i, p in enumerate(P)]
+            else:
+                #action = 'diffev'
+                Pnext = [stepper.diffev(p, i, CR=CR) for i, p in enumerate(P)]
 
-        # Test constraints
-        Pnext = asarray([bounder.apply(p) for p in Pnext])
+            # Test constraints
+            Pnext = asarray([bounder.apply(p) for p in Pnext])
 
-        # Temperature dependent Metropolis update
-        Enext = asarray([nllf(p) for p in Pnext])
-        accept = exp(-(Enext - E) / T) > rand(N)
-        # print step,action
-        # print "dP"," ".join("%.6f"%norm((pn-p)/stepper.step) for pn,p in zip(P,Pnext))
-        # print "dE"," ".join("%.1f"%(en-e) for en,e in zip(E,Enext))
-        # print "En"," ".join("%.1f"%e for e in Enext)
-        # print "accept",accept
-        E[accept] = Enext[accept]
-        P[accept] = Pnext[accept]
-        total_accept += accept
+            # Temperature dependent Metropolis update
+            Enext = asarray([nllf(p) for p in Pnext])
+            accept = exp(-(Enext - E) / T) > rand(N)
+            # print step,action
+            # print "dP"," ".join("%.6f"%norm((pn-p)/stepper.step) for pn,p in zip(P,Pnext))
+            # print "dE"," ".join("%.1f"%(en-e) for en,e in zip(E,Enext))
+            # print "En"," ".join("%.1f"%e for e in Enext)
+            # print "accept",accept
+            E[accept] = Enext[accept]
+            P[accept] = Pnext[accept]
+            total_accept += accept
 
-        # Accumulate history for population based methods
-        history.save(step, temperature=T, energy=E, point=P, changed=accept)
-        # print "best",history.best
+            # Accumulate history for population based methods
+            history.save(step, temperature=T, energy=E, point=P, changed=accept)
+            # print "best",history.best
 
-        # Swap chains across temperatures
-        # Note that we are are shuffling from high to low so that if a good
-        # point is found at a high temperature which push it immediately as
-        # low as we can go rather than risk losing it at the next high temp
-        # step.
-        swap = zeros(N - 1)
-        for i in range(N - 2, -1, -1):
-            # print "swap",E[i+1]-E[i],dT[i],exp((E[i+1]-E[i])*dT[i])
-            if exp((E[i + 1] - E[i]) * dT[i]) > rand():
-                swap[i] = 1
-                E[i + 1], E[i] = E[i], E[i + 1]
-                P[i + 1], P[i] = P[i] + 0, P[i + 1] + 0
-        total_swap += swap
-        #assert nllf(P[0]) == E[0]
+            # Swap chains across temperatures
+            # Note that we are are shuffling from high to low so that if a good
+            # point is found at a high temperature which push it immediately as
+            # low as we can go rather than risk losing it at the next high temp
+            # step.
+            swap = zeros(N - 1)
+            for i in range(N - 2, -1, -1):
+                # print "swap",E[i+1]-E[i],dT[i],exp((E[i+1]-E[i])*dT[i])
+                if exp((E[i + 1] - E[i]) * dT[i]) > rand():
+                    swap[i] = 1
+                    E[i + 1], E[i] = E[i], E[i + 1]
+                    P[i + 1], P[i] = P[i] + 0, P[i + 1] + 0
+            total_swap += swap
+            #assert nllf(P[0]) == E[0]
 
-        # Monitoring
-        monitor(step, history.best_point, history.best, P, E)
-        interval = 100
-        if 0 and step % interval == 0:
-            print("max r",
-                  max(["%.1f" % norm(p - P[0]) for p in P[1:]]))
-            # print "min AR",argmin(total_accept),min(total_accept)
-            # print "min SR",argmin(total_swap),min(total_swap)
-            print("AR", total_accept)
-            print("SR", total_swap)
-            print("s(d)", [int(std([p[i] for p in P]))
-                           for i in (3, 7, 11, -1)])
-            total_accept *= 0
-            total_swap *= 0
+            # Monitoring
+            monitor(step, history.best_point, history.best, P, E)
+            interval = 100
+            if 0 and step % interval == 0:
+                print("max r",
+                      max(["%.1f" % norm(p - P[0]) for p in P[1:]]))
+                # print "min AR",argmin(total_accept),min(total_accept)
+                # print "min SR",argmin(total_swap),min(total_swap)
+                print("AR", total_accept)
+                print("SR", total_swap)
+                print("s(d)", [int(std([p[i] for p in P]))
+                               for i in (3, 7, 11, -1)])
+                total_accept *= 0
+                total_swap *= 0
 
     return history
 
