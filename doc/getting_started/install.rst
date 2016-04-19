@@ -27,12 +27,12 @@ the latest versions.
 
 Our base scientific python environment contains:
 
-    - python 2.7 (also tested on 3.3)
-    - matplotlib 1.3.1
-    - numpy 1.8.1
+    - python 2.7 (also tested on 2.6 and 3.5)
+    - matplotlib 1.4.3
+    - numpy 1.9.2
     - scipy 0.14.0
-    - wxPython 2.9.5.0
-    - setuptools 1.4
+    - wxPython 3.0.0.0
+    - setuptools 20.1.1
 
 To run tests we use:
 
@@ -40,9 +40,9 @@ To run tests we use:
 
 To build the HTML documentation we use:
 
-    - sphinx 1.2
-    - docutils 0.11
-    - jinja2 2.7.1
+    - sphinx 1.3.1
+    - docutils 0.12
+    - jinja2 2.8
 
 The PDF documentation requires a working LaTeX installation.
 
@@ -59,16 +59,20 @@ Windows
 
 There are a number of python environments for windows, including:
 
-* `Python(X,Y) <http://code.google.com/p/pythonxy/>`_
-* `WinPython <http://winpython.sourceforge.net/>`_
 * `Anaconda <https://store.continuum.io/cshop/anaconda/>`_
 * `Canopy <https://www.enthought.com/products/canopy/>`_
+* `Python(X,Y) <http://code.google.com/p/pythonxy/>`_
+* `WinPython <http://winpython.sourceforge.net/>`_
 
 You can also build your environment from the individually distributed
 python packages.
 
-The python environment may supply the MinGW C/C++ compiler, but fail to
-set it as the default compiler.  To do so you will need to create
+You may want a C compiler to speed up parts of bumps. Microsoft Visual C++
+for Python 2.7 is one option.  Once it is installed, you will need to
+enable the compiler using vcvarsall 64.
+
+Alternatively, your python environment may supply the MinGW C/C++ compiler,
+but fail to set it as the default compiler.  To do so you will need to create
 distutils configuration file in the python lib directory (usually
 *C:\Python27\Lib\distutils\distutils.cfg*) with the following content::
 
@@ -103,7 +107,7 @@ will need to refer to your distribution documentation for details.
 On Ubuntu you can use:
 
     sudo apt-get install python-matplotlib python-scipy python-nose python-sphinx
-    sudo apt-get install python-wxgtk2.8
+    sudo apt-get install python-wxgtk3.0
 
 From a terminal, change to the directory containing the bumps source and type::
 
@@ -122,7 +126,6 @@ OS/X
 
 Building a useful python environment on OS/X is somewhat involved, and
 frequently evolving so this document will likely be out of date.
-
 We've had success using the `Anaconda <https://store.continuum.io/cshop/anaconda/>`_
 64-bit python 2.7 environment from Continuum Analytics, which provides
 the required packages, but other distributions should work as well.

@@ -35,6 +35,7 @@ v0.7.5.8 2016-04-18
 * allow model to set visible variables in output
 * improve handling of arbitrary probability density functions
 * simplify loading of pymc models
+* update to numdifftools 0.9.14
 * bug fix: improved handling of ill-conditioned fits
 * bug fix: avoid copying mcmc chain during run
 * bug fix: more robust handling of --time limit
