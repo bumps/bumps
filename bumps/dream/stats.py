@@ -33,6 +33,7 @@ def _var_stats_one(draw, var):
     best = values[best_idx]
 
     # Choose the interval for the histogram
+    #credible_interval = shortest_credible_interval
     p95, p68, p0 = credible_intervals(x=values, weights=weights,
                                       ci=[0.95, ONE_SIGMA, 0.0])
     #open('/tmp/out','a').write(
@@ -172,3 +173,53 @@ def credible_intervals(x, ci, weights=None):
         # convert weights to cdf
         w = cumsum(weights/sum(weights))
         return x[searchsorted(w, target)]
+
+def shortest_credible_interval(x, ci=0.95, weights=None):
+    """
+    Find the credible interval covering the portion *ci* of the data.
+    Returns the minimum and maximum values of the interval.
+    If *ci* is a vector, return a vector of intervals.
+    *x* are samples from the posterior distribution.
+    This function is faster if the inputs are already sorted.
+    About 1e6 samples are needed for 2 digits of precision on a 95%
+    credible interval, or 1e5 for 2 digits on a 1-sigma credible interval.
+    *ci* is the interval size in (0,1], and defaults to 0.95.  For a
+    1-sigma interval use *ci=erf(1/sqrt(2))*.
+    *weights* is a vector of weights for each x, or None for unweighted.
+    For log likelihood data, setting weights to exp(max(logp)-logp) should
+    give reasonable results.
+    """
+    sorted = np.all(x[1:]>=x[:-1])
+    if not sorted:
+        idx = np.argsort(x)
+        x = x[idx]
+        if weights is not None:
+            weights = weights[idx]
+
+    #  w = exp(max(logp)-logp)
+    if weights is not None:
+        # convert weights to cdf
+        w = np.cumsum(weights/sum(weights))
+        # sample the cdf at every 0.001
+        idx = np.searchsorted(w, np.arange(0,1,0.001))
+        x = x[idx]
+
+    # Simple solution: ci*N is the number of points in the interval, so
+    # find the width of every interval of that size and return the smallest.
+    if np.isscalar(ci):
+        return _find_interval(x, ci)
+    else:
+        return [_find_interval(x, i) for i in ci]
+
+def _find_interval(x, ci):
+    """
+    Find credible interval ci in sorted, unweighted x
+    """
+    n = len(x)
+    size = int( ci*n + np.sqrt(1-ci)*np.log(n) )
+    if size >= n:
+        return x[0],x[-1]
+    else:
+        width = x[size:] - x[:-size]
+        idx = np.argmin(width)
+        return x[idx],x[idx+size]
