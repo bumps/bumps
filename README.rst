@@ -9,15 +9,7 @@ the uncertainty around the minimum.
 
 Installation is with the usual python installation command:
 
-    python setup.py install
-
-This installs the package for all users of the system.  To isolate
-the package it is useful to install virtualenv and virtualenv-wrapper.
-
-This allows you to say:
-
-    mkvirtualenv --system-site-packages bumps
-    python setup.py develop
+    pip install bumps
 
 Once the system is installed, you can verify that it is working with: 
 
@@ -30,6 +22,24 @@ Documentation is available at `readthedocs <http://bumps.readthedocs.org>`_
 
 Release notes
 =============
+
+v0.7.5.8 2016-04-18
+-----------------
+
+* accept model.par output from a different model
+* show residuals with curve fit output
+* only show correlations for selected variables
+* show tics on correlations if small number
+* improve handling of uncertainty estimate from curvature
+* tweak dream algorithm -- maybe improve the acceptance ratio?
+* allow model to set visible variables in output
+* improve handling of arbitrary probability density functions
+* simplify loading of pymc models
+* bug fix: improved handling of ill-conditioned fits
+* bug fix: avoid copying mcmc chain during run
+* bug fix: more robust handling of --time limit
+* bug fix: support newer versions of matplotlib and numpy
+* miscellaneous tweaks and fixes
 
 v0.7.5.7 2015-09-21
 -------------------
