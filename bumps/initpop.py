@@ -16,16 +16,22 @@ Additional strategies like uniform box in [0,1] or standard norm
 
 # Note: borrowed from DREAM and extended.
 
-from __future__ import division
+from __future__ import division, print_function
 
 __all__ = ['generate', 'cov_init', 'eps_init', 'lhs_init', 'random_init']
 
 import math
 import numpy as np
-from numpy import eye, diag, asarray, empty, isinf, clip
+from numpy import diag, empty, isinf, isfinite, clip, inf
+
+try:
+    from typing import Optional
+except ImportError:
+    pass
 
 
 def generate(problem, init='eps', pop=10, use_point=True, **options):
+    # type: (Any, str, int, bool, ...) -> np.ndarray
     """
     Population initializer.
 
@@ -44,14 +50,13 @@ def generate(problem, init='eps', pop=10, use_point=True, **options):
     all command line options.
     """
     initial = problem.getp()
-    bounds = problem.bounds()
     undefined = np.isnan(initial)
-    initial[undefined] = 1.
+    initial[~isfinite(initial)] = 1.
     pop_size = int(math.ceil(pop * len(initial)))
-    # TODO: really need a continue option
+    bounds = problem.bounds()
     if init == 'random':
         population = random_init(
-            pop_size, initial, problem, use_point=use_point)
+            pop_size, initial, bounds, use_point=use_point, problem=problem)
     elif init == 'cov':
         cov = problem.cov()
         population = cov_init(
@@ -66,14 +71,17 @@ def generate(problem, init='eps', pop=10, use_point=True, **options):
         raise ValueError(
             "Unknown population initializer '%s'" % init)
 
+    # Use LHS to initialize any undefined parameters
     if undefined.any():
         population[:, undefined] = lhs_init(
-            pop_size, initial[undefined], bounds[:, undefined], use_point=False)
+            pop_size, initial[undefined], bounds[:, undefined],
+            use_point=False)
 
     return population
 
 
 def lhs_init(n, initial, bounds, use_point=False):
+    # type: (int, np.ndarray, np.ndarray, bool, float) -> np.ndarray
     """
     Latin hypercube sampling.
 
@@ -89,8 +97,6 @@ def lhs_init(n, initial, bounds, use_point=False):
     If *use_point* is True, then the current value of the parameters
     is returned as the first point in the population, preserving the the
     LHS property.
-
-    Note: Indefinite ranges are not supported.
     """
     xmin, xmax = bounds
 
@@ -105,28 +111,53 @@ def lhs_init(n, initial, bounds, use_point=False):
 
     # Now fill s
     for j in range(nvar):
+        # Indefinite and semidefinite ranges need to be constrained.  Use
+        # the initial value of the parameter as a hint.
+        low, high = xmin[j], xmax[j]
+        if np.isinf(low) and np.isinf(high):
+            if initial[j] < 0.:
+                low, high = 2.0*initial[j], 0.0
+            elif initial[j] > 0.:
+                low, high = 0.0, 2.0*initial[j]
+            else:
+                low, high = -1.0, 1.0
+        elif np.isinf(low):
+            if initial[j] != high:
+                low, high = high - 2.0*abs(high-initial[j]), high
+            else:
+                low, high = high - 2.0, high
+        elif np.isinf(high):
+            if initial[j] != high:
+                low, high = low, low + 2.0*abs(initial[j] - low)
+            else:
+                low, high = low, low + 2.0
+        else:
+            pass   # low, high = low, high
+
         if use_point:
             # Put current value at position 0 in population
-            s[0, j] = initial[j]
+            s[0, j] = clip(initial[j], low, high)
             # Find which bin the current value belongs in
-            xidx = int(n * initial[j] / (xmax[j] - xmin[j]))
+            xidx = int(n * (s[0, j] - low) / (high - low))
             # Generate random permutation of remaining bins
-            idx = np.random.permutation(n - 1)
-            idx[idx >= xidx] += 1  # exclude current value bin
-            # Assign random value within each bin
-            p = (idx + ran[1:, j]) / n
-            s[1:, j] = xmin[j] + p * (xmax[j] - xmin[j])
+            perm = np.random.permutation(n - 1)
+            perm[perm >= xidx] += 1  # exclude current value bin
+            idx = slice(1, None)
         else:
             # Random permutation of bins
-            idx = np.random.permutation(n)
-            # Assign random value within each bin
-            p = (idx + ran[:, j]) / n
-            s[:, j] = xmin[j] + p * (xmax[j] - xmin[j])
+            perm = np.random.permutation(n)
+            idx = slice(0, None)
+
+
+        # Assign random value within each bin
+        p = (perm + ran[idx, j]) / n
+        s[idx, j] = low + p * (high - low)
 
     return s
 
 
 def cov_init(n, initial, bounds, use_point=False, cov=None, dx=None):
+    # type: (int, np.ndarray, np.ndarray, bool, Optional[np.ndarray], Optional[np.ndarray]) -> np.ndarray
     """
     Initialize *n* sets of random variables from a gaussian model.
 
@@ -143,37 +174,41 @@ def cov_init(n, initial, bounds, use_point=False, cov=None, dx=None):
     is returned as the first point in the population.
     """
     # return mean + dot(RNG.randn(n,len(mean)), chol(cov))
-    if cov is None and dx is None:
-        cov = eye(len(initial))
-    elif cov is None:
-        cov = diag(asarray(dx) ** 2)
-    population = np.random.multivariate_normal(
-        mean=initial, cov=cov, size=n)
+    if cov is None:
+        if dx is None:
+            dx = _get_scale_factor(0.2, bounds, initial)
+            #print("= dx",dx)
+        cov = diag(dx**2)
+    xmin, xmax = bounds
+    initial = clip(initial, xmin, xmax)
+    population = np.random.multivariate_normal(mean=initial, cov=cov, size=n)
+    population = reflect(population, xmin, xmax)
     if use_point:
         population[0] = initial
-    # Make sure values are in bounds.
-    population = clip(population, *bounds)
     return population
 
 
-def random_init(n, initial, problem, use_point=False):
+def random_init(n, initial, bounds, use_point=False, problem=None):
     """
     Generate a random population from the problem parameters.
 
-    Values are selected at random from the bounds of the problem using a
-    uniform distribution.  A certain amount of clustering is expected
-    using this method.
+    Values are selected at random from the bounds of the problem according
+    to the underlying probability density of each parameter.  Uniform
+    semi-definite and indefinite bounds use the standard normal distribution
+    for the underlying probability, with a scale factor determined by the
+    initial value of the parameter.
 
     If *use_point* is True, then the current value of the parameters
     is returned as the first point in the population.
     """
     population = problem.randomize(n)
     if use_point:
-        population[0] = initial
+        population[0] = clip(initial, *bounds)
     return population
 
 
 def eps_init(n, initial, bounds, use_point=False, eps=1e-6):
+    # type: (int, np.ndarray, np.ndarray, bool, float) -> np.ndarray
     """
     Generate a random population using an epsilon ball around the current
     value.
@@ -183,18 +218,93 @@ def eps_init(n, initial, bounds, use_point=False, eps=1e-6):
     time the ball will expand to fill the minimum, and perhaps tunnel
     through barriers to nearby minima given enough burn-in time.
 
-    eps is in proportion to the bounds on the parameter, or absolute if
-    the parameter is unbounded.
+    eps is in proportion to the bounds on the parameter, or the current
+    value of the parameter if the parameter is unbounded.  This gives the
+    initialization a bit of scale independence.
 
     If *use_point* is True, then the current value of the parameters
     is returned as the first point in the population.
     """
-    x = initial
+    # Set the scale from the bounds, or from the initial value if the value
+    # is unbounded.
     xmin, xmax = bounds
-    dx = (xmax - xmin) * eps
-    dx[isinf(dx)] = eps
-    population = x + dx * (2 * np.random.rand(n, len(xmin)) - 1)
-    population = clip(population, xmin, xmax)
+    scale = _get_scale_factor(eps, bounds, initial)
+    #print("= scale", scale)
+    initial = clip(initial, xmin, xmax)
+    population = initial + scale * (2 * np.random.rand(n, len(xmin)) - 1)
+    population = reflect(population, xmin, xmax)
     if use_point:
-        population[0] = x
+        population[0] = initial
     return population
+
+def reflect(v, low, high):
+    """
+    Reflect v off the boundary, then clip to be sure it is within bounds
+    """
+    index = v < low
+    v[index] = (2*low - v)[index]
+    index = v > high
+    v[index] = (2*high - v)[index]
+    return clip(v, low, high)
+
+def _get_scale_factor(scale, bounds, initial):
+    # type: (float, np.ndarray, np.ndarray) -> np.ndarray
+    xmin, xmax = bounds
+    dx = (xmax - xmin) * scale  # type: np.ndarray
+    dx[isinf(dx)] = abs(initial[isinf(dx)]) * scale
+    dx[~isfinite(dx)] = scale
+    dx[dx==0] = scale
+    #print("min,max,dx",xmin,xmax,dx)
+    return dx
+
+def demo_init(seed=1):
+    # type: (Optional[int]) -> None
+    from . import util
+    from .bounds import init_bounds
+    class Problem(object):
+        def __init__(self, initial, bounds):
+            self.initial = initial
+            self._bounds = bounds
+        def getp(self):
+            return self.initial
+        def bounds(self):
+            return self._bounds
+        def cov(self):
+            return None
+        def randomize(self, n=1):
+            target = self.initial.copy()
+            target[~isfinite(target)] = 1.
+            result = [init_bounds(pair).random(n,v)
+                      for v, pair in zip(self.initial, self._bounds.T)]
+            return np.array(result).T
+
+    bounds = np.array([(2., inf),
+                       (-inf, -2.),
+                       (-inf, inf),
+                       (5.0, 6.0),
+                       (-2.0, 3.0)]).T
+    # generate takes care of bad values
+    #low = np.array([-inf]*5)
+    #high = np.array([inf]*5)
+    #bad = np.array([np.nan]*5)
+    zero = np.array([0.]*5)
+    below = np.array([-2., -4., -2., -3., -4.])
+    above = np.array([3., 4., 2., 8., 5.])
+    small = np.array([2.000001, -2.000001, 0.000001, 5.000001, -0.000001])
+    large = np.array([2000001., -2000001., 2000001., 5.5, -2.000001])
+    middle = np.array([100., -100., 100., 5.5, 0.5])
+    starting_points = 'zero below above small large middle'.split()
+    np.set_printoptions(linewidth=100000)
+    with util.push_seed(seed):
+        for init_type in ('cov', 'random', 'eps', 'lhs'):
+            print("bounds:")
+            print(bounds)
+            for name in starting_points:
+                initial = locals()[name]
+                M = Problem(initial, bounds)
+                pop = generate(problem=M, init=init_type, pop=1)
+                print("%s init from %s"%(init_type, name), str(initial))
+                print(pop)
+
+if __name__ == "__main__":
+    demo_init(seed=None)

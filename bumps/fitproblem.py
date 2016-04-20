@@ -283,14 +283,24 @@ class BaseFitProblem(object):
         """
         Generates a random model.
 
+        *randomize()* sets the model to a random value.
+
         *randomize(n)* returns a population of *n* random models.
+
+        For indefinite bounds, the random population distribution is centered
+        on initial value of the parameter, or 1. if the initial parameter is
+        not finite.
         """
         # TODO: split into two: randomize and random_pop
-        if n is not None:
-            return np.array([p.bounds.random(n) for p in self._parameters]).T
-        else:
-            # Need to go through setp when updating model.
-            self.setp([p.bounds.random(1)[0] for p in self._parameters])
+        if n is None:
+            self.setp(self.randomize(n=1)[0])
+            return   # Not returning anything since no n is requested
+
+        target = self.getp()
+        target[~np.isfinite(target)] = 1.
+        pop = [p.bounds.random(n, target=v)
+               for p, v in zip(self._parameters, target)]
+        return np.array(pop).T
 
     def parameter_nllf(self):
         """

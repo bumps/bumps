@@ -235,12 +235,14 @@ class Bounds(object):
         Convert (-inf,inf) into value for optimizers which are unconstrained.
         """
 
-    def random(self, n=1):
+    def random(self, n=1, target=1.0):
         """
         Return a randomly generated valid value.
 
-        The random number generator is assumed to follow the numpy random
-        interface.
+        *target* gives some scale independence to the random number
+        generator, allowing the initial value of the parameter to influence
+        the randomly generated value.  Otherwise fits without bounds have
+        too large a space to search through.
         """
 
     def nllf(self, value):
@@ -314,8 +316,9 @@ class Unbounded(Bounds):
     with optimization routines, and so we instead choose P == 1 everywhere.
     """
 
-    def random(self, n=1):
-        return RNG.rand(n)
+    def random(self, n=1, target=1.0):
+        scale = target + (target==0.)
+        return RNG.randn(n)*scale
 
     def nllf(self, value):
         return 0
@@ -363,8 +366,10 @@ class BoundedBelow(Bounds):
     def start_value(self):
         return self._base + 1
 
-    def random(self, n=1):
-        return self._base + RNG.rand(n)
+    def random(self, n=1, target=1.):
+        target = max(abs(target), abs(self._base))
+        scale = target + (target==0.)
+        return self._base + abs(RNG.randn(n)*scale)
 
     def nllf(self, value):
         return 0 if value >= self._base else inf
@@ -421,8 +426,10 @@ class BoundedAbove(Bounds):
     def start_value(self):
         return self._base - 1
 
-    def random(self, n=1):
-        return self._base - RNG.rand(n)
+    def random(self, n=1, target=1.0):
+        target = max(abs(self._base), abs(target))
+        scale = target + (target==0.)
+        return self._base - abs(RNG.randn(n)*scale)
 
     def nllf(self, value):
         return 0 if value <= self._base else inf
@@ -472,8 +479,9 @@ class Bounded(Bounds):
         self.limits = (lo, hi)
         self._nllf_scale = log(hi - lo)
 
-    def random(self, n=1):
+    def random(self, n=1, target=1.0):
         lo, hi = self.limits
+        #print("= uniform",lo,hi)
         return RNG.uniform(lo, hi, size=n)
 
     def nllf(self, value):
@@ -513,7 +521,7 @@ class Distribution(Bounds):
     def __init__(self, dist):
         self.dist = dist
 
-    def random(self, n=1):
+    def random(self, n=1, target=1.0):
         return self.dist.rvs(n)
 
     def nllf(self, value):
@@ -628,7 +636,7 @@ class BoundedNormal(Bounds):
         """
         raise NotImplementedError
 
-    def random(self, n=1):
+    def random(self, n=1, target=1.0):
         """
         Return a randomly generated valid value, or an array of values
         """
@@ -694,7 +702,7 @@ class SoftBounded(Bounds):
         self._lo, self._hi, self._std = lo, hi, std
         self._nllf_scale = log(hi - lo + sqrt(2 * pi * std))
 
-    def random(self, n=1):
+    def random(self, n=1, target=1.0):
         return RNG.uniform(self._lo, self._hi, size=n)
 
     def nllf(self, value):
