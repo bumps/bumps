@@ -319,7 +319,9 @@ class BFGSFit(FitBase):
                              abort_test=abort_test,
                              itnlimit=options['steps'],
                              gradtol=options['ftol'],
-                             steptol=options['xtol'],
+                             steptol=1e-12,
+                             macheps=1e-8,
+                             eta=1e-8,
                              )
         self.result = result
         #code = result['status']
@@ -456,7 +458,7 @@ class PTFit(FitBase):
         return True
 
 
-class AmoebaFit(FitBase):
+class SimplexFit(FitBase):
     """
     Nelder-Mead simplex optimizer.
     """
@@ -523,7 +525,8 @@ class LevenbergMarquardtFit(FitBase):
                                   ftol=options['ftol'],
                                   xtol=options['xtol'],
                                   maxfev=maxfev,
-                                  full_output=1)
+                                  epsfcn=1e-8,
+                                  full_output=True)
         x, cov_x, info, mesg, success = result
         if not 1 <= success <= 4:
             # don't treat "reached maxfev" as a true failure
@@ -866,9 +869,13 @@ class FitDriver(object):
             if hasattr(self.fitter, 'cov'):
                 self._cov = self.fitter.cov()
         if self._cov is None:
-            H = lsqerror.hessian(self.problem, self.result[0])
-            H, L = lsqerror.perturbed_hessian(H)
-            self._cov = lsqerror.chol_cov(L)
+            if hasattr(self.problem, 'residuals'):
+                J = lsqerror.jacobian(self.problem, self.result[0])
+                self._cov = lsqerror.cov(J)
+            else:
+                H = lsqerror.hessian(self.problem, self.result[0])
+                H, L = lsqerror.perturbed_hessian(H)
+                self._cov = lsqerror.chol_cov(L)
         return self._cov
 
     def stderr(self):
@@ -881,18 +888,11 @@ class FitDriver(object):
         """
         if not hasattr(self, '_stderr'):
             self._stderr = None
-            # calculate the value
             if hasattr(self.fitter, 'stderr'):
                 self._stderr = self.fitter.stderr()
-            elif hasattr(self.fitter, 'cov'):
-                # Use fitter provided covariance matrix, if it exists
-                self._cov = self.fitter.cov()
-                if self._cov is not None:
-                    self._stderr = lsqerror.stderr(self._cov)
         if self._stderr is None:
-            H = lsqerror.hessian(self.problem, self.result[0])
-            H, L = lsqerror.perturbed_hessian(H)
-            self._stderr = lsqerror.chol_stderr(L)
+            # If no stderr from the fitter then compute it from the covariance
+            self._stderr = lsqerror.stderr(self.cov())
         return self._stderr
 
     def show(self):
@@ -951,7 +951,7 @@ def _fill_defaults(options, settings):
 
 # List of (parameter,factory value) required for each algorithm
 FITTERS = [
-    AmoebaFit,
+    SimplexFit,
     DEFit,
     DreamFit,
     BFGSFit,
@@ -966,14 +966,14 @@ FIT_AVAILABLE_IDS = [f.id for f in FITTERS]
 
 
 FIT_ACTIVE_IDS = [
-    AmoebaFit.id,
+    SimplexFit.id,
     DEFit.id,
     DreamFit.id,
     BFGSFit.id,
     LevenbergMarquardtFit.id,
     ]
 
-FIT_DEFAULT_ID = AmoebaFit.id
+FIT_DEFAULT_ID = SimplexFit.id
 
 assert FIT_DEFAULT_ID in FIT_ACTIVE_IDS
 assert all(f in FIT_AVAILABLE_IDS for f in FIT_ACTIVE_IDS)
