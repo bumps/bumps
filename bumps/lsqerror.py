@@ -45,11 +45,15 @@ and finite, the current value for the parameter is used as a basis to
 estimate step size.
 
 """
+from __future__ import print_function
 
 import numpy as np
-from . import numdifftools as nd
+#from . import numdifftools as nd
+#import numdifftools as nd
 
-
+# TODO: restructure lsqerror to use mapper for evaluating multiple f
+# doesn't work for jacobian since mapper returns nllf; would need to
+# expand mapper to implement a variety of different functions.
 def jacobian(problem, p=None, step=None):
     """
     Returns the derivative wrt the fit parameters at point p.
@@ -64,9 +68,49 @@ def jacobian(problem, p=None, step=None):
     if p is None:
         p = p_init
     p = np.asarray(p)
-    J = nd.Jacobian(problem.residuals)(p)
+    bounds = getattr(problem, 'bounds', lambda: None)()
+    def f(p):
+        problem.setp(p)
+        return problem.residuals()
+    J = _jacobian_forward(f, p, bounds, eps=step)
+    #J = nd.Jacobian(problem.residuals)(p)
     problem.setp(p_init)
     return J
+
+def _jacobian_forward(f, p, bounds, eps=None):
+    n = len(p)
+    # TODO: default to double precision epsilon
+    step = 1e-4 if eps is None else np.sqrt(eps)
+    fx = f(p)
+
+    #print("p",p,"step",step)
+    h = abs(p)*step
+    h[h==0] = step
+    if bounds is not None:
+        h[h+p>bounds[1]] *= -1.0  # step backward if forward step is out of bounds
+    ee = np.diag(h)
+
+    J = []
+    for i in range(n):
+        J.append((f(p + ee[i, :]) - fx)/h[i])
+    return np.vstack(J).T
+
+def _jacobian_central(f, p, bounds, eps=None):
+    n = len(p)
+    # TODO: default to double precision epsilon
+    step = 1e-4 if eps is None else np.sqrt(eps)
+
+    #print("p",p,"step",step)
+    h = abs(p)*step
+    h[h==0] = step
+    #if bounds is not None:
+    #    h[h+p>bounds[1]] *= -1.0  # step backward if forward step is out of bounds
+    ee = np.diag(h)
+
+    J = []
+    for i in range(n):
+        J.append((f(p + ee[i, :]) - f(p - ee[i,:]))/(2.0*h[i]))
+    return np.vstack(J).T
 
 
 def hessian(problem, p=None, step=None):
@@ -79,45 +123,77 @@ def hessian(problem, p=None, step=None):
     if p is None:
         p = p_init
     p = np.asarray(p)
-    H = nd.Hessian(problem.nllf)(p)
-    #bounds = getattr(problem, 'bounds', lambda: None)()
-    #H2 = _simple_hessian(problem.nllf, p, step=step, bounds=bounds)
-    # print(H-H2)
+    bounds = getattr(problem, 'bounds', lambda: None)()
+    H = _hessian_forward(problem.nllf, p, bounds=bounds, eps=step)
+    #H = nd.Hessian(problem.nllf)(p)
+    #print("Hessian",H)
     problem.setp(p_init)
     return H
 
-
-def hessian_diag(problem, p=None, step=None):
+def _hessian_forward(f, p, bounds, eps=None):
+    # type: (Callable[[np.ndarray], float], np.ndarray, Optional[np.ndarray]) -> np.ndarray
     """
-    Returns the derivative wrt to the fit parameters at point p.
-
-    The current point is preserved.
+    Forward difference Hessian.
     """
-    p_init = problem.getp()
-    if p is None:
-        p = p_init
-    p = np.asarray(p)
-    H = nd.Hessdiag(problem.nllf)(p)
-    #bounds = getattr(problem, 'bounds', lambda: None)()
-    #H2 = _simple_hessian(problem.nllf, p, step=step, bounds=bounds)
-    # print(H-H2)
-    problem.setp(p_init)
-    return H
+    n = len(p)
+    # TODO: default to double precision epsilon
+    step = 1e-4 if eps is None else np.sqrt(eps)
+    fx = f(p)
 
-def _delta(p, bounds, step):
-    if step is None:
-        step = 1e-8
+    #print("p",p,"step",step)
+    h = abs(p)*step
+    h[h==0] = step
     if bounds is not None:
-        lo, hi = bounds
-        delta = (hi - lo) * step
-        # For infinite ranges, use p*1e-8 for the step size
-        idx = np.isinf(delta)
-        # print "J",idx,delta,p,type(idx),type(delta),type(p)
-        delta[idx] = p[idx] * step
-    else:
-        delta = p * step
-    delta[delta == 0] = step
-    return delta
+        h[h+p>bounds[1]] *= -1.0  # step backward if forward step is out of bounds
+    ee = np.diag(h)
+
+    g = np.empty(n, 'd')
+    for i in range(n):
+        g[i] = f(p + ee[i, :])
+    #print("fx",fx)
+    #print("h",h, h[0])
+    #print("g",g)
+    H = np.empty((n, n), 'd')
+    for i in range(n):
+        for j in range(i, n):
+            fx_ij = f(p + ee[i,:] + ee[j,:])
+            #print("fx_%d%d=%g"%(i,j,fx_ij))
+            H[i,j] = (fx_ij - g[i] - g[j] + fx)/(h[i]*h[j])
+            H[j,i] = H[i,j]
+    return H
+
+def _hessian_central(f, p, bounds, eps=None):
+    # type: (Callable[[np.ndarray], float], np.ndarray, Optional[np.ndarray]) -> np.ndarray
+    """
+    Central difference Hessian.
+    """
+    n = len(p)
+    # TODO: default to double precision epsilon
+    step = 1e-4 if eps is None else np.sqrt(eps)
+    #step = np.sqrt(step)
+    fx = f(p)
+
+    h = abs(p)*step
+    h[h==0] = step
+    # TODO: handle bounds on central difference formula
+    #if bounds is not None:
+    #    h[h+p>bounds[1]] *= -1.0  # step backward if forward step is out of bounds
+    ee = np.diag(h)
+
+    gp = np.empty(n, 'd')
+    gm = np.empty(n, 'd')
+    for i in range(n):
+        gp[i] = f(p + ee[i, :])
+        gm[i] = f(p - ee[i, :])
+    H = np.empty((n, n), 'd')
+    for i in range(n):
+        for j in range(i, n):
+            fp_ij = f(p + ee[i,:] + ee[j,:])
+            fm_ij = f(p - ee[i,:] - ee[j,:])
+            #print("fx_%d%d=%g"%(i,j,fx_ij))
+            H[i,j] = (fp_ij - gp[i] - gp[j] + fm_ij - gm[i] - gm[j] + 2.0*fx)/(2.0*h[i]*h[j])
+            H[j,i] = H[i,j]
+    return H
 
 
 def perturbed_hessian(H, scale=None):
@@ -216,3 +292,35 @@ def stderr(C):
     correction, whereas scipy.optimize.leastsq never does.
     """
     return np.sqrt(np.diag(C))
+
+
+def demo_hessian():
+    rosen = lambda x: (1.-x[0])**2 + 105*(x[1]-x[0]**2)**2
+    p = np.array([1.,1.])
+    H = _hessian_forward(rosen, p, bounds=None, eps=1e-16)
+    print("forward difference H", H)
+    H = _hessian_central(rosen, p, bounds=None, eps=1e-16)
+    print("central difference H", H)
+
+    #from . import numdifftools as nd
+    #import numdifftools as nd
+    #Hfun = nd.Hessian(rosen)
+    #print("numdifftools H", Hfun(p))
+
+def demo_jacobian():
+    y = np.array([1., 2., 3.])
+    f = lambda x: x[0]*y + x[1]
+    p = np.array([2., 3.])
+    J = _jacobian_forward(f, p, bounds=None, eps=1e-16)
+    print("forward difference J", J)
+    J = _jacobian_central(f, p, bounds=None, eps=1e-16)
+    print("central difference J", J)
+
+    #from . import numdifftools as nd
+    #import numdifftools as nd
+    #Jfun = nd.Jacobian(f)
+    #print("numdifftools J", Jfun(p))
+
+if __name__ == "__main__":
+    demo_hessian()
+    demo_jacobian()
