@@ -43,10 +43,10 @@ example call::
     itnlimit = 1000
     result = quasinewton(fn, x0, grad, Sx, typf,
                          macheps, eta, maxstep, gradtola, steptol, itnlimit)
-    print "status code",result['status']
-    print "x_min, f(x_min)",result['x'],result['fx']
-    print "iterations, function calls, linesearch function calls",
-    print result['iterations'],result['evals'],result['linesearch_evals']
+    print("status code %d"%result['status'])
+    print("x_min=%s, f(x_min)=%g"%(str(result['x']),result['fx']))
+    print("iterations, function calls, linesearch function calls",
+          result['iterations'],result['evals'],result['linesearch_evals'])
 """
 from __future__ import print_function
 
@@ -68,7 +68,7 @@ STATUS = {
 }
 
 
-def quasinewton(fn, x0=[], grad=[], Sx=[], typf=1, macheps=[], eta=[],
+def quasinewton(fn, x0=None, grad=None, Sx=None, typf=1, macheps=None, eta=None,
                 maxstep=100, gradtol=1e-6, steptol=1e-12, itnlimit=2000,
                 abort_test=None, monitor=lambda **kw: True):
     r"""
@@ -138,7 +138,7 @@ def quasinewton(fn, x0=[], grad=[], Sx=[], typf=1, macheps=[], eta=[],
 
     *linesearch_evals* is the number of function evaluations for line search
     """
-    # print "starting QN"
+    # print("starting QN")
     # If some input parameters are not specified, define default values for them
     # here. First and second parameters fn and x0 must be defined, others may be
     # passed.  If you want to set a value to a parameter, say to typf, make
@@ -147,24 +147,25 @@ def quasinewton(fn, x0=[], grad=[], Sx=[], typf=1, macheps=[], eta=[],
     # and Sx, for each enter [].
     # important for also computing fcount (function count)
     n = len(x0)
-    if x0 == []:
+    if x0 is None:
         x0 = zeros(n)
 
-    if grad == []:
+    if grad is None:
         analgrad = 0
     else:
         analgrad = 1
 
-    if Sx == []:
+    if Sx is None:
         Sx = ones(n)
+        #Sx = x0 + (x0==0.)
     elif len(Sx) != n:
         raise ValueError("sizes of x0 and Sx must be the same")
 
-    if macheps == []:
+    if macheps is None:
         # PAK: use finfo rather than macheps
         macheps = finfo('d').eps
 
-    if eta == []:
+    if eta is None:
         eta = macheps
 
     fcount = 0                    # total function count
@@ -200,7 +201,7 @@ def quasinewton(fn, x0=[], grad=[], Sx=[], typf=1, macheps=[], eta=[],
     # Iterate until convergence in the following loop
     itncount = 0
     while termcode == 0:  # todo. increase itncount
-        # print "update",itncount
+        # print("update",itncount)
         itncount = itncount + 1
 
         # disp(['Iteration = ' num2str(itncount)])
@@ -210,17 +211,17 @@ def quasinewton(fn, x0=[], grad=[], Sx=[], typf=1, macheps=[], eta=[],
         middle_step_v = linalg.solve(L, -gc)
         sN = linalg.solve(L.transpose(), middle_step_v)   # the last step
         if isnan(sN).any():
-            # print "H",H
-            # print "L",L
-            # print "v",middle_step_v
-            # print "Sx",Sx
-            # print "gc",gc
+            # print("H",H)
+            # print("L",L)
+            # print("v",middle_step_v)
+            # print("Sx",Sx)
+            # print("gc",gc)
             termcode = 9
             break
 
         # Perform line search (Alg.6.3.1). todo. put param order as in the book
-        # print "calling linesearch",xc,fc,gc,sN,Sx,H,L,middle_step_v
-        # print "linesearch",xc,fc
+        # print("calling linesearch",xc,fc,gc,sN,Sx,H,L,middle_step_v)
+        # print("linesearch",xc,fc)
         retcode, xp, fp, maxtaken, fcnt \
             = linesearch(fn, n, xc, fc, gc, sN, Sx, maxstep, steptol)
         fcount += fcnt
@@ -260,8 +261,10 @@ def quasinewton(fn, x0=[], grad=[], Sx=[], typf=1, macheps=[], eta=[],
             gc = gp
         # STOPHERE
 
-    return dict(status=termcode, x=xf, fx=ff, H=H, L=L,
-                iterations=itncount, evals=fcount, linesearch_evals=fcount_ls)
+    result = dict(status=termcode, x=xf, fx=ff, H=H, L=L,
+                  iterations=itncount, evals=fcount, linesearch_evals=fcount_ls)
+    #print("result",result, steptol, macheps)
+    return result
 
 #------------------------------------------------------------------------------
 #@author: Ismet Sahin
@@ -421,11 +424,12 @@ def fdgrad(n, xc, fc, fn, Sx, eta):
             fj = fc + hj
         g[j - 1] = (fj - fc) / hj
         # if isinf(g[j-1]):
-        #    print "fc,fj,hj,Sx,xc",fc,fj,hj,Sx[j-1],xc[j-1]
+        #    print("fc,fj,hj,Sx,xc",fc,fj,hj,Sx[j-1],xc[j-1])
 
         # now reset the current
         xc[j - 1] = tempj
 
+    #print("gradient", g)
     return g
 
 
@@ -521,19 +525,19 @@ NOTES:
     while True:                # 10 starts.
         # next point candidate
         xp = xc + lambdaM * p
-        # print "linesearch",fcount,xp,xc,lambdaM,p
         if isnan(xp).any():
-            # print "linesearch",fcount,xp,xc,lambdaM,p
+            #print("nan xp")
             retcode = 1
             xp, fp = xc, fc
             break
         if fcount > 20:
-            # print "too many cycles in linesearch",xp
+            #print("too many cycles in linesearch",xp)
             retcode = 2
             xp, fp = xc, fc
             break
         # function value at xp
         fp = cost_func(xp)
+        #print("linesearch",fcount,xp,xc,lambdaM,p,fp,fc)
         if isinf(fp):
             fp = 2 * fc  # PAK: infeasible region hack
         fcount = fcount + 1
@@ -546,7 +550,7 @@ NOTES:
             break
         elif lambdaM < minlambda:
             # step length is too small, so a satisfactory xp cannot be found
-            # print "step",lambdaM,minlambda,steptol,rellength
+            #print("step",lambdaM,minlambda,steptol,rellength)
             retcode = 3
             xp, fp = xc, fc
             break
@@ -555,7 +559,7 @@ NOTES:
             if lambdaM == 1.0:
                 # first backtrack with one dimensional quadratic fit
                 lambda_temp = -initslope / (2.0 * (fp - fc - initslope))
-                # print "L1",lambda_temp
+                #print("L1",lambda_temp)
             else:
                 # perform second and following backtracks with cubic fit
                 Mt = array([[1.0/lambdaM**2, -1.0/lambda_prev**2],
@@ -565,20 +569,20 @@ NOTES:
                 ab = (1.0 / (lambdaM - lambda_prev)) * dot(Mt, vt)
                 # a = ab(1) and b = ab(2)
                 disc = ab[1, 0] ** 2 - 3.0 * ab[0, 0] * initslope
-                # print "Mt,vt,ab,disc",Mt,vt,ab,disc
+                #print("Mt,vt,ab,disc",Mt,vt,ab,disc)
                 if ab[0, 0] == 0.0:
                     # cubic model turn out to be a quadratic
                     lambda_temp = -initslope / (2.0 * ab[1, 0])
-                    # print "L2",lambda_temp
+                    #print("L2",lambda_temp)
                 else:
                     # the model is a legitimate cubic
                     lambda_temp = (-ab[1, 0] + sqrt(disc)) / (3.0 * ab[0, 0])
-                    # print "L3",lambda_temp
+                    #print("L3",lambda_temp)
 
                 if lambda_temp > 0.5 * lambdaM:
                     # larger than half of previous lambda is not allowed.
                     lambda_temp = 0.5 * lambdaM
-                    # print "L4",lambda_temp
+                    #print("L4",lambda_temp)
 
             lambda_prev = lambdaM
             fp_prev = fp
@@ -588,7 +592,7 @@ NOTES:
             else:
                 lambdaM = lambda_temp
 
-            # print 'lambda = ', lambdaM
+            #print('lambda = ', lambdaM)
 
     # return xp, fp, retcode
     return retcode, xp, fp, maxtaken, fcount
@@ -709,8 +713,7 @@ EXAMPLE CALLS::
     # 13. If maxadd <= 0, we are done H was positive definite.
     if maxadd > 0:
         # H was not positive definite
-        # print 'WARNING: Hessian is not pd. Max number added to H is ',
-        # maxadd, '\n'
+        # print('WARNING: Hessian is not pd. Max number added to H is ',maxadd)
         maxev = H[0, 0]
         minev = H[0, 0]
         for i in range(1, n + 1):
