@@ -31,8 +31,12 @@ for the user to control fitting options.
 #==============================================================================
 import wx
 
+import wx.lib.newevent
+
 from .. import options
 from .input_list import InputListPanel
+
+(FitterChangedEvent, EVT_FITTER_CHANGED) = wx.lib.newevent.NewCommandEvent()
 
 class FitConfig(wx.Frame):
     """
@@ -117,19 +121,24 @@ class FitConfig(wx.Frame):
 
         # Section 3
         # Create the button controls (Reset, Apply) and bind their events.
-        apply_btn = wx.Button(self, wx.ID_APPLY, "Apply")
-        apply_btn.SetToolTipString("Accept new options for the optimizer")
-        apply_btn.SetDefault()
-        reset_btn = wx.Button(self, wx.ID_ANY, "Reset")
-        reset_btn.SetToolTipString("Restore default options for the optimizer")
+        #apply_btn = wx.Button(self, wx.ID_APPLY, "Apply")
+        #apply_btn.SetToolTipString("Accept new options for the optimizer")
+        #apply_btn.SetDefault()
+        #reset_btn = wx.Button(self, wx.ID_ANY, "Reset")
+        #reset_btn.SetToolTipString("Restore default options for the optimizer")
+        accept_btn = wx.Button(self, wx.ID_OK)
+        accept_btn.SetToolTipString("Accept new options for the optimizer")
+        accept_btn.SetDefault()
+        cancel_btn = wx.Button(self, wx.ID_CANCEL)
+        cancel_btn.SetToolTipString("Restore default options for the optimizer")
         if help is not None:
             help_btn = wx.Button(self, wx.ID_HELP, 'Help')
             #help_btn = wx.Button(self, wx.ID_ANY, 'Help')
             help_btn.SetToolTipString("Help on the options for the optimizer")
 
 
-        self.Bind(wx.EVT_BUTTON, self.OnApply, apply_btn)
-        self.Bind(wx.EVT_BUTTON, self.OnReset, reset_btn)
+        self.Bind(wx.EVT_BUTTON, self.OnAccept, accept_btn)
+        self.Bind(wx.EVT_BUTTON, self.OnCancel, cancel_btn)
         if help is not None:
             self.Bind(wx.EVT_BUTTON, self.OnHelp, help_btn)
 
@@ -141,9 +150,9 @@ class FitConfig(wx.Frame):
         # bottom right of the window.
         btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
         btn_sizer.Add((10,20), 1)  # stretchable whitespace
-        btn_sizer.Add(apply_btn, 0)
+        btn_sizer.Add(accept_btn, 0)
         btn_sizer.Add((10,20), 0)  # non-stretchable whitespace
-        btn_sizer.Add(reset_btn, 0)
+        btn_sizer.Add(cancel_btn, 0)
         btn_sizer.Add((10,20), 0)  # non-stretchable whitespace
         if help is not None:
             btn_sizer.Add((10,20), 0)  # non-stretchable whitespace
@@ -169,15 +178,16 @@ class FitConfig(wx.Frame):
         self.fitter_panel[button.Name].Show()
         self.vbox.Layout()
 
-    def OnReset(self, event):
+    def OnCancel(self, event):
         """
         Restore options for the selected fitter to the default values.
         """
         fitter = self._get_fitter()
         panel = self.fitter_panel[fitter]
         panel.Parameters = dict(self.config.settings[fitter])
+        self.Hide()
 
-    def OnApply(self, event):
+    def OnAccept(self, event):
         """
         Save the current fitter and options to the fit config.
         """
@@ -185,6 +195,11 @@ class FitConfig(wx.Frame):
         options = self.fitter_panel[fitter].Parameters
         self.config.selected_id = fitter
         self.config.values[fitter] = options
+        self.Hide()
+
+        # Signal a change in fitter
+        event = FitterChangedEvent(self.Id, config=self.config)
+        wx.PostEvent(self, event)
 
     def OnHelp(self, event):
         """
