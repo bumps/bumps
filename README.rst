@@ -23,6 +23,15 @@ Documentation is available at `readthedocs <http://bumps.readthedocs.org>`_
 Release notes
 =============
 
+v0.7.5.9 2016-04-22
+-------------------
+
+* population initializers allow indefinite bounds
+* use single precision criterion for levenberg-marquardt and bfgs
+* implement simple, faster, less accurate Hessian & Jacobian
+* compute uncertainty estimate from Jacobian if problem is sum of squares
+* gui: fit selection window acts like a dialog
+
 v0.7.5.8 2016-04-18
 -------------------
 
