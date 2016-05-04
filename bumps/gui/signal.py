@@ -5,7 +5,12 @@ In practice, the main window is the only listener, and it forwards the
 messages to the appropriate views.
 """
 import wx
+import wx.py.dispatcher
 from wx.py.dispatcher import send
+
+# export the connect function; do it this way so that linters don't complain
+# about unused imports
+connect = wx.py.dispatcher.connect
 
 def model_new(model):
     """
