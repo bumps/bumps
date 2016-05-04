@@ -23,6 +23,11 @@ Documentation is available at `readthedocs <http://bumps.readthedocs.org>`_
 Release notes
 =============
 
+v0.7.5.10 2016-05-04
+--------------------
+
+* gui: undo code cleaning operation which broke the user interface
+
 v0.7.5.9 2016-04-22
 -------------------
 
