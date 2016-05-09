@@ -228,30 +228,71 @@ Using the posterior distribution
 ================================
 
 You can load the DREAM output population an perform uncertainty analysis
-operations after the fact::
+operations after the fact.  You can run an interactive bumps session
+using::
+
+    bumps -i
+
+First we need to import some functions::
+
+    import os
+    import matplotlib.pyplot as plt
 
     from bumps.dream.state import load_state
+    from bumps.dream.views import plot_vars, plot_corrmatrix
+    from bumps.dream.stats import var_stats, format_vars
+
+
+Then we need to reload the MCMC chains::
+
+    store = "/tmp/t1"   # path to the --store=/tmp/t1 directory
+    modelname = "model"  # model file name without .py extension
+
+    # Reload the MCMC data
+    basename = os.path.join(store, modelname)
     state = load_state(modelname)
     state.mark_outliers() # ignore outlier chains
-    state.show()  # Plot statistics
+
+    # Attach the labels from the .par file:
+    with open(basename+".par") as fid:
+        state.labels = [" ".join(line.strip().split()[:-1]) for line in fid]
+
+Now we can plot the data::
+
+    state.show()  # Create the standard plots
+
+We can choose to plot only some of the variables::
+
+    # Select the data to plot (the 3rd and the last two in this case):
+    draw = state.draw(vars=[2, -2, -1])
+
+    # Histograms
+    stats = var_stats(draw)  # Compute statistics such as the 90% interval
+    print(format_vars(stats))
+    plt.figure()
+    plot_vars(draw, stats)
+
+    # Correlation plots
+    plt.figure()
+    plot_corrmatrix(draw)
 
 
-You can restrict a variable to a certain range when doing plots.
-For example, to restrict the third parameter to $[0.8,1.0]$ and the
-fifth to $[0.2,0.4]$::
+We can restrict those variables to a certain range. For example, to
+restrict the third parameter to $[0.8,1.0]$ and the last to $[0.2,0.4]$::
 
     from bumps.dream import views
-    selection={2: (0.8,1.0), 4:(0.2,0.4),...}
-    views.plot_vars(state, selection=selection)
-    views.plot_corrmatrix(state, selection=selection)
+    selection={2: (0.8,1.0), -1:(0.2,0.4),...}
+    draw = state.draw(vars=[2, -2, -1], selection=selection)
+    ...
 
-You can also add derived variables using a function to generate the
-derived variable.  For example, to add a parameter which is ``p[0]+p[1]``
-use::
+
+We can add create derived variables using a function to generate the new
+variable from some combination of existing variables.  For example, to add
+the first two variables together to create the derived variable "x+y" use::
 
     state.derive_vars(lambda p: p[0]+p[1], labels=["x+y"])
 
-You can generate multiple derived parameters at a time with a function
+We can generate multiple derived parameters at a time with a function
 that returns a sequence::
 
 
