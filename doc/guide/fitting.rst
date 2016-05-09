@@ -228,12 +228,12 @@ Using the posterior distribution
 ================================
 
 You can load the DREAM output population an perform uncertainty analysis
-operations after the fact.  You can run an interactive bumps session
-using::
+operations after the fact.  To run an interactive bumps session
+use the following::
 
     bumps -i
 
-First we need to import some functions::
+First you need to import some functions::
 
     import os
     import matplotlib.pyplot as plt
@@ -243,7 +243,7 @@ First we need to import some functions::
     from bumps.dream.stats import var_stats, format_vars
 
 
-Then we need to reload the MCMC chains::
+Then you need to reload the MCMC chains::
 
     store = "/tmp/t1"   # path to the --store=/tmp/t1 directory
     modelname = "model"  # model file name without .py extension
@@ -257,11 +257,11 @@ Then we need to reload the MCMC chains::
     with open(basename+".par") as fid:
         state.labels = [" ".join(line.strip().split()[:-1]) for line in fid]
 
-Now we can plot the data::
+Now you can plot the data::
 
     state.show()  # Create the standard plots
 
-We can choose to plot only some of the variables::
+You can choose to plot only some of the variables::
 
     # Select the data to plot (the 3rd and the last two in this case):
     draw = state.draw(vars=[2, -2, -1])
@@ -277,7 +277,7 @@ We can choose to plot only some of the variables::
     plot_corrmatrix(draw)
 
 
-We can restrict those variables to a certain range. For example, to
+You can restrict those variables to a certain range. For example, to
 restrict the third parameter to $[0.8,1.0]$ and the last to $[0.2,0.4]$::
 
     from bumps.dream import views
@@ -286,19 +286,19 @@ restrict the third parameter to $[0.8,1.0]$ and the last to $[0.2,0.4]$::
     ...
 
 
-We can add create derived variables using a function to generate the new
+You can add create derived variables using a function to generate the new
 variable from some combination of existing variables.  For example, to add
 the first two variables together to create the derived variable "x+y" use::
 
     state.derive_vars(lambda p: p[0]+p[1], labels=["x+y"])
 
-We can generate multiple derived parameters at a time with a function
+You can generate multiple derived parameters at a time with a function
 that returns a sequence::
 
 
     state.derive_vars(lambda p: (p[0]*p[1],p[0]-p[1]), labels=["x*y","x-y"])
 
-These new parameters will show up in your plots::
+These new parameters will show up in the plots::
 
     state.show()
 
