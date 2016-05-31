@@ -42,11 +42,13 @@ def parse_multi(file, keysep=None, sep=None, comment='#'):
     parts = []
     with maybe_open(file) as fh:
         while True:
-            hk, dk = _read_part(fh, comment=comment,
-                                col_sep=sep, key_sep=keysep)
-            if hk is None:
+            header, data, bins = _read_part(fh, comment=comment, multi_part=True,
+                                            col_sep=sep, key_sep=keysep)
+            if header is None:
                 break
-            parts.append((hk, dk))
+            if bins is not None:
+                header.setdefault('bins', bins)
+            parts.append((header, data))
     return parts
 
 def parse_file(file, keysep=None, sep=None, comment='#'):
@@ -75,25 +77,25 @@ def parse_file(file, keysep=None, sep=None, comment='#'):
     in the header, in which case the key will be ignored).
     """
     with maybe_open(file) as fh:
-         header, data= _read_part(fh, comment=comment,
-                                  col_sep=sep, key_sep=keysep)
-         if header is None:
-             raise IOError("data file is empty")
-         more, _ = _read_part(fh, comment=comment,
-                              col_sep=sep, key_sep=keysep)
-         if more is not None:
-             raise IOError("data file contains multiple datasets")
+         header, data, bins = _read_part(fh, comment=comment, multi_part=False,
+                                         col_sep=sep, key_sep=keysep)
+    if header is None:
+        raise IOError("data file is empty")
     # compatibility: strip quotes from values in key-value pairs
-    header = dict((k,strip_quotes(v)) for k, v in header.items())
+    header = dict((k, strip_quotes(v)) for k, v in header.items())
+    if bins is not None:
+        header.setdefault('bins', bins)
     return header, data
 
-def _read_part(fh, key_sep=None, col_sep=None, comment="#"):
+def _read_part(fh, key_sep=None, col_sep=None, comment="#", multi_part=False):
     header = {}
     data = []
     iseof = True
     for line in fh:
         # Blank lines indicate a section break.
         if not line.strip():
+            # Skip blank lines if we are parsing the data as a single part file
+            if not multi_part: continue
             # If we are at the beginning of a section, then iseof is True and
             # continuing to the next loop iteration will skip them. If we have
             # already consumed some non-blank lines, then iseof will be false,
@@ -130,11 +132,12 @@ def _read_part(fh, key_sep=None, col_sep=None, comment="#"):
         data = np.array(data[:-1]).T
         edges = np.hstack((data[0],last_edge))
         data[0] = 0.5*(edges[:-1] + edges[1:])
-        header.setdefault('bins', edges)
+        bins = edges
     else:
         data = np.array(data).T
+        bins = None
 
-    return header, data
+    return header, data, bins
 
 @contextmanager
 def maybe_open(file_or_path):
