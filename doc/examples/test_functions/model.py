@@ -84,14 +84,20 @@ def prod(L):
     return reduce(lambda x,y: x*y, L, 1)
 
 @fit_function(fmin=0.0, xmin=0.0)
-def sphere(x):
+def gauss(x):
     """
-    Unimodal smooth well.
+    Multivariate gaussian distribution
     """
     return sum(xi**2 for xi in x)
 
+@fit_function(fmin=0., xmin=3.)
+def laplace(x):
+    """
+    Product of Laplace distributions, mu=3, b=0.1.
+    """
+    return sum(abs(xi-3.)/0.1 for xi in x)
 
-@fit_function(fmin=0, xmin=3.)
+@fit_function(fmin=0., xmin=3.)
 def sin_plus_quadratic(x, c=3., d=2., m=5., h=2.):
     """
     Sin + quadratic.  Multimodal with global minimum.
@@ -177,7 +183,17 @@ def plot2d(fn, args=None, range=(-10,10)):
     """
     fnargs, _, _, _ = inspect.getargspec(fn)
     if len(fnargs) < 2:
-        raise ValueError("need at least two args for plot2d")
+        args = fnargs[:1]
+        def plot1d(view=None, **kw):
+            import pylab
+            x = kw[args[0]]
+            r = linspace(range[0], range[1], 500)
+            kw[args[0]] = x+r
+            pylab.plot(x+r, fn(**kw))
+            pylab.xlabel(args[0])
+            pylab.ylabel("-log P(%s)"%args[0])
+        return plot1d
+
     if args is None:
         args = fnargs[:2]
     if not all(k in fnargs for k in args):

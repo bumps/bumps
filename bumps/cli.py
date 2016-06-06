@@ -336,8 +336,6 @@ def set_mplconfig(appdatadir):
     r"""
     Point the matplotlib config dir to %LOCALAPPDATA%\{appdatadir}\mplconfig.
     """
-    import os
-    import sys
     if hasattr(sys, 'frozen'):
         mplconfigdir = os.path.join(
             os.environ['LOCALAPPDATA'], appdatadir, 'mplconfig')
@@ -481,6 +479,8 @@ def main():
             mapper = MPMapper
         elif opts.transport == 'celery':
             mapper = CeleryMapper
+        else:
+            raise ValueError("unknown mapper")
     else:
         mapper = SerialMapper
     if opts.worker:
@@ -548,7 +548,7 @@ def main():
         if opts.err or opts.cov:
             fitdriver.show_err()
         if opts.cov:
-            np.set_printoptions(linewidth=1e6)
+            np.set_printoptions(linewidth=1000000)
             print("=== Covariance matrix ===")
             print(problem.cov())
             print("=========================")
