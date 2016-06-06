@@ -88,7 +88,7 @@ def gauss(x):
     """
     Multivariate gaussian distribution
     """
-    return sum(xi**2 for xi in x)
+    return sum(0.5*(xi - 3.)**2 for xi in x)
 
 @fit_function(fmin=0., xmin=3.)
 def laplace(x):
