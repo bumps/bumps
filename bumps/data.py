@@ -120,7 +120,7 @@ def _read_part(fh, key_sep=None, col_sep=None, comment="#", multi_part=False):
         iseof = False
 
     if iseof:
-        return None, None
+        return None, None, None
 
     # print data
     # print "\n".join(k+":"+v for k,v in header.items())
