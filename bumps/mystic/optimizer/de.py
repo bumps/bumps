@@ -155,7 +155,7 @@ class DifferentialEvolution(solver.Strategy):
         Crossover rate.
     *F* float in (0,inf)
         Crossover step size.
-    *npop* integer
+    *npop* float
         The size of the population is npop times the number of dimensions
         in the problem.
     *crossover* func(ndim, CR) -> index vector
@@ -214,7 +214,7 @@ class DifferentialEvolution(solver.Strategy):
         # Generate a random population
         current = problem.getp()
         ndim = len(current)
-        population = problem.randomize(self.npop * ndim)
+        population = problem.randomize(int(self.npop * ndim))
         population[0] = current
 
         # Return the population
