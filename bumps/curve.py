@@ -96,6 +96,7 @@ class Curve(object):
                 raise ValueError("measurement uncertainty must be positive")
 
         self.fn = fn
+        self.name = name # if name else fn.__name__ + " "
 
         # Make every name a parameter; initialize the parameters
         # with the default value if function is defined with keyword
