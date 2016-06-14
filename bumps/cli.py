@@ -337,8 +337,14 @@ def set_mplconfig(appdatadir):
     Point the matplotlib config dir to %LOCALAPPDATA%\{appdatadir}\mplconfig.
     """
     if hasattr(sys, 'frozen'):
-        mplconfigdir = os.path.join(
-            os.environ['LOCALAPPDATA'], appdatadir, 'mplconfig')
+        if os.name == 'nt':
+            mplconfigdir = os.path.join(
+                os.environ['LOCALAPPDATA'], appdatadir, 'mplconfig')
+        elif sys.platform == 'darwin':
+            mplconfigdir = os.path.join(
+                os.path.expanduser('~/Library/Caches'), appdatadir, 'mplconfig')
+        else:
+            return  # do nothing on linux
         mplconfigdir = os.environ.setdefault('MPLCONFIGDIR', mplconfigdir)
         if not os.path.exists(mplconfigdir):
             os.makedirs(mplconfigdir)

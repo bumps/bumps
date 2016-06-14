@@ -112,8 +112,8 @@ class MainApp(wx.App):
         # executes app.MainLoop() AND either the splash screen timeout expires
         # or the user left clicks over the splash screen.
         #if LOGTIM: log_time("Starting to display the splash screen")
-        #pic = resource(SPLASH_FILE)
-        #self.display_splash_screen(img_name=pic, pos=pos, size=size)
+        pic = resource(SPLASH_FILE)
+        self.display_splash_screen(img_name=pic, pos=pos, size=size)
 
         # Determine the position and size of the application frame based on the
         # desired size and screen real estate that we have to work with.
