@@ -211,7 +211,7 @@ class Dream(object):
 
         self._initialized = False
 
-    def sample(self, state=None, abort_test=None):
+    def sample(self, state=None, abort_test=lambda: False):
         """
         Pull the requisite number of samples from the distribution
         """
@@ -225,7 +225,7 @@ class Dream(object):
         return self.state
 
 
-def run_dream(dream, abort_test=None):
+def run_dream(dream, abort_test=lambda: False):
 
     # Step 1: Sample s points in the parameter space
     # [PAK] I moved this out of dream so that the user can use whatever

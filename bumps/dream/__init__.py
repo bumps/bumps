@@ -21,3 +21,4 @@ from .state import *    # load_state, save_state
 from .views import *    # plotting routines
 from .core import Dream
 from .util import console
+from .stats import *

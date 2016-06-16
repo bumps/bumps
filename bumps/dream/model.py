@@ -100,8 +100,8 @@ from __future__ import division
 __all__ = ['MCMCModel', 'Density', 'LogDensity', 'Simulation',
            'MVNormal', 'Mixture']
 
-from numpy import sum, ones_like, array
-from numpy import dot, diag, log, exp, pi, asarray, isscalar
+import numpy as np
+from numpy import diag, log, exp, pi
 from numpy.linalg import cholesky, inv
 
 from . import exppow
@@ -128,7 +128,7 @@ class MCMCModel(object):
         pass
 
     def map(self, pop):
-        return array([-self.log_density(x) for x in pop])
+        return np.array([self.nllf(x) for x in pop])
 
 
 class Density(MCMCModel):
@@ -185,7 +185,7 @@ class Simulation(MCMCModel):
         self.f, self.bounds, self.labels = f, bounds, labels
         self.data, self.sigma, self.gamma = data, sigma, gamma
         cb, wb = exppow.exppow_pars(gamma)
-        self._offset = sum(log(wb/sigma * ones_like(data)))
+        self._offset = np.sum(log(wb/sigma * np.ones_like(data)))
         self._cb = cb
         self._pow = 2/(1+gamma)
         #print "cb", cb, "sqrt(2pi)*wb", sqrt(2*pi)*wb
@@ -193,7 +193,7 @@ class Simulation(MCMCModel):
 
     def nllf(self, x):
         err = self.f(x) - self.data
-        log_p = self._offset - sum(self._cb * abs(err/self.sigma)**self._pow)
+        log_p = self._offset - np.sum(self._cb * abs(err/self.sigma)**self._pow)
         return log_p
 
     def plot(self, x):
@@ -207,15 +207,15 @@ class MVNormal(MCMCModel):
     multivariate normal negative log likelihood function
     """
     def __init__(self, mu, sigma):
-        self.mu, self.sigma = asarray(mu), asarray(sigma)
+        self.mu, self.sigma = np.asarray(mu), np.asarray(sigma)
         # Precompute sigma contributions
         r = cholesky(sigma)
         self._rinv = inv(r)
-        self._c = 0.5*len(mu)*log(2*pi) + sum(diag(r))
+        self._c = 0.5*len(mu)*log(2*pi) + 0.5*np.sum(diag(r))
 
     def nllf(self, x):
         mu, c, rinv = self.mu, self._c, self._rinv
-        y = c + 0.5*sum(dot((x-mu), rinv)**2)
+        y = c + 0.5*np.sum(np.dot(x-mu, rinv)**2)
         return y
 
 
@@ -234,11 +234,11 @@ class Mixture(MCMCModel):
         weights = args[1::2]
         if (len(args) % 2 != 0
                 or not all(hasattr(M, 'nllf') for M in models)
-                or not all(isscalar(w) for w in weights)):
+                or not all(np.isscalar(w) for w in weights)):
             raise TypeError("Expected MixtureModel(M1, w1, M2, w2, ...)")
         self.pairs = zip(models, weights)
-        self.weight = sum(w for w in weights)
+        self.weight = np.sum(w for w in weights)
 
     def nllf(self, x):
-        p = [w*exp(M.nllf(x)) for M, w in self.pairs]
-        return -log(sum(p)/self.weight)
+        p = [w*exp(-M.nllf(x)) for M, w in self.pairs]
+        return -log(np.sum(p)/self.weight)

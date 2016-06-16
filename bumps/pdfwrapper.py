@@ -118,7 +118,7 @@ class PDF(object):
 
 class DirectPDF(object):
     """
-    Build model from probability density function *f(p)*.
+    Build model from negative log likelihood function *f(p)*.
 
     Vector *p0* of length *n* defines the initial value.
 
