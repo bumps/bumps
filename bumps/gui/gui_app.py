@@ -243,18 +243,11 @@ class MainApp(wx.App):
         model, output = initial_model(opts)
         if not model: model = plugin.new_model()
         signal.log_message(message=output)
-        #self.frame.panel.show_view('log')
         self.frame.panel.set_model(model=model)
         self.frame.panel.fit_config = opts.fit_config
 
-        # When setting initial aui panel split:
-        #     mac layout fails if frame is already shown
-        #     windows/unix layout fails if frame is not shown
-        #isMac = "cocoa" in wx.version()
-        #if not isMac: self.frame.Show()
         self.frame.panel.Layout()
         self.frame.panel.aui.Split(0, wx.TOP)
-        #if isMac: self.frame.Show()
         self.frame.Show()
 
 
