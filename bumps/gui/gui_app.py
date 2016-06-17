@@ -112,8 +112,8 @@ class MainApp(wx.App):
         # executes app.MainLoop() AND either the splash screen timeout expires
         # or the user left clicks over the splash screen.
         #if LOGTIM: log_time("Starting to display the splash screen")
-        pic = resource(SPLASH_FILE)
-        self.display_splash_screen(img_name=pic, pos=pos, size=size)
+        #pic = resource(SPLASH_FILE)
+        #self.display_splash_screen(img_name=pic, pos=pos, size=size)
 
         # Determine the position and size of the application frame based on the
         # desired size and screen real estate that we have to work with.
@@ -136,7 +136,8 @@ class MainApp(wx.App):
         self.SetTopWindow(self.frame)
 
         # To have the frame visible behind the spash screen, comment out the following
-        wx.CallAfter(self.after_show)
+        #wx.CallAfter(self.after_show)
+        self.after_show()
 
         # To test that the splash screen will not go away until the frame
         # initialization is complete, simulate an increase in startup time
@@ -217,7 +218,7 @@ class MainApp(wx.App):
         # To show the frame earlier, uncomment Show() code in OnInit.
         if LOGTIM: log_time("Terminating the splash screen and showing the GUI")
         #self.after_show()
-        wx.CallAfter(self.after_show)
+        #wx.CallAfter(self.after_show)
         event.Skip()
 
     def after_show(self):
@@ -249,11 +250,12 @@ class MainApp(wx.App):
         # When setting initial aui panel split:
         #     mac layout fails if frame is already shown
         #     windows/unix layout fails if frame is not shown
-        isMac = "cocoa" in wx.version()
-        if not isMac: self.frame.Show()
+        #isMac = "cocoa" in wx.version()
+        #if not isMac: self.frame.Show()
         self.frame.panel.Layout()
         self.frame.panel.aui.Split(0, wx.TOP)
-        if isMac: self.frame.Show()
+        #if isMac: self.frame.Show()
+        self.frame.Show()
 
 
 #==============================================================================
