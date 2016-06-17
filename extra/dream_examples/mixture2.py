@@ -29,24 +29,28 @@ Population size *h* is set to 20 per mode.  A good choice for number of
 sequences *k* is not yet determined.
 """
 from pylab import *
-from dream import *
+from bumps.dream import *
 
 if 1: # Fixed layout of 5 minima
     n = 5
     S = [0.1]*5
     x = [-4, -2, 0, 2, 4]
     y = [2, -2, -4, 0, 4]
+    z = [-2, -1, 0, 1, 3]
     I = [5, 2.5, 1, 4, 1]
 else: # Semirandom layout of n minima
+    d = 3
     n = 40
     S = [0.1]*n
     x = linspace(-n+1,n-1,n)
     y = permutation(x)
+    z = permutation(x)
     I = 2*linspace(-1,1,n)**2 + 1
 
 args = [] # Sequence of density, weight, density, weight, ...
-for xi,yi,Si,Ii in zip(x,y,S,I):
-    args.extend( (MVNormal([xi,yi],Si*eye(2)), Ii) )
+for xi,yi,zi,Si,Ii in zip(x,y,z,S,I):
+    args.extend( (MVNormal([xi,yi,zi],Si*eye(3)), Ii) )
+    #args.extend( (MVNormal([xi,yi],Si*eye(2)), Ii) )
 model = Mixture(*args)
 
 k = 20*n
@@ -56,10 +60,8 @@ sampler = Dream(model=model,
                 #use_delayed_rejection=False,
                 DE_snooker_rate=0.5,
                 outlier_test='none',
-                draws=40000*n,burn=5000*k,
+                draws=4000*n,burn=500*k,
                 thinning=1)
 mc = sampler.sample()
-stats = plot_vars(mc, ci=1, nbins=9*max(x));
-print(format_vars(stats))
-plot_all(mc)
+mc.show()
 show()
