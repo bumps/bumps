@@ -12,11 +12,13 @@ from wx.py.dispatcher import send
 # about unused imports
 connect = wx.py.dispatcher.connect
 
+
 def model_new(model):
     """
     Inform all views that a new model is available.
     """
-    wx.CallAfter(send,'model.new',model=model)
+    wx.CallAfter(send, 'model.new', model=model)
+
 
 def update_model(model, dirty=True):
     """
@@ -24,8 +26,10 @@ def update_model(model, dirty=True):
     model.model_reset() to reset the fit parameters and constraints.
     """
     model.model_reset()  #
-    if dirty: model.model_update()
-    wx.CallAfter(send,'model.update_structure',model=model)
+    if dirty:
+        model.model_update()
+    wx.CallAfter(send, 'model.update_structure', model=model)
+
 
 _DELAYED_SIGNAL = {}
 def update_parameters(model, delay=100):
@@ -52,5 +56,6 @@ def update_parameters(model, delay=100):
             wx.CallAfter(send, 'model.update_parameters', model=model)
         _DELAYED_SIGNAL[model] = wx.FutureCall(delay, _send_signal)
 
+
 def log_message(message):
-    wx.CallAfter(send,'log',message=message)
+    wx.CallAfter(send, 'log', message=message)
