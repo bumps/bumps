@@ -25,7 +25,7 @@ This module implements the AppPanel class which creates the main panel on top
 of the frame of the GUI for the Bumps application.
 """
 
-#==============================================================================
+# ==============================================================================
 
 from __future__ import division
 import os
@@ -154,7 +154,6 @@ class AppPanel(wx.Panel):
         frame.Bind(wx.EVT_MENU, self.OnFileNew, _item)
         #file_menu.Enable(id=wx.ID_NEW, enable=False)
 
-
         # Add 'Fitting' menu to the menu bar and define its options.
         # Items are initially greyed out, but will be enabled after a script
         # is loaded.
@@ -272,9 +271,9 @@ class AppPanel(wx.Panel):
             self.view[tag].SetFocus()
 
     def OnViewTabClose(self, evt):
-        win = self.aui.GetPage(evt.selection)
+        win = self.aui.GetPage(evt.GetSelection())
         #print "Closing tab",win.GetId()
-        for k,w in self.view.items():
+        for k, w in self.view.items():
             if w == win:
                 tag = k
                 break
@@ -299,7 +298,7 @@ class AppPanel(wx.Panel):
     def OnViewFrameClose(self, evt):
         win = evt.GetEventObject()
         #print "Closing frame",win.GetId()
-        for k,w in self.view.items():
+        for k, w in self.view.items():
             if w.GetParent() == win:
                 tag = k
                 break
@@ -309,7 +308,7 @@ class AppPanel(wx.Panel):
         constructor = self.view_constructor[tag]
         panel = constructor(self.aui)
         self.view[tag] = panel
-        self.aui.AddPage(panel,constructor.title)
+        self.aui.AddPage(panel, constructor.title)
         panel.set_state(state)
         evt.Skip()
 
@@ -328,9 +327,8 @@ class AppPanel(wx.Panel):
                 v.update_model(model)
 
     def OnModelSetpar(self, model):
-        for _,v in self.view.items():
+        for v in self.view.values():
             if hasattr(v, 'update_parameters'):
-                #print "updating",_
                 v.update_parameters(model)
 
     def OnFileNew(self, event):
