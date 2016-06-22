@@ -645,7 +645,7 @@ class DreamFit(FitBase):
         self.state = None
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
-        from . import dream
+        from .dream import Dream
         if abort_test is None:
             abort_test = lambda: False
         options = _fill_defaults(options, self.settings)
@@ -664,12 +664,12 @@ class DreamFit(FitBase):
         # maybe somehow print iteration # of # iters in the monitor?
         print("# steps: %d, # draws: %d"%(steps, pop_size*steps))
         population = population[None, :, :]
-        sampler = dream.Dream(model=self.dream_model, population=population,
-                              draws=pop_size * steps,
-                              burn=pop_size * options['burn'],
-                              thinning=options['thin'],
-                              monitor=self._monitor,
-                              DE_noise=1e-6)
+        sampler = Dream(model=self.dream_model, population=population,
+                        draws=pop_size * steps,
+                        burn=pop_size * options['burn'],
+                        thinning=options['thin'],
+                        monitor=self._monitor,
+                        DE_noise=1e-6)
 
         self.state = sampler.sample(state=self.state, abort_test=abort_test)
         self.state.mark_outliers()
@@ -729,9 +729,9 @@ class DreamFit(FitBase):
     #    return np.cov(self.state.draw().points[-1000:])
 
     def load(self, input_path):
-        from . import dream
+        from .dream.state import load_state
         print("loading saved state (this might take awhile) ...")
-        self.state = dream.state.load_state(input_path, report=100)
+        self.state = load_state(input_path, report=100)
 
     def save(self, output_path):
         self.state.save(output_path)
