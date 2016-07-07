@@ -181,28 +181,19 @@ class DataView(wx.Panel):
                 shift=0
                 if isinstance(self.problem, MultiFitProblem):
                     for i,p in enumerate(self.problem.models):
-                        if hasattr(p.fitness,'plot'):
-                            p.fitness.plot(view=self.view)
+                        #if hasattr(p.fitness,'plot'):
+                        p.fitness.plot(view=self.view)
                         pylab.hold(True)
                         if self._cancel_calculate: break
+                    pylab.text(0.01, 0.01,
+                               'chisq=%s' % self.problem.chisq_str(),
+                               transform=pylab.gca().transAxes)
                     if self._cancel_calculate: continue
                 else:
-                    if hasattr(self.problem.fitness,'plot'):
-                        self.problem.fitness.plot(view=self.view)
+                    #if hasattr(self.problem.fitness,'plot'):
+                    self.problem.plot(view=self.view)
                     if self._cancel_calculate: continue
 
-                try:
-                    # If we can calculate chisq, then put it on the graph.
-                    text = "chisq=%g"%self.problem.chisq()
-                    constraints = (self.problem.parameter_nllf()
-                                   + self.problem.constraints_nllf())
-                except Exception:
-                    # Otherwise indicate that chisq could not be calculated.
-                    text = "chisq=--"
-                    constraints = 0.
-                if constraints > 0.:
-                    text+= " constraints=%g"%constraints
-                pylab.text(0.01, 0.01, text, transform=pylab.gca().transAxes)
                 #print "drawing"
                 if not reset:
                     self.toolbar.push_current()

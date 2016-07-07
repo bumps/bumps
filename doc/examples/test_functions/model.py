@@ -9,8 +9,7 @@ from __future__ import print_function
 from functools import reduce, wraps
 import inspect
 
-import numpy as np
-from numpy import sin, cos, linspace, meshgrid, e, pi, sqrt, exp, inf
+from numpy import sin, cos, linspace, meshgrid, e, pi, sqrt, exp
 from bumps.names import *
 
 class ModelFunction(object):
