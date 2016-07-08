@@ -12,7 +12,8 @@ transforms the point *x*.
 __all__ = ["make_bounds_handler", "ReflectBounds", "ClipBounds",
            "FoldBounds", "RandomBounds", "IgnoreBounds"]
 
-from numpy import inf, isinf, asarray
+import numpy as np
+from numpy import inf, isinf
 from . import util
 from .compiled import dll
 
@@ -64,7 +65,7 @@ class Bounds(object):
     def __call__(self, pop):
         if self.c_interface is not None:
             self.c_interface(len(pop), len(self.low), pop.ctypes,
-                             low.ctypes, high.ctypes)
+                             self.low.ctypes, self.high.ctypes)
         else:
             for x in pop:
                 self.apply(x)
@@ -77,7 +78,7 @@ class ReflectBounds(Bounds):
     """
     c_interface = dll.bounds_reflect if dll else None
     def __init__(self, low, high):
-        self.low, self.high = [asarray(v, 'd') for v in (low, high)]
+        self.low, self.high = [np.ascontiguousarray(v, 'd') for v in (low, high)]
 
     def apply(self, y):
         """
@@ -105,7 +106,7 @@ class ClipBounds(Bounds):
     """
     c_interface = dll.bounds_clip if dll else None
     def __init__(self, low, high):
-        self.low, self.high = [asarray(v, 'd') for v in (low, high)]
+        self.low, self.high = [np.ascontiguousarray(v, 'd') for v in (low, high)]
 
     def apply(self, y):
         minn, maxn = self.low, self.high
@@ -123,7 +124,7 @@ class FoldBounds(Bounds):
     """
     c_interface = dll.bounds_fold if dll else None
     def __init__(self, low, high):
-        self.low, self.high = [asarray(v, 'd') for v in (low, high)]
+        self.low, self.high = [np.ascontiguousarray(v, 'd') for v in (low, high)]
 
     def apply(self, y):
         minn, maxn = self.low, self.high
@@ -153,7 +154,7 @@ class RandomBounds(Bounds):
     """
     c_interface = dll.bounds_random if dll else None
     def __init__(self, low, high):
-        self.low, self.high = [asarray(v, 'd') for v in (low, high)]
+        self.low, self.high = [np.ascontiguousarray(v, 'd') for v in (low, high)]
 
     def apply(self, y):
         minn, maxn = self.low, self.high
@@ -177,7 +178,7 @@ class IgnoreBounds(Bounds):
     """
     c_interface = dll.bounds_ignore if dll else None
     def __init__(self, low=None, high=None):
-        self.low, self.high = [asarray(v, 'd') for v in (low, high)]
+        self.low, self.high = [np.ascontiguousarray(v, 'd') for v in (low, high)]
 
     def apply(self, y):
         return y
@@ -188,10 +189,10 @@ def test():
     from numpy import array
 
     bounds = list(zip([5, 10], [-inf, -10], [-5, inf], [-inf, inf]))
-    v = asarray([6, -12, 6, -12], 'd')
+    v = np.ascontiguousarray([6, -12, 6, -12], 'd')
     for t in 'none', 'reflect', 'clip', 'fold', 'randomize':
         assert norm(make_bounds_handler(bounds, t).apply(v+0) - v) == 0
-    v = asarray([12, 12, -12, -12], 'd')
+    v = np.ascontiguousarray([12, 12, -12, -12], 'd')
     for t in 'none', 'reflect', 'clip', 'fold':
         w = make_bounds_handler(bounds, t)
         assert norm(w(array([v, v, v])) - w.apply(v+0)) == 0
@@ -204,10 +205,10 @@ def test():
                 - [7, -32, 2, -12]) == 0
     w = make_bounds_handler(bounds, 'randomize').apply(v+0)
     assert 5 <= w[0] <= 10 and w[1] == -32 and w[2] == 2 and w[3] == -12
-    v = asarray([20, 1, 1, 1], 'd')
+    v = np.ascontiguousarray([20, 1, 1, 1], 'd')
     w = make_bounds_handler(bounds, 'reflect').apply(v+0)
     assert 5 <= w[0] <= 10
-    v = asarray([20, 1, 1, 1], 'd')
+    v = np.ascontiguousarray([20, 1, 1, 1], 'd')
     w = make_bounds_handler(bounds, 'fold').apply(v+0)
     assert 5 <= w[0] <= 10
 

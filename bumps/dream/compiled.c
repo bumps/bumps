@@ -5,7 +5,7 @@ Differential evolution MCMC stepper.
 #include <math.h>
 #include <stdlib.h>
 
-//#include <stdio.h>  // for debugging
+#include <stdio.h>  // for debugging
 
 // Random library with a separate generator for each thread of
 // an OpenMP threaded program.  Assumes max 64 threads.  If OpenMP is
