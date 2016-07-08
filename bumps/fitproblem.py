@@ -417,7 +417,7 @@ class BaseFitProblem(object):
         if hasattr(self.fitness, 'save'):
             self.fitness.save(basename)
 
-    def plot(self, p=None, fignum=None, figfile=None):
+    def plot(self, p=None, fignum=None, figfile=None, view=None):
         if not hasattr(self.fitness, 'plot'):
             return
 
@@ -426,8 +426,8 @@ class BaseFitProblem(object):
             pylab.figure(fignum)
         if p is not None:
             self.setp(p)
-        self.fitness.plot()
-        pylab.text(0, 0, 'chisq=%s' % self.chisq_str(),
+        self.fitness.plot(view=view)
+        pylab.text(0.01, 0.01, 'chisq=%s' % self.chisq_str(),
                    transform=pylab.gca().transAxes)
         if figfile is not None:
             pylab.savefig(figfile + "-model.png", format='png')
@@ -453,9 +453,19 @@ class BaseFitProblem(object):
         self.model_reset()
 
     def chisq_str(self):
-        _, err = nllf_scale(self)
-        return format_uncertainty(self.chisq(), err)
+        # TODO: remove unnecessary try-catch
+        try:
+            _, err = nllf_scale(self)
+            text = format_uncertainty(self.chisq(), err)
+            constraints = (self.parameter_nllf()
+                           + self.constraints_nllf())
+            if constraints > 0.:
+                text+= " constraints=%g"%constraints
+        except Exception:
+            # Otherwise indicate that chisq could not be calculated.
+            text = "--"
 
+        return text
 
 class MultiFitProblem(BaseFitProblem):
     """
@@ -560,12 +570,12 @@ class MultiFitProblem(BaseFitProblem):
             f.show()
         print("[overall chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
 
-    def plot(self, p=None, fignum=1, figfile=None):
+    def plot(self, p=None, fignum=1, figfile=None, view=None):
         import pylab
         if p is not None:
             self.setp(p)
         for i, f in enumerate(self.models):
-            f.plot(fignum=i + fignum)
+            f.plot(fignum=i + fignum, view=view)
             pylab.suptitle('Model %d - %s' % (i, f.name))
             if figfile is not None:
                 pylab.savefig(figfile + "-model%d.png" % i, format='png')

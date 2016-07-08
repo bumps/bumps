@@ -53,7 +53,44 @@ for mu_i,Si,Ii in zip(centers,S,I):
     args.extend( (MVNormal(mu_i,Si*np.eye(dims)), Ii) )
 model = Mixture(*args)
 
-p0 = [0.]*dims
-bounds = np.tile((-10,10), (dims, 1)).T
-labels = ['p%d'%k for k in range(dims)]
-problem = DirectPDF(model.nllf, p0=p0, bounds=bounds, labels=labels)
+def plot2d(fn, args=None, range=(-10,10)):
+    """
+    Return a mesh plotter for the given function.
+
+    *args* are the function arguments that are to be meshed (usually the
+    first two arguments to the function).  *range* is the bounding box
+    for the 2D mesh.
+
+    All arguments except the meshed arguments are held fixed.
+    """
+    if args is None:
+        args = [0, 1]
+    def plotter(p, view=None):
+        import pylab
+        if len(p) == 1:
+            x = p[0]
+            r = np.linspace(range[0], range[1], 400)
+            pylab.plot(x+r, [fn(v) for v in x+r])
+            pylab.xlabel(args[0])
+            pylab.ylabel("-log P(%s)"%args[0])
+        else:
+            r = np.linspace(range[0], range[1], 20)
+            x, y = p[args[0]], p[args[1]]
+            data = np.empty((len(r),len(r)),'d')
+            for j, xj in enumerate(x+r):
+                for k, yk in enumerate(y+r):
+                    p[args[0]], p[args[1]] = xj, yk
+                    data[j, k] = fn(p)
+            pylab.pcolormesh(x+r, y+r, data)
+            pylab.plot(x, y, 'o', hold=True, markersize=6,
+                       markerfacecolor='red', markeredgecolor='black',
+                       markeredgewidth=1, alpha=0.7)
+            pylab.xlabel(args[0])
+            pylab.ylabel(args[1])
+    return plotter
+
+
+M = VectorPDF(model.nllf, p=[0.]*dims, plot=plot2d(model.nllf))
+for _, p in M.parameters().items():
+    p.range(-10, 10)
+problem = FitProblem(M)

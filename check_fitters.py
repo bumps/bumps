@@ -54,7 +54,7 @@ def run_fit(fit_args, model_args, store, seed=1):
         if "KeyboardInterrupt" in output:
             raise KeyboardInterrupt()
         else:
-            raise RuntimeError("fit failed:\n"%(" ".join(command_parts)))
+            raise RuntimeError("fit failed:\n" + " ".join(command_parts))
 
 def check_fit(fitter, store, targets):
     errfiles = glob.glob(joinpath(store, "*.err"))
@@ -93,7 +93,7 @@ def main():
     store = tempfile.mkdtemp(prefix="bumps-test-")
     model = joinpath(EXAMPLEDIR, "test_functions", "model.py")
     #model_args = [model, '"fk(rosenbrock, 3)"']
-    model_args = [model, 'sphere', '3']
+    model_args = [model, 'gauss', '3']
     seed = 1
     failed = run_fits(model_args, store, fitters=fitters, seed=seed)
     shutil.rmtree(store)
