@@ -135,6 +135,7 @@ __all__ = ["Dream", "run_dream"]
 
 import sys
 import time
+from ctypes import c_double
 
 import numpy as np
 
@@ -144,6 +145,8 @@ from .gelman import gelman
 from .crossover import AdaptiveCrossover, LogAdaptiveCrossover
 from .diffev import de_step
 from .bounds import make_bounds_handler
+from .compiled import dll
+from .util import rng
 
 # Everything should be available in state, but lets be lazy for now
 LAST_TIME = 0
@@ -227,6 +230,7 @@ class Dream(object):
 
 def run_dream(dream, abort_test=lambda: False):
 
+    if dll: dll.rand_init(rng.randint(1e9))
     # Step 1: Sample s points in the parameter space
     # [PAK] I moved this out of dream so that the user can use whatever
     # complicated sampling scheme they want.  Unfortunately, this means
@@ -275,6 +279,10 @@ def run_dream(dream, abort_test=lambda: False):
     next_goalseek = state.generation + dream.goalseek_interval \
         if dream.goalseek_optimizer else 1e100
 
+    if dll:
+        xtry = np.empty((n_chain, n_var), 'd')
+        step_alpha = np.empty(n_chain, 'd')
+        CR_used = np.empty(n_chain, 'i')
     #need_outliers_removed = True
     scale = 1.0
     #serial_time = parallel_time = 0.
@@ -288,15 +296,32 @@ def run_dream(dream, abort_test=lambda: False):
             # Define the current locations and associated posterior densities
             xold, logp_old = x, logp
             pop = state._draw_pop()
+            #print(pop)
+            #print("gen", gen, pop.shape)
 
             # Generate candidates for each sequence
-            xtry, step_alpha, used \
-                = de_step(n_chain, pop, dream.CR[gen],
-                          max_pairs=dream.DE_pairs,
-                          eps=dream.DE_eps,
-                          snooker_rate=dream.DE_snooker_rate,
-                          noise=dream.DE_noise,
-                          scale=scale)
+            if dll is None:
+                xtry, step_alpha, used \
+                    = de_step(n_chain, pop, dream.CR[gen],
+                              max_pairs=dream.DE_pairs,
+                              eps=dream.DE_eps,
+                              snooker_rate=dream.DE_snooker_rate,
+                              noise=dream.DE_noise,
+                              scale=scale)
+            else:
+                CR = np.ascontiguousarray(np.vstack((dream.CR.CR, dream.CR.weight)).T,'d')
+                pop = np.ascontiguousarray(pop)
+                dll.de_step(n_chain, n_var, len(CR),
+                            pop.ctypes, CR.ctypes,
+                            dream.DE_pairs,
+                            c_double(dream.DE_eps),
+                            c_double(dream.DE_snooker_rate),
+                            c_double(dream.DE_noise),
+                            c_double(scale),
+                            xtry.ctypes, step_alpha.ctypes, CR_used.ctypes)
+                used = CR_used != -1
+            #print("try", xtry)
+
 
             # PAK: Try a local optimizer every N generations
             if next_goalseek <= state.generation <= last_goalseek:

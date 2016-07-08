@@ -66,7 +66,7 @@ void _rand_init(randint_t seed)
     //user_key.v[1] = omp_get_thread_num();
     rng->key = r123_init(user_key);
     rng->counter = counter;
-//printf("%d initializing %p with key %ld and counter %ld\n", omp_get_thread_num(), rng, rng->key.v[0], rng->counter.v[0]);
+//printf("%d initializing %p with seed %llu and counter %llu\n", omp_get_thread_num(), rng, rng->key.v[0], rng->counter.v[0]);
     rng->have_normal = 0;
 }
 
@@ -207,7 +207,7 @@ population is selected from both the current generation and the
 ancestors.
 */
 void
-_perform_step(int qq, int Nchain, int Npop, int Nvar, int NCR,
+_perform_step(int qq, int Nchain, int Nvar, int NCR,
         double pop[], double CR[][2],
         int max_pairs, double eps,
         double snooker_rate, double de_rate, double noise, double scale,
@@ -218,7 +218,10 @@ _perform_step(int qq, int Nchain, int Npop, int Nvar, int NCR,
     int alg = (u < snooker_rate ? _SNOOKER : u < de_rate ? _DE : _DIRECT);
     double *xin = &pop[qq*Nvar];
     int k;
-
+//for (k=0; k < NCR; k++) printf("CR %d: %g %g\n", k, CR[k][0], CR[k][1]);
+//printf("pop in c: ");
+//for (k=0; k < Nvar; k++) printf("%g ", pop[qq*Nvar+k]);
+//printf("\n");
     switch (alg) {
     case _DE:  // Use DE with cross-over ratio
         {
@@ -237,7 +240,7 @@ _perform_step(int qq, int Nchain, int Npop, int Nvar, int NCR,
         // [PAK: same as F=Table_JumpRate[len(vars), k] in matlab version]
 
         // Select 2*k members at random different from the current member
-        rand_draw(2*num_pairs, Npop, qq, chains);
+        rand_draw(2*num_pairs, Nchain, qq, chains);
 
         // Select crossover ratio
         u = randu();
@@ -283,7 +286,7 @@ _perform_step(int qq, int Nchain, int Npop, int Nvar, int NCR,
         double num, denom, gamma_scale;
 
         // Select current and three others
-        rand_draw(3, Npop, qq, chains);
+        rand_draw(3, Nchain, qq, chains);
         double *z = &pop[chains[0]*Nvar];
         double *R1 = &pop[chains[1]*Nvar];
         double *R2 = &pop[chains[2]*Nvar];
@@ -317,7 +320,7 @@ _perform_step(int qq, int Nchain, int Npop, int Nvar, int NCR,
         {
         // Note that there is no F scaling, dimension selection or noise
         int p[2];
-        rand_draw(2, Npop, qq, chains);
+        rand_draw(2, Nchain, qq, chains);
         double *R1 = &pop[chains[0]*Nvar];
         double *R2 = &pop[chains[1]*Nvar];
         for (k=0; k < Nvar; k++) x_new[k] = R1[k] - R2[k];
@@ -328,6 +331,9 @@ _perform_step(int qq, int Nchain, int Npop, int Nvar, int NCR,
         }
     }
 
+//printf("%d -> ", alg);
+//for (k=0; k < Nvar; k++) printf("%g ", x_new[k]);
+//printf("\n");
 
     // Update x_old with delta_x and noise
     for (k=0; k < Nvar; k++) x_new[k] *= scale;
@@ -343,6 +349,9 @@ _perform_step(int qq, int Nchain, int Npop, int Nvar, int NCR,
 
     // relative noise
     for (k=0; k < Nvar; k++) x_new[k] += xin[k]*(1.+scale*noise*randn());
+//printf("%d -> ", alg);
+//for (k=0; k < Nvar; k++) printf("%g ", x_new[k]);
+//printf("\n");
 
     // no noise
     //for (k=0; k < Nvar; k++) x_new[k] += xin[k];
@@ -350,7 +359,7 @@ _perform_step(int qq, int Nchain, int Npop, int Nvar, int NCR,
 }
 
 void
-de_step(int Nchain, int Npop, int Nvar, int NCR,
+de_step(int Nchain, int Nvar, int NCR,
         double pop[], double CR[][2],
         int max_pairs, double eps,
         double snooker_rate, double noise, double scale,
@@ -367,21 +376,21 @@ de_step(int Nchain, int Npop, int Nvar, int NCR,
     #pragma omp parallel for
     #endif
     for (qq = 0; qq < Nchain; qq++) {
-        _perform_step(qq, Nchain, Npop, Nvar, NCR, pop, CR,
+        _perform_step(qq, Nchain, Nvar, NCR, pop, CR,
                       max_pairs, eps, snooker_rate, de_rate,
-                      noise, scale, &x_new[qq], step_alpha, CR_used);
+                      noise, scale, &x_new[qq*Nvar], step_alpha, CR_used);
     }
 }
 
 
-void bounds_reflect(int Npop, int Nvar, double pop[], double low[], double high[])
+void bounds_reflect(int Nchain, int Nvar, double pop[], double low[], double high[])
 {
     int k, p, idx;
 
     #ifdef _OPENMP
     #pragma omp parallel for private(idx)
     #endif
-    for (p=0; p < Npop; p++) {
+    for (p=0; p < Nchain; p++) {
         for (k=0; k < Nvar; k++) {
             idx = p*Nvar+k;
             if (pop[idx] < low[k]) {
@@ -397,14 +406,14 @@ void bounds_reflect(int Npop, int Nvar, double pop[], double low[], double high[
 }
 
 
-void bounds_clip(int Npop, int Nvar, double pop[], double low[], double high[])
+void bounds_clip(int Nchain, int Nvar, double pop[], double low[], double high[])
 {
     int k, p, idx;
 
     #ifdef _OPENMP
     #pragma omp parallel for private(idx)
     #endif
-    for (p=0; p < Npop; p++) {
+    for (p=0; p < Nchain; p++) {
         for (k=0; k < Nvar; k++) {
             idx = p*Nvar+k;
             if (pop[idx] < low[k]) {
@@ -417,14 +426,14 @@ void bounds_clip(int Npop, int Nvar, double pop[], double low[], double high[])
 }
 
 
-void bounds_fold(int Npop, int Nvar, double pop[], double low[], double high[])
+void bounds_fold(int Nchain, int Nvar, double pop[], double low[], double high[])
 {
     int k, p, idx;
 
     #ifdef _OPENMP
     #pragma omp parallel for private(idx)
     #endif
-    for (p=0; p < Npop; p++) {
+    for (p=0; p < Nchain; p++) {
         for (k=0; k < Nvar; k++) {
             idx = p*Nvar+k;
             if (pop[idx] < low[k]) {
@@ -448,14 +457,14 @@ void bounds_fold(int Npop, int Nvar, double pop[], double low[], double high[])
 }
 
 
-void bounds_random(int Npop, int Nvar, double pop[], double low[], double high[])
+void bounds_random(int Nchain, int Nvar, double pop[], double low[], double high[])
 {
     int k, p, idx;
 
     #ifdef _OPENMP
     #pragma omp parallel for private(idx)
     #endif
-    for (p=0; p < Npop; p++) {
+    for (p=0; p < Nchain; p++) {
         for (k=0; k < Nvar; k++) {
             idx = p*Nvar+k;
             if (pop[idx] < low[k]) {
@@ -476,6 +485,6 @@ void bounds_random(int Npop, int Nvar, double pop[], double low[], double high[]
 }
 
 
-void bounds_ignore(int Npop, int Nvar, double pop[], double low[], double high[])
+void bounds_ignore(int Nchain, int Nvar, double pop[], double low[], double high[])
 {
 }
