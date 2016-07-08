@@ -14,7 +14,7 @@ __all__ = ["make_bounds_handler", "ReflectBounds", "ClipBounds",
 
 from numpy import inf, isinf, asarray
 from . import util
-
+from .compiled import dll
 
 def make_bounds_handler(bounds, style='reflect'):
     """
@@ -62,8 +62,12 @@ class Bounds(object):
         raise NotImplementedError
 
     def __call__(self, pop):
-        for x in pop:
-            self.apply(x)
+        if self.c_interface is not None:
+            self.c_interface(len(pop), len(self.low), pop.ctypes,
+                             low.ctypes, high.ctypes)
+        else:
+            for x in pop:
+                self.apply(x)
         return pop
 
 
@@ -71,6 +75,7 @@ class ReflectBounds(Bounds):
     """
     Reflect parameter values into bounded region
     """
+    c_interface = dll.bounds_reflect if dll else None
     def __init__(self, low, high):
         self.low, self.high = [asarray(v, 'd') for v in (low, high)]
 
@@ -98,6 +103,7 @@ class ClipBounds(Bounds):
     """
     Clip values to bounded region
     """
+    c_interface = dll.bounds_clip if dll else None
     def __init__(self, low, high):
         self.low, self.high = [asarray(v, 'd') for v in (low, high)]
 
@@ -115,6 +121,7 @@ class FoldBounds(Bounds):
     """
     Wrap values into the bounded region
     """
+    c_interface = dll.bounds_fold if dll else None
     def __init__(self, low, high):
         self.low, self.high = [asarray(v, 'd') for v in (low, high)]
 
@@ -144,6 +151,7 @@ class RandomBounds(Bounds):
     """
     Randomize values into the bounded region
     """
+    c_interface = dll.bounds_random if dll else None
     def __init__(self, low, high):
         self.low, self.high = [asarray(v, 'd') for v in (low, high)]
 
@@ -167,6 +175,7 @@ class IgnoreBounds(Bounds):
     """
     Leave values outside the bounded region
     """
+    c_interface = dll.bounds_ignore if dll else None
     def __init__(self, low=None, high=None):
         self.low, self.high = [asarray(v, 'd') for v in (low, high)]
 
