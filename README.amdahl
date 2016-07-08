@@ -1,8 +1,18 @@
 To use the compiled de stepper and bounds checks use:
 
+    (cd bumps/dream && cc compiled.c -I ../../Random123/include/ -O2 -fopenmp -shared -lm -o _compiled.so -fPIC)
+
+Note: OS/X clang doesn't support OpenMP:
+
     (cd bumps/dream && cc compiled.c -I ../../Random123/include/ -O2 -shared -lm -o _compiled.so -fPIC)
 
 This only works when _compiled.so is in the bumps/dream directory.  If running
 from a pip installed version, you will need to compile this by hand separately
 and copy it into the distribution tree.  There is no provision for using this
 in a frozen application.
+
+Run with no more than 64 OMP threads.  If the number of processors is more than 64, then use:
+
+    OMP_MAX_THREADS=64 ./run.py ...
+
+I don't know how OMP_MAX_THREADS behaves if it is larger than the number of processors.
