@@ -282,35 +282,41 @@ def run_dream(dream, abort_test=lambda: False):
     if dll:
         xtry = np.empty((n_chain, n_var), 'd')
         step_alpha = np.empty(n_chain, 'd')
-        CR_used = np.empty(n_chain, 'i')
+        CR_used = np.empty(n_chain, 'd')
     #need_outliers_removed = True
     scale = 1.0
     #serial_time = parallel_time = 0.
     #last_time = time.time()
+
+    # Make sure that the pop we are drawing doesn't need to be copied before
+    # sending it to the compiled C code.
+    pop = state._draw_pop()
+    assert pop.ctypes.data == np.ascontiguousarray(pop).ctypes.data
+
     while state.draws < dream.draws + dream.burn:
 
         # Age the population using differential evolution
-        dream.CR.reset(Nsteps=dream.DE_steps, Npop=n_chain)
+        dream.CR.reset()
+        CR = np.ascontiguousarray(np.vstack((dream.CR.CR, dream.CR.weight)).T,'d')
         for gen in range(dream.DE_steps):
 
             # Define the current locations and associated posterior densities
             xold, logp_old = x, logp
             pop = state._draw_pop()
+            #print(pop.ctypes.data, np.ascontiguousarray(pop).ctypes.data)
             #print(pop)
             #print("gen", gen, pop.shape)
 
             # Generate candidates for each sequence
             if dll is None:
-                xtry, step_alpha, used \
-                    = de_step(n_chain, pop, dream.CR[gen],
+                xtry, step_alpha, CR_used \
+                    = de_step(n_chain, pop, CR,
                               max_pairs=dream.DE_pairs,
                               eps=dream.DE_eps,
                               snooker_rate=dream.DE_snooker_rate,
                               noise=dream.DE_noise,
                               scale=scale)
             else:
-                CR = np.ascontiguousarray(np.vstack((dream.CR.CR, dream.CR.weight)).T,'d')
-                pop = np.ascontiguousarray(pop)
                 dll.de_step(n_chain, n_var, len(CR),
                             pop.ctypes, CR.ctypes,
                             dream.DE_pairs,
@@ -319,7 +325,6 @@ def run_dream(dream, abort_test=lambda: False):
                             c_double(dream.DE_noise),
                             c_double(scale),
                             xtry.ctypes, step_alpha.ctypes, CR_used.ctypes)
-                used = CR_used != -1
             #print("try", xtry)
 
 
@@ -390,7 +395,7 @@ def run_dream(dream, abort_test=lambda: False):
 
             # Keep track of which CR ratios were successful
             if state.draws <= dream.burn:
-                dream.CR.update(gen, xold, x, used)
+                dream.CR.update(xold, x, CR_used)
             
             if abort_test():
                 break

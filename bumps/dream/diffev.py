@@ -35,7 +35,8 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
     de_rate = 0.8 * (1-snooker_rate)
     alg = select([u < snooker_rate, u < snooker_rate+de_rate],
                  [_SNOOKER, _DE], default=_DIRECT)
-    use_de_step = (alg == _DE)
+    # [PAK] CR selection moved from crossover into DE step
+    CR_used = rng.choice(CR[:,0], size=Nchain, replace=True, p=CR[:,1])
 
     # Chains evolve using information from other chains to create offspring
     for qq in range(Nchain):
@@ -54,7 +55,7 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
 
             # Select the dims to update based on the crossover ratio, making
             # sure at least one dim is selected
-            vars = where(rng.rand(Nvar) > CR[qq])[0]
+            vars = where(rng.rand(Nvar) > CR_used[qq])
             if len(vars) == 0:
                 vars = [rng.randint(Nvar)]
 
@@ -95,6 +96,7 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
 
             # Scale Metropolis probability by (||xi* - z||/||xi - z||)^(d-1)
             step_alpha[qq] = (norm(delta_x[qq]+step)/norm(step))**((Nvar-1)/2)
+            CR_used[qq] = 0.0
 
         elif alg[qq] == _DIRECT:  # Use one pair and all dimensions
 
@@ -102,6 +104,7 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
             perm = draw(2, Npop-1)
             perm[perm >= qq] += 1
             delta_x[qq, :] = pop[perm[0], :] - pop[perm[1], :]
+            CR_used[qq] = 0.0
 
         else:
             raise RuntimeError("Select failed...should never happen")
@@ -138,7 +141,7 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
     # no noise
     #x_new = pop[:Nchain] + delta_x
 
-    return x_new, step_alpha, use_de_step
+    return x_new, step_alpha, CR_used
 
 
 def _check():

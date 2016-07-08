@@ -211,7 +211,7 @@ _perform_step(int qq, int Nchain, int Nvar, int NCR,
         double pop[], double CR[][2],
         int max_pairs, double eps,
         double snooker_rate, double de_rate, double noise, double scale,
-        double x_new[], double step_alpha[], int CR_used[])
+        double x_new[], double step_alpha[], double CR_used[])
 {
     randint_t chains[2*MAX_CHAINS];
     double u = randu();
@@ -249,8 +249,8 @@ _perform_step(int qq, int Nchain, int Nvar, int NCR,
             CR_cdf += CR[k][1];
             if (u <= CR_cdf) break;
         }
-        CR_used[qq] = k;
         crossover_ratio = CR[k][0];
+        CR_used[qq] = crossover_ratio;
 
         // Select the dims to update based on the crossover ratio, making
         // sure at least one dim is selected
@@ -312,7 +312,7 @@ _perform_step(int qq, int Nchain, int Nvar, int NCR,
             num += (xin[k]+x_new[k]-z[k])*(xin[k]+x_new[k]-z[k]);
         step_alpha[qq] = pow(num/denom, (Nvar-1)/2);
 
-        CR_used[qq] = -1;
+        CR_used[qq] = 0.;
         break;
         }
 
@@ -325,7 +325,7 @@ _perform_step(int qq, int Nchain, int Nvar, int NCR,
         double *R2 = &pop[chains[1]*Nvar];
         for (k=0; k < Nvar; k++) x_new[k] = R1[k] - R2[k];
         step_alpha[qq] = 1.;
-        CR_used[qq] = -1;
+        CR_used[qq] = 0.;
 
         break;
         }
@@ -363,7 +363,7 @@ de_step(int Nchain, int Nvar, int NCR,
         double pop[], double CR[][2],
         int max_pairs, double eps,
         double snooker_rate, double noise, double scale,
-        double x_new[], double step_alpha[], int CR_used[])
+        double x_new[], double step_alpha[], double CR_used[])
 {
     int qq;
     double de_rate = snooker_rate + 0.8 * (1-snooker_rate);
