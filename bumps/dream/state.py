@@ -80,6 +80,7 @@ import numpy as np
 from numpy import empty, sum, asarray, inf, argmax, hstack, dstack
 from numpy import savetxt, reshape
 
+from .convergence import burn_point
 from .outliers import identify_outliers
 from .util import draw, rng
 
@@ -392,8 +393,13 @@ class MCMCDraw(object):
     def save(self, filename):
         save_state(self, filename)
 
-    def show(self, portion=1.0, figfile=None):
+    def show(self, portion=None, figfile=None):
         from .views import plot_all
+        
+        if portion is None:
+            burn_pt = burn_point(self)
+            portion = 1 - (burn_pt/self.Ngen) if burn_pt > 0 else 1.0
+        
         plot_all(self, portion=portion, figfile=figfile)
 
     def _last_gen(self):

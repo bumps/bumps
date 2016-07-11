@@ -124,6 +124,7 @@ FIT_FIELDS = dict(
     Tmin=("Min temperature", float),
     Tmax=("Max temperature", float),
     radius=("Simplex radius", float),
+    trim = ("Burn in trimming", bool)
     )
 
 # Make sure all settings are parseable
@@ -254,6 +255,7 @@ class BumpsOpts(ParseOpts):
     VALUES = set(("plot", "store", "resume", "entropy", "fit", "noise", "seed",
                   "pars", "resynth", "transport", "notify", "queue", "time",
                   "checkpoint", "m", "c", "p", "parallel", "view",
+                  "trim",
                  ))
     # Add in parameters from the fitters
     VALUES |= set(FIT_FIELDS.keys())
@@ -291,6 +293,8 @@ Options:
         initial parameter values; fit results are saved as path/<modelname>.par
     --plot=log      [%(plotter)s]
         type of plot to display
+    --trim
+        trim any remaining burn before displaying plots [dream only]
     --simulate
         simulate a dataset using the initial problem parameters
     --simrandom

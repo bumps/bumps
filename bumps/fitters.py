@@ -755,7 +755,7 @@ class DreamFit(FitBase):
     name = "DREAM"
     id = "dream"
     settings = [('samples', int(1e4)), ('burn', 100), ('pop', 10),
-                ('init', 'eps'), ('thin', 1),
+                ('init', 'eps'), ('thin', 1), ('trim', 2),
                 ('steps', 0),  # deprecated: use --samples instead
                ]
 
@@ -768,7 +768,7 @@ class DreamFit(FitBase):
         from .dream import Dream
         if abort_test is None:
             abort_test = lambda: False
-        options = _fill_defaults(options, self.settings)
+        self.options = _fill_defaults(options, self.settings)
 
         if mapper:
             self.dream_model.mapper = mapper
@@ -862,7 +862,8 @@ class DreamFit(FitBase):
         self.state.save(output_path)
 
     def plot(self, output_path):
-        self.state.show(figfile=output_path)
+        portion = None if self.options['trim'] else 1.0
+        self.state.show(figfile=output_path, portion=portion)
         self.error_plot(figfile=output_path)
 
     def show(self):
