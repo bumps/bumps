@@ -755,7 +755,7 @@ class DreamFit(FitBase):
     name = "DREAM"
     id = "dream"
     settings = [('samples', int(1e4)), ('burn', 100), ('pop', 10),
-                ('init', 'eps'), ('thin', 1), ('trim', 2),
+                ('init', 'eps'), ('thin', 1), ('trim', False),
                 ('steps', 0),  # deprecated: use --samples instead
                ]
 

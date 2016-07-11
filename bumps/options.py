@@ -293,7 +293,7 @@ Options:
         initial parameter values; fit results are saved as path/<modelname>.par
     --plot=log      [%(plotter)s]
         type of plot to display
-    --trim
+    --trim=true
         trim any remaining burn before displaying plots [dream only]
     --simulate
         simulate a dataset using the initial problem parameters

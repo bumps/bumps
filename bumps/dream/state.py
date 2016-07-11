@@ -393,7 +393,7 @@ class MCMCDraw(object):
     def save(self, filename):
         save_state(self, filename)
 
-    def show(self, portion=None, figfile=None):
+    def show(self, portion=1.0, figfile=None):
         from .views import plot_all
         
         if portion is None:
