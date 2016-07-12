@@ -478,7 +478,7 @@ def main():
     if opts.mpi:
         MPIMapper.start_worker(problem)
         mapper = MPIMapper
-    elif opts.parallel or opts.worker:
+    elif opts.parallel != "" or opts.worker:
         if opts.transport == 'amqp':
             mapper = AMQPMapper
         elif opts.transport == 'mp':
@@ -547,7 +547,8 @@ def main():
                                   StepMonitor(problem, fid, fields=['step', 'value'])]
 
         #import time; t0=time.clock()
-        fitdriver.mapper = mapper.start_mapper(problem, opts.args)
+        cpus = int(opts.parallel) if opts.parallel != "" else 0
+        fitdriver.mapper = mapper.start_mapper(problem, opts.args, cpus=cpus)
         best, fbest = fitdriver.fit(resume=resume_path)
         # print("time=%g"%(time.clock()-t0),file=sys.__stdout__)
         save_best(fitdriver, problem, best)

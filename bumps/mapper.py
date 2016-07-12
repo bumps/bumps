@@ -49,7 +49,7 @@ class SerialMapper(object):
         pass
 
     @staticmethod
-    def start_mapper(problem, modelargs):
+    def start_mapper(problem, modelargs, cpus=0):
         # Note: map is n iterator in python 3.x
         return lambda points: list(map(problem.nllf, points))
 
@@ -83,9 +83,9 @@ class MPMapper(object):
         pass
 
     @staticmethod
-    def start_mapper(problem, modelargs, cpus=None):
+    def start_mapper(problem, modelargs, cpus=0):
         import multiprocessing
-        if cpus is None:
+        if cpus==0:
             cpus = multiprocessing.cpu_count()
         if MPMapper.pool is not None:
             MPMapper.pool.terminate()
@@ -165,7 +165,7 @@ class MPIMapper(object):
         sys.exit(0)
 
     @staticmethod
-    def start_mapper(problem, modelargs):
+    def start_mapper(problem, modelargs, cpus=0):
         # Slave started from start_worker, so it never gets here
         # Slave expects _MPI_set_problem followed by a series
         # of map requests
@@ -201,7 +201,7 @@ class AMQPMapper(object):
         #print >>sys.stderr,"worker ended"; sys.stdout.flush()
 
     @staticmethod
-    def start_mapper(problem, modelargs):
+    def start_mapper(problem, modelargs, cpus=0):
         import sys
         import multiprocessing
         import subprocess

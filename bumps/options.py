@@ -232,7 +232,7 @@ class BumpsOpts(ParseOpts):
     MINARGS = 1
     FLAGS = set(("preview", "chisq", "profile", "time_model",
                  "simulate", "simrandom", "shake", "worker",
-                 "batch", "noshow", "overwrite", "parallel", "stepmon",
+                 "batch", "noshow", "overwrite", "stepmon",
                  "err", "cov", "entropy",
                  "remote", "staj", "edit", "mpi", "keep_best",
                  # passed in when app is a frozen image
@@ -244,7 +244,7 @@ class BumpsOpts(ParseOpts):
                  ))
     VALUES = set(("plot", "store", "resume", "fit", "noise", "seed", "pars",
                   "resynth", "transport", "notify", "queue", "time",
-                  "m", "c", "p",
+                  "m", "c", "p", "parallel",
                   ))
     # Add in parameters from the fitters
     VALUES |= set(FIT_FIELDS.keys())
@@ -256,6 +256,7 @@ class BumpsOpts(ParseOpts):
     starts = "1"
     seed = ""
     time = "inf"
+    parallel = ""
     PLOTTERS = "linear", "log", "residuals"
     USAGE = """\
 Usage: bumps [options] modelfile [modelargs]
@@ -300,8 +301,8 @@ Options:
         if store already exists, replace it
     --resume=path    [dream]
         resume a fit from previous stored state
-    --parallel
-        run fit using multiprocessing for parallelism
+    --parallel=n
+        run fit using multiprocessing for parallelism; use --parallel=0 for all cpus
     --mpi
         run fit using MPI for parallelism (use command "mpirun -n cpus ...")
     --batch
