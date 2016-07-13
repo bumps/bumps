@@ -7,7 +7,7 @@ __all__ = ["burn_point"]
 import numpy as np
 
 
-def burn_point(state, method='window', n=5, *args):
+def burn_point(state, method='window', n=5, **kwargs):
     """
     attempts to find a good point to end burn in. Takes a median
     of several runs of a diagnostic
@@ -20,7 +20,7 @@ def burn_point(state, method='window', n=5, *args):
     """
     if method == 'window':
         _, logp = state.logp()
-        trials = [_ks_sliding_window(logp, *args) for _ in range(n)]
+        trials = [_ks_sliding_window(logp, **kwargs) for _ in range(n)]
     else:
         raise ValueError("Unknown convergence test "+method)
         
@@ -31,43 +31,46 @@ def burn_point(state, method='window', n=5, *args):
 
 
 """
-logp is the list of logp values for each chain
-with shape chain length x n chains
+detects convergence by comparing the distribution of logp values in a small
+window at the start of the chains and the values in a section at the end of
+the chain using a kolmogorov-smirnov test.
 
-sample is the proportion of total samples in the window
-to be selected from
+*logp* list of logp values for each chain with shape (len_chain x n_chains)
+*sample* is the proportion of total samples in the window to be selected from
+*alpha* is the significance level for the test
+*window* is the size of the window
+*reserved* portion of chain to reserve at the end
 
-alpha is the significance level of the test
-
-window is the size of the window
+returns an index at which the chain can be considered converged, or -1 if
+no such index found
 """
 
-
 # effects of window size:
-# too big - falsly end burn if only part of window is converged
+# too big - falsly end burn when the start of the window is still converging
 # too small - take a long time, start to see effects of autocorrelation
 
-
 # TODO is cramer von mises better than a KS test?
-# TODO modify so that the reserved end portion can be smaller that last 50%
 
-def _ks_sliding_window(logp, sample=0.1, alpha=0.01, window=100):
+def _ks_sliding_window(logp, sample=0.1, alpha=0.01, window=100, reserved=0.5):
     from scipy.stats import ks_2samp
     
     len_chain, n_chain = logp.shape
     n_draw = int(sample*window*n_chain)
     
-    idx_half = len_chain // 2
+    idx_res = int(reserved*len_chain)
     idx_burn = 0
     
-    while idx_burn <= idx_half:
+    # check if we have enough samples
+    assert window < idx_res
+    
+    while idx_burn <= idx_res:
         f_samp = np.random.choice(logp[idx_burn:idx_burn+window].flatten(), n_draw)
-        r_samp = np.random.choice(logp[idx_half:].flatten(), n_draw)
+        r_samp = np.random.choice(logp[idx_res:].flatten(), n_draw)
         
         p_val = ks_2samp(f_samp, r_samp)[1]
-        print idx_burn, p_val
+
         if p_val > alpha: break
         idx_burn += window
     
-    return idx_burn + window if idx_burn <= idx_half else -1
+    return idx_burn + window if idx_burn <= idx_res else -1
 
