@@ -64,8 +64,9 @@ def _ks_sliding_window(logp, sample=0.1, alpha=0.01, window=100, reserved=0.5):
     assert window < idx_res
     
     while idx_burn <= idx_res:
-        f_samp = np.random.choice(logp[idx_burn:idx_burn+window].flatten(), n_draw)
-        r_samp = np.random.choice(logp[idx_res:].flatten(), n_draw)
+        f_samp = np.random.choice(logp[idx_burn:idx_burn+window].flatten(),
+                                  n_draw, replace=False)
+        r_samp = np.random.choice(logp[idx_res:].flatten(), n_draw, replace=False)
         
         p_val = ks_2samp(f_samp, r_samp)[1]
 
