@@ -41,6 +41,14 @@ def _var_stats_one(draw, var):
     #credible_interval = shortest_credible_interval
     p95, p68, p0 = credible_intervals(x=values, weights=weights,
                                       ci=[0.95, ONE_SIGMA, 0.0])
+
+    ## reporting uncertainty on credible intervals?
+    ## might be nice to pair sd on credible intervals
+    ## with the actual CIs, rather than use a separate param
+    #from .digits import credible_inderval_sd
+    #p95sd = credible_interval_sd(values, 0.95)
+    #p68sd = credible_interval_sd(values, ONE_SIGMA)
+
     #open('/tmp/out','a').write(
     #     "in vstats: p68=%s, p95=%s, p0=%s, value range=%s\n"
     #     % (p68,p95,p0,(min(values),max(values))))
@@ -51,6 +59,7 @@ def _var_stats_one(draw, var):
     vstats = VarStats(label=draw.labels[var], index=var+1,
                       p95=p95, p95_range=(p95[0], p95[1]+integer*0.9999999999),
                       p68=p68, p68_range=(p68[0], p68[1]+integer*0.9999999999),
+                      # p95sd=p95sd, p68sd=p68sd,
                       median=p0[0], mean=mean, std=std, best=best,
                       integer=integer)
 
