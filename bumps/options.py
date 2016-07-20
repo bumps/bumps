@@ -244,7 +244,7 @@ class BumpsOpts(ParseOpts):
                  ))
     VALUES = set(("plot", "store", "resume", "fit", "noise", "seed", "pars",
                   "resynth", "transport", "notify", "queue", "time",
-                  "m", "c", "p",
+                  "m", "c", "p", "view",
                   ))
     # Add in parameters from the fitters
     VALUES |= set(FIT_FIELDS.keys())
@@ -256,6 +256,7 @@ class BumpsOpts(ParseOpts):
     starts = "1"
     seed = ""
     time = "inf"
+    view = None
     PLOTTERS = "linear", "log", "residuals"
     USAGE = """\
 Usage: bumps [options] modelfile [modelargs]
@@ -293,6 +294,9 @@ Options:
         output staj file when done
     --edit
         start the gui
+    --view=linear|log
+        one of the predefined problem views; reflectometry also has fresnel,
+        logfresnel, q4 and residuals
 
     --store=path
         output directory for plots and models
