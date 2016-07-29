@@ -124,7 +124,7 @@ FIT_FIELDS = dict(
     Tmin=("Min temperature", float),
     Tmax=("Max temperature", float),
     radius=("Simplex radius", float),
-    trim = ("Burn in trimming", bool)
+    trim = ("Burn in trimming", yesno)
     )
 
 # Make sure all settings are parseable
