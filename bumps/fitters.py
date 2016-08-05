@@ -933,10 +933,10 @@ class FitDriver(object):
         if hasattr(self.problem, 'load'):
             self.problem.load(input_path)
 
-    def plot(self, output_path):
+    def plot(self, output_path, view=None):
         # print "calling fitter.plot"
         if hasattr(self.problem, 'plot'):
-            self.problem.plot(figfile=output_path)
+            self.problem.plot(figfile=output_path, view=view)
         if hasattr(self.fitter, 'plot'):
             self.fitter.plot(output_path=output_path)
 
