@@ -130,7 +130,7 @@ def save_best(fitdriver, problem, best, view=None):
     fitdriver.save(problem.output_path)
     with util.redirect_console(problem.output_path + ".err"):
         fitdriver.show()
-        fitdriver.plot(problem.output_path, view=view)
+        fitdriver.plot(output_path=problem.output_path, view=view)
     fitdriver.show()
     # print "plotting"
 
