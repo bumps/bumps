@@ -52,7 +52,7 @@ Problem Setup
 Set initial parameter values from a previous fit.  The par file is a list
 of lines with parameter name followed by parameter value on each line.
 The parameters must appear with the same name and in the same order as
-the fitted parameters in the model.  ``--preview`` will show the
+the fitted parameters in the model.  :ref:`option-preview` will show the
 model parameters.
 
 .. _option-shake:
@@ -61,7 +61,7 @@ model parameters.
 -----------
 
 Set random initial values for the parameters in the model.  Note that
-shake happens after ``--simulate`` so that you can simulate a random
+shake happens after :ref:`option-simulate` so that you can simulate a random
 model, shake it, then try to recover its initial values.
 
 .. _option-simulate:
@@ -79,8 +79,8 @@ parameters of interest.
 ``--simrandom``
 ---------------
 
-Simulate a dataset using random initial parameters.  Because ``--shake``
-is applied after ``--simulate``, we need a separate way to shake the
+Simulate a dataset using random initial parameters.  Because :ref:`option-shake`
+is applied after :ref:`option-simulate`, we need a separate way to shake the
 parameters before simulating the model.
 
 .. _option-noise:
@@ -121,9 +121,26 @@ meaning of iterations will differ from optimizer to optimizer.  In the case
 of population based optimizers such as :ref:`fit-de`, each step is an update to
 every member of the population.  For local descent optimizers such as
 :ref:`fit-amoeba` each step is an iteration of the algorithm.
-:ref:`fit-dream` uses steps plus ``--burn`` for the total number
+:ref:`fit-dream` uses steps plus :ref:`option-burn` for the total number
 of iterations.
 
+
+.. _option-samples:
+
+``--samples``
+-------------
+
+*Samples* sets the number of function evaluations.  This is an alternative
+for setting the number of iterations of the algorithm, used when
+:ref:`option-steps` is zero. Population optimizers perform :ref:`option-pop`
+times the number of parameters in the fit for each step of the operation,
+so given the desired number of samples, you can control the number of steps.
+The number of samples is particularly convenient for :ref:`fit-dream`
+(the only optimizer for which it is implemented at the moment), where 100,000
+samples are needed to estimate the 1-sigma interval to 2 digits of accuracy
+(assuming an approximately gaussian distribution), and 1,000,000 samples are
+needed for the 95% confidence interval.  Like :ref:`option-steps`, the total
+evaluations does not include any :ref:`option-burn` iterations.
 
 .. _option-ftol:
 
@@ -155,7 +172,7 @@ maximum difference between highest and lowest parameter in the population.
 
 .. _option-time:
 
-time
+``--time``
 ----------
 
 *Max time* is the maximum running time of the optimizer.  This forces
@@ -231,7 +248,7 @@ to set the initial population.  The options are as follows:
      *rand* (uniform random), in which the points are selected at random
      within the bounds of the parameters
 
-:ref:`fit-amoeba` uses ``--radius`` to initialize its simplex.
+:ref:`fit-amoeba` uses :ref:`option-radius` to initialize its simplex.
 :ref:`fit-de` uses a random number from the prior distribution for the
 parameter, if any.
 
@@ -390,7 +407,7 @@ This allows you to set up a sequence of runs in a shell script where the
 first run completes before the next run starts.  Batch is also useful for
 cluster computing where the cluster nodes do not have access to the outside
 network and can't display an interactive window.  Batch is automatic
-when running with ``--mpi``.
+when running with :ref:`option-mpi`.
 
 .. _option-stepmon:
 
@@ -519,8 +536,8 @@ The options are:
 ``--timer``
 -----------
 
-Run the model ``--steps`` times and find the average run time per step.
-If ``--parallel`` is used, then the models will be run in parallel.
+Run the model :ref:`option-steps` times and find the average run time per step.
+If :ref:`option-parallel` is used, then the models will be run in parallel.
 
 
 .. _option-profiler:
@@ -528,7 +545,7 @@ If ``--parallel`` is used, then the models will be run in parallel.
 ``--profiler``
 --------------
 
-Run the model ``--steps`` times using the python profiler.  This can
+Run the model :ref:`option-steps` times using the python profiler.  This can
 be useful for identifying slow parts of your model definition, or
 alternatively, finding out that the model runtime is smaller than the
 Bumps overhead.  Use a larger value of steps for better statistics.
