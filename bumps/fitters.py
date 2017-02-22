@@ -829,11 +829,11 @@ class FitDriver(object):
         if starts > 1:
             fitter = MultiStart(fitter)
         t0 = time.clock()
+        self.fitter = fitter
         x, fx = fitter.solve(monitors=self.monitors,
                              abort_test=self.abort_test,
                              mapper=self.mapper,
                              **self.options)
-        self.fitter = fitter
         self.time = time.clock() - t0
         self.result = x, fx
         if x is not None:
