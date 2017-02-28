@@ -99,17 +99,17 @@ def load_model(path, model_options=None):
     return problem
 
 
-def preview(problem):
+def preview(problem, view=None):
     """
     Show the problem plots and parameters.
     """
     import pylab
     problem.show()
-    problem.plot()
+    problem.plot(view=view)
     pylab.show()
 
 
-def save_best(fitdriver, problem, best):
+def save_best(fitdriver, problem, best, view=None):
     """
     Save the fit data, including parameter values, uncertainties and plots.
 
@@ -130,7 +130,7 @@ def save_best(fitdriver, problem, best):
     fitdriver.save(problem.output_path)
     with util.redirect_console(problem.output_path + ".err"):
         fitdriver.show()
-        fitdriver.plot(problem.output_path)
+        fitdriver.plot(output_path=problem.output_path, view=view)
     fitdriver.show()
     # print "plotting"
 
@@ -517,7 +517,7 @@ def main():
     elif opts.preview:
         if opts.cov:
             print(problem.cov())
-        preview(problem)
+        preview(problem, view=opts.view)
     elif opts.resynth > 0:
         resynth(fitdriver, problem, mapper, opts)
 
@@ -551,7 +551,7 @@ def main():
         fitdriver.mapper = mapper.start_mapper(problem, opts.args, cpus=cpus)
         best, fbest = fitdriver.fit(resume=resume_path)
         # print("time=%g"%(time.clock()-t0),file=sys.__stdout__)
-        save_best(fitdriver, problem, best)
+        save_best(fitdriver, problem, best, view=opts.view)
         if opts.err or opts.cov:
             fitdriver.show_err()
         if opts.cov:

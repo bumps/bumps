@@ -363,7 +363,9 @@ class PolynomialModel(object):
 
     def plot(self, ci=1, pi=0):
         import pylab
-        x = np.linspace(np.min(self.x), np.max(self.x), 200)
+        min_x, max_x = np.min(self.x), np.max(self.x)
+        padding = (max_x - min_x)*0.1
+        x = np.linspace(min_x-padding, max_x+padding, 200)
         y = self.__call__(x)
         pylab.errorbar(self.x, self.y, self.dy, fmt='b.')
         pylab.plot(x, y, 'b-', hold=True)
@@ -408,9 +410,9 @@ def demo():
 
 def demo2():
     import pylab
-    x = [1,2,3]
-    y = [10, 8, 6]
-    dy = [1, 3, 1]
+    x = [1, 2, 3, 4, 5]
+    y = [10.2, 7.9, 6.9, 4.4, 1.8]
+    dy = [1, 3, 1, 0.2, 1.5]
     poly = wpolyfit(x,y,dy=dy, degree=1)
     poly.plot()
     pylab.show()
@@ -447,6 +449,6 @@ def test():
     assert py == poly(px), "direct call to poly function fails"
 
 if __name__ == "__main__":
-#    test()
-#    demo()
+    #test()
+    #demo()
     demo2()

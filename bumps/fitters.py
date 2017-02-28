@@ -829,11 +829,11 @@ class FitDriver(object):
         if starts > 1:
             fitter = MultiStart(fitter)
         t0 = time.clock()
+        self.fitter = fitter
         x, fx = fitter.solve(monitors=self.monitors,
                              abort_test=self.abort_test,
                              mapper=self.mapper,
                              **self.options)
-        self.fitter = fitter
         self.time = time.clock() - t0
         self.result = x, fx
         if x is not None:
@@ -933,10 +933,10 @@ class FitDriver(object):
         if hasattr(self.problem, 'load'):
             self.problem.load(input_path)
 
-    def plot(self, output_path):
+    def plot(self, output_path, view=None):
         # print "calling fitter.plot"
         if hasattr(self.problem, 'plot'):
-            self.problem.plot(figfile=output_path)
+            self.problem.plot(figfile=output_path, view=view)
         if hasattr(self.fitter, 'plot'):
             self.fitter.plot(output_path=output_path)
 

@@ -14,7 +14,7 @@ __all__ = ['Fitness', 'FitProblem', 'load_problem',
 import sys
 
 import numpy as np
-from numpy import inf, isnan
+from numpy import inf, isnan, NaN
 
 from . import parameter, bounds as mbounds
 from .formatnum import format_uncertainty
@@ -343,19 +343,45 @@ class BaseFitProblem(object):
         return np.sum(self.residuals() ** 2) / self.dof
         # return 2*self.nllf()/self.dof
 
+    def chisq_str(self):
+        """
+        Return a string representing the chisq equivalent of the nllf.
+
+        If the model has strictly gaussian independent uncertainties then the
+        negative log likelihood function will return 0.5*sum(residuals**2),
+        which is 1/2*chisq.  Since we are printing normalized chisq, we
+        multiply the model nllf by 2/DOF before displaying the value.  This
+        is different from the problem nllf function, which includes the
+        cost of the prior parameters and the cost of the penalty constraints
+        in the total nllf.  The constraint value is displayed separately.
+        """
+        pparameter, pconstraints, pmodel = self._nllf_components()
+        chisq_norm, chisq_err = nllf_scale(self)
+        chisq = pmodel * chisq_norm
+        text = format_uncertainty(chisq, chisq_err)
+        constraints = pparameter + pconstraints
+        if constraints > 0.:
+            text+= " constraints=%g"%constraints
+
+        return text
+
     def nllf(self, pvec=None):
         """
         Compute the cost function for a new parameter set p.
 
-        Note that this is not simply the sum-squared residuals, but instead
-        is the negative log likelihood of seeing the data given the model plus
-        the negative log likelihood of seeing the model.  The individual
-        likelihoods are scaled by 1/max(P) so that normalization constants
-        can be ignored.
+        This is not simply the sum-squared residuals, but instead is the
+        negative log likelihood of seeing the data given the model parameters
+        plus the negative log likelihood of seeing the model parameters.  The
+        value is used for a likelihood ratio test so normalization constants
+        can be ignored.  There is an additional penalty value provided by
+        the model which can be used to implement inequality constraints.  Any
+        penalty should be large enough that it is effectively excluded from
+        the parameter space returned from uncertainty analysis.
 
         The model is not actually calculated if the parameter nllf plus the
         constraint nllf are bigger than *soft_limit*, but instead it is
-        assigned a value of *penalty_nllf*.
+        assigned a value of *penalty_nllf*.  This will prevent expensive
+        models from spending time computing values in the unfeasible region.
         """
         if pvec is not None:
             if self.valid(pvec):
@@ -363,33 +389,37 @@ class BaseFitProblem(object):
             else:
                 return inf
 
+        pparameter, pconstraints, pmodel = self._nllf_components()
+        cost = pparameter + pconstraints + pmodel
+        # print(pvec, "cost=",pparameter,"+",pconstraints,"+",pmodel,"=",cost)
+        if isnan(cost):
+            # TODO: make sure errors get back to the user
+            # print "point evaluates to NaN"
+            # print parameter.summarize(self._parameters)
+            return inf
+        return cost
+
+    def _nllf_components(self):
         try:
-            if isnan(self.parameter_nllf()):
+            pparameter = self.parameter_nllf()
+            if isnan(pparameter):
                 # TODO: make sure errors get back to the user
                 import logging
                 info = ["Parameter nllf is wrong"]
-                info += ["%s %g" %(p,p.nllf()) for p in self.bounded]
+                info += ["%s %g"%(p, p.nllf()) for p in self.bounded]
                 logging.error("\n  ".join(info))
-            pparameter = self.parameter_nllf()
-            pconstraint = self.constraints_nllf()
+            pconstraints = self.constraints_nllf()
             pmodel = (self.model_nllf()
-                      if pparameter + pconstraint <= self.soft_limit
+                      if pparameter + pconstraints <= self.soft_limit
                       else self.penalty_nllf)
-            cost = pparameter + pconstraint + pmodel
+            return pparameter, pconstraints, pmodel
         except Exception:
             # TODO: make sure errors get back to the user
             import traceback, logging
             info = (traceback.format_exc(),
                     parameter.summarize(self._parameters))
             logging.error("\n".join(info))
-            return inf
-        if isnan(cost):
-            # TODO: make sure errors get back to the user
-            # print "point evaluates to NaN"
-            # print parameter.summarize(self._parameters)
-            return inf
-        # print pvec, "cost",cost,"=",pparameter,"+",pconstraint,"+",pmodel
-        return cost
+            return NaN, NaN, NaN
 
     def __call__(self, pvec=None):
         """
@@ -451,21 +481,6 @@ class BaseFitProblem(object):
         self.fitness, self.partial, self.name, self.penalty_nllf, \
             self.soft_limit, self.constraints = state
         self.model_reset()
-
-    def chisq_str(self):
-        # TODO: remove unnecessary try-catch
-        try:
-            _, err = nllf_scale(self)
-            text = format_uncertainty(self.chisq(), err)
-            constraints = (self.parameter_nllf()
-                           + self.constraints_nllf())
-            if constraints > 0.:
-                text+= " constraints=%g"%constraints
-        except Exception:
-            # Otherwise indicate that chisq could not be calculated.
-            text = "--"
-
-        return text
 
 class MultiFitProblem(BaseFitProblem):
     """

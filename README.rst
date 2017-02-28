@@ -7,21 +7,32 @@ problems.  It has a variety of optimization algorithms available for locating
 the most like value for function parameters given data, and for exploring
 the uncertainty around the minimum.
 
-Installation is with the usual python installation command:
+Installation is with the usual python installation command::
 
     pip install bumps
 
-Once the system is installed, you can verify that it is working with: 
+Once the system is installed, you can verify that it is working with::
 
     bumps doc/examples/peaks/model.py --chisq
 
 Documentation is available at `readthedocs <http://bumps.readthedocs.org>`_
 
 .. image:: https://zenodo.org/badge/18489/bumps/bumps.svg
-   :target: https://zenodo.org/badge/latestdoi/18489/bumps/bumps
+    :target: https://zenodo.org/badge/latestdoi/18489/bumps/bumps
 
 Release notes
 =============
+
+v0.7.6 2016-08-05
+-----------------
+
+* add --view option to command line which gets propagated to the model plotter
+* add support for probability p(x) for vector x using VectorPDF(f,x0)
+* rename DirectPDF to DirectProblem, and allow it to run in GUI
+* data reader supports multi-part files, with parts separated by blank lines
+* add gaussian mixture and laplace examples
+* bug fix: plots were failing if model name contains a '.'
+* miscellaneous code cleanup
 
 v0.7.5.10 2016-05-04
 --------------------
