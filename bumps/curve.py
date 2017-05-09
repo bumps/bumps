@@ -50,7 +50,7 @@ from .parameter import Parameter
 
 
 class Curve(object):
-    """
+    r"""
     Model a measurement with a user defined function.
 
     The function *fn(x,p1,p2,...)* should return the expected value *y* for
@@ -120,7 +120,7 @@ class Curve(object):
                 pvalues = pvalues[1:]
             init.update(zip(pnames[-len(pvalues):], pvalues))
         # Non-fittable parameters need to be sent in as None
-        state_vars = set(p for p,v in init.items() if v is None)
+        state_vars = set(p for p, v in init.items() if v is None)
         # Regardless, use any values specified in the constructor, but first
         # check that they exist as function parameters.
         invalid = set(fnkw.keys()) - set(pnames)
@@ -142,10 +142,10 @@ class Curve(object):
 
         # Remember the function, parameters, and number of parameters
         self._function = fn
-        self._pnames = [p for p in pnames if not (p in state_vars)]
+        self._pnames = [p for p in pnames if p not in state_vars]
         self._cached_theory = None
         self._plot = plot if plot is not None else plot_err
-        self._state = dict((p,v) for p,v in init.items() if p in state_vars)
+        self._state = dict((p, v) for p, v in init.items() if p in state_vars)
 
     def update(self):
         self._cached_theory = None
@@ -198,14 +198,14 @@ class Curve(object):
             plot_resid(self.x, self.residuals())
         else:
             plot_ratio = 4
-            h = pylab.subplot2grid((plot_ratio,1), (0,0), rowspan=plot_ratio-1)
+            h = pylab.subplot2grid((plot_ratio, 1), (0, 0), rowspan=plot_ratio-1)
             self._plot(self.x, self.y, self.dy, self.theory(), view=view, **kw)
             for tick_label in pylab.gca().get_xticklabels():
                 tick_label.set_visible(False)
             #pylab.gca().xaxis.set_visible(False)
             #pylab.gca().spines['bottom'].set_visible(False)
             #pylab.gca().set_xticks([])
-            pylab.subplot2grid((plot_ratio,1), (plot_ratio-1,0), sharex=h)
+            pylab.subplot2grid((plot_ratio, 1), (plot_ratio-1, 0), sharex=h)
             plot_resid(self.x, self.residuals())
 
 def plot_resid(x, resid):
@@ -239,7 +239,7 @@ def plot_err(x, y, dy, fy, view=None, **kw):
         pylab.yscale('linear')
 
 _LOGFACTORIAL = np.array([log(np.prod(np.arange(1., k + 1)))
-                             for k in range(21)])
+                          for k in range(21)])
 
 
 def logfactorial(n):
@@ -263,7 +263,7 @@ class PoissonCurve(Curve):
     See :class:`Curve` for details.
     """
     def __init__(self, fn, x, y, name="", **fnkw):
-        dy = sqrt(y) + (y==0) if y is not None else None
+        dy = sqrt(y) + (y == 0) if y is not None else None
         Curve.__init__(self, fn, x, y, dy, name=name, **fnkw)
         self._logfacty = logfactorial(y) if y is not None else None
         self._logfactysum = np.sum(self._logfacty)
@@ -285,7 +285,7 @@ class PoissonCurve(Curve):
     def simulate_data(self, noise=None):
         theory = self.theory()
         self.y = np.random.poisson(theory)
-        self.dy = sqrt(self.y) + (self.y==0)
+        self.dy = sqrt(self.y) + (self.y == 0)
         self._logfacty = logfactorial(self.y)
         self._logfactysum = np.sum(self._logfacty)
 

@@ -58,10 +58,16 @@ def make_bounds_handler(bounds, style='reflect'):
 
 
 class Bounds(object):
+    """
+    Base class for all times of bounds objects.
+    """
+
     def apply(self, x):
+        """Force x values within bounds"""
         raise NotImplementedError
 
     def __call__(self, pop):
+        """Force x values within bounds for each member of the population"""
         for x in pop:
             self.apply(x)
         return pop
@@ -175,6 +181,7 @@ class IgnoreBounds(Bounds):
 
 
 def test():
+    """bounds handlers test"""
     from numpy.linalg import norm
     from numpy import array
 

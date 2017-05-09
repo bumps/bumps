@@ -40,7 +40,7 @@ def wrap_function(function, bounds):
     return ncalls, function_wrapper
 
 
-class Result:
+class Result(object):
 
     """
     Results from the fit.

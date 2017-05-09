@@ -44,7 +44,7 @@ from numpy import isinf, isnan, inf, NaN
 
 __all__ = ['format_value', 'format_uncertainty',
            'format_uncertainty_compact', 'format_uncertainty_pm',
-           ]
+          ]
 
 
 # Coordinating scales across a set of numbers is not supported.  For easy

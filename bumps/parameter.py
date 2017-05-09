@@ -556,7 +556,7 @@ class FreeVariables(object):
 #
 
 # ==== Comparison operators ===
-class Constraint:
+class Constraint(object):
     """
     Abstract base class for constraints.
     """

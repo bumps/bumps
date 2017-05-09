@@ -150,6 +150,9 @@ LAST_TIME = 0
 
 
 def console_monitor(state, pop, logp):
+    """
+    Print progress of fit on the console.
+    """
     global LAST_TIME
     if state.generation == 1:
         print("#gen", "logp(x)",
@@ -200,6 +203,7 @@ class Dream(object):
     goalseek_optimizer = None
     goalseek_interval = 1e100  # close enough to never
     goalseek_minburn = 1000
+    state = None # type: MCMCDraw
 
     def __init__(self, **kw):
         self.monitor = console_monitor
@@ -219,13 +223,16 @@ class Dream(object):
             self._initialized = True
         self.state = state
         try:
-            run_dream(self, abort_test=abort_test)
+            _run_dream(self, abort_test=abort_test)
         except KeyboardInterrupt:
             pass
         return self.state
 
 
-def run_dream(dream, abort_test=lambda: False):
+def _run_dream(dream, abort_test=lambda: False):
+    """
+    Collect posterior distribution samples using DREAM sampler.
+    """
 
     # Step 1: Sample s points in the parameter space
     # [PAK] I moved this out of dream so that the user can use whatever
@@ -366,7 +373,7 @@ def run_dream(dream, abort_test=lambda: False):
             # Keep track of which CR ratios were successful
             if state.draws <= dream.burn:
                 dream.CR.update(gen, xold, x, used)
-            
+
             if abort_test():
                 break
 
@@ -403,7 +410,7 @@ def run_dream(dream, abort_test=lambda: False):
 
         # Save update information
         state._update(R_stat=r_stat, CR_weight=dream.CR.weight)
-        
+
         if abort_test():
             break
 

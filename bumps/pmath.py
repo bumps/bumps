@@ -1,8 +1,10 @@
 """
 Standard math functions for parameter expressions.
 """
-from six.moves import reduce, builtins
 import math
+
+from six.moves import reduce, builtins
+
 from .parameter import function
 __all__ = [
     'exp', 'log', 'log10', 'sqrt',

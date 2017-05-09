@@ -9,6 +9,7 @@ T-walk self adjusting MCMC.
 # * typo fixups
 # * move pylab import to the particular functions
 # * remove scipy dependence
+from __future__ import print_function
 
 __all__ = ["pytwalk"]
 
@@ -42,7 +43,7 @@ class pytwalk:
     with default values as in the paper, normally NOT needed to be changed."""
 
     def __init__(self, n, U=(lambda x: sum(0.5 * x ** 2)), Supp=(lambda x: True),
-                 ww=[0.0000, 0.4918, 0.4918, 0.0082, 0.0082], aw=1.5, at=6.0, n1phi=4.0):
+                 ww=(0.0000, 0.4918, 0.4918, 0.0082, 0.0082), aw=1.5, at=6.0, n1phi=4.0):
 
         self.n = n
         self.U = U

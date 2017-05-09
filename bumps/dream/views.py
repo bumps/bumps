@@ -187,7 +187,7 @@ def _make_fig_colorbar(logp):
 
     ticks = (vmin, vmax)
     formatter = MinDigitsFormatter(vmin, vmax)
-    cb = mpl.colorbar.ColorbarBase(ax, cmap=cmap, norm=norm, 
+    cb = mpl.colorbar.ColorbarBase(ax, cmap=cmap, norm=norm,
                                    ticks=ticks, format=formatter,
                                    orientation='horizontal')
     #cb.set_ticks(ticks)
@@ -198,7 +198,7 @@ def _make_fig_colorbar(logp):
 
 
 def _make_logp_histogram(values, logp, nbins, ci, weights, cbar):
-    from numpy import (ones_like, searchsorted, linspace, cumsum, diff, 
+    from numpy import (ones_like, searchsorted, linspace, cumsum, diff,
                        argsort, array, hstack, exp)
     if weights is None:
         weights = ones_like(logp)

@@ -125,8 +125,8 @@ def random_lines(cfo, NP, CR=0.9, epsilon=1e-10, abort_test=None, maxiter=1000):
         crossovers = []
         for k in range(0, NP):
             if (abs(a[k]) < 1e-30
-                or (a[k] < 0 and fk[k] > fi[k] and fk[k] > fj[k])
-                or not isfinite(a[k])):
+                    or (a[k] < 0 and fk[k] > fi[k] and fk[k] > fj[k])
+                    or not isfinite(a[k])):
                 # xi survives
                 continue
             else:

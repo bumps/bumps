@@ -85,9 +85,9 @@ def _jacobian_forward(f, p, bounds, eps=None):
 
     #print("p",p,"step",step)
     h = abs(p)*step
-    h[h==0] = step
+    h[h == 0] = step
     if bounds is not None:
-        h[h+p>bounds[1]] *= -1.0  # step backward if forward step is out of bounds
+        h[h+p > bounds[1]] *= -1.0  # step backward if forward step is out of bounds
     ee = np.diag(h)
 
     J = []
@@ -102,14 +102,14 @@ def _jacobian_central(f, p, bounds, eps=None):
 
     #print("p",p,"step",step)
     h = abs(p)*step
-    h[h==0] = step
+    h[h == 0] = step
     #if bounds is not None:
     #    h[h+p>bounds[1]] *= -1.0  # step backward if forward step is out of bounds
     ee = np.diag(h)
 
     J = []
     for i in range(n):
-        J.append((f(p + ee[i, :]) - f(p - ee[i,:]))/(2.0*h[i]))
+        J.append((f(p + ee[i, :]) - f(p - ee[i, :])) / (2.0*h[i]))
     return np.vstack(J).T
 
 
@@ -142,9 +142,9 @@ def _hessian_forward(f, p, bounds, eps=None):
 
     #print("p",p,"step",step)
     h = abs(p)*step
-    h[h==0] = step
+    h[h == 0] = step
     if bounds is not None:
-        h[h+p>bounds[1]] *= -1.0  # step backward if forward step is out of bounds
+        h[h+p > bounds[1]] *= -1.0  # step backward if forward step is out of bounds
     ee = np.diag(h)
 
     g = np.empty(n, 'd')
@@ -156,10 +156,10 @@ def _hessian_forward(f, p, bounds, eps=None):
     H = np.empty((n, n), 'd')
     for i in range(n):
         for j in range(i, n):
-            fx_ij = f(p + ee[i,:] + ee[j,:])
+            fx_ij = f(p + ee[i, :] + ee[j, :])
             #print("fx_%d%d=%g"%(i,j,fx_ij))
-            H[i,j] = (fx_ij - g[i] - g[j] + fx)/(h[i]*h[j])
-            H[j,i] = H[i,j]
+            H[i, j] = (fx_ij - g[i] - g[j] + fx) / (h[i]*h[j])
+            H[j, i] = H[i, j]
     return H
 
 def _hessian_central(f, p, bounds, eps=None):
@@ -174,7 +174,7 @@ def _hessian_central(f, p, bounds, eps=None):
     fx = f(p)
 
     h = abs(p)*step
-    h[h==0] = step
+    h[h == 0] = step
     # TODO: handle bounds on central difference formula
     #if bounds is not None:
     #    h[h+p>bounds[1]] *= -1.0  # step backward if forward step is out of bounds
@@ -188,11 +188,11 @@ def _hessian_central(f, p, bounds, eps=None):
     H = np.empty((n, n), 'd')
     for i in range(n):
         for j in range(i, n):
-            fp_ij = f(p + ee[i,:] + ee[j,:])
-            fm_ij = f(p - ee[i,:] - ee[j,:])
+            fp_ij = f(p + ee[i, :] + ee[j, :])
+            fm_ij = f(p - ee[i, :] - ee[j, :])
             #print("fx_%d%d=%g"%(i,j,fx_ij))
-            H[i,j] = (fp_ij - gp[i] - gp[j] + fm_ij - gm[i] - gm[j] + 2.0*fx)/(2.0*h[i]*h[j])
-            H[j,i] = H[i,j]
+            H[i, j] = (fp_ij - gp[i] - gp[j] + fm_ij - gm[i] - gm[j] + 2.0*fx) / (2.0*h[i]*h[j])
+            H[j, i] = H[i,j]
     return H
 
 
@@ -296,7 +296,7 @@ def stderr(C):
 
 def demo_hessian():
     rosen = lambda x: (1.-x[0])**2 + 105*(x[1]-x[0]**2)**2
-    p = np.array([1.,1.])
+    p = np.array([1., 1.])
     H = _hessian_forward(rosen, p, bounds=None, eps=1e-16)
     print("forward difference H", H)
     H = _hessian_central(rosen, p, bounds=None, eps=1e-16)

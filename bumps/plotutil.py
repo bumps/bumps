@@ -75,7 +75,7 @@ def coordinated_colors(base=None):
     return dict(base=base,
                 light=dhsv(base, dv=+0.3, ds=-0.2),
                 dark=dhsv(base, dv=-0.25, ds=+0.35),
-                )
+               )
 
 
 def dhsv(color, dh=0., ds=0., dv=0., da=0.):
@@ -134,7 +134,7 @@ def plot_quantiles(x, y, contours, color, alpha=None):
     default value, alpha=2./(#contours+1), works pretty well.
     """
     _, q = form_quantiles(y, contours)
-    _plot_quantiles(x, q,  color, alpha)
+    _plot_quantiles(x, q, color, alpha)
 
 def _plot_quantiles(x, q, color, alpha):
     import pylab

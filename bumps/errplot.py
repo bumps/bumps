@@ -42,6 +42,8 @@ been calculated and returned by one of these methods, call
 __all__ = ["reload_errors", "calc_errors_from_state", "calc_errors",
            "show_errors"]
 import os
+import traceback
+import logging
 
 import numpy as np
 
@@ -76,7 +78,7 @@ def reload_errors(model, store, nshown=50, random=True):
 def calc_errors_from_state(problem, state, nshown=50, random=True):
     """
     Compute confidence regions for a problem from the
-    Align the sample profiles and compute the residual difference from 
+    Align the sample profiles and compute the residual difference from
     the measured data for a set of points returned from DREAM.
 
     *nshown* is the number of samples to include from the state.
@@ -112,7 +114,6 @@ def calc_errors(problem, points):
     try:
         ret = plugin.calc_errors(problem, points)
     except Exception:
-        import traceback, logging
         info = ["error calculating distribution on model",
                 traceback.format_exc()]
         logging.error("\n".join(info))
@@ -129,5 +130,3 @@ def show_errors(errs):
     The content of *errs* depends on the active plugin.
     """
     return plugin.show_errors(errs)
-
-

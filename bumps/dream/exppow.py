@@ -6,8 +6,9 @@ from __future__ import division
 
 __all__ = ["exppow_pars"]
 
-from scipy.special import gamma
 from math import sqrt
+
+from scipy.special import gamma
 
 
 def exppow_pars(B):

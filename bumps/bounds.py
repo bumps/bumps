@@ -59,12 +59,12 @@ from math import log, log10, sqrt, pi, ceil, floor
 
 from numpy import inf, isinf, isfinite, clip
 import numpy.random as RNG
-
 try:
     from scipy.stats import norm as normal_distribution
 except ImportError:
-    def normal_distribution(*args, **kw):
-        raise RuntimeError("scipy.stats unavailable")
+    # Normal distribution is an optional dependency.  Leave it as a runtime
+    # failure if it doesn't exist.
+    pass
 
 
 def pm(v, *args):
@@ -317,7 +317,7 @@ class Unbounded(Bounds):
     """
 
     def random(self, n=1, target=1.0):
-        scale = target + (target==0.)
+        scale = target + (target == 0.)
         return RNG.randn(n)*scale
 
     def nllf(self, value):
@@ -368,7 +368,7 @@ class BoundedBelow(Bounds):
 
     def random(self, n=1, target=1.):
         target = max(abs(target), abs(self._base))
-        scale = target + (target==0.)
+        scale = target + (target == 0.)
         return self._base + abs(RNG.randn(n)*scale)
 
     def nllf(self, value):
@@ -428,7 +428,7 @@ class BoundedAbove(Bounds):
 
     def random(self, n=1, target=1.0):
         target = max(abs(self._base), abs(target))
-        scale = target + (target==0.)
+        scale = target + (target == 0.)
         return self._base - abs(RNG.randn(n)*scale)
 
     def nllf(self, value):

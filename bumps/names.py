@@ -1,4 +1,4 @@
-"""
+r"""
 Exported names.
 
 In model definition scripts, rather than importing symbols one by one,
@@ -43,4 +43,3 @@ from .bounds import Distribution
 from .pdfwrapper import PDF, VectorPDF, DirectProblem
 from .curve import Curve, PoissonCurve
 from .fitproblem import FitProblem, MultiFitProblem
-

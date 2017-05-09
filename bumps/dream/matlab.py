@@ -85,6 +85,7 @@ This can be run from the command prompt::
     $ python example.py
 
 """
+from __future__ import print_function
 
 __all__ = ['struct', 'dream', 'setup', 'convert_output']
 
@@ -96,7 +97,7 @@ from .initpop import cov_init, lhs_init
 from .crossover import Crossover, AdaptiveCrossover
 
 
-class struct:
+class struct(object):
     """
     Matlab compatible structure creation.
     """
@@ -236,7 +237,7 @@ def run_script(filename):
     exec(compile(open(filename).read(), filename, 'exec'))
 
 
-class Banana:
+class Banana(object):
     """
     Banana shaped function.
 

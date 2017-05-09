@@ -216,8 +216,8 @@ def distance_per_CR(available_CRs, distances, CRs, used):
     Returns the number of times each available CR was used and the total
     distance for that CR.
     """
-    total = array([sum(distances[(CRs==p)&used]) for p in available_CRs])
-    count = array([sum((CRs==p)&used) for p in available_CRs])
+    total = array([sum(distances[(CRs == p)&used]) for p in available_CRs])
+    count = array([sum((CRs == p)&used) for p in available_CRs])
     return count, total
 
 

@@ -62,6 +62,7 @@ class StepMonitor(monitor.Monitor):
             raise ValueError("invalid monitor field")
         self.fid = fid
         self.fields = fields
+        self.problem = problem
         self._pattern = "%%(%s)s\n" % (")s %(".join(fields))
         fid.write("# " + ' '.join(fields) + '\n')
 
@@ -182,12 +183,12 @@ class MultiStart(FitBase):
         f_best = np.inf
         x_best = self.problem.getp()
         for _ in range(max(starts, 1)):
-            logging.info("multistart round %d"%_)
+            logging.info("multistart round %d", _)
             x, fx = self.fitter.solve(monitors=monitors, mapper=mapper,
                                       **options)
             if fx < f_best:
                 x_best, f_best = x, fx
-                logging.info("multistart f(x),x: %s %s"%(str(fx),str(x_best)))
+                logging.info("multistart f(x),x: %s %s", str(fx), str(x_best))
             if reset:
                 self.problem.randomize()
             else:
@@ -208,7 +209,7 @@ class DEFit(FitBase):
     id = "de"
     settings = [('steps', 1000), ('pop', 10), ('CR', 0.9), ('F', 2.0),
                 ('ftol', 1e-8), ('xtol', 1e-6), #('stop', ''),
-                ]
+               ]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         if abort_test is None:
@@ -322,7 +323,7 @@ class BFGSFit(FitBase):
                              steptol=1e-12,
                              macheps=1e-8,
                              eta=1e-8,
-                             )
+                            )
         self.result = result
         #code = result['status']
         #from .quasinewton import STATUS
@@ -439,8 +440,8 @@ class PTFit(FitBase):
         self._update = MonitorRunner(problem=self.problem,
                                      monitors=monitors)
         t = np.logspace(np.log10(options['Tmin']),
-                           np.log10(options['Tmax']),
-                           options['nT'])
+                        np.log10(options['Tmax']),
+                        options['nT'])
         history = parallel_tempering(nllf=self.problem.nllf,
                                      p=self.problem.getp(),
                                      bounds=self.problem.bounds(),
@@ -553,7 +554,8 @@ class LevenbergMarquardtFit(FitBase):
         # Force the fit point into the valid region
         stray = self._stray_delta(p)
         stray_cost = np.sum(stray**2)
-        if stray_cost > 0: stray_cost += 1e6
+        if stray_cost > 0:
+            stray_cost += 1e6
         self.problem.setp(p + stray)
         # treat prior probabilities on the parameters as additional
         # measurements
@@ -820,8 +822,10 @@ class FitDriver(object):
 
     def fit(self, resume=None):
 
-        if hasattr(self, '_cov'): del self._cov
-        if hasattr(self, '_stderr'): del self._stderr
+        if hasattr(self, '_cov'):
+            del self._cov
+        if hasattr(self, '_stderr'):
+            del self._stderr
         fitter = self.fitclass(self.problem)
         if resume:
             fitter.load(resume)
@@ -848,7 +852,7 @@ class FitDriver(object):
             return entropy.cov_entropy(self.cov()), 0
 
     def cov(self):
-        """
+        r"""
         Return an estimate of the covariance of the fit.
 
         Depending on the fitter and the problem, this may be computed from
@@ -913,10 +917,9 @@ class FitDriver(object):
         norm = np.sqrt(self.problem.chisq())
         print("=== Uncertainty est. from curvature: par    dx           dx/sqrt(chisq) ===")
         for k, v, dv in zip(self.problem.labels(), self.problem.getp(), err):
-            print("%40s %-15s %-15s" %(k,
-                                       format_uncertainty(v, dv),
-                                       format_uncertainty(v, dv/norm),
-                                       ))
+            print("%40s %-15s %-15s", k,
+                  format_uncertainty(v, dv),
+                  format_uncertainty(v, dv/norm))
         print("="*75)
 
     def save(self, output_path):
