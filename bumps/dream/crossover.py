@@ -174,7 +174,7 @@ def distance_per_CR(available_CRs, distances, used):
     # TODO: could use sparse array trick to evaluate totals by CR
     # Set distance[k] to coordinate (k, used[k]), then sum by columns
     # Note: currently setting unused CRs to -1, so this won't work
-    total = array([sum(distances[used==p]) for p in available_CRs])
-    count = array([sum(used==p) for p in available_CRs])
+    total = array([sum(distances[used == p]) for p in available_CRs])
+    count = array([sum(used == p) for p in available_CRs])
     return count, total
 

@@ -23,7 +23,7 @@ except Exception:
     COLORMAP = cm.gist_earth_r
 
 
-class Corr2d:
+class Corr2d(object):
     """
     Generate and manage 2D correlation histograms.
     """

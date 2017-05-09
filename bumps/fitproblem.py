@@ -6,12 +6,14 @@ These models can be bundled together into a :func:`FitProblem` and sent
 to :class:`bumps.fitters.FitDriver` for optimization and uncertainty
 analysis.
 """
-from __future__ import division, with_statement
+from __future__ import division, with_statement, print_function
 
 __all__ = ['Fitness', 'FitProblem', 'load_problem',
            'BaseFitProblem', 'MultiFitProblem']
 
 import sys
+import traceback
+import logging
 
 import numpy as np
 from numpy import inf, isnan, NaN
@@ -242,6 +244,7 @@ class BaseFitProblem(object):
         self.fitness.restore_data()
 
     def valid(self, pvec):
+        """Return true if the point is in the feasible region"""
         return all(v in p.bounds for p, v in zip(self._parameters, pvec))
 
     def setp(self, pvec):
@@ -277,6 +280,7 @@ class BaseFitProblem(object):
         return np.array([p.value for p in self._parameters], 'd')
 
     def bounds(self):
+        """Return the bounds fore each parameter a 2 x N array"""
         return np.array([p.bounds.limits for p in self._parameters], 'd').T
 
     def randomize(self, n=None):
@@ -361,7 +365,7 @@ class BaseFitProblem(object):
         text = format_uncertainty(chisq, chisq_err)
         constraints = pparameter + pconstraints
         if constraints > 0.:
-            text+= " constraints=%g"%constraints
+            text += " constraints=%g" % constraints
 
         return text
 
@@ -415,7 +419,6 @@ class BaseFitProblem(object):
             return pparameter, pconstraints, pmodel
         except Exception:
             # TODO: make sure errors get back to the user
-            import traceback, logging
             info = (traceback.format_exc(),
                     parameter.summarize(self._parameters))
             logging.error("\n".join(info))
@@ -433,21 +436,39 @@ class BaseFitProblem(object):
         return 2 * self.nllf(pvec) / self.dof
 
     def show(self):
+        """Print the available parameters to the console as a tree."""
         print(parameter.format(self.model_parameters()))
         print("[chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
         #print(self.summarize())
 
     def summarize(self):
+        """Return a table of current parameter values with range bars."""
         return parameter.summarize(self._parameters)
 
     def labels(self):
+        """Return the list of labels, one per fitted parameter."""
         return [p.name for p in self._parameters]
 
     def save(self, basename):
+        """
+        Save the problem state for the current parameter set.
+
+        The underlying Fitness object *save* method is called, if it exists,
+        so that theory values can be saved in a format suitable to the problem.
+
+        Uses *basename* as the base of any files that are created.
+        """
         if hasattr(self.fitness, 'save'):
             self.fitness.save(basename)
 
     def plot(self, p=None, fignum=None, figfile=None, view=None):
+        """
+        Plot the problem state for the current parameter set.
+
+        The underlying Fitness object *plot* method is called with *view*.
+        It should produce its plot on the current matplotlib figure.  This
+        method will add chisq to the plot and save it to a file.
+        """
         if not hasattr(self.fitness, 'plot'):
             return
 
@@ -463,12 +484,21 @@ class BaseFitProblem(object):
             pylab.savefig(figfile + "-model.png", format='png')
 
     def cov(self):
+        """
+        Return the covariance matrix as computed by numdifftools from the
+        Hessian matrix for the problem at the current parameter values.
+        """
         from . import lsqerror
         H = lsqerror.hessian(self)
         H, L = lsqerror.perturbed_hessian(H)
         return lsqerror.chol_cov(L)
 
     def stderr(self):
+        """
+        Return the 1-sigma uncertainty estimate for each parameter and the
+        correlation matrix *R* as computed from the covariance returned by
+        *cov*.
+        """
         from . import lsqerror
         c = self.cov()
         return lsqerror.stderr(c), lsqerror.corr(c)
@@ -572,7 +602,7 @@ class MultiFitProblem(BaseFitProblem):
 
     def residuals(self):
         resid = np.hstack([w * f.residuals()
-                              for w, f in zip(self.weights, self.models)])
+                           for w, f in zip(self.weights, self.models)])
         return resid
 
     def save(self, basename):
@@ -605,7 +635,7 @@ class MultiFitProblem(BaseFitProblem):
 
 
 # TODO: consider adding nllf_scale to FitProblem.
-ONE_SIGMA=0.68268949213708585
+ONE_SIGMA = 0.68268949213708585
 def nllf_scale(problem):
     r"""
     Return the scale factor for reporting the problem nllf as an approximate

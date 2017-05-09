@@ -253,7 +253,7 @@ def _get_scale_factor(scale, bounds, initial):
     dx = (xmax - xmin) * scale  # type: np.ndarray
     dx[isinf(dx)] = abs(initial[isinf(dx)]) * scale
     dx[~isfinite(dx)] = scale
-    dx[dx==0] = scale
+    dx[dx == 0] = scale
     #print("min,max,dx",xmin,xmax,dx)
     return dx
 
@@ -274,7 +274,7 @@ def demo_init(seed=1):
         def randomize(self, n=1):
             target = self.initial.copy()
             target[~isfinite(target)] = 1.
-            result = [init_bounds(pair).random(n,v)
+            result = [init_bounds(pair).random(n, v)
                       for v, pair in zip(self.initial, self._bounds.T)]
             return np.array(result).T
 

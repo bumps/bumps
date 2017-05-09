@@ -26,14 +26,14 @@ class PyMCProblem(object):
 
         self.model = Model(input)
         # sort parameters by name
-        ordered_pairs = sorted((s.__name__,s) for s in self.model.stochastics)
+        ordered_pairs = sorted((s.__name__, s) for s in self.model.stochastics)
 
         # Record parameter, shape, size, offset as a list
-        pars = [v for k,v in ordered_pairs]
+        pars = [v for k, v in ordered_pairs]
         shape = [v.shape for v in pars]
         size = [(np.prod(s) if s != () else 1) for s in shape]
         offset = np.cumsum([0]+size[:-1])
-        self.pars = list(zip(pars,shape,size,offset))
+        self.pars = list(zip(pars, shape, size, offset))
 
         # List of cost functions contains both parameter and data, but not
         # intermediate deterministic points
@@ -102,8 +102,8 @@ class PyMCProblem(object):
             return asarray(data)
 
     def bounds(self):
-        return np.vstack([_par_bounds(par) for par,_,_,_ in self.pars]).T
-                 
+        return np.vstack([_par_bounds(par) for par, _, _,_ in self.pars]).T
+
     def plot(self, p=None, fignum=None, figfile=None):
         pass
 
@@ -118,17 +118,17 @@ def _par_bounds(par):
     UNBOUNDED = lambda p: (-inf, inf)
     PYMC_BOUNDS = {
         pymc.distributions.DiscreteUniform:
-            lambda p: (p['lower']-0.5,p['upper']+0.5),
+            lambda p: (p['lower']-0.5, p['upper']+0.5),
         pymc.distributions.Uniform:
-            lambda p: (p['lower'],p['upper']),
+            lambda p: (p['lower'], p['upper']),
         pymc.distributions.Exponential:
-            lambda p: (0,inf),
+            lambda p: (0, inf),
     }
     # pyMC doesn't provide info about bounds on the distributions
     # so we need a big table.
     bounds = PYMC_BOUNDS.get(par.__class__, UNBOUNDED)(par.parents)
 
-    ret = np.tile(bounds, par.shape).flatten().reshape(-1,2)
+    ret = np.tile(bounds, par.shape).flatten().reshape(-1, 2)
     return ret
 
 def _par_labels(par):
@@ -144,10 +144,9 @@ def _par_labels(par):
                 for i in range(par.shape[0])
                 for j in range(par.shape[1])]
     elif dims == 3:
-        return ["%s[%d,%d]"%(name, i, j, k)
+        return ["%s[%d,%d,%d]"%(name, i, j, k)
                 for i in range(par.shape[0])
                 for j in range(par.shape[1])
                 for k in range(par.shape[2])]
     else:
         raise ValueError("limited to 3 dims for now")
-

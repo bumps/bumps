@@ -89,9 +89,9 @@ def bspline(y, xt, clamp=True):
         cy = np.hstack(([y[0]] * 3, y, y[-1]))
     else:
         cy = np.hstack((y[0], y[0], y[0],
-                           y[0] + (y[1] - y[0]) / 3,
-                           y[1:-1],
-                           y[-1] + (y[-2] - y[-1]) / 3, y[-1]))
+                        y[0] + (y[1] - y[0]) / 3,
+                        y[1:-1],
+                        y[-1] + (y[-2] - y[-1]) / 3, y[-1]))
     return _bspline3(knot, cy, xt)
 
 
@@ -167,6 +167,7 @@ def _bspline3(knot, control, t, nderiv=0):
         return f, df, d2f, d3f
 
 
+'''
 def bspline_control(y, clamp=True):
     return _find_control(y, clamp=clamp)
 
@@ -192,6 +193,7 @@ def _find_control(v, clamp=True):
     b = np.hstack([v[0], bl, v[1:n - 1], br, v[-1]])
     x = solve_banded((1, 1), A, b)
     return x  # x[1:-1]
+'''
 
 # ===========================================================================
 # test code
@@ -241,23 +243,25 @@ def _derivs(x, y):
     # 5-point difference formula
     #left = (y[0]-8*y[1]+8*y[3]-y[4]) / 12 / (x[1]-x[0])
     #right = (y[-5]-8*y[-4]+8*y[-2]-y[-1]) / 12 / (x[-1]-x[-2])
-    # return left,right
+    # return left, right
 
 
 def test():
+    """bspline tests"""
     h = 1e-10
     t = np.linspace(0, 1, 100)
-    dt = np.array([0, h, 2 * h, 3 * h, 4 * h,
-                      1 - 4 * h, 1 - 3 * h, 1 - 2 * h, 1 - h, 1])
+    dt = np.array([0, h, 2*h, 3*h, 4*h,
+                   1-4*h, 1-3*h, 1-2*h, 1-h, 1])
     y = [9, 11, 2, 3, 8, 0, 2]
     n = len(y)
     xeq = np.linspace(0, 1, n)
     x = xeq + 0
     x[0], x[-1] = (x[0] + x[1]) / 2, (x[-2] + x[-1]) / 2
     dx = np.array([x[0], x[0] + h, x[0] + 2*h, x[0] + 3*h, x[0] + 4*h,
-                      x[-1] - 4*h, x[-1] - 3*h, x[-1] - 2*h, x[-1] - h, x[-1]])
+                   x[-1]-4*h, x[-1]-3*h, x[-1]-2*h, x[-1]-h, x[-1]])
 
-    # ==== Check that bspline matches pbs with equally spaced x
+    # ==== Check that bspline mat:w
+    # ches pbs with equally spaced x
 
     yt = bspline(y, t, clamp=True)
     xtp, ytp = pbs(xeq, y, t, clamp=True, parametric=False)
@@ -349,12 +353,13 @@ def test():
 
 
 def demo():
+    """Show bsline curve for a set of control points."""
     from pylab import hold, linspace, subplot, plot, legend, show
     hold(True)
-    #y = [9,6,1,3,8,4,2]
-    #y = [9,11,13,3,-2,0,2]
+    #y = [9 ,6, 1, 3, 8, 4, 2]
+    #y = [9, 11, 13, 3, -2, 0, 2]
     y = [9, 11, 2, 3, 8, 0]
-    #y = [9,9,1,3,8,2,2]
+    #y = [9, 9, 1, 3, 8, 2, 2]
     x = linspace(0, 1, len(y))
     t = linspace(x[0], x[-1], 400)
     subplot(211)
@@ -379,8 +384,9 @@ def demo():
     show()
 
 
+# B-Spline control point inverse function is not yet implemented
+'''
 def demo_interp():
-    # B-Spline control point inverse function is not yet implemented
     from pylab import hold, linspace, plot, show
     hold(True)
     x = linspace(0, 1, 7)
@@ -394,6 +400,7 @@ def demo_interp():
     fy = bspline(yc, t, clamp=True)
     plot(t, fy, '-.y')
     show()
+'''
 
 if __name__ == "__main__":
     # test()

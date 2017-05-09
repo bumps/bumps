@@ -77,8 +77,8 @@ def parse_file(file, keysep=None, sep=None, comment='#'):
     in the header, in which case the key will be ignored).
     """
     with maybe_open(file) as fh:
-         header, data, bins = _read_part(fh, comment=comment, multi_part=False,
-                                         col_sep=sep, key_sep=keysep)
+        header, data, bins = _read_part(fh, comment=comment, multi_part=False,
+                                        col_sep=sep, key_sep=keysep)
     if header is None:
         raise IOError("data file is empty")
     # compatibility: strip quotes from values in key-value pairs
@@ -95,14 +95,16 @@ def _read_part(fh, key_sep=None, col_sep=None, comment="#", multi_part=False):
         # Blank lines indicate a section break.
         if not line.strip():
             # Skip blank lines if we are parsing the data as a single part file
-            if not multi_part: continue
+            if not multi_part:
+                continue
             # If we are at the beginning of a section, then iseof is True and
             # continuing to the next loop iteration will skip them. If we have
             # already consumed some non-blank lines, then iseof will be false,
             # and we need to break this section of the data.  If we have blank
             # lines at the end of the file, we will never set iseof to False
             # and they will be ignored.
-            if iseof: continue
+            if iseof:
+                continue
             break
 
         # Line is not blank, so process it.
@@ -130,7 +132,7 @@ def _read_part(fh, key_sep=None, col_sep=None, comment="#", multi_part=False):
         # bin centers instead
         last_edge = data[-1][0]
         data = np.array(data[:-1]).T
-        edges = np.hstack((data[0],last_edge))
+        edges = np.hstack((data[0], last_edge))
         data[0] = 0.5*(edges[:-1] + edges[1:])
         bins = edges
     else:
@@ -187,7 +189,7 @@ def _parse_line(line, key_sep=None, col_sep=None, comment='#'):
     key = strip_quotes(key)
 
     # If key is a number assume it is simply a commented out data point
-    if len(key) and (key[0] in '.-+0123456789' or key=='inf' or key=='nan'):
+    if len(key) and (key[0] in '.-+0123456789' or key == 'inf' or key == 'nan'):
         return [], None, None
 
     return [], key, value
@@ -218,7 +220,7 @@ def indfloat(s):
         s = s.lower()
         if s in INF_VALUES:
             return inf
-        elif s and s[0]=='-' and s[1:] in INF_VALUES:
+        elif s and s[0] == '-' and s[1:] in INF_VALUES:
             return -inf
         elif s in NAN_VALUES:
             return nan

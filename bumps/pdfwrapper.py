@@ -12,6 +12,8 @@ of the function in whatever way is meaningful.
 The note regarding user defined functions in :mod:`bumps.curve` apply
 here as well.
 """
+from __future__ import print_function
+
 import inspect
 
 import numpy as np
@@ -225,7 +227,7 @@ class DirectProblem(object):
         else:
             self._bounds = np.tile((-np.inf, np.inf), (self.n, 1)).T
 
-        self._labels = labels if labels else ["p%d" % i for i,_ in enumerate(p0)]
+        self._labels = labels if labels else ["p%d" % i for i, _ in enumerate(p0)]
         self._plot = plot
 
     def nllf(self, pvec=None):
@@ -236,7 +238,7 @@ class DirectProblem(object):
 
     def model_reset(self):
         self._parameters = [Parameter(value=self.p[k],
-                                      bounds=self._bounds[:,k],
+                                      bounds=self._bounds[:, k],
                                       labels=self._labels[k])
                             for k in range(len(self.p))]
 

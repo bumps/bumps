@@ -161,7 +161,8 @@ def store_overwrite_query_gui(path):
     Use this in a call to :func:`make_store` from a graphical user interface.
     """
     import wx
-    msg_dlg = wx.MessageDialog(None, path + " already exists. Press 'yes' to overwrite, or 'No' to abort and restart with newpath", 'Overwrite Directory',
+    msg = path + " already exists. Press 'yes' to overwrite, or 'No' to abort and restart with newpath"
+    msg_dlg = wx.MessageDialog(None, msg, 'Overwrite Directory',
                                wx.YES_NO | wx.ICON_QUESTION)
     retCode = msg_dlg.ShowModal()
     msg_dlg.Destroy()
@@ -284,7 +285,7 @@ def initial_model(opts):
         np.random.seed(opts.seed)
 
     if opts.args:
-        problem = load_model(opts.args[0],opts.args[1:])
+        problem = load_model(opts.args[0], opts.args[1:])
         if opts.pars is not None:
             load_best(problem, opts.pars)
         if opts.simrandom:
@@ -371,7 +372,7 @@ def config_matplotlib(backend=None):
     if hasattr(sys, 'frozen'):
         if 'MPLCONFIGDIR' not in os.environ:
             raise RuntimeError(
-                "MPLCONFIGDIR should be set to e.g., %LOCALAPPDATA%\YourApp\mplconfig")
+                r"MPLCONFIGDIR should be set to e.g., %LOCALAPPDATA%\YourApp\mplconfig")
         if backend is None:
             backend = 'WXAgg'
 
@@ -410,13 +411,20 @@ def run_command(c):
 
 
 def setup_logging():
+    """Start logger"""
     import logging
     logging.basicConfig(level=logging.INFO)
 
 # from http://stackoverflow.com/questions/22373927/get-traceback-of-warnings
 # answered by mgab (2014-03-13)
 # edited by Gareth Rees (2015-11-28)
-def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
+def warn_with_traceback(message, category, filename, lineno,
+                        file=None, line=None):
+    """
+    Alternate warning printer which shows a traceback with the warning.
+
+    To use, set *warnings.showwarning = warn_with_traceback*.
+    """
     traceback.print_stack()
     log = file if hasattr(file, 'write') else sys.stderr
     log.write(warnings.formatwarning(message, category, filename, lineno, line))
@@ -497,9 +505,9 @@ def main():
         import time
         start_time = time.time()
         stop_time = start_time + float(opts.time)*3600
-        abort_test=lambda: time.time() >= stop_time
+        abort_test = lambda: time.time() >= stop_time
     else:
-        abort_test=lambda: False
+        abort_test = lambda: False
 
     fitdriver = FitDriver(
         opts.fit_config.selected_fitter, problem=problem, abort_test=abort_test,

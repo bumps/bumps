@@ -187,7 +187,7 @@ def loadtxt(file, report=0):
     lineno = 0
     for line in fh:
         lineno += 1
-        if report and lineno%report==0:
+        if report and lineno%report == 0:
             print("read", section*report)
             section += 1
         IND_PAT.sub('nan', line)
@@ -280,7 +280,7 @@ class MCMCDraw(object):
         self.generation = 0
         self._gen_index = 0
         self._gen_draws = empty(Ngen, 'i')
-        self._gen_logp = empty( (Ngen, Npop) )
+        self._gen_logp = empty((Ngen, Npop))
         self._gen_acceptance_rate = empty(Ngen)
 
         # If we are thinning, we need to keep the current generation
@@ -303,7 +303,7 @@ class MCMCDraw(object):
         self._update_index = 0
         self._update_count = 0
         self._update_draws = empty(Nupdate, 'i')
-        self._update_R_stat = empty((Nupdate, Nvar) )
+        self._update_R_stat = empty((Nupdate, Nvar))
         self._update_CR_weight = empty((Nupdate, Ncr))
 
         self._outliers = []
@@ -355,7 +355,7 @@ class MCMCDraw(object):
         if Ngen > self.Ngen:
             self._gen_index = self.Ngen  # must happen before resize!!
             self._gen_draws = np.resize(self._gen_draws, Ngen)
-            self._gen_logp = np.resize(self._gen_logp,  (Ngen, Npop))
+            self._gen_logp = np.resize(self._gen_logp, (Ngen, Npop))
             self._gen_acceptance_rate \
                 = np.resize(self._gen_acceptance_rate, Ngen)
         elif Ngen < self.Ngen:
@@ -367,8 +367,8 @@ class MCMCDraw(object):
         if Nthin > self.Nthin:
             self._thin_index = self.Nthin  # must happen before resize!!
             self._thin_draws = np.resize(self._thin_draws, Nthin)
-            self._thin_point = np.resize(self._thin_point,  (Nthin, Npop, Nvar))
-            self._thin_logp = np.resize(self._thin_logp,  (Nthin, Npop))
+            self._thin_point = np.resize(self._thin_point, (Nthin, Npop, Nvar))
+            self._thin_logp = np.resize(self._thin_logp, (Nthin, Npop))
         elif Nthin < self.Nthin:
             self._thin_draws = self._thin_draws[-Nthin:].copy()
             self._thin_point = self._thin_point[-Nthin:, :, :].copy()
@@ -378,9 +378,9 @@ class MCMCDraw(object):
             self._update_count = self.Nupdate  # must happen before resize!!
             self._update_draws = np.resize(self._update_draws, Nupdate)
             self._update_R_stat \
-                = np.resize(self._update_R_stat,  (Nupdate, Nvar))
+                = np.resize(self._update_R_stat, (Nupdate, Nvar))
             self._update_CR_weight \
-                = np.resize(self._update_CR_weight,  (Nupdate, Ncr))
+                = np.resize(self._update_CR_weight, (Nupdate, Ncr))
         elif Nupdate < self.Nupdate:
             self._update_draws = self._update_draws[-Nupdate:].copy()
             self._update_R_stat = self._update_R_stat[-Nupdate:, :].copy()
@@ -528,7 +528,7 @@ class MCMCDraw(object):
             # numbers generated at or above the cursor.  All of these must
             # be shifted by Nchains to avoid the cursor.
             perm = draw(Npop-Nchain, pool_size)
-            perm[perm>=cursor] += Nchain
+            perm[perm >= cursor] += Nchain
             #print("perm", perm; raw_input('wait'))
             pop[Nchain:] = points[perm]
 
@@ -781,7 +781,7 @@ class MCMCDraw(object):
 
         # Find the location of the best point if it exists and swap with
         # the final position
-        idx = np.where(logp==self._best_logp)[0]
+        idx = np.where(logp == self._best_logp)[0]
         if len(idx) == 0:
             logp[final] = self._best_logp
             points[final, :] = self._best_x
@@ -867,7 +867,7 @@ class MCMCDraw(object):
         """
         for var in labels:
             idx = self.labels.index(var)
-            self._thin_point[:,:,idx] = np.round(self._thin_point[:,:,idx])
+            self._thin_point[:, :, idx] = np.round(self._thin_point[:, :, idx])
 
     def derive_vars(self, fn, labels=None):
         """

@@ -1,4 +1,4 @@
-"""
+r"""
 Estimate entropy after a fit.
 
 The :func:`entropy` method computes the entropy directly from a set of
@@ -201,22 +201,22 @@ def entropy(points, logp, N_entropy=10000, N_norm=2500):
     ##print(np.median(frac), log(np.median(frac))/LN2, log(n_est)/LN2)
     if False:
         import pylab
-        idx = pylab.argsort(entropy_points[:,0])
+        idx = pylab.argsort(entropy_points[:, 0])
         pylab.figure()
         pylab.subplot(221)
-        pylab.hist(points[:,0], bins=50, normed=True, log=True)
-        pylab.plot(entropy_points[idx,0], rho[idx], label='density')
-        pylab.plot(entropy_points[idx,0], exp(eval_logp+log_scale)[idx], label='p')
+        pylab.hist(points[:, 0], bins=50, normed=True, log=True)
+        pylab.plot(entropy_points[idx, 0], rho[idx], label='density')
+        pylab.plot(entropy_points[idx, 0], exp(eval_logp+log_scale)[idx], label='p')
         pylab.ylabel("p(x)")
         pylab.legend()
         pylab.subplot(222)
-        pylab.hist(points[:,0], bins=50, normed=True, log=False)
-        pylab.plot(entropy_points[idx,0], rho[idx], label='density')
-        pylab.plot(entropy_points[idx,0], exp(eval_logp+log_scale)[idx], label='p')
+        pylab.hist(points[:, 0], bins=50, normed=True, log=False)
+        pylab.plot(entropy_points[idx, 0], rho[idx], label='density')
+        pylab.plot(entropy_points[idx, 0], exp(eval_logp+log_scale)[idx], label='p')
         pylab.ylabel("p(x)")
         pylab.legend()
         pylab.subplot(212)
-        pylab.plot(entropy_points[idx,0], frac[idx], '.')
+        pylab.plot(entropy_points[idx, 0], frac[idx], '.')
         pylab.xlabel("P[0] value")
         pylab.ylabel("p(x)/kernel density")
 
@@ -255,14 +255,14 @@ class MVNEntropy(object):
         # compute Mardia test coefficient
         n, p = x.shape   # num points, num dimensions
         mu = np.mean(x, axis=0)
-        C = np.cov(x.T, bias=1) if p>1 else np.array([[np.var(x.T, ddof=1)]])
+        C = np.cov(x.T, bias=1) if p > 1 else np.array([[np.var(x.T, ddof=1)]])
         # squared Mahalanobis distance matrix
         # Note: this forms a full n x n matrix of distances, so will
         # fail for a large number of points.  Kurtosis only requires
         # the diagonal elements so can be computed cheaply.  If there
         # is no order to the points, skew could be estimated using only
         # the block diagonal
-        dx = (x - mu[None,:])[:max_points]
+        dx = (x - mu[None, :])[:max_points]
         D = np.dot(dx, np.linalg.solve(C, dx.T))
         kurtosis = np.sum(np.diag(D)**2)/n
         skewness = np.sum(D**3)/n**2
@@ -293,11 +293,13 @@ def cov_entropy(C):
     return 0.5 * (len(C) * log2(2*pi*e) + log2(abs(np.linalg.det(C))))
 
 def mvn_entropy_test():
-    # Test against results from the R MVN pacakge (using the web version)
-    # and the matlab Mskekur program (using Octave), both of which produce
-    # the same value.  Note that MVNEntropy uses the small sample correction
-    # for the skewness stat since it converges to the large sample value for
-    # large n.
+    """
+    Test against results from the R MVN pacakge (using the web version)
+    and the matlab Mskekur program (using Octave), both of which produce
+    the same value.  Note that MVNEntropy uses the small sample correction
+    for the skewness stat since it converges to the large sample value for
+    large n.
+    """
     x = np.array([
         [2.4, 2.1, 2.4],
         [4.5, 4.9, 5.7],
@@ -342,9 +344,9 @@ def _check_entropy(D, seed=1, N=10000, N_entropy=10000, N_norm=2500):
 def test():
     """check entropy estimates from known distributions"""
     from scipy import stats
-    _check_entropy(stats.norm(100,8), N=2000)
-    _check_entropy(stats.norm(100,8), N=12000)
-    _check_entropy(stats.multivariate_normal(cov=np.diag([1,12**2,0.2**2])))
+    _check_entropy(stats.norm(100, 8), N=2000)
+    _check_entropy(stats.norm(100, 8), N=12000)
+    _check_entropy(stats.multivariate_normal(cov=np.diag([1, 12**2, 0.2**2])))
 
 if __name__ == "__main__":  # pragma: no cover
     test()

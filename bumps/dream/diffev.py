@@ -1,7 +1,7 @@
 """
 Differential evolution MCMC stepper.
 """
-from __future__ import division
+from __future__ import division, print_function
 
 __all__ = ["de_step"]
 

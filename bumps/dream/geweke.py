@@ -17,7 +17,7 @@ def geweke(sequences, portion=0.25):
 
         pymc-devs.github.com/pymc/modelchecking.html#informal-methods
         support.sas.com/documentation/cdl/en/statug/63033/HTML/default/viewer.htm#statug_introbayes_sect008.html
-    
+
     """
 
     # Find the size of the sample
@@ -42,11 +42,12 @@ def geweke(sequences, portion=0.25):
         var1 = var(seq1, axis=0)
         var2 = var(seq2, axis=0)
         denom = sqrt(var1+var2)
-        z_stat[denom>0] = (meanseq1 - meanseq2)[denom>0]/denom[denom>0]
-        
+        index = denom > 0
+        z_stat[index] = (meanseq1 - meanseq2)[index]/denom[index]
+
         # z_stat is now the Z score for every chain and parameter
         # in that with shape (chains, vars)
-        
+
         # To make it easier to look at, return the average for the vars.
         if 0:
             avg_z = mean(z_stat, axis=0)

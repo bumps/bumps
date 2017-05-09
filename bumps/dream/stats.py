@@ -113,7 +113,7 @@ def parse_var(line):
                         best=float(m.group('best')),
                         p68=(float(m.group('lo68')), float(m.group('hi68'))),
                         p95=(float(m.group('lo95')), float(m.group('hi95'))),
-                        )
+                       )
     else:
         return None
 
@@ -189,7 +189,7 @@ def shortest_credible_interval(x, ci=0.95, weights=None):
     For log likelihood data, setting weights to exp(max(logp)-logp) should
     give reasonable results.
     """
-    sorted = np.all(x[1:]>=x[:-1])
+    sorted = np.all(x[1:] >= x[:-1])
     if not sorted:
         idx = np.argsort(x)
         x = x[idx]
@@ -201,7 +201,7 @@ def shortest_credible_interval(x, ci=0.95, weights=None):
         # convert weights to cdf
         w = np.cumsum(weights/sum(weights))
         # sample the cdf at every 0.001
-        idx = np.searchsorted(w, np.arange(0,1,0.001))
+        idx = np.searchsorted(w, np.arange(0, 1, 0.001))
         x = x[idx]
 
     # Simple solution: ci*N is the number of points in the interval, so
@@ -216,10 +216,10 @@ def _find_interval(x, ci):
     Find credible interval ci in sorted, unweighted x
     """
     n = len(x)
-    size = int( ci*n + np.sqrt(1-ci)*np.log(n) )
+    size = int(ci*n + np.sqrt(1-ci)*np.log(n))
     if size >= n:
-        return x[0],x[-1]
+        return x[0], x[-1]
     else:
         width = x[size:] - x[:-size]
         idx = np.argmin(width)
-        return x[idx],x[idx+size]
+        return x[idx], x[idx+size]

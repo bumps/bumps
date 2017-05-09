@@ -1,11 +1,12 @@
 """
 Option parser for bumps command line
 """
+from __future__ import print_function
 
 import sys
 from .fitters import FITTERS, FIT_AVAILABLE_IDS, FIT_ACTIVE_IDS, FIT_DEFAULT_ID
 
-class ParseOpts:
+class ParseOpts(object):
     """
     Options parser.
 
@@ -98,27 +99,27 @@ def parse_int(value):
 
 
 FIT_FIELDS = dict(
-    starts= ("Starts", parse_int),
-    steps = ("Steps", parse_int),
-    samples = ("Samples", parse_int),
-    xtol = ("x tolerance", float),
-    ftol = ("f(x) tolerance", float),
-    stop = ("Stopping criteria", str),
-    thin = ("Thinning", parse_int),
-    burn = ("Burn-in Steps", parse_int),
-    pop = ("Population", float),
-    init = ("Initializer", ChoiceList("eps", "lhs", "cov", "random")),
-    CR = ("Crossover ratio", float),
-    F = ("Scale", float),
-    nT = ("# Temperatures", parse_int),
-    Tmin = ("Min temperature", float),
-    Tmax = ("Max temperature", float),
-    radius = ("Simplex radius", float),
+    starts=("Starts", parse_int),
+    steps=("Steps", parse_int),
+    samples=("Samples", parse_int),
+    xtol=("x tolerance", float),
+    ftol=("f(x) tolerance", float),
+    stop=("Stopping criteria", str),
+    thin=("Thinning", parse_int),
+    burn=("Burn-in Steps", parse_int),
+    pop=("Population", float),
+    init=("Initializer", ChoiceList("eps", "lhs", "cov", "random")),
+    CR=("Crossover ratio", float),
+    F=("Scale", float),
+    nT=("# Temperatures", parse_int),
+    Tmin=("Min temperature", float),
+    Tmax=("Max temperature", float),
+    radius=("Simplex radius", float),
     )
 
 # Make sure all settings are parseable
 for fit in FITTERS:
-    assert all(opt in FIT_FIELDS for opt,_ in fit.settings), \
+    assert all(opt in FIT_FIELDS for opt, _ in fit.settings), \
         "Fitter %s contains unknown settings"%fit.id
 del fit
 
@@ -178,7 +179,7 @@ class FitConfig(object):
         #     fit.settings: available options: [(key,default value), ...]
         self.fitters = dict((fit.id, fit) for fit in FITTERS)
         self.names = dict((fit.id, fit.name) for fit in FITTERS)
-        self.settings = dict((fit.id,fit.settings) for fit in FITTERS)
+        self.settings = dict((fit.id, fit.settings) for fit in FITTERS)
         self.values = dict((fit.id, dict(fit.settings)) for fit in FITTERS)
         if not all(k in self.ids for k in active):
             raise ValueError("Some active fitters are not available")
@@ -241,11 +242,11 @@ class BumpsOpts(ParseOpts):
                  # bundled application as a python distribution with domain
                  # specific models pre-defined.
                  "i",
-                 ))
+                ))
     VALUES = set(("plot", "store", "resume", "fit", "noise", "seed", "pars",
                   "resynth", "transport", "notify", "queue", "time",
                   "m", "c", "p", "parallel", "view",
-                  ))
+                 ))
     # Add in parameters from the fitters
     VALUES |= set(FIT_FIELDS.keys())
     pars = None
@@ -379,7 +380,7 @@ Options:
         display this help
 """ % {'fitter': '|'.join(sorted(FIT_AVAILABLE_IDS)),
        'plotter': '|'.join(PLOTTERS),
-       }
+      }
 
 #    --transport=mp  {amqp|mp|mpi}
 #        use amqp/multiprocessing/mpi for parallel evaluation
@@ -413,8 +414,7 @@ Options:
             raise ValueError("unknown transport %s; use %s"
                              % (value, "|".join(self.TRANSPORTS)))
         self._transport = value
-    transport = property(
-        fget=lambda self: self._transport, fset=_set_transport)
+    transport = property(fget=lambda self: self._transport, fset=_set_transport)
     meshsteps = 40
 
 
@@ -429,5 +429,3 @@ def getopts():
     opts.seed = int(opts.seed) if opts.seed != "" else None
     opts.fit_config.set_from_cli(opts)
     return opts
-
-

@@ -59,10 +59,18 @@ def make_bounds_handler(bounds, style='reflect'):
 
 
 class Bounds(object):
+    """
+    Base class for all times of bounds objects.
+    """
+    c_interface = None # type: Callable[[int, int, Any, Any, Any], None]
+    low = None # type: np.ndarray
+    high = None # type: np.ndarray
     def apply(self, x):
+        """Force x values within bounds"""
         raise NotImplementedError
 
     def __call__(self, pop):
+        """Force x values within bounds for each member of the population"""
         if self.c_interface is not None:
             self.c_interface(len(pop), len(self.low), pop.ctypes,
                              self.low.ctypes, self.high.ctypes)
@@ -185,6 +193,7 @@ class IgnoreBounds(Bounds):
 
 
 def test():
+    """bounds handlers test"""
     from numpy.linalg import norm
     from numpy import array
 

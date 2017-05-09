@@ -413,7 +413,7 @@ def demo2():
     x = [1, 2, 3, 4, 5]
     y = [10.2, 7.9, 6.9, 4.4, 1.8]
     dy = [1, 3, 1, 0.2, 1.5]
-    poly = wpolyfit(x,y,dy=dy, degree=1)
+    poly = wpolyfit(x, y, dy=dy, degree=1)
     poly.plot()
     pylab.show()
 
