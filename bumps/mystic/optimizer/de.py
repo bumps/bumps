@@ -141,9 +141,12 @@ def _candidates(pop, n, exclude=None):
     Select *n* random candidates from *pop*, not including the
     candidate at index *exclude*.
     """
-    selection = choose_without_replacement(len(pop)-1, n)
-    selection[selection>=exclude] += 1
-    return pop[selection]
+    idxs = list(range(len(pop)))
+    if exclude is not None:
+        idxs.pop(exclude)
+    np.random.shuffle(idxs)
+    return pop[idxs[:n]]
+
 
 ##########################################################################
 
