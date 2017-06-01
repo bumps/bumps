@@ -36,7 +36,7 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
     alg = select([u < snooker_rate, u < snooker_rate+de_rate],
                  [_SNOOKER, _DE], default=_DIRECT)
     # [PAK] CR selection moved from crossover into DE step
-    CR_used = rng.choice(CR[:,0], size=Nchain, replace=True, p=CR[:,1])
+    CR_used = rng.choice(CR[:, 0], size=Nchain, replace=True, p=CR[:, 1])
 
     # Chains evolve using information from other chains to create offspring
     for qq in range(Nchain):

@@ -152,7 +152,7 @@ def save_state(state, filename):
     write(trace, "writing point\n")
     fid = CREATE(filename+'-point'+EXT, 'wb')
     write(fid, '# logp point (Nthin x Npop x Nvar = [%d,%d,%d])\n'
-               % (Nthin, Npop, Nvar))
+          % (Nthin, Npop, Nvar))
     savetxt(fid, point)
     fid.close()
 
@@ -263,10 +263,6 @@ class MCMCDraw(object):
     """
     _labels = None
     title = None
-    @property
-    def Nvar(self):
-        """Number of parameters in the fit"""
-        return self._thin_point.shape[2]
 
     def __init__(self, Ngen, Nthin, Nupdate, Nvar, Npop, Ncr, thinning):
         # Total number of draws so far
@@ -327,6 +323,7 @@ class MCMCDraw(object):
 
     @property
     def Nvar(self):
+        """Number of parameters in the fit"""
         return self._thin_point.shape[2]
 
     @property
@@ -441,7 +438,8 @@ class MCMCDraw(object):
             self._thin_point[i] = x
             self._thin_logp[i] = logp
             i = i+1
-            if i == len(self._thin_draws): i = 0
+            if i == len(self._thin_draws):
+                i = 0
             self._thin_index = i
             self._gen_current = x+0 # force a copy
         else:
@@ -949,9 +947,9 @@ def _sample(state, portion, vars, selection):
         idx = True
         for v, r in selection.items():
             if v == 'logp':
-                idx = idx & (logp>=r[0]) & (logp<=r[1])
+                idx = idx & (logp >= r[0]) & (logp <= r[1])
             else:
-                idx = idx & (points[:, v]>=r[0]) & (points[:, v]<=r[1])
+                idx = idx & (points[:, v] >= r[0]) & (points[:, v] <= r[1])
         points = points[idx, :]
         logp = logp[idx]
     if vars is not None:

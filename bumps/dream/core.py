@@ -237,7 +237,8 @@ def _run_dream(dream, abort_test=lambda: False):
     Collect posterior distribution samples using DREAM sampler.
     """
 
-    if dll: dll.rand_init(rng.randint(1e9))
+    if dll:
+        dll.rand_init(rng.randint(1e9))
     # Step 1: Sample s points in the parameter space
     # [PAK] I moved this out of dream so that the user can use whatever
     # complicated sampling scheme they want.  Unfortunately, this means
@@ -304,7 +305,7 @@ def _run_dream(dream, abort_test=lambda: False):
 
         # Age the population using differential evolution
         dream.CR.reset()
-        CR = np.ascontiguousarray(np.vstack((dream.CR.CR, dream.CR.weight)).T,'d')
+        CR = np.ascontiguousarray(np.vstack((dream.CR.CR, dream.CR.weight)).T, 'd')
         for gen in range(dream.DE_steps):
 
             # Define the current locations and associated posterior densities
