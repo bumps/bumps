@@ -17,6 +17,12 @@ Once the system is installed, you can verify that it is working with::
 
 Documentation is available at `readthedocs <http://bumps.readthedocs.org>`_
 
+If a compiler is available, then significant speedup is possible for DREAM using::
+
+    (cd bumps/dream && cc compiled.c -I ../../Random123/include/ -O2 -fopenmp -shared -lm -o _compiled.so -fPIC)
+
+For now this requires an install from source rather than pip.
+
 .. image:: https://zenodo.org/badge/18489/bumps/bumps.svg
     :target: https://zenodo.org/badge/latestdoi/18489/bumps/bumps
 

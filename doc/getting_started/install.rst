@@ -156,6 +156,38 @@ To run the program, start a new Terminal shell and type::
     bumps -h
 
 
+Fast Stepper for DREAM
+======================
+
+When running DREAM on larger clusters, we found a significant slowdown as the
+number of processes increased.  This is due to Amdahl's law, where the run
+time speedup is limited by the slowest serial portion of the code.  In our
+case, the DE stepper and the bounds check.  Compiling this in C with OpenMP
+allows us to scale to hundreds of nodes until the stepper again becomes a
+bottleneck.
+
+To use the compiled DE stepper and bounds checks use:
+
+    (cd bumps/dream && cc compiled.c -I ../../Random123/include/ -O2 -fopenmp -shared -lm -o _compiled.so -fPIC)
+
+Note: OS/X clang doesn't support OpenMP:
+
+    (cd bumps/dream && cc compiled.c -I ../../Random123/include/ -O2 -shared -lm -o _compiled.so -fPIC)
+
+This only works when _compiled.so is in the bumps/dream directory.  If running
+from a pip installed version, you will need to compile this by hand separately
+and copy it into the distribution tree.  There is no provision for using this
+in a frozen application.
+
+Run with no more than 64 OMP threads.  If the number of processors is more
+than 64, then use:
+
+    OMP_NUM_THREADS=64 ./run.py ...
+
+I don't know how OMP_NUM_THREADS behaves if it is larger than the number
+of processors.
+
+
 .. _docbuild:
 
 Building Documentation
