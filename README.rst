@@ -29,6 +29,15 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
+v0.7.7
+-----------------
+
+* merge in amdahl branch for improved performance
+* update plot so that the displayed "chisq" is consistent with nllf
+* slight modification to the DREAM DE crossover ratio so that no crossover
+  weight ever goes to zero.
+
+
 v0.7.6 2016-08-05
 -----------------
 
