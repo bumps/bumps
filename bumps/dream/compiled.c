@@ -67,7 +67,7 @@ void _rand_init(randint_t seed)
     r123_key_t counter;
     int k;
     if (thread_id >= MAX_THREADS) {
-        printf("Too many threads for random number generator.  Set OMP_MAX_THREAD=%d\n",
+        printf("Too many threads for random number generator.  Set OMP_NUM_THREADS=%d\n",
                MAX_THREADS);
         exit(1);
     }

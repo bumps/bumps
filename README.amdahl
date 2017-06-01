@@ -13,6 +13,6 @@ in a frozen application.
 
 Run with no more than 64 OMP threads.  If the number of processors is more than 64, then use:
 
-    OMP_MAX_THREADS=64 ./run.py ...
+    OMP_NUM_THREADS=64 ./run.py ...
 
-I don't know how OMP_MAX_THREADS behaves if it is larger than the number of processors.
+I don't know how OMP_NUM_THREADS behaves if it is larger than the number of processors.
