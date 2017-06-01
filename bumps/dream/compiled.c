@@ -16,6 +16,10 @@ Differential evolution MCMC stepper.
 #define omp_get_thread_num() 0
 #endif
 
+// Limit to the number of threads so static thread-local data can be
+// pre-allocated with the right size.
+#define MAX_THREADS 64
+
 // ==== Generator definition ====
 // Uses:
 //   Salmon, J. K.; Moraes, M. A.; Dror, R. O.; Shaw, D. E. (2011)
@@ -45,7 +49,7 @@ typedef struct {
     int have_normal;    // Have a precomputer random normal
     double normal;      // the precomputed random normal
 } Random;
-Random streams[64];  // Max of 64 different threads in OpenMP
+Random streams[MAX_THREADS];  // Max of 64 different threads in OpenMP
 
 double u_01_open(randint_t v) {
     return (((double)v) + 0.5)*R123_TO_01;
@@ -57,10 +61,16 @@ double u_m11_closed(randint_t v) {
 
 void _rand_init(randint_t seed)
 {
-    Random *rng = streams + omp_get_thread_num();
+    int thread_id = omp_get_thread_num();
+    Random *rng = streams + thread_id;
     r123_ukey_t user_key;
     r123_key_t counter;
     int k;
+    if (thread_id >= MAX_THREADS) {
+        printf("Too many threads for random number generator.  Set OMP_MAX_THREAD=%d\n",
+               MAX_THREADS);
+        exit(1);
+    }
     for (k = 0; k < R123_SIZE; k++) user_key.v[k] = counter.v[k] = 0;
     user_key.v[0] = seed;
     //user_key.v[1] = omp_get_thread_num();
