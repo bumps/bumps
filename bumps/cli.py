@@ -397,8 +397,11 @@ def beep():
     Audio signal that fit is complete.
     """
     if sys.platform == "win32":
-        import winsound
-        winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
+        try:
+            import winsound
+            winsound.MessageBeep(winsound.MB_OK)
+        except Exception:
+            pass
     else:
         print("\a", file=sys.__stdout__)
 
