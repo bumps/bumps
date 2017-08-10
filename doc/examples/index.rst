@@ -15,3 +15,4 @@ complex models with many constraints relatively easily.
    peaks/readme.rst
    test_functions/readme.rst
    entropy/check_entropy.rst
+   direct_call/direct_call.rst

@@ -36,7 +36,10 @@ v0.7.7
 * update plot so that the displayed "chisq" is consistent with nllf
 * slight modification to the DREAM DE crossover ratio so that no crossover
   weight ever goes to zero.
-
+* par.dev(std) now uses the initial value of the parameter as the center of the
+  distribution for a gaussian prior on par, as stated in the documentation. In
+  older releases it was incorrectly defaulting to mean=0 if the mean was
+  not specified.
 
 v0.7.6 2016-08-05
 -----------------

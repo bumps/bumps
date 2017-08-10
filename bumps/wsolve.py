@@ -450,5 +450,5 @@ def test():
 
 if __name__ == "__main__":
     #test()
-    #demo()
-    demo2()
+    demo()
+    #demo2()

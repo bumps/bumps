@@ -44,6 +44,7 @@ class BaseParameter(object):
     discrete = False
     _bounds = mbounds.Unbounded()
     name = None
+    value = None # value is an attribute of the derived class
 
     # Parameters may be dependent on other parameters, and the
     # fit engine will need to access them.
@@ -82,7 +83,7 @@ class BaseParameter(object):
         self.bounds = mbounds.Bounded(*mbounds.pm(self.value, *args))
         return self
 
-    def dev(self, std, mean=0, limits=None, sigma=None, mu=None):
+    def dev(self, std, mean=None, limits=None, sigma=None, mu=None):
         """
         Allow the parameter to vary according to a normal distribution, with
         deviations from the mean added to the overall cost function for the
@@ -98,10 +99,12 @@ class BaseParameter(object):
         if sigma is not None or mu is not None:
             # CRUFT: remove sigma and mu parameters
             warnings.warn(DeprecationWarning("use std,mean instead of mu,sigma in Parameter.dev"))
-            if sigma is not None: std = sigma
-            if mu is not None: mean = mu
+            if sigma is not None:
+                std = sigma
+            if mu is not None:
+                mean = mu
         if mean is None:
-            mean = self.value # Note: value is an attribute of the derived class
+            mean = self.value  # Note: value is an attribute of the derived class
         if limits is None:
             self.bounds = mbounds.Normal(mean, std)
         else:
@@ -129,6 +132,7 @@ class BaseParameter(object):
         probability, stray from the range.
         """
         self.bounds = mbounds.SoftBounded(low, high, std)
+        return self
 
     @property
     def bounds(self):
@@ -359,13 +363,13 @@ class Parameter(BaseParameter):
         """
         Set a random value for the parameter.
         """
-        self.value = self.bounds.rand(rng if rng is not None else mbounds.RNG)
+        self.value = self.bounds.random(rng if rng is not None else mbounds.RNG)
 
     def feasible(self):
         """
         Value is within the limits defined by the model
         """
-        return self.limits[0] <= self.value <= self.limits[1]
+        return self.bounds.limits[0] <= self.value <= self.bounds.limits[1]
 
 
 class Reference(Parameter):
@@ -793,7 +797,7 @@ def summarize(pars, sorted=False):
         pars = sorted(pars, cmp=lambda x, y: cmp(x.name, y.name))
     for p in pars:
         if not isfinite(p.value):
-            bar = "*invalid* "
+            bar = ["*invalid* "]
         else:
             position = int(p.bounds.get01(p.value) * 9.999999999)
             bar = ['.'] * 10

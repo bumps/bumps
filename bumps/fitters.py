@@ -917,9 +917,9 @@ class FitDriver(object):
         norm = np.sqrt(self.problem.chisq())
         print("=== Uncertainty est. from curvature: par    dx           dx/sqrt(chisq) ===")
         for k, v, dv in zip(self.problem.labels(), self.problem.getp(), err):
-            print("%40s %-15s %-15s", k,
+            print("%40s %-15s %-15s" % (k,
                   format_uncertainty(v, dv),
-                  format_uncertainty(v, dv/norm))
+                  format_uncertainty(v, dv/norm)))
         print("="*75)
 
     def save(self, output_path):
@@ -942,6 +942,7 @@ class FitDriver(object):
             self.problem.plot(figfile=output_path, view=view)
         if hasattr(self.fitter, 'plot'):
             self.fitter.plot(output_path=output_path)
+
 
 
 def _fill_defaults(options, settings):
@@ -980,3 +981,51 @@ FIT_DEFAULT_ID = SimplexFit.id
 
 assert FIT_DEFAULT_ID in FIT_ACTIVE_IDS
 assert all(f in FIT_AVAILABLE_IDS for f in FIT_ACTIVE_IDS)
+
+def fit(problem, method=FIT_DEFAULT_ID, verbose=False, **options):
+    """
+    Simplified fit interface.
+
+    Given a fit problem, the name of a fitter and the fitter options,
+    it will run the fit and return the best value and standard error of
+    the parameters.  If *verbose* is true, then the console monitor will
+    be enabled, showing progress through the fit and showing the parameter
+    standard error at the end of the fit, otherwise it is completely
+    silent.
+
+    Returns an *OptimizeResult* object containing "x" and "dx".  The
+    dream fitter also includes the "state" object, allowing for more
+    detailed uncertainty analysis.  Optimizer information such as the
+    stopping condition and the number of function evaluations are not
+    yet included.
+    """
+    from scipy.optimize import OptimizeResult
+
+    #verbose = True
+    if method not in FIT_AVAILABLE_IDS:
+        raise ValueError("unknown method %r not one of %s"
+                         % (method, ", ".join(sorted(FIT_ACTIVE_IDS))))
+    for fitclass in FITTERS:
+        if fitclass.id == method:
+            break
+    monitors = None if verbose else []  # default is step monitor
+    driver = FitDriver(
+        fitclass=fitclass, problem=problem, monitors=monitors,
+        **options)
+    x0 = problem.getp()
+    x, fx = driver.fit()
+    problem.setp(x)
+    dx = driver.stderr()
+    if verbose:
+        print("final chisq", problem.chisq_str())
+        driver.show_err()
+    result = OptimizeResult(
+        x=x, dx=driver.stderr(),
+        fun=fx,
+        success=True, status=0, message="successful termination",
+        #nit=0, # number of iterations
+        #nfev=0, # number of function evaluations
+        #njev, nhev # jacobian and hessian evaluations
+        #maxcv=0, # max constraint violation
+        )
+    return result

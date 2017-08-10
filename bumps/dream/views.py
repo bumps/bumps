@@ -19,6 +19,7 @@ from .stats import var_stats, format_vars
 
 def plot_all(state, portion=1.0, figfile=None):
     from pylab import figure, savefig, suptitle, rcParams
+
     figext = '.'+rcParams.get('savefig.format', 'png')
 
     draw = state.draw(portion=portion)
