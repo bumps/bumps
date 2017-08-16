@@ -275,6 +275,7 @@ class BumpsOpts(ParseOpts):
     checkpoint = "0"
     parallel = ""
     entropy = None
+    trim = "true"
     view = None
     PLOTTERS = "linear", "log", "residuals"
     USAGE = """\

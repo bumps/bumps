@@ -395,11 +395,11 @@ class MCMCDraw(object):
 
     def show(self, portion=1.0, figfile=None):
         from .views import plot_all
-        
+
         if portion is None:
             burn_pt = burn_point(self)
             portion = 1 - (burn_pt/self.Ngen) if burn_pt > 0 else 1.0
-        
+
         plot_all(self, portion=portion, figfile=figfile)
 
     def _last_gen(self):
@@ -665,6 +665,29 @@ class MCMCDraw(object):
             retval = [v[:self.generation] for v in retval]
         draws, logp = retval
         return draws, (logp if full else logp[:, self._good_chains])
+
+    def logp_slice(self, n):
+        """
+        Return a slice of the logp chains, either the first n if n > 0
+        or the last n if n < 0.  Avoids unrolling the circular buffer if
+        possible.
+        """
+        if n < 0:  # tail
+            if self._gen_index >= -n:
+                return self._gen_logp[self._gen_index+n:self._gen_index]
+            elif self._gen_index == 0:
+                return self._gen_logp[n:]
+            else: # unroll across boundary
+                return np.hstack((self._gen_logp[n+self._gen_index:],
+                                  self._gen_logp[:self._gen_index]))
+        else:  # head
+            if self.generation < self.Ngen:
+                return self._gen_logp[:n]
+            elif self._gen_index+n <= self.Ngen:
+                return self._gen_logp[self._gen_index:self._gen_index+n]
+            else:
+                return np.hstack((self._gen_logp[self._gen_index:],
+                                  self._gen_logp[-n+self._gen_index:]))
 
     def acceptance_rate(self):
         """
