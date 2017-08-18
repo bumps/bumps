@@ -260,6 +260,7 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
     bestidx = np.argmax(point[:, 0])
     state._best_logp = point[bestidx, 0]
     state._best_x = point[bestidx, 1:Nvar+1-derived_vars]
+    state._best_gen = 0
 
     return state
 
@@ -278,6 +279,7 @@ class MCMCDraw(object):
         # Maximum observed likelihood
         self._best_x = None
         self._best_logp = -inf
+        self._best_gen = 0
 
         # Per generation iteration
         self.generation = 0
@@ -319,6 +321,10 @@ class MCMCDraw(object):
     @property
     def Ngen(self):
         return self._gen_draws.shape[0]
+
+    @property
+    def Nsamples(self):
+        return self._gen_draws.size
 
     @property
     def Nthin(self):
@@ -393,13 +399,13 @@ class MCMCDraw(object):
     def save(self, filename):
         save_state(self, filename)
 
+    def trim_portion(self):
+        index = burn_point(self)
+        portion = 1 - (index/self.Ngen) if index >= 0 else 0.5
+        return portion
+
     def show(self, portion=1.0, figfile=None):
         from .views import plot_all
-
-        if portion is None:
-            burn_pt = burn_point(self)
-            portion = 1 - (burn_pt/self.Ngen) if burn_pt > 0 else 1.0
-
         plot_all(self, portion=portion, figfile=figfile)
 
     def _last_gen(self):
@@ -428,6 +434,8 @@ class MCMCDraw(object):
         if logp[maxid] > self._best_logp:
             self._best_logp = logp[maxid]
             self._best_x = x[maxid, :]+0 # Force a copy
+            self._best_gen = self.generation
+            #print("new best", logp[maxid], self.generation)
 
         # Record acceptance rate and cost
         i = self._gen_index
@@ -678,7 +686,7 @@ class MCMCDraw(object):
             elif self._gen_index == 0:
                 return self._gen_logp[n:]
             else: # unroll across boundary
-                return np.hstack((self._gen_logp[n+self._gen_index:],
+                return np.vstack((self._gen_logp[n+self._gen_index:],
                                   self._gen_logp[:self._gen_index]))
         else:  # head
             if self.generation < self.Ngen:
@@ -686,7 +694,7 @@ class MCMCDraw(object):
             elif self._gen_index+n <= self.Ngen:
                 return self._gen_logp[self._gen_index:self._gen_index+n]
             else:
-                return np.hstack((self._gen_logp[self._gen_index:],
+                return np.vstack((self._gen_logp[self._gen_index:],
                                   self._gen_logp[-n+self._gen_index:]))
 
     def acceptance_rate(self):
@@ -784,6 +792,12 @@ class MCMCDraw(object):
         """
         return self._best_x, self._best_logp
 
+    def stable_best(self):
+        """
+        Return the best point seen and its log likelihood.
+        """
+        return (self._best_gen + self.Ngen <= self.generation)
+
     def keep_best(self):
         """
         Place the best point at the end of the chain final good chain.
@@ -837,7 +851,7 @@ class MCMCDraw(object):
         drawn = self.draw(**kw)
         return drawn.points, drawn.logp
 
-    def entropy(self, vars=None, portion=1, selection=None, n_est=10000,
+    def entropy(self, vars=None, portion=1.0, selection=None, n_est=10000,
                 thin=None, method=None):
         r"""
         Return entropy estimate and uncertainty from an MCMC draw.
@@ -914,7 +928,7 @@ class MCMCDraw(object):
         # Always return entropy estimate from draw, even if it is normal
         return S, Serr
 
-    def draw(self, portion=1, vars=None, selection=None, thin=1):
+    def draw(self, portion=1.0, vars=None, selection=None, thin=1):
         """
         Return a sample from the posterior distribution.
 

@@ -147,6 +147,7 @@ from .diffev import de_step
 from .bounds import make_bounds_handler
 from .compiled import dll
 from .util import rng
+from .convergence import ks_converged
 
 # Everything should be available in state, but lets be lazy for now
 LAST_TIME = 0
@@ -437,12 +438,10 @@ def _run_dream(dream, abort_test=lambda: False):
             elif ravg < 0.2:
                 scale /= 1.01
 
-
-
         # Save update information
         state._update(R_stat=r_stat, CR_weight=dream.CR.weight)
 
-        if abort_test():
+        if ks_converged(state) or abort_test():
             break
 
 
