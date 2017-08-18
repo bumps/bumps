@@ -16,3 +16,4 @@ complex models with many constraints relatively easily.
    test_functions/readme.rst
    entropy/check_entropy.rst
    direct_call/direct_call.rst
+   contraints/inequality.rst
