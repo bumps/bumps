@@ -14,6 +14,7 @@ parts of the model, or different models.
 from six.moves import reduce
 import warnings
 from copy import copy
+import math
 
 from numpy import inf, isinf, isfinite
 
@@ -673,16 +674,23 @@ class Function(BaseParameter):
     def __init__(self, op, *args, **kw):
         self.name = kw.pop('name', None)
         self.op, self.args, self.kw = op, args, kw
+        self._parameters = self._find_parameters()
 
-    def parameters(self):
+    def _find_parameters(self):
         # Figure out which arguments to the function are parameters
         #deps = [p for p in self.args if isinstance(p,BaseParameter)]
-        deps = flatten((self.args, self.kw))
+        args = [arg for arg in self.args if isinstance(arg, BaseParameter)]
+        kw = dict((name, arg) for name, arg in self.kw.items()
+                  if isinstance(arg, BaseParameter))
+        deps = flatten((args, kw))
         # Find out which other parameters these parameters depend on.
         res = []
         for p in deps:
             res.extend(p.parameters())
         return res
+
+    def parameters(self):
+        return self._parameters
 
     def _value(self):
         # Expand args and kw, replacing instances of parameters
@@ -722,6 +730,93 @@ def function(op):
     function_generator.__doc__ = op.__doc__
     return function_generator
 _abs = function(abs)
+
+# Numpy trick: math functions from numpy delegate to the math function of
+# the class if that function exists as a class attribute.  Unfortunately,
+# this doesn't work for
+BaseParameter.exp = function(math.exp)
+BaseParameter.expm1 = function(math.expm1)
+BaseParameter.log = function(math.log)
+BaseParameter.log10 = function(math.log10)
+BaseParameter.log1p = function(math.log1p)
+BaseParameter.sqrt = function(math.sqrt)
+
+BaseParameter.degrees = function(math.degrees)
+BaseParameter.radians = function(math.radians)
+
+BaseParameter.sin = function(math.sin)
+BaseParameter.cos = function(math.cos)
+BaseParameter.tan = function(math.tan)
+BaseParameter.arcsin = function(math.asin)
+BaseParameter.arccos = function(math.acos)
+BaseParameter.arctan = function(math.atan)
+
+BaseParameter.sinh = function(math.sinh)
+BaseParameter.cosh = function(math.cosh)
+BaseParameter.tanh = function(math.tanh)
+BaseParameter.arcsinh = function(math.asinh)
+BaseParameter.arccosh = function(math.acosh)
+BaseParameter.arctanh = function(math.atanh)
+
+BaseParameter.ceil = function(math.ceil)
+BaseParameter.floor = function(math.floor)
+BaseParameter.trunc = function(math.trunc)
+
+def boxed_function(f):
+    box = function(f)
+    def wrapped(*args, **kw):
+        if any(isinstance(v, BaseParameter) for v in args):
+            return box(*args, **kw)
+        else:
+            return f(*args, **kw)
+    wrapped.__name__ = f.__name__
+    wrapped.__doc__ = f.__doc__
+    return wrapped
+
+# arctan2 is special since either argument can be a parameter
+arctan2 = boxed_function(math.atan2)
+
+# Trig functions defined in degrees rather than radians
+@boxed_function
+def cosd(v):
+    """Return the cosine of x (measured in in degrees)."""
+    return math.cos(math.radians(v))
+
+@boxed_function
+def sind(v):
+    """Return the sine of x (measured in in degrees)."""
+    return math.sin(math.radians(v))
+
+@boxed_function
+def tand(v):
+    """Return the tangent of x (measured in in degrees)."""
+    return math.tan(math.radians(v))
+
+@boxed_function
+def acosd(v):
+    """Return the arc cosine (measured in in degrees) of x."""
+    return math.degrees(math.acos(v))
+arccosd = acosd
+
+@boxed_function
+def asind(v):
+    """Return the arc sine (measured in in degrees) of x."""
+    return math.degrees(math.asin(v))
+arcsind = asind
+
+@boxed_function
+def atand(v):
+    """Return the arc tangent (measured in in degrees) of x."""
+    return math.degrees(math.atan(v))
+arctand = atand
+
+@boxed_function
+def atan2d(dy, dx):
+    """Return the arc tangent (measured in in degrees) of y/x.
+    Unlike atan(y/x), the signs of both x and y are considered."""
+    return math.degrees(math.atan2(dy, dx))
+arctan2d = atan2d
+
 
 
 def flatten(s):

@@ -35,10 +35,16 @@ The following symbols are defined:
 
 import sys
 import numpy as np
-from numpy import inf
+from numpy import inf, pi, e
+
+from numpy import exp, log, log10, sqrt
+from numpy import degrees, radians
+from numpy import sin, cos, tan, arcsin, arccos, arctan, arctan2
+from numpy import sinh, cosh, tanh, arcsinh, arccosh, arctanh
 
 from . import pmath
 from .parameter import Parameter, FreeVariables
+from .parameter import sind, cosd, tand, arcsind, arccosd, arctand, arctan2d
 from .bounds import Distribution
 from .pdfwrapper import PDF, VectorPDF, DirectProblem
 from .curve import Curve, PoissonCurve

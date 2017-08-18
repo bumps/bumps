@@ -10,7 +10,7 @@ __all__ = [
     'exp', 'log', 'log10', 'sqrt',
     'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'atan2',
     'sind', 'cosd', 'tand', 'asind', 'acosd', 'atand', 'atan2d',
-    'sinh', 'cosh', 'tanh',
+    'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh',
     'degrees', 'radians',
     'sum', 'prod',
 ]
@@ -81,6 +81,9 @@ atan2d = function(_atan2d)
 sinh = function(math.sinh)
 cosh = function(math.cosh)
 tanh = function(math.tanh)
+asinh = function(math.asinh)
+acosh = function(math.acosh)
+atanh = function(math.atanh)
 
 sum = function(builtins.sum)
 prod = function(_prod)
