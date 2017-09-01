@@ -229,6 +229,7 @@ class DirectProblem(object):
 
         self._labels = labels if labels else ["p%d" % i for i, _ in enumerate(p0)]
         self._plot = plot
+        self.model_reset()
 
     def nllf(self, pvec=None):
         # Nllf is the primary interface from the fitters.  We are going to
