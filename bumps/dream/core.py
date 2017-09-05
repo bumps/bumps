@@ -460,9 +460,10 @@ def allocate_state(dream):
     n_update = int(draws/(steps*n_chain)) + 1
     n_gen = n_update * steps
     n_thin = int(n_gen/thinning) + 1
-    #print n_gen, n_thin, n_update, draws, steps, Npop, n_var
 
+    #print("new state", n_var, n_chain, n_cr, n_gen, n_thin, n_update, draws, steps)
     if dream.state is not None:
+        #print("existing", dream.state.Nvar, dream.state.Npop, dream.state.Ncr)
         dream.state.resize(
             n_gen, n_thin, n_update, n_var, n_chain, n_cr, thinning)
     else:

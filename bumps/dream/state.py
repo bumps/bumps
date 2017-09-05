@@ -204,7 +204,7 @@ def loadtxt(file, report=0):
     return asarray(res)
 
 
-def load_state(filename, skip=0, report=0):
+def load_state(filename, skip=0, report=0, derived_vars=0):
     # Read chain file
     chain = loadtxt(filename+'-chain'+EXT)
 
@@ -243,12 +243,14 @@ def load_state(filename, skip=0, report=0):
     state._thin_draws = state._gen_draws[(skip+1)*thinning-1::thinning]
     state._thin_logp = point[:, 0].reshape((Nthin, Npop))
     state._thin_point = reshape(point[:, 1:], (Nthin, Npop, Nvar))
+    if derived_vars:
+        state._thin_point = state._thin_point[:, :, :-derived_vars]
     state._gen_current = state._thin_point[-1].copy()
     state._update_count = Nupdate
     state._update_index = 0
     state._update_draws = stats[:, 0]
-    state._update_R_stat = stats[:, 1:Nvar+1]
-    state._update_CR_weight = stats[:, Nvar+1:]
+    state._update_R_stat = stats[:, 1:Nvar+1-derived_vars]
+    state._update_CR_weight = stats[:, Nvar+1-derived_vars:]
     state._outliers = []
 
     bestidx = np.argmax(point[:, 0])
@@ -862,7 +864,11 @@ class MCMCDraw(object):
         DREAM on the OpenBUGS Asia model does not return the same results
         as OpenBUGS, so the analysis of integer parameters should not yet
         be trusted.  No other tests have been done to this point.
+
+        You will not be able to resume a fit that has had its values
+        converted to integers.
         """
+        # TODO: convert on draw, but leave floating point values in state
         for var in labels:
             idx = self.labels.index(var)
             self._thin_point[:, :, idx] = np.round(self._thin_point[:, :, idx])
