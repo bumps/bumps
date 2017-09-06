@@ -242,7 +242,7 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
     state._thin_index = 0
     state._thin_draws = state._gen_draws[(skip+1)*thinning-1::thinning]
     state._thin_logp = point[:, 0].reshape((Nthin, Npop))
-    state._thin_point = reshape(point[:, 1:], (Nthin, Npop, Nvar))
+    state._thin_point = reshape(point[:, 1:Nvar+1-derived_vars], (Nthin, Npop, -1))
     state._gen_current = state._thin_point[-1].copy()
     state._update_count = Nupdate
     state._update_index = 0
@@ -253,10 +253,7 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
 
     bestidx = np.argmax(point[:, 0])
     state._best_logp = point[bestidx, 0]
-    state._best_x = point[bestidx, 1:]
-    if derived_vars:
-        state._thin_point = state._thin_point[:, :, :-derived_vars]
-        state._best_x = state._best_x[:-derived_vars]
+    state._best_x = point[bestidx, 1:Nvar+1-derived_vars]
 
     return state
 
