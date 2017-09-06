@@ -236,6 +236,9 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, cbar):
                 pidx = hstack((pidx, -1))
             y, z = y[pidx], z[pidx]
         pylab.pcolormesh(x, y, z, vmin=vmin, vmax=vmax, hold=True, cmap=cmap)
+    # Check for broken distribution
+    if not bins:
+        return
     centers, height, maxlikelihood = array(bins).T
     # Normalize maximum likelihood plot so it contains the same area as the
     # histogram, unless it is really spikey, in which case make sure it has

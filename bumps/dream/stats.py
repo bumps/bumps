@@ -65,7 +65,7 @@ def format_vars(all_vstats):
          "[%(interval68)15s] [%(interval95)15s]" % v]
     for v in all_vstats:
         # Make sure numbers are formatted with the appropriate precision
-        place = int(np.log10(v.p95[1]-v.p95[0]))-2
+        place = int(np.log10(v.p95[1]-v.p95[0]))-2 if v.p95[1] > v.p95[0] else -3
         summary = dict(mean=format_uncertainty(v.mean, v.std),
                        median=format_num(v.median, place-1),
                        best=format_num(v.best, place-1),
