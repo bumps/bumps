@@ -408,7 +408,6 @@ class BaseFitProblem(object):
             pparameter = self.parameter_nllf()
             if isnan(pparameter):
                 # TODO: make sure errors get back to the user
-                import logging
                 info = ["Parameter nllf is wrong"]
                 info += ["%s %g"%(p, p.nllf()) for p in self.bounded]
                 logging.error("\n  ".join(info))

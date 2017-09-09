@@ -9,13 +9,15 @@ from numpy import exp, sqrt, minimum, where, cov, eye, array, dot, errstate
 from numpy.linalg import norm, cholesky, inv
 from . import util
 
+import os
+BUMPS_TEMPERATURE = float(os.environ.get('BUMPS_TEMPERATURE', '1'))
 
 def paccept(logp_old, logp_try):
     """
     Returns the probability of taking a metropolis step given two
     log density values.
     """
-    return exp(minimum(logp_try-logp_old, 0))
+    return exp(minimum(logp_try-logp_old, 0)/BUMPS_TEMPERATURE)
 
 
 def metropolis(xtry, logp_try, xold, logp_old, step_alpha):
