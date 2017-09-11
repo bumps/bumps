@@ -32,9 +32,8 @@ def plot_all(state, portion=1.0, figfile=None):
     if figfile is not None:
         savefig(figfile+"-vars"+figext)
     figure()
-    plot_trace(state, portion=portion)
-    if state.title:
-        suptitle(state.title)
+    plot_traces(state, portion=portion)
+    suptitle("Parameter history" + (" for " + state.title if state.title else ""))
     if figfile is not None:
         savefig(figfile+"-trace"+figext)
     # Suppress R stat for now
@@ -344,16 +343,29 @@ def plot_corr(draw, vars=(0, 1)):
     setp(ax_hist_y.get_yticklabels(), visible=False)
 
 
+def plot_traces(state, vars=None, portion=None):
+    from pylab import subplot, clf, subplots_adjust
+
+    if vars is None:
+        vars = list(range(min(state.Nvar, 6)))
+    clf()
+    nw, nh = tile_axes(len(vars))
+    subplots_adjust(hspace=0.0)
+    for k, var in enumerate(vars):
+        subplot(nw, nh, k+1)
+        plot_trace(state, var, portion)
+
+
 def plot_trace(state, var=0, portion=None):
     from pylab import plot, title, xlabel, ylabel
 
     draw, points, _ = state.chains()
+    label = state.labels[var]
     start = int((1-portion)*len(draw)) if portion else 0
     plot(arange(start, len(points))*state.thinning,
          squeeze(points[start:, state._good_chains, var]))
-    title('Parameter history for variable %d' % (var+1,))
     xlabel('Generation number')
-    ylabel('Parameter value')
+    ylabel(label)
 
 
 def plot_R(state, portion=None):
