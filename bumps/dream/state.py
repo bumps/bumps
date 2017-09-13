@@ -262,6 +262,7 @@ class MCMCDraw(object):
     """
     """
     _labels = None
+    _integer_vars = None  # boolean array of integer variables, or None
     title = None
 
     def __init__(self, Ngen, Nthin, Nupdate, Nvar, Npop, Ncr, thinning):
@@ -852,24 +853,12 @@ class MCMCDraw(object):
         #print(labels)
         #print(self._shown)
 
-    def integer_vars(self, labels):
+    def set_integer_vars(self, labels):
         """
-        Set variables to integer variables by rounding their values to the
-        nearest integer.
-
-        Note that this cannot be done ahead of time unless DREAM gets an
-        integer stepper, but it can be done before generating statistics.
-        DREAM on the OpenBUGS Asia model does not return the same results
-        as OpenBUGS, so the analysis of integer parameters should not yet
-        be trusted.  No other tests have been done to this point.
-
-        You will not be able to resume a fit that has had its values
-        converted to integers.
+        Indicate tha variables should be considered integer variables when
+        computing statistics.
         """
-        # TODO: convert on draw, but leave floating point values in state
-        for var in labels:
-            idx = self.labels.index(var)
-            self._thin_point[:, :, idx] = np.round(self._thin_point[:, :, idx])
+        self._integer_vars = np.array([var in labels for var in self.labels])
 
     def derive_vars(self, fn, labels=None):
         """
@@ -931,6 +920,7 @@ class Draw(object):
         self._stats = None
         self.weights = None
         self.num_vars = len(self.labels)
+        self.integers = state._integer_vars[vars] if vars else None
 
 
 def _sample(state, portion, vars, selection):

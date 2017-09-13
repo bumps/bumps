@@ -692,7 +692,7 @@ class DreamFit(FitBase):
             self.state.set_visible_vars(visible_vars)
         integer_vars = getattr(self.problem, 'integer_vars', None)
         if integer_vars is not None:
-            self.state.integer_vars(integer_vars)
+            self.state.set_integer_vars(integer_vars)
 
         x, fx = self.state.best()
 

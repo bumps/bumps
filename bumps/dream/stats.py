@@ -29,6 +29,9 @@ ONE_SIGMA = 1 - 2*0.15865525393145705
 def _var_stats_one(draw, var):
     weights, values = draw.weights, draw.points[:, var].flatten()
 
+    if draw.integers is not None and draw.integers[var]:
+        values = np.floor(values)
+
     best_idx = np.argmax(draw.logp)
     best = values[best_idx]
 
