@@ -104,7 +104,7 @@ def tile_axes(n, size=None):
 
 def plot_var(draw, vstats, var, cbar, nbins=30):
     values = draw.points[:, var].flatten()
-    _make_logp_histogram(values, draw.logp, nbins, vstats.p95,
+    _make_logp_histogram(values, draw.logp, nbins, vstats.p95_range,
                          draw.weights, cbar)
     _decorate_histogram(vstats)
 
@@ -112,15 +112,15 @@ def plot_var(draw, vstats, var, cbar, nbins=30):
 def _decorate_histogram(vstats):
     import pylab
     from matplotlib.transforms import blended_transform_factory as blend
+
+    l95, h95 = vstats.p95_range
+    l68, h68 = vstats.p68_range
+
     # Shade things inside 1-sigma
-    pylab.axvspan(vstats.p68[0], vstats.p68[1],
-                  color='gold', alpha=0.5, zorder=-1)
+    pylab.axvspan(l68, h68, color='gold', alpha=0.5, zorder=-1)
     # build transform with x=data, y=axes(0,1)
     ax = pylab.gca()
     transform = blend(ax.transData, ax.transAxes)
-
-    l95, h95 = vstats.p95
-    l68, h68 = vstats.p68
 
     def marker(symbol, position):
         if position < l95:
