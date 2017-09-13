@@ -93,8 +93,8 @@ def plot_vars(draw, all_vstats, **kw):
     col, row = tile_axes(len_allvs)
 
     #set top, bottom, left, right margins
-    t_margin = 0.02
-    b_margin = 0.08
+    t_margin = 0.08/row
+    b_margin = 0.08/row
     l_margin = 0.02
     r_margin = 0.08
 
