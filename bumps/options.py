@@ -272,8 +272,8 @@ Options:
 
     --preview
         display model but do not perform a fitting operation
-    --pars=filename
-        initial parameter values; fit results are saved as <modelname>.par
+    --pars=filename or store path
+        initial parameter values; fit results are saved as path/<modelname>.par
     --plot=log      [%(plotter)s]
         type of plot to display
     --simulate

@@ -142,6 +142,8 @@ def load_best(problem, path):
     """
     #targets = dict(zip(problem.labels(), problem.getp()))
     targets = dict((name, np.NaN) for name in problem.labels())
+    if not os.path.isfile(path):
+        path = os.path.join(path, problem.name+".par")
     with open(path, 'rt') as fid:
         for line in fid:
             m = PARS_PATTERN.match(line)
