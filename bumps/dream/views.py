@@ -208,7 +208,7 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, cbar):
     #open('/tmp/out','a').write("ci=%s, range=%s\n"
     #                           % (ci,(min(values),max(values))))
     edges = linspace(ci[0], ci[1], nbins+1)
-    idx = searchsorted(values, edges)
+    idx = searchsorted(values[1:-1], edges)
     weightsum = cumsum(weights)
     heights = diff(weightsum[idx])/weightsum[-1]  # normalized weights
 
