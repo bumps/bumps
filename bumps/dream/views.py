@@ -18,13 +18,13 @@ from .formatnum import format_value
 from .stats import var_stats, format_vars
 
 def plot_all(state, portion=1.0, figfile=None):
-    from pylab import figure, savefig, suptitle, rcParams
+    from matplotlib.pyplot import figure, savefig, suptitle
+    from matplotlib import rcParams
 
     figext = '.'+rcParams.get('savefig.format', 'png')
 
     draw = state.draw(portion=portion)
     all_vstats = var_stats(draw)
-    figure()
     plot_vars(draw, all_vstats)
     if state.title:
         suptitle(state.title)
@@ -59,47 +59,95 @@ def plot_all(state, portion=1.0, figfile=None):
 
 
 def plot_vars(draw, all_vstats, **kw):
-    from pylab import subplot, clf
+    from matplotlib import pyplot as plt
+    from matplotlib import rcParams
 
-    clf()
-    nw, nh = tile_axes(len(all_vstats))
+    plt.clf()
+
+    #configure the plot parameters
+    fontsz = 12
+    lwidth = 1
+    pad = 2
+    pltparams = [['xtick.direction','in'],
+                ['ytick.direction','in'],
+                ['lines.linewidth',1],
+                ['axes.linewidth',lwidth],
+                ['xtick.labelsize',fontsz],
+                ['ytick.labelsize',fontsz],
+                ['xtick.major.size',5],
+                ['ytick.major.size',5],
+                ['xtick.minor.size',2.5],
+                ['ytick.minor.size',2.5],
+                ['xtick.major.width',lwidth],
+                ['ytick.major.width',lwidth],
+                ['xtick.minor.width',lwidth],
+                ['ytick.minor.width',lwidth],
+                ['xtick.major.pad',pad],
+                ['ytick.major.pad',pad],
+                ['font.size',fontsz],
+                ["savefig.dpi",100]]
+    for i in pltparams:
+        rcParams[i[0]]=i[1]
+    
+    len_allvs = len(all_vstats)
+    col, row = tile_axes(len_allvs)
+
+    #set top, bottom, left, right margins
+    t_margin = 0.02
+    b_margin = 0.08
+    l_margin = 0.02
+    r_margin = 0.08
+
+    #set space between plots in horiz and vert
+    #as a fraction of the overall tile width
+    h_space = 0.05
+    v_space = 0.1
+
+    #set the area of the figure to be covered
+    #with plots
+    v = 1 - t_margin - b_margin + v_space/row
+    h = 1 - l_margin - r_margin + h_space/col
+    top = 1 - t_margin + v_space/row
+
+    #set the size of an individual tile
+    row_i = v/row
+    col_i = h/col
+
+    fig = plt.figure()
     cbar = _make_fig_colorbar(draw.logp)
-    for k, vstats in enumerate(all_vstats):
-        subplot(nw, nh, k+1)
-        plot_var(draw, vstats, k, cbar, **kw)
+    ax = []
+    k = 0
+    for j in range(1,row+1):
+        for i in range(0,col):
+            if k>=len_allvs:
+                break
+            dims = [l_margin+i*col_i,
+                    top-j*row_i,
+                    col_i*(1-h_space),
+                    row_i*(1-v_space)]
+            ax.append(fig.add_axes(dims))
+            plt.sca(ax[k])
+            plot_var(draw, all_vstats[k], k, cbar)
+            k+=1
+    #set the figure size according to the number of plots
+    plt.gcf().set_size_inches(3*col,2*row)
+    cbar = _make_fig_colorbar(draw.logp)
 
 
-def tile_axes(n, size=None):
+
+def tile_axes(n):
     """
-    Creates a tile for the axes which covers as much area of the graph as
-    possible while keeping the plot shape near the golden ratio.
+    Determine number of columns by finding the
+    next greatest square, then determine number
+    of rows needed.
     """
-    from pylab import gcf
-    if size is None:
-        size = gcf().get_size_inches()
-    figwidth, figheight = size
-    # Golden ratio phi is the preferred dimension
-    #    phi = sqrt(5)/2
-    #
-    # nw, nh is the number of tiles across and down respectively
-    # w, h are the sizes of the tiles
-    #
-    # w,h = figwidth/nw, figheight/nh
-    #
-    # To achieve the golden ratio, set w/h to phi:
-    #     w/h = phi  => figwidth/figheight*nh/nw = phi
-    #                => nh/nw = phi * figheight/figwidth
-    # Must have enough tiles:
-    #     nh*nw > n  => nw > n/nh
-    #                => nh**2 > n * phi * figheight/figwidth
-    #                => nh = floor(sqrt(n*phi*figheight/figwidth))
-    #                => nw = ceil(n/nh)
-    phi = math.sqrt(5)/2
-    nh = int(math.floor(math.sqrt(n*phi*figheight/figwidth)))
-    if nh < 1:
-        nh = 1
-    nw = int(math.ceil(n/nh))
-    return nw, nh
+    from numpy import digitize as dig
+    from numpy import ceil
+    
+    bins = [pow(i,2)+1 for i in range(0,9)]
+    cols = int(dig(n,bins))
+    rows = int(ceil(n/float(cols)))
+    return cols, rows
 
 
 def plot_var(draw, vstats, var, cbar, nbins=30):
@@ -110,14 +158,15 @@ def plot_var(draw, vstats, var, cbar, nbins=30):
 
 
 def _decorate_histogram(vstats):
-    import pylab
+    from matplotlib import pyplot as plt
     from matplotlib.transforms import blended_transform_factory as blend
     # Shade things inside 1-sigma
-    pylab.axvspan(vstats.p68[0], vstats.p68[1],
-                  color='gold', alpha=0.5, zorder=-1)
+    plt.axvspan(vstats.p68[0], vstats.p68[1],
+                  color='gold', alpha=0.5, zorder=-1,
+                ec='none')
     # build transform with x=data, y=axes(0,1)
-    ax = pylab.gca()
-    transform = blend(ax.transData, ax.transAxes)
+    axi = plt.gca()
+    transform = blend(axi.transData, axi.transAxes)
 
     l95, h95 = vstats.p95
     l68, h68 = vstats.p68
@@ -129,7 +178,7 @@ def _decorate_histogram(vstats):
             symbol, position, ha = '>'+symbol, h95, 'right'
         else:
             symbol, position, ha = symbol, position, 'center'
-        pylab.text(position, 0.95, symbol, va='top', ha=ha,
+        axi.text(position, 0.95, symbol, va='top', ha=ha,
                    transform=transform, zorder=3, color='g')
         #pylab.axvline(v)
 
@@ -137,36 +186,36 @@ def _decorate_histogram(vstats):
     marker('E', vstats.mean)
     marker('*', vstats.best)
 
-    pylab.text(0.01, 0.95, vstats.label, zorder=2,
+    plt.text(0.01, 0.95, vstats.label, zorder=2,
                backgroundcolor=(1, 1, 0, 0.2),
                verticalalignment='top',
                horizontalalignment='left',
-               transform=pylab.gca().transAxes)
-    pylab.setp([pylab.gca().get_yticklabels()], visible=False)
+               transform=plt.gca().transAxes)
+    plt.setp([plt.gca().get_yticklabels()], visible=False)
     ticks = (l95, l68, vstats.median, h68, h95)
     labels = [format_value(v, h95-l95) for v in ticks]
     if len(labels[2]) > 5:
         # Drop 68% values if too many digits
         ticks, labels = ticks[0::2], labels[0::2]
-    pylab.xticks(ticks, labels)
+    axi.set_xticks(ticks, labels)
 
 
 def _make_fig_colorbar(logp):
     import matplotlib as mpl
-    import pylab
+    from numpy import sort
 
     # Option 1: min to min + 4
     #vmin=-max(logp); vmax=vmin+4
     # Option 1b: min to min log10(num samples)
     #vmin=-max(logp); vmax=vmin+log10(len(logp))
     # Option 2: full range of best 98%
-    snllf = pylab.sort(-logp)
+    snllf = sort(-logp)
     vmin, vmax = snllf[0], snllf[int(0.98*(len(snllf)-1))]  # robust range
     # Option 3: full range
     #vmin,vmax = -max(logp),-min(logp)
 
-    fig = pylab.gcf()
-    ax = fig.add_axes([0.60, 0.95, 0.35, 0.05])
+    fig = mpl.pyplot.gcf()
+    axi = fig.add_axes([0.93, 0.2, 0.025, 0.6])
     cmap = mpl.cm.copper
 
     # Set the colormap and norm to correspond to the data for which
@@ -187,9 +236,10 @@ def _make_fig_colorbar(logp):
 
     ticks = (vmin, vmax)
     formatter = MinDigitsFormatter(vmin, vmax)
-    cb = mpl.colorbar.ColorbarBase(ax, cmap=cmap, norm=norm,
+    cb = mpl.colorbar.ColorbarBase(axi, cmap=cmap, norm=norm,
                                    ticks=ticks, format=formatter,
-                                   orientation='horizontal')
+                                   orientation='vertical',
+                                   ticklocation='right')
     #cb.set_ticks(ticks)
     #cb.set_ticklabels(labels)
     #cb.set_label('negative log likelihood')
