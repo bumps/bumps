@@ -174,7 +174,7 @@ def tile_axes(n):
 
 def plot_var(draw, vstats, var, cbar, nbins=30):
     values = draw.points[:, var].flatten()
-    _make_logp_histogram(values, draw.logp, nbins, vstats.p95,
+    _make_logp_histogram(values, draw.logp, nbins, vstats.p95_range,
                          draw.weights, cbar)
     _decorate_histogram(vstats)
 
@@ -182,16 +182,21 @@ def plot_var(draw, vstats, var, cbar, nbins=30):
 def _decorate_histogram(vstats):
     from matplotlib import pyplot as plt
     from matplotlib.transforms import blended_transform_factory as blend
+
+    l95, h95 = vstats.p95_range
+    l68, h68 = vstats.p68_range
+
     # Shade things inside 1-sigma
+<<<<<<< HEAD
     plt.axvspan(vstats.p68[0], vstats.p68[1],
                   color='gold', alpha=0.5, zorder=-1,
                 ec='none')
+=======
+    pylab.axvspan(l68, h68, color='gold', alpha=0.5, zorder=-1)
+>>>>>>> upstream/master
     # build transform with x=data, y=axes(0,1)
     axi = plt.gca()
     transform = blend(axi.transData, axi.transAxes)
-
-    l95, h95 = vstats.p95
-    l68, h68 = vstats.p68
 
     def marker(symbol, position):
         if position < l95:
@@ -285,7 +290,7 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, cbar):
     #open('/tmp/out','a').write("ci=%s, range=%s\n"
     #                           % (ci,(min(values),max(values))))
     edges = linspace(ci[0], ci[1], nbins+1)
-    idx = searchsorted(values, edges)
+    idx = searchsorted(values[1:-1], edges)
     weightsum = cumsum(weights)
     heights = diff(weightsum[idx])/weightsum[-1]  # normalized weights
 

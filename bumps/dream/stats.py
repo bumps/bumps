@@ -29,6 +29,10 @@ ONE_SIGMA = 1 - 2*0.15865525393145705
 def _var_stats_one(draw, var):
     weights, values = draw.weights, draw.points[:, var].flatten()
 
+    integer = draw.integers is not None and draw.integers[var]
+    if integer:
+        values = np.floor(values)
+
     best_idx = np.argmax(draw.logp)
     best = values[best_idx]
 
@@ -44,8 +48,10 @@ def _var_stats_one(draw, var):
     mean, std = stats(x=values, weights=weights)
 
     vstats = VarStats(label=draw.labels[var], index=var+1,
-                      p95=p95, p68=p68,
-                      median=p0[0], mean=mean, std=std, best=best)
+                      p95=p95, p95_range=(p95[0], p95[1]+integer*0.9999999999),
+                      p68=p68, p68_range=(p68[0], p68[1]+integer*0.9999999999),
+                      median=p0[0], mean=mean, std=std, best=best,
+                      integer=integer)
 
     return vstats
 
