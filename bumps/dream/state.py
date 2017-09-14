@@ -920,7 +920,10 @@ class Draw(object):
         self._stats = None
         self.weights = None
         self.num_vars = len(self.labels)
-        self.integers = state._integer_vars[vars] if vars else None
+        if state._integer_vars is not None:
+            self.integers = state._integer_vars[vars] if vars else None
+        else:
+            self.integers = None
 
 
 def _sample(state, portion, vars, selection):
