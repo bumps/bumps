@@ -88,24 +88,26 @@ def plot_vars(draw, all_vstats, **kw):
                 ["savefig.dpi",100]]
     for i in pltparams:
         rcParams[i[0]]=i[1]
-    
+
+    #determine number of fitted parameters,
+    #and set number of rows and columns accordingly
     len_allvs = len(all_vstats)
     col, row = tile_axes(len_allvs)
 
     #set tile width, height, colorbar width
     tile_W = 3.0
     tile_H = 2.0
-    cbar_width = 1.0
+    cbar_width = 0.75
 
     #set space between plots in horiz and vert
-    h_space = 0.3
+    h_space = 0.2
     v_space = 0.2
 
     #set top, bottom, left margins
     t_margin = 0.2
     b_margin = 0.2
     l_margin = 0.2
-    r_margin = 0.4
+    r_margin = 0.2
 
     #calculate total width and figure size
     plots_width = (tile_W+h_space)*col
@@ -119,20 +121,30 @@ def plot_vars(draw, all_vstats, **kw):
 
     tile_H_f = tile_H/total_height
     tile_W_f = tile_W/total_width
+    cbar_width_f = cbar_width/total_width
 
     t_margin_f = t_margin/total_height
     b_margin_f = b_margin/total_height
     l_margin_f = l_margin/total_width
-    top = 1-t_margin_f
+    top = 1-t_margin_f+v_space_f
     left = l_margin_f
 
-    #set the figure size based on dimensions above
+    #set colorbar dimensions
+    l_cbar_f = left+col*(tile_W_f+h_space_f)
+    b_cbar_f = b_margin_f+v_space_f
+    h_cbar_f = 1 - t_margin_f - b_margin_f - v_space_f
+    cbar_box = [l_cbar_f,b_cbar_f,cbar_width_f,h_cbar_f]
+
+    #make the figure with size according to dimensions
     fig = plt.figure(figsize=fsize)
+    cbar = _make_fig_colorbar(draw.logp,cbar_box)
+
+    #set the figure size based on dimensions above
     ax = []
     k = 0
     for j in range(1,row+1):
         for i in range(0,col):
-            if k>=a:
+            if k>=len_allvs:
                 break
             dims = [left+i*(tile_W_f+h_space_f),
                     top-j*(tile_H_f+v_space_f),
@@ -141,10 +153,8 @@ def plot_vars(draw, all_vstats, **kw):
             ax.append(fig.add_axes(dims))
             plt.sca(ax[k])
             plot_var(draw, all_vstats[k], k, cbar)
+            ax[k].set_facecolor('none')
             k+=1
-    
-    cbar = _make_fig_colorbar(draw.logp)
-
 
 
 def tile_axes(n):
@@ -212,7 +222,7 @@ def _decorate_histogram(vstats):
     axi.set_xticks(ticks, labels)
 
 
-def _make_fig_colorbar(logp):
+def _make_fig_colorbar(logp,cbar_box):
     import matplotlib as mpl
     from numpy import sort
 
@@ -227,7 +237,7 @@ def _make_fig_colorbar(logp):
     #vmin,vmax = -max(logp),-min(logp)
 
     fig = mpl.pyplot.gcf()
-    axi = fig.add_axes([0.93, 0.2, 0.025, 0.6])
+    axi = fig.add_axes(cbar_box)
     cmap = mpl.cm.copper
 
     # Set the colormap and norm to correspond to the data for which
@@ -246,12 +256,17 @@ def _make_fig_colorbar(logp):
         def __call__(self, x, pos=None):
             return format_value(x, self.delta)
 
-    ticks = (vmin, vmax)
+    ticks = []#(vmin, vmax)
     formatter = MinDigitsFormatter(vmin, vmax)
     cb = mpl.colorbar.ColorbarBase(axi, cmap=cmap, norm=norm,
                                    ticks=ticks, format=formatter,
                                    orientation='vertical',
                                    ticklocation='right')
+    delta = vmax - vmin
+    fig.text(cbar_box[0],cbar_box[1],
+             format_value(vmin,delta),va='top')
+    fig.text(cbar_box[0],cbar_box[1]+cbar_box[3],
+             format_value(vmax,delta),va='bottom')
     #cb.set_ticks(ticks)
     #cb.set_ticklabels(labels)
     #cb.set_label('negative log likelihood')
