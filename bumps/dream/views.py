@@ -92,45 +92,57 @@ def plot_vars(draw, all_vstats, **kw):
     len_allvs = len(all_vstats)
     col, row = tile_axes(len_allvs)
 
-    #set top, bottom, left, right margins
-    t_margin = 0.08/row
-    b_margin = 0.08/row
-    l_margin = 0.02
-    r_margin = 0.08
+    #set tile width, height, colorbar width
+    tile_W = 3.0
+    tile_H = 2.0
+    cbar_width = 1.0
 
     #set space between plots in horiz and vert
-    #as a fraction of the overall tile width
-    h_space = 0.05
-    v_space = 0.1
+    h_space = 0.3
+    v_space = 0.2
 
-    #set the area of the figure to be covered
-    #with plots
-    v = 1 - t_margin - b_margin + v_space/row
-    h = 1 - l_margin - r_margin + h_space/col
-    top = 1 - t_margin + v_space/row
+    #set top, bottom, left margins
+    t_margin = 0.2
+    b_margin = 0.2
+    l_margin = 0.2
+    r_margin = 0.4
 
-    #set the size of an individual tile
-    row_i = v/row
-    col_i = h/col
+    #calculate total width and figure size
+    plots_width = (tile_W+h_space)*col
+    total_width = plots_width+cbar_width+l_margin+r_margin
+    total_height = (tile_H+v_space)*row+t_margin+b_margin
+    fsize = [total_width,total_height]
 
-    fig = plt.figure()
-    cbar = _make_fig_colorbar(draw.logp)
+    #calculate dimensions as fractions of figure size
+    v_space_f = v_space/total_height
+    h_space_f = h_space/total_width
+
+    tile_H_f = tile_H/total_height
+    tile_W_f = tile_W/total_width
+
+    t_margin_f = t_margin/total_height
+    b_margin_f = b_margin/total_height
+    l_margin_f = l_margin/total_width
+    top = 1-t_margin_f
+    left = l_margin_f
+
+    #set the figure size based on dimensions above
+    fig = plt.figure(figsize=fsize)
     ax = []
     k = 0
     for j in range(1,row+1):
         for i in range(0,col):
-            if k>=len_allvs:
+            if k>=a:
                 break
-            dims = [l_margin+i*col_i,
-                    top-j*row_i,
-                    col_i*(1-h_space),
-                    row_i*(1-v_space)]
+            dims = [left+i*(tile_W_f+h_space_f),
+                    top-j*(tile_H_f+v_space_f),
+                    tile_W_f,
+                    tile_H_f]
             ax.append(fig.add_axes(dims))
             plt.sca(ax[k])
             plot_var(draw, all_vstats[k], k, cbar)
             k+=1
-    #set the figure size according to the number of plots
-    plt.gcf().set_size_inches(3*col,2*row)
+    
     cbar = _make_fig_colorbar(draw.logp)
 
 
