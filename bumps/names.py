@@ -49,4 +49,4 @@ from .bounds import Distribution
 from .pdfwrapper import PDF, VectorPDF, DirectProblem
 from .curve import Curve, PoissonCurve
 from .fitproblem import FitProblem, MultiFitProblem
-from .fitproblem import bumps_model
+from .util import relative_import

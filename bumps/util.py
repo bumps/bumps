@@ -112,6 +112,30 @@ def kbhit():
         return sys.stdin in i
 
 
+class DynamicPackage(object):
+    def __init__(self, path):
+       self.__path__ = [path]
+
+
+def relative_import(filename, package="relative_import"):
+    """
+    Define an empty package allowing relative imports from a script.
+
+    By setting *__package__ = relative_import(__file__)* at the top of your
+    script file you can even run your model as a python script.  So long
+    as the script behaviour is isolated in a *if __name__ == "__main__":*
+    code block and *problem = FitProblem(...)* is defined, the same model
+    can be used both within and outside of bumps.
+    """
+    path = os.path.dirname(os.path.abspath(filename))
+    if (package in sys.modules
+            and not isinstance(sys.modules[package], DynamicPackage)):
+        raise ImportError("relative import would override the existing package %s. Use another name"
+                          % package)
+    sys.modules[package] = DynamicPackage(path)
+    return package
+
+
 class redirect_console(object):
     """
     Console output redirection context

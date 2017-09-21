@@ -21,6 +21,7 @@ from numpy import inf, isnan, NaN
 
 from . import parameter, bounds as mbounds
 from .formatnum import format_uncertainty
+from . import util
 
 # Abstract base class
 class Fitness(object):
@@ -661,24 +662,6 @@ def nllf_scale(problem):
         npars = max(len(problem.getp()), 1)
         return 2./dof, chi2.ppf(ONE_SIGMA, npars)/dof
 
-def bumps_model(filename):
-    """
-    Define an empty package allowing relative imports from the model file.
-
-    This is done implicitly for every model loaded by bumps, allowing the
-    use of relative imports to load in supporting packages.
-
-    By setting *__package__ = bumps_model(__file__)* at the top of your
-    model file you can even run your model as a python script.  So long
-    as the script behaviour is isolated in a *if __name__ == "__main__":*
-    code block and *problem = FitProblem(...)* is defined, the same model
-    can be used both within and outside of bumps.
-    """
-    class bumps_model_package(object):
-        __path__ = [os.path.dirname(os.path.abspath(filename))]
-    sys.modules["bumps_model"] = bumps_model_package
-    return "bumps_model"
-
 def load_problem(filename, options=None):
     """
     Load a problem definition from a python script file.
@@ -690,7 +673,7 @@ def load_problem(filename, options=None):
     Raises ValueError if the script does not define problem.
     """
     # Allow relative imports from the bumps model
-    package = bumps_model(filename)
+    package = util.relative_import(filename)
     module = os.path.splitext(os.path.basename(filename))[0]
 
     ctx = dict(__file__=filename, __package__=package, __name__=module)
