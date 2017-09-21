@@ -77,18 +77,17 @@ def load_model(path, model_options=None):
     # can be given as relative paths in the model file.  Add the directory
     # to the python path (at the end) so that imports work as expected.
     directory, filename = os.path.split(path)
-    with push_python_path(os.path.abspath(directory)):
-        with pushdir(directory):
-            # Try a specialized model loader
-            problem = plugin.load_model(filename)
-            if problem is None:
-                # print "loading",filename,"from",directory
-                if filename.endswith('pickle'):
-                    # First see if it is a pickle
-                    problem = pickle.load(open(filename, 'rb'))
-                else:
-                    # Then see if it is a python model script
-                    problem = load_problem(filename, options=model_options)
+    with pushdir(directory):
+        # Try a specialized model loader
+        problem = plugin.load_model(filename)
+        if problem is None:
+            # print "loading",filename,"from",directory
+            if filename.endswith('pickle'):
+                # First see if it is a pickle
+                problem = pickle.load(open(filename, 'rb'))
+            else:
+                # Then see if it is a python model script
+                problem = load_problem(filename, options=model_options)
 
     # Guard against the user changing parameters after defining the problem.
     problem.model_reset()
