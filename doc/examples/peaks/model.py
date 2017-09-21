@@ -1,12 +1,8 @@
 from __future__ import division, print_function
 
-# Look for the peak fitter in the same file as the modeller
-import os, sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
 import numpy as np
-from peaks import Peaks, Gaussian, Background
 from bumps.names import Parameter, pmath, FitProblem, cosd, sind
+from .peaks import Peaks, Gaussian, Background
 
 
 def read_data():
@@ -110,3 +106,20 @@ def build_problem():
     return FitProblem(M)
 
 problem = build_problem()
+
+
+# Note: if you want to run the model file as a script without invoking bumps
+# (which can be handy for debugging data loaders, etc.) then add the script
+# statements to a *__name__ == "__main__"* code block at the end of the file.
+# For example:
+#
+#     if __name__ == "__main__":
+#         print("data", read_data())
+#
+# Since this model file imports from the *.peaks* module, you
+# also need to set up the package context to resolve the dot in
+# the relative import statement.  This can be done by adding the
+# following two lines before the .peaks import at the top of the file:
+#
+#     from bumps.names import relative_import
+#     __package__ = relative_import(__file__)

@@ -12,6 +12,7 @@ __all__ = ['Fitness', 'FitProblem', 'load_problem',
            'BaseFitProblem', 'MultiFitProblem']
 
 import sys
+import os
 import traceback
 import logging
 
@@ -20,6 +21,7 @@ from numpy import inf, isnan, NaN
 
 from . import parameter, bounds as mbounds
 from .formatnum import format_uncertainty
+from . import util
 
 # Abstract base class
 class Fitness(object):
@@ -670,7 +672,11 @@ def load_problem(filename, options=None):
 
     Raises ValueError if the script does not define problem.
     """
-    ctx = dict(__file__=filename, __name__="bumps_model")
+    # Allow relative imports from the bumps model
+    package = util.relative_import(filename)
+    module = os.path.splitext(os.path.basename(filename))[0]
+
+    ctx = dict(__file__=filename, __package__=package, __name__=module)
     old_argv = sys.argv
     sys.argv = [filename] + options if options else [filename]
     source = open(filename).read()

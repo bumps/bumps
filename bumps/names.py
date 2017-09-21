@@ -18,15 +18,15 @@ The following symbols are defined:
 - :class:`Parameter <bumps.parameter.Parameter>` for defining parameters
 - :class:`FreeVariables <bumps.parameter.FreeVariables>` for defining shared parameters
 - :class:`Distribution <bumps.bounds.Distribution>` for indicating prior
-  probability for a model parameter
+    probability for a model parameter
 - :class:`Curve <bumps.curve.Curve>` for defining models from functions
 - :class:`PoissonCurve <bumps.curve.PoissonCurve>` for modelling data with Poisson uncertainty
 - :class:`PDF <bumps.pdfwrapper.PDF>` for fitting a probability distribution directly
 - :func:`FitProblem <bumps.fitproblem.FitProblem>` for defining the fit (see
-  :class:`BaseFitProblem <bumps.fitproblem.BaseFitProblem>` or
-  :class:`MultiFitProblem <bumps.fitproblem.MultiFitProblem>` for details,
-  depending on whether you are fitting a single model or multiple models
-  simultaneously).
+    :class:`BaseFitProblem <bumps.fitproblem.BaseFitProblem>` or
+    :class:`MultiFitProblem <bumps.fitproblem.MultiFitProblem>` for details,
+    depending on whether you are fitting a single model or multiple models
+    simultaneously).
 """
 
 #__all__ = [ 'sys', 'np', 'inf', 'pmath',
@@ -49,3 +49,4 @@ from .bounds import Distribution
 from .pdfwrapper import PDF, VectorPDF, DirectProblem
 from .curve import Curve, PoissonCurve
 from .fitproblem import FitProblem, MultiFitProblem
+from .util import relative_import

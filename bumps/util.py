@@ -112,6 +112,30 @@ def kbhit():
         return sys.stdin in i
 
 
+class DynamicPackage(object):
+    def __init__(self, path):
+       self.__path__ = [path]
+
+
+def relative_import(filename, package="relative_import"):
+    """
+    Define an empty package allowing relative imports from a script.
+
+    By setting *__package__ = relative_import(__file__)* at the top of your
+    script file you can even run your model as a python script.  So long
+    as the script behaviour is isolated in a *if __name__ == "__main__":*
+    code block and *problem = FitProblem(...)* is defined, the same model
+    can be used both within and outside of bumps.
+    """
+    path = os.path.dirname(os.path.abspath(filename))
+    if (package in sys.modules
+            and not isinstance(sys.modules[package], DynamicPackage)):
+        raise ImportError("relative import would override the existing package %s. Use another name"
+                          % package)
+    sys.modules[package] = DynamicPackage(path)
+    return package
+
+
 class redirect_console(object):
     """
     Console output redirection context
@@ -191,6 +215,30 @@ class redirect_console(object):
         del self.sys_stdout[-1]
         del self.sys_stderr[-1]
         return False
+
+class push_python_path(object):
+    """
+    Change sys.path for the duration of a with statement.
+
+    :Example:
+
+    Show that the original directory is restored::
+
+        >>> import sys, os
+        >>> original_path = list(sys.path)
+        >>> with push_python_path('/tmp'):
+        ...     assert sys.path[-1] == '/tmp'
+        >>> restored_path = list(sys.path)
+        >>> assert original_path == restored_path
+    """
+    def __init__(self, path):
+        self.path = path
+
+    def __enter__(self):
+        sys.path.append(self.path)
+
+    def __exit__(self, *args):
+        del sys.path[-1]
 
 
 class pushdir(object):
