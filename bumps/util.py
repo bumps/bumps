@@ -192,6 +192,30 @@ class redirect_console(object):
         del self.sys_stderr[-1]
         return False
 
+class push_python_path(object):
+    """
+    Change sys.path for the duration of a with statement.
+
+    :Example:
+
+    Show that the original directory is restored::
+
+        >>> import sys, os
+        >>> original_path = list(sys.path)
+        >>> with push_python_path('/tmp'):
+        ...     assert sys.path[-1] == '/tmp'
+        >>> restored_path = list(sys.path)
+        >>> assert original_path == restored_path
+    """
+    def __init__(self, path):
+        self.path = path
+
+    def __enter__(self):
+        sys.path.append(self.path)
+
+    def __exit__(self, *args):
+        del sys.path[-1]
+
 
 class pushdir(object):
     """

@@ -1,9 +1,5 @@
 from __future__ import division, print_function
 
-# Look for the peak fitter in the same file as the modeller
-import os, sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
 import numpy as np
 from peaks import Peaks, Gaussian, Background
 from bumps.names import Parameter, pmath, FitProblem, cosd, sind

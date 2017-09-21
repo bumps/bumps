@@ -49,7 +49,7 @@ from . import __version__
 from . import plugin
 from . import options
 
-from .util import pushdir
+from .util import pushdir, push_python_path
 
 
 def install_plugin(p):
@@ -74,20 +74,21 @@ def load_model(path, model_options=None):
     from .fitproblem import load_problem
 
     # Change to the target path before loading model so that data files
-    # can be given as relative paths in the model file.  This should also
-    # allow imports as expected from the model file.
+    # can be given as relative paths in the model file.  Add the directory
+    # to the python path (at the end) so that imports work as expected.
     directory, filename = os.path.split(path)
-    with pushdir(directory):
-        # Try a specialized model loader
-        problem = plugin.load_model(filename)
-        if problem is None:
-            # print "loading",filename,"from",directory
-            if filename.endswith('pickle'):
-                # First see if it is a pickle
-                problem = pickle.load(open(filename, 'rb'))
-            else:
-                # Then see if it is a python model script
-                problem = load_problem(filename, options=model_options)
+    with push_python_path(os.path.abspath(directory)):
+        with pushdir(directory):
+            # Try a specialized model loader
+            problem = plugin.load_model(filename)
+            if problem is None:
+                # print "loading",filename,"from",directory
+                if filename.endswith('pickle'):
+                    # First see if it is a pickle
+                    problem = pickle.load(open(filename, 'rb'))
+                else:
+                    # Then see if it is a python model script
+                    problem = load_problem(filename, options=model_options)
 
     # Guard against the user changing parameters after defining the problem.
     problem.model_reset()
