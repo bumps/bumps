@@ -697,6 +697,34 @@ class MCMCDraw(object):
                 return np.vstack((self._gen_logp[self._gen_index:],
                                   self._gen_logp[-n+self._gen_index:]))
 
+    def min_slice(self, n):
+        """
+        Return the minimum logp for n slices, from the head if positive
+        or the tail if negative.
+
+        This is a specialized function so it can be fast.  Convergence
+        can be quickly rejected if the min in a short head is smaller
+        than the min in a long tail.  Unfortunately, if the data is
+        wrapped, then the max function will cost extra.
+        """
+        # Copy the logic of slice
+        if n < 0:  # tail
+            if self._gen_index >= -n:
+                return np.min(self._gen_logp[self._gen_index+n:self._gen_index])
+            elif self._gen_index == 0:
+                return np.min(self._gen_logp[n:])
+            else: # max across boundary
+                return min(np.min(self._gen_logp[n+self._gen_index:]),
+                           np.min(self._gen_logp[:self._gen_index]))
+        else:  # head
+            if self.generation < self.Ngen:
+                return np.min(self._gen_logp[:n])
+            elif self._gen_index+n <= self.Ngen:
+                return np.min(self._gen_logp[self._gen_index:self._gen_index+n])
+            else:
+                return min(np.min(self._gen_logp[self._gen_index:]),
+                           np.min(self._gen_logp[-n+self._gen_index:]))
+
     def acceptance_rate(self):
         """
         Return the iteration number and the acceptance rate for that iteration.

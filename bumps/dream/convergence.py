@@ -17,6 +17,7 @@ from numpy.random import choice
 # TODO is cramer von mises better than a KS test?
 
 def ks_converged(state, n=5, density=0.6, alpha=0.1, samples=1000):
+    # type: ("MCMCDraw", int, float, float, int) -> bool
     """
     Return True if the MCMC has converged according to the K-S window test.
 
@@ -29,22 +30,29 @@ def ks_converged(state, n=5, density=0.6, alpha=0.1, samples=1000):
     if state.generation < state.Ngen or not state.stable_best():
         return False
     if state.Nsamples < 2*samples:
-        window = state.Ngen//2
+        window_size = state.Ngen//2
     else:
-        window = samples//state.Npop + 1
-    n_draw = int(density * window * state.Npop)
+        window_size = samples//state.Npop + 1
+    n_draw = int(density * window_size * state.Npop)
     # Grab a window at the start and the end
-    head = state.logp_slice(window).flatten()
-    tail = state.logp_slice(-window).flatten()
+    head = state.logp_slice(window_size).flatten()
+    tail = state.logp_slice(-window_size).flatten()
+
+    # Quick fail if logp head is worse than logp tail
+    if np.min(head) < state.min_slice(-state.Ngen//2):
+        print("fast reject", np.min(head), state.min_slice(-state.Ngen//2))
+        return False
+
     # Do a few draws from that window, seeing if any fail
     for _ in range(n):
         f_samp = choice(head, n_draw, replace=True)
         r_samp = choice(tail, n_draw, replace=True)
         p_val = ks_2samp(f_samp, r_samp)[1]
-        print("ks_converged", p_val, alpha)
         if p_val < alpha:
+            print("ks not converged", p_val, alpha)
             # head and tail are significantly different, so not converged
             return False
+        print("ks converged", p_val, alpha)
     return True
 
 def burn_point(state, method='window', n=5, **kwargs):
@@ -93,39 +101,55 @@ def burn_point(state, method='window', n=5, **kwargs):
 
 def _ks_sliding_window(state, density=0.1, alpha=0.01, samples=1000, reserved=0.5):
     if state.Nsamples < 2*samples:
-        window = state.Ngen//2
+        window_size = state.Ngen//2
     else:
-        window = samples//state.Npop + 1
-    n_draw = int(density * window * state.Npop)
+        window_size = samples//state.Npop + 1
+    n_draw = int(density * window_size * state.Npop)
     cutoff_point = state.Ngen//2
     _, logp = state.logp()
 
+    tail = logp[cutoff_point:].flatten()
+    min_tail = np.min(tail)
+
     # Check in large bunches
-    for index in range(0, cutoff_point, window):
+    for index in range(0, cutoff_point, window_size):
+        # [PAK] make sure the worst point is not in the first window.
+        # Stastically this will introduce some bias (by chance the max could
+        # happen to occur in the first window) but it will be small when the
+        # window is small relative to the full pool.  A better test would
+        # count the number of samples worse than the all the tail, compute
+        # the probability, and reject according to a comparison with a uniform
+        # number in [0,1].  To much work for so little bias.
+        window = logp[index:index+window_size].flatten()
+        if np.min(window) < min_tail:
+            continue
+
         # [PAK] Using replace=True since it is more efficient and practically
         # indistinguishable for a small sampling portion such as 10% or less.
-        f_samp = choice(logp[index:index+window].flatten(),
-                        n_draw, replace=True)
-        r_samp = choice(logp[cutoff_point:].flatten(), n_draw, replace=True)
+        f_samp = choice(window, n_draw, replace=True)
+        r_samp = choice(tail, n_draw, replace=True)
 
         p_val = ks_2samp(f_samp, r_samp)[1]
 
         if p_val > alpha:
             # head and tail are not significantly different, so break
             break
-        #print("big step", index, window)
+        #print("big step", index, window_size)
 
     if index >= cutoff_point:
         return -1
 
     # check in smaller steps for fine tuned stopping
-    tiny_window = window//11 + 1
-    for index in range(index, index+window, tiny_window):
+    tiny_window = window_size//11 + 1
+    for index in range(index, index+window_size, tiny_window):
+        window = logp[index:index+tiny_window].flatten()
+        if np.min(window) < min_tail:
+            continue
+
         # [PAK] Using replace=True since it is more efficient and practically
         # indistinguishable for a small sampling portion such as 10% or less.
-        f_samp = choice(logp[index:index+tiny_window].flatten(),
-                        n_draw, replace=True)
-        r_samp = choice(logp[cutoff_point:].flatten(), n_draw, replace=True)
+        f_samp = choice(window, n_draw, replace=True)
+        r_samp = choice(tail, n_draw, replace=True)
 
         p_val = ks_2samp(f_samp, r_samp)[1]
 
