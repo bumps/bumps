@@ -756,6 +756,7 @@ class DreamFit(FitBase):
     id = "dream"
     settings = [('samples', int(1e4)), ('burn', 100), ('pop', 10),
                 ('init', 'eps'), ('thin', 1), ('trim', False),
+                ('alpha', 0.01),
                 ('steps', 0),  # deprecated: use --samples instead
                ]
 
@@ -788,7 +789,7 @@ class DreamFit(FitBase):
                         draws=pop_size * steps,
                         burn=pop_size * options['burn'],
                         thinning=options['thin'],
-                        monitor=self._monitor,
+                        monitor=self._monitor, alpha=options['alpha'],
                         DE_noise=1e-6)
 
         self.state = sampler.sample(state=self.state, abort_test=abort_test)
@@ -876,8 +877,9 @@ class DreamFit(FitBase):
         import pylab
         from . import errplot
         # TODO: shouldn't mix calc and display!
-        res = errplot.calc_errors_from_state(self.dream_model.problem,
-                                             self.state, self._trimmed)
+        res = errplot.calc_errors_from_state(problem=self.dream_model.problem,
+                                             state=self.state,
+                                             portion=self._trimmed)
         if res is not None:
             pylab.figure()
             errplot.show_errors(res)

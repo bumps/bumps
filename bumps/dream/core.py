@@ -182,6 +182,8 @@ class Dream(object):
     thinning = 1
     outlier_test = "IQR"
     population = None
+    #: convergence criteria
+    alpha = 0.01
     # DE parameters
     DE_steps = 10
     DE_pairs = 3
@@ -292,7 +294,6 @@ def _run_dream(dream, abort_test=lambda: False):
         xtry = np.empty((n_chain, n_var), 'd')
         step_alpha = np.empty(n_chain, 'd')
         CR_used = np.empty(n_chain, 'd')
-    #need_outliers_removed = True
     scale = 1.0
     #serial_time = parallel_time = 0.
     #last_time = time.time()
@@ -302,6 +303,7 @@ def _run_dream(dream, abort_test=lambda: False):
     pop = state._draw_pop()
     assert pop.ctypes.data == np.ascontiguousarray(pop).ctypes.data
 
+    frame = 0
     while state.draws < dream.draws + dream.burn:
 
         # Age the population using differential evolution
@@ -413,6 +415,8 @@ def _run_dream(dream, abort_test=lambda: False):
         # End of differential evolution aging
         # ---------------------------------------------------------------------
 
+        next_frame = state.generation // state.Ngen
+
         # Calculate Gelman and Rubin convergence diagnostic
         #_, points, _ = state.chains()
         #r_stat = gelman(points, portion=0.5)
@@ -422,11 +426,13 @@ def _run_dream(dream, abort_test=lambda: False):
         if state.draws <= dream.burn:
             # Adapt the crossover ratio, but only during burn-in.
             dream.CR.adapt()
-        # See whether there are any outlier chains, and remove
-        # them to current best value of X
-        #if need_outliers_removed and state.draws > 0.5*dream.burn:
+
+        # See whether there are any outlier chains, and remove them
+        # Only do this once per frame, and only if there is some time
+        # left to adapt the distribution (doesn't need much).
+        #if (frame != next_frame
+        #        and dream.draws+dream.burn-state.draws > 1.2*state.Ngen):
         #    state.remove_outliers(x, logp, test=dream.outlier_test)
-        #    need_outliers_removed = False
 
         if False:
             # Suppress scale update until we have a chance to verify that it
@@ -441,8 +447,22 @@ def _run_dream(dream, abort_test=lambda: False):
         # Save update information
         state._update(R_stat=r_stat, CR_weight=dream.CR.weight)
 
-        if ks_converged(state) or abort_test():
+        if ks_converged(state, alpha=dream.alpha) or abort_test():
+            #_show_logp_frame(dream, state, frame+1)
             break
+
+        # Draw the next frame (for debugging...)
+        #if frame!=next_frame: _show_logp_frame(dream, state, next_frame)
+
+        frame = next_frame
+
+def _show_logp_frame(dream, state, frame):
+    from pylab import clf, savefig
+    from . import views
+    clf()
+    views.plot_logp(state)
+    savefig('logp%d.png'%frame)
+    clf()
 
 
 def allocate_state(dream):

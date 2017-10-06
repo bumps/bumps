@@ -22,7 +22,7 @@ def plot_all(state, portion=1.0, figfile=None):
     draw = state.draw(portion=portion)
     all_vstats = var_stats(draw)
     print(format_vars(all_vstats))
-    print("\nStatistics and plots based on {nsamp:.3g} samples "
+    print("\nStatistics and plots based on {nsamp:d} samples "
           "({psamp:.1%} of total samples drawn)".format( \
           nsamp=len(draw.points), psamp=portion))
     if figfile is not None:
@@ -155,7 +155,8 @@ def plot_trace(state, var=0, portion=None):
     draw, points, _ = state.chains()
     label = state.labels[var]
     start = int((1-portion)*len(draw)) if portion else 0
-    plot(arange(start, len(points))*state.thinning,
+    genid = arange(state.generation-len(draw)+start, state.generation)+1
+    plot(genid*state.thinning,
          squeeze(points[start:, state._good_chains, var]))
     xlabel('Generation number')
     ylabel(label)
@@ -166,7 +167,8 @@ def plot_R(state, portion=None):
 
     draw, R = state.R_stat()
     start = int((1-portion)*len(draw)) if portion else 0
-    plot(arange(start, len(R)), R[start:])
+    genid = arange(state.generation-len(draw)+start, state.generation)+1
+    plot(genid, R[start:])
     title('Convergence history')
     legend(['P%d' % i for i in range(1, R.shape[1]+1)])
     xlabel('Generation number')
@@ -174,15 +176,36 @@ def plot_R(state, portion=None):
 
 
 def plot_logp(state, portion=None):
-    from pylab import plot, title, xlabel, ylabel
+    from pylab import axes, title
+    from scipy.stats import chi2, kstest
+    from matplotlib.ticker import NullFormatter
 
     draw, logp = state.logp()
     start = int((1-portion)*len(draw)) if portion else 0
-    plot(arange(start, len(logp)), logp[start:], ',', markersize=1)
+    genid = arange(state.generation-len(draw)+start, state.generation)+1
+    width, height, margin, delta = 0.7, 0.75, 0.1, 0.01
+    trace = axes([margin, 0.1, width, height])
+    trace.plot(genid, logp[start:], ',', markersize=1)
+    trace.set_xlabel('Generation number')
+    trace.set_ylabel('Log likelihood at x[k]')
     title('Log Likelihood History')
-    xlabel('Generation number')
-    ylabel('Log likelihood at x[k]')
 
+    data = logp[start:].flatten()
+    hist = axes([margin+width+delta, 0.1, 1-2*margin-width-delta, height])
+    hist.hist(data, bins=40, orientation='horizontal', normed=True)
+    hist.set_ylim(trace.get_ylim())
+    null_formatter = NullFormatter()
+    hist.xaxis.set_major_formatter(null_formatter)
+    hist.yaxis.set_major_formatter(null_formatter)
+
+    float_df, loc, scale = chi2.fit(-data, f0=state.Nvar)
+    df = int(float_df + 0.5)
+    pval = kstest(-data, lambda x: chi2.cdf(x, df, loc, scale))
+    #with open("/tmp/chi", "a") as fd:
+    #    print("chi2 pars for llf", float_df, loc, scale, pval, file=fd)
+    xmin, xmax = trace.get_ylim()
+    x = np.linspace(xmin, xmax, 200)
+    hist.plot(chi2.pdf(-x, df, loc, scale), x, 'r')
 
 def tile_axes(n, size=None):
     """
@@ -215,3 +238,4 @@ def tile_axes(n, size=None):
         nh = 1
     nw = int(math.ceil(n/nh))
     return nw, nh
+

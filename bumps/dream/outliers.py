@@ -131,7 +131,7 @@ def test_outliers():
     assert outliers.shape[0] == nbad
     for i in range(nbad):
         assert nlogp[outliers[i, 1]] == chains[-1][outliers[i, 2]]
-        assert norm(nx[outliers[i, 1], :] - x[outliers[i, 2], :]) == 0
+        assert nx[outliers[i, 1], -1] == x[outliers[i, 2], -1]
 
 
 if __name__ == "__main__":

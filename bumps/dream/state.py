@@ -324,7 +324,7 @@ class MCMCDraw(object):
 
     @property
     def Nsamples(self):
-        return self._gen_draws.size
+        return self._gen_logp.size
 
     @property
     def Nthin(self):
@@ -491,7 +491,7 @@ class MCMCDraw(object):
         self._thin_logp[:, old] = self._thin_logp[:, new]
         self._thin_point[:, old, :] = self._thin_point[:, new, :]
         # PAK: shouldn't we reduce the total number of draws since we
-        # are throwing way an entire chain?
+        # are throwing away an entire chain?
 
     @property
     def labels(self):
@@ -667,11 +667,23 @@ class MCMCDraw(object):
 
         If full is True, then return all chains, not just good chains.
         """
-        self._unroll()
-        retval = self._gen_draws, self._gen_logp
+        #self._unroll()
+        #draws, logp = self._gen_draws, self._gen_logp
+        #if self.generation == self._gen_index:
+        #    draws, logp = [v[:self.generation] for v in (draws, logp)]
+
+        # Don't do a full unroll here
         if self.generation == self._gen_index:
-            retval = [v[:self.generation] for v in retval]
-        draws, logp = retval
+            draws = self._gen_draws[:self.generation]
+            logp = self._gen_logp[:self.generation]
+        elif self._gen_index > 0:
+            draws = np.roll(self._gen_draws, -self._gen_index, axis=0)
+            logp = np.roll(self._gen_logp, -self._gen_index, axis=0)
+        else:
+            draws = self._gen_draws
+            logp = self._gen_logp
+
+        # TODO: just return logp, not logp and draws
         return draws, (logp if full else logp[:, self._good_chains])
 
     def logp_slice(self, n):
@@ -1146,7 +1158,7 @@ def test():
     state._replace_outlier(1, 2)
     outliers = state.outliers()
     draws, logp = state.sample()
-    assert norm(outliers -  asarray([[state._thin_index, 1, 2]])) == 0
+    assert norm(outliers - asarray([[state._thin_index, 1, 2]])) == 0
     #assert norm(sample[:, 1, :] - xin[thinning-1::thinning, 2, :]) == 0
     #assert norm(sample[:, 2, :] - xin[thinning-1::thinning, 2, :]) == 0
     #assert norm(logp[:, 1] - pin[thinning-1::thinning, 2]) == 0

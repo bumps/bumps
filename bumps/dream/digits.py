@@ -22,8 +22,8 @@ notes:
 - in picking the number of cuts for jackknife, lower is usually better
   (but not too low...)
 
-[1] JCGM, 2008. Evaluation of measurement data — Supplement 1 to the “Guide to
-the expression of uncertainty in measurement” — Propagation of distributions
+[1] JCGM, 2008. Evaluation of measurement data - Supplement 1 to the "Guide to
+the expression of uncertainty in measurement" - Propagation of distributions
 using a Monte Carlo method (No. JCGM 101:2008). Geneva, Switzerland.
 """
 from __future__ import division, print_function

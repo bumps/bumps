@@ -639,7 +639,7 @@ def main():
 
     else:
         # Show command line arguments and initial model
-        print("#", " ".join(sys.argv))
+        print("#", " ".join(sys.argv), "--seed=%d"%opts.seed)
         problem.show()
 
         # Check that there are parameters to be fitted.
