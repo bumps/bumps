@@ -190,6 +190,17 @@ def plot_logp(state, portion=None):
     trace.set_ylabel('Log likelihood at x[k]')
     title('Log Likelihood History')
 
+    from bumps.wsolve import wpolyfit
+    from .formatnum import format_uncertainty
+    x = np.arange(start, logp.shape[0]) + state.generation - state.Ngen + 1
+    y = np.mean(logp[start:], axis=1)
+    dy = np.std(logp[start:], axis=1, ddof=1)
+    p = wpolyfit(x, y, dy=dy, degree=1)
+    px, dpx = p.ci(x, 1.)
+    trace.plot(x, px, 'k-', x, px + dpx, 'k-.', x, px - dpx, 'k-.')
+    trace.text(x[0], y[0], "slope="+format_uncertainty(p.coeff[0], p.std[0]),
+               va='top', ha='left')
+
     data = logp[start:].flatten()
     hist = axes([margin+width+delta, 0.1, 1-2*margin-width-delta, height])
     hist.hist(data, bins=40, orientation='horizontal', normed=True)
