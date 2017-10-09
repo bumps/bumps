@@ -10,7 +10,6 @@ The results may be queried as follows::
     logp()            returns draws, logp
     acceptance_rate() returns draws, AR
     chains()          returns draws, chains, logp
-    R_stat()          returns draws, R
     CR_weight()       returns draws, CR_weight
     best()            returns best_x, best_logp
     outliers()        returns outliers
@@ -134,13 +133,11 @@ def save_state(state, filename):
     write(trace, "collapsing to draws x point\n")
     point = reshape(point, (point.shape[0]*point.shape[1], point.shape[2]))
 
-    write(trace, "extracting R_stat\n")
-    draws, R_stat = state.R_stat()
     write(trace, "extracting CR_weight\n")
-    _, CR_weight = state.CR_weight()
-    _, Ncr = CR_weight.shape
+    draws, CR_weight = state.CR_weight()
+    Nupdate, Ncr = CR_weight.shape
     write(trace, "building stats\n")
-    stats = hstack((draws[:, None], R_stat, CR_weight))
+    stats = hstack((draws[:, None], CR_weight))
 
     #TODO: missing _outliers from save_state
 
@@ -162,7 +159,7 @@ def save_state(state, filename):
     # Write stats
     write(trace, "writing stats\n")
     fid = CREATE(filename+'-stats'+EXT, 'wb')
-    write(fid, '# draws %d*R-stat %d*CR_weight\n' % (Nvar, Ncr))
+    write(fid, '# draws %d*CR_weight\n' % Ncr)
     savetxt(fid, stats)
     fid.close()
     write(trace, "done state save\n")
@@ -216,24 +213,34 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
     chain = loadtxt(filename+'-chain'+EXT)
 
     # Read point file
-    fid = open(filename+'-point'+EXT, 'r')
-    line = fid.readline()
-    point_dims = line[line.find('[')+1:line.find(']')]
-    Nthin, Npop, Nvar = eval(point_dims)
-    for _ in range(skip*Npop):
-        fid.readline()
-    point = loadtxt(fid, report=report*Npop)
-    fid.close()
+    with open(filename+'-point'+EXT, 'r') as fid:
+        line = fid.readline()
+        point_dims = line[line.find('[')+1:line.find(']')]
+        Nthin, Npop, Nvar = eval(point_dims)
+        for _ in range(skip*Npop):
+            fid.readline()
+        point = loadtxt(fid, report=report*Npop)
 
     # Read stats file
-    stats = loadtxt(filename+'-stats'+EXT)
+    with open(filename+'-stats'+EXT) as fd:
+        stats_header = fd.readline()
+        stats = loadtxt(fd)
+    # Determine number of R-stat stored in the stats file
+    if 'R-stat' in stats_header:
+        # Old header looks like:
+        #     # draws {Nvar}*R-stat {Ncr}*CR_weight
+        # however, number of R-stat stored in stats file is the number of
+        # variables stored each generation, not including the derived variables
+        # calculated after the MCMC has completed.
+        num_r = int(stats_header.split('*')[0].split()[-1]) - derived_vars
+    else:
+        num_r = 0
 
     # Guess dimensions
     Ngen = chain.shape[0]
     thinning = 1
     Nthin -= skip
     Nupdate = stats.shape[0]
-    #Ncr = stats.shape[1] - Nvar - 1
 
     # Create empty draw and fill it with loaded data
     state = MCMCDraw(0, 0, 0, 0, 0, 0, thinning)
@@ -254,8 +261,7 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
     state._update_count = Nupdate
     state._update_index = 0
     state._update_draws = stats[:, 0]
-    state._update_R_stat = stats[:, 1:Nvar+1-derived_vars]
-    state._update_CR_weight = stats[:, Nvar+1-derived_vars:]
+    state._update_CR_weight = stats[:, 1+num_r:]
     state._outliers = []
 
     bestidx = np.argmax(point[:, 0])
@@ -309,7 +315,6 @@ class MCMCDraw(object):
         self._update_index = 0
         self._update_count = 0
         self._update_draws = empty(Nupdate, 'i')
-        self._update_R_stat = empty((Nupdate, Nvar))
         self._update_CR_weight = empty((Nupdate, Ncr))
 
         self._outliers = []
@@ -388,13 +393,10 @@ class MCMCDraw(object):
         if Nupdate > self.Nupdate:
             self._update_count = self.Nupdate  # must happen before resize!!
             self._update_draws = np.resize(self._update_draws, Nupdate)
-            self._update_R_stat \
-                = np.resize(self._update_R_stat, (Nupdate, Nvar))
             self._update_CR_weight \
                 = np.resize(self._update_CR_weight, (Nupdate, Ncr))
         elif Nupdate < self.Nupdate:
             self._update_draws = self._update_draws[-Nupdate:].copy()
-            self._update_R_stat = self._update_R_stat[-Nupdate:, :].copy()
             self._update_CR_weight = self._update_CR_weight[-Nupdate:, :].copy()
 
     def save(self, filename):
@@ -466,7 +468,7 @@ class MCMCDraw(object):
         else:
             self._gen_current = x+0 # force a copy
 
-    def _update(self, R_stat, CR_weight):
+    def _update(self, CR_weight):
         """
         Called from dream.py when a series of DE steps is completed and
         summary statistics/adaptations are ready to be stored.
@@ -475,7 +477,6 @@ class MCMCDraw(object):
         i = self._update_index
         #print("update", i, self.draws, "\n CR weight", CR_weight)
         self._update_draws[i] = self.draws
-        self._update_R_stat[i] = R_stat
         self._update_CR_weight[i] = CR_weight
         i = i+1
         if i == len(self._update_draws): i = 0
@@ -568,8 +569,6 @@ class MCMCDraw(object):
         if self._update_count > self._update_index > 0:
             self._update_draws[:] = np.roll(self._update_draws,
                                             -self._update_index, axis=0)
-            self._update_R_stat[:] = np.roll(self._update_R_stat,
-                                             -self._update_index, axis=0)
             self._update_CR_weight[:] = np.roll(self._update_CR_weight,
                                                 -self._update_index, axis=0)
             self._update_index = 0
@@ -792,23 +791,6 @@ class MCMCDraw(object):
             return gelman(self._thin_point[:self.generation], portion=1.0)
         else:
             return gelman(self._thin_point, portion=1.0)
-
-    def R_stat(self):
-        """
-        Return the R-statistics convergence statistic for each variable.
-
-        For example, to plot the convergence of all variables over time::
-
-            draw, R = state.R_stat()
-            plot(draw, R)
-
-        See :mod:`.gelman` and references detailed therein.
-        """
-        self._unroll()
-        retval = self._update_draws, self._update_R_stat
-        if self._update_count == self._update_index:
-            retval = [v[:self._update_count] for v in retval]
-        return retval
 
     def CR_weight(self):
         """
@@ -1131,7 +1113,6 @@ def test():
     pin = rand(Ngen, Npop)
     accept = rand(Ngen, Npop) < 0.8
     CRin = rand(Nupdate, Ncr)
-    Rin = rand(Nupdate, 1)
     #thinning = 2
     #Nthin = int(Ngen/thinning)
 
@@ -1141,7 +1122,7 @@ def test():
     state = MCMCDraw(Ngen=Ngen, Nthin=Nthin, Nupdate=Nupdate,
                      Nvar=Nvar, Npop=Npop, Ncr=Ncr, thinning=thinning)
     for i in range(Nupdate):
-        state._update(R_stat=Rin[i], CR_weight=CRin[i])
+        state._update(CR_weight=CRin[i])
         for j in range(Nstep):
             gen = i*Nstep+j
             state._generation(new_draws=Npop, x=xin[gen],
@@ -1158,9 +1139,6 @@ def test():
     #assert norm(draws - thinning*Npop*arange(1, Nthin+1)) == 0
     #assert norm(sample - xin[thinning-1::thinning]) == 0
     #assert norm(logp - pin[thinning-1::thinning]) == 0
-    draws, R = state.R_stat()
-    assert norm(draws - Npop*Nstep*arange(Nupdate)) == 0
-    assert norm(R-Rin) == 0
     draws, CR = state.CR_weight()
     assert norm(draws - Npop*Nstep*arange(Nupdate)) == 0
     assert norm(CR - CRin) == 0

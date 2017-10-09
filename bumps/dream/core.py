@@ -284,8 +284,7 @@ def _run_dream(dream, abort_test=lambda: False):
                               force_keep=True)
             dream.monitor(state, x, logp)
 
-    # Skip r_stat and pCR until we have some data data to analyze
-    state._update(R_stat=-2, CR_weight=dream.CR.weight)
+    state._update(CR_weight=dream.CR.weight)
 
     # Now start drawing samples
     #print "previous draws", previous_draws, "new draws", dream.draws+dream.burn
@@ -421,12 +420,8 @@ def _run_dream(dream, abort_test=lambda: False):
         # End of differential evolution aging
         # ---------------------------------------------------------------------
 
-        # Calculate Gelman and Rubin convergence diagnostic
-        #r_stat = state.gelman()
-        r_stat = 0.  # Suppress for now since it doesn't seem to be useful
-
         # Save update information
-        state._update(R_stat=r_stat, CR_weight=dream.CR.weight)
+        state._update(CR_weight=dream.CR.weight)
 
         if abort_test():
             break

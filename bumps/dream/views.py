@@ -46,14 +46,6 @@ def plot_all(state, portion=1.0, figfile=None):
     if figfile is not None:
         savefig(figfile+"-trace"+figext)
 
-    # R stat plot
-    #figure()
-    #plot_R(state, portion=portion)
-    #if state.title:
-    #    suptitle(state.title)
-    #if figfile is not None:
-    #    savefig(figfile+"-R"+format)
-
     # convergence plot
     figure()
     plot_logp(state, portion=portion)
@@ -160,19 +152,6 @@ def plot_trace(state, var=0, portion=None):
          squeeze(points[start:, state._good_chains, var]))
     xlabel('Generation number')
     ylabel(label)
-
-
-def plot_R(state, portion=None):
-    from pylab import plot, title, legend, xlabel, ylabel
-
-    draw, R = state.R_stat()
-    start = int((1-portion)*len(draw)) if portion else 0
-    genid = arange(state.generation-len(draw)+start, state.generation)+1
-    plot(genid, R[start:])
-    title('Convergence history')
-    legend(['P%d' % i for i in range(1, R.shape[1]+1)])
-    xlabel('Generation number')
-    ylabel('R')
 
 
 def plot_logp(state, portion=None):

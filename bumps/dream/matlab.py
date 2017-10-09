@@ -202,7 +202,7 @@ def setup(MCMCPar, ParRange, Measurement, ModelName, Extra, option):
 
 def convert_state(state):
     """
-    Convert a completed dreamer run into a form compatible with the
+    Convert a completed dream run into a form compatible with the
     matlab dream interface::
 
         Sequences, Reduced_Seq, X, out, hist_logp
@@ -219,13 +219,14 @@ def convert_state(state):
     hist_logp = np.concatenate((draws[:, None], logp), axis=1)
 
     out = struct()
-    draws, R = state.R_stat()
-    out.R_stat = np.concatenate((draws[:, None], R), axis=1)
     draws, AR = state.acceptance_rate()
     out.AR = np.concatenate((draws[:, None], AR[:, None]), axis=1)
     draws, w = state.CR_weight()
     out.CR = np.concatenate((draws[:, None], w), axis=1)
     out.outlier = state.outliers()[:, :2]
+    Nupdate, Nvar = len(draws), points.shape[2]
+    R = np.zeros((Nupdate, Nvar), 'd')  # R is no longer calculated
+    out.R_stat = np.concatenate((draws[:, None], R), axis=1)
 
     # save the dreamer state data structure  as well
     out.state = state
