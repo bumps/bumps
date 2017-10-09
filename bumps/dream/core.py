@@ -134,6 +134,7 @@ from __future__ import division, print_function
 __all__ = ["Dream"]
 
 import sys
+import os
 import time
 from ctypes import c_double
 
@@ -148,6 +149,7 @@ from .bounds import make_bounds_handler
 from .compiled import dll
 from .util import rng
 from .convergence import ks_converged
+from .outliers import identify_outliers
 
 # Everything should be available in state, but lets be lazy for now
 LAST_TIME = 0
@@ -180,7 +182,8 @@ class Dream(object):
     burn = 0
     draws = 100000
     thinning = 1
-    outlier_test = "IQR"
+    # TODO: change the default outlier test to IQR and control with options
+    outlier_test = os.environ.get("BUMPS_OUTLIERS", "none")
     population = None
     #: convergence criteria
     alpha = 0.01
@@ -304,7 +307,10 @@ def _run_dream(dream, abort_test=lambda: False):
     assert pop.ctypes.data == np.ascontiguousarray(pop).ctypes.data
 
     frame = 0
-    while state.draws < dream.draws + dream.burn:
+    next_outlier_test = max(state.Ngen, 2*state.Ngen - 10)
+    next_convergence_test = state.Ngen
+    final_gen = dream.draws + dream.burn
+    while state.draws < final_gen:
 
         # Age the population using differential evolution
         dream.CR.reset()
@@ -415,24 +421,20 @@ def _run_dream(dream, abort_test=lambda: False):
         # End of differential evolution aging
         # ---------------------------------------------------------------------
 
-        next_frame = state.generation // state.Ngen
-
         # Calculate Gelman and Rubin convergence diagnostic
-        #_, points, _ = state.chains()
-        #r_stat = gelman(points, portion=0.5)
-        r_stat = 0.  # Suppress for now since it is broken, and it costs to unroll
+        #r_stat = state.gelman()
+        r_stat = 0.  # Suppress for now since it doesn't seem to be useful
+
+        # Save update information
+        state._update(R_stat=r_stat, CR_weight=dream.CR.weight)
+
+        if abort_test():
+            break
 
         #if state.draws <= 0.1 * dream.draws:
         if state.draws <= dream.burn:
             # Adapt the crossover ratio, but only during burn-in.
             dream.CR.adapt()
-
-        # See whether there are any outlier chains, and remove them
-        # Only do this once per frame, and only if there is some time
-        # left to adapt the distribution (doesn't need much).
-        #if (frame != next_frame
-        #        and dream.draws+dream.burn-state.draws > 1.2*state.Ngen):
-        #    state.remove_outliers(x, logp, test=dream.outlier_test)
 
         if False:
             # Suppress scale update until we have a chance to verify that it
@@ -444,16 +446,33 @@ def _run_dream(dream, abort_test=lambda: False):
             elif ravg < 0.2:
                 scale /= 1.01
 
-        # Save update information
-        state._update(R_stat=r_stat, CR_weight=dream.CR.weight)
+        if state.generation >= next_convergence_test:
+            converged = ks_converged(state, alpha=dream.alpha)
+        else:
+            converged = False
 
-        if ks_converged(state, alpha=dream.alpha) or abort_test():
+        # See whether there are any outlier chains, and remove them
+        # Only do this once per frame, and only if there is some time
+        # left to adapt the distribution.  Also do it if we believe
+        # that we have converged.
+        if ((converged or state.generation >= next_outlier_test)
+                and state.generation + state.Ngen < final_gen):
+            outliers = state.remove_outliers(x, logp, dream.outlier_test)
+            next_outlier_test = state.generation + 2*state.Ngen
+            if len(outliers):
+                # TODO: use monitors to report arbitrary information
+                print("step %d trimmed %d outliers from %d chains"
+                      % (state.generation, len(outliers), len(logp)))
+                next_convergence_test = state.generation + state.Ngen
+                converged = False
+
+        if converged:
             #_show_logp_frame(dream, state, frame+1)
             break
 
         # Draw the next frame (for debugging...)
-        #if frame!=next_frame: _show_logp_frame(dream, state, next_frame)
-
+        next_frame = state.generation // state.Ngen
+        #if frame != next_frame: _show_logp_frame(dream, state, next_frame)
         frame = next_frame
 
 def _show_logp_frame(dream, state, frame):
@@ -461,7 +480,7 @@ def _show_logp_frame(dream, state, frame):
     from . import views
     clf()
     views.plot_logp(state)
-    savefig('logp%d.png'%frame)
+    savefig('logp%03d.png'%frame)
     clf()
 
 

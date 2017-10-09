@@ -20,31 +20,52 @@ def prctile(v, Q):
     return [scoreatpercentile(v, Qi) for Qi in Q]
 
 
-def identify_outliers(test, chains, x):
+def identify_outliers(test, llf, x=None):
     """
     Determine which chains have converged on a local maximum much lower than
     the maximum likelihood.
 
     *test* is the name of the test to use (one of IQR, Grubbs, Mahal or none).
-    *chains* is a set of log likelihood values of shape (chain len, num chains)
-    *x* is the current population of shape (num vars, num chains)
+    IQR rejects any chains with mean log likelihood more than than twice the
+    inter-quartile range below the value of the 25% quartile.  The Grubbs
+    method uses a t-test to determine which chains have a mean log likelihood
+    extremely far below the mean across all the chains.  The Mahal test looks
+    at the head of the chain with the worst mean log likelihood and marks
+    it as an outlier if it is far from the centroid of the population.  This
+    assumes that the posterior is approximately gaussian, which is not true
+    in general.
+
+    *llf* is a set of log likelihood values for all chains, which is
+    an array of shape (chain len, num chains)
+
+    *x* is the current population with one point for each each, which is
+    an array of shape (num chains, num vars).  This is only used for the
+    Mahal test.
 
     Returns an integer array of outlier indices.
     """
-    # Determine the mean log density of the active chains
-    v = mean(chains, axis=0)
 
     # Check whether any of these active chains are outlier chains
     test = test.lower()
     if test == 'iqr':
+        # Determine the mean log density of the active chains
+        v = mean(llf, axis=0)
         # Derive the upper and lower quartile of the chain averages
         q1, q3 = prctile(v, [25., 75.])
         # Derive the Inter Quartile Range (IQR)
         iqr = q3 - q1
         # See whether there are any outlier chains
-        outliers = where(v < q1 - 2*iqr)[0]
+        # 2017-10-06 [PAK] test against chain max rather than chain mean.
+        # Chains wandering inside the active region should not be punished.
+        # Since removing outliers will delay convergence tests until the
+        # outlier removal effects have disappeared (i.e., an entire frame),
+        # a less aggressive test will speed completion.
+        vmax = llf.max(axis=0)
+        outliers = where(vmax < q1 - 2*iqr)[0]
 
     elif test == 'grubbs':
+        # Determine the mean log density of the active chains
+        v = mean(llf, axis=0)
         # Compute zscore for chain averages
         zscore = (mean(v) - v) / std(v, ddof=1)
         # Determine t-value of one-sided interval
@@ -56,13 +77,15 @@ def identify_outliers(test, chains, x):
         outliers = where(zscore > gcrit)[0]
 
     elif test == 'mahal':
+        # Determine the mean log density of the active chains
+        v = mean(llf, axis=0)
+        # Find which chain has minimum log_density
+        minidx = argmin(v)
         # Use the Mahalanobis distance to find outliers in the population
         alpha = 0.01
         npop, nvar = x.shape
         gcrit = ACR(nvar, npop-1, alpha)
         #print "alpha", alpha, "nvar", nvar, "npop", npop, "gcrit", gcrit
-        # Find which chain has minimum log_density
-        minidx = argmin(v)
         # check the Mahalanobis distance of the current point to other chains
         d1 = mahalanobis(x[minidx, :], x[minidx != arange(npop), :])
         #print "d1", d1, "minidx", minidx

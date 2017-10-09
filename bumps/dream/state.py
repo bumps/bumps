@@ -83,6 +83,7 @@ from numpy import savetxt, reshape
 from .convergence import burn_point
 from .outliers import identify_outliers
 from .util import draw, rng
+from .gelman import gelman
 
 #EXT = ".mc.gz"
 #CREATE = gzip.open
@@ -472,26 +473,13 @@ class MCMCDraw(object):
         """
         self._update_count += 1
         i = self._update_index
-        #print("update", i, self.draws, "\n Rstat", R_stat, "\n CR weight", CR_weight)
+        #print("update", i, self.draws, "\n CR weight", CR_weight)
         self._update_draws[i] = self.draws
         self._update_R_stat[i] = R_stat
         self._update_CR_weight[i] = CR_weight
         i = i+1
         if i == len(self._update_draws): i = 0
         self._update_index = i
-
-    def _replace_outlier(self, old, new):
-        """
-        Called from outliers.py when a chain is replaced by the
-        clone of another.
-        """
-        self._outliers.append((self._thin_index, old, new))
-
-        self._gen_logp[:, old] = self._gen_logp[:, new]
-        self._thin_logp[:, old] = self._thin_logp[:, new]
-        self._thin_point[:, old, :] = self._thin_point[:, new, :]
-        # PAK: shouldn't we reduce the total number of draws since we
-        # are throwing away an entire chain?
 
     @property
     def labels(self):
@@ -586,30 +574,31 @@ class MCMCDraw(object):
                                                 -self._update_index, axis=0)
             self._update_index = 0
 
-    def remove_outliers(self, x, logp, test='IQR', portion=0.5):
+    def remove_outliers(self, x, logp, test='IQR'):
         """
         Replace outlier chains with clones of good ones.  This should happen
         early in the sampling processes so the clones have an opportunity
-        to evolve their own identity.
+        to evolve their own identity.  Only the head of the chain is modified.
 
         *state* contains the chains, with log likelihood for each point.
 
         *x*, *logp* are the current population and the corresponding
-        log likelihoods
+        log likelihoods; these are updated with cloned chain values.
 
         *test* is the name of the test to use (one of IQR, Grubbs, Mahal
-        or none).
-
-        *portion* in (0, 1] is the amount of the chain to use
+        or none). See :func:`outliers.identify_outliers` for details.
 
         Updates *state*, *x* and *logp* to reflect the changes.
+
+        Returns a list of the outliers that were removed.
 
         See :mod:`.outliers` for details.
         """
         # Grab the last part of the chain histories
         _, chains = self.logp()
         chain_len, Nchains = chains.shape
-        outliers = identify_outliers(test, chains[-chain_len:], x)
+        outliers = identify_outliers(test, chains, x)
+        #if len(outliers): print("old llf", logp[outliers])
 
         # Loop over each outlier chain, replacing each with another
         for old in outliers:
@@ -622,6 +611,23 @@ class MCMCDraw(object):
             self._replace_outlier(old=old, new=new)
             x[old, :] = x[new, :]
             logp[old] = logp[new]
+
+        #if len(outliers): print("new llf", logp[outliers])
+        return outliers
+
+    def _replace_outlier(self, old, new):
+        """
+        Called from outliers.py when a chain is replaced by the
+        clone of another.
+        """
+        self._outliers.append((self._thin_index, old, new))
+
+        # 2017-10-06 [PAK] only replace the head, not the full chain
+        index = self._gen_index
+        self._gen_current[old] = self._gen_current[new]
+        self._gen_logp[index, old] = self._gen_logp[index, new]
+        self._thin_logp[index, old] = self._thin_logp[index, new]
+        self._thin_point[index, old, :] = self._thin_point[index, new, :]
 
     def mark_outliers(self, test='IQR', portion=1.0):
         """
@@ -776,6 +782,16 @@ class MCMCDraw(object):
         if self._thin_count == self._thin_index:
             retval = [v[:self._thin_count] for v in retval]
         return retval
+
+    def gelman(self):
+        """
+        Compute the R-statistic for the current frame
+        """
+        # Calculate Gelman and Rubin convergence diagnostic
+        if self.generation < self.Ngen:
+            return gelman(self._thin_point[:self.generation], portion=1.0)
+        else:
+            return gelman(self._thin_point, portion=1.0)
 
     def R_stat(self):
         """
