@@ -84,12 +84,12 @@ from .outliers import identify_outliers
 from .util import draw, rng
 from .gelman import gelman
 
-#EXT = ".mc.gz"
-#CREATE = gzip.open
-EXT = ".mc"
-CREATE = open
+EXT = ".mc.gz"
+CREATE = gzip.open
+#EXT = ".mc"
+#CREATE = open
 
-# CRUFT: python 2.x needs to convert unicode to bytes when writing to file
+# CRUFT: python 2 uses bytes rather than unicode for strings
 try:
     # python 2.x
     unicode
@@ -169,7 +169,6 @@ def save_state(state, filename):
 IND_PAT = re.compile('-1#IND')
 INF_PAT = re.compile('1#INF')
 
-
 def loadtxt(file, report=0):
     """
     Like numpy loadtxt, but adapted for windows non-finite numbers.
@@ -208,12 +207,34 @@ def path_contains_saved_state(filename):
     chain_file = filename + '-chain' + EXT
     return os.path.exists(chain_file)
 
+
+def openmc(filename):
+    if filename.endswith('.gz'):
+        if os.path.exists(filename):
+            #print("opening with gzip")
+            fh = gzip.open(filename, 'r')
+        elif os.path.exists(filename[:-3]):
+            fh = open(filename[:-3], 'r')
+        else:
+            raise RuntimeError("file %s does not exist"%filename)
+    else:
+        if os.path.exists(filename):
+            fh = open(filename, 'r')
+        elif os.path.exists(filename+".gz"):
+            #print("opening with gzip")
+            fh = gzip.open(filename+".gz", 'r')
+        else:
+            raise RuntimeError("file %s does not exist"%filename)
+    return fh
+
+
 def load_state(filename, skip=0, report=0, derived_vars=0):
     # Read chain file
-    chain = loadtxt(filename+'-chain'+EXT)
+    with openmc(filename+'-chain'+EXT) as fid:
+        chain = loadtxt(fid)
 
     # Read point file
-    with open(filename+'-point'+EXT, 'r') as fid:
+    with openmc(filename+'-point'+EXT) as fid:
         line = fid.readline()
         point_dims = line[line.find('[')+1:line.find(']')]
         Nthin, Npop, Nvar = eval(point_dims)
@@ -222,9 +243,10 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
         point = loadtxt(fid, report=report*Npop)
 
     # Read stats file
-    with open(filename+'-stats'+EXT) as fd:
+    with openmc(filename+'-stats'+EXT) as fd:
         stats_header = fd.readline()
         stats = loadtxt(fd)
+
     # Determine number of R-stat stored in the stats file
     if 'R-stat' in stats_header:
         # Old header looks like:
