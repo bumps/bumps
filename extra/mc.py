@@ -66,11 +66,11 @@ def walk(problem, burn=100, steps=400, ntemps=30, npop=10, nthin=1,
     # initial population
     if state is None:
         pop = initpop.generate(problem, init=init, pop=npop*ntemps)
-        lnprob, lnlike = None, None
+        #lnprob, lnlike = None, None
     else:
         logp, samples = state
         pop = samples[:,:,-1,:]
-        lnprob, lnlike = logp[:,:,-1], logp[:,:,-1]
+        #lnprob, lnlike = logp[:,:,-1], logp[:,:,-1]
     p = pop.reshape(ntemps, nwalkers, -1)
 
     iteration = 0
@@ -80,14 +80,19 @@ def walk(problem, burn=100, steps=400, ntemps=30, npop=10, nthin=1,
     if burn:
         print("=== burnin ", burn)
         for p, lnprob, lnlike in sampler.sample(p,
-                lnprob0=lnprob, lnlike0=lnlike,
+                #lnprob0=lnprob, lnlike0=lnlike,
                 iterations=burn):
             t = time.time()
             if t >= next_t:
                 print(iteration, -np.max(lnlike)/problem.dof)
                 next_t = t + 1
             iteration += 1
-        sampler.reset()
+    elif steps:
+        # TODO: why can't we set lnprob, lnlike from saved state?
+        for p, lnprob, lnlike in sampler.sample(p, iterations=1):
+            pass
+
+    sampler.reset()
 
     # Collect
     if steps:
@@ -124,8 +129,12 @@ def process_vars(title, draw, nwalkers):
 def plot_results(problem, sampler, tail=None):
     dim = len(problem.getp())
     ntemps = len(sampler.betas)
-    samples = np.reshape(sampler.chain, (ntemps, -1, dim))
-    logp = np.reshape(sampler.lnlikelihood, (ntemps, -1))
+    if sampler.chain is not None:
+        samples = np.reshape(sampler.chain, (ntemps, -1, dim))
+        logp = np.reshape(sampler.lnlikelihood, (ntemps, -1))
+    else:
+        samples = np.empty((ntemps, 0, dim), 'd')
+        logp = np.empty((ntemps, 0), 'd')
 
     # Join results from the previous run
     if tail is not None:
@@ -161,9 +170,14 @@ def plot_results(problem, sampler, tail=None):
         process_vars(title, draw, sampler.nwalkers)
 
     p = samples.reshape(-1, dim)[np.argmax(logp)]
+    plt.figure()
     problem.plot(p)
 
 def save_state(filename, sampler, tail=None):
+    if sampler.chain is None:
+        # If no samples were generated don't bother to save state
+        return
+
     logp = sampler.lnlikelihood.reshape(-1, 1)
     samples = sampler.chain.reshape(-1, sampler.dim)
     data = np.hstack((logp, samples))
