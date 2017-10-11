@@ -730,7 +730,8 @@ class Function(BaseParameter):
             args = [str(v) for v in self.args]
             kw = [str(k) + "=" + str(v) for k, v in self.kw.items()]
             name = self.op.__name__ + "(" + ", ".join(args + kw) + ")"
-        return "%s:%g" % (name, self.value)
+        return name
+        #return "%s:%g" % (name, self.value)
 
 
 def function(op):
@@ -853,7 +854,7 @@ def flatten(s):
         raise TypeError("don't understand type %s for %r" % (type(s), s))
 
 
-def format(p, indent=0):
+def format(p, indent=0, field=None):
     """
     Format parameter set for printing.
 
@@ -865,7 +866,7 @@ def format(p, indent=0):
         for k in sorted(p.keys()):
             if k.startswith('_'):
                 continue
-            s = format(p[k], indent + 2)
+            s = format(p[k], indent + 2, field=k)
             label = " " * indent + "." + k
             if s.endswith('\n'):
                 res.append(label + "\n" + s)
@@ -874,7 +875,8 @@ def format(p, indent=0):
         if '_index' in p:
             res .append(format(p['_index'], indent))
         return "".join(res)
-    elif isinstance(p, (list, np.ndarray)) and len(p):
+
+    elif isinstance(p, (list, tuple, np.ndarray)) and len(p):
         res = []
         for k, v in enumerate(p):
             s = format(v, indent + 2)
@@ -884,17 +886,19 @@ def format(p, indent=0):
             else:
                 res.append(label + ' = ' + s + '\n')
         return "".join(res)
-    # elif isinstance(p, tuple) and p != ():
-    #    return "".join(format(v, indent) for v in p)
 
     elif isinstance(p, Parameter):
-        if p.fixed:
-            bounds = ""
-        else:
-            bounds = ", bounds=(%g,%g)" %  p.bounds.limits
-        return "Parameter(%g, name='%s'%s)" % (p.value, str(p), bounds)
+        s = ""
+        if str(p) != field:
+            s += str(p) + " = "
+        s += "%g" % p.value
+        if not p.fixed:
+            s += " in [%g,%g]" %  p.bounds.limits
+        return s
+
     elif isinstance(p, BaseParameter):
-        return str(p)
+        return "%s = %g" % (str(p), p.value)
+
     else:
         return "None"
 
