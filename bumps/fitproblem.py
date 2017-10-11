@@ -6,7 +6,11 @@ These models can be bundled together into a :func:`FitProblem` and sent
 to :class:`bumps.fitters.FitDriver` for optimization and uncertainty
 analysis.
 """
-from __future__ import division, with_statement, print_function
+# Don't include print_function in imports; since the model coded is exec'd
+# in the __future__ context of this file, it would force the models to use the
+# new print function syntax.  load_problem() should be moved to its own file
+# to avoid this issue.
+from __future__ import division, with_statement
 
 __all__ = ['Fitness', 'FitProblem', 'load_problem',
            'BaseFitProblem', 'MultiFitProblem']
