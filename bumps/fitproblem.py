@@ -440,9 +440,9 @@ class BaseFitProblem(object):
         """
         return 2 * self.nllf(pvec) / self.dof
 
-    def show(self):
+    def show(self, _subs={}):
         """Print the available parameters to the console as a tree."""
-        print(parameter.format(self.model_parameters()))
+        print(parameter.format(self.model_parameters(), freevars=_subs))
         print("[chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
         #print(self.summarize())
 
@@ -617,7 +617,8 @@ class MultiFitProblem(BaseFitProblem):
     def show(self):
         for i, f in enumerate(self.models):
             print("-- Model %d %s" % (i, f.name))
-            f.show()
+            subs = self.freevars.get_model(i) if self.freevars else {}
+            f.show(_subs=subs)
         print("[overall chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
 
     def plot(self, p=None, fignum=1, figfile=None, view=None):

@@ -476,6 +476,12 @@ class ParameterSet(object):
         """
         self.reference.value = self.parameters[index].value
 
+    def get_model(self, index):
+        """
+        Get the reference and underlying model parameter for the nth model.
+        """
+        return (id(self.reference), self.parameters[index])
+
     @property
     def values(self):
         return [p.value for p in self.parameters]
@@ -568,6 +574,11 @@ class FreeVariables(object):
         for p in self._parametersets.values():
             p.set_model(i)
 
+    def get_model(self, i):
+        """
+        Get the parameters for model *i* as {reference: substitution}
+        """
+        return dict(p.get_model(i) for p in self._parametersets.values())
 
 # Current implementation computes values on the fly, so you only
 # need to plug the values into the parameters and the parameters
@@ -854,32 +865,33 @@ def flatten(s):
         raise TypeError("don't understand type %s for %r" % (type(s), s))
 
 
-def format(p, indent=0, field=None):
+def format(p, indent=0, freevars={}, field=None):
     """
     Format parameter set for printing.
 
     Note that this only says how the parameters are arranged, not how they
     relate to each other.
     """
+    p = freevars.get(id(p), p)
     if isinstance(p, dict) and p != {}:
         res = []
         for k in sorted(p.keys()):
             if k.startswith('_'):
                 continue
-            s = format(p[k], indent + 2, field=k)
+            s = format(p[k], indent + 2, field=k, freevars=freevars)
             label = " " * indent + "." + k
             if s.endswith('\n'):
                 res.append(label + "\n" + s)
             else:
                 res.append(label + " = " + s + '\n')
         if '_index' in p:
-            res .append(format(p['_index'], indent))
+            res .append(format(p['_index'], indent, freevars=freevars))
         return "".join(res)
 
     elif isinstance(p, (list, tuple, np.ndarray)) and len(p):
         res = []
         for k, v in enumerate(p):
-            s = format(v, indent + 2)
+            s = format(v, indent + 2, freevars=freevars)
             label = " " * indent + "[%d]" % k
             if s.endswith('\n'):
                 res.append(label + '\n' + s)
