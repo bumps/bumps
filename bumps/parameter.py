@@ -16,6 +16,7 @@ import warnings
 from copy import copy
 import math
 
+import numpy as np
 from numpy import inf, isinf, isfinite
 
 from . import bounds as mbounds
@@ -419,7 +420,9 @@ class ParameterSet(object):
         """
         self.names = names
         self.reference = reference
-        self.parameters = [copy(reference) for _ in names]
+        # Force numpy semantics on slice operations by using an array
+        # of objects rather than a list of objects
+        self.parameters = np.array([copy(reference) for _ in names])
         # print self.reference, self.parameters
         for p, n in zip(self.parameters, names):
             p.name = " ".join((n, p.name))
@@ -430,7 +433,8 @@ class ParameterSet(object):
     def __getitem__(self, i):
         """
         Return the underlying parameter for the model index.  Index can
-        either be an integer or a model name.
+        either be an integer or a model name.  It can also be a slice,
+        in which case a new parameter set is returned.
         """
         # Try looking up the free variable by model name rather than model
         # index. If this fails, assume index is a model index.
@@ -438,9 +442,22 @@ class ParameterSet(object):
             i = self.names.index(i)
         except ValueError:
             pass
+        if isinstance(i, slice):
+            obj = copy(self)
+            obj.names = self.names[i]
+            obj.reference = self.reference
+            obj.parameters = self.parameters[i]
+            return obj
         return self.parameters[i]
 
     def __setitem__(self, i, v):
+        """
+        Set the underlying parameter for the model index.  Index can
+        either be an integer or a model name.  It can also be a slice,
+        in which case all underlying parameters are set, either to the
+        same value if *v* is a single parameter, otherwise *v* must have
+        the same length as the slice.
+        """
         try:
             i = self.names.index(i)
         except ValueError:
@@ -657,6 +674,8 @@ def substitute(a):
         return [substitute(v) for v in a]
     elif isinstance(a, dict):
         return dict((k, substitute(v)) for k, v in a.items())
+    elif isinstance(a, np.ndarray):
+        return np.array([substitute(v) for v in a])
     else:
         return a
 
@@ -820,7 +839,7 @@ arctan2d = atan2d
 
 
 def flatten(s):
-    if isinstance(s, (tuple, list)):
+    if isinstance(s, (tuple, list, np.ndarray)):
         return reduce(lambda a, b: a + flatten(b), s, [])
     elif isinstance(s, set):
         raise TypeError("parameter flattening cannot order sets")
@@ -855,7 +874,7 @@ def format(p, indent=0):
         if '_index' in p:
             res .append(format(p['_index'], indent))
         return "".join(res)
-    elif isinstance(p, list) and p != []:
+    elif isinstance(p, (list, np.ndarray)) and len(p):
         res = []
         for k, v in enumerate(p):
             s = format(v, indent + 2)
