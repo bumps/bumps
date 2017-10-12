@@ -6,6 +6,7 @@ __all__ = ["VarStats", "var_stats", "format_vars", "parse_var",
            "stats", "credible_intervals"]
 
 import re
+import json
 
 import numpy as np
 
@@ -88,6 +89,28 @@ def format_vars(all_vstats):
 
     return "\n".join(s)
 
+
+def save_vars(all_vstats, filename):
+    with open(filename, 'w') as fid:
+        json.dump(
+            dict((v.label, v.__dict__) for v in all_vstats),
+            fid,
+            default=numpy_json,
+            sort_keys=True,
+            indent=2,
+            )
+
+def numpy_json(o):
+    """
+    JSON encoder for numpy data.
+
+    To automatically convert numpy data to lists when writing a datastream
+    use json.dumps(object, default=numpy_json).
+    """
+    try:
+        return o.tolist()
+    except AttributeError:
+        raise TypeError
 
 VAR_PATTERN = re.compile(r"""
    ^\ *
