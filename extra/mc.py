@@ -8,7 +8,7 @@ import numpy as np
 from numpy import inf
 import emcee
 
-from bumps.cli import load_model
+from bumps.cli import load_model, load_best
 from bumps import initpop
 from bumps.dream import stats, views
 import matplotlib.pyplot as plt
@@ -127,6 +127,7 @@ def process_vars(title, draw, nwalkers):
 
 
 def plot_results(problem, sampler, tail=None):
+    labels = problem.labels()
     dim = len(problem.getp())
     ntemps = len(sampler.betas)
     if sampler.chain is not None:
@@ -144,7 +145,6 @@ def plot_results(problem, sampler, tail=None):
         logp = np.hstack((tail_logp, logp))
 
     # process derived parameters
-    labels = problem.labels()
     visible_vars = getattr(problem, 'visible_vars', None)
     integer_vars = getattr(problem, 'integer_vars', None)
     derived_vars, derived_labels = getattr(problem, 'derive_vars', (None, None))
@@ -173,7 +173,7 @@ def plot_results(problem, sampler, tail=None):
     plt.figure()
     problem.plot(p)
 
-def save_state(filename, sampler, tail=None):
+def save_state(filename, sampler, tail=None, labels=None):
     if sampler.chain is None:
         # If no samples were generated don't bother to save state
         return
@@ -184,6 +184,14 @@ def save_state(filename, sampler, tail=None):
     if tail is not None and tail.size:
         data = np.vstack((tail, data))
     np.savetxt(filename, data)
+
+    # Save the best in the population
+    with open("mc.par", 'wt') as fid:
+        p = samples[np.argmax(logp)]
+        pardata = "".join("%s %.15g\n" % (name, value)
+                        for name, value in zip(labels, p))
+        fid.write(pardata)
+
 
 def load_state(opts, dim):
     if opts.resume:
@@ -211,7 +219,8 @@ def main():
     parser.add_argument('-b', '--burn', type=int, default=100, help='Number of burn iterations')
     parser.add_argument('-n', '--steps', type=int, default=400, help='Number of collection iterations')
     parser.add_argument('-i', '--init', choices='eps lhs cov random'.split(), default='eps', help='Population initialization method')
-    parser.add_argument('-p', '--npop', type=int, default=2, help='Population multiplier (must be even)')
+    parser.add_argument('-k', '--npop', type=int, default=2, help='Population multiplier (must be even)')
+    parser.add_argument('-p', '--pars', type=str, default="", help='retrieve starting point from .par file')
     parser.add_argument('-t', '--nT', type=int, default=30, help='Number of temperatures')
     parser.add_argument('-r', '--resume', type=str, default=None, help='Resume from file')
     parser.add_argument('-s', '--store', type=str, default='mc.out', help='Save to file')
@@ -220,6 +229,8 @@ def main():
     opts = parser.parse_args()
 
     problem = load_model(opts.modelfile[0])
+    if opts.pars:
+        load_best(problem, opts.pars)
     dim = len(problem.getp())
     preserved, state, tail = load_state(opts, dim)
     sampler = walk(problem,
@@ -227,7 +238,7 @@ def main():
                    burn=opts.burn if not preserved else 0,
                    steps=opts.steps-preserved, nthin=opts.thin,
                    ntemps=opts.nT, npop=opts.npop)
-    save_state(opts.store, sampler, tail)
+    save_state(opts.store, sampler, tail, labels=problem.labels())
     plot_results(problem, sampler, tail)
     plt.show()
 
