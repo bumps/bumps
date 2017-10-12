@@ -81,7 +81,9 @@ def walk(problem, burn=100, steps=400, ntemps=30, npop=10, nthin=1,
         print("=== burnin ", burn)
         for p, lnprob, lnlike in sampler.sample(p,
                 #lnprob0=lnprob, lnlike0=lnlike,
-                iterations=burn):
+                iterations=burn,
+                storechain=False,
+                ):
             t = time.time()
             if t >= next_t:
                 print(iteration, -np.max(lnlike)/problem.dof)
@@ -102,7 +104,7 @@ def walk(problem, burn=100, steps=400, ntemps=30, npop=10, nthin=1,
                 iterations=nthin*steps, thin=nthin):
             t = time.time()
             if t >= next_t:
-                print(iteration, -np.max(lnlike)/problem.dof)
+                print(iteration//nthin, -np.max(lnlike)/problem.dof)
                 next_t = t + 1
             iteration += 1
 
