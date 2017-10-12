@@ -187,17 +187,10 @@ def _decorate_histogram(vstats):
     l68, h68 = vstats.p68_range
 
     # Shade things inside 1-sigma
-<<<<<<< HEAD
     plt.axvspan(l68, h68,color='gold', alpha=0.5, zorder=-1, ec='none')
     # build transform with x=data, y=axes(0,1)
     axi = plt.gca()
     transform = blend(axi.transData, axi.transAxes)
-=======
-    pylab.axvspan(l68, h68, color='gold', alpha=0.5, zorder=-1)
-    # build transform with x=data, y=axes(0,1)
-    ax = pylab.gca()
-    transform = blend(ax.transData, ax.transAxes)
->>>>>>> upstream/master
 
     def marker(symbol, position):
         if position < l95:
