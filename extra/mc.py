@@ -48,9 +48,10 @@ class State(object):
         return self._draw
 
 
-def walk(problem, burn=100, steps=400, ntemps=30, npop=10, nthin=1,
-         init='eps', state=None):
-    betas = (np.arange(1, ntemps+1)/ntemps)**5
+def walk(problem, burn=100, steps=400, ntemps=30, maxtemp=None, dtemp=3.0,
+         npop=10, nthin=1, init='eps', state=None):
+    log_dtemp = np.log(dtemp) if maxtemp is None else np.log(maxtemp)/(ntemps-1)
+    betas = np.exp(-log_dtemp*np.arange(ntemps))
     p0 = problem.getp()
     dim = len(p0)
     nwalkers = npop*dim
@@ -74,11 +75,12 @@ def walk(problem, burn=100, steps=400, ntemps=30, npop=10, nthin=1,
     p = pop.reshape(ntemps, nwalkers, -1)
 
     iteration = 0
-    next_t = time.time() + 1
+    interval = 5
+    next_t = time.time() + interval
 
     # Burn-in
     if burn:
-        print("=== burnin ", burn)
+        print("=== burn ===")
         for p, lnprob, lnlike in sampler.sample(p,
                 #lnprob0=lnprob, lnlike0=lnlike,
                 iterations=burn,
@@ -86,8 +88,8 @@ def walk(problem, burn=100, steps=400, ntemps=30, npop=10, nthin=1,
                 ):
             t = time.time()
             if t >= next_t:
-                print(iteration, -np.max(lnlike)/problem.dof)
-                next_t = t + 1
+                print("burn", iteration, "of", burn, -np.max(lnlike)/problem.dof)
+                next_t = t + interval
             iteration += 1
     elif steps:
         # TODO: why can't we set lnprob, lnlike from saved state?
@@ -98,37 +100,38 @@ def walk(problem, burn=100, steps=400, ntemps=30, npop=10, nthin=1,
 
     # Collect
     if steps:
-        print("=== collect ", steps)
+        print("=== collect ===")
         for p, lnprob, lnlike in sampler.sample(p,
                 lnprob0=lnprob, lnlike0=lnlike,
                 iterations=nthin*steps, thin=nthin):
             t = time.time()
             if t >= next_t:
-                print(iteration//nthin, -np.max(lnlike)/problem.dof)
-                next_t = t + 1
+                k = (iteration-burn)/nthin if nthin > 1 else (iteration-burn)
+                print("step", k, "of", steps, -np.max(lnlike)/problem.dof)
+                next_t = t + interval
             iteration += 1
 
     #assert sampler.chain.shape == (ntemps, nwalkers, steps, dim)
     return sampler
 
-def process_vars(title, draw, nwalkers):
+def process_vars(title, draw, nwalkers, plot=True, file=None):
     import matplotlib.pyplot as plt
     vstats = stats.var_stats(draw)
-    print("=== %s ==="%title)
-    print(stats.format_vars(vstats))
-    plt.figure()
-    views.plot_vars(draw, vstats)
-    plt.suptitle(title)
-    plt.figure()
-    views.plot_corrmatrix(draw)
-    plt.suptitle(title)
+    print("=== %s ==="%title, file=file)
+    print(stats.format_vars(vstats), file=file)
+    if plot:
+        plt.figure()
+        views.plot_vars(draw, vstats)
+        plt.suptitle(title)
+        plt.figure()
+        views.plot_corrmatrix(draw)
+        plt.suptitle(title)
+        state = State(draw, nwalkers, title)
+        plt.figure()
+        views.plot_logp(state)
 
-    state = State(draw, nwalkers, title)
-    plt.figure()
-    views.plot_logp(state)
 
-
-def plot_results(problem, sampler, tail=None):
+def plot_results(problem, sampler, tail=None, tempstats=False):
     labels = problem.labels()
     dim = len(problem.getp())
     ntemps = len(sampler.betas)
@@ -146,6 +149,12 @@ def plot_results(problem, sampler, tail=None):
         samples = np.hstack((tail_samples, samples))
         logp = np.hstack((tail_logp, logp))
 
+
+    nwalkers = sampler.nwalkers
+    logZ = sampler.thermodynamic_integration_log_evidence(
+        logp.reshape(ntemps,nwalkers,-1), fburnin=0.)
+    print("logZ", logZ)
+
     # process derived parameters
     visible_vars = getattr(problem, 'visible_vars', None)
     integer_vars = getattr(problem, 'integer_vars', None)
@@ -162,14 +171,21 @@ def plot_results(problem, sampler, tail=None):
     visible = [labels.index(p) for p in visible_vars] if visible_vars else None
     integers = np.array([var in integer_vars for var in labels]) if integer_vars else None
 
+    def show_temp(k, plot=True, file=None):
+        title = problem.name + " (T=%g)"%(1/sampler.betas[k])
+        draw = Draw(logp[k], samples[k], None, labels, vars=visible, integers=integers)
+        process_vars(title, draw, sampler.nwalkers, plot=plot, file=file)
+
+    if tempstats:
+        with open("stats.out", "w") as fd:
+            for k in range(ntemps):
+                show_temp(k, plot=False, file=fd)
+
     # plot the results, but only for the lowest and highest temperature
-    title = problem.name + " (T=%g)"%(1/sampler.betas[0])
-    draw = Draw(logp[0], samples[0], None, labels, vars=visible, integers=integers)
-    process_vars(title, draw, sampler.nwalkers)
-    if len(sampler.betas) > 1:
-        title = problem.name + " (T=%g)"%(1/sampler.betas[-1])
-        draw = Draw(logp[-1], samples[-1], None, labels, vars=visible, integers=integers)
-        process_vars(title, draw, sampler.nwalkers)
+    show_temp(0)
+    #if ntemps > 2: show_temp(ntemps//2)
+    if ntemps > 1:
+        show_temp(-1)
 
     p = samples.reshape(-1, dim)[np.argmax(logp)]
     plt.figure()
@@ -220,28 +236,35 @@ def main():
         )
     parser.add_argument('-b', '--burn', type=int, default=100, help='Number of burn iterations')
     parser.add_argument('-n', '--steps', type=int, default=400, help='Number of collection iterations')
+    parser.add_argument('-N', '--samples', type=int, default=None, help='Number of samples to keep [default is steps*dim*npop]')
     parser.add_argument('-i', '--init', choices='eps lhs cov random'.split(), default='eps', help='Population initialization method')
     parser.add_argument('-k', '--npop', type=int, default=2, help='Population multiplier (must be even)')
     parser.add_argument('-p', '--pars', type=str, default="", help='retrieve starting point from .par file')
-    parser.add_argument('-t', '--nT', type=int, default=30, help='Number of temperatures')
+    parser.add_argument('-t', '--nT', type=int, default=20, help='Number of temperatures')
+    parser.add_argument('-m', '--Tmax', type=float, default=None, help='Max temperature for exponential ladder [default is dT^(nT-1)]')
+    parser.add_argument('-d', '--dT', type=float, default=np.sqrt(2.0), help='Temperature steps for exponential ladder if Tmax is not provided')
     parser.add_argument('-r', '--resume', type=str, default=None, help='Resume from file')
     parser.add_argument('-s', '--store', type=str, default='mc.out', help='Save to file')
     parser.add_argument('-x', '--thin', type=int, default=1, help='Number of iterations between collected points')
     parser.add_argument('modelfile', type=str, nargs=1, help='bumps model file')
+    parser.add_argument('modelopts', type=str, nargs='*', help='options passed to the model')
     opts = parser.parse_args()
 
-    problem = load_model(opts.modelfile[0])
+    problem = load_model(opts.modelfile[0], model_options=opts.modelopts)
     if opts.pars:
         load_best(problem, opts.pars)
     dim = len(problem.getp())
     preserved, state, tail = load_state(opts, dim)
+    steps = (opts.steps if opts.samples is None
+             else (opts.samples+dim*opts.npop-1)//(dim*opts.npop))
     sampler = walk(problem,
                    init=opts.init, state=state,
                    burn=opts.burn if not preserved else 0,
-                   steps=opts.steps-preserved, nthin=opts.thin,
-                   ntemps=opts.nT, npop=opts.npop)
+                   steps=steps-preserved, nthin=opts.thin,
+                   ntemps=opts.nT, maxtemp=opts.Tmax, dtemp=opts.dT,
+                   npop=opts.npop)
     save_state(opts.store, sampler, tail, labels=problem.labels())
-    plot_results(problem, sampler, tail)
+    plot_results(problem, sampler, tail, tempstats=False)
     plt.show()
 
 if __name__ == "__main__":
