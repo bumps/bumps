@@ -15,7 +15,7 @@ from scipy.stats import kde
 
 from . import corrplot
 from .formatnum import format_value
-from .stats import var_stats, format_vars
+from .stats import var_stats, format_vars, save_vars
 
 def plot_all(state, portion=1.0, figfile=None):
     from matplotlib.pyplot import figure, savefig, suptitle
@@ -31,6 +31,8 @@ def plot_all(state, portion=1.0, figfile=None):
     print(format_vars(all_vstats))
     if figfile is not None:
         savefig(figfile+"-vars"+figext)
+    if figfile is not None:
+        save_vars(all_vstats, figfile+"-err.json")
     figure()
     plot_traces(state, portion=portion)
     suptitle("Parameter history" + (" for " + state.title if state.title else ""))

@@ -16,6 +16,7 @@ import warnings
 from copy import copy
 import math
 
+import numpy as np
 from numpy import inf, isinf, isfinite
 
 from . import bounds as mbounds
@@ -419,7 +420,9 @@ class ParameterSet(object):
         """
         self.names = names
         self.reference = reference
-        self.parameters = [copy(reference) for _ in names]
+        # Force numpy semantics on slice operations by using an array
+        # of objects rather than a list of objects
+        self.parameters = np.array([copy(reference) for _ in names])
         # print self.reference, self.parameters
         for p, n in zip(self.parameters, names):
             p.name = " ".join((n, p.name))
@@ -430,7 +433,8 @@ class ParameterSet(object):
     def __getitem__(self, i):
         """
         Return the underlying parameter for the model index.  Index can
-        either be an integer or a model name.
+        either be an integer or a model name.  It can also be a slice,
+        in which case a new parameter set is returned.
         """
         # Try looking up the free variable by model name rather than model
         # index. If this fails, assume index is a model index.
@@ -438,9 +442,22 @@ class ParameterSet(object):
             i = self.names.index(i)
         except ValueError:
             pass
+        if isinstance(i, slice):
+            obj = copy(self)
+            obj.names = self.names[i]
+            obj.reference = self.reference
+            obj.parameters = self.parameters[i]
+            return obj
         return self.parameters[i]
 
     def __setitem__(self, i, v):
+        """
+        Set the underlying parameter for the model index.  Index can
+        either be an integer or a model name.  It can also be a slice,
+        in which case all underlying parameters are set, either to the
+        same value if *v* is a single parameter, otherwise *v* must have
+        the same length as the slice.
+        """
         try:
             i = self.names.index(i)
         except ValueError:
@@ -458,6 +475,12 @@ class ParameterSet(object):
         Set the underlying model parameter to the value of the nth model.
         """
         self.reference.value = self.parameters[index].value
+
+    def get_model(self, index):
+        """
+        Get the reference and underlying model parameter for the nth model.
+        """
+        return (id(self.reference), self.parameters[index])
 
     @property
     def values(self):
@@ -551,6 +574,11 @@ class FreeVariables(object):
         for p in self._parametersets.values():
             p.set_model(i)
 
+    def get_model(self, i):
+        """
+        Get the parameters for model *i* as {reference: substitution}
+        """
+        return dict(p.get_model(i) for p in self._parametersets.values())
 
 # Current implementation computes values on the fly, so you only
 # need to plug the values into the parameters and the parameters
@@ -657,6 +685,8 @@ def substitute(a):
         return [substitute(v) for v in a]
     elif isinstance(a, dict):
         return dict((k, substitute(v)) for k, v in a.items())
+    elif isinstance(a, np.ndarray):
+        return np.array([substitute(v) for v in a])
     else:
         return a
 
@@ -711,7 +741,8 @@ class Function(BaseParameter):
             args = [str(v) for v in self.args]
             kw = [str(k) + "=" + str(v) for k, v in self.kw.items()]
             name = self.op.__name__ + "(" + ", ".join(args + kw) + ")"
-        return "%s:%g" % (name, self.value)
+        return name
+        #return "%s:%g" % (name, self.value)
 
 
 def function(op):
@@ -820,7 +851,7 @@ arctan2d = atan2d
 
 
 def flatten(s):
-    if isinstance(s, (tuple, list)):
+    if isinstance(s, (tuple, list, np.ndarray)):
         return reduce(lambda a, b: a + flatten(b), s, [])
     elif isinstance(s, set):
         raise TypeError("parameter flattening cannot order sets")
@@ -834,48 +865,52 @@ def flatten(s):
         raise TypeError("don't understand type %s for %r" % (type(s), s))
 
 
-def format(p, indent=0):
+def format(p, indent=0, freevars={}, field=None):
     """
     Format parameter set for printing.
 
     Note that this only says how the parameters are arranged, not how they
     relate to each other.
     """
+    p = freevars.get(id(p), p)
     if isinstance(p, dict) and p != {}:
         res = []
         for k in sorted(p.keys()):
             if k.startswith('_'):
                 continue
-            s = format(p[k], indent + 2)
+            s = format(p[k], indent + 2, field=k, freevars=freevars)
             label = " " * indent + "." + k
             if s.endswith('\n'):
                 res.append(label + "\n" + s)
             else:
                 res.append(label + " = " + s + '\n')
         if '_index' in p:
-            res .append(format(p['_index'], indent))
+            res .append(format(p['_index'], indent, freevars=freevars))
         return "".join(res)
-    elif isinstance(p, list) and p != []:
+
+    elif isinstance(p, (list, tuple, np.ndarray)) and len(p):
         res = []
         for k, v in enumerate(p):
-            s = format(v, indent + 2)
+            s = format(v, indent + 2, freevars=freevars)
             label = " " * indent + "[%d]" % k
             if s.endswith('\n'):
                 res.append(label + '\n' + s)
             else:
                 res.append(label + ' = ' + s + '\n')
         return "".join(res)
-    # elif isinstance(p, tuple) and p != ():
-    #    return "".join(format(v, indent) for v in p)
 
     elif isinstance(p, Parameter):
-        if p.fixed:
-            bounds = ""
-        else:
-            bounds = ", bounds=(%g,%g)" %  p.bounds.limits
-        return "Parameter(%g, name='%s'%s)" % (p.value, str(p), bounds)
+        s = ""
+        if str(p) != field:
+            s += str(p) + " = "
+        s += "%g" % p.value
+        if not p.fixed:
+            s += " in [%g,%g]" %  p.bounds.limits
+        return s
+
     elif isinstance(p, BaseParameter):
-        return str(p)
+        return "%s = %g" % (str(p), p.value)
+
     else:
         return "None"
 

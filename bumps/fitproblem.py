@@ -6,7 +6,11 @@ These models can be bundled together into a :func:`FitProblem` and sent
 to :class:`bumps.fitters.FitDriver` for optimization and uncertainty
 analysis.
 """
-from __future__ import division, with_statement, print_function
+# Don't include print_function in imports; since the model coded is exec'd
+# in the __future__ context of this file, it would force the models to use the
+# new print function syntax.  load_problem() should be moved to its own file
+# to avoid this issue.
+from __future__ import division, with_statement
 
 __all__ = ['Fitness', 'FitProblem', 'load_problem',
            'BaseFitProblem', 'MultiFitProblem']
@@ -436,9 +440,9 @@ class BaseFitProblem(object):
         """
         return 2 * self.nllf(pvec) / self.dof
 
-    def show(self):
+    def show(self, _subs={}):
         """Print the available parameters to the console as a tree."""
-        print(parameter.format(self.model_parameters()))
+        print(parameter.format(self.model_parameters(), freevars=_subs))
         print("[chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
         #print(self.summarize())
 
@@ -613,7 +617,8 @@ class MultiFitProblem(BaseFitProblem):
     def show(self):
         for i, f in enumerate(self.models):
             print("-- Model %d %s" % (i, f.name))
-            f.show()
+            subs = self.freevars.get_model(i) if self.freevars else {}
+            f.show(_subs=subs)
         print("[overall chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
 
     def plot(self, p=None, fignum=1, figfile=None, view=None):
