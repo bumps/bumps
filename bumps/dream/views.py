@@ -163,11 +163,9 @@ def tile_axes(n):
     next greatest square, then determine number
     of rows needed.
     """
-    from numpy import digitize as dig
-    from numpy import ceil
+    from numpy import ceil, sqrt
     
-    bins = [pow(i,2)+1 for i in range(0,9)]
-    cols = int(dig(n,bins))
+    cols = int(ceil(sqrt(n)))
     rows = int(ceil(n/float(cols)))
     return cols, rows
 
