@@ -816,10 +816,10 @@ class MCMCDraw(object):
 
         M = MVNEntropy(drawn.points)
         print("Entropy from MVN: %s"%str(M))
-        if M.reject_normal:
-            return entropy(drawn.points, drawn.logp, **kw)
-        else:
-            return M.entropy, 0
+        # Always return entropy from draw, even if the sample is approximately
+        # normal
+        return entropy(drawn.points, drawn.logp, **kw)
+        #return entropy(drawn.points, drawn.logp, **kw) if M.reject_normal else (M.entropy, 0)
 
 
     def draw(self, portion=1, vars=None, selection=None):
