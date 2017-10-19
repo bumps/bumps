@@ -212,8 +212,8 @@ def plot_resid(x, resid):
     import pylab
     pylab.plot(x, resid, '.')
     pylab.gca().locator_params(axis='y', tight=True, nbins=4)
-    pylab.axhline(y=1, hold=True, ls='dotted')
-    pylab.axhline(y=-1, hold=True, ls='dotted')
+    pylab.axhline(y=1, ls='dotted')
+    pylab.axhline(y=-1, ls='dotted')
     pylab.ylabel("Residuals")
 
 def plot_err(x, y, dy, fy, view=None, **kw):
@@ -224,7 +224,7 @@ def plot_err(x, y, dy, fy, view=None, **kw):
     """
     import pylab
     pylab.errorbar(x, y, yerr=dy, fmt='.')
-    pylab.plot(x, fy, '-', hold=True)
+    pylab.plot(x, fy, '-')
     if view == 'log':
         pylab.xscale('linear')
         pylab.yscale('log')

@@ -20,7 +20,7 @@ def auto_shift(offset):
         from matplotlib import pyplot as plt
         from bumps.plotutil import auto_shift
         trans = auto_shift(plt.gca())
-        plot(x, y, hold=True, trans=trans)
+        plot(x, y, trans=trans)
     """
     from matplotlib.transforms import ScaledTranslation
     import pylab
@@ -147,7 +147,7 @@ def _plot_quantiles(x, q, color, alpha):
     for lo, hi in q:
         pylab.fill_between(x, lo, hi,
                            facecolor=color, edgecolor=edgecolor,
-                           alpha=alpha, hold=True)
+                           alpha=alpha)
 
 def form_quantiles(y, contours):
     """

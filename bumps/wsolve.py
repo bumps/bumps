@@ -368,13 +368,13 @@ class PolynomialModel(object):
         x = np.linspace(min_x-padding, max_x+padding, 200)
         y = self.__call__(x)
         pylab.errorbar(self.x, self.y, self.dy, fmt='b.')
-        pylab.plot(x, y, 'b-', hold=True)
+        pylab.plot(x, y, 'b-')
         if ci > 0:
             _, cdy = self.ci(x, ci)
-            pylab.plot(x, y + cdy, 'b-.', x, y - cdy, 'b-.', hold=True)
+            pylab.plot(x, y + cdy, 'b-.', x, y - cdy, 'b-.')
         if pi > 0:
             py, pdy = self.pi(x, pi)
-            pylab.plot(x, y + pdy, 'b-.', x, y - pdy, 'b-.', hold=True)
+            pylab.plot(x, y + pdy, 'b-.', x, y - pdy, 'b-.')
 
 def wpolyfit(x, y, dy=1, degree=None, origin=False):
     r"""
