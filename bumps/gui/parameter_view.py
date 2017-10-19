@@ -28,11 +28,15 @@ This module implements the Parameter View panel.
 
 import wx
 
-import wx.gizmos as gizmos
+try:
+    from wx.dataview import TreeListCtrl
+except ImportError:
+    from wx.gizmos import TreeListCtrl
 
 from ..parameter import BaseParameter
 from .util import nice
 from . import signal
+from .utilities import phoenix
 
 
 IS_MAC = (wx.Platform == '__WXMAC__')
@@ -47,15 +51,22 @@ class ParameterView(wx.Panel):
         vbox = wx.BoxSizer(wx.VERTICAL)
         text_hbox = wx.BoxSizer(wx.HORIZONTAL)
 
-        self.tree = gizmos.TreeListCtrl(self, -1, style =
-                                        wx.TR_DEFAULT_STYLE
-                                        | wx.TR_HAS_BUTTONS
-                                        | wx.TR_TWIST_BUTTONS
-                                        | wx.TR_ROW_LINES
-                                        #| wx.TR_COLUMN_LINES
-                                        | wx.TR_NO_LINES
-                                        | wx.TR_FULL_ROW_HIGHLIGHT
-                                       )
+        self.tree = TreeListCtrl(self, -1, style =
+                                 wx.TR_DEFAULT_STYLE
+                                 | wx.TR_HAS_BUTTONS
+                                 | wx.TR_TWIST_BUTTONS
+                                 | wx.TR_ROW_LINES
+                                 #| wx.TR_COLUMN_LINES
+                                 | wx.TR_NO_LINES
+                                 | wx.TR_FULL_ROW_HIGHLIGHT
+                                 )
+        # CRUFT: wx3 AddColumn => wx4 AppendColumn
+        if phoenix:
+            self.tree.AddColumn = self.tree.AppendColumn
+            self.tree.GetItemPyData = self.tree.GetItemData
+            self.tree.SetItemPyData = self.tree.SetItemData
+            self.tree.GetNext = self.tree.GetNextItem
+            self.tree.ExpandAll = self.tree.Expand
 
         # Create columns.
         self.tree.AddColumn("Model")
@@ -66,7 +77,6 @@ class ParameterView(wx.Panel):
         self.tree.AddColumn("Fit?")
 
         # Align the textctrl box with treelistctrl.
-        self.tree.SetMainColumn(0) # the one with the tree in it...
         self.tree.SetColumnWidth(0, 180)
         self.tree.SetColumnWidth(1, 150)
         self.tree.SetColumnWidth(2, 73)
@@ -75,14 +85,16 @@ class ParameterView(wx.Panel):
         self.tree.SetColumnWidth(5, 40)
 
         # Determine which colunms are editable.
-        self.tree.SetColumnEditable(0, False)
-        self.tree.SetColumnEditable(1, False)
-        self.tree.SetColumnEditable(2, True)
-        self.tree.SetColumnEditable(3, True)
-        self.tree.SetColumnEditable(4, True)
-        self.tree.SetColumnEditable(5, False)
+        if not phoenix: # CRUFT: wx4 needs to witch to DataViewCtrl
+            self.tree.SetMainColumn(0) # the one with the tree in it...
+            self.tree.SetColumnEditable(0, False)
+            self.tree.SetColumnEditable(1, False)
+            self.tree.SetColumnEditable(2, True)
+            self.tree.SetColumnEditable(3, True)
+            self.tree.SetColumnEditable(4, True)
+            self.tree.SetColumnEditable(5, False)
 
-        self.tree.GetMainWindow().Bind(wx.EVT_RIGHT_UP, self.OnRightUp)
+            self.tree.GetMainWindow().Bind(wx.EVT_RIGHT_UP, self.OnRightUp)
         self.tree.Bind(wx.EVT_TREE_END_LABEL_EDIT, self.OnEndEdit)
         '''
         self.tree.Bind(wx.EVT_TREE_ITEM_GETTOOLTIP,self.OnTreeTooltip)
@@ -160,7 +172,10 @@ class ParameterView(wx.Panel):
         if self.model is None: return
         parameters = self.model.model_parameters()
         # Add a root node.
-        self.root = self.tree.AddRoot("Model")
+        if phoenix: # CRUFT: wx 3/4
+            self.root = self.tree.GetRootItem()
+        else:
+            self.root = self.tree.AddRoot("Model")
         # Add nodes from our data set .
         self._add_tree_nodes(self.root, parameters)
         self._update_tree_nodes()
@@ -201,11 +216,18 @@ class ParameterView(wx.Panel):
             fitting_parameter = ''
             low, high = '', ''
 
-        self.tree.SetItemText(branch, str(par.name), 1)
-        self.tree.SetItemText(branch, str(nice(par.value)), 2)
-        self.tree.SetItemText(branch, low, 3)
-        self.tree.SetItemText(branch, high, 4)
-        self.tree.SetItemText(branch, fitting_parameter, 5)
+        if phoenix: # CRUFT: wx 3/4
+            self.tree.SetItemText(branch, 1, str(par.name))
+            self.tree.SetItemText(branch, 2, str(nice(par.value)))
+            self.tree.SetItemText(branch, 3, low)
+            self.tree.SetItemText(branch, 4, high)
+            self.tree.SetItemText(branch, 5, fitting_parameter)
+        else:
+            self.tree.SetItemText(branch, str(par.name), 1)
+            self.tree.SetItemText(branch, str(nice(par.value)), 2)
+            self.tree.SetItemText(branch, low, 3)
+            self.tree.SetItemText(branch, high, 4)
+            self.tree.SetItemText(branch, fitting_parameter, 5)
 
     def OnRightUp(self, evt):
         pos = evt.GetPosition()

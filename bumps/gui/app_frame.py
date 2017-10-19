@@ -137,7 +137,7 @@ class AppFrame(wx.Frame):
 
         # Create the menu bar.
         mb = wx.MenuBar()
-        wx.MenuBar.SetAutoWindowMenu(False)
+        #wx.MenuBar.SetAutoWindowMenu(False)
 
         # Add a 'File' menu to the menu bar and define its options.
         file_menu = wx.Menu()

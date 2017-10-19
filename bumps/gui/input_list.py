@@ -31,6 +31,10 @@ from __future__ import print_function
 import wx
 from wx.lib.scrolledpanel import ScrolledPanel
 
+from .utilities import phoenix
+
+Validator = wx.Validator if phoenix else wx.PyValidator
+
 WINDOW_BKGD_COLOUR = "#ECE9D8"
 PALE_YELLOW = "#FFFFB0"
 
@@ -40,7 +44,7 @@ Yellow means an input value is required.
 Pink indicates a syntax error."""
 
 
-class ItemListValidator(wx.PyValidator):
+class ItemListValidator(Validator):
     """
     This class implements a custom input field validator.  Each instance of
     this class services one data entry field (typically implemented as
@@ -59,7 +63,7 @@ class ItemListValidator(wx.PyValidator):
     """
 
     def __init__(self, datatype='str', required=False):
-        wx.PyValidator.__init__(self)
+        Validator.__init__(self)
         self.datatype = datatype
         self.required = required
 
@@ -157,7 +161,7 @@ class ItemListValidator(wx.PyValidator):
 
         else:
             text_ctrl.SetBackgroundColour(
-                wx.SystemSettings_GetColour(wx.SYS_COLOUR_WINDOW))
+                wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW))
             text_ctrl.Refresh()
             self.TransferFromWindow()
             return True

@@ -52,7 +52,11 @@ Options for controlling the development and testing environment:
 
 import sys
 import traceback
-from StringIO import StringIO
+import warnings
+try:
+    from io import StringIO
+except:
+    from StringIO import StringIO
 
 import wx
 
@@ -62,6 +66,16 @@ from bumps import options as bumps_options
 
 from .about import APP_TITLE
 from .utilities import resource_dir, resource, log_time
+
+def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
+    """
+    Add tracebacks by setting "warnings.showwarning = warn_with_traceback"
+    """
+    log = file if hasattr(file,'write') else sys.stderr
+    traceback.print_stack(file=log)
+    log.write(warnings.formatwarning(message, category, filename, lineno, line))
+#warnings.showwarning = warn_with_traceback
+
 
 # Defer import of AppFrame until after the splash screen has been displayed.
 # When running for the first time (where imported modules are not in cache),
