@@ -54,7 +54,7 @@ def update_parameters(model, delay=100):
             #print "sending update parameters",model
             del _DELAYED_SIGNAL[model]
             wx.CallAfter(send, 'model.update_parameters', model=model)
-        _DELAYED_SIGNAL[model] = wx.FutureCall(delay, _send_signal)
+        _DELAYED_SIGNAL[model] = wx.CallLater(delay, _send_signal)
 
 
 def log_message(message):

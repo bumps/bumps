@@ -30,7 +30,10 @@ of the frame of the GUI for the Bumps application.
 from __future__ import division
 import os
 import threading
-import cPickle as pickle
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 
 import wx
 import wx.aui
@@ -50,7 +53,7 @@ from .fit_dialog import show_fit_config
 from .fit_thread import (FitThread, EVT_FIT_PROGRESS, EVT_FIT_COMPLETE)
 from .util import nice
 from . import signal
-from .utilities import get_bitmap
+from .utilities import get_bitmap, phoenix
 
 # File selection strings.
 MODEL_EXT = ".pickle"
@@ -103,8 +106,8 @@ class AppPanel(wx.Panel):
         signal.connect(self.OnModelChange, "model.update_structure")
         signal.connect(self.OnModelSetpar, "model.update_parameters")
 
-        EVT_FIT_PROGRESS(self, self.OnFitProgress)
-        EVT_FIT_COMPLETE(self, self.OnFitComplete)
+        EVT_FIT_PROGRESS.Bind(self, wx.ID_ANY, wx.ID_ANY, self.OnFitProgress)
+        EVT_FIT_COMPLETE.Bind(self, wx.ID_ANY, wx.ID_ANY, self.OnFitComplete)
         self.fit_thread = None
         self.fit_config = None
 
@@ -191,41 +194,47 @@ class AppPanel(wx.Panel):
 
     def init_toolbar(self, frame):
         """Populates the tool bar."""
-        tb = self.tb = frame.GetToolBar()
+        self.tb = frame.GetToolBar()
 
         script_bmp = get_bitmap("import_script.png", wx.BITMAP_TYPE_PNG)
         reload_bmp = get_bitmap("reload.png", wx.BITMAP_TYPE_PNG)
         start_bmp = get_bitmap("start_fit.png", wx.BITMAP_TYPE_PNG)
         stop_bmp = get_bitmap("stop_fit.png", wx.BITMAP_TYPE_PNG)
 
-        _tool = tb.AddSimpleTool(wx.ID_ANY, script_bmp,
-                                 "Open model",
-                                 "Load model from script")
+        _tool = self._add_tool(script_bmp,
+                               "Open model",
+                               "Load model from script")
         frame.Bind(wx.EVT_TOOL, self.OnFileOpen, _tool)
-        _tool = tb.AddSimpleTool(wx.ID_ANY, reload_bmp,
-                                 "Reload model",
-                                 "Reload model from script")
+        _tool = self._add_tool(reload_bmp,
+                               "Reload model",
+                               "Reload model from script")
         frame.Bind(wx.EVT_TOOL, self.OnFileReload, _tool)
         # TODO: add reload
 
-        tb.AddSeparator()
+        self.tb.AddSeparator()
 
-        _tool = tb.AddSimpleTool(wx.ID_ANY, start_bmp,
-                                 "Start Fit",
-                                 "Start fitting operation")
+        _tool = self._add_tool(start_bmp,
+                               "Start Fit",
+                               "Start fitting operation")
         frame.Bind(wx.EVT_TOOL, self.OnFitStart, _tool)
-        tb.EnableTool(_tool.GetId(), False)
+        self.tb.EnableTool(_tool.GetId(), False)
         self.tb_start = _tool
 
-        _tool = tb.AddSimpleTool(wx.ID_ANY, stop_bmp,
-                                 "Stop Fit",
-                                 "Stop fitting operation")
+        _tool = self._add_tool(stop_bmp,
+                               "Stop Fit",
+                               "Stop fitting operation")
         frame.Bind(wx.EVT_TOOL, self.OnFitStop, _tool)
-        tb.EnableTool(_tool.GetId(), False)
+        self.tb.EnableTool(_tool.GetId(), False)
         self.tb_stop = _tool
 
-        tb.Realize()
-        frame.SetToolBar(tb)
+        self.tb.Realize()
+        frame.SetToolBar(self.tb)
+
+    def _add_tool(self, bitmap, label, help):
+        if phoenix:
+            return self.tb.AddTool(wx.ID_ANY, label, bitmap, shortHelp=help)
+        else:
+            return self.tb.AddSimpleTool(wx.ID_ANY, bitmap, label, help)
 
     def init_statusbar(self, frame, subbars):
         """Divides the status bar into multiple segments."""
@@ -417,7 +426,7 @@ class AppPanel(wx.Panel):
         options = self.fit_config.selected_values
         self.fitLock = threading.Lock()
         self.fitAbort = 0
-        
+
         def abort_test():
             return self.fitAbort
         self.fit_thread = FitThread(win=self, fitLock=self.fitLock,
@@ -579,8 +588,8 @@ class AppPanel(wx.Panel):
         self.fit_menu.Enable(id=self.fit_menu_options.GetId(), enable=True)
 
         # Enable appropriate toolbar items.
-        self.tb.EnableTool(id=self.tb_start.GetId(), enable=True)
-        self.tb.EnableTool(id=self.tb_stop.GetId(), enable=True)
+        self.tb.EnableTool(self.tb_start.GetId(), True)
+        self.tb.EnableTool(self.tb_stop.GetId(), True)
         if hasattr(model, 'path'):
             signal.log_message(message="loaded "+model.path)
             self.GetTopLevelParent().SetTitle("Bumps: %s"%model.name)

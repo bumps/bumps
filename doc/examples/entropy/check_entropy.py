@@ -61,7 +61,8 @@ problem = FitProblem(M)
 
 # Before fitting, print the expected entropy from the fit.
 
-print("*** Expected entropy: %.4f"%(D.entropy()/log(2)))
+entropy = D.entropy()
+print("*** Expected entropy: %.4f bits %.4f nats"%(entropy/log(2), entropy))
 
 # To exercise the entropy calculator, try fitting some non-normal
 # distributions:

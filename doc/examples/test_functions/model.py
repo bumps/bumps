@@ -9,7 +9,9 @@ from __future__ import print_function
 from functools import reduce, wraps
 import inspect
 
-from numpy import sin, cos, linspace, meshgrid, e, pi, sqrt, exp
+from numpy import sin, cos, linspace, meshgrid, e, pi, sqrt, exp, log, log1p
+from scipy.special import gammaln
+
 from bumps.names import *
 
 class ModelFunction(object):
@@ -87,7 +89,24 @@ def gauss(x):
     """
     Multivariate gaussian distribution
     """
-    return sum(0.5*(xi - 3.)**2 for xi in x)
+    #mu, sigma = 100.0, 0.001
+    mu, sigma = 3.0, 2.0
+    # note: sqrt(det(Sigma)) = p log(sigma) since Sigma = sigma^2 eye(p)
+    #log_norm = 0.5*len(x)*log(2*pi*sigma**2)
+    log_norm = 0
+    return 0.5*sum(((xi - mu)/sigma)**2 for xi in x) - log_norm
+
+@fit_function(fmin=0.0, xmin=0.0)
+def t(x):
+    """
+    Multivariate t distribution
+    """
+    mu, sigma, nu = 3.0, 1.0, 2
+    p = len(x)
+    S = sum(((xi - mu)/sigma)**2 for xi in x)/nu
+    # note: sqrt(det(Sigma)) = p log(sigma) since Sigma = sigma^2 eye(p)
+    log_norm = gammaln(0.5*(nu+p)) - gammaln(0.5*nu) - 0.5*p*log(nu+pi) - p*log(sigma)
+    return (nu+p)/2*log1p(S) - log_norm
 
 @fit_function(fmin=0., xmin=3.)
 def laplace(x):
@@ -250,6 +269,8 @@ for p in M.parameters().values():
     # TODO: really should pull value and range out of the bounds for the
     # function, if any are provided.
     p.value = 400*(np.random.rand()-0.5)
+    #p.range(-1,1)
     p.range(-200,200)
+    #p.range(-inf,inf)
 
 problem = FitProblem(M)

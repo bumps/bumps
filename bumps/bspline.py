@@ -354,8 +354,7 @@ def test():
 
 def demo():
     """Show bsline curve for a set of control points."""
-    from pylab import hold, linspace, subplot, plot, legend, show
-    hold(True)
+    from pylab import linspace, subplot, plot, legend, show
     #y = [9 ,6, 1, 3, 8, 4, 2]
     #y = [9, 11, 13, 3, -2, 0, 2]
     y = [9, 11, 2, 3, 8, 0]
@@ -387,8 +386,7 @@ def demo():
 # B-Spline control point inverse function is not yet implemented
 '''
 def demo_interp():
-    from pylab import hold, linspace, plot, show
-    hold(True)
+    from pylab import linspace, plot, show
     x = linspace(0, 1, 7)
     y = [9, 11, 2, 3, 8, 0, 2]
     t = linspace(0, 1, 400)

@@ -106,7 +106,8 @@ class SummaryView(scrolled.ScrolledPanel):
 
     def _update_model(self):
         #print "drawing"
-        self.sizer.Clear(deleteWindows=True)
+        self.sizer.Clear(True)
+        #self.sizer.Clear()
         self.display_list = []
 
         self.layer_label = wx.StaticText(self, wx.ID_ANY, 'Fit Parameter',

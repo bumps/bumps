@@ -28,10 +28,6 @@ if not os.path.exists(mplconfig):
     os.mkdir(mplconfig)
 import matplotlib
 matplotlib.use('Agg')
-# print(matplotlib.__file__)
-import pylab
-pylab.hold(False)
-
 
 def addpath(path):
     """

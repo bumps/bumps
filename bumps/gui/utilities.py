@@ -35,6 +35,11 @@ import glob
 import wx
 from wx.lib import delayedresult
 
+# CRUFT: wx 3/4
+phoenix = wx.version() >= '4.0'
+BitmapFromImage = wx.Bitmap if phoenix else wx.BitmapFromImage
+
+
 # Text string used to compare the string width in pixels for different fonts.
 # This benchmark string has 273 characters, containing 92 distinct characters
 # consisting of the lowercase alpha chars in the ratio used in an English
@@ -223,8 +228,8 @@ def get_bitmap(filename, type=wx.BITMAP_TYPE_PNG, scale_factor=16):
 
     path = resource(filename)
 
-    return wx.BitmapFromImage(wx.Image(name=path, type=type)
-                                      .Scale(scale_factor, scale_factor))
+    return BitmapFromImage(wx.Image(name=path, type=type)
+                           .Scale(scale_factor, scale_factor))
 
 
 def popup_error_message(caption, message):

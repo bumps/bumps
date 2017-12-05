@@ -34,6 +34,7 @@ class State(object):
 
         # private attributes for fake state
         chain_len = len(draw.logp)//nwalkers
+        self.Ngen = self.generation = chain_len
         self._draw = draw
         self._samples_per_iteration = nwalkers*np.arange(1, chain_len+1, dtype='i')
         self._logp = draw.logp.reshape((nwalkers, -1)).T
@@ -52,6 +53,7 @@ def walk(problem, burn=100, steps=400, ntemps=30, maxtemp=None, dtemp=3.0,
          npop=10, nthin=1, init='eps', state=None):
     log_dtemp = np.log(dtemp) if maxtemp is None else np.log(maxtemp)/(ntemps-1)
     betas = np.exp(-log_dtemp*np.arange(ntemps))
+    #betas = (np.linspace(ntemps, 1, ntemps)/ntemps)**5
     p0 = problem.getp()
     dim = len(p0)
     nwalkers = npop*dim
@@ -130,6 +132,29 @@ def process_vars(title, draw, nwalkers, plot=True, file=None):
         plt.figure()
         views.plot_logp(state)
 
+def log_evidence(logls, betas, fburnin=0.1):
+    """
+    corrected log evidence that is not yet in emcee release
+
+    Caveat: log evidence calcs will fail horribly with an improper prior
+    since T->inf => log p_z -> log integral prior = inf, and the evidence
+    estimate will diverge (or at least be heavily dependent on maximum
+    temperature.  A further caveat is that even for a proper prior, the
+    maximum temperature needed depends on the nature of the prior, which
+    makes log evidence pretty much useless for black box application.
+    """
+    istart = int(logls.shape[2] * fburnin + 0.5)
+    mean_logls = np.mean(np.mean(logls, axis=1)[:, istart:], axis=1)
+
+    # Always integrate from small to large: ln(Z) = int_0^1 d(beta) <log(L)>_beta
+    isort = np.argsort(betas)
+    betas = betas[isort]
+    mean_logls = mean_logls[isort]
+    lnZ = np.trapz(mean_logls, betas)
+    lnZ2 = np.trapz(mean_logls[::2], betas[::2])
+
+    return lnZ, np.abs(lnZ - lnZ2)
+
 
 def plot_results(problem, sampler, tail=None, tempstats=False):
     labels = problem.labels()
@@ -151,9 +176,11 @@ def plot_results(problem, sampler, tail=None, tempstats=False):
 
 
     nwalkers = sampler.nwalkers
-    logZ = sampler.thermodynamic_integration_log_evidence(
-        logp.reshape(ntemps,nwalkers,-1), fburnin=0.)
-    print("logZ", logZ)
+    #logZ = sampler.thermodynamic_integration_log_evidence(
+    #    logp.reshape(ntemps, nwalkers, -1), fburnin=0.)
+    logZ = log_evidence(logp.reshape(ntemps, nwalkers, -1), sampler.betas, fburnin=0.)
+    maxp = np.max(logp)
+    print("log Z", logZ, "max p", maxp)
 
     # process derived parameters
     visible_vars = getattr(problem, 'visible_vars', None)
@@ -211,14 +238,14 @@ def save_state(filename, sampler, tail=None, labels=None):
         fid.write(pardata)
 
 
-def load_state(opts, dim):
+def load_state(opts, dim, steps):
     if opts.resume:
         data = np.loadtxt(opts.resume)
         nwalkers = opts.npop*dim
         logp = data[:,0].reshape(opts.nT, nwalkers, -1)
         samples = data[:,1:].reshape(opts.nT, nwalkers, -1, dim)
         state = logp, samples
-        preserved = min(opts.steps, max(samples.shape[2] - opts.burn, 0))
+        preserved = min(steps, max(samples.shape[2] - opts.burn, 0))
         #print(samples.shape[3], opts.steps, opts.burn, preserved)
         if preserved > 0:
             rows = preserved * opts.nT * nwalkers
@@ -254,9 +281,9 @@ def main():
     if opts.pars:
         load_best(problem, opts.pars)
     dim = len(problem.getp())
-    preserved, state, tail = load_state(opts, dim)
     steps = (opts.steps if opts.samples is None
              else (opts.samples+dim*opts.npop-1)//(dim*opts.npop))
+    preserved, state, tail = load_state(opts, dim, steps)
     sampler = walk(problem,
                    init=opts.init, state=state,
                    burn=opts.burn if not preserved else 0,

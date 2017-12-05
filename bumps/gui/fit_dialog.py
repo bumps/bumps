@@ -35,6 +35,7 @@ import wx.lib.newevent
 
 from .. import options
 from .input_list import InputListPanel
+from .utilities import phoenix
 
 (FitterChangedEvent, EVT_FITTER_CHANGED) = wx.lib.newevent.NewCommandEvent()
 
@@ -122,19 +123,19 @@ class FitConfig(wx.Frame):
         # Section 3
         # Create the button controls (Reset, Apply) and bind their events.
         #apply_btn = wx.Button(self, wx.ID_APPLY, "Apply")
-        #apply_btn.SetToolTipString("Accept new options for the optimizer")
+        #apply_btn.SetToolTip(wx.ToolTip("Accept new options for the optimizer"))
         #apply_btn.SetDefault()
         #reset_btn = wx.Button(self, wx.ID_ANY, "Reset")
-        #reset_btn.SetToolTipString("Restore default options for the optimizer")
+        #reset_btn.SetToolTip(wx.ToolTip("Restore default options for the optimizer"))
         accept_btn = wx.Button(self, wx.ID_OK)
-        accept_btn.SetToolTipString("Accept new options for the optimizer")
+        accept_btn.SetToolTip(wx.ToolTip("Accept new options for the optimizer"))
         accept_btn.SetDefault()
         cancel_btn = wx.Button(self, wx.ID_CANCEL)
-        cancel_btn.SetToolTipString("Restore default options for the optimizer")
+        cancel_btn.SetToolTip(wx.ToolTip("Restore default options for the optimizer"))
         if help is not None:
             help_btn = wx.Button(self, wx.ID_HELP, 'Help')
             #help_btn = wx.Button(self, wx.ID_ANY, 'Help')
-            help_btn.SetToolTipString("Help on the options for the optimizer")
+            help_btn.SetToolTip(wx.ToolTip("Help on the options for the optimizer"))
 
 
         self.Bind(wx.EVT_BUTTON, self.OnAccept, accept_btn)

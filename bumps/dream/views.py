@@ -311,7 +311,7 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, cbar):
             if pidx[-1] < len(z)-1:
                 pidx = hstack((pidx, -1))
             y, z = y[pidx], z[pidx]
-        pylab.pcolormesh(x, y, z, vmin=vmin, vmax=vmax, hold=True, cmap=cmap)
+        pylab.pcolormesh(x, y, z, vmin=vmin, vmax=vmax, cmap=cmap)
     # Check for broken distribution
     if not bins:
         return
@@ -324,7 +324,7 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, cbar):
     ml_peak = np.max(maxlikelihood)
     if ml_peak > hist_peak*1.3:
         maxlikelihood *= hist_peak*1.3/ml_peak
-    pylab.plot(centers, maxlikelihood, '-g', hold=True)
+    pylab.plot(centers, maxlikelihood, '-g')
 
 
 def _make_var_histogram(values, logp, nbins, ci, weights):
@@ -349,11 +349,11 @@ def _make_var_histogram(values, logp, nbins, ci, weights):
     # Plot the kernel density estimate
     #density = KDE1D(values)
     #x = linspace(bins[0],bins[-1],100)
-    #pylab.plot(x, density(x), '-k', hold=True)
+    #pylab.plot(x, density(x), '-k')
 
     # Plot the marginal maximum likelihood
     centers = (bins[:-1]+bins[1:])/2
-    pylab.plot(centers, histbest, '-g', hold=True)
+    pylab.plot(centers, histbest, '-g')
 
 
 def plot_corrmatrix(draw):

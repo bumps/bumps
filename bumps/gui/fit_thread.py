@@ -157,7 +157,10 @@ class FitThread(Thread):
         try:
             # Only use parallel on windows if the problem can be pickled
             if os.name == "nt":
-                import cPickle as pickle
+                try:
+                    import cPickle as pickle
+                except ImportError:
+                    import pickle
                 pickle.dumps(self.problem)
             mapper = MPMapper
         except Exception:

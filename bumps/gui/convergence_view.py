@@ -48,11 +48,11 @@ class ConvergenceView(PlotView):
                 pylab.fill_between(iternum[tail:], pop[tail:,1], pop[tail:,3],
                                    color=c['light'], label='_nolegend_')
                 pylab.plot(iternum[tail:],pop[tail:,2],
-                           label="80% range", color=c['base'], hold=True)
+                           label="80% range", color=c['base'])
                 pylab.plot(iternum[tail:],pop[tail:,0],
-                           label="_nolegend_", color=c['base'], hold=True)
+                           label="_nolegend_", color=c['base'])
             pylab.plot(iternum[tail:], best[tail:], label="best",
-                       color=c['dark'], hold=True)
+                       color=c['dark'])
             pylab.xlabel('iteration number')
             pylab.ylabel('chisq')
             pylab.legend()
