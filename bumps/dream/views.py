@@ -27,7 +27,7 @@ def plot_all(state, portion=1.0, figfile=None):
     all_vstats = var_stats(draw)
     plot_vars(draw, all_vstats)
     if state.title:
-        suptitle(state.title)
+        suptitle(state.title,va='top',ha='left',x=0,y=1)
     print(format_vars(all_vstats))
     if figfile is not None:
         savefig(figfile+"-vars"+figext)
@@ -72,7 +72,7 @@ def plot_vars(draw, all_vstats, **kw):
     pad = 2
     pltparams = [['xtick.direction','in'],
                 ['ytick.direction','in'],
-                ['lines.linewidth',1],
+                ['lines.linewidth',lwidth],
                 ['axes.linewidth',lwidth],
                 ['xtick.labelsize',fontsz],
                 ['ytick.labelsize',fontsz],
@@ -97,9 +97,10 @@ def plot_vars(draw, all_vstats, **kw):
     col, row = tile_axes(len_allvs)
 
     #set tile width, height, colorbar width
+    #colorbar height is set according to tile heights
     tile_W = 3.0
     tile_H = 2.0
-    cbar_width = 0.75
+    cbar_W = 0.75
 
     #set space between plots in horiz and vert
     h_space = 0.2
@@ -112,43 +113,43 @@ def plot_vars(draw, all_vstats, **kw):
     r_margin = 0.2
 
     #calculate total width and figure size
-    plots_width = (tile_W+h_space)*col
-    total_width = plots_width+cbar_width+l_margin+r_margin
-    total_height = (tile_H+v_space)*row+t_margin+b_margin
+    plots_width = col*(tile_W+h_space)
+    total_width = plots_width+cbar_W+l_margin+r_margin
+    plots_height = row*(tile_H+v_space)
+    total_height = plots_height+t_margin+b_margin
     fsize = [total_width,total_height]
 
     #calculate dimensions as fractions of figure size
-    v_space_f = v_space/total_height
-    h_space_f = h_space/total_width
-
     tile_H_f = tile_H/total_height
     tile_W_f = tile_W/total_width
-    cbar_width_f = cbar_width/total_width
+    cbar_w_f = cbar_W/total_width
+
+    v_space_f = v_space/total_height
+    h_space_f = h_space/total_width
 
     t_margin_f = t_margin/total_height
     b_margin_f = b_margin/total_height
     l_margin_f = l_margin/total_width
     top = 1-t_margin_f+v_space_f
-    left = l_margin_f
 
-    #set colorbar dimensions
-    l_cbar_f = left+col*(tile_W_f+h_space_f)
+    #Calculate colorbar location (left,bottom)
+    #and colorbar height
+    l_cbar_f = l_margin_f+col*(tile_W_f+h_space_f)
     b_cbar_f = b_margin_f+v_space_f
-    h_cbar_f = 1 - t_margin_f - b_margin_f - v_space_f
-    cbar_box = [l_cbar_f,b_cbar_f,cbar_width_f,h_cbar_f]
+    cbar_h_f = 1 - t_margin_f - b_margin_f - v_space_f
+    cbar_box = [l_cbar_f,b_cbar_f,cbar_w_f,cbar_h_f]
 
     #make the figure with size according to dimensions
     fig = plt.figure(figsize=fsize)
     cbar = _make_fig_colorbar(draw.logp,cbar_box)
 
-    #set the figure size based on dimensions above
     ax = []
     k = 0
     for j in range(1,row+1):
         for i in range(0,col):
             if k>=len_allvs:
                 break
-            dims = [left+i*(tile_W_f+h_space_f),
+            dims = [l_margin_f+i*(tile_W_f+h_space_f),
                     top-j*(tile_H_f+v_space_f),
                     tile_W_f,
                     tile_H_f]
