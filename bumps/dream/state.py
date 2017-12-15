@@ -79,6 +79,10 @@ import numpy as np
 from numpy import empty, sum, asarray, inf, argmax, hstack, dstack
 from numpy import savetxt, reshape
 
+from os import getcwd, chdir, listdir, path, remove
+from os import name as osname
+from subprocess import call
+
 from .outliers import identify_outliers
 from .util import draw, rng
 
@@ -107,6 +111,43 @@ class NoTrace:
 
     def close(self):
         pass
+
+def xz(dirname):
+    """
+    EXTRACT compressed files
+    """
+    nmes = listdir(dirname)
+    cdir = getcwd()
+    chdir(dirname)
+    for i in nmes:
+        if "mc.xz" in i or "mc.7z" in i:
+            print('found ' + i)
+            if not path.exists(i[:-3]) and path.exists(i):
+                print('extracting ' + i)
+                if osname == 'nt':
+                    call("C:\\Program Files\\7-Zip\\7z.exe e " + i)
+                elif osname == 'posix':
+                    call(["/usr/bin/xz",
+                          "-d",
+                          "-v",
+                          "--keep",
+                          i])
+                print('\n')
+    chdir(cdir)
+
+def xzd(dirname):
+    """
+    DELETE extracted files after use
+    """
+    nmes = listdir(dirname)
+    cdir = getcwd()
+    chdir(dirname)
+    for i in nmes:
+        if "mc.xz" in i or "mc.7z" in i:
+            if path.exists(i[:-3]) and path.exists(i):
+                print("deleting " + i[:-3])
+                remove(i[:-3])
+    chdir(cdir)
 
 
 def save_state(state, filename):
@@ -205,6 +246,8 @@ def loadtxt(file, report=0):
 
 
 def load_state(filename, skip=0, report=0, derived_vars=0):
+    # Extract compressed mc files
+    xz(path.split(filename)[0])
     # Read chain file
     chain = loadtxt(filename+'-chain'+EXT)
 
@@ -221,6 +264,9 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
     # Read stats file
     stats = loadtxt(filename+'-stats'+EXT)
 
+    # Delete extracted files after use
+    xzd(path.split(filename)[0])
+    
     # Guess dimensions
     Ngen = chain.shape[0]
     thinning = 1
