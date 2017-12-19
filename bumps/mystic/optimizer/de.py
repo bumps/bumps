@@ -135,7 +135,7 @@ def rand2(F, best, pop, idx, dims):
 ############################################################
 
 
-def _candidates(pop, n, exclude=None):
+def _candidates(pop, k, exclude=None):
     """
     Select *n* random candidates from *pop*, not including the
     candidate at index *exclude*.
