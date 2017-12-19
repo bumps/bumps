@@ -350,7 +350,7 @@ class AppPanel(wx.Panel):
                             #defaultDir=os.getcwd(),
                             #defaultFile="",
                             wildcard=(ALL_FILES),
-                            style=wx.OPEN|wx.CHANGE_DIR)
+                            style=wx.FD_OPEN|wx.FD_CHANGE_DIR)
 
         # Wait for user to close the dialog.
         status = dlg.ShowModal()
@@ -379,7 +379,7 @@ class AppPanel(wx.Panel):
                             defaultDir=os.getcwd(),
                             defaultFile="",
                             wildcard=(MODEL_FILES+"|"+ALL_FILES),
-                            style=wx.SAVE|wx.CHANGE_DIR|wx.OVERWRITE_PROMPT)
+                            style=wx.FD_SAVE|wx.FD_CHANGE_DIR|wx.FD_OVERWRITE_PROMPT)
         # Wait for user to close the dialog.
         status = dlg.ShowModal()
         path = dlg.GetPath()
@@ -457,7 +457,7 @@ class AppPanel(wx.Panel):
                             defaultDir=os.getcwd(),
                             defaultFile="",
                             wildcard=(MODEL_FILES+"|"+ALL_FILES),
-                            style=wx.SAVE|wx.CHANGE_DIR|wx.OVERWRITE_PROMPT)
+                            style=wx.FD_SAVE|wx.FD_CHANGE_DIR|wx.FD_OVERWRITE_PROMPT)
         # Wait for user to close the dialog.
         status = dlg.ShowModal()
         path = dlg.GetPath()
