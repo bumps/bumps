@@ -75,7 +75,7 @@ def reload_errors(model, store, nshown=50, random=True):
                                   nshown=nshown, random=random)
 
 
-def calc_errors_from_state(problem, state, nshown=50, random=True):
+def calc_errors_from_state(problem, state, nshown=50, random=True, selection={}):
     """
     Compute confidence regions for a problem from the
     Align the sample profiles and compute the residual difference from
@@ -91,7 +91,11 @@ def calc_errors_from_state(problem, state, nshown=50, random=True):
 
     Returns *errs* for :func:`show_errors`.
     """
-    points, _logp = state.sample()
+    if len(selection.keys())>0:
+        points, _logp = state.sample(selection=selection)
+    else:
+        points, _logp = state.sample()
+
     if points.shape[0] < nshown:
         nshown = points.shape[0]
     # randomize the draw; skip the last point since state.keep_best() put
