@@ -167,14 +167,14 @@ def entropy(points, logp, N_entropy=10000, N_norm=2500):
     #
     #      u' = e^(ln u + ln C) = e^(ln u)e^(ln C) = C u
     #
-    # Using eq. 11 with u' substituted for u:
+    # Using eq. 11 of Kramer with u' substituted for u:
     #
     #      N_est = < u'/p > = < C u/p > = C < u/p >
     #
     #      S_est = - < ln q >
     #            = - < ln (u'/N_est) >
     #            = - < ln C + ln u - ln (C <u/p>) >
-    #            = - < ln u + ln C - ln C  - ln <u/p> >
+    #            = - < ln u + ln C - ln C - ln <u/p> >
     #            = - < ln u - ln <u/p> >
     #            = - < ln u > + ln <u/p>
     #
