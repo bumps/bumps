@@ -544,7 +544,8 @@ class LevenbergMarquardtFit(FitBase):
         # covariance output and calculate it again ourselves.  Not ideal if
         # f is expensive, but it will be consistent with other optimizers.
         if x is not None:
-            self.problem.setp(x + self._stray_delta(x))
+            x += self._stray_delta(x)
+            self.problem.setp(x)
             fx = self.problem.nllf()
         else:
             fx = None
