@@ -497,6 +497,92 @@ class SimplexFit(FitBase):
                      population_points=x, population_values=fx)
         return True
 
+class MPFit(FitBase):
+    """
+    MPFit optimizer.
+    """
+    name = "MPFit"
+    id = "mp"
+    settings = [('steps', 200), ('ftol', 1e-10), ('xtol', 1e-10)]
+
+    def solve(self, monitors=None, abort_test=None, mapper=None, **options):
+        from .mpfit import mpfit
+        if abort_test is None:
+            abort_test = lambda: False
+        options = _fill_defaults(options, self.settings)
+        self._low, self._high = self.problem.bounds()
+        self._update = MonitorRunner(problem=self.problem,
+                                     monitors=monitors)
+        self._abort = abort_test
+        x0 = self.problem.getp()
+        parinfo = []
+        for low, high in zip(*self.problem.bounds()):
+            parinfo.append({
+                #'value': None,  # passed in by xall instead
+                #'fixed': False,  # everything is varying
+                'limited': (np.isfinite(low), np.isfinite(high)),
+                'limits': (low, high),
+                #'parname': '',  # could probably ask problem for this...
+                # From the code, default step size is sqrt(eps)*abs(value)
+                # or eps if value is 0.  This seems okay.  The other
+                # other alternative is to limit it by bounds.
+                #'step': 0,  # compute step automatically
+                #'mpside': 0,  # 1, -1 or 2 for right-, left- or 2-sided deriv
+                #'mpmaxstep': 0.,  # max step for this parameter
+                #'tied': '',  # parameter expressions tying fit parameters
+                #'mpprint': 1,  # print the parameter value when iterating
+            })
+
+        result = mpfit(
+            fcn=self._residuals,
+            xall=x0,
+            parinfo=parinfo,
+            autoderivative=True,
+            fastnorm=True,
+            #damp=0,  # no damping when damp=0
+            # Stopping conditions
+            ftol=options['ftol'],
+            xtol=options['xtol'],
+            #gtol=1e-100, # exclude gtol test
+            maxiter=options['steps'],
+            # Progress monitor
+            iterfunct=self._monitor,
+            nprint=1,  # call monitor each iteration
+            quiet=True,  # leave it to monitor to print any info
+            # Returns values
+            nocovar=True,  # use our own covar calculation for consistency
+        )
+
+        if result.status > 0:
+            x, fx = result.params, result.fnorm
+        else:
+            x, fx = None, None
+
+        return x, fx
+
+
+    def _monitor(self, fcn, p, k, fnorm,
+                 functkw=None, parinfo=None,
+                 quiet=0, dof=None, **extra):
+        self._update(k, p, fnorm)
+
+    def _residuals(self, p, fjac=None):
+        if self._abort():
+            return -1, None
+
+        self.problem.setp(p)
+        # treat prior probabilities on the parameters as additional
+        # measurements
+        residuals = np.hstack(
+            (self.problem.residuals().flat, self.problem.parameter_residuals()))
+        # Tally costs for broken constraints
+        extra_cost = self.problem.constraints_nllf()
+        # Spread the cost over the residuals.  Since we are smoothly increasing
+        # residuals as we leave the boundary, this should push us back into the
+        # boundary (within tolerance) during the lm fit.
+        residuals += np.sign(residuals) * (extra_cost / len(residuals))
+        return 0, residuals
+
 
 class LevenbergMarquardtFit(FitBase):
     """
@@ -962,6 +1048,7 @@ FITTERS = [
     DreamFit,
     BFGSFit,
     LevenbergMarquardtFit,
+    MPFit,
     PSFit,
     PTFit,
     RLFit,
@@ -977,6 +1064,7 @@ FIT_ACTIVE_IDS = [
     DreamFit.id,
     BFGSFit.id,
     LevenbergMarquardtFit.id,
+    MPFit.id,
     ]
 
 FIT_DEFAULT_ID = SimplexFit.id
