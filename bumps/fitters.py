@@ -907,6 +907,7 @@ class FitDriver(object):
         self.monitors = monitors
         self.abort_test = abort_test
         self.mapper = mapper if mapper else lambda p: list(map(problem.nllf, p))
+        self.fitter = None
 
     def fit(self, resume=None):
 
