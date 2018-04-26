@@ -21,7 +21,7 @@ class EmbeddedPylab(object):
     The following example shows how to use the WxAgg backend in a wx panel::
 
         from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
-        from matplotlib.backends.backend_wxagg import NavigationToolbar2Wx as Toolbar
+        from matplotlib.backends.backend_wxagg import NavigationToolbar2WxAgg as Toolbar
         from matplotlib.figure import Figure
 
         class PlotPanel(wx.Panel):
