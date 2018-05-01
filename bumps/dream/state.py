@@ -868,7 +868,7 @@ class MCMCDraw(object):
         #return entropy(drawn.points, drawn.logp, **kw) if M.reject_normal else (M.entropy, 0)
 
 
-    def draw(self, portion=1, vars=None, selection=None):
+    def draw(self, portion=1, vars=None, selection=None, selectioninv=False):
         """
         Return a sample from the posterior distribution.
 
@@ -879,6 +879,9 @@ class MCMCDraw(object):
         *selection* is a dictionary of {variable: (low, high)} to set the
         range on each variable.  Missing variables default to the full
         range.
+
+        *selectioninv* if true, then the inverse of the selection will
+        be returned.
 
         To plot the distribution for parameter p1::
 
@@ -891,7 +894,7 @@ class MCMCDraw(object):
             plot(draw.points[:, 0], draw.points[:, 1], '.')
         """
         vars = vars if vars is not None else getattr(self, '_shown', None)
-        return Draw(self, portion=portion, vars=vars, selection=selection)
+        return Draw(self, portion=portion, vars=vars, selection=selection, selectioninv=selectioninv)
 
     def set_visible_vars(self, labels):
         self._shown = [self.labels.index(v) for v in labels]
@@ -954,13 +957,14 @@ class MCMCDraw(object):
 
 
 class Draw(object):
-    def __init__(self, state, vars=None, portion=None, selection=None):
+    def __init__(self, state, vars=None, portion=None, selection=None, selectioninv=False):
         self.state = state
         self.vars = vars
         self.portion = portion
         self.selection = selection
+        self.selectioninv=selectioninv
         self.points, self.logp \
-            = _sample(state, portion=portion, vars=vars, selection=selection)
+            = _sample(state, portion=portion, vars=vars, selection=selection, selectioninv=selectioninv)
         self.labels \
             = state.labels if vars is None else [state.labels[v] for v in vars]
         self._stats = None
@@ -972,7 +976,7 @@ class Draw(object):
             self.integers = None
 
 
-def _sample(state, portion, vars, selection):
+def _sample(state, portion, vars, selection, selectioninv):
     """
     Return a sample from a set of chains.
     """
@@ -993,6 +997,12 @@ def _sample(state, portion, vars, selection):
                 idx = idx & (logp >= r[0]) & (logp <= r[1])
             else:
                 idx = idx & (points[:, v] >= r[0]) & (points[:, v] <= r[1])
+        if selectioninv:
+            from numpy import invert
+            print(idx)
+            idx=invert(idx)
+            print(idx)
+        
         points = points[idx, :]
         logp = logp[idx]
     if vars is not None:
