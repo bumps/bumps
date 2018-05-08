@@ -23,8 +23,13 @@ If a compiler is available, then significant speedup is possible for DREAM using
 
 For now this requires an install from source rather than pip.
 
-.. image:: https://zenodo.org/badge/18489/bumps/bumps.svg
-    :target: https://zenodo.org/badge/latestdoi/18489/bumps/bumps
+|TravisStatus|_ |DOI|_
+
+.. |TravisStatus| image:: https://travis-ci.org/pkienzle/bumps.svg?branch=master
+.. _TravisStatus: https://travis-ci.org/pkienzle/bumps
+
+.. |DOI| image:: https://zenodo.org/badge/18489/bumps/bumps.svg
+.. _DOI: https://zenodo.org/badge/latestdoi/18489/bumps/bumps
 
 Release notes
 =============
