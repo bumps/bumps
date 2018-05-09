@@ -86,6 +86,13 @@ scipy.misc.derivative
 
 def test_docstrings():
     import doctest
+    # Whitespace changes between numpy 1.13 and 1.14 will cause the doctests
+    # to fail; when doctests are updated to 1.14 format, this can be removed.
+    try:    # CRUFT
+        import numpy as np
+        np.set_printoptions(legacy='1.13')
+    except TypeError:
+        pass
     doctest.testmod(optionflags=doctest.NORMALIZE_WHITESPACE)
 
 
