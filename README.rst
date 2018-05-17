@@ -34,7 +34,7 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
-v0.7.7
+v0.7.7 2018-05-17
 -----------------
 
 * merge in amdahl branch for improved performance
@@ -46,6 +46,9 @@ v0.7.7
   older releases it was incorrectly defaulting to mean=0 if the mean was
   not specified.
 * save parameters and uncertainties as JSON as well as text
+* convert discrete variables to integer prior to computing DREAM statistics
+* allow relative imports from model files
+* support latest numpy/matplotlib stack
 * initial support for wxPhoenix/python 4 GUI (fit ranges can't yet be set)
 
 v0.7.6 2016-08-05
