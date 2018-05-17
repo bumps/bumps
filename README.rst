@@ -45,6 +45,8 @@ v0.7.7
   distribution for a gaussian prior on par, as stated in the documentation. In
   older releases it was incorrectly defaulting to mean=0 if the mean was
   not specified.
+* save parameters and uncertainties as JSON as well as text
+* initial support for wxPhoenix/python 4 GUI (fit ranges can't yet be set)
 
 v0.7.6 2016-08-05
 -----------------
