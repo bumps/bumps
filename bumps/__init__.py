@@ -12,7 +12,7 @@ A graphical interface allows direct manipulation of the model parameters.
 See http://www.reflectometry.org/danse/reflectometry for online manuals.
 """
 
-__version__ = "0.7.8a1"
+__version__ = "0.7.8"
 
 
 def data_files():
