@@ -13,6 +13,7 @@ include MANIFEST.in  # this file
 include master_builder.py
 include bumps.iss
 include setup_py2exe.py
+include bin/*
 
 # Delete files
 #prune this that
