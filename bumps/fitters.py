@@ -1119,4 +1119,6 @@ def fit(problem, method=FIT_DEFAULT_ID, verbose=False, **options):
         #njev, nhev # jacobian and hessian evaluations
         #maxcv=0, # max constraint violation
         )
+    if hasattr(driver.fitter, 'state'):
+        result.state = driver.fitter.state
     return result
