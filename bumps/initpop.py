@@ -50,7 +50,6 @@ def generate(problem, init='eps', pop=10, use_point=True, **options):
     all command line options.
     """
     initial = problem.getp()
-    undefined = np.isnan(initial)
     initial[~isfinite(initial)] = 1.
     pop_size = int(math.ceil(pop * len(initial)))
     bounds = problem.bounds()
@@ -71,8 +70,10 @@ def generate(problem, init='eps', pop=10, use_point=True, **options):
         raise ValueError(
             "Unknown population initializer '%s'" % init)
 
-    # Use LHS to initialize any undefined parameters
-    if undefined.any():
+    # Use LHS to initialize any "free" parameters
+    # TODO: find a better way to "free" parameters on --resume/--pars
+    undefined = getattr(problem, 'undefined', None)
+    if undefined is not None:
         population[:, undefined] = lhs_init(
             pop_size, initial[undefined], bounds[:, undefined],
             use_point=False)

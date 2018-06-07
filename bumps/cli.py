@@ -140,8 +140,11 @@ def load_best(problem, path):
     """
     Load parameter values from a file.
     """
-    #targets = dict(zip(problem.labels(), problem.getp()))
-    targets = dict((name, np.NaN) for name in problem.labels())
+    # Reload the individual parameters from a saved par file. Use the value
+    # from the model as the default value.  Keep track of which parameters are
+    # defined in the file so we can see if any are missing.
+    targets = dict(zip(problem.labels(), problem.getp()))
+    defined = set()
     if not os.path.isfile(path):
         path = os.path.join(path, problem.name+".par")
     with open(path, 'rt') as fid:
@@ -150,8 +153,20 @@ def load_best(problem, path):
             label, value = m.group('label'), float(m.group('value'))
             if label in targets:
                 targets[label] = value
+                defined.add(label)
     values = [targets[label] for label in problem.labels()]
     problem.setp(np.asarray(values))
+
+    # Identify the missing parameters if any.  These are stuffed into the
+    # the problem definition as an optional "undefined" attribute, with
+    # one bit for each parameter.  If all parameters are defined, then none
+    # are undefined.  This ugly hack is to support a previous ugly hack in
+    # which undefined parameters are initialized with LHS but defined
+    # parameters are initialized with eps, cov or random.
+    # TODO: find a better way to "free" parameters on --resume/--pars.
+    if len(values) != len(defined):
+        undefined = [label not in defined for label in problem.labels()]
+        problem.undefined = np.asarray(undefined)
 #CRUFT
 recall_best = load_best
 
