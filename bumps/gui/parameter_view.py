@@ -27,79 +27,204 @@ This module implements the Parameter View panel.
 #==============================================================================
 
 import wx
-
-try:
-    from wx.dataview import TreeListCtrl
-except ImportError:
-    from wx.gizmos import TreeListCtrl
-
+import wx.dataview as dv
+import uuid
+import sys
+    
 from ..parameter import BaseParameter
 from .util import nice
 from . import signal
-from .utilities import phoenix
-
 
 IS_MAC = (wx.Platform == '__WXMAC__')
 
+class ParameterCategory(object):
+    def __init__(self, name):
+        self.name = name
+
+class ParametersModel(dv.PyDataViewModel):
+    _columns = [
+        {"label": "Parameter", "type": "string"},
+        {"label": "Value", "type": "string"},
+        {"label": "low", "type": "string"},
+        {"label": "high", "type": "string"},
+        {"label": "fittable", "type": "bool"},
+    ]
+    
+    def __init__(self, model, log):
+        dv.PyDataViewModel.__init__(self)
+        self.model = model
+        self.data = params_to_list(model.model_parameters())
+        self.log = log
+
+        # The PyDataViewModel derives from both DataViewModel and from
+        # DataViewItemObjectMapper, which has methods that help associate
+        # data view items with Python objects. Normally a dictionary is used
+        # so any Python object can be used as data nodes. If the data nodes
+        # are weak-referencable then the objmapper can use a
+        # WeakValueDictionary instead.
+        #self.UseWeakRefs(True)
+        
+    def GetColumnCount(self):
+        """ 5 data columns plus (name + 4) """
+        return len(self._columns)
+    
+    def GetColumnType(self, col):
+        return self._columns[col]["type"]
+                    
+    def GetChildren(self, parent, children):
+        # The view calls this method to find the children of any node in the
+        # control. There is an implicit hidden root node, and the top level
+        # item(s) should be reported as children of this node. A List view
+        # simply provides all items as children of this hidden root. A Tree
+        # view adds additional items as children of the other items, as needed,
+        # to provide the tree hierachy.
+
+        # If the parent item is invalid then it represents the hidden root
+        # item, so we'll use the genre objects as its children and they will
+        # end up being the collection of visible roots in our tree.
+
+        # Otherwise we'll fetch the python object associated with the parent
+        # item and make DV items for each of it's child objects.
+        if not parent:
+            parent_id = None
+        else:
+            parent_id = self.ItemToObject(parent)["id"]
+        child_list = [item for item in self.data if item["parent"] == parent_id]
+        for child in child_list:
+            children.append(self.ObjectToItem(child))
+        return len(child_list)
+        
+        
+    def IsContainer(self, item):
+        # The hidden root is a container
+        if not item:
+            return True
+            
+        # Return False if it is a leaf
+        node = self.ItemToObject(item)
+        return not isinstance(node["value"], BaseParameter)
+        
+    def GetParent(self, item):
+        # Return the item which is this item's parent.
+        ##self.log.write("GetParent\n")
+
+        if not item:
+            return dv.NullDataViewItem
+
+        node = self.ItemToObject(item)
+        
+        if node["parent"] is None:
+            return dv.NullDataViewItem
+        else:
+            parent = node["parent"]
+            for d in self.data:
+                if d["id"] == parent:
+                    return self.ObjectToItem(d)
+                    
+    def GetAttr(self, item, col, attr):
+        ##self.log.write('GetAttr')
+        node = self.ItemToObject(item)
+        if isinstance(node, ParameterCategory):
+            attr.SetColour('blue')
+            attr.SetBold(True)
+            return True
+        return False
+        
+    def GetValue(self, item, col):
+        # Return the value to be displayed for this item and column. For this
+        # example we'll just pull the values from the data objects we
+        # associated with the items in GetChildren.
+
+        # Fetch the data object for this item.
+        node = self.ItemToObject(item)
+        
+        par = node["value"]
+
+        if isinstance(par, ParameterCategory):
+            # We'll only use the first column for the Genre objects,
+            # for the other columns lets just return empty values
+            mapper = [False if c["type"] == "bool" else "" for c in self._columns]
+            mapper[0] = str(par.name)
+            return mapper[col]
+
+
+        elif isinstance(par, BaseParameter):
+            if par.fittable:
+                if par.fixed:
+                    fitting_parameter = False
+                    low, high = '', ''
+                else:
+                    fitting_parameter = True
+                    low, high = (str(v) for v in par.bounds.limits)
+            else:
+                fitting_parameter = False
+                low, high = '', ''
+            mapper = { 0 : str(par.name),
+                       1 : str(nice(par.value)),
+                       2 : low,
+                       3 : high,
+                       4 : fitting_parameter,
+                       }
+            return mapper[col]
+
+        else:
+            raise RuntimeError("unknown node type")
+            
+    def SetValue(self, value, item, col):
+        #self.log.write("SetValue: col %d,  %s\n" % (col, value))
+
+        # We're not allowing edits in column zero (see below) so we just need
+        # to deal with Song objects and cols 1 - 5
+
+        node = self.ItemToObject(item)
+        par = node["value"]
+        if isinstance(par, BaseParameter):
+            if col == 1:
+                par.clip_set(float(value))
+            elif col == 2:
+                if value == '': return
+                low = float(value)
+                high = par.bounds.limits[1]
+                if low != par.bounds.limits[0]:
+                    par.range(low, high)
+            elif col == 3:
+                if value == '': return
+                high = float(value)
+                low = par.bounds.limits[0]
+                if high != par.bounds.limits[1]:
+                    par.range(low, high)
+            elif col == 4:
+                if par.fittable:
+                    par.fixed = not value
+                    
+        signal.update_model(model=self.model, dirty=False)
+        return True
+        
 class ParameterView(wx.Panel):
     title = 'Parameters'
     default_size = (640,500)
     def __init__(self, *args, **kw):
         wx.Panel.__init__(self, *args, **kw)
-
+        
         #sizers
         vbox = wx.BoxSizer(wx.VERTICAL)
         text_hbox = wx.BoxSizer(wx.HORIZONTAL)
-
-        self.tree = TreeListCtrl(self, -1, style =
-                                 wx.TR_DEFAULT_STYLE
-                                 | wx.TR_HAS_BUTTONS
-                                 | wx.TR_TWIST_BUTTONS
-                                 | wx.TR_ROW_LINES
-                                 #| wx.TR_COLUMN_LINES
-                                 | wx.TR_NO_LINES
-                                 | wx.TR_FULL_ROW_HIGHLIGHT
-                                 )
-        # CRUFT: wx3 AddColumn => wx4 AppendColumn
-        if phoenix:
-            self.tree.AddColumn = self.tree.AppendColumn
-            self.tree.GetItemPyData = self.tree.GetItemData
-            self.tree.SetItemPyData = self.tree.SetItemData
-            self.tree.GetNext = self.tree.GetNextItem
-            self.tree.ExpandAll = self.tree.Expand
-
-        # Create columns.
-        self.tree.AddColumn("Model")
-        self.tree.AddColumn("Parameter")
-        self.tree.AddColumn("Value")
-        self.tree.AddColumn("Minimum")
-        self.tree.AddColumn("Maximum")
-        self.tree.AddColumn("Fit?")
-
-        # Align the textctrl box with treelistctrl.
-        self.tree.SetColumnWidth(0, 180)
-        self.tree.SetColumnWidth(1, 150)
-        self.tree.SetColumnWidth(2, 73)
-        self.tree.SetColumnWidth(3, 73)
-        self.tree.SetColumnWidth(4, 73)
-        self.tree.SetColumnWidth(5, 40)
-
-        # Determine which colunms are editable.
-        if not phoenix: # CRUFT: wx4 needs to witch to DataViewCtrl
-            self.tree.SetMainColumn(0) # the one with the tree in it...
-            self.tree.SetColumnEditable(0, False)
-            self.tree.SetColumnEditable(1, False)
-            self.tree.SetColumnEditable(2, True)
-            self.tree.SetColumnEditable(3, True)
-            self.tree.SetColumnEditable(4, True)
-            self.tree.SetColumnEditable(5, False)
-
-            self.tree.GetMainWindow().Bind(wx.EVT_RIGHT_UP, self.OnRightUp)
-        self.tree.Bind(wx.EVT_TREE_END_LABEL_EDIT, self.OnEndEdit)
-        '''
-        self.tree.Bind(wx.EVT_TREE_ITEM_GETTOOLTIP,self.OnTreeTooltip)
-        wx.EVT_MOTION(self.tree, self.OnMouseMotion)
-        '''
+        
+        self.dvModel = None
+        self.tree = dv.DataViewCtrl(self,
+                                   style=wx.BORDER_THEME
+                                   | dv.DV_ROW_LINES # nice alternating bg colors
+                                   | dv.DV_HORIZ_RULES
+                                   | dv.DV_VERT_RULES
+                                   | dv.DV_MULTIPLE
+                                   )
+        
+        c0 = self.tree.AppendTextColumn("Parameter",  0, width=170)
+        c1 = self.tree.AppendTextColumn("Value",   1, width=170, mode=dv.DATAVIEW_CELL_EDITABLE)
+        c2 = self.tree.AppendTextColumn("Minimum",    2, width=100, mode=dv.DATAVIEW_CELL_EDITABLE)
+        c3 = self.tree.AppendTextColumn("Maximum", 3, width=100, mode=dv.DATAVIEW_CELL_EDITABLE)
+        c4 = self.tree.AppendToggleColumn("Fit?",   4, width=40, mode=dv.DATAVIEW_CELL_ACTIVATABLE)
+        
 
         vbox.Add(self.tree, 1, wx.EXPAND)
         self.SetSizer(vbox)
@@ -110,23 +235,6 @@ class ParameterView(wx.Panel):
 
     # ============= Signal bindings =========================
 
-    '''
-    def OnTreeTooltip(self, event):
-         itemtext = self.tree.GetItemText(event.GetItem())
-         event.SetToolTip("This is a ToolTip for %s!" % itemtext)
-         event.Skip()
-
-    def OnMouseMotion(self, event):
-        pos = event.GetPosition()
-        item, flags, col = self.tree.HitTest(pos)
-
-        if wx.TREE_HITTEST_ONITEMLABEL:
-            self.tree.SetToolTipString("tool tip")
-        else:
-            self.tree.SetToolTipString("")
-
-        event.Skip()
-    '''
 
     def OnShow(self, event):
         if not event.Show: return
@@ -164,142 +272,76 @@ class ParameterView(wx.Panel):
             self._need_update_parameters = True
         else:
             self._need_update_parameters = False
-            self._update_tree_nodes()
+            # do update things.
 
     def _update_model(self):
         # Delete the previous tree (if any).
-        self.tree.DeleteAllItems()
+        #self.tree.DeleteAllItems()
         if self.model is None: return
-        parameters = self.model.model_parameters()
-        # Add a root node.
-        if phoenix: # CRUFT: wx 3/4
-            self.root = self.tree.GetRootItem()
-        else:
-            self.root = self.tree.AddRoot("Model")
-        # Add nodes from our data set .
-        self._add_tree_nodes(self.root, parameters)
-        self._update_tree_nodes()
-        self.tree.ExpandAll(self.root)
+        #if self.dvModel is not None and hasattr(self.dvModel, 'DecRef'):
+        #    self.dvModel.DecRef()
+        self.dvModel = ParametersModel(self.model, sys.stdout)
+        self.tree.AssociateModel(self.dvModel)
+        
+        self.expandAll()
+    
+    def expandAll(self, max_depth=20):
+        num_selected = -1
+        depth = 0
+        while True and depth < max_depth:
+            self.tree.SelectAll()
+            items = self.tree.GetSelections()
+            if len(items) == num_selected:
+                # then we've already selected everything before
+                break
+            else:
+                num_selected = len(items)
+                for item in items:
+                    self.tree.Expand(item)
+        self.tree.UnselectAll()
+                    
 
-    def _add_tree_nodes(self, branch, nodes):
-        if isinstance(nodes,dict) and nodes != {}:
-            for k in sorted(nodes.keys()):
-                child = self.tree.AppendItem(branch, k)
-                self._add_tree_nodes(child,nodes[k])
-        elif ( ( isinstance(nodes, tuple) and nodes != () ) or
-              ( isinstance(nodes, list) and nodes != [] ) ):
-            for i,v in enumerate(nodes):
-                child = self.tree.AppendItem(branch, '[%d]'%i)
-                self._add_tree_nodes(child,v)
-
-        elif isinstance(nodes, BaseParameter):
-            self.tree.SetItemPyData(branch, nodes)
-
-    def _update_tree_nodes(self):
-        node = self.tree.GetRootItem()
-        while node.IsOk():
-            self._set_leaf(node)
-            node = self.tree.GetNext(node)
-
-    def _set_leaf(self, branch):
-        par = self.tree.GetItemPyData(branch)
-        if par is None: return
-
-        if par.fittable:
-            if par.fixed:
+def params_to_dict(params):
+    if isinstance(params,dict):
+        ref = {}
+        for k in sorted(params.keys()):
+            ref[k] = params_to_dict(params[k])
+    elif isinstance(params, tuple) or isinstance(params, list):
+        ref = [params_to_dict(v) for v in params]
+    elif isinstance(params, BaseParameter):
+        if params.fittable:
+            if params.fixed:
                 fitting_parameter = 'No'
                 low, high = '', ''
             else:
                 fitting_parameter = 'Yes'
-                low, high = (str(v) for v in par.bounds.limits)
+                low, high = (str(v) for v in params.bounds.limits)
         else:
             fitting_parameter = ''
             low, high = '', ''
+            
+        ref = [str(params.name), str(nice(params.value)), low, high, fitting_parameter]
+    return ref
+    
+def params_to_list(params, parent_uuid=None, output=None):
+    output = [] if output is None else output
+    uuid_generate = uuid.uuid4
+    if isinstance(params,dict):
+        for k in sorted(params.keys()):
+            new_id = uuid_generate()
+            new_item = {"parent": parent_uuid, "id": new_id, "value": ParameterCategory(k)}
+            output.append(new_item)
+            params_to_list(params[k], parent_uuid=new_id, output=output)
+    elif isinstance(params, tuple) or isinstance(params, list):
+        for i, v in enumerate(params):
+            new_id = uuid_generate()
+            new_item = {"parent": parent_uuid, "id": new_id, "value": ParameterCategory('[%d]' % (i,))}
+            output.append(new_item)
+            params_to_list(v, parent_uuid=new_id, output=output)
+    elif isinstance(params, BaseParameter):
+        new_id = uuid_generate()
+        new_item = {"parent": parent_uuid, "id": new_id, "value": params}
+        output.append(new_item)
+        
+    return output
 
-        if phoenix: # CRUFT: wx 3/4
-            self.tree.SetItemText(branch, 1, str(par.name))
-            self.tree.SetItemText(branch, 2, str(nice(par.value)))
-            self.tree.SetItemText(branch, 3, low)
-            self.tree.SetItemText(branch, 4, high)
-            self.tree.SetItemText(branch, 5, fitting_parameter)
-        else:
-            self.tree.SetItemText(branch, str(par.name), 1)
-            self.tree.SetItemText(branch, str(nice(par.value)), 2)
-            self.tree.SetItemText(branch, low, 3)
-            self.tree.SetItemText(branch, high, 4)
-            self.tree.SetItemText(branch, fitting_parameter, 5)
-
-    def OnRightUp(self, evt):
-        pos = evt.GetPosition()
-        branch, flags, column = self.tree.HitTest(pos)
-        if column == 5:
-            par = self.tree.GetItemPyData(branch)
-            if par is None: return
-
-            if par.fittable:
-                fitting_parameter = self.tree.GetItemText(branch, column)
-                if fitting_parameter == 'No':
-                    par.fixed = False
-                    fitting_parameter = 'Yes'
-                    low, high = (str(v) for v in par.bounds.limits)
-                elif fitting_parameter == 'Yes':
-                    par.fixed = True
-                    fitting_parameter = 'No'
-                    low, high = '', ''
-
-                self.tree.SetItemText(branch, low, 3)
-                self.tree.SetItemText(branch, high, 4)
-                self.tree.SetItemText(branch, fitting_parameter, 5)
-                signal.update_model(model=self.model, dirty=False)
-
-    def OnEndEdit(self, evt):
-        item = self.tree.GetSelection()
-        self.node_object = self.tree.GetItemPyData(evt.GetItem())
-        # TODO: Not an efficient way of updating values of Parameters
-        # but it is hard to find out which column changed during edit
-        # operation. This may be fixed in the future.
-        wx.CallAfter(self.get_new_name, item, 1)
-        wx.CallAfter(self.get_new_value, item, 2)
-        wx.CallAfter(self.get_new_min, item, 3)
-        wx.CallAfter(self.get_new_max, item, 4)
-
-    def get_new_value(self, item, column):
-        new_value = self.tree.GetItemText(item, column)
-
-        # Send update message to other tabs/panels only if parameter value
-        # is updated .
-        if new_value != str(self.node_object.value):
-            self.node_object.clip_set(float(new_value))
-            signal.update_parameters(model=self.model)
-
-    def get_new_name(self, item, column):
-        new_name = self.tree.GetItemText(item, column)
-
-        # Send update message to other tabs/panels only if parameter name
-        # is updated.
-        if new_name != str(self.node_object.name):
-            self.node_object.name = new_name
-            signal.update_model(model=self.model, dirty=False)
-
-    def get_new_min(self, item, column):
-        low = self.tree.GetItemText(item, column)
-        if low == '': return
-        low = float(low)
-        high = self.node_object.bounds.limits[1]
-
-        # Send update message to other tabs/panels only if parameter min range
-        # value is updated.
-        if low != self.node_object.bounds.limits[0]:
-            self.node_object.range(low, high)
-            signal.update_model(model=self.model, dirty=False)
-
-    def get_new_max(self, item, column):
-        high = self.tree.GetItemText(item, column)
-        if high == '': return
-        low = self.node_object.bounds.limits[0]
-        high = float(high)
-        # Send update message to other tabs/panels only if parameter max range
-        # value is updated.
-        if high != self.node_object.bounds.limits[1]:
-            self.node_object.range(low, high)
-            signal.update_model(model=self.model, dirty=False)
