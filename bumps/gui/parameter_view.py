@@ -30,7 +30,7 @@ import wx
 import wx.dataview as dv
 import uuid
 import sys
-    
+
 from ..parameter import BaseParameter
 from .util import nice
 from . import signal
@@ -49,11 +49,10 @@ class ParametersModel(dv.PyDataViewModel):
         {"label": "high", "type": "string"},
         {"label": "fittable", "type": "bool"},
     ]
-    
-    def __init__(self, model, log):
+
+    def __init__(self, log):
         dv.PyDataViewModel.__init__(self)
-        self.model = model
-        self.data = params_to_list(model.model_parameters())
+        self.SetParameters(None)
         self.log = log
 
         # The PyDataViewModel derives from both DataViewModel and from
@@ -63,14 +62,19 @@ class ParametersModel(dv.PyDataViewModel):
         # are weak-referencable then the objmapper can use a
         # WeakValueDictionary instead.
         #self.UseWeakRefs(True)
-        
+
+    def SetParameters(self, model):
+        self.model = model
+        self.data = params_to_list(model.model_parameters()) if model is not None else []
+        #self.log.write("data is %s"%str(self.data))
+
     def GetColumnCount(self):
         """ 5 data columns plus (name + 4) """
         return len(self._columns)
-    
+
     def GetColumnType(self, col):
         return self._columns[col]["type"]
-                    
+
     def GetChildren(self, parent, children):
         # The view calls this method to find the children of any node in the
         # control. There is an implicit hidden root node, and the top level
@@ -93,17 +97,17 @@ class ParametersModel(dv.PyDataViewModel):
         for child in child_list:
             children.append(self.ObjectToItem(child))
         return len(child_list)
-        
-        
+
+
     def IsContainer(self, item):
         # The hidden root is a container
         if not item:
             return True
-            
+
         # Return False if it is a leaf
         node = self.ItemToObject(item)
         return not isinstance(node["value"], BaseParameter)
-        
+
     def GetParent(self, item):
         # Return the item which is this item's parent.
         ##self.log.write("GetParent\n")
@@ -112,7 +116,7 @@ class ParametersModel(dv.PyDataViewModel):
             return dv.NullDataViewItem
 
         node = self.ItemToObject(item)
-        
+
         if node["parent"] is None:
             return dv.NullDataViewItem
         else:
@@ -120,7 +124,7 @@ class ParametersModel(dv.PyDataViewModel):
             for d in self.data:
                 if d["id"] == parent:
                     return self.ObjectToItem(d)
-                    
+
     def GetAttr(self, item, col, attr):
         ##self.log.write('GetAttr')
         node = self.ItemToObject(item)
@@ -129,7 +133,7 @@ class ParametersModel(dv.PyDataViewModel):
             attr.SetBold(True)
             return True
         return False
-        
+
     def GetValue(self, item, col):
         # Return the value to be displayed for this item and column. For this
         # example we'll just pull the values from the data objects we
@@ -137,7 +141,7 @@ class ParametersModel(dv.PyDataViewModel):
 
         # Fetch the data object for this item.
         node = self.ItemToObject(item)
-        
+
         par = node["value"]
 
         if isinstance(par, ParameterCategory):
@@ -169,7 +173,7 @@ class ParametersModel(dv.PyDataViewModel):
 
         else:
             raise RuntimeError("unknown node type")
-            
+
     def SetValue(self, value, item, col):
         #self.log.write("SetValue: col %d,  %s\n" % (col, value))
 
@@ -196,21 +200,28 @@ class ParametersModel(dv.PyDataViewModel):
             elif col == 4:
                 if par.fittable:
                     par.fixed = not value
-                    
-        signal.update_model(model=self.model, dirty=False)
+
+        if col == 4:
+            # if the number of fitting parameters changes then this is
+            # considered a model update rather than a simple parameter
+            # update; parameter values didn't change, so dirty=False, and
+            # model.model_update() will not be called and the theory value
+            # will not be re-computed.
+            signal.update_model(model=self.model, dirty=False)
+        else:
+            signal.update_parameters(model=self.model, delay=1)
         return True
-        
+
 class ParameterView(wx.Panel):
     title = 'Parameters'
     default_size = (640,500)
     def __init__(self, *args, **kw):
         wx.Panel.__init__(self, *args, **kw)
-        
+
         #sizers
         vbox = wx.BoxSizer(wx.VERTICAL)
         text_hbox = wx.BoxSizer(wx.HORIZONTAL)
-        
-        self.dvModel = None
+
         self.tree = dv.DataViewCtrl(self,
                                    style=wx.BORDER_THEME
                                    | dv.DV_ROW_LINES # nice alternating bg colors
@@ -218,19 +229,21 @@ class ParameterView(wx.Panel):
                                    | dv.DV_VERT_RULES
                                    | dv.DV_MULTIPLE
                                    )
-        
+        self.dvModel = ParametersModel(sys.stdout)
+        self.tree.AssociateModel(self.dvModel)
+        self.dvModel.DecRef()  # avoid memory leak !!
+
         c0 = self.tree.AppendTextColumn("Parameter",  0, width=170)
         c1 = self.tree.AppendTextColumn("Value",   1, width=170, mode=dv.DATAVIEW_CELL_EDITABLE)
         c2 = self.tree.AppendTextColumn("Minimum",    2, width=100, mode=dv.DATAVIEW_CELL_EDITABLE)
         c3 = self.tree.AppendTextColumn("Maximum", 3, width=100, mode=dv.DATAVIEW_CELL_EDITABLE)
         c4 = self.tree.AppendToggleColumn("Fit?",   4, width=40, mode=dv.DATAVIEW_CELL_ACTIVATABLE)
-        
+
 
         vbox.Add(self.tree, 1, wx.EXPAND)
         self.SetSizer(vbox)
         self.SetAutoLayout(True)
 
-        self._need_update_parameters = self._need_update_model = False
         self.Bind(wx.EVT_SHOW, self.OnShow)
 
     # ============= Signal bindings =========================
@@ -238,54 +251,31 @@ class ParameterView(wx.Panel):
 
     def OnShow(self, event):
         if not event.Show: return
-        #print "showing parameter"
-        if self._need_update_model:
-            #print "-model update"
-            self.update_model(self.model)
-        elif self._need_update_parameters:
-            #print "-parameter update"
-            self.update_parameters(self.model)
         event.Skip()
 
     # ============ Operations on the model  ===============
     def get_state(self):
         return self.model
+
     def set_state(self, state):
         self.set_model(state)
 
     def set_model(self, model):
         self.model = model
-        self.update_model(model)
+        self.dvModel.SetParameters(self.model)
+        self.dvModel.Cleared()
+        self.expandAll()
 
     def update_model(self, model):
         if self.model != model: return
-
-        if not IS_MAC and not self.IsShown():
-            self._need_update_model = True
-        else:
-            self._need_update_model = self._need_update_parameters = False
-            self._update_model()
+        self.dvModel.Cleared()
 
     def update_parameters(self, model):
         if self.model != model: return
-        if not IS_MAC and not self.IsShown():
-            self._need_update_parameters = True
-        else:
-            self._need_update_parameters = False
-            # do update things.
+        self.dvModel.Cleared()
 
-    def _update_model(self):
-        # Delete the previous tree (if any).
-        #self.tree.DeleteAllItems()
-        if self.model is None: return
-        #if self.dvModel is not None and hasattr(self.dvModel, 'DecRef'):
-        #    self.dvModel.DecRef()
-        self.dvModel = ParametersModel(self.model, sys.stdout)
-        self.tree.AssociateModel(self.dvModel)
-        
-        self.expandAll()
-    
     def expandAll(self, max_depth=20):
+        #print("calling expandAll")
         num_selected = -1
         depth = 0
         while True and depth < max_depth:
@@ -299,7 +289,7 @@ class ParameterView(wx.Panel):
                 for item in items:
                     self.tree.Expand(item)
         self.tree.UnselectAll()
-                    
+
 
 def params_to_dict(params):
     if isinstance(params,dict):
@@ -319,10 +309,10 @@ def params_to_dict(params):
         else:
             fitting_parameter = ''
             low, high = '', ''
-            
+
         ref = [str(params.name), str(nice(params.value)), low, high, fitting_parameter]
     return ref
-    
+
 def params_to_list(params, parent_uuid=None, output=None):
     output = [] if output is None else output
     uuid_generate = uuid.uuid4
@@ -342,6 +332,6 @@ def params_to_list(params, parent_uuid=None, output=None):
         new_id = uuid_generate()
         new_item = {"parent": parent_uuid, "id": new_id, "value": params}
         output.append(new_item)
-        
+
     return output
 
