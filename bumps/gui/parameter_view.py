@@ -66,11 +66,14 @@ class ParametersModel(dv.PyDataViewModel):
     def SetParameters(self, model):
         self.model = model
         self.data = params_to_list(model.model_parameters()) if model is not None else []
+        self.Cleared()
         #self.log.write("data is %s"%str(self.data))
+        #for obj in self.data:
+        #    self.ItemAdded(self.ObjectToItem(obj["parent"]), self.ObjectToItem(obj))
 
     def UpdateParameters(self):
-        for p in self.data:
-            self.ItemChanged(self.ObjectToItem(p))
+        for obj in self.data:
+            self.ItemChanged(self.ObjectToItem(obj))
 
     def GetColumnCount(self):
         """ 5 data columns plus (name + 4) """
@@ -235,7 +238,7 @@ class ParameterView(wx.Panel):
                                    )
         self.dvModel = ParametersModel(sys.stdout)
         self.tree.AssociateModel(self.dvModel)
-        self.dvModel.DecRef()  # avoid memory leak !!
+        #self.dvModel.DecRef()  # avoid memory leak !!
 
         c0 = self.tree.AppendTextColumn("Parameter",  0, width=170)
         c1 = self.tree.AppendTextColumn("Value",   1, width=170, mode=dv.DATAVIEW_CELL_EDITABLE)
@@ -266,12 +269,13 @@ class ParameterView(wx.Panel):
 
     def set_model(self, model):
         self.model = model
-        self.dvModel.SetParameters(self.model)
         self.update_model(model)
 
     def update_model(self, model):
         if self.model != model: return
-        self.dvModel.Cleared()
+        self.dvModel.SetParameters(self.model)
+        self.tree.AssociateModel(self.dvModel)
+        #self.dvModel.DecRef()  # avoid memory leak !!
         self.expandAll()
 
     def update_parameters(self, model):
