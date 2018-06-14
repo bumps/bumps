@@ -274,7 +274,9 @@ class ParameterView(wx.Panel):
     def update_model(self, model):
         if self.model != model: return
         self.dvModel.SetParameters(self.model)
-        self.tree.AssociateModel(self.dvModel)
+        if not IS_MAC:
+            # Required for Linux; Windows doesn't care; causes mac to crash
+            self.tree.AssociateModel(self.dvModel)
         #self.dvModel.DecRef()  # avoid memory leak !!
         self.expandAll()
 
