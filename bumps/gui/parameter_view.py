@@ -68,6 +68,10 @@ class ParametersModel(dv.PyDataViewModel):
         self.data = params_to_list(model.model_parameters()) if model is not None else []
         #self.log.write("data is %s"%str(self.data))
 
+    def UpdateParameters(self):
+        for p in self.data:
+            self.ItemChanged(self.ObjectToItem(p))
+
     def GetColumnCount(self):
         """ 5 data columns plus (name + 4) """
         return len(self._columns)
@@ -263,16 +267,17 @@ class ParameterView(wx.Panel):
     def set_model(self, model):
         self.model = model
         self.dvModel.SetParameters(self.model)
-        self.dvModel.Cleared()
-        self.expandAll()
+        self.update_model(model)
 
     def update_model(self, model):
         if self.model != model: return
         self.dvModel.Cleared()
+        self.expandAll()
 
     def update_parameters(self, model):
         if self.model != model: return
-        self.dvModel.Cleared()
+        #self.dvModel.Cleared()
+        self.dvModel.UpdateParameters()
 
     def expandAll(self, max_depth=20):
         #print("calling expandAll")
