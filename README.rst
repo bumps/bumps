@@ -34,6 +34,18 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
+v0.7.9 2018-06-14
+-----------------
+
+* full support for python 3 in wx GUI
+* allow added or missing parameters in reloaded .par file
+* add dream state to return from fit() call
+
+v0.7.8 2018-05-18
+-----------------
+
+* fix source distribution (bin directory was missing)
+
 v0.7.7 2018-05-17
 -----------------
 
