@@ -28,7 +28,7 @@ This module implements the Parameter View panel.
 
 import wx
 import wx.dataview as dv
-import uuid
+from uuid import uuid4 as uuid_generate
 import sys
 
 from ..parameter import BaseParameter
@@ -43,11 +43,13 @@ class ParameterCategory(object):
 
 class ParametersModel(dv.PyDataViewModel):
     _columns = [
-        {"label": "Parameter", "type": "string"},
-        {"label": "Value", "type": "string"},
+        {"label": "parameter", "type": "string"},
+        {"label": "value", "type": "string"},
         {"label": "low", "type": "string"},
         {"label": "high", "type": "string"},
         {"label": "fittable", "type": "bool"},
+        {"label": "path", "type": "str"},
+        {"label": "link", "type": "str"},
     ]
 
     def __init__(self, log):
@@ -162,20 +164,23 @@ class ParametersModel(dv.PyDataViewModel):
         elif isinstance(par, BaseParameter):
             if par.fittable:
                 if par.fixed:
-                    fitting_parameter = False
+                    fitted = False
                     low, high = '', ''
                 else:
-                    fitting_parameter = True
+                    fitted = True
                     low, high = (str(v) for v in par.bounds.limits)
             else:
-                fitting_parameter = False
+                fitted = False
                 low, high = '', ''
-            mapper = { 0 : str(par.name),
-                       1 : str(nice(par.value)),
-                       2 : low,
-                       3 : high,
-                       4 : fitting_parameter,
-                       }
+            mapper = { 
+                0 : fitted,
+                1 : str(par.name),
+                2 : str(nice(par.value)),
+                3 : low,
+                4 : high,
+                5 : str(node["path"]),
+                6 : str(node["link"]),
+                }
             return mapper[col]
 
         else:
@@ -190,25 +195,25 @@ class ParametersModel(dv.PyDataViewModel):
         node = self.ItemToObject(item)
         par = node["value"]
         if isinstance(par, BaseParameter):
-            if col == 1:
-                par.clip_set(float(value))
+            if col == 0:
+                if par.fittable:
+                    par.fixed = not value
             elif col == 2:
+                par.clip_set(float(value))
+            elif col == 3:
                 if value == '': return
                 low = float(value)
                 high = par.bounds.limits[1]
                 if low != par.bounds.limits[0]:
                     par.range(low, high)
-            elif col == 3:
+            elif col == 4:
                 if value == '': return
                 high = float(value)
                 low = par.bounds.limits[0]
                 if high != par.bounds.limits[1]:
                     par.range(low, high)
-            elif col == 4:
-                if par.fittable:
-                    par.fixed = not value
 
-        if col == 4:
+        if col == 0:
             # if the number of fitting parameters changes then this is
             # considered a model update rather than a simple parameter
             # update; parameter values didn't change, so dirty=False, and
@@ -240,11 +245,13 @@ class ParameterView(wx.Panel):
         self.tree.AssociateModel(self.dvModel)
         #self.dvModel.DecRef()  # avoid memory leak !!
 
-        c0 = self.tree.AppendTextColumn("Parameter",  0, width=170)
-        c1 = self.tree.AppendTextColumn("Value",   1, width=170, mode=dv.DATAVIEW_CELL_EDITABLE)
-        c2 = self.tree.AppendTextColumn("Minimum",    2, width=100, mode=dv.DATAVIEW_CELL_EDITABLE)
-        c3 = self.tree.AppendTextColumn("Maximum", 3, width=100, mode=dv.DATAVIEW_CELL_EDITABLE)
-        c4 = self.tree.AppendToggleColumn("Fit?",   4, width=40, mode=dv.DATAVIEW_CELL_ACTIVATABLE)
+        self.tree.AppendToggleColumn("Fit?", 0, width=40, mode=dv.DATAVIEW_CELL_ACTIVATABLE)
+        self.tree.AppendTextColumn("Parameter", 1, width=170)
+        self.tree.AppendTextColumn("Value", 2, width=170, mode=dv.DATAVIEW_CELL_EDITABLE)
+        self.tree.AppendTextColumn("Minimum", 3, width=100, mode=dv.DATAVIEW_CELL_EDITABLE)
+        self.tree.AppendTextColumn("Maximum", 4, width=100, mode=dv.DATAVIEW_CELL_EDITABLE)
+        self.tree.AppendTextColumn("Path", 5, width=300)
+        self.tree.AppendTextColumn("Link", 6, width=300)
 
 
         vbox.Add(self.tree, 1, wx.EXPAND)
@@ -312,36 +319,41 @@ def params_to_dict(params):
     elif isinstance(params, BaseParameter):
         if params.fittable:
             if params.fixed:
-                fitting_parameter = 'No'
+                fitted = 'No'
                 low, high = '', ''
             else:
-                fitting_parameter = 'Yes'
+                fitted = 'Yes'
                 low, high = (str(v) for v in params.bounds.limits)
         else:
-            fitting_parameter = ''
+            fitted = ''
             low, high = '', ''
 
-        ref = [str(params.name), str(nice(params.value)), low, high, fitting_parameter]
+        ref = [str(params.name), str(nice(params.value)), low, high, fitted]
     return ref
 
-def params_to_list(params, parent_uuid=None, output=None):
+def params_to_list(params, parent_uuid=None, output=None, path='M', links=None):
     output = [] if output is None else output
-    uuid_generate = uuid.uuid4
+    links = {} if links is None else links
     if isinstance(params,dict):
         for k in sorted(params.keys()):
-            new_id = uuid_generate()
-            new_item = {"parent": parent_uuid, "id": new_id, "value": ParameterCategory(k)}
-            output.append(new_item)
-            params_to_list(params[k], parent_uuid=new_id, output=output)
+            #new_id = uuid_generate()
+            #new_item = {"parent": parent_uuid, "id": new_id, "value": ParameterCategory(k)}
+            #output.append(new_item)
+            new_id = None
+            params_to_list(params[k], parent_uuid=new_id, output=output, path=path+"."+k, links=links)
     elif isinstance(params, tuple) or isinstance(params, list):
         for i, v in enumerate(params):
-            new_id = uuid_generate()
-            new_item = {"parent": parent_uuid, "id": new_id, "value": ParameterCategory('[%d]' % (i,))}
-            output.append(new_item)
-            params_to_list(v, parent_uuid=new_id, output=output)
+            #new_id = uuid_generate()
+            #new_item = {"parent": parent_uuid, "id": new_id, "value": ParameterCategory('[%d]' % (i,))}
+            #output.append(new_item)
+            new_id = None
+            params_to_list(v, parent_uuid=new_id, output=output, path=path+"[%d]" % (i,), links=links)
     elif isinstance(params, BaseParameter):
+        link_path = links.get(id(params), "")
+        if link_path == "":
+            links[id(params)] = path
         new_id = uuid_generate()
-        new_item = {"parent": parent_uuid, "id": new_id, "value": params}
+        new_item = {"parent": parent_uuid, "id": new_id, "value": params, "path": path, "link": link_path}
         output.append(new_item)
 
     return output
