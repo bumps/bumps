@@ -34,6 +34,11 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
+v0.7.10 2018-06-15
+------------------
+
+* restructure parameter table in gui
+
 v0.7.9 2018-06-14
 -----------------
 
