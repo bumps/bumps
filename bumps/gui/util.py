@@ -6,6 +6,8 @@ import string
 
 import wx
 
+import numpy as np
+
 class EmbeddedPylab(object):
     """
     Define a 'with' context manager that lets you use pylab commands to
@@ -96,7 +98,7 @@ class Validator(wx.PyValidator):
 
 def nice(v, digits=4):
     """Fix v to a value with a given number of digits of precision"""
-    if v == 0.:
+    if v == 0. or not np.isfinite(v):
         return v
     else:
         sign = v/abs(v)
