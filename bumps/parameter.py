@@ -255,6 +255,14 @@ class BaseParameter(object):
     def __repr__(self):
         return "Parameter(%s)" % self
 
+    def to_dict(self):
+        """
+        Return a dict represention of the object.
+        """
+        return dict(name=self.name, type=type(self).__name__,
+                    value=self.value, fixed=self.fixed,
+                    bounds=dict(type=type(self._bounds).__name__, limits=self._bounds.limits))
+
 
 class Constant(BaseParameter):
     """
