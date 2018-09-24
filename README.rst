@@ -34,6 +34,11 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
+v0.7.11 2018-09-24
+------------------
+
+* Added support for paramameter serialization
+
 v0.7.10 2018-06-15
 ------------------
 
