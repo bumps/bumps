@@ -5,6 +5,43 @@ Interface between the models and the fitters.
 These models can be bundled together into a :func:`FitProblem` and sent
 to :class:`bumps.fitters.FitDriver` for optimization and uncertainty
 analysis.
+
+
+Summary of problem attributes::
+
+    # Used by fitters
+    nllf(p: Optional[Vector]) -> float  # main calculation
+    bounds() -> Tuple(Vector, Vector)    # or equivalent sequence
+    setp(p: Vector) -> None
+    getp() -> Vector
+    residuals() -> Vector  # for LM, MPFit
+    parameter_residuals() -> Vector  # for LM, MPFit
+    constraints_nllf() -> float # for LM, MPFit;  constraint cost is spread across the individual residuals
+    randomize() -> None # for multistart
+    resynth_data() -> None  # for Monte Carlo resampling of maximum likelihood
+    restore_data() -> None # for Monte Carlo resampling of maximum likelihood
+    name: str  # DREAM uses this
+    chisq() -> float
+    chisq_str() -> str
+    labels() -> List[str]
+    summarize() -> str
+    show() -> None
+    load(input_path: str) -> None
+    save(output_path: str) -> None
+    plot(figfile: str, view: str) -> None
+
+    # Set/used by bumps.cli
+    model_reset() -> None # called by load_model
+    path: str  # set by load_model
+    name: str # set by load_model
+    title: str = filename # set by load_moel
+    options: List[str]  # from sys.argv[1:]
+    undefined:List[int]  # when loading a save .par file, these parameters weren't defined
+    store: str # set by make_store
+    output_path: str # set by make_store
+    simulate_data(noise: float) -> None # for --simulate in opts
+    cov() -> Matrix   # for --cov in opts
+
 """
 # Don't include print_function in imports; since the model coded is exec'd
 # in the __future__ context of this file, it would force the models to use the

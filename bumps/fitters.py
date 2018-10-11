@@ -893,7 +893,7 @@ def _resampler(fitter, xinit, samples=100, restart=False, **options):
         # Restore the state of the problem
         fitter.problem.restore_data()
         fitter.problem.setp(xinit)
-        fitter.problem.model_update()
+        #fitter.problem.model_update()  # setp does model update
     return points
 
 
