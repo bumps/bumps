@@ -47,13 +47,17 @@ to a replacement constructor will not work. Don't try to support it since
 it is gone in python 3.
 
 Works with numpy.loadtxt on python 2 and python 3.
+Need to test with pathlib from python 3.
 Does not work with pandas.
 """
 from __future__ import print_function
 
+import sys
 import os
 import os.path
 import builtins
+import io
+from functools import wraps
 
 # for functions that work for read-only filesystems, use *fn
 # for functions implemented as python, use -fn
@@ -109,8 +113,8 @@ class RealFS(object):
     def __exit__(self, *args, **kw):
         popfs()
 
-    def open(self, name, mode="r", buffering=True):
-        return _open(name, mode=mode, buffering=buffering)
+    def open(self, *args, **kw):
+        return _open(*args, **kw)
 
     def getcwd(self):
         return _getcwd()
@@ -136,6 +140,7 @@ class RealFS(object):
     def exists(self, path):
         return _exists(path)
 
+
 class ZipFS(object):
     """
     Opens a zip file as the root file system.
@@ -157,11 +162,15 @@ class ZipFS(object):
     def __exit__(self, *args, **kw):
         popfs()
 
-    def open(self, name, mode="r", buffering=True):
-        if mode == 'rb':
-            mode = 'r'
+    def open(self, file, mode="r", buffering=-1, encoding=None,
+             errors=None, newline=None, **kw):
         with RealFS():
-            return self._zip.open(self.abspath(name)[1:], mode)
+            fd = self._zip.open(self.abspath(file)[1:], mode='r')
+        if mode == 'rb' or (sys.version_info[0]<3 and mode != 'U'):
+            return fd
+        else:
+            return io.TextIOWrapper(fd, encoding=encoding, errors=errors,
+                newline=newline)
 
     def chdir(self, name):
         if self.isdir(name):
@@ -190,6 +199,8 @@ class ZipFS(object):
         return [f for f in self._iter_dir(path)]
 
     def abspath(self, name):
+        if hasattr(name, 'decode'): # CRUFT: python 2
+            name = name.decode()
         if name[0] != '/':
             name = '/'.join((self._wd[:-1], name))
         return os.path.normpath(name)
@@ -222,30 +233,39 @@ def popfs():
     global FS
     FS = FS_STACK.pop()
 
+@wraps(_open)
 def fs_open(*args, **kw):
     return FS.open(*args, **kw)
 
+@wraps(_chdir)
 def fs_chdir(*args, **kw):
     return FS.chdir(*args, **kw)
 
+@wraps(_getcwd)
 def fs_getcwd(*args, **kw):
     return FS.getcwd(*args, **kw)
 
+@wraps(_listdir)
 def fs_listdir(*args, **kw):
     return FS.listdir(*args, **kw)
 
+@wraps(_exists)
 def fs_exists(*args, **kw):
     return FS.exists(*args)
 
+@wraps(_isfile)
 def fs_isfile(*args, **kw):
     return FS.isfile(*args, **kw)
 
+@wraps(_isdir)
 def fs_isdir(*args, **kw):
     return FS.isdir(*args, **kw)
 
+@wraps(_abspath)
 def fs_abspath(*args, **kw):
     return FS.abspath(*args, **kw)
 
+@wraps(_realpath)
 def fs_realpath(*args, **kw):
     return FS.realpath(*args, **kw)
 
