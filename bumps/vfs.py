@@ -28,7 +28,8 @@ Filesystems available:
 
 Calls redirected::
 
-    builtins.open (and __builtin__.open in python 2)
+    __builtin__.open (python 2 only)
+    builtins.open (python 2 and 3)
     os.chdir
     os.getcwd
     os.listdir
@@ -46,9 +47,9 @@ object.
 to a replacement constructor will not work. Don't try to support it since
 it is gone in python 3.
 
-Works with numpy.loadtxt on python 2 and python 3.
-Need to test with pathlib from python 3.
-Does not work with pandas.
+Works with numpy.loadtxt and pandas.read_csv.
+
+Need to support python 3 pathlib path specs.
 """
 from __future__ import print_function
 
@@ -58,6 +59,11 @@ import os.path
 import builtins
 import io
 from functools import wraps
+
+try:
+    from __builtin__ import open as _py2_open
+except ImportError:
+    _py2_open = None
 
 # for functions that work for read-only filesystems, use *fn
 # for functions implemented as python, use -fn
@@ -116,6 +122,9 @@ class RealFS(object):
     def open(self, *args, **kw):
         return _open(*args, **kw)
 
+    def py2_open(self, *args, **kw):
+        return _py2_open(*args, **kw)
+
     def getcwd(self):
         return _getcwd()
 
@@ -164,13 +173,23 @@ class ZipFS(object):
 
     def open(self, file, mode="r", buffering=-1, encoding=None,
              errors=None, newline=None, **kw):
+        # Note: python 3 zipfile only supports mode rb; to get unicode
+        # decoding, need to wrap the binary stream in a text I/O wrapper.
+        zipmode = 'r'
         with RealFS():
-            fd = self._zip.open(self.abspath(file)[1:], mode='r')
-        if mode == 'rb' or (sys.version_info[0]<3 and mode != 'U'):
+            fd = self._zip.open(self.abspath(file)[1:], mode=zipmode)
+        if 'b' in mode:
             return fd
         else:
             return io.TextIOWrapper(fd, encoding=encoding, errors=errors,
                 newline=newline)
+
+    def py2_open(self, file, mode="r", buffering=-1):
+        # Note: python 2 zipfile supports modes r, rU, and U, but not rb
+        zipmode = 'r' if mode == 'rb' else mode
+        with RealFS():
+            fd = self._zip.open(self.abspath(file)[1:], mode=zipmode)
+        return fd
 
     def chdir(self, name):
         if self.isdir(name):
@@ -237,6 +256,10 @@ def popfs():
 def fs_open(*args, **kw):
     return FS.open(*args, **kw)
 
+@wraps(_open)
+def fs_py2_open(*args, **kw):
+    return FS.py2_open(*args, **kw)
+
 @wraps(_chdir)
 def fs_chdir(*args, **kw):
     return FS.chdir(*args, **kw)
@@ -278,7 +301,12 @@ def vfs_init():
     FS = RealFS()
     FS_STACK = []
 
+    if _py2_open is not None:
+        import __builtin__
+        __builtin__.open = fs_py2_open
+
     builtins.open = fs_open
+    io.open = fs_open
     os.chdir = fs_chdir
     os.getcwd = fs_getcwd
     os.listdir = fs_listdir
@@ -288,8 +316,35 @@ def vfs_init():
     os.path.isfile= fs_isfile
     os.path.isdir = fs_isdir
 
-    try: # CRUFT: python 2.x
-        import __builtin__
-        __builtin__.open = fs_open
+    try:
+        import nt, ntpath
+        nt.chdir = fs_chdir
+        nt.listdir = fs_listdir
+        nt.getcwd = fs_getcwd
+        ntpath.abspath = fs_abspath
+        ntpath.realpath = fs_realpath
+        ntpath.isfile = fs_isfile
+        ntpath.isdir = fs_isdir
+    except ImportError:
+        pass
+
+    try:
+        import posix, posixpath
+        posix.chdir = fs_chdir
+        posix.listdir = fs_listdir
+        posix.getcwd = fs_getcwd
+        posixpath.abspath = fs_abspath
+        posixpath.realpath = fs_realpath
+        posixpath.isfile = fs_isfile
+        posixpath.isdir = fs_isdir
+    except ImportError:
+        pass
+
+    # Pathlib may be imported really early.  Make sure it sees the vfs.
+    # TODO: reload may fail isinstance tests --- monkeypatch instead?
+    try:
+        import pathlib
+        from importlib import reload
+        reload(pathlib)
     except ImportError:
         pass
