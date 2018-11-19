@@ -7,7 +7,7 @@ to chdir, open, etc. will reference files in the zip file instead of the disk.
 This will only work for packages which do all their I/O in python, and not
 those which use direct calls to the C library, so for example, it will not
 work with h5py. XML parsing from a zip file is also unlikely to work since
-expat uses the C library directly for parsing, but not tested.
+expat uses the C library directly for parsing.
 
 Usage::
 
@@ -47,9 +47,12 @@ object.
 to a replacement constructor will not work. Don't try to support it since
 it is gone in python 3.
 
-Works with numpy.loadtxt and pandas.read_csv.
+Works with numpy.loadtxt and pandas parsers.
 
-Need to support python 3 pathlib path specs.
+For pandas, either need to specify *engine="python"* or pass an open call
+to the reader; if you just pass a filename, then it will try opening it
+with the libc open function and fail.  Could potentially monkeypatch
+pandas to pre-open the file.
 """
 from __future__ import print_function
 
@@ -65,6 +68,18 @@ try:
 except ImportError:
     _py2_open = None
 
+try:
+    from pathlib import PurePath
+except ImportError:
+    class PurePath:
+        pass
+
+# TODO: restructure according to pathlib interface
+# Looking at pathlib, it already provides methods close to what we implement
+# for our virtual file system.  By following the pathlib interface directly,
+# then any code that is set up to use pathlib can use our virtual file systems
+# without change (in particular, without monkeypatching python builtins).
+
 # for functions that work for read-only filesystems, use *fn
 # for functions implemented as python, use -fn
 #
@@ -72,9 +87,11 @@ except ImportError:
 #   *chdir, *getcwd, *listdir, rmdir, mkdir, chroot
 #   *open, *stat, *access, rename, link, unlink, remove chmod, chown, chflags
 #   *getcwdb, *getcwdu  # bytes getcwd (py3), unicode getcwd (py2)
+#   *scandir
 #   -makedirs   # uses exists, split, mkdir
 #   -removedirs # uses split, rmdir
 #   -walk       # uses islink, join, isdir, listdir
+#   -glob.glob  # uses lexists, isdir, join, scandir
 
 # symbolic link functions
 #   *readlink, *lstat, symlink, lchflags, lchmod, lchown
@@ -173,6 +190,7 @@ class ZipFS(object):
 
     def open(self, file, mode="r", buffering=-1, encoding=None,
              errors=None, newline=None, **kw):
+        # abspath handles pathlib
         # Note: python 3 zipfile only supports mode rb; to get unicode
         # decoding, need to wrap the binary stream in a text I/O wrapper.
         zipmode = 'r'
@@ -184,18 +202,22 @@ class ZipFS(object):
             return io.TextIOWrapper(fd, encoding=encoding, errors=errors,
                 newline=newline)
 
-    def py2_open(self, file, mode="r", buffering=-1):
+    def py2_open(self, name, mode="r", buffering=-1):
+        # abspath handles pathlib
         # Note: python 2 zipfile supports modes r, rU, and U, but not rb
         zipmode = 'r' if mode == 'rb' else mode
         with RealFS():
-            fd = self._zip.open(self.abspath(file)[1:], mode=zipmode)
+            fd = self._zip.open(self.abspath(name)[1:], mode=zipmode)
         return fd
 
-    def chdir(self, name):
-        if self.isdir(name):
-            self._wd = self.abspath(name) + "/"
+    def chdir(self, path):
+        # abspath handles pathlib
+        if self.isdir(path):
+            self._wd = self.abspath(path) + "/"
 
     def _iter_dir(self, path=None):
+        # TODO: turn this into a scandir interface
+        # abspath handles pathlib
         path = self._wd if path is None else self.abspath(path)
         path = path[1:]
         n = len(path)
@@ -215,30 +237,38 @@ class ZipFS(object):
                 yield parts[0]
 
     def listdir(self, path=None):
+        # abspath handles pathlib
         return [f for f in self._iter_dir(path)]
 
-    def abspath(self, name):
-        if hasattr(name, 'decode'): # CRUFT: python 2
-            name = name.decode()
-        if name[0] != '/':
-            name = '/'.join((self._wd[:-1], name))
-        return os.path.normpath(name)
+    def abspath(self, path):
+        if isinstance(path, PurePath):
+            path = path.as_posix()
+        if hasattr(path, 'decode'): # CRUFT: python 2
+            path= path.decode()
+        if path[0] != '/':
+            path = '/'.join((self._wd[:-1], path))
+        return os.path.normpath(path)
 
-    def realpath(self, name):
-        return os.path.join(self._path, self.abspath(name))
+    def realpath(self, filename):
+        # abspath handles pathlib
+        return os.path.join(self._path, self.abspath(filename))
 
-    def isfile(self, name):
-        return any(self.abspath(name)[1:] == f.filename for f in self._zip.filelist)
+    def isfile(self, path):
+        # abspath handles pathlib
+        path = self.abspath(path)[1:]
+        return any(path == f.filename for f in self._zip.filelist)
 
-    def isdir(self, name):
-        name = self.abspath(name)[1:] + "/"
+    def isdir(self, s):
+        # abspath handles pathlib
+        path = self.abspath(s)[1:] + "/"
         for f in self._zip.filelist:
-            if f.filename.startswith(name):
+            if f.filename.startswith(path):
                 return True
         return False
 
-    def exists(self, name):
-        return self.isfile(name) or self.isdir(name)
+    def exists(self, path):
+        # abspath handles pathlib
+        return self.isfile(path) or self.isdir(path)
 
 # These will be initialized in vfs_init
 FS = None  # type: RealFS
