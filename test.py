@@ -77,7 +77,9 @@ nose_args += glob('doc/_examples/*/*.rst')
 
 print("nosetests " + " ".join(nose_args))
 if not nose.run(argv=nose_args):
+    print("tests failed!")
     sys.exit(1)
+print("tests passed!")
 
 # Run the command line version of bumps which should display help text.
 # for p in ['bin/bumps']:
