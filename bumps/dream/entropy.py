@@ -428,6 +428,12 @@ def _check_entropy(name, D, seed=1, N=10000, N_entropy=10000, N_norm=2500):
     """
     Check if entropy from a random draw matches analytic entropy.
     """
+    # entropy test is optional: don't test if sklearn is not installed
+    try:
+        import sklearn
+    except ImportError:
+        return
+
     state = np.random.get_state()
     np.random.seed(seed)
     try:

@@ -35,7 +35,7 @@ try:
     from numpy import nanmedian
 except ImportError:
     import numpy
-    numpy.nanmedian = median
+    numpy.nanmedian = numpy.median
 
 
 __all__ = ('dea3', 'Derivative', 'Jacobian', 'Gradient', 'Hessian', 'Hessdiag',
