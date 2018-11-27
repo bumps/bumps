@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -x
+set -x -e
 
 python setup.py build
 python test.py
