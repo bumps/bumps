@@ -30,6 +30,14 @@ import warnings
 from .multicomplex import bicomplex
 from .extrapolation import Richardson, dea3, convolve
 
+# CRUFT: nanmedian introduced in numpy 1.9, 2014-09-07.
+try:
+    from numpy import nanmedian
+except ImportError:
+    import numpy
+    numpy.nanmedian = median
+
+
 __all__ = ('dea3', 'Derivative', 'Jacobian', 'Gradient', 'Hessian', 'Hessdiag',
            'MinStepGenerator', 'MaxStepGenerator', 'Richardson')
 # NOTE: we only do double precision internally so far
