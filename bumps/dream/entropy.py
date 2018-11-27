@@ -480,7 +480,7 @@ def test():
     #_check_entropy("Dirichlet[0.02]*20", Dirichlet(alpha=[0.02]*20), N=20000)
     #big = np.arange(1,15)
     #_check_entropy(stats.multivariate_normal(cov=np.diag(big**2)), N=3000)
-    raise TestFailure("make bumps testing fail so we know that test harness works")
+    #raise TestFailure("make bumps testing fail so we know that test harness works")
 
 if __name__ == "__main__":  # pragma: no cover
     test()
