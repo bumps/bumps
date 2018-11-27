@@ -471,10 +471,12 @@ def test():
     from scipy import stats
     _check_entropy("N[100,8]", stats.norm(100, 8), N=2000)
     _check_entropy("N[100,8]", stats.norm(100, 8), N=12000)
-    _check_entropy("MVN[1,12,0.2]", stats.multivariate_normal(cov=np.diag([1, 12**2, 0.2**2])))
-    #_check_entropy("MVN[1]*10", stats.multivariate_normal(cov=np.diag([1]*10)), N=20000)
-    #_check_entropy("MVN[1,12,0.2,1,1,1]", stats.multivariate_normal(cov=np.diag([1, 12**2, 0.2**2, 1, 1, 1])))
-    #_check_entropy("MVN[1,12,0.2,1e3,1e-3,1]", stats.multivariate_normal(cov=np.diag([1, 12**2, 0.2**2, 1e3, 1e-3, 1])))
+    # CRUFT: older versions of scipy don't define multivariate_normal
+    if hasattr(stats, 'multivariate_normal'):
+        _check_entropy("MVN[1,12,0.2]", stats.multivariate_normal(cov=np.diag([1, 12**2, 0.2**2])))
+        #_check_entropy("MVN[1]*10", stats.multivariate_normal(cov=np.diag([1]*10)), N=20000)
+        #_check_entropy("MVN[1,12,0.2,1,1,1]", stats.multivariate_normal(cov=np.diag([1, 12**2, 0.2**2, 1, 1, 1])))
+        #_check_entropy("MVN[1,12,0.2,1e3,1e-3,1]", stats.multivariate_normal(cov=np.diag([1, 12**2, 0.2**2, 1e3, 1e-3, 1])))
     #_check_entropy("Dirichlet[0.02]*20", Dirichlet(alpha=[0.02]*20), N=20000)
     #big = np.arange(1,15)
     #_check_entropy(stats.multivariate_normal(cov=np.diag(big**2)), N=3000)

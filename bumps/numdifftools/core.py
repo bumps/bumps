@@ -36,6 +36,9 @@ try:
 except ImportError:
     import numpy
     numpy.nanmedian = numpy.median
+    numpy.nanpercentile = numpy.percentile
+    numpy.nanmin = numpy.min
+    numpy.nanargmin = numpy.argmin
 
 
 __all__ = ('dea3', 'Derivative', 'Jacobian', 'Gradient', 'Hessian', 'Hessdiag',
