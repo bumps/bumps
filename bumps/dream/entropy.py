@@ -51,7 +51,7 @@ from __future__ import division, print_function
 __all__ = ["entropy"]
 
 import numpy as np
-from numpy import mean, std, exp, log, sqrt, cbrt, log2, pi, e
+from numpy import mean, std, exp, log, sqrt, log2, pi, e
 from numpy.random import permutation
 from scipy.stats import norm, chi2
 from scipy.special import gammaln, digamma
@@ -91,7 +91,7 @@ def wnn_entropy(points, k=None, weights=True):
     if k is None:
         # Private communication: cube root of n is a good choice for k
         # Personal observation: k should be much bigger than d
-        k = max(int(cbrt(n)), 3*d)
+        k = max(int(n**(1/3)), 3*d)
 
     # If weights are given then use them (setting the appropriate k),
     # otherwise use the default weights.
