@@ -30,14 +30,11 @@ Calls redirected::
 
     __builtin__.open (python 2 only)
     builtins.open (python 2 and 3)
-    os.chdir
-    os.getcwd
-    os.listdir
-    os.path.exists
-    os.path.isfile
-    os.path.isdir
-    os.path.abspath
-    os.path.realpath
+    io.open (python 2 and 3)
+    os, nt, posix:
+        chdir, getcwd, listdir
+    os.path, ntpath, posixpath:
+        exists, isfile, isir, abspath, realpath
 
 You can also use the file systems directly without using the :func:`vfs_init`
 hook or the with statement.  Just call `fs.chdir`, etc. on the file system
@@ -59,14 +56,19 @@ from __future__ import print_function
 import sys
 import os
 import os.path
-import builtins
 import io
 from functools import wraps
 
 try:
+    import __builtin__
     from __builtin__ import open as _py2_open
 except ImportError:
-    _py2_open = None
+    __builtin__ = _py2_open = None
+
+try:
+    import builtins
+except ImportError:
+    builtins = None
 
 try:
     from pathlib import PurePath
@@ -117,7 +119,7 @@ except ImportError:
 #   lseek, read, dup, dup2, errno, error, closerange, isatty, openpty,
 #   mknod
 
-_open = builtins.open
+_py3_open = io.open
 _chdir = os.chdir
 _getcwd = os.getcwd
 _exists = os.path.exists
@@ -137,7 +139,7 @@ class RealFS(object):
         popfs()
 
     def open(self, *args, **kw):
-        return _open(*args, **kw)
+        return _py3_open(*args, **kw)
 
     def py2_open(self, *args, **kw):
         return _py2_open(*args, **kw)
@@ -282,13 +284,15 @@ def popfs():
     global FS
     FS = FS_STACK.pop()
 
-@wraps(_open)
-def fs_open(*args, **kw):
-    return FS.open(*args, **kw)
+if _py3_open is not None:
+    @wraps(_py3_open)
+    def fs_py3_open(*args, **kw):
+        return FS.open(*args, **kw)
 
-@wraps(_open)
-def fs_py2_open(*args, **kw):
-    return FS.py2_open(*args, **kw)
+if _py2_open is not None:
+    @wraps(_py2_open)
+    def fs_py2_open(*args, **kw):
+        return FS.py2_open(*args, **kw)
 
 @wraps(_chdir)
 def fs_chdir(*args, **kw):
@@ -331,12 +335,11 @@ def vfs_init():
     FS = RealFS()
     FS_STACK = []
 
-    if _py2_open is not None:
-        import __builtin__
+    if __builtin__ is not None:
         __builtin__.open = fs_py2_open
-
-    builtins.open = fs_open
-    io.open = fs_open
+    if builtins is not None:
+        builtins.open = fs_py3_open
+    io.open = fs_py3_open
     os.chdir = fs_chdir
     os.getcwd = fs_getcwd
     os.listdir = fs_listdir
@@ -353,6 +356,7 @@ def vfs_init():
         nt.getcwd = fs_getcwd
         ntpath.abspath = fs_abspath
         ntpath.realpath = fs_realpath
+        ntpath.exists = fs_exists
         ntpath.isfile = fs_isfile
         ntpath.isdir = fs_isdir
     except ImportError:
@@ -365,13 +369,14 @@ def vfs_init():
         posix.getcwd = fs_getcwd
         posixpath.abspath = fs_abspath
         posixpath.realpath = fs_realpath
+        posixpath.exists = fs_exists
         posixpath.isfile = fs_isfile
         posixpath.isdir = fs_isdir
     except ImportError:
         pass
 
     # Pathlib may be imported really early.  Make sure it sees the vfs.
-    # TODO: reload may fail isinstance tests --- monkeypatch instead?
+    # TODO: with reload some isinstance tests may fail --- monkeypatch instead?
     try:
         import pathlib
         from importlib import reload
