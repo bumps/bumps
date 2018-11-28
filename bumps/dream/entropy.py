@@ -51,8 +51,9 @@ from __future__ import division, print_function
 __all__ = ["entropy"]
 
 import numpy as np
-from numpy import mean, std, exp, log, sqrt, log2, pi, e
+from numpy import mean, std, exp, log, sqrt, log2, pi, e, nan
 from numpy.random import permutation
+from scipy import stats
 from scipy.stats import norm, chi2
 from scipy.special import gammaln, digamma
 LN2 = log(2)
@@ -70,24 +71,39 @@ def standardize(x):
     mu, sigma = mean(x, axis=0), std(x, axis=0, ddof=1)
     return (x - mu)/sigma, mu, sigma
 
-def wnn_entropy(points, k=None, weights=True):
-    """
+def wnn_entropy(points, k=None, weights=True, n_est=None):
+    r"""
     Weighted Kozachenko-Leonenko nearest-neighbour entropy calculation.
 
-    *k* is the number of neighbours to consider
+    *k* is the number of neighbours to consider, with default $k=n^{1/3}$
+
+    *n_est* is the number of points to use for estimating the entropy,
+    with default $n_\rm{est} = n$
 
     *weights* is True for default weights, False for unweighted (using the
-    distance to the kth neighbour), or a vector of weights of length *k*.
+    distance to the kth neighbour only), or a vector of weights of length *k*.
 
-    Returns H in bits and its uncertainty.
+    Returns entropy H in bits and its uncertainty.
 
     Berrett, T. B., Samworth, R.J., Yuan, M., 2016. Efficient multivariate
     entropy estimation via k-nearest neighbour distances.
     https://arxiv.org/abs/1606.00304
     """
-    from sklearn.neighbors import KDTree, BallTree
+    from sklearn.neighbors import NearestNeighbors
     n, d = points.shape
 
+    # Default to the full set
+    if n_est is None:
+        n_est = n
+
+    # reduce size of draw to n_est
+    if n_est >= n:
+        x = points
+    else:
+        x = points[permutation(n)[:n_est]]
+        n = n_est
+
+    # Default k based on n
     if k is None:
         # Private communication: cube root of n is a good choice for k
         # Personal observation: k should be much bigger than d
@@ -112,31 +128,49 @@ def wnn_entropy(points, k=None, weights=True):
     logVd = d/2*log(pi) - gammaln(1 + d/2)
     logC = -Psi + logVd + log(n-1)
 
+    # TODO: standardizing points doesn't work.
     # Standardize the data so that distances conform.  This is equivalent to
     # a u-substitution u = sigma x + mu, so the integral needs to be corrected
     # for dU = det(sigma) dx.  Since the standardization squishes the dimensions
     # independently, sigma is a diagonal matrix, with the determinant equal to
     # the product of the diagonal elements.
-    #x, mu, sigma = standardize(points)
+    #x, mu, sigma = standardize(x)
     #detDU = np.prod(sigma)
-    x, detDU = points, 1.
+    detDU = 1.
+
+    # TODO: should we use the full draw for kNN and a subset for eval points?
+    # Choose a subset for evaluating the entropy estimate, if desired
+    #print(n_est, n)
+    #eval_x = x if n_est >= n else x[permutation(n)[:n_est]]
+    eval_x = x
 
     # sklearn docs says KDTree is good for up to about 20 dims, then you
     # may get better performance from BallTree
-    tree = KDTree(x) if d < 20 else BallTree(x)
-    dist, _ind = tree.query(x, k=k+1)
-    # remove self and take log
-    logdist = log(dist[:, 1:])
-    H_unweighted = logC + (d/n)*np.sum(logdist, axis=0)
+    #algorithm = 'kd_tree' if d < 20 else 'ball_tree'
+    algorithm = 'auto'
+    #algorithm = 'brute'
+    tree = NearestNeighbors(algorithm=algorithm, n_neighbors=k+1)
+    tree.fit(x)
+    dist, _ind = tree.kneighbors(eval_x, n_neighbors=k+1, return_distance=True)
+    # Remove first column. Since test points are in x, the first column will
+    # be a point from x with distance 0, and can be ignored.
+    dist = dist[:, 1:]
+    # Find log distances.  This can be problematic for MCMC runs where a
+    # step is rejected, and therefore identical points are in the distribution.
+    # Ignore them by replacing these points with nan and using nanmean.
+    # TODO: need proper analysis of duplicated points in MCMC chain
+    dist[dist == 0] = nan
+    logdist = log(dist)
+    H_unweighted = logC + d*np.nanmean(logdist, axis=0)
     H = np.dot(H_unweighted, weights)[0]
-    Hsq_k = np.sum((logC[-1] + d*logdist[:,-1])**2)/n
+    Hsq_k = np.nanmean((logC[-1] + d*logdist[:,-1])**2)
     # TODO: abs shouldn't be needed?
     if Hsq_k < H**2:
         print("warning: avg(H^2) < avg(H)^2")
-    dH = sqrt(abs(Hsq_k - H**2)/n)
+    dH = sqrt(abs(Hsq_k - H**2)/n_est)
     #print("unweighted", H_unweighted)
     #print("weighted", H, Hsq_k, H**2, dH, detDU, LN2)
-    return H / detDU / LN2, dH / detDU / LN2
+    return H * detDU / LN2, dH * detDU / LN2
 
 def _wnn_weights(k, d, weighted=True):
     # Private communication: ignore w_j = 0 constraints (they are in the
@@ -159,14 +193,12 @@ def scipy_stats_density(sample_points, evaluation_points):  # pragma: no cover
     Estimate the probability density function from which a set of sample
     points was drawn and return the estimated density at the evaluation points.
     """
-    from scipy.stats import gaussian_kde
-
     ## standardize data so that we can use uniform bandwidth
     ## Note: this didn't help with singular matrix
     #mu, sigma = mean(data, axis=0), std(data, axis=0)
     #data,points = (data - mu)/sigma, (points - mu)/sigma
 
-    kde = gaussian_kde(sample_points)
+    kde = stats.gaussian_kde(sample_points)
     return kde(evaluation_points)
 
 
@@ -241,6 +273,8 @@ def entropy(points, logp, N_entropy=10000, N_norm=2500):
 
     # Use a different subset to estimate the scale factor between density
     # and logp.
+    if N_entropy is None:
+        N_entropy = 10000
     if N_entropy >= len(logp):
         entropy_points, eval_logp = points, logp
     else:
@@ -424,7 +458,10 @@ def mvn_entropy_test():
     #print("wnn %.15g, target %g"%(S_wnn, 5.7920040570988))
 
 
-def _check_entropy(name, D, seed=1, N=10000, N_entropy=10000, N_norm=2500):
+def _show_entropy(name, D, **kw):
+    return _check_entropy(name, D, seed=None, demo=True, **kw)
+
+def _check_entropy(name, D, seed=1, N=10000, N_entropy=None, N_norm=2500, demo=False):
     """
     Check if entropy from a random draw matches analytic entropy.
     """
@@ -443,45 +480,105 @@ def _check_entropy(name, D, seed=1, N=10000, N_entropy=10000, N_norm=2500):
         if getattr(D, 'dim', 1) == 1:
             theta = theta.reshape(N, 1)
         S, Serr = entropy(theta, logp_theta, N_entropy=N_entropy, N_norm=N_norm)
-        #S_wnn, Serr_wnn = wnn_entropy(theta)
-        #M = MVNEntropy(theta)
+        if demo:
+            S_wnn, Serr_wnn = wnn_entropy(theta, n_est=N_entropy)
+            M = MVNEntropy(theta)
     finally:
         np.random.set_state(state)
-    #print("entropy", N, "~", name, D.entropy()/LN2, "Kramer", S, Serr, "wnn", S_wnn, Serr_wnn, "MVN", M.entropy)
-    assert Serr < 0.05*S
-    assert abs(S - D.entropy()/LN2) < Serr
+    if demo:
+        print("entropy", N, "~", name, D.entropy()/LN2,
+              "Kramer", S, Serr,
+              "wnn", S_wnn, Serr_wnn,
+              "MVN", M.entropy,
+              )
+    else:
+        assert Serr < 0.05*S
+        assert abs(S - D.entropy()/LN2) < Serr
 
 # CRUFT: dirichlet needs transpose of theta for logpdf
 class Dirichlet:
     def __init__(self, alpha):
-        from scipy import stats
         self.alpha = alpha
         self._dist = stats.dirichlet(alpha)
         self.dim = len(alpha)
     def logpdf(self, theta):
         return self._dist.logpdf(theta.T)
     def rvs(self, *args, **kw):
-        return self._dist.rvs(*args, **kw)
+        x = self._dist.rvs(*args, **kw)
+        # Dirichlet logpdf is failing if x=0 for any x when alpha<1.
+        # The simplex check allows fudge of 1e-10.
+        x[x==0] = 1e-100
+        return x
     def entropy(self, *args, **kw):
         return self._dist.entropy(*args, **kw)
 
+class GaussianMixture:
+    def __init__(self, w, mu=None, sigma=None):
+        mu = np.asarray(mu)
+        dim = mu.shape[1]
+        if sigma is None:
+            sigma = [None] * len(mu)
+        sigma = [(np.ones(dim) if s is None else np.asarray(s)) for s in sigma]
+        sigma = [(np.diag(s) if len(s.shape) == 1 else s) for s in sigma]
+        self.dim = dim
+        self.weight = np.asarray(w, 'd')/np.sum(w)
+        self.dist = [stats.multivariate_normal(mean=m, cov=s)
+                     for m, s in zip(mu, sigma)]
+
+    def pdf(self, theta):
+        return sum(w*D.pdf(theta) for w, D in zip(self.weight, self.dist))
+
+    def logpdf(self, theta):
+        return np.log(self.pdf(theta))
+
+    def rvs(self, size=1):
+        # TODO: should randomize the output
+        sizes = partition(size, self.weight)
+        draws = [D.rvs(size=n) for n, D in zip(sizes, self.dist)]
+        return np.random.permutation(np.vstack(draws))
+
+    def entropy(self, N=10000):
+        draws = self.rvs(size=N)
+        return -np.sum(self.logpdf(draws))/N
+
+def partition(n, w):
+    # TODO: build an efficient algorithm for splitting n things into k buckets
+    indices = np.arange(len(w), dtype='i')
+    choices = np.random.choice(indices, size=n, replace=True, p=w)
+    bins = np.arange(len(w) + 1, dtype='f') - 0.5
+    sizes, _ = np.histogram(choices, bins=bins)
+    return sizes
 
 def test():
     """check entropy estimates from known distributions"""
-    from scipy import stats
     _check_entropy("N[100,8]", stats.norm(100, 8), N=2000)
     _check_entropy("N[100,8]", stats.norm(100, 8), N=12000)
-    # CRUFT: older versions of scipy don't define multivariate_normal
     if hasattr(stats, 'multivariate_normal'):
         _check_entropy("MVN[1,12,0.2]", stats.multivariate_normal(cov=np.diag([1, 12**2, 0.2**2])))
-        #_check_entropy("MVN[1]*10", stats.multivariate_normal(cov=np.diag([1]*10)), N=20000)
-        #_check_entropy("MVN[1,12,0.2,1,1,1]", stats.multivariate_normal(cov=np.diag([1, 12**2, 0.2**2, 1, 1, 1])))
-        #_check_entropy("MVN[1,12,0.2,1e3,1e-3,1]", stats.multivariate_normal(cov=np.diag([1, 12**2, 0.2**2, 1e3, 1e-3, 1])))
-    #_check_entropy("Dirichlet[0.02]*20", Dirichlet(alpha=[0.02]*20), N=20000)
-    #big = np.arange(1,15)
-    #_check_entropy(stats.multivariate_normal(cov=np.diag(big**2)), N=3000)
     #raise TestFailure("make bumps testing fail so we know that test harness works")
 
+def demo():
+    D = stats.norm(10, 8)
+    _show_entropy("N[100,8]", D, N=2000)
+    #_show_entropy("N[100,8]", D, N=12000)
+    D = stats.multivariate_normal(cov=np.diag([1, 12**2, 0.2**2]))
+    #_show_entropy("MVN[1,12,0.2]", D)
+    D = stats.multivariate_normal(cov=np.diag([1]*10))
+    _show_entropy("MVN[1]*10", D, N=20000)
+    #_show_entropy("MVN[1]*10", D, N=200000, N_entropy=20000)
+    D = stats.multivariate_normal(cov=np.diag([1, 12**2, 0.2**2, 1, 1, 1]))
+    #_show_entropy("MVN[1,12,0.2,1,1,1]", D)
+    D = stats.multivariate_normal(cov=np.diag([1, 12**2, 0.2**2, 1e3, 1e-3, 1]))
+    _show_entropy("MVN[1,12,0.2,1e3,1e-3,1]", D)
+    #_show_entropy("MVN[1,12,0.2,1e3,1e-3,1]", D, N=40000)
+    D = GaussianMixture([1,10], mu=[[0]*10, [100]*10], sigma=[[10]*10, [0.1]*10])
+    _show_entropy("bimodal mixture", D)
+    D = Dirichlet(alpha=[0.02]*20)
+    _show_entropy("Dirichlet[0.02]*20", D, N=20000)
+    #_show_entropy("Dirichlet[0.02]*20", D, N=40000)
+    #_show_entropy("Dirichlet[0.02]*20", D, N=200000, N_entropy=20000)
+
 if __name__ == "__main__":  # pragma: no cover
-    test()
-    mvn_entropy_test()
+    #test()
+    #mvn_entropy_test()
+    demo()
