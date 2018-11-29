@@ -820,20 +820,35 @@ class MCMCDraw(object):
         *n_est* is the number of points to use from the draw when estimating
         the entropy (default=10000).
         """
-        from .entropy import entropy, wnn_entropy, MVNEntropy
+        from . import entropy
 
         # Get the sample from the state.
         drawn = self.draw(portion=portion, vars=vars, selection=selection)
 
         # TODO: don't print within a library function!
-        M = MVNEntropy(drawn.points)
+        M = entropy.MVNEntropy(drawn.points)
         print("Entropy from MVN: %s"%str(M))
 
-        S, Serr = entropy(drawn.points, drawn.logp, N_entropy=n_est)
+        S, Serr = entropy.entropy(drawn.points, drawn.logp, N_entropy=n_est)
         #print("Entropy from Kramer: %s"%str(S))
 
-        #S_wnn, Serr_wnn = wnn_entropy(drawn.points, n_est=20000)
+        # Try wnn . . . no good.
+        #S_wnn, Serr_wnn = entropy.wnn_entropy(drawn.points, n_est=20000)
         #print("Entropy from wnn: %s"%str(S_wnn))
+
+        # Try wnn with bootstrap . . . still no good.
+        #S_wnn, Serr_wnn = entropy.wnn_bootstrap(drawn.points)
+        #print("Entropy from wnn bootstrap: %s"%str(S_wnn))
+
+        # Try wnn entropy with thinning . . . still no good.
+        #draw, chains, logp = self.chains()
+        #points = chains[::10].reshape(-1, chains.shape[-1])
+        #S_wnn, Serr_wnn = entropy.wnn_entropy(points)
+        #print("Entropy from wnn: %s"%str(S_wnn))
+
+        # Try wnn with gmm ... still no good
+        #S_wnn, Serr_wnn = entropy.wnn_entropy(drawn.points, n_est=20000, gmm=20)
+        #print("Entropy from wnn with gmm: %s"%str(S_wnn))
 
         # Always return entropy estimate from draw, even if it is normal
         #return S_wnn, Serr_wnn

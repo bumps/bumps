@@ -71,7 +71,19 @@ def standardize(x):
     mu, sigma = mean(x, axis=0), std(x, axis=0, ddof=1)
     return (x - mu)/sigma, mu, sigma
 
-def wnn_entropy(points, k=None, weights=True, n_est=None):
+def wnn_bootstrap(points, k=None, weights=True, n_est=None, reps=10, parts=10):
+    raise NotImplementedError("deprecated; bootstrap doesn't help.")
+    n, d = points.shape
+    if n_est is None:
+        n_est = n//parts
+
+    results = [wnn_entropy(points, k=k, weights=weights, n_est=n_est)
+               for _ in range(reps)]
+    #print(results)
+    S, Serr = list(zip(*results))
+    return np.mean(S), np.std(S)
+
+def wnn_entropy(points, k=None, weights=True, n_est=None, gmm=None):
     r"""
     Weighted Kozachenko-Leonenko nearest-neighbour entropy calculation.
 
@@ -82,6 +94,10 @@ def wnn_entropy(points, k=None, weights=True, n_est=None):
 
     *weights* is True for default weights, False for unweighted (using the
     distance to the kth neighbour only), or a vector of weights of length *k*.
+
+    *gmm* is the number of gaussians to use to model the distribution using
+    a gaussian mixture model.  Default is 0, and the points represent an
+    empirical distribution.
 
     Returns entropy H in bits and its uncertainty.
 
@@ -117,6 +133,14 @@ def wnn_entropy(points, k=None, weights=True, n_est=None):
         k = len(weights)
     #print("weights", weights, sum(weights))
 
+    # select knn algorithm
+    algorithm = 'auto'
+    #algorithm = 'kd_tree'
+    #algorithm = 'ball_tree'
+    #algorithm = 'brute'
+
+    n_components = 0 if gmm is None else gmm
+
     # H = 1/n sum_i=1^n sum_j=1^k w_j log E_{j,i}
     # E_{j,i} = e^-Psi(j) V_d (n-1) z_{j,i}^d = C z^d
     # logC = -Psi(j) + log(V_d) + log(n-1)
@@ -138,22 +162,31 @@ def wnn_entropy(points, k=None, weights=True, n_est=None):
     #detDU = np.prod(sigma)
     detDU = 1.
 
-    # TODO: should we use the full draw for kNN and a subset for eval points?
-    # Choose a subset for evaluating the entropy estimate, if desired
-    #print(n_est, n)
-    #eval_x = x if n_est >= n else x[permutation(n)[:n_est]]
-    eval_x = x
+    if n_components > 0:
+        # Use Gaussian mixture to model the distribution
+        from sklearn.mixture import GaussianMixture as GMM
+        predictor = GMM(n_components=gmm, covariance_type='full')
+        predictor.fit(x)
+        eval_x, _ = predictor.sample(n_est)
+        #weight_x = gmm.score_samples(eval_x)
+        skip = 0
+    else:
+        # Empirical distribution
+        # TODO: should we use the full draw for kNN and a subset for eval points?
+        # Choose a subset for evaluating the entropy estimate, if desired
+        #print(n_est, n)
+        #eval_x = x if n_est >= n else x[permutation(n)[:n_est]]
+        eval_x = x
+        #weight_x = 1
+        skip = 1
 
-    algorithm = 'auto'
-    #algorithm = 'kd_tree'
-    #algorithm = 'ball_tree'
-    #algorithm = 'brute'
-    tree = NearestNeighbors(algorithm=algorithm, n_neighbors=k+1)
+    tree = NearestNeighbors(algorithm=algorithm, n_neighbors=k+skip)
     tree.fit(x)
-    dist, _ind = tree.kneighbors(eval_x, n_neighbors=k+1, return_distance=True)
+    dist, _ind = tree.kneighbors(eval_x, n_neighbors=k+skip, return_distance=True)
     # Remove first column. Since test points are in x, the first column will
     # be a point from x with distance 0, and can be ignored.
-    dist = dist[:, 1:]
+    if skip:
+        dist = dist[:, skip:]
     # Find log distances.  This can be problematic for MCMC runs where a
     # step is rejected, and therefore identical points are in the distribution.
     # Ignore them by replacing these points with nan and using nanmean.
@@ -649,6 +682,13 @@ def mvn_entropy_test():
 def demo():
     # hide module load time from Timer
     from sklearn.neighbors import NearestNeighbors
+
+    ## Bootstrap didn't help, but leave the test code in place for now
+    #D = Dirichlet(alpha=[0.02]*20)
+    #theta = D.rvs(size=1000)
+    #S, Serr = wnn_bootstrap(D.rvs(size=200000))
+    #print("bootstrap", S, D.entropy())
+    #return
 
     D = Box(center=[100]*10, width=np.linspace(1, 10, 10))
     _show_entropy("Box 10!", D, N=10000)
