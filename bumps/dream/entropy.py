@@ -144,10 +144,9 @@ def wnn_entropy(points, k=None, weights=True, n_est=None):
     #eval_x = x if n_est >= n else x[permutation(n)[:n_est]]
     eval_x = x
 
-    # sklearn docs says KDTree is good for up to about 20 dims, then you
-    # may get better performance from BallTree
-    #algorithm = 'kd_tree' if d < 20 else 'ball_tree'
     algorithm = 'auto'
+    #algorithm = 'kd_tree'
+    #algorithm = 'ball_tree'
     #algorithm = 'brute'
     tree = NearestNeighbors(algorithm=algorithm, n_neighbors=k+1)
     tree.fit(x)
@@ -423,77 +422,37 @@ def cov_entropy(C):
     """
     return 0.5 * (len(C) * log2(2*pi*e) + log2(abs(np.linalg.det(C))))
 
-def mvn_entropy_test():
-    """
-    Test against results from the R MVN pacakge (using the web version)
-    and the matlab Mskekur program (using Octave), both of which produce
-    the same value.  Note that MVNEntropy uses the small sample correction
-    for the skewness stat since it converges to the large sample value for
-    large n.
-    """
-    x = np.array([
-        [2.4, 2.1, 2.4],
-        [4.5, 4.9, 5.7],
-        [3.5, 1.8, 3.9],
-        [3.9, 4.7, 4.7],
-        [6.7, 3.6, 5.9],
-        [4.0, 3.6, 2.9],
-        [5.3, 3.3, 6.1],
-        [5.7, 5.5, 6.2],
-        [5.2, 4.1, 6.4],
-        [2.4, 2.9, 3.2],
-        [3.2, 2.7, 4.0],
-        [2.7, 2.6, 4.1],
-    ])
-    M = MVNEntropy(x)
-    #print(M)
-    #print("%.15g %.15g %.15g"%(M.p_kurtosis, M.p_skewness, M.entropy))
-    assert abs(M.p_kurtosis - 0.265317890462476) <= 1e-10
-    assert abs(M.p_skewness - 0.773508066109368) <= 1e-10
-    assert abs(M.entropy - 5.7920040570988) <= 1e-10
+# ======================================================================
+# Testing code
+# ======================================================================
 
-    ## wnn_entropy doesn't work for small sample sizes (no surprise there!)
-    #S_wnn, Serr_wnn = wnn_entropy(x)
-    #assert abs(S_wnn - 5.7920040570988) <= 1e-10
-    #print("wnn %.15g, target %g"%(S_wnn, 5.7920040570988))
-
-
-def _show_entropy(name, D, **kw):
-    return _check_entropy(name, D, seed=None, demo=True, **kw)
-
-def _check_entropy(name, D, seed=1, N=10000, N_entropy=None, N_norm=2500, demo=False):
-    """
-    Check if entropy from a random draw matches analytic entropy.
-    """
-    # entropy test is optional: don't test if sklearn is not installed
-    try:
-        import sklearn
-    except ImportError:
-        return
-
-    state = np.random.get_state()
-    np.random.seed(seed)
-    try:
-        theta = D.rvs(size=N)
-        logp_theta = D.logpdf(theta)
-        logp_theta += 27  # result should be independent of scale factor
-        if getattr(D, 'dim', 1) == 1:
-            theta = theta.reshape(N, 1)
-        S, Serr = entropy(theta, logp_theta, N_entropy=N_entropy, N_norm=N_norm)
-        if demo:
-            S_wnn, Serr_wnn = wnn_entropy(theta, n_est=N_entropy)
-            M = MVNEntropy(theta)
-    finally:
-        np.random.set_state(state)
-    if demo:
-        print("entropy", N, "~", name, D.entropy()/LN2,
-              "Kramer", S, Serr,
-              "wnn", S_wnn, Serr_wnn,
-              "MVN", M.entropy,
-              )
-    else:
-        assert Serr < 0.05*S
-        assert abs(S - D.entropy()/LN2) < Serr
+# Based on: Eli Bendersky https://stackoverflow.com/a/5849861
+# Extended with tic/toc by Paul Kienzle
+import time
+class Timer(object):
+    @staticmethod
+    def tic(name=None):
+        return Timer(name).toc
+    def __init__(self, name=None):
+        self.name = name
+        self.step_number = 0
+        self.tlast = self.tstart = time.time()
+    def toc(self, step=None):
+        self.step_number += 1
+        if step is None:
+            step = str(self.step_number)
+        label = self.name + "-" + step if self.name else step
+        tnext = time.time()
+        total = tnext - self.tstart
+        delta = tnext - self.tlast
+        print('[%s] Elapsed: %s, Delta: %s' % (label, total, delta))
+        self.tlast = tnext
+    def __enter__(self):
+        self.tlast = self.tstart = time.time()
+    def __exit__(self, type, value, traceback):
+        if self.name:
+            print('[%s]' % self.name, end='')
+        print('Elapsed: %s' % (time.time() - self.tstart))
 
 # CRUFT: dirichlet needs transpose of theta for logpdf
 class Dirichlet:
@@ -549,33 +508,160 @@ def partition(n, w):
     sizes, _ = np.histogram(choices, bins=bins)
     return sizes
 
+
+def mvn_entropy_test():
+    """
+    Test against results from the R MVN pacakge (using the web version)
+    and the matlab Mskekur program (using Octave), both of which produce
+    the same value.  Note that MVNEntropy uses the small sample correction
+    for the skewness stat since it converges to the large sample value for
+    large n.
+    """
+    x = np.array([
+        [2.4, 2.1, 2.4],
+        [4.5, 4.9, 5.7],
+        [3.5, 1.8, 3.9],
+        [3.9, 4.7, 4.7],
+        [6.7, 3.6, 5.9],
+        [4.0, 3.6, 2.9],
+        [5.3, 3.3, 6.1],
+        [5.7, 5.5, 6.2],
+        [5.2, 4.1, 6.4],
+        [2.4, 2.9, 3.2],
+        [3.2, 2.7, 4.0],
+        [2.7, 2.6, 4.1],
+    ])
+    M = MVNEntropy(x)
+    #print(M)
+    #print("%.15g %.15g %.15g"%(M.p_kurtosis, M.p_skewness, M.entropy))
+    assert abs(M.p_kurtosis - 0.265317890462476) <= 1e-10
+    assert abs(M.p_skewness - 0.773508066109368) <= 1e-10
+    assert abs(M.entropy - 5.7920040570988) <= 1e-10
+
+    ## wnn_entropy doesn't work for small sample sizes (no surprise there!)
+    #S_wnn, Serr_wnn = wnn_entropy(x)
+    #assert abs(S_wnn - 5.7920040570988) <= 1e-10
+    #print("wnn %.15g, target %g"%(S_wnn, 5.7920040570988))
+
+
+def _check_entropy(name, D, seed=1, N=10000, N_entropy=None, N_norm=2500, demo=False):
+    """
+    Check if entropy from a random draw matches analytic entropy.
+    """
+    # entropy test is optional: don't test if sklearn is not installed
+    try:
+        import sklearn
+    except ImportError:
+        return
+
+    use_kramer = True
+    use_wnn = demo
+    use_mvn = demo
+    #use_kramer = use_mvn = False
+
+    state = np.random.get_state()
+    np.random.seed(seed)
+    try:
+        theta = D.rvs(size=N)
+        if getattr(D, 'dim', 1) == 1:
+            theta = theta.reshape(N, 1)
+        if use_kramer:
+            logp_theta = D.logpdf(theta)
+            logp_theta += 27  # result should be independent of scale factor
+            S, Serr = entropy(theta, logp_theta, N_entropy=N_entropy, N_norm=N_norm)
+        if use_wnn:
+            S_wnn, Serr_wnn = wnn_entropy(theta, n_est=N_entropy)
+        if use_mvn:
+            M = MVNEntropy(theta)
+    finally:
+        np.random.set_state(state)
+    if demo:
+        print("entropy", N, "~", name, D.entropy()/LN2, end='')
+        if use_kramer:
+            print(" Kramer", S, Serr, end='')
+        if use_wnn:
+            print(" wnn", S_wnn, Serr_wnn, end='')
+        if use_mvn:
+            print(" MVN", M.entropy, end='')
+        print()
+    else:
+        if use_kramer:
+            #assert Serr < 0.05*S, "incorrect error est. for Kramer"
+            assert abs(S - D.entropy()/LN2) < 3*Serr, "incorrect est. for Kramer"
+        if use_wnn:
+            assert Serr_wnn < 0.05*S_wnn, "incorrect error est. for wnn"
+            assert abs(S_wnn - D.entropy()/LN2) < 3*Serr_wnn, "incorrect est. for wnn"
+
+def _show_entropy(name, D, **kw):
+    with Timer():
+        return _check_entropy(name, D, seed=None, demo=True, **kw)
+
+def _check_smoke(D):
+    theta = D.rvs(size=1000)
+    if getattr(D, 'dim', 1) == 1:
+        theta = theta.reshape(-1, 1)
+    logp_theta = D.logpdf(theta)
+    entropy(theta, logp_theta)
+    wnn_entropy(theta)
+    MVNEntropy(theta).entropy
+
 def test():
     """check entropy estimates from known distributions"""
-    _check_entropy("N[100,8]", stats.norm(100, 8), N=2000)
-    _check_entropy("N[100,8]", stats.norm(100, 8), N=12000)
+    # Smoke test - do all the methods run in 1-D and 10-D?
+    _check_smoke(stats.norm(10, 8))
     if hasattr(stats, 'multivariate_normal'):
-        _check_entropy("MVN[1,12,0.2]", stats.multivariate_normal(cov=np.diag([1, 12**2, 0.2**2])))
+        _check_smoke(stats.multivariate_normal(cov=np.diag([1]*10)))
+
+    D = stats.norm(10, 8)
+    _check_entropy("N[100,8]", D, N=2000)
+    _check_entropy("N[100,8]", D, N=12000)
+    if hasattr(stats, 'multivariate_normal'):
+        D = stats.multivariate_normal(cov=np.diag([1, 12**2, 0.2**2]))
+        _check_entropy("MVN[1,12,0.2]", D)
+        D = stats.multivariate_normal(cov=np.diag([1]*10))
+        _check_entropy("MVN[1]*10", D, N=10000)
     #raise TestFailure("make bumps testing fail so we know that test harness works")
 
 def demo():
+    # hide module load time from Timer
+    from sklearn.neighbors import NearestNeighbors
     D = stats.norm(10, 8)
-    _show_entropy("N[100,8]", D, N=2000)
-    #_show_entropy("N[100,8]", D, N=12000)
+    #_show_entropy("N[100,8]", D, N=100)
+    #_show_entropy("N[100,8]", D, N=200)
+    #_show_entropy("N[100,8]", D, N=500)
+    #_show_entropy("N[100,8]", D, N=1000)
+    #_show_entropy("N[100,8]", D, N=2000)
+    #_show_entropy("N[100,8]", D, N=5000)
+    _show_entropy("N[100,8]", D, N=10000)
+    #_show_entropy("N[100,8]", D, N=20000)
+    #_show_entropy("N[100,8]", D, N=50000)
+    #_show_entropy("N[100,8]", D, N=100000)
     D = stats.multivariate_normal(cov=np.diag([1, 12**2, 0.2**2]))
     #_show_entropy("MVN[1,12,0.2]", D)
     D = stats.multivariate_normal(cov=np.diag([1]*10))
-    _show_entropy("MVN[1]*10", D, N=20000)
+    #_show_entropy("MVN[1]*10", D, N=1000)
+    _show_entropy("MVN[1]*10", D, N=10000)
+    #_show_entropy("MVN[1]*10", D, N=100000)
     #_show_entropy("MVN[1]*10", D, N=200000, N_entropy=20000)
     D = stats.multivariate_normal(cov=np.diag([1, 12**2, 0.2**2, 1, 1, 1]))
-    #_show_entropy("MVN[1,12,0.2,1,1,1]", D)
+    #_show_entropy("MVN[1,12,0.2,1,1,1]", D, N=100)
+    #_show_entropy("MVN[1,12,0.2,1,1,1]", D, N=1000)
+    _show_entropy("MVN[1,12,0.2,1,1,1]", D, N=10000)
+    #_show_entropy("MVN[1,12,0.2,1,1,1]", D, N=100000)
     D = stats.multivariate_normal(cov=np.diag([1, 12**2, 0.2**2, 1e3, 1e-3, 1]))
-    _show_entropy("MVN[1,12,0.2,1e3,1e-3,1]", D)
-    #_show_entropy("MVN[1,12,0.2,1e3,1e-3,1]", D, N=40000)
+    #_show_entropy("MVN[1,12,0.2,1e3,1e-3,1]", D, N=100)
+    #_show_entropy("MVN[1,12,0.2,1e3,1e-3,1]", D, N=1000)
+    _show_entropy("MVN[1,12,0.2,1e3,1e-3,1]", D, N=10000)
+    #_show_entropy("MVN[1,12,0.2,1e3,1e-3,1]", D, N=100000)
     D = GaussianMixture([1,10], mu=[[0]*10, [100]*10], sigma=[[10]*10, [0.1]*10])
     _show_entropy("bimodal mixture", D)
     D = Dirichlet(alpha=[0.02]*20)
+    #_show_entropy("Dirichlet[0.02]*20", D, N=1000)
+    #_show_entropy("Dirichlet[0.02]*20", D, N=2000)
+    #_show_entropy("Dirichlet[0.02]*20", D, N=5000)
+    #_show_entropy("Dirichlet[0.02]*20", D, N=10000)
     _show_entropy("Dirichlet[0.02]*20", D, N=20000)
-    #_show_entropy("Dirichlet[0.02]*20", D, N=40000)
+    #_show_entropy("Dirichlet[0.02]*20", D, N=50000)
     #_show_entropy("Dirichlet[0.02]*20", D, N=200000, N_entropy=20000)
 
 if __name__ == "__main__":  # pragma: no cover
