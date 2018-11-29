@@ -508,52 +508,10 @@ def partition(n, w):
     sizes, _ = np.histogram(choices, bins=bins)
     return sizes
 
-
-def mvn_entropy_test():
-    """
-    Test against results from the R MVN pacakge (using the web version)
-    and the matlab Mskekur program (using Octave), both of which produce
-    the same value.  Note that MVNEntropy uses the small sample correction
-    for the skewness stat since it converges to the large sample value for
-    large n.
-    """
-    x = np.array([
-        [2.4, 2.1, 2.4],
-        [4.5, 4.9, 5.7],
-        [3.5, 1.8, 3.9],
-        [3.9, 4.7, 4.7],
-        [6.7, 3.6, 5.9],
-        [4.0, 3.6, 2.9],
-        [5.3, 3.3, 6.1],
-        [5.7, 5.5, 6.2],
-        [5.2, 4.1, 6.4],
-        [2.4, 2.9, 3.2],
-        [3.2, 2.7, 4.0],
-        [2.7, 2.6, 4.1],
-    ])
-    M = MVNEntropy(x)
-    #print(M)
-    #print("%.15g %.15g %.15g"%(M.p_kurtosis, M.p_skewness, M.entropy))
-    assert abs(M.p_kurtosis - 0.265317890462476) <= 1e-10
-    assert abs(M.p_skewness - 0.773508066109368) <= 1e-10
-    assert abs(M.entropy - 5.7920040570988) <= 1e-10
-
-    ## wnn_entropy doesn't work for small sample sizes (no surprise there!)
-    #S_wnn, Serr_wnn = wnn_entropy(x)
-    #assert abs(S_wnn - 5.7920040570988) <= 1e-10
-    #print("wnn %.15g, target %g"%(S_wnn, 5.7920040570988))
-
-
 def _check_entropy(name, D, seed=1, N=10000, N_entropy=None, N_norm=2500, demo=False):
     """
     Check if entropy from a random draw matches analytic entropy.
     """
-    # entropy test is optional: don't test if sklearn is not installed
-    try:
-        import sklearn
-    except ImportError:
-        return
-
     use_kramer = True
     use_wnn = demo
     use_mvn = demo
@@ -607,6 +565,12 @@ def _check_smoke(D):
 
 def test():
     """check entropy estimates from known distributions"""
+    # entropy test is optional: don't test if sklearn is not installed
+    try:
+        import sklearn
+    except ImportError:
+        return
+
     # Smoke test - do all the methods run in 1-D and 10-D?
     _check_smoke(stats.norm(10, 8))
     if hasattr(stats, 'multivariate_normal'):
@@ -621,6 +585,40 @@ def test():
         D = stats.multivariate_normal(cov=np.diag([1]*10))
         _check_entropy("MVN[1]*10", D, N=10000)
     #raise TestFailure("make bumps testing fail so we know that test harness works")
+
+def mvn_entropy_test():
+    """
+    Test against results from the R MVN pacakge (using the web version)
+    and the matlab Mskekur program (using Octave), both of which produce
+    the same value.  Note that MVNEntropy uses the small sample correction
+    for the skewness stat since it converges to the large sample value for
+    large n.
+    """
+    x = np.array([
+        [2.4, 2.1, 2.4],
+        [4.5, 4.9, 5.7],
+        [3.5, 1.8, 3.9],
+        [3.9, 4.7, 4.7],
+        [6.7, 3.6, 5.9],
+        [4.0, 3.6, 2.9],
+        [5.3, 3.3, 6.1],
+        [5.7, 5.5, 6.2],
+        [5.2, 4.1, 6.4],
+        [2.4, 2.9, 3.2],
+        [3.2, 2.7, 4.0],
+        [2.7, 2.6, 4.1],
+    ])
+    M = MVNEntropy(x)
+    #print(M)
+    #print("%.15g %.15g %.15g"%(M.p_kurtosis, M.p_skewness, M.entropy))
+    assert abs(M.p_kurtosis - 0.265317890462476) <= 1e-10
+    assert abs(M.p_skewness - 0.773508066109368) <= 1e-10
+    assert abs(M.entropy - 5.7920040570988) <= 1e-10
+
+    ## wnn_entropy doesn't work for small sample sizes (no surprise there!)
+    #S_wnn, Serr_wnn = wnn_entropy(x)
+    #assert abs(S_wnn - 5.7920040570988) <= 1e-10
+    #print("wnn %.15g, target %g"%(S_wnn, 5.7920040570988))
 
 def demo():
     # hide module load time from Timer
@@ -665,6 +663,4 @@ def demo():
     #_show_entropy("Dirichlet[0.02]*20", D, N=200000, N_entropy=20000)
 
 if __name__ == "__main__":  # pragma: no cover
-    #test()
-    #mvn_entropy_test()
     demo()
