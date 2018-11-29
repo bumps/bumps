@@ -803,36 +803,52 @@ class MCMCDraw(object):
         drawn = self.draw(**kw)
         return drawn.points, drawn.logp
 
-    def entropy(self, **kw):
+    def entropy(self, vars=None, portion=1, selection=None, n_est=10000):
         """
         Return entropy estimate and uncertainty from an MCMC draw.
 
-        See :func:`entropy.entropy` for details.
+        *portion* is the portion of each chain to use
+
+        *vars* is the set of variables to marginalize over.  It is None for
+        the visible variables, or a list of variables.
+
+        *vars* is the list of variables to use for marginalization.
+
+        *selection* sets the range each parameter in the returned distribution,
+        using {variable: (low, high)}. Missing variables use the full range.
+
+        *n_est* is the number of points to use from the draw when estimating
+        the entropy (default=10000).
         """
-        from .entropy import entropy, MVNEntropy
+        from .entropy import entropy, wnn_entropy, MVNEntropy
 
-        # Get the sample from the state
-        drawn = self.draw()
+        # Get the sample from the state.
+        drawn = self.draw(portion=portion, vars=vars, selection=selection)
 
+        # TODO: don't print within a library function!
         M = MVNEntropy(drawn.points)
         print("Entropy from MVN: %s"%str(M))
-        # Always return entropy from draw, even if the sample is approximately
-        # normal
-        return entropy(drawn.points, drawn.logp, **kw)
-        #return entropy(drawn.points, drawn.logp, **kw) if M.reject_normal else (M.entropy, 0)
 
+        S, Serr = entropy(drawn.points, drawn.logp, N_entropy=n_est)
+        #print("Entropy from Kramer: %s"%str(S))
+
+        #S_wnn, Serr_wnn = wnn_entropy(drawn.points, n_est=20000)
+        #print("Entropy from wnn: %s"%str(S_wnn))
+
+        # Always return entropy estimate from draw, even if it is normal
+        #return S_wnn, Serr_wnn
+        return S, Serr
 
     def draw(self, portion=1, vars=None, selection=None):
         """
         Return a sample from the posterior distribution.
 
         *portion* is the portion of each chain to use
-        *vars* is a list of variables to return for each point
-        *selection* sets the range for the returned marginal distribution
 
-        *selection* is a dictionary of {variable: (low, high)} to set the
-        range on each variable.  Missing variables default to the full
-        range.
+        *vars* is a list of variables to return for each point
+
+        *selection* sets the range each parameter in the returned distribution,
+        using {variable: (low, high)}. Missing variables use the full range.
 
         To plot the distribution for parameter p1::
 
