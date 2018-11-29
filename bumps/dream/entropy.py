@@ -471,6 +471,32 @@ class Dirichlet:
     def entropy(self, *args, **kw):
         return self._dist.entropy(*args, **kw)
 
+class Box:
+    def __init__(self, width=None, center=None):
+        if width is None:
+            width = np.ones(len(center), dtype='d')
+        if center is None:
+            center = np.zeros(len(width), dtype='d')
+        self.center = center
+        self.width = width
+        self.dim = len(width)
+        self._logpdf = -np.sum(np.log(self.width))
+
+    def rvs(self, size=1):
+        x = np.random.rand(size, len(self.width))
+        x = (x-0.5)*self.width + self.center
+        return x
+
+    def logpdf(self, theta):
+        y = (theta - self.center)/self.width + 0.5
+        logp = np.ones(len(theta)) * self._logpdf
+        logp[np.any(y<0, axis=1)] = -np.inf
+        logp[np.any(y>1, axis=1)] = -np.inf
+        return logp
+
+    def entropy(self):
+        return -self._logpdf
+
 class GaussianMixture:
     def __init__(self, w, mu=None, sigma=None):
         mu = np.asarray(mu)
@@ -623,6 +649,9 @@ def mvn_entropy_test():
 def demo():
     # hide module load time from Timer
     from sklearn.neighbors import NearestNeighbors
+
+    D = Box(center=[100]*10, width=np.linspace(1, 10, 10))
+    _show_entropy("Box 10!", D, N=10000)
     D = stats.norm(10, 8)
     #_show_entropy("N[100,8]", D, N=100)
     #_show_entropy("N[100,8]", D, N=200)
