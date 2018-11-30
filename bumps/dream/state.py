@@ -850,6 +850,10 @@ class MCMCDraw(object):
         #S_wnn, Serr_wnn = entropy.wnn_entropy(drawn.points, n_est=20000, gmm=20)
         #print("Entropy from wnn with gmm: %s"%str(S_wnn))
 
+        # Try wnn with pure gmm ... still no good
+        #S_gmm, Serr_gmm = entropy.gmm_entropy(drawn.points, n_est=10000)
+        #print("Entropy from gmm: %s"%str(S_gmm))
+
         # Always return entropy estimate from draw, even if it is normal
         #return S_wnn, Serr_wnn
         return S, Serr

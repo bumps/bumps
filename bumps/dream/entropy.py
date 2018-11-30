@@ -83,6 +83,36 @@ def wnn_bootstrap(points, k=None, weights=True, n_est=None, reps=10, parts=10):
     S, Serr = list(zip(*results))
     return np.mean(S), np.std(S)
 
+def gmm_entropy(points, n_est=None, n_components=None):
+    from sklearn.mixture import GaussianMixture as GMM
+    n, d = points.shape
+
+    # Default to the full set
+    if n_est is None:
+        n_est = n
+
+    # reduce size of draw to n_est
+    if n_est >= n:
+        x = points
+    else:
+        x = points[permutation(n)[:n_est]]
+        n = n_est
+
+    if n_components is None:
+        n_components = int(10*sqrt(d))
+
+    predictor = GMM(n_components=n_components, covariance_type='full')
+    predictor.fit(x)
+    eval_x, _ = predictor.sample(n_est)
+    weight_x = predictor.score_samples(eval_x)
+    H = -np.mean(weight_x)
+    dH = 0.
+    ## cross-check against own calcs
+    #alt = GaussianMixture(predictor.weights_, mu=predictor.means_, sigma=predictor.covariances_)
+    #print("alt", H, alt.entropy())
+    #print(np.vstack((weight_x[:10], alt.logpdf(eval_x[:10]))).T)
+    return H / LN2, dH / LN2
+
 def wnn_entropy(points, k=None, weights=True, n_est=None, gmm=None):
     r"""
     Weighted Kozachenko-Leonenko nearest-neighbour entropy calculation.
@@ -168,7 +198,7 @@ def wnn_entropy(points, k=None, weights=True, n_est=None, gmm=None):
         predictor = GMM(n_components=gmm, covariance_type='full')
         predictor.fit(x)
         eval_x, _ = predictor.sample(n_est)
-        #weight_x = gmm.score_samples(eval_x)
+        #weight_x = predictor.score_samples(eval_x)
         skip = 0
     else:
         # Empirical distribution
@@ -574,7 +604,8 @@ def _check_entropy(name, D, seed=1, N=10000, N_entropy=None, N_norm=2500, demo=F
     use_kramer = True
     use_wnn = demo
     use_mvn = demo
-    #use_kramer = use_mvn = False
+    use_gmm = demo
+    #use_kramer = use_mvn = use_wnn = False
 
     state = np.random.get_state()
     np.random.seed(seed)
@@ -588,6 +619,8 @@ def _check_entropy(name, D, seed=1, N=10000, N_entropy=None, N_norm=2500, demo=F
             S, Serr = entropy(theta, logp_theta, N_entropy=N_entropy, N_norm=N_norm)
         if use_wnn:
             S_wnn, Serr_wnn = wnn_entropy(theta, n_est=N_entropy)
+        if use_gmm:
+            S_gmm, Serr_gmm = gmm_entropy(theta, n_est=N_entropy)
         if use_mvn:
             M = MVNEntropy(theta)
     finally:
@@ -598,6 +631,8 @@ def _check_entropy(name, D, seed=1, N=10000, N_entropy=None, N_norm=2500, demo=F
             print(" Kramer", S, Serr, end='')
         if use_wnn:
             print(" wnn", S_wnn, Serr_wnn, end='')
+        if use_gmm:
+            print(" gmm", S_gmm, Serr_gmm, end='')
         if use_mvn:
             print(" MVN", M.entropy, end='')
         print()
