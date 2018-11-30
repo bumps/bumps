@@ -84,7 +84,8 @@ def wnn_bootstrap(points, k=None, weights=True, n_est=None, reps=10, parts=10):
     return np.mean(S), np.std(S)
 
 def gmm_entropy(points, n_est=None, n_components=None):
-    from sklearn.mixture import GaussianMixture as GMM
+    #from sklearn.mixture import GaussianMixture as GMM
+    from sklearn.mixture import BayesianGaussianMixture as GMM
     n, d = points.shape
 
     # Default to the full set
@@ -99,9 +100,11 @@ def gmm_entropy(points, n_est=None, n_components=None):
         n = n_est
 
     if n_components is None:
-        n_components = int(10*sqrt(d))
+        n_components = int(5*sqrt(d))
 
-    predictor = GMM(n_components=n_components, covariance_type='full')
+    predictor = GMM(n_components=n_components, covariance_type='full', 
+                    #verbose=True, 
+                    max_iter=1000)
     predictor.fit(x)
     eval_x, _ = predictor.sample(n_est)
     weight_x = predictor.score_samples(eval_x)

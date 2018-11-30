@@ -251,6 +251,14 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, cbar):
         maxlikelihood *= hist_peak*1.3/ml_peak
     pylab.plot(centers, maxlikelihood, '-g')
 
+    ## plot marginal gaussian approximation along with histogram
+    #def G(x, mean, std):
+    #    return np.exp(-((x-mean)/std)**2/2)/np.sqrt(2*np.pi*std**2)
+    ## TODO: use weighted average for standard deviation
+    #mean, std = np.average(values, weights=weights), np.std(values, ddof=1)
+    #pdf = G(centers, mean, std)
+    #pylab.plot(centers, pdf*np.sum(height)/np.sum(pdf), '-b')
+
 
 def _make_var_histogram(values, logp, nbins, ci, weights):
     # Produce a histogram
