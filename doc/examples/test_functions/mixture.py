@@ -28,30 +28,47 @@ so *S* < 1e-4 cannot be modeled reliably.
 Population size *h* is set to 20 per mode.  A good choice for number of
 sequences *k* is not yet determined.
 """
+from __future__ import print_function
+
 import numpy as np
 from bumps.dream.model import MVNormal, Mixture
 from bumps.names import *
+from bumps.util import push_seed
 
-if 1: # Fixed layout of 5 minima
-    n = 5
-    S = [0.1]*5
-    x = [-4, -2, 0, 2, 4]
-    y = [2, -2, -4, 0, 4]
-    I = [5, 2.5, 1, 4, 1]
-else: # Semirandom layout of n minima
-    n = 40
-    S = [0.1]*n
-    x = np.linspace(-n+1,n-1,n)
-    y = np.random.permutation(x)
-    I = 2*np.linspace(-1,1,n)**2 + 1
+# Need reproducible models if we want to be able to resume a fit
+with push_seed(1):
+    if 1: # Fixed layout of 5 minima
+        num_modes = 5
+        S = [0.1]*5
+        x = [-4, -2, 0, 2, 4]
+        y = [2, -2, -4, 0, 4]
+        I = [5, 2.5, 1, 4, 1]
+    else: # Semirandom layout of n minima
+        num_modes = 40
+        S = [0.1]*num_modes
+        x = np.linspace(-10,10,num_modes)
+        y = np.random.permutation(x)
+        I = 2*np.linspace(-1,1,num_modes)**2 + 1
 
-dims = 2
-centers = [x, y] + [np.random.permutation(x) for _ in range(2, dims)]
-centers = np.asarray(centers).T
-args = [] # Sequence of density, weight, density, weight, ...
-for mu_i,Si,Ii in zip(centers,S,I):
-    args.extend( (MVNormal(mu_i,Si*np.eye(dims)), Ii) )
-model = Mixture(*args)
+    ## Take only the first two modes
+    k=2; S, x, y, I = S[:k], x[:k],  y[:k], I[:k]
+    #S[1] = 1; I[1] = 1; I[0] = 1
+    dims = 10
+    centers = [x, y] + [np.random.permutation(x) for _ in range(2, dims)]
+    centers = np.asarray(centers).T
+    args = [] # Sequence of density, weight, density, weight, ...
+    for mu_i,Si,Ii in zip(centers,S,I):
+        args.extend( (MVNormal(mu_i,Si*np.eye(dims)), Ii) )
+    model = Mixture(*args)
+
+if 1:
+    from bumps.dream.entropy import GaussianMixture
+    pairs = zip(args[0::2], args[1::2])
+    triples = ((M.mu, M.sigma, I) for M, I in pairs)
+    mu, sigma, weight = zip(*triples)
+    D = GaussianMixture(weight, mu=mu, sigma=sigma)
+    print("*** Expected entropy: %s bits"%(D.entropy(N=100000)/np.log(2),))
+
 
 def plot2d(fn, args=None, range=(-10,10)):
     """

@@ -71,17 +71,97 @@ def standardize(x):
     mu, sigma = mean(x, axis=0), std(x, axis=0, ddof=1)
     return (x - mu)/sigma, mu, sigma
 
-def wnn_bootstrap(points, k=None, weights=True, n_est=None, reps=10, parts=10):
-    raise NotImplementedError("deprecated; bootstrap doesn't help.")
-    n, d = points.shape
-    if n_est is None:
-        n_est = n//parts
+def kde_entropy_statsmodels(points, n_est=None):
+    """
+    Use statsmodels KDEMultivariate pdf to estimate entropy.
 
-    results = [wnn_entropy(points, k=k, weights=weights, n_est=n_est)
-               for _ in range(reps)]
-    #print(results)
-    S, Serr = list(zip(*results))
-    return np.mean(S), np.std(S)
+    Density evaluated at sample points.
+
+    Slow and fails for bimodal, dirichlet; poor for high dimensional MVN.
+    """
+    from statsmodels.nonparametric.kernel_density import KDEMultivariate
+    n, d = points.shape
+
+    # Default to the full set
+    if n_est is None:
+        n_est = n
+
+    # reduce size of draw to n_est
+    if n_est >= n:
+        x = points
+    else:
+        x = points[permutation(n)[:n_est]]
+        n = n_est
+
+    predictor = KDEMultivariate(data=x, var_type='c'*d)
+    p = predictor.pdf()
+    H = -np.mean(log(p))
+    return H / LN2
+
+def kde_entropy_sklearn(points, n_est=None):
+    """
+    Use sklearn.neigbors.KernelDensity pdf to estimate entropy.
+
+    Data is standardized before analysis.
+
+    Sample points drawn from the kernel density estimate.
+
+    Fails for bimodal and dirichlet, similar to statsmodels kde.
+    """
+    n, d = points.shape
+
+    # Default to the full set
+    if n_est is None:
+        n_est = n
+
+    # reduce size of draw to n_est
+    if n_est >= n:
+        x = points
+    else:
+        x = points[permutation(n)[:n_est]]
+        n = n_est
+
+    #logp = sklearn_log_density(points, evaluation_points=n_est)
+    logp = sklearn_log_density(x, evaluation_points=x)
+    H = -np.mean(logp)
+    return H / LN2
+
+def kde_entropy_sklearn_gmm(points, n_est=None, n_components=None):
+    """
+    Use sklearn.neigbors.KernelDensity pdf to estimate entropy.
+
+    Data is standardized before kde.
+
+    Sample points drawn from gaussian mixture model from original points.
+
+    Fails for bimodal and dirichlet, similar to statsmodels kde.
+    """
+    from sklearn.mixture import BayesianGaussianMixture as GMM
+    n, d = points.shape
+
+    # Default to the full set
+    if n_est is None:
+        n_est = n
+
+    # reduce size of draw to n_est
+    if n_est >= n:
+        x = points
+    else:
+        x = points[permutation(n)[:n_est]]
+        n = n_est
+
+    if n_components is None:
+        n_components = int(5*sqrt(d))
+
+    predictor = GMM(n_components=n_components, covariance_type='full',
+                    #verbose=True,
+                    max_iter=1000)
+    predictor.fit(x)
+    evaluation_points, _ = predictor.sample(n_est)
+
+    logp = sklearn_log_density(x, evaluation_points=evaluation_points)
+    H = -np.mean(logp)
+    return H / LN2
 
 def gmm_entropy(points, n_est=None, n_components=None):
     #from sklearn.mixture import GaussianMixture as GMM
@@ -102,19 +182,34 @@ def gmm_entropy(points, n_est=None, n_components=None):
     if n_components is None:
         n_components = int(5*sqrt(d))
 
-    predictor = GMM(n_components=n_components, covariance_type='full', 
-                    #verbose=True, 
+    ## Standardization doesn't seem to help
+    #x, mu, sigma = standardize(x)   # if standardized
+    predictor = GMM(n_components=n_components, covariance_type='full',
+                    #verbose=True,
                     max_iter=1000)
     predictor.fit(x)
     eval_x, _ = predictor.sample(n_est)
     weight_x = predictor.score_samples(eval_x)
     H = -np.mean(weight_x)
+    #H = H + np.sum(np.log(sigma))   # if standardized
     dH = 0.
     ## cross-check against own calcs
     #alt = GaussianMixture(predictor.weights_, mu=predictor.means_, sigma=predictor.covariances_)
     #print("alt", H, alt.entropy())
     #print(np.vstack((weight_x[:10], alt.logpdf(eval_x[:10]))).T)
     return H / LN2, dH / LN2
+
+def wnn_bootstrap(points, k=None, weights=True, n_est=None, reps=10, parts=10):
+    raise NotImplementedError("deprecated; bootstrap doesn't help.")
+    n, d = points.shape
+    if n_est is None:
+        n_est = n//parts
+
+    results = [wnn_entropy(points, k=k, weights=weights, n_est=n_est)
+               for _ in range(reps)]
+    #print(results)
+    S, Serr = list(zip(*results))
+    return np.mean(S), np.std(S)
 
 def wnn_entropy(points, k=None, weights=True, n_est=None, gmm=None):
     r"""
@@ -267,22 +362,19 @@ def scipy_stats_density(sample_points, evaluation_points):  # pragma: no cover
     return kde(evaluation_points)
 
 
-def sklearn_density(sample_points, evaluation_points):
+def sklearn_log_density(sample_points, evaluation_points):
     """
-    Estimate the probability density function from which a set of sample
+    Estimate the log probability density function from which a set of sample
     points was drawn and return the estimated density at the evaluation points.
     """
     from sklearn.neighbors import KernelDensity
 
+    # Standardize data so we can use spherical kernels and uniform bandwidth
+    data, mu, sigma = standardize(sample_points)
+
     # Silverman bandwidth estimator
     n, d = sample_points.shape
     bandwidth = (n * (d + 2) / 4.)**(-1. / (d + 4))
-
-    # Standardize data so that we can use uniform bandwidth.
-    # Note that we will need to scale the resulting density by sigma to
-    # correct the area.
-    data, mu, sigma = standardize(sample_points)
-    points = (evaluation_points - mu)/sigma
 
     #print("starting grid search for bandwidth over %d points"%n)
     #from sklearn.grid_search import GridSearchCV
@@ -295,12 +387,27 @@ def sklearn_density(sample_points, evaluation_points):
     #import time; T0 = time.time()
     kde = KernelDensity(kernel='gaussian', bandwidth=bandwidth,
                         rtol=1e-6, atol=1e-6)
-    #print("T:%6.3f   fitting"%(time.time()-T0))
     kde.fit(data)
-    #print("T:%6.3f   estimating"%(time.time()-T0))
-    log_pdf = kde.score_samples(points)
-    #print("T:%6.3f   done"%(time.time()-T0))
-    return exp(log_pdf)/np.prod(sigma)  # undo the x scaling on the data points
+
+    if evaluation_points is None:
+        evaluation_points = sample_points
+    if not isinstance(evaluation_points, int):
+        # Standardized evaluation points to match sample distribution
+        points = (evaluation_points - mu)/sigma
+    else:
+        # For generated points, they already follow the distribution
+        points = kde.sample(evaluation_points)
+    # Evalueate pdf, scaling the resulting density by sigma to correct the area.
+    log_pdf = kde.score_samples(points) - np.sum(np.log(sigma))
+    return log_pdf
+
+
+def sklearn_density(sample_points, evaluation_points):
+    """
+    Estimate the probability density function from which a set of sample
+    points was drawn and return the estimated density at the evaluation points.
+    """
+    return exp(sklearn_log_density(sample_points, evaluation_points))
 
 
 # scipy kde fails with singular matrix, so we will use scikit.learn
@@ -520,6 +627,11 @@ class Timer(object):
             print('[%s]' % self.name, end='')
         print('Elapsed: %s' % (time.time() - self.tstart))
 
+def entropy_mc(D, N=1000000):
+    logp = D.logpdf(D.rvs(N))
+    return -np.mean(logp)
+    #return -np.mean(logp[np.isfinite(logp)])
+
 # CRUFT: dirichlet needs transpose of theta for logpdf
 class Dirichlet:
     def __init__(self, alpha):
@@ -580,7 +692,7 @@ class GaussianMixture:
         return sum(w*D.pdf(theta) for w, D in zip(self.weight, self.dist))
 
     def logpdf(self, theta):
-        return np.log(self.pdf(theta))
+        return log(self.pdf(theta))
 
     def rvs(self, size=1):
         # TODO: should randomize the output
@@ -589,8 +701,79 @@ class GaussianMixture:
         return np.random.permutation(np.vstack(draws))
 
     def entropy(self, N=10000):
-        draws = self.rvs(size=N)
-        return -np.sum(self.logpdf(draws))/N
+        # No analytic expression, so estimate entropy using MC integration
+        return entropy_mc(self, N=N)
+
+class MultivariateT:
+    def __init__(self, mu=None, sigma=None, df=None):
+        if sigma is not None:
+            sigma = np.asarray(sigma)
+        self.mu = np.zeros(sigma.shape[0]) if mu is None else np.asarray(mu)
+        if sigma is None:
+            sigma = np.ones(len(mu))
+        if len(sigma.shape) == 1:
+            sigma = np.diag(sigma)
+        self.dim = len(self.mu)
+        self.sigma = sigma
+        self.df = df
+        # Use scipy stats to compute |Sigma| and (x-mu)^T Sigma^{-1} (x - mu),
+        # and to estimate dimension p from rank.  Formula for pdf from wikipedia
+        # https://en.wikipedia.org/wiki/Multivariate_t-distribution
+        from scipy.stats._multivariate import _PSD
+        self._psd = _PSD(self.sigma)
+        nu, p = self.df, self._psd.rank
+        self._log_norm = (gammaln((nu + p)/2)
+                          - gammaln(nu/2)
+                          - p/2*log(pi*nu)
+                          - self._psd.log_pdet/2
+                          )
+
+    def logpdf(self, theta):
+        dev = theta - self.mu
+        maha = np.sum(np.square(np.dot(dev, self._psd.U)), axis=-1)
+        nu, p = self.df, self._psd.rank
+        return self._log_norm - (nu+p)/2 * np.log1p(maha/nu)
+
+    def pdf(self, theta):
+        return exp(self.logpdf(theta))
+
+    def rvs(self, size=1):
+        # From farhawa on stack overflow
+        # https://stackoverflow.com/questions/29798795/multivariate-student-t-distribution-with-python
+        nu, p = self.df, len(self.mu)
+        g = np.tile(np.random.gamma(nu/2, 2/nu, size=size), (p, 1)).T
+        Z = np.random.multivariate_normal(np.zeros(p), self.sigma, size=size)
+        return self.mu + Z/np.sqrt(g)
+
+    def entropy(self, N=100000):
+        # No analytic expression, so estimate entropy using MC integration
+        return entropy_mc(self, N=N)
+
+def MultivariateCauchy(mu=None, sigma=None):
+    return MultivariateT(mu=mu, sigma=sigma, df=1)
+
+class Joint:
+    def __init__(self, distributions):
+        # Note: list(x) converts any sequence, including generators, into a list
+        self.distributions = list(distributions)
+        self.dim = len(self.distributions)
+    def rvs(self, size=1):
+        return np.stack([D.rvs(size=size) for D in self.distributions], axis=-1)
+    def pdf(self, theta):
+        return exp(self.logpdf(theta))
+    def logpdf(self, theta):
+        return sum(D.logpdf(theta[..., k]) for k, D in enumerate(self.distributions))
+    def cdf(self, theta):
+        return exp(self.logcdf(theta))
+    def logcdf(self, theta):
+        return sum(D.logcdf(theta[..., k]) for k, D in enumerate(self.distributions))
+    def sf(self, theta):
+        return -np.expm1(self.logcdf(theta))
+    def logsf(self, theta):
+        return log(self.sf(theta))
+    def entropy(self):
+        return sum(D.entropy() for D in self.distributions)
+
 
 def partition(n, w):
     # TODO: build an efficient algorithm for splitting n things into k buckets
@@ -604,11 +787,15 @@ def _check_entropy(name, D, seed=1, N=10000, N_entropy=None, N_norm=2500, demo=F
     """
     Check if entropy from a random draw matches analytic entropy.
     """
-    use_kramer = True
-    use_wnn = demo
-    use_mvn = demo
-    use_gmm = demo
-    #use_kramer = use_mvn = use_wnn = False
+    if demo:
+        use_kramer = use_mvn = use_wnn = use_gmm = use_kde = False
+        #use_kramer = True
+        #use_wnn = True
+        use_mvn = True
+        use_gmm = True
+        use_kde = True
+    else:
+        use_kramer = True
 
     state = np.random.get_state()
     np.random.seed(seed)
@@ -626,6 +813,11 @@ def _check_entropy(name, D, seed=1, N=10000, N_entropy=None, N_norm=2500, demo=F
             S_gmm, Serr_gmm = gmm_entropy(theta, n_est=N_entropy)
         if use_mvn:
             M = MVNEntropy(theta)
+            S_mvn = M.entropy
+        if use_kde:
+            S_kde = kde_entropy_statsmodels(theta, n_est=N_entropy)
+            #S_kde = kde_entropy_sklearn(theta, n_est=N_entropy)
+            #S_kde = kde_entropy_sklearn_gmm(theta, n_est=N_entropy)
     finally:
         np.random.set_state(state)
     if demo:
@@ -637,7 +829,9 @@ def _check_entropy(name, D, seed=1, N=10000, N_entropy=None, N_norm=2500, demo=F
         if use_gmm:
             print(" gmm", S_gmm, Serr_gmm, end='')
         if use_mvn:
-            print(" MVN", M.entropy, end='')
+            print(" MVN", S_mvn, end='')
+        if use_kde:
+            print(" KDE", S_kde, end='')
         print()
     else:
         if use_kramer:
@@ -727,6 +921,32 @@ def demo():
     #S, Serr = wnn_bootstrap(D.rvs(size=200000))
     #print("bootstrap", S, D.entropy())
     #return
+    if False:
+        # Multivariate T distribution
+        D = stats.t(df=4)
+        _show_entropy("T;df=4", D, N=20000)
+        D = MultivariateT(sigma=np.diag([1]), df=4)
+        _show_entropy("MT[1];df=4", D, N=20000)
+        D = MultivariateT(sigma=np.diag([1, 12, 0.2])**2, df=4)
+        _show_entropy("MT[1,12,0.2];df=4", D, N=10000)
+        D = MultivariateT(sigma=np.diag([1]*10), df=4)
+        _show_entropy("MT[1]*10;df=4", D, N=10000)
+        D = MultivariateT(sigma=np.diag([1, 12, 0.2, 1e2, 1e-2, 1])**2, df=4)
+        _show_entropy("MT[1,12,0.2,1e3,1e-3,1];df=4", D, N=10000)
+        return
+
+    if False:
+        # Multivariate skew normal distribution
+        D = stats.skewnorm(5)
+        _show_entropy("skew=5 N[1]", D, N=20000)
+        D = Joint(stats.skewnorm(5, 0, s) for s in [1, 12, 0.2])
+        _show_entropy("skew=5 N[1,12,0.2]", D, N=10000)
+        D = Joint(stats.skewnorm(5, 0, s) for s in [1]*10)
+        _show_entropy("skew=5 N[1]*10", D, N=10000)
+        D = Joint(stats.skewnorm(5, 0, s) for s in [1, 12, 0.2, 1e2, 1e-2, 1])
+        _show_entropy("skew=5 N[1,12,0.2,1e3,1e-3,1]", D, N=10000)
+        #print("double check entropy", D.entropy()/LN2, entropy_mc(D)/LN2)
+        return
 
     D = Box(center=[100]*10, width=np.linspace(1, 10, 10))
     _show_entropy("Box 10!", D, N=10000)
@@ -741,19 +961,19 @@ def demo():
     #_show_entropy("N[100,8]", D, N=20000)
     #_show_entropy("N[100,8]", D, N=50000)
     #_show_entropy("N[100,8]", D, N=100000)
-    D = stats.multivariate_normal(cov=np.diag([1, 12**2, 0.2**2]))
+    D = stats.multivariate_normal(cov=np.diag([1, 12, 0.2])**2)
     #_show_entropy("MVN[1,12,0.2]", D)
-    D = stats.multivariate_normal(cov=np.diag([1]*10))
+    D = stats.multivariate_normal(cov=np.diag([1]*10)**2)
     #_show_entropy("MVN[1]*10", D, N=1000)
     _show_entropy("MVN[1]*10", D, N=10000)
     #_show_entropy("MVN[1]*10", D, N=100000)
     #_show_entropy("MVN[1]*10", D, N=200000, N_entropy=20000)
-    D = stats.multivariate_normal(cov=np.diag([1, 12**2, 0.2**2, 1, 1, 1]))
+    D = stats.multivariate_normal(cov=np.diag([1, 12, 0.2, 1, 1, 1])**2)
     #_show_entropy("MVN[1,12,0.2,1,1,1]", D, N=100)
     #_show_entropy("MVN[1,12,0.2,1,1,1]", D, N=1000)
     _show_entropy("MVN[1,12,0.2,1,1,1]", D, N=10000)
     #_show_entropy("MVN[1,12,0.2,1,1,1]", D, N=100000)
-    D = stats.multivariate_normal(cov=np.diag([1, 12**2, 0.2**2, 1e3, 1e-3, 1]))
+    D = stats.multivariate_normal(cov=np.diag([1, 12, 0.2, 1e2, 1e-2, 1])**2)
     #_show_entropy("MVN[1,12,0.2,1e3,1e-3,1]", D, N=100)
     #_show_entropy("MVN[1,12,0.2,1e3,1e-3,1]", D, N=1000)
     _show_entropy("MVN[1,12,0.2,1e3,1e-3,1]", D, N=10000)

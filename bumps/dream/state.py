@@ -803,7 +803,7 @@ class MCMCDraw(object):
         drawn = self.draw(**kw)
         return drawn.points, drawn.logp
 
-    def entropy(self, vars=None, portion=1, selection=None, n_est=10000):
+    def entropy(self, vars=None, portion=1, selection=None, n_est=10000, thin=None):
         """
         Return entropy estimate and uncertainty from an MCMC draw.
 
@@ -819,46 +819,69 @@ class MCMCDraw(object):
 
         *n_est* is the number of points to use from the draw when estimating
         the entropy (default=10000).
+
+        *thin* is the amount of thinning to use when selecting points from the
+        draw.
         """
         from . import entropy
+        from .entropy import Timer as T
 
         # Get the sample from the state.
-        drawn = self.draw(portion=portion, vars=vars, selection=selection)
+        # set default thinning to max((steps * samples/step) // n_est, 1)
+        if thin is None:
+            Nsteps = min(self.Nthin, self._thin_count)
+            thin = max(Nsteps*self.Npop//n_est, 1)
+            #print("thin", thin, Nsteps, self.Npop, self.Nthin, self._thin_count)
+        drawn = self.draw(portion=portion, vars=vars,
+                          selection=selection, thin=thin)
 
         # TODO: don't print within a library function!
+        #with T():
         M = entropy.MVNEntropy(drawn.points)
         print("Entropy from MVN: %s"%str(M))
 
-        S, Serr = entropy.entropy(drawn.points, drawn.logp, N_entropy=n_est)
-        #print("Entropy from Kramer: %s"%str(S))
-
         # Try wnn . . . no good.
-        #S_wnn, Serr_wnn = entropy.wnn_entropy(drawn.points, n_est=20000)
+        #with T(): S_wnn, Serr_wnn = entropy.wnn_entropy(drawn.points, n_est=20000)
         #print("Entropy from wnn: %s"%str(S_wnn))
 
         # Try wnn with bootstrap . . . still no good.
-        #S_wnn, Serr_wnn = entropy.wnn_bootstrap(drawn.points)
+        #with T(): S_wnn, Serr_wnn = entropy.wnn_bootstrap(drawn.points)
         #print("Entropy from wnn bootstrap: %s"%str(S_wnn))
 
         # Try wnn entropy with thinning . . . still no good.
-        #draw, chains, logp = self.chains()
-        #points = chains[::10].reshape(-1, chains.shape[-1])
-        #S_wnn, Serr_wnn = entropy.wnn_entropy(points)
+        #drawn = self.draw(portion=portion, vars=vars,
+        #                  selection=selection, thin=10)
+        #with T(): S_wnn, Serr_wnn = entropy.wnn_entropy(points)
         #print("Entropy from wnn: %s"%str(S_wnn))
 
         # Try wnn with gmm ... still no good
-        #S_wnn, Serr_wnn = entropy.wnn_entropy(drawn.points, n_est=20000, gmm=20)
+        #with T(): S_wnn, Serr_wnn = entropy.wnn_entropy(drawn.points, n_est=20000, gmm=20)
         #print("Entropy from wnn with gmm: %s"%str(S_wnn))
 
-        # Try wnn with pure gmm ... pretty good
-        #S_gmm, Serr_gmm = entropy.gmm_entropy(drawn.points, n_est=10000)
+        # Try pure gmm ... pretty good
+        #with T(): S_gmm, Serr_gmm = entropy.gmm_entropy(drawn.points, n_est=10000)
         #print("Entropy from gmm: %s"%str(S_gmm))
 
+        # Try kde from statsmodels ... pretty good
+        #with T(): S_kde_stats = entropy.kde_entropy_statsmodels(drawn.points, n_est=10000)
+        #print("Entropy from kde statsmodels: %s"%str(S_kde_stats))
+
+        # Try kde from sklearn ... pretty good
+        #with T(): S_kde = entropy.kde_entropy_sklearn(drawn.points, n_est=10000)
+        #print("Entropy from kde sklearn: %s"%str(S_kde))
+
+        # Try kde from sklearn at points from gmm ... pretty good
+        #with T(): S_kde_gmm = entropy.kde_entropy_sklearn_gmm(drawn.points, n_est=10000)
+        #print("Entropy from kde+gmm: %s"%str(S_kde_gmm))
+
+        #with T():
+        S, Serr = entropy.entropy(drawn.points, drawn.logp, N_entropy=n_est)
+        #print("Entropy from Kramer: %s"%str(S))
+
         # Always return entropy estimate from draw, even if it is normal
-        #return S_wnn, Serr_wnn
         return S, Serr
 
-    def draw(self, portion=1, vars=None, selection=None):
+    def draw(self, portion=1, vars=None, selection=None, thin=1):
         """
         Return a sample from the posterior distribution.
 
@@ -868,6 +891,8 @@ class MCMCDraw(object):
 
         *selection* sets the range each parameter in the returned distribution,
         using {variable: (low, high)}. Missing variables use the full range.
+
+        *thin* takes every nth item.
 
         To plot the distribution for parameter p1::
 
@@ -880,7 +905,8 @@ class MCMCDraw(object):
             plot(draw.points[:, 0], draw.points[:, 1], '.')
         """
         vars = vars if vars is not None else getattr(self, '_shown', None)
-        return Draw(self, portion=portion, vars=vars, selection=selection)
+        return Draw(self, portion=portion, vars=vars, selection=selection,
+                    thin=thin)
 
     def set_visible_vars(self, labels):
         self._shown = [self.labels.index(v) for v in labels]
@@ -943,13 +969,13 @@ class MCMCDraw(object):
 
 
 class Draw(object):
-    def __init__(self, state, vars=None, portion=None, selection=None):
+    def __init__(self, state, vars=None, portion=None, selection=None, thin=1):
         self.state = state
         self.vars = vars
         self.portion = portion
         self.selection = selection
-        self.points, self.logp \
-            = _sample(state, portion=portion, vars=vars, selection=selection)
+        self.points, self.logp = _sample(
+            state, portion=portion, vars=vars, selection=selection, thin=thin)
         self.labels \
             = state.labels if vars is None else [state.labels[v] for v in vars]
         self._stats = None
@@ -961,7 +987,7 @@ class Draw(object):
             self.integers = None
 
 
-def _sample(state, portion, vars, selection):
+def _sample(state, portion, vars, selection, thin):
     """
     Return a sample from a set of chains.
     """
@@ -969,12 +995,12 @@ def _sample(state, portion, vars, selection):
     start = int((1-portion)*len(draw)) if portion else 0
 
     # Collect the subset we are interested in
-    chains = chains[start:, state._good_chains, :]
-    logp = logp[start:, state._good_chains]
+    chains = chains[start::thin, state._good_chains, :]
+    logp = logp[start::thin, state._good_chains]
 
     Ngen, Npop, Nvar = chains.shape
-    points = reshape(chains, (Ngen*Npop, Nvar))
-    logp = reshape(logp, (Ngen*Npop))
+    points = reshape(chains, (-1, Nvar))
+    logp = reshape(logp, (-1))
     if selection not in [None, {}]:
         idx = True
         for v, r in selection.items():
