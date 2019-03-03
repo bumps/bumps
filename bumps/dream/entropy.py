@@ -69,7 +69,9 @@ def standardize(x):
 
     # compute zscores for the each variable independently
     mu, sigma = mean(x, axis=0), std(x, axis=0, ddof=1)
-    return (x - mu)/sigma, mu, sigma
+    # Protect against NaN when sigma is zero.  If sigma is zero
+    # then all points are equal, so x == mu and z-score is zero.
+    return (x - mu)/(sigma + (sigma==0.)), mu, sigma
 
 def kde_entropy_statsmodels(points, n_est=None):
     """
@@ -183,6 +185,7 @@ def gmm_entropy(points, n_est=None, n_components=None):
         n_components = int(5*sqrt(d))
 
     ## Standardization doesn't seem to help
+    ## Note: sigma may be zero
     #x, mu, sigma = standardize(x)   # if standardized
     predictor = GMM(n_components=n_components, covariance_type='full',
                     #verbose=True,
@@ -191,7 +194,7 @@ def gmm_entropy(points, n_est=None, n_components=None):
     eval_x, _ = predictor.sample(n_est)
     weight_x = predictor.score_samples(eval_x)
     H = -np.mean(weight_x)
-    #H = H + np.sum(np.log(sigma))   # if standardized
+    #with np.errstate(divide='ignore'): H = H + np.sum(np.log(sigma))   # if standardized
     dH = 0.
     ## cross-check against own calcs
     #alt = GaussianMixture(predictor.weights_, mu=predictor.means_, sigma=predictor.covariances_)
@@ -286,7 +289,7 @@ def wnn_entropy(points, k=None, weights=True, n_est=None, gmm=None):
     # for dU = det(sigma) dx.  Since the standardization squishes the dimensions
     # independently, sigma is a diagonal matrix, with the determinant equal to
     # the product of the diagonal elements.
-    #x, mu, sigma = standardize(x)
+    #x, mu, sigma = standardize(x)  # Note: sigma may be zero
     #detDU = np.prod(sigma)
     detDU = 1.
 
@@ -355,6 +358,7 @@ def scipy_stats_density(sample_points, evaluation_points):  # pragma: no cover
     """
     ## standardize data so that we can use uniform bandwidth
     ## Note: this didn't help with singular matrix
+    ## Note: if re-enable, protect against sigma=0 in some dimensions
     #mu, sigma = mean(data, axis=0), std(data, axis=0)
     #data,points = (data - mu)/sigma, (points - mu)/sigma
 
@@ -366,11 +370,40 @@ def sklearn_log_density(sample_points, evaluation_points):
     """
     Estimate the log probability density function from which a set of sample
     points was drawn and return the estimated density at the evaluation points.
+
+    *sample_points* is an [n x m] matrix.
+
+    *evaluation_points* is the set of points at which to evaluate the kde.
+
+    Note: if any dimension has all points equal then the entire distribution
+    is treated as a dirac distribution with infinite density at each point.
+    This makes the entropy calculation better behaved (narrowing the
+    distribution increases the entropy) but is not so useful in other contexts.
+    Other packages will (correctly) ignore dimensions of width zero.
     """
+    # Ugly hack warning: if *evaluation_points* is an integer, then sample
+    # that many points from the kde and return the log density at each
+    # sampled point.  Since the code that uses this is looking only at
+    # the mean log density, it doesn't need the sample points themselves.
+    # This interface should be considered internal to the entropy module
+    # and not used by outside functions.  If you need it externally, then
+    # restructure the api so that the function always returns both the
+    # points and the density, as well as any other function (such as the
+    # denisty function and the sister function scipy_stats_density) so
+    # that all share the new interface.
+
     from sklearn.neighbors import KernelDensity
 
     # Standardize data so we can use spherical kernels and uniform bandwidth
     data, mu, sigma = standardize(sample_points)
+
+    # Note that sigma will be zero for dimensions w_o where all points are equal.
+    # With P(w) = P(w, w_o) / P(w_o | w) and P(w_o) = 1 for all points in
+    # the set, then P(w) = P(w, w_o) and we can ignore the zero dimensions.
+    # However, as another ugly hack, we want the differential entropy to go
+    # to -inf as the distribution narrows, so pretend that P = 0 everywhere.
+    # Uncomment the following line to return the sample probability instead.
+    ## sigma[sigma == 0.] = 1.
 
     # Silverman bandwidth estimator
     n, d = sample_points.shape
@@ -389,16 +422,28 @@ def sklearn_log_density(sample_points, evaluation_points):
                         rtol=1e-6, atol=1e-6)
     kde.fit(data)
 
-    if evaluation_points is None:
-        evaluation_points = sample_points
-    if not isinstance(evaluation_points, int):
-        # Standardized evaluation points to match sample distribution
-        points = (evaluation_points - mu)/sigma
-    else:
+    if isinstance(evaluation_points, int):
         # For generated points, they already follow the distribution
-        points = kde.sample(evaluation_points)
-    # Evalueate pdf, scaling the resulting density by sigma to correct the area.
-    log_pdf = kde.score_samples(points) - np.sum(np.log(sigma))
+        points = kde.sample(n)
+    elif evaluation_points is not None:
+        # Standardized evaluation points to match sample distribution
+        # Note: for dimensions where all sample points are equal, sigma
+        # has been artificially set equal to one.  This means that the
+        # evaluation points which do not match the sample value will
+        # use the simple differences for the z-score rather than
+        # pushing them out to plus/minus infinity.
+        points = (evaluation_points - mu)/(sigma + (sigma == 0.))
+    else:
+        points = sample_points
+
+    # Evaluate pdf, scaling the resulting density by sigma to correct the area.
+    # If sigma is zero, return entropy as -inf;  this seems to not be the
+    # case for discrete distributions (consider Bernoulli with p=1, q=0,
+    #  => H = -p log p - q log q = 0), so need to do something else, both
+    # for the kde and for the entropy calculation.
+    with np.errstate(divide='ignore'):
+        log_pdf = kde.score_samples(points) - np.sum(np.log(sigma))
+
     return log_pdf
 
 
@@ -495,11 +540,18 @@ def entropy(points, logp, N_entropy=10000, N_norm=2500):
     eval_logp -= log_scale
 
     # Compute entropy and uncertainty in nats
+    # Note: if all values are the same in any dimension then we have a dirac
+    # functional with infinite probability at every sample point, and the
+    # differential entropy estimate will yield H = -inf.
     rho = density(norm_points, entropy_points)
+    #print(rho.min(), rho.max(), eval_logp.min(), eval_logp.max())
     frac = exp(eval_logp)/rho
     n_est, n_err = mean(frac), std(frac)
-    s_est = log(n_est) - mean(eval_logp)
-    s_err = n_err/n_est
+    if n_est == 0.:
+        s_est, s_err = -np.inf, 0.
+    else:
+        s_est = log(n_est) - mean(eval_logp)
+        s_err = n_err/n_est
     #print(n_est, n_err, s_est/LN2, s_err/LN2)
     ##print(np.median(frac), log(np.median(frac))/LN2, log(n_est)/LN2)
     if False:
@@ -675,6 +727,31 @@ class Box:
     def entropy(self):
         return -self._logpdf
 
+# CRUFT: scipy MVN gives wrong entropy for singular (and near singular) matrices
+# This solution gives wrong results for near-singular rvs(), but for the simple
+# case of a diagonal Sigma with one zero it does what I need for the test.
+class MVNSingular:
+    def __init__(self, *args, **kw):
+        kw['allow_singular'] = True
+        self.dist = stats.multivariate_normal(*args, **kw)
+
+    @property
+    def dim(self):
+        return self.dist.dim
+
+    def pdf(self, theta):
+        return self.dist.pdf(theta)
+
+    def logpdf(self, theta):
+        return self.dist.logpdf(theta)
+
+    def rvs(self, size=1):
+        return self.dist.rvs(size=size)
+
+    def entropy(self, N=10000):
+        with np.errstate(divide='ignore'):
+            return 0.5*log(np.linalg.det((2*pi*np.e)*self.dist.cov))
+
 class GaussianMixture:
     def __init__(self, w, mu=None, sigma=None):
         mu = np.asarray(mu)
@@ -820,8 +897,9 @@ def _check_entropy(name, D, seed=1, N=10000, N_entropy=None, N_norm=2500, demo=F
             #S_kde = kde_entropy_sklearn_gmm(theta, n_est=N_entropy)
     finally:
         np.random.set_state(state)
+    H = D.entropy()/LN2
     if demo:
-        print("entropy", N, "~", name, D.entropy()/LN2, end='')
+        print("entropy", N, "~", name, H, end='')
         if use_kramer:
             print(" Kramer", S, Serr, end='')
         if use_wnn:
@@ -836,10 +914,16 @@ def _check_entropy(name, D, seed=1, N=10000, N_entropy=None, N_norm=2500, demo=F
     else:
         if use_kramer:
             #assert Serr < 0.05*S, "incorrect error est. for Kramer"
-            assert abs(S - D.entropy()/LN2) < 3*Serr, "incorrect est. for Kramer"
+            if np.isfinite(H):
+                assert abs(S - H) < 3*Serr, "incorrect est. for Kramer"
+            else:
+                assert not np.isfinite(S), "incorrect est. for Kramer"
         if use_wnn:
-            assert Serr_wnn < 0.05*S_wnn, "incorrect error est. for wnn"
-            assert abs(S_wnn - D.entropy()/LN2) < 3*Serr_wnn, "incorrect est. for wnn"
+            if np.isfinite(H):
+                assert Serr_wnn < 0.05*S_wnn, "incorrect error est. for wnn"
+                assert abs(S_wnn - H) < 3*Serr_wnn, "incorrect est. for wnn"
+            else:
+                assert not np.isfinite(S_wnn), "incorrect est. for wnn"
 
 def _show_entropy(name, D, **kw):
     with Timer():
@@ -875,6 +959,9 @@ def test():
         _check_entropy("MVN[1,12,0.2]", D)
         D = stats.multivariate_normal(cov=np.diag([1]*10))
         _check_entropy("MVN[1]*10", D, N=10000)
+        # Make sure zero-width dimensions return H = -inf
+        D = MVNSingular(cov=np.diag([1, 1, 0]))
+        _check_entropy("MVN[1,1,0]", D, N=10000)
     #raise TestFailure("make bumps testing fail so we know that test harness works")
 
 def mvn_entropy_test():
