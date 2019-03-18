@@ -139,6 +139,8 @@ from ctypes import c_double
 
 import numpy as np
 
+from ..interrupt import interruptable, interrupted, set_traps
+
 from .state import MCMCDraw
 from .metropolis import metropolis, metropolis_dr, dr_step
 from .gelman import gelman
@@ -225,10 +227,8 @@ class Dream(object):
         if not self._initialized:
             self._initialized = True
         self.state = state
-        try:
-            _run_dream(self, abort_test=abort_test)
-        except KeyboardInterrupt:
-            pass
+        set_traps()
+        _run_dream(self, abort_test=abort_test)
         return self.state
 
 
@@ -307,93 +307,98 @@ def _run_dream(dream, abort_test=lambda: False):
         dream.CR.reset()
         CR = np.ascontiguousarray(np.vstack((dream.CR.CR, dream.CR.weight)).T, 'd')
         for gen in range(dream.DE_steps):
+            with interruptable():
+                # Define the current locations and associated posterior densities
+                xold, logp_old = x, logp
+                pop = state._draw_pop()
+                #print(pop.ctypes.data, np.ascontiguousarray(pop).ctypes.data)
+                #print(pop)
+                #print("gen", gen, pop.shape)
 
-            # Define the current locations and associated posterior densities
-            xold, logp_old = x, logp
-            pop = state._draw_pop()
-            #print(pop.ctypes.data, np.ascontiguousarray(pop).ctypes.data)
-            #print(pop)
-            #print("gen", gen, pop.shape)
-
-            # Generate candidates for each sequence
-            if dll is None:
-                xtry, step_alpha, CR_used \
-                    = de_step(n_chain, pop, CR,
-                              max_pairs=dream.DE_pairs,
-                              eps=dream.DE_eps,
-                              snooker_rate=dream.DE_snooker_rate,
-                              noise=dream.DE_noise,
-                              scale=scale)
-            else:
-                dll.de_step(n_chain, n_var, len(CR),
-                            pop.ctypes, CR.ctypes,
-                            dream.DE_pairs,
-                            c_double(dream.DE_eps),
-                            c_double(dream.DE_snooker_rate),
-                            c_double(dream.DE_noise),
-                            c_double(scale),
-                            xtry.ctypes, step_alpha.ctypes, CR_used.ctypes)
-            #print("try", xtry)
+                # Generate candidates for each sequence
+                if dll is None:
+                    xtry, step_alpha, CR_used \
+                        = de_step(n_chain, pop, CR,
+                                max_pairs=dream.DE_pairs,
+                                eps=dream.DE_eps,
+                                snooker_rate=dream.DE_snooker_rate,
+                                noise=dream.DE_noise,
+                                scale=scale)
+                else:
+                    dll.de_step(n_chain, n_var, len(CR),
+                                pop.ctypes, CR.ctypes,
+                                dream.DE_pairs,
+                                c_double(dream.DE_eps),
+                                c_double(dream.DE_snooker_rate),
+                                c_double(dream.DE_noise),
+                                c_double(scale),
+                                xtry.ctypes, step_alpha.ctypes, CR_used.ctypes)
+                #print("try", xtry)
 
 
-            # PAK: Try a local optimizer every N generations
-            if next_goalseek <= state.generation <= last_goalseek:
-                best, logp_best = dream.goalseek_optimizer(
-                    dream.model.map, apply_bounds, xold, logp_old)
-                xtry[0] = best
-                # Note: it is slightly inefficient to throw away logp_best,
-                # but it makes the the code cleaner if we do
-                next_goalseek += dream.goalseek_interval
+                # PAK: Try a local optimizer every N generations
+                if next_goalseek <= state.generation <= last_goalseek:
+                    best, logp_best = dream.goalseek_optimizer(
+                        dream.model.map, apply_bounds, xold, logp_old)
+                    xtry[0] = best
+                    # Note: it is slightly inefficient to throw away logp_best,
+                    # but it makes the the code cleaner if we do
+                    next_goalseek += dream.goalseek_interval
 
-            # Compute the likelihood of the candidates
-            apply_bounds(xtry)
+                # Compute the likelihood of the candidates
+                apply_bounds(xtry)
 # ********************** MAP *****************************
-            #next_time = time.time()
-            #serial_time += next_time - last_time
-            #last_time = next_time
-            logp_try = dream.model.map(xtry)
-            #next_time = time.time()
-            #parallel_time  += next_time - last_time
-            #last_time = next_time
-            draws = len(logp_try)
+                #next_time = time.time()
+                #serial_time += next_time - last_time
+                #last_time = next_time
+                logp_try = dream.model.map(xtry)
+                #next_time = time.time()
+                #parallel_time  += next_time - last_time
+                #last_time = next_time
+                draws = len(logp_try)
 
-            # Apply the metropolis acceptance/rejection rule
-            x, logp, alpha, accept \
-                = metropolis(xtry, logp_try,
-                             xold, logp_old,
-                             step_alpha)
+                # Apply the metropolis acceptance/rejection rule
+                x, logp, alpha, accept \
+                    = metropolis(xtry, logp_try,
+                                xold, logp_old,
+                                step_alpha)
 
-            # Process delayed rejection
-            # PAK NOTE: this updates according to the covariance matrix of the
-            # current sample, which may be useful on unimodal systems, but
-            # doesn't seem to be of any value in general; the DREAM papers
-            # found that the acceptance rate did indeed improve with delayed
-            # rejection, but the overall performance did not.  Worse, this
-            # requires a linear system solution O(nPop^3) which can be near
-            # singular for complex posterior distributions.
-            if dream.use_delayed_rejection and not accept.all():
-                # Generate alternate candidates using the covariance of xold
-                xdr, r = dr_step(x=xold, scale=dream.DR_scale)
+                # Process delayed rejection
+                # PAK NOTE: this updates according to the covariance matrix of the
+                # current sample, which may be useful on unimodal systems, but
+                # doesn't seem to be of any value in general; the DREAM papers
+                # found that the acceptance rate did indeed improve with delayed
+                # rejection, but the overall performance did not.  Worse, this
+                # requires a linear system solution O(nPop^3) which can be near
+                # singular for complex posterior distributions.
+                if dream.use_delayed_rejection and not accept.all():
+                    # Generate alternate candidates using the covariance of xold
+                    xdr, r = dr_step(x=xold, scale=dream.DR_scale)
 
-                # Compute the likelihood of the new candidates
-                reject = ~accept
-                apply_bounds(xdr)
-# ********************** MAP *****************************
-                logp_xdr = dream.model.map(xdr[reject])
-                draws += len(logp_xdr)
+                    # Compute the likelihood of the new candidates
+                    reject = ~accept
+                    apply_bounds(xdr)
+    # ********************** MAP *****************************
+                    logp_xdr = dream.model.map(xdr[reject])
+                    draws += len(logp_xdr)
 
-                # Apply the metropolis delayed rejection rule.
-                x[reject], logp[reject], alpha[reject], accept[reject] = \
-                    metropolis_dr(xtry[reject], logp_try[reject],
-                                  x[reject], logp[reject],
-                                  xold[reject], logp_old[reject],
-                                  alpha[reject], r)
+                    # Apply the metropolis delayed rejection rule.
+                    x[reject], logp[reject], alpha[reject], accept[reject] = \
+                        metropolis_dr(xtry[reject], logp_try[reject],
+                                    x[reject], logp[reject],
+                                    xold[reject], logp_old[reject],
+                                    alpha[reject], r)
 
-            # els = zip(logp_old, logp_try, logp, x[:, -2], x[:, -1], accept)
-            #print "pop", "\n ".join((("%12.3e "*(len(el)-1))%el[:-1])
-            #                       +("T " if el[-3]<=el[-2] else "  ")
-            #                       +("accept" if el[-1] else "")
-            #                       for el in els)
+                # els = zip(logp_old, logp_try, logp, x[:, -2], x[:, -1], accept)
+                #print "pop", "\n ".join((("%12.3e "*(len(el)-1))%el[:-1])
+                #                       +("T " if el[-3]<=el[-2] else "  ")
+                #                       +("accept" if el[-1] else "")
+                #                       for el in els)
+
+            if interrupted():
+                # DREAM calculation was interrupted mid-step, so abort without
+                # updating state
+                break
 
             # Update Sequences with the new population.
             state._generation(draws, x, logp, accept)
@@ -405,7 +410,8 @@ def _run_dream(dream, abort_test=lambda: False):
             if state.draws <= dream.burn:
                 dream.CR.update(xold, x, CR_used)
 
-            if abort_test():
+            # Check if stop button pressed or interrupt occurred while writing.
+            if abort_test() or interrupted():
                 break
 
         #print("serial&parallel",serial_time,parallel_time)
@@ -442,7 +448,7 @@ def _run_dream(dream, abort_test=lambda: False):
         # Save update information
         state._update(R_stat=r_stat, CR_weight=dream.CR.weight)
 
-        if abort_test():
+        if abort_test() or interrupted():
             break
 
 
