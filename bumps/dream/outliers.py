@@ -13,10 +13,8 @@ from .mahal import mahalanobis
 from .acr import ACR
 
 tinv = student_t.ppf
-# from scipy.stats import scoreatpercentile as prctile
+
 # CRUFT: scoreatpercentile not accepting array arguments in older scipy
-
-
 def prctile(v, Q):
     v = sort(v)
     return [scoreatpercentile(v, Qi) for Qi in Q]

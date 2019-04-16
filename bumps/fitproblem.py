@@ -414,20 +414,20 @@ class BaseFitProblem(object):
 
     def nllf(self, pvec=None):
         """
-        Compute the cost function for a new parameter set p.
+        compute the cost function for a new parameter set p.
 
-        This is not simply the sum-squared residuals, but instead is the
+        this is not simply the sum-squared residuals, but instead is the
         negative log likelihood of seeing the data given the model parameters
-        plus the negative log likelihood of seeing the model parameters.  The
+        plus the negative log likelihood of seeing the model parameters.  the
         value is used for a likelihood ratio test so normalization constants
-        can be ignored.  There is an additional penalty value provided by
-        the model which can be used to implement inequality constraints.  Any
+        can be ignored.  there is an additional penalty value provided by
+        the model which can be used to implement inequality constraints.  any
         penalty should be large enough that it is effectively excluded from
         the parameter space returned from uncertainty analysis.
 
-        The model is not actually calculated if the parameter nllf plus the
+        the model is not actually calculated if the parameter nllf plus the
         constraint nllf are bigger than *soft_limit*, but instead it is
-        assigned a value of *penalty_nllf*.  This will prevent expensive
+        assigned a value of *penalty_nllf*.  this will prevent expensive
         models from spending time computing values in the unfeasible region.
         """
         if pvec is not None:
@@ -440,8 +440,8 @@ class BaseFitProblem(object):
         cost = pparameter + pconstraints + pmodel
         # print(pvec, "cost=",pparameter,"+",pconstraints,"+",pmodel,"=",cost)
         if isnan(cost):
-            # TODO: make sure errors get back to the user
-            # print "point evaluates to NaN"
+            # todo: make sure errors get back to the user
+            # print "point evaluates to nan"
             # print parameter.summarize(self._parameters)
             return inf
         return cost
