@@ -2,7 +2,7 @@ from __future__ import division, print_function
 
 import numpy as np
 from bumps.names import Parameter, pmath, FitProblem, cosd, sind
-from .peaks import Peaks, Gaussian, Background
+from .peaks import Peaks, Gaussian, Background, Lorentzian
 
 
 def read_data():
@@ -29,8 +29,8 @@ def build_problem():
     background += np.sqrt(background)
     signal = np.sum(M.data) - M.data.size*background
     M.parts[-1].C.value = background
-    peak1 = M.parts[0]
 
+    peak1 = M.parts[0]
     peak1.xc.range(0.45, 0.55)
     peak1.yc.range(-0.55, -0.4)
     peak1.xc.value = 0.500
