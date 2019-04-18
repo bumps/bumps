@@ -540,20 +540,19 @@ def main():
         run_profiler(problem, steps=int(opts.steps))
     elif opts.chisq:
         if opts.cov:
-            print(problem.cov())
+            fitdriver.show_cov()
         print("chisq", problem.chisq_str())
     elif opts.preview:
         if opts.cov:
-            print(problem.cov())
+            fitdriver.show_cov()
         preview(problem, view=opts.view)
     elif opts.resynth > 0:
         resynth(fitdriver, problem, mapper, opts)
 
     elif opts.remote:
-
         # Check that problem runs before submitting it remotely
-        chisq = problem()
-        print("initial chisq:", chisq)
+        # TODO: this may fail if problem requires remote resources such as GPU
+        print("initial chisq:", problem.chisq_str())
         job = start_remote_fit(problem, opts,
                                queue=opts.queue, notify=opts.notify)
         print("remote job:", job['id'])
@@ -583,14 +582,9 @@ def main():
         if opts.err or opts.cov:
             fitdriver.show_err()
         if opts.cov:
-            np.set_printoptions(linewidth=1000000)
-            print("=== Covariance matrix ===")
-            print(problem.cov())
-            print("=========================")
+            fitdriver.show_cov()
         if opts.entropy:
-            print("Calculating entropy...")
-            S, dS = fitdriver.entropy()
-            print("Entropy: %s bits" % format_uncertainty(S, dS))
+            fitdriver.show_entropy()
         mapper.stop_mapper(fitdriver.mapper)
         if not opts.batch and not opts.mpi and not opts.noshow:
             beep()

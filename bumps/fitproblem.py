@@ -56,6 +56,7 @@ import sys
 import os
 import traceback
 import logging
+import warnings
 
 import numpy as np
 from numpy import inf, isnan, NaN
@@ -78,39 +79,39 @@ class Fitness(object):
         Model parameters are a hierarchical structure of lists and
         dictionaries.
         """
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def update(self):
         """
         Called when parameters have been updated.  Any cached values will need
         to be cleared and the model reevaluated.
         """
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def numpoints(self):
         """
         Return the number of data points.
         """
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def nllf(self):
         """
         Return the negative log likelihood value of the current parameter set.
         """
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def resynth_data(self):
         """
         Generate fake data based on uncertainties in the real data.  For
         Monte Carlo resynth-refit uncertainty analysis.  Bootstrapping?
         """
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def restore_data(self):
         """
         Restore the original data in the model (after resynth).
         """
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def residuals(self):
         """
@@ -118,7 +119,7 @@ class Fitness(object):
 
         Used for Levenburg-Marquardt, and for plotting.
         """
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def save(self, basename):
         """
@@ -370,10 +371,27 @@ class BaseFitProblem(object):
         """
         return [p.residual() for p in self.bounded]
 
+    @property
+    def has_residuals(self):
+        """
+        True if the underlying fitness function defines residuals.
+        """
+        return hasattr(self.fitness, 'residuals')
+
     def residuals(self):
-        """
+        r"""
         Return the model residuals.
+
+        If the model is defined by $y = f(x) + \epsilon$ for normally
+        distributed error in the measurement $y$ equal to
+        $\epsilon \sim N(0, \sigma^2)$, then residuals will be defined by
+        $R = (y - f(x))/\sigma$.  If the measurement uncertainty is not normal,
+        then the normal equivalent residuals should be defined so that the
+        Levenberg-Marquardt fit behaves reasonably, and the plot of
+        residuals gives an indication of which points are driving the fit.
         """
+        if not hasattr(self.fitness, 'residuals'):
+            raise NotImplemented("model does not define residuals")
         return self.fitness.residuals()
 
     def chisq(self):
@@ -530,6 +548,10 @@ class BaseFitProblem(object):
         Return the covariance matrix as computed by numdifftools from the
         Hessian matrix for the problem at the current parameter values.
         """
+        # TODO: remove from model
+        warnings.warn("use cov and stderr from FitDriver, not problem.",
+                      DeprecationWarning)
+
         from . import lsqerror
         H = lsqerror.hessian(self)
         H, L = lsqerror.perturbed_hessian(H)
@@ -541,6 +563,10 @@ class BaseFitProblem(object):
         correlation matrix *R* as computed from the covariance returned by
         *cov*.
         """
+        # TODO: remove from model
+        warnings.warn("use cov and stderr from FitDriver, not problem.",
+                      DeprecationWarning)
+
         from . import lsqerror
         c = self.cov()
         return lsqerror.stderr(c), lsqerror.corr(c)
@@ -641,6 +667,13 @@ class MultiFitProblem(BaseFitProblem):
         """Restore original data after resynthesis."""
         for f in self.models:
             f.restore_data()
+
+    @property
+    def has_residuals(self):
+        """
+        True if all underlying fitness functions define residuals.
+        """
+        return all(f.has_residuals for f in self.models)
 
     def residuals(self):
         resid = np.hstack([w * f.residuals()

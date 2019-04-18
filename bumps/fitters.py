@@ -908,6 +908,7 @@ class FitDriver(object):
         self.abort_test = abort_test
         self.mapper = mapper if mapper else lambda p: list(map(problem.nllf, p))
         self.fitter = None
+        self.result = None
 
     def fit(self, resume=None):
 
@@ -940,6 +941,11 @@ class FitDriver(object):
             from .dream import entropy
             return entropy.cov_entropy(self.cov()), 0
 
+    def chisq(self):
+        if not hasattr(self, '_chisq'):
+            self._chisq = self.problem.chisq()
+        return self._chisq
+
     def cov(self):
         r"""
         Return an estimate of the covariance of the fit.
@@ -957,16 +963,32 @@ class FitDriver(object):
         This should be faster and more accurate than the Hessian of nllf
         when you can use it.
         """
+        # Note: if fit() has not been run then self.fitter is None and in
+        # particular, self.fitter will not have a covariance matrix.  In
+        # this case, the code will fall through to computing the covariance
+        # matrix directly from the problem.  It will use the initial value
+        # stored in the problem parameters because results will also be None.
         if not hasattr(self, '_cov'):
             self._cov = None
             if hasattr(self.fitter, 'cov'):
                 self._cov = self.fitter.cov()
         if self._cov is None:
-            if hasattr(self.problem, 'residuals'):
-                J = lsqerror.jacobian(self.problem, self.result[0])
+            # Use Jacobian if residuals are available because it is faster
+            # to compute.  Otherwise punt and use Hessian.  The has_residuals
+            # attribute should be True if present.  It may be false if
+            # the problem defines a residuals method but doesn't really
+            # have residuals (e.g. to allow levenberg-marquardt to run even
+            # though it is not fitting a sum-square problem).
+            if hasattr(self.problem, 'has_residuals'):
+                has_residuals = self.problem.has_residuals
+            else:
+                has_residuals = hasattr(self.problem, 'residuals')
+            x = self.problem.getp() if self.result is None else self.result[0]
+            if has_residuals:
+                J = lsqerror.jacobian(self.problem, x)
                 self._cov = lsqerror.cov(J)
             else:
-                H = lsqerror.hessian(self.problem, self.result[0])
+                H = lsqerror.hessian(self.problem, x)
                 H, L = lsqerror.perturbed_hessian(H)
                 self._cov = lsqerror.chol_cov(L)
         return self._cov
@@ -979,14 +1001,31 @@ class FitDriver(object):
         existing evaluations within the fitter, or from numerical
         differentiation around the minimum.
         """
+        # Note: if fit() has not been run then self.fitter is None and in
+        # particular, self.fitter will not have a stderr method defined so
+        # it will compute stderr from covariance.
         if not hasattr(self, '_stderr'):
             self._stderr = None
             if hasattr(self.fitter, 'stderr'):
                 self._stderr = self.fitter.stderr()
         if self._stderr is None:
             # If no stderr from the fitter then compute it from the covariance
-            self._stderr = lsqerror.stderr(self.cov())
+            self._stderr = self.stderr_from_cov()
         return self._stderr
+
+    def stderr_from_cov(self):
+        """
+        Return an estimate of standard error of the fit from covariance matrix.
+
+        Unlike stderr, which uses the estimate from the underlying
+        fitter (DREAM uses the MCMC sample for this), *stderr_from_cov*
+        estimates the error from the diagonal of the covariance matrix.
+        Here, the covariance matrix may have been estimated by the fitter
+        instead of the Hessian.
+        """
+        if not hasattr(self, '_stderr_from_cov'):
+            self._stderr_from_cov = lsqerror.stderr(self.cov())
+        return self._stderr_from_cov
 
     def show(self):
         if hasattr(self.fitter, 'show'):
@@ -1002,14 +1041,34 @@ class FitDriver(object):
         """
         # TODO: need cheaper uncertainty estimate
         # Note: error estimated from hessian diagonal is insufficient.
-        err = lsqerror.stderr(self.cov())
-        norm = np.sqrt(self.problem.chisq())
-        print("=== Uncertainty est. from curvature: par    dx           dx/sqrt(chisq) ===")
+        err = self.stderr_from_cov()
+        norm = np.sqrt(self.chisq())
+        print("=== Uncertainty from curvature:     name"
+              " value(unc.)    "
+              " value(unc./chi)) ===")
         for k, v, dv in zip(self.problem.labels(), self.problem.getp(), err):
             print("%40s %-15s %-15s" % (k,
                   format_uncertainty(v, dv),
                   format_uncertainty(v, dv/norm)))
         print("="*75)
+
+    def show_cov(self):
+        cov = self.cov()
+        maxn = 1000 # max array dims to print
+        cov_str = np.array2string(
+            cov,
+            max_line_width=20*maxn, threshold=maxn*maxn,
+            precision=6, #suppress_small=True,
+            separator=', ',
+        )
+        print("=== Covariance matrix ===")
+        print(cov_str)
+        print("=========================")
+
+    def show_entropy(self):
+        print("Calculating entropy...")
+        S, dS = fitdriver.entropy()
+        print("Entropy: %s bits" % format_uncertainty(S, dS))
 
     def save(self, output_path):
         # print "calling driver save"
@@ -1032,6 +1091,17 @@ class FitDriver(object):
         if hasattr(self.fitter, 'plot'):
             self.fitter.plot(output_path=output_path)
 
+    def _save_fit_cov(self, output_path):
+        model = getattr(self.problem, 'name', self.problem.__class__.__name__)
+        fitter = self.fitclass.id
+        cov = self.cov()
+        err = self.stderr_from_cov()
+        chisq = self.chisq()
+
+        state = {
+            'model': model,
+            'fitter': fitter,
+        }
 
 
 def _fill_defaults(options, settings):

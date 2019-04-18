@@ -46,6 +46,8 @@ class PDF(object):
     par=value to define the parameter) or is set to zero if no default is
     given in the function.
     """
+    has_residuals = False  # Don't have true residuals
+
     def __init__(self, fn, name="", plot=None, dof=1, **kw):
         self.dof = dof
         # Make every name a parameter; initialize the parameters
@@ -147,6 +149,8 @@ class VectorPDF(object):
     par=value to define the parameter) or is set to zero if no default is
     given in the function.
     """
+    has_residuals = False  # Don't have true residuals
+
     def __init__(self, fn, p, name="", plot=None, dof=1, labels=None, **kw):
         self.dof = dof
         if labels is None:
@@ -217,6 +221,8 @@ class DirectProblem(object):
     Unlike :class:`PDF`, no parameter objects are defined for the elements
     of *p*, so all are fitting parameters.
     """
+    has_residuals = False  # Don't have true residuals
+
     def __init__(self, f, p0, bounds=None, dof=1, labels=None, plot=None):
         self.f = f
         self.n = len(p0)

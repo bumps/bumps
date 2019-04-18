@@ -787,8 +787,8 @@ def _check_entropy(name, D, seed=1, N=10000, N_entropy=None, N_norm=2500, demo=F
     """
     Check if entropy from a random draw matches analytic entropy.
     """
+    use_kramer = use_mvn = use_wnn = use_gmm = use_kde = False
     if demo:
-        use_kramer = use_mvn = use_wnn = use_gmm = use_kde = False
         #use_kramer = True
         #use_wnn = True
         use_mvn = True

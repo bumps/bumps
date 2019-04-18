@@ -83,7 +83,7 @@ class Peaks(object):
 
     def residuals(self):
         #if np.any(self.err ==0): print "zeros in err"
-        return (self.theory()-self.data)/(self.err+1)
+        return (self.theory()-self.data)/(self.err+(self.err==0.))
 
     def nllf(self):
         R = self.residuals()
