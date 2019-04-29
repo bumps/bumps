@@ -55,6 +55,43 @@ class Gaussian(object):
         return Zf/total*abs(area) if total>0 else np.zeros_like(x)
 
 
+class Cauchy(object):
+    r"""
+    2-D Cauchy
+
+    https://en.wikipedia.org/wiki/Cauchy_distribution#Multivariate_Cauchy_distribution
+    """
+    def __init__(self, A=1, xc=0, yc=0, g1=1, g2=1, theta=0, name=""):
+        self.A = Parameter(A,name=name+"A")
+        self.xc = Parameter(xc,name=name+"xc")
+        self.yc = Parameter(yc,name=name+"yc")
+        self.g1 = Parameter(g1,name=name+"g1")
+        self.g2 = Parameter(g2,name=name+"g2")
+        self.theta = Parameter(theta,name=name+"theta")
+
+    def parameters(self):
+        return dict(A=self.A,
+                    xc=self.xc, yc=self.yc,
+                    g1=self.g1, g2=self.g2,
+                    theta=self.theta)
+
+    def __call__(self, x, y):
+        area = self.A.value
+        g1 = self.g1.value
+        g2 = self.g2.value
+        t = radians(self.theta.value)
+        xc = self.xc.value
+        yc = self.yc.value
+        xbar,ybar = x-xc,y-yc
+        a = cos(t)**2/g1**2 + sin(t)**2/g2**2
+        b = sin(2*t)*(-1/g1**2 + 1/g2**2)
+        c = sin(t)**2/g1**2 + cos(t)**2/g2**2
+        gsq = a*xbar**2 + b*xbar*ybar + c*ybar**2
+        Zf = 1./(2*pi*sqrt(g1*g2)*(1 + gsq)**1.5)
+        #return Zf*abs(area)
+        total = np.sum(Zf)
+        return Zf/total*abs(area) if total>0 else np.zeros_like(x)
+
 class Lorentzian(object):
     r"""
     Lorentzian peak.

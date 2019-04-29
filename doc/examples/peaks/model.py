@@ -2,7 +2,7 @@ from __future__ import division, print_function
 
 import numpy as np
 from bumps.names import Parameter, pmath, FitProblem, cosd, sind
-from .peaks import Peaks, Gaussian, Background, Lorentzian
+from .peaks import Peaks, Gaussian, Background, Cauchy
 
 
 def read_data():
@@ -21,6 +21,7 @@ def build_problem():
 
     M = Peaks([Gaussian(name="G1-"),
                Gaussian(name="G2-"),
+               #Cauchy(name="C2-"),
                #Gaussian(name="G3-"),
                #Gaussian(name="G4-"),
                Background()],
@@ -77,6 +78,11 @@ def build_problem():
     peak1.theta.range(-90, -0)
 
     if 1:
+        peak2 = M.parts[1]
+        peak2.g1.range(*peak1.s1.bounds.limits)
+        peak2.g2.range(*peak1.s2.bounds.limits)
+        peak2.theta.range(*peak1.theta.bounds.limits)
+    elif 1:
         # Peak shape is the same across all peaks
         for peak in M.parts[1:-1]:
             peak.s1 = peak1.s1
@@ -93,8 +99,12 @@ def build_problem():
 
     if 1:
         for peak in M.parts[:-1]:
-            peak.s1.value = 0.006
-            peak.s2.value = 0.002
+            if isinstance(peak, Cauchy):
+                peak.g1.value = 0.006
+                peak.g2.value = 0.002
+            else:
+                peak.s1.value = 0.006
+                peak.s2.value = 0.002
             peak.theta.value = -60.0
             peak.A.value = signal/2
 
