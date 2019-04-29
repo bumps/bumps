@@ -305,7 +305,8 @@ Options:
     --overwrite
         if store already exists, replace it
     --resume=path    [dream]
-        resume a fit from previous stored state
+        resume a fit from previous stored state; if path is '-' then use the
+        path given by --store, if it exists
     --parallel=n
         run fit using multiprocessing for parallelism; use --parallel=0 for all cpus
     --mpi

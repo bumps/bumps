@@ -79,8 +79,8 @@ def build_problem():
 
     if 1:
         peak2 = M.parts[1]
-        peak2.g1.range(*peak1.s1.bounds.limits)
-        peak2.g2.range(*peak1.s2.bounds.limits)
+        peak2.s1.range(*peak1.s1.bounds.limits)
+        peak2.s2.range(*peak1.s2.bounds.limits)
         peak2.theta.range(*peak1.theta.bounds.limits)
     elif 1:
         # Peak shape is the same across all peaks

@@ -818,10 +818,21 @@ class DreamFit(FitBase):
     #    return np.cov(self.state.draw().points[-1000:])
 
     def load(self, input_path):
-        from .dream.state import load_state
-        print("loading saved state (this might take awhile) ...")
-        fn, labels = getattr(self.problem, 'derive_vars', (None, []))
-        self.state = load_state(input_path, report=100, derived_vars=len(labels))
+        from .dream.state import load_state, path_contains_saved_state
+        if path_contains_saved_state(input_path):
+            print("loading saved state (this might take awhile) ...")
+            fn, labels = getattr(self.problem, 'derive_vars', (None, []))
+            self.state = load_state(input_path, report=100, derived_vars=len(labels))
+        elif input_path != problem.output_path:
+            # Only signal an error if --resume is different from --store.  If
+            # it is the same (e.g., because "--resume=-" was given on the
+            # command line) but missing, then silently skip the resume.  Note
+            # that we can't just check for the existence of the directory
+            # since we will already have created it before we get here.  We
+            # do want to signal an error if resume is different from store
+            # in order to catch typos on the command line instead of letting
+            # users quietly believe they are resuming.
+            raise RuntimeError("no mcmc saved at %r"%input_path)
 
     def save(self, output_path):
         self.state.save(output_path)

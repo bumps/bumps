@@ -558,6 +558,9 @@ def main():
         print("remote job:", job['id'])
 
     else:
+        # Run the fit
+        if opts.resume == '-':
+            opts.resume = opts.store if os.path.exists(opts.store) else None
         if opts.resume:
             resume_path = os.path.join(opts.resume, problem.name)
         else:

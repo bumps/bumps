@@ -72,6 +72,7 @@ from __future__ import division, print_function
 
 __all__ = ['MCMCDraw', 'load_state', 'save_state']
 
+import os.path
 import re
 import gzip
 
@@ -203,6 +204,10 @@ def loadtxt(file, report=0):
         fh.close()
     return asarray(res)
 
+
+def path_contains_saved_state(filename):
+    chain_file = filename + '-chain' + EXT
+    return os.path.exists(chain_file)
 
 def load_state(filename, skip=0, report=0, derived_vars=0):
     # Read chain file
