@@ -18,39 +18,48 @@ from .formatnum import format_value
 from .stats import var_stats, format_vars, save_vars
 
 def plot_all(state, portion=1.0, figfile=None):
-    from pylab import figure, savefig, suptitle, rcParams
-
-    figext = '.'+rcParams.get('savefig.format', 'png')
-
+    # Print/save uncertainty report before loading pylab or creating plots
     draw = state.draw(portion=portion)
     all_vstats = var_stats(draw)
+    print(format_vars(all_vstats))
+    if figfile is not None:
+        save_vars(all_vstats, figfile+"-err.json")
+
+    from pylab import figure, savefig, suptitle, rcParams
+    figext = '.'+rcParams.get('savefig.format', 'png')
+
+    # histograms
     figure()
     plot_vars(draw, all_vstats)
     if state.title:
         suptitle(state.title)
-    print(format_vars(all_vstats))
     if figfile is not None:
         savefig(figfile+"-vars"+figext)
-    if figfile is not None:
-        save_vars(all_vstats, figfile+"-err.json")
+
+    # parameter traces
     figure()
     plot_traces(state, portion=portion)
     suptitle("Parameter history" + (" for " + state.title if state.title else ""))
     if figfile is not None:
         savefig(figfile+"-trace"+figext)
-    # Suppress R stat for now
+
+    # R stat plot
     #figure()
     #plot_R(state, portion=portion)
     #if state.title:
     #    suptitle(state.title)
     #if figfile is not None:
     #    savefig(figfile+"-R"+format)
+
+    # convergence plot
     figure()
     plot_logp(state, portion=portion)
     if state.title:
         suptitle(state.title)
     if figfile is not None:
         savefig(figfile+"-logp"+figext)
+
+    # correlation plot
     if draw.num_vars <= 25:
         figure()
         plot_corrmatrix(draw)
