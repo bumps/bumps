@@ -335,7 +335,8 @@ Options:
     --ftol=1e-4     [de, amoeba]
         minimum population flatness
     --pop=10        [dream, de, rl, ps]
-        population size
+        population size is pop times number of fitted parameters; if pop is
+        negative, then set population size to -pop.
     --burn=100      [dream, pt]
         number of burn-in iterations before accumulating stats
     --thin=1        [dream]

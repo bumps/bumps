@@ -51,7 +51,7 @@ def generate(problem, init='eps', pop=10, use_point=True, **options):
     """
     initial = problem.getp()
     initial[~isfinite(initial)] = 1.
-    pop_size = int(math.ceil(pop * len(initial)))
+    pop_size = int(math.ceil(pop * len(initial))) if pop > 0 else int(-pop)
     bounds = problem.bounds()
     if init == 'random':
         population = random_init(
