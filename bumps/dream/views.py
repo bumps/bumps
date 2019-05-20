@@ -13,7 +13,7 @@ import numpy as np
 from numpy import arange, squeeze, linspace, meshgrid, vstack, inf
 from scipy.stats import kde
 
-from . import corrplot,build_histogram_layout
+from . import corrplot,build_plot_layout
 from .formatnum import format_value
 from .stats import var_stats, format_vars, save_vars
 
