@@ -74,7 +74,7 @@ def plot_vars(draw, all_vstats, **kw):
 
     clf()
     n = len(all_vstats)
-    fig = build_histogram_layout.build_axes_hist(n)
+    fig = build_plot_layout.build_axes_hist(n)
     cbar = _make_fig_colorbar(draw.logp)
     for k, vstats in enumerate(all_vstats):
         fig.sca(fig.axes[k])
