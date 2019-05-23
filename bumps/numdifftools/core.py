@@ -23,7 +23,6 @@ from __future__ import division, print_function
 import numpy as np
 from collections import namedtuple
 from numpy import linalg
-from scipy import misc
 import warnings
 
 # 2016-04-19 PAK use relative imports
@@ -40,6 +39,11 @@ except ImportError:
     numpy.nanmin = numpy.min
     numpy.nanargmin = numpy.argmin
 
+# CRUFT: factorial moved from scipy.misc to scipy.special
+try:
+    from scipy.special import factorial
+except ImportError:
+    from scipy.misc import factorial
 
 __all__ = ('dea3', 'Derivative', 'Jacobian', 'Gradient', 'Hessian', 'Hessdiag',
            'MinStepGenerator', 'MaxStepGenerator', 'Richardson')
@@ -791,7 +795,7 @@ class Derivative(_Derivative):
         inv_sr = 1.0 / step_ratio
         offset = [1, 1, 2, 2, 4, 1, 3][parity]
         c0 = [1.0, 1.0, 1.0, 2.0, 24.0, 1.0, 6.0][parity]
-        c = c0/misc.factorial(np.arange(offset, step * nterms + offset, step))
+        c = c0/factorial(np.arange(offset, step * nterms + offset, step))
         [i, j] = np.ogrid[0:nterms, 0:nterms]
         return np.atleast_2d(c[j] * inv_sr ** (i * (step * j + offset)))
 
