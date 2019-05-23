@@ -2,6 +2,7 @@ from __future__ import with_statement
 
 from ..dream import views as dream_views
 from ..dream import stats as dream_stats
+from ..dream import varplot as dream_varplot
 from .. import errplot
 from .plot_view import PlotView
 
@@ -15,7 +16,7 @@ class UncertaintyView(PlotView):
         history, stats = self.plot_state
         with self.pylab_interface as pylab:
             pylab.clf()
-            dream_views.plot_vars(history.draw(), stats)
+            dream_varplot.plot_vars(history.draw(), stats)
             pylab.draw()
 
     def update(self, state):

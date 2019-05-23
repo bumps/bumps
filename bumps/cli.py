@@ -408,6 +408,36 @@ def config_matplotlib(backend=None):
 
     matplotlib.interactive(False)
 
+    #configure the plot style
+    line_width = 1
+    pad = 2
+    font_family = 'Arial' if os.name == 'nt' else 'sans-serif'
+    font_size = 12
+    plot_style = {
+        'xtick.direction': 'in',
+        'ytick.direction': 'in',
+        'lines.linewidth': line_width,
+        'axes.linewidth': line_width,
+        'xtick.labelsize': font_size,
+        'ytick.labelsize': font_size,
+        'xtick.major.size': 5,
+        'ytick.major.size': 5,
+        'xtick.minor.size': 2.5,
+        'ytick.minor.size': 2.5,
+        'xtick.major.width': line_width,
+        'ytick.major.width': line_width,
+        'xtick.minor.width': line_width,
+        'ytick.minor.width': line_width,
+        'xtick.major.pad': pad,
+        'ytick.major.pad': pad,
+        'xtick.top': True,
+        'ytick.right': True,
+        'font.size': font_size,
+        'font.family': font_family,
+        'svg.fonttype': 'none',
+        'savefig.dpi': 100,
+    }
+    matplotlib.rcParams.update(plot_style)
 
 def beep():
     """
