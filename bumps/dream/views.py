@@ -13,7 +13,7 @@ import numpy as np
 from numpy import arange, squeeze, linspace, meshgrid, vstack, inf
 from scipy.stats import kde
 
-from . import corrplot
+from . import corrplot,build_plot_layout
 from .formatnum import format_value
 from .stats import var_stats, format_vars, save_vars
 
@@ -32,7 +32,7 @@ def plot_all(state, portion=1.0, figfile=None):
     figure()
     plot_vars(draw, all_vstats)
     if state.title:
-        suptitle(state.title)
+        suptitle(state.title,x=0,y=1,va='top',ha='left')
     if figfile is not None:
         savefig(figfile+"-vars"+figext)
 
@@ -73,10 +73,11 @@ def plot_vars(draw, all_vstats, **kw):
     from pylab import subplot, clf
 
     clf()
-    nw, nh = tile_axes(len(all_vstats))
+    n = len(all_vstats)
+    fig = build_plot_layout.build_axes_hist(n)
     cbar = _make_fig_colorbar(draw.logp)
     for k, vstats in enumerate(all_vstats):
-        subplot(nw, nh, k+1)
+        fig.sca(fig.axes[k])
         plot_var(draw, vstats, k, cbar, **kw)
 
 
@@ -153,13 +154,7 @@ def _decorate_histogram(vstats):
                verticalalignment='top',
                horizontalalignment='left',
                transform=pylab.gca().transAxes)
-    pylab.setp([pylab.gca().get_yticklabels()], visible=False)
-    ticks = (l95, l68, vstats.median, h68, h95)
-    labels = [format_value(v, h95-l95) for v in ticks]
-    if len(labels[2]) > 5:
-        # Drop 68% values if too many digits
-        ticks, labels = ticks[0::2], labels[0::2]
-    pylab.xticks(ticks, labels)
+    ax.set_yticklabels([])
 
 
 def _make_fig_colorbar(logp):
@@ -177,7 +172,7 @@ def _make_fig_colorbar(logp):
     #vmin,vmax = -max(logp),-min(logp)
 
     fig = pylab.gcf()
-    ax = fig.add_axes([0.60, 0.95, 0.35, 0.05])
+    ax=fig.axes[-1]
     cmap = mpl.cm.copper
 
     # Set the colormap and norm to correspond to the data for which
@@ -196,14 +191,20 @@ def _make_fig_colorbar(logp):
         def __call__(self, x, pos=None):
             return format_value(x, self.delta)
 
-    ticks = (vmin, vmax)
+    ticks = ()#(vmin, vmax)
     formatter = MinDigitsFormatter(vmin, vmax)
     cb = mpl.colorbar.ColorbarBase(ax, cmap=cmap, norm=norm,
                                    ticks=ticks, format=formatter,
-                                   orientation='horizontal')
+                                   orientation='vertical')
     #cb.set_ticks(ticks)
     #cb.set_ticklabels(labels)
     #cb.set_label('negative log likelihood')
+
+    cbar_box=ax.get_position().bounds
+    fig.text(cbar_box[0],cbar_box[1],
+             '{:.3G}'.format(vmin),va='top')
+    fig.text(cbar_box[0],cbar_box[1]+cbar_box[3],
+             '{:.3G}'.format(vmax),va='bottom')
 
     return vmin, vmax, cmap
 
