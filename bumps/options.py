@@ -6,6 +6,7 @@ from __future__ import print_function
 import sys
 from .fitters import FITTERS, FIT_AVAILABLE_IDS, FIT_ACTIVE_IDS, FIT_DEFAULT_ID
 
+# TODO: replace with standard argparse module
 class ParseOpts(object):
     """
     Options parser.
@@ -29,6 +30,10 @@ class ParseOpts(object):
     MINARGS = 0
     FLAGS = set()
     VALUES = set()
+    #: Value to use if a value flag is is present without '='.  This is
+    #: different from the default value if the flag is not present, which
+    #: is the default value set in the calling class.
+    IMPLICIT_VALUES = {}
     USAGE = ""
 
     def __init__(self, args):
@@ -45,12 +50,16 @@ class ParseOpts(object):
         if 'help' in flags or '-h' in sys.argv[1:] or '-?' in sys.argv[1:]:
             print(self.USAGE)
             sys.exit()
-        unknown = flags - self.FLAGS
+        implicit = (set(self.IMPLICIT_VALUES.keys()) & flags)
+        unknown = flags - (self.FLAGS | implicit)
         if any(unknown):
             raise ValueError("Unknown options --%s.  Use -? for help."
                              % ", --".join(unknown))
         for f in self.FLAGS:
             setattr(self, f, (f in flags))
+
+        for name in implicit:
+            setattr(self, name, self.IMPLICIT_VALUES[name])
 
         valueargs = [v
                      for v in sys.argv[1:]
@@ -249,6 +258,8 @@ class BumpsOpts(ParseOpts):
                  ))
     # Add in parameters from the fitters
     VALUES |= set(FIT_FIELDS.keys())
+    # --parallel is equivalent to --parallel=0
+    IMPLICIT_VALUES = {'parallel': '0'}
     pars = None
     notify = ""
     queue = "http://reflectometry.org/queue"
