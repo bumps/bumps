@@ -403,8 +403,6 @@ Perform Levenberg-Marquardt least-squares minimization, based on MINPACK-1.
 from __future__ import print_function
 
 import numpy
-import types
-
 
 #     Original FORTRAN documentation
 #     **********
@@ -871,11 +869,11 @@ Keywords:
 
       ## Be sure that PARINFO is of the right type
       if (parinfo is not None):
-         if (type(parinfo) != types.ListType):
+         if not isinstance(parinfo, list):
             self.errmsg = 'ERROR: PARINFO must be a list of dictionaries.'
             return
          else:
-            if (type(parinfo[0]) != types.DictionaryType):
+            if not isinstance(parinfo[0], dict):
               self.errmsg = 'ERROR: PARINFO must be a list of dictionaries.'
               return
          if ((xall is not None) and (len(xall) != len(parinfo))):
@@ -1353,11 +1351,11 @@ Keywords:
       nprint = len(x)
       print("Iter ", ('%6i' % iter),"   CHI-SQUARE = ",('%.10g' % fnorm)," DOF = ", ('%i' % dof))
       for i in range(nprint):
-         if (parinfo is not None) and (parinfo[i].has_key('parname')):
+         if parinfo is not None and 'parname' in parinfo[i]:
             p = '   ' + parinfo[i]['parname'] + ' = '
          else:
             p = '   P' + str(i) + ' = '
-         if (parinfo is not None) and (parinfo[i].has_key('mpprint')):
+         if parinfo is not None and 'mpprint' in parinfo[i]:
             iprint = parinfo[i]['mpprint']
          else:
             iprint = 1
@@ -1392,17 +1390,17 @@ Keywords:
 
       values = []
       for i in range(n):
-         if ((parinfo is not None) and (parinfo[i].has_key(key))):
+         if parinfo is not None and key in parinfo[i]:
            values.append(parinfo[i][key])
          else:
            values.append(default)
 
       # Convert to numeric arrays if possible
       test = default
-      if (type(default) == types.ListType): test=default[0]
-      if isinstance(test, types.IntType):
+      if isinstance(default, list): test=default[0]
+      if isinstance(test, int):
          values = numpy.asarray(values, numpy.int)
-      elif isinstance(test, types.FloatType):
+      elif isinstance(test, float):
          values = numpy.asarray(values, numpy.float)
       return(values)
 

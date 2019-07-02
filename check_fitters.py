@@ -16,6 +16,14 @@ import subprocess
 
 sys.dont_write_bytecode = True
 
+try:
+    bytes
+    def decode(b):
+        return b.decode('utf-8')
+except Exception:
+    def decode(b):
+        return b
+
 # Ask bumps for a list of available fitters
 ROOT = realpath(dirname(__file__))
 sys.path.insert(0, ROOT)
@@ -46,10 +54,10 @@ def run_fit(fit_args, model_args, store, seed=1):
                      + ['--store='+store, '--seed=%d'%seed, '--batch'])
     try:
         output = subprocess.check_output(command_parts, stderr=subprocess.STDOUT)
-        output = output.strip()
-        if output: print(output.strip())
+        output = decode(output.strip())
+        if output: print(output)
     except subprocess.CalledProcessError as exc:
-        output = exc.output.strip()
+        output = decode(exc.output.strip())
         if output: print(output)
         if "KeyboardInterrupt" in output:
             raise KeyboardInterrupt()
@@ -83,7 +91,8 @@ def run_fits(model_args, store, fitters=FIT_AVAILABLE_IDS, seed=1):
             run_fit(["--fit="+f], model_args, store, seed=seed)
             check_fit(f, store, [0.0])
         except Exception as exc:
-            print(exc)
+            #import traceback; traceback.print_exc()
+            print(str(exc))
             failed.append(f)
         clear_directory(store)
     return failed
