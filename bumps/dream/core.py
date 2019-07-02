@@ -131,7 +131,7 @@ Version 1.0: October 2008  Adaption updated and generalized CR implementation
 """
 from __future__ import division, print_function
 
-__all__ = ["Dream", "run_dream"]
+__all__ = ["Dream"]
 
 import sys
 import time

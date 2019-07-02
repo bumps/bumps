@@ -141,8 +141,7 @@ class FitConfig(object):
     embedded bumps, which does not use the bumps command line parser, a
     new FitConfig object can be created with its own selected options.
 
-    Attributes
-    ----------
+    **Attributes**
 
     *ids = [id, id, ...]* is a list available fitters in "preferred" order.
     Depending on usage, you may want to sort them, or alternatively, sort

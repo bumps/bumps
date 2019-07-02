@@ -2,8 +2,8 @@
 # ======================
 #
 # The usual pattern for constraints within bumps is to set the value for one
-# parameter to be some function of the other parameters.  Inequality
-# constraints are not directly supported.
+# parameter to be some function of the other parameters.  This does not
+# allow contraints of the form $a < b$ for parameters $a$ and paramter $b$.
 #
 # Instead, along with the fit problem definition, you can supply your
 # own penalty constraints function which adds an artificial value to the
@@ -16,7 +16,10 @@
 # avoid evaluating the function outside the feasible region.  For example,
 # the function $\log(a-b)$ is only defined for $a > b$, so setting a
 # constraint such as $10^6 + (a-b)^2$ for $a <= b$ and $0$ along with a
-# soft limit of $10^6$ will keep the function defined everywhere.
+# soft limit of $10^6$ will keep the function defined everywhere.  With
+# the penalty value sufficiently large, the probability of any evaluation
+# in the infeasible region will be neglible, and will not skew the
+# posterior distribution statistics.
 
 # Define the model as usual
 

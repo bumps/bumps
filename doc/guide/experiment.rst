@@ -53,7 +53,7 @@ the given set of sample parameters is
        - \tfrac12 \sum_i{\log 2 \pi \sigma_i^2}
        = \tfrac12 \chi^2 + C
 
-Note that this is the unnormalized $\chi^2$, whose expected value is the 
+Note that this is the unnormalized $\chi^2$, whose expected value is the
 number of degrees of freedom in the model, not the reduced $\chi^2_R$ whose
 expected value is $1$.  The Bumps fitting process is not sensitive to the
 constant $C$ and it can be safely ignored.
@@ -67,7 +67,7 @@ to overestimate the rate.  Furthermore, we can properly handle
 background rates since we can easily compute the probability of seeing
 the observed number of counts given the proposed signal plus background
 rate.  Gaussian modeling can lead to negative rates for signal or
-background, which is fundamentally wrong. See :ref:`poisson-fit` for
+background, which is fundamentally wrong. See :ref:`curvefit-example` for
 a demonstration of this effect.
 
 We can systematically incorporate prior information into our models, such
@@ -89,7 +89,7 @@ Simple experiments
 ====================
 
 The simplest experiment is defined by a python function which takes
-a list of instrument configuration and has arguments defining the 
+a list of instrument configuration and has arguments defining the
 parameters.  For example, to fit a line you would need::
 
     def line(x, m, b):
@@ -99,14 +99,14 @@ Assuming the data was in a 3 column ascii file with x, y and
 uncertainty, you would turn this into a bumps model file using::
 
     # 3 column data file with x, y and uncertainty
-    x,y,dy = numpy.loadtxt('line.txt').T  
+    x,y,dy = numpy.loadtxt('line.txt').T
     M = Curve(line, x, y, dy)
 
-Using the magic of python introspection, 
+Using the magic of python introspection,
 :class:`Curve <bumps.curve.Curve>` is able to determine
 the names of the fittable parameters from the arguments to the
-function.  These are converted to 
-:class:`Parameter <bumps.parameter.Parameter>` objects, the 
+function.  These are converted to
+:class:`Parameter <bumps.parameter.Parameter>` objects, the
 basis of the Bumps modeling system.  For each parameter, we can set
 bounds or values::
 
@@ -247,7 +247,7 @@ If your modeling environment already contains a sophisticated parameter
 handling system (e.g. sympy or PyMC) you may want to tie into the Bumps
 system at a higher level.  In this case you will need to define a
 class which implements the :class:`FitProblem <bumps.fitproblem.FitProblem>`
-interface.  This has been done already for 
+interface.  This has been done already for
 :class:`PyMCProblem <bumps.pymcfit.PyMCProblem`
 and interested parties are directed therein for a working example.
 

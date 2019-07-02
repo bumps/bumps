@@ -1,4 +1,4 @@
-.. _poisson-fit:
+.. _curvefit-example:
 
 ****************
 Simple functions
@@ -19,4 +19,3 @@ likelihood, expected value and variance.
     curve.rst
     poisson.rst
     sim.rst
-
