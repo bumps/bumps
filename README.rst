@@ -34,10 +34,26 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
+v0.7.12 2019-07-30
+------------------
+
+* --parallel defaults to using one process per CPU.
+* --pop=-k sets population size to k rather than k times num parameters
+* --resume=- resumes from --store=/path/to/store
+* use expanded canvas for parameter histograms to make plots more readable
+* use regular spaced tics for parameter histograms rather than 1- and 2-sigma
+* improve consistency between values of cov, stderr and chisq
+* fix handling of degenerate ranges on parameter output
+* add entropy calculator using gaussian mixture models (default is still Kramer)
+* vfs module allows loading of model and data from zip file (not yet enabled)
+* warn when model has no fitted parameters
+* update mpfit to support python 3
+* support various versions of scipy and numpy
+
 v0.7.11 2018-09-24
 ------------------
 
-* Added support for parameter serialization
+* add support for parameter serialization
 
 v0.7.10 2018-06-15
 ------------------
