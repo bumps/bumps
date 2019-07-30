@@ -588,6 +588,15 @@ def main():
         print("remote job:", job['id'])
 
     else:
+        # Show command line arguments and initial model
+        print("#", " ".join(sys.argv))
+        problem.show()
+
+        # Check that there are parameters to be fitted.
+        if not len(problem.getp()):
+            print("\n!!! No parameters selected for fitting---abort !!!\n")
+            return
+
         # Run the fit
         if opts.resume == '-':
             opts.resume = opts.store if os.path.exists(opts.store) else None
@@ -598,9 +607,6 @@ def main():
 
         make_store(problem, opts, exists_handler=store_overwrite_query)
 
-        # Show command line arguments and initial model
-        print("#", " ".join(sys.argv))
-        problem.show()
         if opts.stepmon:
             fid = open(problem.output_path + '.log', 'w')
             fitdriver.monitors = [ConsoleMonitor(problem),
