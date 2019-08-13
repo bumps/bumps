@@ -126,7 +126,6 @@ class BaseAdaptiveCrossover(object):
         """
         Update CR weights based on the available adaptation data.
         """
-        print("adapt")
         # [PAK] Make sure no count is zero by adding one to all counts.
         # [PAK] Remove norm factor "self._Nchains/sum(self._distance)" since
         # [PAK] we normalize later, and since this avoids 0/0 risk.
