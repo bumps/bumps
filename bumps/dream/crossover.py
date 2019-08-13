@@ -91,13 +91,13 @@ class BaseAdaptiveCrossover(object):
     Adapted weight crossover ratios.
     """
     def _set_CRs(self, CR):
-        self.CR = CR
+        self.CR = asarray(CR)
         # Start with all CRs equally probable
-        self.weight = ones(len(self.CR)) / len(self.CR)
+        self.weight = ones(self.CR.size) / self.CR.size
 
         # No initial statistics for adaptation
-        self._count = zeros(len(self.CR))
-        self._distance = zeros(len(self.CR))
+        self._count = zeros(self.CR.size)
+        self._distance = zeros(self.CR.size)
         self._generations = 0
 
     def reset(self):
@@ -111,6 +111,8 @@ class BaseAdaptiveCrossover(object):
         """
         # Calculate the standard deviation of each dimension of X
         r = std(xnew, ddof=1, axis=0)
+        # [PAK] Protect against degenerate populations.
+        r[r == 0.0] = 1.0
         # Compute the Euclidean distance between new X and old X
         d = sum(((xold - xnew)/r)**2, axis=1)
         # Use this information to update sum_p2 to update N_CR
@@ -124,11 +126,19 @@ class BaseAdaptiveCrossover(object):
         """
         Update CR weights based on the available adaptation data.
         """
-        # [PAK] make sure no count is zero by adding one to all counts
-        self.weight = (self._distance/(self._count+1)) * (self._Nchains/sum(self._distance))
-        # [PAK] make sure no weight goes to zero
-        self.weight += 0.1*sum(self.weight)
-        self.weight /= sum(self.weight)
+        print("adapt")
+        # [PAK] Make sure no count is zero by adding one to all counts.
+        # [PAK] Remove norm factor "self._Nchains/sum(self._distance)" since
+        # [PAK] we normalize later, and since this avoids 0/0 risk.
+        weight = self._distance/(self._count+1)
+        norm = sum(weight)
+        if norm > 0.0:
+            # [PAK] Make sure no weight goes to zero.
+            weight += 0.1*norm
+            self.weight = weight/sum(weight)
+        else:
+            # [PAK] If stuck fit then reset weights to equal.
+            self.weight = ones(self.CR.size) / self.CR.size
 
 class AdaptiveCrossover(BaseAdaptiveCrossover):
     """
