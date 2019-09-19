@@ -51,6 +51,11 @@ import numpy as np
 #from . import numdifftools as nd
 #import numdifftools as nd
 
+def gradient(problem, p=None, step=None):
+    r = problem.residuals()
+    J = jacobian(problem, p=p, step=step)
+    return np.dot(J.T, r)
+
 # TODO: restructure lsqerror to use mapper for evaluating multiple f
 # doesn't work for jacobian since mapper returns nllf; would need to
 # expand mapper to implement a variety of different functions.
