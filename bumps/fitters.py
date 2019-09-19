@@ -476,7 +476,7 @@ class SimplexFit(FitBase):
         # TODO: no mapper??
         self._update = MonitorRunner(problem=self.problem,
                                      monitors=monitors)
-        # print "bounds",self.problem.bounds()
+        #print("bounds", self.problem.bounds())
         result = simplex(f=self.problem.nllf, x0=self.problem.getp(),
                          bounds=self.problem.bounds(),
                          abort_test=abort_test,
@@ -1123,31 +1123,44 @@ def _fill_defaults(options, settings):
     result.update(options)
     return result
 
-# List of (parameter,factory value) required for each algorithm
-FITTERS = [
-    SimplexFit,
-    DEFit,
-    DreamFit,
-    BFGSFit,
-    LevenbergMarquardtFit,
-    MPFit,
-    PSFit,
-    PTFit,
-    RLFit,
-    SnobFit,
-    ]
 
-FIT_AVAILABLE_IDS = [f.id for f in FITTERS]
+FITTERS = []
+FIT_AVAILABLE_IDS = []
+FIT_ACTIVE_IDS = []
+def register(fitter, active=True):
+    """
+    Register a new fitter with bumps, if it is not already there.
 
+    *active* is False if you don't want it showing up in the GUI selector.
+    """
+    # Check if already registered.
+    if fitter in FITTERS:
+        return
 
-FIT_ACTIVE_IDS = [
-    SimplexFit.id,
-    DEFit.id,
-    DreamFit.id,
-    BFGSFit.id,
-    LevenbergMarquardtFit.id,
-    MPFit.id,
-    ]
+    # Check that there is no other fitter of that name
+    if fitter.id in FIT_AVAILABLE_IDS:
+        raise ValueError("There is already a fitter registered as %r"
+                         % fitter.id)
+
+    # Register the fitter.
+    FITTERS.append(fitter)
+    FIT_AVAILABLE_IDS.append(fitter.id)
+
+    # Make it "active" by listing it in the help menu.
+    if active:
+        FIT_ACTIVE_IDS.append(fitter.id)
+
+# Register the fitters
+register(SimplexFit, active=True)
+register(DEFit, active=True)
+register(DreamFit, active=True)
+register(BFGSFit, active=True)
+register(LevenbergMarquardtFit, active=True)
+register(MPFit, active=True)
+register(PSFit, active=False)
+register(PTFit, active=False)
+register(RLFit, active=False)
+register(SnobFit, active=False)
 
 FIT_DEFAULT_ID = SimplexFit.id
 
