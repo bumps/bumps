@@ -48,6 +48,145 @@ from numpy import log, pi, sqrt
 
 from .parameter import Parameter
 
+def _parse_pars(fn, init=None, skip=0, name=""):
+    """
+    Extract parameter names from function definition.
+
+    *fn* is the function definition.  This could be declared as
+    *fn(p1, p2, p3, ...)* where *p1*, etc. are the fittable parameters.
+
+    *init* is a dictionary of initial values for the parameters,
+    overriding any default values.  If called from a constructor with
+    **kwargs representing unknown named arguments, use *init=kwargs*.
+
+    *skip* is the number of parameters to skip.  This will be *skip=0*
+    for a function which defines the log likelihood directly or one
+    that returns a set of residuals. For parameterized curves such as
+    *fn(x, p1, p2, ...)* use *skip=1*.  For surfaces with
+    *fn(x, y, p1, p2, ...)* use *skip=2*.
+
+    *name* is added to each parameter name to differentiate it from other
+    parameters in the same fit.
+
+    A default value in the function definition such as *pk=value* will
+    be set as the default value for the parameter.  If the default is
+    *pk=None* then the parameter will be non-fittable, and instead set
+    through *init*.
+    """
+    pnames, vararg, varkw, pvalues = inspect.getargspec(fn)
+    if vararg or varkw:
+        raise TypeError(
+            "Function %r cannot have *args or **kwargs in declaration"
+            % fn.__name__)
+
+    # TODO: need "self" handling for passed methods
+    # Skip the first argument if it is x or maybe skip x, y.
+    pnames = pnames[skip:]
+
+    # Parameters default to zero
+    defaults = dict((p, 0) for p in pnames)
+
+    # If the function provides default values, use those.
+    if pvalues:
+        # Ignore default value for "x" parameter.
+        if len(pvalues) > len(pnames):
+            pvalues = pvalues[-len(pnames):]
+        defaults.update(zip(pnames[-len(pvalues):], pvalues))
+
+    # Non-fittable parameters need to be sent in as None
+    state_vars = set(p for p, v in defaults.items() if v is None)
+
+    # Regardless, use any values specified in the constructor, but first
+    # check that they exist as function parameters.
+    invalid = set(init.keys()) - set(pnames)
+    if invalid:
+        raise TypeError("Invalid initializers: %s" %
+                        ", ".join(sorted(invalid)))
+    defaults.update(init)
+
+    # Build parameters out of ranges and initial values
+    # maybe:  name=(p+name if name.startswith('_') else name+p)
+    pars = dict((p, Parameter.default(defaults[p], name=name + p))
+                for p in pnames if p not in state_vars)
+
+    state = dict((p, v) for p, v in defaults.items() if p in state_vars)
+
+    #print("pars", pars)
+    #print("state", state)
+    return pars, state
+
+def _assign_pars(obj, pars):
+    # Make parameters accessible as model attributes
+    for k, v in pars.items():
+        if hasattr(obj, k):
+            raise TypeError("Parameter cannot be named %s" % k)
+        setattr(obj, k, v)
+
+class Resid(object):
+    """
+    [Experimental]  provide a wrapper for functions that return a residual only.
+    """
+    def __init__(self, fn, name="", **kwargs):
+        self.name = name # if name else fn.__name__ + " "
+
+        pars, state = _parse_pars(fn, init=kwargs, skip=0, name=name)
+
+        # Make parameters accessible as model attributes
+        _assign_pars(self, pars)
+        #_assign_pars(state, self)  # ... and state variables as well
+
+        # Remember the function, parameters, and number of parameters
+        # Note: we are remembering the parameter names and not the
+        # parameters themselves so that the caller can tie parameters
+        # together using model1.par = model2.par.  Otherwise we would
+        # need to override __setattr__ to intercept assignment to the
+        # parameter attributes and redirect them to the a _pars dictionary.
+        # ... and similarly for state if we decide to make them attributes.
+        self._function = fn
+        self._pnames = list(sorted(pars.keys()))
+        self._state = state
+        self._cached_theory = None
+        self._numpoints = None
+
+    def update(self):
+        self._cached_theory = None
+
+    def parameters(self):
+        return dict((p, getattr(self, p)) for p in self._pnames)
+
+    def numpoints(self):
+        if self._numpoints is None:
+            r = self.residuals()
+            self._numpoints = np.prod(r.shape)
+        return self._numpoints
+
+    def residuals(self):
+        if self._cached_theory is None:
+            kw = dict((p, getattr(self, p).value) for p in self._pnames)
+            kw.update(self._state)
+            resid = self._function(**kw)
+            self._cached_theory = resid
+        return self._cached_theory
+
+    def nllf(self):
+        r = self.residuals()
+        return 0.5 * np.sum(r ** 2)
+
+    def save(self, basename):
+        # TODO: need header line with state vars as json
+        # TODO: need to support nD x,y,dy
+        data = self.residuals()
+        np.savetxt(basename + '.dat', data)
+
+    def plot(self, view=None):
+        import pylab
+        resid = self.residuals()
+        pylab.plot(np.arange(1, len(resid)+1), resid, '.')
+        pylab.gca().locator_params(axis='y', tight=True, nbins=4)
+        pylab.axhline(y=1, ls='dotted')
+        pylab.axhline(y=-1, ls='dotted')
+        pylab.ylabel("Residuals")
+
 
 class Curve(object):
     r"""
@@ -86,7 +225,7 @@ class Curve(object):
     subclass Curve and replace nllf with the correct probability given the
     residuals.  See the implementation of :class:`PoissonCurve` for an example.
     """
-    def __init__(self, fn, x, y, dy=None, name="", plot=None, **fnkw):
+    def __init__(self, fn, x, y, dy=None, name="", plot=None, **kwargs):
         self.x, self.y = np.asarray(x), np.asarray(y)
         if dy is None:
             self.dy = 1
@@ -95,57 +234,28 @@ class Curve(object):
             if (self.dy <= 0).any():
                 raise ValueError("measurement uncertainty must be positive")
 
+        # TODO: self.fn is a duplicate of self._function below. Deprecated?
         self.fn = fn
         self.name = name # if name else fn.__name__ + " "
 
-        # Make every name a parameter; initialize the parameters
-        # with the default value if function is defined with keyword
-        # initializers; override the initializers with any keyword
-        # arguments specified in the fit function constructor.
-        pnames, vararg, varkw, pvalues = inspect.getargspec(fn)
-        if vararg or varkw:
-            raise TypeError(
-                "Function cannot have *args or **kwargs in declaration")
-
-        # TODO: need "self" handling for passed methods
-        # assume the first argument is x
-        pnames = pnames[1:]
-
-        # Parameters default to zero
-        init = dict((p, 0) for p in pnames)
-        # If the function provides default values, use those
-        if pvalues:
-            # ignore default value for "x" parameter
-            if len(pvalues) > len(pnames):
-                pvalues = pvalues[1:]
-            init.update(zip(pnames[-len(pvalues):], pvalues))
-        # Non-fittable parameters need to be sent in as None
-        state_vars = set(p for p, v in init.items() if v is None)
-        # Regardless, use any values specified in the constructor, but first
-        # check that they exist as function parameters.
-        invalid = set(fnkw.keys()) - set(pnames)
-        if invalid:
-            raise TypeError("Invalid initializers: %s" %
-                            ", ".join(sorted(invalid)))
-        init.update(fnkw)
-
-        # Build parameters out of ranges and initial values
-        # maybe:  name=(p+name if name.startswith('_') else name+p)
-        pars = dict((p, Parameter.default(init[p], name=name + p))
-                    for p in pnames if p not in state_vars)
+        pars, state = _parse_pars(fn, init=kwargs, skip=1)
 
         # Make parameters accessible as model attributes
-        for k, v in pars.items():
-            if hasattr(self, k):
-                raise TypeError("Parameter cannot be named %s" % k)
-            setattr(self, k, v)
+        _assign_pars(self, pars)
+        #_assign_pars(state, self)  # ... and state variables as well
 
         # Remember the function, parameters, and number of parameters
+        # Note: we are remembering the parameter names and not the
+        # parameters themselves so that the caller can tie parameters
+        # together using model1.par = model2.par.  Otherwise we would
+        # need to override __setattr__ to intercept assignment to the
+        # parameter attributes and redirect them to the a _pars dictionary.
+        # ... and similarly for state if we decide to make them attributes.
         self._function = fn
-        self._pnames = [p for p in pnames if p not in state_vars]
-        self._cached_theory = None
+        self._pnames = list(sorted(pars.keys()))
+        self._state = state
         self._plot = plot if plot is not None else plot_err
-        self._state = dict((p, v) for p, v in init.items() if p in state_vars)
+        self._cached_theory = None
 
     def update(self):
         self._cached_theory = None
@@ -157,13 +267,21 @@ class Curve(object):
         return np.prod(self.y.shape)
 
     def theory(self, x=None):
-        if self._cached_theory is None:
-            if x is None:
-                x = self.x
-            kw = dict((p, getattr(self, p).value) for p in self._pnames)
-            kw.update(self._state)
-            self._cached_theory = self._function(x, **kw)
-        return self._cached_theory
+        # Use cache if x is None, otherwise always recompute theory
+        if x is None:
+            if self._cached_theory is None:
+                self._cached_theory = self._compute_theory(self.x)
+            return self._cached_theory
+        return self._compute_theory(x)
+
+    def _compute_theory(self, x):
+        kw = self._fetch_pars()
+        return self._function(x, **kw)
+
+    def _fetch_pars(self):
+        kw = dict((p, getattr(self, p).value) for p in self._pnames)
+        kw.update(self._state)
+        return kw
 
     def simulate_data(self, noise=None):
         theory = self.theory()
@@ -191,14 +309,13 @@ class Curve(object):
 
     def plot(self, view=None):
         import pylab
-        kw = dict((p, getattr(self, p).value) for p in self._pnames)
-        kw.update(self._state)
         #print "kw_plot",kw
         if view == 'residual':
             plot_resid(self.x, self.residuals())
         else:
             plot_ratio = 4
             h = pylab.subplot2grid((plot_ratio, 1), (0, 0), rowspan=plot_ratio-1)
+            kw = self._fetch_pars()
             self._plot(self.x, self.y, self.dy, self.theory(), view=view, **kw)
             for tick_label in pylab.gca().get_xticklabels():
                 tick_label.set_visible(False)
