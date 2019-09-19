@@ -267,7 +267,7 @@ class Curve(object):
         return np.prod(self.y.shape)
 
     def theory(self, x=None):
-        # Use cache if x is None, otherwise always recompute theory
+        # Use cache if x is None, otherwise compute theory with x.
         if x is None:
             if self._cached_theory is None:
                 self._cached_theory = self._compute_theory(self.x)
