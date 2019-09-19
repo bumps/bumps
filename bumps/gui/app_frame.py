@@ -42,7 +42,7 @@ PROG_ICON = "bumps.ico"
 
 #==============================================================================
 class ModelConsole(NumpyConsole):
-    def OnChanged(self, added=[], changed=[], removed=[]):
+    def OnChanged(self, added=(), changed=(), removed=()):
         pass
     def OnClose(self, event):
         self.Show(False)
