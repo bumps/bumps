@@ -741,6 +741,7 @@ class Function(BaseParameter):
 
     def __setstate__(self, state):
         self.name, self.op, self.args, self.kw = state
+        self._parameters = self._find_parameters()
 
     def __str__(self):
         if self.name is not None:
