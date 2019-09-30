@@ -74,11 +74,14 @@ class Fitness(object):
     """
     def parameters(self):
         """
-        Return the parameters in the model.
+        return the parameters in the model.
 
-        Model parameters are a hierarchical structure of lists and
+        model parameters are a hierarchical structure of lists and
         dictionaries.
         """
+        raise NotImplementedError()
+
+    def to_dict(self):
         raise NotImplementedError()
 
     def update(self):
@@ -255,6 +258,18 @@ class BaseFitProblem(object):
         Parameters associated with the model.
         """
         return self.fitness.parameters()
+
+    def to_dict(self):
+        return {
+            'type': type(self).__name__,
+            'name': self.name,
+            'fitness': self.fitness.to_dict(),
+            'partial': self.partial,
+            'soft_limit': self.soft_limit,
+            'penalty_nllf': self.penalty_nllf,
+            # TODO: constraints may be a function.
+            'constraints': str(self.constraints),
+        }
 
     def model_points(self):
         """
@@ -627,6 +642,20 @@ class MultiFitProblem(BaseFitProblem):
         if free:
             pars['freevars'] = free
         return pars
+
+    def to_dict(self):
+        return {
+            'type': type(self).__name__,
+            'name': self.name,
+            'models': [p.to_dict() for p in self._models],
+            'weights': self.weights,
+            'partial': self.partial,
+            'soft_limit': self.soft_limit,
+            'penalty_nllf': self.penalty_nllf,
+            # TODO: constraints may be a function.
+            'constraints': str(self.constraints),
+            'freevars': self.freevars.to_dict(),
+        }
 
     def model_points(self):
         """Return number of points in all models"""

@@ -259,9 +259,14 @@ class BaseParameter(object):
         """
         Return a dict represention of the object.
         """
-        return dict(name=self.name, type=type(self).__name__,
-                    value=self.value, fixed=self.fixed,
-                    bounds=dict(type=type(self._bounds).__name__, limits=self._bounds.limits))
+        return dict(
+            type=type(self).__name__,
+            name=self.name,
+            value=self.value,
+            fixed=self.fixed,
+            fittable=self.fittable,
+            bounds=self._bounds.to_dict(),
+            )
 
 
 class Constant(BaseParameter):
@@ -574,6 +579,15 @@ class FreeVariables(object):
         Return the set of free variables for all the models.
         """
         return dict((k, v.parameters) for k, v in self._parametersets.items())
+
+    def to_dict(self):
+        return {
+            'type': type(self).__name__,
+            'names': self.names,
+            'parameters': {
+                k: v.to_dict() for k, v in self._parametersets.items()
+            }
+        }
 
     def set_model(self, i):
         """
@@ -1048,3 +1062,12 @@ class Alias(object):
 
     def parameters(self):
         return self.p.parameters()
+
+    def to_dict(self):
+        return {
+            'type': type(self).__name__,
+            'p': self.p.to_dict(),
+            # TODO: can't json pickle arbitrary objects
+            'obj': str(self.obj),
+            'attr': self.attr,
+        }

@@ -194,7 +194,6 @@ def init_bounds(v):
 
 
 class Bounds(object):
-
     """
     Bounds abstract base class.
 
@@ -289,6 +288,12 @@ class Bounds(object):
         limits = tuple(num_format(v) for v in self.limits)
         return "(%s,%s)" % limits
 
+    def to_dict(self):
+        return dict(
+            type=type(self).__name__,
+            limits=self.limits,
+            )
+
 # CRUFT: python 2.5 doesn't format indefinite numbers properly on windows
 
 
@@ -305,7 +310,6 @@ def num_format(v):
 
 
 class Unbounded(Bounds):
-
     """
     Unbounded parameter.
 
@@ -340,7 +344,6 @@ class Unbounded(Bounds):
 
 
 class BoundedBelow(Bounds):
-
     """
     Semidefinite range bounded below.
 
@@ -402,7 +405,6 @@ class BoundedBelow(Bounds):
 
 
 class BoundedAbove(Bounds):
-
     """
     Semidefinite range bounded above.
 
@@ -462,7 +464,6 @@ class BoundedAbove(Bounds):
 
 
 class Bounded(Bounds):
-
     """
     Bounded range.
 
@@ -509,7 +510,6 @@ class Bounded(Bounds):
 
 
 class Distribution(Bounds):
-
     """
     Parameter is pulled from a distribution.
 
@@ -554,9 +554,16 @@ class Distribution(Bounds):
         return "%s(%s)" % (self.dist.dist.name,
                            ",".join(str(s) for s in self.dist.args))
 
+    def to_dict(self):
+        return dict(
+            type=type(self).__name__,
+            limits=self.limits,
+            # TODO: how to handle arbitrary distribution function in save/load?
+            dist=type(self.dist).__name__,
+            )
+
 
 class Normal(Distribution):
-
     """
     Parameter is pulled from a normal distribution.
 
@@ -593,7 +600,6 @@ class Normal(Distribution):
 
 
 class BoundedNormal(Bounds):
-
     """
     truncated normal bounds
     """
@@ -682,7 +688,6 @@ class BoundedNormal(Bounds):
 
 
 class SoftBounded(Bounds):
-
     """
     Parameter is pulled from a stretched normal distribution.
 

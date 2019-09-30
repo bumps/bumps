@@ -572,6 +572,7 @@ def main():
         if opts.cov:
             fitdriver.show_cov()
         print("chisq", problem.chisq_str())
+        #import pprint; pprint.pprint(problem.to_dict(), indent=2, width=272)
     elif opts.preview:
         if opts.cov:
             fitdriver.show_cov()

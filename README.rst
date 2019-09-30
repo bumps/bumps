@@ -34,6 +34,11 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
+v0.7.13 2019-??-??
+------------------
+
+* fix pickle problem for parameterized functions
+
 v0.7.12 2019-07-30
 ------------------
 
