@@ -42,6 +42,7 @@ The model function can then be imported from the external module as usual::
 __all__ = ["Curve", "PoissonCurve", "plot_err"]
 
 import inspect
+import warnings
 
 import numpy as np
 from numpy import log, pi, sqrt
@@ -122,71 +123,6 @@ def _assign_pars(obj, pars):
             raise TypeError("Parameter cannot be named %s" % k)
         setattr(obj, k, v)
 
-class Resid(object):
-    """
-    [Experimental]  provide a wrapper for functions that return a residual only.
-    """
-    def __init__(self, fn, name="", **kwargs):
-        self.name = name # if name else fn.__name__ + " "
-
-        pars, state = _parse_pars(fn, init=kwargs, skip=0, name=name)
-
-        # Make parameters accessible as model attributes
-        _assign_pars(self, pars)
-        #_assign_pars(state, self)  # ... and state variables as well
-
-        # Remember the function, parameters, and number of parameters
-        # Note: we are remembering the parameter names and not the
-        # parameters themselves so that the caller can tie parameters
-        # together using model1.par = model2.par.  Otherwise we would
-        # need to override __setattr__ to intercept assignment to the
-        # parameter attributes and redirect them to the a _pars dictionary.
-        # ... and similarly for state if we decide to make them attributes.
-        self._function = fn
-        self._pnames = list(sorted(pars.keys()))
-        self._state = state
-        self._cached_theory = None
-        self._numpoints = None
-
-    def update(self):
-        self._cached_theory = None
-
-    def parameters(self):
-        return dict((p, getattr(self, p)) for p in self._pnames)
-
-    def numpoints(self):
-        if self._numpoints is None:
-            r = self.residuals()
-            self._numpoints = np.prod(r.shape)
-        return self._numpoints
-
-    def residuals(self):
-        if self._cached_theory is None:
-            kw = dict((p, getattr(self, p).value) for p in self._pnames)
-            kw.update(self._state)
-            resid = self._function(**kw)
-            self._cached_theory = resid
-        return self._cached_theory
-
-    def nllf(self):
-        r = self.residuals()
-        return 0.5 * np.sum(r ** 2)
-
-    def save(self, basename):
-        # TODO: need header line with state vars as json
-        # TODO: need to support nD x,y,dy
-        data = self.residuals()
-        np.savetxt(basename + '.dat', data)
-
-    def plot(self, view=None):
-        import pylab
-        resid = self.residuals()
-        pylab.plot(np.arange(1, len(resid)+1), resid, '.')
-        pylab.gca().locator_params(axis='y', tight=True, nbins=4)
-        pylab.axhline(y=1, ls='dotted')
-        pylab.axhline(y=-1, ls='dotted')
-        pylab.ylabel("Residuals")
-
 
 class Curve(object):
     r"""
@@ -204,28 +140,40 @@ class Curve(object):
     as an argument to *Curve*.  Defining *state=dict(key=value, ...)* before
     *Curve*, and calling *Curve* as *Curve(..., \*\*state)* works pretty well.
 
-    *Curve* takes two special keyword arguments: *name* and *plot*.
-    *name* is added to each parameter name when the parameter is defined.
-    The filename for the data is a good choice, since this allows you to keep
-    the parameters straight when fitting multiple datasets simultaneously.
+    *Curve* takes the following special keyword arguments:
 
-    Plotting defaults to a 1-D plot with error bars for the data, and a line
-    for the function value.  You can assign your own plot function with
-    the *plot* keyword.  The function should be defined as *plot(x,y,dy,fy,\*\*kw)*.
-    The keyword arguments will be filled with the values of the parameters
-    used to compute *fy*.  It will be easiest to list the parameters you
-    need to make your plot as positional arguments after *x,y,dy,fy* in the
-    plot function declaration.  For example, *plot(x,y,dy,fy,p3,\*\*kw)*
-    will make the value of parameter *p3* available as a variable in your
-    function.  The special keyword *view* will be a string containing
-    *linear*, *log*, *logx* or *loglog*.
+    * *name* is added to each parameter name when the parameter is defined.
+      The filename for the data is a good choice, since this allows you to keep
+      the parameters straight when fitting multiple datasets simultaneously.
+
+    * *plot* is an alternative plotting function. The function should be
+      defined as *plot(x,y,dy,fy,\*\*kw)*. The keyword arguments will be
+      filled with the values of the parameters used to compute *fy*.  It
+      will be easiest to list the parameters you need to make your plot
+      as positional arguments after *x,y,dy,fy* in the plot function
+      declaration.  For example, *plot(x,y,dy,fy,p3,\*\*kw)* will make the
+      value of parameter *p3* available as a variable in your function.  The
+      special keyword *view* will be a string containing *linear*, *log*,
+      *logx*, or *loglog*.  If only showing the residuals, the string
+      will be *residual*.
+
+    * *plot_x* is an array giving the sample points to use when plotting
+      the theory function, if different from the *x* values at which the
+      function is sampled.  Use this to draw a smooth curve between the
+      fitted points.  This value is ignored if you provide your own plot
+      function.
+
+    * *labels* are the axis labels for the plot.  This should include
+      units in parentheses. If the function is multi-valued then
+      use *['x axis', 'y axis', 'line 1', 'line 2', ...]*.
 
     The data uncertainty is assumed to follow a gaussian distribution.
     If measurements draw from some other uncertainty distribution, then
     subclass Curve and replace nllf with the correct probability given the
     residuals.  See the implementation of :class:`PoissonCurve` for an example.
     """
-    def __init__(self, fn, x, y, dy=None, name="", plot=None, **kwargs):
+    def __init__(self, fn, x, y, dy=None, name="", labels=None,
+                 plot=None, plot_x=None, **kwargs):
         self.x, self.y = np.asarray(x), np.asarray(y)
         if dy is None:
             self.dy = 1
@@ -234,9 +182,25 @@ class Curve(object):
             if (self.dy <= 0).any():
                 raise ValueError("measurement uncertainty must be positive")
 
+        # interpret labels parameter
+        num_curves = y.shape[1] if len(y.shape) > 1 else 1
+        if labels is None:
+            labels = ['x', 'y']
+        elif len(labels) < 2 or len(labels) != num_curves+2:
+            raise TypeError("labels should be [x, y, line1, line2, ...]")
+        if len(labels) == 2:
+            if num_curves > 1:
+                line_labels = ['y%d'%k for k in range(num_curves)]
+            else:
+                line_labels = [labels[1]]
+            labels = list(labels) + line_labels
+        self.labels = labels
+
+
         # TODO: self.fn is a duplicate of self._function below. Deprecated?
         self.fn = fn
         self.name = name # if name else fn.__name__ + " "
+        self.plot_x = plot_x
 
         pars, state = _parse_pars(fn, init=kwargs, skip=1)
 
@@ -254,7 +218,7 @@ class Curve(object):
         self._function = fn
         self._pnames = list(sorted(pars.keys()))
         self._state = state
-        self._plot = plot if plot is not None else plot_err
+        self._plot = plot
         self._cached_theory = None
 
     def update(self):
@@ -304,37 +268,125 @@ class Curve(object):
     def save(self, basename):
         # TODO: need header line with state vars as json
         # TODO: need to support nD x,y,dy
-        data = np.vstack((self.x, self.y, self.dy, self.theory()))
-        np.savetxt(basename + '.dat', data.T)
+        if len(self.x.shape) > 1:
+            warnings.warn("Save not supported for nD x values")
+            return
+
+        if len(self.x.shape) == 1 and len(self.y.shape) > 1:
+            # Multivalued y, dy for single valued x.
+            columns = [self.x] +
+            data = np.hstack((self.x, self.y, self.dy, self.theory())).T
+        else:
+            # Single-valued y, dy for single valued x.
+            data = np.vstack((self.x, self.y, self.dy, self.theory()))
+            if self.labels is None:
+            column_headers =
+        outfile = basename + '.dat'
+        np.savetxt(outfile, data.T)
 
     def plot(self, view=None):
+        if self._plot is not None:
+            kw = self._fetch_pars()
+            self._plot(self.x, self.y, self.dy, self.theory(), view=view, **kw)
+            return
+
         import pylab
+        from .plotutil import coordinated_colors
+
+        x = self.x
+        if self.plot_x is not None:
+            theory_x, theory_y = self.plot_x, self.theory(self.plot_x)
+        else:
+            theory_x, theory_y = x, self.theory()
+        resid = self.residuals()
+
+        if len(self.y.shape) > 1:
+            num_curves = self.y.shape[1]
+            y, dy, theory_y, resid = self.y.T, self.dy.T, theory_y.T, resid.T
+        else:
+            num_curves = 1
+            y, dy, theory_y, resid = (self.y,), (self.dy,), (theory_y,), (resid,)
+
+        colors = tuple(coordinated_colors() for _ in range(num_curves))
+        labels = self.labels
+
         #print "kw_plot",kw
         if view == 'residual':
-            plot_resid(self.x, self.residuals())
+            _plot_resids(x, resid, colors, labels=labels, view)
         else:
             plot_ratio = 4
             h = pylab.subplot2grid((plot_ratio, 1), (0, 0), rowspan=plot_ratio-1)
-            kw = self._fetch_pars()
-            self._plot(self.x, self.y, self.dy, self.theory(), view=view, **kw)
-            for tick_label in pylab.gca().get_xticklabels():
+            for tick_label in h.get_xticklabels():
                 tick_label.set_visible(False)
+            _plot_fits(data=(x, y, dy), theory=(theory_x, theory_y),
+                       colors=colors, labels=labels, view=view)
             #pylab.gca().xaxis.set_visible(False)
             #pylab.gca().spines['bottom'].set_visible(False)
             #pylab.gca().set_xticks([])
+
             pylab.subplot2grid((plot_ratio, 1), (plot_ratio-1, 0), sharex=h)
-            plot_resid(self.x, self.residuals())
+            _plot_resids(x, resid, colors=colors, labels=labels, view=view)
+
+def _plot_resids(x, resid, colors, labels, view):
+    import pylab
+    pylab.axhline(y=1, ls='dotted', color='k')
+    pylab.axhline(y=0, ls='solid', color='k')
+    pylab.axhline(y=-1, ls='dotted', color='k')
+    for k, color in enumerate(colors):
+        pylab.plot(x, resid[k], '.', color=color['light'])
+    pylab.gca().locator_params(axis='y', tight=True, nbins=4)
+    pylab.xlabel(labels[0])
+    pylab.ylabel("(f(x)-y)/dy")
+    if view == 'logx':
+        pylab.xscale('log')
+    elif view == 'loglog':
+        pylab.xscale('log')
+
+def _plot_fits(data, theory, colors, labels, view):
+    import pylab
+    x, y, dy = data
+    theory_x, theory_y = theory
+    for k, color in enumerate(colors):
+        pylab.errorbar(x, y[k], yerr=dy[k], fmt='.',
+                       color=color['light'], label='_')
+        pylab.plot(theory_x, theory_y[k], '-',
+                   color=color['dark'], label=labels[k+2])
+    # Note: no xlabel since it is supplied by the residual plot below this plot
+    pylab.ylabel(labels[1])
+    if len(colors) > 1:
+        pylab.legend()
+    if view == 'log':
+        pylab.xscale('linear')
+        pylab.yscale('log')
+    elif view == 'logx':
+        pylab.xscale('log')
+        pylab.yscale('linear')
+    elif view == 'logy':
+        pylab.xscale('linear')
+        pylab.yscale('log')
+    elif view == 'loglog':
+        pylab.xscale('log')
+        pylab.yscale('log')
+    else: # view == 'linear'
+        pylab.xscale('linear')
+        pylab.yscale('linear')
 
 def plot_resid(x, resid):
+    """
+    **DEPRECATED**
+    """
     import pylab
+    pylab.axhline(y=1, ls='dotted', color='k')
+    pylab.axhline(y=0, ls='solid', color='k')
+    pylab.axhline(y=-1, ls='dotted', color='k')
     pylab.plot(x, resid, '.')
     pylab.gca().locator_params(axis='y', tight=True, nbins=4)
-    pylab.axhline(y=1, ls='dotted')
-    pylab.axhline(y=-1, ls='dotted')
     pylab.ylabel("Residuals")
 
 def plot_err(x, y, dy, fy, view=None, **kw):
     """
+    **DEPRECATED**: subclass Curve and override the plot function.
+
     Plot data *y* and error *dy* against *x*.
 
     *view* is one of linear, log, logx or loglog.
@@ -354,6 +406,7 @@ def plot_err(x, y, dy, fy, view=None, **kw):
     else: # view == 'linear'
         pylab.xscale('linear')
         pylab.yscale('linear')
+
 
 _LOGFACTORIAL = np.array([log(np.prod(np.arange(1., k + 1)))
                           for k in range(21)])
@@ -405,9 +458,3 @@ class PoissonCurve(Curve):
         self.dy = sqrt(self.y) + (self.y == 0)
         self._logfacty = logfactorial(self.y)
         self._logfactysum = np.sum(self._logfacty)
-
-    def save(self, basename):
-        # TODO: need header line with state vars as json
-        # TODO: need to support nD x,y,dy
-        data = np.vstack((self.x, self.y, self.theory()))
-        np.savetxt(basename + '.dat', data.T)
