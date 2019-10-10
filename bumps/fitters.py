@@ -6,6 +6,7 @@ from __future__ import print_function, division
 import sys
 import time
 from copy import copy
+import warnings
 
 import numpy as np
 
@@ -823,7 +824,7 @@ class DreamFit(FitBase):
             print("loading saved state (this might take awhile) ...")
             fn, labels = getattr(self.problem, 'derive_vars', (None, []))
             self.state = load_state(input_path, report=100, derived_vars=len(labels))
-        elif input_path != problem.output_path:
+        else:
             # Only signal an error if --resume is different from --store.  If
             # it is the same (e.g., because "--resume=-" was given on the
             # command line) but missing, then silently skip the resume.  Note
@@ -832,7 +833,7 @@ class DreamFit(FitBase):
             # do want to signal an error if resume is different from store
             # in order to catch typos on the command line instead of letting
             # users quietly believe they are resuming.
-            raise RuntimeError("no mcmc saved at %r"%input_path)
+            warnings.warn("No mcmc found; ignoring --resume=%r"%input_path)
 
     def save(self, output_path):
         self.state.save(output_path)
