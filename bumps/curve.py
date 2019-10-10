@@ -183,7 +183,7 @@ class Curve(object):
                 raise ValueError("measurement uncertainty must be positive")
 
         # interpret labels parameter
-        num_curves = y.shape[1] if len(y.shape) > 1 else 1
+        num_curves = self.y.shape[1] if len(self.y.shape) > 1 else 1
         if labels is None:
             labels = ['x', 'y']
         elif len(labels) < 2 or len(labels) != num_curves+2:
@@ -272,17 +272,23 @@ class Curve(object):
             warnings.warn("Save not supported for nD x values")
             return
 
+        theory = self.theory()
         if len(self.x.shape) == 1 and len(self.y.shape) > 1:
             # Multivalued y, dy for single valued x.
-            columns = [self.x] +
-            data = np.hstack((self.x, self.y, self.dy, self.theory())).T
+            columns = [self.x]
+            headers = ["x"]
+            for k, (y, dy, fx) in enumerate(zip(self.y, self.dy, theory)):
+                columns.extend((y, dy, fx))
+                headers.extend(("y[%d]"%(k+1), "dy[%d]"%(k+1), "fx[%d]"%(k+1)))
         else:
             # Single-valued y, dy for single valued x.
-            data = np.vstack((self.x, self.y, self.dy, self.theory()))
-            if self.labels is None:
-            column_headers =
+            headers = ["x", "y", "dy", "fy"]
+            columns = [self.x, self.y, self.dy, theory]
+        data = np.vstack(columns)
         outfile = basename + '.dat'
-        np.savetxt(outfile, data.T)
+        with open(outfile, "w") as fd:
+            fd.write("# " + "\t ".join(headers) + "\n")
+            np.savetxt(fd, data.T)
 
     def plot(self, view=None):
         if self._plot is not None:
@@ -312,7 +318,7 @@ class Curve(object):
 
         #print "kw_plot",kw
         if view == 'residual':
-            _plot_resids(x, resid, colors, labels=labels, view)
+            _plot_resids(x, resid, colors, labels=labels, view=view)
         else:
             plot_ratio = 4
             h = pylab.subplot2grid((plot_ratio, 1), (0, 0), rowspan=plot_ratio-1)
