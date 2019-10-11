@@ -825,14 +825,7 @@ class DreamFit(FitBase):
             fn, labels = getattr(self.problem, 'derive_vars', (None, []))
             self.state = load_state(input_path, report=100, derived_vars=len(labels))
         else:
-            # Only signal an error if --resume is different from --store.  If
-            # it is the same (e.g., because "--resume=-" was given on the
-            # command line) but missing, then silently skip the resume.  Note
-            # that we can't just check for the existence of the directory
-            # since we will already have created it before we get here.  We
-            # do want to signal an error if resume is different from store
-            # in order to catch typos on the command line instead of letting
-            # users quietly believe they are resuming.
+            # Warn if mc files are not found on --resume path
             warnings.warn("No mcmc found; ignoring --resume=%r"%input_path)
 
     def save(self, output_path):
