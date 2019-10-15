@@ -646,9 +646,9 @@ class _Derivative(object):
     def _vstack(self, sequence, steps):
         # sequence = np.atleast_2d(sequence)
         original_shape = np.shape(sequence[0])
-        f_del = np.vstack(list(np.ravel(r)) for r in sequence)
-        h = np.vstack(list(np.ravel(np.ones(original_shape)*step))
-                      for step in steps)
+        f_del = np.vstack([list(np.ravel(r)) for r in sequence])
+        h = np.vstack([list(np.ravel(np.ones(original_shape)*step))
+                       for step in steps])
         if f_del.size != h.size:
             raise ValueError('fun did not return data of correct size ' +
                              '(it must be vectorized)')
