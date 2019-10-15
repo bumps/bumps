@@ -129,16 +129,21 @@ class Curve(object):
     Model a measurement with a user defined function.
 
     The function *fn(x,p1,p2,...)* should return the expected value *y* for
-    each point *x* given the parameters *p1*, *p2*, etc.  *dy* is the uncertainty
-    for each measured value *y*.  If not specified, it defaults to 1.
-    Initial values for the parameters can be set as *p=value* arguments to *Curve*.
-    If no value is set, then the initial value will be taken from the default
-    value given in the definition of *fn*, or set to 0 if the parameter is not
-    defined with an initial value.  Arbitrary non-fittable data can be passed
-    to the function as parameters, but only if the parameter is given a default
-    value of *None* in the function definition, and has the initial value set
-    as an argument to *Curve*.  Defining *state=dict(key=value, ...)* before
-    *Curve*, and calling *Curve* as *Curve(..., \*\*state)* works pretty well.
+    each point *x* given the parameters *p1*, *p2*, etc.  *dy* is the
+    uncertainty for each measured value *y*.  If not specified, it defaults
+    to 1. Multi-valued functions, which return multiple *y* values for each
+    *x* value, should have *x* as a vector of length *n* and *y*, *dy* as
+    arrays of size *[n, k]*.
+
+    Initial values for the parameters can be set as *p=value* arguments to
+    *Curve*. If no value is set, then the initial value will be taken from
+    the default value given in the definition of *fn*, or set to 0 if the
+    parameter is not defined with an initial value.  Arbitrary non-fittable
+    data can be passed to the function as parameters, but only if the
+    parameter is given a default value of *None* in the function definition,
+    and has the initial value set as an argument to *Curve*.  Defining
+    *state=dict(key=value, ...)* before *Curve*, and calling *Curve* as
+    *Curve(..., \*\*state)* works pretty well.
 
     *Curve* takes the following special keyword arguments:
 
@@ -182,12 +187,22 @@ class Curve(object):
             if (self.dy <= 0).any():
                 raise ValueError("measurement uncertainty must be positive")
 
+        if len(self.x.shape) == 1 and len(self.y.shape) > 1:
+            num_curves = self.y.shape[0]
+        else:
+            num_curves = 1
+        self._num_curves = num_curves  # use same value everywhere
+
         # interpret labels parameter
-        num_curves = self.y.shape[1] if len(self.y.shape) > 1 else 1
         if labels is None:
             labels = ['x', 'y']
         elif len(labels) < 2 or len(labels) != num_curves+2:
-            raise TypeError("labels should be [x, y, line1, line2, ...]")
+            if num_curves > 1:
+                lines = "line1, ..., line%d"%num_curves
+            else:
+                lines = "line"
+            raise TypeError("labels should be [x, y, %s]"%lines)
+
         if len(labels) == 2:
             if num_curves > 1:
                 line_labels = ['y%d'%k for k in range(num_curves)]
@@ -273,7 +288,7 @@ class Curve(object):
             return
 
         theory = self.theory()
-        if len(self.x.shape) == 1 and len(self.y.shape) > 1:
+        if self._num_curves > 1:
             # Multivalued y, dy for single valued x.
             columns = [self.x]
             headers = ["x"]
@@ -306,14 +321,13 @@ class Curve(object):
             theory_x, theory_y = x, self.theory()
         resid = self.residuals()
 
-        if len(self.y.shape) > 1:
-            num_curves = self.y.shape[1]
+        if self._num_curves > 1:
             y, dy, theory_y, resid = self.y.T, self.dy.T, theory_y.T, resid.T
         else:
-            num_curves = 1
-            y, dy, theory_y, resid = (self.y,), (self.dy,), (theory_y,), (resid,)
+            y, dy, theory_y, resid = (v[:, None]
+                                      for v in (self.y, self.dy, theory_y, resid))
 
-        colors = tuple(coordinated_colors() for _ in range(num_curves))
+        colors = tuple(coordinated_colors() for _ in range(self._num_curves))
         labels = self.labels
 
         #print "kw_plot",kw
@@ -339,7 +353,7 @@ def _plot_resids(x, resid, colors, labels, view):
     pylab.axhline(y=0, ls='solid', color='k')
     pylab.axhline(y=-1, ls='dotted', color='k')
     for k, color in enumerate(colors):
-        pylab.plot(x, resid[k], '.', color=color['light'])
+        pylab.plot(x, resid[:, k], '.', color=color['base'])
     pylab.gca().locator_params(axis='y', tight=True, nbins=4)
     pylab.xlabel(labels[0])
     pylab.ylabel("(f(x)-y)/dy")
@@ -353,9 +367,9 @@ def _plot_fits(data, theory, colors, labels, view):
     x, y, dy = data
     theory_x, theory_y = theory
     for k, color in enumerate(colors):
-        pylab.errorbar(x, y[k], yerr=dy[k], fmt='.',
-                       color=color['light'], label='_')
-        pylab.plot(theory_x, theory_y[k], '-',
+        pylab.errorbar(x, y[:, k], yerr=dy[:, k], fmt='.',
+                       color=color['base'], label='_')
+        pylab.plot(theory_x, theory_y[:, k], '-',
                    color=color['dark'], label=labels[k+2])
     # Note: no xlabel since it is supplied by the residual plot below this plot
     pylab.ylabel(labels[1])
