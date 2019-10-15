@@ -34,10 +34,12 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
-v0.7.13 2019-??-??
+v0.7.13 2019-10-15
 ------------------
 
 * fix pickle problem for parameterized functions
+* support multi-valued functions in Curve, shown with a coupled ODE example
+* update support for newer numpy and matplotlib
 
 v0.7.12 2019-07-30
 ------------------
