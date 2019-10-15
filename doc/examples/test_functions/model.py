@@ -224,7 +224,7 @@ def plot2d(fn, args=None, range=(-10,10)):
         X, Y = meshgrid(x+r, y+r)
         kw[args[0]], kw[args[1]] = X, Y
         pylab.pcolormesh(x+r, y+r, fn(**kw))
-        pylab.plot(x, y, 'o', hold=True, markersize=6,
+        pylab.plot(x, y, 'o', markersize=6,
                    markerfacecolor='red', markeredgecolor='black',
                    markeredgewidth=1, alpha=0.7)
         pylab.xlabel(args[0])
