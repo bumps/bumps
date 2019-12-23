@@ -40,7 +40,7 @@ import numpy as np
 # np.seterr(all="raise")
 
 from . import fitters
-from .fitters import FitDriver, StepMonitor, ConsoleMonitor, nllf_scale
+from .fitters import FitDriver, StepMonitor, ConsoleMonitor, CheckpointMonitor, nllf_scale
 from .mapper import MPMapper, AMQPMapper, MPIMapper, SerialMapper
 from .formatnum import format_uncertainty
 from . import util
@@ -612,16 +612,43 @@ def main():
 
         make_store(problem, opts, exists_handler=store_overwrite_query)
 
+        # TODO: fix techical debt with checkpoint monitor implementation
+        # * The current checkpoint implementation is self-referential:
+        #     checkpoint = lambda: save_best(fitdriver, ...)
+        #     fitdriver.monitors = [..., CheckpointMonitor(checkpoint), ...]
+        #   It is done this way because the checkpoint monitor needs the fitter
+        #   so it can ask it to save state, but the fitter needs the list of
+        #   monitors, including the checkpoint monitor, before it is run.
+        # * Figures are cumulative, with each checkpoint adding a new set
+        # * Figures are slow! Can they go into a separate thread?  Can we
+        #   have the problem cache the best value?
+        checkpoint_time = float(opts.checkpoint)*3600
+        def checkpoint(history):
+            problem = fitdriver.problem
+            ## Use the following to save only the fitter state
+            fitdriver.fitter.save(problem.output_path)
+            ## Use the following to save the fitter state plus all other
+            ## plots and other output files.  This won't work yet since
+            ## plots are generated sequentially, with each checkpoint producing
+            ## a completely new set of plots.
+            #best = history.point[0]
+            #save_best(fitdriver, problem, best, view=opts.view)
+        monitors = [ConsoleMonitor(problem)]
+        if checkpoint_time > 0 and np.isfinite(checkpoint_time):
+            mon = CheckpointMonitor(checkpoint, progress=checkpoint_time)
+            monitors.append(mon)
         if opts.stepmon:
             fid = open(problem.output_path + '.log', 'w')
-            fitdriver.monitors = [ConsoleMonitor(problem),
-                                  StepMonitor(problem, fid, fields=['step', 'value'])]
+            mon = StepMonitor(problem, fid, fields=['step', 'value'])
+            monitors.append(mon)
+        fitdriver.monitors = monitors
 
         #import time; t0=time.clock()
         cpus = int(opts.parallel) if opts.parallel != "" else 0
         fitdriver.mapper = mapper.start_mapper(problem, opts.args, cpus=cpus)
         best, fbest = fitdriver.fit(resume=resume_path)
         # print("time=%g"%(time.clock()-t0),file=sys.__stdout__)
+        # Note: keep this in sync with the checkpoint function above
         save_best(fitdriver, problem, best, view=opts.view)
         if opts.err or opts.cov:
             fitdriver.show_err()

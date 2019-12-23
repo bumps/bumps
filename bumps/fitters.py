@@ -37,7 +37,7 @@ class ConsoleMonitor(monitor.TimedUpdate):
         sys.stdout.flush()
 
     def show_improvement(self, history):
-        # print "step",history.step[0],"chisq",history.value[0]
+        # print("step",history.step[0],"chisq",history.value[0])
         p = self.problem.getp()
         try:
             self.problem.setp(history.point[0])
@@ -45,6 +45,30 @@ class ConsoleMonitor(monitor.TimedUpdate):
         finally:
             self.problem.setp(p)
         sys.stdout.flush()
+
+
+class CheckpointMonitor(monitor.TimedUpdate):
+    """
+    Periodically save fit state so that it can be resumed later.
+    """
+    #: Function to call at each checkpoint.
+    checkpoint = None  # type: Callable[None, None]
+    def __init__(self, checkpoint, progress=60*30):
+        monitor.TimedUpdate.__init__(self, progress=progress,
+                                     improvement=np.inf)
+        self.checkpoint = checkpoint
+        self._first = True
+
+    def show_progress(self, history):
+        # Skip the first checkpoint since it only contains the
+        # start/resume state
+        if self._first:
+            self._first = False
+        else:
+            self.checkpoint(history)
+
+    def show_improvement(self, history):
+        pass
 
 
 class StepMonitor(monitor.Monitor):
@@ -796,7 +820,7 @@ class DreamFit(FitBase):
 
     def _monitor(self, state, pop, logp):
         # Get an early copy of the state
-        self._update.history.uncertainty_state = state
+        self.state = self._update.history.uncertainty_state = state
         step = state.generation
         x, fx = state.best()
         self._update(step=step, point=x, value=-fx,

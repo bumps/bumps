@@ -253,7 +253,7 @@ class BumpsOpts(ParseOpts):
                 ))
     VALUES = set(("plot", "store", "resume", "fit", "noise", "seed", "pars",
                   "resynth", "transport", "notify", "queue", "time",
-                  "m", "c", "p", "parallel", "view",
+                  "checkpoint", "m", "c", "p", "parallel", "view",
                  ))
     # Add in parameters from the fitters
     VALUES |= set(FIT_FIELDS.keys())
@@ -267,6 +267,7 @@ class BumpsOpts(ParseOpts):
     starts = "1"
     seed = ""
     time = "inf"
+    checkpoint = "0"
     parallel = ""
     view = None
     PLOTTERS = "linear", "log", "residuals"
@@ -333,6 +334,8 @@ Options:
         remote job queue
     --time=inf
         run for a maximum number of hours
+    --checkpoint=0
+        save fit state every n hours, or 0 for no checkpoints
 
     --fit=amoeba    [%(fitter)s]
         fitting engine to use; see manual for details
