@@ -34,6 +34,14 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
+v0.8.14a
+--------
+
+* support for *--checkpoint=n*, which updates the .mc files every n hours
+* fix bug for stuck fits on *--resume*: probabilities contain NaN
+* better error message for missing store directory
+
+
 v0.7.13 2019-10-15
 ------------------
 
