@@ -4,9 +4,14 @@ Interfaces to various optimizers.
 from __future__ import print_function, division
 
 import sys
-import time
 from copy import copy
 import warnings
+
+# CRUFT: time.clock() removed from python 3.8
+try:
+    from time import perf_counter
+except ImportError:
+    from time import clock as perf_counter
 
 import numpy as np
 
@@ -116,11 +121,11 @@ class MonitorRunner(object):
                                population_points=1, population_values=1)
         for M in self.monitors:
             M.config_history(self.history)
-        self._start = time.time()
+        self._start = perf_counter()
 
     def __call__(self, step, point, value,
                  population_points=None, population_values=None):
-        self.history.update(time=time.time() - self._start,
+        self.history.update(time=perf_counter() - self._start,
                             step=step, point=point, value=value,
                             population_points=population_points,
                             population_values=population_values)
@@ -951,13 +956,13 @@ class FitDriver(object):
         starts = self.options.get('starts', 1)
         if starts > 1:
             fitter = MultiStart(fitter)
-        t0 = time.clock()
+        t0 = perf_counter()
         self.fitter = fitter
         x, fx = fitter.solve(monitors=self.monitors,
                              abort_test=self.abort_test,
                              mapper=self.mapper,
                              **self.options)
-        self.time = time.clock() - t0
+        self.time = perf_counter() - t0
         self.result = x, fx
         if x is not None:
             self.problem.setp(x)
