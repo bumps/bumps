@@ -34,12 +34,13 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
-v0.8.14a
---------
+v0.7.14 2020-01-03
+------------------
 
 * support for *--checkpoint=n*, which updates the .mc files every n hours
 * fix bug for stuck fits on *--resume*: probabilities contain NaN
 * better error message for missing store directory
+* Python 3.8 support (time.clock no longer exists)
 
 
 v0.7.13 2019-10-15
