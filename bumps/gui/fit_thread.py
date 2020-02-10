@@ -162,7 +162,9 @@ class FitThread(Thread):
                 except ImportError:
                     import pickle
                 pickle.dumps(self.problem)
-            mapper = MPMapper
+            #mapper = MPMapper
+            # hack around thread pool creation mp with threads (by killing them)
+            mapper = SerialMapper
         except Exception:
             mapper = SerialMapper
 
