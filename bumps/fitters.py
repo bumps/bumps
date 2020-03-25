@@ -1101,7 +1101,7 @@ class FitDriver(object):
 
     def show_entropy(self):
         print("Calculating entropy...")
-        S, dS = fitdriver.entropy()
+        S, dS = self.fitter.entropy()
         print("Entropy: %s bits" % format_uncertainty(S, dS))
 
     def save(self, output_path):
