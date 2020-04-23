@@ -505,8 +505,10 @@ class AppPanel(wx.Panel):
 
     def save_model(self, path):
         try:
-           with open(path,'wb') as fid:
-               pickle.dump(self.model, fid)
+            if hasattr(self.model, 'save_json'):
+                self.model.save_json(path)
+            with open(path,'wb') as fid:
+                pickle.dump(self.model, fid)
         except Exception:
             import traceback
             signal.log_message(message=traceback.format_exc())
