@@ -35,8 +35,7 @@ from bumps.dream.model import MVNormal, Mixture
 from bumps.names import *
 from bumps.util import push_seed
 
-# Need reproducible models if we want to be able to resume a fit
-with push_seed(1):
+def make_model():
     if 1: # Fixed layout of 5 minima
         num_modes = 5
         S = [0.1]*5
@@ -46,31 +45,37 @@ with push_seed(1):
     else: # Semirandom layout of n minima
         num_modes = 40
         S = [0.1]*num_modes
-        x = np.linspace(-10,10,num_modes)
+        x = np.linspace(-10, 10, num_modes)
         y = np.random.permutation(x)
-        I = 2*np.linspace(-1,1,num_modes)**2 + 1
+        I = 2*np.linspace(-1, 1, num_modes)**2 + 1
 
     ## Take only the first two modes
-    k=2; S, x, y, I = S[:k], x[:k],  y[:k], I[:k]
+    k = 2
+    S, x, y, I = S[:k], x[:k], y[:k], I[:k]
     #S[1] = 1; I[1] = 1; I[0] = 1
     dims = 10
     centers = [x, y] + [np.random.permutation(x) for _ in range(2, dims)]
     centers = np.asarray(centers).T
     args = [] # Sequence of density, weight, density, weight, ...
-    for mu_i,Si,Ii in zip(centers,S,I):
-        args.extend( (MVNormal(mu_i,Si*np.eye(dims)), Ii) )
+    for mu_i, Si, Ii in zip(centers, S, I):
+        args.extend((MVNormal(mu_i, Si*np.eye(dims)), Ii))
     model = Mixture(*args)
 
-if 1:
-    from bumps.dream.entropy import GaussianMixture
-    pairs = zip(args[0::2], args[1::2])
-    triples = ((M.mu, M.sigma, I) for M, I in pairs)
-    mu, sigma, weight = zip(*triples)
-    D = GaussianMixture(weight, mu=mu, sigma=sigma)
-    print("*** Expected entropy: %s bits"%(D.entropy(N=100000)/np.log(2),))
+    if 1:
+        from bumps.dream.entropy import GaussianMixture
+        pairs = zip(args[0::2], args[1::2])
+        triples = ((M.mu, M.sigma, I) for M, I in pairs)
+        mu, sigma, weight = zip(*triples)
+        D = GaussianMixture(weight, mu=mu, sigma=sigma)
+        print("*** Expected entropy: %s bits"%(D.entropy(N=100000)/np.log(2),))
 
+    return model
 
-def plot2d(fn, args=None, range=(-10,10)):
+# Need reproducible models if we want to be able to resume a fit
+with push_seed(1):
+    model = make_model()
+
+def plot2d(fn, args=None, range=(-10, 10)):
     """
     Return a mesh plotter for the given function.
 
@@ -93,13 +98,13 @@ def plot2d(fn, args=None, range=(-10,10)):
         else:
             r = np.linspace(range[0], range[1], 20)
             x, y = p[args[0]], p[args[1]]
-            data = np.empty((len(r),len(r)),'d')
+            data = np.empty((len(r), len(r)), 'd')
             for j, xj in enumerate(x+r):
                 for k, yk in enumerate(y+r):
                     p[args[0]], p[args[1]] = xj, yk
                     data[j, k] = fn(p)
             pylab.pcolormesh(x+r, y+r, data)
-            pylab.plot(x, y, 'o', hold=True, markersize=6,
+            pylab.plot(x, y, 'o', markersize=6,
                        markerfacecolor='red', markeredgecolor='black',
                        markeredgewidth=1, alpha=0.7)
             pylab.xlabel(args[0])

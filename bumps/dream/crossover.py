@@ -48,10 +48,8 @@ from __future__ import division, print_function
 
 __all__ = ["Crossover", "AdaptiveCrossover", "LogAdaptiveCrossover"]
 
-from numpy import hstack, empty, ones, zeros, cumsum, arange, \
-    reshape, array, isscalar, asarray, std, sum, trunc, log10, logspace
-
-from . import util
+import numpy as np
+from numpy import ones, zeros, arange, isscalar, std, trunc, log10, logspace
 
 
 class Crossover(object):
@@ -66,8 +64,8 @@ class Crossover(object):
     def __init__(self, CR, weight=None):
         if isscalar(CR):
             CR, weight = [CR], [1]
-        CR, weight = [asarray(v, 'd') for v in (CR, weight)]
-        self.CR, self.weight = CR, weight/sum(weight)
+        CR, weight = [np.asarray(v, 'd') for v in (CR, weight)]
+        self.CR, self.weight = CR, weight/np.sum(weight)
 
     def reset(self):
         pass
@@ -90,6 +88,12 @@ class BaseAdaptiveCrossover(object):
     """
     Adapted weight crossover ratios.
     """
+    weight = None # type: np.ndarray
+    _count = None # type: np.ndarray
+    _distance = None # type: np.ndarray
+    _generations = 0 # type: int
+    _Nchains = 0 # type: int
+
     def _set_CRs(self, CR):
         self.CR = CR
         # Start with all CRs equally probable
@@ -99,6 +103,7 @@ class BaseAdaptiveCrossover(object):
         self._count = zeros(len(self.CR))
         self._distance = zeros(len(self.CR))
         self._generations = 0
+        self._Nchains = 0
 
     def reset(self):
         # TODO: do we reset count and distance?
@@ -112,23 +117,31 @@ class BaseAdaptiveCrossover(object):
         # Calculate the standard deviation of each dimension of X
         r = std(xnew, ddof=1, axis=0)
         # Compute the Euclidean distance between new X and old X
-        d = sum(((xold - xnew)/r)**2, axis=1)
+        d = np.sum(((xold - xnew)/r)**2, axis=1)
         # Use this information to update sum_p2 to update N_CR
         count, total = distance_per_CR(self.CR, d, used)
         self._count += count
         self._distance += total
         self._generations += 1
-        self._Nchains = len(used)
+        # [PAK] Accumulate number of steps so counts can be normalized
+        self._Nchains += len(used)
 
     def adapt(self):
         """
         Update CR weights based on the available adaptation data.
         """
-        # [PAK] make sure no count is zero by adding one to all counts
-        self.weight = (self._distance/(self._count+1)) * (self._Nchains/sum(self._distance))
-        # [PAK] make sure no weight goes to zero
-        self.weight += 0.1*sum(self.weight)
-        self.weight /= sum(self.weight)
+        # [PAK] Protect against completely stuck fits (no accepted updates
+        # [PAK] and therefore a total distance of zero) by reusing the
+        # [PAK] the existing weights.
+        total_distance = np.sum(self._distance)
+        if total_distance > 0 and self._Nchains > 0:
+            # [PAK] Make sure no count is zero by adding one to all counts
+            self.weight = self._distance/(self._count+1)
+            self.weight *= self._Nchains/total_distance
+
+        # [PAK] Adjust weights toward uniform; this guarantees nonzero weights.
+        self.weight += 0.1*np.sum(self.weight)
+        self.weight /= np.sum(self.weight)
 
 class AdaptiveCrossover(BaseAdaptiveCrossover):
     """
@@ -174,7 +187,7 @@ def distance_per_CR(available_CRs, distances, used):
     # TODO: could use sparse array trick to evaluate totals by CR
     # Set distance[k] to coordinate (k, used[k]), then sum by columns
     # Note: currently setting unused CRs to -1, so this won't work
-    total = array([sum(distances[used == p]) for p in available_CRs])
-    count = array([sum(used == p) for p in available_CRs])
+    total = np.asarray([np.sum(distances[used == p]) for p in available_CRs])
+    count = np.asarray([np.sum(used == p) for p in available_CRs])
     return count, total
 

@@ -4,8 +4,14 @@ Interfaces to various optimizers.
 from __future__ import print_function, division
 
 import sys
-import time
 from copy import copy
+import warnings
+
+# CRUFT: time.clock() removed from python 3.8
+try:
+    from time import perf_counter
+except ImportError:
+    from time import clock as perf_counter
 
 import numpy as np
 
@@ -36,7 +42,7 @@ class ConsoleMonitor(monitor.TimedUpdate):
         sys.stdout.flush()
 
     def show_improvement(self, history):
-        # print "step",history.step[0],"chisq",history.value[0]
+        # print("step",history.step[0],"chisq",history.value[0])
         p = self.problem.getp()
         try:
             self.problem.setp(history.point[0])
@@ -44,6 +50,30 @@ class ConsoleMonitor(monitor.TimedUpdate):
         finally:
             self.problem.setp(p)
         sys.stdout.flush()
+
+
+class CheckpointMonitor(monitor.TimedUpdate):
+    """
+    Periodically save fit state so that it can be resumed later.
+    """
+    #: Function to call at each checkpoint.
+    checkpoint = None  # type: Callable[None, None]
+    def __init__(self, checkpoint, progress=60*30):
+        monitor.TimedUpdate.__init__(self, progress=progress,
+                                     improvement=np.inf)
+        self.checkpoint = checkpoint
+        self._first = True
+
+    def show_progress(self, history):
+        # Skip the first checkpoint since it only contains the
+        # start/resume state
+        if self._first:
+            self._first = False
+        else:
+            self.checkpoint(history)
+
+    def show_improvement(self, history):
+        pass
 
 
 class StepMonitor(monitor.Monitor):
@@ -91,11 +121,11 @@ class MonitorRunner(object):
                                population_points=1, population_values=1)
         for M in self.monitors:
             M.config_history(self.history)
-        self._start = time.time()
+        self._start = perf_counter()
 
     def __call__(self, step, point, value,
                  population_points=None, population_values=None):
-        self.history.update(time=time.time() - self._start,
+        self.history.update(time=perf_counter() - self._start,
                             step=step, point=point, value=value,
                             population_points=population_points,
                             population_values=population_values)
@@ -795,7 +825,7 @@ class DreamFit(FitBase):
 
     def _monitor(self, state, pop, logp):
         # Get an early copy of the state
-        self._update.history.uncertainty_state = state
+        self.state = self._update.history.uncertainty_state = state
         step = state.generation
         x, fx = state.best()
         self._update(step=step, point=x, value=-fx,
@@ -823,16 +853,9 @@ class DreamFit(FitBase):
             print("loading saved state (this might take awhile) ...")
             fn, labels = getattr(self.problem, 'derive_vars', (None, []))
             self.state = load_state(input_path, report=100, derived_vars=len(labels))
-        elif input_path != problem.output_path:
-            # Only signal an error if --resume is different from --store.  If
-            # it is the same (e.g., because "--resume=-" was given on the
-            # command line) but missing, then silently skip the resume.  Note
-            # that we can't just check for the existence of the directory
-            # since we will already have created it before we get here.  We
-            # do want to signal an error if resume is different from store
-            # in order to catch typos on the command line instead of letting
-            # users quietly believe they are resuming.
-            raise RuntimeError("no mcmc saved at %r"%input_path)
+        else:
+            # Warn if mc files are not found on --resume path
+            warnings.warn("No mcmc found; ignoring --resume=%r"%input_path)
 
     def save(self, output_path):
         self.state.save(output_path)
@@ -933,13 +956,13 @@ class FitDriver(object):
         starts = self.options.get('starts', 1)
         if starts > 1:
             fitter = MultiStart(fitter)
-        t0 = time.clock()
+        t0 = perf_counter()
         self.fitter = fitter
         x, fx = fitter.solve(monitors=self.monitors,
                              abort_test=self.abort_test,
                              mapper=self.mapper,
                              **self.options)
-        self.time = time.clock() - t0
+        self.time = perf_counter() - t0
         self.result = x, fx
         if x is not None:
             self.problem.setp(x)
@@ -1078,7 +1101,7 @@ class FitDriver(object):
 
     def show_entropy(self):
         print("Calculating entropy...")
-        S, dS = fitdriver.entropy()
+        S, dS = self.entropy()
         print("Entropy: %s bits" % format_uncertainty(S, dS))
 
     def save(self, output_path):

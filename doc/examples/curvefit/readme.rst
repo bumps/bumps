@@ -14,8 +14,13 @@ taken from counting statistics, with function $f(x;p)$ and data $x,y$.
 sim.py is a simulation of data from a poisson process, showing maximum
 likelihood, expected value and variance.
 
+The ode2 example shows how to fit a system of coupled differential equations
+where multiple values are tracked at each time step.
+
 .. toctree::
 
     curve.rst
     poisson.rst
     sim.rst
+    ode.rst
+    ode2.rst

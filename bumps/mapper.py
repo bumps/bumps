@@ -63,11 +63,12 @@ class SerialMapper(object):
 #    from .fitproblem import load_problem
 #    _MP_set_problem(load_problem(*modelargs))
 
-
 def _MP_set_problem(problem):
     global _problem
     nice()
     _problem = problem
+    #import dill as pickle
+    #_problem = pickle.loads(pickled_problem)
 
 
 def _MP_run_problem(point):
@@ -85,11 +86,15 @@ class MPMapper(object):
     @staticmethod
     def start_mapper(problem, modelargs, cpus=0):
         import multiprocessing
+        #import dill as pickle
+        #import multiprocessing.reduction
+        #multiprocessing.reduction.pickle = None
         if cpus==0:
             cpus = multiprocessing.cpu_count()
         if MPMapper.pool is not None:
             MPMapper.pool.terminate()
         #MPMapper.pool = multiprocessing.Pool(cpus,_MP_load_problem,modelargs)
+        #MPMapper.pool = multiprocessing.Pool(cpus, _MP_set_problem, (pickle.dumps(problem),))
         MPMapper.pool = multiprocessing.Pool(cpus, _MP_set_problem, (problem,))
         mapper = lambda points: MPMapper.pool.map(_MP_run_problem, points)
         return mapper

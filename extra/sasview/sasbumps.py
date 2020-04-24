@@ -22,8 +22,8 @@ def load_data(filename):
     return DataLoader().load(filename)
 
 def sim_data(model, noise=5, qmin=0.005, qmax=0.5, nq=100, dq=0):
-    for pid, p in getattr(model,'_bumps_pars', {}).items():
-        model.setParam(pid,p.value)
+    for pid, p in getattr(model, '_bumps_pars', {}).items():
+        model.setParam(pid, p.value)
     q = np.logspace(np.log10(qmin), np.log10(qmax), nq)
     # if dq != 0 then need smearing
     I = model.evalDistribution(q)
@@ -33,14 +33,14 @@ def sim_data(model, noise=5, qmin=0.005, qmax=0.5, nq=100, dq=0):
 
 def load_model(model, name=None, **kw):
     sans = __import__('sans.models.'+model)
-    ModelClass = getattr(getattr(sans.models,model,None),model,None)
+    ModelClass = getattr(getattr(sans.models, model, None), model, None)
     if ModelClass is None:
         raise ValueError("could not find model %r in sans.models"%model)
     M = ModelClass()
     prefix = (name if name else _model_name(M)) + " "
     M._bumps_pars = {}
     valid_pars = M.getParamList()
-    for k,v in kw.items():
+    for k, v in kw.items():
         # dispersion parameters initialized with _field instead of .field
         if k.endswith('_width'): k = k[:-6]+'.width'
         elif k.endswith('_npts'): k = k[:-5]+'.npts'
@@ -54,7 +54,7 @@ def load_model(model, name=None, **kw):
             M.setParam(k, v)
         elif isinstance(v, BaseParameter):
             M._bumps_pars[k] = v
-        elif isinstance(v, (tuple,list)):
+        elif isinstance(v, (tuple, list)):
             low, high = v
             P = Parameter((low+high)/2, bounds=v, name=prefix+k)
             M._bumps_pars[k] = P
@@ -68,8 +68,8 @@ def load_fit(filename):
     data = data[0] # no support for multiset files
     fit = data.meta_data['fitstate']
     model_name = fit.formfactorcombobox
-    pars = dict((p[1],float(p[2])) for p in fit.parameters) 
-    for k,v in pars.items():
+    pars = dict((p[1], float(p[2])) for p in fit.parameters)
+    for k, v in pars.items():
         if abs(v) < 1e-5 and v != 0:
             pars[k] = 1e-6*Parameter(v*1e6, name=model_name+" "+k)
     model = load_model(model_name, **pars)
@@ -94,7 +94,7 @@ def _sas_parameter(model, pid, prefix):
     par = getattr(model, '_bumps_pars', {}).get(pid, None)
     if par is None:
         ## Don't have bounds on dispersion parameters with model details
-        #bounds = model.details.get(pid,[None,None,None])[1:3]
+        #bounds = model.details.get(pid, [None, None, None])[1:3]
         value = model.getParam(pid)
         par = Parameter(value, name=prefix+pid)
     return par
@@ -105,12 +105,12 @@ def _build_parameters(model, prefix, oriented, magnetic):
                if '.' not in pid or pid.endswith('.width'))
     if not oriented: pars -= set(model.orientation_params)
     if not magnetic: pars -= set(model.magnetic_params)
-    return dict((pid,_sas_parameter(model, pid, prefix)) for pid in pars)
+    return dict((pid, _sas_parameter(model, pid, prefix)) for pid in pars)
 
 def _set_parameters(model, pars):
-    for pid,p in pars.items():
-        #print("setting %r to %g"%(pid,p.value))
-        model.setParam(pid,p.value)
+    for pid, p in pars.items():
+        #print("setting %r to %g"%(pid, p.value))
+        model.setParam(pid, p.value)
 
 class Experiment(object):
     def __init__(self, model, data, smearer=None, qmin=None, qmax=None, name=''):
@@ -148,7 +148,7 @@ class Experiment(object):
         key = 'theory'
         if key not in self._cache:
             _set_parameters(self.model, self._pars)
-            resid,fx = self.fitdata.residuals(self.model.evalDistribution)
+            resid, fx = self.fitdata.residuals(self.model.evalDistribution)
             self._cache[key] = fx
             self._cache['residuals'] = resid
         return self._cache[key]
@@ -184,7 +184,7 @@ class Experiment(object):
         Generate fake data based on uncertainties in the real data.  For Monte Carlo
         resynth-refit uncertainty analysis.  Bootstrapping?
         """
-        y,dy = self._saved_y,self.fitdata.dy
+        y, dy = self._saved_y, self.fitdata.dy
         self.data.y = y + np.random.randn(len(y))*dy
 
     def restore_data(self):
@@ -215,33 +215,33 @@ class Experiment(object):
         can make it as complex as you want.  This will be saved as a png on
         the server, and composed onto a results webpage.
         """
-        #print("view",view)
+        #print("view", view)
         import pylab
         if self.oriented:
-            qx,qy,Iqxy = self.fitdata.qx_data, self.fitdata.qy_data, self.fitdata.data
-            xlabel,ylabel = self.fitdata.sans_data
+            qx, qy, Iqxy = self.fitdata.qx_data, self.fitdata.qy_data, self.fitdata.data
+            xlabel, ylabel = self.fitdata.sans_data
             pylab.subplot(311)
-            pylab.pcolormesh(qx,qy,Iqxy)
+            pylab.pcolormesh(qx, qy, Iqxy)
             pylab.title('Data')
             pylab.subplot(312)
-            pylab.pcolormesh(qx,qy,self.theory())
+            pylab.pcolormesh(qx, qy, self.theory())
             pylab.title('Theory')
             pylab.subplot(313)
-            pylab.pcolormesh(qx,qy,self.residuals(), vmin=-3, vmax=3)
+            pylab.pcolormesh(qx, qy, self.residuals(), vmin=-3, vmax=3)
             pylab.title('Residuals +/- 3 sigma')
         elif view=='residual':
             pylab.plot(self.fitdata.x, self.residuals(), '.')
-            pylab.axhline(1, color='black', ls='--',lw=1)
+            pylab.axhline(1, color='black', ls='--', lw=1)
             pylab.axhline(0, color='black', lw=1)
-            pylab.axhline(-1, color='black', ls='--',lw=1)
+            pylab.axhline(-1, color='black', ls='--', lw=1)
             pylab.xlabel('Q (inv A)')
             pylab.ylabel('(theory-data)/error')
             pylab.legend(numpoints=1)
         else:
             pylab.errorbar(self.fitdata.x, self.fitdata.y,
                            xerr=self.fitdata.dx, yerr=self.fitdata.dy,
-                           fmt='o',label="data "+self.name)
+                           fmt='o', label="data "+self.name)
             pylab.plot(self.fitdata.x, self.theory(), '-',
-                       label="fit "+self.name, hold=True)
+                       label="fit "+self.name)
             pylab.xscale('log')
             pylab.yscale('log')

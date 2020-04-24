@@ -15,9 +15,9 @@ from bumps.names import *
 # need the uncertainty on each measurement if we want to get a meaningful
 # uncertainty on the fitted parameters.
 
-x = [1,2,3,4,5,6]
-y = [2.1,4.0,6.3,8.03,9.6,11.9]
-dy = [0.05,0.05,0.2,0.05,0.2,0.2]
+x = [1, 2, 3, 4, 5, 6]
+y = [2.1, 4.0, 6.3, 8.03, 9.6, 11.9]
+dy = [0.05, 0.05, 0.2, 0.05, 0.2, 0.2]
 
 # Instead of using lists we could have loaded the data from a
 # three-column text file using:
@@ -25,7 +25,7 @@ dy = [0.05,0.05,0.2,0.05,0.2,0.2]
 # .. parsed-literal::
 #
 #    data = np.loadtxt("data.txt").T
-#    x,y,dy = data[0,:], data[1,:], data[2,:]
+#    x, y, dy = data[0, :], data[1, :], data[2, :]
 #
 # The variations are endless --- cleaning the data so that it is
 # in a fit state to model is often the hardest part in the analysis.
@@ -44,12 +44,12 @@ def line(x, m, b=0):
 # This assumes that the measurement uncertainty is normally
 # distributed, with a 1-\ $\sigma$ confidence interval *dy* for each point.
 # We specify initial values for $m$ and $b$ when we define the
-# model, and then constrain the fit to $m \in [0,4]$ # and $b \in [-5,5]$
+# model, and then constrain the fit to $m \in [0, 4]$ # and $b \in [-5, 5]$
 # with the parameter :meth:`range <bumps.parameter.Parameter.range>` method.
 
-M = Curve(line,x,y,dy,m=2,b=2)
-M.m.range(0,4)
-M.b.range(-5,5)
+M = Curve(line, x, y, dy, m=2, b=2)
+M.m.range(0, 4)
+M.b.range(-5, 5)
 
 # Every model file ends with a problem definition including a
 # list of all models and datasets which are to be fitted.

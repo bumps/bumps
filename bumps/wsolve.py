@@ -223,8 +223,8 @@ def wsolve(A, y, dy=1, rcond=1e-12):
 
     Returns :class:`LinearModel`.
     """
-    # The ugliness v[:,N.newaxis] transposes a vector
-    # The ugliness N.dot(a,b) is a*b for a,b matrices
+    # The ugliness v[:, N.newaxis] transposes a vector
+    # The ugliness N.dot(a, b) is a*b for a,b matrices
     # The ugliness vh.T.conj() is the hermitian transpose
 
     # Make sure inputs are arrays
@@ -248,6 +248,7 @@ def wsolve(A, y, dy=1, rcond=1e-12):
     u, s, vh = np.linalg.svd(A, 0)
 
     # FIXME what to do with ill-conditioned systems?
+    # Use regularization? L1 (Lasso), L2 (Ridge) or both (Elastic Net)
     #if s[-1]<rcond*s[0]: raise ValueError, "matrix is singular"
     # s[s<rcond*s[0]] = 0.  # Can't do this because 1/s below will fail
 

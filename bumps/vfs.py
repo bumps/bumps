@@ -119,55 +119,42 @@ except ImportError:
 #   lseek, read, dup, dup2, errno, error, closerange, isatty, openpty,
 #   mknod
 
-_py3_open = io.open
-_chdir = os.chdir
-_getcwd = os.getcwd
-_exists = os.path.exists
-_isfile = os.path.isfile
-_isdir = os.path.isdir
-_listdir = os.listdir
+# Protect against reload(vfs). Assume that if the symbol is already a
+# wrapped symbol that we want to retrieve the original unwrapped symbol
+# rather than our wrapper. Additionally, assume nobody else is foolish
+# enough to be wrapping such low-level symbols...
+def _unwrap(fn):
+    return getattr(fn, '__wrapped__', fn)
 
+_py2_open = _unwrap(_py2_open)
+_py3_open = _unwrap(io.open)
+_chdir = _unwrap(os.chdir)
+_getcwd = _unwrap(os.getcwd)
+_exists = _unwrap(os.path.exists)
+_isfile = _unwrap(os.path.isfile)
+_isdir = _unwrap(os.path.isdir)
+_listdir = _unwrap(os.listdir)
 # TODO: maybe use builtin versions?
-_abspath = os.path.abspath
-_realpath = os.path.realpath
+_abspath = _unwrap(os.path.abspath)
+_realpath = _unwrap(os.path.realpath)
 
 class RealFS(object):
     def __enter__(self):
-        pushfs(self)
+        pushfs(RealFS)
 
     def __exit__(self, *args, **kw):
         popfs()
 
-    def open(self, *args, **kw):
-        return _py3_open(*args, **kw)
-
-    def py2_open(self, *args, **kw):
-        return _py2_open(*args, **kw)
-
-    def getcwd(self):
-        return _getcwd()
-
-    def chdir(self, path):
-        return _chdir(path)
-
-    def listdir(self, path=None):
-        return _listdir(path) if path is not None else _listdir()
-
-    def abspath(self, path):
-        return _abspath(path)
-
-    def realpath(self, path):
-        return _realpath(path)
-
-    def isfile(self, path):
-        return _isfile(path)
-
-    def isdir(self, path):
-        return _isdir(path)
-
-    def exists(self, path):
-        return _exists(path)
-
+    open = _py3_open
+    py2_open = _py2_open
+    getcwd = _getcwd
+    chdir = _chdir
+    listdir = _listdir
+    abspath = _abspath
+    realpath = _realpath
+    isfile = _isfile
+    isdir = _isdir
+    exists = _exists
 
 class ZipFS(object):
     """
@@ -272,9 +259,9 @@ class ZipFS(object):
         # abspath handles pathlib
         return self.isfile(path) or self.isdir(path)
 
-# These will be initialized in vfs_init
-FS = None  # type: RealFS
-FS_STACK = None  # type: List[RealFS]
+
+FS = RealFS
+FS_STACK = [] # type: List[RealFS]
 def pushfs(fs):
     global FS
     FS_STACK.append(FS)
@@ -284,102 +271,253 @@ def popfs():
     global FS
     FS = FS_STACK.pop()
 
-if _py3_open is not None:
-    @wraps(_py3_open)
-    def fs_py3_open(*args, **kw):
-        return FS.open(*args, **kw)
+# Note: We need fs redirection functions as bound methods since pathlib uses
+# them as class attributes. The usual filesystem methods are all builtin
+# functions so they act as static methods when used as part of a class
+# definition. However, when python functions are used as class attributes
+# they get turned into bound methods when an object is created with self
+# as the first parameter. But if the class attribute is already a bound method
+# then it is left alone when the object is created.  We still get the extra
+# self parameter, but we get it whether we access it as a class attribute
+# or as an object attribute so it is easy to ignore.
+class VFS(object):
+    if _py3_open is not None:
+        @wraps(_py3_open)
+        def fs_py3_open(self, *args, **kw):
+            return FS.open(*args, **kw)
 
-if _py2_open is not None:
-    @wraps(_py2_open)
-    def fs_py2_open(*args, **kw):
-        return FS.py2_open(*args, **kw)
+    if _py2_open is not None:
+        @wraps(_py2_open)
+        def fs_py2_open(self, *args, **kw):
+            return FS.py2_open(*args, **kw)
 
-@wraps(_chdir)
-def fs_chdir(*args, **kw):
-    return FS.chdir(*args, **kw)
+    @wraps(_chdir)
+    def fs_chdir(self, *args, **kw):
+        return FS.chdir(*args, **kw)
 
-@wraps(_getcwd)
-def fs_getcwd(*args, **kw):
-    return FS.getcwd(*args, **kw)
+    @wraps(_getcwd)
+    def fs_getcwd(self, *args, **kw):
+        return FS.getcwd(*args, **kw)
 
-@wraps(_listdir)
-def fs_listdir(*args, **kw):
-    return FS.listdir(*args, **kw)
+    @wraps(_listdir)
+    def fs_listdir(self, *args, **kw):
+        return FS.listdir(*args, **kw)
 
-@wraps(_exists)
-def fs_exists(*args, **kw):
-    return FS.exists(*args)
+    @wraps(_exists)
+    def fs_exists(self, *args, **kw):
+        return FS.exists(*args)
 
-@wraps(_isfile)
-def fs_isfile(*args, **kw):
-    return FS.isfile(*args, **kw)
+    @wraps(_isfile)
+    def fs_isfile(self, *args, **kw):
+        return FS.isfile(*args, **kw)
 
-@wraps(_isdir)
-def fs_isdir(*args, **kw):
-    return FS.isdir(*args, **kw)
+    @wraps(_isdir)
+    def fs_isdir(self, *args, **kw):
+        return FS.isdir(*args, **kw)
 
-@wraps(_abspath)
-def fs_abspath(*args, **kw):
-    return FS.abspath(*args, **kw)
+    @wraps(_abspath)
+    def fs_abspath(self, *args, **kw):
+        return FS.abspath(*args, **kw)
 
-@wraps(_realpath)
-def fs_realpath(*args, **kw):
-    return FS.realpath(*args, **kw)
+    @wraps(_realpath)
+    def fs_realpath(self, *args, **kw):
+        return FS.realpath(*args, **kw)
+vfs = VFS()
 
 def vfs_init():
     """
     Call this very early in your program so that various filesystem functions
     will be redirected even if they are expressed as "from module import fn"
     """
-    global FS, FS_STACK
-    FS = RealFS()
-    FS_STACK = []
-
     if __builtin__ is not None:
-        __builtin__.open = fs_py2_open
+        __builtin__.open = vfs.fs_py2_open
     if builtins is not None:
-        builtins.open = fs_py3_open
-    io.open = fs_py3_open
-    os.chdir = fs_chdir
-    os.getcwd = fs_getcwd
-    os.listdir = fs_listdir
-    os.path.abspath = fs_abspath
-    os.path.realpath = fs_realpath
-    os.path.exists = fs_exists
-    os.path.isfile= fs_isfile
-    os.path.isdir = fs_isdir
+        builtins.open = vfs.fs_py3_open
+    io.open = vfs.fs_py3_open
+    os.chdir = vfs.fs_chdir
+    os.getcwd = vfs.fs_getcwd
+    os.listdir = vfs.fs_listdir
+    os.path.abspath = vfs.fs_abspath
+    os.path.realpath = vfs.fs_realpath
+    os.path.exists = vfs.fs_exists
+    os.path.isfile= vfs.fs_isfile
+    os.path.isdir = vfs.fs_isdir
 
     try:
         import nt, ntpath
-        nt.chdir = fs_chdir
-        nt.listdir = fs_listdir
-        nt.getcwd = fs_getcwd
-        ntpath.abspath = fs_abspath
-        ntpath.realpath = fs_realpath
-        ntpath.exists = fs_exists
-        ntpath.isfile = fs_isfile
-        ntpath.isdir = fs_isdir
+        nt.chdir = vfs.fs_chdir
+        nt.listdir = vfs.fs_listdir
+        nt.getcwd = vfs.fs_getcwd
+        ntpath.abspath = vfs.fs_abspath
+        ntpath.realpath = vfs.fs_realpath
+        ntpath.exists = vfs.fs_exists
+        ntpath.isfile = vfs.fs_isfile
+        ntpath.isdir = vfs.fs_isdir
     except ImportError:
         pass
 
     try:
         import posix, posixpath
-        posix.chdir = fs_chdir
-        posix.listdir = fs_listdir
-        posix.getcwd = fs_getcwd
-        posixpath.abspath = fs_abspath
-        posixpath.realpath = fs_realpath
-        posixpath.exists = fs_exists
-        posixpath.isfile = fs_isfile
-        posixpath.isdir = fs_isdir
+        posix.chdir = vfs.fs_chdir
+        posix.listdir = vfs.fs_listdir
+        posix.getcwd = vfs.fs_getcwd
+        posixpath.abspath = vfs.fs_abspath
+        posixpath.realpath = vfs.fs_realpath
+        posixpath.exists = vfs.fs_exists
+        posixpath.isfile = vfs.fs_isfile
+        posixpath.isdir = vfs.fs_isdir
     except ImportError:
         pass
 
     # Pathlib may be imported really early.  Make sure it sees the vfs.
     # TODO: with reload some isinstance tests may fail --- monkeypatch instead?
+    # Should be just an update to the members of pathlib._NormalAccessor.
+    # With reload, os.PathLike.register(PurePath) is being called twice but that
+    # shouldn't be a problem, especially because PurePath will have changed.
     try:
         import pathlib
         from importlib import reload
         reload(pathlib)
     except ImportError:
         pass
+
+
+# CRUFT: use old wrappers for python 2 since new wrappers don't seem to work
+if sys.version_info[0] == 2:
+    class RealFS(object):
+        def __enter__(self):
+            pushfs(self)
+
+        def __exit__(self, *args, **kw):
+            popfs()
+
+        def open(self, *args, **kw):
+            return _py3_open(*args, **kw)
+
+        def py2_open(self, *args, **kw):
+            return _py2_open(*args, **kw)
+
+        def getcwd(self):
+            return _getcwd()
+
+        def chdir(self, path):
+            return _chdir(path)
+
+        def listdir(self, path=None):
+            return _listdir(path) if path is not None else _listdir()
+
+        def abspath(self, path):
+            return _abspath(path)
+
+        def realpath(self, path):
+            return _realpath(path)
+
+        def isfile(self, path):
+            return _isfile(path)
+
+        def isdir(self, path):
+            return _isdir(path)
+
+        def exists(self, path):
+            return _exists(path)
+
+    if _py3_open is not None:
+        @wraps(_py3_open)
+        def fs_py3_open(*args, **kw):
+            return FS.open(*args, **kw)
+
+    if _py2_open is not None:
+        @wraps(_py2_open)
+        def fs_py2_open(*args, **kw):
+            return FS.py2_open(*args, **kw)
+
+    @wraps(_chdir)
+    def fs_chdir(*args, **kw):
+        return FS.chdir(*args, **kw)
+
+    @wraps(_getcwd)
+    def fs_getcwd(*args, **kw):
+        return FS.getcwd(*args, **kw)
+
+    @wraps(_listdir)
+    def fs_listdir(*args, **kw):
+        return FS.listdir(*args, **kw)
+
+    @wraps(_exists)
+    def fs_exists(*args, **kw):
+        return FS.exists(*args)
+
+    @wraps(_isfile)
+    def fs_isfile(*args, **kw):
+        return FS.isfile(*args, **kw)
+
+    @wraps(_isdir)
+    def fs_isdir(*args, **kw):
+        return FS.isdir(*args, **kw)
+
+    @wraps(_abspath)
+    def fs_abspath(*args, **kw):
+        return FS.abspath(*args, **kw)
+
+    @wraps(_realpath)
+    def fs_realpath(*args, **kw):
+        return FS.realpath(*args, **kw)
+
+    def vfs_init():
+        """
+        Call this very early in your program so that various filesystem functions
+        will be redirected even if they are expressed as "from module import fn"
+        """
+        global FS
+        FS = RealFS()
+        if __builtin__ is not None:
+            __builtin__.open = fs_py2_open
+        if builtins is not None:
+            builtins.open = fs_py3_open
+        io.open = fs_py3_open
+        os.chdir = fs_chdir
+        os.getcwd = fs_getcwd
+        os.listdir = fs_listdir
+        os.path.abspath = fs_abspath
+        os.path.realpath = fs_realpath
+        os.path.exists = fs_exists
+        os.path.isfile= fs_isfile
+        os.path.isdir = fs_isdir
+
+        try:
+            import nt, ntpath
+            nt.chdir = fs_chdir
+            nt.listdir = fs_listdir
+            nt.getcwd = fs_getcwd
+            ntpath.abspath = fs_abspath
+            ntpath.realpath = fs_realpath
+            ntpath.exists = fs_exists
+            ntpath.isfile = fs_isfile
+            ntpath.isdir = fs_isdir
+        except ImportError:
+            pass
+
+        try:
+            import posix, posixpath
+            posix.chdir = fs_chdir
+            posix.listdir = fs_listdir
+            posix.getcwd = fs_getcwd
+            posixpath.abspath = fs_abspath
+            posixpath.realpath = fs_realpath
+            posixpath.exists = fs_exists
+            posixpath.isfile = fs_isfile
+            posixpath.isdir = fs_isdir
+        except ImportError:
+            pass
+
+        # Pathlib may be imported really early.  Make sure it sees the vfs.
+        # TODO: with reload some isinstance tests may fail --- monkeypatch instead?
+        # Should be just an update to the members of pathlib._NormalAccessor.
+        # With reload, os.PathLike.register(PurePath) is being called twice but that
+        # shouldn't be a problem, especially because PurePath will have changed.
+        try:
+            import pathlib
+            from importlib import reload
+            reload(pathlib)
+        except ImportError:
+            pass

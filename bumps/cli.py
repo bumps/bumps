@@ -40,7 +40,7 @@ import numpy as np
 # np.seterr(all="raise")
 
 from . import fitters
-from .fitters import FitDriver, StepMonitor, ConsoleMonitor, nllf_scale
+from .fitters import FitDriver, StepMonitor, ConsoleMonitor, CheckpointMonitor, nllf_scale
 from .mapper import MPMapper, AMQPMapper, MPIMapper, SerialMapper
 from .formatnum import format_uncertainty
 from . import util
@@ -208,6 +208,10 @@ def make_store(problem, opts, exists_handler):
     # Determine if command line override
     if opts.store:
         problem.store = opts.store
+    if getattr(problem, 'store', None) is None:
+        raise RuntimeError(
+            "Need to specify '--store=path' on command line"
+            " or problem.store='path' in definition file.")
     problem.output_path = os.path.join(problem.store, problem.name)
 
     # Check if already exists
@@ -382,6 +386,7 @@ def config_matplotlib(backend=None):
     for modules which are completely dedicated to plotting, but these modules
     should never be imported at the module level.
     """
+    import matplotlib as mpl
 
     # When running from a frozen environment created by py2exe, we will not
     # have a range of backends available, and must set the default to WXAgg.
@@ -393,20 +398,29 @@ def config_matplotlib(backend=None):
         if backend is None:
             backend = 'WXAgg'
 
-    import matplotlib
+    ## CRUFT: check that backend is valid, trying alternates if an import fails
+    #if backend is None:
+    #    backend = os.environ.get('MPLBACKEND', mpl.rcParams['backend'])
+    #import importlib
+    #for name in (backend, 'MacOSX', 'Qt5Agg', 'Qt4Agg', 'Gtk3Agg', 'TkAgg', 'WXAgg'):
+    #    path = 'matplotlib.backends.backend_' + name.lower()
+    #    try:
+    #        importlib.import_module(path)
+    #        backend = name
+    #        break
+    #    except ImportError:
+    #        backend = None
 
     # Specify the backend to use for plotting and import backend dependent
-    # classes. Note that this must be done before importing pyplot to have an
+    # classes.  This must be done before importing pyplot to have an
     # effect.  If no backend is given, let pyplot use the default.
     if backend is not None:
-        matplotlib.use(backend)
+        mpl.use(backend)
 
     # Disable interactive mode so that plots are only updated on show() or
-    # draw(). Note that the interactive function must be called before
-    # selecting a backend or importing pyplot, otherwise it will have no
-    # effect.
-
-    matplotlib.interactive(False)
+    # draw(). The interactive function must be called before importing pyplot,
+    # otherwise it will have no effect.
+    mpl.interactive(False)
 
     #configure the plot style
     line_width = 1
@@ -437,7 +451,7 @@ def config_matplotlib(backend=None):
         'svg.fonttype': 'none',
         'savefig.dpi': 100,
     }
-    matplotlib.rcParams.update(plot_style)
+    mpl.rcParams.update(plot_style)
 
 def beep():
     """
@@ -523,7 +537,7 @@ def main():
     # If no GUI specified and not editing, then use the default mpl
     # backend for the python version.
     if opts.batch or opts.remote or opts.noshow:  # no interactivity
-        config_matplotlib(backend='Agg')
+        config_matplotlib(backend='agg')
     else:  # let preview use default graphs
         config_matplotlib()
 
@@ -572,6 +586,7 @@ def main():
         if opts.cov:
             fitdriver.show_cov()
         print("chisq", problem.chisq_str())
+        #import pprint; pprint.pprint(problem.to_dict(), indent=2, width=272)
     elif opts.preview:
         if opts.cov:
             fitdriver.show_cov()
@@ -607,16 +622,43 @@ def main():
 
         make_store(problem, opts, exists_handler=store_overwrite_query)
 
+        # TODO: fix techical debt with checkpoint monitor implementation
+        # * The current checkpoint implementation is self-referential:
+        #     checkpoint = lambda: save_best(fitdriver, ...)
+        #     fitdriver.monitors = [..., CheckpointMonitor(checkpoint), ...]
+        #   It is done this way because the checkpoint monitor needs the fitter
+        #   so it can ask it to save state, but the fitter needs the list of
+        #   monitors, including the checkpoint monitor, before it is run.
+        # * Figures are cumulative, with each checkpoint adding a new set
+        # * Figures are slow! Can they go into a separate thread?  Can we
+        #   have the problem cache the best value?
+        checkpoint_time = float(opts.checkpoint)*3600
+        def checkpoint(history):
+            problem = fitdriver.problem
+            ## Use the following to save only the fitter state
+            fitdriver.fitter.save(problem.output_path)
+            ## Use the following to save the fitter state plus all other
+            ## plots and other output files.  This won't work yet since
+            ## plots are generated sequentially, with each checkpoint producing
+            ## a completely new set of plots.
+            #best = history.point[0]
+            #save_best(fitdriver, problem, best, view=opts.view)
+        monitors = [ConsoleMonitor(problem)]
+        if checkpoint_time > 0 and np.isfinite(checkpoint_time):
+            mon = CheckpointMonitor(checkpoint, progress=checkpoint_time)
+            monitors.append(mon)
         if opts.stepmon:
             fid = open(problem.output_path + '.log', 'w')
-            fitdriver.monitors = [ConsoleMonitor(problem),
-                                  StepMonitor(problem, fid, fields=['step', 'value'])]
+            mon = StepMonitor(problem, fid, fields=['step', 'value'])
+            monitors.append(mon)
+        fitdriver.monitors = monitors
 
         #import time; t0=time.clock()
         cpus = int(opts.parallel) if opts.parallel != "" else 0
         fitdriver.mapper = mapper.start_mapper(problem, opts.args, cpus=cpus)
         best, fbest = fitdriver.fit(resume=resume_path)
         # print("time=%g"%(time.clock()-t0),file=sys.__stdout__)
+        # Note: keep this in sync with the checkpoint function above
         save_best(fitdriver, problem, best, view=opts.view)
         if opts.err or opts.cov:
             fitdriver.show_err()

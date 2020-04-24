@@ -44,7 +44,7 @@ W. Richard Stevens, 1992, Addison-Wesley, ISBN 0-201-56317-7.
 History
 =======
 
-* 2001/07/10 by Jürgen Hermann
+* 2001/07/10 by JÃ¼rgen Hermann
 * 2002/08/28 by Noah Spurrier
 * 2003/02/24 by Clark Evans
 * 2005/10/03 by Chad J. Schroeder
@@ -141,7 +141,7 @@ def _close_all():
 
 
 def daemonize(stdout=REDIRECT_TO, stderr=None, stdin=REDIRECT_TO,
-              pidfile=None, startmsg = 'started with pid %s' ):
+              pidfile=None, startmsg='started with pid %s'):
     """
     This forks the current process into a daemon.
 
@@ -161,7 +161,8 @@ def daemonize(stdout=REDIRECT_TO, stderr=None, stdin=REDIRECT_TO,
     # to insure that the next call to os.setsid is successful.
     try:
         pid = os.fork()
-        if pid > 0: exit(0) # Exit first parent.
+        if pid > 0:
+            exit(0) # Exit first parent.
     except OSError as e:
         raise Exception("[%d] %s" % (e.errno, e.strerror))
 
@@ -187,13 +188,13 @@ def daemonize(stdout=REDIRECT_TO, stderr=None, stdin=REDIRECT_TO,
     # Save pid
     pid = str(os.getpid())
     if pidfile:  # Make sure pidfile is written cleanly before close_all
-        fd = open(pidfile,'w+')
-        fd.write("%s\n" % pid)
-        fd.flush()
-        fd.close()
+        with open(pidfile, 'w+') as fd:
+            fd.write("%s\n" % pid)
+            fd.flush()
 
     # Print start message and flush output
-    if startmsg: sys.stderr.write("\n%s\n" % startmsg % pid)
+    if startmsg:
+        sys.stderr.write("\n%s\n" % startmsg % pid)
     sys.stdout.flush()
     sys.stderr.flush()
 
@@ -201,10 +202,11 @@ def daemonize(stdout=REDIRECT_TO, stderr=None, stdin=REDIRECT_TO,
     #_close_all()  # hmmm...interferes with file output selection
 
     # Redirect standard file descriptors.
-    if not stderr: stderr = stdout
-    fin = file(stdin, "r")
-    fout = file(stdout, "a+")
-    ferr = file(stderr, "a+")
+    if not stderr:
+        stderr = stdout
+    fin = open(stdin, "r")
+    fout = open(stdout, "a+")
+    ferr = open(stderr, "a+")
     os.dup2(fin.fileno(), 0)
     os.dup2(fout.fileno(), 1)
     os.dup2(ferr.fileno(), 2)
@@ -245,7 +247,7 @@ def startstop(stdout=REDIRECT_TO, stderr=None, stdin=REDIRECT_TO,
     if len(sys.argv) > 1:
         action = sys.argv[1]
         pid = readpid(pidfile)
-        if 'stop' == action or ('restart' == action and pid):
+        if action == 'stop' or (action == 'restart' and pid):
             if not pid:
                 msg = "Could not stop, pid file '%s' missing."%pidfile
                 sys.stderr.write('%s\n'%msg)
@@ -253,7 +255,7 @@ def startstop(stdout=REDIRECT_TO, stderr=None, stdin=REDIRECT_TO,
 
             try:
                 while 1:
-                    os.kill(pid,SIGTERM)
+                    os.kill(pid, SIGTERM)
                     time.sleep(1)
             except OSError as err:
                 err = str(err)

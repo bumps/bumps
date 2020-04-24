@@ -33,12 +33,12 @@ from pylab import *
 # parameters L in the range 0 to 20
 
 P = np.random.poisson
-L = linspace(0,20,1000)
-X = P(L, size=(10000,len(L)))
+L = linspace(0, 20, 1000)
+X = P(L, size=(10000, len(L)))
 
 # Generate the distributions
 
-P = dict((k, sum(X==k,axis=0)/sum(X==k)) for k in range(4))
+P = dict((k, sum(X == k, axis=0)/sum(X == k)) for k in range(4))
 
 # Show the expected value of L for each observed value k
 
@@ -57,11 +57,11 @@ for k, Pi in sorted(P.items()):
 
 # Plot the distribution of $\lambda$ that give rise to each observed value $k$.
 
-for k,Pi in sorted(P.items()):
-    plot(L, Pi/(L[1]-L[0]), label="k=%d"%k, hold=True)
+for k, Pi in sorted(P.items()):
+    plot(L, Pi/(L[1]-L[0]), label="k=%d"%k)
 xlabel(r'$\lambda$')
 ylabel(r'$P(\lambda|k)$')
-xticks([0,1,2,3,4,5,6,7,8,9,10])
+xticks([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 axis([0, 10, 0, 0.5])
 title('Probability of underlying rate $\lambda$ for different observed $k$')
 legend()
