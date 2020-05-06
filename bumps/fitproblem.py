@@ -190,12 +190,8 @@ def FitProblem(*args, **kw):
     fitness nllf or the penalty nllf.
     """
     if len(args) > 0:
-        try:
-            models = list(args[0])
-        except TypeError:
-            models = args[0]
-        if isinstance(models, list):
-            return MultiFitProblem(models, *args[1:], **kw)
+        if isinstance(args[0], (list, tuple)):
+            return MultiFitProblem(args[0], *args[1:], **kw)
         else:
             return BaseFitProblem(*args, **kw)
     else:
@@ -210,7 +206,7 @@ class BaseFitProblem(object):
     See :func:`FitProblem`
     """
     def __init__(self, fitness, name=None, constraints=no_constraints,
-                 penalty_nllf=1e6, soft_limit=np.inf, partial=False):
+                 penalty_nllf=np.inf, soft_limit=np.inf, partial=False):
         self.constraints = constraints
         self.fitness = fitness
         self.partial = partial
@@ -473,7 +469,7 @@ class BaseFitProblem(object):
         cost = pparameter + pconstraints + pmodel
         # print(pvec, "cost=",pparameter,"+",pconstraints,"+",pmodel,"=",cost)
         if isnan(cost):
-            # todo: make sure errors get back to the user
+            # TODO: make sure errors get back to the user
             # print "point evaluates to nan"
             # print parameter.summarize(self._parameters)
             return inf
@@ -488,8 +484,11 @@ class BaseFitProblem(object):
                 info += ["%s %g"%(p, p.nllf()) for p in self.bounded]
                 logging.error("\n  ".join(info))
             pconstraints = self.constraints_nllf()
+            # Note: for hard constraints (which return inf) avoid computing
+            # model even if soft_limit is inf by using strict comparison
+            # since inf <= inf is True but inf < inf is False.
             pmodel = (self.model_nllf()
-                      if pparameter + pconstraints <= self.soft_limit
+                      if pparameter + pconstraints < self.soft_limit
                       else self.penalty_nllf)
             return pparameter, pconstraints, pmodel
         except Exception:
