@@ -268,7 +268,7 @@ class Curve(object):
             if noise == 'data':
                 pass
             elif noise < 0:
-                self.dy = -theory*noise*0.01
+                self.dy = -0.01*noise*theory
             else:
                 self.dy = noise
         self.y = theory + np.random.randn(*theory.shape)*self.dy
