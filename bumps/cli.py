@@ -245,7 +245,8 @@ def run_profiler(problem, steps):
     #    4 ms convolution
     #    1 ms setting parameters and computing nllf
     from .util import profile
-    p = initpop.random_init(int(steps), None, problem)
+    p = initpop.random_init(
+        int(steps), initial=None, bounds=None, use_point=False,problem=problem)
     # Note: map is an iterator in python 3
     profile(lambda *args: list(map(*args)), problem.nllf, p)
 
