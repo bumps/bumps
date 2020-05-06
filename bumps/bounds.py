@@ -67,7 +67,7 @@ except ImportError:
     pass
 
 
-def pm(v, *args):
+def pm(v, *args, limits=None):
     """
     Return the tuple (~v-dv,~v+dv), where ~expr is a 'nice' number near to
     to the value of expr.  For example::
@@ -79,10 +79,10 @@ def pm(v, *args):
     If called as pm(value, +dp, -dm) or pm(value, -dm, +dp),
     return (~v-dm, ~v+dp).
     """
-    return nice_range(pm_raw(v, *args))
+    return nice_range(limited_range(pm_raw(v, *args), limits=limits))
 
 
-def pmp(v, *args):
+def pmp(v, *args, limits=None):
     """
     Return the tuple (~v-%v,~v+%v), where ~expr is a 'nice' number near to
     the value of expr.  For example::
@@ -97,7 +97,7 @@ def pmp(v, *args):
     If called as pmp(value, +pp, -pm) or pmp(value, -pm, +pp),
     return (~v-pm%v, ~v+pp%v).
     """
-    return nice_range(pmp_raw(v, *args))
+    return nice_range(limited_range(pmp_raw(v, *args), limits=limits))
 
 # Generate ranges using x +/- dx or x +/- p%*x
 
@@ -145,6 +145,13 @@ def pmp_raw(v, *args):
 
     return (b1, b2) if v > 0 else (b2, b1)
 
+def limited_range(bounds, limits=None):
+    """
+    Given a range and limits, fix the endpoints to lie within the range
+    """
+    if limits is not None:
+        return clip(bounds[0], *limits), clip(bounds[1], *limits)
+    return bounds
 
 def nice_range(bounds):
     """

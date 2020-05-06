@@ -53,7 +53,7 @@ class BaseParameter(object):
     def parameters(self):
         return [self]
 
-    def pmp(self, *args):
+    def pmp(self, *args, limits=None):
         """
         Allow the parameter to vary as value +/- percent.
 
@@ -64,12 +64,16 @@ class BaseParameter(object):
         In the *plus/minus* form, one of the numbers should be plus and the
         other minus, but it doesn't matter which.
 
+        If *limits* are provided, bound the end points of the range to lie
+        within the limits.
+
         The resulting range is converted to "nice" numbers.
         """
-        self.bounds = mbounds.Bounded(*mbounds.pmp(self.value, *args))
+        bounds = mbounds.pmp(self.value, *args, limits=limits)
+        self.bounds = mbounds.Bounded(*bounds)
         return self
 
-    def pm(self, *args):
+    def pm(self, *args, limits=None):
         """
         Allow the parameter to vary as value +/- delta.
 
@@ -80,9 +84,13 @@ class BaseParameter(object):
         In the *plus/minus* form, one of the numbers should be plus and the
         other minus, but it doesn't matter which.
 
+        If *limits* are provided, bound the end points of the range to lie
+        within the limits.
+
         The resulting range is converted to "nice" numbers.
         """
-        self.bounds = mbounds.Bounded(*mbounds.pm(self.value, *args))
+        bounds = mbounds.pm(self.value, *args, limits=limits)
+        self.bounds = mbounds.Bounded(*bounds)
         return self
 
     def dev(self, std, mean=None, limits=None, sigma=None, mu=None):
@@ -928,7 +936,7 @@ def format(p, indent=0, freevars={}, field=None):
             s += str(p) + " = "
         s += "%g" % p.value
         if not p.fixed:
-            s += " in [%g,%g]" %  p.bounds.limits
+            s += " in [%g,%g]" %  tuple(p.bounds.limits)
         return s
 
     elif isinstance(p, BaseParameter):
