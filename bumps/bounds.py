@@ -67,7 +67,7 @@ except ImportError:
     pass
 
 
-def pm(v, *args, limits=None):
+def pm(v, plus, minus=None, limits=None):
     """
     Return the tuple (~v-dv,~v+dv), where ~expr is a 'nice' number near to
     to the value of expr.  For example::
@@ -79,10 +79,10 @@ def pm(v, *args, limits=None):
     If called as pm(value, +dp, -dm) or pm(value, -dm, +dp),
     return (~v-dm, ~v+dp).
     """
-    return nice_range(limited_range(pm_raw(v, *args), limits=limits))
+    return nice_range(limited_range(pm_raw(v, plus, minus), limits=limits))
 
 
-def pmp(v, *args, limits=None):
+def pmp(v, plus, minus=None, limits=None):
     """
     Return the tuple (~v-%v,~v+%v), where ~expr is a 'nice' number near to
     the value of expr.  For example::
@@ -97,51 +97,37 @@ def pmp(v, *args, limits=None):
     If called as pmp(value, +pp, -pm) or pmp(value, -pm, +pp),
     return (~v-pm%v, ~v+pp%v).
     """
-    return nice_range(limited_range(pmp_raw(v, *args), limits=limits))
+    return nice_range(limited_range(pmp_raw(v, plus, minus), limits=limits))
 
 # Generate ranges using x +/- dx or x +/- p%*x
 
 
-def pm_raw(v, *args):
+def pm_raw(v, plus, minus=None):
     """
     Return the tuple [v-dv,v+dv].
 
     If called as pm_raw(value, +dp, -dm) or pm_raw(value, -dm, +dp),
     return (v-dm, v+dp).
     """
-    if len(args) == 1:
-        dv = args[0]
-        return v - dv, v + dv
-    elif len(args) == 2:
-        plus, minus = args
-        if plus < minus:
-            plus, minus = minus, plus
-        # if minus > 0 or plus < 0:
-        #    raise TypeError("pm(value, p1, p2) requires both + and - values")
-        return v + minus, v + plus
-    else:
-        raise TypeError("pm(value, delta) or pm(value, -p1, +p2)")
+    if minus is None:
+        minus = -plus
+    if plus < minus:
+        plus, minus = minus, plus
+    return v + minus, v + plus
 
 
-def pmp_raw(v, *args):
+def pmp_raw(v, plus, minus=None):
     """
     Return the tuple [v-%v,v+%v]
 
     If called as pmp_raw(value, +pp, -pm) or pmp_raw(value, -pm, +pp),
     return (v-pm%v, v+pp%v).
     """
-    if len(args) == 1:
-        percent = args[0]
-        b1, b2 = v * (1 - 0.01 * percent), v * (1 + 0.01 * percent)
-    elif len(args) == 2:
-        plus, minus = args
-        if plus < minus:
-            plus, minus = minus, plus
-        # if minus > 0 or plus < 0:
-        #    raise TypeError("pmp(value, p1, p2) requires both + and - values")
-        b1, b2 = v * (1 + 0.01 * minus), v * (1 + 0.01 * plus)
-    else:
-        raise TypeError("pmp(value, delta) or pmp(value, -p1, +p2)")
+    if minus is None:
+        minus = -plus
+    if plus < minus:
+        plus, minus = minus, plus
+    b1, b2 = v * (1 + 0.01 * minus), v * (1 + 0.01 * plus)
 
     return (b1, b2) if v > 0 else (b2, b1)
 

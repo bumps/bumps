@@ -53,7 +53,7 @@ class BaseParameter(object):
     def parameters(self):
         return [self]
 
-    def pmp(self, *args, limits=None):
+    def pmp(self, plus, minus=None, limits=None):
         """
         Allow the parameter to vary as value +/- percent.
 
@@ -69,11 +69,11 @@ class BaseParameter(object):
 
         The resulting range is converted to "nice" numbers.
         """
-        bounds = mbounds.pmp(self.value, *args, limits=limits)
+        bounds = mbounds.pmp(self.value, plus, minus, limits=limits)
         self.bounds = mbounds.Bounded(*bounds)
         return self
 
-    def pm(self, *args, limits=None):
+    def pm(self, plus, minus=None, limits=None):
         """
         Allow the parameter to vary as value +/- delta.
 
@@ -89,7 +89,7 @@ class BaseParameter(object):
 
         The resulting range is converted to "nice" numbers.
         """
-        bounds = mbounds.pm(self.value, *args, limits=limits)
+        bounds = mbounds.pm(self.value, plus, minus, limits=limits)
         self.bounds = mbounds.Bounded(*bounds)
         return self
 

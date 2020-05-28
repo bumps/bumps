@@ -34,7 +34,7 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
-v0.7.14 2020-05-??
+v0.7.15 2020-05-??
 ------------------
 * support *limits=(min, max)* for pm and pmp parameter ranges
 * cleaner handling of single/multiple fit specification
