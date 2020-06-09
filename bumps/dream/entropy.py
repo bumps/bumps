@@ -1,20 +1,81 @@
 r"""
 Estimate entropy after a fit.
 
-The :func:`entropy` method computes the entropy directly from a set of
-MCMC samples, normalized by a scale factor computed from the kernel density
-estimate at a subset of the points.\ [#Kramer]_
+The :func:`gmm_entropy` function computes the entropy from a Gaussian mixture
+model. This provides a reasonable estimate even for non-Gaussian distributions.
+This is the recommended method for estimating the entropy of a sample.
 
 The :func:`cov_entropy` method computes the entropy associated with the
 covariance matrix.  This covariance matrix can be estimated during the
 fitting procedure (BFGS updates an estimate of the Hessian matrix for example),
 or computed by estimating derivatives when the fit is complete.
 
-The :class:`MVNEntropy` estimates the covariance from an MCMC sample and
+The :class:`MVNEntropy` class estimates the covariance from an MCMC sample and
 uses this covariance to estimate the entropy.  This gives a better
 estimate of the entropy than the equivalent direct calculation, which requires
 many more samples for a good kernel density estimate.  The *reject_normal*
 attribute is *True* if the MCMC sample is significantly different from normal.
+Unfortunately, this almost always the case for any reasonable sample size that
+isn't strictly gaussian.
+
+The :func:`entropy` method computes the entropy directly from a set of
+MCMC samples, normalized by a scale factor computed from the kernel density
+estimate at a subset of the points.\ [#Kramer]_
+
+There are many other entropy calculations implemented within this file, as
+well as a number of sampling distributions for which the true entropy is known.
+Furthermore, entropy was computed against dream output and checked for
+consistency. None of the methods is truly excellent in terms of minimum
+sample size, maximum dimensions and speed, but many of them are pretty
+good.
+
+The following is an informal summary of the results from different algorithms
+applied to DREAM output::
+
+        from .entropy import Timer as T
+
+        # Try MVN ... only good for normal distributions, but very fast
+        with T(): M = entropy.MVNEntropy(drawn.points)
+        print("Entropy from MVN: %s"%str(M))
+
+        # Try wnn ... no good.
+        with T(): S_wnn, Serr_wnn = entropy.wnn_entropy(drawn.points, n_est=20000)
+        print("Entropy from wnn: %s"%str(S_wnn))
+
+        # Try wnn with bootstrap ... still no good.
+        with T(): S_wnn, Serr_wnn = entropy.wnn_bootstrap(drawn.points)
+        print("Entropy from wnn bootstrap: %s"%str(S_wnn))
+
+        # Try wnn entropy with thinning ... still no good.
+        #drawn = self.draw(portion=portion, vars=vars,
+        #                  selection=selection, thin=10)
+        with T(): S_wnn, Serr_wnn = entropy.wnn_entropy(points)
+        print("Entropy from wnn: %s"%str(S_wnn))
+
+        # Try wnn with gmm ... still no good
+        with T(): S_wnn, Serr_wnn = entropy.wnn_entropy(drawn.points, n_est=20000, gmm=20)
+        print("Entropy from wnn with gmm: %s"%str(S_wnn))
+
+        # Try pure gmm ... pretty good
+        with T(): S_gmm, Serr_gmm = entropy.gmm_entropy(drawn.points, n_est=10000)
+        print("Entropy from gmm: %s"%str(S_gmm))
+
+        # Try kde from statsmodels ... pretty good
+        with T(): S_kde_stats = entropy.kde_entropy_statsmodels(drawn.points, n_est=10000)
+        print("Entropy from kde statsmodels: %s"%str(S_kde_stats))
+
+        # Try kde from sklearn ... pretty good
+        with T(): S_kde = entropy.kde_entropy_sklearn(drawn.points, n_est=10000)
+        print("Entropy from kde sklearn: %s"%str(S_kde))
+
+        # Try kde from sklearn at points from gmm ... pretty good
+        with T(): S_kde_gmm = entropy.kde_entropy_sklearn_gmm(drawn.points, n_est=10000)
+        print("Entropy from kde+gmm: %s"%str(S_kde_gmm))
+
+        # Try Kramer ... pretty good, but doesn't support marginal entropy
+        with T(): S, Serr = entropy.entropy(drawn.points, drawn.logp, N_entropy=n_est)
+        print("Entropy from Kramer: %s"%str(S))
+
 
 .. [#Kramer]
     Kramer, A., Hasenauer, J., Allgower, F., Radde, N., 2010.
@@ -166,6 +227,17 @@ def kde_entropy_sklearn_gmm(points, n_est=None, n_components=None):
     return H / LN2
 
 def gmm_entropy(points, n_est=None, n_components=None):
+    r"""
+    Use sklearn.mixture.BayesianGaussianMixture to estimate entropy.
+
+    *points* are the data points in the sample.
+
+    *n_est* are the number of points to use in the estimation, or *None* to
+    use all points.
+
+    *n_components* are the number of Gaussians in the mixture. Default is
+    $5 \sqrt{d}$ where $d$ is the number of dimensions.
+    """
     #from sklearn.mixture import GaussianMixture as GMM
     from sklearn.mixture import BayesianGaussianMixture as GMM
     n, d = points.shape
@@ -203,7 +275,7 @@ def gmm_entropy(points, n_est=None, n_components=None):
     return H / LN2, dH / LN2
 
 def wnn_bootstrap(points, k=None, weights=True, n_est=None, reps=10, parts=10):
-    raise NotImplementedError("deprecated; bootstrap doesn't help.")
+    #raise NotImplementedError("deprecated; bootstrap doesn't help.")
     n, d = points.shape
     if n_est is None:
         n_est = n//parts
@@ -349,7 +421,7 @@ def _wnn_weights(k, d, weighted=True):
     sum_one = [[1.]*k]
     A = np.array(sum_zero + sum_one)
     b = np.array([[0.]*(d//4)+[1.]]).T
-    return np.dot(np.linalg.pinv(A),b)
+    return np.dot(np.linalg.pinv(A), b)
 
 def scipy_stats_density(sample_points, evaluation_points):  # pragma: no cover
     """
