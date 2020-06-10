@@ -34,6 +34,10 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
+v0.7.16 2020-xx-xx
+------------------
+* improved handling of parameters for to_dict() json pickling
+
 v0.7.15 2020-06-09
 ------------------
 * parallel fitting suppressed in GUI for now---need to reuse thread pool
