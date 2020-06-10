@@ -153,7 +153,7 @@ BUMPS_MODULES = [
     #('__init__', 'Top level namespace'),
     ('bounds', 'Parameter constraints'),
     ('bspline', 'B-Spline interpolation library'),
-    ('caller_name', 'Identify the caller of the function'),
+    #('caller_name', 'Identify the caller of the function'),
     #('_reduction','Low level calculations'),
     ('cheby', 'Freeform - Chebyshev'),
     ('cli', 'Command line interface'),
