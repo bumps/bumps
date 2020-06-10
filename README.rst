@@ -34,12 +34,12 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
-v0.7.15 2020-05-??
+v0.7.15 2020-06-09
 ------------------
+* parallel fitting suppressed in GUI for now---need to reuse thread pool
 * support *limits=(min, max)* for pm and pmp parameter ranges
 * cleaner handling of single/multiple fit specification
 * fix *--entropy* command line option
-* parallel fitting suppressed in GUI for now---need to reuse thread pool
 * better support for pathlib with virtual file system
 
 v0.7.14 2020-01-03
