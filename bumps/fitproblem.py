@@ -786,9 +786,8 @@ def load_problem(filename, options=None):
     code = compile(source, filename, 'exec')
     exec(code, ctx)
     sys.argv = old_argv
-    try:
-        problem = ctx["problem"]
-    except KeyError:
+    problem = ctx.get("problem", None)
+    if problem is None:
         raise ValueError(filename + " requires 'problem = FitProblem(...)'")
 
     return problem

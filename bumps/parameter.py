@@ -267,8 +267,17 @@ class BaseParameter(object):
         """
         Return a dict represention of the object.
         """
+        # When reconstructing a model from json we will need to tie parameters
+        # together that were tied before. This can be done by managing a
+        # cache of allocated parameters indexed by id, and pulling from that
+        # cache on recontruction if the id already exists, otherwise create
+        # a new entry. Conveniently, this will handle free variable references
+        # in parameter sets as well. Note that the entire parameter description
+        # will be repeated each time it occurs, but there should be few
+        # enough of these that it isn't a problem.
         return dict(
             type=type(self).__name__,
+            id=id(self),
             name=self.name,
             value=self.value,
             fixed=self.fixed,
@@ -291,6 +300,8 @@ class Constant(BaseParameter):
     def __init__(self, value, name=None):
         self._value = value
         self.name = name
+
+    # to_dict() can inherit from BaseParameter
 
 
 class Parameter(BaseParameter):
@@ -394,6 +405,8 @@ class Parameter(BaseParameter):
         """
         return self.bounds.limits[0] <= self.value <= self.bounds.limits[1]
 
+    # to_dict() can inherit from BaseParameter
+
 
 class Reference(Parameter):
     """
@@ -422,6 +435,16 @@ class Reference(Parameter):
     def value(self, value):
         setattr(self.obj, self.attr, value)
 
+    def to_dict(self):
+        ret = Parameter.to_dict(self)
+        ret["type"] = type(self).__name__
+        ret["attr"] = self.attr
+        # TODO: another impossibility---an arbitrary python object
+        # Clearly we need a (safe??) json pickler to handle the full
+        # complexity of an arbitrary model.
+        ret["obj"] = str(self.obj)
+        return ret
+
 
 class ParameterSet(object):
     """
@@ -449,6 +472,14 @@ class ParameterSet(object):
             p.name = " ".join((n, p.name))
         # Reference is no longer directly fittable
         self.reference.fittable = False
+
+    def to_dict(self):
+        return {
+            "type": "ParameterSet",
+            "names": self.names,
+            "reference": self.reference.to_dict(),
+            "parameters": [p.to_dict() for p in self.parameters],
+        }
 
     # Make the parameter set act like a list
     def __getitem__(self, i):
@@ -683,6 +714,12 @@ class Operator%(name)s(BaseParameter):
         self.name = str(self)
     def parameters(self):
         return self._parameters
+    def to_dict(self):
+        return dict(
+            type="Operator%(name)s",
+            left=self.a.to_dict() if isinstance(self.a, BaseParameter) else self.a,
+            right=self.b.to_dict() if isinstance(self.b, BaseParameter) else self.b,
+        )
     @property
     def value(self):
         return float(self.a) %(op)s float(self.b)
@@ -758,6 +795,22 @@ class Function(BaseParameter):
         return self.op(*substitute(self.args), **substitute(self.kw))
     value = property(_value)
 
+    def to_dict(self):
+        return {
+            "type": "Function",
+            "name": self.name,
+            # TODO: function not stored properly in json
+            "op": str(self.op),
+            "args": [
+                (p.to_dict() if hasattr(p, 'to_dict') else p)
+                for p in self.args
+            ],
+            "kw": {
+                k: (v.to_dict() if hasattr(v, 'to_dict') else v)
+                for k, v in self.kw.items()
+            },
+        }
+
     def __getstate__(self):
         return self.name, self.op, self.args, self.kw
 
@@ -794,8 +847,7 @@ def function(op):
 _abs = function(abs)
 
 # Numpy trick: math functions from numpy delegate to the math function of
-# the class if that function exists as a class attribute.  Unfortunately,
-# this doesn't work for
+# the class if that function exists as a class attribute.
 BaseParameter.exp = function(math.exp)
 BaseParameter.expm1 = function(math.expm1)
 BaseParameter.log = function(math.log)
@@ -1055,7 +1107,7 @@ class Alias(object):
     parameter will have the full parameter semantics, including
     the ability to replace a fixed value with a parameter expression.
 
-    # TODO: how is this any different from Reference above?
+    **Deprecated** :class:`Reference` does this better.
     """
 
     def __init__(self, obj, attr, p=None, name=None):
