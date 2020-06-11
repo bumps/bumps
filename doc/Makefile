@@ -4,7 +4,7 @@
 # You can set these variables from the command line.
 PYTHON        ?= python
 SPHINXOPTS    =
-SPHINXBUILD   = $(PYTHON) -m sphinx.__init__
+SPHINXBUILD   = $(PYTHON) -m sphinx
 #sphinx-build
 PAPER         =
 BUILDDIR      = _build

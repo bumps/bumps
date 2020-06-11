@@ -11,6 +11,7 @@ Users can also perform calculations with parameters, tying together different
 parts of the model, or different models.
 """
 #__all__ = [ 'Parameter']
+import sys
 from six.moves import reduce
 import warnings
 from copy import copy
@@ -34,6 +35,33 @@ from . import bounds as mbounds
 # when the parameter is changed, the model will be updated and will need
 # to be re-evaluated.
 
+# TODO: maybe move this to util?
+def to_dict(p):
+    if hasattr(p, 'to_dict'):
+        return p.to_dict()
+    elif isinstance(p, (tuple, list)):
+        return [to_dict(v) for v in p]
+    elif isinstance(p, dict):
+        return {k: to_dict(v) for k, v in p.items()}
+    elif isinstance(p, (bool, str, float, int, type(None))):
+        return p
+    elif isinstance(p, np.ndarray):
+        # TODO: what about inf, nan and object arrays?
+        return p.tolist()
+    elif False and callable(p):
+        # TODO: consider including functions and arbitrary values
+        import base64
+        import dill
+        encoding = base64.encodebytes(dill.dumps(p)).decode('ascii')
+        return {'type': 'dill', 'value': str(p), 'encoding': encoding}
+        ## To recovert the function
+        # if allow_unsafe_code:
+        #     encoding = item['encoding']
+        #     p = dill.loads(base64.decodebytes(encoding).encode('ascii'))
+    else:
+        #print(f"converting type {type(p)} to str")
+        return str(p)
+
 
 class BaseParameter(object):
     """
@@ -53,7 +81,7 @@ class BaseParameter(object):
     def parameters(self):
         return [self]
 
-    def pmp(self, *args):
+    def pmp(self, plus, minus=None, limits=None):
         """
         Allow the parameter to vary as value +/- percent.
 
@@ -64,12 +92,16 @@ class BaseParameter(object):
         In the *plus/minus* form, one of the numbers should be plus and the
         other minus, but it doesn't matter which.
 
+        If *limits* are provided, bound the end points of the range to lie
+        within the limits.
+
         The resulting range is converted to "nice" numbers.
         """
-        self.bounds = mbounds.Bounded(*mbounds.pmp(self.value, *args))
+        bounds = mbounds.pmp(self.value, plus, minus, limits=limits)
+        self.bounds = mbounds.Bounded(*bounds)
         return self
 
-    def pm(self, *args):
+    def pm(self, plus, minus=None, limits=None):
         """
         Allow the parameter to vary as value +/- delta.
 
@@ -80,9 +112,13 @@ class BaseParameter(object):
         In the *plus/minus* form, one of the numbers should be plus and the
         other minus, but it doesn't matter which.
 
+        If *limits* are provided, bound the end points of the range to lie
+        within the limits.
+
         The resulting range is converted to "nice" numbers.
         """
-        self.bounds = mbounds.Bounded(*mbounds.pm(self.value, *args))
+        bounds = mbounds.pm(self.value, plus, minus, limits=limits)
+        self.bounds = mbounds.Bounded(*bounds)
         return self
 
     def dev(self, std, mean=None, limits=None, sigma=None, mu=None):
@@ -259,13 +295,24 @@ class BaseParameter(object):
         """
         Return a dict represention of the object.
         """
+        # When reconstructing a model from json we will need to tie parameters
+        # together that were tied before. This can be done by managing a
+        # cache of allocated parameters indexed by id, and pulling from that
+        # cache on recontruction if the id already exists, otherwise create
+        # a new entry. Conveniently, this will handle free variable references
+        # in parameter sets as well. Note that the entire parameter description
+        # will be repeated each time it occurs, but there should be few
+        # enough of these that it isn't a problem.
+        # TODO: use id that is stable from session to session.
+        # TODO: have mechanism for clearing cache between save/load.
         return dict(
             type=type(self).__name__,
+            id=id(self), # Warning: this will be different every session
             name=self.name,
             value=self.value,
             fixed=self.fixed,
             fittable=self.fittable,
-            bounds=self._bounds.to_dict(),
+            bounds=to_dict(self._bounds),
             )
 
 
@@ -283,6 +330,8 @@ class Constant(BaseParameter):
     def __init__(self, value, name=None):
         self._value = value
         self.name = name
+
+    # to_dict() can inherit from BaseParameter
 
 
 class Parameter(BaseParameter):
@@ -386,6 +435,8 @@ class Parameter(BaseParameter):
         """
         return self.bounds.limits[0] <= self.value <= self.bounds.limits[1]
 
+    # to_dict() can inherit from BaseParameter
+
 
 class Reference(Parameter):
     """
@@ -414,6 +465,15 @@ class Reference(Parameter):
     def value(self, value):
         setattr(self.obj, self.attr, value)
 
+    def to_dict(self):
+        ret = Parameter.to_dict(self)
+        ret["attr"] = self.attr
+        # TODO: another impossibility---an arbitrary python object
+        # Clearly we need a (safe??) json pickler to handle the full
+        # complexity of an arbitrary model.
+        ret["obj"] = to_dict(self.obj)
+        return ret
+
 
 class ParameterSet(object):
     """
@@ -433,6 +493,7 @@ class ParameterSet(object):
         """
         self.names = names
         self.reference = reference
+        # TODO: explain better why parameters are using np.array
         # Force numpy semantics on slice operations by using an array
         # of objects rather than a list of objects
         self.parameters = np.array([copy(reference) for _ in names])
@@ -441,6 +502,15 @@ class ParameterSet(object):
             p.name = " ".join((n, p.name))
         # Reference is no longer directly fittable
         self.reference.fittable = False
+
+    def to_dict(self):
+        return {
+            "type": "ParameterSet",
+            "names": self.names,
+            "reference": to_dict(self.reference),
+            # Note: parameters are stored in a numpy array
+            "parameters": to_dict(self.parameters.tolist()),
+        }
 
     # Make the parameter set act like a list
     def __getitem__(self, i):
@@ -584,9 +654,7 @@ class FreeVariables(object):
         return {
             'type': type(self).__name__,
             'names': self.names,
-            'parameters': {
-                k: v.to_dict() for k, v in self._parametersets.items()
-            }
+            'parameters': to_dict(self._parametersets)
         }
 
     def set_model(self, i):
@@ -675,6 +743,12 @@ class Operator%(name)s(BaseParameter):
         self.name = str(self)
     def parameters(self):
         return self._parameters
+    def to_dict(self):
+        return dict(
+            type="Operator%(name)s",
+            left=to_dict(self.a),
+            right=to_dict(self.b),
+        )
     @property
     def value(self):
         return float(self.a) %(op)s float(self.b)
@@ -750,6 +824,16 @@ class Function(BaseParameter):
         return self.op(*substitute(self.args), **substitute(self.kw))
     value = property(_value)
 
+    def to_dict(self):
+        return {
+            "type": "Function",
+            "name": self.name,
+            # TODO: function not stored properly in json
+            "op": to_dict(self.op),
+            "args": to_dict(self.args),
+            "kw": to_dict(self.kw),
+        }
+
     def __getstate__(self):
         return self.name, self.op, self.args, self.kw
 
@@ -786,8 +870,7 @@ def function(op):
 _abs = function(abs)
 
 # Numpy trick: math functions from numpy delegate to the math function of
-# the class if that function exists as a class attribute.  Unfortunately,
-# this doesn't work for
+# the class if that function exists as a class attribute.
 BaseParameter.exp = function(math.exp)
 BaseParameter.expm1 = function(math.expm1)
 BaseParameter.log = function(math.log)
@@ -928,7 +1011,7 @@ def format(p, indent=0, freevars={}, field=None):
             s += str(p) + " = "
         s += "%g" % p.value
         if not p.fixed:
-            s += " in [%g,%g]" %  p.bounds.limits
+            s += " in [%g,%g]" %  tuple(p.bounds.limits)
         return s
 
     elif isinstance(p, BaseParameter):
@@ -1047,7 +1130,7 @@ class Alias(object):
     parameter will have the full parameter semantics, including
     the ability to replace a fixed value with a parameter expression.
 
-    # TODO: how is this any different from Reference above?
+    **Deprecated** :class:`Reference` does this better.
     """
 
     def __init__(self, obj, attr, p=None, name=None):
@@ -1066,8 +1149,8 @@ class Alias(object):
     def to_dict(self):
         return {
             'type': type(self).__name__,
-            'p': self.p.to_dict(),
+            'p': to_dict(self.p),
             # TODO: can't json pickle arbitrary objects
-            'obj': str(self.obj),
+            'obj': to_dict(self.obj),
             'attr': self.attr,
         }

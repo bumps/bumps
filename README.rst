@@ -34,6 +34,18 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
+v0.7.16 2020-06-11
+------------------
+* improved handling of parameters for to_dict() json pickling
+
+v0.7.15 2020-06-09
+------------------
+* parallel fitting suppressed in GUI for now---need to reuse thread pool
+* support *limits=(min, max)* for pm and pmp parameter ranges
+* cleaner handling of single/multiple fit specification
+* fix *--entropy* command line option
+* better support for pathlib with virtual file system
+
 v0.7.14 2020-01-03
 ------------------
 

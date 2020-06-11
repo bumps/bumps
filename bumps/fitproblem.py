@@ -62,6 +62,7 @@ import numpy as np
 from numpy import inf, isnan, NaN
 
 from . import parameter, bounds as mbounds
+from .parameter import to_dict
 from .formatnum import format_uncertainty
 from . import util
 
@@ -190,12 +191,8 @@ def FitProblem(*args, **kw):
     fitness nllf or the penalty nllf.
     """
     if len(args) > 0:
-        try:
-            models = list(args[0])
-        except TypeError:
-            models = args[0]
-        if isinstance(models, list):
-            return MultiFitProblem(models, *args[1:], **kw)
+        if isinstance(args[0], (list, tuple)):
+            return MultiFitProblem(args[0], *args[1:], **kw)
         else:
             return BaseFitProblem(*args, **kw)
     else:
@@ -209,8 +206,8 @@ class BaseFitProblem(object):
     """
     See :func:`FitProblem`
     """
-    def __init__(self, fitness, name=None, constraints=no_constraints,
-                 penalty_nllf=1e6, soft_limit=np.inf, partial=False):
+    def __init__(self, fitness, name=None, constraints=None,
+                 penalty_nllf=np.inf, soft_limit=np.inf, partial=False):
         self.constraints = constraints
         self.fitness = fitness
         self.partial = partial
@@ -263,12 +260,12 @@ class BaseFitProblem(object):
         return {
             'type': type(self).__name__,
             'name': self.name,
-            'fitness': self.fitness.to_dict(),
+            'fitness': to_dict(self.fitness),
             'partial': self.partial,
             'soft_limit': self.soft_limit,
             'penalty_nllf': self.penalty_nllf,
             # TODO: constraints may be a function.
-            'constraints': str(self.constraints),
+            'constraints': to_dict(self.constraints),
         }
 
     def model_points(self):
@@ -378,7 +375,7 @@ class BaseFitProblem(object):
         """
         Returns the cost of all constraints.
         """
-        return self.constraints()
+        return self.constraints() if self.constraints else 0.
 
     def parameter_residuals(self):
         """
@@ -473,7 +470,7 @@ class BaseFitProblem(object):
         cost = pparameter + pconstraints + pmodel
         # print(pvec, "cost=",pparameter,"+",pconstraints,"+",pmodel,"=",cost)
         if isnan(cost):
-            # todo: make sure errors get back to the user
+            # TODO: make sure errors get back to the user
             # print "point evaluates to nan"
             # print parameter.summarize(self._parameters)
             return inf
@@ -488,8 +485,11 @@ class BaseFitProblem(object):
                 info += ["%s %g"%(p, p.nllf()) for p in self.bounded]
                 logging.error("\n  ".join(info))
             pconstraints = self.constraints_nllf()
+            # Note: for hard constraints (which return inf) avoid computing
+            # model even if soft_limit is inf by using strict comparison
+            # since inf <= inf is True but inf < inf is False.
             pmodel = (self.model_nllf()
-                      if pparameter + pconstraints <= self.soft_limit
+                      if pparameter + pconstraints < self.soft_limit
                       else self.penalty_nllf)
             return pparameter, pconstraints, pmodel
         except Exception:
@@ -600,7 +600,7 @@ class MultiFitProblem(BaseFitProblem):
     Weighted fits for multiple models.
     """
     def __init__(self, models, weights=None, name=None,
-                 constraints=no_constraints,
+                 constraints=None,
                  soft_limit=np.inf, penalty_nllf=1e6,
                  freevars=None):
         self.partial = False
@@ -647,14 +647,14 @@ class MultiFitProblem(BaseFitProblem):
         return {
             'type': type(self).__name__,
             'name': self.name,
-            'models': [p.to_dict() for p in self._models],
+            'models': to_dict(self._models),
             'weights': self.weights,
             'partial': self.partial,
             'soft_limit': self.soft_limit,
             'penalty_nllf': self.penalty_nllf,
             # TODO: constraints may be a function.
-            'constraints': str(self.constraints),
-            'freevars': self.freevars.to_dict(),
+            'constraints': to_dict(self.constraints),
+            'freevars': to_dict(self.freevars),
         }
 
     def model_points(self):
@@ -787,9 +787,8 @@ def load_problem(filename, options=None):
     code = compile(source, filename, 'exec')
     exec(code, ctx)
     sys.argv = old_argv
-    try:
-        problem = ctx["problem"]
-    except KeyError:
+    problem = ctx.get("problem", None)
+    if problem is None:
         raise ValueError(filename + " requires 'problem = FitProblem(...)'")
 
     return problem
