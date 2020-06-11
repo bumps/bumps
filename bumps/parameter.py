@@ -11,6 +11,7 @@ Users can also perform calculations with parameters, tying together different
 parts of the model, or different models.
 """
 #__all__ = [ 'Parameter']
+import sys
 from six.moves import reduce
 import warnings
 from copy import copy
@@ -33,6 +34,33 @@ from . import bounds as mbounds
 # be aliased to a parameter.  The same technique as subexpressions applies:
 # when the parameter is changed, the model will be updated and will need
 # to be re-evaluated.
+
+# TODO: maybe move this to util?
+def to_dict(p):
+    if hasattr(p, 'to_dict'):
+        return p.to_dict()
+    elif isinstance(p, (tuple, list)):
+        return [to_dict(v) for v in p]
+    elif isinstance(p, dict):
+        return {k: to_dict(v) for k, v in p.items()}
+    elif isinstance(p, (bool, str, float, int, type(None))):
+        return p
+    elif isinstance(p, np.ndarray):
+        # TODO: what about inf, nan and object arrays?
+        return p.tolist()
+    elif False and callable(p):
+        # TODO: consider including functions and arbitrary values
+        import base64
+        import dill
+        encoding = base64.encodebytes(dill.dumps(p)).decode('ascii')
+        return {'type': 'dill', 'value': str(p), 'encoding': encoding}
+        ## To recovert the function
+        # if allow_unsafe_code:
+        #     encoding = item['encoding']
+        #     p = dill.loads(base64.decodebytes(encoding).encode('ascii'))
+    else:
+        #print(f"converting type {type(p)} to str")
+        return str(p)
 
 
 class BaseParameter(object):
@@ -275,14 +303,16 @@ class BaseParameter(object):
         # in parameter sets as well. Note that the entire parameter description
         # will be repeated each time it occurs, but there should be few
         # enough of these that it isn't a problem.
+        # TODO: use id that is stable from session to session.
+        # TODO: have mechanism for clearing cache between save/load.
         return dict(
             type=type(self).__name__,
-            id=id(self),
+            id=id(self), # Warning: this will be different every session
             name=self.name,
             value=self.value,
             fixed=self.fixed,
             fittable=self.fittable,
-            bounds=self._bounds.to_dict(),
+            bounds=to_dict(self._bounds),
             )
 
 
@@ -437,12 +467,11 @@ class Reference(Parameter):
 
     def to_dict(self):
         ret = Parameter.to_dict(self)
-        ret["type"] = type(self).__name__
         ret["attr"] = self.attr
         # TODO: another impossibility---an arbitrary python object
         # Clearly we need a (safe??) json pickler to handle the full
         # complexity of an arbitrary model.
-        ret["obj"] = str(self.obj)
+        ret["obj"] = to_dict(self.obj)
         return ret
 
 
@@ -464,6 +493,7 @@ class ParameterSet(object):
         """
         self.names = names
         self.reference = reference
+        # TODO: explain better why parameters are using np.array
         # Force numpy semantics on slice operations by using an array
         # of objects rather than a list of objects
         self.parameters = np.array([copy(reference) for _ in names])
@@ -477,8 +507,9 @@ class ParameterSet(object):
         return {
             "type": "ParameterSet",
             "names": self.names,
-            "reference": self.reference.to_dict(),
-            "parameters": [p.to_dict() for p in self.parameters],
+            "reference": to_dict(self.reference),
+            # Note: parameters are stored in a numpy array
+            "parameters": to_dict(self.parameters.tolist()),
         }
 
     # Make the parameter set act like a list
@@ -623,9 +654,7 @@ class FreeVariables(object):
         return {
             'type': type(self).__name__,
             'names': self.names,
-            'parameters': {
-                k: v.to_dict() for k, v in self._parametersets.items()
-            }
+            'parameters': to_dict(self._parametersets)
         }
 
     def set_model(self, i):
@@ -717,8 +746,8 @@ class Operator%(name)s(BaseParameter):
     def to_dict(self):
         return dict(
             type="Operator%(name)s",
-            left=self.a.to_dict() if isinstance(self.a, BaseParameter) else self.a,
-            right=self.b.to_dict() if isinstance(self.b, BaseParameter) else self.b,
+            left=to_dict(self.a),
+            right=to_dict(self.b),
         )
     @property
     def value(self):
@@ -800,15 +829,9 @@ class Function(BaseParameter):
             "type": "Function",
             "name": self.name,
             # TODO: function not stored properly in json
-            "op": str(self.op),
-            "args": [
-                (p.to_dict() if hasattr(p, 'to_dict') else p)
-                for p in self.args
-            ],
-            "kw": {
-                k: (v.to_dict() if hasattr(v, 'to_dict') else v)
-                for k, v in self.kw.items()
-            },
+            "op": to_dict(self.op),
+            "args": to_dict(self.args),
+            "kw": to_dict(self.kw),
         }
 
     def __getstate__(self):
@@ -1126,8 +1149,8 @@ class Alias(object):
     def to_dict(self):
         return {
             'type': type(self).__name__,
-            'p': self.p.to_dict(),
+            'p': to_dict(self.p),
             # TODO: can't json pickle arbitrary objects
-            'obj': str(self.obj),
+            'obj': to_dict(self.obj),
             'attr': self.attr,
         }
