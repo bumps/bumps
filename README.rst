@@ -34,7 +34,7 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
-v0.7.16 2020-xx-xx
+v0.7.16 2020-06-11
 ------------------
 * improved handling of parameters for to_dict() json pickling
 
