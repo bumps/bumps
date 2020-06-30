@@ -386,7 +386,8 @@ Continue fit from a previous store directory.
 ``--parallel``
 --------------
 
-Run fit using multiprocessing for parallelism.
+Run fit using multiprocessing for parallelism. Use "--parallel=0" for all
+CPUs or "--parallel=n" for only "n" CPUs.
 
 .. _option-mpi:
 
@@ -440,8 +441,27 @@ Compute the covariance matrix for the model at the minimum.
 -------------
 
 *Calculate entropy* is a flag which indicates whether entropy should be
-computed for the final fit.  Entropy an estimate of the number of bits of
-information available from the fit.
+computed for the final fit. Entropy an estimate of the number of bits of
+information available from the fit. Use "--entropy=method" to specify the
+entropy calcualation method. This can be one of:
+
+* gmm: fit sample to a gaussian mixture model (GMM) with $5 \sqrt{d}$
+  components where $d$ is the number fitted parameters and estimate
+  entropy by sampling from the GMM.
+
+* llf: estimates likelihood scale factor from ratio of density
+  estimate to model likelihood, then computes Monte Carlo entropy
+  from sample; this does not work for marginal likelihood estimates.
+  DOI:10.1109/CCA.2010.5611198
+
+* mvn: fit sample to a multi-variate Gaussian and return the entropy
+  of the best fit gaussian; uses bootstrap to estimate uncertainty.
+  This method is only valid if the sample distribution is approximately
+  Gaussian.
+
+* wnn: estimate entropy from weighted nearest-neighbor distances in sample.
+  Note: use with caution. The results from this implementation are not
+  consistent with other methods. DOI:10.1214/18-AOS1688
 
 
 .. _option-plot:

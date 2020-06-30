@@ -113,7 +113,7 @@ __all__ = ["entropy"]
 
 import numpy as np
 from numpy import mean, std, exp, log, sqrt, log2, pi, e, nan
-from numpy.random import permutation
+from numpy.random import permutation, choice
 from scipy import stats
 from scipy.stats import norm, chi2
 from scipy.special import gammaln, digamma
@@ -232,11 +232,21 @@ def gmm_entropy(points, n_est=None, n_components=None):
 
     *points* are the data points in the sample.
 
-    *n_est* are the number of points to use in the estimation, or *None* to
-    use all points.
+    *n_est* are the number of points to use in the estimation; default is
+    10,000 points, or 0 for all the points.
 
     *n_components* are the number of Gaussians in the mixture. Default is
     $5 \sqrt{d}$ where $d$ is the number of dimensions.
+
+    Returns estimated entropy and uncertainty in the estimate.
+
+    This method uses BayesianGaussianMixture from scikit-learn to build a
+    model of the point distribution, then uses Monte Carlo sampling to
+    determine the entropy of that distribution. The entropy uncertainty is
+    computed from the variance in the MC sample scaled by the number of
+    samples. This does not incorporate any uncertainty in the sampling that
+    generated the point distribution or the uncertainty in the GMM used to
+    model that distribution.
     """
     #from sklearn.mixture import GaussianMixture as GMM
     from sklearn.mixture import BayesianGaussianMixture as GMM
@@ -244,11 +254,14 @@ def gmm_entropy(points, n_est=None, n_components=None):
 
     # Default to the full set
     if n_est is None:
+        n_est = 10000
+    elif n_est == 0:
         n_est = n
 
     # reduce size of draw to n_est
     if n_est >= n:
         x = points
+        n_est = n
     else:
         x = points[permutation(n)[:n_est]]
         n = n_est
@@ -267,7 +280,7 @@ def gmm_entropy(points, n_est=None, n_components=None):
     weight_x = predictor.score_samples(eval_x)
     H = -np.mean(weight_x)
     #with np.errstate(divide='ignore'): H = H + np.sum(np.log(sigma))   # if standardized
-    dH = 0.
+    dH = np.std(weight_x, ddof=1) / sqrt(n)
     ## cross-check against own calcs
     #alt = GaussianMixture(predictor.weights_, mu=predictor.means_, sigma=predictor.covariances_)
     #print("alt", H, alt.entropy())
@@ -306,18 +319,21 @@ def wnn_entropy(points, k=None, weights=True, n_est=None, gmm=None):
 
     Berrett, T. B., Samworth, R.J., Yuan, M., 2016. Efficient multivariate
     entropy estimation via k-nearest neighbour distances.
-    https://arxiv.org/abs/1606.00304
+    DOI:10.1214/18-AOS1688 https://arxiv.org/abs/1606.00304
     """
     from sklearn.neighbors import NearestNeighbors
     n, d = points.shape
 
     # Default to the full set
     if n_est is None:
+        n_est = 10000
+    elif n_est == 0:
         n_est = n
 
     # reduce size of draw to n_est
     if n_est >= n:
         x = points
+        n_est = n
     else:
         x = points[permutation(n)[:n_est]]
         n = n_est
@@ -718,6 +734,23 @@ def cov_entropy(C):
     Entropy estimate from covariance matrix C
     """
     return 0.5 * (len(C) * log2(2*pi*e) + log2(abs(np.linalg.det(C))))
+
+
+def mvn_entropy_bootstrap(points, samples=50):
+    """
+    Use bootstrap method to estimate entropy and its uncertainty
+    """
+    n, d = points.shape
+
+    results = []
+    for _ in range(samples):
+        # sample n points with replacement in 0 ... n-1.
+        x = points[choice(n, size=n)]
+        C = np.cov(x.T, bias=1) if d > 1 else np.array([[np.var(x.T, ddof=1)]])
+        #print(f"cov {samples}, {x.shape}, {C.shape}")
+        results.append(cov_entropy(C))
+
+    return np.mean(results), np.std(results)
 
 # ======================================================================
 # Testing code

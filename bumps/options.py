@@ -242,7 +242,7 @@ class BumpsOpts(ParseOpts):
     FLAGS = set(("preview", "chisq", "profile", "time_model",
                  "simulate", "simrandom", "shake", "worker",
                  "batch", "noshow", "overwrite", "stepmon",
-                 "err", "cov", "entropy",
+                 "err", "cov",
                  "remote", "staj", "edit", "mpi", "keep_best",
                  # passed in when app is a frozen image
                  "multiprocessing-fork",
@@ -251,14 +251,17 @@ class BumpsOpts(ParseOpts):
                  # specific models pre-defined.
                  "i",
                 ))
-    VALUES = set(("plot", "store", "resume", "fit", "noise", "seed", "pars",
-                  "resynth", "transport", "notify", "queue", "time",
+    VALUES = set(("plot", "store", "resume", "entropy", "fit", "noise", "seed",
+                  "pars", "resynth", "transport", "notify", "queue", "time",
                   "checkpoint", "m", "c", "p", "parallel", "view",
                  ))
     # Add in parameters from the fitters
     VALUES |= set(FIT_FIELDS.keys())
     # --parallel is equivalent to --parallel=0
-    IMPLICIT_VALUES = {'parallel': '0'}
+    IMPLICIT_VALUES = {
+        'parallel': '0',
+        'entropy': "llf",
+        }
     pars = None
     notify = ""
     queue = "http://reflectometry.org/queue"
@@ -269,6 +272,7 @@ class BumpsOpts(ParseOpts):
     time = "inf"
     checkpoint = "0"
     parallel = ""
+    entropy = None
     view = None
     PLOTTERS = "linear", "log", "residuals"
     USAGE = """\
@@ -301,8 +305,8 @@ Options:
         show uncertainty estimate from curvature at the minimum
     --cov
         show the covariance matrix for the model when done
-    --entropy
-        compute entropy for the model when done [dream only]
+    --entropy=gmm|mvn|wnn|llf
+        compute entropy on posterior distribution [dream only]
     --staj
         output staj file when done
     --edit

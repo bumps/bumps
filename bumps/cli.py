@@ -666,7 +666,7 @@ def main():
         if opts.cov:
             fitdriver.show_cov()
         if opts.entropy:
-            fitdriver.show_entropy()
+            fitdriver.show_entropy(opts.entropy)
         mapper.stop_mapper(fitdriver.mapper)
         if not opts.batch and not opts.mpi and not opts.noshow:
             beep()

@@ -808,7 +808,8 @@ class MCMCDraw(object):
         drawn = self.draw(**kw)
         return drawn.points, drawn.logp
 
-    def entropy(self, vars=None, portion=1, selection=None, n_est=10000, thin=None):
+    def entropy(self, vars=None, portion=1, selection=None, n_est=10000,
+                thin=None, method=None):
         """
         Return entropy estimate and uncertainty from an MCMC draw.
 
@@ -827,6 +828,23 @@ class MCMCDraw(object):
 
         *thin* is the amount of thinning to use when selecting points from the
         draw.
+
+        *method* determines which entropy calculation to use:
+
+        * gmm: fit sample to a gaussian mixture model (GMM) with $5 \sqrt{d}$
+          components where $d$ is the number fitted parameters and estimate
+          entropy by sampling from the GMM.
+
+        * llf: estimates likelihood scale factor from ratio of density
+          estimate to model likelihood, then computes Monte Carlo entropy
+          from sample; this does not work for marginal likelihood estimates.
+          DOI:10.1109/CCA.2010.5611198
+
+        * mvn: fit sample to a multi-variate Gaussian and return the entropy
+          of the best fit gaussian; uses bootstrap to estimate uncertainty.
+
+        * wnn: estimate entropy from nearest-neighbor distances in sample.
+          DOI:10.1214/18-AOS1688
         """
         from . import entropy
 
@@ -843,12 +861,26 @@ class MCMCDraw(object):
         M = entropy.MVNEntropy(drawn.points)
         print("Entropy from MVN: %s"%str(M))
 
-        # Try pure gmm ... pretty good
-        #S_gmm, Serr_gmm = entropy.gmm_entropy(drawn.points, n_est=10000)
-        #print("Entropy from gmm: %s"%str(S_gmm))
+        if method is None:
+            # TODO: change default to gmm
+            method = "llf"
 
-        S, Serr = entropy.entropy(drawn.points, drawn.logp, N_entropy=n_est)
-        #print("Entropy from Kramer: %s"%str(S))
+        if method == "llf":
+            S, Serr = entropy.entropy(drawn.points, drawn.logp, N_entropy=n_est)
+            #print("Entropy from llf (Kramer): %s"%str(S))
+        elif method == "gmm":
+            # Try pure gmm ... pretty good
+            S, Serr = entropy.gmm_entropy(drawn.points, n_est=n_est)
+            #print("Entropy from gmm: %g +/- %g"% (S, Serr))
+        elif method == "wnn":
+            # Try pure wnn ... no good
+            S, Serr = entropy.wnn_entropy(drawn.points, n_est=n_est)
+            #print("Entropy from wnn: %s"%str(S))
+        elif method == "mvn":
+            S, Serr = entropy.mvn_entropy_bootstrap(drawn.points)
+            #print("Entropy from mvn: %s"%str(S))
+        else:
+            raise ValueError("unknown method %r" % method)
 
         # Always return entropy estimate from draw, even if it is normal
         return S, Serr

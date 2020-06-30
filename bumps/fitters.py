@@ -968,9 +968,9 @@ class FitDriver(object):
             self.problem.setp(x)
         return x, fx
 
-    def entropy(self):
+    def entropy(self, method=None):
         if hasattr(self.fitter, 'entropy'):
-            return self.fitter.entropy()
+            return self.fitter.entropy(method=method)
         else:
             from .dream import entropy
             return entropy.cov_entropy(self.cov()), 0
@@ -1099,9 +1099,9 @@ class FitDriver(object):
         print(cov_str)
         print("=========================")
 
-    def show_entropy(self):
+    def show_entropy(self, method=None):
         print("Calculating entropy...")
-        S, dS = self.entropy()
+        S, dS = self.entropy(method=method)
         print("Entropy: %s bits" % format_uncertainty(S, dS))
 
     def save(self, output_path):
