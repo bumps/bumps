@@ -68,11 +68,11 @@ def reload_errors(model, store, nshown=50, random=True):
     Returns *errs* for :func:`show_errors`.
     """
     problem = load_model(model)
-    load_best(problem, os.path.join(store, model[:-3] + ".par"))
-    state = load_state(os.path.join(store, model[:-3]))
+    load_best(problem, os.path.join(store, problem.name + ".par"))
+    state = load_state(os.path.join(store, problem.name))
     state.mark_outliers()
-    return calc_errors_from_state(problem, state,
-                                  nshown=nshown, random=random)
+    return calc_errors_from_state(
+        problem, state, nshown=nshown, random=random)
 
 
 def calc_errors_from_state(problem, state, nshown=50, random=True):

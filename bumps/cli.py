@@ -512,7 +512,7 @@ def main():
         import runpy
         sys.argv = sys.argv[2:]
         runpy.run_module(sys.argv[0], run_name="__main__")
-        sys.exit()
+        sys.exit(0)
     elif sys.argv[1] == '-p':
         import runpy
         sys.argv = sys.argv[2:]
