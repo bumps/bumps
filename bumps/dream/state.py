@@ -810,7 +810,7 @@ class MCMCDraw(object):
 
     def entropy(self, vars=None, portion=1, selection=None, n_est=10000,
                 thin=None, method=None):
-        """
+        r"""
         Return entropy estimate and uncertainty from an MCMC draw.
 
         *portion* is the portion of each chain to use

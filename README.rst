@@ -34,6 +34,10 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
+v0.7.17 2020-..-..
+------------------
+* fix errplot.reload_errors to allow full path to model file
+
 v0.7.16 2020-06-11
 ------------------
 * improved handling of parameters for to_dict() json pickling
