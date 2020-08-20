@@ -166,7 +166,6 @@ Summing lamellae thickness in the sampled points, we see the overall
 lamellae thickness has a CI of about 0.3 nm.  The correlation
 plot is saved in T1/model-corr.png.
 
-
 .. image:: error.png
     :scale: 50
 
@@ -295,18 +294,74 @@ the first two variables together to create the derived variable "x+y" use::
 You can generate multiple derived parameters at a time with a function
 that returns a sequence::
 
-
     state.derive_vars(lambda p: (p[0]*p[1],p[0]-p[1]), labels=["x*y","x-y"])
 
 These new parameters will show up in the plots::
 
     state.show()
 
+Here is an example from a fit to bovine serum albumin with a two layer model.
+The parameter of interest ($\Gamma$) is derived from the SLD $\rho$ and
+thickness $t$ of the constituent layers using
+$\Gamma = 0.06955(\rho_1 t_1 + \rho_2 t_2)$.
+Using intermediate values for $\rho_1 t_1$ and $\rho_2 t_2$ to show the
+difference between gaussian error propagation and full correlation analysis,
+the derived parameters as set up as follows::
+
+    from bumps.dream.state import load_state
+    state = load_state("1000ppm_Ph4.9 NRW_0M_2layer model")
+    state.labels = ["r1", "t1", "r2", "t2"]
+    state.derive_vars(lambda p: (p[0]*p[1],p[2]*p[3],0.06955*(p[0]*p[1]+p[2]*p[3])),
+                      labels=["r1t1","r2t2","G"])
+    state.show()
+
+This gives the following output::
+
+      Parameter    mean     median    best [   68% interval] [   95% interval]
+    1        r1 0.3321(98)  0.3322  0.3327 [  0.322   0.342] [  0.312   0.351]
+    2        t1  50.37(89)  50.381  50.286 [  49.47   51.21] [  48.49   52.21]
+    3        r2  1.199(22)  1.1976  1.1980 [  1.177   1.224] [  1.158   1.242]
+    4        t2  24.90(80)  24.892  24.901 [  24.06   25.76] [  23.37   26.44]
+    5      r1t1  16.73(58)  16.712  16.729 [  16.16   17.30] [  15.61   17.86]
+    6      r2t2  29.84(48)  29.863  29.832 [  29.36   30.33] [  28.87   30.78]
+    7         G  3.239(27)   3.238   3.238 [   3.21    3.27] [   3.19    3.29]
+
+Using simple gaussian propagation of errors (from the wonderfully
+convenient uncertainties package) can compare the computed uncertainties::
+
+    from uncertainties import ufloat as U
+    C = 0.06955
+    r1t1 = U(0.3321, 0.0098) * U(50.37, 0.89)
+    r2t2 = U(1.199, 0.022) * U(24.90, 0.80)
+    G = C*(r1t1 + r2t2)
+    print("r1*t1 =", r1t1)
+    print("r2*t2 =", r2t2)
+    print("G =", C*(r1t1 + r2t2))
+
+which produces::
+
+    r1*t1 = 16.7 ± 0.6   # same as forward MC
+    r2*t2 = 29.9 ± 1.1   # compared to 29.8 ± 0.5 from forward MC
+    G = 3.24 ± 0.09      # compared to 3.24 ± 0.03 from forward MC
+
+That is, the gaussian approximation assuming uncorrelated uncertainties is
+3x larger than the forward Monte Carlo approximation from the joint
+distribution of the fitted parameters. Much of the reduction comes from
+the strong negative correlation between $\rho_2$ and $t_2$, with the remainder
+coming from the negative correlation between the products
+$\rho_1 t_1$ and $\rho_2 t_2$.
+
+You can see this in the correlation plots, with r2:t2 having a very narrow
+diagonal (hence strong correlation) and r1t1:r2×t2 having a somewhat wider
+diagonal (hence weaker correlation).
+
+.. image:: intermediate_mcmc.png
+    :scale: 50
+
 The plotting code is somewhat complicated, and matplotlib doesn't have a
 good way of changing plots interactively.  If you are running directly
 from the source tree, you can modify the dream plotting libraries as you
-need for a one-off plot, the replot the graph::
-
+need for a one-off plot, then replot the graph::
 
     # ... change the plotting code in dream.views/dream.corrplot
     reload(dream.views)
@@ -339,7 +394,7 @@ The model file (call it *plot.py*) will start with the following::
     load_best(problem, os.path.join(store, model[:-3]+".par"))
     chisq = problem.chisq
 
-    print "chisq",chisq
+    print("chisq", chisq)
 
 Assuming your model script is in model.py and you have run a fit with
 ``--store=X5``, you can run this file using::
@@ -437,12 +492,12 @@ Tough Problems
    exploring other algorithms such as parallel tempering, but they
    are not currently competitive with DREAM.
 
-With the toughest fits, for example freeform models with arbitrary 
-control points, DREAM only succeeds if the model is small or the 
-control points are constrained.  We have developed a parallel 
-tempering (fit=pt) extension to DREAM.  Whereas DREAM runs with a 
+With the toughest fits, for example freeform models with arbitrary
+control points, DREAM only succeeds if the model is small or the
+control points are constrained.  We have developed a parallel
+tempering (fit=pt) extension to DREAM.  Whereas DREAM runs with a
 constant temperature, $T=1$, parallel tempering runs with multiple
-temperatures concurrently.   The high temperature points are able to 
+temperatures concurrently.   The high temperature points are able to
 walk up steep hills in the search space, possibly crossing over into a
 neighbouring valley.  The low temperature points agressively seek the
 nearest local minimum, rejecting any proposed point that is worse than
