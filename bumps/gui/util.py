@@ -78,7 +78,7 @@ class EmbeddedPylab(object):
             except KeyError:
                 pass
         else:
-            Gcf.figs.pop(self.fm, None)
+            Gcf.figs.pop(self.fm.num, None)
 
 class Validator(wx.PyValidator):
     def __init__(self, flag):
