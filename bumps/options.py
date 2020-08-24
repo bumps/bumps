@@ -343,10 +343,10 @@ Options:
 
     --fit=amoeba    [%(fitter)s]
         fitting engine to use; see manual for details
-    --steps=400    [%(fitter)s]
-        number of fit iterations after any burn-in time
+    --steps=0       [%(fitter)s]
+        number of fit iterations after any burn-in time; use samples if steps=0
     --samples=1e4   [dream]
-        set steps so the target number of samples is drawn
+        set steps=samples/(pop*#pars) so the target number of samples is drawn
     --xtol=1e-4     [de, amoeba]
         minimum population diameter
     --ftol=1e-4     [de, amoeba]
