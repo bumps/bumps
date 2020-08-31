@@ -160,7 +160,7 @@ def maybe_open(file_or_path):
         if not string_like(file_or_path):
             raise ValueError('file must be a name or a file handle')
         # Open file; if name ends in .gz then assume it is compressed.
-        path = file_or_path
+        path = os.path.expanduser(file_or_path)
         fh = gzip.open(path) if path.endswith('.gz') else open(path)
         try:
             yield fh
