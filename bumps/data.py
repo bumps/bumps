@@ -3,6 +3,8 @@ Data handling utilities.
 """
 from __future__ import division
 
+import os
+import gzip
 from contextlib import contextmanager
 
 import numpy as np
@@ -145,21 +147,25 @@ def _read_part(fh, key_sep=None, col_sep=None, comment="#", multi_part=False):
 @contextmanager
 def maybe_open(file_or_path):
     """
-    A context manager for file opening, given a string to the file, or an open
-    file handle.
+    A context manager for file opening, given as a file path or an open handle.
+
+    If *file_or_path* is a string ending in ".gz" then open with gzip.
     """
     if hasattr(file_or_path, 'readline'):
+        # If it is a file handle, yield it and return without closing.
         fh = file_or_path
-    elif not string_like(file_or_path):
-        raise ValueError('file must be a name or a file handle')
-    elif file_or_path.endswith('.gz'):
-        import gzip
-        fh = gzip.open(file_or_path)
+        yield fh
     else:
-        fh = open(file_or_path)
-    yield fh
-    if fh is not file_or_path:
-        fh.close()
+        # Otherwise it should be a path. Make sure it is at least a string.
+        if not string_like(file_or_path):
+            raise ValueError('file must be a name or a file handle')
+        # Open file; if name ends in .gz then assume it is compressed.
+        path = file_or_path
+        fh = gzip.open(path) if path.endswith('.gz') else open(path)
+        try:
+            yield fh
+        finally:
+            fh.close()
 
 
 def string_like(s):
