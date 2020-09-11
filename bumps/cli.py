@@ -138,34 +138,52 @@ def save_best(fitdriver, problem, best, view=None):
 PARS_PATTERN = re.compile(r"^(?P<label>.*) (?P<value>[^ ]*)\n$")
 def load_best(problem, path):
     """
-    Load parameter values from a file.
+    Reload individual parameter values from a saved .par file.
+
+    If the label does not exist in the file, use the value from the model
+    as the default value. Ignore labels that do not exist in the model. In
+    that way we can load parameters from an old fit with minimal fuss, even
+    as we add, delete and move parameters in the model. If any parameters
+    are missing, set *problem.undefined* to the a boolean index of the
+    undefined parameters.
+
+    There is an interaction with --init=eps and the par file. If any parameters
+    are missing from the par file they will be randomized across the
+    entire parameter range using the equivalent of --init=lhs. That means
+    you can drop a # at the beginning of the line in the .par file
+    and that parameter will be shuffled on restart, with the remaining
+    parameters starting near the initial value.
     """
-    # Reload the individual parameters from a saved par file. Use the value
-    # from the model as the default value.  Keep track of which parameters are
-    # defined in the file so we can see if any are missing.
-    targets = dict(zip(problem.labels(), problem.getp()))
-    defined = set()
+    # WARNING: Labels are not unique! Need to track multiple instances of
+    # the same label.
     if not os.path.isfile(path):
         path = os.path.join(path, problem.name+".par")
+    if not os.path.isfile(path):
+        raise ValueError("Parameter file %s does not exist." % path)
+    labels = problem.labels()
+    targets = {label: [] for label in labels}
     with open(path, 'rt') as fid:
         for line in fid:
             m = PARS_PATTERN.match(line)
             label, value = m.group('label'), float(m.group('value'))
+            # Accumulate values for labels only if they appear in the model.
             if label in targets:
-                targets[label] = value
-                defined.add(label)
-    values = [targets[label] for label in problem.labels()]
-    problem.setp(np.asarray(values))
+                targets[label].append(value)
 
-    # Identify the missing parameters if any.  These are stuffed into the
-    # the problem definition as an optional "undefined" attribute, with
-    # one bit for each parameter.  If all parameters are defined, then none
-    # are undefined.  This ugly hack is to support a previous ugly hack in
-    # which undefined parameters are initialized with LHS but defined
-    # parameters are initialized with eps, cov or random.
+    # Populate model with named parameters in the order they occur in the
+    # parameter file. Identify the missing parameters if any, adding them
+    # to the the problem definition as an optional "undefined" attribute with
+    # one bit for each parameter. This ugly hack is to support a previous
+    # ugly hack in which undefined parameters are initialized with LHS but
+    # defined parameters are initialized with eps, cov or random.
     # TODO: find a better way to "free" parameters on --resume/--pars.
-    if len(values) != len(defined):
-        undefined = [label not in defined for label in problem.labels()]
+    values, undefined = [], []
+    for label, default_value in zip(labels, problem.getp()):
+        remaining_values = targets[label]
+        values.append(remaining_values.pop(0) if remaining_values else default_value)
+        undefined.append(not remaining_values)
+    problem.setp(np.asarray(values))
+    if any(undefined):
         problem.undefined = np.asarray(undefined)
 #CRUFT
 recall_best = load_best
