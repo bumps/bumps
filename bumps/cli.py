@@ -523,7 +523,6 @@ def main():
 
     if len(sys.argv) == 1:
         sys.argv.append("-?")
-        print("\nNo modelfile parameter was specified.\n")
 
     # run command with bumps in the environment
     if sys.argv[1] == '-m':
@@ -561,6 +560,10 @@ def main():
         config_matplotlib()
 
     problem = initial_model(opts)
+    if problem is None:
+        print("\n!!! Model file missing from command line --- abort !!!.",
+              file=sys.stderr)
+        sys.exit(1)
 
     # TODO: AMQP mapper as implemented requires workers started up with
     # the particular problem; need to be able to transport the problem
@@ -628,8 +631,9 @@ def main():
 
         # Check that there are parameters to be fitted.
         if not len(problem.getp()):
-            print("\n!!! No parameters selected for fitting---abort !!!\n")
-            return
+            print("\n!!! No parameters selected for fitting---abort !!!\n",
+                  file=sys.stderr)
+            sys.exit(1)
 
         # Run the fit
         if opts.resume == '-':
