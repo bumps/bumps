@@ -49,7 +49,7 @@
 #   5) $\lambda = k \pm \sqrt{k}$ for $k>0$, $0 \pm 1$ for $k = 0$
 #
 # See the notes from the CDF Statistics Committee for details at
-# `<http://www-cdf.fnal.gov/physics/statistics/notes/pois_eb.txt>`_.
+# `<https://www-cdf.fnal.gov/physics/statistics/notes/pois_eb.txt>`_.
 #
 # Of these, option 5 works slightly better for fitting, giving the best
 # estimate of the background.
@@ -72,7 +72,7 @@
 #
 # .. math::
 #
-#    E[x] = \int_{-infty}^\infty x P(x) dx
+#    E[x] = \int_{-\infty}^\infty x P(x) dx
 #
 # For the poisson distribution, this is:
 #
@@ -81,24 +81,22 @@
 #    E[\lambda] = \int_0^\infty \lambda \frac{\lambda^k e^{-\lambda}}{k!} d\lambda
 #
 # Running some simulations, we can see that $\hat\lambda=(k+1)\pm\sqrt{k+1}$
-# (see `sim.py <sim.html>`_). This is the best fit rms value to the distribution
+# (see `sim.py <sim.html>`_). This is the best fit RMS value to the distribution
 # of possible $\lambda$ values that could give rise to the observed $k$.
 #
-# Convincing the world to accept $\lambda = k+1$ would be challenging since
-# the expected value is not the most likely value.  As a compromise, one can
-# use $0 \pm 1$ for zero counts, and $k \pm \sqrt{k}$ for other values.  A
-# minor problem is that this permits negative count rates for zero without
-# significant penalty.
+# The current practice is to use $\hat\lambda=k\pm\sqrt{k}$. Convincing the
+# world to accept $\lambda = k+1$ would be challenging since the expected
+# value is not the most likely value.  As a compromise, one can use $0 \pm 1$
+# for zero counts, and $k \pm \sqrt{k}$ for other values. This provides a
+# reasonable estimate for the uncertainty on zero counts, which after
+# normalization becomes smaller for longer counting times or higher incident
+# flux.
 #
-# Note that from the simulation, the variance on $\lambda$ given $\lambda=k$
-# is also $k+1$.
-#
-# Another suggestion is to choose the center and bounds so that the
+# Another option is to choose the center and bounds so that the
 # uncertainty covers $1-\sigma$ from the distribution (68%).  A simple
 # approximation which does this is $(n+1/2) \pm \sqrt{n+1/4}$.
-#
 # Again, hard to convince the world to do, so one could compromise and
-# choose $1/2 \pm 1/2$ for $k=0$, and the usual $k \pm \sqrt{k}$ otherwise.
+# choose $1/2 \pm 1/2$ for $k=0$ and $k \pm \sqrt{k}$ otherwise.
 #
 # What follows is a model which allows us to fit a simulated peak using
 # these various definitions of $\lambda$ and see which version best recovers
