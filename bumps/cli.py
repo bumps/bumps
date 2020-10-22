@@ -599,6 +599,11 @@ def main():
         opts.fit_config.selected_fitter, problem=problem, abort_test=abort_test,
         **opts.fit_config.selected_values)
 
+    # Start fitter within the domain so that constraints are valid
+    clipped = fitdriver.clip()
+    if clipped:
+        print("Start value clipped to range for parameter", ", ".join(clipped))
+
     if opts.time_model:
         run_timer(mapper.start_mapper(problem, opts.args),
                   problem, steps=int(opts.steps))

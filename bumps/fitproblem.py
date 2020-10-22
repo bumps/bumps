@@ -337,7 +337,8 @@ class BaseFitProblem(object):
 
     def bounds(self):
         """Return the bounds fore each parameter a 2 x N array"""
-        return np.array([p.bounds.limits for p in self._parameters], 'd').T
+        limits = [p.bounds.limits for p in self._parameters]
+        return np.array(limits, 'd').T if limits else np.empty((2, 0))
 
     def randomize(self, n=None):
         """

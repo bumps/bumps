@@ -968,6 +968,23 @@ class FitDriver(object):
             self.problem.setp(x)
         return x, fx
 
+    def clip(self):
+        """
+        Force parameters within bounds so constraints are finite.
+
+        The problem is updated with the new parameter values.
+
+        Returns a list of parameter names that were clipped.
+        """
+        labels = self.problem.labels()
+        values = self.problem.getp()
+        bounds = self.problem.bounds()
+        new_values = np.clip(values, bounds[0], bounds[1])
+        clipped = [name for name, old, new in zip(labels, values, new_values)
+                   if old != new]
+        self.problem.setp(new_values)
+        return clipped
+
     def entropy(self, method=None):
         if hasattr(self.fitter, 'entropy'):
             return self.fitter.entropy(method=method)
@@ -1220,6 +1237,7 @@ def fit(problem, method=FIT_DEFAULT_ID, verbose=False, **options):
     driver = FitDriver(
         fitclass=fitclass, problem=problem, monitors=monitors,
         **options)
+    driver.clip() # make sure fit starts within domain
     x0 = problem.getp()
     x, fx = driver.fit()
     problem.setp(x)
