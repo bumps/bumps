@@ -30,10 +30,6 @@ of the frame of the GUI for the Bumps application.
 from __future__ import division
 import os
 import threading
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
 
 import wx
 import wx.aui
@@ -367,7 +363,7 @@ class AppPanel(wx.Panel):
 
     def OnFileSave(self, event):
         if self.model is not None:
-            # Force the result to be a pickle
+            # Force file extension to be MODEL_EXT
             self.model.path = os.path.splitext(self.model.path)[0]+MODEL_EXT
             self.save_model(self.model.path)
         else:
@@ -505,10 +501,15 @@ class AppPanel(wx.Panel):
 
     def save_model(self, path):
         try:
+            import dill
+            dump = lambda obj, fid: dill.dump(obj, fid, recurse=True)
+        except ImportError:
+            from pickle import dump
+        try:
             if hasattr(self.model, 'save_json'):
                 self.model.save_json(path)
             with open(path,'wb') as fid:
-                pickle.dump(self.model, fid)
+                dump(self.model, fid)
         except Exception:
             import traceback
             signal.log_message(message=traceback.format_exc())
@@ -524,7 +525,7 @@ class AppPanel(wx.Panel):
         # Ask model to save its information
         self.model.save(output_path)
 
-        # Save a pickle of the model that can be reloaded
+        # Save a snapshot of the model that can (hopefully) be reloaded
         self.save_model(output_path+MODEL_EXT)
 
         # Save the current state of the parameters

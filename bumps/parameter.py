@@ -16,6 +16,7 @@ from six.moves import reduce
 import warnings
 from copy import copy
 import math
+from functools import wraps
 
 import numpy as np
 from numpy import inf, isinf, isfinite
@@ -901,13 +902,12 @@ BaseParameter.trunc = function(math.trunc)
 
 def boxed_function(f):
     box = function(f)
+    @wraps(f)
     def wrapped(*args, **kw):
         if any(isinstance(v, BaseParameter) for v in args):
             return box(*args, **kw)
         else:
             return f(*args, **kw)
-    wrapped.__name__ = f.__name__
-    wrapped.__doc__ = f.__doc__
     return wrapped
 
 # arctan2 is special since either argument can be a parameter

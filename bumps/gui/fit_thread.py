@@ -154,21 +154,10 @@ class FitThread(Thread):
                                  message="uncertainty_update",
                                  rate=30),
                     ]
-        try:
-            # Only use parallel on windows if the problem can be pickled
-            if os.name == "nt":
-                try:
-                    import cPickle as pickle
-                except ImportError:
-                    import pickle
-                pickle.dumps(self.problem)
-            #mapper = MPMapper
-            # hack around thread pool creation mp with threads (by killing them)
-            mapper = SerialMapper
-        except Exception:
-            mapper = SerialMapper
+        # Only use parallel if the problem can be pickled
+        mapper = MPMapper if MPMapper.can_pickle(self.problem) else SerialMapper
 
-        # Be safe and keep a private copy of the problem while fitting
+        # Be safe and send a private copy of the problem to the fitting engine
         #print "fitclass",self.fitclass
         problem = deepcopy(self.problem)
         #print "fitclass id",id(self.fitclass),self.fitclass,threading.current_thread()
@@ -177,13 +166,14 @@ class FitThread(Thread):
                 return self.abort_test()
         driver = FitDriver(self.fitclass, problem=problem,
                            monitors=monitors, abort_test = abort_wrapper,
-                           mapper = mapper.start_mapper(problem, []),
+                           mapper=mapper.start_mapper(problem, []),
                            **self.options)
 
         x,fx = driver.fit()
         # Give final state message from monitors
         for M in monitors:
-            if hasattr(M, 'final'): M.final()
+            if hasattr(M, 'final'):
+                M.final()
 
         with redirect_console() as fid:
             driver.show()

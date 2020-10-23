@@ -31,10 +31,6 @@ import warnings
 import traceback
 
 import shutil
-try:
-    import dill as pickle
-except ImportError:
-    import pickle
 
 import numpy as np
 # np.seterr(all="raise")
@@ -82,9 +78,15 @@ def load_model(path, model_options=None):
         problem = plugin.load_model(filename)
         if problem is None:
             # print "loading",filename,"from",directory
+            # TODO: eliminate pickle!!
             if filename.endswith('pickle'):
+                try:
+                    import dill as pickle
+                except ImportError:
+                    import pickle
                 # First see if it is a pickle
-                problem = pickle.load(open(filename, 'rb'))
+                with open(filename, 'rb') as fd:
+                    problem = pickle.load(fd)
             else:
                 # Then see if it is a python model script
                 problem = load_problem(filename, options=model_options)
@@ -279,7 +281,12 @@ def run_timer(mapper, problem, steps):
     """
     import time
     T0 = time.time()
-    p = initpop.random_init(int(steps), None, problem)
+    steps = int(steps)
+    p = initpop.generate(
+        problem, init='random', pop=-steps, use_point=False)
+    if p.shape == (0,):
+        # No fitting parameters --- generate an empty population
+        p = np.empty((steps, 0))
     mapper(p)
     print("time per model eval: %g ms" % (1000 * (time.time() - T0) / steps,))
 
@@ -289,11 +296,16 @@ def start_remote_fit(problem, options, queue, notify):
     Queue remote fit.
     """
     from jobqueue.client import connect
+    try:
+        from dill import dumps as dill_dumps
+        dumps = lambda obj: dill_dumps(obj, recurse=True)
+    except ImportError:
+        from pickle import dumps
 
     data = dict(package='bumps',
                 version=__version__,
-                problem=pickle.dumps(problem),
-                options=pickle.dumps(options))
+                problem=dumps(problem),
+                options=dumps(options))
     request = dict(service='fitter',
                    version=__version__,  # fitter service version
                    notify=notify,

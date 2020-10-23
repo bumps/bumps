@@ -41,7 +41,8 @@ def generate(problem, init='eps', pop=10, use_point=True, **options):
     initializer should be used.
 
     *pop* is the population scale factor, generating *pop* individuals
-    for each parameter in the fit.
+    for each parameter in the fit. If *pop < 0*, generate a total of
+    *-pop* individuals regardless of the number of parameters.
 
     *use_point* is True if the initial value should be a member of the
     population.

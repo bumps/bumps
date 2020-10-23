@@ -63,21 +63,64 @@ class SerialMapper(object):
 #    from .fitproblem import load_problem
 #    _MP_set_problem(load_problem(*modelargs))
 
-def _MP_set_problem(problem):
-    global _problem
+def _MP_setup(namespace):
+    # Using MPMapper class variables to store worker globals.
+    # It doesn't matter if they conflict with the controller values since
+    # they are in a different process.
+    MPMapper.namespace = namespace
     nice()
-    _problem = problem
-    #import dill as pickle
-    #_problem = pickle.loads(pickled_problem)
 
 
-def _MP_run_problem(point):
-    global _problem
-    return _problem.nllf(point)
+def _MP_run_problem(problem_point_pair):
+    problem_id, point = problem_point_pair
+    if problem_id != MPMapper.problem_id:
+        #print(f"Fetching problem {problem_id} from namespace")
+        # Problem is pickled using dill when it is available
+        try:
+            import dill
+            MPMapper.problem = dill.loads(MPMapper.namespace.pickled_problem)
+        except ImportError:
+            MPMapper.problem = MPMapper.namespace.problem
+        MPMapper.problem_id = problem_id
+    return MPMapper.problem.nllf(point)
 
 
 class MPMapper(object):
+    # Note: suprocesses are using the same variables
     pool = None
+    manager = None
+    namespace = None
+    problem_id = 0
+
+    @staticmethod
+    def can_pickle(problem, check=False):
+        """
+        Returns True if *problem* can be pickled.
+
+        If this method returns False then MPMapper cannot be used and
+        SerialMapper should be used instead.
+
+        If *check* is True then call *nllf()* on the duplicated object. This
+        will not be a foolproof check. If the model uses ephemeral objects,
+        such as a handle to an external process or similar, then handle might
+        be copied and accessible locally but not be accessible to the remote
+        process.
+        """
+        try:
+            import dill
+        except ImportError:
+            dill = None
+            import pickle
+        try:
+            if dill is not None:
+                dup = dill.loads(dill.dumps(problem, recurse=True))
+            else:
+                dup = pickle.loads(pickle.dumps(problem))
+            if check:
+                dup.nllf()
+            return True
+        except Exception:
+            return False
 
     @staticmethod
     def start_worker(problem):
@@ -86,23 +129,39 @@ class MPMapper(object):
     @staticmethod
     def start_mapper(problem, modelargs, cpus=0):
         import multiprocessing
-        #import dill as pickle
-        #import multiprocessing.reduction
-        #multiprocessing.reduction.pickle = None
-        if cpus==0:
-            cpus = multiprocessing.cpu_count()
-        if MPMapper.pool is not None:
-            MPMapper.pool.terminate()
-        #MPMapper.pool = multiprocessing.Pool(cpus,_MP_load_problem,modelargs)
-        #MPMapper.pool = multiprocessing.Pool(cpus, _MP_set_problem, (pickle.dumps(problem),))
-        MPMapper.pool = multiprocessing.Pool(cpus, _MP_set_problem, (problem,))
-        mapper = lambda points: MPMapper.pool.map(_MP_run_problem, points)
+
+        # Set up the process pool on the first call.
+        if MPMapper.pool is None:
+            # Create a sync namespace to distribute the problem description.
+            MPMapper.manager = multiprocessing.Manager()
+            MPMapper.namespace = MPMapper.manager.Namespace()
+            # Start the process pool, sending the namespace handle
+            if cpus == 0:
+                cpus = multiprocessing.cpu_count()
+            MPMapper.pool = multiprocessing.Pool(cpus, _MP_setup, (MPMapper.namespace,))
+
+        # Increment the problem number and store the problem in the namespace.
+        # The store action uses pickle to transfer python objects to the
+        # manager process. Since this may fail for lambdas and for functions
+        # defined within the model file, instead use dill (if available)
+        # to pickle the problem before storing.
+        MPMapper.problem_id += 1
+        try:
+            import dill
+            MPMapper.namespace.pickled_problem = dill.dumps(problem, recurse=True)
+        except ImportError:
+            MPMapper.namespace.problem = problem
+        ## Store the modelargs and the problem name if pickling doesn't work
+        #MPMapper.namespace.modelargs = modelargs
+
+        # Set the mapper to send problem_id/point value pairs
+        mapper = lambda points: MPMapper.pool.map(
+            _MP_run_problem, ((MPMapper.problem_id, p) for p in points))
         return mapper
 
     @staticmethod
     def stop_mapper(mapper):
-        pass
-
+        MPMapper.pool.terminate()
 
 def _MPI_set_problem(comm, problem, root=0):
     global _problem

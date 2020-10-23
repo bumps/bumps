@@ -6,7 +6,10 @@ from __future__ import print_function
 import os
 import sys
 import json
-import pickle
+try:
+    import dill as pickle
+except ImportError:
+    import pickle
 
 from . import cli
 from . import __version__
