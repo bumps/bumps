@@ -29,6 +29,12 @@ class Commands(object):
     def chisq(f):
         return os.system(CLI % (f, '--chisq --seed=1'))
 
+    @staticmethod
+    def time(f):
+        ## Note: use --parallel to check serialization for MPMapper
+        #return os.system(CLI%(f, '--time_model --seed=1 --steps=24 --parallel'))
+        return os.system(CLI%(f, '--time_model --seed=1 --steps=20'))
+
 examples = [
     "peaks/model.py",
     "curvefit/curve.py",
@@ -41,7 +47,7 @@ examples = [
 
 def main():
     if len(sys.argv) == 1 or not hasattr(Commands, sys.argv[1][2:]):
-        print("usage: check_examples.py [--preview|--edit|--chisq]")
+        print("usage: check_examples.py [--preview|--edit|--chisq|--time]")
     else:
         command = getattr(Commands, sys.argv[1][2:])
         for f in examples:
