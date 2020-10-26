@@ -23,12 +23,11 @@ class UncertaintyView(PlotView):
         self.plot_state = state
         self.plot()
 
-    def OnFitProgress(self, event):
-        if event.problem != self.model:
+    def fit_progress(self, problem, uncertainty_state):
+        if problem != self.model:
             return
-        history = event.uncertainty_state
-        stats = dream_stats.var_stats(history.draw())
-        self.update((history,stats))
+        stats = dream_stats.var_stats(uncertainty_state.draw())
+        self.update((uncertainty_state, stats))
 
 
 class CorrelationView(PlotView):
@@ -50,10 +49,10 @@ class CorrelationView(PlotView):
         self.plot_state = state
         self.plot()
 
-    def OnFitProgress(self, event):
-        if event.problem != self.model:
+    def fit_progress(self, problem, uncertainty_state):
+        if problem != self.model:
             return
-        self.update(event.uncertainty_state)
+        self.update(uncertainty_state)
 
 
 class TraceView(PlotView):
@@ -72,10 +71,10 @@ class TraceView(PlotView):
         self.plot_state = state
         self.plot()
 
-    def OnFitProgress(self, event):
-        if event.problem != self.model:
+    def fit_progress(self, problem, uncertainty_state):
+        if problem != self.model:
             return
-        self.plot_state = event.uncertainty_state
+        self.plot_state = uncertainty_state
         self.plot()
 
 
@@ -91,12 +90,12 @@ class ModelErrorView(PlotView):
             errplot.show_errors(self.plot_state)
             pylab.draw()
 
-    def OnFitProgress(self, event):
-        if event.problem != self.model:
-            return
-        self.update(event.problem, event.uncertainty_state)
-
     def update(self, problem, state):
-        # Should happen in a separate process
+        # TODO: Should happen in a separate process
         self.plot_state = errplot.calc_errors_from_state(problem, state)
         self.plot()
+
+    def fit_progress(self, problem, uncertainty_state):
+        if problem != self.model:
+            return
+        self.update(problem, uncertainty_state)

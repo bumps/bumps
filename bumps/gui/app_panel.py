@@ -30,6 +30,7 @@ of the frame of the GUI for the Bumps application.
 from __future__ import division
 import os
 import threading
+from copy import deepcopy
 
 import wx
 import wx.aui
@@ -104,6 +105,11 @@ class AppPanel(wx.Panel):
 
         EVT_FIT_PROGRESS.Bind(self, wx.ID_ANY, wx.ID_ANY, self.OnFitProgress)
         EVT_FIT_COMPLETE.Bind(self, wx.ID_ANY, wx.ID_ANY, self.OnFitComplete)
+
+        # _fit_abort and maybe _uncertainty_state are managed by fit_lock
+        self.fit_lock = threading.Lock()
+        self._fit_abort = False
+        #self._uncertainty_state = None
         self.fit_thread = None
         self.fit_config = None
 
@@ -409,34 +415,73 @@ class AppPanel(wx.Panel):
         show_fit_config(self, self.fit_config)
 
     def OnFitStart(self, event):
-        self.uncertainty_state = False
         if self.fit_thread:
             self.sb.SetStatusText("Error: Fit already running")
             return
         # TODO: better access to model parameters
         if len(self.model.getp()) == 0:
-            raise ValueError ("Problem has no fittable parameters")
+            raise ValueError("Problem has no fittable parameters")
 
         # Start a new thread worker and give fit problem to the worker.
         fitclass = self.fit_config.selected_fitter
         options = self.fit_config.selected_values
-        self.fitLock = threading.Lock()
-        self.fitAbort = 0
 
-        def abort_test():
-            return self.fitAbort
-        self.fit_thread = FitThread(win=self, fitLock=self.fitLock,
-                                    abort_test=abort_test,
-                                    problem=self.model,
-                                    fitclass=fitclass,
-                                    options=options)
+        # Clear abort and uncertainty state
+        self.abort = False
+        self.uncertainty_state = None
+        self.fit_thread = FitThread(
+            win=self,
+            abort_test=self._is_abort,
+            problem=self.model,
+            fitclass=fitclass,
+            options=options,
+            # Number of seconds between updates to the GUI, or 0 for no updates
+            convergence_update=5,
+            uncertainty_update=3600,
+            )
+        self.fit_thread.start()
         self.sb.SetStatusText("Fit status: Running", 3)
 
+    def _is_abort(self):
+        return self.abort
+
+    @property
+    def abort(self):
+        with self.fit_lock:
+            return self._fit_abort
+
+    @abort.setter
+    def abort(self, state):
+        with self.fit_lock:
+            self._fit_abort = state
+
+    @property
+    def uncertainty_state(self):
+        """
+        MCMC chain created by the DREAM optimizer.
+
+        This is a thread-locked attribute maintained by the fitting thread.
+        A deep copy of the attribute is made before setting so that state
+        can continue to update within the fit thread while the user interface
+        accesses the last state that was set.
+        """
+        with self.fit_lock:
+            return self._uncertainty_state
+
+    @uncertainty_state.setter
+    def uncertainty_state(self, state):
+        state_copy = deepcopy(state)
+        with self.fit_lock:
+            self._uncertainty_state = state_copy
+
     def OnFitStop(self, event):
-        with self.fitLock:
-            self.fitAbort = 1
+        self.abort = True
 
     def OnFitComplete(self, event):
+        if self.fit_thread is not None:
+            self.fit_thread.join(1) # 1 second timeout on join
+            if self.fit_thread.is_alive():
+                signal.log_message(message="fit thread failed to complete")
         self.fit_thread = None
         chisq = nice(2*event.value/event.problem.dof)
         event.problem.setp(event.point)
@@ -476,13 +521,16 @@ class AppPanel(wx.Panel):
         elif event.message == 'convergence_update':
             self.view['convergence'].OnFitProgress(event)
         elif event.message in ('uncertainty_update', 'uncertainty_final'):
-            self.uncertainty_state = event.uncertainty_state
+            # TODO: revert to event.uncertainty_state if memory leak isn't fixed
+            # Note: uncertainty_state is updated directly by the fit thread.
+            # It's a copy protected by fit_lock so it should be self-consistent.
+            state = self.uncertainty_state
             self.console['state'] = self.uncertainty_state
-            self.view['uncertainty'].OnFitProgress(event)
-            self.view['correlation'].OnFitProgress(event)
-            self.view['trace'].OnFitProgress(event)
+            self.view['uncertainty'].fit_progress(event.problem, state)
+            self.view['correlation'].fit_progress(event.problem, state)
+            self.view['trace'].fit_progress(event.problem, state)
             if event.message == 'uncertainty_final':
-                self.view['error'].OnFitProgress(event)
+                self.view['error'].fit_progress(event.problem, state)
             # variable stats are needed in order to plot UncertaintyView, and
             # so are computed therein.  Format them nicely and show them on
             # the console as well.
@@ -539,7 +587,7 @@ class AppPanel(wx.Panel):
         self.model.plot(figfile=output_path)
 
         # Produce uncertainty plots
-        if hasattr(self, 'uncertainty_state') and self.uncertainty_state:
+        if self.uncertainty_state is not None:
             with redirect_console(output_path+".err"):
                 self.uncertainty_state.show(figfile=output_path)
             self.uncertainty_state.save(output_path)
