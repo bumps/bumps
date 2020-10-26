@@ -23,25 +23,28 @@ IMPROVEMENT_DELAY = 5
 # touch the problem internals.
 class GUIProgressMonitor(monitor.TimedUpdate):
     def __init__(self, win, problem, progress=None, improvement=None):
-        monitor.TimedUpdate.__init__(self, progress=progress or PROGRESS_DELAY,
-                                     improvement=improvement or IMPROVEMENT_DELAY)
+        monitor.TimedUpdate.__init__(
+            self, progress=progress or PROGRESS_DELAY,
+            improvement=improvement or IMPROVEMENT_DELAY)
         self.win = win
         self.problem = problem
 
     def show_progress(self, history):
-        evt = FitProgressEvent(problem=self.problem,
-                               message="progress",
-                               step=history.step[0],
-                               value=history.value[0],
-                               point=history.point[0]+0) # avoid race
+        evt = FitProgressEvent(
+            problem=self.problem,
+            message="progress",
+            step=history.step[0],
+            value=history.value[0],
+            point=history.point[0]+0) # avoid race
         wx.PostEvent(self.win, evt)
 
     def show_improvement(self, history):
-        evt = FitProgressEvent(problem=self.problem,
-                               message="improvement",
-                               step=history.step[0],
-                               value=history.value[0],
-                               point=history.point[0]+0) # avoid race
+        evt = FitProgressEvent(
+            problem=self.problem,
+            message="improvement",
+            step=history.step[0],
+            value=history.value[0],
+            point=history.point[0]+0) # avoid race
         wx.PostEvent(self.win, evt)
 
 
@@ -64,18 +67,20 @@ class GUIMonitor(monitor.Monitor):
     def __call__(self, history):
         self.monitor(history)
         if history.time[0] >= self.time+self.rate:
-            evt = FitProgressEvent(problem=self.problem,
-                                   message=self.message,
-                                   **self.monitor.progress())
+            evt = FitProgressEvent(
+                problem=self.problem,
+                message=self.message,
+                **self.monitor.progress())
             wx.PostEvent(self.win, evt)
             self.time = history.time[0]
     def final(self):
         """
         Close out the monitor
         """
-        evt = FitProgressEvent(problem=self.problem,
-                               message=self.message,
-                               **self.monitor.progress())
+        evt = FitProgressEvent(
+            problem=self.problem,
+            message=self.message,
+            **self.monitor.progress())
         wx.PostEvent(self.win, evt)
 
 # Horrible hack: we put the DREAM state in the fitter object the first time
@@ -93,28 +98,27 @@ class DreamMonitor(monitor.Monitor):
     def config_history(self, history):
         history.requires(time=1)
     def __call__(self, history):
-        try:
-            self.uncertainty_state = history.uncertainty_state
-            if history.time[0] >= self.time+self.rate:
-                # Gack! holding on to state for final
-                evt = FitProgressEvent(problem=self.problem,
-                                       message="uncertainty_update",
-                                       uncertainty_state = deepcopy(self.uncertainty_state))
+        self.uncertainty_state = getattr(history, 'uncertainty_state', None)
+        if history.time[0] >= self.time+self.rate:
+            # TOOO: updates suppressed due to memory leak
+            if False and self.uncertainty_state is not None:
+                evt = FitProgressEvent(
+                    problem=self.problem,
+                    message="uncertainty_update",
+                    uncertainty_state=deepcopy(self.uncertainty_state))
                 wx.PostEvent(self.win, evt)
-                self.time = history.time[0]
-        except AttributeError:
-            self.uncertainty_state = None
-            pass
-
+            self.time = history.time[0]
     def final(self):
         """
         Close out the monitor
         """
-        if self.uncertainty_state:
-            evt = FitProgressEvent(problem=self.problem,
-                                   message="uncertainty_final",
-                                   uncertainty_state = deepcopy(self.uncertainty_state))
+        if self.uncertainty_state is not None:
+            evt = FitProgressEvent(
+                problem=self.problem,
+                message="uncertainty_final",
+                uncertainty_state=deepcopy(self.uncertainty_state))
             wx.PostEvent(self.win, evt)
+
 
 #==============================================================================
 
@@ -150,9 +154,9 @@ class FitThread(Thread):
                                monitor=ConvergenceMonitor(),
                                rate=5),
                     DreamMonitor(self.win, self.problem,
-                                 fitter = self.fitclass,
+                                 fitter=self.fitclass,
                                  message="uncertainty_update",
-                                 rate=30),
+                                 rate=300),
                     ]
         # Only use parallel if the problem can be pickled
         mapper = MPMapper if MPMapper.can_pickle(self.problem) else SerialMapper
@@ -164,12 +168,13 @@ class FitThread(Thread):
         def abort_wrapper():
             with self.fitLock:
                 return self.abort_test()
-        driver = FitDriver(self.fitclass, problem=problem,
-                           monitors=monitors, abort_test = abort_wrapper,
-                           mapper=mapper.start_mapper(problem, []),
-                           **self.options)
+        driver = FitDriver(
+            self.fitclass, problem=problem,
+            monitors=monitors, abort_test = abort_wrapper,
+            mapper=mapper.start_mapper(problem, []),
+            **self.options)
 
-        x,fx = driver.fit()
+        x, fx = driver.fit()
         # Give final state message from monitors
         for M in monitors:
             if hasattr(M, 'final'):
@@ -179,8 +184,6 @@ class FitThread(Thread):
             driver.show()
             captured_output = fid.getvalue()
 
-        evt = FitCompleteEvent(problem=self.problem,
-                               point=x,
-                               value=fx,
-                               info=captured_output)
+        evt = FitCompleteEvent(
+            problem=self.problem, point=x, value=fx, info=captured_output)
         wx.PostEvent(self.win, evt)
