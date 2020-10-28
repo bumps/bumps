@@ -126,6 +126,7 @@ class DreamMonitor(monitor.Monitor):
         if (self.rate > 0 and history.time[0] >= self.time+self.rate
                 and self.uncertainty_state is not None):
             # Note: win.uncertainty_state protected by win.fit_lock
+            self.time = history.time[0]
             self.win.uncertainty_state = self.uncertainty_state
             evt = FitProgressEvent(
                 problem=self.problem,
@@ -133,7 +134,6 @@ class DreamMonitor(monitor.Monitor):
                 #uncertainty_state=deepcopy(self.uncertainty_state),
                 )
             wx.PostEvent(self.win, evt)
-        self.time = history.time[0]
     def final(self):
         """
         Close out the monitor
