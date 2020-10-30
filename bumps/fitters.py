@@ -186,7 +186,7 @@ class FitBase(object):
         self.problem = problem
 
     def solve(self, monitors=None, mapper=None, **options):
-        raise NotImplementedError
+        raise NotImplementedError()
 
 
 class MultiStart(FitBase):
@@ -331,6 +331,17 @@ def save_history(path, state):
 class BFGSFit(FitBase):
     """
     BFGS quasi-newton optimizer.
+
+    BFGS estimates Hessian and its Cholesky decomposition, but initial
+    tests give uncertainties quite different from the directly computed
+    Jacobian in Levenburg-Marquardt or the Hessian estimated at the
+    minimum by numdifftools.
+
+    To use the internal 'H' and 'L' and save some computation time, then
+    use::
+
+        C = lsqerror.chol_cov(fit.result['L'])
+        stderr = lsqerror.stderr(C)
     """
     name = "Quasi-Newton BFGS"
     id = "newton"
@@ -360,16 +371,6 @@ class BFGSFit(FitBase):
         #print("%d: %s, x=%s, fx=%s"
         #      % (code, STATUS[code], result['x'], result['fx']))
         return result['x'], result['fx']
-
-    # BFGS estimates hessian and its cholesky decomposition, but initial
-    # tests give uncertainties quite different from the directly computed
-    # jacobian in levenburg-marquardt or the hessian estimated at the
-    # minimum by numdifftools
-    def Hstderr(self):
-        return lsqerror.chol_stderr(self.result['L'])
-
-    def Hcov(self):
-        return lsqerror.chol_cov(self.result['L'])
 
     def _monitor(self, step, x, fx):
         self._update(step=step, point=x, value=fx,
@@ -885,7 +886,7 @@ class Resampler(FitBase):
 
     def __init__(self, fitter):
         self.fitter = fitter
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def solve(self, **options):
         starts = options.pop('starts', 1)
@@ -1003,16 +1004,21 @@ class FitDriver(object):
 
         Depending on the fitter and the problem, this may be computed from
         existing evaluations within the fitter, or from numerical
-        differentiation around the minimum.  The numerical differentiation
-        will use the Hessian estimated from nllf.   If the problem uses
-        $\chi^2/2$ as its nllf, then you may want to instead compute
-        the covariance from the Jacobian::
+        differentiation around the minimum.
 
-            J = lsqerror.jacobian(fitdriver.result[0])
-            cov = lsqerror.cov(J)
+        If the problem uses $\chi^2/2$ as its nllf, then the covariance
+        is derived from the Jacobian::
 
-        This should be faster and more accurate than the Hessian of nllf
-        when you can use it.
+            x = fit.problem.getp()
+            J = bumps.lsqerror.jacobian(fit.problem, x)
+            cov = bumps.lsqerror.jacobian_cov(J)
+
+        Otherwise, the numerical differentiation will use the Hessian
+        estimated from nllf::
+
+            x = fit.problem.getp()
+            H = bumps.lsqerror.hessian(fit.problem, x)
+            cov = bumps.lsqerror.hessian_cov(H)
         """
         # Note: if fit() has not been run then self.fitter is None and in
         # particular, self.fitter will not have a covariance matrix.  In
@@ -1023,6 +1029,7 @@ class FitDriver(object):
             self._cov = None
             if hasattr(self.fitter, 'cov'):
                 self._cov = self.fitter.cov()
+                #print("fitter cov", self._cov)
         if self._cov is None:
             # Use Jacobian if residuals are available because it is faster
             # to compute.  Otherwise punt and use Hessian.  The has_residuals
@@ -1037,11 +1044,12 @@ class FitDriver(object):
             x = self.problem.getp() if self.result is None else self.result[0]
             if has_residuals:
                 J = lsqerror.jacobian(self.problem, x)
-                self._cov = lsqerror.cov(J)
+                #print("Jacobian", J)
+                self._cov = lsqerror.jacobian_cov(J)
             else:
                 H = lsqerror.hessian(self.problem, x)
-                H, L = lsqerror.perturbed_hessian(H)
-                self._cov = lsqerror.chol_cov(L)
+                #print("Hessian", H)
+                self._cov = lsqerror.hessian_cov(H)
         return self._cov
 
     def stderr(self):
@@ -1197,10 +1205,10 @@ register(DreamFit, active=True)
 register(BFGSFit, active=True)
 register(LevenbergMarquardtFit, active=True)
 register(MPFit, active=True)
-register(PSFit, active=False)
+#register(PSFit, active=False)
 register(PTFit, active=False)
-register(RLFit, active=False)
-register(SnobFit, active=False)
+#register(RLFit, active=False)
+#register(SnobFit, active=False)
 
 FIT_DEFAULT_ID = SimplexFit.id
 

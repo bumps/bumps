@@ -21,8 +21,7 @@ analytic derivatives with respect to the fitting parameters available,
 then these should be used to compute the Jacobian instead.
 
 :func:`hessian` computes the Hessian matrix $H$ using numerical
-differentiation on nllf.  This uses the center point formula, with
-two evaluations for each (i,j) combination.
+differentiation on nllf.
 
 :func:`cov` takes the Jacobian and computes the covariance matrix $C$.
 
@@ -203,6 +202,10 @@ def _hessian_central(f, p, bounds, eps=None):
 
 def perturbed_hessian(H, scale=None):
     """
+    **DEPRECATED** Numerical testing has shown that the perturbed Hessian
+    is too aggressive with its perturbation, and it is distorting the error
+    too much, so use hessian_cov(H) instead.
+
     Adjust Hessian matrix to be positive definite.
 
     Returns the adjusted Hessian and its Cholesky decomposition.
@@ -221,20 +224,28 @@ def chol_stderr(L):
     Hessian matrix, as returned, e.g., from the quasi-Newton optimizer BFGS
     or as calculated from :func:`perturbed_hessian` on the output of
     :func:`hessian` applied to the cost function problem.nllf.
+
+    Note that this calls chol_cov to compute the inverse from the Cholesky
+    decomposition, so use stderr(C) if you are already computing C = chol_cov().
+
+    **Warning:** assumes H = L@L.T (numpy default) not H = U.T@U (scipy default).
     """
-    return np.sqrt(1. / np.diag(L))
+    # TODO: are there numerical tricks to get the diagonal without the full inv?
+    return stderr(chol_cov(L))
 
 
 def chol_cov(L):
     """
     Given the cholesky decomposition of the Hessian matrix H, compute
     the covariance matrix $C = H^{-1}$
+
+    **Warning:** assumes H = L@L.T (numpy default) not H = U.T@U (scipy default).
     """
     Linv = np.linalg.inv(L)
     return np.dot(Linv.T.conj(), Linv)
 
 
-def cov(J, tol=1e-8):
+def jacobian_cov(J, tol=1e-8):
     """
     Given Jacobian J, return the covariance matrix inv(J'J).
 
@@ -242,7 +253,6 @@ def cov(J, tol=1e-8):
     singular values smaller than tolerance *tol* to the tolerance
     value.
     """
-
     # Find cov of f at p
     #     cov(f,p) = inv(J'J)
     # Use SVD
@@ -258,6 +268,29 @@ def cov(J, tol=1e-8):
     JTJinv = np.dot(vh.T.conj() / s ** 2, vh)
     return JTJinv
 
+def hessian_cov(H, tol=1e-15):
+    """
+    Given Hessian H, return the covariance matrix inv(H).
+
+    We provide some protection against singular matrices by setting
+    singular values smaller than tolerance *tol* (relative to the largest
+    singular value) to zero (see np.linalg.pinv for details).
+    """
+    # Find cov of f at p
+    #     cov(f,p) = inv(H)
+    # Use SVD
+    #     H = U S V'
+    #     inv(H) = inv(U S V')
+    #            = inv(V') inv(S S) inv(U)
+    #            = V inv(S S) U'
+    #     J'J = (U S V')' (U S V')
+    #         = V S' U' U S V'
+    #         = V S S V'
+    #     inv(J'J) = inv(V S S V')
+    #              = inv(V') inv(S S) inv(V)
+    #              = V inv (S S) V'
+    return np.linalg.pinv(H, rcond=tol, hermitian=True)
+
 
 def corr(C):
     """
@@ -266,8 +299,8 @@ def corr(C):
     Uses $R = D^{-1} C D^{-1}$ where $D$ is the square root of the diagonal
     of the covariance matrix, or the standard error of each variable.
     """
-    Dinv = 1. / stderr(cov)
-    return np.dot(Dinv, np.dot(cov, Dinv))
+    Dinv = 1. / stderr(C)
+    return np.dot(Dinv, np.dot(C, Dinv))
 
 
 def max_correlation(Rsq):
@@ -326,6 +359,101 @@ def demo_jacobian():
     #Jfun = nd.Jacobian(f)
     #print("numdifftools J", Jfun(p))
 
+# https://en.wikipedia.org/wiki/Hilbert_matrix
+# Note: 1-origin indices translated to 0-origin
+def hilbert(n):
+    """Generate ill-conditioned Hilbert matrix of size n x n"""
+    return 1/(np.arange(n)[:, None]+np.arange(n)[None, :]+1)
+
+# https://en.wikipedia.org/wiki/Hilbert_matrix#Properties
+# Note: 1-origin indices translated to 0-origin
+def hilbertinv(n):
+    """Analytical inverse for ill-conditioned Hilbert matrix of size n x n"""
+    Hinv = [
+        [(-1)**(i+j+2)*(i+j+1)*comb(n+i, n-j-1)*comb(n+j, n-i-1)*comb(i+j, i)**2
+         for i in range(n)] for j in range(n)
+    ]
+    return np.asarray(Hinv, dtype='d')
+
+# From dheerosaur
+# https://stackoverflow.com/questions/4941753/is-there-a-math-ncr-function-in-python/4941932#4941932
+def comb(n, r):
+    """n choose r combination function"""
+    import operator as op
+    from functools import reduce
+    r = min(r, n-r)
+    numer = reduce(op.mul, range(n, n-r, -1), 1)
+    denom = reduce(op.mul, range(1, r+1), 1)
+    return numer // denom
+
+def demo_stderr_hilbert(n=5):
+    H = hilbert(n)
+    C = hilbertinv(n)
+    s = stderr(C)
+    Hp, Lp = perturbed_hessian(H)
+    Cp = chol_cov(Lp)
+    sp = chol_stderr(Lp)
+    Cdirect = hessian_cov(H)
+    sdirect = stderr(Cdirect)
+    with np.printoptions(precision=3):
+        print("s ", s)
+        print("sp", sp)
+        print("sd", sdirect)
+        print("R", corr(C))
+
+def demo_stderr_perturbed():
+    n = 5
+    D = [1, 2, 3, 4, 5]
+    #D = np.exp(10*np.random.rand(n)**2)
+    D = [1e-3, 1e-2, 1e-1, 1, 10]
+
+    D = np.asarray(D)
+    L = np.tril(np.random.rand(n, n))
+    np.fill_diagonal(L, D)
+    H = L @ L.T
+    Hp, Lp = perturbed_hessian(H)
+    C = chol_cov(Lp)
+    s = chol_stderr(Lp)
+
+    from scipy.linalg import inv
+    Ldirect = np.linalg.cholesky(H)
+    Cdirect = inv(H)
+    Cp = inv(Hp)
+
+    sdirect = np.sqrt(np.diag(Cdirect))
+    sp = np.sqrt(np.diag(Cp))
+    sdirect_chol = chol_stderr(Ldirect)
+
+    parts = dict(
+        L_original=L,
+        L_direct=Ldirect,
+        L_perturbed=Lp,
+        #H=H,
+        #H_perturbed=Hp,
+        #C_direct=Cdirect,
+        #C_from_Hp=Cp,
+        #C_from_Lp=C,
+    )
+    with np.printoptions(precision=3):
+        print(f"{'perturbation':20s}", hp[0,0]-h[0,0])
+        for k, v in parts.items():
+            print(f"{k+' diag':20s}", np.diag(v))
+        #print("eigc", list(sorted(np.linalg.eigvals(c))))
+        #print("eigcp", list(sorted(np.linalg.eigvals(cp))))
+        #print("eigh", list(sorted(1/np.linalg.eigvals(h))))
+        #print("eighp", list(sorted(1/np.linalg.eigvals(hp))))
+        print("h cond     ", np.linalg.cond(h))
+        print("rel err δc ", abs((c - cdirect)/cdirect).max())
+        print("δε         ", sp - s)
+        print("σ direct   ", sdirect)
+        print("σ chol     ", sdirect_chol)
+        print("σ perturbed", sp)
+        print("σ          ", s)
+        print("rel err δσ ", abs((s - sdirect)/sdirect).max())
+        print("unperturbed δσ", abs((sdirect_chol - sdirect)/sdirect).max())
+
 if __name__ == "__main__":
-    demo_hessian()
-    demo_jacobian()
+    #demo_hessian()
+    #demo_jacobian()
+    #demo_stderr_perturbed()
+    demo_stderr_hilbert(10)
