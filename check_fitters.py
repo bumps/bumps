@@ -7,12 +7,13 @@ from __future__ import print_function
 
 import sys
 import os
+from os.path import join as joinpath, realpath, dirname
 import tempfile
 import shutil
 import glob
-from os.path import join as joinpath, realpath, dirname
-import traceback
 import subprocess
+
+import numpy as np
 
 sys.dont_write_bytecode = True
 
@@ -74,7 +75,10 @@ def check_fit(fitter, store, targets):
     with open(errfiles[0]) as fid:
         for line in fid:
             if line.startswith("[chisq="):
-                value = float(line[7:].split("(")[0])
+                if line[7:10].lower() == 'inf':
+                    value = np.inf
+                else:
+                    value = float(line[7:].split("(")[0])
                 assert abs(value-targets[model_index]) < 1e-2, \
                     "error in %s: expected %.3f but got %.3f" \
                     % (fitter, targets[model_index], value)
@@ -100,6 +104,7 @@ def run_fits(model_args, store, fitters=FIT_AVAILABLE_IDS, seed=1):
 def main():
     fitters = sys.argv[1:] if len(sys.argv) > 1 else FIT_AVAILABLE_IDS
     store = tempfile.mkdtemp(prefix="bumps-test-")
+    # TODO: use a test function that defines residuals
     model = joinpath(EXAMPLEDIR, "test_functions", "model.py")
     #model_args = [model, '"fk(rosenbrock, 3)"']
     model_args = [model, 'gauss', '3']
