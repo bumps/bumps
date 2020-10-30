@@ -23,10 +23,9 @@ class UncertaintyView(PlotView):
         self.plot_state = state
         self.plot()
 
-    def fit_progress(self, problem, uncertainty_state):
+    def fit_progress(self, problem, uncertainty_state, stats):
         if problem != self.model:
             return
-        stats = dream_stats.var_stats(uncertainty_state.draw())
         self.update((uncertainty_state, stats))
 
 

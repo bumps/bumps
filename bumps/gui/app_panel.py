@@ -510,6 +510,35 @@ class AppPanel(wx.Panel):
 
 
     def OnFitProgress(self, event):
+        self._fit_progress(event)
+        return
+
+        # Note: The following code was used to debugging plotting memory
+        # and speed issues. It is here in case it might be useful again.
+        if event.message == 'uncertainty_final':
+            event.message = 'uncertainty_update'  # don't do model uncertainty
+            n = 0
+            import psutil, time, gc
+            pid = os.getpid()
+            proc = psutil.Process()
+            t0 = time.perf_counter()
+            signal.log_message("****** entering cycle ******")
+            while True:
+                self._fit_progress(event)
+                t1 = time.perf_counter()
+                msg = ("========== cycle %d pid %d time %.3f s ==========="
+                       % (n, pid, t1 - t0))
+                t0 = t1
+                #signal.log_message(msg)
+                #signal.log_message(f"memory {proc.memory_full_info()}")
+                gc.collect()
+                print(msg)
+                print("memory", proc.memory_full_info())
+                n += 1
+                wx.Yield()
+                #if n > 100: break
+
+    def _fit_progress(self, event):
         if event.message == 'progress':
             chisq = nice(2*event.value/event.problem.dof)
             message = "step %5d chisq %g"%(event.step, chisq)
@@ -525,16 +554,25 @@ class AppPanel(wx.Panel):
             # Note: uncertainty_state is updated directly by the fit thread.
             # It's a copy protected by fit_lock so it should be self-consistent.
             state = self.uncertainty_state
+            stats = dream_stats.var_stats(state.draw())
             self.console['state'] = self.uncertainty_state
-            self.view['uncertainty'].fit_progress(event.problem, state)
+            self.view['uncertainty'].fit_progress(event.problem, state, stats)
             self.view['correlation'].fit_progress(event.problem, state)
             self.view['trace'].fit_progress(event.problem, state)
+            # TODO: send parameter stats to a view
+            # It would be nice to have a "log scale" log of parameter history,
+            # where the density of entries decreases exponentially over time.
+            # So for example, the last 5, then 10 20 30 40 50, then 100, 200,
+            # 300, 400, 500, ... Maybe have a slider so that you can drag it
+            # forward and backward and see changes over time. Use box plots
+            # to represent mode, median, mean, 68% and 95% intervals. Export
+            # latest or all to CSV or text for pasting into word or excel.
             if event.message == 'uncertainty_final':
                 self.view['error'].fit_progress(event.problem, state)
-            # variable stats are needed in order to plot UncertaintyView, and
-            # so are computed therein.  Format them nicely and show them on
-            # the console as well.
-            signal.log_message(dream_stats.format_vars(self.view['uncertainty'].plot_state[1]))
+                # Format the final variable nicely and show them on the console.
+                # Note: only done at the end because GUI gets overwhelmed when
+                # the text control has too much text.
+                signal.log_message(dream_stats.format_vars(stats))
         else:
             raise ValueError("Unknown fit progress message "+event.message)
 
