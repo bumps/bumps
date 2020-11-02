@@ -4,8 +4,9 @@ MCMC model types
 Usage
 -----
 
-First create a :mod:`bounds` object.  This stores the ranges available
-on the parameters, and controls how values outside the range are handled::
+First create a :class:`bumps.dream.bounds.Bounds` object. This stores the
+ranges available on the parameters, and controls how values outside the
+range are handled::
 
     M_bounds = bounds(minx, maxx, style='reflect|clip|fold|randomize|none')
 

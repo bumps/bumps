@@ -46,23 +46,14 @@ runs on supercomputing clusters.
 
 :ref:`data-guide`
 
-     Data is loaded from instrument specific file
-     formats into a generic :class:`Probe <bumps.data.Probe>`.  The
-     probe object manages the data view and by extension, the view of
-     the theory.  The probe object also knows the measurement resolution,
-     and controls the set of theory points that must be evaluated
-     in order to computed the expected value at each point.
-
-:ref:`experiment-guide`
-
-     Sample descriptions and data sets are combined into an
-     :class:`Experiment <bumps.experiment.Experiment>` object,
-     allowing the program to compute the expected reflectivity
-     from the sample and the probability that reflectivity measured
-     could have come from that sample.  For complex cases, where the
-     sample varies on a length scale larger than the coherence length
-     of the probe, you may need to model your measurement with a
-     :class:`CompositeExperiment <bumps.experiment.CompositeExperiment>`.
+     Data management is the responsibility of the modeller. Bumps
+     provides a generic data loader :mod:`bumps.data` with a key-value
+     header section followed by columns of numeric data, but it is up to
+     the model script to compute the theory along with any resolution
+     effects and compare that with the data. The :class:`bumps.curve.Curve`
+     class associates a theory function with measurements with Gaussian
+     uncertainty, and :class:`bumps.curve.PoissonCurve` does the same for
+     measurements following Poisson statistics.
 
 :ref:`parameter-guide`
 
@@ -77,7 +68,7 @@ runs on supercomputing clusters.
      One or more experiments can be combined into a
      :class:`FitProblem <bumps.fitproblem.FitProblem>`.  This is then
      given to one of the many fitters, such as
-     :class:`DEFit <refl1d.fitter.PTFit>`, which adjust the fitting
+     :class:`DEFit <bumps.fitters.PTFit>`, which adjust the fitting
      parameters, trying to find the best fit.  See :ref:`optimizer-guide`
      for a description of available optimizers and :ref:`option-guide` for
      a description of the bumps options.  Entropy can be calculated when

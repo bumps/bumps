@@ -590,7 +590,7 @@ class MCMCDraw(object):
 
         Updates *state*, *x* and *logp* to reflect the changes.
 
-        See :mod:`outliers` for details.
+        See :mod:`.outliers` for details.
         """
         # Grab the last part of the chain histories
         _, chains = self.logp()
@@ -709,7 +709,7 @@ class MCMCDraw(object):
             draw, R = state.R_stat()
             plot(draw, R)
 
-        See :mod:`dream.gelman` and references detailed therein.
+        See :mod:`.gelman` and references detailed therein.
         """
         self._unroll()
         retval = self._update_draws, self._update_R_stat
@@ -726,7 +726,7 @@ class MCMCDraw(object):
             draw, weight = state.CR_weight()
             plot(draw, weight)
 
-        See :mod:`dream.crossover` for details.
+        See :mod:`.crossover` for details.
         """
         self._unroll()
         retval = self._update_draws, self._update_CR_weight

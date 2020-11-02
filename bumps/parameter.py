@@ -577,21 +577,21 @@ class ParameterSet(object):
 
     def range(self, *args, **kw):
         """
-        Like :meth:`parameter.Parameter.range`, but applied to all models.
+        Like :meth:`Parameter.range`, but applied to all models.
         """
         for p in self.parameters:
             p.range(*args, **kw)
 
     def pm(self, *args, **kw):
         """
-        Like :meth:`parameter.Parameter.pm`, but applied to all models.
+        Like :meth:`Parameter.pm`, but applied to all models.
         """
         for p in self.parameters:
             p.pm(*args, **kw)
 
     def pmp(self, *args, **kw):
         """
-        Like :meth:`parameter.Parameter.pmp`, but applied to all models.
+        Like :meth:`Parameter.pmp`, but applied to all models.
         """
         for p in self.parameters:
             p.pmp(*args, **kw)

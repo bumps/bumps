@@ -3,8 +3,7 @@ Miscellaneous utility functions.
 """
 from __future__ import division
 
-__all__ = ["erf", "kbhit", "profile",
-           "pushdir", "push_seed", "redirect_console"]
+__all__ = ["kbhit", "profile", "pushdir", "push_seed", "redirect_console"]
 
 import sys
 import os
@@ -15,6 +14,8 @@ except ImportError:
 
 import numpy as np
 from numpy import ascontiguousarray as _dense
+# **DEPRECATED** we can import erf directly from scipy.special.erf
+# so there is no longer a need for bumps.util.erf.
 from scipy.special import erf
 
 
@@ -32,7 +33,7 @@ def parse_errfile(errfile):
     retrieved using::
 
         import glob
-        errfile = glob.glob(path+'/*.err')[0]
+        errfile = glob.glob(path+'/\*.err')[0]
     """
     from .dream.stats import parse_var
     pars = []
@@ -56,24 +57,6 @@ def parse_errfile(errfile):
         overall = chisq[0]
     pardict = dict((p.name, p) for p in pars)
     return overall, chisq, pardict
-
-
-def _c_erf(x):
-    """
-    Error function calculator.
-    """
-    from ._reduction import _erf
-    input = _dense(x, 'd')
-    output = np.empty_like(input)
-    _erf(input, output)
-    return output
-
-
-def _erf_test():
-    assert erf(5) == 2
-    assert erf(0.) == 0.
-    assert (erf(np.array([0., 0.])) == 0.).all()
-    assert abs(erf(3.) - 0.99997790950300136) < 1e-14
 
 
 def profile(fn, *args, **kw):

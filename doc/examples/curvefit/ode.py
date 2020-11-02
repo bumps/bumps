@@ -52,8 +52,8 @@ t, y, dy = simulate()
 
 # Define the fit problem.
 #
-# In this case :class:`bumps.curvefit.Curve` is initialized with *plot_x* as
-# a vector of length 1000.  This is so that a smooth curve is drawn between
+# In this case :class:`bumps.curve.Curve` is initialized with *plot_x*
+# as a vector of length 1000.  This is so that a smooth curve is drawn between
 # the ten data points that were simulated in the fit.
 
 M = Curve(g, t, y, dy, x0=1., a=1., b=1.,

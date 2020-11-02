@@ -367,7 +367,7 @@ def resynth(fitdriver, problem, mapper, opts):
 
     *mapper* is one of the available :mod:`bumps.mapper` classes.
 
-    *opts* is a :class:`bumps.cli.BumpsOpts` object representing the command
+    *opts* is a :class:`bumps.options.BumpsOpts` object representing the command
     line parameters.
     """
     make_store(problem, opts, exists_handler=store_overwrite_query)

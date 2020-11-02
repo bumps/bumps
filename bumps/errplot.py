@@ -33,7 +33,7 @@ For a completed MCMC run, four steps are required:
 
 :func:`reload_errors` performs steps 1, 2 and 3, returning *errs*.
 If the fitting problem and the MCMC state are already loaded, then use
-:func:`calc_errors_From_state` to perform steps 2 and 3, returning *errs*.
+:func:`calc_errors_from_state` to perform steps 2 and 3, returning *errs*.
 If alternative sampling is desired, then use :func:`calc_errors` on a
 given set of points to perform step 3, returning *errs*.  Once *errs* has
 been calculated and returned by one of these methods, call

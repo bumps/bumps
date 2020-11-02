@@ -23,7 +23,8 @@ then these should be used to compute the Jacobian instead.
 :func:`hessian` computes the Hessian matrix $H$ using numerical
 differentiation on nllf.
 
-:func:`cov` takes the Jacobian and computes the covariance matrix $C$.
+:func:`jacobian_cov` takes the Jacobian and computes the covariance matrix $C$.
+:func:`hessian_cov` takes the Hessian and computes the covariance matrix $C$.
 
 :func:`corr` uses the off-diagonal elements of $C$ to compute correlation
 coefficients $R^2_{ij}$ between the parameters.

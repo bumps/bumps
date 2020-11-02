@@ -18,8 +18,8 @@ attribute is *True* if the MCMC sample is significantly different from normal.
 Unfortunately, this almost always the case for any reasonable sample size that
 isn't strictly gaussian.
 
-The :func:`entropy` method computes the entropy directly from a set of
-MCMC samples, normalized by a scale factor computed from the kernel density
+The :func:`entropy` function computes the entropy directly from a set
+of MCMC samples, normalized by a scale factor computed from the kernel density
 estimate at a subset of the points.\ [#Kramer]_
 
 There are many other entropy calculations implemented within this file, as
@@ -109,7 +109,7 @@ applied to DREAM output::
 """
 from __future__ import division, print_function
 
-__all__ = ["entropy"]
+__all__ = ["entropy", "gmm_entropy", "cov_entropy", "wnn_entropy", "MVNEntropy"]
 
 import numpy as np
 from numpy import mean, std, exp, log, sqrt, log2, pi, e, nan
@@ -677,9 +677,10 @@ class MVNEntropy(object):
 
     *alpha* is the cutoff for the normality test.
 
-    *max_points* is the maximum number of points to use when computing the
-    entropy.  Since the normality test is $O(n^2)$ in memory and time,
-    where $n$ is the number of points, *max_points* defaults to 1000.
+    *max_points* is the maximum number of points to use when checking
+    normality.  Since the normality test is $O(n^2)$ in memory and time,
+    where $n$ is the number of points, *max_points* defaults to 1000. The
+    entropy is computed from the full dataset.
 
     The returned object has the following attributes:
 
@@ -694,6 +695,10 @@ class MVNEntropy(object):
         to the distribution
 
     """
+    # TODO: use robust covariance estimator for mean and covariance
+    # FastMSD is available in sklearn.covariance.MinDetCov. There are methods
+    # such as (Zhahg, 2012), which may be faster if performance is an issue.
+    # [1] Zhang (2012) DOI: 10.5539/ijsp.v1n2p119
     def __init__(self, x, alpha=0.05, max_points=1000):
         # compute Mardia test coefficient
         n, p = x.shape   # num points, num dimensions

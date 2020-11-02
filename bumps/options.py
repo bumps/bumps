@@ -227,10 +227,10 @@ class FitConfig(object):
     def selected_fitter(self):
         return self.fitters[self.selected_id]
 
-# FitConfig singleton for the common case in which only one config is needed.
-# There may be other use cases, such as saving the fit config along with the
-# rest of the state so that on resume the fit options are restored, but in that
-# case the application will not be using the singleton.
+#: FitConfig singleton for the common case in which only one config is needed.
+#: There may be other use cases, such as saving the fit config along with the
+#: rest of the state so that on resume the fit options are restored, but in that
+#: case the application will not be using the singleton.
 FIT_CONFIG = FitConfig()
 
 # === Bumps options parsing ===

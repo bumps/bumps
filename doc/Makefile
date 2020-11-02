@@ -3,7 +3,7 @@
 
 # You can set these variables from the command line.
 PYTHON        ?= python
-SPHINXOPTS    =
+SPHINXOPTS    = -W --keep-going -n
 SPHINXBUILD   = $(PYTHON) -m sphinx
 #sphinx-build
 PAPER         =

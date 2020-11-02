@@ -164,7 +164,7 @@ def FitProblem(*args, **kw):
 
         *weights* is an optional scale factor for each model
 
-        *freevars* is :class:`parameter.FreeVariables` instance defining the
+        *freevars* is :class:`.parameter.FreeVariables` instance defining the
         per-model parameter assignments.  See :ref:`freevariables` for details.
 
 

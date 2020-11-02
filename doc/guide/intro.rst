@@ -42,8 +42,8 @@ definition::
     problem = FitProblem(model)
 
 In fact, this is the only requirement of the fit file.  The Bumps engine
-loads the fit file, retieves the *problem* symbol and feeds it to the selected
-:mod:`fitter <bumps.fitter>`.  Some fit files do not even use *FitProblem* to
+loads the fit file, retieves the *problem* symbol and feeds it to one of the
+:mod:`fitters <bumps.fitters>`.  Some fit files do not even use *FitProblem* to
 define *problem*, or use *Parameter* objects for the fitted parameters, so
 long as *problem* implements the
 :class:`BaseFitProblem <bumps.fitproblem.BaseFitProblem>` interface, which

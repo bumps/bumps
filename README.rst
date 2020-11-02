@@ -44,6 +44,7 @@ v0.7.17 2020-10-23
 * allow duplicate parameter names in model on reload
 * expand tilde in path names
 * GUI: suppress uncertainty updates during fit to avoid memory leak
+* disable broken fitters: particle swarm, random lines, snobfit
 * minor doc changes
 
 v0.7.16 2020-06-11
