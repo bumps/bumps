@@ -34,15 +34,15 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
-v0.7.17 2020-10-23
+v0.7.17 2020-11-06
 ------------------
-* restore parallel processing for GUI
 * restore DREAM fitter efficiency (it should now require fewer burn-in steps)
 * errplot.reload_errors allows full path to model file
 * clip values within bounds at start of fit so constraints aren't infinite
 * allow *--entropy=gmm|mvn|wnn|llf* to specify entropy estimation algorithm
 * allow duplicate parameter names in model on reload
 * expand tilde in path names
+* GUI: restore parallel processing
 * GUI: suppress uncertainty updates during fit to avoid memory leak
 * disable broken fitters: particle swarm, random lines, snobfit
 * minor doc changes
