@@ -32,8 +32,9 @@ def parse_errfile(errfile):
     Usually there is only one errfile in a directory, which can be
     retrieved using::
 
+        import os.path
         import glob
-        errfile = glob.glob(path+'/\*.err')[0]
+        errfile = glob.glob(os.path.join(path, '*.err'))[0]
     """
     from .dream.stats import parse_var
     pars = []

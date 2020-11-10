@@ -53,7 +53,7 @@ class EmbeddedPylab(object):
                     pylab.plot(*args, **kw)
 
     Similar patterns should work for the other backends.  Check the source code
-    in matplotlib.backend_bases.* for examples showing how to use matplotlib
+    in matplotlib.backend_bases for examples showing how to use matplotlib
     with other GUI toolkits.
     """
     def __init__(self, canvas):
