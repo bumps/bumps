@@ -34,6 +34,10 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
+v0.7.18 2020-11-16
+------------------
+* restore python 2.7 support
+
 v0.7.17 2020-11-06
 ------------------
 * restore DREAM fitter efficiency (it should now require fewer burn-in steps)
