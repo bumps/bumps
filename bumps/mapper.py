@@ -10,6 +10,34 @@ import os
 
 PROCESS_ALL_ACCESS = 0x1F0FFF
 
+def can_pickle(problem, check=False):
+    """
+    Returns True if *problem* can be pickled.
+
+    If this method returns False then MPMapper cannot be used and
+    SerialMapper should be used instead.
+
+    If *check* is True then call *nllf()* on the duplicated object as a
+    "smoke test" to verify that the function will run after copying. This
+    is not foolproof. For example, access to a database may work in the
+    duplicated object because the connection is open and available in the
+    current process, but it will fail when trying to run on a remote machine.
+    """
+    try:
+        import dill
+    except ImportError:
+        dill = None
+        import pickle
+    try:
+        if dill is not None:
+            dup = dill.loads(dill.dumps(problem, recurse=True))
+        else:
+            dup = pickle.loads(pickle.dumps(problem))
+        if check:
+            dup.nllf()
+        return True
+    except Exception:
+        return False
 
 def setpriority(pid=None, priority=1):
     """
@@ -91,36 +119,6 @@ class MPMapper(object):
     manager = None
     namespace = None
     problem_id = 0
-
-    @staticmethod
-    def can_pickle(problem, check=False):
-        """
-        Returns True if *problem* can be pickled.
-
-        If this method returns False then MPMapper cannot be used and
-        SerialMapper should be used instead.
-
-        If *check* is True then call *nllf()* on the duplicated object. This
-        will not be a foolproof check. If the model uses ephemeral objects,
-        such as a handle to an external process or similar, then handle might
-        be copied and accessible locally but not be accessible to the remote
-        process.
-        """
-        try:
-            import dill
-        except ImportError:
-            dill = None
-            import pickle
-        try:
-            if dill is not None:
-                dup = dill.loads(dill.dumps(problem, recurse=True))
-            else:
-                dup = pickle.loads(pickle.dumps(problem))
-            if check:
-                dup.nllf()
-            return True
-        except Exception:
-            return False
 
     @staticmethod
     def start_worker(problem):
