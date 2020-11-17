@@ -1,5 +1,18 @@
 """
 Parallel and serial mapper implementations.
+
+The API is a bit crufty since interprocess communication has evolved from
+the original implementation. And the names are misleading.
+
+Usage::
+
+    Mapper.start_worker(problem)
+    mapper = Mapper.start_mapper(problem, None, cpus)
+    result = mapper(points)
+    ...
+    mapper = Mapper.start_mapper(problem, None, cpus)
+    result = mapper(points)
+    Mapper.stop_mapper(mapper)
 """
 import sys
 import os
@@ -161,24 +174,23 @@ class MPMapper(object):
     def stop_mapper(mapper):
         MPMapper.pool.terminate()
 
-def _MPI_set_problem(comm, problem, root=0):
-    global _problem
-    _problem = comm.bcast(problem)
+def _MPI_set_problem(problem, comm, root=0):
+    import dill
+    pickled_problem = dill.dumps(problem, recurse=True) if comm.rank == root else None
+    pickled_problem = comm.bcast(pickled_problem, root=root)
+    return problem if comm.rank == root else dill.loads(pickled_problem)
 
-
-def _MPI_run_problem(point):
-    global _problem
-    return _problem.nllf(point)
-
-
-def _MPI_map(comm, points, root=0):
+def _MPI_map(problem, points, comm, root=0):
     import numpy as np
     from mpi4py import MPI
-    # Send number of points and number of variables per point
+
+    # Send number of points and number of variables per point.
+    # root: return result if there are points otherwise return False
+    # worker: return True if there are points otherwise return False
     npoints, nvars = comm.bcast(
         points.shape if comm.rank == root else None, root=root)
     if npoints == 0:
-        raise StopIteration
+        return False
 
     # Divvy points equally across all processes
     whole = points if comm.rank == root else None
@@ -192,11 +204,10 @@ def _MPI_map(comm, points, root=0):
                   root=root)
 
     # Evaluate models assigned to each processor
-    partial_result = np.array([_MPI_run_problem(pi) for pi in part],
-                               dtype='d')
+    partial_result = np.array([problem.nllf(pk) for pk in part], dtype='d')
 
     # Collect results
-    result = np.empty(npoints, dtype='d') if comm.rank == root else None
+    result = np.empty(npoints, dtype='d') if comm.rank == root else True
     comm.Barrier()
     comm.Gatherv((partial_result, MPI.DOUBLE),
                  (result, (size, offset), MPI.DOUBLE),
@@ -204,47 +215,52 @@ def _MPI_map(comm, points, root=0):
     comm.Barrier()
     return result
 
-
 class MPIMapper(object):
+    _last_problem = None
 
     @staticmethod
     def start_worker(problem):
-        global _problem
-        _problem = problem
         from mpi4py import MPI
-        root = 0
-        # If master, then return to main program
-        if MPI.COMM_WORLD.rank == root:
-            return
-        # If slave, then set problem and wait in map loop
-        #_MPI_set_problem(MPI.COMM_WORLD, None, root=root)
-        try:
+        comm, root = MPI.COMM_WORLD, 0
+        MPIMapper._last_problem = problem
+
+        # If worker, sit in a loop waiting for the next point.
+        # If the point is empty, then wait for a new problem.
+        # If the problem is None then we are done, otherwise wait for next point.
+        if comm.rank != root:
             while True:
-                _MPI_map(MPI.COMM_WORLD, None, root=root)
-        except StopIteration:
-            pass
-        MPI.Finalize()
-        sys.exit(0)
+                result = _MPI_map(problem, None, comm, root)
+                if not result:
+                    problem = _MPI_set_problem(None, comm, root)
+                    if problem is None:
+                        break
+            MPI.Finalize()
 
     @staticmethod
     def start_mapper(problem, modelargs, cpus=0):
-        # Slave started from start_worker, so it never gets here
-        # Slave expects _MPI_set_problem followed by a series
-        # of map requests
+        # Only root can get here---worker is stuck in start_worker
         from mpi4py import MPI
-        #_MPI_set_problem(MPI.COMM_WORLD, problem)
-        return lambda points: _MPI_map(MPI.COMM_WORLD, points)
+        comm, root = MPI.COMM_WORLD, 0
+        import numpy as np
+        done = np.empty((0, 0), 'd')
+
+        # Signal new problem then send it (but only if it is new)
+        mapper = lambda points: _MPI_map(problem, points, comm, root)
+        if problem != MPIMapper._last_problem:
+            mapper(done)
+            _MPI_set_problem(problem, comm, root)
+        return mapper
 
     @staticmethod
     def stop_mapper(mapper):
         from mpi4py import MPI
+        comm, root = MPI.COMM_WORLD, 0
         import numpy as np
-        # Send an empty point list to stop the iteration
-        try:
-            mapper(np.empty((0, 0), 'd'))
-            raise RuntimeException("expected StopIteration")
-        except StopIteration:
-            pass
+        done = np.empty((0, 0), 'd')
+
+        # Signal the workers that there are no more problems
+        mapper(done)
+        _MPI_set_problem(None, comm, root)
         MPI.Finalize()
 
 
