@@ -34,6 +34,16 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
+v0.7.19
+------------------
+* terminate the MPI session when the fit is complete instead of waiting for the
+  allocation to expire
+* allow a series of fits in the same MPI session
+
+v0.7.18 2020-11-16
+------------------
+* restore python 2.7 support
+
 v0.7.17 2020-11-06
 ------------------
 * restore DREAM fitter efficiency (it should now require fewer burn-in steps)

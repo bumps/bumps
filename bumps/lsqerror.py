@@ -411,7 +411,7 @@ def demo_stderr_perturbed():
     D = np.asarray(D)
     L = np.tril(np.random.rand(n, n))
     np.fill_diagonal(L, D)
-    H = L @ L.T
+    H = np.dot(L, L.T)
     Hp, Lp = perturbed_hessian(H)
     C = chol_cov(Lp)
     s = chol_stderr(Lp)
@@ -436,22 +436,22 @@ def demo_stderr_perturbed():
         #C_from_Lp=C,
     )
     with np.printoptions(precision=3):
-        print(f"{'perturbation':20s}", hp[0,0]-h[0,0])
+        print("%20s"%('perturbation'), hp[0, 0] - h[0, 0])
         for k, v in parts.items():
-            print(f"{k+' diag':20s}", np.diag(v))
+            print("%20s"%(k + ' diag'), np.diag(v))
         #print("eigc", list(sorted(np.linalg.eigvals(c))))
         #print("eigcp", list(sorted(np.linalg.eigvals(cp))))
         #print("eigh", list(sorted(1/np.linalg.eigvals(h))))
         #print("eighp", list(sorted(1/np.linalg.eigvals(hp))))
         print("h cond     ", np.linalg.cond(h))
-        print("rel err δc ", abs((c - cdirect)/cdirect).max())
-        print("δε         ", sp - s)
-        print("σ direct   ", sdirect)
-        print("σ chol     ", sdirect_chol)
-        print("σ perturbed", sp)
-        print("σ          ", s)
-        print("rel err δσ ", abs((s - sdirect)/sdirect).max())
-        print("unperturbed δσ", abs((sdirect_chol - sdirect)/sdirect).max())
+        print("rel err dc ", abs((c - cdirect)/cdirect).max())
+        print("de         ", sp - s)
+        print("s direct   ", sdirect)
+        print("s chol     ", sdirect_chol)
+        print("s perturbed", sp)
+        print("s          ", s)
+        print("rel err ds ", abs((s - sdirect)/sdirect).max())
+        print("unperturbed ds", abs((sdirect_chol - sdirect)/sdirect).max())
 
 if __name__ == "__main__":
     #demo_hessian()

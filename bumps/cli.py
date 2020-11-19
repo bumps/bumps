@@ -247,10 +247,6 @@ def make_store(problem, opts, exists_handler):
         os.mkdir(problem.store)
     shutil.copy2(problem.path, problem.store)
 
-    # Redirect sys.stdout to capture progress
-    if opts.batch:
-        sys.stdout = open(problem.output_path + ".mon", "w")
-
 def run_profiler(problem, steps):
     """
     Model execution profiler.
@@ -662,6 +658,10 @@ def main():
 
         make_store(problem, opts, exists_handler=store_overwrite_query)
 
+        # Redirect sys.stdout to capture progress
+        if opts.batch:
+            sys.stdout = open(problem.output_path + ".mon", "w")
+
         # TODO: fix techical debt with checkpoint monitor implementation
         # * The current checkpoint implementation is self-referential:
         #     checkpoint = lambda: save_best(fitdriver, ...)
@@ -707,6 +707,13 @@ def main():
         if opts.entropy:
             fitdriver.show_entropy(opts.entropy)
         mapper.stop_mapper(fitdriver.mapper)
+
+        # If in batch mode then explicitly close the monitor file on completion
+        if opts.batch:
+            sys.stderr.close()
+            sys.stderr = sys.__stderr__
+
+        # Display the plots
         if not opts.batch and not opts.mpi and not opts.noshow:
             beep()
             import pylab

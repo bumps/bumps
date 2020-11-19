@@ -7,7 +7,7 @@ import wx.lib.newevent
 
 from .. import monitor
 from ..fitters import FitDriver
-from ..mapper import  MPMapper, SerialMapper
+from ..mapper import  MPMapper, SerialMapper, can_pickle
 from ..util import redirect_console
 
 from .convergence_view import ConvergenceMonitor
@@ -189,7 +189,7 @@ class FitThread(Thread):
                                  rate=self.uncertainty_update),
                     ]
         # Only use parallel if the problem can be pickled
-        mapper = MPMapper if MPMapper.can_pickle(self.problem) else SerialMapper
+        mapper = MPMapper if can_pickle(self.problem) else SerialMapper
 
         # Be safe and send a private copy of the problem to the fitting engine
         #print "fitclass",self.fitclass
