@@ -181,7 +181,7 @@ def _MPI_set_problem(problem, comm, root=0):
     return problem if comm.rank == root else dill.loads(pickled_problem)
 
 def _MPI_map(problem, points, comm, root=0):
-    print(f"{comm.rank}({os.getpid()}): mapping {points.shape} over {id(problem)}:{problem.name}")
+    #print(f"{comm.rank}: mapping points")
     import numpy as np
     from mpi4py import MPI
 
@@ -229,16 +229,16 @@ class MPIMapper(object):
         # If the point is empty, then wait for a new problem.
         # If the problem is None then we are done, otherwise wait for next point.
         if comm.rank != root:
-            print(f"{comm.rank}: looping")
+            #print(f"{comm.rank}: looping")
             while True:
                 result = _MPI_map(problem, None, comm, root)
                 if not result:
                     problem = _MPI_set_problem(None, comm, root)
                     if problem is None:
                         break
-                    print(f"{comm.rank}: changing problem")
+                    #print(f"{comm.rank}: changing problem")
 
-            print(f"{comm.rank}: finalizing")
+            #print(f"{comm.rank}: finalizing")
             MPI.Finalize()
 
     @staticmethod
@@ -258,7 +258,7 @@ class MPIMapper(object):
         # the new problem.
         mapper = lambda points: _MPI_map(problem, points, comm, root)
         if not MPIMapper._first_fit:
-            print(f"{comm.rank}: replacing problem")
+            #print(f"{comm.rank}: replacing problem")
             mapper(done)
             _MPI_set_problem(problem, comm, root)
         MPIMapper._first_fit = False
@@ -272,10 +272,10 @@ class MPIMapper(object):
         done = np.empty((0, 0), 'd')
 
         # Signal the workers that there are no more problems
-        print(f"{comm.rank}: stopping fit")
+        #print(f"{comm.rank}: stopping fit")
         mapper(done)
         _MPI_set_problem(None, comm, root)
-        print(f"{comm.rank}: finalizing root")
+        #print(f"{comm.rank}: finalizing root")
         MPI.Finalize()
 
 
