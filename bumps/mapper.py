@@ -181,6 +181,7 @@ def _MPI_set_problem(problem, comm, root=0):
     return problem if comm.rank == root else dill.loads(pickled_problem)
 
 def _MPI_map(problem, points, comm, root=0):
+    print(f"{comm.rank}({os.getpid()}): mapping {points.shape} over {id(problem)}:{problem.name}")
     import numpy as np
     from mpi4py import MPI
 
@@ -216,7 +217,7 @@ def _MPI_map(problem, points, comm, root=0):
     return result
 
 class MPIMapper(object):
-    _last_problem = None
+    _first_fit = True # The first problem is set when the worker starts
 
     @staticmethod
     def start_worker(problem):
@@ -228,12 +229,16 @@ class MPIMapper(object):
         # If the point is empty, then wait for a new problem.
         # If the problem is None then we are done, otherwise wait for next point.
         if comm.rank != root:
+            print(f"{comm.rank}: looping")
             while True:
                 result = _MPI_map(problem, None, comm, root)
                 if not result:
                     problem = _MPI_set_problem(None, comm, root)
                     if problem is None:
                         break
+                    print(f"{comm.rank}: changing problem")
+
+            print(f"{comm.rank}: finalizing")
             MPI.Finalize()
 
     @staticmethod
@@ -244,11 +249,19 @@ class MPIMapper(object):
         import numpy as np
         done = np.empty((0, 0), 'd')
 
-        # Signal new problem then send it (but only if it is new)
+        # Signal new problem then send it, but not on the first fit. We do
+        # this so that we can still run MPI fits even if the problem itself
+        # cannot be pickled, but only the first one. To do a series of fits
+        # you will need to restart the MPI job separately for each fit.
+        # Note: we can't simply check if the problem matches the last problem
+        # since we may have modified the last problem in place to generate
+        # the new problem.
         mapper = lambda points: _MPI_map(problem, points, comm, root)
-        if problem != MPIMapper._last_problem:
+        if not MPIMapper._first_fit:
+            print(f"{comm.rank}: replacing problem")
             mapper(done)
             _MPI_set_problem(problem, comm, root)
+        MPIMapper._first_fit = False
         return mapper
 
     @staticmethod
@@ -259,8 +272,10 @@ class MPIMapper(object):
         done = np.empty((0, 0), 'd')
 
         # Signal the workers that there are no more problems
+        print(f"{comm.rank}: stopping fit")
         mapper(done)
         _MPI_set_problem(None, comm, root)
+        print(f"{comm.rank}: finalizing root")
         MPI.Finalize()
 
 
