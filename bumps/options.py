@@ -283,7 +283,7 @@ class BumpsOpts(ParseOpts):
     entropy = None
     trim = "true"
     view = None
-    alpha = 0.01
+    alpha = 0.0
     PLOTTERS = "linear", "log", "residuals"
     USAGE = """\
 Usage: bumps [options] modelfile [modelargs]
@@ -363,8 +363,9 @@ Options:
         minimum population diameter
     --ftol=1e-4     [de, amoeba]
         minimum population flatness
-    --alpha=0.01    [dream]
-        p-level for rejecting convergence (0=loose, 1=strict)
+    --alpha=0.0    [dream]
+        p-level for rejecting convergence; with fewer samples use a stricter
+        stopping condition, such as --alpha=0.01 --samples=20000
     --pop=10        [dream, de, rl, ps]
         population size is pop times number of fitted parameters; if pop is
         negative, then set population size to -pop.
