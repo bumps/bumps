@@ -159,6 +159,7 @@ def plot_logp(state, portion=None):
     from scipy.stats import chi2, kstest
     from matplotlib.ticker import NullFormatter
 
+    # Plot log likelihoods
     draw, logp = state.logp()
     start = int((1-portion)*len(draw)) if portion else 0
     genid = arange(state.generation-len(draw)+start, state.generation)+1
@@ -169,6 +170,7 @@ def plot_logp(state, portion=None):
     trace.set_ylabel('Log likelihood at x[k]')
     title('Log Likelihood History')
 
+    # Plot log likelihood trend line
     from bumps.wsolve import wpolyfit
     from .formatnum import format_uncertainty
     x = np.arange(start, logp.shape[0]) + state.generation - state.Ngen + 1
@@ -180,6 +182,7 @@ def plot_logp(state, portion=None):
     trace.text(x[0], y[0], "slope="+format_uncertainty(p.coeff[0], p.std[0]),
                va='top', ha='left')
 
+    # Plot long likelihood histogram
     data = logp[start:].flatten()
     hist = axes([margin+width+delta, 0.1, 1-2*margin-width-delta, height])
     hist.hist(data, bins=40, orientation='horizontal', normed=True)
@@ -188,6 +191,7 @@ def plot_logp(state, portion=None):
     hist.xaxis.set_major_formatter(null_formatter)
     hist.yaxis.set_major_formatter(null_formatter)
 
+    # Plot chisq fit to log likelihood histogram
     float_df, loc, scale = chi2.fit(-data, f0=state.Nvar)
     df = int(float_df + 0.5)
     pval = kstest(-data, lambda x: chi2.cdf(x, df, loc, scale))
@@ -196,6 +200,7 @@ def plot_logp(state, portion=None):
     xmin, xmax = trace.get_ylim()
     x = np.linspace(xmin, xmax, 200)
     hist.plot(chi2.pdf(-x, df, loc, scale), x, 'r')
+
 
 def tile_axes(n, size=None):
     """
