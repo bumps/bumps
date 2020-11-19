@@ -221,9 +221,18 @@ class MPIMapper(object):
 
     @staticmethod
     def start_worker(problem):
+        """
+        Start the worker process.
+
+        For the main process this does nothing and returns immediately. The
+        worker processes never return.
+
+        Each worker sits in a loop waiting for the next batch of points
+        for the problem, or for the next problem. Set t
+        problem is set to None, then exit the process and never 
+        """
         from mpi4py import MPI
         comm, root = MPI.COMM_WORLD, 0
-        MPIMapper._last_problem = problem
 
         # If worker, sit in a loop waiting for the next point.
         # If the point is empty, then wait for a new problem.
@@ -241,42 +250,41 @@ class MPIMapper(object):
             #print(f"{comm.rank}: finalizing")
             MPI.Finalize()
 
+            # Exit the program after the worker is done. Don't return
+            # to the caller since that is continuing on with the main
+            # thread, and in particular, attempting to rerun the fit on
+            # each worker.
+            sys.exit(0)
+
     @staticmethod
     def start_mapper(problem, modelargs, cpus=0):
         # Only root can get here---worker is stuck in start_worker
         from mpi4py import MPI
         comm, root = MPI.COMM_WORLD, 0
         import numpy as np
-        done = np.empty((0, 0), 'd')
 
-        # Signal new problem then send it, but not on the first fit. We do
-        # this so that we can still run MPI fits even if the problem itself
-        # cannot be pickled, but only the first one. To do a series of fits
-        # you will need to restart the MPI job separately for each fit.
-        # Note: we can't simply check if the problem matches the last problem
-        # since we may have modified the last problem in place to generate
-        # the new problem.
+        # Signal new problem then send it, but not on the first fit. We do this
+        # so that we can still run MPI fits even if the problem itself cannot
+        # be pickled, but only the first one. (You can still fit a series even
+        # if the problem can't be pickled, but you will need to restart the
+        # MPI job separately for each fit.)
+        # Note: setting problem to None stops the program, so call finalize().
         mapper = lambda points: _MPI_map(problem, points, comm, root)
         if not MPIMapper._first_fit:
             #print(f"{comm.rank}: replacing problem")
-            mapper(done)
+            # Send an empty set of points to signal a new problem is coming.
+            mapper(np.empty((0, 0), 'd'))
             _MPI_set_problem(problem, comm, root)
+            if problem is None:
+                #print(f"{comm.rank}: finalizing root")
+                MPI.Finalize()
         MPIMapper._first_fit = False
         return mapper
 
     @staticmethod
     def stop_mapper(mapper):
-        from mpi4py import MPI
-        comm, root = MPI.COMM_WORLD, 0
-        import numpy as np
-        done = np.empty((0, 0), 'd')
-
-        # Signal the workers that there are no more problems
-        #print(f"{comm.rank}: stopping fit")
-        mapper(done)
-        _MPI_set_problem(None, comm, root)
-        #print(f"{comm.rank}: finalizing root")
-        MPI.Finalize()
+        # Set problem=None to stop the program.
+        MPIMapper.start_mapper(None, None)
 
 
 class AMQPMapper(object):
