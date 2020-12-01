@@ -39,6 +39,10 @@ v0.7.19
 * terminate the MPI session when the fit is complete instead of waiting for the
   allocation to expire
 * allow a series of fits in the same MPI session
+* add stopping conditions to DREAM, using --alpha=p-value to reject convergence.
+* enable outlier trimming in DREAM
+* remove R stat from saved state
+* show seed value used for random number generator
 
 v0.7.18 2020-11-16
 ------------------

@@ -128,7 +128,8 @@ FIT_FIELDS = dict(
     Tmin=("Min temperature", float),
     Tmax=("Max temperature", float),
     radius=("Simplex radius", float),
-    trim = ("Burn in trimming", yesno)
+    trim=("Burn in trimming", yesno),
+    outliers=("Outliers", ChoiceList("none", "iqr", "grubbs", "mahal")),
     )
 
 # Make sure all settings are parseable
@@ -261,7 +262,7 @@ class BumpsOpts(ParseOpts):
     VALUES = set(("plot", "store", "resume", "entropy", "fit", "noise", "seed",
                   "pars", "resynth", "transport", "notify", "queue", "time",
                   "checkpoint", "m", "c", "p", "parallel", "view",
-                  "trim", "alpha",
+                  "trim", "alpha", "outliers",
                  ))
     # Add in parameters from the fitters
     VALUES |= set(FIT_FIELDS.keys())
@@ -363,9 +364,15 @@ Options:
         minimum population diameter
     --ftol=1e-4     [de, amoeba]
         minimum population flatness
-    --alpha=0.0    [dream]
+    --alpha=0.0     [dream]
         p-level for rejecting convergence; with fewer samples use a stricter
         stopping condition, such as --alpha=0.01 --samples=20000
+    --outliers=none [dream]
+        name of test used for trimming outlier chains every N samples:
+          none:   no outlier removal
+          iqr:    use interquartile range on likelihood
+          grubbs: use t-test on likelihood
+          mahal:  use distance from parameter values on the best chain
     --pop=10        [dream, de, rl, ps]
         population size is pop times number of fitted parameters; if pop is
         negative, then set population size to -pop.

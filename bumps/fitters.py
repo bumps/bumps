@@ -756,7 +756,7 @@ class DreamFit(FitBase):
     id = "dream"
     settings = [('samples', int(1e4)), ('burn', 100), ('pop', 10),
                 ('init', 'eps'), ('thin', 1), ('trim', False),
-                ('alpha', 0.01),
+                ('alpha', 0.01), ('outliers', 'none'),
                 ('steps', 0),  # deprecated: use --samples instead
                ]
 
@@ -790,6 +790,7 @@ class DreamFit(FitBase):
                         burn=pop_size * options['burn'],
                         thinning=options['thin'],
                         monitor=self._monitor, alpha=options['alpha'],
+                        outlier_test=options['outliers'],
                         DE_noise=1e-6)
 
         self.state = sampler.sample(state=self.state, abort_test=abort_test)

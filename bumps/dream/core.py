@@ -183,7 +183,7 @@ class Dream(object):
     draws = 100000
     thinning = 1
     # TODO: change the default outlier test to IQR and control with options
-    outlier_test = os.environ.get("BUMPS_OUTLIERS", "none")
+    outlier_test = "none"
     population = None
     #: convergence criteria
     alpha = 0.01
