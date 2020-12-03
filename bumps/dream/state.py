@@ -607,13 +607,11 @@ class MCMCDraw(object):
         log likelihoods; these are updated with cloned chain values.
 
         *test* is the name of the test to use (one of IQR, Grubbs, Mahal
-        or none). See :func:`outliers.identify_outliers` for details.
+        or none). See :func:`.outliers.identify_outliers` for details.
 
         Updates *state*, *x* and *logp* to reflect the changes.
 
         Returns a list of the outliers that were removed.
-
-        See :mod:`.outliers` for details.
         """
         # Grab the last part of the chain histories
         _, chains = self.logp()

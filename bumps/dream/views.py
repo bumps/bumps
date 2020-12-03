@@ -4,7 +4,7 @@ MCMC plotting methods.
 from __future__ import division, print_function
 
 __all__ = ['plot_all', 'plot_corr', 'plot_corrmatrix',
-           'plot_trace', 'plot_R', 'plot_logp', 'format_vars']
+           'plot_trace', 'plot_logp', 'format_vars']
 
 import math
 
