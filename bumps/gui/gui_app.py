@@ -255,10 +255,11 @@ class MainApp(wx.App):
 
         # Put up the initial model
         model, output = initial_model(opts)
-        if not model: model = plugin.new_model()
+        if not model:
+            model = plugin.new_model()
         signal.log_message(message=output)
         self.frame.panel.set_model(model=model)
-        self.frame.panel.fit_config = opts.fit_config
+        self.frame.panel.set_fit_config(opts.fit_config)
 
         self.frame.panel.Layout()
         self.frame.panel.aui.Split(0, wx.TOP)

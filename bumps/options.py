@@ -116,10 +116,10 @@ FIT_FIELDS = dict(
     samples=("Samples", parse_int),
     xtol=("x tolerance", float),
     ftol=("f(x) tolerance", float),
-    alpha=("p-value for convergence tests", float),
+    alpha=("Convergence", float),
     stop=("Stopping criteria", str),
     thin=("Thinning", parse_int),
-    burn=("Burn-in Steps", parse_int),
+    burn=("Burn-in steps", parse_int),
     pop=("Population", float),
     init=("Initializer", ChoiceList("eps", "lhs", "cov", "random")),
     CR=("Crossover ratio", float),
@@ -128,8 +128,8 @@ FIT_FIELDS = dict(
     Tmin=("Min temperature", float),
     Tmax=("Max temperature", float),
     radius=("Simplex radius", float),
-    trim=("Burn in trimming", yesno),
-    outliers=("Outliers", ChoiceList("none", "iqr", "grubbs", "mahal")),
+    trim=("Burn-in trim", yesno),
+    outliers=("Outliers" , ChoiceList("none", "iqr", "grubbs", "mahal")),
     )
 
 # Make sure all settings are parseable
