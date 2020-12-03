@@ -148,7 +148,7 @@ def test_outliers():
     # Make a copy of the current state so we can check it was updated
     nx, nlogp = x+0, chains[-1]+0
     # Remove outliers
-    state.remove_outliers(nx, nlogp, test='IQR', portion=0.5)
+    state.remove_outliers(nx, nlogp, test='IQR')
     # Check that the outliers were removed
     outliers = state.outliers()
     assert outliers.shape[0] == nbad
