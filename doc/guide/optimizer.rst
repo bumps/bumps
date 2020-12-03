@@ -414,7 +414,7 @@ To estimate the 68% interval to two digits of precision, at least
 gives a rough approximation of the uncertainty relatively quickly.
 Use ``--samples=n`` from the command line.
 
-*Burn-in Steps* is the number of iterations to required for the Markov
+*Burn-in steps* is the number of iterations to required for the Markov
 chain to converge to the equilibrium distribution.  If the fit ends
 early, the tail of the burn will be saved to the start of the steps.
 Use ``--burn=n`` from the command line.
@@ -448,6 +448,26 @@ Use ``--init=type`` from the command line.
 population.  If the fit is somewhat stuck, with most steps not improving
 the fit, then you will need to thin the population to get proper
 statistics.  Use ``--thin=k`` from the command line.
+
+*Convergence* gives a cutoff value $\alpha$ for determining when
+the Markov chain has converged. The default is ``--alpha=0.00`` for no
+convergence tests. Various tests are used, such as comparing the distribution
+of points in the first part of the chain to the last part and looking for
+trends in the log-likelihood values. You may need to use smaller $\alpha$ for
+shorter sequences (samples over variables times population) since the test
+statistics will have higher variance.
+
+*Outliers* is the test to use to check for outlier chains. Default is
+``--outliers=none`` for no outlier test. Options are *iqr*, which uses
+the inter-quartile range on the likelihoods, *grubbs*, which uses a t-test
+on the likelihoods, and *mahal* which looks at the distance from the best
+chain in parameter space. Outlier removal occurs at the end of the fit, and
+during burn-in if ``--trim`` is set.
+
+*Burn-in trim* is true if outliers should be trimmed after every ``n``
+samples. This can speed convergence since chains will be removed automatically
+from poor local minima rather than waiting for them to slowly drain, but the
+result may be a less robust fit. Use ``--trim`` on the command line.
 
 *Calculate entropy*, if true, computes the entropy for the fit.  This is
 an estimate of the amount of information in the data.  Use ``--entropy=method``
