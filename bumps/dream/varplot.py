@@ -265,7 +265,7 @@ def _make_var_histogram(values, logp, nbins, ci, weights):
     # Produce a histogram
     hist, bins = np.histogram(values, bins=nbins, range=ci,
                               #new=True,
-                              normed=True, weights=weights)
+                              density=True, weights=weights)
 
     # Find the max likelihood for values in each bin
     edges = np.searchsorted(values, bins)
