@@ -4,6 +4,8 @@ Chain outlier tests.
 
 __all__ = ["identify_outliers"]
 
+import os
+
 from numpy import mean, std, sqrt, where, argmin, arange, array
 from numpy import sort
 from scipy.stats import t as student_t
@@ -13,6 +15,10 @@ from .mahal import mahalanobis
 from .acr import ACR
 
 tinv = student_t.ppf
+
+# Hack to adjust the aggressiveness of the interquartile range test.
+# TODO: Document/remove BUMPS_INTERQUARTILES or replace with command option.
+BUMPS_INTERQUARTILES = float(os.environ.get("BUMPS_INTERQUARTILES", "2.0"))
 
 # CRUFT: scoreatpercentile not accepting array arguments in older scipy
 def prctile(v, Q):
@@ -61,7 +67,7 @@ def identify_outliers(test, llf, x=None):
         # outlier removal effects have disappeared (i.e., an entire frame),
         # a less aggressive test will speed completion.
         vmax = llf.max(axis=0)
-        outliers = where(vmax < q1 - 2*iqr)[0]
+        outliers = where(vmax < q1 - BUMPS_INTERQUARTILES*iqr)[0]
 
     elif test == 'grubbs':
         # Determine the mean log density of the active chains
