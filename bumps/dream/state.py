@@ -176,9 +176,9 @@ def loadtxt(file, report=0):
     if not hasattr(file, 'readline'):
         if file.endswith('.gz'):
             #print("opening with gzip")
-            fh = gzip.open(file, 'r')
+            fh = gzip.open(file, 'rt')
         else:
-            fh = open(file, 'r')
+            fh = open(file, 'rt')
     else:
         fh = file
     res = []
@@ -212,17 +212,17 @@ def openmc(filename):
     if filename.endswith('.gz'):
         if os.path.exists(filename):
             #print("opening with gzip")
-            fh = gzip.open(filename, 'r')
+            fh = gzip.open(filename, 'rt')
         elif os.path.exists(filename[:-3]):
-            fh = open(filename[:-3], 'r')
+            fh = open(filename[:-3], 'rt')
         else:
             raise RuntimeError("file %s does not exist"%filename)
     else:
         if os.path.exists(filename):
-            fh = open(filename, 'r')
+            fh = open(filename, 'rt')
         elif os.path.exists(filename+".gz"):
             #print("opening with gzip")
-            fh = gzip.open(filename+".gz", 'r')
+            fh = gzip.open(filename+".gz", 'rt')
         else:
             raise RuntimeError("file %s does not exist"%filename)
     return fh
@@ -622,6 +622,7 @@ class MCMCDraw(object):
         # Loop over each outlier chain, replacing each with another
         for old in outliers:
             # Draw another chain at random, with replacement
+            # TODO: consider using relative likelihood as a weight factor
             while True:
                 new = rng.randint(Nchains)
                 if new not in outliers:
@@ -858,7 +859,7 @@ class MCMCDraw(object):
 
     def keep_best(self):
         """
-        Place the best point at the end of the chain final good chain.
+        Place the best point at the end of the last good chain.
 
         Good chains are defined by mark_outliers.
 
