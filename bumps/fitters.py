@@ -856,7 +856,8 @@ class DreamFit(FitBase):
     def load(self, input_path):
         from .dream.state import load_state, path_contains_saved_state
         if path_contains_saved_state(input_path):
-            print("loading saved state (this might take awhile) ...")
+            print("loading saved state from %s (this might take awhile) ..."
+                  % (input_path,))
             fn, labels = getattr(self.problem, 'derive_vars', (None, []))
             self.state = load_state(input_path, report=100, derived_vars=len(labels))
         else:

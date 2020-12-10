@@ -215,7 +215,7 @@ def store_overwrite_query(path):
     """
     print(path, "already exists.")
     print(
-        "Press 'y' to overwrite, or 'n' to abort and restart with --overwrite or --store=newpath")
+        "Press 'y' to overwrite, or 'n' to abort and restart with --overwrite, --resume, or --store=newpath")
     ans = input("Overwrite [y/n]? ")
     if ans not in ("y", "Y", "yes"):
         sys.exit(1)
@@ -235,10 +235,11 @@ def make_store(problem, opts, exists_handler):
     problem.output_path = os.path.join(problem.store, problem.name)
 
     # Check if already exists
-    if not opts.overwrite and os.path.exists(problem.output_path + '.par'):
+    store_exists = os.path.exists(problem.output_path + '.par')
+    if not opts.overwrite and opts.resume is None and store_exists:
         if opts.batch:
             print(
-                problem.store + " already exists.  Use --overwrite to replace or --store=newpath",
+                problem.store + " already exists.  Restart with --overwrite, --resume, or --store=newpath",
                 file=sys.stderr)
             sys.exit(1)
         exists_handler(problem.output_path)
