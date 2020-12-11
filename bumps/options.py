@@ -275,23 +275,27 @@ class BumpsOpts(ParseOpts):
     """
     MINARGS = 1
     # TODO: document all options in USAGE and doc/guide/options.rst
+    # TODO: remove application-specific options like --staj
     FLAGS = set(("preview", "chisq", "profile", "time_model",
                  "simulate", "simrandom", "shake",
                  "worker", # internal, so not documented
+                 "multiprocessing-fork", # passed in when app is a frozen image
+                 "remote", # not active, so not documented
                  "batch", "noshow", "overwrite", "stepmon",
-                 "err", "cov",
-                 "remote", "staj", "edit", "mpi", "keep_best",
-                 # passed in when app is a frozen image
-                 "multiprocessing-fork",
+                 "err", "cov", "edit", "mpi", "keep_best",
+                 "staj",
                  # passed when not running bumps, but instead using a
                  # bundled application as a python distribution with domain
                  # specific models pre-defined.
                  "i",
                 ))
     VALUES = set(("plot", "store", "resume", "entropy", "fit", "noise", "seed",
-                  "pars", "resynth", "transport", "notify", "queue", "time",
+                  "pars", "resynth", "time",
                   "checkpoint", "m", "c", "p", "parallel", "view",
                   "trim", "alpha", "outliers",
+                  # The following options are for remote fitting via the
+                  # fitting service, but this is not currently active.
+                  "transport", "notify", "queue",
                  ))
     # Add in parameters from the fitters
     VALUES |= set(FIT_FIELDS.keys())
@@ -351,7 +355,7 @@ Options:
     --entropy=gmm|mvn|wnn|llf
         compute entropy on posterior distribution [dream only]
     --staj
-        output staj file when done
+        output staj file when done [Refl1D only]
     --edit
         start the gui
     --view=linear|log
