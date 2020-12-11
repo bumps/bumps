@@ -63,6 +63,15 @@ def plot_all(state, portion=1.0, figfile=None):
         if figfile is not None:
             savefig(figfile+"-corr"+figext)
 
+    # parallel coordinates plot
+    if draw.num_vars > 1:
+        from . import parcoord
+        figure()
+        parcoord.plot(draw, control_var=0)
+        if state.title:
+            suptitle(state.title)
+        if figfile is not None:
+            savefig(figfile+"-parcor"+figext)
 
 def plot_corrmatrix(draw):
     c = corrplot.Corr2d(draw.points.T, bins=50, labels=draw.labels)
