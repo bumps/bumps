@@ -39,15 +39,16 @@ v0.7.19
 * terminate the MPI session when the fit is complete instead of waiting for the
   allocation to expire
 * allow a series of fits in the same MPI session
-* add stopping conditions to DREAM, using --alpha=p-value to reject convergence
-* require --overwrite or --resume when reusing a store directory
+* add stopping conditions to DREAM, using *--alpha=p-value* to reject convergence
+* require *--overwrite* or *--resume* when reusing a store directory
 * enable outlier trimming in DREAM with --outliers=iqr
 * add fitted slope and loglikelihood distribution to the loglikelihood plot
-* display seed value used for fit so it can be rerun with --seed
+* display seed value used for fit so it can be rerun with *--seed*
 * save MCMC files using gzip
 * remove R stat from saved state
 * show seed value used for random number generator
 * support newest matplotlib
+* restore *--pars* option, which was broken in 0.7.17
 
 v0.7.18 2020-11-16
 ------------------

@@ -178,12 +178,15 @@ def load_best(problem, path):
     # one bit for each parameter. This ugly hack is to support a previous
     # ugly hack in which undefined parameters are initialized with LHS but
     # defined parameters are initialized with eps, cov or random.
-    # TODO: find a better way to "free" parameters on --resume/--pars.
+    # TODO: find a better way to "free" parameters on --pars.
+    # TODO: find a way to "free" parameters on --resume.
     values, undefined = [], []
     for label, default_value in zip(labels, problem.getp()):
-        remaining_values = targets[label]
-        values.append(remaining_values.pop(0) if remaining_values else default_value)
-        undefined.append(not remaining_values)
+        remaining = targets[label]
+        is_empty = not remaining
+        # popping the next value from remaining modifies targets[label]
+        values.append(default_value if is_empty else remaining.pop(0))
+        undefined.append(is_empty)
     problem.setp(np.asarray(values))
     if any(undefined):
         problem.undefined = np.asarray(undefined)
