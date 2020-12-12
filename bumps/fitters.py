@@ -1238,6 +1238,13 @@ def fit(problem, method=FIT_DEFAULT_ID, verbose=False, **options):
     detailed uncertainty analysis.  Optimizer information such as the
     stopping condition and the number of function evaluations are not
     yet included.
+
+    To run in parallel (with multiprocessing and dream)::
+
+        from bumps.mapper import MPMapper
+        mapper = MPMapper.start_mapper(problem, None, cpu=0) #cpu=0 for all CPUs
+        result = fit(problem, method="dream", mapper=mapper)
+
     """
     from scipy.optimize import OptimizeResult
 
