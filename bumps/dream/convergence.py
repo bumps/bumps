@@ -173,7 +173,7 @@ def _ks_sliding_window(state, trials=TRIALS, density=DENSITY,
 
     # Check in large bunches
     n_draw = int(density * samples)
-    for index in range(0, max_index, window_size):
+    for index in range(0, max_index+1, window_size):
         # [PAK] make sure the worst point is not in the first window.
         # Stastically this will introduce some bias (by chance the max could
         # happen to occur in the first window) but it will be small when the
