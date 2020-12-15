@@ -35,8 +35,7 @@ def ks_converged(state, trials=TRIALS, density=DENSITY, alpha=ALPHA, samples=SAM
 
     *state* contains the MCMC chain information.
 
-    *trials* is the number of times to run the test, with the median burn
-    point returned.
+    *trials* is the number of times to run the K-S test.
 
     *density* is the proportion of samples to select from the window.  Prefer
     lower density from larger number of samples so the sets chosen for the
@@ -139,6 +138,8 @@ def burn_point(state, method='window', trials=TRIALS, **kwargs):
 
     *method="window"* is the name of the convergence diagnostic (see below).
 
+    *trials* is the number of times to run the K-S test.
+
     Returns the index of the burn points, or -1 if no good burn point is found.
 
     **Kolmogorov-Smirnov sliding window**
@@ -149,7 +150,7 @@ def burn_point(state, method='window', trials=TRIALS, **kwargs):
     test.  See :func:`ks_converged` for a description of the parameters.
     """
     if method == 'window':
-        index = _ks_sliding_window(state, **kwargs)
+        index = _ks_sliding_window(state, trials=trials, **kwargs)
     else:
         raise ValueError("Unknown convergence test " + method)
     if index < 0:
@@ -158,13 +159,16 @@ def burn_point(state, method='window', trials=TRIALS, **kwargs):
 
 def _ks_sliding_window(state, trials=TRIALS, density=DENSITY,
                        alpha=ALPHA*0.01, samples=SAMPLES):
-    window_size = min(max(samples//state.Npop + 1, MIN_WINDOW), state.Ngen//2)
-
-    tiny_window = window_size//11 + 1
-    max_index = state.Ngen//2
     _, logp = state.logp()
 
-    tail = logp[max_index:].flatten()
+    window_size = min(max(samples//state.Npop + 1, MIN_WINDOW), state.Ngen//2)
+    tiny_window = window_size//11 + 1
+    half = state.Ngen//2
+    max_index = len(logp) - half - window_size
+
+    if max_index < 0:
+        return -1
+    tail = logp[-half:].flatten()
     min_tail = np.min(tail)
 
     # Check in large bunches
