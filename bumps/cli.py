@@ -348,7 +348,7 @@ def initial_model(opts):
             problem.simulate_data(noise=noise)
             print("simulation parameters")
             print(problem.summarize())
-            print("chisq at simulation", problem.chisq())
+            print("chisq at simulation", problem.chisq_str())
         if opts.shake:
             problem.randomize()
     else:
