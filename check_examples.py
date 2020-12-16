@@ -39,7 +39,6 @@ examples = [
     "peaks/model.py",
     "curvefit/curve.py",
     "constraints/inequality.py",
-    "constraints/gmodel.py",
     "test_functions/anticor.py",
 ]
 
