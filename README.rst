@@ -23,13 +23,19 @@ If a compiler is available, then significant speedup is possible for DREAM using
 
 For now this requires an install from source rather than pip.
 
-|TravisStatus|_ |DOI|_
+|CI| |RTD| |DOI|
 
-.. |TravisStatus| image:: https://travis-ci.org/bumps/bumps.svg?branch=master
-.. _TravisStatus: https://travis-ci.org/bumps/bumps
+.. |CI| image:: https://github.com/bumps/bumps/workflows/Test/badge.svg
+   :alt: Build status
+   :target: https://github.com/bumps/bumps/actions
 
 .. |DOI| image:: https://zenodo.org/badge/18489/bumps/bumps.svg
-.. _DOI: https://zenodo.org/badge/latestdoi/18489/bumps/bumps
+   :alt: DOI tag
+   :target: https://zenodo.org/badge/latestdoi/18489/bumps/bumps
+
+.. |RTD| image:: https://readthedocs.org/projects/bumps/badge/?version=latest
+   :alt: Documentation status
+   :target: https://bumps.readthedocs.io/en/latest/?badge=latest
 
 Release notes
 =============
