@@ -34,11 +34,8 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
-v0.7.19
-------------------
-* terminate the MPI session when the fit is complete instead of waiting for the
-  allocation to expire
-* allow a series of fits in the same MPI session
+v0.8.0 2020-12-16
+-----------------
 * add stopping conditions to DREAM, using *--alpha=p-value* to reject convergence
 * require *--overwrite* or *--resume* when reusing a store directory
 * enable outlier trimming in DREAM with --outliers=iqr
@@ -46,9 +43,11 @@ v0.7.19
 * display seed value used for fit so it can be rerun with *--seed*
 * save MCMC files using gzip
 * remove R stat from saved state
-* show seed value used for random number generator
-* support newest matplotlib
 * restore *--pars* option, which was broken in 0.7.17
+* terminate the MPI session when the fit is complete instead of waiting for the
+  allocation to expire
+* allow a series of fits in the same MPI session
+* support newest matplotlib
 
 v0.7.18 2020-11-16
 ------------------
