@@ -4,6 +4,9 @@ Option parser for bumps command line
 from __future__ import print_function
 
 import sys
+
+import numpy as np
+
 from .fitters import FITTERS, FIT_AVAILABLE_IDS, FIT_ACTIVE_IDS, FIT_DEFAULT_ID
 
 # TODO: replace with standard argparse module
@@ -37,44 +40,70 @@ class ParseOpts(object):
     USAGE = ""
 
     def __init__(self, args):
-        self._parse(args)
-
-    def _parse(self, args):
         if self.VALUES & self.FLAGS:
             raise TypeError("option used as both a flag and a value: %s"%
                             ",".join(self.VALUES&self.FLAGS))
-        flagargs = [v
-                    for v in sys.argv[1:]
-                    if v.startswith('--') and not '=' in v]
-        flags = set(v[2:] for v in flagargs)
-        if 'help' in flags or '-h' in sys.argv[1:] or '-?' in sys.argv[1:]:
+        self._parse(args)
+
+    def _parse(self, args):
+        if any(v in args for v in ('-?', '-h', '-help')):
             print(self.USAGE)
             sys.exit()
-        implicit = (set(self.IMPLICIT_VALUES.keys()) & flags)
-        unknown = flags - (self.FLAGS | implicit)
+
+        # Drop the "bumps" arg from the beginning of the list.
+        args = args[1:]
+
+        # Fill in implicit values. We need to do this to support something
+        # like "bumps ... --parallel=2 ... --parallel", which should have the
+        # later (implicit) parameter take precedence over the earlier
+        # parameters.
+        args = [
+            (arg + "=" + str(self.IMPLICIT_VALUES[arg[2:]])
+             if arg[2:] in self.IMPLICIT_VALUES else arg)
+            for arg in args]
+
+        # Parse options.
+        # Given tuples [..., (a, 1), ..., (a, 2), ...], then dict(tuples)
+        # will use the later value for the key rather than the earlier
+        # value, which is what we want for the command line interpreter.
+        position_args = [v for v in sys.argv[1:] if not v.startswith('--')]
+        flag_args = [
+            v[2:]  # convert --flag => flag
+            for v in args if v.startswith('--') and not '=' in v]
+        value_args = dict(
+            v[2:].split('=', 1)  # convert --flag=value => (flag, value)
+            for v in args if v.startswith('--') and '=' in v)
+
+        # Check that options are valid.
+        # TODO: move type checking from FitConfig.set_from_cli to here.
+        flags, values = set(flag_args), set(value_args.keys())
+        unknown = (flags|values) - (self.FLAGS|self.VALUES)
+        unexpected_value = flags - self.FLAGS
+        blank_values = set(
+            k for k, v in value_args.items() if k in self.VALUES and v == "")
+        missing_value = (values - self.VALUES) | blank_values
+        errors = []
         if any(unknown):
-            raise ValueError("Unknown options --%s.  Use -? for help."
-                             % ", --".join(unknown))
-        for f in self.FLAGS:
-            setattr(self, f, (f in flags))
+            errors.append(
+                "Unknown options --%s." % ", --".join(unknown))
+        if any(unexpected_value):
+            errors.append(
+                "Unexpected value for --%s." % ", --".join(sorted(unexpected_value)))
+        if any(missing_value):
+            errors.append(
+                "Missing value for --%s." % ", --".join(sorted(missing_value)))
+        if errors:
+            message = " ".join(errors + ["Use -? for help."])
+            raise ValueError(message)
 
-        for name in implicit:
-            setattr(self, name, self.IMPLICIT_VALUES[name])
+        # Set the values into the fields.
+        for option in self.FLAGS:
+            setattr(self, option, (option in flags))
 
-        valueargs = [v
-                     for v in sys.argv[1:]
-                     if v.startswith('--') and '=' in v]
-        for f in valueargs:
-            idx = f.find('=')
-            name = f[2:idx]
-            value = f[idx + 1:]
-            if name not in self.VALUES:
-                raise ValueError(
-                    "Unknown option --%s. Use -? for help." % name)
-            setattr(self, name, value)
+        for option, value in value_args.items():
+            setattr(self, option, value)
 
-        positionargs = [v for v in sys.argv[1:] if not v.startswith('--')]
-        self.args = positionargs
+        self.args = position_args
 
 
 # === Fitter option parsing ===
@@ -113,9 +142,10 @@ FIT_FIELDS = dict(
     samples=("Samples", parse_int),
     xtol=("x tolerance", float),
     ftol=("f(x) tolerance", float),
+    alpha=("Convergence", float),
     stop=("Stopping criteria", str),
     thin=("Thinning", parse_int),
-    burn=("Burn-in Steps", parse_int),
+    burn=("Burn-in steps", parse_int),
     pop=("Population", float),
     init=("Initializer", ChoiceList("eps", "lhs", "cov", "random")),
     CR=("Crossover ratio", float),
@@ -124,12 +154,17 @@ FIT_FIELDS = dict(
     Tmin=("Min temperature", float),
     Tmax=("Max temperature", float),
     radius=("Simplex radius", float),
+    # TODO: convert --trim into a boolean flag and update docs
+    trim=("Burn-in trim", yesno),
+    outliers=("Outliers" , ChoiceList("none", "iqr", "grubbs", "mahal")),
     )
 
 # Make sure all settings are parseable
 for fit in FITTERS:
-    assert all(opt in FIT_FIELDS for opt, _ in fit.settings), \
-        "Fitter %s contains unknown settings"%fit.id
+    assert all(opt in FIT_FIELDS for opt, _ in fit.settings), (
+        "Fitter %s contains unknown settings %s"
+        %(fit.id, ', '.join(opt for opt, _ in sorted(fit.settings)
+                            if opt not in FIT_FIELDS)))
 del fit
 
 class FitConfig(object):
@@ -239,28 +274,36 @@ class BumpsOpts(ParseOpts):
     Option parser for bumps.
     """
     MINARGS = 1
+    # TODO: document all options in USAGE and doc/guide/options.rst
+    # TODO: remove application-specific options like --staj
     FLAGS = set(("preview", "chisq", "profile", "time_model",
-                 "simulate", "simrandom", "shake", "worker",
+                 "simulate", "simrandom", "shake",
+                 "worker", # internal, so not documented
+                 "multiprocessing-fork", # passed in when app is a frozen image
+                 "remote", # not active, so not documented
                  "batch", "noshow", "overwrite", "stepmon",
-                 "err", "cov",
-                 "remote", "staj", "edit", "mpi", "keep_best",
-                 # passed in when app is a frozen image
-                 "multiprocessing-fork",
+                 "err", "cov", "edit", "mpi", "keep_best",
+                 "staj",
                  # passed when not running bumps, but instead using a
                  # bundled application as a python distribution with domain
                  # specific models pre-defined.
                  "i",
                 ))
     VALUES = set(("plot", "store", "resume", "entropy", "fit", "noise", "seed",
-                  "pars", "resynth", "transport", "notify", "queue", "time",
+                  "pars", "resynth", "time",
                   "checkpoint", "m", "c", "p", "parallel", "view",
+                  "trim", "alpha", "outliers",
+                  # The following options are for remote fitting via the
+                  # fitting service, but this is not currently active.
+                  "transport", "notify", "queue",
                  ))
     # Add in parameters from the fitters
     VALUES |= set(FIT_FIELDS.keys())
     # --parallel is equivalent to --parallel=0
     IMPLICIT_VALUES = {
         'parallel': '0',
-        'entropy': "llf",
+        'entropy': 'llf',
+        'resume': '-',
         }
     pars = None
     notify = ""
@@ -273,7 +316,9 @@ class BumpsOpts(ParseOpts):
     checkpoint = "0"
     parallel = ""
     entropy = None
+    trim = "true"
     view = None
+    alpha = 0.0
     PLOTTERS = "linear", "log", "residuals"
     USAGE = """\
 Usage: bumps [options] modelfile [modelargs]
@@ -291,6 +336,8 @@ Options:
         initial parameter values; fit results are saved as path/<modelname>.par
     --plot=log      [%(plotter)s]
         type of plot to display
+    --trim=true
+        trim any remaining burn before displaying plots [dream only]
     --simulate
         simulate a dataset using the initial problem parameters
     --simrandom
@@ -308,7 +355,7 @@ Options:
     --entropy=gmm|mvn|wnn|llf
         compute entropy on posterior distribution [dream only]
     --staj
-        output staj file when done
+        output staj file when done [Refl1D only]
     --edit
         start the gui
     --view=linear|log
@@ -351,6 +398,15 @@ Options:
         minimum population diameter
     --ftol=1e-4     [de, amoeba]
         minimum population flatness
+    --alpha=0.0     [dream]
+        p-level for rejecting convergence; with fewer samples use a stricter
+        stopping condition, such as --alpha=0.01 --samples=20000
+    --outliers=none [dream]
+        name of test used for removing outlier chains every N samples:
+          none:   no outlier removal
+          iqr:    use interquartile range on likelihood
+          grubbs: use t-test on likelihood
+          mahal:  use distance from parameter values on the best chain
     --pop=10        [dream, de, rl, ps]
         population size is pop times number of fitted parameters; if pop is
         negative, then set population size to -pop.
@@ -445,6 +501,8 @@ def getopts():
     """
     opts = BumpsOpts(sys.argv)
     opts.resynth = int(opts.resynth)
-    opts.seed = int(opts.seed) if opts.seed != "" else None
+    # Set a random seed if none is given; want to know the seed so we can
+    # reproduce the run.  The seed needs to be saved to the monitor file.
+    opts.seed = int(opts.seed) if opts.seed else np.random.randint(1000000)
     opts.fit_config.set_from_cli(opts)
     return opts

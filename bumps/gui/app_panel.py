@@ -407,12 +407,13 @@ class AppPanel(wx.Panel):
         if status == wx.ID_OK:
             self.save_results(path)
 
+    def set_fit_config(self, fit_config):
+        self.fit_config = fit_config
+
     def OnFitOptions(self, event):
-        # If there is an error here, it is because fit_config was not set
-        # when the panel was created.  Since this will never happen, we
-        # won't put in a runtime check.  Option processing happens in
-        # gui_app.MainApp.after_show as of this writing.
-        show_fit_config(self, self.fit_config)
+        # TODO: send fit_config to dialog rather than using options.FIT_CONFIG.
+        # Wait until sasview wx is abandoned before making this change.
+        show_fit_config(self)
 
     def OnFitStart(self, event):
         if self.fit_thread:

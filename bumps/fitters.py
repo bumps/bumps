@@ -755,7 +755,8 @@ class DreamFit(FitBase):
     name = "DREAM"
     id = "dream"
     settings = [('samples', int(1e4)), ('burn', 100), ('pop', 10),
-                ('init', 'eps'), ('thin', 1),
+                ('init', 'eps'), ('thin', 1), ('alpha', 0.01),
+                ('outliers', 'none'), ('trim', False),
                 ('steps', 0),  # deprecated: use --samples instead
                ]
 
@@ -768,7 +769,7 @@ class DreamFit(FitBase):
         from .dream import Dream
         if abort_test is None:
             abort_test = lambda: False
-        options = _fill_defaults(options, self.settings)
+        self.options = _fill_defaults(options, self.settings)
 
         if mapper:
             self.dream_model.mapper = mapper
@@ -788,11 +789,15 @@ class DreamFit(FitBase):
                         draws=pop_size * steps,
                         burn=pop_size * options['burn'],
                         thinning=options['thin'],
-                        monitor=self._monitor,
+                        monitor=self._monitor, alpha=options['alpha'],
+                        outlier_test=options['outliers'],
                         DE_noise=1e-6)
 
         self.state = sampler.sample(state=self.state, abort_test=abort_test)
-        self.state.mark_outliers()
+
+        self._trimmed = self.state.trim_portion() if options['trim'] else 1.0
+        #print("trimming", options['trim'], self._trimmed)
+        self.state.mark_outliers(portion=self._trimmed)
         self.state.keep_best()
         self.state.title = self.dream_model.problem.name
 
@@ -822,7 +827,7 @@ class DreamFit(FitBase):
         return x, -fx
 
     def entropy(self, **kw):
-        return self.state.entropy(**kw)
+        return self.state.entropy(portion=self._trimmed, **kw)
 
     def _monitor(self, state, pop, logp):
         # Get an early copy of the state
@@ -841,7 +846,7 @@ class DreamFit(FitBase):
         """
         from .dream.stats import var_stats
 
-        vstats = var_stats(self.state.draw())
+        vstats = var_stats(self.state.draw(portion=self._trimmed))
         return np.array([(v.p68[1] - v.p68[0]) / 2 for v in vstats], 'd')
 
     #def cov(self):
@@ -851,7 +856,8 @@ class DreamFit(FitBase):
     def load(self, input_path):
         from .dream.state import load_state, path_contains_saved_state
         if path_contains_saved_state(input_path):
-            print("loading saved state (this might take awhile) ...")
+            print("loading saved state from %s (this might take awhile) ..."
+                  % (input_path,))
             fn, labels = getattr(self.problem, 'derive_vars', (None, []))
             self.state = load_state(input_path, report=100, derived_vars=len(labels))
         else:
@@ -862,7 +868,7 @@ class DreamFit(FitBase):
         self.state.save(output_path)
 
     def plot(self, output_path):
-        self.state.show(figfile=output_path)
+        self.state.show(figfile=output_path, portion=self._trimmed)
         self.error_plot(figfile=output_path)
 
     def show(self):
@@ -873,8 +879,9 @@ class DreamFit(FitBase):
         import pylab
         from . import errplot
         # TODO: shouldn't mix calc and display!
-        res = errplot.calc_errors_from_state(self.dream_model.problem,
-                                             self.state)
+        res = errplot.calc_errors_from_state(problem=self.dream_model.problem,
+                                             state=self.state,
+                                             portion=self._trimmed)
         if res is not None:
             pylab.figure()
             errplot.show_errors(res)
@@ -1231,6 +1238,13 @@ def fit(problem, method=FIT_DEFAULT_ID, verbose=False, **options):
     detailed uncertainty analysis.  Optimizer information such as the
     stopping condition and the number of function evaluations are not
     yet included.
+
+    To run in parallel (with multiprocessing and dream)::
+
+        from bumps.mapper import MPMapper
+        mapper = MPMapper.start_mapper(problem, None, cpu=0) #cpu=0 for all CPUs
+        result = fit(problem, method="dream", mapper=mapper)
+
     """
     from scipy.optimize import OptimizeResult
 

@@ -4,7 +4,7 @@ MCMC plotting methods.
 from __future__ import division, print_function
 
 __all__ = ['plot_all', 'plot_corr', 'plot_corrmatrix',
-           'plot_trace', 'plot_R', 'plot_logp', 'format_vars']
+           'plot_trace', 'plot_logp', 'format_vars']
 
 import math
 
@@ -22,6 +22,9 @@ def plot_all(state, portion=1.0, figfile=None):
     draw = state.draw(portion=portion)
     all_vstats = var_stats(draw)
     print(format_vars(all_vstats))
+    print("\nStatistics and plots based on {nsamp:d} samples "
+          "({psamp:.1%} of total samples drawn)".format( \
+          nsamp=len(draw.points), psamp=portion))
     if figfile is not None:
         save_vars(all_vstats, figfile+"-err.json")
 
@@ -43,14 +46,6 @@ def plot_all(state, portion=1.0, figfile=None):
     if figfile is not None:
         savefig(figfile+"-trace"+figext)
 
-    # R stat plot
-    #figure()
-    #plot_R(state, portion=portion)
-    #if state.title:
-    #    suptitle(state.title)
-    #if figfile is not None:
-    #    savefig(figfile+"-R"+format)
-
     # convergence plot
     figure()
     plot_logp(state, portion=portion)
@@ -68,6 +63,15 @@ def plot_all(state, portion=1.0, figfile=None):
         if figfile is not None:
             savefig(figfile+"-corr"+figext)
 
+    # parallel coordinates plot
+    if draw.num_vars > 1:
+        from . import parcoord
+        figure()
+        parcoord.plot(draw, control_var=0)
+        if state.title:
+            suptitle(state.title)
+        if figfile is not None:
+            savefig(figfile+"-parcor"+figext)
 
 def plot_corrmatrix(draw):
     c = corrplot.Corr2d(draw.points.T, bins=50, labels=draw.labels)
@@ -122,12 +126,12 @@ def plot_corr(draw, vars=(0, 1)):
     ax_data.set_xlabel(labels[0])
     ax_data.set_ylabel(labels[1])
     ax_hist_x = axes([0.1, 0.75, 0.63, 0.2], sharex=ax_data)
-    ax_hist_x.hist(values[0], nbins, orientation='vertical', normed=1)
+    ax_hist_x.hist(values[0], nbins, orientation='vertical', density=1)
     ax_hist_x.plot(x, px, 'k-')
     ax_hist_x.yaxis.set_major_locator(MaxNLocator(4, prune="both"))
     setp(ax_hist_x.get_xticklabels(), visible=False,)
     ax_hist_y = axes([0.75, 0.1, 0.2, 0.63], sharey=ax_data)
-    ax_hist_y.hist(values[1], nbins, orientation='horizontal', normed=1)
+    ax_hist_y.hist(values[1], nbins, orientation='horizontal', density=1)
     ax_hist_y.plot(py, y, 'k-')
     ax_hist_y.xaxis.set_major_locator(MaxNLocator(4, prune="both"))
     setp(ax_hist_y.get_yticklabels(), visible=False)
@@ -152,33 +156,59 @@ def plot_trace(state, var=0, portion=None):
     draw, points, _ = state.chains()
     label = state.labels[var]
     start = int((1-portion)*len(draw)) if portion else 0
-    plot(arange(start, len(points))*state.thinning,
+    genid = arange(state.generation-len(draw)+start, state.generation)+1
+    plot(genid*state.thinning,
          squeeze(points[start:, state._good_chains, var]))
     xlabel('Generation number')
     ylabel(label)
 
 
-def plot_R(state, portion=None):
-    from pylab import plot, title, legend, xlabel, ylabel
-
-    draw, R = state.R_stat()
-    start = int((1-portion)*len(draw)) if portion else 0
-    plot(arange(start, len(R)), R[start:])
-    title('Convergence history')
-    legend(['P%d' % i for i in range(1, R.shape[1]+1)])
-    xlabel('Generation number')
-    ylabel('R')
-
-
 def plot_logp(state, portion=None):
-    from pylab import plot, title, xlabel, ylabel
+    from pylab import axes, title
+    from scipy.stats import chi2, kstest
+    from matplotlib.ticker import NullFormatter
 
+    # Plot log likelihoods
     draw, logp = state.logp()
     start = int((1-portion)*len(draw)) if portion else 0
-    plot(arange(start, len(logp)), logp[start:], ',', markersize=1)
+    genid = arange(state.generation-len(draw)+start, state.generation)+1
+    width, height, margin, delta = 0.7, 0.75, 0.1, 0.01
+    trace = axes([margin, 0.1, width, height])
+    trace.plot(genid, logp[start:], ',', markersize=1)
+    trace.set_xlabel('Generation number')
+    trace.set_ylabel('Log likelihood at x[k]')
     title('Log Likelihood History')
-    xlabel('Generation number')
-    ylabel('Log likelihood at x[k]')
+
+    # Plot log likelihood trend line
+    from bumps.wsolve import wpolyfit
+    from .formatnum import format_uncertainty
+    x = np.arange(start, logp.shape[0]) + state.generation - state.Ngen + 1
+    y = np.mean(logp[start:], axis=1)
+    dy = np.std(logp[start:], axis=1, ddof=1)
+    p = wpolyfit(x, y, dy=dy, degree=1)
+    px, dpx = p.ci(x, 1.)
+    trace.plot(x, px, 'k-', x, px + dpx, 'k-.', x, px - dpx, 'k-.')
+    trace.text(x[0], y[0], "slope="+format_uncertainty(p.coeff[0], p.std[0]),
+               va='top', ha='left')
+
+    # Plot long likelihood histogram
+    data = logp[start:].flatten()
+    hist = axes([margin+width+delta, 0.1, 1-2*margin-width-delta, height])
+    hist.hist(data, bins=40, orientation='horizontal', density=True)
+    hist.set_ylim(trace.get_ylim())
+    null_formatter = NullFormatter()
+    hist.xaxis.set_major_formatter(null_formatter)
+    hist.yaxis.set_major_formatter(null_formatter)
+
+    # Plot chisq fit to log likelihood histogram
+    float_df, loc, scale = chi2.fit(-data, f0=state.Nvar)
+    df = int(float_df + 0.5)
+    pval = kstest(-data, lambda x: chi2.cdf(x, df, loc, scale))
+    #with open("/tmp/chi", "a") as fd:
+    #    print("chi2 pars for llf", float_df, loc, scale, pval, file=fd)
+    xmin, xmax = trace.get_ylim()
+    x = np.linspace(xmin, xmax, 200)
+    hist.plot(chi2.pdf(-x, df, loc, scale), x, 'r')
 
 
 def tile_axes(n, size=None):
@@ -212,3 +242,4 @@ def tile_axes(n, size=None):
         nh = 1
     nw = int(math.ceil(n/nh))
     return nw, nh
+

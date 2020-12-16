@@ -178,12 +178,15 @@ def load_best(problem, path):
     # one bit for each parameter. This ugly hack is to support a previous
     # ugly hack in which undefined parameters are initialized with LHS but
     # defined parameters are initialized with eps, cov or random.
-    # TODO: find a better way to "free" parameters on --resume/--pars.
+    # TODO: find a better way to "free" parameters on --pars.
+    # TODO: find a way to "free" parameters on --resume.
     values, undefined = [], []
     for label, default_value in zip(labels, problem.getp()):
-        remaining_values = targets[label]
-        values.append(remaining_values.pop(0) if remaining_values else default_value)
-        undefined.append(not remaining_values)
+        remaining = targets[label]
+        is_empty = not remaining
+        # popping the next value from remaining modifies targets[label]
+        values.append(default_value if is_empty else remaining.pop(0))
+        undefined.append(is_empty)
     problem.setp(np.asarray(values))
     if any(undefined):
         problem.undefined = np.asarray(undefined)
@@ -215,7 +218,7 @@ def store_overwrite_query(path):
     """
     print(path, "already exists.")
     print(
-        "Press 'y' to overwrite, or 'n' to abort and restart with --store=newpath")
+        "Press 'y' to overwrite, or 'n' to abort and restart with --overwrite, --resume, or --store=newpath")
     ans = input("Overwrite [y/n]? ")
     if ans not in ("y", "Y", "yes"):
         sys.exit(1)
@@ -235,10 +238,12 @@ def make_store(problem, opts, exists_handler):
     problem.output_path = os.path.join(problem.store, problem.name)
 
     # Check if already exists
-    if not opts.overwrite and os.path.exists(problem.output_path + '.out'):
+    store_exists = os.path.exists(problem.output_path + '.par')
+    if not opts.overwrite and opts.resume is None and store_exists:
         if opts.batch:
             print(
-                problem.store + " already exists.  Use --overwrite to replace.", file=sys.stderr)
+                problem.store + " already exists.  Restart with --overwrite, --resume, or --store=newpath",
+                file=sys.stderr)
             sys.exit(1)
         exists_handler(problem.output_path)
 
@@ -343,7 +348,7 @@ def initial_model(opts):
             problem.simulate_data(noise=noise)
             print("simulation parameters")
             print(problem.summarize())
-            print("chisq at simulation", problem.chisq())
+            print("chisq at simulation", problem.chisq_str())
         if opts.shake:
             problem.randomize()
     else:
@@ -639,7 +644,7 @@ def main():
 
     else:
         # Show command line arguments and initial model
-        print("#", " ".join(sys.argv))
+        print("#", " ".join(sys.argv), "--seed=%d"%opts.seed)
         problem.show()
 
         # Check that there are parameters to be fitted.
