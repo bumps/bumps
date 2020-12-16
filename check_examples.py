@@ -41,7 +41,6 @@ examples = [
     "constraints/inequality.py",
     "constraints/gmodel.py",
     "test_functions/anticor.py",
-    #"test_functions/model.py",
 ]
 
 
@@ -54,6 +53,7 @@ def main():
             print("\n" + f)
             if command(os.path.join(EXAMPLEDIR, f)) != 0:
                 # break
+                sys.exit(1) # example failed
                 pass
 
 if __name__ == "__main__":
