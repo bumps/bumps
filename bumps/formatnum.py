@@ -36,6 +36,7 @@ Example::
     >>> format_uncertainty.compact = False
     >>> print(format_uncertainty(v,dv))
     757.236 +/- 0.010
+    >>> format_uncertainty.compact = True  # restore default
 """
 from __future__ import division
 import math
