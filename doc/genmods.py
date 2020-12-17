@@ -190,7 +190,7 @@ BUMPS_MODULES = [
     ('random_lines', 'Random lines and particle swarm optimizers'),
     ('simplex', 'Nelder-Mead simplex optimizer (amoeba)'),
     ('util', 'Miscellaneous functions'),
-    ('vfs', 'Virtual file system for loading models from zip files'),
+    #('vfs', 'Virtual file system for loading models from zip files'),
     ('wsolve', 'Weighted linear and polynomial solver with uncertainty'),
     ]
 
