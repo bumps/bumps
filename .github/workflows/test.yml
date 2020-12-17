@@ -43,7 +43,6 @@ jobs:
 
     - name: Check fitters
       run: |
-        python check_examples.py --chisq
         python check_fitters.py
 
     - name: Check that the docs build (linux only)
