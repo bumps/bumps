@@ -49,4 +49,4 @@ jobs:
       if: matrix.cfg.doc == 1
       run: |
         python -m pip install sphinx
-        make -j 4 -C doc SPHINXOPTS="-W --keep-going" html
+        make -j 4 -C doc SPHINXOPTS="-W --keep-going -n" html
