@@ -63,6 +63,10 @@ extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest',
 nitpick_ignore = [
     ('py:class', 'type'),
     ('py:class', 'object'),
+    ("py:class", "numpy.ndarray"),
+    ("py:class", "np.ndarray"),
+    ("py:class", "Real"),
+    ("py:class", "Integral"),
     ]
 
 # Add any paths that contain templates here, relative to this directory.
