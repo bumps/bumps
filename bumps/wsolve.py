@@ -29,7 +29,7 @@ Weighted system::
 
     >>> import numpy as np
     >>> from bumps import wsolve
-    >>> A = np.matrix("1,2,3;2,1,3;1,1,1",'d').A
+    >>> A = np.array([[1,2,3],[2,1,3],[1,1,1]], dtype='d')
     >>> dy = [0.2,0.01,0.1]
     >>> y = [ 14.16, 13.01, 6.15]
     >>> s = wsolve.wsolve(A,y,dy)
