@@ -704,12 +704,16 @@ class Constraint(object):
         return "(%s %s %s)" %(self.a, self.op_str, self.b)
 
 # ==== Arithmetic operators ===
+ALLOWED_OPERATORS = ["add","sub","mul","truediv","floordiv","pow"]
+
 class Operator(BaseParameter):
     """
     Parameter operator
     """
     def __init__(self, a, b, op_name, op_str):
         import operator
+        if not op_name.lower() in ALLOWED_OPERATORS:
+            raise ValueError("Operator name %s is not in allowed operators: %s" % (op_name, str(ALLOWED_OPERATORS)))
         self.a, self.b = a,b
         self.op_name = op_name
         self.op = getattr(operator, op_name.lower())
@@ -1125,3 +1129,11 @@ class Alias(object):
             'obj': to_dict(self.obj),
             'attr': self.attr,
         }
+
+def test_operator():
+    a = Parameter(1, name='a')
+    b = Parameter(2, name='b')
+    a_b = a + b
+    a.value = 3
+    assert a_b.value == 5.
+    assert a_b.name == '(a + b)'
