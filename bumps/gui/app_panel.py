@@ -59,7 +59,7 @@ PYTHON_FILES = "Script files (*.py)|*.py"
 DATA_FILES = "Data files (*.dat)|*.dat"
 TEXT_FILES = "Text files (*.txt)|*.txt"
 ALL_FILES = "All files (*.*)|*"
-PARS_FILES = "Parameter files (*.pars)|*.pars"
+PARS_FILES = "Parameter files (*.par)|*.par"
 
 # Custom colors.
 WINDOW_BKGD_COLOUR = "#ECE9D8"
@@ -155,8 +155,8 @@ class AppPanel(wx.Panel):
         frame.Bind(wx.EVT_MENU, self.OnFileOpen, _item)
         #file_menu.Enable(id=wx.ID_OPEN, enable=False)
         _item = file_menu.Prepend(wx.ID_ANY,
-                                  "&Apply Pars File",
-                                  "Apply parameters from .pars file to loaded model")
+                                  "Apply &Pararameters",
+                                  "Apply parameters from .par file to loaded model")
         frame.Bind(wx.EVT_MENU, self.OnParsFileOpen, _item)
         _item = file_menu.Prepend(wx.ID_NEW,
                                   "&New",
