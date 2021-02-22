@@ -36,7 +36,7 @@ import wx
 import wx.aui
 
 from .. import plugin
-from ..cli import load_model
+from ..cli import load_model, load_best
 from ..util import redirect_console
 from ..dream import stats as dream_stats
 
@@ -59,6 +59,7 @@ PYTHON_FILES = "Script files (*.py)|*.py"
 DATA_FILES = "Data files (*.dat)|*.dat"
 TEXT_FILES = "Text files (*.txt)|*.txt"
 ALL_FILES = "All files (*.*)|*"
+PARS_FILES = "Parameter files (*.par)|*.par"
 
 # Custom colors.
 WINDOW_BKGD_COLOUR = "#ECE9D8"
@@ -153,6 +154,10 @@ class AppPanel(wx.Panel):
                                   "Open existing model")
         frame.Bind(wx.EVT_MENU, self.OnFileOpen, _item)
         #file_menu.Enable(id=wx.ID_OPEN, enable=False)
+        _item = file_menu.Prepend(wx.ID_ANY,
+                                  "Apply &Pararameters",
+                                  "Apply parameters from .par file to loaded model")
+        frame.Bind(wx.EVT_MENU, self.OnParsFileOpen, _item)
         _item = file_menu.Prepend(wx.ID_NEW,
                                   "&New",
                                   "Create new model")
@@ -362,6 +367,25 @@ class AppPanel(wx.Panel):
         # Process file if user clicked okay.
         if status == wx.ID_OK:
             self.load_model(path)
+    
+    def OnParsFileOpen(self, event):
+        # Load a parameters (.pars) file to apply to current problem.
+        dlg = wx.FileDialog(self,
+                            message="Select Parameters File",
+                            #defaultDir=os.getcwd(),
+                            #defaultFile="",
+                            wildcard=PARS_FILES,
+                            style=wx.FD_OPEN)
+
+        # Wait for user to close the dialog.
+        status = dlg.ShowModal()
+        path = dlg.GetPath()
+        dlg.Destroy()
+
+        # Process file if user clicked okay.
+        if status == wx.ID_OK:
+            self.apply_parameters(path)
+
 
     def OnFileReload(self, event):
         path = getattr(self, '_reload_path', self.model.path)
@@ -585,6 +609,13 @@ class AppPanel(wx.Panel):
         self._reload_path = path
         model = load_model(path)
         signal.model_new(model=model)
+    
+    def apply_parameters(self, path):
+        load_best(self.model, path)
+        # TODO: remove this once LHS randomization is controlled from the command line. Ticket #51
+        if hasattr(self.model, 'undefined'):
+            del self.model.undefined
+        signal.update_parameters(model=self.model)
 
     def save_model(self, path):
         try:
