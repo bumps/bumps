@@ -75,6 +75,7 @@ def generate(problem, init='eps', pop=10, use_point=True, **options):
     # TODO: find a better way to "free" parameters on --resume/--pars
     undefined = getattr(problem, 'undefined', None)
     if undefined is not None:
+        del problem.undefined
         population[:, undefined] = lhs_init(
             pop_size, initial[undefined], bounds[:, undefined],
             use_point=False)

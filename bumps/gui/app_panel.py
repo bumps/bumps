@@ -612,6 +612,9 @@ class AppPanel(wx.Panel):
     
     def apply_parameters(self, path):
         load_best(self.model, path)
+        # TODO: remove this once LHS randomization is controlled from the command line. Ticket #51
+        if hasattr(self.model, 'undefined'):
+            del self.model.undefined
         signal.update_parameters(model=self.model)
 
     def save_model(self, path):
