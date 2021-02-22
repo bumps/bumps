@@ -374,8 +374,8 @@ class AppPanel(wx.Panel):
                             message="Select Parameters File",
                             #defaultDir=os.getcwd(),
                             #defaultFile="",
-                            wildcard=(PARS_FILES),
-                            style=wx.FD_OPEN|wx.FD_CHANGE_DIR)
+                            wildcard=PARS_FILES,
+                            style=wx.FD_OPEN)
 
         # Wait for user to close the dialog.
         status = dlg.ShowModal()
