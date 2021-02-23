@@ -31,10 +31,6 @@ import warnings
 import traceback
 
 import shutil
-try:
-    import dill as pickle
-except ImportError:
-    import pickle
 
 import numpy as np
 # np.seterr(all="raise")
@@ -82,9 +78,15 @@ def load_model(path, model_options=None):
         problem = plugin.load_model(filename)
         if problem is None:
             # print "loading",filename,"from",directory
+            # TODO: eliminate pickle!!
             if filename.endswith('pickle'):
+                try:
+                    import dill as pickle
+                except ImportError:
+                    import pickle
                 # First see if it is a pickle
-                problem = pickle.load(open(filename, 'rb'))
+                with open(filename, 'rb') as fd:
+                    problem = pickle.load(fd)
             else:
                 # Then see if it is a python model script
                 problem = load_problem(filename, options=model_options)
@@ -138,34 +140,55 @@ def save_best(fitdriver, problem, best, view=None):
 PARS_PATTERN = re.compile(r"^(?P<label>.*) (?P<value>[^ ]*)\n$")
 def load_best(problem, path):
     """
-    Load parameter values from a file.
+    Reload individual parameter values from a saved .par file.
+
+    If the label does not exist in the file, use the value from the model
+    as the default value. Ignore labels that do not exist in the model. In
+    that way we can load parameters from an old fit with minimal fuss, even
+    as we add, delete and move parameters in the model. If any parameters
+    are missing, set *problem.undefined* to the a boolean index of the
+    undefined parameters.
+
+    There is an interaction with --init=eps and the par file. If any parameters
+    are missing from the par file they will be randomized across the
+    entire parameter range using the equivalent of --init=lhs. That means
+    you can drop a # at the beginning of the line in the .par file
+    and that parameter will be shuffled on restart, with the remaining
+    parameters starting near the initial value.
     """
-    # Reload the individual parameters from a saved par file. Use the value
-    # from the model as the default value.  Keep track of which parameters are
-    # defined in the file so we can see if any are missing.
-    targets = dict(zip(problem.labels(), problem.getp()))
-    defined = set()
+    # WARNING: Labels are not unique! Need to track multiple instances of
+    # the same label.
     if not os.path.isfile(path):
         path = os.path.join(path, problem.name+".par")
+    if not os.path.isfile(path):
+        raise ValueError("Parameter file %s does not exist." % path)
+    labels = problem.labels()
+    targets = {label: [] for label in labels}
     with open(path, 'rt') as fid:
         for line in fid:
             m = PARS_PATTERN.match(line)
             label, value = m.group('label'), float(m.group('value'))
+            # Accumulate values for labels only if they appear in the model.
             if label in targets:
-                targets[label] = value
-                defined.add(label)
-    values = [targets[label] for label in problem.labels()]
-    problem.setp(np.asarray(values))
+                targets[label].append(value)
 
-    # Identify the missing parameters if any.  These are stuffed into the
-    # the problem definition as an optional "undefined" attribute, with
-    # one bit for each parameter.  If all parameters are defined, then none
-    # are undefined.  This ugly hack is to support a previous ugly hack in
-    # which undefined parameters are initialized with LHS but defined
-    # parameters are initialized with eps, cov or random.
-    # TODO: find a better way to "free" parameters on --resume/--pars.
-    if len(values) != len(defined):
-        undefined = [label not in defined for label in problem.labels()]
+    # Populate model with named parameters in the order they occur in the
+    # parameter file. Identify the missing parameters if any, adding them
+    # to the the problem definition as an optional "undefined" attribute with
+    # one bit for each parameter. This ugly hack is to support a previous
+    # ugly hack in which undefined parameters are initialized with LHS but
+    # defined parameters are initialized with eps, cov or random.
+    # TODO: find a better way to "free" parameters on --pars.
+    # TODO: find a way to "free" parameters on --resume.
+    values, undefined = [], []
+    for label, default_value in zip(labels, problem.getp()):
+        remaining = targets[label]
+        is_empty = not remaining
+        # popping the next value from remaining modifies targets[label]
+        values.append(default_value if is_empty else remaining.pop(0))
+        undefined.append(is_empty)
+    problem.setp(np.asarray(values))
+    if any(undefined):
         problem.undefined = np.asarray(undefined)
 #CRUFT
 recall_best = load_best
@@ -195,7 +218,7 @@ def store_overwrite_query(path):
     """
     print(path, "already exists.")
     print(
-        "Press 'y' to overwrite, or 'n' to abort and restart with --store=newpath")
+        "Press 'y' to overwrite, or 'n' to abort and restart with --overwrite, --resume, or --store=newpath")
     ans = input("Overwrite [y/n]? ")
     if ans not in ("y", "Y", "yes"):
         sys.exit(1)
@@ -215,10 +238,12 @@ def make_store(problem, opts, exists_handler):
     problem.output_path = os.path.join(problem.store, problem.name)
 
     # Check if already exists
-    if not opts.overwrite and os.path.exists(problem.output_path + '.out'):
+    store_exists = os.path.exists(problem.output_path + '.par')
+    if not opts.overwrite and opts.resume is None and store_exists:
         if opts.batch:
             print(
-                problem.store + " already exists.  Use --overwrite to replace.", file=sys.stderr)
+                problem.store + " already exists.  Restart with --overwrite, --resume, or --store=newpath",
+                file=sys.stderr)
             sys.exit(1)
         exists_handler(problem.output_path)
 
@@ -226,10 +251,6 @@ def make_store(problem, opts, exists_handler):
     if not os.path.exists(problem.store):
         os.mkdir(problem.store)
     shutil.copy2(problem.path, problem.store)
-
-    # Redirect sys.stdout to capture progress
-    if opts.batch:
-        sys.stdout = open(problem.output_path + ".mon", "w")
 
 def run_profiler(problem, steps):
     """
@@ -261,7 +282,12 @@ def run_timer(mapper, problem, steps):
     """
     import time
     T0 = time.time()
-    p = initpop.random_init(int(steps), None, problem)
+    steps = int(steps)
+    p = initpop.generate(
+        problem, init='random', pop=-steps, use_point=False)
+    if p.shape == (0,):
+        # No fitting parameters --- generate an empty population
+        p = np.empty((steps, 0))
     mapper(p)
     print("time per model eval: %g ms" % (1000 * (time.time() - T0) / steps,))
 
@@ -271,11 +297,16 @@ def start_remote_fit(problem, options, queue, notify):
     Queue remote fit.
     """
     from jobqueue.client import connect
+    try:
+        from dill import dumps as dill_dumps
+        dumps = lambda obj: dill_dumps(obj, recurse=True)
+    except ImportError:
+        from pickle import dumps
 
     data = dict(package='bumps',
                 version=__version__,
-                problem=pickle.dumps(problem),
-                options=pickle.dumps(options))
+                problem=dumps(problem),
+                options=dumps(options))
     request = dict(service='fitter',
                    version=__version__,  # fitter service version
                    notify=notify,
@@ -317,7 +348,7 @@ def initial_model(opts):
             problem.simulate_data(noise=noise)
             print("simulation parameters")
             print(problem.summarize())
-            print("chisq at simulation", problem.chisq())
+            print("chisq at simulation", problem.chisq_str())
         if opts.shake:
             problem.randomize()
     else:
@@ -337,7 +368,7 @@ def resynth(fitdriver, problem, mapper, opts):
 
     *mapper* is one of the available :mod:`bumps.mapper` classes.
 
-    *opts* is a :class:`bumps.cli.BumpsOpts` object representing the command
+    *opts* is a :class:`bumps.options.BumpsOpts` object representing the command
     line parameters.
     """
     make_store(problem, opts, exists_handler=store_overwrite_query)
@@ -505,14 +536,13 @@ def main():
 
     if len(sys.argv) == 1:
         sys.argv.append("-?")
-        print("\nNo modelfile parameter was specified.\n")
 
     # run command with bumps in the environment
     if sys.argv[1] == '-m':
         import runpy
         sys.argv = sys.argv[2:]
         runpy.run_module(sys.argv[0], run_name="__main__")
-        sys.exit()
+        sys.exit(0)
     elif sys.argv[1] == '-p':
         import runpy
         sys.argv = sys.argv[2:]
@@ -543,6 +573,10 @@ def main():
         config_matplotlib()
 
     problem = initial_model(opts)
+    if problem is None:
+        print("\n!!! Model file missing from command line --- abort !!!.",
+              file=sys.stderr)
+        sys.exit(1)
 
     # TODO: AMQP mapper as implemented requires workers started up with
     # the particular problem; need to be able to transport the problem
@@ -578,6 +612,11 @@ def main():
         opts.fit_config.selected_fitter, problem=problem, abort_test=abort_test,
         **opts.fit_config.selected_values)
 
+    # Start fitter within the domain so that constraints are valid
+    clipped = fitdriver.clip()
+    if clipped:
+        print("Start value clipped to range for parameter", ", ".join(clipped))
+
     if opts.time_model:
         run_timer(mapper.start_mapper(problem, opts.args),
                   problem, steps=int(opts.steps))
@@ -605,13 +644,14 @@ def main():
 
     else:
         # Show command line arguments and initial model
-        print("#", " ".join(sys.argv))
+        print("#", " ".join(sys.argv), "--seed=%d"%opts.seed)
         problem.show()
 
         # Check that there are parameters to be fitted.
         if not len(problem.getp()):
-            print("\n!!! No parameters selected for fitting---abort !!!\n")
-            return
+            print("\n!!! No parameters selected for fitting---abort !!!\n",
+                  file=sys.stderr)
+            sys.exit(1)
 
         # Run the fit
         if opts.resume == '-':
@@ -622,6 +662,10 @@ def main():
             resume_path = None
 
         make_store(problem, opts, exists_handler=store_overwrite_query)
+
+        # Redirect sys.stdout to capture progress
+        if opts.batch:
+            sys.stdout = open(problem.output_path + ".mon", "w")
 
         # TODO: fix techical debt with checkpoint monitor implementation
         # * The current checkpoint implementation is self-referential:
@@ -666,8 +710,15 @@ def main():
         if opts.cov:
             fitdriver.show_cov()
         if opts.entropy:
-            fitdriver.show_entropy()
+            fitdriver.show_entropy(opts.entropy)
         mapper.stop_mapper(fitdriver.mapper)
+
+        # If in batch mode then explicitly close the monitor file on completion
+        if opts.batch:
+            sys.stderr.close()
+            sys.stderr = sys.__stderr__
+
+        # Display the plots
         if not opts.batch and not opts.mpi and not opts.noshow:
             beep()
             import pylab

@@ -30,16 +30,13 @@ of the frame of the GUI for the Bumps application.
 from __future__ import division
 import os
 import threading
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
+from copy import deepcopy
 
 import wx
 import wx.aui
 
 from .. import plugin
-from ..cli import load_model
+from ..cli import load_model, load_best
 from ..util import redirect_console
 from ..dream import stats as dream_stats
 
@@ -62,6 +59,7 @@ PYTHON_FILES = "Script files (*.py)|*.py"
 DATA_FILES = "Data files (*.dat)|*.dat"
 TEXT_FILES = "Text files (*.txt)|*.txt"
 ALL_FILES = "All files (*.*)|*"
+PARS_FILES = "Parameter files (*.par)|*.par"
 
 # Custom colors.
 WINDOW_BKGD_COLOUR = "#ECE9D8"
@@ -108,6 +106,11 @@ class AppPanel(wx.Panel):
 
         EVT_FIT_PROGRESS.Bind(self, wx.ID_ANY, wx.ID_ANY, self.OnFitProgress)
         EVT_FIT_COMPLETE.Bind(self, wx.ID_ANY, wx.ID_ANY, self.OnFitComplete)
+
+        # _fit_abort and maybe _uncertainty_state are managed by fit_lock
+        self.fit_lock = threading.Lock()
+        self._fit_abort = False
+        #self._uncertainty_state = None
         self.fit_thread = None
         self.fit_config = None
 
@@ -151,6 +154,10 @@ class AppPanel(wx.Panel):
                                   "Open existing model")
         frame.Bind(wx.EVT_MENU, self.OnFileOpen, _item)
         #file_menu.Enable(id=wx.ID_OPEN, enable=False)
+        _item = file_menu.Prepend(wx.ID_ANY,
+                                  "Apply &Pararameters",
+                                  "Apply parameters from .par file to loaded model")
+        frame.Bind(wx.EVT_MENU, self.OnParsFileOpen, _item)
         _item = file_menu.Prepend(wx.ID_NEW,
                                   "&New",
                                   "Create new model")
@@ -360,6 +367,25 @@ class AppPanel(wx.Panel):
         # Process file if user clicked okay.
         if status == wx.ID_OK:
             self.load_model(path)
+    
+    def OnParsFileOpen(self, event):
+        # Load a parameters (.pars) file to apply to current problem.
+        dlg = wx.FileDialog(self,
+                            message="Select Parameters File",
+                            #defaultDir=os.getcwd(),
+                            #defaultFile="",
+                            wildcard=PARS_FILES,
+                            style=wx.FD_OPEN)
+
+        # Wait for user to close the dialog.
+        status = dlg.ShowModal()
+        path = dlg.GetPath()
+        dlg.Destroy()
+
+        # Process file if user clicked okay.
+        if status == wx.ID_OK:
+            self.apply_parameters(path)
+
 
     def OnFileReload(self, event):
         path = getattr(self, '_reload_path', self.model.path)
@@ -367,7 +393,7 @@ class AppPanel(wx.Panel):
 
     def OnFileSave(self, event):
         if self.model is not None:
-            # Force the result to be a pickle
+            # Force file extension to be MODEL_EXT
             self.model.path = os.path.splitext(self.model.path)[0]+MODEL_EXT
             self.save_model(self.model.path)
         else:
@@ -405,42 +431,82 @@ class AppPanel(wx.Panel):
         if status == wx.ID_OK:
             self.save_results(path)
 
+    def set_fit_config(self, fit_config):
+        self.fit_config = fit_config
+
     def OnFitOptions(self, event):
-        # If there is an error here, it is because fit_config was not set
-        # when the panel was created.  Since this will never happen, we
-        # won't put in a runtime check.  Option processing happens in
-        # gui_app.MainApp.after_show as of this writing.
-        show_fit_config(self, self.fit_config)
+        # TODO: send fit_config to dialog rather than using options.FIT_CONFIG.
+        # Wait until sasview wx is abandoned before making this change.
+        show_fit_config(self)
 
     def OnFitStart(self, event):
-        self.uncertainty_state = False
         if self.fit_thread:
             self.sb.SetStatusText("Error: Fit already running")
             return
         # TODO: better access to model parameters
         if len(self.model.getp()) == 0:
-            raise ValueError ("Problem has no fittable parameters")
+            raise ValueError("Problem has no fittable parameters")
 
         # Start a new thread worker and give fit problem to the worker.
         fitclass = self.fit_config.selected_fitter
         options = self.fit_config.selected_values
-        self.fitLock = threading.Lock()
-        self.fitAbort = 0
 
-        def abort_test():
-            return self.fitAbort
-        self.fit_thread = FitThread(win=self, fitLock=self.fitLock,
-                                    abort_test=abort_test,
-                                    problem=self.model,
-                                    fitclass=fitclass,
-                                    options=options)
+        # Clear abort and uncertainty state
+        self.abort = False
+        self.uncertainty_state = None
+        self.fit_thread = FitThread(
+            win=self,
+            abort_test=self._is_abort,
+            problem=self.model,
+            fitclass=fitclass,
+            options=options,
+            # Number of seconds between updates to the GUI, or 0 for no updates
+            convergence_update=5,
+            uncertainty_update=3600,
+            )
+        self.fit_thread.start()
         self.sb.SetStatusText("Fit status: Running", 3)
 
+    def _is_abort(self):
+        return self.abort
+
+    @property
+    def abort(self):
+        with self.fit_lock:
+            return self._fit_abort
+
+    @abort.setter
+    def abort(self, state):
+        with self.fit_lock:
+            self._fit_abort = state
+
+    @property
+    def uncertainty_state(self):
+        """
+        MCMC chain created by the DREAM optimizer.
+
+        This is a thread-locked attribute maintained by the fitting thread.
+        A deep copy of the attribute is made before setting so that state
+        can continue to update within the fit thread while the user interface
+        accesses the last state that was set.
+        """
+        with self.fit_lock:
+            return self._uncertainty_state
+
+    @uncertainty_state.setter
+    def uncertainty_state(self, state):
+        state_copy = deepcopy(state)
+        with self.fit_lock:
+            self._uncertainty_state = state_copy
+
     def OnFitStop(self, event):
-        with self.fitLock:
-            self.fitAbort = 1
+        self.abort = True
 
     def OnFitComplete(self, event):
+        if self.fit_thread is not None:
+            self.fit_thread.join(1) # 1 second timeout on join
+            if self.fit_thread.is_alive():
+                signal.log_message(message="fit thread failed to complete")
         self.fit_thread = None
         chisq = nice(2*event.value/event.problem.dof)
         event.problem.setp(event.point)
@@ -469,6 +535,35 @@ class AppPanel(wx.Panel):
 
 
     def OnFitProgress(self, event):
+        self._fit_progress(event)
+        return
+
+        # Note: The following code was used to debugging plotting memory
+        # and speed issues. It is here in case it might be useful again.
+        if event.message == 'uncertainty_final':
+            event.message = 'uncertainty_update'  # don't do model uncertainty
+            n = 0
+            import psutil, time, gc
+            pid = os.getpid()
+            proc = psutil.Process()
+            t0 = time.perf_counter()
+            signal.log_message("****** entering cycle ******")
+            while True:
+                self._fit_progress(event)
+                t1 = time.perf_counter()
+                msg = ("========== cycle %d pid %d time %.3f s ==========="
+                       % (n, pid, t1 - t0))
+                t0 = t1
+                #signal.log_message(msg)
+                #signal.log_message(f"memory {proc.memory_full_info()}")
+                gc.collect()
+                print(msg)
+                print("memory", proc.memory_full_info())
+                n += 1
+                wx.Yield()
+                #if n > 100: break
+
+    def _fit_progress(self, event):
         if event.message == 'progress':
             chisq = nice(2*event.value/event.problem.dof)
             message = "step %5d chisq %g"%(event.step, chisq)
@@ -480,17 +575,29 @@ class AppPanel(wx.Panel):
         elif event.message == 'convergence_update':
             self.view['convergence'].OnFitProgress(event)
         elif event.message in ('uncertainty_update', 'uncertainty_final'):
-            self.uncertainty_state = event.uncertainty_state
+            # TODO: revert to event.uncertainty_state if memory leak isn't fixed
+            # Note: uncertainty_state is updated directly by the fit thread.
+            # It's a copy protected by fit_lock so it should be self-consistent.
+            state = self.uncertainty_state
+            stats = dream_stats.var_stats(state.draw())
             self.console['state'] = self.uncertainty_state
-            self.view['uncertainty'].OnFitProgress(event)
-            self.view['correlation'].OnFitProgress(event)
-            self.view['trace'].OnFitProgress(event)
+            self.view['uncertainty'].fit_progress(event.problem, state, stats)
+            self.view['correlation'].fit_progress(event.problem, state)
+            self.view['trace'].fit_progress(event.problem, state)
+            # TODO: send parameter stats to a view
+            # It would be nice to have a "log scale" log of parameter history,
+            # where the density of entries decreases exponentially over time.
+            # So for example, the last 5, then 10 20 30 40 50, then 100, 200,
+            # 300, 400, 500, ... Maybe have a slider so that you can drag it
+            # forward and backward and see changes over time. Use box plots
+            # to represent mode, median, mean, 68% and 95% intervals. Export
+            # latest or all to CSV or text for pasting into word or excel.
             if event.message == 'uncertainty_final':
-                self.view['error'].OnFitProgress(event)
-            # variable stats are needed in order to plot UncertaintyView, and
-            # so are computed therein.  Format them nicely and show them on
-            # the console as well.
-            signal.log_message(dream_stats.format_vars(self.view['uncertainty'].plot_state[1]))
+                self.view['error'].fit_progress(event.problem, state)
+                # Format the final variable nicely and show them on the console.
+                # Note: only done at the end because GUI gets overwhelmed when
+                # the text control has too much text.
+                signal.log_message(dream_stats.format_vars(stats))
         else:
             raise ValueError("Unknown fit progress message "+event.message)
 
@@ -502,13 +609,25 @@ class AppPanel(wx.Panel):
         self._reload_path = path
         model = load_model(path)
         signal.model_new(model=model)
+    
+    def apply_parameters(self, path):
+        load_best(self.model, path)
+        # TODO: remove this once LHS randomization is controlled from the command line. Ticket #51
+        if hasattr(self.model, 'undefined'):
+            del self.model.undefined
+        signal.update_parameters(model=self.model)
 
     def save_model(self, path):
+        try:
+            import dill
+            dump = lambda obj, fid: dill.dump(obj, fid, recurse=True)
+        except ImportError:
+            from pickle import dump
         try:
             if hasattr(self.model, 'save_json'):
                 self.model.save_json(path)
             with open(path,'wb') as fid:
-                pickle.dump(self.model, fid)
+                dump(self.model, fid)
         except Exception:
             import traceback
             signal.log_message(message=traceback.format_exc())
@@ -524,7 +643,7 @@ class AppPanel(wx.Panel):
         # Ask model to save its information
         self.model.save(output_path)
 
-        # Save a pickle of the model that can be reloaded
+        # Save a snapshot of the model that can (hopefully) be reloaded
         self.save_model(output_path+MODEL_EXT)
 
         # Save the current state of the parameters
@@ -538,7 +657,7 @@ class AppPanel(wx.Panel):
         self.model.plot(figfile=output_path)
 
         # Produce uncertainty plots
-        if hasattr(self, 'uncertainty_state') and self.uncertainty_state:
+        if self.uncertainty_state is not None:
             with redirect_console(output_path+".err"):
                 self.uncertainty_state.show(figfile=output_path)
             self.uncertainty_state.save(output_path)

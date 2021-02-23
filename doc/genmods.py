@@ -84,16 +84,16 @@ def get_members(package, module):
     M = sys.modules[name]
     try:
         L = M.__all__
-    except:
+    except Exception:
         L = [s for s in sorted(dir(M))
              if inspect.getmodule(getattr(M,s)) == M and not s.startswith('_')]
     return L
 
-def gen_api_docs(package, modules, dir='api', absolute=True, root=None):
+def gen_api_docs(package, modules, dest='api', absolute=True, root=None):
     """
     Generate .rst files in *dir* from *modules* in *package*.
 
-    *dir* defaults to 'api'
+    *dest* is the root path to the constructed rst files.
 
     *absolute* is True if modules are listed as package.module in the table
     of contents.  Default is True.
@@ -104,6 +104,7 @@ def gen_api_docs(package, modules, dir='api', absolute=True, root=None):
     The source is used to check if the module definition has changed since
     the rst file was built.
     """
+    #print(f"*** processing {package}")
 
     # Get path to package source
     if root is None:
@@ -112,28 +113,31 @@ def gen_api_docs(package, modules, dir='api', absolute=True, root=None):
         root = abspath(dirname(M.__file__))
 
     # Build path to documentation tree
+    if not exists(dest):
+        makedirs(dest)
+
+    # Note: prefix used by MODULE_TEMPLATE
     prefix = package+"." if absolute else ""
-    if not exists(dir):
-        makedirs(dir)
 
     # Update any modules that are out of date.  Compiled modules
     # will always be updated since we only check for .py files.
-    for (module, title) in modules:
+    for module, title in modules:  # Note: title used by MODULE_TEMPLATE
         modfile = joinpath(root, module+'.py')
-        rstfile = joinpath(dir, module+'.rst')
+        rstfile = joinpath(dest, module+'.rst')
         if newer(rstfile, modfile):
+            # Note: members is used by MODULE_TEMPLATE
             members = "\n    ".join(get_members(package, module))
-            #print("writing %s"%rstfile)
+            print(f"writing {rstfile} with current={package}.{module}")
             with open(rstfile, 'w') as f:
                 f.write(MODULE_TEMPLATE%locals())
 
     # Update the table of contents, but only if the configuration
     # file containing the module list has changed.  For now, that
     # is the current file.
-    api_index = joinpath(dir, 'index.rst')
+    api_index = joinpath(dest, 'index.rst')
     if newer(api_index, __file__):
-        rsts = "\n   ".join(module+'.rst' for module,_ in modules)
-        mods = "\n   ".join(prefix+module for module,_ in modules)
+        rsts = "\n   ".join(module+'.rst' for module, _ in modules)
+        mods = "\n   ".join(prefix+module for module, _ in modules)
         #print("writing %s"%api_index)
         with open(api_index,'w') as f:
             f.write(PACKAGE_TEMPLATE%locals())
@@ -143,7 +147,7 @@ def gen_api_docs(package, modules, dir='api', absolute=True, root=None):
 
 BUMPS_OPTIONS = {
     'absolute': False, # True if package.module in table of contents
-    'dir': 'api', # Destination directory for the api docs
+    'dest': 'api', # Destination directory for the api docs
     'root': None, # Source directory for the package, or None for default
 }
 
@@ -186,13 +190,13 @@ BUMPS_MODULES = [
     ('random_lines', 'Random lines and particle swarm optimizers'),
     ('simplex', 'Nelder-Mead simplex optimizer (amoeba)'),
     ('util', 'Miscellaneous functions'),
-    ('vfs', 'Virtual file system for loading models from zip files'),
+    #('vfs', 'Virtual file system for loading models from zip files'),
     ('wsolve', 'Weighted linear and polynomial solver with uncertainty'),
     ]
 
 DREAM_OPTIONS = {
     'absolute': False, # True if package.module in table of contents
-    'dir': 'dream', # Destination directory for the api docs
+    'dest': 'dream', # Destination directory for the api docs
     'root': None, # Source directory for the package, or None for default
 }
 

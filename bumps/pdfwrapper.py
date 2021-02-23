@@ -115,10 +115,6 @@ class PDF(object):
         return len(self._labels) + 1
     numpoints.__doc__ = Fitness.numpoints.__doc__
 
-    def residuals(self):
-        return np.array([self.chisq()])
-    residuals.__doc__ = Fitness.residuals.__doc__
-
 
 class VectorPDF(object):
     """

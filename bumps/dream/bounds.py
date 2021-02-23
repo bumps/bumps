@@ -9,7 +9,7 @@ wrapping, clipping or randomizing the point, or ignoring the bounds.
 The returned bounds object should have an apply(x) method which
 transforms the point *x*.
 """
-__all__ = ["make_bounds_handler", "ReflectBounds", "ClipBounds",
+__all__ = ["make_bounds_handler", "Bounds", "ReflectBounds", "ClipBounds",
            "FoldBounds", "RandomBounds", "IgnoreBounds"]
 
 import numpy as np

@@ -3,7 +3,7 @@ Statistics helper functions.
 """
 
 __all__ = ["VarStats", "var_stats", "format_vars", "parse_var",
-           "stats", "credible_intervals"]
+           "stats", "credible_interval", "shortest_credible_interval"]
 
 import re
 import json
@@ -39,8 +39,16 @@ def _var_stats_one(draw, var):
 
     # Choose the interval for the histogram
     #credible_interval = shortest_credible_interval
-    p95, p68, p0 = credible_intervals(x=values, weights=weights,
-                                      ci=[0.95, ONE_SIGMA, 0.0])
+    p95, p68, p0 = credible_interval(x=values, weights=weights,
+                                     ci=[0.95, ONE_SIGMA, 0.0])
+
+    ## reporting uncertainty on credible intervals?
+    ## might be nice to pair sd on credible intervals
+    ## with the actual CIs, rather than use a separate param
+    #from .digits import credible_inderval_sd
+    #p95sd = credible_interval_sd(values, 0.95)
+    #p68sd = credible_interval_sd(values, ONE_SIGMA)
+
     #open('/tmp/out','a').write(
     #     "in vstats: p68=%s, p95=%s, p0=%s, value range=%s\n"
     #     % (p68,p95,p0,(min(values),max(values))))
@@ -51,6 +59,7 @@ def _var_stats_one(draw, var):
     vstats = VarStats(label=draw.labels[var], index=var+1,
                       p95=p95, p95_range=(p95[0], p95[1]+integer*0.9999999999),
                       p68=p68, p68_range=(p68[0], p68[1]+integer*0.9999999999),
+                      # p95sd=p95sd, p68sd=p68sd,
                       median=p0[0], mean=mean, std=std, best=best,
                       integer=integer)
 
@@ -169,8 +178,8 @@ def stats(x, weights=None):
     return mean, std
 
 
-def credible_intervals(x, ci, weights=None):
-    """
+def credible_interval(x, ci, weights=None):
+    r"""
     Find the credible interval covering the portion *ci* of the data.
 
     *x* are samples from the posterior distribution.
@@ -178,7 +187,10 @@ def credible_intervals(x, ci, weights=None):
     *ci* is a set of intervals in [0,1].  For a $1-\sigma$ interval use
     *ci=erf(1/sqrt(2))*, or 0.68. About 1e5 samples are needed for 2 digits
     of  precision on a $1-\sigma$ credible interval.  For a 95% interval,
-    about 1e6 samples are needed.
+    about 1e6 samples are needed for 2 digits of precision.  At least 1000
+    points are needed for an unbiased result, otherwise the resulting interval
+    will be shorter than expected (tested on a variety of distributions
+    including exponential, cauchy, gaussian, beta and gamma).
 
     *weights* is a vector of weights for each x, or None for unweighted.
     One could weight points according to temperature in a parallel tempering
@@ -190,67 +202,98 @@ def credible_intervals(x, ci, weights=None):
 
     This function is faster if the inputs are already sorted.
     """
-    from numpy import asarray, vstack, sort, cumsum, searchsorted, round, clip
-
-    ci = asarray(ci, 'd')
-    target = (1 + vstack((-ci, +ci))).T/2
+    n = x.size
+    ci = np.asarray(ci, 'd')
+    target = (1 + np.vstack((-ci, +ci))).T/2
 
     if weights is None:
-        idx = clip(round(target*(x.size-1)), 0, x.size-1).astype('i')
-        return sort(x)[idx]
+        cdf = np.linspace(0.5/n, 1-0.5/n, n)
+        #cdf = np.linspace(1, n, n)/(n+1)
+        result = np.interp(target, cdf, np.sort(x))
     else:
-        idx = np.argsort(x)
-        x, weights = x[idx], weights[idx]
+        index = np.argsort(x)
+        x, weights = x[index], weights[index]
         # convert weights to cdf
-        w = cumsum(weights/sum(weights))
-        return x[searchsorted(w, target)]
+        cdf = np.cumsum(weights)
+        cdf /= cdf[-1]
+        cdf -= 0.5*cdf[0]
+        #cdf *= n/(cdf[-1]*(n+1))
+        result = np.interp(target, cdf, x)
+    return result if ci.shape else result[0]
+
 
 def shortest_credible_interval(x, ci=0.95, weights=None):
     """
     Find the credible interval covering the portion *ci* of the data.
+
+    *x* are samples from the posterior distribution.
+    *ci* is the interval size in (0,1], and defaults to 0.95.
+    For a 1-sigma interval use *ci=erf(1/sqrt(2))*.
+    *weights* is a vector of weights for each x, or None for unweighted.
+
     Returns the minimum and maximum values of the interval.
     If *ci* is a vector, return a vector of intervals.
-    *x* are samples from the posterior distribution.
+
     This function is faster if the inputs are already sorted.
+
     About 1e6 samples are needed for 2 digits of precision on a 95%
     credible interval, or 1e5 for 2 digits on a 1-sigma credible interval.
-    *ci* is the interval size in (0,1], and defaults to 0.95.  For a
-    1-sigma interval use *ci=erf(1/sqrt(2))*.
-    *weights* is a vector of weights for each x, or None for unweighted.
-    For log likelihood data, setting weights to exp(max(logp)-logp) should
-    give reasonable results.
+
+    To remove bias towards toward smaller intervals, the midpoints between
+    the surrounding intervals are used as the end points.
     """
-    sorted = np.all(x[1:] >= x[:-1])
-    if not sorted:
-        idx = np.argsort(x)
-        x = x[idx]
-        if weights is not None:
-            weights = weights[idx]
 
-    #  w = exp(max(logp)-logp)
-    if weights is not None:
-        # convert weights to cdf
-        w = np.cumsum(weights/sum(weights))
-        # sample the cdf at every 0.001
-        idx = np.searchsorted(w, np.arange(0, 1, 0.001))
-        x = x[idx]
-
-    # Simple solution: ci*N is the number of points in the interval, so
-    # find the width of every interval of that size and return the smallest.
-    if np.isscalar(ci):
-        return _find_interval(x, ci)
+    if weights is None:
+        x = np.sort(x)
+        # Simple solution: ci*N is the number of points in the interval, so
+        # find the width of every interval of that size and return the smallest.
+        if np.isscalar(ci):
+            return _unweighted_hpd(x, ci)
+        else:
+            return [_unweighted_hpd(x, ci_k) for ci_k in ci]
     else:
-        return [_find_interval(x, i) for i in ci]
+        index = np.argsort(x)
+        x, weights = x[index], weights[index]
+        # Work from the empirical cdf, finding the corresponding right
+        # interval for each possible left interval and choosing that with
+        # the shortest distance.
+        cdf = np.cumsum(weights)
+        cdf /= cdf[-1]
+        #jcdf -= 0.5*cdf[0]
+        if np.isscalar(ci):
+            return _weighted_hpd(x, cdf, ci)
+        else:
+            return [_weighted_hpd(x, cdf, ci_k) for ci_k in ci]
 
-def _find_interval(x, ci):
+def _unweighted_hpd(x, ci):
     """
-    Find credible interval ci in sorted, unweighted x
+    Find shortest credible interval ci in sorted, unweighted x
     """
     n = len(x)
-    size = int(ci*n + np.sqrt(1-ci)*np.log(n))
+    size = int(ci*n)
     if size >= n:
         return x[0], x[-1]
     else:
         width = x[size:] - x[:-size]
-        idx = np.argmin(width)
-        return x[idx], x[idx+size]
+        index = np.argmin(width)
+        #left, right = x[idx], x[idx+size]
+        left = x[0] if index == 0 else (x[index-1] + x[index])/2
+        right = x[-1] if index+size == n-1 else (x[index+size] + x[index+size+1])/2
+        return left, right
+
+def _weighted_hpd(z, cdf, ci):  # extra one-half interval
+    """
+    Find shortest credible interval ci in sorted, weighted x
+    """
+    size = np.searchsorted(cdf, 1 - ci)
+    if size == 0:
+        return z[0], z[-1]
+    p_left = cdf[:size]
+    z_left = z[:size]
+    # avoid spurious floating point bugs, e.g., where .1+0.9 > 1.0
+    i_right = np.searchsorted(cdf[:-1], p_left + ci)
+    z_right = z[i_right]
+    index = np.argmin(z_right - z_left)
+    left = z_left[0] if index == 0 else (z_left[index-1] + z_left[index])/2
+    right = z_right[-1] if index+1 == len(z_right) else (z_right[index] + z_right[index+1])/2
+    return left, right

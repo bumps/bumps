@@ -186,7 +186,7 @@ class FitBase(object):
         self.problem = problem
 
     def solve(self, monitors=None, mapper=None, **options):
-        raise NotImplementedError
+        raise NotImplementedError()
 
 
 class MultiStart(FitBase):
@@ -331,6 +331,17 @@ def save_history(path, state):
 class BFGSFit(FitBase):
     """
     BFGS quasi-newton optimizer.
+
+    BFGS estimates Hessian and its Cholesky decomposition, but initial
+    tests give uncertainties quite different from the directly computed
+    Jacobian in Levenburg-Marquardt or the Hessian estimated at the
+    minimum by numdifftools.
+
+    To use the internal 'H' and 'L' and save some computation time, then
+    use::
+
+        C = lsqerror.chol_cov(fit.result['L'])
+        stderr = lsqerror.stderr(C)
     """
     name = "Quasi-Newton BFGS"
     id = "newton"
@@ -360,16 +371,6 @@ class BFGSFit(FitBase):
         #print("%d: %s, x=%s, fx=%s"
         #      % (code, STATUS[code], result['x'], result['fx']))
         return result['x'], result['fx']
-
-    # BFGS estimates hessian and its cholesky decomposition, but initial
-    # tests give uncertainties quite different from the directly computed
-    # jacobian in levenburg-marquardt or the hessian estimated at the
-    # minimum by numdifftools
-    def Hstderr(self):
-        return lsqerror.chol_stderr(self.result['L'])
-
-    def Hcov(self):
-        return lsqerror.chol_cov(self.result['L'])
 
     def _monitor(self, step, x, fx):
         self._update(step=step, point=x, value=fx,
@@ -754,7 +755,8 @@ class DreamFit(FitBase):
     name = "DREAM"
     id = "dream"
     settings = [('samples', int(1e4)), ('burn', 100), ('pop', 10),
-                ('init', 'eps'), ('thin', 1),
+                ('init', 'eps'), ('thin', 1), ('alpha', 0.01),
+                ('outliers', 'none'), ('trim', False),
                 ('steps', 0),  # deprecated: use --samples instead
                ]
 
@@ -767,7 +769,7 @@ class DreamFit(FitBase):
         from .dream import Dream
         if abort_test is None:
             abort_test = lambda: False
-        options = _fill_defaults(options, self.settings)
+        self.options = _fill_defaults(options, self.settings)
 
         if mapper:
             self.dream_model.mapper = mapper
@@ -787,11 +789,15 @@ class DreamFit(FitBase):
                         draws=pop_size * steps,
                         burn=pop_size * options['burn'],
                         thinning=options['thin'],
-                        monitor=self._monitor,
+                        monitor=self._monitor, alpha=options['alpha'],
+                        outlier_test=options['outliers'],
                         DE_noise=1e-6)
 
         self.state = sampler.sample(state=self.state, abort_test=abort_test)
-        self.state.mark_outliers()
+
+        self._trimmed = self.state.trim_portion() if options['trim'] else 1.0
+        #print("trimming", options['trim'], self._trimmed)
+        self.state.mark_outliers(portion=self._trimmed)
         self.state.keep_best()
         self.state.title = self.dream_model.problem.name
 
@@ -821,7 +827,7 @@ class DreamFit(FitBase):
         return x, -fx
 
     def entropy(self, **kw):
-        return self.state.entropy(**kw)
+        return self.state.entropy(portion=self._trimmed, **kw)
 
     def _monitor(self, state, pop, logp):
         # Get an early copy of the state
@@ -840,7 +846,7 @@ class DreamFit(FitBase):
         """
         from .dream.stats import var_stats
 
-        vstats = var_stats(self.state.draw())
+        vstats = var_stats(self.state.draw(portion=self._trimmed))
         return np.array([(v.p68[1] - v.p68[0]) / 2 for v in vstats], 'd')
 
     #def cov(self):
@@ -850,7 +856,8 @@ class DreamFit(FitBase):
     def load(self, input_path):
         from .dream.state import load_state, path_contains_saved_state
         if path_contains_saved_state(input_path):
-            print("loading saved state (this might take awhile) ...")
+            print("loading saved state from %s (this might take awhile) ..."
+                  % (input_path,))
             fn, labels = getattr(self.problem, 'derive_vars', (None, []))
             self.state = load_state(input_path, report=100, derived_vars=len(labels))
         else:
@@ -861,7 +868,7 @@ class DreamFit(FitBase):
         self.state.save(output_path)
 
     def plot(self, output_path):
-        self.state.show(figfile=output_path)
+        self.state.show(figfile=output_path, portion=self._trimmed)
         self.error_plot(figfile=output_path)
 
     def show(self):
@@ -872,8 +879,9 @@ class DreamFit(FitBase):
         import pylab
         from . import errplot
         # TODO: shouldn't mix calc and display!
-        res = errplot.calc_errors_from_state(self.dream_model.problem,
-                                             self.state)
+        res = errplot.calc_errors_from_state(problem=self.dream_model.problem,
+                                             state=self.state,
+                                             portion=self._trimmed)
         if res is not None:
             pylab.figure()
             errplot.show_errors(res)
@@ -885,7 +893,7 @@ class Resampler(FitBase):
 
     def __init__(self, fitter):
         self.fitter = fitter
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def solve(self, **options):
         starts = options.pop('starts', 1)
@@ -968,9 +976,26 @@ class FitDriver(object):
             self.problem.setp(x)
         return x, fx
 
-    def entropy(self):
+    def clip(self):
+        """
+        Force parameters within bounds so constraints are finite.
+
+        The problem is updated with the new parameter values.
+
+        Returns a list of parameter names that were clipped.
+        """
+        labels = self.problem.labels()
+        values = self.problem.getp()
+        bounds = self.problem.bounds()
+        new_values = np.clip(values, bounds[0], bounds[1])
+        clipped = [name for name, old, new in zip(labels, values, new_values)
+                   if old != new]
+        self.problem.setp(new_values)
+        return clipped
+
+    def entropy(self, method=None):
         if hasattr(self.fitter, 'entropy'):
-            return self.fitter.entropy()
+            return self.fitter.entropy(method=method)
         else:
             from .dream import entropy
             return entropy.cov_entropy(self.cov()), 0
@@ -986,16 +1011,21 @@ class FitDriver(object):
 
         Depending on the fitter and the problem, this may be computed from
         existing evaluations within the fitter, or from numerical
-        differentiation around the minimum.  The numerical differentiation
-        will use the Hessian estimated from nllf.   If the problem uses
-        $\chi^2/2$ as its nllf, then you may want to instead compute
-        the covariance from the Jacobian::
+        differentiation around the minimum.
 
-            J = lsqerror.jacobian(fitdriver.result[0])
-            cov = lsqerror.cov(J)
+        If the problem uses $\chi^2/2$ as its nllf, then the covariance
+        is derived from the Jacobian::
 
-        This should be faster and more accurate than the Hessian of nllf
-        when you can use it.
+            x = fit.problem.getp()
+            J = bumps.lsqerror.jacobian(fit.problem, x)
+            cov = bumps.lsqerror.jacobian_cov(J)
+
+        Otherwise, the numerical differentiation will use the Hessian
+        estimated from nllf::
+
+            x = fit.problem.getp()
+            H = bumps.lsqerror.hessian(fit.problem, x)
+            cov = bumps.lsqerror.hessian_cov(H)
         """
         # Note: if fit() has not been run then self.fitter is None and in
         # particular, self.fitter will not have a covariance matrix.  In
@@ -1006,6 +1036,7 @@ class FitDriver(object):
             self._cov = None
             if hasattr(self.fitter, 'cov'):
                 self._cov = self.fitter.cov()
+                #print("fitter cov", self._cov)
         if self._cov is None:
             # Use Jacobian if residuals are available because it is faster
             # to compute.  Otherwise punt and use Hessian.  The has_residuals
@@ -1020,11 +1051,12 @@ class FitDriver(object):
             x = self.problem.getp() if self.result is None else self.result[0]
             if has_residuals:
                 J = lsqerror.jacobian(self.problem, x)
-                self._cov = lsqerror.cov(J)
+                #print("Jacobian", J)
+                self._cov = lsqerror.jacobian_cov(J)
             else:
                 H = lsqerror.hessian(self.problem, x)
-                H, L = lsqerror.perturbed_hessian(H)
-                self._cov = lsqerror.chol_cov(L)
+                #print("Hessian", H)
+                self._cov = lsqerror.hessian_cov(H)
         return self._cov
 
     def stderr(self):
@@ -1099,9 +1131,9 @@ class FitDriver(object):
         print(cov_str)
         print("=========================")
 
-    def show_entropy(self):
+    def show_entropy(self, method=None):
         print("Calculating entropy...")
-        S, dS = self.entropy()
+        S, dS = self.entropy(method=method)
         print("Entropy: %s bits" % format_uncertainty(S, dS))
 
     def save(self, output_path):
@@ -1180,10 +1212,10 @@ register(DreamFit, active=True)
 register(BFGSFit, active=True)
 register(LevenbergMarquardtFit, active=True)
 register(MPFit, active=True)
-register(PSFit, active=False)
+#register(PSFit, active=False)
 register(PTFit, active=False)
-register(RLFit, active=False)
-register(SnobFit, active=False)
+#register(RLFit, active=False)
+#register(SnobFit, active=False)
 
 FIT_DEFAULT_ID = SimplexFit.id
 
@@ -1206,6 +1238,13 @@ def fit(problem, method=FIT_DEFAULT_ID, verbose=False, **options):
     detailed uncertainty analysis.  Optimizer information such as the
     stopping condition and the number of function evaluations are not
     yet included.
+
+    To run in parallel (with multiprocessing and dream)::
+
+        from bumps.mapper import MPMapper
+        mapper = MPMapper.start_mapper(problem, None, cpu=0) #cpu=0 for all CPUs
+        result = fit(problem, method="dream", mapper=mapper)
+
     """
     from scipy.optimize import OptimizeResult
 
@@ -1220,6 +1259,7 @@ def fit(problem, method=FIT_DEFAULT_ID, verbose=False, **options):
     driver = FitDriver(
         fitclass=fitclass, problem=problem, monitors=monitors,
         **options)
+    driver.clip() # make sure fit starts within domain
     x0 = problem.getp()
     x, fx = driver.fit()
     problem.setp(x)

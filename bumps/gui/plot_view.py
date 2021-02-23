@@ -115,7 +115,6 @@ class PlotView(wx.Panel):
         #print "theory show"
         if not event.Show:
             return
-        #print "showing theory"
         if self._need_newmodel:
             self._redraw(newmodel=True)
         elif self._need_plot:
@@ -159,6 +158,7 @@ class PlotView(wx.Panel):
             #print "canceling calculation"
             return
 
+        #print("plotting", self.title)
         with self.pylab_interface as pylab:
             self._calculating = True
 

@@ -55,7 +55,7 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
 
             # Select the dims to update based on the crossover ratio, making
             # sure at least one dim is selected
-            vars = where(rng.rand(Nvar) > CR_used[qq])
+            vars = where(rng.rand(Nvar) > CR_used[qq])[0]
             if len(vars) == 0:
                 vars = [rng.randint(Nvar)]
 

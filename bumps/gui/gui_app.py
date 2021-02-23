@@ -255,10 +255,11 @@ class MainApp(wx.App):
 
         # Put up the initial model
         model, output = initial_model(opts)
-        if not model: model = plugin.new_model()
+        if not model:
+            model = plugin.new_model()
         signal.log_message(message=output)
         self.frame.panel.set_model(model=model)
-        self.frame.panel.fit_config = opts.fit_config
+        self.frame.panel.set_fit_config(opts.fit_config)
 
         self.frame.panel.Layout()
         self.frame.panel.aui.Split(0, wx.TOP)
@@ -295,8 +296,13 @@ def excepthook(type, value, tb):
     from . import signal
     error = traceback.format_exception(type, value, tb)
     indented = "   "+"\n   ".join(error)
-    signal.log_message(message="Error:\n"+indented)
-    wx.GetApp().frame.panel.show_view('log')
+    try:
+        signal.log_message(message="Error:\n"+indented)
+        wx.GetApp().frame.panel.show_view('log')
+    except:
+        # If the exception handler fails we can't do anything more
+        print("\n".join(error), file=sys.stderr)
+        sys.exit()
 
 
 def _protected_main():

@@ -31,10 +31,10 @@ queue consists of several components.
 
    mechanism for evaluating R(x_i) for different x_i on separate CPUs
 
-If you are setting up a local cluster for performing Bumps analysis then you 
+If you are setting up a local cluster for performing Bumps analysis then you
 will need to read this section, otherwise you can continue to the next section.
 
-Assuming that the bumps server is installed as user 'bumps' in a virtualenv 
+Assuming that the bumps server is installed as user 'bumps' in a virtualenv
 of ~/bumpserve, MPLCONFIGDIR is set to ~/bumpserve/.matplotlib,
 and bumpworkd has been configured, you can start with the following profile::
 
@@ -43,7 +43,7 @@ and bumpworkd has been configured, you can start with the following profile::
 Job Controller
 ==============
 
-:mod:`jobqueue` is an independent package within bumps.  It implements
+*extra/jobqueue* is an independent package within bumps.  It implements
 an http API for interacting with jobs.
 
 It is implemented as a WSGI python application using
@@ -135,9 +135,9 @@ The rw access to .bumpserve is potentially problematic.  Hostile
 models can interfere with each other if they are running at the same time.
 In particular, they could inject html into the returned data set which can
 effectively steal authentication credentials from other users through
-cross site scripting attacks, and so would not be appropriate on an 
+cross site scripting attacks, and so would not be appropriate on an
 authenticated service.  Restricting individual models to their own job
-directory at .bumpserve/worker/jobid/** would reduce this risk, but this 
+directory at .bumpserve/worker/jobid/** would reduce this risk, but this
 author does not know how to do so without elevating bumpworkd privileges to root.
 
 Once the profile is in place, restart the apparmor.d daemon to enable it::
@@ -172,6 +172,6 @@ To delete a profile that you no longer need::
 
 Similar profiles could be created for the job server, and indeed, any web
 service you have on your machine to reduce the risk that bugs in your code
-can be used to compromise your security, but this is less critical since 
+can be used to compromise your security, but this is less critical since
 your code is not running in general running with arbitrary user defined functions.
 

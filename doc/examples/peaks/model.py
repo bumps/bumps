@@ -77,7 +77,7 @@ def build_problem():
     peak1.s2.range(0.001, 0.02)
     peak1.theta.range(-90, -0)
 
-    if 1:
+    if 0:
         peak2 = M.parts[1]
         peak2.s1.range(*peak1.s1.bounds.limits)
         peak2.s2.range(*peak1.s2.bounds.limits)

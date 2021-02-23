@@ -11,11 +11,13 @@ Users can also perform calculations with parameters, tying together different
 parts of the model, or different models.
 """
 #__all__ = [ 'Parameter']
+import operator
 import sys
 from six.moves import reduce
 import warnings
 from copy import copy
 import math
+from functools import wraps
 
 import numpy as np
 from numpy import inf, isinf, isfinite
@@ -191,15 +193,15 @@ class BaseParameter(object):
 
     # Parameter algebra: express relationships between parameters
     def __gt__(self, other):
-        return ConstraintGT(self, other)
+        return Constraint(self, other, "GT", ">")
 
     def __ge__(self, other):
-        return ConstraintGE(self, other)
+        return Constraint(self, other, "GE", ">=")
     def __le__(self, other):
-        return ConstraintLE(self, other)
+        return Constraint(self, other, "LE", "<=")
 
     def __lt__(self, other):
-        return ConstraintLT(self, other)
+        return Constraint(self, other, "LT", "<")
 
     # def __eq__(self, other):
     #     return ConstraintEQ(self, other)
@@ -208,34 +210,34 @@ class BaseParameter(object):
     #     return ConstraintNE(self, other)
 
     def __add__(self, other):
-        return OperatorAdd(self, other)
+        return Operator(self, other, "add", "+")
 
     def __sub__(self, other):
-        return OperatorSub(self, other)
+        return Operator(self, other, "sub", "-")
 
     def __mul__(self, other):
-        return OperatorMul(self, other)
+        return Operator(self, other, "mul", "*")
 
     def __div__(self, other):
-        return OperatorDiv(self, other)
+        return Operator(self, other, "truediv", "/")
 
     def __pow__(self, other):
-        return OperatorPow(self, other)
+        return Operator(self, other, "pow", "**")
 
     def __radd__(self, other):
-        return OperatorAdd(other, self)
+        return Operator(other, self, "add", "+")
 
     def __rsub__(self, other):
-        return OperatorSub(other, self)
+        return Operator(other, self, "sub", "-")
 
     def __rmul__(self, other):
-        return OperatorMul(other, self)
+        return Operator(other, self, "mul", "*")
 
     def __rdiv__(self, other):
-        return OperatorDiv(other, self)
+        return Operator(other, self, "truediv", "/")
 
     def __rpow__(self, other):
-        return OperatorPow(other, self)
+        return Operator(other, self, "pow", "**")
 
     def __abs__(self):
         return _abs(self)
@@ -576,21 +578,21 @@ class ParameterSet(object):
 
     def range(self, *args, **kw):
         """
-        Like :meth:`parameter.Parameter.range`, but applied to all models.
+        Like :meth:`Parameter.range`, but applied to all models.
         """
         for p in self.parameters:
             p.range(*args, **kw)
 
     def pm(self, *args, **kw):
         """
-        Like :meth:`parameter.Parameter.pm`, but applied to all models.
+        Like :meth:`Parameter.pm`, but applied to all models.
         """
         for p in self.parameters:
             p.pm(*args, **kw)
 
     def pmp(self, *args, **kw):
         """
-        Like :meth:`parameter.Parameter.pmp`, but applied to all models.
+        Like :meth:`Parameter.pmp`, but applied to all models.
         """
         for p in self.parameters:
             p.pmp(*args, **kw)
@@ -679,63 +681,43 @@ class FreeVariables(object):
 #
 
 # ==== Comparison operators ===
+COMPARISONS = [
+    ('GT', '>'),
+    ('GE', '>='),
+    ('LE', '<='),
+    ('LT', '<'),
+    ('EQ', '=='),
+    ('NE', '!=')
+]
+
 class Constraint(object):
-    """
-    Abstract base class for constraints.
-    """
-
+    def __init__(self, a, b, op_name, op_str=""):
+        import operator
+        self.a, self.b = a, b
+        self.op_name = op_name
+        self.op = getattr(operator, op_name.lower())
+        self.op_str = op_str
     def __bool__(self):
-        """
-        Returns True if the condition is satisfied
-        """
-        raise NotImplementedError
-    __nonzero__ = __bool__
-
-    def __str__(self):
-        """
-        Text description of the constraint
-        """
-        raise NotImplementedError
-
-
-def _gen_constraint(name, op):
-    """
-    Generate a comparison function from a comparison operator.
-    """
-    return '''\
-class Constraint%(name)s(Constraint):
-    """
-    Constraint operator %(op)s
-    """
-    def __init__(self, a, b):
-        self.a, self.b = a,b
-    def __bool__(self):
-        return float(self.a) %(op)s float(self.b)
+        return self.op(float(self.a), float(self.b))
     __nonzero__ = __bool__
     def __str__(self):
-        return "(%%s %(op)s %%s)"%%(self.a,self.b)
-''' % dict(name=name, op=op)
-
-exec(_gen_constraint('GT', '>'))
-exec(_gen_constraint('GE', '>='))
-exec(_gen_constraint('LE', '<='))
-exec(_gen_constraint('LT', '<'))
-exec(_gen_constraint('EQ', '=='))
-exec(_gen_constraint('NE', '!='))
-
+        return "(%s %s %s)" %(self.a, self.op_str, self.b)
 
 # ==== Arithmetic operators ===
-def _gen_binop(name, op):
+ALLOWED_OPERATORS = ["add","sub","mul","truediv","floordiv","pow"]
+
+class Operator(BaseParameter):
     """
-    Generate a comparison function from a comparison operator.
+    Parameter operator
     """
-    return '''\
-class Operator%(name)s(BaseParameter):
-    """
-    Parameter operator %(op)s
-    """
-    def __init__(self, a, b):
+    def __init__(self, a, b, op_name, op_str):
+        import operator
+        if not op_name.lower() in ALLOWED_OPERATORS:
+            raise ValueError("Operator name %s is not in allowed operators: %s" % (op_name, str(ALLOWED_OPERATORS)))
         self.a, self.b = a,b
+        self.op_name = op_name
+        self.op = getattr(operator, op_name.lower())
+        self.op_str = op_str
         pars = []
         if isinstance(a,BaseParameter): pars += a.parameters()
         if isinstance(b,BaseParameter): pars += b.parameters()
@@ -745,26 +727,20 @@ class Operator%(name)s(BaseParameter):
         return self._parameters
     def to_dict(self):
         return dict(
-            type="Operator%(name)s",
+            type="Operator",
+            op_name=self.op_name,
+            op_str=self.op_str,
             left=to_dict(self.a),
             right=to_dict(self.b),
         )
     @property
     def value(self):
-        return float(self.a) %(op)s float(self.b)
+        return self.op(float(self.a), float(self.b))
     @property
     def dvalue(self):
         return float(self.a)
     def __str__(self):
-        return "(%%s %(op)s %%s)"%%(self.a,self.b)
-''' % dict(name=name, op=op)
-
-exec(_gen_binop('Add', '+'))
-exec(_gen_binop('Sub', '-'))
-exec(_gen_binop('Mul', '*'))
-exec(_gen_binop('Div', '/'))
-exec(_gen_binop('Pow', '**'))
-
+        return "(%s %s %s)" % (self.a,self.op_str, self.b)
 
 def substitute(a):
     """
@@ -901,13 +877,12 @@ BaseParameter.trunc = function(math.trunc)
 
 def boxed_function(f):
     box = function(f)
+    @wraps(f)
     def wrapped(*args, **kw):
         if any(isinstance(v, BaseParameter) for v in args):
             return box(*args, **kw)
         else:
             return f(*args, **kw)
-    wrapped.__name__ = f.__name__
-    wrapped.__doc__ = f.__doc__
     return wrapped
 
 # arctan2 is special since either argument can be a parameter
@@ -1154,3 +1129,11 @@ class Alias(object):
             'obj': to_dict(self.obj),
             'attr': self.attr,
         }
+
+def test_operator():
+    a = Parameter(1, name='a')
+    b = Parameter(2, name='b')
+    a_b = a + b
+    a.value = 3
+    assert a_b.value == 5.
+    assert a_b.name == '(a + b)'

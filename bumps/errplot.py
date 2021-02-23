@@ -33,7 +33,7 @@ For a completed MCMC run, four steps are required:
 
 :func:`reload_errors` performs steps 1, 2 and 3, returning *errs*.
 If the fitting problem and the MCMC state are already loaded, then use
-:func:`calc_errors_From_state` to perform steps 2 and 3, returning *errs*.
+:func:`calc_errors_from_state` to perform steps 2 and 3, returning *errs*.
 If alternative sampling is desired, then use :func:`calc_errors` on a
 given set of points to perform step 3, returning *errs*.  Once *errs* has
 been calculated and returned by one of these methods, call
@@ -68,14 +68,14 @@ def reload_errors(model, store, nshown=50, random=True):
     Returns *errs* for :func:`show_errors`.
     """
     problem = load_model(model)
-    load_best(problem, os.path.join(store, model[:-3] + ".par"))
-    state = load_state(os.path.join(store, model[:-3]))
+    load_best(problem, os.path.join(store, problem.name + ".par"))
+    state = load_state(os.path.join(store, problem.name))
     state.mark_outliers()
-    return calc_errors_from_state(problem, state,
-                                  nshown=nshown, random=random)
+    return calc_errors_from_state(
+        problem, state, nshown=nshown, random=random)
 
 
-def calc_errors_from_state(problem, state, nshown=50, random=True):
+def calc_errors_from_state(problem, state, nshown=50, random=True, portion=1.0):
     """
     Compute confidence regions for a problem from the
     Align the sample profiles and compute the residual difference from
@@ -91,7 +91,7 @@ def calc_errors_from_state(problem, state, nshown=50, random=True):
 
     Returns *errs* for :func:`show_errors`.
     """
-    points, _logp = state.sample()
+    points, _logp = state.sample(portion=portion)
     if points.shape[0] < nshown:
         nshown = points.shape[0]
     # randomize the draw; skip the last point since state.keep_best() put

@@ -22,9 +22,9 @@ Usage::
 
 Filesystems available:
 
-* :class:`RealFS` - uses the builtin python functions to access the O/S.
+* `RealFS` - uses the builtin python functions to access the O/S.
 
-* :class:`ZipFS` - opens a zip file as the filesystem root.
+* `ZipFS` - opens a zip file as the filesystem root.
 
 Calls redirected::
 
@@ -36,7 +36,7 @@ Calls redirected::
     os.path, ntpath, posixpath:
         exists, isfile, isir, abspath, realpath
 
-You can also use the file systems directly without using the :func:`vfs_init`
+You can also use the file systems directly without using the `vfs_init`
 hook or the with statement.  Just call `fs.chdir`, etc. on the file system
 object.
 
@@ -75,6 +75,11 @@ try:
 except ImportError:
     class PurePath:
         pass
+
+# Sphinx hack: in order to avoid having sphinx pick up the docstrings for the
+# builtin functions (chdir and listdir don't format properly), simply suppress
+# all classes for the module.
+__all__ = []
 
 # TODO: restructure according to pathlib interface
 # Looking at pathlib, it already provides methods close to what we implement

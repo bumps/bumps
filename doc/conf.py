@@ -14,7 +14,7 @@ from __future__ import print_function, with_statement
 
 import sys, os
 sys.dont_write_bytecode = True
-print("python",sys.executable)
+print("python", sys.executable)
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -31,9 +31,8 @@ print("python",sys.executable)
 sys.path.insert(0, os.path.abspath('_extensions')) # for sphinx extensions
 sys.path.insert(0, os.path.abspath('.')) # for sitedoc
 
-# Add the build directory for the project; this does mean we need to build
-# before updating the documents each time, but this can be handled by the
-# makefile
+# Add the source directory for the project. Don't need the build directory
+# since there is no compiled code and the package structure is simple.
 sys.path.insert(0, os.path.abspath('..'))
 print("== path ==")
 print("\n".join(sys.path))
@@ -60,6 +59,15 @@ extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest',
               #'numpydoc.numpydoc',
              ]
 #plot_formats = [('png', 120), ('pdf', 50)] # Only make 80 dpi plots
+
+nitpick_ignore = [
+    ('py:class', 'type'),
+    ('py:class', 'object'),
+    ("py:class", "numpy.ndarray"),
+    ("py:class", "np.ndarray"),
+    ("py:class", "Real"),
+    ("py:class", "Integral"),
+    ]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

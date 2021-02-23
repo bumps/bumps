@@ -7,12 +7,13 @@ from __future__ import print_function
 
 import sys
 import os
+from os.path import join as joinpath, realpath, dirname
 import tempfile
 import shutil
 import glob
-from os.path import join as joinpath, realpath, dirname
-import traceback
 import subprocess
+
+import numpy as np
 
 sys.dont_write_bytecode = True
 
@@ -74,7 +75,10 @@ def check_fit(fitter, store, targets):
     with open(errfiles[0]) as fid:
         for line in fid:
             if line.startswith("[chisq="):
-                value = float(line[7:].split("(")[0])
+                if line[7:10].lower() == 'inf':
+                    value = np.inf
+                else:
+                    value = float(line[7:].split("(")[0])
                 assert abs(value-targets[model_index]) < 1e-2, \
                     "error in %s: expected %.3f but got %.3f" \
                     % (fitter, targets[model_index], value)
@@ -83,13 +87,13 @@ def check_fit(fitter, store, targets):
         "error in %s: not enough models found"%fitter
 
 
-def run_fits(model_args, store, fitters=FIT_AVAILABLE_IDS, seed=1):
+def run_fits(model_args, store, fitters=FIT_AVAILABLE_IDS, seed=1, target=0):
     failed = []
     for f in fitters:
         print("====== fitter: %s"%f)
         try:
             run_fit(["--fit="+f], model_args, store, seed=seed)
-            check_fit(f, store, [0.0])
+            check_fit(f, store, [target])
         except Exception as exc:
             #import traceback; traceback.print_exc()
             print(str(exc))
@@ -100,11 +104,13 @@ def run_fits(model_args, store, fitters=FIT_AVAILABLE_IDS, seed=1):
 def main():
     fitters = sys.argv[1:] if len(sys.argv) > 1 else FIT_AVAILABLE_IDS
     store = tempfile.mkdtemp(prefix="bumps-test-")
-    model = joinpath(EXAMPLEDIR, "test_functions", "model.py")
-    #model_args = [model, '"fk(rosenbrock, 3)"']
-    model_args = [model, 'gauss', '3']
+    # TODO: use a test function that defines residuals
+    test_functions = joinpath(EXAMPLEDIR, "test_functions", "model.py")
+    #model_args = [test_functions, '"fk(rosenbrock, 3)"']
+    model_args, target = [test_functions, 'gauss', '3'], 0
+    model_args, target = [joinpath(EXAMPLEDIR, "curvefit", "curve.py")], 1.760
     seed = 1
-    failed = run_fits(model_args, store, fitters=fitters, seed=seed)
+    failed = run_fits(model_args, store, fitters=fitters, seed=seed, target=target)
     shutil.rmtree(store)
     if failed:
         print("======")

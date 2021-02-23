@@ -49,7 +49,7 @@
 #   5) $\lambda = k \pm \sqrt{k}$ for $k>0$, $0 \pm 1$ for $k = 0$
 #
 # See the notes from the CDF Statistics Committee for details at
-# `<http://www-cdf.fnal.gov/physics/statistics/notes/pois_eb.txt>`_.
+# `<https://www-cdf.fnal.gov/physics/statistics/notes/pois_eb.txt>`_.
 #
 # Of these, option 5 works slightly better for fitting, giving the best
 # estimate of the background.
@@ -72,7 +72,7 @@
 #
 # .. math::
 #
-#    E[x] = \int_{-infty}^\infty x P(x) dx
+#    E[x] = \int_{-\infty}^\infty x P(x) dx
 #
 # For the poisson distribution, this is:
 #
@@ -81,24 +81,22 @@
 #    E[\lambda] = \int_0^\infty \lambda \frac{\lambda^k e^{-\lambda}}{k!} d\lambda
 #
 # Running some simulations, we can see that $\hat\lambda=(k+1)\pm\sqrt{k+1}$
-# (see `sim.py <sim.html>`_). This is the best fit rms value to the distribution
+# (see `sim.py <sim.html>`_). This is the best fit RMS value to the distribution
 # of possible $\lambda$ values that could give rise to the observed $k$.
 #
-# Convincing the world to accept $\lambda = k+1$ would be challenging since
-# the expected value is not the most likely value.  As a compromise, one can
-# use $0 \pm 1$ for zero counts, and $k \pm \sqrt{k}$ for other values.  A
-# minor problem is that this permits negative count rates for zero without
-# significant penalty.
+# The current practice is to use $\hat\lambda=k\pm\sqrt{k}$. Convincing the
+# world to accept $\lambda = k+1$ would be challenging since the expected
+# value is not the most likely value.  As a compromise, one can use $0 \pm 1$
+# for zero counts, and $k \pm \sqrt{k}$ for other values. This provides a
+# reasonable estimate for the uncertainty on zero counts, which after
+# normalization becomes smaller for longer counting times or higher incident
+# flux.
 #
-# Note that from the simulation, the variance on $\lambda$ given $\lambda=k$
-# is also $k+1$.
-#
-# Another suggestion is to choose the center and bounds so that the
+# Another option is to choose the center and bounds so that the
 # uncertainty covers $1-\sigma$ from the distribution (68%).  A simple
 # approximation which does this is $(n+1/2) \pm \sqrt{n+1/4}$.
-#
 # Again, hard to convince the world to do, so one could compromise and
-# choose $1/2 \pm 1/2$ for $k=0$, and the usual $k \pm \sqrt{k}$ otherwise.
+# choose $1/2 \pm 1/2$ for $k=0$ and $k \pm \sqrt{k}$ otherwise.
 #
 # What follows is a model which allows us to fit a simulated peak using
 # these various definitions of $\lambda$ and see which version best recovers
@@ -118,7 +116,7 @@ def peak(x, scale, center, width, background):
 # data, and the returned parameters are consistent from run to run.  Real
 # data is likely not so heavily sampled.
 
-x = np.linspace(5,20,345)
+x = np.linspace(5, 20, 345)
 #y = np.random.poisson(peak(x, 1000, 12, 1.0, 1))
 #y = np.random.poisson(peak(x, 300, 12, 1.5, 1))
 y = np.random.poisson(peak(x, 3, 12, 1.5, 1))
@@ -133,38 +131,38 @@ y = np.random.poisson(peak(x, 3, 12, 1.5, 1))
 # in the fit.
 
 cond = sys.argv[1] if len(sys.argv) > 1 else "pearson"
-if cond=="poisson": # option 0: use PoissonCurve rather than Curve to fit
+if cond == "poisson": # option 0: use PoissonCurve rather than Curve to fit
     pass
-elif cond=="expected": # option 1: L = (y+1) +/- sqrt(y+1)
+elif cond == "expected": # option 1: L = (y+1) +/- sqrt(y+1)
     y += 1
     dy = np.sqrt(y)
-elif cond=="pearson": # option 2: L = (y + 0.5)  +/- sqrt(y + 1/4)
+elif cond == "pearson": # option 2: L = (y + 0.5)  +/- sqrt(y + 1/4)
     dy = np.sqrt(y+0.25)
     y = y + 0.5
-elif cond=="expected_mle": # option 3: L = y +/- sqrt(y+1)
+elif cond == "expected_mle": # option 3: L = y +/- sqrt(y+1)
     dy = np.sqrt(y+1)
-elif cond=="pearson_zero": # option 4: L = y +/- sqrt(y); L[0] = 0.5 +/- 0.5
+elif cond == "pearson_zero": # option 4: L = y +/- sqrt(y); L[0] = 0.5 +/- 0.5
     dy = np.sqrt(y)
     y = np.asarray(y, 'd')
-    y[y==0] = 0.5
-    dy[y==0] = 0.5
+    y[y == 0] = 0.5
+    dy[y == 0] = 0.5
 elif cond=="expected_zero": # option 5: L = y +/- sqrt(y);  L[0] = 0 +/- 1
     dy = np.sqrt(y)
-    dy[y==0] = 1.0
+    dy[y == 0] = 1.0
 else:
     raise RuntimeError("Need to select uncertainty: pearson, pearson_zero, expected, expected_zero, expected_mle, poisson")
 
 # Build the fitter, and set the range on the fit parameters.
 
 if cond == "poisson":
-    M = PoissonCurve(peak,x,y,scale=1,center=2,width=2,background=0)
+    M = PoissonCurve(peak, x, y, scale=1, center=2, width=2, background=0)
 else:
-    M = Curve(peak,x,y,dy,scale=1,center=2,width=2,background=0)
+    M = Curve(peak, x, y, dy, scale=1, center=2, width=2, background=0)
 dx = max(x)-min(x)
-M.scale.range(0,max(y)*1.5)
-M.center.range(min(x)-0.2*dx,max(x)+0.2*dx)
-M.width.range(0,0.7*dx)
-M.background.range(0,max(y))
+M.scale.range(0, max(y)*1.5)
+M.center.range(min(x)-0.2*dx, max(x)+0.2*dx)
+M.width.range(0, 0.7*dx)
+M.background.range(0, max(y))
 
 # Set the fit problem as usual.
 

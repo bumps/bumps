@@ -39,8 +39,6 @@ Model arguments may not start with '-'.  The options all start with
 
 
 
-
-
 Problem Setup
 =============
 
@@ -52,7 +50,8 @@ Problem Setup
 Set initial parameter values from a previous fit.  The par file is a list
 of lines with parameter name followed by parameter value on each line.
 The parameters must appear with the same name and in the same order as
-the fitted parameters in the model.  :ref:`option-preview` will show the
+the fitted parameters in the model. Additional parameters are ignored. Missing
+parameters are filled using LHS. :ref:`option-preview` will show the
 model parameters.
 
 .. _option-shake:
@@ -102,9 +101,8 @@ shaking and simulating so that fitting tests, and particularly failures,
 can be reliably reproduced.  The numpy random number generator is used
 for all values, so any consistency guarantees between versions of bumps
 over time and across platforms depends on the consistency of the numpy
-generators.
-
-
+generators. If no seed is specified then one will be generated and printed
+so that the fit can be rerun with the same random sequence.
 
 
 
@@ -183,9 +181,18 @@ complete.  Time is checked between iterations, so be sure to set it well
 below the queue allocation so that it does not stop in the middle of an
 iteration, and so that it has time to save its state.
 
+.. _option-alpha:
 
+``--alpha``
+-----------
 
-
+*Convergence* is the test criterion to use when deciding if stopping
+conditions are met. This is for the variety of stopping tests built into
+the DREAM algorithm. Usual values are `--alpha=0.01` or `--alpha=0.05`.
+Note that various stopping criteria depend on the the number samples and
+the chain length (where chain length x #pars x #pop = #samples), so there
+is no definitive value to use for alpha, but larger values will allow the
+fit to stop sooner.
 
 
 Optimizer Controls
@@ -291,6 +298,32 @@ for good mixing.
 each iteration.  This is a value in [0,1] giving the probability that
 each individual dimension will be selected for update in the next generation.
 
+.. _options-outliers:
+
+``--outliers``
+--------------
+
+*Outliers* is used to identify chains that are stuck in high local minima
+during dream burn-in. Options are:
+
+* iqr: Use the interquartile range to determine the width of the distribution
+  then exclude all chains whose log likelihood is more that two standard
+  deviations below the first quartile.
+* grubbs: Use a t-test to determine whether the samples in each chain are
+  significantly different from the mean.
+* mahal: Use the mahalanobis distance to determine whether the lowest
+  probability chain is close to the remaining chain in parameter space.
+  Only this chain will be marked as an outlier if the test fails.
+* none: Don't do any outlier trimming.
+
+The default is ``--outliers=none``. Outlier removal occurs every $2n$ steps
+where $n$ is #samples/(#pars #pop), or when the convergence test indicates
+the chains are stable.
+
+Note that outliers are marked at the end of the fit using IQR and not
+included in the statistics, though they are saved in the MCMC files. This
+is independent of the ``--outliers`` setting.
+
 .. _option-F:
 
 ``--F``
@@ -362,8 +395,6 @@ files and plots.  Rather than cluttering up the current directory, all the
 outputs are written to the store directory along with a copy of the model
 file.
 
-
-
 .. _option-overwrite:
 
 ``--overwrite``
@@ -373,27 +404,38 @@ If the store directory already exists then you need to include overwrite on
 the command line to reuse it.  While inconvenient, this prevents accidental
 overwriting of fits that may have taken hours to generate.
 
+.. _option-checkpoint:
+
+``--checkpoint``
+----------------
+
+Save fit state every ``--checkpoint=n`` hours. [dream only]
 
 .. _option-resume:
 
 ``--resume``
 ------------
 
-Continue fit from a previous store directory.
+Continue fit from a previous store directory. Use ``--resume`` or ``--resume=-``
+to reuse the existing store directory.
 
 .. _option-parallel:
 
 ``--parallel``
 --------------
 
-Run fit using multiprocessing for parallelism.
+Run fit using multiprocessing for parallelism. Use "--parallel=0" for all
+CPUs or "--parallel=n" for only "n" CPUs.
 
 .. _option-mpi:
 
 ``--mpi``
 ---------
 
-Run fit using MPI for parallelism (use command "mpirun -n cpus ...")
+Run fit using MPI for parallelism. Use command "mpirun -n cpus ..."
+to run bumps for MPI. This will usually be the last line of a queue
+submission script. Be sure to include ``--time=...`` to limit the fit
+to run within the queue allocation time.
 
 .. _option-batch:
 
@@ -420,19 +462,29 @@ over time, which can be useful for understanding the different fitting
 methods.
 
 
-
-
 Output Controls
 ===============
 
+.. _option-err:
+
+```--err``
+----------
+
+Show uncertainties at the end of the fit using the square root of the
+diagonals of the covariance matrix. See :ref:`option-cov`.
 
 .. _option-cov:
 
 ``--cov``
 ---------
 
-Compute the covariance matrix for the model at the minimum.
-
+Compute the covariance matrix for the model at the minimum. With gaussian
+uncertainties on the data, bumps is minimizing the sum of squares, so the
+Jacobian matrix is used for the covariance, formed from the numerical
+derivative of each residual with respect to each parameter. If the
+likelihood function is not a simple sum of squared residuals, then
+the Hessian matrix is used for the covariance, formed from the numerical
+derivative of the likelihood with respect to pairs of parameters.
 
 .. _option-entropy:
 
@@ -440,8 +492,27 @@ Compute the covariance matrix for the model at the minimum.
 -------------
 
 *Calculate entropy* is a flag which indicates whether entropy should be
-computed for the final fit.  Entropy an estimate of the number of bits of
-information available from the fit.
+computed for the final fit. Entropy an estimate of the number of bits of
+information available from the fit. Use "--entropy=method" to specify the
+entropy calcualation method. This can be one of:
+
+* gmm: fit sample to a gaussian mixture model (GMM) with $5 \sqrt{d}$
+  components where $d$ is the number fitted parameters and estimate
+  entropy by sampling from the GMM.
+
+* llf: estimates likelihood scale factor from ratio of density
+  estimate to model likelihood, then computes Monte Carlo entropy
+  from sample; this does not work for marginal likelihood estimates.
+  DOI:10.1109/CCA.2010.5611198
+
+* mvn: fit sample to a multi-variate Gaussian and return the entropy
+  of the best fit gaussian; uses bootstrap to estimate uncertainty.
+  This method is only valid if the sample distribution is approximately
+  Gaussian.
+
+* wnn: estimate entropy from weighted nearest-neighbor distances in sample.
+  Note: use with caution. The results from this implementation are not
+  consistent with other methods. DOI:10.1214/18-AOS1688
 
 
 .. _option-plot:
@@ -454,6 +525,25 @@ option to display.  For example, when fitting a power law to a dataset, you
 may want to choose *log* or *linear* as the output plot type.
 
 
+.. _option-trim:
+
+``--trim``
+----------
+
+*Burn-in trim* finds the "burn point" after which the DREAM Markov chains
+appear to have converged and ignores all points before it when plotting or
+computing covariance and entropy. The trimmed points are still written to
+the MCMC output files so they will be available when the fit is resumed.
+Use ``--trim=true`` to set trimming.
+
+
+.. _option-noshow:
+
+``--noshow``
+------------
+
+*No show* suppresses the plot window after the fit. This is done automatically
+when ``--batch`` is selected.
 
 Bumps Controls
 ==============
@@ -475,15 +565,6 @@ It will also show the fit range.
 If the command contains *chisq* then show $\chi^2$ and exit.  Use this to
 check that the model does not have any syntax errors.
 
-.. _option-edit:
-
-``--edit``
-----------
-
-If the command contains *edit* then start the Bumps user interface so that
-you can interact with the model, adjusting fitted parameters with a slider
-and seeing how they impact the result.
-
 .. _option-resynth:
 
 ``--resynth``
@@ -500,53 +581,66 @@ Each of these datasets will be fit with the specified optimizer, and the
 resulting parameters saved in *T1/model.rsy*.  On completion, the parameter
 values can be loaded into python and averaged or histogrammed.
 
-.. _option-help:
+.. _option-time_model:
 
-``--help``
-----------
-
-Use *?*, *h* or *help* to show a brief description of each command line option.
-
-
-.. _option-python:
-
-``--python``
-------------
-
-The bumps program can be used as a python interpreter with numpy, scipy,
-matplotlib and bumps included.  This is useful if you do not have python
-set up on your system, and you are using a bundled executable like Bumps
-or Refl1D on windows.  Even if you have python, you may want to run the
-bumps post-analysis scripts through the bumps command which already has
-the appropriate path set up to bumps on your system.
-
-The options are:
-
-    *i* run an interactive interpreter
-
-    *m* run a module as main, much like *python -m module.path*
-
-    *c* run a python command and quit
-
-    *p* run a python script
-
-
-.. _option-timer:
-
-``--timer``
------------
+``--time_model``
+----------------
 
 Run the model :ref:`option-steps` times and find the average run time per step.
 If :ref:`option-parallel` is used, then the models will be run in parallel.
 
 
-.. _option-profiler:
+.. _option-profile:
 
-``--profiler``
---------------
+``--profile``
+-------------
 
 Run the model :ref:`option-steps` times using the python profiler.  This can
 be useful for identifying slow parts of your model definition, or
 alternatively, finding out that the model runtime is smaller than the
 Bumps overhead.  Use a larger value of steps for better statistics.
 
+
+Special Options
+===============
+
+.. _option-edit:
+
+``--edit``
+----------
+
+If the command contains *edit* then start the Bumps user interface so that
+you can interact with the model, adjusting fitted parameters with a slider
+and seeing how they impact the result.
+
+.. _option-help:
+
+``--help``, ``-h``, ``-?``
+--------------------------
+
+Use ``-?``, ``-h`` or ``--help`` to show a brief description of each
+command line option.
+
+
+.. _option-python:
+
+``-i``, ``-m``, ``-c``, ``-p``
+------------------------------
+
+The bumps program can be used as a python interpreter with numpy, scipy,
+matplotlib and bumps packages available.  This is useful if you do not have
+python set up on your system, and you are using a bundled executable like
+Bumps or Refl1D on windows.  Even if you have python, you may want to run the
+bumps post-analysis scripts through the bumps command which already has
+the appropriate path set up to bumps on your system.
+
+The options are:
+
+* ``-i``: run an interactive interpreter.
+
+* ``-m package.module``: run a module as main. This is similar to
+  ``python -m package.module`` with the python interpreter.
+
+* ``-c expression``: run a python command and quit.
+
+* ``-p script.py``: run a python script.

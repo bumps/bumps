@@ -164,7 +164,7 @@ def FitProblem(*args, **kw):
 
         *weights* is an optional scale factor for each model
 
-        *freevars* is :class:`parameter.FreeVariables` instance defining the
+        *freevars* is :class:`.parameter.FreeVariables` instance defining the
         per-model parameter assignments.  See :ref:`freevariables` for details.
 
 
@@ -337,7 +337,8 @@ class BaseFitProblem(object):
 
     def bounds(self):
         """Return the bounds fore each parameter a 2 x N array"""
-        return np.array([p.bounds.limits for p in self._parameters], 'd').T
+        limits = [p.bounds.limits for p in self._parameters]
+        return np.array(limits, 'd').T if limits else np.empty((2, 0))
 
     def randomize(self, n=None):
         """
@@ -403,7 +404,9 @@ class BaseFitProblem(object):
         residuals gives an indication of which points are driving the fit.
         """
         if not hasattr(self.fitness, 'residuals'):
-            raise NotImplemented("model does not define residuals")
+            ## Fake residuals by using single nllf value as residual
+            #return np.asarray([np.sqrt(self.nllf())])
+            raise NotImplementedError("model does not define residuals")
         return self.fitness.residuals()
 
     def chisq(self):
@@ -417,6 +420,8 @@ class BaseFitProblem(object):
         Note that this does not include cost factors due to constraints on
         the parameters, such as sample_offset ~ N(0,0.01).
         """
+        if hasattr(self.fitness, 'chisq'):
+            return self.fitness.chisq()
         return np.sum(self.residuals() ** 2) / self.dof
         # return 2*self.nllf()/self.dof
 

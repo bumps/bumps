@@ -248,7 +248,7 @@ handling system (e.g. sympy or PyMC) you may want to tie into the Bumps
 system at a higher level.  In this case you will need to define a
 class which implements the :class:`FitProblem <bumps.fitproblem.FitProblem>`
 interface.  This has been done already for
-:class:`PyMCProblem <bumps.pymcfit.PyMCProblem`
+:class:`PyMCProblem <bumps.pymcfit.PyMCProblem>`
 and interested parties are directed therein for a working example.
 
 

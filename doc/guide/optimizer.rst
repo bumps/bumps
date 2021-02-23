@@ -27,7 +27,7 @@ gradient descent algorithms.
 
 Each algorithm has its own set of control parameters for adjusting the
 search process and the stopping conditions.  The same option may mean
-slightly different things to different optimizers.  The bumps package
+slightly different things to different optimizers.  The Bumps package
 provides a dialog box for selecting the optimizer and its options
 when running the fit wx application.  This only includes the common options
 for the most useful optimizers.  For full control, the fit will need to
@@ -69,7 +69,7 @@ Levenberg-Marquardt
     :alt: Levenberg-Marquardt option screen.
     :align: left
 
-The Levenberg-Marquardt algorithm has been
+The Levenberg-Marquardt [#Levenberg1944]_ [#Marquardt1963]_ algorithm has been
 the standard method for non-linear data fitting.  As a gradient descent
 trust region method, it starts at the initial value of the function and
 steps in the direction of the derivative until it reaches the minimum.
@@ -124,12 +124,12 @@ Use ``--fit=lm`` to select the Levenberg-Marquardt fitter from the command line.
 References
 ----------
 
-.. [Levenberg1944]
+.. [#Levenberg1944]
     Levenberg, K.
     *Quarterly Journal of Applied Mathmatics*
     1944, II (2), 164–168.
 
-.. [Marquardt1963]
+.. [#Marquardt1963]
     Marquardt, D. W.
     *Journal of the Society for Industrial and Applied Mathematics*
     1963, 11 (2), 431–441.
@@ -144,15 +144,15 @@ Nelder-Mead Simplex
     :alt: Nelder-Mead Simplex option screen.
     :align: left
 
-The Nelder-Mead downhill simplex algorithm is a robust optimizer which
-does not require the function to be continuous or differentiable.
+The Nelder-Mead [#Nelder1965]_ downhill simplex algorithm is a robust optimizer
+which does not require the function to be continuous or differentiable.
 It uses the relative values of the function at the corners of a
 simplex (an n-dimensional triangle) to decide which points of the simplex
 to update.  It will take the worst value and try moving it inward or
 outward, or reflect it through the centroid of the remaining values
 stopping if it finds a better value.  If none of these values are
 better, then it will shrink the simplex and start again.  The name
-amoeba comes from the book *Numerical Recipes* [Press1992]_ wherein they
+amoeba comes from the book *Numerical Recipes* [#Press1992]_ wherein they
 describe the search as acting like an amoeba, squeezing through narrow valleys
 as it makes its way down to the minimum.
 
@@ -205,13 +205,13 @@ command line.
 References
 ----------
 
-.. [Nelder1965]
+.. [#Nelder1965]
     Nelder, J. A.; Mead, R.
     *The Computer Journal*
     1965, 7 (4), 308–313.
     DOI: `10.1093/comjnl/7.4.308 <http://dx.doi.org/10.1093/comjnl/7.4.308>`_
 
-.. [Press1992]
+.. [#Press1992]
    Press, W. H.; Flannery, B. P.; Teukolsky, S. A.; Vetterling, W. T.
    In *Numerical Recipes in C: The Art of Scientific Computing, Second Edition*;
    Cambridge University Press: Cambridge; New York, 1992; pp 408–412.
@@ -226,10 +226,10 @@ Quasi-Newton BFGS
     :alt: Quasi-Newton BFGS option screen.
     :align: left
 
-Broyden-Fletcher-Goldfarb-Shanno is a gradient descent method which uses the
-gradient to determine the step direction and an approximation of the Hessian
-matrix to estimate the curvature and guess a step size.  The step is further
-refined with a one-dimensional search in the direction of the gradient.
+Broyden-Fletcher-Goldfarb-Shanno [#Dennis1987]_ is a gradient descent method
+which uses the gradient to determine the step direction and an approximation of
+the Hessian matrix to estimate the curvature and guess a step size. The step is
+further refined with a one-dimensional search in the direction of the gradient.
 
 When to use
 -----------
@@ -269,7 +269,7 @@ Use ``--fit=newton`` to select BFGS from the commandline.
 References
 ----------
 
-.. [Dennis1987]
+.. [#Dennis1987]
     Dennis, J. E.; Schnabel, R. B.
     *Numerical Methods for Unconstrained Optimization and Nonlinear Equations*;
     Society for Industrial and Applied Mathematics: Philadelphia, 1987.
@@ -284,10 +284,10 @@ Differential Evolution
     :alt: Differential Evolution option screen.
     :align: left
 
-Differential evolution is a population based algorithm which uses differences
-between points as a guide to selecting new points.  For each member of the
-population a pair of points is chosen at random, and a difference vector is
-computed.  This vector is scaled, and a random subset of its components are
+Differential evolution [#Storn1997]_ is a population based algorithm which uses
+differences between points as a guide to selecting new points. For each member
+of the population a pair of points is chosen at random, and a difference vector
+is computed.  This vector is scaled, and a random subset of its components are
 added to the current point based on crossover ratio. This new point is
 evaluated, and if its value is lower than the current point, it replaces
 it in the population.   There are many variations available within DE that
@@ -349,7 +349,7 @@ Use ``--fit=de`` to select diffrential evolution from the commandline.
 References
 ----------
 
-.. [Storn1997]
+.. [#Storn1997]
     Storn, R.; Price, K.
     *Journal of Global Optimization*
     1997, 11 (4), 341–359.
@@ -366,8 +366,8 @@ DREAM
     :alt: DREAM option screen.
     :align: left
 
-DREAM is a population based algorithm like differential evolution, but
-instead of only keeping individuals which improve each generation, it
+DREAM [#Vrugt2009]_ is a population based algorithm like differential evolution,
+but instead of only keeping individuals which improve each generation, it
 will sometimes keep individuals which get worse.  Although it is not
 fast and does not give the very best value for the function, we have
 found it to be a robust fitting engine which will give a good value given
@@ -414,7 +414,7 @@ To estimate the 68% interval to two digits of precision, at least
 gives a rough approximation of the uncertainty relatively quickly.
 Use ``--samples=n`` from the command line.
 
-*Burn-in Steps* is the number of iterations to required for the Markov
+*Burn-in steps* is the number of iterations to required for the Markov
 chain to converge to the equilibrium distribution.  If the fit ends
 early, the tail of the burn will be saved to the start of the steps.
 Use ``--burn=n`` from the command line.
@@ -449,9 +449,36 @@ population.  If the fit is somewhat stuck, with most steps not improving
 the fit, then you will need to thin the population to get proper
 statistics.  Use ``--thin=k`` from the command line.
 
+*Convergence* gives a cutoff value $\alpha$ for determining when
+the Markov chain has converged. The default is ``--alpha=0.00`` for no
+convergence tests. Various tests are used, such as comparing the distribution
+of points in the first part of the chain to the last part and looking for
+trends in the log-likelihood values. You may need to use smaller $\alpha$ for
+shorter sequences (samples over variables times population) since the test
+statistics will have higher variance. Convergence is tested every $n$ steps.
+
+*Outliers* is the test to use to check for outlier chains. Default is
+``--outliers=none`` for no outlier test. Options are *iqr*, which uses
+the inter-quartile range on the likelihoods, *grubbs*, which uses a t-test
+on the likelihoods, and *mahal* which looks at the distance from the best
+chain in parameter space. Outlier removal occurs every $2n$ steps where
+$n$ is #samples/(#pars #pop), or when the convergence test indicates the
+chains are stable. Outliers are replaced by non-outlier chains at random.
+These new chains need at least $n$ steps to mix before being used. If the
+MCMC exploration stops due to time, some of the chains may not be properly
+mixed.
+
+*Burn-in trim* is used to clear spurious samples from the Markov chains.
+If ``--trim=true`` then bumps finds the "burn point" after which the
+chains appear to have converged. Samples before this point are ignored
+when computed statistics and making plots. The trimmed samples are still
+written to the MCMC output files so they will be available when the fit
+is resumed.
+
 *Calculate entropy*, if true, computes the entropy for the fit.  This is
-an estimate of the amount of information in the data.  Use ``--entropy``
-from the command line.
+an estimate of the amount of information in the data.  Use ``--entropy=method``
+from the command line, where method is one of *llf* (default), *gmm*, *mvn*
+or *wnn*. See below for details.
 
 *Steps*, if not zero, determines the number of iterations to use for
 drawing samples after burn in. Each iteration updates the full population,
@@ -459,7 +486,9 @@ which is (population x number of fitted parameters) points. This option
 is available for compatibility; it is more useful to set the number of
 samples directly.  Use ``--steps=n`` from the command line.
 
-Use ``--fit=dream`` to select DREAM from the commandline.
+Use ``--fit=dream`` to select DREAM from the commandline. Consider using
+``--parallel`` and ``--checkpoint`` as well. When running in a batch queue,
+add ``--batch`` and use ``--mpi`` rather than ``--parallel``.
 
 Output
 ------
@@ -498,7 +527,8 @@ point in the probability distribution, and the best value is the maximum
 likelihood value seen in the random walk.  The credible intervals are the
 central intervals which capture 68% and 95% of the parameter values
 respectively.  You need approximately 100,000 samples to get two digits of
-precision on the 68% interval, and 1,000,000 samples for the 95% interval.
+precision on the 68% interval, and 1,000,000 samples for the 95%
+interval. [#JCGM2008]_
 
 .. table:: Example fit output
 
@@ -567,52 +597,79 @@ theory and data divided by uncertainty.  The residuals should be 2/3 within
 misses the data for long stretches.  This indicates some feature missing
 from the model, or a lack of convergence to the best model.
 
-If entropy is requested, then bumps will show the total number of bits of
-information in the fit.  This derives from the entropy term:
+If entropy is requested, then Bumps will show the total number of bits of
+information in the fit, where entropy is defined as:
 
 .. math:
 
-    S = \int_\Theta p(\Theta) \log p(\Theta) d\Theta
+    S = \int_\Theta p(\Theta) \log_2 p(\Theta) d\Theta
+
+Since we already have a sample from the posterior distribution $p(\Theta)$
+the Monte Carlo integral should be $S \approx \sum_{k} \log_2 p(\theta_k)$.
+However, we do not know $p(\theta_k)$, especially when we are integrating
+over nuisance parameters and only computing entropy for the parameters of
+interest. There are numerous methods in the literature for performing
+this calculation, and we have implemented the following:
+
+* *gmm* fits the MCMC sample to a Gaussian mixture model (GMM) and
+  then estimates the entropy of the GMM through Monte Carlo integration.
+
+* *llf* finds the average ratio between the unnormalized negative log
+  likelihood (NLLF) and a kernel density estimate (sklearn *KernelDensity*
+  with default options), then estimates the entropy from the normalized
+  likelihood through Monte Carlo integration. [#Kramer2010]_ This technique
+  will not work for marginal likelihood estimates.
+
+* *mvn* fits the MCMC sample to a multivariate Gaussian and returns the
+  entropy of that Gaussian. This is fast and accurate when the sample is
+  well behaved (i.e., the uncertainty distribution is approximately
+  Gaussian).
+
+* *wnn* estimates entropy from nearest-neighbour distances in the
+  sample. [#Berrett2019]_
 
 Using entropy and simulation we hope to be able to make experiment
 planning decisions in a way that maximizes information, by estimating
 whether it is better to measure more precisely or to measure different
 but related values and fit them with shared parameters.
 
-
 References
 ----------
 
-.. [Vrugt2009]
+.. [#Vrugt2009]
     Vrugt, J. A.; Ter Braak, C. J. F.; Diks, C. G. H.; Robinson, B. A.;
     Hyman, J. M.; Higdon, D.
-    *International Journal of Nonlinear Sciences and Numerical Simulation*
+    International Journal of Nonlinear Sciences and Numerical Simulation,
     2009, 10 (3), 273–290.
     DOI: `10.1515/IJNSNS.2009.10.3.273 <http://dx.doi.org/10.1515/IJNSNS.2009.10.3.273>`_
 
-.. [Kramer2010]
+.. [#Kramer2010]
     Kramer, A.; Hasenauer, J.; Allgower, F.; Radde, N.
     *In 2010 IEEE International Conference on Control Applications (CCA)*
     2010; pp 493–498.
     DOI: `10.1109/CCA.2010.5611198 <http://dx.doi.org/10.1109/CCA.2010.5611198>`_
 
-.. [JCGM2008]
+.. [#JCGM2008]
     JCGM.
-    *Evaluation of measurement data — Supplement 1 to the “Guide to the
-    expression of uncertainty in measurement” — Propagation of distributions
+    *Evaluation of measurement data — Supplement 1 to the "Guide to the
+    expression of uncertainty in measurement" — Propagation of distributions
     using a Monte Carlo method*; Joint Committee for Guides in Metrology,
     JCGM 101:2008; Geneva, Switzerland, 2008; p 90.
     `<http://www.bipm.org/utils/common/documents/jcgm/JCGM_101_2008_E.pdf>`_
 
-
+.. [#Berrett2019]
+    Berrett, T. B.; Samworth, R.J.; Yuan, M.;
+    *Efficient multivariate entropy estimation via k-nearest neighbour distances.*
+    Annals of Statistics 2019, 47 (1), 288-318.
+    DOI: `10.1214/18-AOS1688 <http://dx.doi.org/10.1214/18-AOS1688>`_
 
 .. _fit-ps:
 
 Particle Swarm
 ==============
 
-Inspired by bird flocking behaviour, the particle swarm algorithm is a
-population-based method which updates an individual according to its
+Inspired by bird flocking behaviour, the particle swarm [#Kennedy1995]_ algorithm
+is a population-based method which updates an individual according to its
 momentum and a force toward the current best fit parameter values.  We
 did not explore variations of this algorithm in any detail.
 
@@ -643,7 +700,7 @@ Add a few more lines
 References
 ----------
 
-.. [Kennedy1995]
+.. [#Kennedy1995]
     Kennedy, J.; Eberhart, R.
     Particle Swarm Optimization
     *Proceedings of IEEE International Conference on Neural Networks. IV.*
@@ -656,8 +713,8 @@ References
 Random Lines
 ============
 
-Most of the population based algorithms ignore the value of the function
-when choosing the points in the next iteration.  Random lines is a new
+Most of the population based algorithms ignore the value of the function when
+choosing the points in the next iteration.  Random lines [#Sahin2013]_ is a new
 style of algorithm which fits a quadratic model to a selection from the
 population, and uses that model to propose a new point in the next
 generation of the population.  The hope is that the method will inherit
@@ -699,7 +756,7 @@ Use ``--fit=rl`` to select random lines from the commandline.
 References
 ----------
 
-.. [Sahin2013]
+.. [#Sahin2013]
 
     Sahin, I.
     *An International Journal of Optimization and Control:  Theories & Applications (IJOCTA)*
@@ -712,7 +769,7 @@ References
 Parallel Tempering
 ==================
 
-Parallel tempering is an MCMC algorithm for uncertainty analysis.  This
+Parallel tempering [#Swendsen1986]_ is an MCMC algorithm for uncertainty analysis.  This
 version runs at multiple temperatures simultaneously, with chains at high
 temperature able to more easily jump between minima and chains at low
 temperature to fully explore the minima.  Like :ref:`fit-dream` it has a
@@ -751,7 +808,7 @@ Use ``--fit=pt`` to select parallel tempering from the commandline.
 References
 ----------
 
-.. [Swendsen1986]
+.. [#Swendsen1986]
     Swendsen, R. H.; Wang J. S.
     Replica Monte Carlo simulation of spin glasses
     *Physical Review Letters*

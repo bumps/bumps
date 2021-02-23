@@ -23,16 +23,54 @@ If a compiler is available, then significant speedup is possible for DREAM using
 
 For now this requires an install from source rather than pip.
 
-|TravisStatus|_ |DOI|_
+|CI| |RTD| |DOI|
 
-.. |TravisStatus| image:: https://travis-ci.org/bumps/bumps.svg?branch=master
-.. _TravisStatus: https://travis-ci.org/bumps/bumps
+.. |CI| image:: https://github.com/bumps/bumps/workflows/Test/badge.svg
+   :alt: Build status
+   :target: https://github.com/bumps/bumps/actions
 
 .. |DOI| image:: https://zenodo.org/badge/18489/bumps/bumps.svg
-.. _DOI: https://zenodo.org/badge/latestdoi/18489/bumps/bumps
+   :alt: DOI tag
+   :target: https://zenodo.org/badge/latestdoi/18489/bumps/bumps
+
+.. |RTD| image:: https://readthedocs.org/projects/bumps/badge/?version=latest
+   :alt: Documentation status
+   :target: https://bumps.readthedocs.io/en/latest/?badge=latest
 
 Release notes
 =============
+
+v0.8.0 2020-12-16
+-----------------
+* add stopping conditions to DREAM, using *--alpha=p-value* to reject convergence
+* require *--overwrite* or *--resume* when reusing a store directory
+* enable outlier trimming in DREAM with --outliers=iqr
+* add fitted slope and loglikelihood distribution to the loglikelihood plot
+* display seed value used for fit so it can be rerun with *--seed*
+* save MCMC files using gzip
+* remove R stat from saved state
+* restore *--pars* option, which was broken in 0.7.17
+* terminate the MPI session when the fit is complete instead of waiting for the
+  allocation to expire
+* allow a series of fits in the same MPI session
+* support newest matplotlib
+
+v0.7.18 2020-11-16
+------------------
+* restore python 2.7 support
+
+v0.7.17 2020-11-06
+------------------
+* restore DREAM fitter efficiency (it should now require fewer burn-in steps)
+* errplot.reload_errors allows full path to model file
+* clip values within bounds at start of fit so constraints aren't infinite
+* allow *--entropy=gmm|mvn|wnn|llf* to specify entropy estimation algorithm
+* allow duplicate parameter names in model on reload
+* expand tilde in path names
+* GUI: restore parallel processing
+* GUI: suppress uncertainty updates during fit to avoid memory leak
+* disable broken fitters: particle swarm, random lines, snobfit
+* minor doc changes
 
 v0.7.16 2020-06-11
 ------------------

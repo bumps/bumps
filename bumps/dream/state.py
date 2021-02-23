@@ -10,7 +10,6 @@ The results may be queried as follows::
     logp()            returns draws, logp
     acceptance_rate() returns draws, AR
     chains()          returns draws, chains, logp
-    R_stat()          returns draws, R
     CR_weight()       returns draws, CR_weight
     best()            returns best_x, best_logp
     outliers()        returns outliers
@@ -80,15 +79,17 @@ import numpy as np
 from numpy import empty, sum, asarray, inf, argmax, hstack, dstack
 from numpy import savetxt, reshape
 
+from .convergence import burn_point
 from .outliers import identify_outliers
 from .util import draw, rng
+from .gelman import gelman
 
-#EXT = ".mc.gz"
-#CREATE = gzip.open
-EXT = ".mc"
-CREATE = open
+EXT = ".mc.gz"
+CREATE = gzip.open
+#EXT = ".mc"
+#CREATE = open
 
-# CRUFT: python 2.x needs to convert unicode to bytes when writing to file
+# CRUFT: python 2 uses bytes rather than unicode for strings
 try:
     # python 2.x
     unicode
@@ -132,13 +133,11 @@ def save_state(state, filename):
     write(trace, "collapsing to draws x point\n")
     point = reshape(point, (point.shape[0]*point.shape[1], point.shape[2]))
 
-    write(trace, "extracting R_stat\n")
-    draws, R_stat = state.R_stat()
     write(trace, "extracting CR_weight\n")
-    _, CR_weight = state.CR_weight()
-    _, Ncr = CR_weight.shape
+    draws, CR_weight = state.CR_weight()
+    Nupdate, Ncr = CR_weight.shape
     write(trace, "building stats\n")
-    stats = hstack((draws[:, None], R_stat, CR_weight))
+    stats = hstack((draws[:, None], CR_weight))
 
     #TODO: missing _outliers from save_state
 
@@ -160,7 +159,7 @@ def save_state(state, filename):
     # Write stats
     write(trace, "writing stats\n")
     fid = CREATE(filename+'-stats'+EXT, 'wb')
-    write(fid, '# draws %d*R-stat %d*CR_weight\n' % (Nvar, Ncr))
+    write(fid, '# draws %d*CR_weight\n' % Ncr)
     savetxt(fid, stats)
     fid.close()
     write(trace, "done state save\n")
@@ -170,7 +169,6 @@ def save_state(state, filename):
 IND_PAT = re.compile('-1#IND')
 INF_PAT = re.compile('1#INF')
 
-
 def loadtxt(file, report=0):
     """
     Like numpy loadtxt, but adapted for windows non-finite numbers.
@@ -178,9 +176,9 @@ def loadtxt(file, report=0):
     if not hasattr(file, 'readline'):
         if file.endswith('.gz'):
             #print("opening with gzip")
-            fh = gzip.open(file, 'r')
+            fh = gzip.open(file, 'rt')
         else:
-            fh = open(file, 'r')
+            fh = open(file, 'rt')
     else:
         fh = file
     res = []
@@ -209,29 +207,62 @@ def path_contains_saved_state(filename):
     chain_file = filename + '-chain' + EXT
     return os.path.exists(chain_file)
 
+
+def openmc(filename):
+    if filename.endswith('.gz'):
+        if os.path.exists(filename):
+            #print("opening with gzip")
+            fh = gzip.open(filename, 'rt')
+        elif os.path.exists(filename[:-3]):
+            fh = open(filename[:-3], 'rt')
+        else:
+            raise RuntimeError("file %s does not exist"%filename)
+    else:
+        if os.path.exists(filename):
+            fh = open(filename, 'rt')
+        elif os.path.exists(filename+".gz"):
+            #print("opening with gzip")
+            fh = gzip.open(filename+".gz", 'rt')
+        else:
+            raise RuntimeError("file %s does not exist"%filename)
+    return fh
+
+
 def load_state(filename, skip=0, report=0, derived_vars=0):
     # Read chain file
-    chain = loadtxt(filename+'-chain'+EXT)
+    with openmc(filename+'-chain'+EXT) as fid:
+        chain = loadtxt(fid)
 
     # Read point file
-    fid = open(filename+'-point'+EXT, 'r')
-    line = fid.readline()
-    point_dims = line[line.find('[')+1:line.find(']')]
-    Nthin, Npop, Nvar = eval(point_dims)
-    for _ in range(skip*Npop):
-        fid.readline()
-    point = loadtxt(fid, report=report*Npop)
-    fid.close()
+    with openmc(filename+'-point'+EXT) as fid:
+        line = fid.readline()
+        point_dims = line[line.find('[')+1:line.find(']')]
+        Nthin, Npop, Nvar = eval(point_dims)
+        for _ in range(skip*Npop):
+            fid.readline()
+        point = loadtxt(fid, report=report*Npop)
 
     # Read stats file
-    stats = loadtxt(filename+'-stats'+EXT)
+    with openmc(filename+'-stats'+EXT) as fd:
+        stats_header = fd.readline()
+        stats = loadtxt(fd)
+
+    # Determine number of R-stat stored in the stats file
+    if 'R-stat' in stats_header:
+        # Old header looks like:
+        #     # draws {Nvar}*R-stat {Ncr}*CR_weight
+        # however, number of R-stat stored in stats file is the number of
+        # variables stored each generation, not including the derived variables
+        # calculated after the MCMC has completed.
+        num_r = int(stats_header.split('*')[0].split()[-1]) - derived_vars
+    else:
+        num_r = 0
 
     # Guess dimensions
     Ngen = chain.shape[0]
     thinning = 1
     Nthin -= skip
     Nupdate = stats.shape[0]
-    #Ncr = stats.shape[1] - Nvar - 1
 
     # Create empty draw and fill it with loaded data
     state = MCMCDraw(0, 0, 0, 0, 0, 0, thinning)
@@ -252,13 +283,13 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
     state._update_count = Nupdate
     state._update_index = 0
     state._update_draws = stats[:, 0]
-    state._update_R_stat = stats[:, 1:Nvar+1-derived_vars]
-    state._update_CR_weight = stats[:, Nvar+1-derived_vars:]
+    state._update_CR_weight = stats[:, 1+num_r:]
     state._outliers = []
 
     bestidx = np.argmax(point[:, 0])
     state._best_logp = point[bestidx, 0]
     state._best_x = point[bestidx, 1:Nvar+1-derived_vars]
+    state._best_gen = 0
 
     return state
 
@@ -277,6 +308,7 @@ class MCMCDraw(object):
         # Maximum observed likelihood
         self._best_x = None
         self._best_logp = -inf
+        self._best_gen = 0
 
         # Per generation iteration
         self.generation = 0
@@ -305,7 +337,6 @@ class MCMCDraw(object):
         self._update_index = 0
         self._update_count = 0
         self._update_draws = empty(Nupdate, 'i')
-        self._update_R_stat = empty((Nupdate, Nvar))
         self._update_CR_weight = empty((Nupdate, Ncr))
 
         self._outliers = []
@@ -318,6 +349,10 @@ class MCMCDraw(object):
     @property
     def Ngen(self):
         return self._gen_draws.shape[0]
+
+    @property
+    def Nsamples(self):
+        return self._gen_logp.size
 
     @property
     def Nthin(self):
@@ -380,17 +415,19 @@ class MCMCDraw(object):
         if Nupdate > self.Nupdate:
             self._update_count = self.Nupdate  # must happen before resize!!
             self._update_draws = np.resize(self._update_draws, Nupdate)
-            self._update_R_stat \
-                = np.resize(self._update_R_stat, (Nupdate, Nvar))
             self._update_CR_weight \
                 = np.resize(self._update_CR_weight, (Nupdate, Ncr))
         elif Nupdate < self.Nupdate:
             self._update_draws = self._update_draws[-Nupdate:].copy()
-            self._update_R_stat = self._update_R_stat[-Nupdate:, :].copy()
             self._update_CR_weight = self._update_CR_weight[-Nupdate:, :].copy()
 
     def save(self, filename):
         save_state(self, filename)
+
+    def trim_portion(self):
+        index = burn_point(self)
+        portion = 1 - (index/self.Ngen) if index >= 0 else 0.5
+        return portion
 
     def show(self, portion=1.0, figfile=None):
         from .views import plot_all
@@ -422,6 +459,8 @@ class MCMCDraw(object):
         if logp[maxid] > self._best_logp:
             self._best_logp = logp[maxid]
             self._best_x = x[maxid, :]+0 # Force a copy
+            self._best_gen = self.generation
+            #print("new best", logp[maxid], self.generation)
 
         # Record acceptance rate and cost
         i = self._gen_index
@@ -451,33 +490,19 @@ class MCMCDraw(object):
         else:
             self._gen_current = x+0 # force a copy
 
-    def _update(self, R_stat, CR_weight):
+    def _update(self, CR_weight):
         """
         Called from dream.py when a series of DE steps is completed and
         summary statistics/adaptations are ready to be stored.
         """
         self._update_count += 1
         i = self._update_index
-        #print("update", i, self.draws, "\n Rstat", R_stat, "\n CR weight", CR_weight)
+        #print("update", i, self.draws, "\n CR weight", CR_weight)
         self._update_draws[i] = self.draws
-        self._update_R_stat[i] = R_stat
         self._update_CR_weight[i] = CR_weight
         i = i+1
         if i == len(self._update_draws): i = 0
         self._update_index = i
-
-    def _replace_outlier(self, old, new):
-        """
-        Called from outliers.py when a chain is replaced by the
-        clone of another.
-        """
-        self._outliers.append((self._thin_index, old, new))
-
-        self._gen_logp[:, old] = self._gen_logp[:, new]
-        self._thin_logp[:, old] = self._thin_logp[:, new]
-        self._thin_point[:, old, :] = self._thin_point[:, new, :]
-        # PAK: shouldn't we reduce the total number of draws since we
-        # are throwing way an entire chain?
 
     @property
     def labels(self):
@@ -566,40 +591,38 @@ class MCMCDraw(object):
         if self._update_count > self._update_index > 0:
             self._update_draws[:] = np.roll(self._update_draws,
                                             -self._update_index, axis=0)
-            self._update_R_stat[:] = np.roll(self._update_R_stat,
-                                             -self._update_index, axis=0)
             self._update_CR_weight[:] = np.roll(self._update_CR_weight,
                                                 -self._update_index, axis=0)
             self._update_index = 0
 
-    def remove_outliers(self, x, logp, test='IQR', portion=0.5):
+    def remove_outliers(self, x, logp, test='IQR'):
         """
         Replace outlier chains with clones of good ones.  This should happen
         early in the sampling processes so the clones have an opportunity
-        to evolve their own identity.
+        to evolve their own identity.  Only the head of the chain is modified.
 
         *state* contains the chains, with log likelihood for each point.
 
         *x*, *logp* are the current population and the corresponding
-        log likelihoods
+        log likelihoods; these are updated with cloned chain values.
 
         *test* is the name of the test to use (one of IQR, Grubbs, Mahal
-        or none).
-
-        *portion* in (0, 1] is the amount of the chain to use
+        or none). See :func:`.outliers.identify_outliers` for details.
 
         Updates *state*, *x* and *logp* to reflect the changes.
 
-        See :mod:`outliers` for details.
+        Returns a list of the outliers that were removed.
         """
         # Grab the last part of the chain histories
         _, chains = self.logp()
         chain_len, Nchains = chains.shape
-        outliers = identify_outliers(test, chains[-chain_len:], x)
+        outliers = identify_outliers(test, chains, x)
+        #if len(outliers): print("old llf", logp[outliers])
 
         # Loop over each outlier chain, replacing each with another
         for old in outliers:
             # Draw another chain at random, with replacement
+            # TODO: consider using relative likelihood as a weight factor
             while True:
                 new = rng.randint(Nchains)
                 if new not in outliers:
@@ -608,6 +631,23 @@ class MCMCDraw(object):
             self._replace_outlier(old=old, new=new)
             x[old, :] = x[new, :]
             logp[old] = logp[new]
+
+        #if len(outliers): print("new llf", logp[outliers])
+        return outliers
+
+    def _replace_outlier(self, old, new):
+        """
+        Called from outliers.py when a chain is replaced by the
+        clone of another.
+        """
+        self._outliers.append((self._thin_index, old, new))
+
+        # 2017-10-06 [PAK] only replace the head, not the full chain
+        index = self._gen_index
+        self._gen_current[old] = self._gen_current[new]
+        self._gen_logp[index, old] = self._gen_logp[index, new]
+        self._thin_logp[index, old] = self._thin_logp[index, new]
+        self._thin_point[index, old, :] = self._thin_point[index, new, :]
 
     def mark_outliers(self, test='IQR', portion=1.0):
         """
@@ -653,12 +693,75 @@ class MCMCDraw(object):
 
         If full is True, then return all chains, not just good chains.
         """
-        self._unroll()
-        retval = self._gen_draws, self._gen_logp
+        #self._unroll()
+        #draws, logp = self._gen_draws, self._gen_logp
+        #if self.generation == self._gen_index:
+        #    draws, logp = [v[:self.generation] for v in (draws, logp)]
+
+        # Don't do a full unroll here
         if self.generation == self._gen_index:
-            retval = [v[:self.generation] for v in retval]
-        draws, logp = retval
+            draws = self._gen_draws[:self.generation]
+            logp = self._gen_logp[:self.generation]
+        elif self._gen_index > 0:
+            draws = np.roll(self._gen_draws, -self._gen_index, axis=0)
+            logp = np.roll(self._gen_logp, -self._gen_index, axis=0)
+        else:
+            draws = self._gen_draws
+            logp = self._gen_logp
+
+        # TODO: just return logp, not logp and draws
         return draws, (logp if full else logp[:, self._good_chains])
+
+    def logp_slice(self, n):
+        """
+        Return a slice of the logp chains, either the first n if n > 0
+        or the last n if n < 0.  Avoids unrolling the circular buffer if
+        possible.
+        """
+        if n < 0:  # tail
+            if self._gen_index >= -n:
+                return self._gen_logp[self._gen_index+n:self._gen_index]
+            elif self._gen_index == 0:
+                return self._gen_logp[n:]
+            else: # unroll across boundary
+                return np.vstack((self._gen_logp[n+self._gen_index:],
+                                  self._gen_logp[:self._gen_index]))
+        else:  # head
+            if self.generation < self.Ngen:
+                return self._gen_logp[:n]
+            elif self._gen_index+n <= self.Ngen:
+                return self._gen_logp[self._gen_index:self._gen_index+n]
+            else:
+                return np.vstack((self._gen_logp[self._gen_index:],
+                                  self._gen_logp[-n+self._gen_index:]))
+
+    def min_slice(self, n):
+        """
+        Return the minimum logp for n slices, from the head if positive
+        or the tail if negative.
+
+        This is a specialized function so it can be fast.  Convergence
+        can be quickly rejected if the min in a short head is smaller
+        than the min in a long tail.  Unfortunately, if the data is
+        wrapped, then the max function will cost extra.
+        """
+        # Copy the logic of slice
+        if n < 0:  # tail
+            if self._gen_index >= -n:
+                return np.min(self._gen_logp[self._gen_index+n:self._gen_index])
+            elif self._gen_index == 0:
+                return np.min(self._gen_logp[n:])
+            else: # max across boundary
+                return min(np.min(self._gen_logp[n+self._gen_index:]),
+                           np.min(self._gen_logp[:self._gen_index]))
+        else:  # head
+            if self.generation < self.Ngen:
+                return np.min(self._gen_logp[:n])
+            elif self._gen_index+n <= self.Ngen:
+                return np.min(self._gen_logp[self._gen_index:self._gen_index+n])
+            else:
+                return min(np.min(self._gen_logp[self._gen_index:]),
+                           np.min(self._gen_logp[-n+self._gen_index:]))
 
     def acceptance_rate(self):
         """
@@ -700,22 +803,15 @@ class MCMCDraw(object):
             retval = [v[:self._thin_count] for v in retval]
         return retval
 
-    def R_stat(self):
+    def gelman(self):
         """
-        Return the R-statistics convergence statistic for each variable.
-
-        For example, to plot the convergence of all variables over time::
-
-            draw, R = state.R_stat()
-            plot(draw, R)
-
-        See :mod:`dream.gelman` and references detailed therein.
+        Compute the R-statistic for the current frame
         """
-        self._unroll()
-        retval = self._update_draws, self._update_R_stat
-        if self._update_count == self._update_index:
-            retval = [v[:self._update_count] for v in retval]
-        return retval
+        # Calculate Gelman and Rubin convergence diagnostic
+        if self.generation < self.Ngen:
+            return gelman(self._thin_point[:self.generation], portion=1.0)
+        else:
+            return gelman(self._thin_point, portion=1.0)
 
     def CR_weight(self):
         """
@@ -726,7 +822,7 @@ class MCMCDraw(object):
             draw, weight = state.CR_weight()
             plot(draw, weight)
 
-        See :mod:`dream.crossover` for details.
+        See :mod:`.crossover` for details.
         """
         self._unroll()
         retval = self._update_draws, self._update_CR_weight
@@ -755,9 +851,15 @@ class MCMCDraw(object):
         """
         return self._best_x, self._best_logp
 
+    def stable_best(self):
+        """
+        Return the best point seen and its log likelihood.
+        """
+        return (self._best_gen + self.Ngen <= self.generation)
+
     def keep_best(self):
         """
-        Place the best point at the end of the chain final good chain.
+        Place the best point at the end of the last good chain.
 
         Good chains are defined by mark_outliers.
 
@@ -808,8 +910,9 @@ class MCMCDraw(object):
         drawn = self.draw(**kw)
         return drawn.points, drawn.logp
 
-    def entropy(self, vars=None, portion=1, selection=None, n_est=10000, thin=None):
-        """
+    def entropy(self, vars=None, portion=1.0, selection=None, n_est=10000,
+                thin=None, method=None):
+        r"""
         Return entropy estimate and uncertainty from an MCMC draw.
 
         *portion* is the portion of each chain to use
@@ -827,6 +930,23 @@ class MCMCDraw(object):
 
         *thin* is the amount of thinning to use when selecting points from the
         draw.
+
+        *method* determines which entropy calculation to use:
+
+        * gmm: fit sample to a gaussian mixture model (GMM) with $5 \sqrt{d}$
+          components where $d$ is the number fitted parameters and estimate
+          entropy by sampling from the GMM.
+
+        * llf: estimates likelihood scale factor from ratio of density
+          estimate to model likelihood, then computes Monte Carlo entropy
+          from sample; this does not work for marginal likelihood estimates.
+          DOI:10.1109/CCA.2010.5611198
+
+        * mvn: fit sample to a multi-variate Gaussian and return the entropy
+          of the best fit gaussian; uses bootstrap to estimate uncertainty.
+
+        * wnn: estimate entropy from nearest-neighbor distances in sample.
+          DOI:10.1214/18-AOS1688
         """
         from . import entropy
 
@@ -843,17 +963,31 @@ class MCMCDraw(object):
         M = entropy.MVNEntropy(drawn.points)
         print("Entropy from MVN: %s"%str(M))
 
-        # Try pure gmm ... pretty good
-        #S_gmm, Serr_gmm = entropy.gmm_entropy(drawn.points, n_est=10000)
-        #print("Entropy from gmm: %s"%str(S_gmm))
+        if method is None:
+            # TODO: change default to gmm
+            method = "llf"
 
-        S, Serr = entropy.entropy(drawn.points, drawn.logp, N_entropy=n_est)
-        #print("Entropy from Kramer: %s"%str(S))
+        if method == "llf":
+            S, Serr = entropy.entropy(drawn.points, drawn.logp, N_entropy=n_est)
+            #print("Entropy from llf (Kramer): %s"%str(S))
+        elif method == "gmm":
+            # Try pure gmm ... pretty good
+            S, Serr = entropy.gmm_entropy(drawn.points, n_est=n_est)
+            #print("Entropy from gmm: %g +/- %g"% (S, Serr))
+        elif method == "wnn":
+            # Try pure wnn ... no good
+            S, Serr = entropy.wnn_entropy(drawn.points, n_est=n_est)
+            #print("Entropy from wnn: %s"%str(S))
+        elif method == "mvn":
+            S, Serr = entropy.mvn_entropy_bootstrap(drawn.points)
+            #print("Entropy from mvn: %s"%str(S))
+        else:
+            raise ValueError("unknown method %r" % method)
 
         # Always return entropy estimate from draw, even if it is normal
         return S, Serr
 
-    def draw(self, portion=1, vars=None, selection=None, thin=1):
+    def draw(self, portion=1.0, vars=None, selection=None, thin=1):
         """
         Return a sample from the posterior distribution.
 
@@ -1000,7 +1134,6 @@ def test():
     pin = rand(Ngen, Npop)
     accept = rand(Ngen, Npop) < 0.8
     CRin = rand(Nupdate, Ncr)
-    Rin = rand(Nupdate, 1)
     #thinning = 2
     #Nthin = int(Ngen/thinning)
 
@@ -1010,7 +1143,7 @@ def test():
     state = MCMCDraw(Ngen=Ngen, Nthin=Nthin, Nupdate=Nupdate,
                      Nvar=Nvar, Npop=Npop, Ncr=Ncr, thinning=thinning)
     for i in range(Nupdate):
-        state._update(R_stat=Rin[i], CR_weight=CRin[i])
+        state._update(CR_weight=CRin[i])
         for j in range(Nstep):
             gen = i*Nstep+j
             state._generation(new_draws=Npop, x=xin[gen],
@@ -1027,9 +1160,6 @@ def test():
     #assert norm(draws - thinning*Npop*arange(1, Nthin+1)) == 0
     #assert norm(sample - xin[thinning-1::thinning]) == 0
     #assert norm(logp - pin[thinning-1::thinning]) == 0
-    draws, R = state.R_stat()
-    assert norm(draws - Npop*Nstep*arange(Nupdate)) == 0
-    assert norm(R-Rin) == 0
     draws, CR = state.CR_weight()
     assert norm(draws - Npop*Nstep*arange(Nupdate)) == 0
     assert norm(CR - CRin) == 0
@@ -1043,7 +1173,7 @@ def test():
     state._replace_outlier(1, 2)
     outliers = state.outliers()
     draws, logp = state.sample()
-    assert norm(outliers -  asarray([[state._thin_index, 1, 2]])) == 0
+    assert norm(outliers - asarray([[state._thin_index, 1, 2]])) == 0
     #assert norm(sample[:, 1, :] - xin[thinning-1::thinning, 2, :]) == 0
     #assert norm(sample[:, 2, :] - xin[thinning-1::thinning, 2, :]) == 0
     #assert norm(logp[:, 1] - pin[thinning-1::thinning, 2]) == 0
