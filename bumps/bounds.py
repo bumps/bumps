@@ -597,13 +597,13 @@ class BoundedNormal(Bounds):
     truncated normal bounds
     """
 
-    def __init__(self, sigma=1, mu=0, limits=(-inf, inf)):
+    def __init__(self, mean=0, std=1, limits=(-inf, inf)):
         self.limits = limits
-        self.sigma, self.mu = sigma, mu
+        self.mean, self.std = mean, std
 
-        self._left = normal_distribution.cdf((limits[0]-mu)/sigma)
-        self._delta = normal_distribution.cdf((limits[1]-mu)/sigma) - self._left
-        self._nllf_scale = log(sqrt(2 * pi * sigma ** 2)) + log(self._delta)
+        self._left = normal_distribution.cdf((limits[0]-mean)/std)
+        self._delta = normal_distribution.cdf((limits[1]-mean)/std) - self._left
+        self._nllf_scale = log(sqrt(2 * pi * std ** 2)) + log(self._delta)
 
     def get01(self, x):
         """
@@ -612,7 +612,7 @@ class BoundedNormal(Bounds):
         This can also be used as a scale bar to show approximately how close to
         the end of the range the value is.
         """
-        v = ((normal_distribution.cdf((x-self.mu)/self.sigma) - self._left)
+        v = ((normal_distribution.cdf((x-self.mean)/self.std) - self._left)
              / self._delta)
         return clip(v, 0, 1)
 
@@ -621,7 +621,7 @@ class BoundedNormal(Bounds):
         Convert [0,1] into value for optimizers which are bounds constrained.
         """
         x = v * self._delta + self._left
-        return normal_distribution.ppf(x) * self.sigma + self.mu
+        return normal_distribution.ppf(x) * self.std + self.mean
 
     def getfull(self, x):
         """
@@ -647,7 +647,7 @@ class BoundedNormal(Bounds):
         likelihood scaled so that the maximum probability is one.
         """
         if value in self:
-            return 0.5 * ((value-self.mu)/self.sigma)**2 + self._nllf_scale
+            return 0.5 * ((value-self.mean)/self.std)**2 + self._nllf_scale
         else:
             return inf
 
@@ -661,7 +661,7 @@ class BoundedNormal(Bounds):
         For the truncated normal distribution, we can just use the normal
         residuals.
         """
-        return (value - self.mu) / self.sigma
+        return (value - self.mean) / self.std
 
     def start_value(self):
         """
@@ -675,7 +675,7 @@ class BoundedNormal(Bounds):
     def __str__(self):
         vals = (
             self.limits[0], self.limits[1],
-            self.mu, self.sigma,
+            self.mean, self.std,
         )
         return "(%s,%s), norm(%s,%s)" % tuple(num_format(v) for v in vals)
 
