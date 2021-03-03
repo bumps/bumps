@@ -13,16 +13,26 @@ parts of the model, or different models.
 #__all__ = [ 'Parameter']
 import operator
 import sys
+import builtins
+from typing import List
 from six.moves import reduce
 import warnings
 from copy import copy
 import math
 from functools import wraps
+try:
+    from typing import Optional, Any, Union, Dict, Callable, Literal, Protocol
+except ImportError:
+    from typing import Optional, Any, Union, Dict, Callable
+    from typing_extensions import Literal, Protocol
+#from pydantic.dataclasses import dataclass
+from .util import dataclass, field
 
 import numpy as np
 from numpy import inf, isinf, isfinite
 
 from . import bounds as mbounds
+bounds_classes = mbounds.Bounds.__subclasses__()
 
 # TODO: avoid evaluation of subexpressions if parameters do not change.
 # This is especially important if the subexpression invokes an expensive
@@ -65,18 +75,22 @@ def to_dict(p):
         return str(p)
 
 
-class BaseParameter(object):
+@dataclass(init=False)
+class BaseParameterModel: #(metaclass=Labeller):
+    # Parameters are fixed unless told otherwise
+    fixed: bool = field(default=True, init=False)
+    fittable: bool = field(default=False, init=False)
+    discrete: bool = field(default=False, init=False)
+    bounds: Union[tuple(bounds_classes)] = field(default=mbounds.Unbounded(), init=False)
+    id: int = field(default=0, init=False)
+    #_bounds =  mbounds.Unbounded()
+    name: Optional[str] = field(default=None, init=False)
+    value: Optional[float] = field(default=None, init=False) # value is an attribute of the derived class
+
+class BaseParameter(BaseParameterModel):
     """
     Root of the parameter class, defining arithmetic on parameters
     """
-
-    # Parameters are fixed unless told otherwise
-    fixed = True
-    fittable = False
-    discrete = False
-    _bounds = mbounds.Unbounded()
-    name = None
-    value = None # value is an attribute of the derived class
 
     # Parameters may be dependent on other parameters, and the
     # fit engine will need to access them.
@@ -100,7 +114,7 @@ class BaseParameter(object):
         The resulting range is converted to "nice" numbers.
         """
         bounds = mbounds.pmp(self.value, plus, minus, limits=limits)
-        self.bounds = mbounds.Bounded(*bounds)
+        self.set_bounds(mbounds.Bounded(*bounds))
         return self
 
     def pm(self, plus, minus=None, limits=None):
@@ -120,7 +134,7 @@ class BaseParameter(object):
         The resulting range is converted to "nice" numbers.
         """
         bounds = mbounds.pm(self.value, plus, minus, limits=limits)
-        self.bounds = mbounds.Bounded(*bounds)
+        self.set_bounds(mbounds.Bounded(*bounds))
         return self
 
     def dev(self, std, mean=None, limits=None, sigma=None, mu=None):
@@ -146,9 +160,9 @@ class BaseParameter(object):
         if mean is None:
             mean = self.value  # Note: value is an attribute of the derived class
         if limits is None:
-            self.bounds = mbounds.Normal(mean, std)
+            self.set_bounds(mbounds.Normal(mean, std))
         else:
-            self.bounds = mbounds.BoundedNormal(mean, std, limits)
+            self.set_bounds(mbounds.BoundedNormal(mean, std, limits))
         return self
 
     def pdf(self, dist):
@@ -156,14 +170,14 @@ class BaseParameter(object):
         Allow the parameter to vary according to any continuous scipy.stats
         distribution.
         """
-        self.bounds = mbounds.Distribution(dist)
+        self.set_bounds(mbounds.Distribution(dist))
         return self
 
     def range(self, low, high):
         """
         Allow the parameter to vary within the given range.
         """
-        self.bounds = mbounds.init_bounds((low, high))
+        self.set_bounds(mbounds.init_bounds((low, high)))
         return self
 
     def soft_range(self, low, high, std):
@@ -171,21 +185,27 @@ class BaseParameter(object):
         Allow the parameter to vary within the given range, or with Gaussian
         probability, stray from the range.
         """
-        self.bounds = mbounds.SoftBounded(low, high, std)
+        self.set_bounds(mbounds.SoftBounded(low, high, std))
         return self
 
-    @property
-    def bounds(self):
-        """Fit bounds"""
-        # print "getting bounds for",self,self._bounds
-        return self._bounds
-
-    @bounds.setter
-    def bounds(self, b):
+    def set_bounds(self, b):
         # print "setting bounds for",self
         if self.fittable:
             self.fixed = (b is None)
-        self._bounds = b
+        self.bounds = b
+
+    # @property
+    # def bounds(self):
+    #     """Fit bounds"""
+    #     # print "getting bounds for",self,self._bounds
+    #     return self._bounds
+
+    # @bounds.setter
+    # def bounds(self, b):
+    #     # print "setting bounds for",self
+    #     if self.fittable:
+    #         self.fixed = (b is None)
+    #     self._bounds = b
 
     # Functional form of parameter value access
     def __call__(self):
@@ -293,7 +313,7 @@ class BaseParameter(object):
     def __repr__(self):
         return "Parameter(%s)" % self
 
-    def to_dict(self):
+    def to_dicto(self):
         """
         Return a dict represention of the object.
         """
@@ -332,6 +352,8 @@ class Constant(BaseParameter):
     def __init__(self, value, name=None):
         self._value = value
         self.name = name
+        if self.id is None:
+            self.id = id(self)
 
     # to_dict() can inherit from BaseParameter
 
@@ -387,7 +409,7 @@ class Parameter(BaseParameter):
         low, high = self.bounds.limits
         self.value = min(max(value, low), high)
 
-    def __init__(self, value=None, bounds=None, fixed=None, name=None, **kw):
+    def __init__(self, value=None, bounds=None, fixed=None, name=None, id=None, **kw):
         # UI nicities:
         # 1. check if we are started with value=range or bounds=range; if we
         # are given bounds, then assume this is a fitted parameter, otherwise
@@ -410,7 +432,7 @@ class Parameter(BaseParameter):
         # Store whatever values the user needs to associate with the parameter
         # Models should set units and tool tips so the user interface has
         # something to work with.
-        limits = kw.get('limits', (-inf, inf))
+        limits = kw.pop('limits', (-inf, inf))
         for k, v in kw.items():
             setattr(self, k, v)
 
@@ -418,12 +440,13 @@ class Parameter(BaseParameter):
         # parameter
         def clip(x, a, b):
             return min(max(x, a), b)
-        self.bounds = bounds
+        self.set_bounds(bounds)
         self.bounds.limits = (clip(self.bounds.limits[0], *limits),
                               clip(self.bounds.limits[1], *limits))
         self.value = value
         self.fixed = fixed
         self.name = name
+        self.id = id if id is not None else builtins.id(self)
 
     def randomize(self, rng=None):
         """
@@ -690,7 +713,14 @@ COMPARISONS = [
     ('NE', '!=')
 ]
 
-class Constraint(object):
+@dataclass
+class ConstraintModel:
+    a: Union[BaseParameter, float]
+    b: Union[BaseParameter, float]
+    op_name: str
+    op_str: str
+
+class Constraint(ConstraintModel):
     def __init__(self, a, b, op_name, op_str=""):
         import operator
         self.a, self.b = a, b
@@ -706,10 +736,18 @@ class Constraint(object):
 # ==== Arithmetic operators ===
 ALLOWED_OPERATORS = ["add","sub","mul","truediv","floordiv","pow"]
 
-class Operator(BaseParameter):
+@dataclass
+class OperatorModel:
+    a: Union[BaseParameter, float]
+    b: Union[BaseParameter, float]
+    op_name: str
+    op_str: str    
+
+class Operator(OperatorModel, BaseParameter):
     """
     Parameter operator
     """
+   
     def __init__(self, a, b, op_name, op_str):
         import operator
         if not op_name.lower() in ALLOWED_OPERATORS:
@@ -725,14 +763,7 @@ class Operator(BaseParameter):
         self.name = str(self)
     def parameters(self):
         return self._parameters
-    def to_dict(self):
-        return dict(
-            type="Operator",
-            op_name=self.op_name,
-            op_str=self.op_str,
-            left=to_dict(self.a),
-            right=to_dict(self.b),
-        )
+
     @property
     def value(self):
         return self.op(float(self.a), float(self.b))
@@ -772,6 +803,9 @@ class Function(BaseParameter):
     than when the function was invoked.
     """
     __slots__ = ['op', 'args', 'kw']
+    op: Callable[..., float]
+    args: Optional[Any]
+    kw: Dict[Any, Any]
 
     def __init__(self, op, *args, **kw):
         self.name = kw.pop('name', None)
