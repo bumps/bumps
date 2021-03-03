@@ -57,9 +57,11 @@ import os
 import traceback
 import logging
 import warnings
+import builtins
 
 import numpy as np
 from numpy import inf, isnan, NaN
+from typing import List
 
 from . import parameter, bounds as mbounds
 from .parameter import to_dict
@@ -201,8 +203,18 @@ def FitProblem(*args, **kw):
         else:
             return MultiFitProblem(*args, **kw)
 
+# prevent __eq__ from being created
+# need to be able to hash BaseFitProblem to be used as a key (?!)
+@util.dataclass(eq=False)
+class BaseFitProblemModel:
+    name: str
+    fitness: Fitness
+    constraints: List[parameter.Constraint] = None
+    soft_limit: float = np.inf
+    partial: bool = False
+    penalty_nllf: float = np.inf
 
-class BaseFitProblem(object):
+class BaseFitProblem(BaseFitProblemModel):
     """
     See :func:`FitProblem`
     """
@@ -221,6 +233,7 @@ class BaseFitProblem(object):
 
         self.soft_limit = soft_limit
         self.penalty_nllf = penalty_nllf
+        self.id = id(self)
         self.model_reset()
 
     # noinspection PyAttributeOutsideInit
