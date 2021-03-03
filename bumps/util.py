@@ -18,6 +18,9 @@ from numpy import ascontiguousarray as _dense
 # so there is no longer a need for bumps.util.erf.
 from scipy.special import erf
 
+# this can be substituted with pydantic dataclass for schema-building...
+from dataclasses import dataclass, field
+
 
 def parse_errfile(errfile):
     """
