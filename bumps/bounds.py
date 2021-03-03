@@ -66,6 +66,13 @@ except ImportError:
     # failure if it doesn't exist.
     pass
 
+try:
+    from typing import Optional, Any, Union, Dict, Callable, Literal, Tuple, Sequence, Literal, Protocol
+except ImportError:
+    from typing import Optional, Any, Union, Dict, Callable, Tuple, Sequence
+    from typing_extensions import Literal, Protocol
+
+from .util import dataclass, field
 
 def pm(v, plus, minus=None, limits=None):
     """
@@ -186,7 +193,12 @@ def init_bounds(v):
         return Bounded(lo, hi)
 
 
-class Bounds(object):
+@dataclass
+class BoundsModel:
+    #type: str
+    limits: Tuple[float, float] = (-inf, inf)
+
+class Bounds(BoundsModel):
     """
     Bounds abstract base class.
 
@@ -469,6 +481,12 @@ class Bounded(Bounds):
     set the probability to 0.  This choice will not affect the fits.
     """
 
+    @classmethod
+    def from_dict(cls, limits=None):
+        lo, hi = limits
+        #print(limits, lo, hi)
+        return cls(lo, hi)
+
     def __init__(self, lo, hi):
         self.limits = (lo, hi)
         self._nllf_scale = log(hi - lo)
@@ -501,8 +519,20 @@ class Bounded(Bounds):
     def putfull(self, v):
         return self.put01(_get01_inf(v))
 
+# @dataclass
+# class DistProtocol(Protocol):
+#     rvs: Callable
+#     nnlf: Callable
+#     cdf: Callable
+#     ppf: Callable
+#     args: Sequence[Any]
+#     name: str
 
-class Distribution(Bounds):
+@dataclass
+class DistributionModel(BoundsModel):
+    dist: Any = None
+
+class Distribution(Bounds, DistributionModel):
     """
     Parameter is pulled from a distribution.
 
@@ -510,6 +540,8 @@ class Distribution(Bounds):
     In particular, it should define methods rvs, nnlf, cdf and ppf and
     attributes args and dist.name.
     """
+    #dist: DistProtocol = None
+    #dist: Any = None
 
     def __init__(self, dist):
         self.dist = dist
@@ -555,7 +587,7 @@ class Distribution(Bounds):
             dist=type(self.dist).__name__,
             )
 
-
+@dataclass
 class Normal(Distribution):
     """
     Parameter is pulled from a normal distribution.
@@ -591,8 +623,12 @@ class Normal(Distribution):
         mean, std = state
         self.__init__(mean=mean, std=std)
 
+@dataclass
+class BoundedNormalModel(BoundsModel):
+    mean: float = 0.0
+    std: float = 1.0
 
-class BoundedNormal(Bounds):
+class BoundedNormal(Bounds, BoundedNormalModel):
     """
     truncated normal bounds
     """
@@ -679,8 +715,13 @@ class BoundedNormal(Bounds):
         )
         return "(%s,%s), norm(%s,%s)" % tuple(num_format(v) for v in vals)
 
+@dataclass
+class SoftBoundedModel(BoundsModel):
+    lo: float = 0.0
+    hi: float = 1.0
+    std: float = 1.0
 
-class SoftBounded(Bounds):
+class SoftBounded(Bounds, SoftBoundedModel):
     """
     Parameter is pulled from a stretched normal distribution.
 
@@ -697,39 +738,39 @@ class SoftBounded(Bounds):
     """
 
     def __init__(self, lo, hi, std=None):
-        self._lo, self._hi, self._std = lo, hi, std
+        self.lo, self.hi, self.std = lo, hi, std
         self._nllf_scale = log(hi - lo + sqrt(2 * pi * std))
 
     def random(self, n=1, target=1.0):
-        return RNG.uniform(self._lo, self._hi, size=n)
+        return RNG.uniform(self.lo, self.hi, size=n)
 
     def nllf(self, value):
         # To turn f(x) = 1 if x in [lo,hi] else G(tail)
         # into a probability p, we need to normalize by \int{f(x)dx},
         # which is just hi-lo + sqrt(2*pi*std**2).
-        if value < self._lo:
-            z = self._lo - value
-        elif value > self._hi:
-            z = value - self._hi
+        if value < self.lo:
+            z = self.lo - value
+        elif value > self.hi:
+            z = value - self.hi
         else:
             z = 0
-        return (z / self._std) ** 2 / 2 + self._nllf_scale
+        return (z / self.std) ** 2 / 2 + self._nllf_scale
 
     def residual(self, value):
-        if value < self._lo:
-            z = self._lo - value
-        elif value > self._hi:
-            z = value - self._hi
+        if value < self.lo:
+            z = self.lo - value
+        elif value > self.hi:
+            z = value - self.hi
         else:
             z = 0
-        return z / self._std
+        return z / self.std
 
     def get01(self, x):
-        v = float(x - self._lo) / (self._hi - self._lo)
+        v = float(x - self.lo) / (self.hi - self.lo)
         return v if 0 <= v <= 1 else (0 if v < 0 else 1)
 
     def put01(self, v):
-        return v * (self._hi - self._lo) + self._lo
+        return v * (self.hi - self.lo) + self.lo
 
     def getfull(self, x):
         return x
@@ -738,7 +779,7 @@ class SoftBounded(Bounds):
         return v
 
     def __str__(self):
-        return "box_norm(%g,%g,sigma=%g)" % (self._lo, self._hi, self._std)
+        return "box_norm(%g,%g,sigma=%g)" % (self.lo, self.hi, self.std)
 
 
 _E_MIN = -1023
