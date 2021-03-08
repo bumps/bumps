@@ -19,7 +19,32 @@ from numpy import ascontiguousarray as _dense
 from scipy.special import erf
 
 # this can be substituted with pydantic dataclass for schema-building...
-from dataclasses import dataclass, field
+if os.environ.get('BUMPS_USE_PYDANTIC', "False") == "True":
+    from pydantic.dataclasses import dataclass
+    from dataclasses import field
+else:
+    from dataclasses import dataclass, field
+
+from dataclasses import is_dataclass
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
+
+# decorator to tie model classes to implementations:
+def implementation(cls):
+    schema = cls.mro()[1]  # schema must be first
+    # if it is inherited from another schema with no new
+    # fields, there will be no __annotations__ dict yet:
+    annotations = getattr(schema, '__annotations__', {})
+    annotations['type'] = Literal[cls.__name__]
+    schema.__annotations__ = annotations
+    #schema.__annotations__['type'] = Literal[cls.__name__]
+    cls.type = cls.__name__
+    schema.__name__ = cls.__name__
+    dataclass(eq=False, init=False)(schema)
+    return cls
 
 
 def parse_errfile(errfile):

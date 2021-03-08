@@ -72,7 +72,7 @@ except ImportError:
     from typing import Optional, Any, Union, Dict, Callable, Tuple, Sequence
     from typing_extensions import Literal, Protocol
 
-from .util import dataclass, field
+from .util import dataclass, field, implementation
 
 def pm(v, plus, minus=None, limits=None):
     """
@@ -193,12 +193,12 @@ def init_bounds(v):
         return Bounded(lo, hi)
 
 
-@dataclass
-class BoundsModel:
-    #type: str
+class BoundsSchema:
+    type: str
     limits: Tuple[float, float] = (-inf, inf)
 
-class Bounds(BoundsModel):
+@implementation
+class Bounds(BoundsSchema):
     """
     Bounds abstract base class.
 
@@ -314,7 +314,11 @@ def num_format(v):
         return "NaN"
 
 
-class Unbounded(Bounds):
+class UnboundedSchema(BoundsSchema):
+    pass
+
+@implementation
+class Unbounded(UnboundedSchema, Bounds):
     """
     Unbounded parameter.
 
@@ -324,6 +328,10 @@ class Unbounded(Bounds):
     log likelihood of P is inf everywhere.  A value inf will interfere
     with optimization routines, and so we instead choose P == 1 everywhere.
     """
+    type = "Unbounded"
+
+    def __init__(self, *args, **kw):
+        pass
 
     def random(self, n=1, target=1.0):
         scale = target + (target == 0.)
@@ -347,8 +355,11 @@ class Unbounded(Bounds):
     def putfull(self, v):
         return v
 
+class BoundedBelowSchema(BoundsSchema):
+    type: Literal["BoundedBelow"]
 
-class BoundedBelow(Bounds):
+@implementation
+class BoundedBelow(BoundedBelowSchema, Bounds):
     """
     Semidefinite range bounded below.
 
@@ -366,6 +377,7 @@ class BoundedBelow(Bounds):
     is indistinguishable from values outside the range.  Instead we say
     that P = 1 in range, and 0 outside.
     """
+    type = "BoundedBelow"
 
     def __init__(self, base):
         self.limits = (base, inf)
@@ -408,8 +420,11 @@ class BoundedBelow(Bounds):
         x = v if v >= 1 else 1. / (2 - v)
         return x + self._base
 
+class BoundedAboveSchema(BoundsSchema):
+    type: Literal["BoundedAbove"]
 
-class BoundedAbove(Bounds):
+@implementation
+class BoundedAbove(BoundedAboveSchema, Bounds):
     """
     Semidefinite range bounded above.
 
@@ -467,8 +482,11 @@ class BoundedAbove(Bounds):
         x = v if v <= -1 else -1. / (v + 2)
         return x + self._base
 
+class BoundedSchema(BoundsSchema):
+    type: Literal["Bounded"]
 
-class Bounded(Bounds):
+@implementation
+class Bounded(BoundedSchema, Bounds):
     """
     Bounded range.
 
@@ -528,11 +546,12 @@ class Bounded(Bounds):
 #     args: Sequence[Any]
 #     name: str
 
-@dataclass
-class DistributionModel(BoundsModel):
+
+class DistributionSchema(BoundsSchema):
     dist: Any = None
 
-class Distribution(Bounds, DistributionModel):
+@implementation
+class Distribution(DistributionSchema, Bounds):
     """
     Parameter is pulled from a distribution.
 
@@ -587,7 +606,7 @@ class Distribution(Bounds, DistributionModel):
             dist=type(self.dist).__name__,
             )
 
-@dataclass
+
 class Normal(Distribution):
     """
     Parameter is pulled from a normal distribution.
@@ -623,12 +642,13 @@ class Normal(Distribution):
         mean, std = state
         self.__init__(mean=mean, std=std)
 
-@dataclass
-class BoundedNormalModel(BoundsModel):
+
+class BoundedNormalSchema(BoundsSchema):
     mean: float = 0.0
     std: float = 1.0
 
-class BoundedNormal(Bounds, BoundedNormalModel):
+@implementation
+class BoundedNormal(BoundedNormalSchema, Bounds):
     """
     truncated normal bounds
     """
@@ -715,13 +735,14 @@ class BoundedNormal(Bounds, BoundedNormalModel):
         )
         return "(%s,%s), norm(%s,%s)" % tuple(num_format(v) for v in vals)
 
-@dataclass
-class SoftBoundedModel(BoundsModel):
+
+class SoftBoundedSchema(BoundsSchema):
     lo: float = 0.0
     hi: float = 1.0
     std: float = 1.0
 
-class SoftBounded(Bounds, SoftBoundedModel):
+@implementation
+class SoftBounded(SoftBoundedSchema, Bounds):
     """
     Parameter is pulled from a stretched normal distribution.
 

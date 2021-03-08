@@ -20,19 +20,23 @@ import warnings
 from copy import copy
 import math
 from functools import wraps
+from enum import Enum
+
 try:
     from typing import Optional, Any, Union, Dict, Callable, Literal, Protocol
 except ImportError:
     from typing import Optional, Any, Union, Dict, Callable
     from typing_extensions import Literal, Protocol
 #from pydantic.dataclasses import dataclass
-from .util import dataclass, field
+from .util import dataclass, field, implementation
 
 import numpy as np
 from numpy import inf, isinf, isfinite
 
 from . import bounds as mbounds
 bounds_classes = mbounds.Bounds.__subclasses__()
+
+PARAMETER_TYPES = ('Parameter', 'Operator', 'UnaryOperator', 'Constant')
 
 # TODO: avoid evaluation of subexpressions if parameters do not change.
 # This is especially important if the subexpression invokes an expensive
@@ -74,9 +78,9 @@ def to_dict(p):
         #print(f"converting type {type(p)} to str")
         return str(p)
 
-
-@dataclass(init=False)
-class BaseParameterModel: #(metaclass=Labeller):
+@dataclass(eq=False, init=False)
+class BaseParameterSchema: #(metaclass=Labeller):
+    type: str
     # Parameters are fixed unless told otherwise
     fixed: bool = field(default=True, init=False)
     fittable: bool = field(default=False, init=False)
@@ -87,7 +91,7 @@ class BaseParameterModel: #(metaclass=Labeller):
     name: Optional[str] = field(default=None, init=False)
     value: Optional[float] = field(default=None, init=False) # value is an attribute of the derived class
 
-class BaseParameter(BaseParameterModel):
+class BaseParameter:
     """
     Root of the parameter class, defining arithmetic on parameters
     """
@@ -338,7 +342,13 @@ class BaseParameter(BaseParameterModel):
             )
 
 
-class Constant(BaseParameter):
+class ConstantSchema:
+    type: str
+    name: str
+    value: float
+
+@implementation
+class Constant(ConstantSchema, BaseParameter):
     """
     An unmodifiable value.
     """
@@ -358,7 +368,11 @@ class Constant(BaseParameter):
     # to_dict() can inherit from BaseParameter
 
 
-class Parameter(BaseParameter):
+class ParameterSchema(BaseParameterSchema):
+    pass
+
+@implementation
+class Parameter(ParameterSchema, BaseParameter):
     """
     A parameter is a symbolic value.
 
@@ -703,50 +717,31 @@ class FreeVariables(object):
 # want to do a number of optimizations, such as only updating the
 #
 
-# ==== Comparison operators ===
-COMPARISONS = [
-    ('GT', '>'),
-    ('GE', '>='),
-    ('LE', '<='),
-    ('LT', '<'),
-    ('EQ', '=='),
-    ('NE', '!=')
-]
-
-@dataclass
-class ConstraintModel:
-    a: Union[BaseParameter, float]
-    b: Union[BaseParameter, float]
-    op_name: str
-    op_str: str
-
-class Constraint(ConstraintModel):
-    def __init__(self, a, b, op_name, op_str=""):
-        import operator
-        self.a, self.b = a, b
-        self.op_name = op_name
-        self.op = getattr(operator, op_name.lower())
-        self.op_str = op_str
-    def __bool__(self):
-        return self.op(float(self.a), float(self.b))
-    __nonzero__ = __bool__
-    def __str__(self):
-        return "(%s %s %s)" %(self.a, self.op_str, self.b)
+# not including Function in typing, because it is not 
+# easily serializable
 
 # ==== Arithmetic operators ===
 ALLOWED_OPERATORS = ["add","sub","mul","truediv","floordiv","pow"]
+ALLOWED_OPS_ENUM = Enum('ALLOWED_OPS_ENUM', [(op,op) for op in ALLOWED_OPERATORS], type=str)
 
-@dataclass
-class OperatorModel:
-    a: Union[BaseParameter, float]
-    b: Union[BaseParameter, float]
-    op_name: str
+class OperatorSchema:
+    type: Literal[""]
+    a: Union[PARAMETER_TYPES + (float,)]
+    b: Union[PARAMETER_TYPES + (float,)]
+    op_name: ALLOWED_OPS_ENUM
     op_str: str    
 
-class Operator(OperatorModel, BaseParameter):
+@implementation
+class Operator(OperatorSchema, BaseParameter):
     """
     Parameter operator
     """
+    fixed = True
+    fittable = False
+    discrete = False
+    bounds = mbounds.Unbounded()
+    name = None
+    value = None # value is an attribute of the derived class
    
     def __init__(self, a, b, op_name, op_str):
         import operator
@@ -772,6 +767,85 @@ class Operator(OperatorModel, BaseParameter):
         return float(self.a)
     def __str__(self):
         return "(%s %s %s)" % (self.a,self.op_str, self.b)
+
+ALLOWED_UNARY_MATH = [
+    "exp", "expm1", "log", "log10", "log1p", "sqrt",
+    "degrees", "radians",
+    "sin", "cos", "tan", "asin", "acos", "atan",
+    "sinh", "cosh", "tanh", "atanh",
+    "ceil", "floor", "trunc",
+]
+ALLOWED_UNARY_OPERATORS = [
+    "abs"
+]
+
+ALLOWED_UNARY = ALLOWED_UNARY_MATH + ALLOWED_UNARY_OPERATORS
+
+ALLOWED_UNARY_OPS_ENUM = Enum('ALLOWED_UNARY_OPS_ENUM', [(op,op) for op in ALLOWED_UNARY], type=str)
+
+
+class UnaryOperatorSchema:
+    #type: str
+    a: Union[PARAMETER_TYPES + (float,)]
+    op_name: ALLOWED_UNARY_OPS_ENUM
+    op_str: str    
+
+@implementation
+class UnaryOperator(UnaryOperatorSchema, BaseParameter):
+    """
+    Parameter unary operator
+    """
+   
+    def __init__(self, a, op_name, op_str):
+        import operator
+        if not op_name.lower() in ALLOWED_UNARY:
+            raise ValueError("Operator name %s is not in allowed unary operators: %s" % (op_name, str(ALLOWED_UNARY)))
+        self.a = a
+        self.op_name = op_name
+        if op_name in ALLOWED_UNARY_MATH:
+            self.op = getattr(math, op_name.lower())
+        else:
+            self.op = getattr(operator, op_name.lower())
+        self.op_str = op_str
+        pars = []
+        if isinstance(a,BaseParameter): pars += a.parameters()
+        self._parameters = pars
+        self.name = str(self)
+    def parameters(self):
+        return self._parameters
+
+    @property
+    def value(self):
+        return self.op(float(self.a))
+    @property
+    def dvalue(self):
+        return float(self.a)
+    def __str__(self):
+        return "%s(%s)" % (self.op_str, self.a)
+
+def unary(op):
+    """
+    Convert a unary function into a delayed evaluator.
+
+    The value of the function is computed from the values of the parameters
+    at the time that the function value is requested rather than when the
+    function is created.
+    """
+    # Note: @functools.wraps(op) does not work with numpy ufuncs
+    # Note: @decorator does not work with builtins like abs
+    def unary_generator(*args, **kw):
+        return UnaryOperator(*args, op_name = op.__name__, op_str = op.__name__)
+    unary_generator.__name__ = op.__name__
+    unary_generator.__doc__ = op.__doc__
+    return unary_generator
+
+_abs = unary(abs)
+# Numpy trick: math functions from numpy delegate to the math function of
+# the class if that function exists as a class attribute.
+for op_name in ALLOWED_UNARY_MATH:
+    setattr(BaseParameter, op_name, unary(getattr(math, op_name)))
+for op_name in ALLOWED_UNARY_OPERATORS:
+    setattr(BaseParameter, op_name, unary(getattr(operator, op_name)))
 
 def substitute(a):
     """
@@ -877,37 +951,7 @@ def function(op):
     function_generator.__name__ = op.__name__
     function_generator.__doc__ = op.__doc__
     return function_generator
-_abs = function(abs)
 
-# Numpy trick: math functions from numpy delegate to the math function of
-# the class if that function exists as a class attribute.
-BaseParameter.exp = function(math.exp)
-BaseParameter.expm1 = function(math.expm1)
-BaseParameter.log = function(math.log)
-BaseParameter.log10 = function(math.log10)
-BaseParameter.log1p = function(math.log1p)
-BaseParameter.sqrt = function(math.sqrt)
-
-BaseParameter.degrees = function(math.degrees)
-BaseParameter.radians = function(math.radians)
-
-BaseParameter.sin = function(math.sin)
-BaseParameter.cos = function(math.cos)
-BaseParameter.tan = function(math.tan)
-BaseParameter.arcsin = function(math.asin)
-BaseParameter.arccos = function(math.acos)
-BaseParameter.arctan = function(math.atan)
-
-BaseParameter.sinh = function(math.sinh)
-BaseParameter.cosh = function(math.cosh)
-BaseParameter.tanh = function(math.tanh)
-BaseParameter.arcsinh = function(math.asinh)
-BaseParameter.arccosh = function(math.acosh)
-BaseParameter.arctanh = function(math.atanh)
-
-BaseParameter.ceil = function(math.ceil)
-BaseParameter.floor = function(math.floor)
-BaseParameter.trunc = function(math.trunc)
 
 def boxed_function(f):
     box = function(f)
@@ -1130,6 +1174,40 @@ class IntegerParameter(Parameter):
     value = property(_get_value, _set_value)
 
 
+# ==== Comparison operators ===
+COMPARISONS = [
+    ('GT', '>'),
+    ('GE', '>='),
+    ('LE', '<='),
+    ('LT', '<'),
+    ('EQ', '=='),
+    ('NE', '!=')
+]
+
+COMPARISON_OPS_ENUM = Enum("COMPARISON_OPS_ENUM", [(op_name, op_name) for op_name, op_str in COMPARISONS], type=str)
+
+class ConstraintModel:
+    type: str
+    a: Union[Parameter, UnaryOperator, Operator, float]
+    b: Union[Parameter, UnaryOperator, Operator, float]
+    op_name: COMPARISON_OPS_ENUM
+    op_str: str
+
+@implementation
+class Constraint(ConstraintModel):
+    def __init__(self, a, b, op_name, op_str=""):
+        import operator
+        self.a, self.b = a, b
+        self.op_name = op_name
+        self.op = getattr(operator, op_name.lower())
+        self.op_str = op_str
+    def __bool__(self):
+        return self.op(float(self.a), float(self.b))
+    __nonzero__ = __bool__
+    def __str__(self):
+        return "(%s %s %s)" %(self.a, self.op_str, self.b)
+
+
 class Alias(object):
     """
     Parameter alias.
@@ -1163,6 +1241,9 @@ class Alias(object):
             'obj': to_dict(self.obj),
             'attr': self.attr,
         }
+
+#restate these for export, now that they're all defined:
+PARAMETER_TYPES = (Parameter, Operator, UnaryOperator, Constant)
 
 def test_operator():
     a = Parameter(1, name='a')
