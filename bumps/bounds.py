@@ -66,13 +66,7 @@ except ImportError:
     # failure if it doesn't exist.
     pass
 
-try:
-    from typing import Optional, Any, Union, Dict, Callable, Literal, Tuple, Sequence, Literal, Protocol
-except ImportError:
-    from typing import Optional, Any, Union, Dict, Callable, Tuple, Sequence
-    from typing_extensions import Literal, Protocol
-
-from .util import dataclass, field, implementation
+from .util import field, schema, Optional, Any, Union, Dict, Callable, Literal, Tuple, List, Literal
 
 def pm(v, plus, minus=None, limits=None):
     """
@@ -193,12 +187,8 @@ def init_bounds(v):
         return Bounded(lo, hi)
 
 
-class BoundsSchema:
-    type: str
-    limits: Tuple[float, float] = (-inf, inf)
-
-@implementation
-class Bounds(BoundsSchema):
+@schema()
+class Bounds:
     """
     Bounds abstract base class.
 
@@ -213,7 +203,7 @@ class Bounds(BoundsSchema):
     is being optimized is also a probability, then this is an easy way to
     incorporate information from other sorts of measurements into the model.
     """
-    limits = (-inf, inf)
+    limits: Tuple[float, float] = (-inf, inf)
     # TODO: need derivatives wrt bounds transforms
 
     def get01(self, x):
@@ -314,11 +304,8 @@ def num_format(v):
         return "NaN"
 
 
-class UnboundedSchema(BoundsSchema):
-    pass
-
-@implementation
-class Unbounded(UnboundedSchema, Bounds):
+@schema()
+class Unbounded(Bounds):
     """
     Unbounded parameter.
 
@@ -355,11 +342,9 @@ class Unbounded(UnboundedSchema, Bounds):
     def putfull(self, v):
         return v
 
-class BoundedBelowSchema(BoundsSchema):
-    type: Literal["BoundedBelow"]
 
-@implementation
-class BoundedBelow(BoundedBelowSchema, Bounds):
+@schema()
+class BoundedBelow(Bounds):
     """
     Semidefinite range bounded below.
 
@@ -420,11 +405,9 @@ class BoundedBelow(BoundedBelowSchema, Bounds):
         x = v if v >= 1 else 1. / (2 - v)
         return x + self._base
 
-class BoundedAboveSchema(BoundsSchema):
-    type: Literal["BoundedAbove"]
 
-@implementation
-class BoundedAbove(BoundedAboveSchema, Bounds):
+@schema()
+class BoundedAbove(Bounds):
     """
     Semidefinite range bounded above.
 
@@ -482,11 +465,9 @@ class BoundedAbove(BoundedAboveSchema, Bounds):
         x = v if v <= -1 else -1. / (v + 2)
         return x + self._base
 
-class BoundedSchema(BoundsSchema):
-    type: Literal["Bounded"]
 
-@implementation
-class Bounded(BoundedSchema, Bounds):
+@schema()
+class Bounded(Bounds):
     """
     Bounded range.
 
@@ -537,21 +518,9 @@ class Bounded(BoundedSchema, Bounds):
     def putfull(self, v):
         return self.put01(_get01_inf(v))
 
-# @dataclass
-# class DistProtocol(Protocol):
-#     rvs: Callable
-#     nnlf: Callable
-#     cdf: Callable
-#     ppf: Callable
-#     args: Sequence[Any]
-#     name: str
 
-
-class DistributionSchema(BoundsSchema):
-    dist: Any = None
-
-@implementation
-class Distribution(DistributionSchema, Bounds):
+@schema()
+class Distribution(Bounds):
     """
     Parameter is pulled from a distribution.
 
@@ -643,15 +612,13 @@ class Normal(Distribution):
         self.__init__(mean=mean, std=std)
 
 
-class BoundedNormalSchema(BoundsSchema):
-    mean: float = 0.0
-    std: float = 1.0
-
-@implementation
-class BoundedNormal(BoundedNormalSchema, Bounds):
+@schema()
+class BoundedNormal(Bounds):
     """
     truncated normal bounds
     """
+    mean: float = 0.0
+    std: float = 1.0
 
     def __init__(self, mean=0, std=1, limits=(-inf, inf)):
         self.limits = limits
@@ -736,13 +703,8 @@ class BoundedNormal(BoundedNormalSchema, Bounds):
         return "(%s,%s), norm(%s,%s)" % tuple(num_format(v) for v in vals)
 
 
-class SoftBoundedSchema(BoundsSchema):
-    lo: float = 0.0
-    hi: float = 1.0
-    std: float = 1.0
-
-@implementation
-class SoftBounded(SoftBoundedSchema, Bounds):
+@schema()
+class SoftBounded(Bounds):
     """
     Parameter is pulled from a stretched normal distribution.
 
@@ -757,6 +719,9 @@ class SoftBounded(SoftBoundedSchema, Bounds):
     into the range [0,1] for each parameter we don't need to use soft
     constraints, and this acts just like the rectangular distribution.
     """
+    lo: float = 0.0
+    hi: float = 1.0
+    std: float = 1.0
 
     def __init__(self, lo, hi, std=None):
         self.lo, self.hi, self.std = lo, hi, std

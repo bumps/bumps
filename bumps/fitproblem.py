@@ -61,11 +61,6 @@ import builtins
 
 import numpy as np
 from numpy import inf, isnan, NaN
-try:
-    from typing import List, Any, Optional, Union, Literal
-except ImportError:
-    from typing import List, Any, Optional, Union
-    from typing_extensions import Literal
 
 from . import parameter, bounds as mbounds
 from .parameter import to_dict
@@ -73,7 +68,6 @@ from .formatnum import format_uncertainty
 from . import util
 
 # Abstract base class
-@util.dataclass
 class Fitness(object):
     """
     Manage parameters, data, and theory function evaluation.
@@ -210,20 +204,21 @@ def FitProblem(*args, **kw):
 
 # prevent __eq__ from being created
 # need to be able to hash BaseFitProblem to be used as a key (?!)
-@util.dataclass(eq=False, init=False)
-class BaseFitProblemModel:
+
+@util.schema(init=False)
+class BaseFitProblem:
+    """
+    See :func:`FitProblem`
+    """
+
     type: str = util.field(repr=False)
     name: str
-    fitness: Any
-    constraints: Union[List[parameter.ConstraintModel], Literal[None]] = None
+    fitness: util.Any
+    constraints: util.Union[util.List[parameter.Constraint], util.Literal[None]] = None
     soft_limit: float = np.inf
     partial: bool = False
     penalty_nllf: float = np.inf
 
-class BaseFitProblem(BaseFitProblemModel):
-    """
-    See :func:`FitProblem`
-    """
     def __init__(self, fitness, name=None, constraints=None,
                  penalty_nllf=np.inf, soft_limit=np.inf, partial=False):
         self.constraints = constraints

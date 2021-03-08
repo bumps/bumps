@@ -22,13 +22,7 @@ import math
 from functools import wraps
 from enum import Enum
 
-try:
-    from typing import Optional, Any, Union, Dict, Callable, Literal, Protocol
-except ImportError:
-    from typing import Optional, Any, Union, Dict, Callable
-    from typing_extensions import Literal, Protocol
-#from pydantic.dataclasses import dataclass
-from .util import dataclass, field, implementation
+from .util import field, schema, Optional, Any, Union, Dict, Callable, Literal, Tuple, List, Literal
 
 import numpy as np
 from numpy import inf, isinf, isfinite
@@ -78,23 +72,20 @@ def to_dict(p):
         #print(f"converting type {type(p)} to str")
         return str(p)
 
-@dataclass(eq=False, init=False)
-class BaseParameterSchema: #(metaclass=Labeller):
-    type: str
-    # Parameters are fixed unless told otherwise
-    fixed: bool = field(default=True, init=False)
-    fittable: bool = field(default=False, init=False)
-    discrete: bool = field(default=False, init=False)
-    bounds: Union[tuple(bounds_classes)] = field(default=mbounds.Unbounded(), init=False)
-    id: int = field(default=0, init=False)
-    #_bounds =  mbounds.Unbounded()
-    name: Optional[str] = field(default=None, init=False)
-    value: Optional[float] = field(default=None, init=False) # value is an attribute of the derived class
 
 class BaseParameter:
     """
     Root of the parameter class, defining arithmetic on parameters
     """
+    # Parameters are fixed unless told otherwise
+    fixed: bool
+    fittable: bool
+    discrete: bool
+    bounds: Union[tuple(bounds_classes)]
+    id: int = field(default=0, init=False)
+    #_bounds =  mbounds.Unbounded()
+    name: Optional[str] = field(default=None, init=False)
+    value: Optional[float] # value is an attribute of the derived class
 
     # Parameters may be dependent on other parameters, and the
     # fit engine will need to access them.
@@ -342,18 +333,14 @@ class BaseParameter:
             )
 
 
-class ConstantSchema:
-    type: str
-    name: str
-    value: float
-
-@implementation
-class Constant(ConstantSchema, BaseParameter):
+@schema()
+class Constant(BaseParameter):
     """
     An unmodifiable value.
     """
-    fittable = False
-    fixed = True
+    fittable: Literal[False] = False
+    fixed: Literal[True] = True
+    name: str = None
 
     @property
     def value(self):
@@ -368,11 +355,8 @@ class Constant(ConstantSchema, BaseParameter):
     # to_dict() can inherit from BaseParameter
 
 
-class ParameterSchema(BaseParameterSchema):
-    pass
-
-@implementation
-class Parameter(ParameterSchema, BaseParameter):
+@schema()
+class Parameter(BaseParameter):
     """
     A parameter is a symbolic value.
 
@@ -392,6 +376,14 @@ class Parameter(ParameterSchema, BaseParameter):
     Other properties can decorate the parameter, such as tip for tool tip
     and units for units.
     """
+    fixed: bool = field(default=True, init=False)
+    fittable: bool = field(default=True, init=False)
+    discrete: bool = field(default=False, init=False)
+    bounds: Union[tuple(bounds_classes)] = field(default=mbounds.Unbounded(), init=False)
+    id: int = field(default=0, init=False)
+    #_bounds =  mbounds.Unbounded()
+    name: Optional[str] = field(default=None, init=False)
+    value: Optional[float] = field(default=None, init=False) # value is an attribute of the derived class
     fittable = True
 
     @classmethod
@@ -724,15 +716,9 @@ class FreeVariables(object):
 ALLOWED_OPERATORS = ["add","sub","mul","truediv","floordiv","pow"]
 ALLOWED_OPS_ENUM = Enum('ALLOWED_OPS_ENUM', [(op,op) for op in ALLOWED_OPERATORS], type=str)
 
-class OperatorSchema:
-    type: Literal[""]
-    a: Union[PARAMETER_TYPES + (float,)]
-    b: Union[PARAMETER_TYPES + (float,)]
-    op_name: ALLOWED_OPS_ENUM
-    op_str: str    
 
-@implementation
-class Operator(OperatorSchema, BaseParameter):
+@schema(init=False)
+class Operator(BaseParameter):
     """
     Parameter operator
     """
@@ -742,6 +728,11 @@ class Operator(OperatorSchema, BaseParameter):
     bounds = mbounds.Unbounded()
     name = None
     value = None # value is an attribute of the derived class
+
+    a: Union[PARAMETER_TYPES + (float,)]
+    b: Union[PARAMETER_TYPES + (float,)]
+    op_name: ALLOWED_OPS_ENUM
+    op_str: str
    
     def __init__(self, a, b, op_name, op_str):
         import operator
@@ -782,19 +773,23 @@ ALLOWED_UNARY_OPERATORS = [
 ALLOWED_UNARY = ALLOWED_UNARY_MATH + ALLOWED_UNARY_OPERATORS
 
 ALLOWED_UNARY_OPS_ENUM = Enum('ALLOWED_UNARY_OPS_ENUM', [(op,op) for op in ALLOWED_UNARY], type=str)
+   
 
-
-class UnaryOperatorSchema:
-    #type: str
-    a: Union[PARAMETER_TYPES + (float,)]
-    op_name: ALLOWED_UNARY_OPS_ENUM
-    op_str: str    
-
-@implementation
-class UnaryOperator(UnaryOperatorSchema, BaseParameter):
+@schema(init=False)
+class UnaryOperator(BaseParameter):
     """
     Parameter unary operator
     """
+    fixed = True
+    fittable = False
+    discrete = False
+    bounds = mbounds.Unbounded()
+    name = None
+    value = None # value is an attribute of the derived class
+
+    a: Union[PARAMETER_TYPES + (float,)]
+    op_name: ALLOWED_OPS_ENUM
+    op_str: str
    
     def __init__(self, a, op_name, op_str):
         import operator
@@ -1186,15 +1181,15 @@ COMPARISONS = [
 
 COMPARISON_OPS_ENUM = Enum("COMPARISON_OPS_ENUM", [(op_name, op_name) for op_name, op_str in COMPARISONS], type=str)
 
-class ConstraintModel:
-    type: str
+
+@schema()
+class Constraint:
+
     a: Union[Parameter, UnaryOperator, Operator, float]
     b: Union[Parameter, UnaryOperator, Operator, float]
     op_name: COMPARISON_OPS_ENUM
     op_str: str
 
-@implementation
-class Constraint(ConstraintModel):
     def __init__(self, a, b, op_name, op_str=""):
         import operator
         self.a, self.b = a, b

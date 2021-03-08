@@ -21,16 +21,18 @@ from scipy.special import erf
 # this can be substituted with pydantic dataclass for schema-building...
 if os.environ.get('BUMPS_USE_PYDANTIC', "False") == "True":
     from pydantic.dataclasses import dataclass
-    from dataclasses import field
+    from dataclasses import field, _FIELDS, _PARAMS
 else:
-    from dataclasses import dataclass, field
+    from dataclasses import dataclass, field, _FIELDS, _PARAMS
 
 from dataclasses import is_dataclass
 
 try:
-    from typing import Literal
+    from typing import Optional, Any, Union, Dict, Callable, Tuple, List, Literal
 except ImportError:
+    from typing import Optional, Any, Union, Dict, Callable, Tuple, List
     from typing_extensions import Literal
+
 
 # decorator to tie model classes to implementations:
 def implementation(cls):
@@ -46,6 +48,44 @@ def implementation(cls):
     dataclass(eq=False, init=False)(schema)
     return cls
 
+def schema(
+        include: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None, 
+        eq: bool = True, 
+        init: bool = True
+    ) -> Callable[[type], type]:
+    
+    """ 
+    Create a dataclass from a subset of field names.
+    fields should be a list of strings corresponding to attribute names,
+    or if fields is None, all annotated attributes will be used as fields
+    """
+    def set_dataclass(cls: type) -> type:
+        name = cls.__name__
+        all_annotations = getattr(cls, '__annotations__', {})
+        if include is not None:
+            if exclude is not None:
+                raise ValueError("include array and exclude array are mutually exclusive - only define one")
+            field_annotations = dict([(k, all_annotations[k]) for k in include])
+        elif exclude is not None:
+            field_annotations = dict([(k, v) for k, v in all_annotations.items() if not k in exclude])
+        else:
+            field_annotations = dict([(k, v) for k, v in all_annotations.items() if not k.startswith('_')])
+        # we want this at the end, always, since it has a default value:
+        field_annotations.pop('type', None)
+        field_annotations['type'] = Literal[name]
+        setattr(cls, '__annotations__', field_annotations)
+        setattr(cls, 'type', field(repr=False, default=name))
+        # if the 'type' attribute is not going to be set by the 
+        # dataclass-provided __init__, we will set it ourselves
+        # (dataclass-provided __init__ requires init == True and no existing '__init__')
+        set_classname = (getattr(cls, '__init__', False) or not init)
+        dataclass(init=init, eq=eq)(cls)
+        setattr(cls, '__annotations__', all_annotations)
+        if set_classname:
+            setattr(cls, 'type', getattr(cls, '__name__'))
+        return cls
+    return set_dataclass
 
 def parse_errfile(errfile):
     """
