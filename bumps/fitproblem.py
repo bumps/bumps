@@ -202,117 +202,7 @@ def FitProblem(*args, **kw):
         else:
             return MultiFitProblem(*args, **kw)
 
-# prevent __eq__ from being created
-# need to be able to hash BaseFitProblem to be used as a key (?!)
-
-@util.schema(init=False)
-class BaseFitProblem:
-    """
-    See :func:`FitProblem`
-    """
-
-    type: str = util.field(repr=False)
-    name: str
-    fitness: util.Any
-    constraints: util.Union[util.List[parameter.Constraint], util.Literal[None]] = None
-    soft_limit: float = np.inf
-    partial: bool = False
-    penalty_nllf: float = np.inf
-
-    def __init__(self, fitness, name=None, constraints=None,
-                 penalty_nllf=np.inf, soft_limit=np.inf, partial=False):
-        self.constraints = constraints
-        self.fitness = fitness
-        self.partial = partial
-        if name is not None:
-            self.name = name
-        else:
-            try:
-                self.name = fitness.name
-            except AttributeError:
-                self.name = 'FitProblem'
-
-        self.soft_limit = soft_limit
-        self.penalty_nllf = penalty_nllf
-        self.id = id(self)
-        self.model_reset()
-
-    # noinspection PyAttributeOutsideInit
-    def model_reset(self):
-        """
-        Prepare for the fit.
-
-        This sets the parameters and the bounds properties that the
-        solver is expecting from the fittable object.  We also compute
-        the degrees of freedom so that we can return a normalized fit
-        likelihood.
-
-        If the set of fit parameters changes, then model_reset must
-        be called.
-        """
-        # print self.model_parameters()
-        all_parameters = parameter.unique(self.model_parameters())
-        # print "all_parameters",all_parameters
-        self._parameters = parameter.varying(all_parameters)
-        # print "varying",self._parameters
-        self.bounded = [p for p in all_parameters
-                        if not isinstance(p.bounds, mbounds.Unbounded)]
-        self.dof = self.model_points()
-        if not self.partial:
-            self.dof -= len(self._parameters)
-        if self.dof <= 0:
-            raise ValueError("Need more data points than fitting parameters")
-        #self.constraints = pars.constraints()
-
-    def model_parameters(self):
-        """
-        Parameters associated with the model.
-        """
-        return self.fitness.parameters()
-
-    def to_dict(self):
-        return {
-            'type': type(self).__name__,
-            'name': self.name,
-            'fitness': to_dict(self.fitness),
-            'partial': self.partial,
-            'soft_limit': self.soft_limit,
-            'penalty_nllf': self.penalty_nllf,
-            # TODO: constraints may be a function.
-            'constraints': to_dict(self.constraints),
-        }
-
-    def model_points(self):
-        """
-        Number of data points associated with the model.
-        """
-        return self.fitness.numpoints()
-
-    def model_update(self):
-        """
-        Update the model according to the changed parameters.
-        """
-        if hasattr(self.fitness, 'update'):
-            self.fitness.update()
-
-    def model_nllf(self):
-        """
-        Negative log likelihood of seeing data given model.
-        """
-        return self.fitness.nllf()
-
-    def simulate_data(self, noise=None):
-        """Simulate data with added noise"""
-        self.fitness.simulate_data(noise=noise)
-
-    def resynth_data(self):
-        """Resynthesize data with noise from the uncertainty estimates."""
-        self.fitness.resynth_data()
-
-    def restore_data(self):
-        """Restore original data after resynthesis."""
-        self.fitness.restore_data()
-
+class SubBaseFitProblem:
     def valid(self, pvec):
         """Return true if the point is in the feasible region"""
         return all(v in p.bounds for p, v in zip(self._parameters, pvec))
@@ -377,6 +267,40 @@ class BaseFitProblem:
                for p, v in zip(self._parameters, target)]
         return np.array(pop).T
 
+    def nllf(self, pvec=None):
+        """
+        compute the cost function for a new parameter set p.
+
+        this is not simply the sum-squared residuals, but instead is the
+        negative log likelihood of seeing the data given the model parameters
+        plus the negative log likelihood of seeing the model parameters.  the
+        value is used for a likelihood ratio test so normalization constants
+        can be ignored.  there is an additional penalty value provided by
+        the model which can be used to implement inequality constraints.  any
+        penalty should be large enough that it is effectively excluded from
+        the parameter space returned from uncertainty analysis.
+
+        the model is not actually calculated if the parameter nllf plus the
+        constraint nllf are bigger than *soft_limit*, but instead it is
+        assigned a value of *penalty_nllf*.  this will prevent expensive
+        models from spending time computing values in the unfeasible region.
+        """
+        if pvec is not None:
+            if self.valid(pvec):
+                self.setp(pvec)
+            else:
+                return inf
+
+        pparameter, pconstraints, pmodel = self._nllf_components()
+        cost = pparameter + pconstraints + pmodel
+        # print(pvec, "cost=",pparameter,"+",pconstraints,"+",pmodel,"=",cost)
+        if isnan(cost):
+            # TODO: make sure errors get back to the user
+            # print "point evaluates to nan"
+            # print parameter.summarize(self._parameters)
+            return inf
+        return cost
+
     def parameter_nllf(self):
         """
         Returns negative log likelihood of seeing parameters p.
@@ -397,6 +321,180 @@ class BaseFitProblem:
         Returns negative log likelihood of seeing parameters p.
         """
         return [p.residual() for p in self.bounded]
+
+    def chisq_str(self):
+        """
+        Return a string representing the chisq equivalent of the nllf.
+
+        If the model has strictly gaussian independent uncertainties then the
+        negative log likelihood function will return 0.5*sum(residuals**2),
+        which is 1/2*chisq.  Since we are printing normalized chisq, we
+        multiply the model nllf by 2/DOF before displaying the value.  This
+        is different from the problem nllf function, which includes the
+        cost of the prior parameters and the cost of the penalty constraints
+        in the total nllf.  The constraint value is displayed separately.
+        """
+        pparameter, pconstraints, pmodel = self._nllf_components()
+        chisq_norm, chisq_err = nllf_scale(self)
+        chisq = pmodel * chisq_norm
+        text = format_uncertainty(chisq, chisq_err)
+        constraints = pparameter + pconstraints
+        if constraints > 0.:
+            text += " constraints=%g" % constraints
+
+        return text
+
+    def _nllf_components(self):
+        try:
+            pparameter = self.parameter_nllf()
+            if isnan(pparameter):
+                # TODO: make sure errors get back to the user
+                info = ["Parameter nllf is wrong"]
+                info += ["%s %g"%(p, p.nllf()) for p in self.bounded]
+                logging.error("\n  ".join(info))
+            pconstraints = self.constraints_nllf()
+            # Note: for hard constraints (which return inf) avoid computing
+            # model even if soft_limit is inf by using strict comparison
+            # since inf <= inf is True but inf < inf is False.
+            pmodel = (self.model_nllf()
+                      if pparameter + pconstraints < self.soft_limit
+                      else self.penalty_nllf)
+            return pparameter, pconstraints, pmodel
+        except Exception:
+            # TODO: make sure errors get back to the user
+            info = (traceback.format_exc(),
+                    parameter.summarize(self._parameters))
+            logging.error("\n".join(info))
+            return NaN, NaN, NaN
+
+    def __call__(self, pvec=None):
+        """
+        Problem cost function.
+
+        Returns the negative log likelihood scaled by DOF so that
+        the result looks like the familiar normalized chi-squared.  These
+        scale factors will not affect the value of the minimum, though some
+        care will be required when interpreting the uncertainty.
+        """
+        return 2 * self.nllf(pvec) / self.dof
+
+    def summarize(self):
+        """Return a table of current parameter values with range bars."""
+        return parameter.summarize(self._parameters)
+
+    def labels(self):
+        """Return the list of labels, one per fitted parameter."""
+        return [p.name for p in self._parameters]
+
+    # noinspection PyAttributeOutsideInit
+    def model_reset(self):
+        """
+        Prepare for the fit.
+
+        This sets the parameters and the bounds properties that the
+        solver is expecting from the fittable object.  We also compute
+        the degrees of freedom so that we can return a normalized fit
+        likelihood.
+
+        If the set of fit parameters changes, then model_reset must
+        be called.
+        """
+        # print self.model_parameters()
+        all_parameters = parameter.unique(self.model_parameters())
+        # print "all_parameters",all_parameters
+        self._parameters = parameter.varying(all_parameters)
+        # print "varying",self._parameters
+        self.bounded = [p for p in all_parameters
+                        if not isinstance(p.bounds, mbounds.Unbounded)]
+        self.dof = self.model_points()
+        if not self.partial:
+            self.dof -= len(self._parameters)
+        if self.dof <= 0:
+            raise ValueError("Need more data points than fitting parameters")
+        #self.constraints = pars.constraints()
+
+
+# prevent __eq__ from being created
+# need to be able to hash BaseFitProblem to be used as a key (?!)
+@util.schema(init=False, eq=False)
+class BaseFitProblem(SubBaseFitProblem):
+    """
+    See :func:`FitProblem`
+    """
+
+    name: str
+    fitness: util.Any
+    constraints: util.Union[util.List[parameter.Constraint], util.Literal[None]] = None
+    soft_limit: float = np.inf
+    partial: bool = False
+    penalty_nllf: float = np.inf
+
+    def __init__(self, fitness, name=None, constraints=None,
+                 penalty_nllf=np.inf, soft_limit=np.inf, partial=False):
+        self.constraints = constraints
+        self.fitness = fitness
+        self.partial = partial
+        if name is not None:
+            self.name = name
+        else:
+            try:
+                self.name = fitness.name
+            except AttributeError:
+                self.name = 'FitProblem'
+
+        self.soft_limit = soft_limit
+        self.penalty_nllf = penalty_nllf
+        self.id = id(self)
+        self.model_reset()
+
+    def model_parameters(self):
+        """
+        Parameters associated with the model.
+        """
+        return self.fitness.parameters()
+
+    def to_dict(self):
+        return {
+            'type': type(self).__name__,
+            'name': self.name,
+            'fitness': to_dict(self.fitness),
+            'partial': self.partial,
+            'soft_limit': self.soft_limit,
+            'penalty_nllf': self.penalty_nllf,
+            # TODO: constraints may be a function.
+            'constraints': to_dict(self.constraints),
+        }
+
+    def model_points(self):
+        """
+        Number of data points associated with the model.
+        """
+        return self.fitness.numpoints()
+
+    def model_update(self):
+        """
+        Update the model according to the changed parameters.
+        """
+        if hasattr(self.fitness, 'update'):
+            self.fitness.update()
+
+    def model_nllf(self):
+        """
+        Negative log likelihood of seeing data given model.
+        """
+        return self.fitness.nllf()
+
+    def simulate_data(self, noise=None):
+        """Simulate data with added noise"""
+        self.fitness.simulate_data(noise=noise)
+
+    def resynth_data(self):
+        """Resynthesize data with noise from the uncertainty estimates."""
+        self.fitness.resynth_data()
+
+    def restore_data(self):
+        """Restore original data after resynthesis."""
+        self.fitness.restore_data()    
 
     @property
     def has_residuals(self):
@@ -439,109 +537,11 @@ class BaseFitProblem:
         return np.sum(self.residuals() ** 2) / self.dof
         # return 2*self.nllf()/self.dof
 
-    def chisq_str(self):
-        """
-        Return a string representing the chisq equivalent of the nllf.
-
-        If the model has strictly gaussian independent uncertainties then the
-        negative log likelihood function will return 0.5*sum(residuals**2),
-        which is 1/2*chisq.  Since we are printing normalized chisq, we
-        multiply the model nllf by 2/DOF before displaying the value.  This
-        is different from the problem nllf function, which includes the
-        cost of the prior parameters and the cost of the penalty constraints
-        in the total nllf.  The constraint value is displayed separately.
-        """
-        pparameter, pconstraints, pmodel = self._nllf_components()
-        chisq_norm, chisq_err = nllf_scale(self)
-        chisq = pmodel * chisq_norm
-        text = format_uncertainty(chisq, chisq_err)
-        constraints = pparameter + pconstraints
-        if constraints > 0.:
-            text += " constraints=%g" % constraints
-
-        return text
-
-    def nllf(self, pvec=None):
-        """
-        compute the cost function for a new parameter set p.
-
-        this is not simply the sum-squared residuals, but instead is the
-        negative log likelihood of seeing the data given the model parameters
-        plus the negative log likelihood of seeing the model parameters.  the
-        value is used for a likelihood ratio test so normalization constants
-        can be ignored.  there is an additional penalty value provided by
-        the model which can be used to implement inequality constraints.  any
-        penalty should be large enough that it is effectively excluded from
-        the parameter space returned from uncertainty analysis.
-
-        the model is not actually calculated if the parameter nllf plus the
-        constraint nllf are bigger than *soft_limit*, but instead it is
-        assigned a value of *penalty_nllf*.  this will prevent expensive
-        models from spending time computing values in the unfeasible region.
-        """
-        if pvec is not None:
-            if self.valid(pvec):
-                self.setp(pvec)
-            else:
-                return inf
-
-        pparameter, pconstraints, pmodel = self._nllf_components()
-        cost = pparameter + pconstraints + pmodel
-        # print(pvec, "cost=",pparameter,"+",pconstraints,"+",pmodel,"=",cost)
-        if isnan(cost):
-            # TODO: make sure errors get back to the user
-            # print "point evaluates to nan"
-            # print parameter.summarize(self._parameters)
-            return inf
-        return cost
-
-    def _nllf_components(self):
-        try:
-            pparameter = self.parameter_nllf()
-            if isnan(pparameter):
-                # TODO: make sure errors get back to the user
-                info = ["Parameter nllf is wrong"]
-                info += ["%s %g"%(p, p.nllf()) for p in self.bounded]
-                logging.error("\n  ".join(info))
-            pconstraints = self.constraints_nllf()
-            # Note: for hard constraints (which return inf) avoid computing
-            # model even if soft_limit is inf by using strict comparison
-            # since inf <= inf is True but inf < inf is False.
-            pmodel = (self.model_nllf()
-                      if pparameter + pconstraints < self.soft_limit
-                      else self.penalty_nllf)
-            return pparameter, pconstraints, pmodel
-        except Exception:
-            # TODO: make sure errors get back to the user
-            info = (traceback.format_exc(),
-                    parameter.summarize(self._parameters))
-            logging.error("\n".join(info))
-            return NaN, NaN, NaN
-
-    def __call__(self, pvec=None):
-        """
-        Problem cost function.
-
-        Returns the negative log likelihood scaled by DOF so that
-        the result looks like the familiar normalized chi-squared.  These
-        scale factors will not affect the value of the minimum, though some
-        care will be required when interpreting the uncertainty.
-        """
-        return 2 * self.nllf(pvec) / self.dof
-
     def show(self, _subs={}):
         """Print the available parameters to the console as a tree."""
         print(parameter.format(self.model_parameters(), freevars=_subs))
         print("[chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
         #print(self.summarize())
-
-    def summarize(self):
-        """Return a table of current parameter values with range bars."""
-        return parameter.summarize(self._parameters)
-
-    def labels(self):
-        """Return the list of labels, one per fitted parameter."""
-        return [p.name for p in self._parameters]
 
     def save(self, basename):
         """
@@ -614,21 +614,34 @@ class BaseFitProblem:
             self.soft_limit, self.constraints = state
         self.model_reset()
 
-class MultiFitProblem(BaseFitProblem):
+
+@util.schema(init=False, eq=False)
+class MultiFitProblem(SubBaseFitProblem):
     """
     Weighted fits for multiple models.
     """
+
+    name: str
+    models: util.List[BaseFitProblem]
+    freevars: parameter.FreeVariables
+    weights: util.Union[util.List[float], util.Literal[None]] = None
+    partial: bool = False
+    constraints: util.Union[util.List[parameter.Constraint], util.Literal[None]] = None
+    soft_limit: float = np.inf
+    penalty_nllf: float = np.inf
+
     def __init__(self, models, weights=None, name=None,
-                 constraints=None,
+                 constraints=None, partial=False,
                  soft_limit=np.inf, penalty_nllf=1e6,
                  freevars=None):
-        self.partial = False
+        self.partial = partial
         self.constraints = constraints
         if freevars is None:
             names = ["M%d" % i for i, _ in enumerate(models)]
             freevars = parameter.FreeVariables(names=names)
         self.freevars = freevars
-        self._models = [BaseFitProblem(m, partial=True) for m in models]
+        self._models = [m if isinstance(m, BaseFitProblem) else BaseFitProblem(m, partial=True) for m in models]
+        self.__class__.models = property(self._get_models)
         if weights is None:
             weights = [1 for _ in models]
         self.weights = weights
@@ -638,8 +651,8 @@ class MultiFitProblem(BaseFitProblem):
         self.model_reset()
         self.name = name
 
-    @property
-    def models(self):
+    @staticmethod
+    def _get_models(self):
         """Iterate over models, with free parameters set from model values"""
         for i, f in enumerate(self._models):
             self.freevars.set_model(i)
@@ -675,6 +688,9 @@ class MultiFitProblem(BaseFitProblem):
             'constraints': to_dict(self.constraints),
             'freevars': to_dict(self.freevars),
         }
+
+    def __repr__(self):
+        return "MultiFitProblem(name=%s)" % self.name
 
     def model_points(self):
         """Return number of points in all models"""

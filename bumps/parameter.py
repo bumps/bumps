@@ -82,10 +82,10 @@ class BaseParameter:
     fittable: bool
     discrete: bool
     bounds: Union[tuple(bounds_classes)]
-    id: int = field(default=0, init=False)
+    id: int
     #_bounds =  mbounds.Unbounded()
-    name: Optional[str] = field(default=None, init=False)
-    value: Optional[float] # value is an attribute of the derived class
+    name: str
+    value: float # value is an attribute of the derived class
 
     # Parameters may be dependent on other parameters, and the
     # fit engine will need to access them.
@@ -338,19 +338,18 @@ class Constant(BaseParameter):
     """
     An unmodifiable value.
     """
-    fittable: Literal[False] = False
-    fixed: Literal[True] = True
-    name: str = None
+    fittable = False
+    fixed = True
 
-    @property
-    def value(self):
-        return self._value
+    name: str
+    value: float
 
     def __init__(self, value, name=None):
         self._value = value
         self.name = name
         if self.id is None:
             self.id = id(self)
+        self.value = property(lambda self: self._value)
 
     # to_dict() can inherit from BaseParameter
 
@@ -506,12 +505,16 @@ class Reference(Parameter):
         return ret
 
 
-class ParameterSet(object):
+@schema(init=False)
+class ParameterSet:
     """
     A parameter that depends on the model.
     """
+    names: List[str]
+    reference: Parameter
+    parameterlist: List[Parameter]
 
-    def __init__(self, reference, names=None):
+    def __init__(self, reference, names=None, parameterlist=None):
         """
         Create a parameter set, with one parameter for each model name.
 
@@ -527,12 +530,17 @@ class ParameterSet(object):
         # TODO: explain better why parameters are using np.array
         # Force numpy semantics on slice operations by using an array
         # of objects rather than a list of objects
-        self.parameters = np.array([copy(reference) for _ in names])
+        if parameterlist is not None:
+            # we are being reinitialized with parameters
+            self.parameters = np.array(parameterlist)
+        else:
+            self.parameters = np.array([copy(reference) for _ in names])
         # print self.reference, self.parameters
         for p, n in zip(self.parameters, names):
             p.name = " ".join((n, p.name))
         # Reference is no longer directly fittable
         self.reference.fittable = False
+        self.__class__.parameterlist = property(lambda self: self.parameters.tolist())
 
     def to_dict(self):
         return {
@@ -627,6 +635,7 @@ class ParameterSet(object):
             p.pmp(*args, **kw)
 
 
+@schema(init=False)
 class FreeVariables(object):
     """
     A collection of parameter sets for a group of models.
@@ -648,15 +657,23 @@ class FreeVariables(object):
     new parameters for each model for the free parameters.  Setting up
     these copies was inconvenient.
     """
+    names: List[str]
+    parametersets: Dict[str, List[ParameterSet]]
 
-    def __init__(self, names=None, **kw):
+    def __init__(self, names=None, parametersets=None, **kw):
         if names is None:
             raise TypeError("FreeVariables needs name=[model1, model2, ...]")
         self.names = names
-
-        # Create slots to hold the free variables
-        self._parametersets = dict((k, ParameterSet(v, names=names))
+        if parametersets is not None:
+            # assume that we are initializing with a dict of
+            # fully initialized ParameterSet objects
+            self._parametersets = parametersets
+        else:
+            # we are initializing with kw = Dict[key, (list of Parameters)]
+            # Create slots to hold the free variables
+            self._parametersets = dict((k, ParameterSet(v, names=names))
                                    for k, v in kw.items())
+        self.__class__.parametersets = property(lambda self: self._parametersets)
 
     # Shouldn't need explicit __getstate__/__setstate__ but mpi4py pickle
     # chokes without it.
@@ -788,7 +805,7 @@ class UnaryOperator(BaseParameter):
     value = None # value is an attribute of the derived class
 
     a: Union[PARAMETER_TYPES + (float,)]
-    op_name: ALLOWED_OPS_ENUM
+    op_name: ALLOWED_UNARY_OPS_ENUM
     op_str: str
    
     def __init__(self, a, op_name, op_str):

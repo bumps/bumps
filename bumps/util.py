@@ -76,13 +76,12 @@ def schema(
         field_annotations['type'] = Literal[name]
         setattr(cls, '__annotations__', field_annotations)
         setattr(cls, 'type', field(repr=False, default=name))
-        # if the 'type' attribute is not going to be set by the 
-        # dataclass-provided __init__, we will set it ourselves
-        # (dataclass-provided __init__ requires init == True and no existing '__init__')
-        set_classname = (getattr(cls, '__init__', False) or not init)
-        dataclass(init=init, eq=eq)(cls)
+        has_init = hasattr(cls, '__init__')
+        dataclass(init=(init and not has_init), eq=eq)(cls)
         setattr(cls, '__annotations__', all_annotations)
-        if set_classname:
+        if not init and not has_init:
+            # if the 'type' attribute is not going to be set by the 
+            # dataclass-provided __init__, we will set it ourselves
             setattr(cls, 'type', getattr(cls, '__name__'))
         return cls
     return set_dataclass
