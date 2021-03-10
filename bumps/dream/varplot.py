@@ -107,7 +107,9 @@ def plot_vars(draw, all_vstats, **kw):
 
 def plot_var(draw, vstats, var, cbar, nbins=30):
     values = draw.points[:, var].flatten()
-    _make_logp_histogram(values, draw.logp, nbins, vstats.p95_range,
+    bin_range = vstats.p95_range
+    #bin_range = np.min(values), np.max(values)
+    _make_logp_histogram(values, draw.logp, nbins, bin_range,
                          draw.weights, cbar)
     _decorate_histogram(vstats)
 
