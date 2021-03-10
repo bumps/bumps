@@ -19,7 +19,8 @@ from numpy import ascontiguousarray as _dense
 from scipy.special import erf
 
 # this can be substituted with pydantic dataclass for schema-building...
-if os.environ.get('BUMPS_USE_PYDANTIC', "False") == "True":
+USE_PYDANTIC = os.environ.get('BUMPS_USE_PYDANTIC', "False") == "True"
+if USE_PYDANTIC:
     from pydantic.dataclasses import dataclass
     from dataclasses import field, _FIELDS, _PARAMS
 else:
@@ -80,6 +81,9 @@ def schema(
         setattr(cls, 'type', field(repr=False, default=name))
         has_init = hasattr(cls, '__init__')
         dataclass(init=(init and not has_init), eq=eq)(cls)
+        # HACK! Pydantic doesn't copy __doc__ into model
+        if hasattr(cls, '__pydantic_model__'):
+            cls.__pydantic_model__.__doc__ = cls.__doc__
         setattr(cls, '__annotations__', all_annotations)
         if not init and not has_init:
             # if the 'type' attribute is not going to be set by the 
