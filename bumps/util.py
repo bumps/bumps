@@ -28,9 +28,9 @@ else:
 from dataclasses import is_dataclass
 
 try:
-    from typing import Optional, Any, Union, Dict, Callable, Tuple, List, Literal
+    from typing import Optional, Type, Any, Union, Dict, Callable, Tuple, List, Literal
 except ImportError:
-    from typing import Optional, Any, Union, Dict, Callable, Tuple, List
+    from typing import Optional, Type, Any, Union, Dict, Callable, Tuple, List
     from typing_extensions import Literal
 
 
@@ -49,10 +49,12 @@ def implementation(cls):
     return cls
 
 def schema(
+        _cls: Optional[Type[Any]] = None,
+        *,
         include: Optional[List[str]] = None,
-        exclude: Optional[List[str]] = None, 
-        eq: bool = True, 
-        init: bool = True
+        exclude: Optional[List[str]] = None,
+        eq: bool = True,
+        init: bool = False
     ) -> Callable[[type], type]:
     
     """ 
@@ -84,7 +86,14 @@ def schema(
             # dataclass-provided __init__, we will set it ourselves
             setattr(cls, 'type', getattr(cls, '__name__'))
         return cls
-    return set_dataclass
+
+    def wrap(cls: Type[Any]) -> Any:
+        return set_dataclass(cls)
+
+    if _cls is None:
+        return set_dataclass
+
+    return wrap(_cls)
 
 def parse_errfile(errfile):
     """
