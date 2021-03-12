@@ -46,7 +46,7 @@ def implementation(cls):
     dataclass(eq=False, init=False)(schema)
     return cls
 
-def field_desc(description: str) -> Field:
+def field_desc(description: str) -> Any:
     return field(metadata={"description": description})
 
 T = TypeVar('T')
@@ -55,6 +55,7 @@ def schema(
         *,
         include: Optional[List[str]] = None,
         exclude: Optional[List[str]] = None,
+        classname: Optional[str] = None,
         eq: bool = True,
         init: bool = False
     ) -> Callable[[Type[T]], Type[T]]:
@@ -84,7 +85,13 @@ def schema(
         setattr(cls, '__annotations__', field_annotations)
         setattr(cls, 'type', field(repr=False, default=name))
         has_init = hasattr(cls, '__init__')
-        dataclass(init=(init and not has_init), eq=eq)(cls)
+        do_init = init and not has_init
+        # optional temporary name change, which affects generated model:
+        if classname is not None:
+            cls.__name__ = classname
+        dataclass(init=do_init, eq=eq)(cls)
+        # set the name back, to match python globals:
+        cls.__name__ = name
         # HACK! Pydantic doesn't copy __doc__ into model
         if hasattr(cls, '__pydantic_model__'):
             model = getattr(cls, '__pydantic_model__')
