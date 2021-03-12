@@ -68,6 +68,35 @@ except ImportError:
 
 from .util import field, schema, Optional, Any, Union, Dict, Callable, Literal, Tuple, List, Literal
 
+#LimitValue = Union[float, Literal["Infinity", "-Infinity"]]
+
+@schema()
+class LimitValue:
+    """
+    class to handle potentially infinite floats,
+    specifically for comparisons (and serialization)
+    """
+    value: float
+
+    def __init__(self, value: Union[float, str]):
+        self.value = float(value)
+    def __repr__(self):
+        return repr(self.value)
+
+    # comparison operators:
+    def __eq__(self, other):
+        return (self.value == other)
+    def __ge__(self, other):
+        return (self.value >= other)
+    def __gt__(self, other):
+        return (self.value > other)
+    def __le__(self, other):
+        return (self.value <= other)
+    def __lt__(self, other):
+        return (self.value < other)
+    
+    
+
 def pm(v, plus, minus=None, limits=None):
     """
     Return the tuple (~v-dv,~v+dv), where ~expr is a 'nice' number near to
@@ -152,7 +181,7 @@ def nice_range(bounds):
         return bounds
 
 
-def init_bounds(v):
+def init_bounds(v) -> 'Bounds':
     """
     Returns a bounds object of the appropriate type given the arguments.
 
@@ -187,7 +216,6 @@ def init_bounds(v):
         return Bounded(lo, hi)
 
 
-@schema()
 class Bounds:
     """
     Bounds abstract base class.
@@ -362,28 +390,29 @@ class BoundedBelow(Bounds):
     is indistinguishable from values outside the range.  Instead we say
     that P = 1 in range, and 0 outside.
     """
+    base: float
     type = "BoundedBelow"
 
     def __init__(self, base):
+        self.base = base
         self.limits = (base, inf)
-        self._base = base
 
     def start_value(self):
-        return self._base + 1
+        return self.base + 1
 
-    def random(self, n=1, target=1.):
-        target = max(abs(target), abs(self._base))
-        scale = target + (target == 0.)
-        return self._base + abs(RNG.randn(n)*scale)
+    def random(self, n=1, target:float=1.):
+        target = max(abs(target), abs(self.base))
+        scale = target + float(target == 0.)
+        return self.base + abs(RNG.randn(n)*scale)
 
     def nllf(self, value):
-        return 0 if value >= self._base else inf
+        return 0 if value >= self.base else inf
 
     def residual(self, value):
-        return 0 if value >= self._base else -4
+        return 0 if value >= self.base else -4
 
     def get01(self, x):
-        m, e = math.frexp(x - self._base)
+        m, e = math.frexp(x - self.base)
         if m >= 0 and e <= _E_MAX:
             v = (e + m) / (2. * _E_MAX)
             return v
@@ -394,16 +423,16 @@ class BoundedBelow(Bounds):
         v = v * 2 * _E_MAX
         e = int(v)
         m = v - e
-        x = math.ldexp(m, e) + self._base
+        x = math.ldexp(m, e) + self.base
         return x
 
     def getfull(self, x):
-        v = x - self._base
+        v = x - self.base
         return v if v >= 1 else 2 - 1. / v
 
     def putfull(self, v):
         x = v if v >= 1 else 1. / (2 - v)
-        return x + self._base
+        return x + self.base
 
 
 @schema()
@@ -423,27 +452,28 @@ class BoundedAbove(Bounds):
     is indistinguishable from values outside the range.  Instead we say
     that P = 1 in range, and 0 outside.
     """
+    base: float
 
     def __init__(self, base):
+        self.base = base
         self.limits = (-inf, base)
-        self._base = base
 
     def start_value(self):
-        return self._base - 1
+        return self.base - 1
 
-    def random(self, n=1, target=1.0):
-        target = max(abs(self._base), abs(target))
-        scale = target + (target == 0.)
-        return self._base - abs(RNG.randn(n)*scale)
+    def random(self, n=1, target:float=1.0):
+        target = max(abs(self.base), abs(target))
+        scale = target + float(target == 0.)
+        return self.base - abs(RNG.randn(n)*scale)
 
     def nllf(self, value):
-        return 0 if value <= self._base else inf
+        return 0 if value <= self.base else inf
 
     def residual(self, value):
-        return 0 if value <= self._base else 4
+        return 0 if value <= self.base else 4
 
     def get01(self, x):
-        m, e = math.frexp(self._base - x)
+        m, e = math.frexp(self.base - x)
         if m >= 0 and e <= _E_MAX:
             v = (e + m) / (2. * _E_MAX)
             return 1 - v
@@ -454,16 +484,16 @@ class BoundedAbove(Bounds):
         v = (1 - v) * 2 * _E_MAX
         e = int(v)
         m = v - e
-        x = -(math.ldexp(m, e) - self._base)
+        x = -(math.ldexp(m, e) - self.base)
         return x
 
     def getfull(self, x):
-        v = x - self._base
+        v = x - self.base
         return v if v <= -1 else -2 - 1. / v
 
     def putfull(self, v):
         x = v if v <= -1 else -1. / (v + 2)
-        return x + self._base
+        return x + self.base
 
 
 @schema()
@@ -479,14 +509,17 @@ class Bounded(Bounds):
     and for a more natural mapping between nllf and chisq, we instead
     set the probability to 0.  This choice will not affect the fits.
     """
+    lo: float = field(metadata={"description": "lower end of bounds"})
+    hi: float = field(metadata={"description": "upper end of bounds"})
 
-    @classmethod
-    def from_dict(cls, limits=None):
-        lo, hi = limits
-        #print(limits, lo, hi)
-        return cls(lo, hi)
+    # @classmethod
+    # def from_dict(cls, limits=None):
+    #     lo, hi = limits
+    #     return cls(lo, hi)
 
     def __init__(self, lo, hi):
+        self.lo = lo
+        self.hi = hi
         self.limits = (lo, hi)
         self._nllf_scale = log(hi - lo)
 
@@ -519,7 +552,7 @@ class Bounded(Bounds):
         return self.put01(_get01_inf(v))
 
 
-@schema()
+
 class Distribution(Bounds):
     """
     Parameter is pulled from a distribution.
@@ -576,6 +609,7 @@ class Distribution(Bounds):
             )
 
 
+@schema()
 class Normal(Distribution):
     """
     Parameter is pulled from a normal distribution.
@@ -588,6 +622,8 @@ class Normal(Distribution):
     *mean* is the expected value of the parameter and *std* is the 1-sigma
     standard deviation.
     """
+    mean: float = 0.0
+    std: float = 1.0
 
     def __init__(self, mean=0, std=1):
         Distribution.__init__(self, normal_distribution(mean, std))
@@ -619,9 +655,20 @@ class BoundedNormal(Bounds):
     """
     mean: float = 0.0
     std: float = 1.0
+    lo: Union[float, Literal[None]]
+    hi: Union[float, Literal[None]]
 
-    def __init__(self, mean=0, std=1, limits=(-inf, inf)):
+    def __init__(self, mean=0, std=1, limits=(-inf, inf), hi=None, lo=None):
+        if limits is not None:
+            # for backward compatibility:
+            lo, hi = limits
+        else:
+            limits = (
+                -inf if lo is None else lo,
+                inf if hi is None else hi
+            )
         self.limits = limits
+        self.lo, self.hi = lo, hi
         self.mean, self.std = mean, std
 
         self._left = normal_distribution.cdf((limits[0]-mean)/std)
@@ -723,7 +770,7 @@ class SoftBounded(Bounds):
     hi: float = 1.0
     std: float = 1.0
 
-    def __init__(self, lo, hi, std=None):
+    def __init__(self, lo, hi, std=1.0):
         self.lo, self.hi, self.std = lo, hi, std
         self._nllf_scale = log(hi - lo + sqrt(2 * pi * std))
 
