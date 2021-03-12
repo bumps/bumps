@@ -11,6 +11,7 @@ Users can also perform calculations with parameters, tying together different
 parts of the model, or different models.
 """
 #__all__ = [ 'Parameter']
+from dataclasses import is_dataclass
 import operator
 import sys
 import builtins
@@ -22,15 +23,18 @@ import math
 from functools import wraps
 from enum import Enum
 
-from .util import field, schema, Optional, Any, Union, Dict, Callable, Literal, Tuple, List, Literal
+from .util import field, schema, has_schema, Type, TypeVar, Optional, Any, Union, Dict, Callable, Literal, Tuple, List, Literal
 
 import numpy as np
 from numpy import inf, isinf, isfinite
 
 from . import bounds as mbounds
-bounds_classes = mbounds.Bounds.__subclasses__()
+bounds_classes = [c for c in mbounds.Bounds.__subclasses__() if has_schema(c)]
+BoundsType = Union[tuple(bounds_classes)]
 
-PARAMETER_TYPES = ('Parameter', 'Operator', 'UnaryOperator', 'Constant')
+T = TypeVar('T')
+
+FORWARD_PARAMETER_TYPES = Union['Parameter', 'Operator', 'UnaryOperator', 'Constant']
 
 # TODO: avoid evaluation of subexpressions if parameters do not change.
 # This is especially important if the subexpression invokes an expensive
@@ -81,16 +85,19 @@ class BaseParameter:
     fixed: bool
     fittable: bool
     discrete: bool
-    bounds: Union[tuple(bounds_classes)]
+    bounds: BoundsType
     id: int
     #_bounds =  mbounds.Unbounded()
-    name: str
+    name: Optional[str]
     value: float # value is an attribute of the derived class
 
     # Parameters may be dependent on other parameters, and the
     # fit engine will need to access them.
     def parameters(self):
         return [self]
+
+    def __init__(self, value):
+        """ set the value for the parameter """
 
     def pmp(self, plus, minus=None, limits=None):
         """
@@ -334,23 +341,26 @@ class BaseParameter:
 
 
 @schema()
-class Constant(BaseParameter):
+class Constant:
     """
     An unmodifiable value.
     """
+    name: Optional[str]
+    value: float
+    id: Optional[int]
+class Constant(Constant, BaseParameter): # type: ignore
+    
     fittable = False
     fixed = True
 
-    name: str
-    value: float
-
-    def __init__(self, value, name=None):
+    def __init__(self, value, name=None, id=None):
         self._value = value
         self.name = name
-        if self.id is None:
-            self.id = id(self)
-        self.value = property(lambda self: self._value)
+        self.id = id if id is not None else builtins.id(self)
 
+    @property
+    def value(self):
+        return self._value
     # to_dict() can inherit from BaseParameter
 
 
@@ -382,11 +392,14 @@ class Parameter(BaseParameter):
     id: int = field(default=0, init=False)
     #_bounds =  mbounds.Unbounded()
     name: Optional[str] = field(default=None, init=False)
-    value: Optional[float] = field(default=None, init=False) # value is an attribute of the derived class
+    value: float # value is an attribute of the derived class
     fittable = True
+    schema_description = """
+    A parameter is a symbolic value, that can be fixed or vary within bounds
+    """
 
     @classmethod
-    def default(cls, value, **kw):
+    def default(cls: Type[FORWARD_PARAMETER_TYPES], value: Union[float, FORWARD_PARAMETER_TYPES], **kw) -> FORWARD_PARAMETER_TYPES :
         """
         Create a new parameter with the *value* and *kw* attributes, or return
         the existing parameter if *value* is already a parameter.
@@ -414,7 +427,7 @@ class Parameter(BaseParameter):
         low, high = self.bounds.limits
         self.value = min(max(value, low), high)
 
-    def __init__(self, value=None, bounds=None, fixed=None, name=None, id=None, **kw):
+    def __init__(self, value: float, bounds: Optional[Union[BoundsType, Tuple[float, float]]]=None, fixed=None, name=None, id=None, **kw):
         # UI nicities:
         # 1. check if we are started with value=range or bounds=range; if we
         # are given bounds, then assume this is a fitted parameter, otherwise
@@ -510,11 +523,15 @@ class ParameterSet:
     """
     A parameter that depends on the model.
     """
-    names: List[str]
+    names: Optional[List[str]]
     reference: Parameter
-    parameterlist: List[Parameter]
+    parameterlist: Optional[List[Parameter]]
 
-    def __init__(self, reference, names=None, parameterlist=None):
+    def __init__(self,
+            reference: Parameter,
+            names: Optional[List[str]] = None,
+            parameterlist: Optional[List[Parameter]] = None
+        ):
         """
         Create a parameter set, with one parameter for each model name.
 
@@ -525,6 +542,7 @@ class ParameterSet:
 
         *parameters* will be created, with one parameter per model.
         """
+        names = names if names is not None else []
         self.names = names
         self.reference = reference
         # TODO: explain better why parameters are using np.array
@@ -731,7 +749,8 @@ class FreeVariables(object):
 
 # ==== Arithmetic operators ===
 ALLOWED_OPERATORS = ["add","sub","mul","truediv","floordiv","pow"]
-ALLOWED_OPS_ENUM = Enum('ALLOWED_OPS_ENUM', [(op,op) for op in ALLOWED_OPERATORS], type=str)
+# the comprehension is too dynamic for mypy.  Must ignore:
+ALLOWED_OPS_ENUM = Enum('ALLOWED_OPS_ENUM', [(op,op) for op in ALLOWED_OPERATORS], type=str) # type: ignore
 
 
 @schema(init=False)
@@ -744,10 +763,9 @@ class Operator(BaseParameter):
     discrete = False
     bounds = mbounds.Unbounded()
     name = None
-    value = None # value is an attribute of the derived class
 
-    a: Union[PARAMETER_TYPES + (float,)]
-    b: Union[PARAMETER_TYPES + (float,)]
+    a: Union[FORWARD_PARAMETER_TYPES, float]
+    b: Union[FORWARD_PARAMETER_TYPES, float]
     op_name: ALLOWED_OPS_ENUM
     op_str: str
    
@@ -802,9 +820,8 @@ class UnaryOperator(BaseParameter):
     discrete = False
     bounds = mbounds.Unbounded()
     name = None
-    value = None # value is an attribute of the derived class
 
-    a: Union[PARAMETER_TYPES + (float,)]
+    a: Union[FORWARD_PARAMETER_TYPES, float]
     op_name: ALLOWED_UNARY_OPS_ENUM
     op_str: str
    
@@ -1095,7 +1112,7 @@ def summarize(pars, sorted=False):
     """
     output = []
     if sorted:
-        pars = sorted(pars, cmp=lambda x, y: cmp(x.name, y.name))
+        pars = sorted(pars, key=lambda x: x.name)
     for p in pars:
         if not isfinite(p.value):
             bar = ["*invalid* "]
@@ -1255,7 +1272,7 @@ class Alias(object):
         }
 
 #restate these for export, now that they're all defined:
-PARAMETER_TYPES = (Parameter, Operator, UnaryOperator, Constant)
+PARAMETER_TYPES = Union[Parameter, Operator, UnaryOperator, Constant]
 
 def test_operator():
     a = Parameter(1, name='a')
