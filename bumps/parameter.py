@@ -11,19 +11,18 @@ Users can also perform calculations with parameters, tying together different
 parts of the model, or different models.
 """
 #__all__ = [ 'Parameter']
-from dataclasses import is_dataclass
 import operator
 import sys
 import builtins
 from typing import List
-from six.moves import reduce
+from functools import reduce
 import warnings
 from copy import copy
 import math
 from functools import wraps
 from enum import Enum
 
-from .util import field, schema, has_schema, Type, TypeVar, Optional, Any, Union, Dict, Callable, Literal, Tuple, List, Literal
+from .util import field, field_desc, schema, has_schema, Type, TypeVar, Optional, Any, Union, Dict, Callable, Literal, Tuple, List, Literal
 
 import numpy as np
 from numpy import inf, isinf, isfinite
@@ -34,7 +33,7 @@ BoundsType = Union[tuple(bounds_classes)]
 
 T = TypeVar('T')
 
-FORWARD_PARAMETER_TYPES = Union['Parameter', 'Operator', 'UnaryOperator', 'Constant']
+FORWARD_PARAMETER_TYPES = Union['Parameter', 'Operator', 'UnaryExpression', 'Constant']
 
 # TODO: avoid evaluation of subexpressions if parameters do not change.
 # This is especially important if the subexpression invokes an expensive
@@ -213,57 +212,6 @@ class BaseParameter:
     def __call__(self):
         return self.value
 
-    # Parameter algebra: express relationships between parameters
-    def __gt__(self, other):
-        return Constraint(self, other, "GT", ">")
-
-    def __ge__(self, other):
-        return Constraint(self, other, "GE", ">=")
-    def __le__(self, other):
-        return Constraint(self, other, "LE", "<=")
-
-    def __lt__(self, other):
-        return Constraint(self, other, "LT", "<")
-
-    # def __eq__(self, other):
-    #     return ConstraintEQ(self, other)
-
-    # def __ne__(self, other):
-    #     return ConstraintNE(self, other)
-
-    def __add__(self, other):
-        return Operator(self, other, "add", "+")
-
-    def __sub__(self, other):
-        return Operator(self, other, "sub", "-")
-
-    def __mul__(self, other):
-        return Operator(self, other, "mul", "*")
-
-    def __div__(self, other):
-        return Operator(self, other, "truediv", "/")
-
-    def __pow__(self, other):
-        return Operator(self, other, "pow", "**")
-
-    def __radd__(self, other):
-        return Operator(other, self, "add", "+")
-
-    def __rsub__(self, other):
-        return Operator(other, self, "sub", "-")
-
-    def __rmul__(self, other):
-        return Operator(other, self, "mul", "*")
-
-    def __rdiv__(self, other):
-        return Operator(other, self, "truediv", "/")
-
-    def __rpow__(self, other):
-        return Operator(other, self, "pow", "**")
-
-    def __abs__(self):
-        return _abs(self)
-
     def __neg__(self):
         return self * -1
 
@@ -273,8 +221,6 @@ class BaseParameter:
     def __float__(self):
         return float(self.value)
 
-    __truediv__ = __div__
-    __rtruediv__ = __rdiv__
 
     def nllf(self):
         """
@@ -336,19 +282,20 @@ class BaseParameter:
             value=self.value,
             fixed=self.fixed,
             fittable=self.fittable,
-            bounds=to_dict(self._bounds),
+            bounds=to_dict(self.bounds),
             )
 
 
-@schema()
-class Constant:
+@schema(classname="Constant")
+class ConstantSchema:
     """
     An unmodifiable value.
     """
     name: Optional[str]
     value: float
     id: Optional[int]
-class Constant(Constant, BaseParameter): # type: ignore
+
+class Constant(ConstantSchema, BaseParameter): # type: ignore
     
     fittable = False
     fixed = True
@@ -518,14 +465,16 @@ class Reference(Parameter):
         return ret
 
 
-@schema(init=False)
-class ParameterSet:
+@schema(classname="ParameterSet")
+class ParameterSetSchema:
     """
     A parameter that depends on the model.
     """
     names: Optional[List[str]]
     reference: Parameter
-    parameterlist: Optional[List[Parameter]]
+    parameterList: Optional[List[Parameter]]
+
+class ParameterSet(ParameterSetSchema):
 
     def __init__(self,
             reference: Parameter,
@@ -558,7 +507,11 @@ class ParameterSet:
             p.name = " ".join((n, p.name))
         # Reference is no longer directly fittable
         self.reference.fittable = False
-        self.__class__.parameterlist = property(lambda self: self.parameters.tolist())
+        #self.__class__.parameterlist = property(self._get_parameterlist) #lambda self: self.parameters.tolist())
+
+    @property
+    def parameterlist(self) -> List[Parameter]:
+        return self.parameters.tolist()
 
     def to_dict(self):
         return {
@@ -676,7 +629,7 @@ class FreeVariables(object):
     these copies was inconvenient.
     """
     names: List[str]
-    parametersets: Dict[str, List[ParameterSet]]
+    parametersets: Dict[str, ParameterSet]
 
     def __init__(self, names=None, parametersets=None, **kw):
         if names is None:
@@ -685,13 +638,12 @@ class FreeVariables(object):
         if parametersets is not None:
             # assume that we are initializing with a dict of
             # fully initialized ParameterSet objects
-            self._parametersets = parametersets
+            self.parametersets = parametersets
         else:
             # we are initializing with kw = Dict[key, (list of Parameters)]
             # Create slots to hold the free variables
-            self._parametersets = dict((k, ParameterSet(v, names=names))
+            self.parametersets = dict((k, ParameterSet(v, names=names))
                                    for k, v in kw.items())
-        self.__class__.parametersets = property(lambda self: self._parametersets)
 
     # Shouldn't need explicit __getstate__/__setstate__ but mpi4py pickle
     # chokes without it.
@@ -706,7 +658,7 @@ class FreeVariables(object):
         Return the parameter set for the given free parameter.
         """
         try:
-            return self._parametersets[k]
+            return self.parametersets[k]
         except KeyError:
             raise AttributeError('FreeVariables has no attribute %r' % k)
 
@@ -714,27 +666,27 @@ class FreeVariables(object):
         """
         Return the set of free variables for all the models.
         """
-        return dict((k, v.parameters) for k, v in self._parametersets.items())
+        return dict((k, v.parameters) for k, v in self.parametersets.items())
 
     def to_dict(self):
         return {
             'type': type(self).__name__,
             'names': self.names,
-            'parameters': to_dict(self._parametersets)
+            'parameters': to_dict(self.parametersets)
         }
 
     def set_model(self, i):
         """
         Set the reference parameters for model *i*.
         """
-        for p in self._parametersets.values():
+        for p in self.parametersets.values():
             p.set_model(i)
 
     def get_model(self, i):
         """
         Get the parameters for model *i* as {reference: substitution}
         """
-        return dict(p.get_model(i) for p in self._parametersets.values())
+        return dict(p.get_model(i) for p in self.parametersets.values())
 
 # Current implementation computes values on the fly, so you only
 # need to plug the values into the parameters and the parameters
@@ -748,10 +700,17 @@ class FreeVariables(object):
 # easily serializable
 
 # ==== Arithmetic operators ===
-ALLOWED_OPERATORS = ["add","sub","mul","truediv","floordiv","pow"]
-# the comprehension is too dynamic for mypy.  Must ignore:
-ALLOWED_OPS_ENUM = Enum('ALLOWED_OPS_ENUM', [(op,op) for op in ALLOWED_OPERATORS], type=str) # type: ignore
+class OPERATORS(str, Enum):
+    """all allowed binary operators"""
 
+    add = "+"
+    sub = "-"
+    mul = "*"
+    truediv = "/"
+    div = "/" # alias for truediv
+    pow = "**"
+
+OPERATORS_ALLOWED = set(item.value for item in OPERATORS)
 
 @schema(init=False)
 class Operator(BaseParameter):
@@ -766,52 +725,81 @@ class Operator(BaseParameter):
 
     a: Union[FORWARD_PARAMETER_TYPES, float]
     b: Union[FORWARD_PARAMETER_TYPES, float]
-    op_name: ALLOWED_OPS_ENUM
-    op_str: str
+    op: OPERATORS
    
-    def __init__(self, a, b, op_name, op_str):
+    def __init__(self, a, b, op):
         import operator
-        if not op_name.lower() in ALLOWED_OPERATORS:
-            raise ValueError("Operator name %s is not in allowed operators: %s" % (op_name, str(ALLOWED_OPERATORS)))
+        if not op in OPERATORS_ALLOWED:
+            raise ValueError("Operator %s is not in allowed operators: %s" % (op, str(OPERATORS_ALLOWED)))
         self.a, self.b = a,b
-        self.op_name = op_name
-        self.op = getattr(operator, op_name.lower())
-        self.op_str = op_str
+        self.op = op
+        op_name = str(OPERATORS(op).name)
+        self.operator = getattr(operator, op_name.lower())
         pars = []
         if isinstance(a,BaseParameter): pars += a.parameters()
         if isinstance(b,BaseParameter): pars += b.parameters()
         self._parameters = pars
         self.name = str(self)
+
     def parameters(self):
         return self._parameters
 
     @property
     def value(self):
-        return self.op(float(self.a), float(self.b))
+        return self.operator(float(self.a), float(self.b))
     @property
     def dvalue(self):
         return float(self.a)
     def __str__(self):
-        return "(%s %s %s)" % (self.a,self.op_str, self.b)
+        return "(%s %s %s)" % (self.a, self.op, self.b)
 
-ALLOWED_UNARY_MATH = [
-    "exp", "expm1", "log", "log10", "log1p", "sqrt",
-    "degrees", "radians",
-    "sin", "cos", "tan", "asin", "acos", "atan",
-    "sinh", "cosh", "tanh", "atanh",
-    "ceil", "floor", "trunc",
-]
-ALLOWED_UNARY_OPERATORS = [
-    "abs"
-]
 
-ALLOWED_UNARY = ALLOWED_UNARY_MATH + ALLOWED_UNARY_OPERATORS
+def make_operator(op_str: str) -> Callable[..., Operator]:
+    def o(self, other):
+        return Operator(self, other, op_str)
+    return o
 
-ALLOWED_UNARY_OPS_ENUM = Enum('ALLOWED_UNARY_OPS_ENUM', [(op,op) for op in ALLOWED_UNARY], type=str)
-   
+for o_item in OPERATORS:
+    op_name = o_item.name
+    op_str = o_item.value
+
+    setattr(BaseParameter, '__{op_name}__'.format(op_name=op_name), make_operator(op_str))
+    # set right versions, too:
+    setattr(BaseParameter, '__r{op_name}__'.format(op_name=op_name), make_operator(op_str))
+
+
+class UNARY_OPERATIONS(Enum):
+    """all allowed unary ops"""
+
+    exp = "exp"
+    expm1 = "expm1"
+    log = "log"
+    log10 = "log10"
+    log1p = "log1p"
+    sqrt = "sqrt"
+    degrees = "degrees"
+    radians = "radians"
+    sin = "sin"
+    cos = "cos"
+    tan = "tan"
+    asin = "asin"
+    acos = "acos"
+    atan = "atan"
+    sinh = "sinh"
+    cosh = "cosh"
+    tanh = "tanh"
+    atanh = "atanh"
+    ceil = "ceil"
+    floor = "floor"
+    trunc = "trunc"
+    abs = "abs"
+
+UNARY_OPERATORS = ["abs"]
+UNARY_ALLOWED = set(item.value for item in UNARY_OPERATIONS)
+
 
 @schema(init=False)
-class UnaryOperator(BaseParameter):
+class UnaryExpression(BaseParameter):
     """
     Parameter unary operator
     """
@@ -822,20 +810,19 @@ class UnaryOperator(BaseParameter):
     name = None
 
     a: Union[FORWARD_PARAMETER_TYPES, float]
-    op_name: ALLOWED_UNARY_OPS_ENUM
-    op_str: str
+    op: UNARY_OPERATIONS
    
-    def __init__(self, a, op_name, op_str):
+    def __init__(self, a, op):
         import operator
-        if not op_name.lower() in ALLOWED_UNARY:
-            raise ValueError("Operator name %s is not in allowed unary operators: %s" % (op_name, str(ALLOWED_UNARY)))
+        if not op in UNARY_ALLOWED:
+            raise ValueError("Operation %s is not in allowed unary operations: %s" % (op, str(UNARY_ALLOWED)))
         self.a = a
-        self.op_name = op_name
-        if op_name in ALLOWED_UNARY_MATH:
-            self.op = getattr(math, op_name.lower())
+        op_name = str(UNARY_OPERATIONS(op).name)
+        if op_name in UNARY_OPERATORS:
+            self.operation = getattr(operator, op_name.lower())
         else:
-            self.op = getattr(operator, op_name.lower())
-        self.op_str = op_str
+            self.operation = getattr(math, op_name.lower())
+        self.op = op
         pars = []
         if isinstance(a,BaseParameter): pars += a.parameters()
         self._parameters = pars
@@ -845,14 +832,14 @@ class UnaryOperator(BaseParameter):
 
     @property
     def value(self):
-        return self.op(float(self.a))
+        return self.operation(float(self.a))
     @property
     def dvalue(self):
         return float(self.a)
     def __str__(self):
-        return "%s(%s)" % (self.op_str, self.a)
+        return "%s(%s)" % (self.op, self.a)
 
-def unary(op):
+def unary(operation):
     """
     Convert a unary function into a delayed evaluator.
 
@@ -863,18 +850,20 @@ def unary(op):
     # Note: @functools.wraps(op) does not work with numpy ufuncs
     # Note: @decorator does not work with builtins like abs
     def unary_generator(*args, **kw):
-        return UnaryOperator(*args, op_name = op.__name__, op_str = op.__name__)
-    unary_generator.__name__ = op.__name__
-    unary_generator.__doc__ = op.__doc__
+        return UnaryExpression(*args, op=operation.__name__)
+    unary_generator.__name__ = operation.__name__
+    unary_generator.__doc__ = operation.__doc__
     return unary_generator
 
-_abs = unary(abs)
+#_abs = unary(abs)
 # Numpy trick: math functions from numpy delegate to the math function of
 # the class if that function exists as a class attribute.
-for op_name in ALLOWED_UNARY_MATH:
-    setattr(BaseParameter, op_name, unary(getattr(math, op_name)))
-for op_name in ALLOWED_UNARY_OPERATORS:
-    setattr(BaseParameter, op_name, unary(getattr(operator, op_name)))
+for u_item in UNARY_OPERATIONS:
+    op = u_item.value
+    if op in UNARY_OPERATORS:
+        setattr(BaseParameter,'__{op}__'.format(op=op), unary(getattr(operator, op)))
+    else:
+        setattr(BaseParameter, op, unary(getattr(math, op)))
 
 def substitute(a):
     """
@@ -1191,51 +1180,69 @@ def current(s):
 
 # ========= trash ===================
 
+class IntegerProperty(int):
+    value: int
+    def __init__(self, hidden_attributename: str = "_value"):
+        self.hidden_attributename = hidden_attributename
+    def __get__(self, obj, owner=None) -> int:
+        return getattr(obj, self.hidden_attributename)
+    def __set__(self, obj, value: Union[float, str]):
+        setattr(obj, self.hidden_attributename, int(value))
 
+
+@schema()
 class IntegerParameter(Parameter):
-    discrete = True
+    value: int
+    discrete: Literal[True] = True
+    _value: int
 
-    def _get_value(self):
-        return self._value
-
-    def _set_value(self, value):
-        self._value = int(value)
-    value = property(_get_value, _set_value)
+    #value = property(_get_value, _set_value)
+    value = IntegerProperty()
 
 
 # ==== Comparison operators ===
-COMPARISONS = [
-    ('GT', '>'),
-    ('GE', '>='),
-    ('LE', '<='),
-    ('LT', '<'),
-    ('EQ', '=='),
-    ('NE', '!=')
-]
+class COMPARISONS(Enum):
+    """comparison operators"""
 
-COMPARISON_OPS_ENUM = Enum("COMPARISON_OPS_ENUM", [(op_name, op_name) for op_name, op_str in COMPARISONS], type=str)
+    GT = '>'
+    GE = '>='
+    LE = '<='
+    LT = '<'
+    EQ = '=='
+    NE = '!='
 
 
 @schema()
 class Constraint:
 
-    a: Union[Parameter, UnaryOperator, Operator, float]
-    b: Union[Parameter, UnaryOperator, Operator, float]
-    op_name: COMPARISON_OPS_ENUM
-    op_str: str
+    a: Union[Parameter, UnaryExpression, Operator, float]
+    b: Union[Parameter, UnaryExpression, Operator, float]
+    op: COMPARISONS
 
-    def __init__(self, a, b, op_name, op_str=""):
+    def __init__(self, a, b, op):
         import operator
         self.a, self.b = a, b
-        self.op_name = op_name
-        self.op = getattr(operator, op_name.lower())
-        self.op_str = op_str
+        op_name = str(COMPARISONS(op).name)
+        self.compare = getattr(operator, op_name.lower())
+        self.op = op
+
     def __bool__(self):
-        return self.op(float(self.a), float(self.b))
+        return self.compare(float(self.a), float(self.b))
     __nonzero__ = __bool__
     def __str__(self):
-        return "(%s %s %s)" %(self.a, self.op_str, self.b)
+        return "(%s %s %s)" %(self.a, self.op, self.b)
 
+
+def make_constraint(op_str: str) -> Callable[..., Constraint]:
+    def o(self, other):
+        return Constraint(self, other, op_str)
+    return o
+
+for comp_item in COMPARISONS:
+    op_name = comp_item.name
+    op_str = comp_item.value
+
+    setattr(BaseParameter, '__{op_name}__'.format(op_name=op_name.lower()), make_constraint(op_str))
 
 class Alias(object):
     """
@@ -1272,7 +1279,7 @@ class Alias(object):
         }
 
 #restate these for export, now that they're all defined:
-PARAMETER_TYPES = Union[Parameter, Operator, UnaryOperator, Constant]
+PARAMETER_TYPES = Union[Parameter, Operator, UnaryExpression, Constant]
 
 def test_operator():
     a = Parameter(1, name='a')
