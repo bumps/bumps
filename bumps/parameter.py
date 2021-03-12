@@ -711,6 +711,13 @@ class OPERATORS(str, Enum):
     pow = "**"
 
 OPERATORS_ALLOWED = set(item.value for item in OPERATORS)
+OPERATOR_PRECEDENCE = {
+    "+": 1,
+    "-": 1,
+    "*": 2,
+    "/": 2,
+    "**": 3
+}
 
 @schema(init=False)
 class Operator(BaseParameter):
@@ -751,7 +758,14 @@ class Operator(BaseParameter):
     def dvalue(self):
         return float(self.a)
     def __str__(self):
-        return "(%s %s %s)" % (self.a, self.op, self.b)
+        op_prec = OPERATOR_PRECEDENCE[self.op]
+        a_str = str(self.a)
+        b_str = str(self.b)
+        if isinstance(self.a, Operator) and OPERATOR_PRECEDENCE[self.a.op] == op_prec:
+            a_str = a_str[1:-1]
+        if isinstance(self.b, Operator) and OPERATOR_PRECEDENCE[self.b.op] == op_prec:
+            b_str = b_str[1:-1]
+        return "(%s %s %s)" % (a_str, self.op, b_str)
 
 
 def make_operator(op_str: str) -> Callable[..., Operator]:
