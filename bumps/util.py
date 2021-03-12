@@ -22,18 +22,15 @@ from scipy.special import erf
 USE_PYDANTIC = os.environ.get('BUMPS_USE_PYDANTIC', "False") == "True"
 if USE_PYDANTIC:
     from pydantic.dataclasses import dataclass
-    from dataclasses import field, _FIELDS, _PARAMS
 else:
-    from dataclasses import dataclass, field, _FIELDS, _PARAMS
-
-from dataclasses import is_dataclass
+    from dataclasses import dataclass
+from dataclasses import field, is_dataclass, Field
 
 try:
-    from typing import Optional, Type, Any, Union, Dict, Callable, Tuple, List, Literal
+    from typing import Literal
 except ImportError:
-    from typing import Optional, Type, Any, Union, Dict, Callable, Tuple, List
     from typing_extensions import Literal
-
+from typing import Optional, Type, TypeVar, Any, Union, Dict, Callable, Tuple, List
 
 # decorator to tie model classes to implementations:
 def implementation(cls):
@@ -49,21 +46,28 @@ def implementation(cls):
     dataclass(eq=False, init=False)(schema)
     return cls
 
+def field_desc(description: str) -> Field:
+    return field(metadata={"description": description})
+
+T = TypeVar('T')
+
 def schema(
-        _cls: Optional[Type[Any]] = None,
         *,
         include: Optional[List[str]] = None,
         exclude: Optional[List[str]] = None,
         eq: bool = True,
         init: bool = False
-    ) -> Callable[[type], type]:
+    ) -> Callable[[Type[T]], Type[T]]:
     
     """ 
     Create a dataclass from a subset of field names.
     fields should be a list of strings corresponding to attribute names,
     or if fields is None, all annotated attributes will be used as fields
+
+    if attribute "schema_description" is found, will be used for description of
+    generated schema, or else the class docstring will be used.
     """
-    def set_dataclass(cls: type) -> type:
+    def set_dataclass(cls: Type[T]) -> Type[T]:
         name = cls.__name__
         all_annotations = getattr(cls, '__annotations__', {})
         if include is not None:
@@ -83,7 +87,9 @@ def schema(
         dataclass(init=(init and not has_init), eq=eq)(cls)
         # HACK! Pydantic doesn't copy __doc__ into model
         if hasattr(cls, '__pydantic_model__'):
-            cls.__pydantic_model__.__doc__ = cls.__doc__
+            model = getattr(cls, '__pydantic_model__')
+            docstring = getattr(cls, 'schema_description', cls.__doc__)
+            setattr(model, '__doc__', docstring)
         setattr(cls, '__annotations__', all_annotations)
         if not init and not has_init:
             # if the 'type' attribute is not going to be set by the 
@@ -91,13 +97,10 @@ def schema(
             setattr(cls, 'type', getattr(cls, '__name__'))
         return cls
 
-    def wrap(cls: Type[Any]) -> Any:
-        return set_dataclass(cls)
+    return set_dataclass
 
-    if _cls is None:
-        return set_dataclass
-
-    return wrap(_cls)
+def has_schema(cls):
+    return is_dataclass(cls)
 
 def parse_errfile(errfile):
     """
