@@ -758,6 +758,10 @@ def make_operator(op_str: str) -> Callable[..., Operator]:
     def o(self, other):
         return Operator(self, other, op_str)
     return o
+def make_roperator(op_str: str) -> Callable[..., Operator]:
+    def o(self, other):
+        return Operator(other, self, op_str)
+    return o
 
 for o_item in OPERATORS:
     op_name = o_item.name
@@ -765,7 +769,7 @@ for o_item in OPERATORS:
 
     setattr(BaseParameter, '__{op_name}__'.format(op_name=op_name), make_operator(op_str))
     # set right versions, too:
-    setattr(BaseParameter, '__r{op_name}__'.format(op_name=op_name), make_operator(op_str))
+    setattr(BaseParameter, '__r{op_name}__'.format(op_name=op_name), make_roperator(op_str))
 
 
 class UNARY_OPERATIONS(Enum):
