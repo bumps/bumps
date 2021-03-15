@@ -1,6 +1,12 @@
 
 """
-Convergence test statistic from Gelman and Rubin, 1992.
+Convergence test statistic from Gelman and Rubin, 1992.[1]
+
+[1] Gelman, Andrew, and Donald B. Rubin.
+    "Inference from Iterative Simulation Using Multiple Sequences."
+    Statistical Science 7, no. 4 (November 1, 1992): 457–72.
+    https://doi.org/10.2307/2246093.
+
 """
 
 from __future__ import division
@@ -50,6 +56,7 @@ def gelman(sequences, portion=0.5):
         # Step 4: Estimate the target variance (Eq. 3)
         sigma2 = ((chain_len - 1)/chain_len) * w + (1/chain_len) * b
 
+        # TODO: the second term, -(N-1)/(K N), doesn't appear in [1]
         # Step 5: Compute the R-statistic
         r_stat = sqrt((nchains + 1)/nchains * sigma2 / w
                       - (chain_len-1)/nchains/chain_len)
