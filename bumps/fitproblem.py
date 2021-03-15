@@ -203,6 +203,9 @@ def FitProblem(*args, **kw):
             return MultiFitProblem(*args, **kw)
 
 class SubBaseFitProblem:
+    partial = False
+    dof = 1 # degrees of freedom in the model
+
     def valid(self, pvec):
         """Return true if the point is in the feasible region"""
         return all(v in p.bounds for p, v in zip(self._parameters, pvec))
@@ -267,7 +270,7 @@ class SubBaseFitProblem:
                for p, v in zip(self._parameters, target)]
         return np.array(pop).T
 
-    def nllf(self, pvec=None):
+    def nllf(self, pvec=None) -> float:
         """
         compute the cost function for a new parameter set p.
 
@@ -385,6 +388,14 @@ class SubBaseFitProblem:
     def labels(self):
         """Return the list of labels, one per fitted parameter."""
         return [p.name for p in self._parameters]
+
+    def model_points(self):
+        """Return the number of points in the model"""
+
+    def model_nllf(self):
+        """
+        Negative log likelihood of seeing data given model.
+        """
 
     # noinspection PyAttributeOutsideInit
     def model_reset(self):
