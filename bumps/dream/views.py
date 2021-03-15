@@ -50,6 +50,13 @@ def plot_all(state, portion=1.0, figfile=None):
     if figfile is not None:
         savefig(figfile+"-trace"+figext)
 
+    # Acceptance rate
+    if False:
+        figure()
+        plot_acceptance_rate(state, portion=portion)
+        if figfile is not None:
+            savefig(figfile+"-acceptance"+figext)
+
     # convergence plot
     figure()
     plot_logp(state, portion=portion)
@@ -247,3 +254,14 @@ def tile_axes(n, size=None):
     nw = int(math.ceil(n/nh))
     return nw, nh
 
+def plot_acceptance_rate(state, portion=1.0):
+    from matplotlib import pyplot as plt
+
+    gen, AR = state.acceptance_rate()
+    if portion != 1.0:
+        index = int(portion*len(AR))
+        gen, AR = gen[-index:], AR[-index:]
+    plt.plot(gen, AR)
+    plt.xlabel("Generation #")
+    plt.ylabel("Acceptance rate (%)")
+    plt.title("DREAM acceptance rate by generation")
