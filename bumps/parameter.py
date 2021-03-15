@@ -14,7 +14,6 @@ parts of the model, or different models.
 import operator
 import sys
 import builtins
-from typing import List
 from functools import reduce
 import warnings
 from copy import copy
@@ -33,7 +32,7 @@ BoundsType = Union[tuple(bounds_classes)]
 
 T = TypeVar('T')
 
-FORWARD_PARAMETER_TYPES = Union['Parameter', 'Operator', 'UnaryExpression', 'Constant']
+FORWARD_PARAMETER_TYPES = Union['Parameter', 'Expression', 'UnaryExpression', 'Constant']
 
 # TODO: avoid evaluation of subexpressions if parameters do not change.
 # This is especially important if the subexpression invokes an expensive
@@ -720,9 +719,9 @@ OPERATOR_PRECEDENCE = {
 }
 
 @schema(init=False)
-class Operator(BaseParameter):
+class Expression(BaseParameter):
     """
-    Parameter operator
+    Parameter expression (binary)
     """
     fixed = True
     fittable = False
@@ -761,20 +760,20 @@ class Operator(BaseParameter):
         op_prec = OPERATOR_PRECEDENCE[self.op]
         a_str = str(self.a)
         b_str = str(self.b)
-        if isinstance(self.a, Operator) and OPERATOR_PRECEDENCE[self.a.op] == op_prec:
+        if isinstance(self.a, Expression) and OPERATOR_PRECEDENCE[self.a.op] == op_prec:
             a_str = a_str[1:-1]
-        if isinstance(self.b, Operator) and OPERATOR_PRECEDENCE[self.b.op] == op_prec:
+        if isinstance(self.b, Expression) and OPERATOR_PRECEDENCE[self.b.op] == op_prec:
             b_str = b_str[1:-1]
         return "(%s %s %s)" % (a_str, self.op, b_str)
 
 
-def make_operator(op_str: str) -> Callable[..., Operator]:
+def make_operator(op_str: str) -> Callable[..., Expression]:
     def o(self, other):
-        return Operator(self, other, op_str)
+        return Expression(self, other, op_str)
     return o
-def make_roperator(op_str: str) -> Callable[..., Operator]:
+def make_roperator(op_str: str) -> Callable[..., Expression]:
     def o(self, other):
-        return Operator(other, self, op_str)
+        return Expression(other, self, op_str)
     return o
 
 for o_item in OPERATORS:
@@ -1198,14 +1197,25 @@ def current(s):
 
 # ========= trash ===================
 
+# this is a bit tricksy, because it's pretending to *be* an int
+# the fact that it has attributes that do stuff doesn't interfere
+# with its essential int-ness.
 class IntegerProperty(int):
-    value: int
-    def __init__(self, hidden_attributename: str = "_value"):
-        self.hidden_attributename = hidden_attributename
+    backing_name: str = "_value"
+
+    def __new__(cls, backing_name="_value"):
+        i = int.__new__(cls, 0)
+        i.backing_name = backing_name
+        return i
     def __get__(self, obj, owner=None) -> int:
-        return getattr(obj, self.hidden_attributename)
-    def __set__(self, obj, value: Union[float, str]):
-        setattr(obj, self.hidden_attributename, int(value))
+        if obj is None:
+            return self
+        else:
+            return getattr(obj, self.backing_name)
+    def __set__(self, obj, value: Union[float, int]):
+        setattr(obj, self.backing_name, int(value))
+    def __repr__(self):
+        return object.__repr__(self)
 
 
 @schema()
@@ -1215,7 +1225,7 @@ class IntegerParameter(Parameter):
     _value: int
 
     #value = property(_get_value, _set_value)
-    value = IntegerProperty()
+    value = IntegerProperty("_value")
 
 
 # ==== Comparison operators ===
@@ -1233,8 +1243,8 @@ class COMPARISONS(Enum):
 @schema()
 class Constraint:
 
-    a: Union[Parameter, UnaryExpression, Operator, float]
-    b: Union[Parameter, UnaryExpression, Operator, float]
+    a: Union[Parameter, UnaryExpression, Expression, float]
+    b: Union[Parameter, UnaryExpression, Expression, float]
     op: COMPARISONS
 
     def __init__(self, a, b, op):
@@ -1297,7 +1307,7 @@ class Alias(object):
         }
 
 #restate these for export, now that they're all defined:
-PARAMETER_TYPES = Union[Parameter, Operator, UnaryExpression, Constant]
+PARAMETER_TYPES = Union[Parameter, Expression, UnaryExpression, Constant]
 
 def test_operator():
     a = Parameter(1, name='a')
