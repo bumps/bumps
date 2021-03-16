@@ -1059,13 +1059,14 @@ def flatten(s):
         raise TypeError("don't understand type %s for %r" % (type(s), s))
 
 
-def format(p, indent=0, freevars={}, field=None):
+def format(p, indent=0, freevars=None, field=None):
     """
     Format parameter set for printing.
 
     Note that this only says how the parameters are arranged, not how they
     relate to each other.
     """
+    freevars = {} if freevars is None else freevars
     p = freevars.get(id(p), p)
     if isinstance(p, dict) and p != {}:
         res = []
