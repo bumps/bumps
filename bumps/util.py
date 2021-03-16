@@ -27,9 +27,9 @@ else:
 from dataclasses import field, is_dataclass, Field
 
 try:
-    from typing import Literal
+    from typing import Literal, Protocol
 except ImportError:
-    from typing_extensions import Literal
+    from typing_extensions import Literal, Protocol
 from typing import Optional, Type, TypeVar, Any, Union, Dict, Callable, Tuple, List
 
 # decorator to tie model classes to implementations:
