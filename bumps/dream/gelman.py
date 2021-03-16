@@ -1,12 +1,10 @@
-
 """
 Convergence test statistic from Gelman and Rubin, 1992.[1]
 
 [1] Gelman, Andrew, and Donald B. Rubin.
     "Inference from Iterative Simulation Using Multiple Sequences."
-    Statistical Science 7, no. 4 (November 1, 1992): 457–72.
+    Statistical Science 7, no. 4 (November 1, 1992): 457-72.
     https://doi.org/10.2307/2246093.
-
 """
 
 from __future__ import division
