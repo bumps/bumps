@@ -536,6 +536,13 @@ class MultiFitProblem(SubBaseFitProblem):
         self.model_reset()
         self.name = name
 
+    @property
+    def fitness(self):
+        warnings.warn('Deprecated: use of problem.fitness will be removed at some point')
+        if len(self._models) == 1:
+            return self._models[0]
+        raise ValueError('problem.fitness is not defined')
+
     @staticmethod
     def _get_models(self):
         """Iterate over models, with free parameters set from model values"""
