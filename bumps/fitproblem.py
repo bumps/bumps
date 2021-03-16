@@ -49,8 +49,7 @@ Summary of problem attributes::
 # to avoid this issue.
 from __future__ import division, with_statement
 
-__all__ = ['Fitness', 'FitProblem', 'load_problem',
-           'BaseFitProblem', 'MultiFitProblem']
+__all__ = ['Fitness', 'FitnessProtocol', 'FitProblem', 'load_problem']
 
 import sys
 import os
@@ -151,52 +150,6 @@ def no_constraints():
     return 0
 
 
-# TODO: refactor FitProblem definition
-# deprecate the direct use of MultiFitProblem
-def FitProblem(fitness: util.Union['Fitness', util.List['Fitness']], **kw) -> 'MultiFitProblem':
-    """
-    Return a fit problem instance for the fitness function(s).
-
-    For an individual model:
-
-        *fitness* is a :class:`Fitness` instance.
-
-    For a set of models:
-
-        *models* is a sequence of :class:`Fitness` instances.
-
-        *weights* is an optional scale factor for each model
-
-        *freevars* is :class:`.parameter.FreeVariables` instance defining the
-        per-model parameter assignments.  See :ref:`freevariables` for details.
-
-
-    Additional parameters:
-
-        *name* name of the problem
-
-        *constraints* is a function which returns the negative log likelihood
-        of seeing the parameters independent from the fitness function.  Use
-        this for example to check for feasible regions of the search space, or
-        to add constraints that cannot be easily calculated per parameter.
-        Ideally, the constraints nllf will increase as you go farther from
-        the feasible region so that the fit will be directed toward feasible
-        values.
-
-        *soft_limit* is the constraints function cutoff, beyond which the
-        *penalty_nllf* will be used and *fitness* nllf will not be calculated.
-
-        *penalty_nllf* is the nllf to use for *fitness* when *constraints*
-        is greater than *soft_limit*.
-
-    Total nllf is the sum of the parameter nllf, the constraints nllf and the
-    depending on whether constraints is greater than soft_limit, either the
-    fitness nllf or the penalty nllf.
-    """
-    if not isinstance(fitness, (list, tuple)):
-        fitness = [fitness]
-    return MultiFitProblem(fitness, **kw)
-
 @util.schema()
 class Fitness(FitnessProtocol):
     # noinspection PyAttributeOutsideInit
@@ -283,7 +236,7 @@ class Fitness(FitnessProtocol):
         print("[chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
 
     
-class SubBaseFitProblem:
+class FitProblemBase:
     partial = False
     dof = 1 # degrees of freedom in the model
 
@@ -304,7 +257,7 @@ class SubBaseFitProblem:
         # WARNING: don't try to conditionally update the model
         # depending on whether any model parameters have changed.
         # For one thing, the model_update below probably calls
-        # the subclass MultiFitProblem.model_update, which signals
+        # the subclass FitProblem.model_update, which signals
         # the individual models.  Furthermore, some parameters may
         # related to others via expressions, and so a dependency
         # tree needs to be generated.  Whether this is better than
@@ -501,9 +454,38 @@ class SubBaseFitProblem:
 
 
 @util.schema(init=False, eq=False)
-class MultiFitProblem(SubBaseFitProblem):
+class FitProblem(FitProblemBase):
     """
-    Weighted fits for multiple models.
+
+        *models* is a sequence of :class:`Fitness` instances.
+
+        *weights* is an optional scale factor for each model
+
+        *freevars* is :class:`.parameter.FreeVariables` instance defining the
+        per-model parameter assignments.  See :ref:`freevariables` for details.
+
+
+    Additional parameters:
+
+        *name* name of the problem
+
+        *constraints* is a function which returns the negative log likelihood
+        of seeing the parameters independent from the fitness function.  Use
+        this for example to check for feasible regions of the search space, or
+        to add constraints that cannot be easily calculated per parameter.
+        Ideally, the constraints nllf will increase as you go farther from
+        the feasible region so that the fit will be directed toward feasible
+        values.
+
+        *soft_limit* is the constraints function cutoff, beyond which the
+        *penalty_nllf* will be used and *fitness* nllf will not be calculated.
+
+        *penalty_nllf* is the nllf to use for *fitness* when *constraints*
+        is greater than *soft_limit*.
+
+    Total nllf is the sum of the parameter nllf, the constraints nllf and the
+    depending on whether constraints is greater than soft_limit, either the
+    fitness nllf or the penalty nllf.
     """
 
     name: str
@@ -515,10 +497,12 @@ class MultiFitProblem(SubBaseFitProblem):
     soft_limit: float = np.inf
     penalty_nllf: float = np.inf
 
-    def __init__(self, models, weights=None, name=None,
+    def __init__(self, models: util.Union[Fitness, util.List[Fitness]], weights=None, name=None,
                  constraints=None, partial=False,
                  soft_limit=np.inf, penalty_nllf=1e6,
                  freevars=None):
+        if not isinstance(models, (list, tuple)):
+            models = [models]
         self.partial = partial
         self.constraints = constraints
         if freevars is None:
@@ -582,7 +566,7 @@ class MultiFitProblem(SubBaseFitProblem):
         }
 
     def __repr__(self):
-        return "MultiFitProblem(name=%s)" % self.name
+        return "FitProblem(name=%s)" % self.name
 
     def model_points(self):
         """Return number of points in all models"""
