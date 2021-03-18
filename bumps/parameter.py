@@ -1258,6 +1258,9 @@ class Constraint:
     def __bool__(self):
         return self.compare(float(self.a), float(self.b))
     __nonzero__ = __bool__
+    def __float__(self):
+        """return a float value that can be differentiated"""
+        return 0. if bool(self) else abs(float(self.a) - float(self.b))
     def __str__(self):
         return "(%s %s %s)" %(self.a, self.op, self.b)
 
