@@ -311,6 +311,19 @@ class Bounds:
         limits = tuple(num_format(v) for v in self.limits)
         return "(%s,%s)" % limits
 
+    def satisfied(self, v) -> bool:
+        lo, hi = self.limits
+        return v >= lo and v <= hi
+
+    def penalty(self, v) -> float:
+        """
+        return a (differentiable) nonzero value when outside the bounds
+        """
+        lo, hi = self.limits
+        dlo = 0. if v >= lo else abs(v - lo)
+        dhi = 0. if v <= hi else abs(v - hi)
+        return dlo + dhi
+
     def to_dict(self):
         return dict(
             type=type(self).__name__,
