@@ -154,37 +154,21 @@ def no_constraints():
 class Fitness(FitnessProtocol):
     # noinspection PyAttributeOutsideInit
     constraints: util.Optional[util.List] = None
-    soft_limit: float = np.inf
-    penalty_nllf: float = np.inf
 
-    @property
-    def _all_parameters(self):
-        return parameter.unique(self.parameters())
-
-    @property
-    def _parameters(self):
-        return parameter.varying(self._all_parameters)
-
-    @property
-    def _bounded(self):
-        return [p for p in self._all_parameters
-                        if not isinstance(p.bounds, mbounds.Unbounded)]
-
-    def parameter_nllf(self):
-        """
-        Returns negative log likelihood of seeing parameters p.
-        """
-        s = sum(p.nllf() for p in self._bounded)
-        # print "; ".join("%s %g %g"%(p,p.value,p.nllf()) for p in
-        # self.bounded)
-        return s
+    def constraints_satisfied(self) -> bool:
+        return all([bool(c) for c in self.constraints]) if self.constraints else True
 
     def constraints_nllf(self):
         """
         Returns the cost of all constraints.
         """
-        constraints = getattr(self, 'constraints', None)
-        return sum([c.value for c in constraints]) if constraints is not None else 0.
+        if self.constraints is None:
+            return 0.
+        elif callable(self.constraints):
+            # compatibility with previous functional style of constraints
+            return self.constraints()
+        else:
+            return sum([float(c) for c in self.constraints])
 
     def chisq_str(self):
         """
@@ -197,38 +181,13 @@ class Fitness(FitnessProtocol):
         cost of the prior parameters and the cost of the penalty constraints
         in the total nllf.  The constraint value is displayed separately.
         """
-        pparameter, pconstraints, pmodel = self._nllf_components()
-        chisq_norm, chisq_err = nllf_scale(self)
-        chisq = pmodel * chisq_norm
-        text = format_uncertainty(chisq, chisq_err)
-        constraints = pparameter + pconstraints
+        
+        chisq = self.nllf() / self.numpoints()
+        constraints = self.constraints_nllf()
+        text = format_uncertainty(chisq, None)
         if constraints > 0.:
             text += " constraints=%g" % constraints
-
         return text
-    
-    def _nllf_components(self):
-        try:
-            pparameter = self.parameter_nllf()
-            if isnan(pparameter):
-                # TODO: make sure errors get back to the user
-                info = ["Parameter nllf is wrong"]
-                info += ["%s %g"%(p, p.nllf()) for p in self._bounded]
-                logging.error("\n  ".join(info))
-            pconstraints = self.constraints_nllf()
-            # Note: for hard constraints (which return inf) avoid computing
-            # model even if soft_limit is inf by using strict comparison
-            # since inf <= inf is True but inf < inf is False.
-            pmodel = (self.nllf()
-                      if pparameter + pconstraints < self.soft_limit
-                      else self.penalty_nllf)
-            return pparameter, pconstraints, pmodel
-        except Exception:
-            # TODO: make sure errors get back to the user
-            info = (traceback.format_exc(),
-                    parameter.summarize(self._parameters))
-            logging.error("\n".join(info))
-            return NaN, NaN, NaN
     
     def show(self, _subs=None):
         """Print the available parameters to the console as a tree."""
@@ -236,9 +195,113 @@ class Fitness(FitnessProtocol):
         print("[chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
 
     
-class FitProblemBase:
-    partial = False
-    dof = 1 # degrees of freedom in the model
+@util.schema(init=False, eq=False)
+class FitProblem:
+    """
+
+        *models* is a sequence of :class:`Fitness` instances.
+
+        *weights* is an optional scale factor for each model
+
+        *freevars* is :class:`.parameter.FreeVariables` instance defining the
+        per-model parameter assignments.  See :ref:`freevariables` for details.
+
+
+    Additional parameters:
+
+        *name* name of the problem
+
+        *constraints* is a function which returns the negative log likelihood
+        of seeing the parameters independent from the fitness function.  Use
+        this for example to check for feasible regions of the search space, or
+        to add constraints that cannot be easily calculated per parameter.
+        Ideally, the constraints nllf will increase as you go farther from
+        the feasible region so that the fit will be directed toward feasible
+        values.
+
+        *penalty_nllf* is the nllf to use for *fitness* when *constraints*
+        or model parameter bounds are not satisfied.
+
+    Total nllf is the sum of the parameter nllf, the constraints nllf and the
+    depending on whether constraints is greater than soft_limit, either the
+    fitness nllf or the penalty nllf.
+    """
+
+    name: str
+    models: util.List[Fitness]
+    freevars: parameter.FreeVariables
+    weights: util.Union[util.List[float], util.Literal[None]] = None
+    constraints: util.Optional[util.List[parameter.Constraint]] = None
+    penalty_nllf: float = np.inf
+
+    def __init__(self, models: util.Union[Fitness, util.List[Fitness]], weights=None, name=None,
+                 constraints=None, 
+                 penalty_nllf=1e6,
+                 freevars=None):
+        if not isinstance(models, (list, tuple)):
+            models = [models]
+        if constraints is None:
+            constraints = []
+        self.constraints = constraints
+        if freevars is None:
+            names = ["M%d" % i for i, _ in enumerate(models)]
+            freevars = parameter.FreeVariables(names=names)
+        self.freevars = freevars
+        self._models = models
+        self.__class__.models = property(self._get_models)
+        if weights is None:
+            weights = [1 for _ in models]
+        self.weights = weights
+        self.penalty_nllf = penalty_nllf
+        self.set_active_model(0)  # Set the active model to model 0
+        self.model_reset()
+        self.name = name
+
+    @property
+    def fitness(self):
+        warnings.warn('Deprecated: use of problem.fitness will be removed at some point')
+        if len(self._models) == 1:
+            return self._models[0]
+        raise ValueError('problem.fitness is not defined')
+
+    @staticmethod
+    def _get_models(self):
+        """Iterate over models, with free parameters set from model values"""
+        for i, f in enumerate(self._models):
+            self.freevars.set_model(i)
+            yield f
+        # Restore the active model after cycling
+        self.freevars.set_model(self._active_model_index)
+
+    # noinspection PyAttributeOutsideInit
+    def set_active_model(self, i):
+        """Use free parameters from model *i*"""
+        self._active_model_index = i
+        self.active_model = self._models[i]
+        self.freevars.set_model(i)
+
+    def model_parameters(self):
+        """Return parameters from all models"""
+        pars = {'models': [f.parameters() for f in self.models]}
+        free = self.freevars.parameters()
+        if free:
+            pars['freevars'] = free
+        return pars
+
+    def to_dict(self):
+        return {
+            'type': type(self).__name__,
+            'name': self.name,
+            'models': to_dict(self._models),
+            'weights': self.weights,
+            'penalty_nllf': self.penalty_nllf,
+            # TODO: constraints may be a function.
+            'constraints': to_dict(self.constraints),
+            'freevars': to_dict(self.freevars),
+        }
+
+    def __repr__(self):
+        return "FitProblem(name=%s)" % self.name
 
     def valid(self, pvec):
         """Return true if the point is in the feasible region"""
@@ -317,10 +380,11 @@ class FitProblemBase:
         penalty should be large enough that it is effectively excluded from
         the parameter space returned from uncertainty analysis.
 
-        the model is not actually calculated if the parameter nllf plus the
-        constraint nllf are bigger than *soft_limit*, but instead it is
-        assigned a value of *penalty_nllf*.  this will prevent expensive
-        models from spending time computing values in the unfeasible region.
+        the model is not actually calculated if any of the parameters are 
+        out of bounds, or any of the constraints are not satisfied, but
+        instead are assigned a value of *penalty_nllf*.  
+        this will prevent expensive models from spending time computing 
+        values in the unfeasible region.
         """
         if pvec is not None:
             if self.valid(pvec):
@@ -346,6 +410,9 @@ class FitProblemBase:
         # print "; ".join("%s %g %g"%(p,p.value,p.nllf()) for p in
         # self.bounded)
         return s
+
+    def parameter_bounds_satisfied(self) -> bool:
+        return all([p.bounds.satisfied(p.value) for p in self.bounded])
 
     def parameter_residuals(self):
         """
@@ -388,7 +455,7 @@ class FitProblemBase:
             # model even if soft_limit is inf by using strict comparison
             # since inf <= inf is True but inf < inf is False.
             pmodel = (self.model_nllf()
-                      if pparameter + pconstraints < self.soft_limit
+                      if self.constraints_satisfied() and self.parameter_bounds_satisfied()
                       else self.penalty_nllf)
             return pparameter, pconstraints, pmodel
         except Exception:
@@ -417,14 +484,6 @@ class FitProblemBase:
         """Return the list of labels, one per fitted parameter."""
         return [p.name for p in self._parameters]
 
-    def model_points(self) -> int:
-        """Return the number of points in the model"""
-
-    def model_nllf(self) -> float:
-        """
-        Negative log likelihood of seeing data given model.
-        """
-
     # noinspection PyAttributeOutsideInit
     def model_reset(self):
         """
@@ -446,128 +505,10 @@ class FitProblemBase:
         self.bounded = [p for p in all_parameters
                         if not isinstance(p.bounds, mbounds.Unbounded)]
         self.dof = self.model_points()
-        if not self.partial:
-            self.dof -= len(self._parameters)
+        self.dof -= len(self._parameters)
         if self.dof <= 0:
             raise ValueError("Need more data points than fitting parameters")
         #self.constraints = pars.constraints()
-
-
-@util.schema(init=False, eq=False)
-class FitProblem(FitProblemBase):
-    """
-
-        *models* is a sequence of :class:`Fitness` instances.
-
-        *weights* is an optional scale factor for each model
-
-        *freevars* is :class:`.parameter.FreeVariables` instance defining the
-        per-model parameter assignments.  See :ref:`freevariables` for details.
-
-
-    Additional parameters:
-
-        *name* name of the problem
-
-        *constraints* is a function which returns the negative log likelihood
-        of seeing the parameters independent from the fitness function.  Use
-        this for example to check for feasible regions of the search space, or
-        to add constraints that cannot be easily calculated per parameter.
-        Ideally, the constraints nllf will increase as you go farther from
-        the feasible region so that the fit will be directed toward feasible
-        values.
-
-        *soft_limit* is the constraints function cutoff, beyond which the
-        *penalty_nllf* will be used and *fitness* nllf will not be calculated.
-
-        *penalty_nllf* is the nllf to use for *fitness* when *constraints*
-        is greater than *soft_limit*.
-
-    Total nllf is the sum of the parameter nllf, the constraints nllf and the
-    depending on whether constraints is greater than soft_limit, either the
-    fitness nllf or the penalty nllf.
-    """
-
-    name: str
-    models: util.List[Fitness]
-    freevars: parameter.FreeVariables
-    weights: util.Union[util.List[float], util.Literal[None]] = None
-    partial: bool = False
-    constraints: util.Union[util.List[parameter.Constraint], util.Literal[None]] = None
-    soft_limit: float = np.inf
-    penalty_nllf: float = np.inf
-
-    def __init__(self, models: util.Union[Fitness, util.List[Fitness]], weights=None, name=None,
-                 constraints=None, partial=False,
-                 soft_limit=np.inf, penalty_nllf=1e6,
-                 freevars=None):
-        if not isinstance(models, (list, tuple)):
-            models = [models]
-        self.partial = partial
-        self.constraints = constraints
-        if freevars is None:
-            names = ["M%d" % i for i, _ in enumerate(models)]
-            freevars = parameter.FreeVariables(names=names)
-        self.freevars = freevars
-        self._models = models
-        self.__class__.models = property(self._get_models)
-        if weights is None:
-            weights = [1 for _ in models]
-        self.weights = weights
-        self.penalty_nllf = penalty_nllf
-        self.soft_limit = soft_limit
-        self.set_active_model(0)  # Set the active model to model 0
-        self.model_reset()
-        self.name = name
-
-    @property
-    def fitness(self):
-        warnings.warn('Deprecated: use of problem.fitness will be removed at some point')
-        if len(self._models) == 1:
-            return self._models[0]
-        raise ValueError('problem.fitness is not defined')
-
-    @staticmethod
-    def _get_models(self):
-        """Iterate over models, with free parameters set from model values"""
-        for i, f in enumerate(self._models):
-            self.freevars.set_model(i)
-            yield f
-        # Restore the active model after cycling
-        self.freevars.set_model(self._active_model_index)
-
-    # noinspection PyAttributeOutsideInit
-    def set_active_model(self, i):
-        """Use free parameters from model *i*"""
-        self._active_model_index = i
-        self.active_model = self._models[i]
-        self.freevars.set_model(i)
-
-    def model_parameters(self):
-        """Return parameters from all models"""
-        pars = {'models': [f.parameters() for f in self.models]}
-        free = self.freevars.parameters()
-        if free:
-            pars['freevars'] = free
-        return pars
-
-    def to_dict(self):
-        return {
-            'type': type(self).__name__,
-            'name': self.name,
-            'models': to_dict(self._models),
-            'weights': self.weights,
-            'partial': self.partial,
-            'soft_limit': self.soft_limit,
-            'penalty_nllf': self.penalty_nllf,
-            # TODO: constraints may be a function.
-            'constraints': to_dict(self.constraints),
-            'freevars': to_dict(self.freevars),
-        }
-
-    def __repr__(self):
-        return "FitProblem(name=%s)" % self.name
-
     def model_points(self):
         """Return number of points in all models"""
         return sum(f.numpoints() for f in self.models)
@@ -591,9 +532,16 @@ class FitProblem(FitProblemBase):
 
     def constraints_nllf(self):
         """Return the cost function for all constraints"""
-        c_self = self.constraints() if self.constraints else 0.
-        return (sum(f.constraints_nllf() for f in self.models)
-                + c_self)
+        if callable(self.constraints):
+            # compatibility with previous functional style of constraints
+            c_self = self.constraints()
+        else:
+            c_self = sum([float(c) for c in self.constraints])
+        return (sum(f.constraints_nllf() for f in self.models) + c_self)
+
+    def constraints_satisfied(self) -> bool:
+        c_self = all([bool(c) for c in self.constraints]) if self.constraints else True
+        return all([m.constraints_satisfied() for m in self.models]) and c_self
 
     def simulate_data(self, noise=None):
         """Simulate data with added noise"""
