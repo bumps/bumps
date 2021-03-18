@@ -624,7 +624,9 @@ class AppPanel(wx.Panel):
         except ImportError:
             from pickle import dump
         try:
-            if hasattr(self.model, 'save_json'):
+            if hasattr(plugin, 'save_json'):
+                plugin.save_json(self.model, path)
+            elif hasattr(self.model, 'save_json'):
                 self.model.save_json(path)
             with open(path,'wb') as fid:
                 dump(self.model, fid)

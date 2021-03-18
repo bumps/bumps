@@ -38,6 +38,7 @@ __all__ = [
     'show_errors',
     'data_view',
     'model_view',
+    'save_json',
 ]
 
 # TODO: refl1d wants to do the following after cli.getopts()
