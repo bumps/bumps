@@ -227,16 +227,16 @@ class FitProblem:
     fitness nllf or the penalty nllf.
     """
 
-    name: str
+    name: util.Optional[str] = None
     models: util.List[Fitness]
-    freevars: parameter.FreeVariables
+    freevars: util.Optional[parameter.FreeVariables] = None
     weights: util.Union[util.List[float], util.Literal[None]] = None
     constraints: util.Optional[util.List[parameter.Constraint]] = None
-    penalty_nllf: float = np.inf
+    penalty_nllf: util.Union[float, util.Literal[None]] = util.field(default=None, metadata={"description": "equivalent to inf when null is specified"})
 
     def __init__(self, models: util.Union[Fitness, util.List[Fitness]], weights=None, name=None,
                  constraints=None, 
-                 penalty_nllf=1e6,
+                 penalty_nllf=None,
                  freevars=None):
         if not isinstance(models, (list, tuple)):
             models = [models]
@@ -454,9 +454,10 @@ class FitProblem:
             # Note: for hard constraints (which return inf) avoid computing
             # model even if soft_limit is inf by using strict comparison
             # since inf <= inf is True but inf < inf is False.
+            penalty_nllf = self.penalty_nllf if self.penalty_nllf is not None else inf
             pmodel = (self.model_nllf()
                       if self.constraints_satisfied() and self.parameter_bounds_satisfied()
-                      else self.penalty_nllf)
+                      else penalty_nllf)
             return pparameter, pconstraints, pmodel
         except Exception:
             # TODO: make sure errors get back to the user

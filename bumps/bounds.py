@@ -231,7 +231,7 @@ class Bounds:
     is being optimized is also a probability, then this is an easy way to
     incorporate information from other sorts of measurements into the model.
     """
-    limits: Tuple[float, float] = (-inf, inf)
+    limits = (-inf, inf)
     # TODO: need derivatives wrt bounds transforms
 
     def get01(self, x):

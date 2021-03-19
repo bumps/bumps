@@ -1311,7 +1311,7 @@ class Alias(object):
         }
 
 #restate these for export, now that they're all defined:
-PARAMETER_TYPES = Union[Parameter, Expression, UnaryExpression, Constant]
+PARAMETER_TYPES = Union[Parameter, Expression, UnaryExpression, Constant, float]
 
 def test_operator():
     a = Parameter(1, name='a')
