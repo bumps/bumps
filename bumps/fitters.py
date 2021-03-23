@@ -769,7 +769,7 @@ class DreamFit(FitBase):
         from .dream import Dream
         if abort_test is None:
             abort_test = lambda: False
-        self.options = _fill_defaults(options, self.settings)
+        options = _fill_defaults(options, self.settings)
 
         if mapper:
             self.dream_model.mapper = mapper
