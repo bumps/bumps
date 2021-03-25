@@ -640,7 +640,7 @@ class Normal(Distribution):
 
     def __init__(self, mean=0, std=1):
         Distribution.__init__(self, normal_distribution(mean, std))
-        self._nllf_scale = log(sqrt(2 * pi * std ** 2))
+        self._nllf_scale = log(2 * pi * std ** 2)/2
 
     def nllf(self, value):
         # P(v) = exp(-0.5*(v-mean)**2/std**2)/sqrt(2*pi*std**2)
@@ -686,7 +686,7 @@ class BoundedNormal(Bounds):
 
         self._left = normal_distribution.cdf((limits[0]-mean)/std)
         self._delta = normal_distribution.cdf((limits[1]-mean)/std) - self._left
-        self._nllf_scale = log(sqrt(2 * pi * std ** 2)) + log(self._delta)
+        self._nllf_scale = log(2 * pi * std ** 2)/2 + log(self._delta)
 
     def get01(self, x):
         """
