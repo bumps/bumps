@@ -48,6 +48,6 @@ from .parameter import sind, cosd, tand, arcsind, arccosd, arctand, arctan2d
 from .bounds import Distribution
 from .pdfwrapper import PDF, VectorPDF, DirectProblem
 from .curve import Curve, PoissonCurve
-from .fitproblem import FitProblem
+from .fitproblem import FitProblem, Fitness
 from .fitters import fit
 from .util import relative_import
