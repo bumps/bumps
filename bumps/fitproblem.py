@@ -58,6 +58,8 @@ import logging
 import warnings
 import builtins
 
+from typing import Optional
+
 import numpy as np
 from numpy import inf, isnan, NaN
 
@@ -152,6 +154,9 @@ def no_constraints():
 
 @util.schema()
 class Fitness(FitnessProtocol):
+    # TODO: easier to publish constraints as part of Fitness.parameters()
+    # Otherwise you need a parallel walker to extract constraints from
+    # each component of the model hierarchy.
     # noinspection PyAttributeOutsideInit
     constraints: util.Optional[util.List] = None
 
@@ -181,20 +186,20 @@ class Fitness(FitnessProtocol):
         cost of the prior parameters and the cost of the penalty constraints
         in the total nllf.  The constraint value is displayed separately.
         """
-        
+
         chisq = self.nllf() / self.numpoints()
         constraints = self.constraints_nllf()
         text = format_uncertainty(chisq, None)
         if constraints > 0.:
             text += " constraints=%g" % constraints
         return text
-    
+
     def show(self, _subs=None):
         """Print the available parameters to the console as a tree."""
         print(parameter.format(self.parameters(), freevars=_subs))
         print("[chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
 
-    
+
 @util.schema(init=False, eq=False)
 class FitProblem:
     """
@@ -235,9 +240,11 @@ class FitProblem:
     penalty_nllf: util.Union[float, util.Literal[None]] = util.field(default=None, metadata={"description": "equivalent to inf when null is specified"})
 
     def __init__(self, models: util.Union[Fitness, util.List[Fitness]], weights=None, name=None,
-                 constraints=None, 
+                 constraints=None,
                  penalty_nllf=None,
-                 freevars=None):
+                 freevars=None,
+                 soft_limit:Optional[float]=None,  # TODO: deprecate
+                 ):
         if not isinstance(models, (list, tuple)):
             models = [models]
         if constraints is None:
@@ -264,14 +271,17 @@ class FitProblem:
             return self._models[0]
         raise ValueError('problem.fitness is not defined')
 
+    # TODO: make this @property\ndef models(self): ...
     @staticmethod
     def _get_models(self):
         """Iterate over models, with free parameters set from model values"""
-        for i, f in enumerate(self._models):
-            self.freevars.set_model(i)
-            yield f
-        # Restore the active model after cycling
-        self.freevars.set_model(self._active_model_index)
+        try:
+            for i, f in enumerate(self._models):
+                self.freevars.set_model(i)
+                yield f
+        finally:
+            # Restore the active model after cycling, even if interrupted
+            self.freevars.set_model(self._active_model_index)
 
     # noinspection PyAttributeOutsideInit
     def set_active_model(self, i):
@@ -361,6 +371,7 @@ class FitProblem:
             self.setp(self.randomize(n=1)[0])
             return   # Not returning anything since no n is requested
 
+        # TODO: apply hard limits on parameters
         target = self.getp()
         target[~np.isfinite(target)] = 1.
         pop = [p.bounds.random(n, target=v)
@@ -406,19 +417,19 @@ class FitProblem:
         """
         Returns negative log likelihood of seeing parameters p.
         """
-        s = sum(p.nllf() for p in self.bounded)
+        s = sum(p.nllf() for p in self._bounded)
         # print "; ".join("%s %g %g"%(p,p.value,p.nllf()) for p in
-        # self.bounded)
+        # self._bounded)
         return s
 
     def parameter_bounds_satisfied(self) -> bool:
-        return all([p.bounds.satisfied(p.value) for p in self.bounded])
+        return all([p.bounds.satisfied(p.value) for p in self._bounded])
 
     def parameter_residuals(self):
         """
         Returns negative log likelihood of seeing parameters p.
         """
-        return [p.residual() for p in self.bounded]
+        return [p.residual() for p in self._bounded]
 
     def chisq_str(self):
         """
@@ -448,13 +459,16 @@ class FitProblem:
             if isnan(pparameter):
                 # TODO: make sure errors get back to the user
                 info = ["Parameter nllf is wrong"]
-                info += ["%s %g"%(p, p.nllf()) for p in self.bounded]
+                info += ["%s %g"%(p, p.nllf()) for p in self._bounded]
                 logging.error("\n  ".join(info))
             pconstraints = self.constraints_nllf()
             # Note: for hard constraints (which return inf) avoid computing
             # model even if soft_limit is inf by using strict comparison
             # since inf <= inf is True but inf < inf is False.
             penalty_nllf = self.penalty_nllf if self.penalty_nllf is not None else inf
+            # TODO: only evaluate constraints once
+            # This code evaluates them once in constraints_nllf() and again in
+            # constraints_satisfied()
             pmodel = (self.model_nllf()
                       if self.constraints_satisfied() and self.parameter_bounds_satisfied()
                       else penalty_nllf)
@@ -502,9 +516,7 @@ class FitProblem:
         all_parameters = parameter.unique(self.model_parameters())
         # print "all_parameters",all_parameters
         self._parameters = parameter.varying(all_parameters)
-        # print "varying",self._parameters
-        self.bounded = [p for p in all_parameters
-                        if not isinstance(p.bounds, mbounds.Unbounded)]
+        self._bounded = parameter.priors(all_parameters)
         self.dof = self.model_points()
         self.dof -= len(self._parameters)
         if self.dof <= 0:
@@ -535,14 +547,17 @@ class FitProblem:
         """Return the cost function for all constraints"""
         if callable(self.constraints):
             # compatibility with previous functional style of constraints
-            c_self = self.constraints()
+            nllf = self.constraints()
         else:
-            c_self = sum([float(c) for c in self.constraints])
-        return (sum(f.constraints_nllf() for f in self.models) + c_self)
+            nllf = sum([float(c) for c in self.constraints])
+        return nllf
 
     def constraints_satisfied(self) -> bool:
-        c_self = all([bool(c) for c in self.constraints]) if self.constraints else True
-        return all([m.constraints_satisfied() for m in self.models]) and c_self
+        if callable(self.constraints):
+            return self.constraints() == 0.
+        if self.constraints is None:
+            return True
+        return all(bool(c) for c in self.constraints)
 
     def simulate_data(self, noise=None):
         """Simulate data with added noise"""

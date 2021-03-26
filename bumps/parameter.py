@@ -21,7 +21,10 @@ import math
 from functools import wraps
 from enum import Enum
 
-from .util import field, field_desc, schema, has_schema, Type, TypeVar, Optional, Any, Union, Dict, Callable, Literal, Tuple, List, Literal
+from .util import field, field_desc, schema, has_schema
+from typing import (
+    Type, TypeVar, Optional, Any, Union, Dict, Callable,
+    Tuple, List, Sequence, Literal)
 
 import numpy as np
 from numpy import inf, isinf, isfinite
@@ -32,7 +35,7 @@ BoundsType = Union[tuple(bounds_classes)]
 
 T = TypeVar('T')
 
-FORWARD_PARAMETER_TYPES = Union['Parameter', 'Expression', 'UnaryExpression', 'Constant']
+ValueType = Union['Constant', 'Variable', 'Expression', 'Parameter']
 
 # TODO: avoid evaluation of subexpressions if parameters do not change.
 # This is especially important if the subexpression invokes an expensive
@@ -74,28 +77,103 @@ def to_dict(p):
         #print(f"converting type {type(p)} to str")
         return str(p)
 
-
-class BaseParameter:
+class OperatorMixin:
     """
-    Root of the parameter class, defining arithmetic on parameters
-    """
-    # Parameters are fixed unless told otherwise
-    fixed: bool
-    fittable: bool
-    discrete: bool
-    bounds: BoundsType
-    id: int
-    #_bounds =  mbounds.Unbounded()
-    name: Optional[str]
-    value: float # value is an attribute of the derived class
+    The set of operations that can be performed on parameter-like objects
+    Parameter, Constant, Expression.
 
+    These include: +, -, *, /, //, **, abs, float, int
+
+    Also, numpy math functions: sin, cos, tan, ...
+
+    Much like abs(obj) => obj.__abs__(), np.sin(obj) => obj.sin()
+    """
+    # float(value) is special: it returns the current value rather than
+    # becoming part of the parameter expression.
+    def __float__(self):
+        return float(self.value)
+
+    ...  # operators and functions will be filled in later
+
+class ValueProtocol(OperatorMixin):
+    """
+    Values can be combined to form expressions
+    Provide a suite of operators for creating parameter expressions.
+    """
+    fittable: bool = False
+    fixed: bool = True
+    value: float
+    # TODO: Do values have names? Or do the names belong to the model parameter?
+    #name: str
+    # TODO: are priors on the parameter or on the value?
+    #bounds: Optional[BoundsType] = None
+    def parameters(self) -> List["Parameter"]:
+        ...
+
+@schema(classname="Parameter")
+class ParameterSchema:
+    """
+    Saved state for a slot in the parameter model.
+    """
+    id: int = field(default=0, init=False)
+    name: Optional[str] = field(default=None, init=False)
+    slot: ValueType
+    hard_limits: Optional[Tuple[float, float]] = None
+    # TODO: are priors on the parameter or on the value?
+    bounds: Optional[BoundsType] = None
+    #discrete: bool = field(default=False, init=False)
+
+class Parameter(ValueProtocol, ParameterSchema):
+    """
+    A parameter is a container for a symbolic value.
+
+    The value can be a constant, a variable, an expression or a link to
+    another parameter.
+
+    Parameters have a prior probability, as set by a bounds constraint:
+
+        import numpy as np
+        from scipy.stats.distributions import lognorm
+        from bumps.parameter import Parameter
+
+        p = Parameter(3)
+        p.pmp(10)               # 3 +/- 10% uniform
+        p.pmp(-5,10)            # 3 in [2.85, 3.30] uniform
+        p.pm(2)                 # 3 +/- 2 uniform
+        p.pm(-1,2)              # 3 in [2,5] uniform
+        p.range(0,5)            # 3 in [0,5] uniform
+        p.dev(2)                # 3 +/- 2 gaussian
+        p.soft_range(2,5,2)     # 3 in [2,5] uniform with gauss wings
+        p.dev(2, limits=(0,6))  # 3 +/- 2 truncated gaussian
+        p.pdf(lognorm(3, 1))    # lognormal centered on 3, width 1.
+
+    Parameters have hard limits on the possible values, dictated by the model.
+    These bounds apply in addition to any other bounds.
+
+    Parameters can be constrained to be equal to another parameter or
+    parameter expression:
+
+        a, b = Parameter(3), Parameter(4)
+        p = Parameter(limits=(6, 10))
+        p.equals(a+b)
+        assert p.nllf() == 0.   # within the bounds
+        a.value = 20
+        assert np.isinf(p.nllf()) # out of bounds
+
+    Constraints on the computed value follow from the constraints on the
+    underlying parameters in addition to any hard limits on the parameter
+    value given by the model.
+
+    Any additional properties can be carried on the parameter, given as
+    additional keyword arguments to the parameter. For example, *tip* and
+    *units* for decorating an input form in the GUI:
+
+         p = Parameter(10, name="width", units="cm", tip="Width of sample")
+    """
     # Parameters may be dependent on other parameters, and the
     # fit engine will need to access them.
     def parameters(self):
-        return [self]
-
-    def __init__(self, value):
-        """ set the value for the parameter """
+        return [self] + self.slot.parameters()
 
     def pmp(self, plus, minus=None, limits=None):
         """
@@ -114,7 +192,7 @@ class BaseParameter:
         The resulting range is converted to "nice" numbers.
         """
         bounds = mbounds.pmp(self.value, plus, minus, limits=limits)
-        self.set_bounds(mbounds.Bounded(*bounds))
+        self._set_bounds(mbounds.Bounded(*bounds))
         return self
 
     def pm(self, plus, minus=None, limits=None):
@@ -134,7 +212,7 @@ class BaseParameter:
         The resulting range is converted to "nice" numbers.
         """
         bounds = mbounds.pm(self.value, plus, minus, limits=limits)
-        self.set_bounds(mbounds.Bounded(*bounds))
+        self._set_bounds(mbounds.Bounded(*bounds))
         return self
 
     def dev(self, std, mean=None, limits=None, sigma=None, mu=None):
@@ -160,9 +238,9 @@ class BaseParameter:
         if mean is None:
             mean = self.value  # Note: value is an attribute of the derived class
         if limits is None:
-            self.set_bounds(mbounds.Normal(mean, std))
+            self._set_bounds(mbounds.Normal(mean, std))
         else:
-            self.set_bounds(mbounds.BoundedNormal(mean, std, limits))
+            self._set_bounds(mbounds.BoundedNormal(mean, std, limits))
         return self
 
     def pdf(self, dist):
@@ -170,14 +248,14 @@ class BaseParameter:
         Allow the parameter to vary according to any continuous scipy.stats
         distribution.
         """
-        self.set_bounds(mbounds.Distribution(dist))
+        self._set_bounds(mbounds.Distribution(dist))
         return self
 
     def range(self, low, high):
         """
         Allow the parameter to vary within the given range.
         """
-        self.set_bounds(mbounds.init_bounds((low, high)))
+        self._set_bounds(mbounds.init_bounds((low, high)))
         return self
 
     def soft_range(self, low, high, std):
@@ -185,47 +263,66 @@ class BaseParameter:
         Allow the parameter to vary within the given range, or with Gaussian
         probability, stray from the range.
         """
-        self.set_bounds(mbounds.SoftBounded(low, high, std))
+        self._set_bounds(mbounds.SoftBounded(low, high, std))
         return self
 
-    def set_bounds(self, b):
-        # print "setting bounds for",self
+    def _set_bounds(self, b):
+        # TODO: May be redundant if self.bounds is a property
+        # Warning: awkward code. At this point bounds should never be None
+        # so fixed will always be false.
         if self.fittable:
             self.fixed = (b is None)
         self.bounds = b
 
-    # @property
-    # def bounds(self):
-    #     """Fit bounds"""
-    #     # print "getting bounds for",self,self._bounds
-    #     return self._bounds
+    # Delegate to slots
+    @property
+    def value(self):
+        return self.slot.value
+    @value.setter
+    def value(self, update):
+        self.slot.value = update
+    @property
+    def fittable(self):
+        return isinstance(self.slot, Variable)
+    @property
+    def fixed(self):
+        return not self.fittable or self.slot.fixed
+    @fixed.setter
+    def fixed(self, state):
+        # Can't set fixed to true if the parameter is not fittable
+        if self.fittable:
+            self.slot.fixed = state
+        elif state:
+            raise TypeError(f"value in {self.name} is not fittable")
 
-    # @bounds.setter
-    # def bounds(self, b):
-    #     # print "setting bounds for",self
-    #     if self.fittable:
-    #         self.fixed = (b is None)
-    #     self._bounds = b
+    ## Use the following if bounds are on the value rather than the parameter
+    #@property
+    #def bounds(self):
+    #    return getattr(self.slot, 'bounds', None)
+    #@bounds.setter
+    #def bounds(self, b):
+    #    if not hasattr(self.slot, 'bounds'):
+    #        raise TypeError(f"{self.name} is not fittable so bounds can't be set")
+    #    if self.slot.fittable:
+    #        self.slot.fixed = (b is None)
+    #    self.slot.bounds = b
 
     # Functional form of parameter value access
     def __call__(self):
         return self.value
 
-    def __neg__(self):
-        return self * -1
-
-    def __pos__(self):
-        return self
-
     def __float__(self):
         return float(self.value)
-
 
     def nllf(self):
         """
         Return -log(P) for the current parameter value.
         """
-        return self.bounds.nllf(self.value)
+        value = self.value
+        # TODO: for efficiency create bounds intersection in FitProblem.reset_model
+        if self.hard_limits is not None and not (self.hard_limits[0] <= value <= self.hard_limits[1]):
+            return np.inf
+        return self.bounds.nllf(value)
 
     def residual(self):
         """
@@ -239,7 +336,7 @@ class BaseParameter:
         compute the cdf of value in the parameter distribution and invert
         it using the ppf from the standard normal distribution.
         """
-        return self.bounds.residual(self.value)
+        return 0.0 if self.bounds is None else self.bounds.residual(self.value)
 
     def valid(self):
         """
@@ -260,127 +357,51 @@ class BaseParameter:
     def __repr__(self):
         return "Parameter(%s)" % self
 
-    def to_dicto(self):
-        """
-        Return a dict represention of the object.
-        """
-        # When reconstructing a model from json we will need to tie parameters
-        # together that were tied before. This can be done by managing a
-        # cache of allocated parameters indexed by id, and pulling from that
-        # cache on recontruction if the id already exists, otherwise create
-        # a new entry. Conveniently, this will handle free variable references
-        # in parameter sets as well. Note that the entire parameter description
-        # will be repeated each time it occurs, but there should be few
-        # enough of these that it isn't a problem.
-        # TODO: use id that is stable from session to session.
-        # TODO: have mechanism for clearing cache between save/load.
-        return dict(
-            type=type(self).__name__,
-            id=id(self), # Warning: this will be different every session
-            name=self.name,
-            value=self.value,
-            fixed=self.fixed,
-            fittable=self.fittable,
-            bounds=to_dict(self.bounds),
-            )
-
-
-@schema(classname="Constant")
-class ConstantSchema:
-    """
-    An unmodifiable value.
-    """
-    name: Optional[str]
-    value: float
-    id: Optional[int]
-
-class Constant(ConstantSchema, BaseParameter): # type: ignore
-    
-    fittable = False
-    fixed = True
-
-    def __init__(self, value, name=None, id=None):
-        self._value = value
-        self.name = name
-        self.id = id if id is not None else builtins.id(self)
-
-    @property
-    def value(self):
-        return self._value
-    # to_dict() can inherit from BaseParameter
-
-
-@schema()
-class Parameter(BaseParameter):
-    """
-    A parameter is a symbolic value.
-
-    It can be fixed or it can vary within bounds.
-
-    p = Parameter(3).pmp(10)    # 3 +/- 10%
-    p = Parameter(3).pmp(-5,10) # 3 in [2.85,3.3] rounded to 2 digits
-    p = Parameter(3).pm(2)      # 3 +/- 2
-    p = Parameter(3).pm(-1,2)   # 3 in [2,5]
-    p = Parameter(3).range(0,5) # 3 in [0,5]
-
-    It has hard limits on the possible values, and a range that should live
-    within those hard limits.  The value should lie within the range for
-    it to be valid.  Some algorithms may drive the value outside the range
-    in order to satisfy soft It has a value which should lie within the range.
-
-    Other properties can decorate the parameter, such as tip for tool tip
-    and units for units.
-    """
-    fixed: bool = field(default=True, init=False)
-    fittable: bool = field(default=True, init=False)
-    discrete: bool = field(default=False, init=False)
-    bounds: Union[tuple(bounds_classes)] = field(default=mbounds.Unbounded(), init=False)
-    id: int = field(default=0, init=False)
-    #_bounds =  mbounds.Unbounded()
-    name: Optional[str] = field(default=None, init=False)
-    value: float # value is an attribute of the derived class
-    fittable = True
-    schema_description = """
-    A parameter is a symbolic value, that can be fixed or vary within bounds
-    """
-
+    # TODO: deprecate
     @classmethod
-    def default(cls: Type[FORWARD_PARAMETER_TYPES], value: Union[float, FORWARD_PARAMETER_TYPES], **kw) -> FORWARD_PARAMETER_TYPES :
+    def default(
+            cls: type,
+            value: Union[float, Tuple[float, float], ValueType],
+            **kw) -> "Parameter":
         """
-        Create a new parameter with the *value* and *kw* attributes, or return
-        the existing parameter if *value* is already a parameter.
-
-        The attributes are the same as those for Parameter, or whatever
-        subclass *cls* of Parameter is being created.
+        Create a new parameter with the *value* and *kw* attributes. If value
+        is already a parameter or expression, set it to that value.
         """
         # Need to constrain the parameter to fit within fixed limits and
         # to receive a name if a name has not already been provided.
-        if isinstance(value, BaseParameter):
-            return value
-        else:
-            return cls(value, **kw)
+        return cls(value, **kw)
 
     def set(self, value):
         """
         Set a new value for the parameter, ignoring the bounds.
         """
-        self.value = value
+        self.slot.value = value
 
     def clip_set(self, value):
         """
         Set a new value for the parameter, clipping it to the bounds.
         """
         low, high = self.bounds.limits
-        self.value = min(max(value, low), high)
+        self.slot.value = min(max(value, low), high)
 
-    def __init__(self, value: float, bounds: Optional[Union[BoundsType, Tuple[float, float]]]=None, fixed=None, name=None, id=None, **kw):
-        # UI nicities:
-        # 1. check if we are started with value=range or bounds=range; if we
+    def __init__(
+            self,
+            value: Union[float, Tuple[float, float], ValueType],
+            bounds: Optional[Union[BoundsType, Tuple[float, float]]]=None,
+            fixed: Optional[bool]=None,
+            name: Optional[str]=None,
+            id: Optional[int]=None,
+            limits: Optional[Tuple[float, float]]=None,
+            **kw):
+        # Check if we are started with value=range or bounds=range; if we
         # are given bounds, then assume this is a fitted parameter, otherwise
         # the parameter defaults to fixed; if value is not set, use the
         # midpoint of the range.
         if bounds is None:
             try:
+                # Note: throws TypeError if not a sequence (which we want to
+                # fall through to the remainder of the function), or ValueError
+                # if the sequence is the wrong length (which we want to fail).
                 lo, hi = value
                 warnings.warn(DeprecationWarning("parameters can no longer be initialized with a fit range"))
                 bounds = lo, hi
@@ -392,25 +413,25 @@ class Parameter(BaseParameter):
         bounds = mbounds.init_bounds(bounds)
         if value is None:
             value = bounds.start_value()
+        if isinstance(value, (float, int)):
+            value = Variable(value)
+        assert isinstance(value, (Constant, Variable, Expression, Parameter))
 
-        # Store whatever values the user needs to associate with the parameter
-        # Models should set units and tool tips so the user interface has
-        # something to work with.
-        limits = kw.pop('limits', (-inf, inf))
-        for k, v in kw.items():
-            setattr(self, k, v)
-
-        # Initialize bounds, with limits clipped to the hard limits for the
-        # parameter
-        def clip(x, a, b):
-            return min(max(x, a), b)
-        self.set_bounds(bounds)
-        self.bounds.limits = (clip(self.bounds.limits[0], *limits),
-                              clip(self.bounds.limits[1], *limits))
-        self.value = value
-        self.fixed = fixed
+        self.slot = value
         self.name = name
         self.id = id if id is not None else builtins.id(self)
+        self.hard_limits = limits
+        self._set_bounds(bounds)
+        # Note: fixed is True unless fixed=False or bounds=bounds were given
+        # as function arguments. Note that _set_bounds() will always set the
+        # fixed to False, so we need to reset it after calling _set_bounds().
+        self.fixed = fixed
+
+        # Store whatever values the user needs to associate with the parameter.
+        # For example, models can set units and tool tips so the user interface
+        # has something to work with.
+        for k, v in kw.items():
+            setattr(self, k, v)
 
     def randomize(self, rng=None):
         """
@@ -424,45 +445,359 @@ class Parameter(BaseParameter):
         """
         return self.bounds.limits[0] <= self.value <= self.bounds.limits[1]
 
-    # to_dict() can inherit from BaseParameter
+    def equals(self, expression: Optional[ValueType]):
+        """
+        Set a parameter equal to another parameter or expression.
 
+        If *expression=None* then free the parameter by giving it is own
+        slot with value equal to the present value of the expression, and
+        its bounds.
+        """
+        if expression is None:
+            # Grab the bounds from the slot. This only works if there is one
+            # level of indirection, not if the parameter is linked to a
+            # parameter which is linked to a parameter.
+            bounds = getattr(self.slot, 'bounds', None)
+            value = self.value
+            self.slot = Variable(value)
+            self.slot.bounds = bounds
+        else:
+            # This throws away the original variable. Maybe we want to keep
+            # one around with whatever old values so that when the constraint
+            # is removed it pops back?
+            self.slot = expression
 
-class Reference(Parameter):
+@schema(classname="Variable")
+class VariableSchema:
     """
-    Create an adaptor so that a model attribute can be treated as if it
-    were a parameter.  This allows only direct access, wherein the
-    storage for the parameter value is provided by the underlying model.
-
-    Indirect access, wherein the storage is provided by the parameter, cannot
-    be supported since the parameter has no way to detect that the model
-    is asking for the value of the attribute.  This means that model
-    attributes cannot be assigned to parameter expressions without some
-    trigger to update the values of the attributes in the model.
+    Saved state for a random variable in the model.
     """
+    fixed: bool = False # object property needs to be serialized
+    value: float
+    ## uncomment if bounds are on variable rather than parameter
+    #bounds: Union[tuple(bounds_classes)] = field(default=mbounds.Unbounded(), init=False)
 
-    def __init__(self, obj, attr, **kw):
-        self.obj = obj
-        self.attr = attr
-        kw.setdefault('name', ".".join([obj.__class__.__name__, attr]))
-        Parameter.__init__(self, **kw)
+class Variable(ValueProtocol, VariableSchema):
+    def __init__(self, value):
+        self.value = value
+    def parameters(self):
+        return []
+
+# Note: need constant schema so that value can be the name of the value in
+# the schema while being the name of the property in the class
+@schema(classname="Constant")
+class ConstantSchema:
+    """
+    Saved state for an unmodifiable value.
+    """
+    value: float
+    name: Optional[str]
+    id: int
+
+class Constant(ValueProtocol, ConstantSchema): # type: ignore
+    """
+    A constant is like a fixed parameter. You can't change it's value, set
+    it equal to another parameter, or assign a prior distribution.
+    """
+    fittable = False  # class property fixed across all objects
+    fixed = True # class property fixed across all objects
+
+    def __init__(self, value: float, name: Optional[str]=None, id: Optional[int]=None):
+        self._value = value
+        self.name = name
+        self.id = id if id is not None else builtins.id(self)
 
     @property
     def value(self):
-        return getattr(self.obj, self.attr)
+        return self._value
 
-    @value.setter
-    def value(self, value):
-        setattr(self.obj, self.attr, value)
+    def parameters(self):
+        return [self]
 
-    def to_dict(self):
-        ret = Parameter.to_dict(self)
-        ret["attr"] = self.attr
-        # TODO: another impossibility---an arbitrary python object
-        # Clearly we need a (safe??) json pickler to handle the full
-        # complexity of an arbitrary model.
-        ret["obj"] = to_dict(self.obj)
-        return ret
+    def __str__(self):
+        return self.name
 
+# ==== Arithmetic operators ===
+class Operators(str, Enum):
+    # unary
+    neg = "neg"
+    pos = "pos"
+    # binary
+    add = "add"
+    sub = "sub"
+    mul = "mul"
+    truediv = "div"
+    div = "intdiv"
+    pow = "pow"
+    # functionals
+    #float = "float"  => float makes values concrete
+    abs = "abs"
+    # functions
+    exp = "exp"
+    expm1 = "expm1"
+    log = "log"
+    log10 = "log10"
+    log1p = "log1p"
+    sqrt = "sqrt"
+    degrees = "degrees"
+    radians = "radians"
+    sin = "sin"
+    cos = "cos"
+    tan = "tan"
+    arcsin = "arcsin"
+    arccos = "arccos"
+    arctan = "arctan"
+    arctan2 = "arctan2" # two args
+    sinh = "sinh"
+    cosh = "cosh"
+    tanh = "tanh"
+    arcsinh = "arcsinh"
+    arccosh = "arccosh"
+    arctanh = "arctanh"
+    ceil = "ceil"
+    floor = "floor"
+    trunc = "trunc"
+
+# Precedence for the python operators as given in manual. Numbers start
+# from one at the bottom of the table. The value itself is "highest" precedence
+# with a value of zero.
+# https://docs.python.org/3/reference/expressions.html#operator-precedence
+VALUE_PRECEDENCE = 0
+CALL_PRECEDENCE = 2
+OPERATOR_PRECEDENCE = {
+    "pow": 4,
+    "pos": 5,
+    "neg": 5,
+    "mul": 6,
+    "div": 6,
+    "truediv": 6,
+    "add": 7,
+    "sub": 7,
+    "gt": 12,
+    "lt": 12,
+    "ge": 12,
+    "le": 12,
+    "eq": 12,
+    "ne": 12,
+}
+OPERATOR_STRING = {
+    "pow": "**",
+    "pos": "+",
+    "neg": "-",
+    "mul": "*",
+    "div": "/",
+    "intdiv": "//",
+    "add": "+",
+    "sub": "-",
+    "gt": ">",
+    "lt": "<",
+    "ge": ">=",
+    "le": "<=",
+    "eq": "==",
+    "ne": "!=",
+}
+
+
+def _lookup_operator(op_name):
+    fn = getattr(operator, op_name, None)
+    if fn is None:
+        fn = getattr(np, op_name, None)
+    if fn is None:
+        fn = UserFunction.registry.get(op_name, None)
+    if fn is None:
+        raise ValueError(f"operator or function {op_name} not available")
+    return fn
+
+def _precedence(obj: Any) -> int:
+    """
+    Return operator precedence accoriding to the python parsing hierarchy.
+
+    Lower values are higher precedence. Values start at 0 for constants and
+    variables, and go up from there. Not all operators are covered.
+    """
+    if isinstance(obj, Expression):
+        return OPERATOR_PRECEDENCE.get(obj.op.name, CALL_PRECEDENCE)
+    return VALUE_PRECEDENCE
+
+@schema(init=False)
+class Expression(ValueProtocol):
+    """
+    Parameter expression
+    """
+    fittable = False
+    fixed = True
+
+    op: Operators # Enumerated type {function_name: display_name}
+    args: Sequence[Union[float, ValueType]]
+    _fn: Callable[..., float] # _fn(float, float, ...) -> float
+
+    def __init__(self, op, args):
+        self.op = op
+        self._fn = _lookup_operator(op.name)
+        self.args = args
+
+    def parameters(self):
+        # Walk expression tree combining parameters from each subexpression
+        return sum(
+            (v.parameters() for v in self.args if hasattr(v, 'parameters')),
+            [])
+
+    @property
+    def value(self):
+        return self._fn(*(float(arg) for arg in self.args))
+
+    @property
+    def name(self):
+        return str(self)
+
+    def __str__(self):
+        prec = _precedence(self)
+        vals = [str(v) for v in self.args]
+        if self.op.name in ("pos", "neg"):
+            # +- a with parens as needed
+            a = f"({vals[0]})" if prec < _precedence(self.args[0]) else vals[0]
+            return f"{OPERATOR_STRING[self.op.name]}{a}"
+        elif self.op.name in ("add", "sub", "mul", "div", "truediv", "pow"):
+            # a +-*/** b with parens as needed
+            a = f"({vals[0]})" if prec < _precedence(self.args[0]) else vals[0]
+            b = f"({vals[1]})" if prec < _precedence(self.args[1]) else vals[1]
+            return f"{a} {OPERATOR_STRING[self.op.name]} {b}"
+        else:
+            # f(a, b, ...) with no parens needed
+            return f"{self.op.name}({', '.join(v for v in vals)})"
+
+def _make_unary_op(op_name: str):
+    op = getattr(Operators, op_name)
+    # Note: self is Parameter or Expression
+    fn = lambda self: Expression(op, (self,))
+    setattr(OperatorMixin, f'__{op_name}__', fn)
+
+def _make_binary_op(op_name: str):
+    op = getattr(Operators, op_name)
+    def fn(self, other):
+        return Expression(op, (self, other))
+    setattr(OperatorMixin, f'__{op_name}__', fn)
+    def rfn(self, other):
+        return Expression(op, (other, self))
+    setattr(OperatorMixin, f'__r{op_name}__', rfn)
+
+def _make_math_fn(fn_name: str):
+    op = getattr(Operators, fn_name)
+    def fn(*args): # first of args is self
+        return Expression(op, args)
+    setattr(OperatorMixin, fn_name, fn)
+
+def _build_operator_mixin():
+    unary_op = set(("pos", "neg", "abs"))
+    binary_op = set(("add", "sub", "mul", "div", "truediv", "pow"))
+    math_fn = set(v.name for v in Operators) - unary_op - binary_op
+    for op_name in unary_op:
+        _make_unary_op(op_name)
+    for op_name in binary_op:
+        _make_binary_op(op_name)
+    # By adding the math functions to the mixin, calling np.sin(parameter) or
+    # np.sin(expression) will return the generated expression for the object.
+    for fn_name in math_fn:
+        _make_math_fn(fn_name)
+_build_operator_mixin()
+
+
+
+# Trig functions defined in degrees rather than radians.
+# These will be expanded in the printed expression since they are not
+# registered as available operators.
+def cosd(v):
+    """Return the cosine of x (measured in in degrees)."""
+    return np.cos(np.radians(v))
+
+def sind(v):
+    """Return the sine of x (measured in in degrees)."""
+    return np.sin(np.radians(v))
+
+def tand(v):
+    """Return the tangent of x (measured in in degrees)."""
+    return np.tan(np.radians(v))
+
+def arccosd(v):
+    """Return the arc cosine (measured in in degrees) of x."""
+    return np.degrees(np.arccos(v))
+
+def arcsind(v):
+    """Return the arc sine (measured in in degrees) of x."""
+    return np.degrees(np.arcsin(v))
+
+def arctand(v):
+    """Return the arc tangent (measured in in degrees) of x."""
+    return np.degrees(np.arctan(v))
+
+def arctan2d(dy, dx):
+    """Return the arc tangent (measured in in degrees) of y/x.
+    Unlike atan(y/x), the signs of both x and y are considered."""
+    return np.degrees(np.arctan2(dy, dx))
+
+# Handy asin, acos, etc. symbols. These will be expanded as arcsin, arccos, etc.
+# in the printed expression.
+asin = np.arcsin
+acos = np.arccos
+atan = np.arctan
+atan2d = arctan2d
+
+asinh = np.arcsinh
+acosh = np.arccosh
+atanh = np.arctanh
+
+asind = arcsind
+acosd = arccosd
+atand = arctand
+atan2 = np.arctan2
+
+
+# TODO: allow serialization on plugin models specialized constraint functions.
+class UserFunction:
+    """
+    User-defined functions.
+
+    This is a helper class for the @function decorator, which treats the
+    operator as one of the possible expression operators.
+
+    These won't be properly serialized/deserialized through the JSON schema
+    unless the function is registered in advance. The schema will not include
+    these functions as possible values even if registered, so a schema
+    validator may fail on one of these functions.
+    """
+    name: str
+    value: str
+    fn: Callable[..., float]
+    # A function registry to remember the code associated with the name.
+    # This is a class attribute, so it is initialized with an empty dict().
+    # Ignore complaints from lint.
+    registry: Dict[str, Callable[..., float]] = {}
+    def __init__(self, fn):
+        name = fn.__name__
+        if name in UserFunction.registry:
+            raise TypeError(f"Function {name} already registered in bumps.")
+        UserFunction.registry[name] = fn
+        self.name = name
+        self.value = name
+
+def function(fn):
+    """
+    Convert a function into a delayed evaluator.
+
+    The value of the function is computed from the values of the parameters
+    at the time that the function value is requested rather than when the
+    function is created.
+    """
+    name = fn.__name__
+    op = UserFunction(fn)
+    def wrapped(*args):
+        return Expression(op, args)
+    wrapped.__name__ = fn.__name__
+    wrapped.__doc__ = fn.__doc__
+    return wrapped
+
+#restate these for export, now that they're all defined:
+ValueType = Union[Parameter, Expression, Variable, Constant, float]
 
 @schema(classname="ParameterSet")
 class ParameterSetSchema:
@@ -687,362 +1022,6 @@ class FreeVariables(object):
         """
         return dict(p.get_model(i) for p in self.parametersets.values())
 
-# Current implementation computes values on the fly, so you only
-# need to plug the values into the parameters and the parameters
-# are automatically updated.
-#
-# This will not work well for wrapped models.  In those cases you
-# want to do a number of optimizations, such as only updating the
-#
-
-# not including Function in typing, because it is not 
-# easily serializable
-
-# ==== Arithmetic operators ===
-class OPERATORS(str, Enum):
-    """all allowed binary operators"""
-
-    add = "+"
-    sub = "-"
-    mul = "*"
-    truediv = "/"
-    div = "/" # alias for truediv
-    pow = "**"
-
-OPERATORS_ALLOWED = set(item.value for item in OPERATORS)
-OPERATOR_PRECEDENCE = {
-    "+": 1,
-    "-": 1,
-    "*": 2,
-    "/": 2,
-    "**": 3
-}
-
-@schema(init=False)
-class Expression(BaseParameter):
-    """
-    Parameter expression (binary)
-    """
-    fixed = True
-    fittable = False
-    discrete = False
-    bounds = mbounds.Unbounded()
-    name = None
-
-    a: Union[FORWARD_PARAMETER_TYPES, float]
-    b: Union[FORWARD_PARAMETER_TYPES, float]
-    op: OPERATORS
-   
-    def __init__(self, a, b, op):
-        import operator
-        if not op in OPERATORS_ALLOWED:
-            raise ValueError("Operator %s is not in allowed operators: %s" % (op, str(OPERATORS_ALLOWED)))
-        self.a, self.b = a,b
-        self.op = op
-        op_name = str(OPERATORS(op).name)
-        self.operator = getattr(operator, op_name.lower())
-        pars = []
-        if isinstance(a,BaseParameter): pars += a.parameters()
-        if isinstance(b,BaseParameter): pars += b.parameters()
-        self._parameters = pars
-        self.name = str(self)
-
-    def parameters(self):
-        return self._parameters
-
-    @property
-    def value(self):
-        return self.operator(float(self.a), float(self.b))
-    @property
-    def dvalue(self):
-        return float(self.a)
-    def __str__(self):
-        op_prec = OPERATOR_PRECEDENCE[self.op]
-        a_str = str(self.a)
-        b_str = str(self.b)
-        if isinstance(self.a, Expression) and OPERATOR_PRECEDENCE[self.a.op] == op_prec:
-            a_str = a_str[1:-1]
-        if isinstance(self.b, Expression) and OPERATOR_PRECEDENCE[self.b.op] == op_prec:
-            b_str = b_str[1:-1]
-        return "(%s %s %s)" % (a_str, self.op, b_str)
-
-
-def make_operator(op_str: str) -> Callable[..., Expression]:
-    def o(self, other):
-        return Expression(self, other, op_str)
-    return o
-def make_roperator(op_str: str) -> Callable[..., Expression]:
-    def o(self, other):
-        return Expression(other, self, op_str)
-    return o
-
-for o_item in OPERATORS:
-    op_name = o_item.name
-    op_str = o_item.value
-
-    setattr(BaseParameter, '__{op_name}__'.format(op_name=op_name), make_operator(op_str))
-    # set right versions, too:
-    setattr(BaseParameter, '__r{op_name}__'.format(op_name=op_name), make_roperator(op_str))
-
-
-class UNARY_OPERATIONS(Enum):
-    """all allowed unary ops"""
-
-    exp = "exp"
-    expm1 = "expm1"
-    log = "log"
-    log10 = "log10"
-    log1p = "log1p"
-    sqrt = "sqrt"
-    degrees = "degrees"
-    radians = "radians"
-    sin = "sin"
-    cos = "cos"
-    tan = "tan"
-    asin = "asin"
-    acos = "acos"
-    atan = "atan"
-    sinh = "sinh"
-    cosh = "cosh"
-    tanh = "tanh"
-    atanh = "atanh"
-    ceil = "ceil"
-    floor = "floor"
-    trunc = "trunc"
-    abs = "abs"
-
-UNARY_OPERATORS = ["abs"]
-UNARY_ALLOWED = set(item.value for item in UNARY_OPERATIONS)
-
-
-@schema(init=False)
-class UnaryExpression(BaseParameter):
-    """
-    Parameter unary operator
-    """
-    fixed = True
-    fittable = False
-    discrete = False
-    bounds = mbounds.Unbounded()
-    name = None
-
-    a: Union[FORWARD_PARAMETER_TYPES, float]
-    op: UNARY_OPERATIONS
-   
-    def __init__(self, a, op):
-        import operator
-        if not op in UNARY_ALLOWED:
-            raise ValueError("Operation %s is not in allowed unary operations: %s" % (op, str(UNARY_ALLOWED)))
-        self.a = a
-        op_name = str(UNARY_OPERATIONS(op).name)
-        if op_name in UNARY_OPERATORS:
-            self.operation = getattr(operator, op_name.lower())
-        else:
-            self.operation = getattr(math, op_name.lower())
-        self.op = op
-        pars = []
-        if isinstance(a,BaseParameter): pars += a.parameters()
-        self._parameters = pars
-        self.name = str(self)
-    def parameters(self):
-        return self._parameters
-
-    @property
-    def value(self):
-        return self.operation(float(self.a))
-    @property
-    def dvalue(self):
-        return float(self.a)
-    def __str__(self):
-        return "%s(%s)" % (self.op, self.a)
-
-def unary(operation):
-    """
-    Convert a unary function into a delayed evaluator.
-
-    The value of the function is computed from the values of the parameters
-    at the time that the function value is requested rather than when the
-    function is created.
-    """
-    # Note: @functools.wraps(op) does not work with numpy ufuncs
-    # Note: @decorator does not work with builtins like abs
-    def unary_generator(*args, **kw):
-        return UnaryExpression(*args, op=operation.__name__)
-    unary_generator.__name__ = operation.__name__
-    unary_generator.__doc__ = operation.__doc__
-    return unary_generator
-
-#_abs = unary(abs)
-# Numpy trick: math functions from numpy delegate to the math function of
-# the class if that function exists as a class attribute.
-for u_item in UNARY_OPERATIONS:
-    op = u_item.value
-    if op in UNARY_OPERATORS:
-        setattr(BaseParameter,'__{op}__'.format(op=op), unary(getattr(operator, op)))
-    else:
-        setattr(BaseParameter, op, unary(getattr(math, op)))
-
-def substitute(a):
-    """
-    Return structure a with values substituted for all parameters.
-
-    The function traverses lists, tuples and dicts recursively.  Things
-    which are not parameters are returned directly.
-    """
-    if isinstance(a, BaseParameter):
-        return float(a.value)
-    elif isinstance(a, tuple):
-        return tuple(substitute(v) for v in a)
-    elif isinstance(a, list):
-        return [substitute(v) for v in a]
-    elif isinstance(a, dict):
-        return dict((k, substitute(v)) for k, v in a.items())
-    elif isinstance(a, np.ndarray):
-        return np.array([substitute(v) for v in a])
-    else:
-        return a
-
-
-class Function(BaseParameter):
-    """
-    Delayed function evaluator.
-
-    f.value evaluates the function with the values of the
-    parameter arguments at the time f.value is referenced rather
-    than when the function was invoked.
-    """
-    __slots__ = ['op', 'args', 'kw']
-    op: Callable[..., float]
-    args: Optional[Any]
-    kw: Dict[Any, Any]
-
-    def __init__(self, op, *args, **kw):
-        self.name = kw.pop('name', None)
-        self.op, self.args, self.kw = op, args, kw
-        self._parameters = self._find_parameters()
-
-    def _find_parameters(self):
-        # Figure out which arguments to the function are parameters
-        #deps = [p for p in self.args if isinstance(p,BaseParameter)]
-        args = [arg for arg in self.args if isinstance(arg, BaseParameter)]
-        kw = dict((name, arg) for name, arg in self.kw.items()
-                  if isinstance(arg, BaseParameter))
-        deps = flatten((args, kw))
-        # Find out which other parameters these parameters depend on.
-        res = []
-        for p in deps:
-            res.extend(p.parameters())
-        return res
-
-    def parameters(self):
-        return self._parameters
-
-    def _value(self):
-        # Expand args and kw, replacing instances of parameters
-        # with their values
-        return self.op(*substitute(self.args), **substitute(self.kw))
-    value = property(_value)
-
-    def to_dict(self):
-        return {
-            "type": "Function",
-            "name": self.name,
-            # TODO: function not stored properly in json
-            "op": to_dict(self.op),
-            "args": to_dict(self.args),
-            "kw": to_dict(self.kw),
-        }
-
-    def __getstate__(self):
-        return self.name, self.op, self.args, self.kw
-
-    def __setstate__(self, state):
-        self.name, self.op, self.args, self.kw = state
-        self._parameters = self._find_parameters()
-
-    def __str__(self):
-        if self.name is not None:
-            name = self.name
-        else:
-            args = [str(v) for v in self.args]
-            kw = [str(k) + "=" + str(v) for k, v in self.kw.items()]
-            name = self.op.__name__ + "(" + ", ".join(args + kw) + ")"
-        return name
-        #return "%s:%g" % (name, self.value)
-
-
-def function(op):
-    """
-    Convert a function into a delayed evaluator.
-
-    The value of the function is computed from the values of the parameters
-    at the time that the function value is requested rather than when the
-    function is created.
-    """
-    # Note: @functools.wraps(op) does not work with numpy ufuncs
-    # Note: @decorator does not work with builtins like abs
-    def function_generator(*args, **kw):
-        return Function(op, *args, **kw)
-    function_generator.__name__ = op.__name__
-    function_generator.__doc__ = op.__doc__
-    return function_generator
-
-
-def boxed_function(f):
-    box = function(f)
-    @wraps(f)
-    def wrapped(*args, **kw):
-        if any(isinstance(v, BaseParameter) for v in args):
-            return box(*args, **kw)
-        else:
-            return f(*args, **kw)
-    return wrapped
-
-# arctan2 is special since either argument can be a parameter
-arctan2 = boxed_function(math.atan2)
-
-# Trig functions defined in degrees rather than radians
-@boxed_function
-def cosd(v):
-    """Return the cosine of x (measured in in degrees)."""
-    return math.cos(math.radians(v))
-
-@boxed_function
-def sind(v):
-    """Return the sine of x (measured in in degrees)."""
-    return math.sin(math.radians(v))
-
-@boxed_function
-def tand(v):
-    """Return the tangent of x (measured in in degrees)."""
-    return math.tan(math.radians(v))
-
-@boxed_function
-def acosd(v):
-    """Return the arc cosine (measured in in degrees) of x."""
-    return math.degrees(math.acos(v))
-arccosd = acosd
-
-@boxed_function
-def asind(v):
-    """Return the arc sine (measured in in degrees) of x."""
-    return math.degrees(math.asin(v))
-arcsind = asind
-
-@boxed_function
-def atand(v):
-    """Return the arc tangent (measured in in degrees) of x."""
-    return math.degrees(math.atan(v))
-arctand = atand
-
-@boxed_function
-def atan2d(dy, dx):
-    """Return the arc tangent (measured in in degrees) of y/x.
-    Unlike atan(y/x), the signs of both x and y are considered."""
-    return math.degrees(math.atan2(dy, dx))
-arctan2d = atan2d
-
-
 
 def flatten(s):
     if isinstance(s, (tuple, list, np.ndarray)):
@@ -1051,7 +1030,7 @@ def flatten(s):
         raise TypeError("parameter flattening cannot order sets")
     elif isinstance(s, dict):
         return reduce(lambda a, b: a + flatten(s[b]), sorted(s.keys()), [])
-    elif isinstance(s, BaseParameter):
+    elif isinstance(s, ValueProtocol):
         return [s]
     elif s is None:
         return []
@@ -1103,7 +1082,7 @@ def format(p, indent=0, freevars=None, field=None):
             s += " in [%g,%g]" %  tuple(p.bounds.limits)
         return s
 
-    elif isinstance(p, BaseParameter):
+    elif isinstance(p, Parameter):
         return "%s = %g" % (str(p), p.value)
 
     else:
@@ -1172,7 +1151,7 @@ def fittable(s):
 
     Note that some fittable parameters may be fixed during the fit.
     """
-    return [p for p in unique(s) if not p.fittable]
+    return [p for p in unique(s) if p.fittable]
 
 
 def varying(s):
@@ -1183,6 +1162,22 @@ def varying(s):
     """
     return [p for p in unique(s) if not p.fixed]
 
+def _has_prior(p):
+    bounds = getattr(p, 'bounds', None)
+    limits = getattr(p, 'hard_limits', None)
+    return (
+        bounds is not None
+        and not isinstance(bounds, mbounds.Unbounded)
+        and limits != (-np.inf, np.inf))
+
+def priors(s):
+    """
+    Return the list of parameters (fitted or computed) that have prior
+    probabilities associated with them. This includes all varying parameters,
+    plus expressions (including simple links), but ignoring constants and
+    fixed parameters whose probabilities won't change the fits.
+    """
+    return [p for p in unique(s) if _has_prior(p)]
 
 def randomize(s):
     """
@@ -1230,28 +1225,28 @@ class IntegerParameter(Parameter):
 
 
 # ==== Comparison operators ===
-class COMPARISONS(Enum):
+class Comparisons(Enum):
     """comparison operators"""
 
-    GT = '>'
-    GE = '>='
-    LE = '<='
-    LT = '<'
-    EQ = '=='
-    NE = '!='
+    gt = '>'
+    ge = '>='
+    le = '<='
+    lt = '<'
+    eq = '=='
+    ne = '!='
 
 
 @schema()
 class Constraint:
 
-    a: Union[Parameter, UnaryExpression, Expression, float]
-    b: Union[Parameter, UnaryExpression, Expression, float]
-    op: COMPARISONS
+    a: Union[Parameter, Expression, Constant, float]
+    b: Union[Parameter, Expression, Constant, float]
+    op: Comparisons
 
     def __init__(self, a, b, op):
         import operator
         self.a, self.b = a, b
-        op_name = str(COMPARISONS(op).name)
+        op_name = str(Comparisons(op).name)
         self.compare = getattr(operator, op_name.lower())
         self.op = op
 
@@ -1265,16 +1260,14 @@ class Constraint:
         return "(%s %s %s)" %(self.a, self.op, self.b)
 
 
-def make_constraint(op_str: str) -> Callable[..., Constraint]:
-    def o(self, other):
-        return Constraint(self, other, op_str)
-    return o
+def _make_constraint(op_str: str) -> Callable[..., Constraint]:
+    return lambda self, other: Constraint(self, other, op_str)
 
-for comp_item in COMPARISONS:
-    op_name = comp_item.name
-    op_str = comp_item.value
-
-    setattr(BaseParameter, '__{op_name}__'.format(op_name=op_name.lower()), make_constraint(op_str))
+def _build_constraints_mixin():
+    for comp_item in Comparisons:
+        op_name = comp_item.name
+        op_str = comp_item.value
+        setattr(OperatorMixin, f'__{op_name}__', _make_constraint(op_str))
 
 class Alias(object):
     """
@@ -1310,13 +1303,187 @@ class Alias(object):
             'attr': self.attr,
         }
 
-#restate these for export, now that they're all defined:
-PARAMETER_TYPES = Union[Parameter, Expression, UnaryExpression, Constant, float]
+def substitute(a):
+    """
+    Return structure a with values substituted for all parameters.
+
+    The function traverses lists, tuples and dicts recursively.  Things
+    which are not parameters are returned directly.
+    """
+    if isinstance(a, ValueProtocol):
+        return float(a.value)
+    elif isinstance(a, tuple):
+        return tuple(substitute(v) for v in a)
+    elif isinstance(a, list):
+        return [substitute(v) for v in a]
+    elif isinstance(a, dict):
+        return dict((k, substitute(v)) for k, v in a.items())
+    elif isinstance(a, np.ndarray):
+        return np.array([substitute(v) for v in a])
+    else:
+        return a
+
+
+class Function(ValueProtocol):
+    """
+    **DEPRECATED**
+
+    Delayed function evaluator.
+
+    f.value evaluates the function with the values of the
+    parameter arguments at the time f.value is referenced rather
+    than when the function was invoked.
+    """
+    __slots__ = ['op', 'args', 'kw']
+    op: Callable[..., float]
+    args: Optional[Any]
+    kw: Dict[Any, Any]
+
+    def __init__(self, op, *args, **kw):
+        warnings.warn("Function no longer supported", DeprecationWarning, stacklevel=1)
+        self.name = kw.pop('name', None)
+        self.op, self.args, self.kw = op, args, kw
+        self._parameters = self._find_parameters()
+
+    def _find_parameters(self):
+        # Figure out which arguments to the function are parameters
+        #deps = [p for p in self.args if isinstance(p, ValueProtocol)]
+        args = [arg for arg in self.args if isinstance(arg, ValueProtocol)]
+        kw = dict((name, arg) for name, arg in self.kw.items()
+                  if isinstance(arg, ValueProtocol))
+        deps = flatten((args, kw))
+        # Find out which other parameters these parameters depend on.
+        res = []
+        for p in deps:
+            res.extend(p.parameters())
+        return res
+
+    def parameters(self):
+        return self._parameters
+
+    def _value(self):
+        # Expand args and kw, replacing instances of parameters
+        # with their values
+        return self.op(*substitute(self.args), **substitute(self.kw))
+    value = property(_value)
+
+    def to_dict(self):
+        return {
+            "type": "Function",
+            "name": self.name,
+            # TODO: function not stored properly in json
+            "op": to_dict(self.op),
+            "args": to_dict(self.args),
+            "kw": to_dict(self.kw),
+        }
+
+    def __getstate__(self):
+        return self.name, self.op, self.args, self.kw
+
+    def __setstate__(self, state):
+        self.name, self.op, self.args, self.kw = state
+        self._parameters = self._find_parameters()
+
+    def __str__(self):
+        if self.name is not None:
+            name = self.name
+        else:
+            args = [str(v) for v in self.args]
+            kw = [str(k) + "=" + str(v) for k, v in self.kw.items()]
+            name = self.op.__name__ + "(" + ", ".join(args + kw) + ")"
+        return name
+        #return "%s:%g" % (name, self.value)
+
+
+# ===== Tests ====
 
 def test_operator():
     a = Parameter(1, name='a')
     b = Parameter(2, name='b')
-    a_b = a + b
+    c = Parameter(3, name='c')
+    C = Constant(5, name='C')
+
+    assert a.fixed
+
+    # Check strings
+    assert str(a + b) == 'a + b'
+    assert (a+b).name == 'a + b'
+    assert str(-a) == '-a'
+    assert (-a).value == -a.value
+    assert str(a+b*c) == 'a + b * c'
+    assert str((a+b)*c) == '(a + b) * c'
+    assert str(np.sin(a+b)*c) == 'sin(a + b) * c'
+    assert str(a+C) == 'a + C'
+    assert str(a+C+3) == 'a + C + 3'
+    assert str(3 + a+C) == '3 + a + C'
+    assert str(a.sin()) == 'sin(a)'
+    assert str(atan2(a, b)) == 'arctan2(a, b)'
+    # float(expr) evaluates the expression; it doesn't build an expr with float.
+
+    # Check parameters
+    assert (a+b).parameters() == [a, b]
+    assert (np.sin(a+b)*c).parameters() == [a, b, c]
+
+    # Check values
     a.value = 3
-    assert a_b.value == 5.
-    assert a_b.name == '(a + b)'
+    assert (a+b).value == 5.
+    assert float(a+b) == a.value + b.value
+    assert a.sin().value == np.sin(a.value)
+    assert (3 + a+C).value == 3+3+5
+    assert np.sin(a+b).value == np.sin(a.value+b.value)
+    assert atan2(a, b).value == atan2(a.value, b.value)
+
+    # Make sure that evaluation is lazy
+    capture = np.sin(a+b)
+    b.value = 5
+    assert capture.value == np.sin(a.value+b.value)
+
+    # TODO: can we evaluate an expression for an entire population at once?
+
+
+    # Check slots
+    limited = Parameter(3, name='limited', limits=[0.5, 1.5], bounds=[0, 1])
+    assert np.isinf(limited.nllf())
+    assert np.isinf(limited.nllf())
+    limited.value = 0.6
+    assert limited.nllf() == 0.0
+    limited.value = 0.2
+    assert np.isinf(limited.nllf())
+
+    limited.equals(a+b)
+    assert limited.value == (a+b).value
+
+    assert np.isinf(limited.nllf())
+    a.value = b.value = 0.1
+    assert np.isinf(limited.nllf())
+    a.value = b.value = 0.3
+    assert limited.nllf() == 0.0
+    try:
+        limited.value = 5
+        failed = True
+    except Exception:
+        # TODO: define which error improper assignment should raise
+        # Currently this raises an attribute error on limited.slot.value
+        failed = False
+    if failed:
+        raise RuntimeError("failed to raise error when assigning value to expression")
+
+    # Check parameter list operations
+    s = [a, limited]
+    assert unique(s) == [a, limited, b]
+    assert fittable(s) == [a, b]
+    assert varying(s) == []
+    b.range(0, 3)
+    assert not b.fixed
+    assert varying(s) == [b]
+    assert current(s) == [a.value, limited.value]
+
+    # Check normal deviation
+    mu, sigma = 3, 2
+    b.dev(sigma, mean=mu)
+    b.value = 4
+    nllf_target = 0.5*((b.value-mu)/sigma)**2 + np.log(2*np.pi*sigma**2)/2
+    assert abs(b.nllf() - nllf_target)/nllf_target < 1e-12
+
+if __name__ == "__main__":
+    test_operator()

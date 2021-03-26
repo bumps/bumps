@@ -7,7 +7,7 @@ __all__ = ['Experiment', 'load_data', 'load_model', 'load_fit', 'sim_data',
 import sys
 import numpy as np
 from bumps.names import Parameter, FitProblem, FreeVariables, pmath, preview, fit
-from bumps.parameter import BaseParameter
+from bumps.parameter import Parameter
 from bumps.util import push_seed as seed
 import sans
 import sans.models
@@ -52,7 +52,7 @@ def load_model(model, name=None, **kw):
                            %(k, model, formatted_pars))
         if '.' in k and not k.endswith('.width'):
             M.setParam(k, v)
-        elif isinstance(v, BaseParameter):
+        elif isinstance(v, Parameter):
             M._bumps_pars[k] = v
         elif isinstance(v, (tuple, list)):
             low, high = v
