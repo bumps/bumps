@@ -123,7 +123,7 @@ class ParameterSchema:
     bounds: Optional[BoundsType] = None
     #discrete: bool = field(default=False, init=False)
 
-class Parameter(ValueProtocol):
+class Parameter(ValueProtocol, ParameterSchema):
     """
     A parameter is a container for a symbolic value.
 
