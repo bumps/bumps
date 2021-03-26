@@ -69,7 +69,8 @@ def schema(
     generated schema, or else the class docstring will be used.
     """
     def set_dataclass(cls: Type[T]) -> Type[T]:
-        name = cls.__name__
+        realname = cls.__name__
+        name = realname if classname is None else classname
         all_annotations = getattr(cls, '__annotations__', {})
         if include is not None:
             if exclude is not None:
@@ -87,11 +88,11 @@ def schema(
         has_init = hasattr(cls, '__init__')
         do_init = init and not has_init
         # optional temporary name change, which affects generated model:
-        if classname is not None:
-            cls.__name__ = classname
+        if name != realname:
+            cls.__name__ = name
         dataclass(init=do_init, eq=eq)(cls)
         # set the name back, to match python globals:
-        cls.__name__ = name
+        cls.__name__ = realname
         # HACK! Pydantic doesn't copy __doc__ into model
         if hasattr(cls, '__pydantic_model__'):
             model = getattr(cls, '__pydantic_model__')
@@ -101,7 +102,7 @@ def schema(
         if not init and not has_init:
             # if the 'type' attribute is not going to be set by the 
             # dataclass-provided __init__, we will set it ourselves
-            setattr(cls, 'type', getattr(cls, '__name__'))
+            setattr(cls, 'type', name)
         return cls
 
     return set_dataclass
