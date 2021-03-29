@@ -24,7 +24,11 @@ from enum import Enum
 from .util import field, field_desc, schema, has_schema
 from typing import (
     Type, TypeVar, Optional, Any, Union, Dict, Callable,
-    Tuple, List, Sequence, Literal)
+    Tuple, List, Sequence)
+try: # CRUFT: Literal is python 3.8
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
 
 import numpy as np
 from numpy import inf, isinf, isfinite
@@ -118,7 +122,7 @@ class ParameterSchema:
     id: int = field(default=0, init=False)
     name: Optional[str] = field(default=None, init=False)
     slot: ValueType
-    hard_limits: Optional[Tuple[float, float]] = None
+    hard_limits: Tuple[float, float] = (-np.inf, np.inf)
     # TODO: are priors on the parameter or on the value?
     bounds: Optional[BoundsType] = None
     #discrete: bool = field(default=False, init=False)
@@ -126,9 +130,6 @@ class ParameterSchema:
 class Parameter(ValueProtocol, ParameterSchema):
     """
     A parameter is a container for a symbolic value.
-
-    The value can be a constant, a variable, an expression or a link to
-    another parameter.
 
     Parameters have a prior probability, as set by a bounds constraint:
 
@@ -164,11 +165,43 @@ class Parameter(ValueProtocol, ParameterSchema):
     underlying parameters in addition to any hard limits on the parameter
     value given by the model.
 
-    Any additional properties can be carried on the parameter, given as
-    additional keyword arguments to the parameter. For example, *tip* and
-    *units* for decorating an input form in the GUI:
+    **Inputs**
+
+    *value* can be a constant, a variable, an expression or a link to
+    another parameter.
+
+    *bounds* can be a distribution specified in :mod:`bounds` or a tuple
+    *(low, high)*. If bounds are supplied then the parameter defaults to
+    fittable.
+
+    *fixed* is True if the parameter is fixed, even if bounds are supplied.
+
+    *name* is the label associated with the parameter in plots. The names
+    need not be unique, but it will be confusing if there are duplicates.
+    The name will usually correspond to the role of the parameter in the
+    model. For models with sequences (e.g., layer numbers), try using a
+    layer name (e.g., based on the material in the layer) rather than a layer
+    number for parameters in that layer. This will make it easier for the
+    user to associate the parameters displayed at the end of the the fit
+    with the layer in the model. Also, when exploring the space of models,
+    the parameter names will be preserved even if a new layer is introduced
+    before the existing layers. That will allow the parameters from the
+    previous fit to be easily used as a seed for the fit to the new model.
+
+    *id* must be a unique identifier associated with the parameter. This
+    is used to link parameters on save and reload.
+
+    *limits* are hard limits on the parameter value within the model. Separate
+    from the prior distribution on a random variable provided by the user,
+    the hard limits are restrictions on the value imposed by the model.
+    For example, the thickness of a layer must be zero or more.
+
+    Any additional keyword arguments are preserved as properties of the
+    parameter. For example, *tip* and *units* for decorating an input form
+    in the GUI:
 
          p = Parameter(10, name="width", units="cm", tip="Width of sample")
+
     """
     # Parameters may be dependent on other parameters, and the
     # fit engine will need to access them.
@@ -320,7 +353,7 @@ class Parameter(ValueProtocol, ParameterSchema):
         """
         value = self.value
         # TODO: for efficiency create bounds intersection in FitProblem.reset_model
-        if self.hard_limits is not None and not (self.hard_limits[0] <= value <= self.hard_limits[1]):
+        if not (self.hard_limits[0] <= value <= self.hard_limits[1]):
             return np.inf
         return self.bounds.nllf(value)
 
@@ -420,7 +453,11 @@ class Parameter(ValueProtocol, ParameterSchema):
         self.slot = value
         self.name = name
         self.id = id if id is not None else builtins.id(self)
-        self.hard_limits = limits
+        if limits is None:
+            limits = (-np.inf, np.inf)
+        self.hard_limits = (
+            (-np.inf if limits[0] is None else limits[0]),
+            (np.inf if limits[1] is None else limits[1]))
         self._set_bounds(bounds)
         # Note: fixed is True unless fixed=False or bounds=bounds were given
         # as function arguments. Note that _set_bounds() will always set the
@@ -1164,7 +1201,7 @@ def varying(s):
 
 def _has_prior(p):
     bounds = getattr(p, 'bounds', None)
-    limits = getattr(p, 'hard_limits', None)
+    limits = getattr(p, 'hard_limits', (-np.inf, np.inf))
     return (
         bounds is not None
         and not isinstance(bounds, mbounds.Unbounded)
