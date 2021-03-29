@@ -17,11 +17,9 @@ import builtins
 from functools import reduce
 import warnings
 from copy import copy
-import math
 from functools import wraps
 from enum import Enum
 
-from .util import field, field_desc, schema, has_schema
 from typing import (
     Type, TypeVar, Optional, Any, Union, Dict, Callable,
     Tuple, List, Sequence)
@@ -34,6 +32,9 @@ import numpy as np
 from numpy import inf, isinf, isfinite
 
 from . import bounds as mbounds
+from . import pmath
+from .util import field, field_desc, schema, has_schema
+
 bounds_classes = [c for c in mbounds.Bounds.__subclasses__() if has_schema(c)]
 BoundsType = Union[tuple(bounds_classes)]
 
@@ -556,20 +557,25 @@ class Constant(ValueProtocol, ConstantSchema): # type: ignore
 
 # ==== Arithmetic operators ===
 class Operators(str, Enum):
-    # unary
+    # operators including abs() are defined in _build_operator_mixin()
+    # functions are defined in numpy or in UserFunction (for min/max)
+
+    # unary operator
     neg = "neg"
     pos = "pos"
-    # binary
+    # binary operator
     add = "add"
     sub = "sub"
     mul = "mul"
     truediv = "div"
     div = "intdiv"
     pow = "pow"
-    # functionals
+    # unary functional
     #float = "float"  => float makes values concrete
+    #int = "int"  => values must be float; use floor, trunc, ceil, round
     abs = "abs"
-    # functions
+
+    # unary functions
     exp = "exp"
     expm1 = "expm1"
     log = "log"
@@ -584,7 +590,6 @@ class Operators(str, Enum):
     arcsin = "arcsin"
     arccos = "arccos"
     arctan = "arctan"
-    arctan2 = "arctan2" # two args
     sinh = "sinh"
     cosh = "cosh"
     tanh = "tanh"
@@ -594,6 +599,15 @@ class Operators(str, Enum):
     ceil = "ceil"
     floor = "floor"
     trunc = "trunc"
+    rint = "rint"
+    round = "round"  # round(a) => rint(a)
+    # binary functions
+    arctan2 = "arctan2"
+
+    # n-ary
+    min = "min"  # from builtins
+    max = "max"  # from builtins
+    # TODO: support sum(seq) and prod(seq) for tuple and list
 
 # Precedence for the python operators as given in manual. Numbers start
 # from one at the bottom of the table. The value itself is "highest" precedence
@@ -636,18 +650,24 @@ OPERATOR_STRING = {
 
 
 def _lookup_operator(op_name):
-    fn = getattr(operator, op_name, None)
-    if fn is None:
-        fn = getattr(np, op_name, None)
-    if fn is None:
+    if (not hasattr(Operators, op_name) and op_name not in UserFunction.registry:
+        raise ValueError(f"function {op_name} is not available")
+    fn = None
+    # Check plugins first so we can override lookups in operator and numpy.
+    # This is needed for min/max.
+    if fn is None: # plugin functions from UserFunction registry
         fn = UserFunction.registry.get(op_name, None)
     if fn is None:
-        raise ValueError(f"operator or function {op_name} not available")
+        fn = getattr(operator, op_name, None) # operators from operators
+    if fn is None: # math functions from numpy
+        fn = getattr(np, op_name, None)
+    if fn is None:
+        raise RuntimeError(f"should not be here: {op_name} not found")
     return fn
 
 def _precedence(obj: Any) -> int:
     """
-    Return operator precedence accoriding to the python parsing hierarchy.
+    Return operator precedence according to the python parsing hierarchy.
 
     Lower values are higher precedence. Values start at 0 for constants and
     variables, and go up from there. Not all operators are covered.
@@ -722,7 +742,13 @@ def _make_math_fn(fn_name: str):
     op = getattr(Operators, fn_name)
     def fn(*args): # first of args is self
         return Expression(op, args)
+    # define sin, etc., in the parameter and expression so that np.sin(a)
+    # will resolve to Expression('sin', tuple(a)), etc.
     setattr(OperatorMixin, fn_name, fn)
+    # The np.sin(a) trick only works for a limited set of functions
+    # defined by numpy itself. For arbitrary user defined functions
+    # we add them to the bumps.pmath namespace so the user can find them.
+    setattr(pmath, fn_name, fn)
 
 def _build_operator_mixin():
     unary_op = set(("pos", "neg", "abs"))
@@ -738,58 +764,7 @@ def _build_operator_mixin():
         _make_math_fn(fn_name)
 _build_operator_mixin()
 
-
-
-# Trig functions defined in degrees rather than radians.
-# These will be expanded in the printed expression since they are not
-# registered as available operators.
-def cosd(v):
-    """Return the cosine of x (measured in in degrees)."""
-    return np.cos(np.radians(v))
-
-def sind(v):
-    """Return the sine of x (measured in in degrees)."""
-    return np.sin(np.radians(v))
-
-def tand(v):
-    """Return the tangent of x (measured in in degrees)."""
-    return np.tan(np.radians(v))
-
-def arccosd(v):
-    """Return the arc cosine (measured in in degrees) of x."""
-    return np.degrees(np.arccos(v))
-
-def arcsind(v):
-    """Return the arc sine (measured in in degrees) of x."""
-    return np.degrees(np.arcsin(v))
-
-def arctand(v):
-    """Return the arc tangent (measured in in degrees) of x."""
-    return np.degrees(np.arctan(v))
-
-def arctan2d(dy, dx):
-    """Return the arc tangent (measured in in degrees) of y/x.
-    Unlike atan(y/x), the signs of both x and y are considered."""
-    return np.degrees(np.arctan2(dy, dx))
-
-# Handy asin, acos, etc. symbols. These will be expanded as arcsin, arccos, etc.
-# in the printed expression.
-asin = np.arcsin
-acos = np.arccos
-atan = np.arctan
-atan2d = arctan2d
-
-asinh = np.arcsinh
-acosh = np.arccosh
-atanh = np.arctanh
-
-asind = arcsind
-acosd = arccosd
-atand = arctand
-atan2 = np.arctan2
-
-
-# TODO: allow serialization on plugin models specialized constraint functions.
+# TODO: allow schema validation on user-defined functions
 class UserFunction:
     """
     User-defined functions.
@@ -808,12 +783,15 @@ class UserFunction:
     # A function registry to remember the code associated with the name.
     # This is a class attribute, so it is initialized with an empty dict().
     # Ignore complaints from lint.
+    # TODO: use pmath as our registry of available functions.
     registry: Dict[str, Callable[..., float]] = {}
+    wrapper: Dict[str, 'UserFunction'] = {}
     def __init__(self, fn):
         name = fn.__name__
         if name in UserFunction.registry:
             raise TypeError(f"Function {name} already registered in bumps.")
         UserFunction.registry[name] = fn
+        UserFunction.wrapper[name] = self
         self.name = name
         self.value = name
 
@@ -831,7 +809,72 @@ def function(fn):
         return Expression(op, args)
     wrapped.__name__ = fn.__name__
     wrapped.__doc__ = fn.__doc__
+    # Add the symbol to pmath
+    setattr(pmath, name, wrapped)
+    pmath.__all__.append(name)
     return wrapped
+
+# min/max
+min = function(builtins.min)
+max = function(builtins.max)
+
+# Trig functions defined in degrees rather than radians.
+@function
+def cosd(v):
+    """Return the cosine of x (measured in in degrees)."""
+    return np.cos(np.radians(v))
+
+@function
+def sind(v):
+    """Return the sine of x (measured in in degrees)."""
+    return np.sin(np.radians(v))
+
+@function
+def tand(v):
+    """Return the tangent of x (measured in in degrees)."""
+    return np.tan(np.radians(v))
+
+@function
+def arccosd(v):
+    """Return the arc cosine (measured in in degrees) of x."""
+    return np.degrees(np.arccos(v))
+
+@function
+def arcsind(v):
+    """Return the arc sine (measured in in degrees) of x."""
+    return np.degrees(np.arcsin(v))
+
+@function
+def arctand(v):
+    """Return the arc tangent (measured in in degrees) of x."""
+    return np.degrees(np.arctan(v))
+
+@function
+def arctan2d(dy, dx):
+    """Return the arc tangent (measured in in degrees) of y/x.
+    Unlike atan(y/x), the signs of both x and y are considered."""
+    return np.degrees(np.arctan2(dy, dx))
+
+# Aliases for arcsin, etc., both here in bumps.parameters and in bumps.pmath.
+pmath.asin = asin = np.arcsin
+pmath.acos = acos = np.arccos
+pmath.atan = atan = np.arctan
+pmath.atan2 = atan2 = np.arctan2
+
+pmath.asind = asind = arcsind
+pmath.acosd = acosd = arccosd
+pmath.atand = atand = arctand
+pmath.atan2d = atan2d = arctan2d
+
+pmath.asinh = asinh = np.arcsinh
+pmath.acosh = acosh = np.arccosh
+pmath.atanh = atanh = np.arctanh
+
+pmath.__all__.extend((
+    'asin', 'acos', 'atan', 'atan2d',
+    'asind', 'acosd', 'atand', 'atan2d',
+    'asinh', 'acosh', 'atanh',
+    ))
 
 #restate these for export, now that they're all defined:
 ValueType = Union[Parameter, Expression, Variable, Constant, float]
@@ -1470,13 +1513,33 @@ def test_operator():
     assert np.sin(a+b).value == np.sin(a.value+b.value)
     assert atan2(a, b).value == atan2(a.value, b.value)
 
-    # Make sure that evaluation is lazy
-    capture = np.sin(a+b)
-    b.value = 5
-    assert capture.value == np.sin(a.value+b.value)
+    # Make sure that evaluation is lazy. Capture the expression with one
+    # set of values for the parameters, update them with a new set of values,
+    # then check if the result is what you get when you call the function
+    # directly on those new values.
+    scope = locals() # record the currently available parameter handles
+    def capture_test(expr, result, **kw):
+        #print("checking", expr, "for", kw, "yields", result)
+        saved = {k: scope[k].value for k in kw}
+        for k, v in kw.items():
+            scope[k].value = float(v)
+        try:
+            assert expr.value == result, f"for {expr} expected {result} but got {expr.value}"
+        finally:
+            for k, v in saved.items():
+                scope[k].value = v
+    capture_test(np.sin(a+b), np.sin(0.5 + 3), a=0.5, b=3)
+    capture_test(np.arctan2(a, b), atan2(0.5, 3), a=0.5, b=3)
+    capture_test(np.round(a), np.round(-0.6), a=-0.6)
+    capture_test(min(a, b), builtins.min(-0.6, 3), a=-0.6, b=3)
+    capture_test(min(a, b, -2), builtins.min(-0.6, 3, -2), a=-0.6, b=3)
+    capture_test(abs(a), 2.5, a=-2.5)
+
+    # Check that symbols are defined in pmath
+    capture_test(pmath.sind(a), np.sin(np.radians(25)), a=25)
+    assert 'sind' in pmath.__all__
 
     # TODO: can we evaluate an expression for an entire population at once?
-
 
     # Check slots
     limited = Parameter(3, name='limited', limits=[0.5, 1.5], bounds=[0, 1])
