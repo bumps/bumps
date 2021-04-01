@@ -650,7 +650,7 @@ OPERATOR_STRING = {
 
 
 def _lookup_operator(op_name):
-    if (not hasattr(Operators, op_name) and op_name not in UserFunction.registry:
+    if not hasattr(Operators, op_name) and op_name not in UserFunction.registry:
         raise ValueError(f"function {op_name} is not available")
     fn = None
     # Check plugins first so we can override lookups in operator and numpy.
@@ -1166,7 +1166,7 @@ def format(p, indent=0, freevars=None, field=None):
         return "%s = %g" % (str(p), p.value)
 
     else:
-        return "None"
+        return str(p)
 
 
 def summarize(pars, sorted=False):
@@ -1318,6 +1318,7 @@ class Comparisons(Enum):
 
 @schema()
 class Constraint:
+    fixed = True
 
     a: Union[Parameter, Expression, Constant, float]
     b: Union[Parameter, Expression, Constant, float]
@@ -1348,6 +1349,8 @@ def _build_constraints_mixin():
         op_name = comp_item.name
         op_str = comp_item.value
         setattr(OperatorMixin, f'__{op_name}__', _make_constraint(op_str))
+
+_build_constraints_mixin()
 
 class Alias(object):
     """
