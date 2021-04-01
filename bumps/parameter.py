@@ -650,7 +650,7 @@ OPERATOR_STRING = {
 
 
 def _lookup_operator(op_name):
-    if (not hasattr(Operators, op_name) and op_name not in UserFunction.registry:
+    if not hasattr(Operators, op_name) and op_name not in UserFunction.registry:
         raise ValueError(f"function {op_name} is not available")
     fn = None
     # Check plugins first so we can override lookups in operator and numpy.
@@ -1104,13 +1104,20 @@ class FreeVariables(object):
 
 
 def flatten(s):
+    # TODO: check if s has parameters() rather than ValueProtocol & Constraints
+    # This may be too much: it would for example, allow a fitness function
+    # to be returned as a parameter to the model.
+    # TODO: extract parameters from expressions and constraints.
+    # The current scheme only walks to the Parameter/Constraints level. It
+    # doesn't search in parameter expressions or constraints for independent
+    # parameters, which instead happens in unique().
     if isinstance(s, (tuple, list, np.ndarray)):
         return reduce(lambda a, b: a + flatten(b), s, [])
     elif isinstance(s, set):
         raise TypeError("parameter flattening cannot order sets")
     elif isinstance(s, dict):
         return reduce(lambda a, b: a + flatten(s[b]), sorted(s.keys()), [])
-    elif isinstance(s, ValueProtocol):
+    elif isinstance(s, (ValueProtocol, Constraint)):
         return [s]
     elif s is None:
         return []
@@ -1166,7 +1173,7 @@ def format(p, indent=0, freevars=None, field=None):
         return "%s = %g" % (str(p), p.value)
 
     else:
-        return "None"
+        return str(p)
 
 
 def summarize(pars, sorted=False):
@@ -1259,6 +1266,15 @@ def priors(s):
     """
     return [p for p in unique(s) if _has_prior(p)]
 
+def constraints(s):
+    """
+    Return the list of parameters (fitted or computed) that have prior
+    probabilities associated with them. This includes all varying parameters,
+    plus expressions (including simple links), but ignoring constants and
+    fixed parameters whose probabilities won't change the fits.
+    """
+    return [p for p in unique(s) if isinstance(p, Constraint)]
+
 def randomize(s):
     """
     Set random values to the parameters in the parameter set, with
@@ -1318,7 +1334,9 @@ class Comparisons(Enum):
 
 @schema()
 class Constraint:
+    fixed = True
 
+    # TODO: maybe left and right rather than a and b
     a: Union[Parameter, Expression, Constant, float]
     b: Union[Parameter, Expression, Constant, float]
     op: Comparisons
@@ -1338,7 +1356,10 @@ class Constraint:
         return 0. if bool(self) else abs(float(self.a) - float(self.b))
     def __str__(self):
         return "(%s %s %s)" %(self.a, self.op, self.b)
-
+    def parameters(self):
+        a_pars = getattr(self.a, 'parameters', lambda: None)
+        b_pars = getattr(self.b, 'parameters', lambda: None)
+        return a_pars(), b_pars()
 
 def _make_constraint(op_str: str) -> Callable[..., Constraint]:
     return lambda self, other: Constraint(self, other, op_str)
@@ -1348,6 +1369,8 @@ def _build_constraints_mixin():
         op_name = comp_item.name
         op_str = comp_item.value
         setattr(OperatorMixin, f'__{op_name}__', _make_constraint(op_str))
+
+_build_constraints_mixin()
 
 class Alias(object):
     """

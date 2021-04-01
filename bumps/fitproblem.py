@@ -175,29 +175,32 @@ class Fitness(FitnessProtocol):
         else:
             return sum([float(c) for c in self.constraints])
 
-    def chisq_str(self):
-        """
-        Return a string representing the chisq equivalent of the nllf.
-        If the model has strictly gaussian independent uncertainties then the
-        negative log likelihood function will return 0.5*sum(residuals**2),
-        which is 1/2*chisq.  Since we are printing normalized chisq, we
-        multiply the model nllf by 2/DOF before displaying the value.  This
-        is different from the problem nllf function, which includes the
-        cost of the prior parameters and the cost of the penalty constraints
-        in the total nllf.  The constraint value is displayed separately.
-        """
+def chisq_str(fitness):
+    """
+    Return a string representing the chisq equivalent of the nllf.
+    If the model has strictly gaussian independent uncertainties then the
+    negative log likelihood function will return 0.5*sum(residuals**2),
+    which is 1/2*chisq.  Since we are printing normalized chisq, we
+    multiply the model nllf by 2/DOF before displaying the value.  This
+    is different from the problem nllf function, which includes the
+    cost of the prior parameters and the cost of the penalty constraints
+    in the total nllf.  The constraint value is displayed separately.
+    """
 
-        chisq = self.nllf() / self.numpoints()
-        constraints = self.constraints_nllf()
-        text = format_uncertainty(chisq, None)
-        if constraints > 0.:
-            text += " constraints=%g" % constraints
-        return text
+    chisq = fitness.nllf() / fitness.numpoints()
+    text = format_uncertainty(chisq, None)
+    failed_constraints = [
+        str(c) for c in parameter.flatten(fitness.parameters())
+        if isinstance(c, parameter.Constraint) and not c
+    ]
+    if failed_constraints:
+        text += f" failed: {', '.join(failed_constraints)}"
+    return text
 
-    def show(self, _subs=None):
-        """Print the available parameters to the console as a tree."""
-        print(parameter.format(self.parameters(), freevars=_subs))
-        print("[chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
+def show_parameters(fitness, subs=None):
+    """Print the available parameters to the console as a tree."""
+    print(parameter.format(fitness.parameters(), freevars=subs))
+    print("[chisq=%s, nllf=%g]" % (chisq_str(fitness), fitness.nllf()))
 
 
 @util.schema(init=False, eq=False)
@@ -516,6 +519,7 @@ class FitProblem:
         all_parameters = parameter.unique(self.model_parameters())
         # print "all_parameters",all_parameters
         self._parameters = parameter.varying(all_parameters)
+        self._model_constraints = parameter.constraints(all_parameters)
         self._bounded = parameter.priors(all_parameters)
         self.dof = self.model_points()
         self.dof -= len(self._parameters)
@@ -553,6 +557,9 @@ class FitProblem:
         return nllf
 
     def constraints_satisfied(self) -> bool:
+        # Check for constraints built into the model
+        if not all(c for c in self._model_constraints):
+            return False
         if callable(self.constraints):
             return self.constraints() == 0.
         if self.constraints is None:
@@ -593,9 +600,9 @@ class FitProblem:
 
     def show(self):
         for i, f in enumerate(self.models):
-            print("-- Model %d %s" % (i, f.name))
+            print("-- Model %d %s" % (i, getattr(f, 'name', '')))
             subs = self.freevars.get_model(i) if self.freevars else {}
-            f.show(_subs=subs)
+            show_parameters(f, subs=subs)
         print("[overall chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
 
     def plot(self, p=None, fignum=1, figfile=None, view=None):
@@ -603,8 +610,10 @@ class FitProblem:
         if p is not None:
             self.setp(p)
         for i, f in enumerate(self.models):
-            pylab.figure(i + fignum)
+            if not hasattr(f, 'plot'):
+                continue
             f.plot(view=view)
+            pylab.figure(i + fignum)
             pylab.suptitle('Model %d - %s' % (i, f.name))
             pylab.text(0.01, 0.01, 'chisq=%s' % f.chisq_str(),
                    transform=pylab.gca().transAxes)
