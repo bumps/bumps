@@ -593,7 +593,7 @@ class FitProblem:
 
     def show(self):
         for i, f in enumerate(self.models):
-            print("-- Model %d %s" % (i, f.name))
+            print("-- Model %d %s" % (i, getattr(f, 'name', '')))
             subs = self.freevars.get_model(i) if self.freevars else {}
             f.show(_subs=subs)
         print("[overall chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))

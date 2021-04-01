@@ -323,10 +323,10 @@ class Parameter(ValueProtocol, ParameterSchema):
         return not self.fittable or self.slot.fixed
     @fixed.setter
     def fixed(self, state):
-        # Can't set fixed to true if the parameter is not fittable
+        # Can't set fixed to false if the parameter is not fittable
         if self.fittable:
             self.slot.fixed = state
-        elif state:
+        elif not state:
             raise TypeError(f"value in {self.name} is not fittable")
 
     ## Use the following if bounds are on the value rather than the parameter
