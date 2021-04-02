@@ -35,8 +35,7 @@ from . import bounds as mbounds
 from . import pmath
 from .util import field, field_desc, schema, has_schema
 
-bounds_classes = [c for c in mbounds.Bounds.__subclasses__() if has_schema(c)]
-BoundsType = Union[tuple(bounds_classes)]
+BoundsType = mbounds.BoundsType
 
 T = TypeVar('T')
 
@@ -97,7 +96,10 @@ class OperatorMixin:
     # becoming part of the parameter expression.
     def __float__(self):
         return float(self.value)
-
+    def __bool__(self):
+        # Note: __bool__ must return true or false, so we can't handle
+        # lazy constraint expressions like not a, a or b, a and b.
+        raise TypeError("use (p != 0) to test against zero")
     ...  # operators and functions will be filled in later
 
 class ValueProtocol(OperatorMixin):
@@ -115,6 +117,7 @@ class ValueProtocol(OperatorMixin):
     def parameters(self) -> List["Parameter"]:
         ...
 
+
 @schema(classname="Parameter")
 class ParameterSchema:
     """
@@ -122,13 +125,15 @@ class ParameterSchema:
     """
     id: int = field(default=0, init=False)
     name: Optional[str] = field(default=None, init=False)
-    slot: ValueType
-    hard_limits: Tuple[float, float] = (-np.inf, np.inf)
+    fittable: bool = False
+    fixed: bool = True
+    value: ValueType
+    limits: Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]] = (-np.inf, np.inf)
     # TODO: are priors on the parameter or on the value?
     bounds: Optional[BoundsType] = None
     #discrete: bool = field(default=False, init=False)
 
-class Parameter(ValueProtocol, ParameterSchema):
+class Parameter(ParameterSchema, ValueProtocol):
     """
     A parameter is a container for a symbolic value.
 
@@ -348,17 +353,17 @@ class Parameter(ValueProtocol, ParameterSchema):
     def __float__(self):
         return float(self.value)
 
-    def nllf(self):
+    def nllf(self) -> float:
         """
         Return -log(P) for the current parameter value.
         """
         value = self.value
         # TODO: for efficiency create bounds intersection in FitProblem.reset_model
-        if not (self.hard_limits[0] <= value <= self.hard_limits[1]):
+        if not (self.limits[0] <= value <= self.limits[1]):
             return np.inf
         return self.bounds.nllf(value)
 
-    def residual(self):
+    def residual(self) -> float:
         """
         Return the z score equivalent for the current parameter value.
 
@@ -425,7 +430,7 @@ class Parameter(ValueProtocol, ParameterSchema):
             fixed: Optional[bool]=None,
             name: Optional[str]=None,
             id: Optional[int]=None,
-            limits: Optional[Tuple[float, float]]=None,
+            limits: Optional[Tuple[Union[float, Literal[None, "-inf"]], Union[float, Literal[None, "inf"]]]]=None,
             **kw):
         # Check if we are started with value=range or bounds=range; if we
         # are given bounds, then assume this is a fitted parameter, otherwise
@@ -456,9 +461,10 @@ class Parameter(ValueProtocol, ParameterSchema):
         self.id = id if id is not None else builtins.id(self)
         if limits is None:
             limits = (-np.inf, np.inf)
-        self.hard_limits = (
-            (-np.inf if limits[0] is None else limits[0]),
-            (np.inf if limits[1] is None else limits[1]))
+
+        self.limits  = (
+            (-np.inf if limits[0] is None else float(limits[0])),
+            (np.inf if limits[1] is None else float(limits[1])))
         self._set_bounds(bounds)
         # Note: fixed is True unless fixed=False or bounds=bounds were given
         # as function arguments. Note that _set_bounds() will always set the
@@ -497,7 +503,8 @@ class Parameter(ValueProtocol, ParameterSchema):
             # parameter which is linked to a parameter.
             bounds = getattr(self.slot, 'bounds', None)
             value = self.value
-            self.slot = Variable(value)
+            fixed = self.fixed
+            self.slot = Variable(value, fixed=fixed)
             self.slot.bounds = bounds
         else:
             # This throws away the original variable. Maybe we want to keep
@@ -516,8 +523,9 @@ class VariableSchema:
     #bounds: Union[tuple(bounds_classes)] = field(default=mbounds.Unbounded(), init=False)
 
 class Variable(ValueProtocol, VariableSchema):
-    def __init__(self, value):
+    def __init__(self, value, fixed=True):
         self.value = value
+        self.fixed = fixed
     def parameters(self):
         return []
 
@@ -1234,7 +1242,7 @@ def fittable(s):
     return [p for p in unique(s) if p.fittable]
 
 
-def varying(s):
+def varying(s: List[Parameter]) -> List[Parameter]:
     """
     Return the list of fitted parameters in the model.
 
@@ -1242,15 +1250,15 @@ def varying(s):
     """
     return [p for p in unique(s) if not p.fixed]
 
-def _has_prior(p):
+def _has_prior(p: Parameter) -> bool:
     bounds = getattr(p, 'bounds', None)
-    limits = getattr(p, 'hard_limits', (-np.inf, np.inf))
+    limits = getattr(p, 'limits', (-np.inf, np.inf))
     return (
         bounds is not None
         and not isinstance(bounds, mbounds.Unbounded)
         and limits != (-np.inf, np.inf))
 
-def priors(s):
+def priors(s: List[Parameter]) -> List[Parameter]:
     """
     Return the list of parameters (fitted or computed) that have prior
     probabilities associated with them. This includes all varying parameters,
@@ -1259,7 +1267,7 @@ def priors(s):
     """
     return [p for p in unique(s) if _has_prior(p)]
 
-def randomize(s):
+def randomize(s: List[Parameter]):
     """
     Set random values to the parameters in the parameter set, with
     values chosen according to the bounds.
@@ -1268,7 +1276,7 @@ def randomize(s):
         p.value = p.bounds.random(1)[0]
 
 
-def current(s):
+def current(s: List[Parameter]):
     return [p.value for p in s]
 
 # ========= trash ===================
@@ -1332,13 +1340,16 @@ class Constraint:
         self.op = op
 
     def __bool__(self):
-        return self.compare(float(self.a), float(self.b))
+        raise TypeError("failed bool")
     __nonzero__ = __bool__
     def __float__(self):
         """return a float value that can be differentiated"""
         return 0. if bool(self) else abs(float(self.a) - float(self.b))
     def __str__(self):
         return "(%s %s %s)" %(self.a, self.op, self.b)
+    @property
+    def satisfied(self):
+        return self.compare(float(self.a), float(self.b))
 
 
 def _make_constraint(op_str: str) -> Callable[..., Constraint]:
@@ -1587,6 +1598,30 @@ def test_operator():
     b.value = 4
     nllf_target = 0.5*((b.value-mu)/sigma)**2 + np.log(2*np.pi*sigma**2)/2
     assert abs(b.nllf() - nllf_target)/nllf_target < 1e-12
+
+ # Check conditions
+    a.value, b.value = 3, 4
+    capture = a < b
+    assert isinstance(capture, Constraint)
+    assert capture.satisfied
+    a.value, b.value = 4, 3
+    assert not capture.satisfied
+
+    scope = locals()
+    def raises(condition_str, exception):
+        try:
+            eval(condition_str, locals=scope)
+        except exception:
+            pass
+        else:
+            raise AssertionError(f"{condition_str} does not raise {exception}")
+    raises("a < b < c", TypeError)
+    raises("a < b and b < c", TypeError)
+    raises("a < b or b < c", TypeError)
+    raises("not (a < b)", TypeError)
+    raises("not a", TypeError)
+    raises("a and b", TypeError)
+    raises("a or b", TypeError)
 
 if __name__ == "__main__":
     test_operator()
