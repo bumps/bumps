@@ -68,36 +68,10 @@ except ImportError:
 
 from .util import field, schema, Optional, Any, Union, Dict, Callable, Literal, Tuple, List, Literal
 
-#LimitValue = Union[float, Literal["Infinity", "-Infinity"]]
+LimitValue = Union[float, Literal["-inf", "inf"]]
+LimitsType = Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]
 
-@schema()
-class LimitValue:
-    """
-    class to handle potentially infinite floats,
-    specifically for comparisons (and serialization)
-    """
-    value: float
-
-    def __init__(self, value: Union[float, str]):
-        self.value = float(value)
-    def __repr__(self):
-        return repr(self.value)
-
-    # comparison operators:
-    def __eq__(self, other):
-        return (self.value == other)
-    def __ge__(self, other):
-        return (self.value >= other)
-    def __gt__(self, other):
-        return (self.value > other)
-    def __le__(self, other):
-        return (self.value <= other)
-    def __lt__(self, other):
-        return (self.value < other)
-    
-    
-
-def pm(v, plus, minus=None, limits=None):
+def pm(v, plus, minus=None, limits: Optional[LimitsType]=None):
     """
     Return the tuple (~v-dv,~v+dv), where ~expr is a 'nice' number near to
     to the value of expr.  For example::
@@ -668,18 +642,17 @@ class BoundedNormal(Bounds):
     """
     mean: float = 0.0
     std: float = 1.0
-    lo: Union[float, Literal[None]]
-    hi: Union[float, Literal[None]]
+    lo: Union[float, Literal["-inf"]]
+    hi: Union[float, Literal["inf"]]
 
-    def __init__(self, mean=0, std=1, limits=(-inf, inf), hi=None, lo=None):
+    def __init__(self, mean=0, std=1, limits=(-inf, inf), hi="inf", lo="-inf"):
         if limits is not None:
             # for backward compatibility:
             lo, hi = limits
-        else:
-            limits = (
-                -inf if lo is None else lo,
-                inf if hi is None else hi
-            )
+        limits = (
+            -inf if lo is None else float(lo),
+            inf if hi is None else float(hi)
+        )
         self.limits = limits
         self.lo, self.hi = lo, hi
         self.mean, self.std = mean, std
@@ -871,3 +844,5 @@ def _put01_inf(v):
     x = math.ldexp(s * m, e + _E_MIN)
     # print "< x,e,m,s,v",x,e+_e_min,s*m,s,v
     return x
+
+BoundsType = Union[Unbounded, Bounded, BoundedAbove, BoundedBelow, BoundedNormal, SoftBounded]
