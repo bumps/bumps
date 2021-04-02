@@ -30,7 +30,7 @@ try:
     from typing import Literal, Protocol
 except ImportError:
     from typing_extensions import Literal, Protocol
-from typing import Optional, Type, TypeVar, Any, Union, Dict, Callable, Tuple, List
+from typing import Optional, Type, TypeVar, Any, Union, Dict, Callable, Tuple, List, Sequence
 
 # decorator to tie model classes to implementations:
 def implementation(cls):
