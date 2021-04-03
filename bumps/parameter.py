@@ -126,14 +126,14 @@ class ParameterSchema:
     id: int = field(default=0, init=False)
     name: Optional[str] = field(default=None, init=False)
     fittable: bool = False
-    fixed: bool = True
-    value: ValueType
-    limits: Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]] = (-np.inf, np.inf)
+    #fixed: bool = True
+    slot: ValueType
+    limits: Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]] = ("-inf", "inf")
     # TODO: are priors on the parameter or on the value?
     bounds: Optional[BoundsType] = None
     #discrete: bool = field(default=False, init=False)
 
-class Parameter(ParameterSchema, ValueProtocol):
+class Parameter(ValueProtocol, ParameterSchema):
     """
     A parameter is a container for a symbolic value.
 
@@ -425,7 +425,8 @@ class Parameter(ParameterSchema, ValueProtocol):
 
     def __init__(
             self,
-            value: Union[float, Tuple[float, float], ValueType],
+            value: Optional[Union[float, Tuple[float, float]]] = None,
+            slot: Optional[ValueType] = None,
             bounds: Optional[Union[BoundsType, Tuple[float, float]]]=None,
             fixed: Optional[bool]=None,
             name: Optional[str]=None,
@@ -450,13 +451,16 @@ class Parameter(ParameterSchema, ValueProtocol):
         if fixed is None:
             fixed = (bounds is None)
         bounds = mbounds.init_bounds(bounds)
-        if value is None:
-            value = bounds.start_value()
-        if isinstance(value, (float, int)):
-            value = Variable(value)
-        assert isinstance(value, (Constant, Variable, Expression, Parameter))
+        if slot is None:
+            if value is None:
+                value = bounds.start_value()
+            if isinstance(value, (float, int)):
+                slot = Variable(value, fixed)
+            else:
+                raise TypeError("value %s: %s cannot be converted to Variable" % (str(name), str(value)))
+        assert isinstance(slot, (Constant, Variable, Expression, Parameter))
 
-        self.slot = value
+        self.slot = slot
         self.name = name
         self.id = id if id is not None else builtins.id(self)
         if limits is None:
