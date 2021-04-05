@@ -68,7 +68,9 @@ from .parameter import to_dict, Parameter
 from .formatnum import format_uncertainty
 from . import util
 
-# Abstract base class
+# Abstract base class:
+# can use "isinstance" to check if a class implements the protocol
+@util.runtime_checkable
 @util.schema(init=False)
 class Fitness(util.Protocol):
     """
@@ -76,7 +78,6 @@ class Fitness(util.Protocol):
 
     See :ref:`fitness` for a detailed explanation.
     """
-    name: str
 
     def parameters(self) -> util.List[Parameter]:
         """
