@@ -81,6 +81,27 @@ def to_dict(p):
         #print(f"converting type {type(p)} to str")
         return str(p)
 
+
+@schema(init=True)
+class Uniform:
+    """ Uniform distribution with hard boundaries """
+
+
+@schema(init=True)
+class Normal:
+    """ Normal distribution (Gaussian) """
+    std: float = field_desc("standard deviation (1-sigma)")
+    mean: float = field_desc("center of the distribution")
+
+
+@schema(init=True)
+class UniformSoftBounded:
+    """ Uniform distribution with error-function PDF on boundaries """
+    std: float = field_desc("width of the edge distribution")
+
+
+DistributionType = Union[Uniform, Normal, UniformSoftBounded]
+
 class OperatorMixin:
     """
     The set of operations that can be performed on parameter-like objects
@@ -129,8 +150,10 @@ class ParameterSchema:
     #fixed: bool = True
     slot: ValueType
     limits: Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]] = ("-inf", "inf")
+    fitrange: Optional[Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]] = None
+    distribution: DistributionType = Uniform()
     # TODO: are priors on the parameter or on the value?
-    bounds: Optional[BoundsType] = None
+    # bounds: Optional[BoundsType] = None
     #discrete: bool = field(default=False, init=False)
 
 class Parameter(ValueProtocol, ParameterSchema):
@@ -211,6 +234,9 @@ class Parameter(ValueProtocol, ParameterSchema):
     """
     # Parameters may be dependent on other parameters, and the
     # fit engine will need to access them.
+    #prior: Optional[BoundsType]
+    limits: Tuple[float, float]
+
     def parameters(self):
         return [self] + self.slot.parameters()
 
@@ -231,7 +257,7 @@ class Parameter(ValueProtocol, ParameterSchema):
         The resulting range is converted to "nice" numbers.
         """
         bounds = mbounds.pmp(self.value, plus, minus, limits=limits)
-        self._set_bounds(mbounds.Bounded(*bounds))
+        self.fitrange = bounds
         return self
 
     def pm(self, plus, minus=None, limits=None):
@@ -251,7 +277,7 @@ class Parameter(ValueProtocol, ParameterSchema):
         The resulting range is converted to "nice" numbers.
         """
         bounds = mbounds.pm(self.value, plus, minus, limits=limits)
-        self._set_bounds(mbounds.Bounded(*bounds))
+        self.fitrange = bounds
         return self
 
     def dev(self, std, mean=None, limits=None, sigma=None, mu=None):
@@ -276,25 +302,26 @@ class Parameter(ValueProtocol, ParameterSchema):
                 mean = mu
         if mean is None:
             mean = self.value  # Note: value is an attribute of the derived class
-        if limits is None:
-            self._set_bounds(mbounds.Normal(mean, std))
-        else:
-            self._set_bounds(mbounds.BoundedNormal(mean, std, limits))
+        self.fitrange = limits if limits is not None else (-inf, inf)
+        self.distribution = Normal(mean=mean, std=std)
         return self
 
-    def pdf(self, dist):
-        """
-        Allow the parameter to vary according to any continuous scipy.stats
-        distribution.
-        """
-        self._set_bounds(mbounds.Distribution(dist))
-        return self
+    # def pdf(self, dist):
+    #     """
+    #     Allow the parameter to vary according to any continuous scipy.stats
+    #     distribution.
+    #     """
+    #     # TODO: have to make some kind of registry for distributions?
+    #     # this will not work in new system of setting priors in model_reset.
+    #     self._set_bounds((-inf, inf))
+    #     self.distribution = dist
+    #     return self
 
     def range(self, low, high):
         """
         Allow the parameter to vary within the given range.
         """
-        self._set_bounds(mbounds.init_bounds((low, high)))
+        self.fitrange = (low, high)
         return self
 
     def soft_range(self, low, high, std):
@@ -302,16 +329,9 @@ class Parameter(ValueProtocol, ParameterSchema):
         Allow the parameter to vary within the given range, or with Gaussian
         probability, stray from the range.
         """
-        self._set_bounds(mbounds.SoftBounded(low, high, std))
+        self.fitrange = (low, high)
+        self.distribution = UniformSoftBounded(std=std)
         return self
-
-    def _set_bounds(self, b):
-        # TODO: May be redundant if self.bounds is a property
-        # Warning: awkward code. At this point bounds should never be None
-        # so fixed will always be false.
-        if self.fittable:
-            self.fixed = (b is None)
-        self.bounds = b
 
     # Delegate to slots
     @property
@@ -427,33 +447,34 @@ class Parameter(ValueProtocol, ParameterSchema):
             self,
             value: Optional[Union[float, Tuple[float, float]]] = None,
             slot: Optional[ValueType] = None,
-            bounds: Optional[Union[BoundsType, Tuple[float, float]]]=None,
+            #bounds: Optional[Union[BoundsType, Tuple[float, float]]]=None,
             fixed: Optional[bool]=None,
             name: Optional[str]=None,
             id: Optional[int]=None,
             limits: Optional[Tuple[Union[float, Literal[None, "-inf"]], Union[float, Literal[None, "inf"]]]]=None,
+            fitrange: Optional[Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]]=None,
+            distribution: DistributionType = Uniform(),
             **kw):
         # Check if we are started with value=range or bounds=range; if we
         # are given bounds, then assume this is a fitted parameter, otherwise
         # the parameter defaults to fixed; if value is not set, use the
         # midpoint of the range.
-        if bounds is None:
+        if fitrange is None:
             try:
                 # Note: throws TypeError if not a sequence (which we want to
                 # fall through to the remainder of the function), or ValueError
                 # if the sequence is the wrong length (which we want to fail).
                 lo, hi = value
                 warnings.warn(DeprecationWarning("parameters can no longer be initialized with a fit range"))
-                bounds = lo, hi
+                fitrange = lo, hi
                 value = None
             except TypeError:
                 pass
         if fixed is None:
-            fixed = (bounds is None)
-        bounds = mbounds.init_bounds(bounds)
+            fixed = (fitrange is None)
         if slot is None:
             if value is None:
-                value = bounds.start_value()
+                value = float(fitrange[0]) if fitrange is not None else 0 # ? what else to do here?
             if isinstance(value, (float, int)):
                 slot = Variable(value, fixed)
             else:
@@ -465,11 +486,13 @@ class Parameter(ValueProtocol, ParameterSchema):
         self.id = id if id is not None else builtins.id(self)
         if limits is None:
             limits = (-np.inf, np.inf)
-
         self.limits  = (
             (-np.inf if limits[0] is None else float(limits[0])),
             (np.inf if limits[1] is None else float(limits[1])))
-        self._set_bounds(bounds)
+        if fitrange is not None:
+            fitrange = (float(fitrange[0]), float(fitrange[1]))
+        self.fitrange = fitrange
+        self.distribution = distribution
         # Note: fixed is True unless fixed=False or bounds=bounds were given
         # as function arguments. Note that _set_bounds() will always set the
         # fixed to False, so we need to reset it after calling _set_bounds().
@@ -480,6 +503,7 @@ class Parameter(ValueProtocol, ParameterSchema):
         # has something to work with.
         for k, v in kw.items():
             setattr(self, k, v)
+        self.prior = None # to be filled by model_reset
 
     def randomize(self, rng=None):
         """
@@ -516,6 +540,45 @@ class Parameter(ValueProtocol, ParameterSchema):
             # is removed it pops back?
             self.slot = expression
 
+class SupportsPrior:
+    prior: Optional[BoundsType]
+
+    def reset_prior(self):
+        self.prior = None
+
+    def has_prior(self):
+        return self.prior is not None
+    
+    def add_prior(self, distribution: DistributionType, fitrange=None, limits=(-inf, inf)):
+        if fitrange is not None:
+            # get the intersection of the limits here.
+            limits = (
+                np.clip(limits[0], *fitrange),
+                np.clip(limits[1], *fitrange)
+            )
+        if isinstance(distribution, Normal):
+            if limits == (-inf, inf):
+                prior = mbounds.BoundedNormal(mean=distribution.mean, std=distribution.std, limits=limits)
+            else:
+                prior = mbounds.Normal(mean=distribution.mean, std=distribution.std)
+        elif isinstance(distribution, UniformSoftBounded):
+            lo, hi = limits
+            prior = mbounds.SoftBounded(lo=lo, hi=hi, std=distribution.std)
+        elif isinstance(distribution, Uniform):
+            lo, hi = limits
+            if isinf(lo) and isinf(hi):
+                prior = mbounds.Unbounded()
+            elif isinf(lo):
+                prior = mbounds.BoundedAbove(hi)
+            elif isinf(hi):
+                prior = mbounds.BoundedBelow(lo)
+            else:
+                prior = mbounds.Bounded(lo, hi)
+        else:
+            raise ValueError("no distribution found matching %s" % (str(distribution)))
+        
+        self.prior = prior
+
 @schema(classname="Variable")
 class VariableSchema:
     """
@@ -526,7 +589,7 @@ class VariableSchema:
     ## uncomment if bounds are on variable rather than parameter
     #bounds: Union[tuple(bounds_classes)] = field(default=mbounds.Unbounded(), init=False)
 
-class Variable(ValueProtocol, VariableSchema):
+class Variable(ValueProtocol, VariableSchema, SupportsPrior):
     def __init__(self, value, fixed=True):
         self.value = value
         self.fixed = fixed
@@ -689,7 +752,7 @@ def _precedence(obj: Any) -> int:
     return VALUE_PRECEDENCE
 
 @schema(init=False)
-class Expression(ValueProtocol):
+class Expression(ValueProtocol, SupportsPrior):
     """
     Parameter expression
     """
@@ -1208,7 +1271,7 @@ def summarize(pars, sorted=False):
     return "\n".join(output)
 
 
-def unique(s):
+def unique(s) -> List[Parameter]:
     """
     Return the unique set of parameters
 
