@@ -61,10 +61,10 @@ import builtins
 from typing import Optional
 
 import numpy as np
-from numpy import inf, isnan, NaN
+from numpy import inf, isnan, NaN, isfinite
 
 from . import parameter, bounds as mbounds
-from .parameter import to_dict, Parameter
+from .parameter import to_dict, Parameter, Expression, Variable
 from .formatnum import format_uncertainty
 from . import util
 
@@ -499,13 +499,38 @@ class FitProblem:
         # print self.model_parameters()
         all_parameters = parameter.unique(self.model_parameters())
         # print "all_parameters",all_parameters
-        self._parameters = parameter.varying(all_parameters)
+        targets = [p.slot for p in all_parameters if isinstance(p.slot, Variable) or isinstance(p.slot, Expression)]
+        for target in targets:
+            target.reset_prior()  # no constraints
+        broken = []
+        for p in all_parameters:
+            slot = p.slot
+            value = p.value
+            # What is the code below supposed to do?  Can there be slots in slots in slots??
+            while not isinstance(slot, Variable) or isinstance(slot, Expression):
+                continue
+            #    slot = p.slot
+            slot.add_prior(p.distribution, fitrange=p.fitrange, limits=p.limits)
+
+            # While we are walking all parameters check which constraints aren't satisfied
+            # Build up a list of strings to help the user initialize the model correctly
+            if (p.limits[0] > value) or (value > p.limits[1]):
+                broken.append(f"{p}={p.value} is outside {p.limits}")
+            elif not isfinite(slot.prior.nllf()):
+                broken.append(f"{p}={p.value} is outside {slot.prior}")
+
+        self._parameters = [p for p in all_parameters if isinstance(p.slot, Variable) and not p.fixed]
         self._bounded = parameter.priors(all_parameters)
         self.dof = self.model_points()
         self.dof -= len(self._parameters)
         if self.dof <= 0:
             raise ValueError("Need more data points than fitting parameters")
         #self.constraints = pars.constraints()
+        # Find the constraints on variables and expressions that we need to compute
+        parameter_constraints = [p.slot for p in all_parameters if isinstance(p.slot, Variable) and p.slot.has_prior()]
+        expression_constraints = [p.slot for p in all_parameters if isinstance(p.slot Expression) and p.slot.has_prior()]
+        self.all_constraints = parameter_constraints + expression_constraints
+
     def model_points(self):
         """Return number of points in all models"""
         return sum(f.numpoints() for f in self.models)
