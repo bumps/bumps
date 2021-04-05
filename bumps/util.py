@@ -90,7 +90,7 @@ def schema(
         # optional temporary name change, which affects generated model:
         if name != realname:
             cls.__name__ = name
-        dataclass(init=do_init, eq=eq)(cls)
+        dataclass(init=init, eq=eq)(cls)
         # set the name back, to match python globals:
         cls.__name__ = realname
         # HACK! Pydantic doesn't copy __doc__ into model
