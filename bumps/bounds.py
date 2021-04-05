@@ -845,4 +845,4 @@ def _put01_inf(v):
     # print "< x,e,m,s,v",x,e+_e_min,s*m,s,v
     return x
 
-BoundsType = Union[Unbounded, Bounded, BoundedAbove, BoundedBelow, BoundedNormal, SoftBounded]
+BoundsType = Union[Unbounded, Bounded, BoundedAbove, BoundedBelow, BoundedNormal, SoftBounded, Normal]
