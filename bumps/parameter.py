@@ -11,6 +11,8 @@ Users can also perform calculations with parameters, tying together different
 parts of the model, or different models.
 """
 #__all__ = [ 'Parameter']
+from bumps.dream.convergence import _check_nllf_distribution
+from build.lib.bumps.bounds import Unbounded
 import operator
 import sys
 import builtins
@@ -39,7 +41,7 @@ BoundsType = mbounds.BoundsType
 
 T = TypeVar('T')
 
-ValueType = Union['Constant', 'Variable', 'Expression', 'Parameter']
+ValueType = Union['Variable', 'Expression', 'Parameter', float]
 
 # TODO: avoid evaluation of subexpressions if parameters do not change.
 # This is especially important if the subexpression invokes an expensive
@@ -139,24 +141,65 @@ class ValueProtocol(OperatorMixin):
         ...
 
 
-@schema(classname="Parameter")
+class SupportsPrior:
+    prior: Optional[BoundsType]
+    limits: Tuple[float, float]
+
+    def reset_prior(self):
+        self.prior = None
+
+    def has_prior(self):
+        return (
+            self.prior is not None
+            and not isinstance(self.prior, mbounds.Unbounded)
+            and self.limits != (-np.inf, np.inf))
+    
+    def add_prior(self, distribution: DistributionType, bounds=None, limits=(-inf, inf)):
+        if bounds is not None:
+            # get the intersection of the limits here.
+            limits = (
+                np.clip(limits[0], *bounds),
+                np.clip(limits[1], *bounds)
+            )
+        if isinstance(distribution, Normal):
+            if limits == (-inf, inf):
+                prior = mbounds.BoundedNormal(mean=distribution.mean, std=distribution.std, limits=limits)
+            else:
+                prior = mbounds.Normal(mean=distribution.mean, std=distribution.std)
+        elif isinstance(distribution, UniformSoftBounded):
+            lo, hi = limits
+            prior = mbounds.SoftBounded(lo=lo, hi=hi, std=distribution.std)
+        elif isinstance(distribution, Uniform):
+            lo, hi = limits
+            if isinf(lo) and isinf(hi):
+                prior = mbounds.Unbounded()
+            elif isinf(lo):
+                prior = mbounds.BoundedAbove(hi)
+            elif isinf(hi):
+                prior = mbounds.BoundedBelow(lo)
+            else:
+                prior = mbounds.Bounded(lo, hi)
+        else:
+            raise ValueError("no distribution found matching %s" % (str(distribution)))
+        
+        self.prior = prior
+
+
+@schema(classname="Parameter", eq=False)
 class ParameterSchema:
     """
     Saved state for a slot in the parameter model.
     """
     id: int = field(default=0, init=False)
     name: Optional[str] = field(default=None, init=False)
-    fittable: bool = False
-    #fixed: bool = True
+    fixed: bool = True
     slot: ValueType
     limits: Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]] = ("-inf", "inf")
-    fitrange: Optional[Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]] = None
+    bounds: Optional[Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]] = None
     distribution: DistributionType = Uniform()
-    # TODO: are priors on the parameter or on the value?
-    # bounds: Optional[BoundsType] = None
     #discrete: bool = field(default=False, init=False)
 
-class Parameter(ValueProtocol, ParameterSchema):
+class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
     """
     A parameter is a container for a symbolic value.
 
@@ -236,6 +279,7 @@ class Parameter(ValueProtocol, ParameterSchema):
     # fit engine will need to access them.
     #prior: Optional[BoundsType]
     limits: Tuple[float, float]
+    _fixed: bool
 
     def parameters(self):
         return [self] + self.slot.parameters()
@@ -257,7 +301,8 @@ class Parameter(ValueProtocol, ParameterSchema):
         The resulting range is converted to "nice" numbers.
         """
         bounds = mbounds.pmp(self.value, plus, minus, limits=limits)
-        self.fitrange = bounds
+        self.bounds = bounds
+        self.fixed = False
         return self
 
     def pm(self, plus, minus=None, limits=None):
@@ -277,7 +322,8 @@ class Parameter(ValueProtocol, ParameterSchema):
         The resulting range is converted to "nice" numbers.
         """
         bounds = mbounds.pm(self.value, plus, minus, limits=limits)
-        self.fitrange = bounds
+        self.bounds = bounds
+        self.fixed = False
         return self
 
     def dev(self, std, mean=None, limits=None, sigma=None, mu=None):
@@ -302,8 +348,9 @@ class Parameter(ValueProtocol, ParameterSchema):
                 mean = mu
         if mean is None:
             mean = self.value  # Note: value is an attribute of the derived class
-        self.fitrange = limits if limits is not None else (-inf, inf)
+        self.bounds = limits if limits is not None else (-inf, inf)
         self.distribution = Normal(mean=mean, std=std)
+        self.fixed = False
         return self
 
     # def pdf(self, dist):
@@ -321,7 +368,8 @@ class Parameter(ValueProtocol, ParameterSchema):
         """
         Allow the parameter to vary within the given range.
         """
-        self.fitrange = (low, high)
+        self.bounds = (low, high)
+        self.fixed = False
         return self
 
     def soft_range(self, low, high, std):
@@ -329,8 +377,9 @@ class Parameter(ValueProtocol, ParameterSchema):
         Allow the parameter to vary within the given range, or with Gaussian
         probability, stray from the range.
         """
-        self.fitrange = (low, high)
+        self.bounds = (low, high)
         self.distribution = UniformSoftBounded(std=std)
+        self.fixed = False
         return self
 
     # Delegate to slots
@@ -345,12 +394,12 @@ class Parameter(ValueProtocol, ParameterSchema):
         return isinstance(self.slot, Variable)
     @property
     def fixed(self):
-        return not self.fittable or self.slot.fixed
+        return not self.fittable or self._fixed
     @fixed.setter
     def fixed(self, state):
         # Can't set fixed to false if the parameter is not fittable
         if self.fittable:
-            self.slot.fixed = state
+            self._fixed = state
         elif not state:
             raise TypeError(f"value in {self.name} is not fittable")
 
@@ -378,10 +427,14 @@ class Parameter(ValueProtocol, ParameterSchema):
         Return -log(P) for the current parameter value.
         """
         value = self.value
-        # TODO: for efficiency create bounds intersection in FitProblem.reset_model
         if not (self.limits[0] <= value <= self.limits[1]):
+            # quick short-circuit if not meeting own limits:
             return np.inf
-        return self.bounds.nllf(value)
+        else:
+            logp = self.prior.nllf(value)
+            if hasattr(self.slot, 'nllf'):
+                logp += self.slot.nllf()
+            return logp
 
     def residual(self) -> float:
         """
@@ -395,7 +448,7 @@ class Parameter(ValueProtocol, ParameterSchema):
         compute the cdf of value in the parameter distribution and invert
         it using the ppf from the standard normal distribution.
         """
-        return 0.0 if self.bounds is None else self.bounds.residual(self.value)
+        return 0.0 if self.prior is None else self.prior.residual(self.value)
 
     def valid(self):
         """
@@ -407,7 +460,7 @@ class Parameter(ValueProtocol, ParameterSchema):
         """
         Format the parameter, value and range as a string.
         """
-        return "%s=%g in %s" % (self, self.value, self.bounds)
+        return "%s=%g in %s" % (self, self.value, self.prior)
 
     def __str__(self):
         name = self.name if self.name is not None else '?'
@@ -440,7 +493,7 @@ class Parameter(ValueProtocol, ParameterSchema):
         """
         Set a new value for the parameter, clipping it to the bounds.
         """
-        low, high = self.bounds.limits
+        low, high = self.prior.limits
         self.slot.value = min(max(value, low), high)
 
     def __init__(
@@ -452,31 +505,33 @@ class Parameter(ValueProtocol, ParameterSchema):
             name: Optional[str]=None,
             id: Optional[int]=None,
             limits: Optional[Tuple[Union[float, Literal[None, "-inf"]], Union[float, Literal[None, "inf"]]]]=None,
-            fitrange: Optional[Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]]=None,
+            bounds: Optional[Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]]=None,
             distribution: DistributionType = Uniform(),
             **kw):
         # Check if we are started with value=range or bounds=range; if we
         # are given bounds, then assume this is a fitted parameter, otherwise
         # the parameter defaults to fixed; if value is not set, use the
         # midpoint of the range.
-        if fitrange is None:
+        if bounds is None:
             try:
                 # Note: throws TypeError if not a sequence (which we want to
                 # fall through to the remainder of the function), or ValueError
                 # if the sequence is the wrong length (which we want to fail).
                 lo, hi = value
                 warnings.warn(DeprecationWarning("parameters can no longer be initialized with a fit range"))
-                fitrange = lo, hi
+                bounds = lo, hi
                 value = None
             except TypeError:
                 pass
         if fixed is None:
-            fixed = (fitrange is None)
+            fixed = (bounds is None)
         if slot is None:
             if value is None:
-                value = float(fitrange[0]) if fitrange is not None else 0 # ? what else to do here?
+                value = float(bounds[0]) if bounds is not None else 0 # ? what else to do here?
             if isinstance(value, (float, int)):
-                slot = Variable(value, fixed)
+                slot = Variable(value)
+            elif isinstance(value, ValueProtocol):
+                slot = value
             else:
                 raise TypeError("value %s: %s cannot be converted to Variable" % (str(name), str(value)))
         assert isinstance(slot, (Constant, Variable, Expression, Parameter))
@@ -489,9 +544,9 @@ class Parameter(ValueProtocol, ParameterSchema):
         self.limits  = (
             (-np.inf if limits[0] is None else float(limits[0])),
             (np.inf if limits[1] is None else float(limits[1])))
-        if fitrange is not None:
-            fitrange = (float(fitrange[0]), float(fitrange[1]))
-        self.fitrange = fitrange
+        if bounds is not None:
+            bounds = (float(bounds[0]), float(bounds[1]))
+        self.bounds = bounds
         self.distribution = distribution
         # Note: fixed is True unless fixed=False or bounds=bounds were given
         # as function arguments. Note that _set_bounds() will always set the
@@ -509,13 +564,13 @@ class Parameter(ValueProtocol, ParameterSchema):
         """
         Set a random value for the parameter.
         """
-        self.value = self.bounds.random(rng if rng is not None else mbounds.RNG)
+        self.value = self.prior.random(rng if rng is not None else mbounds.RNG)
 
     def feasible(self):
         """
         Value is within the limits defined by the model
         """
-        return self.bounds.limits[0] <= self.value <= self.bounds.limits[1]
+        return self.prior.limits[0] <= self.value <= self.prior.limits[1]
 
     def equals(self, expression: Optional[ValueType]):
         """
@@ -526,73 +581,31 @@ class Parameter(ValueProtocol, ParameterSchema):
         its bounds.
         """
         if expression is None:
-            # Grab the bounds from the slot. This only works if there is one
-            # level of indirection, not if the parameter is linked to a
-            # parameter which is linked to a parameter.
-            bounds = getattr(self.slot, 'bounds', None)
-            value = self.value
-            fixed = self.fixed
-            self.slot = Variable(value, fixed=fixed)
-            self.slot.bounds = bounds
+            # get the current value, and re-initialize the slot as a Variable
+            self.slot = Variable(self.value)
+        elif self is expression:
+            # don't make a circular reference to self.
+            warnings.warn(f"{self} tried to make circular reference to self...")
+            pass
         else:
             # This throws away the original variable. Maybe we want to keep
             # one around with whatever old values so that when the constraint
             # is removed it pops back?
             self.slot = expression
 
-class SupportsPrior:
-    prior: Optional[BoundsType]
-
-    def reset_prior(self):
-        self.prior = None
-
-    def has_prior(self):
-        return self.prior is not None
-    
-    def add_prior(self, distribution: DistributionType, fitrange=None, limits=(-inf, inf)):
-        if fitrange is not None:
-            # get the intersection of the limits here.
-            limits = (
-                np.clip(limits[0], *fitrange),
-                np.clip(limits[1], *fitrange)
-            )
-        if isinstance(distribution, Normal):
-            if limits == (-inf, inf):
-                prior = mbounds.BoundedNormal(mean=distribution.mean, std=distribution.std, limits=limits)
-            else:
-                prior = mbounds.Normal(mean=distribution.mean, std=distribution.std)
-        elif isinstance(distribution, UniformSoftBounded):
-            lo, hi = limits
-            prior = mbounds.SoftBounded(lo=lo, hi=hi, std=distribution.std)
-        elif isinstance(distribution, Uniform):
-            lo, hi = limits
-            if isinf(lo) and isinf(hi):
-                prior = mbounds.Unbounded()
-            elif isinf(lo):
-                prior = mbounds.BoundedAbove(hi)
-            elif isinf(hi):
-                prior = mbounds.BoundedBelow(lo)
-            else:
-                prior = mbounds.Bounded(lo, hi)
-        else:
-            raise ValueError("no distribution found matching %s" % (str(distribution)))
-        
-        self.prior = prior
 
 @schema(classname="Variable")
 class VariableSchema:
     """
     Saved state for a random variable in the model.
     """
-    fixed: bool = False # object property needs to be serialized
     value: float
     ## uncomment if bounds are on variable rather than parameter
     #bounds: Union[tuple(bounds_classes)] = field(default=mbounds.Unbounded(), init=False)
 
-class Variable(ValueProtocol, VariableSchema, SupportsPrior):
-    def __init__(self, value, fixed=True):
+class Variable(ValueProtocol, VariableSchema):
+    def __init__(self, value):
         self.value = value
-        self.fixed = fixed
     def parameters(self):
         return []
 
@@ -697,6 +710,7 @@ OPERATOR_PRECEDENCE = {
     "mul": 6,
     "div": 6,
     "truediv": 6,
+    "intdiv": 6,
     "add": 7,
     "sub": 7,
     "gt": 12,
@@ -712,6 +726,7 @@ OPERATOR_STRING = {
     "neg": "-",
     "mul": "*",
     "div": "/",
+    "truediv": "/",
     "intdiv": "//",
     "add": "+",
     "sub": "-",
@@ -751,8 +766,8 @@ def _precedence(obj: Any) -> int:
         return OPERATOR_PRECEDENCE.get(obj.op.name, CALL_PRECEDENCE)
     return VALUE_PRECEDENCE
 
-@schema(init=False)
-class Expression(ValueProtocol, SupportsPrior):
+@schema(init=False, eq=False)
+class Expression(ValueProtocol):
     """
     Parameter expression
     """
@@ -760,7 +775,7 @@ class Expression(ValueProtocol, SupportsPrior):
     fixed = True
 
     op: Operators # Enumerated type {function_name: display_name}
-    args: Sequence[Union[float, ValueType]]
+    args: Sequence[ValueType]
     _fn: Callable[..., float] # _fn(float, float, ...) -> float
 
     def __init__(self, op, args):
@@ -952,7 +967,7 @@ pmath.__all__.extend((
     ))
 
 #restate these for export, now that they're all defined:
-ValueType = Union[Parameter, Expression, Variable, Constant, float]
+ValueType = Union[Parameter, Expression, Variable, float]
 
 @schema(classname="ParameterSet")
 class ParameterSetSchema:
@@ -1234,7 +1249,7 @@ def format(p, indent=0, freevars=None, field=None):
             s += str(p) + " = "
         s += "%g" % p.value
         if not p.fixed:
-            s += " in [%g,%g]" %  tuple(p.bounds.limits)
+            s += " in [%g,%g]" %  tuple(p.bounds)
         return s
 
     elif isinstance(p, Parameter):
@@ -1258,7 +1273,7 @@ def summarize(pars, sorted=False):
         if not isfinite(p.value):
             bar = ["*invalid* "]
         else:
-            position = int(p.bounds.get01(p.value) * 9.999999999)
+            position = int(p.prior.get01(p.value) * 9.999999999)
             bar = ['.'] * 10
             if position < 0:
                 bar[0] = '<'
@@ -1318,11 +1333,11 @@ def varying(s: List[Parameter]) -> List[Parameter]:
     return [p for p in unique(s) if not p.fixed]
 
 def _has_prior(p: Parameter) -> bool:
-    bounds = getattr(p, 'bounds', None)
+    prior = getattr(p, 'prior', None)
     limits = getattr(p, 'limits', (-np.inf, np.inf))
     return (
-        bounds is not None
-        and not isinstance(bounds, mbounds.Unbounded)
+        prior is not None
+        and not isinstance(prior, mbounds.Unbounded)
         and limits != (-np.inf, np.inf))
 
 def priors(s: List[Parameter]) -> List[Parameter]:
@@ -1340,7 +1355,7 @@ def randomize(s: List[Parameter]):
     values chosen according to the bounds.
     """
     for p in s:
-        p.value = p.bounds.random(1)[0]
+        p.value = p.prior.random(1)[0]
 
 
 def current(s: List[Parameter]):
