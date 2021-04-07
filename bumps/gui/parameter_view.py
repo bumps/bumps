@@ -168,7 +168,7 @@ class ParametersModel(dv.PyDataViewModel):
                     low, high = '', ''
                 else:
                     fitted = True
-                    low, high = (str(v) for v in par.bounds.limits)
+                    low, high = (str(v) for v in par.prior.limits)
             else:
                 fitted = False
                 low, high = '', ''
@@ -203,14 +203,14 @@ class ParametersModel(dv.PyDataViewModel):
             elif col == 3:
                 if value == '': return
                 low = float(value)
-                high = par.bounds.limits[1]
-                if low != par.bounds.limits[0]:
+                high = par.prior.limits[1]
+                if low != par.prior.limits[0]:
                     par.range(low, high)
             elif col == 4:
                 if value == '': return
                 high = float(value)
-                low = par.bounds.limits[0]
-                if high != par.bounds.limits[1]:
+                low = par.prior.limits[0]
+                if high != par.prior.limits[1]:
                     par.range(low, high)
 
         if col == 0:
@@ -323,7 +323,7 @@ def params_to_dict(params):
                 low, high = '', ''
             else:
                 fitted = 'Yes'
-                low, high = (str(v) for v in params.bounds.limits)
+                low, high = (str(v) for v in params.prior.limits)
         else:
             fitted = ''
             low, high = '', ''

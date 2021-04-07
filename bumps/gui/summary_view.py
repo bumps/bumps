@@ -161,7 +161,7 @@ class ParameterSummary(wx.Panel):
         self.parameter = parameter
         self.model = model
 
-        self.low, self.high = (v for v in self.parameter.bounds.limits)
+        self.low, self.high = (v for v in self.parameter.prior.limits)
 
         text_hbox = wx.BoxSizer(wx.HORIZONTAL)
 
@@ -191,14 +191,14 @@ class ParameterSummary(wx.Panel):
         self.update_slider()
 
     def update_slider(self):
-        slider_pos = int(self.parameter.bounds.get01(self.parameter.value)*NUMTICKS)
+        slider_pos = int(self.parameter.prior.get01(self.parameter.value)*NUMTICKS)
         # Add line below if get01 doesn't protect against values out of range.
         #slider_pos = min(max(slider_pos,0),100)
         self.slider.SetValue(slider_pos)
         self.value.SetLabel(str(nice(self.parameter.value)))
 
         # Update new min and max range of values if changed.
-        newlow, newhigh = (v for v in self.parameter.bounds.limits)
+        newlow, newhigh = (v for v in self.parameter.prior.limits)
         if newlow != self.low:
             self.min_range.SetLabel(str(newlow))
 
@@ -207,7 +207,7 @@ class ParameterSummary(wx.Panel):
 
     def OnScroll(self, event):
         value = self.slider.GetValue()
-        new_value  = self.parameter.bounds.put01(value/NUMTICKS)
+        new_value  = self.parameter.prior.put01(value/NUMTICKS)
         self.parameter.value = new_value
         self.value.SetLabel(str(nice(new_value)))
         signal.update_parameters(model=self.model, delay=1)
