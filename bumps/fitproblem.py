@@ -216,6 +216,9 @@ class FitProblem:
     constraints: util.Optional[util.Sequence[parameter.Constraint]] = None
     penalty_nllf: util.Union[float, util.Literal["inf"]] = "inf"
 
+    _constraints_function: util.Callable[..., float] 
+    # _all_constraints: util.List[util.Union[Parameter, Expression]]
+
     def __init__(self, models: util.Union[Fitness, util.List[Fitness]], weights=None, name=None,
                  constraints=None,
                  penalty_nllf="inf",
@@ -243,7 +246,7 @@ class FitProblem:
         self.weights = weights
         self.penalty_nllf = float(penalty_nllf)
         self.set_active_model(0)  # Set the active model to model 0
-        self.model_reset()
+        self.model_reset() # sets self._all_constraints
         self.name = name
 
     @property
@@ -297,7 +300,7 @@ class FitProblem:
 
     def valid(self, pvec):
         """Return true if the point is in the feasible region"""
-        return all(v in p.bounds for p, v in zip(self._parameters, pvec))
+        return all(v in p.prior for p, v in zip(self._parameters, pvec))
 
     def setp(self, pvec):
         """
@@ -333,7 +336,7 @@ class FitProblem:
 
     def bounds(self):
         """Return the bounds for each parameter as a 2 x N array"""
-        limits = [p.bounds.limits for p in self._parameters]
+        limits = [p.prior.limits for p in self._parameters]
         return np.array(limits, 'd').T if limits else np.empty((2, 0))
 
     def randomize(self, n=None):
@@ -356,7 +359,7 @@ class FitProblem:
         # TODO: apply hard limits on parameters
         target = self.getp()
         target[~np.isfinite(target)] = 1.
-        pop = [p.bounds.random(n, target=v)
+        pop = [p.prior.random(n, target=v)
                for p, v in zip(self._parameters, target)]
         return np.array(pop).T
 
@@ -499,37 +502,40 @@ class FitProblem:
         # print self.model_parameters()
         all_parameters = parameter.unique(self.model_parameters())
         # print "all_parameters",all_parameters
-        targets = [p.slot for p in all_parameters if isinstance(p.slot, Variable) or isinstance(p.slot, Expression)]
-        for target in targets:
-            target.reset_prior()  # no constraints
-        broken = []
+        # for p in all_parameters:
+        #     if hasattr(p, 'reset_prior'):
+        #         p.reset_prior()  # no constraints
+        #     else:
+        #         raise ValueError(f"{p} does not have prior")
+        # broken = []
         for p in all_parameters:
-            slot = p.slot
-            value = p.value
-            # What is the code below supposed to do?  Can there be slots in slots in slots??
-            while not isinstance(slot, Variable) or isinstance(slot, Expression):
-                continue
-            #    slot = p.slot
-            slot.add_prior(p.distribution, fitrange=p.fitrange, limits=p.limits)
+            # slot = p.slot
+            # value = p.value
+            p.add_prior(p.distribution, bounds=p.bounds, limits=p.limits)
 
             # While we are walking all parameters check which constraints aren't satisfied
             # Build up a list of strings to help the user initialize the model correctly
-            if (p.limits[0] > value) or (value > p.limits[1]):
-                broken.append(f"{p}={p.value} is outside {p.limits}")
-            elif not isfinite(slot.prior.nllf()):
-                broken.append(f"{p}={p.value} is outside {slot.prior}")
+            # if (p.limits[0] > value) or (value > p.limits[1]):
+            #     broken.append(f"{p}={value} is outside {p.limits}")
+            # elif not isfinite(p.prior.nllf(value)):
+            #     broken.append(f"{p}={value} is outside {p.prior}")
+
+        # broken.extend([f"constraint {c} is unsatisfied" for c in self.constraints if float(c) == inf])
+        # if self._constraints_function() == inf:
+        #     broken.append("user constraint function is unsatisfied")
+        # warnings.warn("Unsatisfied constraints: %s" % (",\n".join(broken)))
 
         self._parameters = [p for p in all_parameters if isinstance(p.slot, Variable) and not p.fixed]
-        self._bounded = parameter.priors(all_parameters)
+        self._bounded = [p for p in all_parameters if p.has_prior()]
         self.dof = self.model_points()
         self.dof -= len(self._parameters)
         if self.dof <= 0:
             raise ValueError("Need more data points than fitting parameters")
         #self.constraints = pars.constraints()
         # Find the constraints on variables and expressions that we need to compute
-        parameter_constraints = [p.slot for p in all_parameters if isinstance(p.slot, Variable) and p.slot.has_prior()]
-        expression_constraints = [p.slot for p in all_parameters if isinstance(p.slot Expression) and p.slot.has_prior()]
-        self.all_constraints = parameter_constraints + expression_constraints
+        # parameter_constraints = [p.slot for p in all_parameters if isinstance(p.slot, Variable) and p.has_prior()]
+        # expression_constraints = [p.slot for p in all_parameters if isinstance(p.slot, Expression) and p.has_prior()]
+        # self._all_constraints = parameter_constraints + expression_constraints
 
     def model_points(self):
         """Return number of points in all models"""
@@ -555,18 +561,15 @@ class FitProblem:
     def constraints_nllf(self) -> util.Tuple[float, util.List[str]]:
         """Return the cost function for all constraints"""
         failing = []
-        if callable(self.constraints):
-            # compatibility with previous functional style of constraints
-            nllf = self.constraints()
-            if nllf == np.inf:
-                failing.append(str(self.constraints))
-        else:
-            nllf = 0.0
-            for c in self.constraints:
-                c_nllf = float(c)
-                nllf += c_nllf
-                if c_nllf == np.inf:
-                    failing.append(str(c))
+        nllf = 0.0
+        nllf = self._constraints_function()
+        if nllf == np.inf:
+            failing.append("user constraints function")
+        for c in self.constraints:
+            c_nllf = float(c)
+            nllf += c_nllf
+            if c_nllf == np.inf:
+                failing.append(str(c))
 
         return nllf, failing
 
@@ -636,7 +639,7 @@ class FitProblem:
 
 # TODO: consider adding nllf_scale to FitProblem.
 ONE_SIGMA = 0.68268949213708585
-def nllf_scale(problem):
+def nllf_scale(problem: FitProblem):
     r"""
     Return the scale factor for reporting the problem nllf as an approximate
     normalized chisq, along with an associated "uncertainty".  The uncertainty
@@ -661,7 +664,7 @@ def nllf_scale(problem):
         npars = max(len(problem.getp()), 1)
         return 2./dof, chi2.ppf(ONE_SIGMA, npars)/dof
 
-def load_problem(filename, options=None):
+def load_problem(filename, options=None) -> FitProblem:
     """
     Load a problem definition from a python script file.
 
