@@ -11,8 +11,6 @@ Users can also perform calculations with parameters, tying together different
 parts of the model, or different models.
 """
 #__all__ = [ 'Parameter']
-from bumps.dream.convergence import _check_nllf_distribution
-from build.lib.bumps.bounds import Unbounded
 import operator
 import sys
 import builtins
@@ -41,7 +39,7 @@ BoundsType = mbounds.BoundsType
 
 T = TypeVar('T')
 
-ValueType = Union['Variable', 'Expression', 'Parameter', float]
+ValueType = Union['Expression', 'Parameter', float]
 
 # TODO: avoid evaluation of subexpressions if parameters do not change.
 # This is especially important if the subexpression invokes an expensive
@@ -95,14 +93,15 @@ class Normal:
     std: float = field_desc("standard deviation (1-sigma)")
     mean: float = field_desc("center of the distribution")
 
-
-@schema(init=True)
+# Leave out of schema for now.
+# TODO: determine if this is used by anyone
+#@schema(init=True)
 class UniformSoftBounded:
     """ Uniform distribution with error-function PDF on boundaries """
     std: float = field_desc("width of the edge distribution")
 
 
-DistributionType = Union[Uniform, Normal, UniformSoftBounded]
+DistributionType = Union[Uniform, Normal] #, UniformSoftBounded]
 
 class OperatorMixin:
     """
@@ -193,7 +192,7 @@ class ParameterSchema:
     id: int = field(default=0, init=False)
     name: Optional[str] = field(default=None, init=False)
     fixed: bool = True
-    slot: ValueType
+    slot: Union['Variable', ValueType]
     limits: Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]] = ("-inf", "inf")
     bounds: Optional[Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]] = None
     distribution: DistributionType = Uniform()
@@ -499,7 +498,7 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
     def __init__(
             self,
             value: Optional[Union[float, Tuple[float, float]]] = None,
-            slot: Optional[ValueType] = None,
+            slot: Optional[Union['Variable', ValueType]] = None,
             #bounds: Optional[Union[BoundsType, Tuple[float, float]]]=None,
             fixed: Optional[bool]=None,
             name: Optional[str]=None,
@@ -534,7 +533,7 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
                 slot = value
             else:
                 raise TypeError("value %s: %s cannot be converted to Variable" % (str(name), str(value)))
-        assert isinstance(slot, (Constant, Variable, Expression, Parameter))
+        assert isinstance(slot, (float, Variable, Expression, Parameter))
 
         self.slot = slot
         self.name = name
@@ -611,7 +610,7 @@ class Variable(ValueProtocol, VariableSchema):
 
 # Note: need constant schema so that value can be the name of the value in
 # the schema while being the name of the property in the class
-@schema(classname="Constant")
+#@schema(classname="Constant")
 class ConstantSchema:
     """
     Saved state for an unmodifiable value.
@@ -645,6 +644,8 @@ class Constant(ValueProtocol, ConstantSchema): # type: ignore
 
 # ==== Arithmetic operators ===
 class Operators(str, Enum):
+    """ Operators that can be used to construct Expressions """
+
     # operators including abs() are defined in _build_operator_mixin()
     # functions are defined in numpy or in UserFunction (for min/max)
 
@@ -967,7 +968,7 @@ pmath.__all__.extend((
     ))
 
 #restate these for export, now that they're all defined:
-ValueType = Union[Parameter, Expression, Variable, float]
+ValueType = Union[Parameter, Expression, float]
 
 @schema(classname="ParameterSet")
 class ParameterSetSchema:
@@ -1384,7 +1385,6 @@ class IntegerProperty(int):
         return object.__repr__(self)
 
 
-@schema()
 class IntegerParameter(Parameter):
     value: int
     discrete: Literal[True] = True
@@ -1402,17 +1402,19 @@ class Comparisons(Enum):
     ge = '>='
     le = '<='
     lt = '<'
-    eq = '=='
-    ne = '!='
+    #eq = '=='
+    #ne = '!='
 
 
 @schema()
 class Constraint:
-    fixed = True
+    """ Express inequality constraints between model elements """
 
-    a: Union[Parameter, Expression, Constant, float]
-    b: Union[Parameter, Expression, Constant, float]
+    fixed = True
+    
     op: Comparisons
+    a: ValueType
+    b: ValueType
 
     def __init__(self, a, b, op):
         import operator
