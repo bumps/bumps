@@ -193,7 +193,7 @@ class ParameterSchema:
     name: Optional[str] = field(default=None, init=False)
     fixed: bool = True
     slot: Union['Variable', ValueType]
-    limits: Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]] = ("-inf", "inf")
+    limits: Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]] = (-inf, inf)
     bounds: Optional[Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]] = None
     distribution: DistributionType = Uniform()
     #discrete: bool = field(default=False, init=False)
