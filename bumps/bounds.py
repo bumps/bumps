@@ -71,6 +71,18 @@ from .util import field, schema, Optional, Any, Union, Dict, Callable, Literal, 
 LimitValue = Union[float, Literal["-inf", "inf"]]
 LimitsType = Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]
 
+# TODO: should we use this in the bounds limits?
+# @schema()
+# class ExtendedFloat(float):
+#     __root__: Union[float, Literal["inf", "-inf"]]
+#     def __new__(cls, *args, **kw):
+#         return super().__new__(cls, *args)
+#     def __init__(self, __root__=None):
+#         pass
+#     def __repr__(self):
+#         return float.__repr__(self)
+
+
 def pm(v, plus, minus=None, limits: Optional[LimitsType]=None):
     """
     Return the tuple (~v-dv,~v+dv), where ~expr is a 'nice' number near to

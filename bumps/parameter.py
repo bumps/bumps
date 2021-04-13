@@ -533,7 +533,7 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
                 slot = value
             else:
                 raise TypeError("value %s: %s cannot be converted to Variable" % (str(name), str(value)))
-        assert isinstance(slot, (float, Variable, Expression, Parameter))
+        assert isinstance(slot, (float, Variable, Expression, Parameter, Constant))
 
         self.slot = slot
         self.name = name
