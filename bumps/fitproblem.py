@@ -511,7 +511,13 @@ class FitProblem:
         for p in all_parameters:
             # slot = p.slot
             # value = p.value
-            p.add_prior(p.distribution, bounds=p.bounds, limits=p.limits)
+            
+            # TODO: this is a shim to accomodate Expression, Calculation etc. being
+            # put into attributes that have type "Parameter" (in user scripts)
+            # Do we cause those scripts to break instead?  
+            # Or do we autoconvert to .equals()?
+            if hasattr(p, 'add_prior'):
+                p.add_prior(p.distribution, bounds=p.bounds, limits=p.limits)
 
             # While we are walking all parameters check which constraints aren't satisfied
             # Build up a list of strings to help the user initialize the model correctly
@@ -525,8 +531,15 @@ class FitProblem:
         #     broken.append("user constraint function is unsatisfied")
         # warnings.warn("Unsatisfied constraints: %s" % (",\n".join(broken)))
 
-        self._parameters = [p for p in all_parameters if isinstance(p.slot, Variable) and not p.fixed]
-        self._bounded = [p for p in all_parameters if p.has_prior()]
+        # TODO: shimmed to allow non-Parameter in Parameter attribute spots.
+        pars = []
+        for p in all_parameters:
+            slot = getattr(p, 'slot', None)
+            if isinstance(slot, Variable) and not p.fixed:
+                pars.append(p)
+        self._parameters = pars
+        # TODO: shimmed to allow non-Parameter in Parameter attribute spots.
+        self._bounded = [p for p in all_parameters if hasattr(p, 'has_prior') and p.has_prior()]
         self.dof = self.model_points()
         self.dof -= len(self._parameters)
         if self.dof <= 0:
