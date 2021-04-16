@@ -137,7 +137,29 @@ class ValueProtocol(OperatorMixin):
     # TODO: are priors on the parameter or on the value?
     #bounds: Optional[BoundsType] = None
     def parameters(self) -> List["Parameter"]:
-        ...
+        # default implementation:
+        return []
+
+
+@schema()
+class Calculation(ValueProtocol): # the name Function is taken (though deprecated)
+    """\
+    A Parameter with a model-specific, calculated value.
+    The function used to calculate this value should be well-documented in the 
+    description field, e.g. 
+      Stack.thickness: description = "a sum of the thicknesses of all layers in the stack"
+    """
+    description: str
+    _function: Callable[[], float]  # added by the model; not serialized
+    def __init__(self, description: str=""):
+        self.description = description
+    @property
+    def value(self):
+        return self._function()
+    def __float__(self):
+        return self.value
+    def set_function(self, function):
+        self._function = function
 
 
 class SupportsPrior:
@@ -281,7 +303,10 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
     _fixed: bool
 
     def parameters(self):
-        return [self] + self.slot.parameters()
+        pars = [self]
+        if hasattr(self.slot, 'parameters'):
+            pars += self.slot.parameters()
+        return pars
 
     def pmp(self, plus, minus=None, limits=None):
         """
@@ -384,7 +409,7 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
     # Delegate to slots
     @property
     def value(self):
-        return self.slot.value
+        return float(self.slot)
     @value.setter
     def value(self, update):
         self.slot.value = update
@@ -533,7 +558,7 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
                 slot = value
             else:
                 raise TypeError("value %s: %s cannot be converted to Variable" % (str(name), str(value)))
-        assert isinstance(slot, (float, Variable, Expression, Parameter, Constant))
+        assert isinstance(slot, (float, Variable, Expression, Parameter, Constant, Calculation))
 
         self.slot = slot
         self.name = name
@@ -571,7 +596,7 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
         """
         return self.prior.limits[0] <= self.value <= self.prior.limits[1]
 
-    def equals(self, expression: Optional[ValueType]):
+    def equals(self, expression: ValueType):
         """
         Set a parameter equal to another parameter or expression.
 
@@ -579,18 +604,20 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
         slot with value equal to the present value of the expression, and
         its bounds.
         """
-        if expression is None:
-            # get the current value, and re-initialize the slot as a Variable
-            self.slot = Variable(self.value)
-        elif self is expression:
+        if isinstance(self.slot, Calculation):
+            raise TypeError("parameter is calculated by the model and cannot be changed")
+        elif expression is self:
             # don't make a circular reference to self.
             warnings.warn(f"{self} tried to make circular reference to self...")
             pass
         else:
-            # This throws away the original variable. Maybe we want to keep
-            # one around with whatever old values so that when the constraint
-            # is removed it pops back?
             self.slot = expression
+    
+    def unlink(self):
+        if isinstance(self.slot, Calculation):
+            raise TypeError("parameter is calculated by the model and cannot be changed")
+        # Replace the slot with a new variable initialized to the only variable value
+        self.slot = Variable(self.value)
 
 
 @schema(classname="Variable")
