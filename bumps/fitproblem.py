@@ -216,7 +216,7 @@ class FitProblem:
     constraints: util.Optional[util.Sequence[parameter.Constraint]] = None
     penalty_nllf: util.Union[float, util.Literal["inf"]] = "inf"
 
-    _constraints_function: util.Callable[..., float] 
+    _constraints_function: util.Callable[..., float]
     # _all_constraints: util.List[util.Union[Parameter, Expression]]
 
     def __init__(self, models: util.Union[Fitness, util.List[Fitness]], weights=None, name=None,
@@ -507,7 +507,7 @@ class FitProblem:
         #         p.reset_prior()  # no constraints
         #     else:
         #         raise ValueError(f"{p} does not have prior")
-        # broken = []
+        broken = []
         for p in all_parameters:
             # slot = p.slot
             # value = p.value
@@ -519,17 +519,23 @@ class FitProblem:
             if hasattr(p, 'add_prior'):
                 p.add_prior(p.distribution, bounds=p.bounds, limits=p.limits)
 
+            # TODO: currently this logic for showing breaking constraints to the user 
+            # is in the chisq_str execution path instead of on model_reset - should it be here instead?
+
             # While we are walking all parameters check which constraints aren't satisfied
             # Build up a list of strings to help the user initialize the model correctly
-            # if (p.limits[0] > value) or (value > p.limits[1]):
-            #     broken.append(f"{p}={value} is outside {p.limits}")
-            # elif not isfinite(p.prior.nllf(value)):
-            #     broken.append(f"{p}={value} is outside {p.prior}")
+            if hasattr(p, 'limits'):
+                value = p.value
+                if (p.limits[0] > value) or (value > p.limits[1]):
+                    broken.append(f"{p}={value} is outside {p.limits}")
+                elif not isfinite(p.prior.nllf(value)):
+                    broken.append(f"{p}={value} is outside {p.prior}")
 
-        # broken.extend([f"constraint {c} is unsatisfied" for c in self.constraints if float(c) == inf])
-        # if self._constraints_function() == inf:
-        #     broken.append("user constraint function is unsatisfied")
-        # warnings.warn("Unsatisfied constraints: %s" % (",\n".join(broken)))
+        broken.extend([f"constraint {c} is unsatisfied" for c in self.constraints if float(c) == inf])
+        if self._constraints_function() == inf:
+             broken.append("user constraint function is unsatisfied")
+        warnings.warn("Unsatisfied constraints: %s" % (",\n".join(broken)))
+        self.broken_constraints = broken
 
         # TODO: shimmed to allow non-Parameter in Parameter attribute spots.
         pars = []

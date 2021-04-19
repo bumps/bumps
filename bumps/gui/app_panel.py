@@ -713,6 +713,8 @@ class AppPanel(wx.Panel):
         # Enable appropriate toolbar items.
         self.tb.EnableTool(self.tb_start.GetId(), True)
         self.tb.EnableTool(self.tb_stop.GetId(), True)
+        if hasattr(model, 'broken_constraints'):
+            signal.log_message(message="Unsatisfied constraints: \n\t%s" % (",\n\t".join(model.broken_constraints)))
         if hasattr(model, 'path'):
             signal.log_message(message="loaded "+model.path)
             self.GetTopLevelParent().SetTitle("Bumps: %s"%model.name)
