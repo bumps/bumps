@@ -39,7 +39,7 @@ BoundsType = mbounds.BoundsType
 
 T = TypeVar('T')
 
-ValueType = Union['Expression', 'Parameter', float]
+ValueType = Union['Expression', 'Parameter', 'Calculation', float]
 
 # TODO: avoid evaluation of subexpressions if parameters do not change.
 # This is especially important if the subexpression invokes an expensive
@@ -218,7 +218,7 @@ class ParameterSchema:
     limits: Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]] = (-inf, inf)
     bounds: Optional[Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]] = None
     distribution: DistributionType = Uniform()
-    #discrete: bool = field(default=False, init=False)
+    discrete: bool = False
 
 class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
     """
@@ -531,6 +531,7 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
             limits: Optional[Tuple[Union[float, Literal[None, "-inf"]], Union[float, Literal[None, "inf"]]]]=None,
             bounds: Optional[Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]]=None,
             distribution: DistributionType = Uniform(),
+            discrete: bool = False,
             **kw):
         # Check if we are started with value=range or bounds=range; if we
         # are given bounds, then assume this is a fitted parameter, otherwise
@@ -576,6 +577,7 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
         # as function arguments. Note that _set_bounds() will always set the
         # fixed to False, so we need to reset it after calling _set_bounds().
         self.fixed = fixed
+        self.discrete = discrete
 
         # Store whatever values the user needs to associate with the parameter.
         # For example, models can set units and tool tips so the user interface
@@ -995,7 +997,7 @@ pmath.__all__.extend((
     ))
 
 #restate these for export, now that they're all defined:
-ValueType = Union[Parameter, Expression, float]
+ValueType = Union[Parameter, Expression, Calculation, float]
 
 @schema(classname="ParameterSet")
 class ParameterSetSchema:
