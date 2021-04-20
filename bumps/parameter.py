@@ -810,7 +810,7 @@ class Expression(ValueProtocol):
 
     def __init__(self, op: Union[str, Operators], args):
         self.op = getattr(Operators, op) if isinstance(op, str) else op
-        self._fn = _lookup_operator(op)
+        self._fn = _lookup_operator(op.name)
         self.args = args
 
     def parameters(self):
