@@ -804,13 +804,13 @@ class Expression(ValueProtocol):
     fittable = False
     fixed = True
 
-    op: Operators # Enumerated type {function_name: display_name}
+    op: Operators # Enumerated str type {function_name: display_name}
     args: Sequence[ValueType]
     _fn: Callable[..., float] # _fn(float, float, ...) -> float
 
-    def __init__(self, op, args):
-        self.op = op
-        self._fn = _lookup_operator(op.name)
+    def __init__(self, op: Union[str, Operators], args):
+        self.op = getattr(Operators, op) if isinstance(op, str) else op
+        self._fn = _lookup_operator(op)
         self.args = args
 
     def parameters(self):
