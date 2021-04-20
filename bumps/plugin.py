@@ -39,7 +39,10 @@ __all__ = [
     'data_view',
     'model_view',
     'save_json',
+    'SCHEMA_SOURCES'
 ]
+
+SCHEMA_SOURCES = ()
 
 # TODO: refl1d wants to do the following after cli.getopts()
 #
