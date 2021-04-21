@@ -505,7 +505,10 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
         """
         # Need to constrain the parameter to fit within fixed limits and
         # to receive a name if a name has not already been provided.
-        return cls(value, **kw)
+        if isinstance(value, Parameter):
+            return value
+        else:
+            return cls(value, **kw)
 
     def set(self, value):
         """
@@ -809,7 +812,8 @@ class Expression(ValueProtocol):
     _fn: Callable[..., float] # _fn(float, float, ...) -> float
 
     def __init__(self, op: Union[str, Operators], args):
-        self.op = getattr(Operators, op) if isinstance(op, str) else op
+        op = getattr(Operators, op) if isinstance(op, str) else op
+        self.op = op
         self._fn = _lookup_operator(op.name)
         self.args = args
 
