@@ -17,6 +17,7 @@ import builtins
 from functools import reduce
 import warnings
 from copy import copy
+import uuid
 from functools import wraps
 from enum import Enum
 
@@ -211,7 +212,7 @@ class ParameterSchema:
     """
     Saved state for a slot in the parameter model.
     """
-    id: int = field(default=0, init=False)
+    id: str = field(metadata={"format": "uuid"})
     name: Optional[str] = field(default=None, init=False)
     fixed: bool = True
     slot: Union['Variable', ValueType]
@@ -530,7 +531,7 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
             #bounds: Optional[Union[BoundsType, Tuple[float, float]]]=None,
             fixed: Optional[bool]=None,
             name: Optional[str]=None,
-            id: Optional[int]=None,
+            id: Optional[str]=None,
             limits: Optional[Tuple[Union[float, Literal[None, "-inf"]], Union[float, Literal[None, "inf"]]]]=None,
             bounds: Optional[Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]]=None,
             distribution: DistributionType = Uniform(),
@@ -566,7 +567,7 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
 
         self.slot = slot
         self.name = name
-        self.id = id if id is not None else builtins.id(self)
+        self.id = id if id is not None else str(uuid.uuid4())
         if limits is None:
             limits = (-np.inf, np.inf)
         self.limits  = (
@@ -624,6 +625,13 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
         # Replace the slot with a new variable initialized to the only variable value
         self.slot = Variable(self.value)
 
+    def __copy__(self):
+        """ copy will only be called when a new instance is desired, with a different id """
+        obj = type(self).__new__(self.__class__)
+        obj.__dict__.update(self.__dict__)
+        obj.id = str(uuid.uuid4())
+        return obj
+
 
 @schema(classname="Variable")
 class VariableSchema:
@@ -649,7 +657,7 @@ class ConstantSchema:
     """
     value: float
     name: Optional[str]
-    id: int
+    id: str = field(metadata={"format": "uuid"})
 
 class Constant(ValueProtocol, ConstantSchema): # type: ignore
     """
@@ -659,10 +667,10 @@ class Constant(ValueProtocol, ConstantSchema): # type: ignore
     fittable = False  # class property fixed across all objects
     fixed = True # class property fixed across all objects
 
-    def __init__(self, value: float, name: Optional[str]=None, id: Optional[int]=None):
+    def __init__(self, value: float, name: Optional[str]=None, id: Optional[str]=None):
         self._value = value
         self.name = name
-        self.id = id if id is not None else builtins.id(self)
+        self.id = id if id is not None else str(uuid.uuid4())
 
     @property
     def value(self):
@@ -1010,7 +1018,7 @@ class ParameterSetSchema:
     """
     names: Optional[List[str]]
     reference: Parameter
-    parameterList: Optional[List[Parameter]]
+    parameterlist: Optional[List[Parameter]]
 
 class ParameterSet(ParameterSetSchema):
 
@@ -1043,8 +1051,9 @@ class ParameterSet(ParameterSetSchema):
         # print self.reference, self.parameters
         for p, n in zip(self.parameters, names):
             p.name = " ".join((n, p.name))
-        # Reference is no longer directly fittable
-        self.reference.fittable = False
+
+        # N.B. if the reference parameter is not referenced anywhere in the models,
+        # it will no longer show up in FitProblem.parameters
         #self.__class__.parameterlist = property(self._get_parameterlist) #lambda self: self.parameters.tolist())
 
     @property
