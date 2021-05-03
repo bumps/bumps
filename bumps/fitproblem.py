@@ -174,8 +174,16 @@ def show_parameters(fitness: Fitness, subs: Optional[util.Dict[util.Any, Paramet
     print(parameter.format(fitness.parameters(), freevars=subs))
     print("[chisq=%s, nllf=%g]" % (chisq_str(fitness), fitness.nllf()))
 
-@util.schema(init=False, eq=False)
-class FitProblem:
+@util.schema(classname="FitProblem", init=False, eq=False)
+class FitProblemSchema:
+    name: util.Optional[str] = None
+    models: util.List[Fitness]
+    freevars: util.Optional[parameter.FreeVariables] = None
+    weights: util.Union[util.List[float], util.Literal[None]] = None
+    constraints: util.Optional[util.Sequence[parameter.Constraint]] = None
+    penalty_nllf: util.Union[float, util.Literal["inf"]] = "inf"
+
+class FitProblem(FitProblemSchema):
     """
 
         *models* is a sequence of :class:`Fitness` instances.
@@ -207,14 +215,7 @@ class FitProblem:
     Total nllf is the sum of the parameter nllf, the constraints nllf and the
     depending on whether constraints is greater than soft_limit, either the
     fitness nllf or the penalty nllf.
-    """
-
-    name: util.Optional[str] = None
-    models: util.List[Fitness]
-    freevars: util.Optional[parameter.FreeVariables] = None
-    weights: util.Union[util.List[float], util.Literal[None]] = None
-    constraints: util.Optional[util.Sequence[parameter.Constraint]] = None
-    penalty_nllf: util.Union[float, util.Literal["inf"]] = "inf"
+    """  
 
     _constraints_function: util.Callable[..., float]
     # _all_constraints: util.List[util.Union[Parameter, Expression]]
@@ -240,7 +241,6 @@ class FitProblem:
             freevars = parameter.FreeVariables(names=names)
         self.freevars = freevars
         self._models = models
-        self.__class__.models = property(self._get_models)
         if weights is None:
             weights = [1 for _ in models]
         self.weights = weights
@@ -257,8 +257,8 @@ class FitProblem:
         raise ValueError('problem.fitness is not defined')
 
     # TODO: make this @property\ndef models(self): ...
-    @staticmethod
-    def _get_models(self):
+    @property
+    def models(self):
         """Iterate over models, with free parameters set from model values"""
         try:
             for i, f in enumerate(self._models):
