@@ -31,6 +31,11 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install wheel setuptools
         python -m pip install numpy scipy matplotlib scikit-learn pytest pytest-cov
+    
+    - name: Install dataclasses for python3.6
+      if: matrix.cfg.py == 3.6
+      run: |
+        python -m pip install dataclasses
 
     - name: Test with pytest
       run: |
