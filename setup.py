@@ -52,7 +52,7 @@ dist = setup(
     package_data=gui_resources.package_data(),
     scripts=scripts,
     # TODO: typing_extensions is only required for python 3.7 and below
-    install_requires=['typing_extensions>=3.7.4'],
+    install_requires=['typing_extensions>=3.7.4', 'dataclasses; python_version < "3.7.0"'],
     #install_requires=['six', 'numpy>=1.0', 'scipy>=0.7.0', 'matplotlib>=1.0'],
     #install_requires = ['httplib2'],
 )
