@@ -58,7 +58,7 @@ try:
 except:
     from StringIO import StringIO
 
-import wx
+import wx, wx.aui
 
 from bumps import plugin
 from bumps import cli
@@ -148,6 +148,9 @@ class MainApp(wx.App):
 
         # Declare the application frame to be the top window.
         self.SetTopWindow(self.frame)
+
+        self._aui_mgr = wx.aui.AuiManager()
+        self._aui_mgr.SetManagedWindow(self.frame)
 
         # To have the frame visible behind the spash screen, comment out the following
         #wx.CallAfter(self.after_show)
@@ -260,6 +263,8 @@ class MainApp(wx.App):
         signal.log_message(message=output)
         self.frame.panel.set_model(model=model)
         self.frame.panel.set_fit_config(opts.fit_config)
+        self._aui_mgr.AddPane(self.frame.panel, wx.CENTER, "center pane")
+        self._aui_mgr.Update()
 
         self.frame.panel.Layout()
         self.frame.panel.aui.Split(0, wx.TOP)
