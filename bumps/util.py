@@ -7,6 +7,8 @@ __all__ = ["kbhit", "profile", "pushdir", "push_seed", "redirect_console"]
 
 import sys
 import os
+import types
+
 try:  # CRUFT: python 2.x
     from cStringIO import StringIO
 except ImportError:
@@ -96,15 +98,15 @@ def kbhit():
         return sys.stdin in i
 
 
-class DynamicPackage(object):
+class DynamicModule(types.ModuleType):
     def __init__(self, path, name):
        self.__path__ = [path]
        self.__name__ = name
 
 
-def relative_import(filename, package="relative_import"):
+def relative_import(filename, module_name="relative_import"):
     """
-    Define an empty package allowing relative imports from a script.
+    Define an empty module allowing relative imports from a script.
 
     By setting :code:`__package__ = relative_import(__file__)` at the top of
     your script file you can even run your model as a python script.  So long
@@ -113,12 +115,12 @@ def relative_import(filename, package="relative_import"):
     can be used both within and outside of bumps.
     """
     path = os.path.dirname(os.path.abspath(filename))
-    if (package in sys.modules
-            and not isinstance(sys.modules[package], DynamicPackage)):
-        raise ImportError("relative import would override the existing package %s. Use another name"
-                          % package)
-    sys.modules[package] = DynamicPackage(path, package)
-    return package
+    if (module_name in sys.modules
+            and not isinstance(sys.modules[module_name], DynamicModule)):
+        raise ImportError("relative import would override the existing module %s. Use another name"
+                          % module_name)
+    sys.modules[module_name] = DynamicModule(path, module_name)
+    return module_name
 
 
 class redirect_console(object):
