@@ -782,10 +782,10 @@ def load_problem(filename, options=None):
     Raises ValueError if the script does not define problem.
     """
     # Allow relative imports from the bumps model
-    package = util.relative_import(filename)
-    module = os.path.splitext(os.path.basename(filename))[0]
+    module_name = os.path.splitext(os.path.basename(filename))[0]
+    module = util.relative_import(filename, module_name=module_name)
 
-    ctx = dict(__file__=filename, __package__=package, __name__=module)
+    ctx = dict(__file__=filename, __package__=module, __name__=module_name)
     old_argv = sys.argv
     sys.argv = [filename] + options if options else [filename]
     source = open(filename).read()
