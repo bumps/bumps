@@ -76,16 +76,11 @@ def _parse_pars(fn, init=None, skip=0, name=""):
     """
     sig = inspect.signature(fn)
     params = sig.parameters.values()
-    #pnames, vararg, varkw, pvalues = inspect.getfullargspec(fn)
     pnames = [p.name for p in params]
-    pvalues = [p.default for p in params]
-    vararg = [p for p in params if p.kind.name == 'VAR_POSITIONAL']
-    varkw = [p for p in params if p.kind.name == 'VAR_KEYWORD']
-
-    if vararg or varkw:
-        raise TypeError(
-            "Function %r cannot have *args or **kwargs in declaration"
-            % fn.__name__)
+    
+    valid = [p.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD) for p in params]
+    if not all(valid):
+        raise TypeError(f"Only positional and keyword arguments allowed for {fn.__name__}")
 
     # TODO: need "self" handling for passed methods
     # Skip the first argument if it is x or maybe skip x, y.
