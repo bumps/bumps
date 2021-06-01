@@ -782,8 +782,8 @@ def load_problem(filename, options=None):
     Raises ValueError if the script does not define problem.
     """
     # Allow relative imports from the bumps model
-    package = util.relative_import(filename)
     module = os.path.splitext(os.path.basename(filename))[0]
+    package = util.relative_import(filename, package=module)
 
     ctx = dict(__file__=filename, __package__=package, __name__=module)
     old_argv = sys.argv

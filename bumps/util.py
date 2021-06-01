@@ -97,8 +97,9 @@ def kbhit():
 
 
 class DynamicPackage(object):
-    def __init__(self, path):
+    def __init__(self, path, name):
        self.__path__ = [path]
+       self.__name__ = name
 
 
 def relative_import(filename, package="relative_import"):
@@ -116,7 +117,7 @@ def relative_import(filename, package="relative_import"):
             and not isinstance(sys.modules[package], DynamicPackage)):
         raise ImportError("relative import would override the existing package %s. Use another name"
                           % package)
-    sys.modules[package] = DynamicPackage(path)
+    sys.modules[package] = DynamicPackage(path, package)
     return package
 
 
