@@ -783,9 +783,9 @@ def load_problem(filename, options=None):
     """
     # Allow relative imports from the bumps model
     module_name = os.path.splitext(os.path.basename(filename))[0]
-    package = util.relative_import(filename, module_name=module_name)
+    module = util.relative_import(filename, module_name=module_name)
 
-    ctx = dict(__file__=filename, __package__=package, __name__=module_name)
+    ctx = dict(__file__=filename, __package__=module, __name__=module_name)
     old_argv = sys.argv
     sys.argv = [filename] + options if options else [filename]
     source = open(filename).read()
