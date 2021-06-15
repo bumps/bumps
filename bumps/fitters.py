@@ -1222,6 +1222,34 @@ FIT_DEFAULT_ID = SimplexFit.id
 assert FIT_DEFAULT_ID in FIT_ACTIVE_IDS
 assert all(f in FIT_AVAILABLE_IDS for f in FIT_ACTIVE_IDS)
 
+def save_best(fitdriver, problem, best, store, name, view=None):
+    """
+    Save the fit data, including parameter values, uncertainties and plots.
+
+    *fitdriver* is the fitter that was used to drive the fit.
+
+    *problem* is a FitProblem instance.
+
+    *best* is the parameter set to save.
+    """
+    # Make sure the problem contains the best value
+    # TODO: avoid recalculating if problem is already at best.
+    problem.setp(best)
+    # print "remembering best"
+    problem.store = store
+    problem.name = name
+    problem.output_path = problem.store + '/' + problem.name
+    pardata = "".join("%s %.15g\n" % (name, value)
+                      for name, value in zip(problem.labels(), problem.getp()))
+    open(problem.output_path + ".par", 'wt').write(pardata)
+
+    fitdriver.save(problem.output_path)
+    with util.redirect_console(problem.output_path + ".err"):
+        fitdriver.show()
+        fitdriver.plot(output_path=problem.output_path, view=view)
+    fitdriver.show()
+    # print "plotting"
+
 def fit(problem, method=FIT_DEFAULT_ID, verbose=False, **options):
     """
     Simplified fit interface.
@@ -1278,4 +1306,6 @@ def fit(problem, method=FIT_DEFAULT_ID, verbose=False, **options):
         )
     if hasattr(driver.fitter, 'state'):
         result.state = driver.fitter.state
+    if "store" in options and "name" in options:
+        save_best(driver, problem, x, options["store"], options["name"])
     return result
