@@ -239,7 +239,7 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, cbar):
         y_top = cumsum(pw)
 
         # For debugging compare with one rectangle per sample
-        if True:
+        if False:
             import matplotlib as mpl
             cmap = mpl.cm.flag
             edgecolors = 'k'
