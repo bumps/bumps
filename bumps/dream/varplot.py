@@ -186,9 +186,10 @@ def _make_fig_colorbar(logp):
 
     ticks = ()  #(vmin, vmax)
     formatter = MinDigitsFormatter(vmin, vmax)
-    cb = mpl.colorbar.ColorbarBase(ax, cmap=cmap, norm=norm,
-                                   ticks=ticks, format=formatter,
-                                   orientation='vertical')
+    cbar = mpl.colorbar.ColorbarBase(
+        ax, cmap=cmap, norm=norm,
+        ticks=ticks, format=formatter,
+        orientation='vertical')
     #cb.set_ticks(ticks)
     #cb.set_ticklabels(labels)
     #cb.set_label('negative log likelihood')
@@ -199,12 +200,12 @@ def _make_fig_colorbar(logp):
     fig.text(cbar_box[0], cbar_box[1]+cbar_box[3],
              '{:.3G}'.format(vmax), va='bottom')
 
-    return vmin, vmax, cmap
+    return cbar
 
 
 def _make_logp_histogram(values, logp, nbins, ci, weights, cbar):
     from numpy import (ones_like, searchsorted, linspace, cumsum, diff,
-                       argsort, array, hstack, exp)
+                       unique, argsort, array, hstack, exp)
     if weights is None:
         weights = ones_like(logp)
     # TODO: values are being sorted to collect stats and again to plot
@@ -214,32 +215,70 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, cbar):
     #                           % (ci,(min(values),max(values))))
     edges = linspace(ci[0], ci[1], nbins+1)
     idx = searchsorted(values[1:-1], edges)
-    weightsum = cumsum(weights)
-    heights = diff(weightsum[idx])/weightsum[-1]  # normalized weights
+    #weightsum = cumsum(weights)
+    #heights = diff(weightsum[idx])/weightsum[-1]  # normalized weights
 
     import pylab
-    vmin, vmax, cmap = cbar
-    cmap_steps = linspace(vmin, vmax, cmap.N+1)
+    edgecolors = None
+    cmap = cbar.cmap
+    cmap_edges = linspace(0, 1, cmap.N+1)[1:-1]
     bins = []  # marginalized maximum likelihood
-    for h, s, e, xlo, xhi \
-            in zip(heights, idx[:-1], idx[1:], edges[:-1], edges[1:]):
+    for s, e, xlo, xhi \
+            in zip(idx[:-1], idx[1:], edges[:-1], edges[1:]):
         if s == e:
             continue
+        # parameter interval endpoints
+        x = array([xlo, xhi], 'd')
+        # -logp values within interval, with sort index from low to high
         pv = -logp[s:e]
         pidx = argsort(pv)
+        pv = pv[pidx]
+        # weights for samples within interval, sorted
         pw = weights[s:e][pidx]
-        x = array([xlo, xhi], 'd')
-        y = hstack((0, cumsum(pw)))
-        z = pv[pidx][:, None]
+        # vertical colorbar top edges is the cumulative sum of the weights
+        y_top = cumsum(pw)
+
+        # For debugging compare with one rectangle per sample
+        if True:
+            import matplotlib as mpl
+            cmap = mpl.cm.flag
+            edgecolors = 'k'
+            xmid = (xlo+xhi)/2
+            x = [xlo, xmid]
+            y = hstack((0, y_top))
+            z = pv[:, None]
+            pylab.pcolormesh(x, y, z, norm=cbar.norm, cmap=cmap)
+            x = [xmid, xhi]
+
+        # Possibly millions of samples, so group those which have the
+        # same colour instead of drawing each as its own rectangle.
+        #
+        # Norm the values then look up the colormap edges in the sorted
+        # normed negative log probabilities.  Drop duplicates, which
+        # represent zero-width bars. Assign the value for each interval
+        # according to the value at the change point.
+        #
+        # The indexing logic is very ugly. The searchsorted() function
+        # returns 0 if before the first or N if after the last, so the
+        # end points of the range are dropped so that there is and implicit
+        # [-inf, ... interior points ..., inf] range. Similarly, colours
+        # below vmin go to vmin and above vmax go to vmax, so drop those
+        # end points as well. Then put the end points back on in the
+        # found indices [0, ... interior edges ..., N-1]. Use the value
+        # at the end of the boundary to colour the section.
+        # Something is not quite right: with this algorithm the first
+        # block appears to always be one element long and is often the
+        # same colour as the next block. This is only visible if edges
+        # are drawn so ignore it for now.
+        change_point = searchsorted(cbar.norm(pv[1:-1]), cmap_edges)
+        tops = unique(hstack((change_point, len(pv)-1)))
+        y = hstack((0, y_top[tops]))
+        z = pv[tops][:, None]
+        pylab.pcolormesh(
+            x, y, z, norm=cbar.norm, cmap=cmap, edgecolors=edgecolors)
+
         # centerpoint, histogram height, maximum likelihood for each bin
-        bins.append(((xlo+xhi)/2, y[-1], exp(vmin-z[0])))
-        if len(z) > cmap.N:
-            # downsample histogram bar according to number of colors
-            pidx = searchsorted(z[1:-1].flatten(), cmap_steps)
-            if pidx[-1] < len(z)-1:
-                pidx = hstack((pidx, -1))
-            y, z = y[pidx], z[pidx]
-        pylab.pcolormesh(x, y, z, vmin=vmin, vmax=vmax, cmap=cmap)
+        bins.append(((xlo+xhi)/2, y_top[-1], exp(cbar.norm.vmin-pv[0])))
     # Check for broken distribution
     if not bins:
         return
