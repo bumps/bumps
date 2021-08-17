@@ -1156,6 +1156,10 @@ class FitDriver(object):
             self.problem.plot(figfile=output_path, view=view)
         if hasattr(self.fitter, 'plot'):
             self.fitter.plot(output_path=output_path)
+        if hasattr(self.fitter, 'state'):
+            if hasattr(self.problem, 'plot_forwardmc'):
+                points = self._get_points_from_state(self.fitter.state, nshown=50, random=True, portion=1.0)
+                self.problem.plot_forwardmc(points, save=output_path)
 
     def _save_fit_cov(self, output_path):
         model = getattr(self.problem, 'name', self.problem.__class__.__name__)
@@ -1168,6 +1172,36 @@ class FitDriver(object):
             'model': model,
             'fitter': fitter,
         }
+
+    # not sure if this is best left in the class or is taken out of the class
+    # equally, we could make values such as nshown attributes of the class,
+    # not sure this the right thing to do though.
+    @staticmethod
+    def _get_points_from_state(state, nshown=50, random=True, portion=1.0):
+        """
+        *nshown* is the number of points from the DREAM state to be used for
+        the error plot calculations
+
+        *random* is True if the samples are randomly selected, or False if
+        the most recent samples should be used.  Use random if you have
+        poor mixing (i.e., the parameters tend to stay fixed from generation
+        to generation), but not random if your burn-in was too short, and
+        you want to select from the end.
+
+        Returns *points* with the best placed at the end i.e. best = points[-1]
+        """
+        if state is None:
+            # Should we include a warning here?
+            return
+
+        points, _logp = state.sample(portion=portion)
+        if points.shape[0] < nshown:
+            nshown = points.shape[0]
+        # randomize the draw; skip the last point since state.keep_best() put
+        # the best point at the end.
+        if random:
+            points = points[np.random.permutation(len(points) - 1)]
+        return points[-nshown:-1]
 
 
 def _fill_defaults(options, settings):
