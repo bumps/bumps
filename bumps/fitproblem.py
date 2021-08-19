@@ -223,6 +223,10 @@ class BaseFitProblem(object):
         self.penalty_nllf = penalty_nllf
         self.model_reset()
 
+        # Model Uncertainty attributes
+        self._points_cache = None
+        self.error_points = None
+
     # noinspection PyAttributeOutsideInit
     def model_reset(self):
         """
@@ -562,6 +566,47 @@ class BaseFitProblem(object):
                    transform=pylab.gca().transAxes)
         if figfile is not None:
             pylab.savefig(figfile + "-model.png", format='png')
+
+    def plot_forwardmc(self, points, save=None):
+        """
+        Plot the model uncertainty if present in the Fitness object.
+
+        This will call *calc_forwardmc and *plot_forwardmc* methods in the Fitness object.
+        Points will be passed to the method, by using *fitters.get_errors_from_state* method.
+
+        This allows flexibility for the user to define their own model uncertainty plot in the Fitness object.
+        For example for reflectivty it will return the SLD uncertainty plot.
+        """
+        # TODO: do we want to call the fitness method model_uncertainty?
+        if not hasattr(self.fitness, 'plot_forwardmc'):
+            return
+
+        # TODO: Calling the plot_forwardmc plotting method from here
+        #  could direct options to the plotter, to say plot different
+        #  intepretations of the forwardmc - e.g. reflectivty and/or sld
+        #  in this case calculations run from calc_forwardmc from fitness
+        #  should return all types of calculations required to plot the data
+        #  so refl and sld calcs. Still, the question is do we need these
+        #  methods in FitProblem? What is the gain here?
+        #  Benefit 1: plot_forwardmc could include the plot environment for the GUI
+        #  Benefit 2: calc_forwardmc could include the mapper? or mapper.calc_forwardmc
+        #   calls FitProblem.calc_forwardmc?
+
+        if self._points_cache is None:
+            # TODO: need to work out how to compare if points == _points_cache
+            #  this is not trivial as points is a list of arrays. This comparison is required
+            #  otherwise we will be back to calculating the samples all of the time
+            # points.all() != self._points_cache.all() or
+            # print("samples for model error calculation are different to previous samples \n"
+            #       "(Re)calculating samples")
+            # self._points_cache = points
+            # self.error_points = self.fitness.calc_forwardmc(self, points)
+            pass
+
+        self.error_points = self.fitness.calc_forwardmc(self, points)
+
+        self.fitness.plot_forwardmc(errors=self.error_points, save=save)
+        # TODO: should we return the plot object here?
 
     def cov(self):
         """
