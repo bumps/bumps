@@ -4,6 +4,7 @@ from ..dream import views as dream_views
 from ..dream import stats as dream_stats
 from ..dream import varplot as dream_varplot
 from .. import errplot
+from .. import fitters
 from .plot_view import PlotView
 
 
@@ -81,17 +82,29 @@ class ModelErrorView(PlotView):
     title = "Model Uncertainty"
 
     def plot(self):
-        if not self.plot_state:
+
+        if self.plot_state is None:
             return
         with self.pylab_interface as pylab:
             pylab.clf()
             # Won't get here if plot_state is None
-            errplot.show_errors(self.plot_state)
+            if self.problem is not None:
+                self.problem.plot_forwardmc(self.plot_state)
+            else:
+                errplot.show_errors(self.plot_state)
             pylab.draw()
 
     def update(self, problem, state):
         # TODO: Should happen in a separate process
-        self.plot_state = errplot.calc_errors_from_state(problem, state)
+        # Shim included for deprecation of plugin (show_error)
+        self.problem = problem
+        if hasattr(problem.fitness, 'plot_forwardmc'):
+            self.plot_state = fitters.get_points_from_state(state)
+        else:
+            import warnings
+            warnings.warn("Plugin usage for model uncertainty and error plot is Deprecated, \n"
+                          "in future include a plot_forwardmc method in the fitness object", DeprecationWarning)
+            self.plot_state = errplot.calc_errors_from_state(problem, state)
         self.plot()
 
     def fit_progress(self, problem, uncertainty_state):

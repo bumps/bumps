@@ -58,6 +58,7 @@ class PlotView(wx.Panel):
         self.Bind(wx.EVT_SHOW, self.OnShow)
         self.plot_state = None
         self.model = None
+        self.problem = None
 
 
         '''
