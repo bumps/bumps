@@ -869,13 +869,16 @@ class DreamFit(FitBase):
 
     def plot(self, output_path):
         self.state.show(figfile=output_path, portion=self._trimmed)
-        self.error_plot(figfile=output_path)
+        # usage of error_plot to be Deprecated. Use fitness.plot_forwardmc instead
+        # self.error_plot(figfile=output_path)
 
     def show(self):
         pass
 
     def error_plot(self, figfile):
         # Produce error plot
+        warnings.warn("Plugin usage for model uncertainty and error plot is Deprecated, \n"
+                      "in future include a plot_forwardmc method in the fitness object", DeprecationWarning)
         import pylab
         from . import errplot
         # TODO: shouldn't mix calc and display!
@@ -939,6 +942,35 @@ def _resampler(fitter, xinit, samples=100, restart=False, **options):
     return points
 
 
+def get_points_from_state(state, nshown=50, random=True, portion=1.0):
+    """
+    *nshown* is the number of points from the DREAM state to be used for
+    the error plot calculations
+
+    *random* is True if the samples are randomly selected, or False if
+    the most recent samples should be used.  Use random if you have
+    poor mixing (i.e., the parameters tend to stay fixed from generation
+    to generation), but not random if your burn-in was too short, and
+    you want to select from the end.
+
+    Returns *points* with the best placed at the end i.e. best = points[-1]
+    """
+    if state is None:
+        # Should we include a warning here?
+        return
+
+    points, _logp = state.sample(portion=portion)
+    if points.shape[0] < nshown:
+        nshown = points.shape[0]
+    # randomize the draw; skip the last point since state.keep_best() put
+    # the best point at the end.
+    if random:
+        points = points[np.random.permutation(len(points) - 1)]
+    # return the origonal nshown passed to the function -
+    #  if this has changed we recalculate points, if not use the cached ones
+    return points[-nshown:-1]
+
+
 class FitDriver(object):
 
     def __init__(self, fitclass=None, problem=None, monitors=None,
@@ -951,6 +983,9 @@ class FitDriver(object):
         self.mapper = mapper if mapper else lambda p: list(map(problem.nllf, p))
         self.fitter = None
         self.result = None
+
+        # extra attributes for model uncertainty plotting
+        self.nshown = None
 
     def fit(self, resume=None):
 
@@ -1150,16 +1185,47 @@ class FitDriver(object):
         if hasattr(self.problem, 'load'):
             self.problem.load(input_path)
 
+    def plot_model_error(self, nshown=50, save=None):
+        # TODO: do we need to check on state? can we combine the lines below?
+        self.nshown = nshown
+        if hasattr(self.fitter, 'state') and hasattr(self.problem, 'plot_forwardmc'):
+            points = get_points_from_state(self.fitter.state, nshown=self.nshown, random=True, portion=1.0)
+            self.problem.plot_forwardmc(points, save=save)
+        else:
+            # TODO: assume this is multifitproblem
+            #  We might want to make this an elif statement instead
+            pass
+
     def plot(self, output_path, view=None):
         # print "calling fitter.plot"
         if hasattr(self.problem, 'plot'):
             self.problem.plot(figfile=output_path, view=view)
         if hasattr(self.fitter, 'plot'):
             self.fitter.plot(output_path=output_path)
-        if hasattr(self.fitter, 'state'):
-            if hasattr(self.problem, 'plot_forwardmc'):
-                points = self._get_points_from_state(self.fitter.state, nshown=50, random=True, portion=1.0)
-                self.problem.plot_forwardmc(points, save=output_path)
+        # TODO: need to check if multifitproblem.
+        #  If so we need to iterate through the models
+        if hasattr(self.problem.fitness, 'plot_forwardmc'):
+            # check to see if self.nshown has been set
+            # if not use default instead.
+            # self.nshown should only be set in one place
+            # for now that will be in self.plot_model_error()
+            if self.nshown is not None:
+                nshown = self.nshown
+            else:
+                # for now just set a hard coded default here
+                # TODO: we should think about what will be called upon save
+                #  i.e. do we call plot or also call plot_model_error directly?
+                nshown = 50
+            # moved model uncertainty plotting to separate method
+            # as was getting too clutterd in self.plot
+            # Also we may want to call plot_model_error directly say from the
+            # GUI if a user wants to generate plots and contours within the GUI
+            self.plot_model_error(nshown=nshown, save=output_path)
+        elif hasattr(self.fitter, 'error_plot'):
+            # Shim to maintain current functionality
+            # However if user is directly calling fitter.plot to generate
+            # uncertainty plots this will no longer work.
+            self.fitter.error_plot(figfile=output_path)
 
     def _save_fit_cov(self, output_path):
         model = getattr(self.problem, 'name', self.problem.__class__.__name__)
@@ -1172,36 +1238,6 @@ class FitDriver(object):
             'model': model,
             'fitter': fitter,
         }
-
-    # not sure if this is best left in the class or is taken out of the class
-    # equally, we could make values such as nshown attributes of the class,
-    # not sure this the right thing to do though.
-    @staticmethod
-    def _get_points_from_state(state, nshown=50, random=True, portion=1.0):
-        """
-        *nshown* is the number of points from the DREAM state to be used for
-        the error plot calculations
-
-        *random* is True if the samples are randomly selected, or False if
-        the most recent samples should be used.  Use random if you have
-        poor mixing (i.e., the parameters tend to stay fixed from generation
-        to generation), but not random if your burn-in was too short, and
-        you want to select from the end.
-
-        Returns *points* with the best placed at the end i.e. best = points[-1]
-        """
-        if state is None:
-            # Should we include a warning here?
-            return
-
-        points, _logp = state.sample(portion=portion)
-        if points.shape[0] < nshown:
-            nshown = points.shape[0]
-        # randomize the draw; skip the last point since state.keep_best() put
-        # the best point at the end.
-        if random:
-            points = points[np.random.permutation(len(points) - 1)]
-        return points[-nshown:-1]
 
 
 def _fill_defaults(options, settings):
