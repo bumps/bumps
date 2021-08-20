@@ -780,6 +780,37 @@ class MultiFitProblem(BaseFitProblem):
             if figfile is not None:
                 pylab.savefig(figfile + "-model%d.png" % i, format='png')
 
+    def plot_forwardmc(self, points, save=None):
+        """
+        Plot the model uncertainty if present in the Fitness object.
+
+        This will call *calc_forwardmc and *plot_forwardmc* methods in the Fitness object.
+        Points will be passed to the method, by using *fitters.get_errors_from_state* method.
+
+        This allows flexibility for the user to define their own model uncertainty plot in the Fitness object.
+        For example for reflectivty it will return the SLD uncertainty plot.
+        """
+        models = [m.fitness for m in self.models]
+        # TODO: only checks the first model, and assumes the rest are the same.
+        if not hasattr(models[0].fitness, 'plot_forwardmc'):
+            return
+
+        if self._points_cache is None:
+            # TODO: need to work out how to compare if points == _points_cache
+            #  this is not trivial as points is a list of arrays. This comparison is required
+            #  otherwise we will be back to calculating the samples all of the time
+            # points.all() != self._points_cache.all() or
+            # print("samples for model error calculation are different to previous samples \n"
+            #       "(Re)calculating samples")
+            # self._points_cache = points
+            # self.error_points = self.fitness.calc_forwardmc(self, points)
+            pass
+
+        self.error_points = self.fitness.calc_forwardmc(self, points)
+
+        self.fitness.plot_forwardmc(errors=self.error_points, save=save)
+        # TODO: should we return the plot object here?
+
     # Note: restore default behaviour of getstate/setstate rather than
     # inheriting from BaseFitProblem
     def __getstate__(self):

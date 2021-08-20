@@ -96,12 +96,29 @@ class ModelErrorView(PlotView):
 
     def update(self, problem, state):
         # TODO: Should happen in a separate process
-        # Shim included for deprecation of plugin (show_error)
-        self.problem = problem
-        if hasattr(problem.fitness, 'plot_forwardmc'):
+        # TODO: require correct handling of multifit problem:
+        #  How much of the model lists and iterations should be done
+        #  outside of the problem.fitness.calc_forwardmc?
+        #  should we include a method in MultiFitProblem?
+        #  In refl1d, this would mean the removal of the creation of model lists in fitness
+        #  see code below - we could just pass the model lists to
+        #  the equivilent of refl1d.errors.calc_errors?
+        if hasattr(problem, 'models'):
+            models = [m.fitness for m in problem.models]
+        else:
+            models = [problem.fitness]
+
+        # TODO: Crude check for now, just to see if BaseFitProblem implementation is working.
+        #  Not sure if we will need to iterate over all elements of the list to confirm?
+        #  Would we expect different models to be derived from a different version of fitness?
+        #  Probably not.
+        if hasattr(models[0], 'plot_forwardmc'):
+            # Shim included for deprecation of plugin (show_error)
+            self.problem = problem
             self.plot_state = fitters.get_points_from_state(state)
         else:
             import warnings
+            warnings.simplefilter('always', DeprecationWarning)
             warnings.warn("Plugin usage for model uncertainty and error plot is Deprecated, \n"
                           "in future include a plot_forwardmc method in the fitness object", DeprecationWarning)
             self.plot_state = errplot.calc_errors_from_state(problem, state)
