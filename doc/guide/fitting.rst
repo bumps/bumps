@@ -84,13 +84,61 @@ Uncertainty Analysis
 ====================
 
 More important than the optimal value of the parameters is an estimate
-of the uncertainty in those values.  By casting our problem as the
-likelihood of seeing the data given the model, we not only give
-ourselves the ability to incorporate prior information into the fit
-systematically, but we also give ourselves a strong foundation for
+of the uncertainty in those values. The particular optimum is an accident
+of the measurement; perform the measurement again and you will get a
+different optimum. Given the uncertainty in the measurement, there is a
+joint distribution of parameter values that are consistent with the
+measurement. The goal of uncertainty analysis is to determine this
+distribution and summarize it for the reader.
+
+By casting our problem as the likelihood of seeing the data given the model,
+we not only give ourselves the ability to incorporate prior information into
+the fit systematically, but we also give ourselves a strong foundation for
 assessing the uncertainty of the parameters.
 
-Uncertainty analysis is performed using :ref:`fit-dream`.  This is a
+There are multiple ways to perform the analysis:
+
+1. Bayesian inference. Given the probability on the parameters and the
+   probability that the measured data will be seen with those parameters,
+   infer the probability of the parameters given the measured data.  This
+   is the primary method in Bumps and will be discussed at length below.
+2. Sensitivity analysis. Given the optimal parameter values, look at the
+   curvature around that point as a Gaussian distribution with covariance
+   computed from the Hessian matrix. Further, pretend that there is no
+   interaction between the parameters, and report the uncertainty as the
+   square root of the diagonal. This is the default method for most optimizers
+   in Bumps.
+3. Uncertainty contour. Assuming the measurement data is independent and
+   normally distributied, a given increase in $\chi^2$ above the minimum
+   corresponds to 1-$\sigma$ confidence interval. By following this contour
+   you can find the set of all points $\xi$ such that
+   $\chi^2(\xi) = \chi^2(x) + C$ where $x$ is the point of maximum
+   likelihood. Look in Numerical Recipes chapter on nonlinear least squares
+   for a more complete discussion.  Bumps does not include algorithms
+   for this kind of analysis.
+4. Forward Monte Carlo. Bumps has the option :ref:`option-resynth` to perform
+   a forward Monte Carlo estimate of the maximum likelihood.  That is, you
+   can use the measurement uncertainty to "rerun" the experiment, synthesizing
+   a new dataset with the same uncertainty but slightly different values
+   and finding the maximum likelihood. The result after $n$ runs is a sample
+   similar to Bayesian inference but it is from a joint distribution of
+   maximum likelihood rather than a joint distribution of likelihood. This
+   works for any of the optimizers.
+5. Repeated measurement. A direct way to estimate the parameter uncertainty
+   is to repeat the experiment many times and look at the distribution
+   of best fit results. This is the classic approach which you need to
+   follow if you don't know anything about the uncertainty in your
+   measurement processes (other than the assumption of independence between
+   measurement).  You can use this during experimental design, simulating the
+   experiment in different conditions to figure out the best strategy to
+   retrieve the quantity of interest. For example, is it better to measure
+   with a pair of contrast agents, or is it better to spend twice as long
+   on a single contrast? The result gives the expected uncertainty in the
+   parameters before the measurement is ever performed. You could call this
+   model driven forward Monte Carlo as opposed to the data driven forward MC
+   listed above.
+
+Bayesian inference is performed using :ref:`fit-dream`.  This is a
 Markov chain Monte Carlo (MCMC) method with a differential evolution
 step generator.  Like simulated annealing, the MCMC explores the space
 using a random walk, always accepting a better point, but sometimes
@@ -213,7 +261,7 @@ multiple modes.  Because the fit problems may also be ill-conditioned,
 with strong correlations or anti-correlations between some parameters,
 the uncertainty analysis needs to be able to correctly indicate that
 the correlations exist. Simple Metropolis-Hastings sampling does not
-work well in these conditions, but we found that DREAM is able to 
+work well in these conditions, but we found that DREAM is able to
 handle them.  We are still affected by the curse of dimensionality.
 For correlated parameters in high dimensional spaces, even DREAM has
 difficulty taking steps which lead to improved likelihood.  For
