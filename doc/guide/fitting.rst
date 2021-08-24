@@ -84,7 +84,7 @@ Uncertainty Analysis
 ====================
 
 More important than the optimal value of the parameters is an estimate
-of the uncertainty in those values. The particular optimum is an accident
+of the uncertainty in those values. The particular optimum (perfect fit to the data), is an accident
 of the measurement; perform the measurement again and you will get a
 different optimum. Given the uncertainty in the measurement, there is a
 joint distribution of parameter values that are consistent with the
@@ -102,10 +102,10 @@ There are multiple ways to perform the analysis:
    probability that the measured data will be seen with those parameters,
    infer the probability of the parameters given the measured data.  This
    is the primary method in Bumps and will be discussed at length below.
-2. Sensitivity analysis. Given the optimal parameter values, look at the
+2. Sensitivity analysis. Given the optimal (best fit) parameter values, look at the
    curvature around that point as a Gaussian distribution with covariance
    computed from the Hessian matrix. Further, pretend that there is no
-   interaction between the parameters, and report the uncertainty as the
+   interaction between the parameters (that is they are uncorrelated and independent), and report the uncertainty as the
    square root of the diagonal. This is the default method for most optimizers
    in Bumps.
 3. Uncertainty contour. Assuming the measurement data is independent and
@@ -129,9 +129,9 @@ There are multiple ways to perform the analysis:
    of best fit results. This is the classic approach which you need to
    follow if you don't know anything about the uncertainty in your
    measurement processes (other than the assumption of independence between
-   measurement).  You can use this during experimental design, simulating the
+   measurements).  You can use this during experimental design, simulating the
    experiment in different conditions to figure out the best strategy to
-   retrieve the quantity of interest. For example, is it better to measure
+   retrieve the quantity of interest. For example, in reflectometry experiment planning, is it better to measure
    with a pair of contrast agents, or is it better to spend twice as long
    on a single contrast? The result gives the expected uncertainty in the
    parameters before the measurement is ever performed. You could call this
