@@ -84,12 +84,13 @@ Uncertainty Analysis
 ====================
 
 More important than the optimal value of the parameters is an estimate
-of the uncertainty in those values. The particular optimum (perfect fit to the data), is an accident
+of the uncertainty in those values. The best fit is an accident
 of the measurement; perform the measurement again and you will get a
 different optimum. Given the uncertainty in the measurement, there is a
 joint distribution of parameter values that are consistent with the
-measurement. The goal of uncertainty analysis is to determine this
-distribution and summarize it for the reader.
+measurement. For example, when fitting a line, the choice of slope will
+affect the range of intercepts that fit the data. The goal of uncertainty
+analysis is to determine this distribution and summarize it for the reader.
 
 By casting our problem as the likelihood of seeing the data given the model,
 we not only give ourselves the ability to incorporate prior information into
@@ -102,14 +103,14 @@ There are multiple ways to perform the analysis:
    probability that the measured data will be seen with those parameters,
    infer the probability of the parameters given the measured data.  This
    is the primary method in Bumps and will be discussed at length below.
-2. Sensitivity analysis. Given the optimal (best fit) parameter values, look at the
-   curvature around that point as a Gaussian distribution with covariance
+2. Sensitivity analysis. Given the best fit parameter values, look at the
+   curvature around that point as a normal distribution with covariance
    computed from the Hessian matrix. Further, pretend that there is no
-   interaction between the parameters (that is they are uncorrelated and independent), and report the uncertainty as the
-   square root of the diagonal. This is the default method for most optimizers
-   in Bumps.
+   interaction between the parameters (that is they are uncorrelated
+   and independent), and report the uncertainty as the square root of the
+   diagonal. This is the default method for most optimizers in Bumps.
 3. Uncertainty contour. Assuming the measurement data is independent and
-   normally distributied, a given increase in $\chi^2$ above the minimum
+   normally distributed, a given increase in $\chi^2$ above the minimum
    corresponds to 1-$\sigma$ confidence interval. By following this contour
    you can find the set of all points $\xi$ such that
    $\chi^2(\xi) = \chi^2(x) + C$ where $x$ is the point of maximum
@@ -119,11 +120,10 @@ There are multiple ways to perform the analysis:
 4. Forward Monte Carlo. Bumps has the option :ref:`option-resynth` to perform
    a forward Monte Carlo estimate of the maximum likelihood.  That is, you
    can use the measurement uncertainty to "rerun" the experiment, synthesizing
-   a new dataset with the same uncertainty but slightly different values
-   and finding the maximum likelihood. The result after $n$ runs is a sample
-   similar to Bayesian inference but it is from a joint distribution of
-   maximum likelihood rather than a joint distribution of likelihood. This
-   works for any of the optimizers.
+   a new dataset with the same uncertainty but slightly different values,
+   then find the new maximum likelihood. After $n$ runs you will be able
+   to estimate the uncertainty in the best fit parameters. This method can
+   be applied with any of the optimizers.
 5. Repeated measurement. A direct way to estimate the parameter uncertainty
    is to repeat the experiment many times and look at the distribution
    of best fit results. This is the classic approach which you need to
@@ -131,12 +131,12 @@ There are multiple ways to perform the analysis:
    measurement processes (other than the assumption of independence between
    measurements).  You can use this during experimental design, simulating the
    experiment in different conditions to figure out the best strategy to
-   retrieve the quantity of interest. For example, in reflectometry experiment planning, is it better to measure
-   with a pair of contrast agents, or is it better to spend twice as long
-   on a single contrast? The result gives the expected uncertainty in the
-   parameters before the measurement is ever performed. You could call this
-   model driven forward Monte Carlo as opposed to the data driven forward MC
-   listed above.
+   retrieve the quantity of interest. For example, to plan a reflectometry
+   experiment you want to know if it would be better to measure with a pair
+   of contrast agents, or to spend twice as long on a single contrast. The
+   result gives the expected uncertainty in the parameters before the
+   measurement is ever performed. You might call this model driven forward
+   Monte Carlo as opposed to the data driven forward MC listed above.
 
 Bayesian inference is performed using :ref:`fit-dream`.  This is a
 Markov chain Monte Carlo (MCMC) method with a differential evolution
