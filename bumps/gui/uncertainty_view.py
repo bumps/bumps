@@ -103,16 +103,18 @@ class ModelErrorView(PlotView):
         #  In refl1d, this would mean the removal of the creation of model lists in fitness
         #  see code below - we could just pass the model lists to
         #  the equivilent of refl1d.errors.calc_errors?
+        # TODO: is there a better way of identifying and handling a MultiFitProblem
+        #  object to retreve fitness?
         if hasattr(problem, 'models'):
-            models = [m.fitness for m in problem.models]
+            model = problem.active_model.fitness
         else:
-            models = [problem.fitness]
+            model = problem.fitness
 
         # TODO: Crude check for now, just to see if BaseFitProblem implementation is working.
         #  Not sure if we will need to iterate over all elements of the list to confirm?
         #  Would we expect different models to be derived from a different version of fitness?
         #  Probably not.
-        if hasattr(models[0], 'plot_forwardmc'):
+        if hasattr(model, 'plot_forwardmc'):
             # Shim included for deprecation of plugin (show_error)
             self.problem = problem
             self.plot_state = fitters.get_points_from_state(state)

@@ -571,7 +571,7 @@ class BaseFitProblem(object):
         """
         Plot the model uncertainty if present in the Fitness object.
 
-        This will call *calc_forwardmc and *plot_forwardmc* methods in the Fitness object.
+        This will call *calc_forwardmc* and *plot_forwardmc* methods in the Fitness object.
         Points will be passed to the method, by using *fitters.get_errors_from_state* method.
 
         This allows flexibility for the user to define their own model uncertainty plot in the Fitness object.
@@ -784,16 +784,20 @@ class MultiFitProblem(BaseFitProblem):
         """
         Plot the model uncertainty if present in the Fitness object.
 
-        This will call *calc_forwardmc and *plot_forwardmc* methods in the Fitness object.
+        This will call *calc_forwardmc* and *plot_forwardmc* methods in the Fitness object.
         Points will be passed to the method, by using *fitters.get_errors_from_state* method.
 
         This allows flexibility for the user to define their own model uncertainty plot in the Fitness object.
         For example for reflectivty it will return the SLD uncertainty plot.
         """
-        models = [m.fitness for m in self.models]
+        # models = [m.fitness for m in self.models]
         # TODO: only checks the first model, and assumes the rest are the same.
-        if not hasattr(models[0].fitness, 'plot_forwardmc'):
-            return
+
+        for m in self.models:
+            if not hasattr(m.fitness, 'plot_forwardmc'):
+                warnings.warn("One or more of the models in MultiFitProblem do not have a \n"
+                              "fitness.plot_forwardmc method. Cannot generate model uncertainty")
+                return
 
         if self._points_cache is None:
             # TODO: need to work out how to compare if points == _points_cache
