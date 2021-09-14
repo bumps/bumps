@@ -169,6 +169,11 @@ class FitThread(Thread):
         self.convergence_update = convergence_update
         self.uncertainty_update = uncertainty_update
 
+        # add driver (FitDriver instance) as a attr of FitThread
+        # This is so we can pass it through to app_panel and as such the call to
+        # the new save out methods have access to FitDriver
+        self.driver = None
+
     def run(self):
         # TODO: we have no interlocks on changes in problem state.  What
         # happens when the user changes the problem while a fit is being run?
@@ -195,20 +200,20 @@ class FitThread(Thread):
         #print "fitclass",self.fitclass
         problem = deepcopy(self.problem)
         #print "fitclass id",id(self.fitclass),self.fitclass,threading.current_thread()
-        driver = FitDriver(
+        self.driver = FitDriver(
             self.fitclass, problem=problem,
             monitors=monitors, abort_test=self.abort_test,
             mapper=mapper.start_mapper(problem, []),
             **self.options)
 
-        x, fx = driver.fit()
+        x, fx = self.driver.fit()
         # Give final state message from monitors
         for M in monitors:
             if hasattr(M, 'final'):
                 M.final()
 
         with redirect_console() as fid:
-            driver.show()
+            self.driver.show()
             captured_output = fid.getvalue()
 
         evt = FitCompleteEvent(
