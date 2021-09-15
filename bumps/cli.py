@@ -131,8 +131,11 @@ def save_best(fitdriver, problem, best, view=None):
 
     fitdriver.save(problem.output_path)
     with util.redirect_console(problem.output_path + ".err"):
+        # Now calls the .show method of DreamFit that prints out the
+        # uncertainty report without calling the plot method
         fitdriver.show()
-        fitdriver.plot(output_path=problem.output_path, view=view)
+    # calls the save model plot and uncertainty plot methods - also saves out -err.json file
+    fitdriver.plot(output_path=problem.output_path, view=view)
     fitdriver.show()
     # print "plotting"
 

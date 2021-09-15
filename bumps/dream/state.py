@@ -433,6 +433,13 @@ class MCMCDraw(object):
         from .views import plot_all
         plot_all(self, portion=portion, figfile=figfile)
 
+    def print_out(self, portion=1.0, print_out_file=None):
+        """
+        Prints out uncertainty report and saves to -err.json
+        """
+        from .views import print_uncertainty
+        print_uncertainty(self, portion, print_out_file)
+
     def _last_gen(self):
         """
         Returns x, logp for most recent generation to dream.py.

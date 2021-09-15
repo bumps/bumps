@@ -872,8 +872,9 @@ class DreamFit(FitBase):
         # usage of error_plot to be Deprecated. Use fitness.plot_forwardmc instead
         # self.error_plot(figfile=output_path)
 
-    def show(self):
-        pass
+    def show(self, output_path=None):
+        # prints and saves out error report -err.json
+        self.state.print_out(print_out_file=output_path, portion=self._trimmed)
 
     def error_plot(self, figfile):
         # Produce error plot
@@ -1129,10 +1130,10 @@ class FitDriver(object):
         return self._stderr_from_cov
 
     def show(self):
-        if hasattr(self.fitter, 'show'):
-            self.fitter.show()
         if hasattr(self.problem, 'show'):
             self.problem.show()
+        if hasattr(self.fitter, 'show'):
+            self.fitter.show()
 
     def show_err(self):
         """
@@ -1202,9 +1203,13 @@ class FitDriver(object):
             self.problem.plot(figfile=output_path, view=view)
         if hasattr(self.fitter, 'plot'):
             self.fitter.plot(output_path=output_path)
-        # TODO: need to check if multifitproblem.
-        #  If so we need to iterate through the models
-        if hasattr(self.problem.fitness, 'plot_forwardmc'):
+        # TODO: need to handle multifitproblem - do we iterate through models?
+        if hasattr(self.problem, 'models'):
+            model = self.problem.active_model.fitness
+        else:
+            model = self.problem.fitness
+
+        if hasattr(model, 'plot_forwardmc'):
             # check to see if self.nshown has been set
             # if not use default instead.
             # self.nshown should only be set in one place

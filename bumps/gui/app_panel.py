@@ -659,7 +659,11 @@ class AppPanel(wx.Panel):
         # Produce uncertainty plots
         if self.uncertainty_state is not None:
             with redirect_console(output_path+".err"):
-                self.uncertainty_state.show(figfile=output_path)
+                # below is a shim until the universal save_out is sorted
+                # prints out the uncertainty report without calling the plot method
+                self.uncertainty_state.print_out(print_out_file=output_path)
+            # calls the save uncertainty plot method - also saves out the -err.json file
+            self.uncertainty_state.show(figfile=output_path)
             self.uncertainty_state.save(output_path)
 
 

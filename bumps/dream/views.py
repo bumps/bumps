@@ -3,7 +3,7 @@ MCMC plotting methods.
 """
 from __future__ import division, print_function
 
-__all__ = ['plot_all', 'plot_corr', 'plot_corrmatrix',
+__all__ = ['print_uncertainty', 'plot_all', 'plot_corr', 'plot_corrmatrix',
            'plot_trace', 'plot_logp', 'format_vars']
 
 import math
@@ -17,14 +17,34 @@ from . import varplot
 from .formatnum import format_value
 from .stats import var_stats, format_vars, save_vars
 
-def plot_all(state, portion=1.0, figfile=None):
-    # Print/save uncertainty report before loading pylab or creating plots
+
+# start process of splitting out the uncertainty print out from the plotting
+# TODO: Should we combine this into a class so we only calculate the
+#  draw and all_vstats objects once?
+def print_uncertainty(state, portion=1.0, print_out_file=None):
+    # Print/save uncertainty report
+
     draw = state.draw(portion=portion)
     all_vstats = var_stats(draw)
     print(format_vars(all_vstats))
     print("\nStatistics and plots based on {nsamp:d} samples "
           "({psamp:.1%} of total samples drawn)".format( \
           nsamp=len(draw.points), psamp=portion))
+    # for now leave the -err.json to save out in plot_all
+    # if print_out_file is not None:
+    #     save_vars(all_vstats, print_out_file+"-err.json")
+
+
+# TODO: remove repeated code that has been placed in print_uncertainty
+# TODO: split out -err.json save out
+def plot_all(state, portion=1.0, figfile=None):
+    # Print/save uncertainty report before loading pylab or creating plots
+    draw = state.draw(portion=portion)
+    all_vstats = var_stats(draw)
+    # print(format_vars(all_vstats))
+    # print("\nStatistics and plots based on {nsamp:d} samples "
+    #       "({psamp:.1%} of total samples drawn)".format( \
+    #       nsamp=len(draw.points), psamp=portion))
     if figfile is not None:
         save_vars(all_vstats, figfile+"-err.json")
 
