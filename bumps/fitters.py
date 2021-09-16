@@ -1129,10 +1129,12 @@ class FitDriver(object):
             self._stderr_from_cov = lsqerror.stderr(self.cov())
         return self._stderr_from_cov
 
-    def show(self):
+    def show(self, show_fitter=False):
         if hasattr(self.problem, 'show'):
             self.problem.show()
-        if hasattr(self.fitter, 'show'):
+        # added optional argument to choose
+        # if we want to print the fitter output or not
+        if hasattr(self.fitter, 'show') and show_fitter:
             self.fitter.show()
 
     def show_err(self):
