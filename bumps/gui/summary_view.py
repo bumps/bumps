@@ -38,6 +38,7 @@ IS_MAC = (wx.Platform == '__WXMAC__')
 
 NUMPIX = 400
 NUMTICKS = NUMPIX*5-1
+COMPACTIFY_VERTICAL = 10
 
 class SummaryView(scrolled.ScrolledPanel):
     """
@@ -50,7 +51,7 @@ class SummaryView(scrolled.ScrolledPanel):
 
         self.display_list = []
 
-        self.sizer = wx.GridBagSizer(hgap=0, vgap=3)
+        self.sizer = wx.GridBagSizer(hgap=0, vgap=-COMPACTIFY_VERTICAL)
         self.SetSizer(self.sizer)
         self.sizer.Fit(self)
 
@@ -113,7 +114,7 @@ class SummaryView(scrolled.ScrolledPanel):
         self.layer_label = wx.StaticText(self, wx.ID_ANY, 'Fit Parameter',
                                          size=(160,-1))
         self.slider_label = wx.StaticText(self, wx.ID_ANY, '',
-                                         size=(100,-1))
+                                         size=(NUMPIX,-1))
         self.value_label = wx.StaticText(self, wx.ID_ANY, 'Value',
                                          size=(100,-1))
         self.low_label = wx.StaticText(self, wx.ID_ANY, 'Minimum',
@@ -129,10 +130,10 @@ class SummaryView(scrolled.ScrolledPanel):
         hbox.Add(self.high_label, 0, wx.LEFT, 1)
 
         # Note that row at pos=(0,0) is not used to add a blank row.
-        self.sizer.Add(hbox, pos=(1,0))
+        self.sizer.Add(hbox, pos=(1,0), flag=wx.BOTTOM, border=COMPACTIFY_VERTICAL)
 
         line = wx.StaticLine(self, wx.ID_ANY)
-        self.sizer.Add(line, pos=(2,0), flag=wx.EXPAND|wx.RIGHT, border=5)
+        self.sizer.Add(line, pos=(2,0), flag=wx.EXPAND|wx.RIGHT|wx.BOTTOM, border=COMPACTIFY_VERTICAL)
 
         # TODO: better interface to fittable parameters
         if self.model is not None:
@@ -170,7 +171,7 @@ class ParameterSummary(wx.Panel):
                                         size=(160,-1), style=wx.TE_LEFT)
         self.slider = wx.Slider(self, wx.ID_ANY,
                                 value=0, minValue=0, maxValue=NUMPIX*5-1,
-                                size=(NUMPIX, 16), style=wx.SL_HORIZONTAL)
+                                size=(NUMPIX, -1), style=wx.SL_HORIZONTAL)
         self.value = wx.StaticText(self, wx.ID_ANY, str(self.parameter.value),
                                    size=(100,-1), style=wx.TE_LEFT)
         self.min_range = wx.StaticText(self, wx.ID_ANY, str(self.low),
@@ -179,11 +180,12 @@ class ParameterSummary(wx.Panel):
                                        size=(100,-1), style=wx.TE_LEFT)
 
         # Add text strings and slider to sizer.
-        text_hbox.Add(self.layer_name, 0, wx.LEFT, 1)
-        text_hbox.Add(self.slider, 0, wx.LEFT, 1)
-        text_hbox.Add(self.value, 0, wx.LEFT, 21)
-        text_hbox.Add(self.min_range, 0, wx.LEFT, 1)
-        text_hbox.Add(self.max_range, 0, wx.LEFT, 1)
+        text_hbox_flags = wx.LEFT|wx.ALIGN_CENTER_VERTICAL
+        text_hbox.Add(self.layer_name, 0, text_hbox_flags, 1)
+        text_hbox.Add(self.slider, 0, text_hbox_flags, 1)
+        text_hbox.Add(self.value, 0, text_hbox_flags, 21)
+        text_hbox.Add(self.min_range, 0, text_hbox_flags, 1)
+        text_hbox.Add(self.max_range, 0, text_hbox_flags, 1)
 
         self.SetSizer(text_hbox)
 
