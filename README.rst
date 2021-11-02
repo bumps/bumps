@@ -40,6 +40,14 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
+*planned*
+v0.8.1 2021-11-??
+-----------------
+* "apply parameters" action added to GUI menu (does the same as --pars flag in CLI)
+* operators refactored (no more eval)
+* BoundedNormal keywords renamed (sigma, mu) -> (std, mean)
+* support for numba usage in models
+
 v0.8.0 2020-12-16
 -----------------
 * add stopping conditions to DREAM, using *--alpha=p-value* to reject convergence
