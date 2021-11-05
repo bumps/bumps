@@ -153,7 +153,8 @@ class SummaryView(scrolled.ScrolledPanel):
         for p in self.display_list:
             p.update_slider()
 
-VALUE_FORMAT = "{:.10g}"
+VALUE_PRECISION = 6
+VALUE_FORMAT = "{{:.{:d}g}}".format(VALUE_PRECISION)
 
 class ParameterSummary(wx.Panel):
     """Build one parameter line for display."""
@@ -198,7 +199,7 @@ class ParameterSummary(wx.Panel):
         # Add line below if get01 doesn't protect against values out of range.
         #slider_pos = min(max(slider_pos,0),100)
         self.slider.SetValue(slider_pos)
-        self.value.SetLabel(VALUE_FORMAT.format(nice(self.parameter.value)))
+        self.value.SetLabel(VALUE_FORMAT.format(nice(self.parameter.value, digits=VALUE_PRECISION)))
 
         # Update new min and max range of values if changed.
         newlow, newhigh = (v for v in self.parameter.bounds.limits)
@@ -211,6 +212,7 @@ class ParameterSummary(wx.Panel):
     def OnScroll(self, event):
         value = self.slider.GetValue()
         new_value  = self.parameter.bounds.put01(value/NUMTICKS)
-        self.parameter.value = new_value
-        self.value.SetLabel(VALUE_FORMAT.format(nice(new_value)))
+        nice_new_value = nice(new_value, digits=VALUE_PRECISION)
+        self.parameter.value = nice_new_value
+        self.value.SetLabel(VALUE_FORMAT.format(nice_new_value))
         signal.update_parameters(model=self.model, delay=1)
