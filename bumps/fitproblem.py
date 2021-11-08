@@ -534,7 +534,7 @@ class FitProblem(FitProblemSchema):
         broken.extend([f"constraint {c} is unsatisfied" for c in self.constraints if float(c) == inf])
         if self._constraints_function() == inf:
              broken.append("user constraint function is unsatisfied")
-        warnings.warn("Unsatisfied constraints: %s" % (",\n".join(broken)))
+        warnings.warn("Unsatisfied constraints: [%s]" % (",\n".join(broken)))
         self.broken_constraints = broken
 
         # TODO: shimmed to allow non-Parameter in Parameter attribute spots.
@@ -587,7 +587,7 @@ class FitProblem(FitProblemSchema):
         for c in self.constraints:
             c_nllf = float(c)
             nllf += c_nllf
-            if c_nllf == np.inf:
+            if c_nllf > 0:
                 failing.append(str(c))
 
         return nllf, failing
