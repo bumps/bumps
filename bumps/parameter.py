@@ -820,7 +820,7 @@ class Expression(ValueProtocol):
     _fn: Callable[..., float] # _fn(float, float, ...) -> float
 
     def __init__(self, op: Union[str, Operators], args):
-        op = getattr(Operators, op) if isinstance(op, str) else op
+        op = op if isinstance(op, Operators) else getattr(Operators, op)
         self.op = op
         self._fn = _lookup_operator(op.name)
         self.args = args
