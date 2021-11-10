@@ -153,6 +153,8 @@ class SummaryView(scrolled.ScrolledPanel):
         for p in self.display_list:
             p.update_slider()
 
+VALUE_PRECISION = 6
+VALUE_FORMAT = "{{:.{:d}g}}".format(VALUE_PRECISION)
 
 class ParameterSummary(wx.Panel):
     """Build one parameter line for display."""
@@ -172,11 +174,11 @@ class ParameterSummary(wx.Panel):
         self.slider = wx.Slider(self, wx.ID_ANY,
                                 value=0, minValue=0, maxValue=NUMPIX*5-1,
                                 size=(NUMPIX, -1), style=wx.SL_HORIZONTAL)
-        self.value = wx.StaticText(self, wx.ID_ANY, str(self.parameter.value),
+        self.value = wx.StaticText(self, wx.ID_ANY, VALUE_FORMAT.format(self.parameter.value),
                                    size=(100,-1), style=wx.TE_LEFT)
-        self.min_range = wx.StaticText(self, wx.ID_ANY, str(self.low),
+        self.min_range = wx.StaticText(self, wx.ID_ANY, VALUE_FORMAT.format(self.low),
                                        size=(100,-1), style=wx.TE_LEFT)
-        self.max_range = wx.StaticText(self, wx.ID_ANY, str(self.high),
+        self.max_range = wx.StaticText(self, wx.ID_ANY, VALUE_FORMAT.format(self.high),
                                        size=(100,-1), style=wx.TE_LEFT)
 
         # Add text strings and slider to sizer.
@@ -197,19 +199,20 @@ class ParameterSummary(wx.Panel):
         # Add line below if get01 doesn't protect against values out of range.
         #slider_pos = min(max(slider_pos,0),100)
         self.slider.SetValue(slider_pos)
-        self.value.SetLabel(str(nice(self.parameter.value)))
+        self.value.SetLabel(VALUE_FORMAT.format(nice(self.parameter.value, digits=VALUE_PRECISION)))
 
         # Update new min and max range of values if changed.
         newlow, newhigh = (v for v in self.parameter.bounds.limits)
         if newlow != self.low:
-            self.min_range.SetLabel(str(newlow))
+            self.min_range.SetLabel(VALUE_FORMAT.format(newlow))
 
         #if newhigh != self.high:
-        self.max_range.SetLabel(str(newhigh))
+        self.max_range.SetLabel(VALUE_FORMAT.format(newhigh))
 
     def OnScroll(self, event):
         value = self.slider.GetValue()
         new_value  = self.parameter.bounds.put01(value/NUMTICKS)
-        self.parameter.value = new_value
-        self.value.SetLabel(str(nice(new_value)))
+        nice_new_value = nice(new_value, digits=VALUE_PRECISION)
+        self.parameter.value = nice_new_value
+        self.value.SetLabel(VALUE_FORMAT.format(nice_new_value))
         signal.update_parameters(model=self.model, delay=1)
