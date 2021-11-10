@@ -337,9 +337,9 @@ class AppPanel(wx.Panel):
     def OnModelNew(self, model):
         self.set_model(model)
 
-    def OnModelChange(self, model):
+    def OnModelChange(self, model, source=None):
         for v in self.view.values():
-            if hasattr(v, 'update_model'):
+            if getattr(v, 'title', '') != source and hasattr(v, 'update_model'):
                 v.update_model(model)
 
     def OnModelSetpar(self, model):

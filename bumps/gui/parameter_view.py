@@ -36,6 +36,7 @@ from .util import nice
 from . import signal
 
 IS_MAC = (wx.Platform == '__WXMAC__')
+VIEW_NAME = "Parameters"
 
 class ParameterCategory(object):
     def __init__(self, name):
@@ -219,13 +220,13 @@ class ParametersModel(dv.PyDataViewModel):
             # update; parameter values didn't change, so dirty=False, and
             # model.model_update() will not be called and the theory value
             # will not be re-computed.
-            signal.update_model(model=self.model, dirty=False)
+            signal.update_model(model=self.model, dirty=False, source=VIEW_NAME)
         else:
             signal.update_parameters(model=self.model, delay=1)
         return True
 
 class ParameterView(wx.Panel):
-    title = 'Parameters'
+    title = VIEW_NAME
     default_size = (640,500)
     def __init__(self, *args, **kw):
         wx.Panel.__init__(self, *args, **kw)

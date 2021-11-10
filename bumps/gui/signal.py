@@ -20,15 +20,16 @@ def model_new(model):
     wx.CallAfter(send, 'model.new', model=model)
 
 
-def update_model(model, dirty=True):
+def update_model(model, dirty=True, source=None):
     """
     Inform all views that the model structure has changed.  This calls
     model.model_reset() to reset the fit parameters and constraints.
+    Include a source if debouncing is needed.
     """
     model.model_reset()  #
     if dirty:
         model.model_update()
-    wx.CallAfter(send, 'model.update_structure', model=model)
+    wx.CallAfter(send, 'model.update_structure', model=model, source=source)
 
 
 _DELAYED_SIGNAL = {}
