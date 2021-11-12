@@ -213,15 +213,7 @@ class ParametersModel(dv.PyDataViewModel):
                 if high != par.bounds.limits[1]:
                     par.range(low, high)
 
-        if col == 0:
-            # if the number of fitting parameters changes then this is
-            # considered a model update rather than a simple parameter
-            # update; parameter values didn't change, so dirty=False, and
-            # model.model_update() will not be called and the theory value
-            # will not be re-computed.
-            signal.update_model(model=self.model, dirty=False)
-        else:
-            signal.update_parameters(model=self.model, delay=1)
+        signal.update_parameters(model=self.model, delay=1)
         return True
 
 class ParameterView(wx.Panel):
