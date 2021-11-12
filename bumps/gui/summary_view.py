@@ -31,6 +31,7 @@ import wx
 
 import  wx.lib.scrolledpanel as scrolled
 
+from .. import parameter
 from .util import nice
 from . import signal
 
@@ -50,6 +51,8 @@ class SummaryView(scrolled.ScrolledPanel):
         scrolled.ScrolledPanel.__init__(self, *args, **kw)
 
         self.display_list = []
+        self.all_params = []
+        self.fit_params = []
 
         self.sizer = wx.GridBagSizer(hgap=0, vgap=-COMPACTIFY_VERTICAL)
         self.SetSizer(self.sizer)
@@ -106,6 +109,11 @@ class SummaryView(scrolled.ScrolledPanel):
             self._update_parameters()
 
     def _update_model(self):
+        self.all_params = parameter.unique(self.model.model_parameters())
+        self.fit_params = self._get_fit_params()
+        self._update_display()
+
+    def _update_display(self):
         #print "drawing"
         self.sizer.Clear(True)
         #self.sizer.Clear()
@@ -137,9 +145,8 @@ class SummaryView(scrolled.ScrolledPanel):
 
         # TODO: better interface to fittable parameters
         if self.model is not None:
-            pars = self.model._parameters
             #pars = sorted(pars, cmp=lambda x,y: cmp(x.name, y.name))
-            for p in pars:
+            for p in self.fit_params:
                 self.display_list.append(ParameterSummary(self, p, self.model))
 
         for index, item in enumerate(self.display_list):
@@ -148,8 +155,15 @@ class SummaryView(scrolled.ScrolledPanel):
         self.SetupScrolling()
         self.Layout()
 
+    def _get_fit_params(self):
+        return parameter.varying(self.all_params)
+
     def _update_parameters(self):
         #print "updating"
+        fit_params = self._get_fit_params()
+        if fit_params != self.fit_params:
+            self.fit_params = fit_params
+            self._update_display()
         for p in self.display_list:
             p.update_slider()
 
