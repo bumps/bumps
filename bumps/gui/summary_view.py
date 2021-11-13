@@ -38,7 +38,7 @@ IS_MAC = (wx.Platform == '__WXMAC__')
 
 NUMPIX = 400
 NUMTICKS = NUMPIX*5-1
-COMPACTIFY_VERTICAL = 6
+COMPACTIFY_VERTICAL = 4
 
 class SummaryView(scrolled.ScrolledPanel):
     """
