@@ -38,7 +38,11 @@ IS_MAC = (wx.Platform == '__WXMAC__')
 
 NUMPIX = 400
 NUMTICKS = NUMPIX*5-1
-COMPACTIFY_VERTICAL = 4
+COMPACTIFY_VERTICAL = {
+    '__WXMAC__': 2,
+    '__WXGTK__': 6,
+    '__WXMSW__': 4,
+}.get(wx.Platform, 6)
 
 class SummaryView(scrolled.ScrolledPanel):
     """
