@@ -50,6 +50,7 @@ class SummaryView(scrolled.ScrolledPanel):
         scrolled.ScrolledPanel.__init__(self, *args, **kw)
 
         self.display_list = []
+        self.parameters = []
 
         self.sizer = wx.GridBagSizer(hgap=0, vgap=-COMPACTIFY_VERTICAL)
         self.SetSizer(self.sizer)
@@ -107,6 +108,7 @@ class SummaryView(scrolled.ScrolledPanel):
 
     def _update_model(self):
         #print "drawing"
+        self.parameters = self.model._parameters
         self.sizer.Clear(True)
         #self.sizer.Clear()
         self.display_list = []
@@ -150,8 +152,11 @@ class SummaryView(scrolled.ScrolledPanel):
 
     def _update_parameters(self):
         #print "updating"
-        for p in self.display_list:
-            p.update_slider()
+        if self.parameters is not self.model._parameters:
+            self._update_model()
+        else:
+            for p in self.display_list:
+                p.update_slider()
 
 VALUE_PRECISION = 6
 VALUE_FORMAT = "{{:.{:d}g}}".format(VALUE_PRECISION)
