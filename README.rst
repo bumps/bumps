@@ -46,6 +46,10 @@ Release notes
 * operators refactored (no more eval)
 * BoundedNormal keywords renamed (sigma, mu) -> (std, mean)
 * support for numba usage in models
+* fixed Parameters view jumping to top after toggling fit (linux, Mac)
+* fixed Summary view sliders disappearing in linux
+* fixed uncertainty plots regenerating at each parameter update
+* improved documentation of uncertainty analysis
 
 v0.8.0 2020-12-16
 -----------------
