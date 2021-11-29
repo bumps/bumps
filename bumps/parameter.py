@@ -176,7 +176,18 @@ class SupportsPrior:
             and not isinstance(self.prior, mbounds.Unbounded)
             and self.limits != (-np.inf, np.inf))
     
-    def add_prior(self, distribution: DistributionType, bounds=None, limits=(-inf, inf)):
+    def add_prior(self, distribution: DistributionType=None, bounds=None, limits=None):
+        # use self values if they are found:
+        if distribution is None and self.distribution is not None:
+            distribution = self.distribution
+        if bounds is None and self.bounds is not None:
+            bounds = self.bounds
+        if limits is None:
+            if self.limits is not None:
+                limits = self.limits
+            else:
+                limits = (-inf, inf)
+
         if bounds is not None:
             # get the intersection of the limits here.
             limits = (
@@ -820,7 +831,7 @@ class Expression(ValueProtocol):
     _fn: Callable[..., float] # _fn(float, float, ...) -> float
 
     def __init__(self, op: Union[str, Operators], args):
-        op = op if isinstance(op, Operators) else getattr(Operators, op)
+        op = op if (isinstance(op, Operators) or isinstance(op, UserFunction)) else getattr(Operators, op)
         self.op = op
         self._fn = _lookup_operator(op.name)
         self.args = args
@@ -1683,6 +1694,7 @@ def test_operator():
 
     # Check slots
     limited = Parameter(3, name='limited', limits=[0.5, 1.5], bounds=[0, 1])
+    limited.add_prior()
     assert np.isinf(limited.nllf())
     assert np.isinf(limited.nllf())
     limited.value = 0.6
@@ -1722,6 +1734,7 @@ def test_operator():
     mu, sigma = 3, 2
     b.dev(sigma, mean=mu)
     b.value = 4
+    b.add_prior()
     nllf_target = 0.5*((b.value-mu)/sigma)**2 + np.log(2*np.pi*sigma**2)/2
     assert abs(b.nllf() - nllf_target)/nllf_target < 1e-12
 
