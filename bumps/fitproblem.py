@@ -49,7 +49,7 @@ Summary of problem attributes::
 # to avoid this issue.
 from __future__ import division, with_statement
 
-__all__ = ['Fitness', 'FitnessProtocol', 'FitProblem', 'load_problem']
+__all__ = ['Fitness', 'FitProblem', 'load_problem']
 
 import sys
 import os

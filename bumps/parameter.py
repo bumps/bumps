@@ -144,11 +144,12 @@ class ValueProtocol(OperatorMixin):
 
 @schema()
 class Calculation(ValueProtocol): # the name Function is taken (though deprecated)
-    """\
+    """
     A Parameter with a model-specific, calculated value.
     The function used to calculate this value should be well-documented in the 
-    description field, e.g. 
-      Stack.thickness: description = "a sum of the thicknesses of all layers in the stack"
+    description field, e.g.
+    Stack.thickness: description = "a sum of the thicknesses of all layers in the stack"
+
     """
     description: str
     _function: Callable[[], float]  # added by the model; not serialized
@@ -275,9 +276,10 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
     *value* can be a constant, a variable, an expression or a link to
     another parameter.
 
-    *bounds* can be a distribution specified in :mod:`bounds` or a tuple
-    *(low, high)*. If bounds are supplied then the parameter defaults to
-    fittable.
+    *bounds* are user-supplied limits on the parameter value within the model.
+    If bounds are supplied then the parameter defaults to fittable.
+
+    *distribution* is one of Uniform, Normal or UniformSoftBounded classes
 
     *fixed* is True if the parameter is fixed, even if bounds are supplied.
 
