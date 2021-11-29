@@ -31,9 +31,13 @@ def plot_all(state, portion=1.0, figfile=None):
     from pylab import figure, savefig, suptitle, rcParams
     figext = '.'+rcParams.get('savefig.format', 'png')
 
+    # Use finer binning with more samples. For 1% bin variation p,
+    # points per bin k = (100/p)**2 = 10000, and nbins = N // k.
+    nbins = max(min(draw.points.shape[0]//10000, 400), 30)
+
     # histograms
     figure(figsize=varplot.var_plot_size(len(all_vstats)))
-    varplot.plot_vars(draw, all_vstats)
+    varplot.plot_vars(draw, all_vstats, nbins=nbins)
     if state.title:
         suptitle(state.title, x=0, y=1, va='top', ha='left')
     if figfile is not None:
@@ -46,6 +50,13 @@ def plot_all(state, portion=1.0, figfile=None):
     if figfile is not None:
         savefig(figfile+"-trace"+figext)
 
+    # Acceptance rate
+    if False:
+        figure()
+        plot_acceptance_rate(state, portion=portion)
+        if figfile is not None:
+            savefig(figfile+"-acceptance"+figext)
+
     # convergence plot
     figure()
     plot_logp(state, portion=portion)
@@ -57,7 +68,7 @@ def plot_all(state, portion=1.0, figfile=None):
     # correlation plot
     if draw.num_vars <= 25:
         figure()
-        plot_corrmatrix(draw)
+        plot_corrmatrix(draw, nbins=nbins)
         if state.title:
             suptitle(state.title)
         if figfile is not None:
@@ -73,8 +84,8 @@ def plot_all(state, portion=1.0, figfile=None):
         if figfile is not None:
             savefig(figfile+"-parcor"+figext)
 
-def plot_corrmatrix(draw):
-    c = corrplot.Corr2d(draw.points.T, bins=50, labels=draw.labels)
+def plot_corrmatrix(draw, nbins=50):
+    c = corrplot.Corr2d(draw.points.T, bins=nbins, labels=draw.labels)
     c.plot()
     #print "Correlation matrix\n",c.R()
 
@@ -243,3 +254,14 @@ def tile_axes(n, size=None):
     nw = int(math.ceil(n/nh))
     return nw, nh
 
+def plot_acceptance_rate(state, portion=1.0):
+    from matplotlib import pyplot as plt
+
+    gen, AR = state.acceptance_rate()
+    if portion != 1.0:
+        index = int(portion*len(AR))
+        gen, AR = gen[-index:], AR[-index:]
+    plt.plot(gen, AR)
+    plt.xlabel("Generation #")
+    plt.ylabel("Acceptance rate (%)")
+    plt.title("DREAM acceptance rate by generation")

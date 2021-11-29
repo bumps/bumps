@@ -84,7 +84,7 @@ def best_in_bin(x, value, bins=50, range=None, keep_empty=False):
         # since these will be ignored during bin lookup.
         xmin, xmax = range if range is not None else (np.min(x), np.max(x))
         dx = (xmax - xmin)/bins
-        value_in_bin = (x - xmin)//dx
+        value_in_bin = (x - xmin)//dx if dx != 0.0 else np.full_like(x, bins//2)
         nbins = bins
     else:
         # Lookup x in bin edges. searchsorted returns index 0 for elements
@@ -170,5 +170,7 @@ def scale(x, axis=None):
     """
     low = x.min(axis=axis, keepdims=True)
     high = x.max(axis=axis, keepdims=True)
-    scaled = (x - low)/(high - low)
+    dx = high - low
+    dx[dx == 0.0] = 1.0
+    scaled = (x - low)/dx
     return scaled

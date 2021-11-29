@@ -10,6 +10,9 @@ from .plot_view import PlotView
 class UncertaintyView(PlotView):
     title = "Uncertainty"
 
+    def update_parameters(self, *args, **kw):
+        pass
+
     def plot(self):
         if not self.plot_state:
             return
@@ -31,6 +34,9 @@ class UncertaintyView(PlotView):
 
 class CorrelationView(PlotView):
     title = "Correlations"
+
+    def update_parameters(self, *args, **kw):
+        pass
 
     def plot(self):
         if not self.plot_state:
@@ -57,6 +63,9 @@ class CorrelationView(PlotView):
 class TraceView(PlotView):
     title = "Parameter Trace"
 
+    def update_parameters(self, *args, **kw):
+        pass
+
     def plot(self):
         if not self.plot_state:
             return
@@ -79,6 +88,9 @@ class TraceView(PlotView):
 
 class ModelErrorView(PlotView):
     title = "Model Uncertainty"
+
+    def update_parameters(self, *args, **kw):
+        pass
 
     def plot(self):
         if not self.plot_state:

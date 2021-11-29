@@ -74,11 +74,13 @@ def _parse_pars(fn, init=None, skip=0, name=""):
     *pk=None* then the parameter will be non-fittable, and instead set
     through *init*.
     """
-    pnames, vararg, varkw, pvalues = inspect.getargspec(fn)
-    if vararg or varkw:
-        raise TypeError(
-            "Function %r cannot have *args or **kwargs in declaration"
-            % fn.__name__)
+    sig = inspect.signature(fn)
+    params = sig.parameters.values()
+    pnames = [p.name for p in params]
+    
+    valid = [p.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD) for p in params]
+    if not all(valid):
+        raise TypeError(f"Only positional and keyword arguments allowed for {fn.__name__}")
 
     # TODO: need "self" handling for passed methods
     # Skip the first argument if it is x or maybe skip x, y.
@@ -88,11 +90,9 @@ def _parse_pars(fn, init=None, skip=0, name=""):
     defaults = dict((p, 0) for p in pnames)
 
     # If the function provides default values, use those.
-    if pvalues:
-        # Ignore default value for "x" parameter.
-        if len(pvalues) > len(pnames):
-            pvalues = pvalues[-len(pnames):]
-        defaults.update(zip(pnames[-len(pvalues):], pvalues))
+    for param in list(params)[skip:]:
+        if param.default is not inspect.Parameter.empty:
+            defaults[param.name] = param.default
 
     # Non-fittable parameters need to be sent in as None
     state_vars = set(p for p, v in defaults.items() if v is None)
