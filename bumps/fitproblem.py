@@ -680,7 +680,7 @@ class MultiFitProblem(BaseFitProblem):
 
     def model_nllf(self):
         """Return cost function for all data sets"""
-        return sum(f.model_nllf() for f in self.models)
+        return sum(w*f.model_nllf() for w, f in zip(self.weights, self.models))
 
     def constraints_nllf(self):
         """Return the cost function for all constraints"""
