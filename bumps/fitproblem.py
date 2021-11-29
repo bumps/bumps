@@ -575,7 +575,7 @@ class FitProblem(FitProblemSchema):
 
     def model_nllf(self):
         """Return cost function for all data sets"""
-        return sum(f.nllf() for f in self.models)
+        return sum(w*f.nllf() for w, f in zip(self.weights, self.models))
 
     def constraints_nllf(self) -> util.Tuple[float, util.List[str]]:
         """Return the cost function for all constraints"""
