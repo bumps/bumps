@@ -534,7 +534,8 @@ class FitProblem(FitProblemSchema):
         broken.extend([f"constraint {c} is unsatisfied" for c in self.constraints if float(c) == inf])
         if self._constraints_function() == inf:
              broken.append("user constraint function is unsatisfied")
-        warnings.warn("Unsatisfied constraints: [%s]" % (",\n".join(broken)))
+        if len(broken) > 0:
+            warnings.warn("Unsatisfied constraints: [%s]" % (",\n".join(broken)))
         self.broken_constraints = broken
 
         # TODO: shimmed to allow non-Parameter in Parameter attribute spots.
@@ -575,7 +576,7 @@ class FitProblem(FitProblemSchema):
 
     def model_nllf(self):
         """Return cost function for all data sets"""
-        return sum(w*f.nllf() for w, f in zip(self.weights, self.models))
+        return sum(w**2*f.nllf() for w, f in zip(self.weights, self.models))
 
     def constraints_nllf(self) -> util.Tuple[float, util.List[str]]:
         """Return the cost function for all constraints"""
@@ -709,3 +710,27 @@ def load_problem(filename, options=None) -> FitProblem:
         raise ValueError(filename + " requires 'problem = FitProblem(...)'")
 
     return problem
+
+def test_weighting():
+
+    class SimpleFitness(Fitness):
+        def __init__(self, a=0., name="fit"):
+            self.a = parameter.Parameter.default(a, name=name+" a")
+        def parameters(self):
+            return {'a': self.a}
+        def numpoints(self):
+            return 1
+        def residuals(self):
+            y, dy = 0, 1 # fit to constant 0 +/- 1
+            return np.array([(self.a.value - y)/dy])
+        def nllf(self):
+            return sum(r**2 for r in self.residuals())/2
+
+    weights = 2, 3
+    models = [SimpleFitness(4.0), SimpleFitness(5.0)]
+    problem = FitProblem(models, weights=weights)
+
+    # Need to use problem.models to cycle through models in case FreeVariables is used in problem
+    assert (problem.residuals() == np.hstack([w*M.residuals() for w, M in zip(weights, problem.models)])).all()
+    assert problem.nllf() == sum(w**2*M.nllf() for w, M in zip(weights, problem.models))
+    assert problem.nllf() == sum(problem.residuals()**2)/2
