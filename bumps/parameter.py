@@ -1070,6 +1070,11 @@ def varying(s):
     return [p for p in unique(s) if not p.fixed]
 
 
+def fixed(s):
+    """Return the list of non-fitted (fixed) parameters in the model"""
+    return [p for p in unique(s) if p.fixed]
+
+
 def randomize(s):
     """
     Set random values to the parameters in the parameter set, with
