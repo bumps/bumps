@@ -532,8 +532,8 @@ class MPFit(FitBase):
     """
     MPFit optimizer.
     """
-    name = "MPFit"
-    id = "mp"
+    name = "Levenberg-Marquardt"
+    id = "lm"
     settings = [('steps', 200), ('ftol', 1e-10), ('xtol', 1e-10)]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
@@ -619,8 +619,8 @@ class LevenbergMarquardtFit(FitBase):
     """
     Levenberg-Marquardt optimizer.
     """
-    name = "Levenberg-Marquardt"
-    id = "lm"
+    name = "Levenberg-Marquardt (scipy.leastsq)"
+    id = "scipy.leastsq"
     settings = [('steps', 200), ('ftol', 1.5e-8), ('xtol', 1.5e-8)]
     # LM also has
     #    gtol: orthoganality between jacobian columns
