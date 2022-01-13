@@ -40,6 +40,9 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
+v0.8.2 ??
+* use MPFit in place of scipy.leastsq for bounds-constrained Levenberg-Marquardt
+
 v0.8.1 2021-11-18
 -----------------
 * "apply parameters" action added to GUI menu (does the same as --pars flag in CLI)
