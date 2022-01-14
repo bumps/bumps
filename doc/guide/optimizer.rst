@@ -7,7 +7,6 @@ Optimizer Selection
 Bumps has a number of different optimizers available, each with its own
 control parameters:
 
-* :ref:`fit-mp`
 * :ref:`fit-lm`
 * :ref:`fit-amoeba`
 * :ref:`fit-dream`
@@ -125,7 +124,8 @@ Use ``--fit=lm`` to select the Levenberg-Marquardt fitter from the command line.
 Notes
 -----
 
-v8.2 Changed from scipy.leastsq to mpfit for better bounds handling.
+v8.2 Changed from scipy.leastsq to mpfit for better bounds handling. Use
+``--fit=scipy.leastsq`` to restore the previous behaviour.
 
 References
 ----------
