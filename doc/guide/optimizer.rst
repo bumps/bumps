@@ -124,7 +124,7 @@ Use ``--fit=lm`` to select the Levenberg-Marquardt fitter from the command line.
 Notes
 -----
 
-v8.2 Changed from scipy.leastsq to mpfit for better bounds handling. Use
+v0.8.2 Changed from scipy.leastsq to mpfit for better bounds handling. Use
 ``--fit=scipy.leastsq`` to restore the previous behaviour.
 
 References
