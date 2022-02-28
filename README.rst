@@ -42,6 +42,7 @@ Release notes
 
 v0.8.2 ??
 * use MPFit in place of scipy.leastsq for bounds-constrained Levenberg-Marquardt
+* weights are properly applied to models (nllf) in FitProblem
 
 v0.8.1 2021-11-18
 -----------------
