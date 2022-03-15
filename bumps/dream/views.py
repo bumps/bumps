@@ -10,7 +10,7 @@ import math
 
 import numpy as np
 from numpy import arange, squeeze, linspace, meshgrid, vstack, inf
-from scipy.stats import kde
+from scipy.stats import gaussian_kde
 
 from . import corrplot
 from . import varplot
@@ -90,15 +90,15 @@ def plot_corrmatrix(draw, nbins=50):
     #print "Correlation matrix\n",c.R()
 
 
-class KDE1D(kde.gaussian_kde):
+class KDE1D(gaussian_kde):
     covariance_factor = lambda self: 2*self.silverman_factor()
 
 
-class KDE2D(kde.gaussian_kde):
-    covariance_factor = kde.gaussian_kde.silverman_factor
+class KDE2D(gaussian_kde):
+    covariance_factor = gaussian_kde.silverman_factor
 
     def __init__(self, dataset):
-        kde.gaussian_kde.__init__(self, dataset.T)
+        gaussian_kde.__init__(self, dataset.T)
 
     def evalxy(self, x, y):
         grid_x, grid_y = meshgrid(x, y)
