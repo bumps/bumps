@@ -9,7 +9,7 @@ posterior probability density function.
 
 A graphical interface allows direct manipulation of the model parameters.
 
-See http://www.reflectometry.org/danse/reflectometry for online manuals.
+See https://bumps.readthedocs.io for online manuals.
 """
 
 __version__ = "0.9.0"
