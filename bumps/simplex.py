@@ -1,6 +1,6 @@
 #__docformat__ = "restructuredtext en"
 # ******NOTICE***************
-# from optimize.py module by Travis E. Oliphant
+# From optimize.py module by Travis E. Oliphant
 #
 # You may copy and use this module as you see fit with no
 # guarantee implied provided you keep this notice in all copies.
