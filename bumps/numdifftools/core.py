@@ -1023,6 +1023,8 @@ class Gradient(Derivative):
     def _complex(f, fx, x, h, *args, **kwds):
         # From Guilherme P. de Freitas, numpy mailing list
         # http://mail.scipy.org/pipermail/numpy-discussion/2010-May/050250.html
+        # [PAK] Updated link to mailing list
+        # https://mail.python.org/archives/list/numpy-discussion@python.org/message/U76RNZMZNFO2UNYTZNVL5ZC665JOBP6C/
         n = len(x)
         increments = np.identity(n) * 1j * h
         partials = [f(x + ih, *args, **kwds).imag for ih in increments]

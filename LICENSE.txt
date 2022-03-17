@@ -2,8 +2,8 @@ Bumps is in the public domain.
 
 Code in individual files has copyright and license set by individual authors.
 
-Bumps GUI
----------
+bumps.gui, bumps.quasinewton
+----------------------------
 
 Copyright (C) 2006-2011, University of Maryland
 
@@ -62,3 +62,117 @@ SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRU
 HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+Random123
+---------
+
+Copyright 2010-2012, D. E. Shaw Research.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+* Redistributions of source code must retain the above copyright
+  notice, this list of conditions, and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright
+  notice, this list of conditions, and the following disclaimer in the
+  documentation and/or other materials provided with the distribution.
+
+* Neither the name of D. E. Shaw Research nor the names of its
+  contributors may be used to endorse or promote products derived from
+  this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+MPFit
+-----
+
+The original version of this software, called LMFIT, was written in FORTRAN
+as part of the MINPACK-1 package by XXX.
+
+Craig Markwardt converted the FORTRAN code to IDL.  The information for the
+IDL version is:
+     Craig B. Markwardt, NASA/GSFC Code 662, Greenbelt, MD 20770
+     craigm@lheamail.gsfc.nasa.gov
+     UPDATED VERSIONs can be found on my WEB PAGE:
+        http://cow.physics.wisc.edu/~craigm/idl/idl.html
+
+Mark Rivers created this Python version from Craig's IDL version.
+    Mark Rivers, University of Chicago
+    Building 434A, Argonne National Laboratory
+    9700 South Cass Avenue, Argonne, IL 60439
+    rivers@cars.uchicago.edu
+    Updated versions can be found at http://cars.uchicago.edu/software
+
+numdifftools
+------------
+
+Copyright (c) 2014, Per A. Brodtkorb, John D'Errico
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+
+* Neither the name of the {organization} nor the names of its
+  contributors may be used to endorse or promote products derived from
+  this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+bumps.lsqerror.comb
+-------------------
+
+From dheerosaur
+https://stackoverflow.com/questions/4941753/is-there-a-math-ncr-function-in-python/4941932#4941932
+
+bumps.simplex
+-------------
+
+******NOTICE***************
+From optimize.py module by Travis E. Oliphant
+
+You may copy and use this module as you see fit with no
+guarantee implied provided you keep this notice in all copies.
+*****END NOTICE************
+
+bumps.cli.warn_with_traceback
+-----------------------------
+
+From http://stackoverflow.com/questions/22373927/get-traceback-of-warnings
+answered by mgab (2014-03-13)
+edited by Gareth Rees (2015-11-28)
+
+
+bumps.dream.entropy.Timer
+-------------------------
+
+Based on: Eli Bendersky https://stackoverflow.com/a/5849861
+Extended with tic/toc by Paul Kienzle
