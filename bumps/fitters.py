@@ -1101,7 +1101,9 @@ class FitDriver(object):
         if hasattr(self.problem, 'show'):
             self.problem.show()
 
-    def show_err(self):
+
+    # TODO: reenable the "implied variance" calculation
+    def _unused_show_err(self):
         """
         Display the error approximation from the numerical derivative.
 
@@ -1110,6 +1112,14 @@ class FitDriver(object):
         # TODO: need cheaper uncertainty estimate
         # Note: error estimated from hessian diagonal is insufficient.
         err = self.stderr_from_cov()
+        # TODO: citation needed
+        # The "implied variance" column is obtained by scaling the covariance
+        # matrix so that chisq = DOF. Any excess chisq implies increased
+        # variance in the measurements, so increased variance in the parameters.
+        # This is well defined for linear systems with equal but unknown
+        # variance in each measurement, and assumed to be approximately true
+        # for nonlinear systems, with the unexplained variance distributed
+        # proportionately amongst the measurement uncertainties.
         norm = np.sqrt(self.chisq())
         print("=== Uncertainty from curvature:     name"
               " value(unc.)    "
@@ -1119,6 +1129,20 @@ class FitDriver(object):
                   format_uncertainty(v, dv),
                   format_uncertainty(v, dv/norm)))
         print("="*75)
+
+    def show_err(self):
+        """
+        Display the error approximation from the numerical derivative.
+
+        Warning: cost grows as the cube of the number of parameters.
+        """
+        # TODO: need cheaper uncertainty estimate
+        # Note: error estimated from hessian diagonal is insufficient.
+        err = self.stderr_from_cov()
+        print("=== Uncertainty from curvature:     name   value(unc.) ===")
+        for k, v, dv in zip(self.problem.labels(), self.problem.getp(), err):
+            print(f"{k:>40s}   {format_uncertainty(v, dv):<15s}")
+        print("="*58)
 
     def show_cov(self):
         cov = self.cov()
