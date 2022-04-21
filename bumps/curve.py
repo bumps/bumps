@@ -47,7 +47,7 @@ import warnings
 import numpy as np
 from numpy import log, pi, sqrt
 
-from .parameter import Parameter
+from .parameter import Parameter, Constant
 
 def _parse_pars(fn, init=None, skip=0, name=""):
     """
@@ -77,7 +77,7 @@ def _parse_pars(fn, init=None, skip=0, name=""):
     sig = inspect.signature(fn)
     params = sig.parameters.values()
     pnames = [p.name for p in params]
-    
+
     valid = [p.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD) for p in params]
     if not all(valid):
         raise TypeError(f"Only positional and keyword arguments allowed for {fn.__name__}")
@@ -177,15 +177,15 @@ class Curve(object):
     subclass Curve and replace nllf with the correct probability given the
     residuals.  See the implementation of :class:`PoissonCurve` for an example.
     """
-    def __init__(self, fn, x, y, dy=None, name="", labels=None,
+    def __init__(self, fn, x, y, dy=1, weight=1, name="", labels=None,
                  plot=None, plot_x=None, **kwargs):
-        self.x, self.y = np.asarray(x), np.asarray(y)
         if dy is None:
-            self.dy = 1
-        else:
-            self.dy = np.asarray(dy)
-            if (self.dy <= 0).any():
-                raise ValueError("measurement uncertainty must be positive")
+            dy = 1
+        self.x = np.asarray(x)
+        self.y, self.dy = np.broadcast_arrays(y, dy)
+        # Scaling constant for dy, in case we want the proper nllf
+        self._nllf_norm = -np.sum(np.log(2*pi*self.dy**2))/2
+        self._num_points = np.prod(self.y.shape)
 
         if len(self.x.shape) == 1 and len(self.y.shape) > 1:
             num_curves = self.y.shape[0]
@@ -216,6 +216,7 @@ class Curve(object):
         self.fn = fn
         self.name = name # if name else fn.__name__ + " "
         self.plot_x = plot_x
+        self.weight = Parameter.default(weight, name=name+"weight")
 
         pars, state = _parse_pars(fn, init=kwargs, skip=1)
 
@@ -236,14 +237,23 @@ class Curve(object):
         self._plot = plot
         self._cached_theory = None
 
+    @property
+    def dy_scale(self):
+        #return 1/sqrt(self.weight.value) # w = 1/sigma^2
+        #return 1/self.weight.value # w = 1/sigma
+        return self.weight.value # w = sigma
+        #return sqrt(self.weight.value) # w = sigma^2
+
     def update(self):
         self._cached_theory = None
 
     def parameters(self):
-        return dict((p, getattr(self, p)) for p in self._pnames)
+        pars = dict((p, getattr(self, p)) for p in self._pnames)
+        pars['weight'] = self.weight
+        return pars
 
     def numpoints(self):
-        return np.prod(self.y.shape)
+        return self._num_points
 
     def theory(self, x=None):
         # Use cache if x is None, otherwise compute theory with x.
@@ -268,17 +278,49 @@ class Curve(object):
             if noise == 'data':
                 pass
             elif noise < 0:
+                # Noise below zero is percentage noise
                 self.dy = -0.01*noise*theory
             else:
+                # Noise above zero is absolute
                 self.dy = noise
-        self.y = theory + np.random.randn(*theory.shape)*self.dy
+        self.y = theory + np.random.randn(*theory.shape)*self.dy*self.dy_scale
 
     def residuals(self):
-        return (self.theory() - self.y) / self.dy
+        # TODO: Levenberg-Marquardt does not see dy scaling
+        return (self.theory() - self.y) / (self.dy_scale*self.dy)
+
+    def _not_residuals(self):
+        # TODO: Make a separate code path for Levenberg-Marquardt residuals
+        # The weight norm penalty may be negative, so we can't simply
+        # tack on sqrt(2 * weightnorm) as an additional residual. We could
+        # modify each residual so that sum r'^2 = sum r^2 + weight norm penalty.
+        # Have to be careful how this is done since it may influence the
+        # parameter values.  Also, this would change the residuals
+        # plots and break the correspondence between chisq and DoF.
+
+        # (1) scale each residual by sqrt(1 + 2w/chisq) where w is the
+        # weight norm and chisq is the sum squared residuals with scaled dy.
+        # (2) set each residual to sqrt(r**2 + np.log(self.dy_scale))
+        # (3) extended each residual the same amount
+        weight_norm = self._num_points*np.log(self.dy_scale)
+        r = self._residuals()
+        r *= sqrt(1 + 2*weight_norm/np.sum(r**2))
+        # Or maybe:
+        #r = sqrt(r**2 + np.log(self.dy_scale))
+        return r
 
     def nllf(self):
+        weight_norm = self._num_points*np.log(self.dy_scale)
+        # TODO: include gaussian norm in nllf?
+        # With the gaussian norm 2*nllf is no longer chisq. We need to
+        # include the weight norm if we want to fit the variance, even
+        # though this will also break the 2*nllf to chisq correspondence.
+        #norm = self._nllf_norm + weight_norm
+        norm = weight_norm
+
         r = self.residuals()
-        return 0.5 * np.sum(r ** 2)
+        #print(f"norm: {norm}")
+        return 0.5 * np.sum(r ** 2) + norm
 
     def save(self, basename):
         # TODO: need header line with state vars as json
@@ -287,18 +329,19 @@ class Curve(object):
             warnings.warn("Save not supported for nD x values")
             return
 
+        # TODO: Should we save dy or scaled dy?
         theory = self.theory()
         if self._num_curves > 1:
             # Multivalued y, dy for single valued x.
             columns = [self.x]
             headers = ["x"]
-            for k, (y, dy, fx) in enumerate(zip(self.y, self.dy, theory)):
+            for k, (y, dy, fx) in enumerate(zip(self.y, self.dy_scale*self.dy, theory), 1):
                 columns.extend((y, dy, fx))
-                headers.extend(("y[%d]"%(k+1), "dy[%d]"%(k+1), "fx[%d]"%(k+1)))
+                headers.extend((f"y[{k}]", f"dy[{k}]", f"fx[{k}]"))
         else:
             # Single-valued y, dy for single valued x.
             headers = ["x", "y", "dy", "fy"]
-            columns = [self.x, self.y, self.dy, theory]
+            columns = [self.x, self.y, self.dy_scale*self.dy, theory]
         data = np.vstack(columns)
         outfile = basename + '.dat'
         with open(outfile, "w") as fd:
@@ -308,7 +351,7 @@ class Curve(object):
     def plot(self, view=None):
         if self._plot is not None:
             kw = self._fetch_pars()
-            self._plot(self.x, self.y, self.dy, self.theory(), view=view, **kw)
+            self._plot(self.x, self.y, self.dy_scale*self.dy, self.theory(), view=view, **kw)
             return
 
         import pylab
@@ -322,10 +365,10 @@ class Curve(object):
         resid = self.residuals()
 
         if self._num_curves > 1:
-            y, dy, theory_y, resid = self.y.T, self.dy.T, theory_y.T, resid.T
+            y, dy, theory_y, resid = self.y.T, self.dy_scale*self.dy.T, theory_y.T, resid.T
         else:
-            y, dy, theory_y, resid = (v[:, None]
-                                      for v in (self.y, self.dy, theory_y, resid))
+            y, dy, theory_y, resid = (
+                v[:, None] for v in (self.y, self.dy_scale*self.dy, theory_y, resid))
 
         colors = tuple(coordinated_colors() for _ in range(self._num_curves))
         labels = self.labels
@@ -455,6 +498,7 @@ class PoissonCurve(Curve):
     def __init__(self, fn, x, y, name="", **fnkw):
         dy = sqrt(y) + (y == 0) if y is not None else None
         Curve.__init__(self, fn, x, y, dy, name=name, **fnkw)
+        self.weight = Constant(1, name="unweighted")
         self._logfacty = logfactorial(y) if y is not None else None
         self._logfactysum = np.sum(self._logfacty)
 

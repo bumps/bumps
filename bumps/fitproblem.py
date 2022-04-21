@@ -227,6 +227,7 @@ class BaseFitProblem(object):
             except AttributeError:
                 self.name = 'FitProblem'
 
+        self.has_residuals = hasattr(self, 'fitness') and hasattr(self.fitness, 'residuals')
         self.soft_limit = soft_limit
         self.penalty_nllf = penalty_nllf
         self.model_reset()
@@ -392,13 +393,6 @@ class BaseFitProblem(object):
         """
         return [p.residual() for p in self.bounded]
 
-    @property
-    def has_residuals(self):
-        """
-        True if the underlying fitness function defines residuals.
-        """
-        return hasattr(self.fitness, 'residuals')
-
     def residuals(self):
         r"""
         Return the model residuals.
@@ -411,10 +405,10 @@ class BaseFitProblem(object):
         Levenberg-Marquardt fit behaves reasonably, and the plot of
         residuals gives an indication of which points are driving the fit.
         """
-        if not hasattr(self.fitness, 'residuals'):
+        if not self.has_residuals:
             ## Fake residuals by using single nllf value as residual
             #return np.asarray([np.sqrt(self.nllf())])
-            raise NotImplementedError("model does not define residuals")
+            raise NotImplementedError(f"model {self.name} does not define residuals")
         return self.fitness.residuals()
 
     def chisq(self):
@@ -428,10 +422,15 @@ class BaseFitProblem(object):
         Note that this does not include cost factors due to constraints on
         the parameters, such as sample_offset ~ N(0,0.01).
         """
-        if hasattr(self.fitness, 'chisq'):
+        # TODO: deprecated?
+        if hasattr(self, 'fitness') and hasattr(self.fitness, 'chisq'):
             return self.fitness.chisq()
-        return np.sum(self.residuals() ** 2) / self.dof
-        # return 2*self.nllf()/self.dof
+        elif self.has_residuals:
+            return np.sum(self.residuals() ** 2) / self.dof
+        else:
+            pparameter, pconstraints, pmodel = self._nllf_components()
+            chisq_norm, chisq_err = nllf_scale(self)
+            return pmodel * chisq_norm
 
     def chisq_str(self):
         """
@@ -445,15 +444,21 @@ class BaseFitProblem(object):
         cost of the prior parameters and the cost of the penalty constraints
         in the total nllf.  The constraint value is displayed separately.
         """
-        pparameter, pconstraints, pmodel = self._nllf_components()
-        chisq_norm, chisq_err = nllf_scale(self)
-        chisq = pmodel * chisq_norm
-        text = format_uncertainty(chisq, chisq_err)
+        pparameter = self.parameter_nllf()
+        pconstraints = self.constraints_nllf()
         constraints = pparameter + pconstraints
-        if constraints > 0.:
-            text += " constraints=%g" % constraints
-
-        return text
+        # TODO: limit precision shown for real-valued constraints
+        constraints_str = f" constraints={constraints}" if constraints > 0. else ""
+        # TODO: fails if parameters are in an infeasible region
+        # Warning: this is different from _nllf_components, which checks feasible
+        # Check if pparameter or pconstraints are nan or inf?
+        chisq_norm, chisq_err = nllf_scale(self)
+        if self.has_residuals:
+            pproblem = np.sum(self.residuals()**2)/2
+        else:
+            pproblem = self.model_nllf()
+        formatted = format_uncertainty(pproblem*chisq_norm, chisq_err)
+        return formatted + constraints_str
 
     def nllf(self, pvec=None):
         """
@@ -626,12 +631,16 @@ class MultiFitProblem(BaseFitProblem):
         self._models = [BaseFitProblem(m, partial=True) for m in models]
         if weights is None:
             weights = [1 for _ in models]
+        self.weights = [
+            parameter.Parameter.default(w, name=f"{name}.weights[{k}]", limits=[0, np.inf])
+            for k, w in enumerate(weights)]
         self.weights = weights
         self.penalty_nllf = penalty_nllf
         self.soft_limit = soft_limit
         self.set_active_model(0)  # Set the active model to model 0
         self.model_reset()
         self.name = name
+        self.has_residuals = all(f.has_residuals for f in self.models)
 
     @property
     def models(self):
@@ -655,6 +664,7 @@ class MultiFitProblem(BaseFitProblem):
         free = self.freevars.parameters()
         if free:
             pars['freevars'] = free
+        pars['weights'] = self.weights
         return pars
 
     def to_dict(self):
@@ -689,7 +699,9 @@ class MultiFitProblem(BaseFitProblem):
 
     def model_nllf(self):
         """Return cost function for all data sets"""
-        return sum(w**2*f.model_nllf() for w, f in zip(self.weights, self.models))
+        return sum(
+            w.value**2*f.model_nllf() + f.model_points()*np.log(w.value)
+            for w, f in zip(self.weights, self.models))
 
     def constraints_nllf(self):
         """Return the cost function for all constraints"""
@@ -710,13 +722,6 @@ class MultiFitProblem(BaseFitProblem):
         """Restore original data after resynthesis."""
         for f in self.models:
             f.restore_data()
-
-    @property
-    def has_residuals(self):
-        """
-        True if all underlying fitness functions define residuals.
-        """
-        return all(f.has_residuals for f in self.models)
 
     def residuals(self):
         resid = np.hstack([w * f.residuals()
