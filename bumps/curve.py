@@ -147,6 +147,14 @@ class Curve(object):
 
     *Curve* takes the following special keyword arguments:
 
+    * *weight* is a fittable parameter controlling the size of the dy error
+      bars. If dy is unknown but equal on every point then the returned
+      returned weight will be dy using the default dy=1. If dy is known then
+      weight acts as a scale factor on each uncertainty to try to capture
+      the systematic error. Use with caution: An incorrect model is
+      indistinguishable from systematic error. Check for structure in the
+      residuals plot.
+
     * *name* is added to each parameter name when the parameter is defined.
       The filename for the data is a good choice, since this allows you to keep
       the parameters straight when fitting multiple datasets simultaneously.
