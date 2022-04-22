@@ -631,9 +631,6 @@ class MultiFitProblem(BaseFitProblem):
         self._models = [BaseFitProblem(m, partial=True) for m in models]
         if weights is None:
             weights = [1 for _ in models]
-        self.weights = [
-            parameter.Parameter.default(w, name=f"{name}.weights[{k}]", limits=[0, np.inf])
-            for k, w in enumerate(weights)]
         self.weights = weights
         self.penalty_nllf = penalty_nllf
         self.soft_limit = soft_limit
@@ -664,7 +661,6 @@ class MultiFitProblem(BaseFitProblem):
         free = self.freevars.parameters()
         if free:
             pars['freevars'] = free
-        pars['weights'] = self.weights
         return pars
 
     def to_dict(self):
@@ -699,9 +695,7 @@ class MultiFitProblem(BaseFitProblem):
 
     def model_nllf(self):
         """Return cost function for all data sets"""
-        return sum(
-            w.value**2*f.model_nllf() + f.model_points()*np.log(w.value)
-            for w, f in zip(self.weights, self.models))
+        return sum(w**2*f.model_nllf() for w, f in zip(self.weights, self.models))
 
     def constraints_nllf(self):
         """Return the cost function for all constraints"""
