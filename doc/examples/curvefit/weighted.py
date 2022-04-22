@@ -8,14 +8,14 @@
 #
 #    bumps weighted.py option=value ...
 #
-# Model parameters::
+# Model parameters:
 #
 #   freq=0.2 in [0, 100] cycles per second over the time range (tmin, tmax)
 #   phase=0.2 in [-pi, pi] phase offset in radians for sine
 #   amplitude=5 in [0, 20] scale of sin wave
 #   offset=10 in [-500, 500] DC offset
 #
-# Data generation::
+# Data generation:
 #
 #   tmin=0, tmax=10 are the time range for the curve
 #   err=5 is the measurement uncertainty as a percentage of y range
@@ -24,18 +24,18 @@
 #   t_jitter=0 is deviation from nominal time as a percentage of the interval
 #   weight=1 is the weight on the nominal uncertainty
 #
-# Fitting::
+# Fitting:
 #
 #   fit_weight=1 if the uncertainty should be adjusted in the fit
 #
-# Together this forms the model::
+# Together this forms the model:
 #
 #    y = amplitude sin(2 pi freq t' + phase) + offset + delta + tilt
 #    t' ~ N(mu=t, sigma=t_jitter (t[1]-t[0]))
 #    delta ~ N(mu=0, sigma=(2 amplitude err/100 dy_scale))
 #    tilt = y_slope/100 (t - tmin)/(tmax - tmin)
 #
-# Run using::
+# Run using:
 #
 #    bumps weighted.py --fit=dream --samples=50000 --burn=3000 --store=path opt=value ...
 #
