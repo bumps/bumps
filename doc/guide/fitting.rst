@@ -286,8 +286,9 @@ First you need to import some functions::
     import matplotlib.pyplot as plt
 
     from bumps.dream.state import load_state
-    from bumps.dream.views import plot_vars, plot_corrmatrix
+    from bumps.dream.views import plot_corrmatrix
     from bumps.dream.stats import var_stats, format_vars
+    from bumps.dream.varplot import plot_vars
 
 
 Then you need to reload the MCMC chains::
@@ -297,7 +298,7 @@ Then you need to reload the MCMC chains::
 
     # Reload the MCMC data
     basename = os.path.join(store, modelname)
-    state = load_state(modelname)
+    state = load_state(basename)
     state.mark_outliers() # ignore outlier chains
 
     # Attach the labels from the .par file:
