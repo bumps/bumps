@@ -307,7 +307,7 @@ class BumpsOpts(ParseOpts):
         }
     pars = None
     notify = ""
-    queue = "http://reflectometry.org/queue"
+    queue = None
     resynth = "0"
     noise = "5"
     starts = "1"
@@ -377,12 +377,6 @@ Options:
         batch mode; save output in .mon file and don't show plots after fit
     --noshow
         semi-batch; send output to console but don't show plots after fit
-    --remote
-        queue fit to run on remote server
-    --notify=user@email
-        remote fit notification
-    --queue=http://reflectometry.org
-        remote job queue
     --time=inf
         run for a maximum number of hours
     --checkpoint=0
@@ -457,6 +451,12 @@ Options:
        'plotter': '|'.join(PLOTTERS),
       }
 
+#    --remote
+#        queue fit to run on remote server
+#    --notify=user@email
+#        remote fit notification
+#    --queue=http://reflectometry.org
+#        remote job queue
 #    --transport=mp  {amqp|mp|mpi}
 #        use amqp/multiprocessing/mpi for parallel evaluation
 

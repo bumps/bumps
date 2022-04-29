@@ -151,7 +151,7 @@ def no_constraints():
 # TODO: refactor FitProblem definition
 # deprecate the direct use of MultiFitProblem
 def FitProblem(*args, **kw):
-    """
+    r"""
     Return a fit problem instance for the fitness function(s).
 
     For an individual model:
@@ -162,7 +162,12 @@ def FitProblem(*args, **kw):
 
         *models* is a sequence of :class:`Fitness` instances.
 
-        *weights* is an optional scale factor for each model
+        *weights* is an optional scale factor for each model. A weighted fit
+        returns nllf $L = \sum w_k^2 L_k$. If an individual nllf is the sum
+        squared residuals then this is equivalent to scaling the measurement
+        uncertainty by $1/w$. Unless the measurement uncertainty is unknown,
+        weights should be in [0, 1], representing an unknown systematic
+        uncertainty spread across the individual measurements.
 
         *freevars* is :class:`.parameter.FreeVariables` instance defining the
         per-model parameter assignments.  See :ref:`freevariables` for details.
@@ -189,6 +194,9 @@ def FitProblem(*args, **kw):
     Total nllf is the sum of the parameter nllf, the constraints nllf and the
     depending on whether constraints is greater than soft_limit, either the
     fitness nllf or the penalty nllf.
+
+    New in 0.9.0: weights are now squared when computing the sum rather than
+    linear.
     """
     if len(args) > 0:
         if isinstance(args[0], (list, tuple)):
@@ -602,7 +610,8 @@ class BaseFitProblem(object):
 
 class MultiFitProblem(BaseFitProblem):
     """
-    Weighted fits for multiple models.
+    Weighted fits for multiple models. See :func:`FitProblem` for an
+    explanation of weights.
     """
     def __init__(self, models, weights=None, name=None,
                  constraints=None,
