@@ -31,13 +31,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include <Random123/threefry.h>
 #include <iostream>
+#include "example_seeds.h"
 
 int main(int, char **){
     typedef r123::Threefry2x64 CBRNG;
+    CBRNG::key_type::value_type seed = example_seed_u64(EXAMPLE_SEED1_U64); // example of user-settable seed
+    CBRNG::key_type key = {{seed}};
+    CBRNG::ctr_type ctr = {{0,0}};
     CBRNG g;
-    CBRNG::ctr_type  ctr = {{0,0}};
-    CBRNG::key_type key = {{0xdeadbeef}};
-    std::cout << std::hex << "The first few 2x64 randoms from Threefry2x64 with key " << key << "\n";
+    std::cout << std::hex << "The first few 2x64 randoms from Threefry2x64 with hex key " << key << "\n";
     for(int i=0; i<10; ++i){
         ctr[0] = i;
         CBRNG::ctr_type rand = g(ctr, key);

@@ -1,6 +1,7 @@
 no_target_specified: runcore
 	@echo
-	@echo The default make rule is equivalent to \'make runcore\' which runs only the most basic tests.
+	@echo The default make rule is equivalent to \'make runcore\' which builds
+	@echo and runs most of the examples.
 	@echo The following \'meta-targets\' are available:
 	@echo "      " $(meta_targets)
 	@echo Here is the complete list of individual program targets:
@@ -11,31 +12,37 @@ no_target_specified: runcore
 .PHONY: no_target_specified
 
 # metatargets are variables which get mapped by METATARGET_template
-meta_targets:=kat core aesni timing c cpp gsl thread cuda opencl
+meta_targets:=core aesni c cpp gsl cuda opencl thread metal
 
 # Platform metatargets: each one typically has specific requirements in the build environment.
 # c is C99 (will work in MSVC), cpp is C++98, gsl requires the GNU Scientific Library
 # (specifically, the gsl-config program in the PATH), thread requires POSIX threads,
 # CUDA requires NVIDIA CUDA 3.x or newer, OpenCL requires OpenCL includes & libraries
 # (e.g. AMD APP SDK, NVIDIA SDK)
-c:=kat_c pi_capi simple ut_ars time_serial
-cpp:=kat_cpp pi_uniform pi_cppapi simplepp ut_carray ut_M128 ut_features ut_ReinterpretCtr ut_Engine ut_aes pi_aes timers pi_microurng time_boxmuller ut_ua ut_uniform
-gsl:=pi_gsl ut_gsl
-thread:=time_thread
-cuda:=pi_cuda pi_cudapp time_cuda kat_cuda time_boxmuller_cuda
-opencl:=pi_opencl time_opencl kat_opencl
+c:=simple pi_capi
+cpp:=simplepp pi_uniform pi_cppapi pi_microurng
+gsl:=pi_gsl
+cuda:=pi_cuda pi_cudapp
+opencl:=pi_opencl
+thread:=  # ?? should we have a thread example?
+metal:=pi_metal
 
 # Convenience metatargets: these are to help developers test functional subsets across platforms
-kat:=kat_c kat_cpp
 core:=$(c) $(cpp)
-aesni:=pi_aes ut_aes ut_ars
-timing:=timers time_serial time_thread
+aesni:=pi_aes
 
 $(gsl) : override LDLIBS += `gsl-config --libs`
 $(gsl) : override CFLAGS += `gsl-config --cflags`
 
 $(opencl) : % : %_kernel.i
+# Or try this if we USE_GENCL in kat_opencl.c
+#$(opencl) : override CPPFLAGS += -DSRCDIR=\"$(dir $(abspath $<)).\"
+
+ifeq ($(shell uname),Darwin)
+$(opencl) : override LDLIBS+=-framework OpenCL
+else
 $(opencl) : override LDLIBS+=-lOpenCL
+endif
 $(opencl) : override CFLAGS+=-I.
 # Note, the Intel OpenCL SDK (1.5) has unresolved C++ symbols in its
 # libOpenCL.so Even though 'main' is a C program, you may need to link
@@ -45,16 +52,12 @@ $(opencl) : override CFLAGS+=-I.
 # which will invoke the g++ compiler-driver, but will treat the
 # program as C rather than C++.
 
-# N.B. gcc -pthread (without the -l) on linux at compile time also
-# adds -D_REENTRANT.  Unfortunately -pthread is unrecognized by
-# SunPRO.  Posix says that -lpthread is portable (as if anyone cares
-# what Posix says), and it seems to work in all the environments we've
-# tested.  Gcc's features.h says that _THREAD_SAFE is "often used by
-# other systems" as a synonym for _REENTRANT.  Cross your fingers...
-$(thread) : override LDLIBS+=-lpthread
-$(thread) : override CPPFLAGS+=-D_REENTRANT=1 -D_THREAD_SAFE=1
+$(metal) : % : %_kernel.metallib
+$(metal) : override LDLIBS+=-framework Metal -framework Foundation -framework CoreGraphics
 
 all_primary_targets += $(addsuffix _kernel.i, $(opencl))
+all_primary_targets += $(addsuffix _kernel.metallib, $(metal))
+all_primary_targets += $(addsuffix _kernel.air, $(metal))
 
 ################################################
 # Generic boilerplate from here down:
@@ -62,6 +65,7 @@ vpath %.c $(srcdir/)
 vpath %.cpp $(srcdir/)
 vpath %.cu $(srcdir/)
 vpath %.ocl $(srcdir/)
+vpath %.metal $(srcdir/)
 
 define METATARGET_template
 .PHONY: $(1)
@@ -94,7 +98,7 @@ CXXFLAGS:=-O
 endif
 
 %.i : %.ocl
-	CC="$(CC)" CPPFLAGS="$(CPPFLAGS)" $(srcdir/)./gencl.sh $< $@
+	CC="$(CC)" CPPFLAGS="$(CPPFLAGS)" $(srcdir/)./gencl.sh $< > $@
 
 % : %.cu
 	$(NVCC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $(TARGET_ARCH) $< $(LOADLIBES) $(LDLIBS) -o $@
@@ -104,6 +108,15 @@ endif
 
 % : %.cpp
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS) $(TARGET_ARCH) $< $(LOADLIBES) $(LDLIBS) -o $@
+
+% : %.m
+	$(CC) $(OBJCFLAGS) $(CPPFLAGS) $(LDFLAGS) $(TARGET_ARCH) $< $(LOADLIBES) $(LDLIBS) -o $@
+
+%.air : %.metal
+	xcrun --sdk macosx metal $(CPPFLAGS) -c $< -o $@
+
+%.metallib : %.air
+	xcrun --sdk macosx metallib $< -o $@
 
 run% : %
 	./$^ $(RUN_ARGS)
@@ -121,9 +134,9 @@ $(all_primary_targets) : FORCE
 FORCE:
 endif
 
-.PHONY : echo_primary_targets
-echo_primary_targets:
-	@echo $(all_primary_targets)
+.PHONY : echo_build_commands
+echo_build_commands:
+	make -n force=1 $(all_primary_targets) | grep -v 'is up to date'
 
 .PHONY : clean veryclean
 clean:
@@ -131,3 +144,13 @@ clean:
 
 veryclean:
 	rm -f $(all_primary_targets) *.o \#* *~ *.pdb *.exe *.obj *.ilk *.suo
+
+.PHONY : install
+
+# N.B. normally these are exported by ../GNUmakefile
+prefix?=/usr/local
+datarootdir?=$(prefix)/share
+docdir?=$(datarootdir)/doc/Random123
+install:
+	mkdir -p $(DESTDIR)$(docdir)/examples
+	cp README GNUmakefile *.sh *.c *.h  *.cpp *.cu *.metal *.m *.ocl $(DESTDIR)$(docdir)/examples

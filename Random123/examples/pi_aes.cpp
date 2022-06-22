@@ -41,9 +41,11 @@ using namespace r123;
 // This version uses the C++ API to AESNI.
 
 #include "pi_check.h"
+#include "example_seeds.h"
 
 int main(int, char **){
 #if R123_USE_AES_NI
+    unsigned long seed = example_seed_u32(EXAMPLE_SEED1_U32); // example user-settable seed
     unsigned long hits = 0, tries = 0;
     const int64_t two_to_the_62 = ((int64_t)1)<<62;
 
@@ -53,13 +55,17 @@ int main(int, char **){
     }
     typedef AESNI4x32 G;
     G generator;
-    G::ukey_type ukey = {{0x11111111, 0x22222222, 0x33333333, 0x44444444}};
+    // As an example, we illustrate one user-provided seed word and the rest as arbitrary constants
+    G::ukey_type ukey = {{(G::ukey_type::value_type)seed, EXAMPLE_SEED2_U32, EXAMPLE_SEED3_U32, EXAMPLE_SEED4_U32}};
     // The key_type constructor transforms the 128bit AES ukey_type to an expanded (1408bit) form.
     G::key_type key = ukey;
-    G::ctr_type ctr = {{0xdeadbeef, 0xbeadcafe, 0x12345678, 0x90abcdef}};
+    // start ctr from an arbitrary point.  0 would work fine too, this is just to show that it does
+    // not matter where it starts from (or for that matter, whether it increments by 1, or some other
+    // arbitrary stride or in some other way, as long as it never repeats a key,ctr combination)
+    G::ctr_type ctr = {{EXAMPLE_SEED5_U32, EXAMPLE_SEED6_U32, EXAMPLE_SEED7_U32, EXAMPLE_SEED8_U32}};
 
     printf("Throwing %lu darts at a square board using AESNI4x32\n", NTRIES);
-    std::cout << "Initializing AES key with userkey: " << std::hex << ukey << " ctr: " << ctr << std::endl;
+    std::cout << "Initializing AES key with hex userkey: " << std::hex << ukey << " ctr: " << ctr << std::endl;
 
     while(tries < NTRIES){
         ctr.incr();

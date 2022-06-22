@@ -39,10 +39,10 @@ namespace r123{
 /**
     Given a CBRNG whose ctr_type has an unsigned integral value_type,
     MicroURNG<CBRNG>(c, k) is a type that satisfies the
-    requirements of a C++0x Uniform Random Number Generator.
+    requirements of a C++11 Uniform Random Number Generator.
 
     The intended purpose is for a MicroURNG to be passed
-    as an argument to a C++0x Distribution, e.g.,
+    as an argument to a C++11 Distribution, e.g.,
     std::normal_distribution.  See examples/MicroURNG.cpp.
 
     The MicroURNG functor has a period of "only"
@@ -77,7 +77,7 @@ namespace r123{
 
 template<typename CBRNG>
 class MicroURNG{
-    // According to C++0x, a URNG requires only a result_type,
+    // According to C++11, a URNG requires only a result_type,
     // operator()(), min() and max() methods.  Everything else
     // (ctr_type, key_type, reset() method, etc.) is "value added"
     // for the benefit of users that "know" that they're dealing with

@@ -33,7 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // compute pi via random darts at a square
 
 // functions for boilerplate CUDA init and done
-#include "util_cuda.h"
+#include "../tests/util_cuda.h"
 
 #include <Random123/philox.h>
 
@@ -43,12 +43,12 @@ const char *progname;
 // CUDA Kernel:
 // generates n x,y points and returns hits[tid] with the count of number
 // of those points within the unit circle on each thread.
-__global__ void counthits(unsigned n, uint2 *hitsp)
+__global__ void counthits(unsigned n, unsigned useed, uint2 *hitsp)
 {
     unsigned tid = blockDim.x * blockIdx.x + threadIdx.x;
     unsigned hits = 0, tries = 0;
-    philox4x32_key_t k = {{tid, 0xdecafbad}};
-    philox4x32_ctr_t c = {{0, 0xf00dcafe, 0xdeadbeef, 0xbeeff00d}};
+    philox4x32_key_t k = {{tid, useed}};
+    philox4x32_ctr_t c = {{}}; // start counter from 0
 
     while (tries < n) {
 	union {
@@ -72,10 +72,12 @@ __global__ void counthits(unsigned n, uint2 *hitsp)
 }
 
 #include "pi_check.h"
+#include "example_seeds.h"
 
 int
 main(int argc, char **argv)
 {
+    unsigned seed = example_seed_u32(EXAMPLE_SEED9_U32); // example user-settable seed
     CUDAInfo *infop;
     uint2 *hits_host, *hits_dev;
     size_t hits_sz;
@@ -96,16 +98,16 @@ main(int argc, char **argv)
     CHECKCALL(cudaMalloc(&hits_dev, hits_sz));
     CHECKNOTZERO((hits_host = (uint2 *)malloc(hits_sz)));
 
-    printf("starting %u blocks with %u threads/block for %u points each\n",
-	   infop->blocks_per_grid, infop->threads_per_block, count);
+    printf("starting %u blocks with %u threads/block for %u points each with seed 0x%x\n",
+	   infop->blocks_per_grid, infop->threads_per_block, count, seed);
     fflush(stdout);
 
-    counthits<<<infop->blocks_per_grid, infop->threads_per_block>>>(count, hits_dev);
+    counthits<<<infop->blocks_per_grid, infop->threads_per_block>>>(count, seed, hits_dev);
 
-    CHECKCALL(cudaThreadSynchronize());
+    CHECKCALL(cudaDeviceSynchronize());
     CHECKCALL(cudaMemcpy(hits_host, hits_dev, hits_sz, cudaMemcpyDeviceToHost));
 
-    unsigned long hits = 0, tries = 0;
+    unsigned long long hits = 0, tries = 0;
     for (unsigned i = 0; i < nthreads; i++) {
 	if (debug)
 	    printf("%u %u %u\n", i, hits_host[i].x, hits_host[i].y);

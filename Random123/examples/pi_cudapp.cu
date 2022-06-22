@@ -33,7 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // compute pi via random darts at a square
 
 // functions for boilerplate CUDA init and done
-#include "util_cuda.h"
+#include "../tests/util_cuda.h"
 
 #include <Random123/philox.h>
 
@@ -46,13 +46,13 @@ const char *progname;
 // CUDA Kernel:
 // generates n x,y points and returns hits[tid] with the count of number
 // of those points within the unit circle on each thread.
-__global__ void counthits(unsigned n, uint2 *hitsp)
+__global__ void counthits(unsigned n, unsigned useed, uint2 *hitsp)
 {
     unsigned tid = blockDim.x * blockIdx.x + threadIdx.x;
     unsigned hits = 0, tries = 0;
     typedef Philox4x32 G;
     G rng;
-    G::key_type k = {{tid, 0xdecafbad}};
+    G::key_type k = {{tid, useed}};
     G::ctr_type c = {{}};
 
     while (tries < n) {
@@ -77,10 +77,12 @@ __global__ void counthits(unsigned n, uint2 *hitsp)
 }
 
 #include "pi_check.h"
+#include "example_seeds.h"
 
 int
 main(int argc, char **argv)
 {
+    unsigned seed = example_seed_u32(EXAMPLE_SEED9_U32); // example user-settable seed
     CUDAInfo *infop;
     uint2 *hits_host, *hits_dev;
     size_t hits_sz;
@@ -101,13 +103,13 @@ main(int argc, char **argv)
     CHECKCALL(cudaMalloc(&hits_dev, hits_sz));
     CHECKNOTZERO((hits_host = (uint2 *)malloc(hits_sz)));
 
-    printf("starting %u blocks with %u threads/block for %u points each\n",
-	   infop->blocks_per_grid, infop->threads_per_block, count);
+    printf("starting %u blocks with %u threads/block for %u points each with seed 0x%x\n",
+	   infop->blocks_per_grid, infop->threads_per_block, count, seed);
     fflush(stdout);
 
-    counthits<<<infop->blocks_per_grid, infop->threads_per_block>>>(count, hits_dev);
+    counthits<<<infop->blocks_per_grid, infop->threads_per_block>>>(count, seed, hits_dev);
 
-    CHECKCALL(cudaThreadSynchronize());
+    CHECKCALL(cudaDeviceSynchronize());
     CHECKCALL(cudaMemcpy(hits_host, hits_dev, nthreads*sizeof(hits_dev[0]),
 		   cudaMemcpyDeviceToHost));
 

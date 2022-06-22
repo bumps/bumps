@@ -46,7 +46,7 @@ C programs can access these elements as \c r.v[0], ... \c r.v[N-1] for
 the \c uintW_t types.
 
 In C++, these array types closely resemble the C++0x std::array<N, uintW_t> template, but do not
-require C++0x libraries or compiler features. 
+require C++11 libraries or compiler features. 
 C++ programs can access array elements via operator[]
 \c r[0], ... \c r[N-1], or via most of the capabilities
 of a C++ "Container" e.g. \c at(), \c begin(), \c end(),

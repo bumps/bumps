@@ -33,7 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // at a square board and counting the fraction that are inside the
 // inscribed circle.
 
-// This version uses Philox4x32 with a MicroURNG and the C++0x standard
+// This version uses Philox4x32 with a MicroURNG and the C++11 standard
 // library std::uniform_real distribution to generate floats in [-1..1]
 
 // N.B.  The results are hardware dependent even though the underlying
@@ -90,7 +90,7 @@ int main(int, char**){
 #else
     // MicroURNG's are interesting because they allow us to use std::distributions,
     // as in the above code.  Std::distributions are nice, but if all we need is
-    // a uniform integer, we can do without such fancy C++0x features:
+    // a uniform integer, we can do without such fancy C++11 features:
     unsigned long hits=0;
     std::cout << "Calling a single MicroURNG " << NTRIES << " times" << std::endl;
     for(unsigned long i=0; i<NTRIES; ++i){

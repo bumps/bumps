@@ -16,7 +16,7 @@
 PATH=$PATH:/usr/bin
 export PATH
 if type indent > /dev/null 2>&1; then
-	: ${GENCL_INDENT="indent -br"}
+	: ${GENCL_INDENT=indent}
 else
 	: ${GENCL_INDENT=cat}
 fi
@@ -30,12 +30,11 @@ for f in gawk nawk awk; do
 		break
 	fi
 done
-case "${GENCL_AWK}" in
-'')	echo "$0: could not find awk!">&2; exit 1;;
-esac
-usage="Usage: $0 inputoclfilename outputfilename"
+[ ${GENCL_AWK:+set} ] || { echo "$0: could not find awk!">&2; exit 1; }
+
+usage="Usage: $0 inputoclfilename"
 case $# in
-2)	;;
+1)	;;
 *)	echo "$usage" >&2; exit 1;;
 esac
 case "$1" in
@@ -45,6 +44,6 @@ esac
 set -e
 ${CC-cc} -xc -E -P -nostdinc -D__OPENCL_VERSION__=1 $CPPFLAGS "$1" | 
 	${GENCL_INDENT} | 
-	${GENCL_AWK} 'BEGIN {print "static const char *opencl_src = \"\\n\\"}
+	${GENCL_AWK} 'BEGIN {print "\"\\n\\"}
 	{gsub("\\", "\\\\", $0); gsub("\"", "\\\"", $0); print $0 "\\n\\"}
-	END {print "\";"}' > "$2"
+	END {print "\""}'
