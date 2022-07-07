@@ -204,7 +204,7 @@ def random_init(n, initial, bounds, use_point=False, problem=None):
     If *use_point* is True, then the current value of the parameters
     is returned as the first point in the population.
     """
-    population = problem.randomize(n)
+    population = np.ascontiguousarray(problem.randomize(n))
     if use_point:
         population[0] = clip(initial, *bounds)
     return population
