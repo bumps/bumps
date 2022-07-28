@@ -398,7 +398,7 @@ void bounds_reflect(int Nchain, int Nvar, double pop[], double low[], double hig
     int k, p, idx;
 
     #ifdef _OPENMP
-    #pragma omp parallel for private(idx)
+    #pragma omp parallel for private(idx, k)
     #endif
     for (p=0; p < Nchain; p++) {
         for (k=0; k < Nvar; k++) {
@@ -421,7 +421,7 @@ void bounds_clip(int Nchain, int Nvar, double pop[], double low[], double high[]
     int k, p, idx;
 
     #ifdef _OPENMP
-    #pragma omp parallel for private(idx)
+    #pragma omp parallel for private(idx, k)
     #endif
     for (p=0; p < Nchain; p++) {
         for (k=0; k < Nvar; k++) {
@@ -441,7 +441,7 @@ void bounds_fold(int Nchain, int Nvar, double pop[], double low[], double high[]
     int k, p, idx;
 
     #ifdef _OPENMP
-    #pragma omp parallel for private(idx)
+    #pragma omp parallel for private(idx, k)
     #endif
     for (p=0; p < Nchain; p++) {
         for (k=0; k < Nvar; k++) {
@@ -472,7 +472,7 @@ void bounds_random(int Nchain, int Nvar, double pop[], double low[], double high
     int k, p, idx;
 
     #ifdef _OPENMP
-    #pragma omp parallel for private(idx)
+    #pragma omp parallel for private(idx, k)
     #endif
     for (p=0; p < Nchain; p++) {
         for (k=0; k < Nvar; k++) {
