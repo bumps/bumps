@@ -27,11 +27,22 @@ jobs:
       with:
         python-version: ${{ matrix.cfg.py }}
 
+    - name: Install build dependencies [Linux only]
+      if: ${{ runner.os == 'Linux' }}
+      run: |
+        sudo apt-get -y install gcc
+
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
         python -m pip install wheel setuptools
         python -m pip install numpy scipy matplotlib scikit-learn pytest pytest-cov
+
+    - name: Build package [Linux only]
+      if: ${{ runner.os == 'Linux' }}
+      run: |
+        cd bumps/dream
+        gcc -I../../Random123/include/ -fopenmp -shared -lm -fPIC compiled.c -o _compiled.so
 
     - name: Test with pytest
       run: |
