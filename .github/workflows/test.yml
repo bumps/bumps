@@ -18,6 +18,7 @@ jobs:
           - { os: ubuntu-latest, py: 3.8, doc: 1 }
           - { os: windows-latest, py: 3.8 }
           - { os: macos-latest, py: 3.8 }
+      fail-fast: false
 
     steps:
     - uses: actions/checkout@v1
