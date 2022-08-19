@@ -76,7 +76,7 @@ def choose_fontsize(fontname=None):
     frame = wx.Frame(parent=None, id=wx.ID_ANY, title="")
     if fontname is None:
         fontname = frame.GetFont().GetFaceName()
-    max_width = BENCHMARK_WIDTH + BENCHMARK_WIDTH/100
+    max_width = BENCHMARK_WIDTH + BENCHMARK_WIDTH//100
 
     for fontsize in range(12, 5, -1):
         frame.SetFont(wx.Font(fontsize, wx.SWISS, wx.NORMAL, wx.NORMAL, False,

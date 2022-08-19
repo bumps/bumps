@@ -81,7 +81,7 @@ class FitConfig(wx.Frame):
         self.panel1 = wx.Panel(self, -1)
         static_box1 = wx.StaticBox(self.panel1, -1, "Fit Algorithms")
 
-        rows = (len(self.active_ids)+1)/2
+        rows = (len(self.active_ids)+1)//2
 
         flexsizer = wx.FlexGridSizer(rows, 2, hgap=20, vgap=10)
 

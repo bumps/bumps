@@ -193,8 +193,8 @@ class MainApp(wx.App):
             print("*** Reported screen size excluding taskbar is %d x %d"%(w, h))
 
         if w > 1920: w = 1280  # display on left side, not centered on screen
-        if w > desired_width:  xpos = x + (w - desired_width)/2
-        if h > desired_height: ypos = y + (h - desired_height)/2
+        if w > desired_width:  xpos = x + (w - desired_width)//2
+        if h > desired_height: ypos = y + (h - desired_height)//2
 
         # Return the suggested position and size for the application frame.
         return (xpos, ypos), (min(w, desired_width), min(h, desired_height))
