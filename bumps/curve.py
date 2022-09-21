@@ -211,13 +211,12 @@ class Curve(object):
             labels = list(labels) + line_labels
         self.labels = labels
 
-
         # TODO: self.fn is a duplicate of self._function below. Deprecated?
         self.fn = fn
         self.name = name # if name else fn.__name__ + " "
         self.plot_x = plot_x
 
-        pars, state = _parse_pars(fn, init=kwargs, skip=1)
+        pars, state = _parse_pars(fn, init=kwargs, skip=1, name=name)
 
         # Make parameters accessible as model attributes
         _assign_pars(self, pars)
