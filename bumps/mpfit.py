@@ -19,6 +19,12 @@ Perform Levenberg-Marquardt least-squares minimization, based on MINPACK-1.
     rivers@cars.uchicago.edu
     Updated versions can be found at http://cars.uchicago.edu/software
 
+  2022-09-21 [PAK] add 'double' parameter to select machine precision for
+  the objective function. This mainly affects numerical derivatives, forcing
+  the step size to be large enough that x + h != x, but will also change the
+  criteria for correcting degenerate qr decomposition and maybe stopping
+  conditions and returned status codes.
+
 
                                  DESCRIPTION
 
@@ -592,7 +598,7 @@ class mpfit:
                 damp=0., maxiter=200, factor=100., nprint=1,
                 iterfunct='default', iterkw={}, nocovar=0,
                 fastnorm=0, rescale=0, autoderivative=1, quiet=0,
-                diag=None, epsfcn=None, debug=0):
+                diag=None, epsfcn=None, debug=0, double=1):
       """
 Inputs:
   fcn:
@@ -745,6 +751,9 @@ Keywords:
       desired in the approximate solution.
       Default: 1E-10
 
+   double:
+      Use double=1 if fcn is double precision or double=0 for single precision. 
+
  Outputs:
 
    Returns an object of type mpfit.  The results are attributes of this class,
@@ -847,7 +856,7 @@ Keywords:
       self.fastnorm = fastnorm
       self.nfev = 0
       self.damp = damp
-      self.machar = machar(double=1)
+      self.machar = machar(double=double)
       machep = self.machar.machep
 
       if (fcn is None):

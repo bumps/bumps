@@ -570,6 +570,7 @@ class MPFit(FitBase):
             parinfo=parinfo,
             autoderivative=True,
             fastnorm=True,
+            double=0, # use single precision machine epsilon for derivative step
             #damp=0,  # no damping when damp=0
             # Stopping conditions
             ftol=options['ftol'],
