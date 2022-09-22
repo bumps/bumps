@@ -1,0 +1,5 @@
+PeakName,PeakType,Amplitude,Centre,Sigma,Gamma
+V1,Voigt,100,0.3,0.05,0.01
+G1,Gaussian,500,0.8,0.1,None
+G2,Gaussian,250,0.1,0.01,None
+B,Background,50,None,None,None
