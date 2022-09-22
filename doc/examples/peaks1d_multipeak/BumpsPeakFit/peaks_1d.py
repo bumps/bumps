@@ -47,7 +47,7 @@ def plot(X, theory, data, err, peaks=None, view=None):
     pylab.ylabel(r"Counts", fontsize=21)
     pylab.yticks(fontsize=18)
     # pylab.tick_params(axis = "x", which = "both", bottom = False, top = False, labelbottom="off")
-    pylab.xticks(fontsize=0.01)
+    pylab.xticks(fontsize=1)
 
     if peaks is not None:
         try:
