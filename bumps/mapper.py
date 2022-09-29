@@ -90,7 +90,7 @@ class SerialMapper(object):
         pass
 
     @staticmethod
-    def start_mapper(problem, modelargs, cpus=0):
+    def start_mapper(problem, modelargs=None, cpus=0):
         # Note: map is n iterator in python 3.x
         return lambda points: list(map(problem.nllf, points))
 
@@ -138,7 +138,7 @@ class MPMapper(object):
         pass
 
     @staticmethod
-    def start_mapper(problem, modelargs, cpus=0):
+    def start_mapper(problem, modelargs=None, cpus=0):
         import multiprocessing
 
         # Set up the process pool on the first call.
@@ -172,7 +172,14 @@ class MPMapper(object):
 
     @staticmethod
     def stop_mapper(mapper):
+        # reset pool and manager
         MPMapper.pool.terminate()
+        MPMapper.manager.shutdown()
+        MPMapper.pool = None
+        MPMapper.manager = None
+        MPMapper.namespace = None
+        # Don't reset problem id; it keeps count even when mapper is restarted.
+        ##MPMapper.problem_id = 0
 
 def _MPI_set_problem(problem, comm, root=0):
     import dill
@@ -257,7 +264,7 @@ class MPIMapper(object):
             sys.exit(0)
 
     @staticmethod
-    def start_mapper(problem, modelargs, cpus=0):
+    def start_mapper(problem, modelargs=None, cpus=0):
         # Only root can get here---worker is stuck in start_worker
         from mpi4py import MPI
         comm, root = MPI.COMM_WORLD, 0
@@ -302,7 +309,7 @@ class AMQPMapper(object):
         #print >>sys.stderr,"worker ended"; sys.stdout.flush()
 
     @staticmethod
-    def start_mapper(problem, modelargs, cpus=0):
+    def start_mapper(problem, modelargs=None, cpus=0):
         import sys
         import multiprocessing
         import subprocess
