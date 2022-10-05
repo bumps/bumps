@@ -663,7 +663,7 @@ class Variable(ValueProtocol, VariableSchema):
 
 # Note: need constant schema so that value can be the name of the value in
 # the schema while being the name of the property in the class
-#@schema(classname="Constant")
+@schema(classname="Constant")
 class ConstantSchema:
     """
     Saved state for an unmodifiable value.
