@@ -715,8 +715,8 @@ def main():
 
         # If in batch mode then explicitly close the monitor file on completion
         if opts.batch:
-            sys.stderr.close()
-            sys.stderr = sys.__stderr__
+            sys.stdout.close()
+            sys.stdout = sys.__stdout__
 
         # Display the plots
         if not opts.batch and not opts.mpi and not opts.noshow:
