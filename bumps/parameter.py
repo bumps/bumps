@@ -1478,6 +1478,10 @@ class Constraint:
         self.compare = getattr(operator, op_name.lower())
         self.op = op
 
+    # TODO: is this really necessary?  What is the reason for this trap?
+    # It seems like being able to cast with bool(Constraint) would be
+    # useful in some circumstances, like doing max(List[Parameter]), which
+    # currently fails.
     def __bool__(self):
         raise TypeError("failed bool")
     __nonzero__ = __bool__
