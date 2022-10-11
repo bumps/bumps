@@ -184,11 +184,16 @@ class FitProblemSchema:
     penalty_nllf: util.Union[float, util.Literal["inf"]] = "inf"
 
 class FitProblem(FitProblemSchema):
-    """
+    r"""
 
         *models* is a sequence of :class:`Fitness` instances.
 
-        *weights* is an optional scale factor for each model
+        *weights* is an optional scale factor for each model. A weighted fit
+        returns nllf $L = \sum w_k^2 L_k$. If an individual nllf is the sum
+        squared residuals then this is equivalent to scaling the measurement
+        uncertainty by $1/w$. Unless the measurement uncertainty is unknown,
+        weights should be in [0, 1], representing an unknown systematic
+        uncertainty spread across the individual measurements.
 
         *freevars* is :class:`.parameter.FreeVariables` instance defining the
         per-model parameter assignments.  See :ref:`freevariables` for details.
@@ -215,6 +220,9 @@ class FitProblem(FitProblemSchema):
     Total nllf is the sum of the parameter nllf, the constraints nllf and the
     depending on whether constraints is greater than soft_limit, either the
     fitness nllf or the penalty nllf.
+
+    New in 0.9.0: weights are now squared when computing the sum rather than
+    linear.
     """  
 
     _constraints_function: util.Callable[..., float]
