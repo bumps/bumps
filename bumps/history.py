@@ -56,7 +56,7 @@ Then future values will be preserved:
     >>> h.requires(point=1)
     >>> h.update(value=0.25, point=[1,0.5,0.92])
     >>> print(h.point[0])
-   [1, 0.5, 0.92]
+    [1, 0.5, 0.92]
 
 Traces are independent of each other. A new trace can be added to the history
 and updated separately from the existing traces. This can be handy if there
@@ -75,6 +75,9 @@ before being stored in the trace. For example:
     >>> h.accumulate(step=1)
     >>> print(h.step)
     Trace step: 16, 15
+
+Within bumps, history is used by monitors, with bumps.fitters.MonitorRunner
+managing updates to history and feeding them to the fit progress monitors.
 """
 
 # Design questions:
