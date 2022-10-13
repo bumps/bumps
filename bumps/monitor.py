@@ -7,7 +7,7 @@ and perform some sort of work.
 
 Monitors have a :meth:`Monitor.config_history` method which calls
 *history.requires()* to set the amount of history it needs and a 
-:meth:`Monitor.__call__` method which takes the updated history and
+*Monitor.__call__* method which takes the updated history and
 generates the monitor output.
 
 Most monitors are subclassed from :class:`TimedUpdate` to set a minimum
