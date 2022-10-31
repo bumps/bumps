@@ -533,6 +533,10 @@ def main():
     """
     # add full traceback to warnings
     #warnings.showwarning = warn_with_traceback
+    if len(sys.argv) == 2 and sys.argv[1] == "":
+        # Windows batch files pass empty string as args if none specified;
+        # treat this as no arguments:
+        sys.argv.pop()
 
     if len(sys.argv) == 1:
         sys.argv.append("-?")
