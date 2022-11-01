@@ -535,7 +535,7 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
         Set a new value for the parameter, clipping it to the bounds.
         """
         low, high = self.prior.limits
-        self.slot.value = min(max(value, low), high)
+        self.slot.value = builtins.min(builtins.max(value, low), high)
 
     def __init__(
             self,
