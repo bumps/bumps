@@ -88,11 +88,14 @@ class Uniform:
     """ Uniform distribution with hard boundaries """
 
 
-@schema(init=True)
+@schema()
 class Normal:
     """ Normal distribution (Gaussian) """
     std: float = field_desc("standard deviation (1-sigma)")
     mean: float = field_desc("center of the distribution")
+    def __init__(self, std: float, mean: float):
+        self.std = std
+        self.mean = mean
 
 # Leave out of schema for now.
 # TODO: determine if this is used by anyone
@@ -167,6 +170,8 @@ class Calculation(ValueProtocol): # the name Function is taken (though deprecate
 class SupportsPrior:
     prior: Optional[BoundsType]
     limits: Tuple[float, float]
+    distribution: DistributionType
+    bounds: BoundsType
 
     def reset_prior(self):
         self.prior = None
@@ -177,7 +182,7 @@ class SupportsPrior:
             and not isinstance(self.prior, mbounds.Unbounded)
             and self.limits != (-np.inf, np.inf))
     
-    def add_prior(self, distribution: DistributionType=None, bounds=None, limits=None):
+    def add_prior(self, distribution: Optional[DistributionType]=None, bounds: Optional[BoundsType]=None, limits: Optional[Tuple[float, float]]=None):
         # use self values if they are found:
         if distribution is None and self.distribution is not None:
             distribution = self.distribution
@@ -407,6 +412,7 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
         Allow the parameter to vary within the given range.
         """
         self.bounds = (low, high)
+        self.distribution = Uniform()
         self.fixed = False
         return self
 
