@@ -674,13 +674,16 @@ class BoundedNormal(Bounds):
             -inf if lo is None else float(lo),
             inf if hi is None else float(hi)
         )
-        self.limits = limits
-        self.lo, self.hi = lo, hi
+        self.lo, self.hi = limits
         self.mean, self.std = mean, std
 
         self._left = normal_distribution.cdf((limits[0]-mean)/std)
         self._delta = normal_distribution.cdf((limits[1]-mean)/std) - self._left
         self._nllf_scale = log(2 * pi * std ** 2)/2 + log(self._delta)
+
+    @property
+    def limits(self):
+        return (self.lo, self.hi)
 
     def get01(self, x):
         """
@@ -780,6 +783,10 @@ class SoftBounded(Bounds):
     def __init__(self, lo, hi, std=1.0):
         self.lo, self.hi, self.std = lo, hi, std
         self._nllf_scale = log(hi - lo + sqrt(2 * pi * std))
+
+    @property
+    def limits(self):
+        return (self.lo, self.hi)
 
     def random(self, n=1, target=1.0):
         return RNG.uniform(self.lo, self.hi, size=n)
