@@ -217,8 +217,11 @@ class Bounds:
     is being optimized is also a probability, then this is an easy way to
     incorporate information from other sorts of measurements into the model.
     """
-    limits = (-inf, inf)
     # TODO: need derivatives wrt bounds transforms
+
+    @property
+    def limits(self):
+        return (-inf, inf)
 
     def get01(self, x):
         """
@@ -394,7 +397,10 @@ class BoundedBelow(Bounds):
 
     def __init__(self, base):
         self.base = base
-        self.limits = (base, inf)
+
+    @property
+    def limits(self):
+        return (self.base, inf)
 
     def start_value(self):
         return self.base + 1
@@ -455,7 +461,10 @@ class BoundedAbove(Bounds):
 
     def __init__(self, base):
         self.base = base
-        self.limits = (-inf, base)
+
+    @property
+    def limits(self):
+        return (-inf, self.base)
 
     def start_value(self):
         return self.base - 1
@@ -519,22 +528,22 @@ class Bounded(Bounds):
     def __init__(self, lo, hi):
         self.lo = lo
         self.hi = hi
-        self.limits = (lo, hi)
         self._nllf_scale = log(hi - lo)
 
+    @property
+    def limits(self):
+        return (self.lo, self.hi)
+
     def random(self, n=1, target=1.0):
-        lo, hi = self.limits
         #print("= uniform",lo,hi)
-        return RNG.uniform(lo, hi, size=n)
+        return RNG.uniform(self.lo, self.hi, size=n)
 
     def nllf(self, value):
-        lo, hi = self.limits
-        return 0 if lo <= value <= hi else inf
+        return 0 if self.lo <= value <= self.hi else inf
         # return self._nllf_scale if lo<=value<=hi else inf
 
     def residual(self, value):
-        lo, hi = self.limits
-        return -4 if lo > value else (4 if hi < value else 0)
+        return -4 if self.lo > value else (4 if self.hi < value else 0)
 
     def get01(self, x):
         lo, hi = self.limits
@@ -624,7 +633,7 @@ class Normal(Distribution):
     mean: float = 0.0
     std: float = 1.0
 
-    def __init__(self, mean=0, std=1):
+    def __init__(self, mean:float=0, std:float=1):
         Distribution.__init__(self, normal_distribution(mean, std))
         self._nllf_scale = log(2 * pi * std ** 2)/2
 
@@ -657,7 +666,7 @@ class BoundedNormal(Bounds):
     lo: Union[float, Literal["-inf"]]
     hi: Union[float, Literal["inf"]]
 
-    def __init__(self, mean=0, std=1, limits=(-inf, inf), hi="inf", lo="-inf"):
+    def __init__(self, mean:float=0, std:float=1, limits=(-inf, inf), hi="inf", lo="-inf"):
         if limits is not None:
             # for backward compatibility:
             lo, hi = limits
