@@ -180,7 +180,7 @@ class SupportsPrior:
         return (
             self.prior is not None
             and not isinstance(self.prior, mbounds.Unbounded)
-            and self.limits != (-np.inf, np.inf))
+            and self.prior.limits != (-np.inf, np.inf))
     
     def add_prior(self, distribution: Optional[DistributionType]=None, bounds: Optional[BoundsType]=None, limits: Optional[Tuple[float, float]]=None):
         # use self values if they are found:
@@ -1396,7 +1396,7 @@ def varying(s: List[Parameter]) -> List[Parameter]:
 
 def _has_prior(p: Parameter) -> bool:
     prior = getattr(p, 'prior', None)
-    limits = getattr(p, 'limits', (-np.inf, np.inf))
+    limits = getattr(prior, 'limits', (-np.inf, np.inf))
     return (
         prior is not None
         and not isinstance(prior, mbounds.Unbounded)
