@@ -554,7 +554,8 @@ class FitProblem(FitProblemSchema):
         pars = []
         pars_by_id = {}
         for p in all_parameters:
-            pars_by_id[p.id] = p
+            if hasattr(p, 'id'):
+                pars_by_id[p.id] = p
             slot = getattr(p, 'slot', None)
             if isinstance(slot, Variable) and not p.fixed:
                 pars.append(p)
