@@ -226,6 +226,9 @@ class FitProblem(FitProblemSchema):
     """  
 
     _constraints_function: util.Callable[..., float]
+    _parameters: util.List[Parameter]
+    _parameters_by_id: util.Dict[str, Parameter]
+    freevars: parameter.FreeVariables
     # _all_constraints: util.List[util.Union[Parameter, Expression]]
 
     def __init__(self, models: util.Union[Fitness, util.List[Fitness]], weights=None, name=None,
@@ -250,7 +253,7 @@ class FitProblem(FitProblemSchema):
         self.freevars = freevars
         self._models = models
         if weights is None:
-            weights = [1 for _ in models]
+            weights = [1.0 for _ in models]
         self.weights = weights
         self.penalty_nllf = float(penalty_nllf)
         self.set_active_model(0)  # Set the active model to model 0
@@ -285,7 +288,8 @@ class FitProblem(FitProblemSchema):
 
     def model_parameters(self):
         """Return parameters from all models"""
-        pars = {'models': [f.parameters() for f in self.models]}
+        pars = {}
+        pars['models'] = [f.parameters() for f in self.models]
         free = self.freevars.parameters()
         if free:
             pars['freevars'] = free
@@ -548,11 +552,14 @@ class FitProblem(FitProblemSchema):
 
         # TODO: shimmed to allow non-Parameter in Parameter attribute spots.
         pars = []
+        pars_by_id = {}
         for p in all_parameters:
+            pars_by_id[p.id] = p
             slot = getattr(p, 'slot', None)
             if isinstance(slot, Variable) and not p.fixed:
                 pars.append(p)
         self._parameters = pars
+        self._parameters_by_id = pars_by_id
         # TODO: shimmed to allow non-Parameter in Parameter attribute spots.
         self._bounded = [p for p in all_parameters if hasattr(p, 'has_prior') and p.has_prior()]
         self.dof = self.model_points()
