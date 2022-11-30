@@ -3,6 +3,7 @@
 from typing import Dict, List, Literal, Optional, Union, TypedDict
 from datetime import datetime
 import warnings
+from queue import Queue
 from aiohttp import web
 import numpy as np
 import asyncio
@@ -10,6 +11,7 @@ import socketio
 from pathlib import Path, PurePath
 import json
 from copy import deepcopy
+from blinker import Signal
 
 import mimetypes
 mimetypes.add_type("text/css", ".css")
@@ -28,6 +30,11 @@ import bumps.fitproblem
 import refl1d.fitproblem, refl1d.probe
 from refl1d.experiment import Experiment
 
+from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
+
+# can get by name and not just by id
+EVT_LOG = Signal('log')
+
 FITTERS = (DreamFit, LevenbergMarquardtFit, SimplexFit, DEFit, MPFit, BFGSFit)
 FITTERS_BY_ID = dict([(fitter.id, fitter) for fitter in FITTERS])
 print(FITTERS_BY_ID)
@@ -43,13 +50,20 @@ routes = web.RouteTableDef()
 # sio = socketio.AsyncServer(cors_allowed_origins="*", serializer='msgpack')
 sio = socketio.AsyncServer(cors_allowed_origins="*")
 app = web.Application()
-static_dir_path = Path(__file__).parent / 'webview'
+static_dir_path = Path(__file__).parent.parent / 'client' / 'dist'
 sio.attach(app)
 
 topics: Dict[str, Dict] = {}
 app["topics"] = topics
 app["problem"] = {"fitProblem": None, "filepath": None}
+app["fitting"] = {
+    "fit_thread": None,
+    "abort": False,
+    "uncertainty_state": None,
+    "abort_queue": Queue(),
+}
 problem = None
+
 
 def rest_get(fn):
     """
@@ -100,6 +114,81 @@ async def start_fit(sid: str="", fitter_id: str="", kwargs=None):
     x, fx = driver.fit()
     driver.show()
 
+@sio.event
+async def stop_fit(sid: str):
+    abort_queue: Queue = app["fitting"]["abort_queue"]
+    abort_queue.put(True)
+
+@sio.event
+async def start_fit_thread(sid: str="", fitter_id: str="", options=None):
+    options = {} if options is None else options
+    fitProblem: refl1d.fitproblem.FitProblem = app["problem"]["fitProblem"]
+    fitclass = FITTERS_BY_ID[fitter_id]
+    if app["problem"].get("fit_thread", None) is not None:
+        # warn that fit is alread running...
+        print("fit already running...")
+        return
+    
+    # TODO: better access to model parameters
+    if len(fitProblem.getp()) == 0:
+        raise ValueError("Problem has no fittable parameters")
+
+    # Start a new thread worker and give fit problem to the worker.
+    # Clear abort and uncertainty state
+    app["fitting"]["abort"] = False
+    app["fitting"]["uncertainty_state"] = None
+    abort_queue: Queue = app["fitting"]["abort_queue"]
+    for _ in range(abort_queue.qsize()):
+        abort_queue.get_nowait()
+        abort_queue.task_done()
+    fit_thread = FitThread(
+        abort_queue=abort_queue,
+        problem=fitProblem,
+        fitclass=fitclass,
+        options=options,
+        # Number of seconds between updates to the GUI, or 0 for no updates
+        convergence_update=5,
+        uncertainty_update=3600,
+        )
+    fit_thread.start()
+    await publish("", "fit_active", True)
+
+def fit_progress_handler(event):
+    print("event: ", event)
+    message = event.get("message", None)
+    if message == 'complete' or message == 'improvement':
+        fitProblem: refl1d.fitproblem.FitProblem = app["problem"]["fitProblem"]
+        fitProblem.setp(event["point"])
+        fitProblem.model_update()
+        asyncio.run_coroutine_threadsafe(publish("", "update_parameters", True), app.loop)
+    if message == 'complete':
+        asyncio.run_coroutine_threadsafe(publish("", "fit_active", False), app.loop)
+
+EVT_FIT_PROGRESS.connect(fit_progress_handler)
+
+def fit_complete_handler(event):
+    print("event: ", event)
+    message = event.get("message", None)
+    fit_thread = app["fitting"]["fit_thread"]
+    if fit_thread is not None:
+        fit_thread.join(1) # 1 second timeout on join
+        if fit_thread.is_alive():
+            EVT_LOG.send("fit thread failed to complete")
+    app["fitting"]["fit_thread"] = None
+    problem: refl1d.fitproblem.FitProblem = event["problem"]
+    chisq = nice(2*event["value"]/problem.dof)
+    problem.setp(event["point"])
+    problem.model_update()
+    asyncio.run_coroutine_threadsafe(publish("", "update_parameters", True), app.loop)
+    EVT_LOG.send("done with chisq %g"%chisq)
+    EVT_LOG.send(event["info"])
+
+EVT_FIT_COMPLETE.connect(fit_complete_handler)
+
+def log_handler(message):
+    asyncio.run_coroutine_threadsafe(publish("", "log", message), app.loop)
+
+EVT_LOG.connect(log_handler)
 
 def get_single_probe_data(theory, probe, substrate=None, surface=None, label=''):
     fresnel_calculator = probe.fresnel(substrate, surface)
@@ -276,6 +365,7 @@ async def publish(sid: str, topic: str, message):
     contents = {"message": message, "timestamp": timestamp_str}
     topics[topic] = contents
     await sio.emit(topic, contents)
+    # print("emitted: ", topic, contents)
 
 @sio.event
 @rest_get
@@ -378,7 +468,10 @@ def params_to_list(params, lookup=None, pathlist=None, links=None) -> List[Param
             lookup[params.id] = new_item
     return list(lookup.values())
 
-if __name__ == '__main__':
+def main():
     app.on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
     app.add_routes(routes)
     web.run_app(app)
+
+if __name__ == '__main__':
+    main()
