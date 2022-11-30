@@ -1,0 +1,25 @@
+{
+  "name": "refl1d-web-gui",
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build --outDir ../refl1d/webview --emptyOutDir",
+    "preview": "vite preview --port 4173"
+  },
+  "dependencies": {
+    "bootstrap": "^5.2.1",
+    "json-difference": "^1.8.2",
+    "mpld3": "^0.5.8",
+    "plotly.js": "^2.14.0",
+    "socket.io-client": "^4.5.2",
+    "uuid": "^9.0.0",
+    "vue": "^3.2.38",
+    "vue-json-viewer": "^3.0.4"
+  },
+  "devDependencies": {
+    "@types/plotly.js": "^2.12.5",
+    "@types/uuid": "^8.3.4",
+    "@vitejs/plugin-vue": "^3.0.3",
+    "vite": "^3.0.9"
+  }
+}
