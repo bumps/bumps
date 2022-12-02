@@ -86,7 +86,7 @@ def calc_errors(problem, sample):
     return None
 
 
-def show_errors(errs):
+def show_errors(errs, fig=None):
     """
     Display the model with uncertainty on the current figure.
 
