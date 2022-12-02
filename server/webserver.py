@@ -153,22 +153,25 @@ async def start_fit_thread(sid: str="", fitter_id: str="", options=None):
     fit_thread.start()
     await publish("", "fit_active", True)
 
-def fit_progress_handler(event):
-    print("event: ", event)
+def fit_progress_handler(event: Dict):
+    fitProblem: refl1d.fitproblem.FitProblem = app["problem"]["fitProblem"]
     message = event.get("message", None)
     if message == 'complete' or message == 'improvement':
-        fitProblem: refl1d.fitproblem.FitProblem = app["problem"]["fitProblem"]
         fitProblem.setp(event["point"])
         fitProblem.model_update()
-        asyncio.run_coroutine_threadsafe(publish("", "update_parameters", True), app.loop)
-    if message == 'complete':
-        asyncio.run_coroutine_threadsafe(publish("", "fit_active", False), app.loop)
+        publish_sync("", "update_parameters")
+        if message == 'complete':
+            publish_sync("", "fit_active", False)
+    elif message == 'convergence_update':
+        app["fitting"]["population"] = event["pop"]
+        publish_sync("", "convergence_update")
+    elif message == 'uncertainty_update' or message == 'uncertainty_final':
+        app["fitting"]["uncertainty_state"] = event["uncertainty_state"]
+        publish_sync("", "uncertainty_update")
 
 EVT_FIT_PROGRESS.connect(fit_progress_handler)
 
 def fit_complete_handler(event):
-    print("event: ", event)
-    message = event.get("message", None)
     fit_thread = app["fitting"]["fit_thread"]
     if fit_thread is not None:
         fit_thread.join(1) # 1 second timeout on join
@@ -179,14 +182,14 @@ def fit_complete_handler(event):
     chisq = nice(2*event["value"]/problem.dof)
     problem.setp(event["point"])
     problem.model_update()
-    asyncio.run_coroutine_threadsafe(publish("", "update_parameters", True), app.loop)
+    publish_sync("", "update_parameters", True)
     EVT_LOG.send("done with chisq %g"%chisq)
     EVT_LOG.send(event["info"])
 
 EVT_FIT_COMPLETE.connect(fit_complete_handler)
 
 def log_handler(message):
-    asyncio.run_coroutine_threadsafe(publish("", "log", message), app.loop)
+    publish_sync("", "log", message)
 
 EVT_LOG.connect(log_handler)
 
@@ -536,12 +539,15 @@ async def set_parameter(sid: str, parameter_id: str, property: Literal["value01"
     return
 
 @sio.event
-async def publish(sid: str, topic: str, message):
+async def publish(sid: str, topic: str, message=None):
     timestamp_str = f"{datetime.now().timestamp():.6f}"
     contents = {"message": message, "timestamp": timestamp_str}
     topics[topic] = contents
     await sio.emit(topic, contents)
     # print("emitted: ", topic, contents)
+
+def publish_sync(sid: str, topic: str, message=None):
+    return asyncio.run_coroutine_threadsafe(publish(sid, topic, message), app.loop)
 
 @sio.event
 @rest_get
