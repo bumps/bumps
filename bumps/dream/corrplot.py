@@ -49,14 +49,15 @@ class Corr2d(object):
         """
         return self.hists[i, j]
 
-    def plot(self, title=None):
+    def plot(self, title=None, fig=None):
         """
         Plot the correlation histograms on the specified figure
         """
         import pylab
 
-        pylab.clf()
-        fig = pylab.gcf()
+        if fig is None:
+            pylab.clf()
+            fig = pylab.gcf()
         if title is not None:
             fig.text(0.5, 0.95, title,
                      horizontalalignment='center',
