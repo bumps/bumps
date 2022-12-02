@@ -38,8 +38,6 @@ from .util import field, field_desc, schema, has_schema
 
 BoundsType = mbounds.BoundsType
 
-T = TypeVar('T')
-
 ValueType = Union['Expression', 'Parameter', 'Calculation', float]
 
 # TODO: avoid evaluation of subexpressions if parameters do not change.
