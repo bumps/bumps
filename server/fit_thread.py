@@ -5,10 +5,12 @@ from queue import Queue
 
 from blinker import Signal
 
+import numpy as np
 from bumps import monitor
 from bumps.fitters import FitDriver
 from bumps.mapper import MPMapper, SerialMapper, can_pickle
 from bumps.util import redirect_console
+from bumps.history import History
 
 #from .convergence_view import ConvergenceMonitor
 # ==============================================================================
@@ -49,17 +51,13 @@ class GUIProgressMonitor(monitor.TimedUpdate):
         EVT_FIT_PROGRESS.send(evt)
 
 
-class GUIMonitor(monitor.Monitor):
+class ConvergenceMonitor(monitor.Monitor):
     """
     Generic GUI monitor for fitting.
 
-    Sends a fit progress event to the selected window every *rate*
-    seconds. The *monitor* is a bumps monitor which processes fit
-    history as it arrives. Instead of the usual *show_progress* method
-    to update the managing process it has a *progress* method which
-    returns a dictionary of progress attributes.  These attributes are
-    added to a *FitProgressEvent* along with *problem* and *message* which
-    is then posted to *win*.
+    Sends a convergence_update event every *rate*
+    seconds.  Gathers statistics about the best, worst, median and +/- 1 interquartile
+    range.  This will be the input for the convergence plot.
 
     *problem* should be the fit problem handed to the fit thread, and not
     a copy. This is because it is used for direct comparison with the current
@@ -68,32 +66,41 @@ class GUIMonitor(monitor.Monitor):
 
     *message* is a dispatch string used by the OnFitProgress event processor
     in the app to determine which progress panel should receive the event.
-
-    TODO: this is a pretty silly design, especially since GUI monitor is only
-    used for the convergence plot, and a separate monitor class was created
-    for DREAM progress updates.
     """
 
-    def __init__(self, problem, message, monitor, rate=0):
+    def __init__(self, problem, message="convergence_update", rate=0):
         self.time = 0
         self.rate = rate  # rate=0 for no progress update, only final
         self.problem = problem
         self.message = message
-        self.monitor = monitor
+        self.pop = []
+
 
     def config_history(self, history):
-        self.monitor.config_history(history)
-        history.requires(time=1)
+        history.requires(time=1, population_values=1, value=1)
 
     def __call__(self, history):
-        self.monitor(history)
+        # from old ConvergenceMonitor:
+        best = history.value[0]
+        try:
+            pop = history.population_values[0]
+            n = len(pop)
+            p = np.sort(pop)
+            QI,Qmid, = int(0.2*n),int(0.5*n)
+            self.pop.append((best, p[0],p[QI],p[Qmid],p[-1-QI],p[-1]))
+        except AttributeError:
+            self.pop.append((best, ))
+
         if self.rate > 0 and history.time[0] >= self.time+self.rate:
             evt = dict(
                 problem=self.problem,
                 message=self.message,
-                **self.monitor.progress())
+                pop=self.progress())
             EVT_FIT_PROGRESS.send(evt)
             self.time = history.time[0]
+
+    def progress(self):
+        return np.empty((0,1),'d') if not self.pop else np.array(self.pop)
 
     def final(self):
         """
@@ -102,7 +109,7 @@ class GUIMonitor(monitor.Monitor):
         evt = dict(
             problem=self.problem,
             message=self.message,
-            **self.monitor.progress())
+            pop=self.progress())
         EVT_FIT_PROGRESS.send(evt)
 
 # Horrible hacks:
@@ -139,7 +146,7 @@ class DreamMonitor(monitor.Monitor):
             evt = dict(
                 problem=self.problem,
                 message="uncertainty_update",
-                # uncertainty_state=deepcopy(self.uncertainty_state),
+                uncertainty_state=deepcopy(self.uncertainty_state),
             )
             EVT_FIT_PROGRESS.send(evt)
 
@@ -153,7 +160,7 @@ class DreamMonitor(monitor.Monitor):
             evt = dict(
                 problem=self.problem,
                 message="uncertainty_final",
-                # uncertainty_state=deepcopy(self.uncertainty_state),
+                uncertainty_state=deepcopy(self.uncertainty_state),
             )
             EVT_FIT_PROGRESS.send(evt)
 
@@ -191,6 +198,8 @@ class FitThread(Thread):
         # inside the GUI monitor otherwise AppPanel will not be able to
         # recognize that it is the same problem when updating views.
         monitors = [GUIProgressMonitor(self.problem),
+                    ConvergenceMonitor(self.problem, 
+                                       rate=self.convergence_update),
                     # GUIMonitor(self.problem,
                     #            message="convergence_update",
                     #            monitor=ConvergenceMonitor(),
