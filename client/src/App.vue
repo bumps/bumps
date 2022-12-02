@@ -91,7 +91,7 @@ function startFit() {
 
   if (fitter_active && fitter_settings) {
     const fit_args = fitter_settings[fitter_active];
-    socket.emit("start_fit_thread", fitter_active, fit_args);
+    socket.emit("start_fit_thread", fitter_active, fit_args.settings);
   }
 }
 
