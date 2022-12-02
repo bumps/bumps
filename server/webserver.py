@@ -302,6 +302,182 @@ async def get_profile_data(sid: str="", model_index: int=0):
 
 @sio.event
 @rest_get
+async def get_convergence_plot(sid: str=""):
+    # NOTE: this is slow.  Creating the figure takes around 0.15 seconds, 
+    # and converting to mpld3 can take as much as 0.5 seconds.
+    # Might want to replace with plotting on the client side (normalizing population takes around 1 ms)
+    fitProblem: refl1d.fitproblem.FitProblem = app["problem"]["fitProblem"]
+    population = app["fitting"]["population"]
+    if population is not None and fitProblem is not None:
+        import mpld3
+        import matplotlib
+        matplotlib.use("agg")
+        import matplotlib.pyplot as plt
+        import time
+        start_time = time.time()
+        print('queueing new convergence plot...', start_time)
+
+        normalized_pop = 2*population/fitProblem.dof
+        best, pop = normalized_pop[:, 0], normalized_pop[:, 1:]
+        print("time to normalize population: ", time.time() - start_time)
+        fig = plt.figure()
+        axes = fig.add_subplot(111)
+
+        ni,npop = pop.shape
+        iternum = np.arange(1,ni+1)
+        tail = int(0.25*ni)
+        c = bumps.plotutil.coordinated_colors(base=(0.4,0.8,0.2))
+        if npop==5:
+            axes.fill_between(iternum[tail:], pop[tail:,1], pop[tail:,3],
+                                color=c['light'], label='_nolegend_')
+            axes.plot(iternum[tail:],pop[tail:,2],
+                        label="80% range", color=c['base'])
+            axes.plot(iternum[tail:],pop[tail:,0],
+                        label="_nolegend_", color=c['base'])
+        axes.plot(iternum[tail:], best[tail:], label="best",
+                    color=c['dark'])
+        axes.set_xlabel('iteration number')
+        axes.set_ylabel('chisq')
+        axes.legend()
+        #plt.gca().set_yscale('log')
+        # fig.draw()
+        print("time to render but not serialize...", time.time() - start_time)
+        dfig = mpld3.fig_to_dict(fig)
+        plt.close(fig)
+        # await sio.emit("profile_plot", dfig, to=sid)
+        end_time = time.time()
+        print("time to draw convergence plot:", end_time - start_time)
+        return dfig
+    else:
+        return None
+
+@sio.event
+@rest_get
+async def get_correlation_plot(sid: str = ""):
+    uncertainty_state = app["fitting"].get("uncertainty_state", None)
+    if uncertainty_state is not None:
+        import mpld3
+        import matplotlib
+        matplotlib.use("agg")
+        import matplotlib.pyplot as plt
+        import time
+        start_time = time.time()
+        print('queueing new correlation plot...', start_time)
+
+        fig = plt.figure()
+        axes = fig.add_subplot(111)
+        bumps.dream.views.plot_corrmatrix(uncertainty_state.draw(), fig=fig)
+        print("time to render but not serialize...", time.time() - start_time)
+        fig.canvas.draw()
+        dfig = mpld3.fig_to_dict(fig)
+        plt.close(fig)
+        # await sio.emit("profile_plot", dfig, to=sid)
+        end_time = time.time()
+        print("time to draw correlation plot:", end_time - start_time)
+        return dfig
+    else:
+        return None
+
+@sio.event
+@rest_get
+async def get_uncertainty_plot(sid: str = ""):
+    uncertainty_state = app["fitting"].get("uncertainty_state", None)
+    if uncertainty_state is not None:
+        import mpld3
+        import matplotlib
+        matplotlib.use("agg")
+        import matplotlib.pyplot as plt
+        import time
+        start_time = time.time()
+        print('queueing new correlation plot...', start_time)
+
+        fig = plt.figure()
+        draw = uncertainty_state.draw()
+        stats = bumps.dream.stats.var_stats(draw)
+        bumps.dream.varplot.plot_vars(draw, stats, fig=fig)
+        print("time to render but not serialize...", time.time() - start_time)
+        fig.canvas.draw()
+        dfig = mpld3.fig_to_dict(fig)
+        plt.close(fig)
+        # await sio.emit("profile_plot", dfig, to=sid)
+        end_time = time.time()
+        print("time to draw correlation plot:", end_time - start_time)
+        return dfig
+    else:
+        return None
+
+@sio.event
+@rest_get
+async def get_model_uncertainty_plot(sid: str = ""):
+    fitProblem: refl1d.fitproblem.FitProblem = app["problem"]["fitProblem"]
+    uncertainty_state = app["fitting"].get("uncertainty_state", None)
+    if uncertainty_state is not None:
+        import mpld3
+        import matplotlib
+        matplotlib.use("agg")
+        import matplotlib.pyplot as plt
+        import time
+        start_time = time.time()
+        print('queueing new model uncertainty plot...', start_time)
+
+        fig = plt.figure()
+        errs = bumps.errplot.calc_errors_from_state(fitProblem, uncertainty_state)
+        print('errors calculated: ', time.time() - start_time)
+        bumps.errplot.show_errors(errs, fig=fig)
+        print("time to render but not serialize...", time.time() - start_time)
+        fig.canvas.draw()
+        dfig = mpld3.fig_to_dict(fig)
+        plt.close(fig)
+        # await sio.emit("profile_plot", dfig, to=sid)
+        end_time = time.time()
+        print("time to draw model uncertainty plot:", end_time - start_time)
+        return dfig
+    else:
+        return None
+
+@sio.event
+@rest_get
+async def get_parameter_trace_plot(sid: str=""):
+    uncertainty_state = app["fitting"].get("uncertainty_state", None)
+    if uncertainty_state is not None:
+        import mpld3
+        import matplotlib
+        matplotlib.use("agg")
+        import matplotlib.pyplot as plt
+        import time
+
+        start_time = time.time()
+        print('queueing new parameter_trace plot...', start_time)
+
+        fig = plt.figure()
+        axes = fig.add_subplot(111)
+
+        # begin plotting:
+        var = 0
+        portion = None
+        draw, points, _ = uncertainty_state.chains()
+        label = uncertainty_state.labels[var]
+        start = int((1-portion)*len(draw)) if portion else 0
+        genid = np.arange(uncertainty_state.generation-len(draw)+start, uncertainty_state.generation)+1
+        axes.plot(genid*uncertainty_state.thinning,
+             np.squeeze(points[start:, uncertainty_state._good_chains, var]))
+        axes.set_xlabel('Generation number')
+        axes.set_ylabel(label)
+        fig.canvas.draw()
+
+        print("time to render but not serialize...", time.time() - start_time)
+        dfig = mpld3.fig_to_dict(fig)
+        plt.close(fig)
+        # await sio.emit("profile_plot", dfig, to=sid)
+        end_time = time.time()
+        print("time to draw parameter_trace plot:", end_time - start_time)
+        return dfig
+    else:
+        return None
+    
+
+@sio.event
+@rest_get
 async def get_parameters(sid: str = "", only_fittable: bool = False):
     fitProblem: refl1d.fitproblem.FitProblem = app["problem"]["fitProblem"]
     if fitProblem is None:
