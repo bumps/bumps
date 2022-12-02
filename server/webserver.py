@@ -27,8 +27,17 @@ from bumps.serialize import to_dict
 from bumps.mapper import MPMapper
 from bumps.parameter import Parameter, Variable, unique
 import bumps.fitproblem
+import bumps.plotutil
+import bumps.dream.views, bumps.dream.varplot, bumps.dream.stats
+import bumps.errplot
+import refl1d.errors
 import refl1d.fitproblem, refl1d.probe
 from refl1d.experiment import Experiment
+
+# Register the refl1d model loader
+import refl1d.fitplugin
+import bumps.cli
+bumps.cli.install_plugin(refl1d.fitplugin)
 
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
 
@@ -60,6 +69,7 @@ app["fitting"] = {
     "fit_thread": None,
     "abort": False,
     "uncertainty_state": None,
+    "population": None,
     "abort_queue": Queue(),
 }
 problem = None
@@ -154,6 +164,7 @@ async def start_fit_thread(sid: str="", fitter_id: str="", options=None):
     await publish("", "fit_active", True)
 
 def fit_progress_handler(event: Dict):
+    print("progress event message: ", event.get("message", ""))
     fitProblem: refl1d.fitproblem.FitProblem = app["problem"]["fitProblem"]
     message = event.get("message", None)
     if message == 'complete' or message == 'improvement':
@@ -172,6 +183,8 @@ def fit_progress_handler(event: Dict):
 EVT_FIT_PROGRESS.connect(fit_progress_handler)
 
 def fit_complete_handler(event):
+    print("complete event: ", event.get("message", ""))
+    message = event.get("message", None)
     fit_thread = app["fitting"]["fit_thread"]
     if fit_thread is not None:
         fit_thread.join(1) # 1 second timeout on join
