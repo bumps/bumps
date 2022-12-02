@@ -12,6 +12,11 @@ import ModelInspect from './components/ModelInspect.vue';
 import ModelViewPlotly from './components/ModelViewPlotly.vue';
 import ParameterView from './components/ParameterView.vue';
 import LogView from './components/LogView.vue';
+import ConvergenceView from './components/ConvergenceView.vue';
+import CorrelationView from './components/CorrelationView.vue';
+import ParameterTraceView from './components/ParameterTraceView.vue';
+import ModelUncertaintyView from './components/ModelUncertaintyView.vue';
+import UncertaintyView from './components/UncertaintyView.vue';
 
 // import { FITTERS as FITTER_DEFAULTS } from './fitter_defaults';
 
@@ -19,10 +24,15 @@ const panels = [
   {title: 'Reflectivity', component: DataView},
   {title: 'Summary', component: SummaryView},
   {title: 'Log', component: LogView},
+  {title: 'Convergence', component: ConvergenceView},
   {title: 'Profile', component: ModelView},
   {title: 'Model', component: ModelInspect},
   {title: 'Profile2', component: ModelViewPlotly},
   {title: 'Parameters', component: ParameterView},
+  {title: 'Correlations', component: CorrelationView},
+  {title: 'Trace', component: ParameterTraceView},
+  {title: 'Model Uncertainty', component: ModelUncertaintyView},
+  {title: 'Uncertainty', component: UncertaintyView},
 ];
 
 const connected = ref(false);
