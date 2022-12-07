@@ -86,7 +86,7 @@ defineExpose({
             <nav aria-label="breadcrumb">
               <ol class="breadcrumb">
                 <li v-for="(pathitem, index) in pathlist" :key="index" class="breadcrumb-item">
-                  <a href="#" @click="setPath(pathlist.slice(0, index+1))">{{pathitem}}</a>
+                  <a href="#" @click.prevent="setPath(pathlist.slice(0, index+1))">{{pathitem}}</a>
                 </li>
               </ol>
             </nav>
@@ -95,7 +95,7 @@ defineExpose({
             <h3>Subdirectories:</h3>
             <div class="row row-cols-3">
               <div class="col overflow-hidden" v-for="subdir in subdirlist" :key="subdir">
-                <a href="#" @click="subdirClick(subdir)" :title="subdir">{{subdir}}</a>
+                <a href="#" @click.prevent="subdirClick(subdir)" :title="subdir">{{subdir}}</a>
               </div>
             </div>
           </div>
