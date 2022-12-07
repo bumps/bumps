@@ -663,10 +663,21 @@ def params_to_list(params, lookup=None, pathlist=None, links=None) -> List[Param
             lookup[params.id] = new_item
     return list(lookup.values())
 
+import argparse
+
 def main():
+    parser = argparse.ArgumentParser()
+    # parser.add_argument('-d', '--debug', action='store_true', help='autoload modules on change')
+    # parser.add_argument('-x', '--headless', action='store_true', help='do not automatically load client in browser')
+    parser.add_argument('--external', action='store_true', help='listen on all interfaces, including external (local connections only if not set)')
+    parser.add_argument('-p', '--port', default=None, type=int, help='port on which to start the server')
+    # parser.add_argument('-c', '--config-file', type=str, help='path to JSON configuration to load')
+    args = parser.parse_args()
+
     app.on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
     app.add_routes(routes)
-    web.run_app(app)
+    hostname = 'localhost' if not args.external else '0.0.0.0'
+    web.run_app(app, host=hostname, port=args.port)
 
 if __name__ == '__main__':
     main()
