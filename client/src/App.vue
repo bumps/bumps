@@ -44,10 +44,12 @@ const model_loaded = shallowRef<{pathlist: string[], filename: string}>();
 
 // Create a SocketIO connection, to be passed to child components
 // so that they can do their own communications with the host.
+const base_path = window.location.pathname;
 
 const socket = io('', {
-  // this is mostly here to test what happens on server fail:
-  reconnectionAttempts: 10
+   // this is mostly here to test what happens on server fail:
+   path: `${base_path}socket.io`,
+   reconnectionAttempts: 10
 });
 
 socket.on('connect', () => {
