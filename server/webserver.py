@@ -59,7 +59,9 @@ routes = web.RouteTableDef()
 # sio = socketio.AsyncServer(cors_allowed_origins="*", serializer='msgpack')
 sio = socketio.AsyncServer(cors_allowed_origins="*")
 app = web.Application()
-static_dir_path = Path(__file__).parent.parent / 'client' / 'dist'
+index_path = Path(__file__).parent.parent / 'client' / 'dist'
+static_assets_path = index_path / 'assets'
+
 sio.attach(app)
 
 topics: Dict[str, Dict] = {}
@@ -90,7 +92,7 @@ def rest_get(fn):
 async def index(request):
     """Serve the client-side application."""
     # redirect to static built site:
-    return web.HTTPFound('/static/index.html')
+    return web.FileResponse(index_path / 'index.html')
     
 @sio.event
 async def connect(sid, environ, data=None):
@@ -546,7 +548,7 @@ async def set_parameter(sid: str, parameter_id: str, property: Literal["value01"
         if parameter.fittable:
             parameter.fixed = bool(value)
             fitProblem.model_reset()
-            print(f"setting parameter: {parameter}.fixed to {value}")
+            # print(f"setting parameter: {parameter}.fixed to {value}")
     fitProblem.model_update()
     await publish("", "update_parameters", True)
     return
@@ -600,7 +602,7 @@ async def get_fitter_defaults(sid: str=""):
 def disconnect(sid):
     print('disconnect ', sid)
 
-app.router.add_static('/static', static_dir_path)
+app.router.add_static('/assets', static_assets_path)
 app.router.add_get('/', index)
 
 VALUE_PRECISION = 6
