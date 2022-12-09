@@ -59,7 +59,8 @@ routes = web.RouteTableDef()
 # sio = socketio.AsyncServer(cors_allowed_origins="*", serializer='msgpack')
 sio = socketio.AsyncServer(cors_allowed_origins="*")
 app = web.Application()
-index_path = Path(__file__).parent.parent / 'client' / 'dist'
+client_path = Path(__file__).parent.parent / 'client'
+index_path = client_path / 'dist'
 static_assets_path = index_path / 'assets'
 
 sio.attach(app)
@@ -91,8 +92,22 @@ def rest_get(fn):
 
 async def index(request):
     """Serve the client-side application."""
-    # redirect to static built site:
-    return web.FileResponse(index_path / 'index.html')
+    # check if the locally-build site has the correct version:
+    with open(client_path / 'package.json', 'r') as package_json:
+        client_version = json.load(package_json)['version'].strip()
+
+    try:
+        local_version = open(index_path / 'VERSION', 'rt').read().strip()
+    except FileNotFoundError:
+        local_version = None
+
+    if client_version == local_version:
+        return web.FileResponse(index_path / 'index.html')
+    else:
+        CDN = f"https://cdn.jsdelivr.net/npm/refl1d-webview-client@{client_version}/dist"
+        with open(client_path / 'index_template.txt', 'r') as index_template:
+            index_html = index_template.read().format(cdn=CDN)
+        return web.Response(body=index_html, content_type="text/html")
     
 @sio.event
 async def connect(sid, environ, data=None):
@@ -602,7 +617,8 @@ async def get_fitter_defaults(sid: str=""):
 def disconnect(sid):
     print('disconnect ', sid)
 
-app.router.add_static('/assets', static_assets_path)
+if Path.exists(static_assets_path):
+    app.router.add_static('/assets', static_assets_path)
 app.router.add_get('/', index)
 
 VALUE_PRECISION = 6
