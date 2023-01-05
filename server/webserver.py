@@ -40,6 +40,7 @@ import bumps.cli
 bumps.cli.install_plugin(refl1d.fitplugin)
 
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
+from .profile_plot import plot_sld_profile_plotly
 
 # can get by name and not just by id
 EVT_LOG = Signal('log')
@@ -101,6 +102,7 @@ async def index(request):
     except FileNotFoundError:
         local_version = None
 
+    print(index_path, local_version, client_version, local_version == client_version)
     if client_version == local_version:
         return web.FileResponse(index_path / 'index.html')
     else:
@@ -285,26 +287,29 @@ async def get_model(sid: str=""):
 @sio.event
 @rest_get
 async def get_profile_plot(sid: str="", model_index: int=0):
-    import mpld3
-    import matplotlib
-    matplotlib.use("agg")
-    import matplotlib.pyplot as plt
-    import time
-    print('queueing new profile plot...', time.time())
     fitProblem: refl1d.fitproblem.FitProblem = app["problem"]["fitProblem"]
     if fitProblem is None:
         return None
     models = list(fitProblem.models)
-    if (model_index > len(models)):
+    if model_index > len(models):
         return None
     model = models[model_index]
-    assert(isinstance(model, Experiment))
-    fig = plt.figure()
-    model.plot_profile()
-    dfig = mpld3.fig_to_dict(fig)
-    plt.close(fig)
-    # await sio.emit("profile_plot", dfig, to=sid)
-    return dfig
+    assert (isinstance(model, Experiment))
+
+    # data = np.random.random((100,200))
+    # x = np.arange(0, 10, 0.1)
+    # y = np.random.random(x.shape) + x
+    # import plotly.express as px
+    # fig = px.imshow(data)
+    # fig.update_yaxes(exponentformat='e',
+    #                  title={'text': r"$\frac{I}{I_0}$"})
+    # fig = px.line(x=x, y=y)
+
+    fig = plot_sld_profile_plotly(model)
+
+    # print(to_dict(fig.to_dict()))
+
+    return to_dict(fig.to_dict())
 
 @sio.event
 @rest_get
