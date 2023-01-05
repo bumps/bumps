@@ -128,7 +128,8 @@ class FindLayers:
                                textangle=-30,
                                x=label_pos,
                                yref="paper",
-                               y=1.05,
+                               y=1.0,
+                               yanchor="bottom",
                                showarrow=False
                                )
 
@@ -194,10 +195,13 @@ def plot_sld_profile_plotly(model):
     fig = go.Figure()
     if model.ismagnetic:
         z_best, rho_best, irho_best, rhoM_best, thetaM_best = generate_best_profile(model)
-        fig.add_scattergl(x=z_best, y=rhoM_best, name="$\\rho_{M}$")
-        yaxis_title = '$\\text{SLD: } \\rho, \\rho_i, \\rho_M / 10^{-6} \\text{Å}^{-2}$'
 
-        fig.add_scattergl(x=z_best, y=thetaM_best, name="$\\theta_{M}$", yaxis="y2")
+        fig.add_scattergl(x=z_best, y=thetaM_best,
+                          name="$\\theta_{M}$", yaxis="y2",
+                          hovertemplate='(%{x}, %{y})<br>'
+                                        'Theta M'
+                                        '<extra></extra>',
+                          line={"color": "gold"})
         # TODO: need to make axis scaling for thetaM dependent on if thetaM exceeds 0-360
         fig.update_layout(yaxis2={
             'title': {'text': '$\\text{Magnetic Angle } \\theta_M / {}^{\\circ}$'},
@@ -210,12 +214,28 @@ def plot_sld_profile_plotly(model):
             'ticks': "inside",
             # 'ticklen': 20,
         })
+
+        fig.add_scattergl(x=z_best, y=rhoM_best, name="$\\rho_{M}$",
+                          hovertemplate='(%{x}, %{y})<br>'
+                                        'M SLD'
+                                        '<extra></extra>',
+                          line={"color": "blue"})
+        yaxis_title = '$\\text{SLD: } \\rho, \\rho_i, \\rho_M / 10^{-6} \\text{Å}^{-2}$'
+
     else:
         z_best, rho_best, irho_best = generate_best_profile(model)
         yaxis_title = '$\\text{SLD: } \\rho, \\rho_i / 10^{-6} \\text{Å}^{-2}$'
 
-    fig.add_scattergl(x=z_best, y=rho_best, name="$\\rho$", hovertext="SLD")
-    fig.add_scattergl(x=z_best, y=irho_best, name="$\\rho_{i}$")
+    fig.add_scattergl(x=z_best, y=irho_best, name="$\\rho_{i}$",
+                      hovertemplate='(%{x}, %{y})<br>'
+                                    'Im SLD'
+                                    '<extra></extra>',
+                      line={"color": "green"})
+    fig.add_scattergl(x=z_best, y=rho_best, name="$\\rho$",
+                      hovertemplate='(%{x}, %{y})<br>'
+                                    'SLD'
+                                    '<extra></extra>',
+                      line={"color": "black"})
 
     fig.update_layout(uirevision=1, plot_bgcolor="white")
 
@@ -251,9 +271,15 @@ def plot_sld_profile_plotly(model):
     fig.update_layout(margin={
         "l": 75,
         "r": 50,
-        "t": 25,
+        "t": 50,
         "b": 75,
         "pad": 4
+    })
+
+    fig.update_layout(legend={
+        "x": -0.1,
+        "bgcolor": "rgba(255,215,0,0.15)",
+        "traceorder": "reversed"
     })
 
     marker_positions = FindLayers(model, axes=fig)
