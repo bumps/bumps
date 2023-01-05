@@ -3,8 +3,8 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "vite",
-    "build": "vite build --emptyOutDir -m development && echo -n $npm_package_version > dist/VERSION",
-    "build_prod": "vite build --emptyOutDir -m production && echo -n $npm_package_version > dist/VERSION",
+    "build": "vite build --emptyOutDir -m development && node -p process.env.npm_package_version > dist/VERSION",
+    "build_prod": "vite build --emptyOutDir -m production && node -p process.env.npm_package_version > dist/VERSION",
     "preview": "vite preview --port 4173"
   },
   "dependencies": {
