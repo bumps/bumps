@@ -244,7 +244,7 @@ class FitProblem(FitProblemSchema):
             self._constraints_function = constraints
             self.constraints = []
         else:
-            self._constraints_function = lambda: 0.
+            self._constraints_function = self._null_constraints_function
             # TODO: do we want to allow "constraints=a<b" or do we require a sequence "constraints=[a<b]"?
             self.constraints = constraints if constraints is not None else []
         if freevars is None:
@@ -259,6 +259,10 @@ class FitProblem(FitProblemSchema):
         self.set_active_model(0)  # Set the active model to model 0
         self.model_reset() # sets self._all_constraints
         self.name = name
+
+    @staticmethod
+    def _null_constraints_function():
+        return 0.
 
     @property
     def fitness(self):
