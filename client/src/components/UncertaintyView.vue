@@ -3,7 +3,12 @@
 import { ref, onMounted, watch, onUpdated, computed, shallowRef } from 'vue';
 import { Socket } from 'socket.io-client';
 import { v4 as uuidv4 } from 'uuid';
-import mpld3 from 'mpld3';
+import * as Plotly from 'plotly.js/lib/core';
+import Bar from 'plotly.js/lib/bar';
+
+Plotly.register([
+  Bar,
+])
 
 const plot_div = ref<HTMLDivElement>();
 const draw_requested = ref(false);
@@ -21,16 +26,20 @@ onMounted(() => {
   window.requestAnimationFrame(draw_if_needed);
 });
 
+
 function fetch_and_draw() {
-  props.socket.emit('get_uncertainty_plot', (payload) => {
+  props.socket.emit('get_uncertainty_plot', async (payload) => {
+    if (plot_div.value == null) {
+      return
+    }
     if (props.visible) {
       let plotdata = { ...payload };
-      console.log({plotdata});
-      plotdata.width = Math.round(plot_div.value?.clientWidth ?? 640) - 16;
-      plotdata.height = Math.round(plot_div.value?.clientHeight ?? 480) - 16;
-      /* Data Parsing Functions */
-      // mpld3.draw_figure = function(figid, spec, process, clearElem) {}
-      mpld3.draw_figure(plot_div_id.value, plotdata, false, true);
+      const { data, layout } = plotdata;
+      delete layout.width;
+      delete layout.height;
+      delete layout.heighth;
+      const config = { responsive: true }
+      const plot = await Plotly.react(plot_div_id.value, [...data], layout, config);
     }
     drawing_busy.value = false;
   });
