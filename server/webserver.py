@@ -41,6 +41,7 @@ bumps.cli.install_plugin(refl1d.fitplugin)
 
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
 from .profile_plot import plot_sld_profile_plotly
+from .varplot import plot_vars
 
 # can get by name and not just by id
 EVT_LOG = Signal('log')
@@ -421,26 +422,13 @@ async def get_correlation_plot(sid: str = ""):
 async def get_uncertainty_plot(sid: str = ""):
     uncertainty_state = app["fitting"].get("uncertainty_state", None)
     if uncertainty_state is not None:
-        import mpld3
-        import matplotlib
-        matplotlib.use("agg")
-        import matplotlib.pyplot as plt
         import time
         start_time = time.time()
-        print('queueing new correlation plot...', start_time)
-
-        fig = plt.figure()
+        print('queueing new uncertainty plot...', start_time)
         draw = uncertainty_state.draw()
         stats = bumps.dream.stats.var_stats(draw)
-        bumps.dream.varplot.plot_vars(draw, stats, fig=fig)
-        print("time to render but not serialize...", time.time() - start_time)
-        fig.canvas.draw()
-        dfig = mpld3.fig_to_dict(fig)
-        plt.close(fig)
-        # await sio.emit("profile_plot", dfig, to=sid)
-        end_time = time.time()
-        print("time to draw correlation plot:", end_time - start_time)
-        return dfig
+        fig = plot_vars(draw, stats)
+        return to_dict(fig.to_dict())
     else:
         return None
 
