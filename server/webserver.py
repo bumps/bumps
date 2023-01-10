@@ -23,7 +23,7 @@ mimetypes.add_type("image/png", ".png")
 mimetypes.add_type("image/svg+xml", ".svg")
 
 from bumps.fitters import DreamFit, LevenbergMarquardtFit, SimplexFit, DEFit, MPFit, BFGSFit, FitDriver, fit
-from bumps.serialize import to_dict
+from bumps.serialize import to_dict, from_dict
 from bumps.mapper import MPMapper
 from bumps.parameter import Parameter, Variable, unique
 import bumps.fitproblem
@@ -45,6 +45,7 @@ from .varplot import plot_vars
 
 # can get by name and not just by id
 EVT_LOG = Signal('log')
+MODEL_EXT = '.json'
 
 FITTERS = (DreamFit, LevenbergMarquardtFit, SimplexFit, DEFit, MPFit, BFGSFit)
 FITTERS_BY_ID = dict([(fitter.id, fitter) for fitter in FITTERS])
@@ -69,7 +70,7 @@ sio.attach(app)
 
 topics: Dict[str, Dict] = {}
 app["topics"] = topics
-app["problem"] = {"fitProblem": None, "filepath": None}
+app["problem"] = {"fitProblem": None, "pathlist": None, "filename": None}
 app["fitting"] = {
     "fit_thread": None,
     "abort": False,
@@ -121,17 +122,50 @@ async def connect(sid, environ, data=None):
 
 @sio.event
 async def load_problem_file(sid: str, pathlist: List[str], filename: str):
-    from bumps.cli import load_model
     path = Path(*pathlist, filename)
     print('model loading: ', str(path))
-    problem = load_model(str(path))
+    if filename.endswith(".json"):
+        with open(path, "rt") as input_file:
+            serialized = json.loads(input_file.read())
+        problem = from_dict(serialized)
+    else:
+        from bumps.cli import load_model
+        problem = load_model(str(path))
     app["problem"]["fitProblem"] = problem
+    app["problem"]["pathlist"] = pathlist
+    app["problem"]["filename"] = filename
     print('model loaded: ', str(path))
 
     model_names = [getattr(m, 'name', None) for m in list(problem.models)]
     await publish("", "model_loaded", {"pathlist": pathlist, "filename": filename, "model_names": model_names})
     await publish("", "update_model", True)
     await publish("", "update_parameters", True)
+
+@sio.event
+async def save_problem_file(sid: str, pathlist: Optional[List[str]] = None, filename: Optional[str] = None, overwrite: bool = False):
+    fitProblem: refl1d.fitproblem.FitProblem = app["problem"]["fitProblem"]
+    if fitProblem is None:
+        print("Save failed: no problem loaded.")
+        return
+    if pathlist is None:
+        pathlist = app["problem"]["pathlist"]
+    if filename is None:
+        filename = app["problem"]["filename"]
+
+    if pathlist is None or filename is None:
+        print("no filename and path provided to save")
+        return
+
+    path = Path(*pathlist)
+    save_filename = Path(filename).stem + MODEL_EXT
+    print({"path": path, "filename": save_filename})
+    if not overwrite and Path.exists(path / save_filename):
+        #confirmation needed:
+        return True
+
+    serialized = to_dict(fitProblem)
+    with open(Path(path, save_filename), "wt") as output_file:
+        output_file.write(json.dumps(serialized))
 
 @sio.event
 async def start_fit(sid: str="", fitter_id: str="", kwargs=None):

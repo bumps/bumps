@@ -86,6 +86,23 @@ function selectOpenFile() {
   // file_picker.value?.click();
 }
 
+async function saveFile(ev: Event) {
+  if (model_loaded.value === undefined) {
+    alert('no file to save');
+    return;
+  }
+  const {pathlist, filename} = model_loaded.value;
+  console.log('saving:', {pathlist, filename});
+  socket.emit("save_problem_file", pathlist, filename, false, async(confirm_overwrite: boolean) => {
+    if (confirm_overwrite) {
+      const overwrite = await confirm(`File ${filename} exists: overwrite?`);
+      if (overwrite) {
+        socket.emit("save_problem_file", {pathlist, filename, overwrite: true});
+      }
+    }
+  });
+}
+
 function reloadModel() {
   if (model_loaded.value) {
     const {pathlist, filename} = model_loaded.value;
@@ -150,7 +167,7 @@ onMounted(() => {
               </button>
               <ul class="dropdown-menu">
                 <li><button class="btn btn-link dropdown-item" @click="selectOpenFile">Open</button></li>
-                <li><button class="btn btn-link dropdown-item" >Save</button></li>
+                <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="saveFile">Save</button></li>
                 <li><button class="btn btn-link dropdown-item" :class="{disabled: model_loaded === undefined}"  @click="reloadModel">Reload</button></li>
                 <li>
                   <hr class="dropdown-divider">
