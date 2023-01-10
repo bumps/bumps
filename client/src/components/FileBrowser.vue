@@ -103,7 +103,7 @@ defineExpose({
             <h3>Files:</h3>
             <div class="row row-cols-3">
               <div class="btn col overflow-hidden border" :class="{'btn-warning': filename === chosenFile}"
-                v-for="filename in filelist" :key="filename" @click="chosenFile = filename"
+                v-for="filename in filelist" :key="filename" @click="chosenFile = filename" :title="filename"
                 @dblclick="chosenFile=filename;chooseFile()">
                 {{filename}}
               </div>
