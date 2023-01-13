@@ -212,10 +212,10 @@ onMounted(() => {
       </div>
     </nav>
     <div class="flex-grow-1 row overflow-hidden">
-      <div class="col d-flex flex-column mh-100 overflow-auto">
+      <div class="col d-flex flex-column mh-100">
         <PanelTabContainer :panels="panels" :socket="socket" :initially_active="0"/>
       </div>
-      <div class="col d-flex flex-column mh-100 overflow-auto">
+      <div class="col d-flex flex-column mh-100">
         <PanelTabContainer :panels="panels" :socket="socket" :initially_active="1"/>
       </div>
     </div>

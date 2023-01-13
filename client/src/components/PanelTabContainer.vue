@@ -49,7 +49,7 @@ onMounted(() => {
       <a ref="tabTriggers" class="nav-link" href="#" @click="activateTab(index)">{{panels[index]?.title}}</a>
     </li>
   </ul>
-  <div class="tab-content d-flex flex-column flex-grow-1">
+  <div class="tab-content d-flex flex-column flex-grow-1 overflow-auto">
     <div ref="panelContainers" class="tab-pane flex-column flex-grow-1" v-for="(panel, index) in props.panels"
       :key="index">
       <component :is="panel.component" :socket="props.socket" :visible="panelVisible[index]"></component>
