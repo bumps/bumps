@@ -6,15 +6,15 @@ const title = "Log";
 
 const props = defineProps<{
   socket: Socket,
-  visible: Boolean
 }>();
 
 const log_info = ref<string[]>([]);
 
-onMounted(() => {
-  props.socket.on('log', ({message}) => {
-    log_info.value.push(message);
-  });
+props.socket.on('log', ({message, timestamp}) => {
+  log_info.value.push(message);
+});
+props.socket.emit('get_topic_messages', 'log', (messages) => {
+  log_info.value = [...log_info.value, ...(messages.map((m) => m.message))];
 });
 
 </script>
