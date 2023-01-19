@@ -1,9 +1,11 @@
 # from .main import setup_bumps
 
+import itertools
 from typing import Dict, List, Literal, Optional, Union, TypedDict
 from datetime import datetime
 import warnings
 from queue import Queue
+from collections import deque
 from aiohttp import web
 import numpy as np
 import asyncio
@@ -68,7 +70,28 @@ static_assets_path = index_path / 'assets'
 
 sio.attach(app)
 
-topics: Dict[str, Dict] = {}
+TopicName = Literal[
+    "log",
+    "update_parameters",
+    "update_model",
+    "model_loaded",
+    "fit_active",
+    "uncertainty_update",
+    "convergence_update",
+    "fitter_settings",
+    "fitter_active",
+]
+topics: Dict[TopicName, "deque[Dict]"] = {
+    "log": deque([]),
+    "update_parameters": deque([], maxlen=1),
+    "update_model": deque([], maxlen=1),
+    "model_loaded": deque([], maxlen=1),
+    "fit_active": deque([], maxlen=1),
+    "convergence_update": deque([], maxlen=1),
+    "uncertainty_update": deque([], maxlen=1),
+    "fitter_settings": deque([], maxlen=1),
+    "fitter_active": deque([], maxlen=1),
+}
 app["topics"] = topics
 app["problem"] = {"fitProblem": None, "pathlist": None, "filename": None}
 app["fitting"] = {
@@ -116,8 +139,12 @@ async def index(request):
 @sio.event
 async def connect(sid, environ, data=None):
     # re-send last message for all topics
+    # now that panels are retrieving topics when they load, is this still
+    # needed or useful?
     for topic, contents in topics.items():
-        await sio.emit(topic, contents, to=sid)
+        message = contents[-1] if len(contents) > 0 else None
+        if message is not None:
+            await sio.emit(topic, message, to=sid)
     print("connect ", sid)
 
 @sio.event
@@ -599,7 +626,7 @@ async def set_parameter(sid: str, parameter_id: str, property: Literal["value01"
 async def publish(sid: str, topic: str, message=None):
     timestamp_str = f"{datetime.now().timestamp():.6f}"
     contents = {"message": message, "timestamp": timestamp_str}
-    topics[topic] = contents
+    topics[topic].append(contents)
     await sio.emit(topic, contents)
     # print("emitted: ", topic, contents)
 
@@ -608,15 +635,19 @@ def publish_sync(sid: str, topic: str, message=None):
 
 @sio.event
 @rest_get
-async def get_last_message(sid: str="", topic: str=""):
+async def get_topic_messages(sid: str="", topic: str="", max_num=None) -> List[Dict]:
     # this is a GET request in disguise -
     # emitter must handle the response in a callback,
-    # as no separate response event is emitted.  
-    return topics.get(topic, {})
-
-@rest_get
-async def get_all_messages():
-    return topics
+    # as no separate response event is emitted.
+    q = topics.get(topic, None)
+    if q is None:
+        raise ValueError(f"Topic: {topic} not defined")
+    elif max_num is None:
+        return list(q)
+    else:
+        q_length = len(q)
+        start = max(q_length - max_num, 0)
+        return list(itertools.islice(q, start, q_length))
 
 @sio.event
 @rest_get
@@ -634,6 +665,11 @@ async def get_dirlisting(sid: str="", pathlist: Optional[List[str]]=None):
             # files.append(p.resolve().name)
             files.append(p.name)
     return dict(subfolders=subfolders, files=files)
+
+@sio.event
+@rest_get
+async def get_current_pathlist(sid: str="") -> List[str]:
+    return list(app['problem']['pathlist'])
 
 @sio.event
 @rest_get
@@ -719,7 +755,9 @@ def main():
     # parser.add_argument('-c', '--config-file', type=str, help='path to JSON configuration to load')
     args = parser.parse_args()
 
-    app.on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
+    # app.on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
+    # set initial path to cwd:
+    app['problem']['pathlist'] = Path().absolute().parts
     app.add_routes(routes)
     hostname = 'localhost' if not args.external else '0.0.0.0'
 
