@@ -1,8 +1,10 @@
 <script setup lang="ts">
 /// <reference types="@types/uuid"/>
-import { ref, onMounted, watch, onUpdated, computed, shallowRef } from 'vue';
+import { ref } from 'vue';
 import { Socket } from 'socket.io-client';
 import { v4 as uuidv4 } from 'uuid';
+import { setupDrawLoop } from '../setupDrawLoop';
+import { cache } from '../plotcache';
 import * as Plotly from 'plotly.js/lib/core';
 import Bar from 'plotly.js/lib/bar';
 
@@ -10,51 +12,28 @@ Plotly.register([
   Bar,
 ])
 
+const title = "Uncertainty";
 const plot_div = ref<HTMLDivElement>();
-const draw_requested = ref(false);
-const drawing_busy = ref(false);
 const plot_div_id = ref(`div-${uuidv4()}`);
 const props = defineProps<{
   socket: Socket,
-  visible: boolean
 }>();
 
-onMounted(() => {
-  props.socket.on('uncertainty_update', () => {
-    draw_requested.value = true;
-  });
-  window.requestAnimationFrame(draw_if_needed);
-});
+setupDrawLoop('uncertainty_update', props.socket, fetch_and_draw, title);
 
-
-function fetch_and_draw() {
-  props.socket.emit('get_uncertainty_plot', async (payload) => {
-    if (plot_div.value == null) {
-      return
-    }
-    if (props.visible) {
-      let plotdata = { ...payload };
-      const { data, layout } = plotdata;
-      delete layout.width;
-      delete layout.height;
-      delete layout.heighth;
-      const config = { responsive: true }
-      const plot = await Plotly.react(plot_div_id.value, [...data], layout, config);
-    }
-    drawing_busy.value = false;
-  });
-}
-
-function draw_if_needed(timestamp: number) {
-  if (drawing_busy.value) {
-    console.log("busy!");
+async function fetch_and_draw(latest_timestamp: string) {
+  let { timestamp, plotdata } = cache[title] ?? {};
+  if (timestamp !== latest_timestamp) {
+    console.log("fetching new uncertainty plot", timestamp, latest_timestamp);
+    const payload = await props.socket.asyncEmit('get_uncertainty_plot');
+    plotdata = { ...payload };
+    cache[title] = {timestamp: latest_timestamp, plotdata};
   }
-  if (draw_requested.value && props.visible && !drawing_busy.value) {
-    drawing_busy.value = true;
-    draw_requested.value = false;
-    fetch_and_draw();
-  }
-  window.requestAnimationFrame(draw_if_needed);
+  const { data, layout } = plotdata;
+  delete layout.width;
+  delete layout.height;
+  const config = { responsive: true }
+  await Plotly.react(plot_div_id.value, [...data], layout, config);
 }
 
 </script>

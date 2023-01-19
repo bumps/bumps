@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, onUpdated, computed, shallowRef, nextTick } from 'vue';
+import { ref, onMounted } from 'vue';
+import { setupDrawLoop } from '../setupDrawLoop';
 import JsonViewer from 'vue-json-viewer';
 import { getDiff } from 'json-difference';
 import type { Socket } from 'socket.io-client';
@@ -15,43 +16,44 @@ type json =
 
 const title = "Model";
 const active_parameter = ref("");
+const modelJson = ref<json>({});
 
 const props = defineProps<{
   socket: Socket,
-  visible: Boolean
 }>();
 
-const modelJson = ref<json>();
+setupDrawLoop('update_parameters', props.socket, fetch_and_draw);
 
-props.socket.on('update_parameters', fetch_and_draw);
+props.socket.on('model_loaded', () => { fetch_and_draw(true) });
 
-function fetch_and_draw() {
-  if (props.visible) {
-    props.socket.emit('get_model', (payload: json) => {
-      const old_model: json = modelJson.value as Record<string, any>;
-      const new_model: json = payload as Record<string, any>;
-      const diff = getDiff(old_model, new_model);
-      for (let [path, oldval, newval] of diff.edited) {
-        const { target, parent, key } = resolve_diffpath(old_model, path);
-        // trigger reactive update;
-        if (typeof (key) === 'number' && Array.isArray(parent)) {
-          parent.splice(key, 1, newval);
-        }
-        else {
-          parent[key] = newval;
-        }
+async function fetch_and_draw(reset: boolean = false) {
+  const payload: json = await props.socket.asyncEmit('get_model');
+  if (reset) {
+    modelJson.value = payload;
+  }
+  else {
+    // do update of existing model:
+    const old_model: json = modelJson.value as Record<string, any>;
+    const new_model: json = payload as Record<string, any>;
+    const diff = getDiff(old_model, new_model);
+    for (let [path, oldval, newval] of diff.edited) {
+      const { target, parent, key } = resolve_diffpath(old_model, path);
+      // trigger reactive update;
+      if (typeof (key) === 'number' && Array.isArray(parent)) {
+        parent.splice(key, 1, newval);
       }
-    });
+      else {
+        parent[key] = newval;
+      }
+    }
   }
 }
 
-watch(() => props.visible, (value) => {
-  if (value) {
-    props.socket.emit('get_model', (payload: json) => {
-      modelJson.value = payload;
-    });
-  }
-});
+onMounted(() => {
+  props.socket.emit('get_model', (payload: json) => {
+    modelJson.value = payload;
+  });
+})
 
 // function* traverse(o: object, path: string[]=[]) {
 //     for (var i of Object.keys(o)) {

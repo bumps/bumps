@@ -4,27 +4,31 @@ import { ref, onMounted, watch, onUpdated, computed, shallowRef } from 'vue';
 import { Socket } from 'socket.io-client';
 import { v4 as uuidv4 } from 'uuid';
 import * as Plotly from 'plotly.js/lib/core';
+import { setupDrawLoop } from '../setupDrawLoop';
 
 const title = "Profile";
 const plot_div = ref<HTMLDivElement>();
-const draw_requested = ref(false);
 const plot_div_id = ref(`div-${uuidv4()}`);
 const model_names = ref<string[]>([]);
 const current_model = ref(0);
+
 const props = defineProps<{
   socket: Socket,
-  visible: boolean
 }>();
+
+const { draw_requested, drawing_busy, mounted } = setupDrawLoop('update_parameters', props.socket, fetch_and_draw);
 
 props.socket.on('model_loaded', ({ message: { model_names: new_model_names } }) => {
   model_names.value = new_model_names;
 });
 
 onMounted(() => {
-  props.socket.on('update_parameters', () => {
-    draw_requested.value = true;
+  props.socket.emit('get_topic_messages', 'model_loaded', (messages) => {
+    const new_model_names = messages?.[0]?.message?.model_names;
+    if (new_model_names != null) {
+      model_names.value = new_model_names;
+    }
   });
-  window.requestAnimationFrame(draw_if_needed);
 });
 
 function generate_new_traces(profile_data) {
@@ -51,75 +55,47 @@ function generate_new_traces(profile_data) {
   return traces;
 }
 
-
-
-function fetch_and_draw() {
-  if (!props.visible) {
-    return
-  }
-  props.socket.emit('get_profile_data', current_model.value, async (payload) => {
-    if (plot_div.value == null) {
-      return
+async function fetch_and_draw() {
+  const payload = await props.socket.asyncEmit('get_profile_data', current_model.value);
+  const traces = generate_new_traces(payload);
+  const layout: Partial<Plotly.Layout> = {
+    uirevision: 1,
+    xaxis: {
+      title: {
+        text: 'depth (Å)'
+      },
+      type: 'linear',
+      autorange: true,
+    },
+    yaxis: {
+      title: { text: '$\\text{SLD: } \\rho, \\rho_i, \\rho_M / 10^{-6} \\text{Å}^{-2}$' },
+      exponentformat: 'e',
+      showexponent: 'all',
+      type: 'linear',
+      autorange: true,
+    },
+    yaxis2: {
+      title: { text: '$\\text{Magnetic Angle } \\theta_M / {}^{\\circ}$' },
+      type: 'linear',
+      autorange: false,
+      range: [0, 360],
+      anchor: 'x',
+      overlaying: 'y',
+      side: 'right'
+    },
+    margin: {
+      l: 75,
+      r: 50,
+      t: 25,
+      b: 75,
+      pad: 4
     }
-    console.log(payload);
-    const traces = generate_new_traces(payload);
+  };
 
-    const layout: Partial<Plotly.Layout> = {
-      uirevision: 1,
-      xaxis: {
-        title: {
-          text: 'depth (Å)'
-        },
-        type: 'linear',
-        autorange: true,
-      },
-      yaxis: {
-        title: { text: '$\\text{SLD: } \\rho, \\rho_i, \\rho_M / 10^{-6} \\text{Å}^{-2}$' },
-        exponentformat: 'e',
-        showexponent: 'all',
-        type: 'linear',
-        autorange: true,
-      },
-      yaxis2: {
-        title: { text: '$\\text{Magnetic Angle } \\theta_M / {}^{\\circ}$' },
-        type: 'linear',
-        autorange: false,
-        range: [0, 360],
-        anchor: 'x',
-        overlaying: 'y',
-        side: 'right'
-      },
-      margin: {
-        l: 75,
-        r: 50,
-        t: 25,
-        b: 75,
-        pad: 4
-      }
-    };
-
-    const config = { responsive: true }
-
-    const plot = await Plotly.react(plot_div.value, [...traces], layout, config);
-
-  });
+  const config = { responsive: true }
+  // this function is only called when mounted, so plot_div.value exists:
+  await Plotly.react(plot_div.value as HTMLDivElement, [...traces], layout, config);
 }
-
-
-function draw_if_needed(timestamp: number) {
-  if (draw_requested.value && props.visible) {
-    fetch_and_draw();
-    draw_requested.value = false;
-  }
-  window.requestAnimationFrame(draw_if_needed);
-}
-
-// watch(() => props.visible, (value) => {
-//   if (value) {
-//     console.log('visible', value);
-//     fetch_and_draw();
-//   }
-// });
 
 </script>
     

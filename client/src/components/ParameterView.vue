@@ -1,21 +1,23 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, onUpdated, computed, shallowRef, nextTick } from 'vue';
+import { ref } from 'vue';
 import type { Socket } from 'socket.io-client';
+import { setupDrawLoop } from '../setupDrawLoop';
 
 const title = "Parameters";
 const active_parameter = ref("");
 
 const props = defineProps<{
   socket: Socket,
-  visible: Boolean
 }>();
+
+setupDrawLoop('update_parameters', props.socket, fetch_and_draw);
 
 type parameter_info = {
   name: string,
   id: string,
   fittable: boolean,
   fixed: boolean,
-  path: string,
+  paths: string[],
   link: string,
   writable: boolean,
   value_str: string,
@@ -27,27 +29,15 @@ type parameter_info = {
 const parameters = ref<parameter_info[]>([]);
 const parameters_local = ref<parameter_info[]>([]);
 
-onMounted(() => {
-  props.socket.on('update_parameters', () => {
-    fetch_and_draw();
+async function fetch_and_draw() {
+  const payload = await props.socket.asyncEmit('get_parameters', false);
+  const pl = parameters_local.value;
+  payload.forEach((p, i) => {
+    if (!(pl[i]?.active)) {
+      pl.splice(i, 1, p);
+    }
   });
-});
-
-function fetch_and_draw() {
-  if (!props.visible) {
-    // do nothing if not visible
-    return
-  }
-  props.socket.emit('get_parameters', false, (payload: parameter_info[]) => {
-    // console.log(payload);
-    const pl = parameters_local.value;
-    payload.forEach((p, i) => {
-      if (!(pl[i]?.active)) {
-        pl.splice(i, 1, p);
-      }
-    });
-    pl.splice(payload.length);
-  });
+  pl.splice(payload.length);
 }
 
 async function editItem(ev, item_name: "min" | "max" | "value", index: number) {
@@ -74,10 +64,6 @@ async function setFittable(ev, index) {
   const parameter = parameters_local.value[index];
   props.socket.emit('set_parameter', parameter.id, "fixed", !parameter.fixed);
 }
-
-watch(() => props.visible, (value) => {
-  fetch_and_draw();
-});
 
 </script>
         

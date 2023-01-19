@@ -3,16 +3,16 @@
 import { ref, onMounted, watch, onUpdated, computed, shallowRef } from 'vue';
 import * as Plotly from 'plotly.js/lib/core';
 import type { Socket } from 'socket.io-client';
+import { setupDrawLoop } from '../setupDrawLoop';
 
 const title = "Reflectivity";
 const plot_div = ref<HTMLDivElement | null>(null);
-const draw_requested = ref(false);
-const plot = ref<Plotly.PlotlyHTMLElement>();
 
 const props = defineProps<{
   socket: Socket,
-  visible: boolean
 }>();
+
+setupDrawLoop('update_parameters', props.socket, fetch_and_draw);
 
 const REFLECTIVITY_PLOTS = [
   "Fresnel",
@@ -25,14 +25,6 @@ const REFLECTIVITY_PLOTS = [
 type ReflectivityPlotEnum = typeof REFLECTIVITY_PLOTS;
 type ReflectivityPlot = ReflectivityPlotEnum[number];
 const reflectivity_type = ref<ReflectivityPlot>("Log");
-
-
-onMounted(() => {
-  props.socket.on('update_parameters', () => {
-    draw_requested.value = true;
-  });
-  window.requestAnimationFrame(draw_if_needed);
-});
 
 function generate_new_traces(model_data, view: ReflectivityPlot) {
   let theory_traces: (Plotly.Data & { x: number, y: number })[] = [];
@@ -78,62 +70,38 @@ function generate_new_traces(model_data, view: ReflectivityPlot) {
   return {theory_traces, data_traces};
 }
 
-function fetch_and_draw() {
-  if (!props.visible) {
-    return
-  }
-  props.socket.emit('get_plot_data', 'linear', async (payload) => {
-    if (plot_div.value === null) {
-      return
+async function fetch_and_draw() {
+  const payload = await props.socket.asyncEmit('get_plot_data', 'linear');
+  // console.log(payload);
+  const { theory_traces, data_traces } = generate_new_traces(payload, reflectivity_type.value)
+  const layout: Partial<Plotly.Layout> = {
+    uirevision: reflectivity_type.value,
+    xaxis: {
+      title: {
+        text: 'Q (Å<sup>-1</sup>)'
+      },
+      type: 'linear',
+      autorange: true,
+    },
+    yaxis: {
+      title: { text: 'Reflectivity' },
+      exponentformat: 'e',
+      showexponent: 'all',
+      type: (/^(Log|Q4)/.test(reflectivity_type.value)) ? 'log' : 'linear',
+      autorange: true,
+    },
+    margin: {
+      l: 75,
+      r: 50,
+      t: 25,
+      b: 75,
+      pad: 4
     }
-    // console.log(payload);
-    const { theory_traces, data_traces } = generate_new_traces(payload, reflectivity_type.value)
+  };
 
-    const layout: Partial<Plotly.Layout> = {
-      uirevision: reflectivity_type.value,
-      xaxis: {
-        title: {
-          text: 'Q (Å<sup>-1</sup>)'
-        },
-        type: 'linear',
-        autorange: true,
-      },
-      yaxis: {
-        title: { text: 'Reflectivity' },
-        exponentformat: 'e',
-        showexponent: 'all',
-        type: (/^(Log|Q4)/.test(reflectivity_type.value)) ? 'log' : 'linear',
-        autorange: true,
-      },
-      margin: {
-        l: 75,
-        r: 50,
-        t: 25,
-        b: 75,
-        pad: 4
-      }
-    };
-
-    const config = {responsive: true}
-
-    plot.value = await Plotly.react(plot_div.value, [...theory_traces, ...data_traces], layout, config);
-    
-  });
+  const config = {responsive: true}
+  await Plotly.react(plot_div.value as HTMLDivElement, [...theory_traces, ...data_traces], layout, config);
 }
-
-function draw_if_needed(timestamp: number) {
-  if (draw_requested.value && props.visible) {
-    fetch_and_draw();
-    draw_requested.value = false;
-  }
-  window.requestAnimationFrame(draw_if_needed);
-}
-
-// watch(() => props.visible, (value) => {
-//   if (value) {
-//     fetch_and_draw();
-//   }
-// });
 
 </script>
 
