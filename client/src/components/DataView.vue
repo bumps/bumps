@@ -93,7 +93,7 @@ function fetch_and_draw() {
       uirevision: reflectivity_type.value,
       xaxis: {
         title: {
-          text: '$Q (Å^{-1})$'
+          text: 'Q (Å<sup>-1</sup>)'
         },
         type: 'linear',
         autorange: true,
