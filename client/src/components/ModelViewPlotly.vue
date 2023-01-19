@@ -68,14 +68,14 @@ async function fetch_and_draw() {
       autorange: true,
     },
     yaxis: {
-      title: { text: '$\\text{SLD: } \\rho, \\rho_i, \\rho_M / 10^{-6} \\text{Å}^{-2}$' },
+      title: { text: 'SLD: ρ, ρ<sub>i</sub>, ρ<sub>M</sub> / 10<sup>-6</sup> Å<sup>-2</sup>' },
       exponentformat: 'e',
       showexponent: 'all',
       type: 'linear',
       autorange: true,
     },
     yaxis2: {
-      title: { text: '$\\text{Magnetic Angle } \\theta_M / {}^{\\circ}$' },
+      title: { text: 'Magnetic Angle θ<sub>M</sub> / °' },
       type: 'linear',
       autorange: false,
       range: [0, 360],
