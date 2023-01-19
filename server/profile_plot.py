@@ -196,15 +196,15 @@ def plot_sld_profile_plotly(model):
     if model.ismagnetic:
         z_best, rho_best, irho_best, rhoM_best, thetaM_best = generate_best_profile(model)
 
-        fig.add_scattergl(x=z_best, y=thetaM_best,
-                          name="$\\theta_{M}$", yaxis="y2",
+        fig.add_scatter(x=z_best, y=thetaM_best,
+                          name="θ<sub>M</sub>", yaxis="y2",
                           hovertemplate='(%{x}, %{y})<br>'
                                         'Theta M'
                                         '<extra></extra>',
                           line={"color": "gold"})
         # TODO: need to make axis scaling for thetaM dependent on if thetaM exceeds 0-360
         fig.update_layout(yaxis2={
-            'title': {'text': '$\\text{Magnetic Angle } \\theta_M / {}^{\\circ}$'},
+            'title': {'text': 'Magnetic Angle θ<sub>M</sub> / °'},
             'type': 'linear',
             'autorange': False,
             'range': [0, 360],
@@ -215,23 +215,23 @@ def plot_sld_profile_plotly(model):
             # 'ticklen': 20,
         })
 
-        fig.add_scattergl(x=z_best, y=rhoM_best, name="$\\rho_{M}$",
+        fig.add_scatter(x=z_best, y=rhoM_best, name="ρ<sub>M</sub>",
                           hovertemplate='(%{x}, %{y})<br>'
                                         'M SLD'
                                         '<extra></extra>',
                           line={"color": "blue"})
-        yaxis_title = '$\\text{SLD: } \\rho, \\rho_i, \\rho_M / 10^{-6} \\text{Å}^{-2}$'
+        yaxis_title = 'SLD: ρ, ρ<sub>i</sub>, ρ<sub>M</sub> / 10<sup>-6</sup> Å<sup>-2</sup>'
 
     else:
         z_best, rho_best, irho_best = generate_best_profile(model)
-        yaxis_title = '$\\text{SLD: } \\rho, \\rho_i / 10^{-6} \\text{Å}^{-2}$'
+        yaxis_title = 'SLD: ρ, ρ<sub>i</sub> / 10<sup>-6</sup> Å<sup>-2</sup>'
 
-    fig.add_scattergl(x=z_best, y=irho_best, name="$\\rho_{i}$",
+    fig.add_scatter(x=z_best, y=irho_best, name="ρ<sub>i</sub>",
                       hovertemplate='(%{x}, %{y})<br>'
                                     'Im SLD'
                                     '<extra></extra>',
                       line={"color": "green"})
-    fig.add_scattergl(x=z_best, y=rho_best, name="$\\rho$",
+    fig.add_scatter(x=z_best, y=rho_best, name="ρ",
                       hovertemplate='(%{x}, %{y})<br>'
                                     'SLD'
                                     '<extra></extra>',
