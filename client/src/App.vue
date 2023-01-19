@@ -2,6 +2,7 @@
 import { Button } from 'bootstrap/dist/js/bootstrap.esm.js';
 import { onMounted, ref, shallowRef } from 'vue';
 import { io } from 'socket.io-client';
+import './asyncSocket';
 import FitOptions from './components/FitOptions.vue';
 import DataView from './components/DataView.vue';
 import ModelView from './components/ModelView.vue';
