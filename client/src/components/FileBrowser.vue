@@ -2,7 +2,6 @@
 import { ref, onMounted, watch, onUpdated, computed, shallowRef } from 'vue';
 import { Modal } from 'bootstrap/dist/js/bootstrap.esm';
 import { Socket } from 'socket.io-client';
-import { emitValidationErrors } from 'mapbox-gl/dist/mapbox-gl-unminified';
 
 const props = defineProps<{
   socket: Socket,
@@ -22,10 +21,6 @@ const subdirlist = shallowRef<string[]>([])
 const filelist = shallowRef<string[]>([])
 const chosenFile = ref("");
 
-props.socket.on('local_file_path', ({message: new_pathlist, timestamp}) => {
-  pathlist.value = new_pathlist;
-})
-
 let modal: Modal;
 onMounted(() => {
   modal = new Modal(dialog.value, { backdrop: 'static', keyboard: false });
@@ -37,9 +32,11 @@ function close() {
 }
 
 function open() {
+  props.socket.emit('get_current_pathlist', (new_pathlist) => {
+    setPath(new_pathlist);
+  })
   modal?.show();
   isOpen.value = true;
-  setPath();
 }
 
 function subdirClick(subdir: string) {
