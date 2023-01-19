@@ -4,13 +4,10 @@
 # Originally written for use in a jupyter notebook
 # Adapted to act as a prototype for the profile plotting in the new GUI for refl1d
 
-from refl1d.view.config import thickness_color, pick_radius
+from refl1d.experiment import Experiment
 from numpy import inf
-from matplotlib import transforms
-import matplotlib.pyplot as plt
 import numpy as np
 import plotly.graph_objs as go
-blend_xy = transforms.blended_transform_factory
 
 
 # === Sample information ===
@@ -20,8 +17,6 @@ class FindLayers:
         self.experiment = experiment
         self.axes = axes
         self.x_offset = x_offset
-        if (axes is not None) and isinstance(axes, plt.Axes):
-            self.xcoords = blend_xy(axes.transData, axes.transAxes)
         self._show_labels = True
         self._show_boundaries = True
 
@@ -53,43 +48,6 @@ class FindLayers:
         middle = [(a + b) / 2. for a, b in zip(z[:-1], z[1:])]
         right = z[-1] + 150
         return [left] + middle + [right]
-
-    def reset_markers_mpl(self):
-        """
-        Reset all markers, for matplotlib plots
-        """
-        # self.clear_markers()
-        if not isinstance(self.axes, plt.Axes):
-            raise ValueError("reset_markers_mpl can only be used with type: axes=matplotlib.axes.Axes")
-
-        ax = self.axes
-
-        # Add bars
-        style = dict(linewidth=1, linestyle='-',
-                     color=thickness_color, alpha=0.75,
-                     pickradius=pick_radius,
-                     visible=self._show_boundaries,
-                     )
-        self.markers = [ax.axvline(x=z, **style)
-                        for z in self.boundary[1:-1]]
-
-        # fittable = [self.profile.sample_layer(idx).thickness.fittable
-        #             for idx,_ in enumerate(self.markers)]
-        # fittable[0] = False # First interface is not fittable
-        # for f,m in zip(fittable,self.markers):
-        #     if not f: m.set(linestyle='--', linewidth=1.25)
-        # self.connect_markers(m for f,m in zip(fittable,self.markers) if f)
-
-        # Add labels
-        offsets = self.label_offsets()
-        labels = self.sample_labels()
-        style = dict(transform=self.axes.get_xaxis_transform(),
-                     ha='left', va='bottom',
-                     rotation=45, fontsize=16,  # 'medium',
-                     visible=self._show_labels,
-                     )
-        self.textmark = [ax.text(z, 1, s, **style)
-                         for z, s in zip(offsets, labels)]
 
     def reset_markers_plotly(self):
         """
@@ -134,62 +92,16 @@ class FindLayers:
                                )
 
 
-def determine_problem_fitness(problem, active_model):
-    if hasattr(problem, 'active_model'):
-        problem_fitness = problem.set_active_model(active_model)
-        problem_fitness = problem.active_model.fitness
-    else:
-        problem_fitness = problem.fitness
-
-    return problem_fitness
-
-
-def generate_best_profile(model):
-    if hasattr(model, "active_model"):
-        model = model.active_model
-
+def generate_best_profile(model: Experiment):
     if model.ismagnetic:
         best = model.magnetic_smooth_profile()
     else:
         best = model.smooth_profile()
     return best
+
 # ============================================================================= #
 # Plotting script below
 # ============================================================================= #
-
-
-def plot_sld_profile(model):
-    """
-    Basic plot script to plot up SLD profiles using Paul's layer finding code
-    """
-    fig, ax = plt.subplots(1, 1, figsize=(8, 6))
-
-    theta_axis = ax.twinx()
-    # ax.legend(fontsize=16, framealpha=0.5, ncol=3)
-
-    if model.ismagnetic:
-        z_best, rho_best, irho_best, rhoM_best, thetaM_best = generate_best_profile(model)
-        ax.plot(z_best, rhoM_best, label=r"$\rho_{M}$ mSLD", color="b")
-        ax.plot(z_best, thetaM_best, label=r"Magnetic Angle $\theta_{M} \circ$", color="orange")
-        ax.set_ylabel(r"$\rho, \rho_{i}, \rho_{M} \left(10^{-6}\AA^{-2}\right)$", fontsize=18)
-    else:
-        z_best, rho_best, irho_best = generate_best_profile(model)
-        ax.set_ylabel(r"$\rho, \rho_{i} \left(10^{-6}\AA^{-2}\right)$", fontsize=18)
-
-    ax.plot(z_best, rho_best, label=r"$\rho$ SLD", color="k")
-    ax.plot(z_best, irho_best, label=r"$\rho_{i}$ Im SLD", color="g")
-
-    ax.legend(fontsize=16, framealpha=0.5, ncol=3)
-    ax.grid(True)
-    ax.set_xlabel(r"z $\left(\AA\right)$", fontsize=18)
-    ax.tick_params(axis='y', labelsize=16)
-    ax.tick_params(axis='x', labelsize=16)
-
-    layer_markers = FindLayers(model, axes=ax)
-    layer_markers.reset_markers_mpl()
-
-    return fig, ax
-
 
 def plot_sld_profile_plotly(model):
     fig = go.Figure()
