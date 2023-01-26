@@ -8,10 +8,10 @@ const props = defineProps<{
   socket: Socket,
 }>();
 
-const log_info = ref<string[]>([]);
+const log_info = ref<{message: string, title?: string}[]>([]);
 
-props.socket.on('log', ({message, timestamp}) => {
-  log_info.value.push(message);
+props.socket.on('log', ({message: {message, title}}) => {
+    log_info.value.push({message, title});
 });
 props.socket.emit('get_topic_messages', 'log', (messages) => {
   log_info.value = [...log_info.value, ...(messages.map((m) => m.message))];
@@ -21,7 +21,13 @@ props.socket.emit('get_topic_messages', 'log', (messages) => {
         
 <template>
   <div class="log">
-    <pre class="message" v-for="(message, index) of log_info" :key="index">{{message}}</pre>
+    <div class="message" v-for="({message, title}, index) of log_info" :key="index">
+      <details v-if="title != null">
+        <summary>{{ title }}</summary>
+        <pre>{{ message }}</pre>
+      </details>
+      <span v-else>{{ message }}</span>
+    </div>
   </div>
 </template>
     
