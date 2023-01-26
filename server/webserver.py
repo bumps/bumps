@@ -150,7 +150,8 @@ async def connect(sid, environ, data=None):
 @sio.event
 async def load_problem_file(sid: str, pathlist: List[str], filename: str):
     path = Path(*pathlist, filename)
-    print('model loading: ', str(path))
+    print(f'model loading: {path}')
+    log_handler({"message": f'model_loading: {path}'})
     if filename.endswith(".json"):
         with open(path, "rt") as input_file:
             serialized = json.loads(input_file.read())
@@ -161,7 +162,9 @@ async def load_problem_file(sid: str, pathlist: List[str], filename: str):
     app["problem"]["fitProblem"] = problem
     app["problem"]["pathlist"] = pathlist
     app["problem"]["filename"] = filename
-    print('model loaded: ', str(path))
+    print(f'model loaded: {path}')
+    log_handler({"message": f'model loaded: {path}'})
+
 
     model_names = [getattr(m, 'name', None) for m in list(problem.models)]
     await publish("", "model_loaded", {"pathlist": pathlist, "filename": filename, "model_names": model_names})
@@ -193,6 +196,8 @@ async def save_problem_file(sid: str, pathlist: Optional[List[str]] = None, file
     serialized = to_dict(fitProblem)
     with open(Path(path, save_filename), "wt") as output_file:
         output_file.write(json.dumps(serialized))
+
+    log_handler({"message": f'Saved: {filename} at path: {path}'})
 
 @sio.event
 async def start_fit(sid: str="", fitter_id: str="", kwargs=None):
@@ -242,7 +247,8 @@ async def start_fit_thread(sid: str="", fitter_id: str="", options=None):
         uncertainty_update=3600,
         )
     fit_thread.start()
-    await publish("", "fit_active", True)
+    await publish("", "fit_active", to_dict(dict(fitter_id=fitter_id, options=options)))
+    log_handler({"message": json.dumps(to_dict(options), indent=2), "title": f"starting fitter {fitter_id}"})
 
 def fit_progress_handler(event: Dict):
     print("progress event message: ", event.get("message", ""))
@@ -270,15 +276,14 @@ def fit_complete_handler(event):
     if fit_thread is not None:
         fit_thread.join(1) # 1 second timeout on join
         if fit_thread.is_alive():
-            EVT_LOG.send("fit thread failed to complete")
+            EVT_LOG.send({"message": "fit thread failed to complete"})
     app["fitting"]["fit_thread"] = None
     problem: refl1d.fitproblem.FitProblem = event["problem"]
     chisq = nice(2*event["value"]/problem.dof)
     problem.setp(event["point"])
     problem.model_update()
     publish_sync("", "update_parameters", True)
-    EVT_LOG.send("done with chisq %g"%chisq)
-    EVT_LOG.send(event["info"])
+    EVT_LOG.send({"message": event["info"], "title": f"done with chisq {chisq}"})
 
 EVT_FIT_COMPLETE.connect(fit_complete_handler)
 
