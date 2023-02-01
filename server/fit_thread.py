@@ -170,14 +170,14 @@ class DreamMonitor(monitor.Monitor):
 class FitThread(Thread):
     """Run the fit in a separate thread from the GUI thread."""
 
-    def __init__(self, abort_queue=None, problem=None,
+    def __init__(self, abort_queue: Queue, problem=None,
                  fitclass=None, options=None, mapper=None,
                  convergence_update=5, uncertainty_update=300):
         # base class initialization
         # Process.__init__(self)
 
         Thread.__init__(self)
-        self.abort_queue: Queue = abort_queue
+        self.abort_queue = abort_queue
         self.problem = problem
         self.fitclass = fitclass
         self.options = options if isinstance(options, dict) else dict()
