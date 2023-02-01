@@ -211,7 +211,7 @@ async def start_fit(sid: str="", fitter_id: str="", kwargs=None):
     driver.show()
 
 @sio.event
-async def stop_fit(sid: str):
+async def stop_fit(sid: str = ""):
     abort_queue: Queue = app["fitting"]["abort_queue"]
     abort_queue.put(True)
 
@@ -684,6 +684,22 @@ async def get_fitter_defaults(sid: str=""):
 @sio.event
 def disconnect(sid):
     print('disconnect ', sid)
+
+ 
+@sio.event
+async def shutdown(sid: str=""):
+    await stop_fit()
+    # disconnect all clients:
+    clients = list(sio.manager.rooms.get('/', {None: {}}).get(None).keys())
+    for client in clients:
+        await sio.disconnect(client)
+    import signal
+    import sys
+    # signal.raise_signal(signal.SIGINT)
+    await app.shutdown()
+    await app.cleanup()
+    print("killing...")
+    signal.raise_signal(signal.SIGKILL)
 
 if Path.exists(static_assets_path):
     app.router.add_static('/assets', static_assets_path)
