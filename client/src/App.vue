@@ -132,6 +132,10 @@ function stopFit() {
   socket.emit("stop_fit")
 }
 
+function quit() {
+  socket.emit("shutdown");
+}
+
 onMounted(() => {
   const menuToggleButton = new Button(menuToggle.value);
 });
@@ -176,7 +180,7 @@ onMounted(() => {
                 <li>
                   <hr class="dropdown-divider">
                 </li>
-                <li><button class="btn btn-link dropdown-item" >Quit</button></li>
+                <li><button class="btn btn-link dropdown-item" @click="quit">Quit</button></li>
               </ul>
             </li>
             <li class="nav-item dropdown">
