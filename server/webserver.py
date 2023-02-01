@@ -767,7 +767,8 @@ def main():
     hostname = 'localhost' if not args.external else '0.0.0.0'
 
     import socket
-    sock = socket.socket()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind((hostname, args.port))
     _, port = sock.getsockname()
     if not args.headless:
