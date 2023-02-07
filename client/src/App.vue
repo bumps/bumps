@@ -42,6 +42,8 @@ const menuToggle = ref<HTMLButtonElement>();
 const fitOptions = ref<typeof FitOptions>();
 const fileBrowser = ref<typeof FileBrowser>();
 const fileBrowserSelectCallback = ref((pathlist: string[], filename: string) => { });
+const fileBrowserSaveFilename = ref<string>();
+const fileBrowserTitle = ref("Load Model File");
 const model_loaded = shallowRef<{pathlist: string[], filename: string}>();
 const active_layout = ref("left-right");
 const active_panel = ref([0,1]);
@@ -77,9 +79,11 @@ function disconnect() {
 
 function selectOpenFile() {
   if (fileBrowser.value) {
+    fileBrowserTitle.value = "Load Model File";
     fileBrowserSelectCallback.value = (pathlist, filename) => {
       socket.emit("load_problem_file", pathlist, filename);
     }
+    fileBrowserSaveFilename.value = undefined;
     fileBrowser.value.open();
   }
   // const path = prompt("full path to file:");
@@ -90,16 +94,27 @@ function selectOpenFile() {
   // file_picker.value?.click();
 }
 
-async function saveFile(ev: Event) {
+async function saveFileAs(ev: Event) {
+  if (fileBrowser.value) {
+    fileBrowserTitle.value = "Save Problem"
+    fileBrowserSelectCallback.value = (pathlist, filename) => {
+      saveFile(ev, {pathlist, filename});
+    }
+    fileBrowserSaveFilename.value = model_loaded.value?.filename ?? "model.json";
+    fileBrowser.value.open();
+  }
+}
+
+async function saveFile(ev: Event, override?: {pathlist: string[], filename: string}) {
   if (model_loaded.value === undefined) {
     alert('no file to save');
     return;
   }
-  const {pathlist, filename} = model_loaded.value;
+  const {pathlist, filename} = override ?? model_loaded.value;
   console.log('saving:', {pathlist, filename});
-  socket.emit("save_problem_file", pathlist, filename, false, async(confirm_overwrite: boolean) => {
-    if (confirm_overwrite) {
-      const overwrite = await confirm(`File ${filename} exists: overwrite?`);
+  socket.emit("save_problem_file", pathlist, filename, false, async(confirm_overwrite: string | false) => {
+    if (confirm_overwrite !== false) {
+      const overwrite = await confirm(`File ${confirm_overwrite} exists: overwrite?`);
       if (overwrite) {
         socket.emit("save_problem_file", {pathlist, filename, overwrite: true});
       }
@@ -176,6 +191,7 @@ onMounted(() => {
               <ul class="dropdown-menu">
                 <li><button class="btn btn-link dropdown-item" @click="selectOpenFile">Open</button></li>
                 <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="saveFile">Save</button></li>
+                <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="saveFileAs">Save As</button></li>
                 <li><button class="btn btn-link dropdown-item" :class="{disabled: model_loaded === undefined}"  @click="reloadModel">Reload</button></li>
                 <li>
                   <hr class="dropdown-divider">
@@ -255,7 +271,7 @@ onMounted(() => {
 
   </div>
   <FitOptions ref="fitOptions" :socket="socket" />
-  <FileBrowser ref="fileBrowser" :socket="socket" title="Load Model File" :callback="fileBrowserSelectCallback" />
+  <FileBrowser ref="fileBrowser" :socket="socket" :title="fileBrowserTitle" :chosenfile_in="model_loaded?.filename" :savefilename="fileBrowserSaveFilename" :callback="fileBrowserSelectCallback" />
 </template>
 
 <style>

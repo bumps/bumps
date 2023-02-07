@@ -223,13 +223,14 @@ async def save_problem_file(sid: str, pathlist: Optional[List[str]] = None, file
     print({"path": path, "filename": save_filename})
     if not overwrite and Path.exists(path / save_filename):
         #confirmation needed:
-        return True
+        return save_filename
 
     serialized = to_dict(problem_state.fitProblem)
     with open(Path(path, save_filename), "wt") as output_file:
         output_file.write(json.dumps(serialized))
 
     await log(f'Saved: {filename} at path: {path}')
+    return False
 
 @sio.event
 async def start_fit(sid: str="", fitter_id: str="", kwargs=None):
