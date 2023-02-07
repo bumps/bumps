@@ -1,5 +1,6 @@
 # from .main import setup_bumps
 
+from dataclasses import dataclass
 import itertools
 import threading
 from typing import Dict, List, Literal, Optional, Union, TypedDict
@@ -7,7 +8,7 @@ from datetime import datetime
 import warnings
 from queue import Queue
 from collections import deque
-from aiohttp import web
+from aiohttp import web, ClientSession
 import numpy as np
 import asyncio
 import socketio
@@ -15,6 +16,7 @@ from pathlib import Path, PurePath
 import json
 from copy import deepcopy
 from blinker import Signal
+from uuid import uuid4
 
 import mimetypes
 mimetypes.add_type("text/css", ".css")
@@ -31,7 +33,7 @@ from bumps.mapper import MPMapper
 from bumps.parameter import Parameter, Variable, unique
 import bumps.fitproblem
 import bumps.plotutil
-import bumps.dream.views, bumps.dream.varplot, bumps.dream.stats
+import bumps.dream.views, bumps.dream.varplot, bumps.dream.stats, bumps.dream.state
 import bumps.errplot
 import refl1d.errors
 import refl1d.fitproblem, refl1d.probe
@@ -70,7 +72,7 @@ static_assets_path = index_path / 'assets'
 
 sio.attach(app)
 
-TopicName = Literal[
+TopicNameType = Literal[
     "log",
     "update_parameters",
     "update_model",
@@ -81,28 +83,58 @@ TopicName = Literal[
     "fitter_settings",
     "fitter_active",
 ]
-topics: Dict[TopicName, "deque[Dict]"] = {
-    "log": deque([]),
-    "update_parameters": deque([], maxlen=1),
-    "update_model": deque([], maxlen=1),
-    "model_loaded": deque([], maxlen=1),
-    "fit_active": deque([], maxlen=1),
-    "convergence_update": deque([], maxlen=1),
-    "uncertainty_update": deque([], maxlen=1),
-    "fitter_settings": deque([], maxlen=1),
-    "fitter_active": deque([], maxlen=1),
-}
-app["topics"] = topics
-app["problem"] = {"fitProblem": None, "pathlist": None, "filename": None}
-app["fitting"] = {
-    "fit_thread": None,
-    "abort": False,
-    "uncertainty_state": None,
-    "population": None,
-    "abort_queue": Queue(),
-}
-problem = None
 
+@dataclass
+class ProblemState:
+    fitProblem: Optional[bumps.fitproblem.FitProblem] = None
+    pathlist: Optional[List[str]] = None
+    filename: Optional[str] = None
+
+    def to_dict(self):
+        return {
+            "fitProblem": to_dict(self.fitProblem),
+            "pathlist": to_dict(self.pathlist),
+            "filename": to_dict(self.filename)
+        }
+    
+    def from_dict(self, serialized):
+        self.fitProblem = from_dict(serialized["fitProblem"])
+        self.pathlist = from_dict(serialized["pathlist"])
+        self.filename = from_dict(serialized["filename"])
+
+
+@dataclass
+class FittingState:
+    abort: bool = False
+    abort_queue: Queue = Queue()
+    population: Optional[List] = None
+    uncertainty_state: Optional[bumps.dream.state.MCMCDraw] = None
+    thread: Optional[FitThread] = None
+
+
+class State:
+    hostname: str
+    port: int
+    problem: Optional[ProblemState]
+    fitting: FittingState
+    topics: Dict[TopicNameType, "deque[Dict]"]
+
+    def __init__(self, problem: Optional[ProblemState] = None, fitting: Optional[FittingState] = None):
+        self.problem = problem
+        self.fitting = FittingState()
+        self.topics = {
+            "log": deque([]),
+            "update_parameters": deque([], maxlen=1),
+            "update_model": deque([], maxlen=1),
+            "model_loaded": deque([], maxlen=1),
+            "fit_active": deque([], maxlen=1),
+            "convergence_update": deque([], maxlen=1),
+            "uncertainty_update": deque([], maxlen=1),
+            "fitter_settings": deque([], maxlen=1),
+            "fitter_active": deque([], maxlen=1),
+        }
+
+state = State()
 
 def rest_get(fn):
     """
@@ -141,14 +173,14 @@ async def connect(sid, environ, data=None):
     # re-send last message for all topics
     # now that panels are retrieving topics when they load, is this still
     # needed or useful?
-    for topic, contents in topics.items():
+    for topic, contents in state.topics.items():
         message = contents[-1] if len(contents) > 0 else None
         if message is not None:
             await sio.emit(topic, message, to=sid)
     print("connect ", sid)
 
 @sio.event
-async def load_problem_file(sid: str, pathlist: List[str], filename: str):
+async def load_problem_file(sid: str, pathlist: List[str], filename: str):    
     path = Path(*pathlist, filename)
     print(f'model loading: {path}')
     await log(f'model_loading: {path}')
@@ -159,9 +191,9 @@ async def load_problem_file(sid: str, pathlist: List[str], filename: str):
     else:
         from bumps.cli import load_model
         problem = load_model(str(path))
-    app["problem"]["fitProblem"] = problem
-    app["problem"]["pathlist"] = pathlist
-    app["problem"]["filename"] = filename
+    assert isinstance(problem, bumps.fitproblem.FitProblem)
+    problem_state = ProblemState(problem, pathlist, filename)
+    state.problem = problem_state
     print(f'model loaded: {path}')
     await log(f'model loaded: {path}')
 
@@ -173,14 +205,14 @@ async def load_problem_file(sid: str, pathlist: List[str], filename: str):
 
 @sio.event
 async def save_problem_file(sid: str, pathlist: Optional[List[str]] = None, filename: Optional[str] = None, overwrite: bool = False):
-    fitProblem: refl1d.fitproblem.FitProblem = app["problem"]["fitProblem"]
-    if fitProblem is None:
+    problem_state = state.problem
+    if problem_state is None:
         print("Save failed: no problem loaded.")
         return
     if pathlist is None:
-        pathlist = app["problem"]["pathlist"]
+        pathlist = problem_state.pathlist
     if filename is None:
-        filename = app["problem"]["filename"]
+        filename = problem_state.filename
 
     if pathlist is None or filename is None:
         print("no filename and path provided to save")
@@ -193,7 +225,7 @@ async def save_problem_file(sid: str, pathlist: Optional[List[str]] = None, file
         #confirmation needed:
         return True
 
-    serialized = to_dict(fitProblem)
+    serialized = to_dict(problem_state.fitProblem)
     with open(Path(path, save_filename), "wt") as output_file:
         output_file.write(json.dumps(serialized))
 
@@ -202,58 +234,72 @@ async def save_problem_file(sid: str, pathlist: Optional[List[str]] = None, file
 @sio.event
 async def start_fit(sid: str="", fitter_id: str="", kwargs=None):
     kwargs = {} if kwargs is None else kwargs
-    fitProblem: refl1d.fitproblem.FitProblem = app["problem"]["fitProblem"]
-    mapper = MPMapper.start_mapper(fitProblem, None, cpus=0)
-    monitors = []
-    fitclass = FITTERS_BY_ID[fitter_id]
-    driver = FitDriver(fitclass=fitclass, mapper=mapper, problem=fitProblem, monitors=monitors, **kwargs)
-    x, fx = driver.fit()
-    driver.show()
+    problem_state = state.problem
+    if problem_state is None:
+        await log("Error: Can't start fit if no problem loaded")
+    else:
+        fitProblem = problem_state.fitProblem
+        mapper = MPMapper.start_mapper(fitProblem, None, cpus=0)
+        monitors = []
+        fitclass = FITTERS_BY_ID[fitter_id]
+        driver = FitDriver(fitclass=fitclass, mapper=mapper, problem=fitProblem, monitors=monitors, **kwargs)
+        x, fx = driver.fit()
+        driver.show()
 
 @sio.event
 async def stop_fit(sid: str = ""):
-    abort_queue: Queue = app["fitting"]["abort_queue"]
+    abort_queue = state.fitting.abort_queue
     abort_queue.put(True)
 
 @sio.event
 async def start_fit_thread(sid: str="", fitter_id: str="", options=None):
-    options = {} if options is None else options
-    fitProblem: refl1d.fitproblem.FitProblem = app["problem"]["fitProblem"]
-    fitclass = FITTERS_BY_ID[fitter_id]
-    if app["problem"].get("fit_thread", None) is not None:
-        # warn that fit is alread running...
-        print("fit already running...")
-        return
-    
-    # TODO: better access to model parameters
-    if len(fitProblem.getp()) == 0:
-        raise ValueError("Problem has no fittable parameters")
+    options = {} if options is None else options    # session_id: str = app["active_session"]
+    fitProblem = state.problem.fitProblem if state.problem is not None else None
+    if fitProblem is None:
+        await log("Error: Can't start fit if no problem loaded")
+    else:
+        fit_state = state.fitting
+        fitclass = FITTERS_BY_ID[fitter_id]
+        if fit_state.thread is not None:
+            # warn that fit is alread running...
+            print("fit already running...")
+            await log("Can't start fit, a fit is already running...")
+            return
+        
+        # TODO: better access to model parameters
+        if len(fitProblem.getp()) == 0:
+            raise ValueError("Problem has no fittable parameters")
 
-    # Start a new thread worker and give fit problem to the worker.
-    # Clear abort and uncertainty state
-    app["fitting"]["abort"] = False
-    app["fitting"]["uncertainty_state"] = None
-    abort_queue: Queue = app["fitting"]["abort_queue"]
-    for _ in range(abort_queue.qsize()):
-        abort_queue.get_nowait()
-        abort_queue.task_done()
-    fit_thread = FitThread(
-        abort_queue=abort_queue,
-        problem=fitProblem,
-        fitclass=fitclass,
-        options=options,
-        # Number of seconds between updates to the GUI, or 0 for no updates
-        convergence_update=5,
-        uncertainty_update=3600,
-        )
-    fit_thread.start()
-    app["fitting"]["fit_thread"] = fit_thread
-    await publish("", "fit_active", to_dict(dict(fitter_id=fitter_id, options=options)))
-    await log(json.dumps(to_dict(options), indent=2), title=f"starting fitter {fitter_id}")
+        # Start a new thread worker and give fit problem to the worker.
+        # Clear abort and uncertainty state
+        fit_state.abort = False
+        fit_state.uncertainty_state = None
+        abort_queue: Queue = fit_state.abort_queue
+        for _ in range(abort_queue.qsize()):
+            abort_queue.get_nowait()
+            abort_queue.task_done()
+
+        fit_thread = FitThread(
+            abort_queue=abort_queue,
+            problem=fitProblem,
+            fitclass=fitclass,
+            options=options,
+            # session_id=session_id,
+            # Number of seconds between updates to the GUI, or 0 for no updates
+            convergence_update=5,
+            uncertainty_update=3600,
+            )
+        fit_thread.start()
+        fit_state.thread = fit_thread
+        await publish("", "fit_active", to_dict(dict(fitter_id=fitter_id, options=options)))
+        await log(json.dumps(to_dict(options), indent=2), title = f"starting fitter {fitter_id}")
 
 async def _fit_progress_handler(event: Dict):
-    print("progress event message: ", event.get("message", ""))
-    fitProblem: refl1d.fitproblem.FitProblem = app["problem"]["fitProblem"]
+    # session_id = event["session_id"]
+    problem_state = state.problem
+    fitProblem = problem_state.fitProblem if problem_state is not None else None
+    if fitProblem is None:
+        raise ValueError("should never happen: fit progress reported for session in which fitProblem is undefined")
     message = event.get("message", None)
     if message == 'complete' or message == 'improvement':
         fitProblem.setp(event["point"])
@@ -262,10 +308,10 @@ async def _fit_progress_handler(event: Dict):
         if message == 'complete':
             await publish("", "fit_active", False)
     elif message == 'convergence_update':
-        app["fitting"]["population"] = event["pop"]
+        state.fitting.population = event["pop"]
         await publish("", "convergence_update", True)
     elif message == 'uncertainty_update' or message == 'uncertainty_final':
-        app["fitting"]["uncertainty_state"] = event["uncertainty_state"]
+        state.fitting.uncertainty_state = event["uncertainty_state"]
         await publish("", "uncertainty_update", True)
 
 def fit_progress_handler(event: Dict):
@@ -276,12 +322,13 @@ EVT_FIT_PROGRESS.connect(fit_progress_handler)
 async def _fit_complete_handler(event):
     print("complete event: ", event.get("message", ""))
     message = event.get("message", None)
-    fit_thread: threading.Thread = app["fitting"]["fit_thread"]
+    fit_thread = state.fitting.thread
     if fit_thread is not None:
+        # print(fit_thread)
         fit_thread.join(1) # 1 second timeout on join
         if fit_thread.is_alive():
             await log("fit thread failed to complete")
-    app["fitting"]["fit_thread"] = None
+    state.fitting.thread = None
     problem: refl1d.fitproblem.FitProblem = event["problem"]
     chisq = nice(2*event["value"]/problem.dof)
     problem.setp(event["point"])
@@ -328,7 +375,9 @@ def get_probe_data(theory, probe, substrate=None, surface=None):
 async def get_plot_data(sid: str="", view: str = 'linear'):
     # TODO: implement view-dependent return instead of doing this in JS
     # (calculate x,y,dy.dx for given view, excluding log)
-    fitProblem: refl1d.fitproblem.FitProblem = app["problem"]["fitProblem"]
+    if state.problem is None or state.problem.fitProblem is None:
+        return None
+    fitProblem = state.problem.fitProblem
     result = []
     for model in fitProblem.models:
         assert(isinstance(model, Experiment))
@@ -353,15 +402,17 @@ async def get_plot_data(sid: str="", view: str = 'linear'):
 @rest_get
 async def get_model(sid: str=""):
     from bumps.serialize import to_dict
-    fitProblem: refl1d.fitproblem.FitProblem = app["problem"]["fitProblem"]
+    if state.problem is None or state.problem.fitProblem is None:
+        return None
+    fitProblem = state.problem.fitProblem
     return to_dict(fitProblem)
 
 @sio.event
 @rest_get
 async def get_profile_plot(sid: str="", model_index: int=0):
-    fitProblem: refl1d.fitproblem.FitProblem = app["problem"]["fitProblem"]
-    if fitProblem is None:
+    if state.problem is None or state.problem.fitProblem is None:
         return None
+    fitProblem = state.problem.fitProblem
     models = list(fitProblem.models)
     if model_index > len(models):
         return None
@@ -386,9 +437,9 @@ async def get_profile_plot(sid: str="", model_index: int=0):
 @sio.event
 @rest_get
 async def get_profile_data(sid: str="", model_index: int=0):
-    fitProblem: refl1d.fitproblem.FitProblem = app["problem"]["fitProblem"]
-    if fitProblem is None:
+    if state.problem is None or state.problem.fitProblem is None:
         return None
+    fitProblem = state.problem.fitProblem
     models = list(fitProblem.models)
     if (model_index > len(models)):
         return None
@@ -416,9 +467,11 @@ async def get_convergence_plot(sid: str=""):
     # NOTE: this is slow.  Creating the figure takes around 0.15 seconds, 
     # and converting to mpld3 can take as much as 0.5 seconds.
     # Might want to replace with plotting on the client side (normalizing population takes around 1 ms)
-    fitProblem: refl1d.fitproblem.FitProblem = app["problem"]["fitProblem"]
-    population = app["fitting"]["population"]
-    if population is not None and fitProblem is not None:
+    if state.problem is None or state.problem.fitProblem is None:
+        return None
+    fitProblem = state.problem.fitProblem
+    population = state.fitting.population
+    if population is not None:
         import mpld3
         import matplotlib
         matplotlib.use("agg")
@@ -464,7 +517,7 @@ async def get_convergence_plot(sid: str=""):
 @sio.event
 @rest_get
 async def get_correlation_plot(sid: str = ""):
-    uncertainty_state = app["fitting"].get("uncertainty_state", None)
+    uncertainty_state = state.fitting.uncertainty_state
     if uncertainty_state is not None:
         import mpld3
         import matplotlib
@@ -491,7 +544,7 @@ async def get_correlation_plot(sid: str = ""):
 @sio.event
 @rest_get
 async def get_uncertainty_plot(sid: str = ""):
-    uncertainty_state = app["fitting"].get("uncertainty_state", None)
+    uncertainty_state = state.fitting.uncertainty_state
     if uncertainty_state is not None:
         import time
         start_time = time.time()
@@ -506,8 +559,10 @@ async def get_uncertainty_plot(sid: str = ""):
 @sio.event
 @rest_get
 async def get_model_uncertainty_plot(sid: str = ""):
-    fitProblem: refl1d.fitproblem.FitProblem = app["problem"]["fitProblem"]
-    uncertainty_state = app["fitting"].get("uncertainty_state", None)
+    if state.problem is None or state.problem.fitProblem is None:
+        return None
+    fitProblem = state.problem.fitProblem
+    uncertainty_state = state.fitting.uncertainty_state
     if uncertainty_state is not None:
         import mpld3
         import matplotlib
@@ -535,7 +590,7 @@ async def get_model_uncertainty_plot(sid: str = ""):
 @sio.event
 @rest_get
 async def get_parameter_trace_plot(sid: str=""):
-    uncertainty_state = app["fitting"].get("uncertainty_state", None)
+    uncertainty_state = state.fitting.uncertainty_state
     if uncertainty_state is not None:
         import mpld3
         import matplotlib
@@ -576,9 +631,9 @@ async def get_parameter_trace_plot(sid: str=""):
 @sio.event
 @rest_get
 async def get_parameters(sid: str = "", only_fittable: bool = False):
-    fitProblem: refl1d.fitproblem.FitProblem = app["problem"]["fitProblem"]
-    if fitProblem is None:
+    if state.problem is None or state.problem.fitProblem is None:
         return []
+    fitProblem = state.problem.fitProblem
 
     all_parameters = fitProblem.model_parameters()
     if only_fittable:
@@ -592,9 +647,9 @@ async def get_parameters(sid: str = "", only_fittable: bool = False):
 
 @sio.event
 async def set_parameter(sid: str, parameter_id: str, property: Literal["value01", "value", "min", "max"], value: Union[float, str, bool]):
-    fitProblem: bumps.fitproblem.FitProblem = app["problem"]["fitProblem"]
-    if fitProblem is None:
-        return
+    if state.problem is None or state.problem.fitProblem is None:
+        return None
+    fitProblem = state.problem.fitProblem
 
     parameter = fitProblem._parameters_by_id.get(parameter_id, None)
     if parameter is None:
@@ -635,20 +690,26 @@ async def set_parameter(sid: str, parameter_id: str, property: Literal["value01"
     return
 
 @sio.event
-async def publish(sid: str, topic: str, message=None):
+async def publish(sid: str, topic: TopicNameType, message=None):
     timestamp_str = f"{datetime.now().timestamp():.6f}"
     contents = {"message": message, "timestamp": timestamp_str}
-    topics[topic].append(contents)
+    # session = get_session(session_id)    
+    state.topics[topic].append(contents)
+    # if session_id == app["active_session"]:
+    #     await sio.emit(topic, contents)
     await sio.emit(topic, contents)
     # print("emitted: ", topic, contents)
 
 
 @sio.event
 @rest_get
-async def get_topic_messages(sid: str="", topic: str="", max_num=None) -> List[Dict]:
+async def get_topic_messages(sid: str="", topic: Optional[TopicNameType] = None, max_num=None) -> List[Dict]:
     # this is a GET request in disguise -
     # emitter must handle the response in a callback,
     # as no separate response event is emitted.
+    if topic is None:
+        return []    
+    topics = state.topics
     q = topics.get(topic, None)
     if q is None:
         raise ValueError(f"Topic: {topic} not defined")
@@ -678,8 +739,10 @@ async def get_dirlisting(sid: str="", pathlist: Optional[List[str]]=None):
 
 @sio.event
 @rest_get
-async def get_current_pathlist(sid: str="") -> List[str]:
-    return list(app['problem']['pathlist'])
+async def get_current_pathlist(sid: str="") -> Optional[List[str]]:
+    problem_state = state.problem
+    pathlist = problem_state.pathlist if problem_state is not None else None
+    return pathlist
 
 @sio.event
 @rest_get
@@ -690,7 +753,6 @@ async def get_fitter_defaults(sid: str=""):
 def disconnect(sid):
     print('disconnect ', sid)
 
- 
 @sio.event
 async def shutdown(sid: str=""):
     await stop_fit()
@@ -699,7 +761,6 @@ async def shutdown(sid: str=""):
     for client in clients:
         await sio.disconnect(client)
     import signal
-    import sys
     # signal.raise_signal(signal.SIGINT)
     await app.shutdown()
     await app.cleanup()
@@ -725,7 +786,7 @@ def nice(v, digits=4):
         return sign*floor(abs(v)/scale+0.5)*scale
     
 
-class ParamInfo(TypedDict):
+class ParamInfo(TypedDict, total=False):
     id: str
     name: str
     paths: List[str]
@@ -733,9 +794,9 @@ class ParamInfo(TypedDict):
     fittable: bool
     fixed: bool
     writable: bool
-    value01: Optional[float]
-    min_str: Optional[str]
-    max_str: Optional[str]
+    value01: float
+    min_str: str
+    max_str: str
 
 
 def params_to_list(params, lookup=None, pathlist=None, links=None) -> List[ParamInfo]:
@@ -778,23 +839,35 @@ def main():
     parser.add_argument('-x', '--headless', action='store_true', help='do not automatically load client in browser')
     parser.add_argument('--external', action='store_true', help='listen on all interfaces, including external (local connections only if not set)')
     parser.add_argument('-p', '--port', default=0, type=int, help='port on which to start the server')
+    parser.add_argument('--hub', default=None, type=str, help='api address of parent hub (only used when called as subprocess)')
     # parser.add_argument('-c', '--config-file', type=str, help='path to JSON configuration to load')
     args = parser.parse_args()
 
     # app.on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
     # set initial path to cwd:
-    app['problem']['pathlist'] = Path().absolute().parts
+    state.problem = ProblemState(pathlist=list(Path().absolute().parts))
     app.add_routes(routes)
     hostname = 'localhost' if not args.external else '0.0.0.0'
+
+    print(sio.manager.rooms)
 
     import socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind((hostname, args.port))
-    _, port = sock.getsockname()
+    host, port = sock.getsockname()
+    state.hostname = host
+    state.port = port
+    if args.hub is not None:
+        async def register_instance(application: web.Application):
+            async with ClientSession() as client_session:
+                await client_session.post(args.hub, json={"host": hostname, "port": port})
+        app.on_startup.append(register_instance)
     if not args.headless:
         import webbrowser
-        webbrowser.open_new_tab(f"http://{hostname}:{port}/")
+        async def open_browser(app: web.Application):
+            app.loop.call_later(0.25, lambda: webbrowser.open_new_tab(f"http://{hostname}:{port}/"))
+        app.on_startup.append(open_browser)
     web.run_app(app, sock=sock)
 
 if __name__ == '__main__':
