@@ -1,6 +1,7 @@
 # from .main import setup_bumps
 
 import itertools
+import threading
 from typing import Dict, List, Literal, Optional, Union, TypedDict
 from datetime import datetime
 import warnings
@@ -46,7 +47,6 @@ from .profile_plot import plot_sld_profile_plotly
 from .varplot import plot_vars
 
 # can get by name and not just by id
-EVT_LOG = Signal('log')
 MODEL_EXT = '.json'
 
 FITTERS = (DreamFit, LevenbergMarquardtFit, SimplexFit, DEFit, MPFit, BFGSFit)
@@ -151,7 +151,7 @@ async def connect(sid, environ, data=None):
 async def load_problem_file(sid: str, pathlist: List[str], filename: str):
     path = Path(*pathlist, filename)
     print(f'model loading: {path}')
-    log_handler({"message": f'model_loading: {path}'})
+    await log(f'model_loading: {path}')
     if filename.endswith(".json"):
         with open(path, "rt") as input_file:
             serialized = json.loads(input_file.read())
@@ -163,7 +163,7 @@ async def load_problem_file(sid: str, pathlist: List[str], filename: str):
     app["problem"]["pathlist"] = pathlist
     app["problem"]["filename"] = filename
     print(f'model loaded: {path}')
-    log_handler({"message": f'model loaded: {path}'})
+    await log(f'model loaded: {path}')
 
 
     model_names = [getattr(m, 'name', None) for m in list(problem.models)]
@@ -197,7 +197,7 @@ async def save_problem_file(sid: str, pathlist: Optional[List[str]] = None, file
     with open(Path(path, save_filename), "wt") as output_file:
         output_file.write(json.dumps(serialized))
 
-    log_handler({"message": f'Saved: {filename} at path: {path}'})
+    await log(f'Saved: {filename} at path: {path}')
 
 @sio.event
 async def start_fit(sid: str="", fitter_id: str="", kwargs=None):
@@ -247,50 +247,55 @@ async def start_fit_thread(sid: str="", fitter_id: str="", options=None):
         uncertainty_update=3600,
         )
     fit_thread.start()
+    app["fitting"]["fit_thread"] = fit_thread
     await publish("", "fit_active", to_dict(dict(fitter_id=fitter_id, options=options)))
-    log_handler({"message": json.dumps(to_dict(options), indent=2), "title": f"starting fitter {fitter_id}"})
+    await log(json.dumps(to_dict(options), indent=2), title=f"starting fitter {fitter_id}")
 
-def fit_progress_handler(event: Dict):
+async def _fit_progress_handler(event: Dict):
     print("progress event message: ", event.get("message", ""))
     fitProblem: refl1d.fitproblem.FitProblem = app["problem"]["fitProblem"]
     message = event.get("message", None)
     if message == 'complete' or message == 'improvement':
         fitProblem.setp(event["point"])
         fitProblem.model_update()
-        publish_sync("", "update_parameters")
+        await publish("", "update_parameters", True)
         if message == 'complete':
-            publish_sync("", "fit_active", False)
+            await publish("", "fit_active", False)
     elif message == 'convergence_update':
         app["fitting"]["population"] = event["pop"]
-        publish_sync("", "convergence_update")
+        await publish("", "convergence_update", True)
     elif message == 'uncertainty_update' or message == 'uncertainty_final':
         app["fitting"]["uncertainty_state"] = event["uncertainty_state"]
-        publish_sync("", "uncertainty_update")
+        await publish("", "uncertainty_update", True)
+
+def fit_progress_handler(event: Dict):
+    asyncio.run_coroutine_threadsafe(_fit_progress_handler(event), app.loop)
 
 EVT_FIT_PROGRESS.connect(fit_progress_handler)
 
-def fit_complete_handler(event):
+async def _fit_complete_handler(event):
     print("complete event: ", event.get("message", ""))
     message = event.get("message", None)
-    fit_thread = app["fitting"]["fit_thread"]
+    fit_thread: threading.Thread = app["fitting"]["fit_thread"]
     if fit_thread is not None:
         fit_thread.join(1) # 1 second timeout on join
         if fit_thread.is_alive():
-            EVT_LOG.send({"message": "fit thread failed to complete"})
+            await log("fit thread failed to complete")
     app["fitting"]["fit_thread"] = None
     problem: refl1d.fitproblem.FitProblem = event["problem"]
     chisq = nice(2*event["value"]/problem.dof)
     problem.setp(event["point"])
     problem.model_update()
-    publish_sync("", "update_parameters", True)
-    EVT_LOG.send({"message": event["info"], "title": f"done with chisq {chisq}"})
+    await publish("", "update_parameters", True)
+    await log(event["info"], title=f"done with chisq {chisq}")
+
+def fit_complete_handler(event: Dict):
+    asyncio.run_coroutine_threadsafe(_fit_complete_handler(event), app.loop)
 
 EVT_FIT_COMPLETE.connect(fit_complete_handler)
 
-def log_handler(message):
-    publish_sync("", "log", message)
-
-EVT_LOG.connect(log_handler)
+async def log(message: str, title: Optional[str] = None):
+    await publish("", "log", {"message": message, "title": title})
 
 def get_single_probe_data(theory, probe, substrate=None, surface=None, label=''):
     fresnel_calculator = probe.fresnel(substrate, surface)
@@ -635,8 +640,6 @@ async def publish(sid: str, topic: str, message=None):
     await sio.emit(topic, contents)
     # print("emitted: ", topic, contents)
 
-def publish_sync(sid: str, topic: str, message=None):
-    return asyncio.run_coroutine_threadsafe(publish(sid, topic, message), app.loop)
 
 @sio.event
 @rest_get
@@ -699,7 +702,7 @@ async def shutdown(sid: str=""):
     await app.shutdown()
     await app.cleanup()
     print("killing...")
-    signal.raise_signal(signal.SIGKILL)
+    signal.raise_signal(signal.SIGTERM)
 
 if Path.exists(static_assets_path):
     app.router.add_static('/assets', static_assets_path)
