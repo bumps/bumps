@@ -628,6 +628,8 @@ async def set_parameter(sid: str, parameter_id: str, property: Literal["value01"
             parameter.fixed = bool(value)
             fitProblem.model_reset()
             # print(f"setting parameter: {parameter}.fixed to {value}")
+            # model has been changed: setp and getp will return different values!
+            await publish("", "update_model", True)
     fitProblem.model_update()
     await publish("", "update_parameters", True)
     return
