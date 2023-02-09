@@ -121,7 +121,7 @@ defineExpose({
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" @click="close">Cancel</button>
-            <button type="button" class="btn btn-primary" :class="{disabled: !(filelist.includes(chosenFile))}"
+            <button type="button" class="btn btn-primary" :class="{disabled: chosenFile == ''}"
               @click="chooseFile">OK</button>
           </div>
         </div>

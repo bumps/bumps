@@ -116,7 +116,7 @@ async function saveFile(ev: Event, override?: {pathlist: string[], filename: str
     if (confirm_overwrite !== false) {
       const overwrite = await confirm(`File ${confirm_overwrite} exists: overwrite?`);
       if (overwrite) {
-        socket.emit("save_problem_file", {pathlist, filename, overwrite: true});
+        socket.emit("save_problem_file", pathlist, filename, overwrite);
       }
     }
   });
