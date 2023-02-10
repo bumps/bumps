@@ -88,7 +88,7 @@ TopicNameType = Literal[
 ]
 
 
-state = State()
+state: State # to be filled in later...
 
 def rest_get(fn):
     """
@@ -209,7 +209,7 @@ async def stop_fit(sid: str = ""):
     abort_queue.put_nowait(True)
 
 @sio.event
-async def start_fit_thread(sid: str="", fitter_id: str="", options=None):
+async def start_fit_thread(sid: str="", fitter_id: str="", options=None, terminate_on_finish=False):
     options = {} if options is None else options    # session_id: str = app["active_session"]
     fitProblem = state.problem.fitProblem if state.problem is not None else None
     if fitProblem is None:
@@ -241,6 +241,7 @@ async def start_fit_thread(sid: str="", fitter_id: str="", options=None):
             # Number of seconds between updates to the GUI, or 0 for no updates
             convergence_update=5,
             uncertainty_update=3600,
+            terminate_on_finish=terminate_on_finish,
             )
         fit_thread.start()
         state.fit_thread = fit_thread
@@ -276,8 +277,10 @@ async def _fit_complete_handler(event):
     print("complete event: ", event.get("message", ""))
     message = event.get("message", None)
     fit_thread = state.fit_thread
+    terminate = False
     if fit_thread is not None:
-        # print(fit_thread)
+        print(fit_thread)
+        terminate = fit_thread.terminate_on_finish
         fit_thread.join(1) # 1 second timeout on join
         if fit_thread.is_alive():
             await log("fit thread failed to complete")
@@ -288,6 +291,8 @@ async def _fit_complete_handler(event):
     problem.model_update()
     await publish("", "update_parameters", True)
     await log(event["info"], title=f"done with chisq {chisq}")
+    if terminate:
+        await shutdown()
 
 def fit_complete_handler(event: Dict):
     asyncio.run_coroutine_threadsafe(_fit_complete_handler(event), app.loop)
@@ -785,13 +790,53 @@ import argparse
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument('filename', nargs='?', help='problem file to load, .py or .json (serialized) fitproblem')
     # parser.add_argument('-d', '--debug', action='store_true', help='autoload modules on change')
     parser.add_argument('-x', '--headless', action='store_true', help='do not automatically load client in browser')
     parser.add_argument('--external', action='store_true', help='listen on all interfaces, including external (local connections only if not set)')
     parser.add_argument('-p', '--port', default=0, type=int, help='port on which to start the server')
     parser.add_argument('--hub', default=None, type=str, help='api address of parent hub (only used when called as subprocess)')
+    parser.add_argument('--fit', default=None, type=str, choices=list(FITTERS_BY_ID.keys()), help='fitting engine to use; see manual for details')
+    parser.add_argument('--start', action='store_true', help='start fit when problem loaded')
+    parser.add_argument('--store', default=None, type=str, help='backing file for state')
+    parser.add_argument('--exit', action='store_true', help='end process when fit complete (fit results lost unless store is specified)')
     # parser.add_argument('-c', '--config-file', type=str, help='path to JSON configuration to load')
     args = parser.parse_args()
+
+    global state
+    if args.store is None:
+        state = State("in-memory.h5", in_memory=True)
+    else:
+        state = State(args.store)
+
+    # app.on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
+    if args.fit is not None:
+        app.on_startup.append(lambda App: publish('', 'fitter_active', args.fit))
+
+    fitter_id = args.fit
+    if fitter_id is None:
+        fitter_id = state.topics.get("fitter_active", {"message": None})["message"]
+    if fitter_id is None:
+        fitter_id = 'amoeba'
+    fitter_settings = FITTER_DEFAULTS[fitter_id]
+
+    # if args.steps is not None:
+    #     fitter_settings["steps"] = args.steps
+
+    if args.filename is not None:
+        filepath = Path(args.filename)
+        pathlist = list(filepath.parent.parts)
+        filename = filepath.name
+        start = args.start
+        print(f"fitter for filename {filename} is {fitter_id}")
+        async def startup_task(App=None):
+            await load_problem_file("", pathlist, filename)
+            if start:
+                await start_fit_thread("", fitter_id, fitter_settings, args.exit)
+        
+        app.on_startup.append(startup_task)
+
+        # app.on_startup.append()
 
     # app.on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
     async def notice(message: str):
