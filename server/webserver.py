@@ -3,7 +3,8 @@
 from dataclasses import dataclass
 import itertools
 import threading
-from typing import Dict, List, Literal, Optional, Union, TypedDict
+import signal
+from typing import Dict, List, Literal, Optional, Union, TypedDict, cast
 from datetime import datetime
 import warnings
 from queue import Queue
@@ -47,6 +48,8 @@ bumps.cli.install_plugin(refl1d.fitplugin)
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
 from .profile_plot import plot_sld_profile_plotly
 from .varplot import plot_vars
+# from .state_hdf5_backed import State
+from .state import State
 
 # can get by name and not just by id
 MODEL_EXT = '.json'
@@ -84,55 +87,6 @@ TopicNameType = Literal[
     "fitter_active",
 ]
 
-@dataclass
-class ProblemState:
-    fitProblem: Optional[bumps.fitproblem.FitProblem] = None
-    pathlist: Optional[List[str]] = None
-    filename: Optional[str] = None
-
-    def to_dict(self):
-        return {
-            "fitProblem": to_dict(self.fitProblem),
-            "pathlist": to_dict(self.pathlist),
-            "filename": to_dict(self.filename)
-        }
-    
-    def from_dict(self, serialized):
-        self.fitProblem = from_dict(serialized["fitProblem"])
-        self.pathlist = from_dict(serialized["pathlist"])
-        self.filename = from_dict(serialized["filename"])
-
-
-@dataclass
-class FittingState:
-    abort: bool = False
-    abort_queue: Queue = Queue()
-    population: Optional[List] = None
-    uncertainty_state: Optional[bumps.dream.state.MCMCDraw] = None
-    thread: Optional[FitThread] = None
-
-
-class State:
-    hostname: str
-    port: int
-    problem: Optional[ProblemState]
-    fitting: FittingState
-    topics: Dict[TopicNameType, "deque[Dict]"]
-
-    def __init__(self, problem: Optional[ProblemState] = None, fitting: Optional[FittingState] = None):
-        self.problem = problem
-        self.fitting = FittingState()
-        self.topics = {
-            "log": deque([]),
-            "update_parameters": deque([], maxlen=1),
-            "update_model": deque([], maxlen=1),
-            "model_loaded": deque([], maxlen=1),
-            "fit_active": deque([], maxlen=1),
-            "convergence_update": deque([], maxlen=1),
-            "uncertainty_update": deque([], maxlen=1),
-            "fitter_settings": deque([], maxlen=1),
-            "fitter_active": deque([], maxlen=1),
-        }
 
 state = State()
 
@@ -192,8 +146,10 @@ async def load_problem_file(sid: str, pathlist: List[str], filename: str):
         from bumps.cli import load_model
         problem = load_model(str(path))
     assert isinstance(problem, bumps.fitproblem.FitProblem)
-    problem_state = ProblemState(problem, pathlist, filename)
-    state.problem = problem_state
+    # problem_state = ProblemState(problem, pathlist, filename)
+    state.problem.filename = filename
+    state.problem.pathlist = pathlist
+    state.problem.fitProblem = problem
     print(f'model loaded: {path}')
     await log(f'model loaded: {path}')
 
@@ -249,8 +205,8 @@ async def start_fit(sid: str="", fitter_id: str="", kwargs=None):
 
 @sio.event
 async def stop_fit(sid: str = ""):
-    abort_queue = state.fitting.abort_queue
-    abort_queue.put(True)
+    abort_queue = state.abort_queue
+    abort_queue.put_nowait(True)
 
 @sio.event
 async def start_fit_thread(sid: str="", fitter_id: str="", options=None):
@@ -261,7 +217,7 @@ async def start_fit_thread(sid: str="", fitter_id: str="", options=None):
     else:
         fit_state = state.fitting
         fitclass = FITTERS_BY_ID[fitter_id]
-        if fit_state.thread is not None:
+        if state.fit_thread is not None:
             # warn that fit is alread running...
             print("fit already running...")
             await log("Can't start fit, a fit is already running...")
@@ -273,13 +229,9 @@ async def start_fit_thread(sid: str="", fitter_id: str="", options=None):
 
         # Start a new thread worker and give fit problem to the worker.
         # Clear abort and uncertainty state
-        fit_state.abort = False
-        fit_state.uncertainty_state = None
-        abort_queue: Queue = fit_state.abort_queue
-        for _ in range(abort_queue.qsize()):
-            abort_queue.get_nowait()
-            abort_queue.task_done()
-
+        # state.abort = False
+        # state.fitting.uncertainty_state = None
+        state.abort_queue = abort_queue = Queue()
         fit_thread = FitThread(
             abort_queue=abort_queue,
             problem=fitProblem,
@@ -291,7 +243,7 @@ async def start_fit_thread(sid: str="", fitter_id: str="", options=None):
             uncertainty_update=3600,
             )
         fit_thread.start()
-        fit_state.thread = fit_thread
+        state.fit_thread = fit_thread
         await publish("", "fit_active", to_dict(dict(fitter_id=fitter_id, options=options)))
         await log(json.dumps(to_dict(options), indent=2), title = f"starting fitter {fitter_id}")
 
@@ -312,7 +264,7 @@ async def _fit_progress_handler(event: Dict):
         state.fitting.population = event["pop"]
         await publish("", "convergence_update", True)
     elif message == 'uncertainty_update' or message == 'uncertainty_final':
-        state.fitting.uncertainty_state = event["uncertainty_state"]
+        state.fitting.uncertainty_state = cast(bumps.dream.state.MCMCDraw, event["uncertainty_state"])
         await publish("", "uncertainty_update", True)
 
 def fit_progress_handler(event: Dict):
@@ -323,13 +275,13 @@ EVT_FIT_PROGRESS.connect(fit_progress_handler)
 async def _fit_complete_handler(event):
     print("complete event: ", event.get("message", ""))
     message = event.get("message", None)
-    fit_thread = state.fitting.thread
+    fit_thread = state.fit_thread
     if fit_thread is not None:
         # print(fit_thread)
         fit_thread.join(1) # 1 second timeout on join
         if fit_thread.is_alive():
             await log("fit thread failed to complete")
-    state.fitting.thread = None
+    state.fit_thread = None
     problem: refl1d.fitproblem.FitProblem = event["problem"]
     chisq = nice(2*event["value"]/problem.dof)
     problem.setp(event["point"])
@@ -849,11 +801,9 @@ def main():
     app.on_shutdown.append(lambda App: stop_fit())
     app.on_shutdown.append(lambda App: disconnect_all_clients())
     # set initial path to cwd:
-    state.problem = ProblemState(pathlist=list(Path().absolute().parts))
+    state.problem.pathlist = list(Path().absolute().parts)
     app.add_routes(routes)
     hostname = 'localhost' if not args.external else '0.0.0.0'
-
-    print(sio.manager.rooms)
 
     import socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
