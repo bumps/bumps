@@ -225,12 +225,13 @@ class State:
     fit_thread: Optional['FitThread'] = None
     abort_queue: Queue
 
-    def __init__(self, session_file_name: str = SESSION_FILE_NAME):
+    def __init__(self, session_file_name: str = SESSION_FILE_NAME, in_memory: bool = False, backing_store: bool = False ):
         # self.problem = problem
         # self.fitting = fitting if fitting is not None else FittingState()
         self.abort_queue = Queue()
         import h5py
-        self.session_file = session_file = h5py.File(session_file_name, "a", libver='latest')
+        hdf_kw = dict(driver="core", backing_store=backing_store) if in_memory else dict()
+        self.session_file = session_file = h5py.File(session_file_name, "a", libver='latest', **hdf_kw)
         topics_group = session_file.require_group("topics")
         problem_group = session_file.require_group("problem")
         fitting_group = session_file.require_group("fitting")
