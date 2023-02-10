@@ -48,8 +48,8 @@ bumps.cli.install_plugin(refl1d.fitplugin)
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
 from .profile_plot import plot_sld_profile_plotly
 from .varplot import plot_vars
-# from .state_hdf5_backed import State
-from .state import State
+from .state_hdf5_backed import State
+# from .state import State
 
 # can get by name and not just by id
 MODEL_EXT = '.json'
