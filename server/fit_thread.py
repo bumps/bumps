@@ -172,7 +172,8 @@ class FitThread(Thread):
 
     def __init__(self, abort_queue: Queue, problem=None,
                  fitclass=None, options=None, mapper=None,
-                 convergence_update=5, uncertainty_update=300):
+                 convergence_update=5, uncertainty_update=300,
+                 terminate_on_finish=False):
         # base class initialization
         # Process.__init__(self)
 
@@ -184,6 +185,7 @@ class FitThread(Thread):
         self.mapper = mapper
         self.convergence_update = convergence_update
         self.uncertainty_update = uncertainty_update
+        self.terminate_on_finish = terminate_on_finish
 
     def abort_test(self):
         return not self.abort_queue.empty()
