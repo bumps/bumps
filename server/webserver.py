@@ -800,6 +800,7 @@ def main():
     app.on_shutdown.append(lambda App: notice("shutdown task"))
     app.on_shutdown.append(lambda App: stop_fit())
     app.on_shutdown.append(lambda App: disconnect_all_clients())
+    app.on_shutdown.append(lambda App: state.cleanup())
     # set initial path to cwd:
     state.problem.pathlist = list(Path().absolute().parts)
     app.add_routes(routes)

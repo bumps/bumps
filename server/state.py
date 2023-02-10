@@ -45,3 +45,6 @@ class State:
             "fitter_settings": deque([], maxlen=1),
             "fitter_active": deque([], maxlen=1),
         }
+
+    async def cleanup(self):
+        pass
