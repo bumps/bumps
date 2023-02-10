@@ -754,17 +754,14 @@ async def get_fitter_defaults(sid: str=""):
 def disconnect(sid):
     print('disconnect ', sid)
 
-@sio.event
-async def shutdown(sid: str=""):
-    await stop_fit()
+async def disconnect_all_clients():
     # disconnect all clients:
     clients = list(sio.manager.rooms.get('/', {None: {}}).get(None).keys())
     for client in clients:
         await sio.disconnect(client)
-    import signal
-    # signal.raise_signal(signal.SIGINT)
-    await app.shutdown()
-    await app.cleanup()
+
+@sio.event
+async def shutdown(sid: str=""):
     print("killing...")
     signal.raise_signal(signal.SIGTERM)
 
@@ -845,6 +842,12 @@ def main():
     args = parser.parse_args()
 
     # app.on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
+    async def notice(message: str):
+        print(message)
+    app.on_cleanup.append(lambda App: notice("cleanup task"))
+    app.on_shutdown.append(lambda App: notice("shutdown task"))
+    app.on_shutdown.append(lambda App: stop_fit())
+    app.on_shutdown.append(lambda App: disconnect_all_clients())
     # set initial path to cwd:
     state.problem = ProblemState(pathlist=list(Path().absolute().parts))
     app.add_routes(routes)
