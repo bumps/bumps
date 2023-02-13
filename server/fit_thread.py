@@ -7,7 +7,7 @@ from blinker import Signal
 
 import numpy as np
 from bumps import monitor
-from bumps.fitters import FitDriver
+from bumps.fitters import FitDriver, nllf_scale, format_uncertainty
 from bumps.mapper import MPMapper, SerialMapper, can_pickle
 from bumps.util import redirect_console
 from bumps.history import History
@@ -33,11 +33,14 @@ class GUIProgressMonitor(monitor.TimedUpdate):
         self.problem = problem
 
     def show_progress(self, history):
+        scale, err = nllf_scale(self.problem)
+        chisq = format_uncertainty(scale*history.value[0], err)
         evt = dict(
             problem=self.problem,
             message="progress",
             step=history.step[0],
             value=history.value[0],
+            chisq=chisq,
             point=history.point[0]+0)  # avoid race
         EVT_FIT_PROGRESS.send(evt)
 
