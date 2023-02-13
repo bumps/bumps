@@ -250,6 +250,7 @@ async def start_fit_thread(sid: str="", fitter_id: str="", options=None, termina
 
 async def _fit_progress_handler(event: Dict):
     # session_id = event["session_id"]
+    print("progress: ", event)
     problem_state = state.problem
     fitProblem = problem_state.fitProblem if problem_state is not None else None
     if fitProblem is None:
@@ -258,9 +259,12 @@ async def _fit_progress_handler(event: Dict):
     if message == 'complete' or message == 'improvement':
         fitProblem.setp(event["point"])
         fitProblem.model_update()
+        chisq_str = fitProblem.chisq_str()
         await publish("", "update_parameters", True)
         if message == 'complete':
             await publish("", "fit_active", False)
+        else:
+            await publish("", "fit_active", {"chisq": chisq_str})
     elif message == 'convergence_update':
         state.fitting.population = event["pop"]
         await publish("", "convergence_update", True)
@@ -815,7 +819,7 @@ def main():
 
     fitter_id = args.fit
     if fitter_id is None:
-        fitter_id = state.topics.get("fitter_active", {"message": None})["message"]
+        fitter_id = state.topics.get("fitter_active", [{"message": None}])[-1]["message"]
     if fitter_id is None:
         fitter_id = 'amoeba'
     fitter_settings = FITTER_DEFAULTS[fitter_id]
