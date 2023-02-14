@@ -214,6 +214,20 @@ def get_chisq(problem: refl1d.fitproblem.FitProblem, nllf=None):
     chisq = format_uncertainty(scale*nllf, err)
     return chisq
 
+def get_num_steps(fitter_id: str, num_fitparams: int, options: Optional[Dict] = None):
+    options = FITTER_DEFAULTS[fitter_id] if options is None else options
+    steps = options['steps']
+    if fitter_id == 'dream' and steps == 0:
+        print('dream: ', options)
+        total_pop = options['pop'] * num_fitparams
+        print('total_pop: ', total_pop)
+        sample_steps = int(options['samples'] / total_pop)
+        print('sample_steps: ', sample_steps)
+        print('steps: ', options['burn'] + sample_steps)
+        return options['burn'] + sample_steps
+    else:
+        return steps
+
 @sio.event
 async def start_fit_thread(sid: str="", fitter_id: str="", options=None):
     options = {} if options is None else options    # session_id: str = app["active_session"]
@@ -230,13 +244,15 @@ async def start_fit_thread(sid: str="", fitter_id: str="", options=None):
             return
         
         # TODO: better access to model parameters
-        if len(fitProblem.getp()) == 0:
+        num_params = len(fitProblem.getp())
+        if num_params == 0:
             raise ValueError("Problem has no fittable parameters")
 
         # Start a new thread worker and give fit problem to the worker.
         # Clear abort and uncertainty state
         # state.abort = False
         # state.fitting.uncertainty_state = None
+        num_steps = get_num_steps(fitter_id, num_params, options)
         state.abort_queue = abort_queue = Queue()
         fit_thread = FitThread(
             abort_queue=abort_queue,
@@ -251,7 +267,7 @@ async def start_fit_thread(sid: str="", fitter_id: str="", options=None):
         fit_thread.start()
         state.fit_thread = fit_thread
         await sio.emit("fit_progress", {}) # clear progress
-        await publish("", "fit_active", to_dict(dict(fitter_id=fitter_id, options=options)))
+        await publish("", "fit_active", to_dict(dict(fitter_id=fitter_id, options=options, num_steps=num_steps)))
         await log(json.dumps(to_dict(options), indent=2), title = f"starting fitter {fitter_id}")
 
 async def _fit_progress_handler(event: Dict):
