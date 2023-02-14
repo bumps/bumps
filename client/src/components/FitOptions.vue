@@ -35,6 +35,10 @@ const FIT_FIELDS = {
   'outliers': ['Outliers', ["none", "iqr", "grubbs", "mahal"]]
 }
 
+const OPTIONS_HELP = {
+  'dream': 'if Steps == 0, Steps will be calculated as (Burn-in steps) + (Samples / (Population * Num. Fitted Params))'
+}
+
 // make another working copy for editing:
 // const active_settings = ref<{ name: string, settings: object}>({name: "", settings: {}});
 const active_settings = ref({});
@@ -174,6 +178,9 @@ defineExpose({
               </div>
             </div>
             <div class="row p-2">
+              <div class="row p-1 text-secondary" v-if="fitter_active_local in OPTIONS_HELP">
+                <span><em>{{ OPTIONS_HELP[fitter_active_local] }}</em></span>
+              </div>
               <div class="row p-1" v-for="(value, sname, index) in active_settings" :key="sname">
                 <label class="col-sm-4 col-form-label" :for="'setting_' + index">{{FIT_FIELDS[sname][0]}}</label>
                 <div class="col-sm-8">
