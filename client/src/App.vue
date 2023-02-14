@@ -252,7 +252,6 @@ onMounted(() => {
             <h4 class="m-0">
               <!-- <div class="rounded p-2 bg-primary">Fitting: </div> -->
               <div v-if="fit_active.fitter_id !== undefined" class="badge bg-secondary p-2 align-middle">
-                <span class="">Fitting</span>
                 <span class="align-middle px-1">Fitting: {{ fit_active.fitter_id }} step {{ fit_progress?.step }} of
                   {{ fit_active?.options?.steps }}, chisq={{ fit_progress.chisq }}</span>
                 <button class="btn btn-danger btn-sm" @click="stopFit">Stop</button>
