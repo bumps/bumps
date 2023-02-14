@@ -46,7 +46,9 @@ const fileBrowserSaveFilename = ref<string>();
 const fileBrowserTitle = ref("Load Model File");
 const model_loaded = shallowRef<{pathlist: string[], filename: string}>();
 const active_layout = ref("left-right");
-const active_panel = ref([0,1]);
+const active_panel = ref([0, 1]);
+const fit_active = ref<{ fitter_id?: string, options?: {} }>({});
+const fit_progress = ref<{ chisq?: string, step?: number, value?: number }>({});
 
 // Create a SocketIO connection, to be passed to child components
 // so that they can do their own communications with the host.
@@ -71,6 +73,14 @@ socket.on('disconnect', (payload) => {
 socket.on('model_loaded', ({message: {pathlist, filename}}) => {
   model_loaded.value = {pathlist, filename};
 })
+
+socket.on('fit_active', ({ message: { fitter_id, options } }) => {
+  fit_active.value = { fitter_id, options };
+});
+
+socket.on('fit_progress', (event) => {
+  fit_progress.value = event;
+});
 
 function disconnect() {
   socket.disconnect();
@@ -238,6 +248,21 @@ onMounted(() => {
               </ul>
             </li> -->
           </ul>
+          <div class="px-4 m-0">
+            <h4 class="m-0">
+              <!-- <div class="rounded p-2 bg-primary">Fitting: </div> -->
+              <div v-if="fit_active.fitter_id !== undefined" class="badge bg-secondary p-2 align-middle">
+                <span class="">Fitting</span>
+                <span class="align-middle px-1">Fitting: {{ fit_active.fitter_id }} step {{ fit_progress?.step }} of
+                  {{ fit_active?.options?.steps }}, chisq={{ fit_progress.chisq }}</span>
+                <button class="btn btn-danger btn-sm" @click="stopFit">Stop</button>
+              </div>
+              <div v-else class="badge bg-secondary p-2">
+                <span class="align-middle px-1">Not fitting</span>
+                <button class="btn btn-success btn-sm" @click="startFit">Start</button>
+              </div>
+            </h4>
+          </div>
           <div class="d-flex">
             <div id="connection_status"
               :class="{'btn': true, 'btn-outline-success': connected, 'btn-outline-danger': !connected}">

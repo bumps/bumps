@@ -73,7 +73,7 @@ function generate_new_traces(model_data, view: ReflectivityPlot) {
 async function fetch_and_draw() {
   const payload = await props.socket.asyncEmit('get_plot_data', 'linear');
   // console.log(payload);
-  const { theory_traces, data_traces } = generate_new_traces(payload, reflectivity_type.value)
+  const { theory_traces, data_traces } = generate_new_traces(payload.plotdata, reflectivity_type.value)
   const layout: Partial<Plotly.Layout> = {
     uirevision: reflectivity_type.value,
     xaxis: {
@@ -96,7 +96,20 @@ async function fetch_and_draw() {
       t: 25,
       b: 75,
       pad: 4
-    }
+    },
+    annotations: [
+      {
+        xref: 'paper',
+        yref: 'paper',
+        xanchor: 'left',
+        x: 0.8,
+        yanchor: 'top',
+        y: -0.05,
+        text: `chisq = ${payload.chisq}`,
+        showarrow: false,
+        font: {size: 16}, 
+      }
+    ]
   };
 
   const config = {responsive: true}
