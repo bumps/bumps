@@ -28,7 +28,7 @@ mimetypes.add_type("text/javascript", ".mjs")
 mimetypes.add_type("image/png", ".png")
 mimetypes.add_type("image/svg+xml", ".svg")
 
-from bumps.fitters import DreamFit, LevenbergMarquardtFit, SimplexFit, DEFit, MPFit, BFGSFit, FitDriver, fit
+from bumps.fitters import DreamFit, LevenbergMarquardtFit, SimplexFit, DEFit, MPFit, BFGSFit, FitDriver, fit, nllf_scale, format_uncertainty
 from bumps.serialize import to_dict, from_dict
 from bumps.mapper import MPMapper
 from bumps.parameter import Parameter, Variable, unique
@@ -208,6 +208,12 @@ async def stop_fit(sid: str = ""):
     abort_queue = state.abort_queue
     abort_queue.put_nowait(True)
 
+def get_chisq(problem: refl1d.fitproblem.FitProblem, nllf=None):
+    nllf = problem.nllf() if nllf is None else nllf
+    scale, err = nllf_scale(problem)
+    chisq = format_uncertainty(scale*nllf, err)
+    return chisq
+
 @sio.event
 async def start_fit_thread(sid: str="", fitter_id: str="", options=None):
     options = {} if options is None else options    # session_id: str = app["active_session"]
@@ -244,6 +250,7 @@ async def start_fit_thread(sid: str="", fitter_id: str="", options=None):
             )
         fit_thread.start()
         state.fit_thread = fit_thread
+        await sio.emit("fit_progress", {}) # clear progress
         await publish("", "fit_active", to_dict(dict(fitter_id=fitter_id, options=options)))
         await log(json.dumps(to_dict(options), indent=2), title = f"starting fitter {fitter_id}")
 
@@ -259,10 +266,12 @@ async def _fit_progress_handler(event: Dict):
         fitProblem.model_update()
         await publish("", "update_parameters", True)
         if message == 'complete':
-            await publish("", "fit_active", False)
+            await publish("", "fit_active", {})
     elif message == 'convergence_update':
         state.fitting.population = event["pop"]
         await publish("", "convergence_update", True)
+    elif message == 'progress':
+        await sio.emit("fit_progress", to_dict(event))
     elif message == 'uncertainty_update' or message == 'uncertainty_final':
         state.fitting.uncertainty_state = cast(bumps.dream.state.MCMCDraw, event["uncertainty_state"])
         await publish("", "uncertainty_update", True)
@@ -286,6 +295,7 @@ async def _fit_complete_handler(event):
     chisq = nice(2*event["value"]/problem.dof)
     problem.setp(event["point"])
     problem.model_update()
+    await publish("", "fit_active", {})
     await publish("", "update_parameters", True)
     await log(event["info"], title=f"done with chisq {chisq}")
 
@@ -331,12 +341,14 @@ async def get_plot_data(sid: str="", view: str = 'linear'):
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = state.problem.fitProblem
-    result = []
+    chisq = get_chisq(fitProblem)
+    plotdata = []
+    result = {"chisq": chisq, "plotdata": plotdata}
     for model in fitProblem.models:
         assert(isinstance(model, Experiment))
         theory = model.reflectivity()
         probe = model.probe
-        result.append(get_probe_data(theory, probe, model._substrate, model._surface))
+        plotdata.append(get_probe_data(theory, probe, model._substrate, model._surface))
         # fresnel_calculator = probe.fresnel(model._substrate, model._surface)
         # Q, FQ = probe.apply_beam(probe.calc_Q, fresnel_calculator(probe.calc_Q))
         # Q, R = theory
