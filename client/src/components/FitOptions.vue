@@ -94,14 +94,19 @@ function process_settings() {
   }))
 }
 
-function save() {
-  if (anyIsInvalid.value) {
-    return;
-  }
-  const new_settings = structuredClone(fitter_settings.value);
+function save(start: boolean = false) {
+   if (anyIsInvalid.value) {
+     return;
+   }
+   const new_settings = structuredClone(fitter_settings.value);
   new_settings[fitter_active_local.value] = { settings: process_settings() };
+  const fitter_settings_local = process_settings();
+  new_settings[fitter_active_local.value] = { settings: fitter_settings_local };
   props.socket.emit("publish", "fitter_settings", new_settings);
   props.socket.emit("publish", "fitter_active", fitter_active_local.value);
+  if (start) {
+    props.socket.emit("start_fit_thread", fitter_active_local.value, fitter_settings_local);
+  }
   close();
 }
 
@@ -186,8 +191,10 @@ defineExpose({
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" @click="reset">Reset Defaults</button>
-          <button type="button" class="btn btn-primary" :class="{disabled: anyIsInvalid}" @click="save">Save
-            Changes</button>
+          <button type="button" class="btn btn-success" :class="{disabled: anyIsInvalid}" @click="save(true)">Save and Start</button>
+          <button type="button" class="btn btn-primary" :class="{disabled: anyIsInvalid}" @click="save(false)">
+            Save Changes</button>
+
         </div>
       </div>
     </div>
