@@ -36,7 +36,7 @@ class GUIProgressMonitor(monitor.TimedUpdate):
         scale, err = nllf_scale(self.problem)
         chisq = format_uncertainty(scale*history.value[0], err)
         evt = dict(
-            problem=self.problem,
+            # problem=self.problem,
             message="progress",
             step=history.step[0],
             value=history.value[0],
@@ -80,7 +80,9 @@ class ConvergenceMonitor(monitor.Monitor):
 
 
     def config_history(self, history):
-        history.requires(time=1, population_values=1, value=1)
+        history.requires(population_values=1, value=1)
+        history.requires(time=1)
+        # history.requires(time=1, population_values=1, value=1)
 
     def __call__(self, history):
         # from old ConvergenceMonitor:
