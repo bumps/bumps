@@ -47,7 +47,7 @@ const fileBrowserTitle = ref("Load Model File");
 const model_loaded = shallowRef<{pathlist: string[], filename: string}>();
 const active_layout = ref("left-right");
 const active_panel = ref([0, 1]);
-const fit_active = ref<{ fitter_id?: string, options?: {} }>({});
+const fit_active = ref<{ fitter_id?: string, options?: {}, num_steps?: number }>({});
 const fit_progress = ref<{ chisq?: string, step?: number, value?: number }>({});
 
 // Create a SocketIO connection, to be passed to child components
@@ -74,8 +74,8 @@ socket.on('model_loaded', ({message: {pathlist, filename}}) => {
   model_loaded.value = {pathlist, filename};
 })
 
-socket.on('fit_active', ({ message: { fitter_id, options } }) => {
-  fit_active.value = { fitter_id, options };
+socket.on('fit_active', ({ message: { fitter_id, options, num_steps } }) => {
+  fit_active.value = { fitter_id, options, num_steps };
 });
 
 socket.on('fit_progress', (event) => {
@@ -248,17 +248,25 @@ onMounted(() => {
               </ul>
             </li> -->
           </ul>
-          <div class="px-4 m-0">
+          <div class="flex-grow-1 px-4 m-0">
             <h4 class="m-0">
               <!-- <div class="rounded p-2 bg-primary">Fitting: </div> -->
               <div v-if="fit_active.fitter_id !== undefined" class="badge bg-secondary p-2 align-middle">
-                <span class="align-middle px-1">Fitting: {{ fit_active.fitter_id }} step {{ fit_progress?.step }} of
-                  {{ fit_active?.options?.steps }}, chisq={{ fit_progress.chisq }}</span>
+                <div class="align-middle pt-2 pb-1 px-1 d-inline-block">
+                  <span>Fitting: {{ fit_active.fitter_id }} step {{ fit_progress?.step }} of
+                  {{ fit_active?.num_steps }}, chisq={{ fit_progress.chisq }}</span>
+                  <div class="progress mt-1" style="height:3px;">
+                    <div class="progress-bar" role="progressbar" :aria-valuenow="fit_progress?.step" 
+                      aria-valuemin="0" :aria-valuemax="fit_active?.num_steps ?? 100" :style="{width: ((fit_progress.step ?? 0) * 100 / (fit_active.num_steps ?? 1)).toFixed(1) + '%'}"></div>
+                  </div>
+                </div>
                 <button class="btn btn-danger btn-sm" @click="stopFit">Stop</button>
               </div>
-              <div v-else class="badge bg-secondary p-2">
-                <span class="align-middle px-1">Not fitting</span>
-                <button class="btn btn-success btn-sm" @click="startFit">Start</button>
+              <div v-else class="badge bg-secondary p-1">
+                <div class="align-middle p-2 d-inline-block">
+                  <span>Not fitting</span>
+                </div>
+                <button class="btn btn-success btn-sm" @click="startFit">Start {{ fitOptions?.fitter_active ?? "" }}</button>
               </div>
             </h4>
           </div>
