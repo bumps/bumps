@@ -36,7 +36,7 @@ const FIT_FIELDS = {
 }
 
 const OPTIONS_HELP = {
-  'dream': 'if Steps == 0, Steps will be calculated as (Burn-in steps) + (Samples / (Population * Num. Fitted Params))'
+  'dream': 'if Steps=0, Steps will be calculated as (Burn-in steps) + (Samples / (Population * Num. Fit Params))'
 }
 
 // make another working copy for editing:
@@ -149,7 +149,7 @@ defineExpose({
 <template>
   <div ref="dialog" class="modal fade" id="fitOptionsModal" tabindex="-1" aria-labelledby="fitOptionsLabel"
     :aria-hidden="isOpen">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="fitOptionsLabel">Fit Options</h5>
@@ -164,6 +164,7 @@ defineExpose({
                     :id="fname" :value="fname" @change="changeActiveFitter">
                   <label class="form-check-label" :for="fname">
                     {{fitter_defaults[fname].name}}
+                    <span v-if="fname !== 'scipy.leastsq'">({{ fname }})</span>
                   </label>
                 </div>
               </div>
@@ -173,6 +174,7 @@ defineExpose({
                     :id="fname" :value="fname" @change="changeActiveFitter">
                   <label class="form-check-label" :for="fname">
                     {{fitter_defaults[fname].name}}
+                    <span v-if="fname !== 'scipy.leastsq'">({{ fname }})</span>
                   </label>
                 </div>
               </div>
