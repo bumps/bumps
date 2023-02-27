@@ -10,7 +10,7 @@ import PanelTabContainer from './components/PanelTabContainer.vue';
 import FileBrowser from './components/FileBrowser.vue';
 import SummaryView from './components/SummaryView.vue';
 import ModelInspect from './components/ModelInspect.vue';
-import ModelViewPlotly from './components/ModelViewPlotly.vue';
+// import ModelViewPlotly from './components/ModelViewPlotly.vue';
 import ParameterView from './components/ParameterView.vue';
 import LogView from './components/LogView.vue';
 import ConvergenceView from './components/ConvergenceView.vue';
@@ -28,7 +28,7 @@ const panels = [
   {title: 'Convergence', component: ConvergenceView},
   {title: 'Profile', component: ModelView},
   {title: 'Model', component: ModelInspect},
-  {title: 'Profile2', component: ModelViewPlotly},
+  // {title: 'Profile2', component: ModelViewPlotly},
   {title: 'Parameters', component: ParameterView},
   {title: 'Correlations', component: CorrelationView},
   {title: 'Trace', component: ParameterTraceView},
@@ -169,7 +169,7 @@ onMounted(() => {
 
 <template>
   <div class="h-100 w-100 m-0 d-flex flex-column">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
       <div class="container-fluid">
         <div class="navbar-brand">
           <img src="./assets/refl1d-icon_256x256x32.png" alt="" height="24" class="d-inline-block align-text-middle">
