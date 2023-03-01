@@ -859,7 +859,7 @@ class MVNSingular:
         return self.dist.rvs(size=size)
 
     def entropy(self, N=10000):
-        # scipy 1.10 changed Covariance handling in stats, allow for that change
+        # CRUFT scipy==1.10.0: scipy.stats briefly removed the dist.cov attribute.
         if hasattr(self.dist, 'cov'):
             cov = self.dist.cov
         else:
