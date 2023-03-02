@@ -497,28 +497,22 @@ async def get_convergence_plot(sid: str=""):
 
 @sio.event
 @rest_get
-async def get_correlation_plot(sid: str = ""):
+async def get_correlation_plot(sid: str = "", nbins: int=50):
+    from .corrplot import Corr2d
     uncertainty_state = state.fitting.uncertainty_state
-    if uncertainty_state is not None:
-        import mpld3
-        import matplotlib
-        matplotlib.use("agg")
-        import matplotlib.pyplot as plt
+
+    if isinstance(uncertainty_state, bumps.dream.state.MCMCDraw):
         import time
         start_time = time.time()
         print('queueing new correlation plot...', start_time)
-
-        fig = plt.figure()
-        axes = fig.add_subplot(111)
-        bumps.dream.views.plot_corrmatrix(uncertainty_state.draw(), fig=fig)
+        draw = uncertainty_state.draw()
+        c = Corr2d(draw.points.T, bins=nbins, labels=draw.labels)
+        fig = c.plot()
         print("time to render but not serialize...", time.time() - start_time)
-        fig.canvas.draw()
-        dfig = mpld3.fig_to_dict(fig)
-        plt.close(fig)
-        # await sio.emit("profile_plot", dfig, to=sid)
+        serialized = to_dict(fig.to_dict())
         end_time = time.time()
         print("time to draw correlation plot:", end_time - start_time)
-        return dfig
+        return serialized
     else:
         return None
 
