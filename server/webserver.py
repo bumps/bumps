@@ -819,7 +819,9 @@ def main():
 
     fitter_id = args.fit
     if fitter_id is None:
-        fitter_id = state.topics.get("fitter_active", [{"message": None}])[-1]["message"]
+        fitter_active_topic = state.topics["fitter_active"]
+        if len(fitter_active_topic) > 0:
+            fitter_id = fitter_active_topic[-1]["message"]
     if fitter_id is None:
         fitter_id = 'amoeba'
     fitter_settings = FITTER_DEFAULTS[fitter_id]
