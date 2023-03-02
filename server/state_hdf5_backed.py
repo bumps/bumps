@@ -225,20 +225,27 @@ class State:
     fit_thread: Optional['FitThread'] = None
     abort_queue: Queue
 
-    def __init__(self, session_file_name: str = SESSION_FILE_NAME, in_memory: bool = False, backing_store: bool = False ):
+    def __init__(self, session_file_name: str = SESSION_FILE_NAME, in_memory: bool = False, backing_store: bool = False, read_only: bool = False ):
         # self.problem = problem
         # self.fitting = fitting if fitting is not None else FittingState()
         self.abort_queue = Queue()
         import h5py
-        hdf_kw = dict(driver="core", backing_store=backing_store) if in_memory else dict()
-        self.session_file = session_file = h5py.File(session_file_name, "a", libver='latest', **hdf_kw)
+        hdf_kw = dict(libver="latest")
+        if in_memory:
+            hdf_kw.update(dict(driver="core", backing_store=backing_store))
+        if read_only:
+            hdf_kw["swmr"] = True
+        mode = "r" if read_only else "a"
+        self.session_file = session_file = h5py.File(session_file_name, mode, **hdf_kw)
         topics_group = session_file.require_group("topics")
         problem_group = session_file.require_group("problem")
         fitting_group = session_file.require_group("fitting")
         self.topics = TopicsDict(topics_group)
         self.problem = ProblemState(problem_group)
         self.fitting = FittingState(fitting_group)
-        session_file.swmr_mode = True
+        if not read_only:
+            session_file.swmr_mode = True
+
 
     async def cleanup(self):
         self.session_file.close()
@@ -251,9 +258,11 @@ def write_uncertainty_state(state: 'MCMCDraw', group: 'Group', compression=COMPR
 
         to_save["thin_draws"], to_save["thin_point"], to_save["thin_logp"] = state.chains()
         to_save["update_draws"], to_save["update_CR_weight"] = state.CR_weight()
+        to_save["labels"] = np.array(state.labels, dtype=h5py.string_dtype())
 
         #TODO: missing _outliers from save_state
         for field_name, data in to_save.items():
+            print(field_name, field_name in group)
             if field_name in group:
                 dataset = cast(h5py.Dataset, group[field_name])
                 if dataset.shape != data.shape:
