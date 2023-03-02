@@ -121,12 +121,6 @@ class ConvergenceMonitor(monitor.Monitor):
 # (1) We are grabbing uncertainty_state from the history on monitor update
 # and holding onto it for the monitor final call. Need to restructure the
 # history/monitor interaction so that object lifetimes are better controlled.
-# (2) We set the uncertainty state directly in the GUI window. This is an
-# attempt to work around a memory leak which causes problems in the GUI when
-# it is updated too frequently. If the problem is that the event structure
-# is too large and wx isn't cleaning up properly then this should address it,
-# but if the problem lies within the DREAM plot functions or within matplotlib
-# then this change won't do anything and should be reverted.
 
 
 class DreamMonitor(monitor.Monitor):
