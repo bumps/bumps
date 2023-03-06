@@ -27,3 +27,17 @@ npm run dev
 ```sh
 npm run build
 ```
+
+# Publishing new client versions:
+(...after checking to make sure there aren't extraneous files in this folder)
+```sh
+npm version patch
+npm publish
+```
+
+and then
+```sh
+git commit package.json -m "webview client version bump"
+git pull
+git push
+```
