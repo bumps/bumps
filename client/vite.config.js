@@ -2,11 +2,19 @@ import { fileURLToPath, URL } from 'node:url'
 
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import generateFile from 'vite-plugin-generate-file'
 
 // https://vitejs.dev/config/
 export default ({mode}) => {
   return defineConfig({
-    plugins: [vue()],
+    plugins: [
+      vue(),
+      generateFile([{
+        type: 'yaml',
+        output: 'VERSION',
+        data: process.env.npm_package_version.toString(),
+      }])
+    ],
     base: '',
     resolve: {
       alias: {

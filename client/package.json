@@ -3,8 +3,8 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "vite",
-    "build": "vite build --emptyOutDir -m development && node -p process.env.npm_package_version > dist/VERSION",
-    "build_prod": "vite build --emptyOutDir -m production && node -p process.env.npm_package_version > dist/VERSION",
+    "build": "vite build --emptyOutDir -m development",
+    "build_prod": "vite build --emptyOutDir -m production",
     "preview": "vite preview --port 4173"
   },
   "dependencies": {
@@ -21,6 +21,7 @@
     "@types/plotly.js": "^2.12.5",
     "@types/uuid": "^8.3.4",
     "@vitejs/plugin-vue": "^3.0.3",
-    "vite": "^3.2.5"
+    "vite": "^3.2.5",
+    "vite-plugin-generate-file": "^0.0.4"
   }
 }
