@@ -2,12 +2,14 @@
 Miscellaneous utility functions.
 """
 from __future__ import division
+import warnings
 
 __all__ = ["kbhit", "profile", "pushdir", "push_seed", "redirect_console"]
 
 import sys
 import os
 import types
+import inspect
 
 try:  # CRUFT: python 2.x
     from cStringIO import StringIO
@@ -21,32 +23,22 @@ from numpy import ascontiguousarray as _dense
 from scipy.special import erf
 
 # this can be substituted with pydantic dataclass for schema-building...
-USE_PYDANTIC = os.environ.get('BUMPS_USE_PYDANTIC', "False") == "True"
-if USE_PYDANTIC:
-    from pydantic.dataclasses import dataclass
-else:
-    from dataclasses import dataclass
-from dataclasses import field, is_dataclass, Field
-
 try:
     from typing import Literal, Protocol, runtime_checkable
 except ImportError:
     from typing_extensions import Literal, Protocol, runtime_checkable
-from typing import Optional, Type, TypeVar, Any, Union, Dict, Callable, Tuple, List, Sequence
+from typing import Optional, Type, TypeVar, Any, Union, Dict, Callable, Tuple, List, Sequence, TYPE_CHECKING
 
-# decorator to tie model classes to implementations:
-def implementation(cls):
-    schema = cls.mro()[1]  # schema must be first
-    # if it is inherited from another schema with no new
-    # fields, there will be no __annotations__ dict yet:
-    annotations = getattr(schema, '__annotations__', {})
-    annotations['type'] = Literal[cls.__name__]
-    schema.__annotations__ = annotations
-    #schema.__annotations__['type'] = Literal[cls.__name__]
-    cls.type = cls.__name__
-    schema.__name__ = cls.__name__
-    dataclass(eq=False, init=False)(schema)
-    return cls
+USE_PYDANTIC = os.environ.get('BUMPS_USE_PYDANTIC', "False") == "True"
+if USE_PYDANTIC:
+    from pydantic.dataclasses import dataclass
+    from pydantic_numpy import NDArray
+else:
+    from dataclasses import dataclass
+    if TYPE_CHECKING:
+        from numpy.typing import NDArray
+
+from dataclasses import field, is_dataclass, Field
 
 def field_desc(description: str) -> Any:
     return field(metadata={"description": description})
@@ -72,7 +64,10 @@ def schema(
     """
     def set_dataclass(cls: Type[T]) -> Type[T]:
         realname = cls.__name__
+        if cls.__name__ != cls.__qualname__:
+            warnings.warn(f"serialization does not work on nested classes: {cls.__qualname__} != {cls.__name__}")
         name = realname if classname is None else classname
+        fqn = f"{cls.__module__}.{name}"
         all_annotations = getattr(cls, '__annotations__', {})
         if include is not None:
             if exclude is not None:
@@ -84,9 +79,10 @@ def schema(
             field_annotations = dict([(k, v) for k, v in all_annotations.items() if not k.startswith('_')])
         # we want this at the end, always, since it has a default value:
         field_annotations.pop('type', None)
-        field_annotations['type'] = Literal[name]
+        field_annotations['type'] = Literal[fqn]
+        setattr(cls, '__bumps_schema__', True)
         setattr(cls, '__annotations__', field_annotations)
-        setattr(cls, 'type', field(repr=False, default=name))
+        setattr(cls, 'type', field(repr=False, default=fqn))
         has_init = hasattr(cls, '__init__')
         do_init = init and not has_init
         # optional temporary name change, which affects generated model:
@@ -104,13 +100,13 @@ def schema(
         if not init and not has_init:
             # if the 'type' attribute is not going to be set by the 
             # dataclass-provided __init__, we will set it ourselves
-            setattr(cls, 'type', name)
+            setattr(cls, 'type', fqn)
         return cls
 
     return set_dataclass
 
 def has_schema(cls):
-    return is_dataclass(cls)
+    return is_dataclass(cls) and hasattr(cls, '__bumps_schema__')
 
 def parse_errfile(errfile):
     """
