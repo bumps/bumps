@@ -24,17 +24,14 @@ from enum import Enum
 from typing import (
     Type, TypeVar, Optional, Any, Union, Dict, Callable,
     Tuple, List, Sequence)
-try: # CRUFT: Literal is python 3.8
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal
+from .util import Literal
 
 import numpy as np
 from numpy import inf, isinf, isfinite
 
 from . import bounds as mbounds
 from . import pmath
-from .util import field, field_desc, schema, has_schema
+from .util import field, field_desc, schema
 
 BoundsType = mbounds.BoundsType
 
