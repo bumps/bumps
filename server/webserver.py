@@ -39,7 +39,7 @@ import bumps.dream.views, bumps.dream.varplot, bumps.dream.stats, bumps.dream.st
 import bumps.errplot
 import refl1d.errors
 import refl1d.fitproblem, refl1d.probe
-from refl1d.experiment import Experiment
+from refl1d.experiment import Experiment, ExperimentBase
 
 # Register the refl1d model loader
 import refl1d.fitplugin
@@ -362,7 +362,7 @@ async def get_plot_data(sid: str="", view: str = 'linear'):
     plotdata = []
     result = {"chisq": chisq, "plotdata": plotdata}
     for model in fitProblem.models:
-        assert(isinstance(model, Experiment))
+        assert(isinstance(model, ExperimentBase))
         theory = model.reflectivity()
         probe = model.probe
         plotdata.append(get_probe_data(theory, probe, model._substrate, model._surface))
@@ -398,7 +398,7 @@ async def get_profile_plot(sid: str="", model_index: int=0):
     if model_index > len(models):
         return None
     model = models[model_index]
-    assert (isinstance(model, Experiment))
+    assert (isinstance(model, ExperimentBase))
 
     fig = plot_sld_profile_plotly(model)
     return to_json_compatible_dict(fig.to_dict())
@@ -413,7 +413,7 @@ async def get_profile_data(sid: str="", model_index: int=0):
     if (model_index > len(models)):
         return None
     model = models[model_index]
-    assert(isinstance(model, Experiment))
+    assert(isinstance(model, ExperimentBase))
     output = {}
     output["ismagnetic"] = model.ismagnetic
     if model.ismagnetic:
