@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import itertools
 import threading
 import signal
+from types import GeneratorType
 from typing import Dict, List, Literal, Optional, Union, TypedDict, cast
 from datetime import datetime
 import warnings
@@ -29,7 +30,7 @@ mimetypes.add_type("image/png", ".png")
 mimetypes.add_type("image/svg+xml", ".svg")
 
 from bumps.fitters import DreamFit, LevenbergMarquardtFit, SimplexFit, DEFit, MPFit, BFGSFit, FitDriver, fit, nllf_scale, format_uncertainty
-from bumps.serialize import to_dict, from_dict
+from bumps.serialize import to_dict as serialize, from_dict as deserialize
 from bumps.mapper import MPMapper
 from bumps.parameter import Parameter, Variable, unique
 import bumps.fitproblem
@@ -141,7 +142,7 @@ async def load_problem_file(sid: str, pathlist: List[str], filename: str):
     if filename.endswith(".json"):
         with open(path, "rt") as input_file:
             serialized = json.loads(input_file.read())
-        problem = from_dict(serialized)
+        problem = deserialize(serialized)
     else:
         from bumps.cli import load_model
         problem = load_model(str(path))
@@ -181,7 +182,7 @@ async def save_problem_file(sid: str, pathlist: Optional[List[str]] = None, file
         #confirmation needed:
         return save_filename
 
-    serialized = to_dict(problem_state.fitProblem)
+    serialized = serialize(problem_state.fitProblem)
     with open(Path(path, save_filename), "wt") as output_file:
         output_file.write(json.dumps(serialized))
 
@@ -267,8 +268,8 @@ async def start_fit_thread(sid: str="", fitter_id: str="", options=None):
         fit_thread.start()
         state.fit_thread = fit_thread
         await sio.emit("fit_progress", {}) # clear progress
-        await publish("", "fit_active", to_dict(dict(fitter_id=fitter_id, options=options, num_steps=num_steps)))
-        await log(json.dumps(to_dict(options), indent=2), title = f"starting fitter {fitter_id}")
+        await publish("", "fit_active", to_json_compatible_dict(dict(fitter_id=fitter_id, options=options, num_steps=num_steps)))
+        await log(json.dumps(to_json_compatible_dict(options), indent=2), title = f"starting fitter {fitter_id}")
 
 async def _fit_progress_handler(event: Dict):
     # session_id = event["session_id"]
@@ -287,7 +288,7 @@ async def _fit_progress_handler(event: Dict):
         state.fitting.population = event["pop"]
         await publish("", "convergence_update", True)
     elif message == 'progress':
-        await sio.emit("fit_progress", to_dict(event))
+        await sio.emit("fit_progress", to_json_compatible_dict(event))
     elif message == 'uncertainty_update' or message == 'uncertainty_final':
         state.fitting.uncertainty_state = cast(bumps.dream.state.MCMCDraw, event["uncertainty_state"])
         await publish("", "uncertainty_update", True)
@@ -377,16 +378,15 @@ async def get_plot_data(sid: str="", view: str = 'linear'):
         # else:
         #     output = dict(Q = probe.Q, dQ = probe.dQ, R = R, fresnel = FQ)
         # result.append(output)
-    return to_dict(result)
+    return to_json_compatible_dict(result)
 
 @sio.event
 @rest_get
 async def get_model(sid: str=""):
-    from bumps.serialize import to_dict
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = state.problem.fitProblem
-    return to_dict(fitProblem)
+    return serialize(fitProblem)
 
 @sio.event
 @rest_get
@@ -400,20 +400,8 @@ async def get_profile_plot(sid: str="", model_index: int=0):
     model = models[model_index]
     assert (isinstance(model, Experiment))
 
-    # data = np.random.random((100,200))
-    # x = np.arange(0, 10, 0.1)
-    # y = np.random.random(x.shape) + x
-    # import plotly.express as px
-    # fig = px.imshow(data)
-    # fig.update_yaxes(exponentformat='e',
-    #                  title={'text': r"$\frac{I}{I_0}$"})
-    # fig = px.line(x=x, y=y)
-
     fig = plot_sld_profile_plotly(model)
-
-    # print(to_dict(fig.to_dict()))
-
-    return to_dict(fig.to_dict())
+    return to_json_compatible_dict(fig.to_dict())
 
 @sio.event
 @rest_get
@@ -440,7 +428,7 @@ async def get_profile_data(sid: str="", model_index: int=0):
             output['step_profile'] = dict(z=z, rho=rho, irho=irho)
         z, rho, irho = model.smooth_profile()
         output['smooth_profile'] = dict(z=z, rho=rho, irho=irho)
-    return to_dict(output)
+    return to_json_compatible_dict(output)
 
 @sio.event
 @rest_get
@@ -509,7 +497,7 @@ async def get_correlation_plot(sid: str = "", nbins: int=50):
         c = Corr2d(draw.points.T, bins=nbins, labels=draw.labels)
         fig = c.plot()
         print("time to render but not serialize...", time.time() - start_time)
-        serialized = to_dict(fig.to_dict())
+        serialized = to_json_compatible_dict(fig.to_dict())
         end_time = time.time()
         print("time to draw correlation plot:", end_time - start_time)
         return serialized
@@ -527,7 +515,7 @@ async def get_uncertainty_plot(sid: str = ""):
         draw = uncertainty_state.draw()
         stats = bumps.dream.stats.var_stats(draw)
         fig = plot_vars(draw, stats)
-        return to_dict(fig.to_dict())
+        return to_json_compatible_dict(fig.to_dict())
     else:
         return None
 
@@ -618,7 +606,7 @@ async def get_parameters(sid: str = "", only_fittable: bool = False):
     else:
         parameter_infos = params_to_list(all_parameters)
         
-    return to_dict(parameter_infos)
+    return to_json_compatible_dict(parameter_infos)
 
 @sio.event
 async def set_parameter(sid: str, parameter_id: str, property: Literal["value01", "value", "min", "max"], value: Union[float, str, bool]):
@@ -756,7 +744,27 @@ def nice(v, digits=4):
         place = floor(log10(abs(v)))
         scale = 10**(place-(digits-1))
         return sign*floor(abs(v)/scale+0.5)*scale
-    
+
+
+def to_json_compatible_dict(obj):
+    if isinstance(obj, (list, tuple)):
+        return type(obj)(to_json_compatible_dict(v) for v in obj)
+    elif isinstance(obj, GeneratorType):
+        return list(to_json_compatible_dict(v) for v in obj)
+    elif isinstance(obj, dict):
+        return type(obj)((to_json_compatible_dict(k), to_json_compatible_dict(v))
+                        for k, v in obj.items())
+    elif isinstance(obj, np.ndarray) and obj.dtype.kind in ['f', 'i']:
+        return obj.tolist()
+    elif isinstance(obj, np.ndarray) and obj.dtype.kind == 'O':
+        return to_json_compatible_dict(obj.tolist())
+    elif isinstance(obj, float):
+        return str(obj) if np.isinf(obj) else obj
+    elif isinstance(obj, int) or isinstance(obj, str) or obj is None:
+        return obj
+    else:
+        raise ValueError("obj %s is not serializable" % str(obj))
+
 
 class ParamInfo(TypedDict, total=False):
     id: str
