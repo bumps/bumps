@@ -1,30 +1,36 @@
 """
-Build layout for histogram plots
+Build layout for histogram plots (plotly)
 """
 
 __all__ = ['var_plot_size', 'plot_vars', 'plot_var']
 
 from math import ceil, sqrt
-from typing import Dict
-
 import numpy as np
 
-# Set space between plots in horiz and vert.
-H_SPACE = 0.2
-V_SPACE = 0.2
+import typing
+if typing.TYPE_CHECKING:
+    from bumps.dream.state import Draw
+    from bumps.dream.stats import VarStats
+    import plotly.graph_objects as go
 
-# Set top, bottom, left margins.
-T_MARGIN = 0.2
-B_MARGIN = 0.2
-L_MARGIN = 0.2
-R_MARGIN = 0.4
+# TODO: improve type hinting on VarStats (dataclass with optional fields?)
 
-# Set desired plot sizes.
-TILE_W = 3.0
-TILE_H = 2.0
-CBAR_WIDTH = 0.75
+# # Set space between plots in horiz and vert.
+# H_SPACE = 0.2
+# V_SPACE = 0.2
+
+# # Set top, bottom, left margins.
+# T_MARGIN = 0.2
+# B_MARGIN = 0.2
+# L_MARGIN = 0.2
+# R_MARGIN = 0.4
+
+# # Set desired plot sizes.
+# TILE_W = 3.0
+# TILE_H = 2.0
+# CBAR_WIDTH = 0.75
+
 CBAR_COLORS = 64
-
 LINE_COLOR = "red"
 ANNOTATION_COLOR = "blue"
 HISTOGRAM_COLORMAP = "Greens_r"
@@ -41,7 +47,7 @@ def tile_axes_square(n):
     return cols, rows
 
 
-def plot_vars(draw, all_vstats, **kw):
+def plot_vars(draw: 'Draw', all_vstats, **kw):
     from plotly.subplots import make_subplots
 
     n = len(all_vstats)
@@ -50,7 +56,7 @@ def plot_vars(draw, all_vstats, **kw):
     snllf = np.sort(-draw.logp)
     vmin, vmax = snllf[0], snllf[int(0.98*(len(snllf)-1))]  # robust range
     cbar_edges = np.linspace(vmin, vmax, CBAR_COLORS)
-    titles = [vstats.label for vstats in all_vstats]
+    # titles = [vstats.label for vstats in all_vstats]
 
     # fig = make_subplots(rows=nrow, cols=ncol, subplot_titles=titles)
     fig = make_subplots(rows=nrow, cols=ncol)
@@ -65,13 +71,12 @@ def plot_vars(draw, all_vstats, **kw):
     fig.update_yaxes(dict(showticklabels=False))
     fig.update_layout(height=600, width=800, coloraxis_colorbar_title="-logP")
     fig.update_layout(coloraxis = {'colorscale': HISTOGRAM_COLORMAP, "cmin": vmin, "cmax": vmax})
-    
+
     return fig
 
 
-def plot_var(fig, draw, vstats, var, cbar_edges, nbins=30, row=None, col=None):
+def plot_var(fig: 'go.Figure', draw: 'Draw', vstats: 'VarStats', var: int, cbar_edges: np.ndarray, nbins=30, row=None, col=None):
     import plotly.graph_objects as go
-    assert isinstance(fig, go.Figure)
     values = draw.points[:, var].flatten()
     bin_range = vstats.p95_range
     #bin_range = np.min(values), np.max(values)
@@ -84,13 +89,12 @@ def plot_var(fig, draw, vstats, var, cbar_edges, nbins=30, row=None, col=None):
     _decorate_histogram(vstats, fig, row=row, col=col)
 
 
-def _decorate_histogram(vstats, fig, col=None, row=None):
+def _decorate_histogram(vstats: 'VarStats', fig: 'go.Figure', col: typing.Optional[int]=None, row: typing.Optional[int]=None):
     import plotly.graph_objects as go
 
     l95, h95 = vstats.p95_range
     l68, h68 = vstats.p68_range
     # Shade things inside 1-sigma
-    assert isinstance(fig, go.Figure)
     fig.add_vrect(x0=l68, x1=h68, fillcolor='gold', opacity=0.5, layer='below', line={"width": 0}, col=col, row=row)
 
     def marker(symbol, position, info_template):
