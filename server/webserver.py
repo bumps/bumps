@@ -5,7 +5,7 @@ import itertools
 import threading
 import signal
 from types import GeneratorType
-from typing import Dict, List, Literal, Optional, Union, TypedDict, cast
+from typing import Dict, List, Literal, Optional, Union, Tuple, TypedDict, cast
 from datetime import datetime
 import warnings
 from queue import Queue
@@ -39,7 +39,7 @@ import bumps.dream.views, bumps.dream.varplot, bumps.dream.stats, bumps.dream.st
 import bumps.errplot
 import refl1d.errors
 import refl1d.fitproblem, refl1d.probe
-from refl1d.experiment import Experiment, ExperimentBase
+from refl1d.experiment import Experiment, MixedExperiment, ExperimentBase
 
 # Register the refl1d model loader
 import refl1d.fitplugin
@@ -153,12 +153,23 @@ async def load_problem_file(sid: str, pathlist: List[str], filename: str):
     state.problem.fitProblem = problem
     print(f'model loaded: {path}')
     await log(f'model loaded: {path}')
-
-
-    model_names = [getattr(m, 'name', None) for m in list(problem.models)]
-    await publish("", "model_loaded", {"pathlist": pathlist, "filename": filename, "model_names": model_names})
+    await publish("", "model_loaded", {"pathlist": pathlist, "filename": filename})
     await publish("", "update_model", True)
     await publish("", "update_parameters", True)
+
+@sio.event
+async def get_model_names(sid: str=""):
+    problem = state.problem.fitProblem
+    if problem is None:
+        return None
+    output: List[Dict] = []
+    for model_index, model in enumerate(problem.models):
+        if isinstance(model, Experiment):
+            output.append(dict(name=model.name, part_name=None, model_index=model_index, part_index=0))
+        elif isinstance(model, MixedExperiment):
+            for part_index, part in enumerate(model.parts):
+                output.append(dict(name=model.name, part_name=part.name, model_index=model_index, part_index=part_index))
+    return output
 
 @sio.event
 async def save_problem_file(sid: str, pathlist: Optional[List[str]] = None, filename: Optional[str] = None, overwrite: bool = False):
@@ -390,7 +401,7 @@ async def get_model(sid: str=""):
 
 @sio.event
 @rest_get
-async def get_profile_plot(sid: str="", model_index: int=0):
+async def get_profile_plot(sid: str="", model_index: int=0, sample_index: int=0):
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = state.problem.fitProblem
@@ -398,8 +409,9 @@ async def get_profile_plot(sid: str="", model_index: int=0):
     if model_index > len(models):
         return None
     model = models[model_index]
-    assert (isinstance(model, ExperimentBase))
-
+    assert (isinstance(model, Union[Experiment, MixedExperiment]))
+    if isinstance(model, MixedExperiment):
+        model = model.parts[sample_index]
     fig = plot_sld_profile_plotly(model)
     return to_json_compatible_dict(fig.to_dict())
 
