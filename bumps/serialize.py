@@ -5,26 +5,27 @@ from . import bounds, parameter, plugin
 import numpy as np
 from dataclasses import is_dataclass, fields, dataclass
 from importlib import import_module
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Literal, Optional, Tuple, Union
 from types import GeneratorType
 import traceback
 import warnings
 import asyncio
 from collections import defaultdict
 
-DEBUG = True
+from .util import SCHEMA_ATTRIBUTE_NAME, schema, NumpyArray
+
+DEBUG = False
 MISSING = object()
 REFERENCE_TYPE = "Reference"
 
 @dataclass
 class Reference:
     id: str
+    type: Literal[REFERENCE_TYPE]
 
 class Deserializer(object):
     def __init__(self, loop=None):
-        loop = loop if loop is not None else asyncio.get_running_loop()
-        self.loop = loop
-        self.refs = {}
+        self.loop = loop if loop is not None else asyncio.get_running_loop()
         self.lock = asyncio.Lock()
         self.deferred: Dict[str, asyncio.Future] = defaultdict(self.loop.create_future)
     
@@ -45,16 +46,19 @@ class Deserializer(object):
                     fut = self.deferred[obj_id]
                 return await fut
 
-            if not t == 'np.ndarray':
+            if t == 'bumps.util.NumpyArray':
                 # skip processing values list in ndarray
+                return self.ndarray(obj)
+            else:
                 keys = obj.keys()
                 values = await asyncio.gather(*[self.rehydrate(value) for value in obj.values()])
                 for key,value in zip(keys, values):
                     obj[key] = value
 
             if t is MISSING:
+                # no "type" provided, so no class to instantiate
                 return obj
-            elif t == 'np.ndarray':
+            elif t == 'bumps.util.NumpyArray':
                 return self.ndarray(obj)
             else:
                 try:
@@ -76,46 +80,38 @@ class Deserializer(object):
 
     async def instantiate(self, klass: type, typename: str, serialized: dict):
         s = serialized.copy()
-        obj_id = s.get("id", MISSING) # will id be a required schema element?
+        obj_id: str = s.get("id", MISSING) # will id be a required schema element?
         #print('rehydrating: ', typename)
-        if obj_id is MISSING or not obj_id in self.refs:
-            # use from_dict to initialize the class, if that method exists:
-            class_factory = getattr(klass, 'from_dict', klass)
+        fut: Optional[asyncio.Future] = None
+        if obj_id is not MISSING:
+            async with self.lock:
+                # self.deferred is a defaultdict, so a new Future is returned if none
+                # already exists for that obj_id
+                fut = self.deferred[obj_id]
+                if fut.done():
+                    return fut.result()
 
-            try:
-                hydrated = class_factory(**s)
-            except Exception as e:
-                print(class_factory, s, typename)
-                raise e
-            if obj_id is not MISSING:
-                self.refs[obj_id] = hydrated
-                async with self.lock:
-                    if DEBUG and not obj_id in self.deferred:
-                        print(f"setting future value for {obj_id} to {hydrated}")
-                    fut: asyncio.Future = self.deferred[obj_id]
-                    fut.set_result(hydrated)
-        else:
-            print(f"loading from refs: {typename}, {obj_id}")
-            hydrated = self.refs[obj_id]
+        # if klass provides 'from_dict' method, use it - 
+        # otherwise use klass.__init__ directly.
+        class_factory = getattr(klass, 'from_dict', klass)
+        try:
+            hydrated = class_factory(**s)
+        except Exception as e:
+            print(class_factory, s, typename)
+            raise e
+
+        if fut is not None:
+            if DEBUG:
+                print(f"setting future value for {obj_id} to {hydrated}")
+            async with self.lock:
+                fut.set_result(hydrated)
+            
         return hydrated
 
     def ndarray(self, obj: dict):
         return np.asarray(obj['values'], dtype=np.dtype(obj.get('dtype', float)))
-    
-    def resolve_references(self, obj):
-        if isinstance(obj, Reference):
-            return self.refs.get(obj.id)
-        elif isinstance(obj, dict):
-            for key,value in obj.items():
-                    obj[key] = self.resolve_references(value)
-            return obj                
-        elif isinstance(obj, list):
-            return [self.resolve_references(v) for v in obj]
-        elif isinstance(obj, tuple):
-            return tuple(self.resolve_references(v) for v in obj)
-        else:
-            return obj
-    
+
+
 async def async_from_dict(serialized, loop=None):
     oasis = Deserializer(loop)
     return await oasis.rehydrate(serialized)
@@ -123,25 +119,46 @@ async def async_from_dict(serialized, loop=None):
 def from_dict(serialized):
     return asyncio.run(async_from_dict(serialized))
 
-def load(filename):
+async def async_load(filename):
+    """ use in e.g. Jupyter notebooks """
     with open(filename, 'r') as fid:
-        return from_dict(json.loads(fid.read()))
-
+        return await async_from_dict(json.loads(fid.read()))
+    
+def load(filename):
+    return asyncio.run(async_load(filename))
 
 class Serializer:
-    def __init__(self):
+    def __init__(self, use_refs=True):
         self.refs = {}
+        self.use_refs = use_refs
 
-    def dataclass_to_dict(self, obj):
-        return dict([(f.name, self.to_dict(getattr(obj, f.name))) for f in fields(obj)])
+    def dataclass_to_dict(self, dclass, include=None, exclude=None):
+        all_fields = fields(dclass)
+        if include is not None:
+            all_fields = [f for f in all_fields if f.name in include]
+        elif exclude is not None:
+            all_fields = [f for f in all_fields if not f.name in exclude and not f.name.startswith('_')]
+        else:
+            all_fields = [f for f in all_fields if not f.name.startswith('_')]
+        cls = dclass.__class__
+        fqn = f"{cls.__module__}.{cls.__qualname__}"
+        output = dict([(f.name, self.to_dict(getattr(dclass, f.name))) for f in all_fields])
+        output["type"] = fqn
+        return output
 
     def to_dict(self, obj):
-        if hasattr(obj, '__bumps_schema__') and hasattr(obj, 'id') and hasattr(obj, 'type'):
-            if obj.id in self.refs:
+        if hasattr(obj, SCHEMA_ATTRIBUTE_NAME):
+            schema_opts = getattr(obj, SCHEMA_ATTRIBUTE_NAME)
+            include = schema_opts.get("include")
+            exclude = schema_opts.get("exclude")
+            if self.use_refs and hasattr(obj, 'id') and obj.id in self.refs:
                 return dict(id=obj.id, type=REFERENCE_TYPE)
             else:
-                return self.refs.setdefault(obj.id, self.dataclass_to_dict(obj))
-        if is_dataclass(obj):
+                output = self.dataclass_to_dict(obj, include=include, exclude=exclude)
+                if self.use_refs and hasattr(obj, 'id'):
+                    self.refs.setdefault(obj.id, output)
+                return output
+        elif is_dataclass(obj):
             return self.dataclass_to_dict(obj)
         elif isinstance(obj, (list, tuple)):
             return type(obj)(self.to_dict(v) for v in obj)
@@ -152,10 +169,10 @@ class Serializer:
         elif isinstance(obj, dict):
             return type(obj)((self.to_dict(k), self.to_dict(v))
                             for k, v in obj.items())
-        elif isinstance(obj, np.ndarray) and obj.dtype.kind in ['f', 'i']:
-            return dict(type="np.ndarray", dtype=obj.dtype.name, values=obj.tolist())
+        elif isinstance(obj, np.ndarray) and obj.dtype.kind in ['f', 'i', 'U']:
+            return dict(type="bumps.util.NumpyArray", dtype=str(obj.dtype), values=obj.tolist())
         elif isinstance(obj, np.ndarray) and obj.dtype.kind == 'O':
-            return to_dict(obj.tolist())
+            return self.to_dict(obj.tolist())
         elif isinstance(obj, float):
             return str(obj) if np.isinf(obj) else obj
         elif isinstance(obj, int) or isinstance(obj, str) or obj is None:
@@ -164,8 +181,8 @@ class Serializer:
             raise ValueError("obj %s is not serializable" % str(obj))
 
 
-def to_dict(obj):
-    return Serializer().to_dict(obj)
+def to_dict(obj, use_refs=True):
+    return Serializer(use_refs=use_refs).to_dict(obj)
 
 def save(filename, problem):
     try:
