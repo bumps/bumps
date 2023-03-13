@@ -47,6 +47,18 @@ import bumps.cli
 bumps.cli.install_plugin(refl1d.fitplugin)
 
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
+
+### BEGIN PATCH
+# patch the plotly library to disable levenshtein lookup for missing strings
+# which is taking a ridiculous amount of time in make_subplots
+# See: https://github.com/plotly/plotly.py/issues/4100
+def disable_find_closest_string(string, strings):
+    raise ValueError()
+
+import _plotly_utils.utils
+_plotly_utils.utils.find_closest_string = disable_find_closest_string
+### END PATCH
+
 from .profile_plot import plot_sld_profile_plotly
 from .varplot import plot_vars
 # from .state_hdf5_backed import State
