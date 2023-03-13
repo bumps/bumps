@@ -32,7 +32,8 @@ from typing import Optional, Type, TypeVar, Any, Union, Dict, Callable, Tuple, L
 USE_PYDANTIC = os.environ.get('BUMPS_USE_PYDANTIC', "False") == "True"
 if USE_PYDANTIC:
     from pydantic.dataclasses import dataclass
-    from pydantic_numpy import NDArray
+    from numpy.typing import NDArray as _NDArray
+    # from pydantic_numpy import NDArray
 else:
     from dataclasses import dataclass
     if TYPE_CHECKING:
@@ -44,6 +45,7 @@ def field_desc(description: str) -> Any:
     return field(metadata={"description": description})
 
 T = TypeVar('T')
+SCHEMA_ATTRIBUTE_NAME = '__bumps_schema__'
 
 def schema(
         *,
@@ -51,7 +53,8 @@ def schema(
         exclude: Optional[List[str]] = None,
         classname: Optional[str] = None,
         eq: bool = True,
-        init: bool = False
+        init: bool = False,
+        frozen: bool = False,
     ) -> Callable[[Type[T]], Type[T]]:
     
     """ 
@@ -68,45 +71,64 @@ def schema(
             warnings.warn(f"serialization does not work on nested classes: {cls.__qualname__} != {cls.__name__}")
         name = realname if classname is None else classname
         fqn = f"{cls.__module__}.{name}"
-        all_annotations = getattr(cls, '__annotations__', {})
-        if include is not None:
-            if exclude is not None:
-                raise ValueError("include array and exclude array are mutually exclusive - only define one")
-            field_annotations = dict([(k, all_annotations[k]) for k in include])
-        elif exclude is not None:
-            field_annotations = dict([(k, v) for k, v in all_annotations.items() if not k in exclude])
-        else:
-            field_annotations = dict([(k, v) for k, v in all_annotations.items() if not k.startswith('_')])
-        # we want this at the end, always, since it has a default value:
-        field_annotations.pop('type', None)
-        field_annotations['type'] = Literal[fqn]
-        setattr(cls, '__bumps_schema__', True)
-        setattr(cls, '__annotations__', field_annotations)
-        setattr(cls, 'type', field(repr=False, default=fqn))
-        has_init = hasattr(cls, '__init__')
-        do_init = init and not has_init
-        # optional temporary name change, which affects generated model:
-        if name != realname:
+
+        # check for invalid arguments:
+        # TODO: these arguments appear to never be used... drop them?
+        if include is not None and exclude is not None:
+            raise ValueError(f"{fqn} schema: include array and exclude array are mutually exclusive - only define one")
+
+        dclass_kwargs: Dict[str, Any] = dict(init=init, eq=eq, frozen=frozen)
+
+        # TODO: when pydantic v2 is used, migrate to new function __pydantic_modify_json_schema__
+        # instead of using Config class 
+        # (see https://github.com/pydantic/pydantic/blob/73373c3e08fe5fe23e4b05f549ea34e0da6a16b7/docs/examples/schema_extra_callable.py#L12)
+        if USE_PYDANTIC:
+            # only when generating schema...
+            class Config:
+                @staticmethod
+                def schema_extra(schema: Dict[str, Any], model: Any) -> None:
+                    model.__name__ = name
+                    schema.pop("title")
+                    props = schema.get("properties", {})
+                    if include is not None:
+                        for item in props:
+                            if not item in include:
+                                props.pop(item)
+                    elif exclude is not None:
+                        for item in exclude:
+                            props.pop(item)
+                    props['type'] = {'enum': [fqn]}
+
+            dclass_kwargs["config"] = Config
             cls.__name__ = name
-        dataclass(init=init, eq=eq)(cls)
-        # set the name back, to match python globals:
-        cls.__name__ = realname
-        # HACK! Pydantic doesn't copy __doc__ into model
-        if hasattr(cls, '__pydantic_model__'):
-            model = getattr(cls, '__pydantic_model__')
-            docstring = getattr(cls, 'schema_description', cls.__doc__)
-            setattr(model, '__doc__', docstring)
-        setattr(cls, '__annotations__', all_annotations)
-        if not init and not has_init:
-            # if the 'type' attribute is not going to be set by the 
-            # dataclass-provided __init__, we will set it ourselves
-            setattr(cls, 'type', fqn)
+
+        setattr(cls, SCHEMA_ATTRIBUTE_NAME, dict(include=include, exclude=exclude, fqn=fqn))
+        dataclass(**dclass_kwargs)(cls)
+        if cls.__name__ != realname:
+            cls.__name__ = realname
         return cls
 
     return set_dataclass
 
 def has_schema(cls):
-    return is_dataclass(cls) and hasattr(cls, '__bumps_schema__')
+    return is_dataclass(cls) and hasattr(cls, SCHEMA_ATTRIBUTE_NAME)
+
+@schema(init=True)
+class NumpyArray:
+    """
+    Wrapper for numpy arrays:
+    on serialize, 
+     - array.tolist() is called and stored in 'values' attribute
+     - str(array.dtype) is stored in 'dtype' attribute
+
+     on deserialize,
+      - return new np.ndarray(values, dtype=dtype)
+    """
+    dtype: str
+    values: Sequence = field(default_factory=list)
+
+if USE_PYDANTIC:
+    NDArray = NumpyArray
 
 def parse_errfile(errfile):
     """
