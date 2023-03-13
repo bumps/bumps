@@ -662,33 +662,27 @@ class Variable(ValueProtocol, VariableSchema):
     def parameters(self):
         return []
 
-# Note: need constant schema so that value can be the name of the value in
-# the schema while being the name of the property in the class
-@schema(classname="Constant")
-class ConstantSchema:
+
+@schema(frozen=True, init=False)
+class Constant(ValueProtocol): # type: ignore
     """
     Saved state for an unmodifiable value.
+
+    A constant is like a fixed parameter. You can't change it's value, set
+    it equal to another parameter, or assign a prior distribution.
     """
+
     value: float
     name: Optional[str]
     id: str = field(metadata={"format": "uuid"})
 
-class Constant(ValueProtocol, ConstantSchema): # type: ignore
-    """
-    A constant is like a fixed parameter. You can't change it's value, set
-    it equal to another parameter, or assign a prior distribution.
-    """
     fittable = False  # class property fixed across all objects
     fixed = True # class property fixed across all objects
 
     def __init__(self, value: float, name: Optional[str]=None, id: Optional[str]=None):
-        self._value = value
+        self.value = value
         self.name = name
         self.id = id if id is not None else str(uuid.uuid4())
-
-    @property
-    def value(self):
-        return self._value
 
     def parameters(self):
         return [self]
