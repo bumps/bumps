@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /// <reference types="@types/plotly.js" />
-import { ref, onMounted, watch, onUpdated, computed, shallowRef } from 'vue';
+import { ref, onMounted, watch, onUpdated, computed, shallowRef, ssrContextKey } from 'vue';
 import * as Plotly from 'plotly.js/lib/core';
 import type { Socket } from 'socket.io-client';
 import { setupDrawLoop } from '../setupDrawLoop';
@@ -35,7 +35,13 @@ function generate_new_traces(model_data, view: ReflectivityPlot) {
       for (let model of model_data) {
         for (let xs of model) {
           theory_traces.push({ x: xs.Q, y: xs.theory, mode: 'lines', name: xs.label + ' theory', line: { width: 2 } });
-          data_traces.push({ x: xs.Q, y: xs.R, error_y: {type: 'data', array: xs.dR, visible: true}, mode: 'markers', name: xs.label + ' data' });
+          if (xs.R !== undefined) {
+            const data_trace = { x: xs.Q, y: xs.R, mode: 'markers', name: xs.label + ' data' };
+            if (xs.dR !== undefined) {
+              data_trace.error_y = {type: 'data', array: xs.dR, visible: true};
+            }
+            data_traces.push(data_trace);
+          }
         }
       }
       break;
@@ -45,9 +51,11 @@ function generate_new_traces(model_data, view: ReflectivityPlot) {
       for (let model of model_data) {
         for (let xs of model) {
           const theory = xs.theory.map((y, i) => (y / (xs.fresnel[i])));
-          const R = xs.R.map((y, i) => (y / (xs.fresnel[i])));
           theory_traces.push({ x: xs.Q, y: theory, mode: 'lines', name: xs.label + ' theory', line: { width: 2 } });
-          data_traces.push({ x: xs.Q, y: R, mode: 'markers', name: xs.label + ' data' });
+          if (xs.R !== undefined) {
+            const R = xs.R.map((y, i) => (y / (xs.fresnel[i])));
+            data_traces.push({ x: xs.Q, y: R, mode: 'markers', name: xs.label + ' data' });
+          }
         }
       }
       break;
