@@ -1,0 +1,7 @@
+html, body, #app {
+    height: 100%;
+}
+
+.flex-column {
+    min-height: 0;
+}
