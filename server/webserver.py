@@ -297,7 +297,6 @@ async def start_fit_thread(sid: str="", fitter_id: str="", options=None, termina
 
 async def _fit_progress_handler(event: Dict):
     # session_id = event["session_id"]
-    print("progress: ", event)
     problem_state = state.problem
     fitProblem = problem_state.fitProblem if problem_state is not None else None
     if fitProblem is None:
