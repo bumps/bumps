@@ -842,6 +842,20 @@ def params_to_list(params, lookup=None, pathlist=None, links=None) -> List[Param
 
 import argparse
 
+
+class Namespace(argparse.Namespace):
+    """ provide type hints for arguments """
+    filename: Optional[str]
+    headless: bool
+    external: bool
+    port: int
+    hub: Optional[str]
+    fit: Optional[str]
+    start: bool
+    store: Optional[str]
+    exit: bool
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('filename', nargs='?', help='problem file to load, .py or .json (serialized) fitproblem')
@@ -855,7 +869,7 @@ def main():
     parser.add_argument('--store', default=None, type=str, help='backing file for state')
     parser.add_argument('--exit', action='store_true', help='end process when fit complete (fit results lost unless store is specified)')
     # parser.add_argument('-c', '--config-file', type=str, help='path to JSON configuration to load')
-    args = parser.parse_args()
+    args = parser.parse_args(namespace=Namespace())
 
     global state
     if args.store is None:
