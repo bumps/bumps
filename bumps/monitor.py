@@ -4,6 +4,18 @@ Progress monitors.
 
 Process monitors accept a :class:`bumps.history.History` object each cycle
 and perform some sort of work.
+
+Monitors have a :meth:`Monitor.config_history` method which calls
+*history.requires()* to set the amount of history it needs and a 
+*Monitor.__call__* method which takes the updated history and
+generates the monitor output.
+
+Most monitors are subclassed from :class:`TimedUpdate` to set a minimum
+time between updates and to only show updates when there is an improvement.
+The *TimedUpdate* subclasses must override :meth:`TimedUpdate.show_progress`
+and :meth:`TimedUpdate.show_improvement` to control the output form. History
+must be updated with time, value, point and step. The
+bumps.fitters.MonitorRunner class manages history and updates.
 """
 from __future__ import print_function
 
@@ -87,7 +99,7 @@ class TimedUpdate(Monitor):
     *improvement* is the number of seconds to go before showing
     improvements to value.
 
-    By default, the updater only prints step number and improved value.
+    By default, the update only prints step number and improved value.
     Subclass TimedUpdate with replaced :meth:`show_progress` and
     :meth:`show_improvement` to trigger GUI updates or show parameter
     values.
