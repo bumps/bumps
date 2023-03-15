@@ -317,6 +317,7 @@ async def _fit_complete_handler(event):
     chisq = nice(2*event["value"]/problem.dof)
     problem.setp(event["point"])
     problem.model_update()
+    state.problem.fitProblem = problem
     await publish("", "fit_active", {})
     await publish("", "update_parameters", True)
     await log(event["info"], title=f"done with chisq {chisq}")
