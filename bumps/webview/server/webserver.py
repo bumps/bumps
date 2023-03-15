@@ -53,7 +53,7 @@ _plotly_utils.utils.find_closest_string = disable_find_closest_string
 
 from .profile_plot import plot_sld_profile_plotly
 from .varplot import plot_vars
-from .state_hdf5_backed import State
+from .state_hdf5_backed import SERIALIZERS, State
 # from .state import State
 
 # can get by name and not just by id
@@ -211,7 +211,7 @@ async def stop_fit(sid: str = ""):
     abort_queue = state.abort_queue
     abort_queue.put_nowait(True)
 
-def get_chisq(problem: refl1d.fitproblem.FitProblem, nllf=None):
+def get_chisq(problem: bumps.fitproblem.FitProblem, nllf=None):
     nllf = problem.nllf() if nllf is None else nllf
     scale, err = nllf_scale(problem)
     chisq = format_uncertainty(scale*nllf, err)
@@ -313,7 +313,7 @@ async def _fit_complete_handler(event):
         if fit_thread.is_alive():
             await log("fit thread failed to complete")
     state.fit_thread = None
-    problem: refl1d.fitproblem.FitProblem = event["problem"]
+    problem: bumps.fitproblem.FitProblem = event["problem"]
     chisq = nice(2*event["value"]/problem.dof)
     problem.setp(event["point"])
     problem.model_update()
@@ -756,6 +756,7 @@ class Namespace(argparse.Namespace):
     start: bool
     store: Optional[str]
     exit: bool
+    serializer: SERIALIZERS
 
 
 def main():
@@ -770,6 +771,7 @@ def main():
     parser.add_argument('--start', action='store_true', help='start fit when problem loaded')
     parser.add_argument('--store', default=None, type=str, help='backing file for state')
     parser.add_argument('--exit', action='store_true', help='end process when fit complete (fit results lost unless store is specified)')
+    parser.add_argument('--serializer', default='dill', type=str, choices=["pickle", "dill", "dataclass"], help='strategy for serializing problem, will use value from store if it has already been defined')
     # parser.add_argument('-c', '--config-file', type=str, help='path to JSON configuration to load')
     args = parser.parse_args(namespace=Namespace())
 
@@ -778,6 +780,9 @@ def main():
         state = State("in-memory.h5", in_memory=True)
     else:
         state = State(args.store)
+
+    if state.problem.serializer is None:
+        state.problem.serializer = args.serializer
 
     # app.on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
     if args.fit is not None:

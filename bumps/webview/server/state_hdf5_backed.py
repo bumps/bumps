@@ -1,11 +1,12 @@
 from typing import TYPE_CHECKING, Optional, Dict, List, Any, Literal, cast
 import json
+import pickle
 from queue import Queue
 from bumps.serialize import from_dict, to_dict
 import h5py
 import numpy as np
 
-import refl1d.fitproblem
+import bumps.fitproblem
 from bumps.dream.state import MCMCDraw
 
 
@@ -52,12 +53,31 @@ def to_hdf5_group(state: 'State', group: 'Group'):
             problem_grp['pathlist'].attrs["Content-Type"] = "application/json"
 
 CACHE_MISS = object()
+SERIALIZERS = Literal['dataclass', 'pickle', 'dill']
+def serialize(problem: bumps.fitproblem.FitProblem, method: SERIALIZERS):
+    if method == 'dataclass':
+        return json.dumps(to_dict(problem)).encode()
+    elif method == 'pickle':
+        return pickle.dumps(problem)
+    elif method == 'dill':
+        import dill
+        return dill.dumps(problem)
+
+def deserialize(serialized: bytes, method: SERIALIZERS):
+    if method == 'dataclass':
+        return from_dict(json.loads(serialized))
+    elif method == 'pickle':
+        return pickle.loads(serialized)
+    elif method == 'dill':
+        import dill
+        return dill.loads(serialized)
 
 class ProblemState:
     _group: h5py.Group
     _filename: Optional[str]
     _pathlist: Optional[List[str]]
-    _fitProblem: Optional[refl1d.fitproblem.FitProblem]
+    _fitProblem: Optional[bumps.fitproblem.FitProblem]
+    _serializer: Optional[SERIALIZERS]
 
     def __init__(self, group: h5py.Group):
         self._group = group
@@ -79,6 +99,22 @@ class ProblemState:
         self._filename = value
 
     @property
+    def serializer(self) -> Optional[SERIALIZERS]:
+        # check cache:
+        cached_val = getattr(self, '_serializer', CACHE_MISS)
+        if cached_val is CACHE_MISS:
+            backing_val = self._group['serializer'][()] if 'serializer' in self._group else None
+            setattr(self, '_serializer', backing_val)
+            cached_val = backing_val
+        return cached_val
+
+    @serializer.setter
+    def serializer(self, value: SERIALIZERS):
+        dset = self._group.require_dataset('serializer', (), h5py.vlen_dtype(str))
+        dset[()] = value
+        self._serializer = value
+
+    @property
     def pathlist(self) -> Optional[List[str]]:
         cached_val = getattr(self, '_pathlist', CACHE_MISS)
         if cached_val is CACHE_MISS:
@@ -94,18 +130,20 @@ class ProblemState:
         self._pathlist = value
 
     @property
-    def fitProblem(self) -> Optional[refl1d.fitproblem.FitProblem]:
+    def fitProblem(self) -> Optional[bumps.fitproblem.FitProblem]:
         cached_val = getattr(self, '_fitProblem', CACHE_MISS)
         if cached_val is CACHE_MISS:
-            backing_val = from_dict(json.loads(self._group['fitProblem'][()])) if 'fitProblem' in self._group else None
+            backing_val = deserialize(self._group['fitProblem'][(1)], self.serializer) if 'fitProblem' in self._group else None
             setattr(self, '_fitProblem', backing_val)
             cached_val = backing_val
         return cached_val
-    
+
     @fitProblem.setter
-    def fitProblem(self, value: refl1d.fitproblem.FitProblem):
-        dset = self._group.require_dataset('fitProblem', (), h5py.vlen_dtype(str))
-        dset[()] = json.dumps(to_dict(value))
+    def fitProblem(self, value: bumps.fitproblem.FitProblem):
+        dset = self._group.require_dataset('fitProblem', (1,), dtype=f"|S{MAX_PROBLEM_SIZE}", compression=COMPRESSION)
+        serialized = serialize(value, self.serializer)
+        print(type(serialized), len(serialized))
+        dset[()] = serialized
         self._fitProblem = value
 
 class FittingState:
