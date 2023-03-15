@@ -350,7 +350,7 @@ async def get_data_plot(sid: str=""):
     # await sio.emit("profile_plot", dfig, to=sid)
     end_time = time.time()
     print("time to draw data plot:", end_time - start_time)
-    return dfig
+    return {"fig_type": "mpld3", "plotdata": dfig}
     
 
 @sio.event
