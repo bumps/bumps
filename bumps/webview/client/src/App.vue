@@ -4,38 +4,12 @@ import { onMounted, ref, shallowRef } from 'vue';
 import { io } from 'socket.io-client';
 import './asyncSocket';
 import FitOptions from './components/FitOptions.vue';
-import DataView from './components/DataView.vue';
-import ModelView from './components/ModelView.vue';
 import PanelTabContainer from './components/PanelTabContainer.vue';
 import FileBrowser from './components/FileBrowser.vue';
-import SummaryView from './components/SummaryView.vue';
-import ModelInspect from './components/ModelInspect.vue';
-// import ModelViewPlotly from './components/ModelViewPlotly.vue';
-import ParameterView from './components/ParameterView.vue';
-import LogView from './components/LogView.vue';
-import ConvergenceView from './components/ConvergenceView.vue';
-// import CorrelationView from './components/CorrelationView.vue';
-import CorrelationView from './components/CorrelationViewPlotly.vue';
-import ParameterTraceView from './components/ParameterTraceView.vue';
-import ModelUncertaintyView from './components/ModelUncertaintyView.vue';
-import UncertaintyView from './components/UncertaintyView.vue';
 
-// import { FITTERS as FITTER_DEFAULTS } from './fitter_defaults';
-
-const panels = [
-  {title: 'Reflectivity', component: DataView},
-  {title: 'Summary', component: SummaryView},
-  {title: 'Log', component: LogView},
-  {title: 'Convergence', component: ConvergenceView},
-  {title: 'Profile', component: ModelView},
-  {title: 'Model', component: ModelInspect},
-  // {title: 'Profile2', component: ModelViewPlotly},
-  {title: 'Parameters', component: ParameterView},
-  {title: 'Correlations', component: CorrelationView},
-  {title: 'Trace', component: ParameterTraceView},
-  {title: 'Model Uncertainty', component: ModelUncertaintyView},
-  {title: 'Uncertainty', component: UncertaintyView},
-];
+const props = defineProps<{
+  panels: {title: string, component: any }[],
+}>();
 
 const LAYOUTS = ["left-right", "top-bottom", "full"];
 const connected = ref(false);
@@ -177,7 +151,7 @@ onMounted(() => {
     <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
       <div class="container-fluid">
         <div class="navbar-brand">
-          <img src="./assets/refl1d-icon_256x256x32.png" alt="" height="24" class="d-inline-block align-text-middle">
+          <img src="./assets/bumps-icon_256x256x32.png" alt="" height="24" class="d-inline-block align-text-middle">
           Refl1D
         </div>
         <button ref="menuToggle" class="navbar-toggler" type="button" data-bs-toggle="collapse"
