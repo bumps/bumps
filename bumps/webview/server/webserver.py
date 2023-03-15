@@ -37,14 +37,6 @@ import bumps.fitproblem
 import bumps.plotutil
 import bumps.dream.views, bumps.dream.varplot, bumps.dream.stats, bumps.dream.state
 import bumps.errplot
-import refl1d.errors
-import refl1d.fitproblem, refl1d.probe
-from refl1d.experiment import Experiment, MixedExperiment, ExperimentBase
-
-# Register the refl1d model loader
-import refl1d.fitplugin
-import bumps.cli
-bumps.cli.install_plugin(refl1d.fitplugin)
 
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
 
@@ -169,19 +161,6 @@ async def load_problem_file(sid: str, pathlist: List[str], filename: str):
     await publish("", "update_model", True)
     await publish("", "update_parameters", True)
 
-@sio.event
-async def get_model_names(sid: str=""):
-    problem = state.problem.fitProblem
-    if problem is None:
-        return None
-    output: List[Dict] = []
-    for model_index, model in enumerate(problem.models):
-        if isinstance(model, Experiment):
-            output.append(dict(name=model.name, part_name=None, model_index=model_index, part_index=0))
-        elif isinstance(model, MixedExperiment):
-            for part_index, part in enumerate(model.parts):
-                output.append(dict(name=model.name, part_name=part.name, model_index=model_index, part_index=part_index))
-    return output
 
 @sio.event
 async def save_problem_file(sid: str, pathlist: Optional[List[str]] = None, filename: Optional[str] = None, overwrite: bool = False):
@@ -352,62 +331,6 @@ EVT_FIT_COMPLETE.connect(fit_complete_handler)
 async def log(message: str, title: Optional[str] = None):
     await publish("", "log", {"message": message, "title": title})
 
-def get_single_probe_data(theory, probe, substrate=None, surface=None, label=''):
-    fresnel_calculator = probe.fresnel(substrate, surface)
-    Q, FQ = probe.apply_beam(probe.calc_Q, fresnel_calculator(probe.calc_Q))
-    Q, R = theory
-    output: Dict[str, Union[str, np.ndarray]]
-    assert isinstance(FQ, np.ndarray)
-    if len(Q) != len(probe.Q):
-        # Saving interpolated data
-        output = dict(Q = Q, theory = R, fresnel=np.interp(Q, probe.Q, FQ))
-    elif getattr(probe, 'R', None) is not None:
-        output = dict(Q = probe.Q, dQ = probe.dQ, R = probe.R, dR = probe.dR, theory = R, fresnel = FQ, background=probe.background.value, intensity=probe.intensity.value)
-    else:
-        output = dict(Q = probe.Q, dQ = probe.dQ, theory = R, fresnel = FQ)
-    output['label'] = f"{probe.label()} {label}"
-    return output
-
-def get_probe_data(theory, probe, substrate=None, surface=None):
-    if isinstance(probe, refl1d.probe.PolarizedNeutronProbe):
-        output = []
-        for xsi, xsi_th, suffix in zip(probe.xs, theory, ('--', '-+', '+-', '++')):
-            if xsi is not None:
-                output.append(get_single_probe_data(xsi_th, xsi, substrate, surface, suffix))
-        return output
-    else:
-        return [get_single_probe_data(theory, probe, substrate, surface)]
-
-@sio.event
-@rest_get
-async def get_plot_data(sid: str="", view: str = 'linear'):
-    # TODO: implement view-dependent return instead of doing this in JS
-    # (calculate x,y,dy.dx for given view, excluding log)
-    if state.problem is None or state.problem.fitProblem is None:
-        return None
-    fitProblem = state.problem.fitProblem
-    chisq = get_chisq(fitProblem)
-    plotdata = []
-    result = {"chisq": chisq, "plotdata": plotdata}
-    for model in fitProblem.models:
-        assert(isinstance(model, ExperimentBase))
-        theory = model.reflectivity()
-        probe = model.probe
-        plotdata.append(get_probe_data(theory, probe, model._substrate, model._surface))
-        # fresnel_calculator = probe.fresnel(model._substrate, model._surface)
-        # Q, FQ = probe.apply_beam(probe.calc_Q, fresnel_calculator(probe.calc_Q))
-        # Q, R = theory
-        # assert isinstance(FQ, np.ndarray)
-        # if len(Q) != len(probe.Q):
-        #     # Saving interpolated data
-        #     output = dict(Q = Q, R = R, fresnel=np.interp(Q, probe.Q, FQ))
-        # elif getattr(probe, 'R', None) is not None:
-        #     output = dict(Q = probe.Q, dQ = probe.dQ, R = probe.R, dR = probe.dR, fresnel = FQ)
-        # else:
-        #     output = dict(Q = probe.Q, dQ = probe.dQ, R = R, fresnel = FQ)
-        # result.append(output)
-    return to_json_compatible_dict(result)
-
 @sio.event
 async def get_data_plot(sid: str=""):
     if state.problem is None or state.problem.fitProblem is None:
@@ -437,49 +360,6 @@ async def get_model(sid: str=""):
         return None
     fitProblem = state.problem.fitProblem
     return serialize(fitProblem)
-
-@sio.event
-@rest_get
-async def get_profile_plot(sid: str="", model_index: int=0, sample_index: int=0):
-    if state.problem is None or state.problem.fitProblem is None:
-        return None
-    fitProblem = state.problem.fitProblem
-    models = list(fitProblem.models)
-    if model_index > len(models):
-        return None
-    model = models[model_index]
-    assert (isinstance(model, Union[Experiment, MixedExperiment]))
-    if isinstance(model, MixedExperiment):
-        model = model.parts[sample_index]
-    fig = plot_sld_profile_plotly(model)
-    return to_json_compatible_dict(fig.to_dict())
-
-@sio.event
-@rest_get
-async def get_profile_data(sid: str="", model_index: int=0):
-    if state.problem is None or state.problem.fitProblem is None:
-        return None
-    fitProblem = state.problem.fitProblem
-    models = list(fitProblem.models)
-    if (model_index > len(models)):
-        return None
-    model = models[model_index]
-    assert(isinstance(model, ExperimentBase))
-    output = {}
-    output["ismagnetic"] = model.ismagnetic
-    if model.ismagnetic:
-        if not model.step_interfaces:
-            z, rho, irho, rhoM, thetaM = model.magnetic_step_profile()
-            output['step_profile'] = dict(z=z, rho=rho, irho=irho, rhoM=rhoM, thetaM=thetaM)
-        z, rho, irho, rhoM, thetaM = model.magnetic_smooth_profile()
-        output['smooth_profile'] = dict(z=z, rho=rho, irho=irho, rhoM=rhoM, thetaM=thetaM)
-    else:
-        if not model.step_interfaces:
-            z, rho, irho = model.step_profile()
-            output['step_profile'] = dict(z=z, rho=rho, irho=irho)
-        z, rho, irho = model.smooth_profile()
-        output['smooth_profile'] = dict(z=z, rho=rho, irho=irho)
-    return to_json_compatible_dict(output)
 
 @sio.event
 @rest_get
