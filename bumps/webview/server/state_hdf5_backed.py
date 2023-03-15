@@ -94,7 +94,7 @@ class ProblemState:
     
     @filename.setter
     def filename(self, value: str):
-        dset = self._group.require_dataset('filename', (), h5py.vlen_dtype(str))
+        dset = self._group.require_dataset('filename', shape=(), dtype=h5py.vlen_dtype(str))
         dset[()] = value
         self._filename = value
 
@@ -103,14 +103,14 @@ class ProblemState:
         # check cache:
         cached_val = getattr(self, '_serializer', CACHE_MISS)
         if cached_val is CACHE_MISS:
-            backing_val = self._group['serializer'][()] if 'serializer' in self._group else None
+            backing_val = self._group['serializer'][()].decode() if 'serializer' in self._group else None
             setattr(self, '_serializer', backing_val)
             cached_val = backing_val
         return cached_val
 
     @serializer.setter
     def serializer(self, value: SERIALIZERS):
-        dset = self._group.require_dataset('serializer', (), h5py.vlen_dtype(str))
+        dset = self._group.require_dataset('serializer', shape=(), dtype='|S12')
         dset[()] = value
         self._serializer = value
 
@@ -133,7 +133,7 @@ class ProblemState:
     def fitProblem(self) -> Optional[bumps.fitproblem.FitProblem]:
         cached_val = getattr(self, '_fitProblem', CACHE_MISS)
         if cached_val is CACHE_MISS:
-            backing_val = deserialize(self._group['fitProblem'][(1)], self.serializer) if 'fitProblem' in self._group else None
+            backing_val = deserialize(self._group['fitProblem'][0], self.serializer) if 'fitProblem' in self._group else None
             setattr(self, '_fitProblem', backing_val)
             cached_val = backing_val
         return cached_val
@@ -142,7 +142,6 @@ class ProblemState:
     def fitProblem(self, value: bumps.fitproblem.FitProblem):
         dset = self._group.require_dataset('fitProblem', (1,), dtype=f"|S{MAX_PROBLEM_SIZE}", compression=COMPRESSION)
         serialized = serialize(value, self.serializer)
-        print(type(serialized), len(serialized))
         dset[()] = serialized
         self._fitProblem = value
 
