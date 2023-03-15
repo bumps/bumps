@@ -15,8 +15,8 @@ from bumps.history import History
 #from .convergence_view import ConvergenceMonitor
 # ==============================================================================
 
-PROGRESS_DELAY = 5
-IMPROVEMENT_DELAY = 5
+PROGRESS_DELAY = 2
+IMPROVEMENT_DELAY = 2
 
 EVT_FIT_PROGRESS = Signal()
 EVT_FIT_COMPLETE = Signal()
