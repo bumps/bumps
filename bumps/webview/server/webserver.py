@@ -409,6 +409,28 @@ async def get_plot_data(sid: str="", view: str = 'linear'):
     return to_json_compatible_dict(result)
 
 @sio.event
+async def get_data_plot(sid: str=""):
+    if state.problem is None or state.problem.fitProblem is None:
+        return None
+    fitProblem = state.problem.fitProblem
+    import mpld3
+    import matplotlib
+    matplotlib.use("agg")
+    import matplotlib.pyplot as plt
+    import time
+    start_time = time.time()
+    print('queueing new data plot...', start_time)
+    fig = plt.figure()
+    fitProblem.plot()
+    dfig = mpld3.fig_to_dict(fig)
+    plt.close(fig)
+    # await sio.emit("profile_plot", dfig, to=sid)
+    end_time = time.time()
+    print("time to draw data plot:", end_time - start_time)
+    return dfig
+    
+
+@sio.event
 @rest_get
 async def get_model(sid: str=""):
     if state.problem is None or state.problem.fitProblem is None:
