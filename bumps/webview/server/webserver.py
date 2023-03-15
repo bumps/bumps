@@ -122,7 +122,7 @@ async def index(request):
     if client_version == local_version:
         return web.FileResponse(index_path / 'index.html')
     else:
-        CDN = f"https://cdn.jsdelivr.net/npm/refl1d-webview-client@{client_version}/dist"
+        CDN = f"https://cdn.jsdelivr.net/npm/bumps-webview-client@{client_version}/dist"
         with open(client_path / 'index_template.txt', 'r') as index_template:
             index_html = index_template.read().format(cdn=CDN)
         return web.Response(body=index_html, content_type="text/html")
