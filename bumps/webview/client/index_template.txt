@@ -7,7 +7,7 @@
     <script type="text/javascript" async
       src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-svg.min.js">
     </script>
-    <title>Refl1D</title>
+    <title>Bumps</title>
     <script type="module" crossorigin src="{cdn}/assets/index.js"></script>
     <link rel="stylesheet" href="{cdn}/assets/index.css">
   </head>
