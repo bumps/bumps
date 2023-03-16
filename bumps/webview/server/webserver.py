@@ -5,7 +5,7 @@ import itertools
 import threading
 import signal
 from types import GeneratorType
-from typing import Dict, List, Literal, Optional, Union, Tuple, TypedDict, cast
+from typing import Callable, Dict, List, Literal, Optional, Union, Tuple, TypedDict, cast
 from datetime import datetime
 import warnings
 from queue import Queue
@@ -92,8 +92,8 @@ TopicNameType = Literal[
     "fitter_active",
 ]
 
-
-state: State # to be filled in later...
+# will be replaced with file-backed state during startup, if needed:
+state = State("in-memory.h5", in_memory=True)
 
 def rest_get(fn):
     """
@@ -659,10 +659,6 @@ async def shutdown(sid: str=""):
     print("killing...")
     signal.raise_signal(signal.SIGTERM)
 
-if Path.exists(static_assets_path):
-    app.router.add_static('/assets', static_assets_path)
-app.router.add_get('/', index)
-
 VALUE_PRECISION = 6
 VALUE_FORMAT = "{{:.{:d}g}}".format(VALUE_PRECISION)
 
@@ -760,7 +756,7 @@ class Namespace(argparse.Namespace):
     serializer: SERIALIZERS
 
 
-def main():
+def main(index: Callable=index, static_assets_path: Path=static_assets_path, arg_defaults: Optional[Dict]=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('filename', nargs='?', help='problem file to load, .py or .json (serialized) fitproblem')
     # parser.add_argument('-d', '--debug', action='store_true', help='autoload modules on change')
@@ -774,12 +770,16 @@ def main():
     parser.add_argument('--exit', action='store_true', help='end process when fit complete (fit results lost unless store is specified)')
     parser.add_argument('--serializer', default='dill', type=str, choices=["pickle", "dill", "dataclass"], help='strategy for serializing problem, will use value from store if it has already been defined')
     # parser.add_argument('-c', '--config-file', type=str, help='path to JSON configuration to load')
+    if arg_defaults is not None:
+        parser.set_defaults(**arg_defaults)
     args = parser.parse_args(namespace=Namespace())
 
+    if Path.exists(static_assets_path):
+        app.router.add_static('/assets', static_assets_path)
+    app.router.add_get('/', index)
+
     global state
-    if args.store is None:
-        state = State("in-memory.h5", in_memory=True)
-    else:
+    if args.store is not None:
         state = State(args.store)
 
     if state.problem.serializer is None:
