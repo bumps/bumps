@@ -680,9 +680,10 @@ class Constant(ValueProtocol): # type: ignore
     fixed = True # class property fixed across all objects
 
     def __init__(self, value: float, name: Optional[str]=None, id: Optional[str]=None):
-        self.value = value
-        self.name = name
-        self.id = id if id is not None else str(uuid.uuid4())
+        object.__setattr__(self, "value", value)
+        object.__setattr__(self, "name", name)
+        _id = id if id is not None else str(uuid.uuid4())
+        object.__setattr__(self, "id", _id)
 
     def parameters(self):
         return [self]
