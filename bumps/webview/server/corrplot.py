@@ -46,14 +46,8 @@ class Corr2d(object):
         Plot the correlation histograms on the specified figure
         """
 
-        fig = make_subplots(
-            rows=self.N-1,
-            cols=self.N-1,
-            horizontal_spacing=0,
-            vertical_spacing=0,
-            shared_yaxes=True,
-            shared_xaxes=True
-        )
+        return _plot(self.hists, self.labels, self.N)
+
 
         # if title is not None:
         #     fig.text(0.5, 0.95, title,
