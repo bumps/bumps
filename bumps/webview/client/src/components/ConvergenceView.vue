@@ -4,7 +4,7 @@ import { ref } from 'vue';
 import { Socket } from 'socket.io-client';
 import { v4 as uuidv4 } from 'uuid';
 import { setupDrawLoop } from '../setupDrawLoop';
-import mpld3 from 'mpld3';
+import * as Plotly from 'plotly.js/lib/core';
 
 const title = "Convergence";
 const plot_div = ref<HTMLDivElement>();
@@ -19,9 +19,9 @@ async function fetch_and_draw() {
   const payload = await props.socket.asyncEmit('get_convergence_plot');
   let plotdata = { ...payload };
   // console.log({plotdata});
-  plotdata.width = Math.round(plot_div.value?.clientWidth ?? 640) - 16;
-  plotdata.height = Math.round(plot_div.value?.clientHeight ?? 480) - 16;
-  mpld3.draw_figure(plot_div_id.value, plotdata, false, true);
+  const { data, layout } = plotdata;
+  const config = { responsive: true, scrollZoom: true }
+  await Plotly.react(plot_div_id.value, [...data], layout, config);
 }
 
 </script>
