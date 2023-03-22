@@ -400,45 +400,29 @@ async def get_convergence_plot(sid: str=""):
     fitProblem = state.problem.fitProblem
     population = state.fitting.population
     if population is not None:
-        import mpld3
-        import matplotlib
-        matplotlib.use("agg")
-        import matplotlib.pyplot as plt
-        import time
-        start_time = time.time()
-        print('queueing new convergence plot...', start_time)
+        import plotly.graph_objects as go
 
         normalized_pop = 2*population/fitProblem.dof
         best, pop = normalized_pop[:, 0], normalized_pop[:, 1:]
-        print("time to normalize population: ", time.time() - start_time)
-        fig = plt.figure()
-        axes = fig.add_subplot(111)
 
         ni,npop = pop.shape
         iternum = np.arange(1,ni+1)
         tail = int(0.25*ni)
+
         c = bumps.plotutil.coordinated_colors(base=(0.4,0.8,0.2))
+        cp = dict((k, f"rgba({','.join([str(int(cmp*255)) for cmp in cc])})") for k,cc in c.items())
+        fig = go.Figure()
         if npop==5:
-            axes.fill_between(iternum[tail:], pop[tail:,1], pop[tail:,3],
-                                color=c['light'], label='_nolegend_')
-            axes.plot(iternum[tail:],pop[tail:,2],
-                        label="80% range", color=c['base'])
-            axes.plot(iternum[tail:],pop[tail:,0],
-                        label="_nolegend_", color=c['base'])
-        axes.plot(iternum[tail:], best[tail:], label="best",
-                    color=c['dark'])
-        axes.set_xlabel('iteration number')
-        axes.set_ylabel('chisq')
-        axes.legend()
-        #plt.gca().set_yscale('log')
-        # fig.draw()
-        print("time to render but not serialize...", time.time() - start_time)
-        dfig = mpld3.fig_to_dict(fig)
-        plt.close(fig)
-        # await sio.emit("profile_plot", dfig, to=sid)
-        end_time = time.time()
-        print("time to draw convergence plot:", end_time - start_time)
-        return dfig
+            fig.add_trace(go.Scatter(x=iternum[tail:], y=pop[tail:,3], mode="lines", line_width=0, showlegend=False))
+            fig.add_trace(go.Scatter(x=iternum[tail:], y=pop[tail:,1], fill="tonexty", mode="lines", line_color=cp["light"], line_width=0, showlegend=False))
+            fig.add_trace(go.Scatter(x=iternum[tail:], y=pop[tail:,2], name="80% range", mode="lines", line_color=cp["base"]))
+
+        fig.add_trace(go.Scatter(x=iternum[tail:], y=best[tail:], name="best", line_color=cp["dark"], mode="lines"))
+        fig.update_layout(template="simple_white", legend=dict(x=1,y=1,xanchor="right",yanchor="top"))
+        fig.update_layout(title=dict(text="Convergence", xanchor="center", x=0.5))
+        fig.update_xaxes(title="iteration number")
+        fig.update_yaxes(title="chisq")
+        return to_json_compatible_dict(fig.to_dict())
     else:
         return None
 
