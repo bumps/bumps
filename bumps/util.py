@@ -102,6 +102,10 @@ class DynamicModule(types.ModuleType):
     def __init__(self, path, name):
        self.__path__ = [path]
        self.__name__ = name
+       # In the bowels of importlib the parent spec attribute is used to
+       # avoid circular imports, but only if spec is not None. This behaviour
+       # was observed on python 3.11, and perhaps earlier.
+       self.__spec__ = None
 
 
 def relative_import(filename, module_name="relative_import"):
