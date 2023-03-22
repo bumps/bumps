@@ -17,7 +17,6 @@ import socketio
 from pathlib import Path, PurePath
 import json
 from copy import deepcopy
-from blinker import Signal
 from uuid import uuid4
 
 import mimetypes
@@ -38,7 +37,7 @@ import bumps.plotutil
 import bumps.dream.views, bumps.dream.varplot, bumps.dream.stats, bumps.dream.state
 import bumps.errplot
 
-from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
+from .fit_thread import FitThread, FIT_PROGRESS_QUEUE, FIT_COMPLETE_QUEUE
 
 ### BEGIN PATCH
 # patch the plotly library to disable levenshtein lookup for missing strings
@@ -71,6 +70,8 @@ for fitter in FITTERS:
         "settings": dict(fitter.settings)
     }
 
+FIT_PROGRESS_WORKER: Optional[asyncio.Task] = None
+FIT_COMPLETE_WORKER: Optional[asyncio.Task] = None
 
 routes = web.RouteTableDef()
 # sio = socketio.AsyncServer(cors_allowed_origins="*", serializer='msgpack')
@@ -240,6 +241,10 @@ async def start_fit_thread(sid: str="", fitter_id: str="", options=None, termina
     if fitProblem is None:
         await log("Error: Can't start fit if no problem loaded")
     else:
+        if FIT_PROGRESS_WORKER is None:
+            await start_progress_loop()
+        if FIT_COMPLETE_WORKER is None:
+            await start_fit_complete_loop()
         fit_state = state.fitting
         fitclass = FITTERS_BY_ID[fitter_id]
         if state.fit_thread is not None:
@@ -307,10 +312,16 @@ async def _fit_progress_handler(event: Dict):
         state.fitting.uncertainty_state = cast(bumps.dream.state.MCMCDraw, event["uncertainty_state"])
         await publish("", "uncertainty_update", True)
 
-def fit_progress_handler(event: Dict):
-    asyncio.run_coroutine_threadsafe(_fit_progress_handler(event), app.loop)
+async def fit_progress_queue_worker(queue: asyncio.Queue):
+    while True:
+        event = await queue.get()
+        await _fit_progress_handler(event)
+        queue.task_done()
 
-EVT_FIT_PROGRESS.connect(fit_progress_handler)
+async def start_progress_loop(App: Optional[web.Application] = None):
+    global FIT_PROGRESS_WORKER
+    FIT_PROGRESS_WORKER = asyncio.create_task(fit_progress_queue_worker(FIT_PROGRESS_QUEUE))
+
 
 async def _fit_complete_handler(event):
     print("complete event: ", event.get("message", ""))
@@ -335,10 +346,15 @@ async def _fit_complete_handler(event):
     if terminate:
         await shutdown()
 
-def fit_complete_handler(event: Dict):
-    asyncio.run_coroutine_threadsafe(_fit_complete_handler(event), app.loop)
+async def fit_complete_queue_worker(queue: asyncio.Queue):
+    while True:
+        event = await queue.get()
+        await _fit_complete_handler(event)
+        queue.task_done()
 
-EVT_FIT_COMPLETE.connect(fit_complete_handler)
+async def start_fit_complete_loop(App: Optional[web.Application] = None):
+    global FIT_COMPLETE_WORKER
+    FIT_COMPLETE_WORKER = asyncio.create_task(fit_complete_queue_worker(FIT_COMPLETE_QUEUE))
 
 async def log(message: str, title: Optional[str] = None):
     await publish("", "log", {"message": message, "title": title})
@@ -828,6 +844,8 @@ def main(index: Callable=index, static_assets_path: Path=static_assets_path, arg
         # app.on_startup.append()
 
     # app.on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
+    app.on_startup.append(start_progress_loop)
+    app.on_startup.append(start_fit_complete_loop)
     async def notice(message: str):
         print(message)
     app.on_cleanup.append(lambda App: notice("cleanup task"))

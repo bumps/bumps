@@ -1,9 +1,7 @@
-
+import asyncio
 from copy import deepcopy
 from threading import Thread
 from queue import Queue
-
-from blinker import Signal
 
 import numpy as np
 from bumps import monitor
@@ -15,11 +13,11 @@ from bumps.history import History
 #from .convergence_view import ConvergenceMonitor
 # ==============================================================================
 
-PROGRESS_DELAY = 2
-IMPROVEMENT_DELAY = 2
+PROGRESS_DELAY = 5
+IMPROVEMENT_DELAY = 5
 
-EVT_FIT_PROGRESS = Signal()
-EVT_FIT_COMPLETE = Signal()
+FIT_COMPLETE_QUEUE = asyncio.Queue()
+FIT_PROGRESS_QUEUE = asyncio.Queue()
 
 # NOTE: GUI monitors are running in a separate thread.  They should not
 # touch the problem internals.
@@ -42,7 +40,7 @@ class GUIProgressMonitor(monitor.TimedUpdate):
             value=history.value[0],
             chisq=chisq,
             point=history.point[0]+0)  # avoid race
-        EVT_FIT_PROGRESS.send(evt)
+        FIT_PROGRESS_QUEUE.put_nowait(evt)
 
     def show_improvement(self, history):
         evt = dict(
@@ -51,7 +49,7 @@ class GUIProgressMonitor(monitor.TimedUpdate):
             step=history.step[0],
             value=history.value[0],
             point=history.point[0]+0)  # avoid race
-        EVT_FIT_PROGRESS.send(evt)
+        FIT_PROGRESS_QUEUE.put_nowait(evt)
 
 
 class ConvergenceMonitor(monitor.Monitor):
@@ -101,7 +99,7 @@ class ConvergenceMonitor(monitor.Monitor):
                 problem=self.problem,
                 message=self.message,
                 pop=self.progress())
-            EVT_FIT_PROGRESS.send(evt)
+            FIT_PROGRESS_QUEUE.put_nowait(evt)
             self.time = history.time[0]
 
     def progress(self):
@@ -115,7 +113,7 @@ class ConvergenceMonitor(monitor.Monitor):
             problem=self.problem,
             message=self.message,
             pop=self.progress())
-        EVT_FIT_PROGRESS.send(evt)
+        FIT_PROGRESS_QUEUE.put_nowait(evt)
 
 # Horrible hacks:
 # (1) We are grabbing uncertainty_state from the history on monitor update
@@ -147,7 +145,7 @@ class DreamMonitor(monitor.Monitor):
                 message="uncertainty_update",
                 uncertainty_state=deepcopy(self.uncertainty_state),
             )
-            EVT_FIT_PROGRESS.send(evt)
+            FIT_PROGRESS_QUEUE.put_nowait(evt)
 
     def final(self):
         """
@@ -161,7 +159,7 @@ class DreamMonitor(monitor.Monitor):
                 message="uncertainty_final",
                 uncertainty_state=deepcopy(self.uncertainty_state),
             )
-            EVT_FIT_PROGRESS.send(evt)
+            FIT_PROGRESS_QUEUE.put_nowait(evt)
 
 # ==============================================================================
 
@@ -235,5 +233,5 @@ class FitThread(Thread):
 
         evt = dict(message="complete", problem=self.problem,
                    point=x, value=fx, info=captured_output)
-        EVT_FIT_COMPLETE.send(evt)
+        FIT_COMPLETE_QUEUE.put_nowait(evt)
         self.result = evt
