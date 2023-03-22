@@ -247,7 +247,7 @@ class TopicsDict:
         topic_dataset = cast(h5py.Dataset, self.group[key])
         return Topic(topic_dataset, maxlen=topic_dataset.maxshape[0])
     
-    def get(self, key: 'TopicNameType', default: Any) -> Topic | Any:
+    def get(self, key: 'TopicNameType', default: Any) -> Topic:
         return self[key] if key in self.group else default
 
     def items(self):
