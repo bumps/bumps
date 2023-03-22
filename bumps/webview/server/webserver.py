@@ -56,6 +56,8 @@ from .varplot import plot_vars
 from .state_hdf5_backed import SERIALIZERS, State
 # from .state import State
 
+TRACE_MEMORY = False
+
 # can get by name and not just by id
 MODEL_EXT = '.json'
 
@@ -276,6 +278,15 @@ async def start_fit_thread(sid: str="", fitter_id: str="", options=None, termina
 
 async def _fit_progress_handler(event: Dict):
     # session_id = event["session_id"]
+    if TRACE_MEMORY:
+        import tracemalloc
+        if tracemalloc.is_tracing():
+                snapshot = tracemalloc.take_snapshot()
+                top_stats = snapshot.statistics('lineno')
+                print("memory use:")
+                for stat in top_stats[:15]:
+                    print(stat)
+                
     problem_state = state.problem
     fitProblem = problem_state.fitProblem if problem_state is not None else None
     if fitProblem is None:
@@ -846,6 +857,11 @@ def main(index: Callable=index, static_assets_path: Path=static_assets_path, arg
         async def open_browser(app: web.Application):
             app.loop.call_later(0.25, lambda: webbrowser.open_new_tab(f"http://{hostname}:{port}/"))
         app.on_startup.append(open_browser)
+
+    if TRACE_MEMORY:
+        import tracemalloc
+        tracemalloc.start()
+
     web.run_app(app, sock=sock)
 
 if __name__ == '__main__':
