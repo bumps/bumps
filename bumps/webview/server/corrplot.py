@@ -70,7 +70,7 @@ def _hists(data, ranges=None, **kw):
                 for j in range(i+1, n))
 
 
-def _plot(hists, labels, n, show_ticks=None):
+def _plot(fig, hists, labels, n, show_ticks=None):
     """
     Plot pair-wise correlation histograms
     """
