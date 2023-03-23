@@ -95,7 +95,7 @@ TopicNameType = Literal[
 ]
 
 # will be replaced with file-backed state during startup, if needed:
-state = State("in-memory.h5", in_memory=True)
+state = State()
 
 def rest_get(fn):
     """
@@ -783,9 +783,8 @@ def main(index: Callable=index, static_assets_path: Path=static_assets_path, arg
         app.router.add_static('/assets', static_assets_path)
     app.router.add_get('/', index)
 
-    global state
     if args.store is not None:
-        state = State(args.store)
+        state.setup_backing(session_file_name=args.store, in_memory=False)
 
     if state.problem.serializer is None:
         state.problem.serializer = args.serializer

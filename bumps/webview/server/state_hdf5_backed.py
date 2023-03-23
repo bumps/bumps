@@ -95,7 +95,7 @@ class ProblemState:
     
     @filename.setter
     def filename(self, value: str):
-        dset = self._group.require_dataset('filename', shape=(), dtype=h5py.vlen_dtype(str))
+        dset = self._group.require_dataset('filename', shape=(), dtype='|S512')
         dset[()] = value
         self._filename = value
 
@@ -126,7 +126,7 @@ class ProblemState:
     
     @pathlist.setter
     def pathlist(self, value: List[str]):
-        dset = self._group.require_dataset('pathlist', (), h5py.vlen_dtype(str))
+        dset = self._group.require_dataset('pathlist', (), dtype='|S512')
         dset[()] = json.dumps(value)
         self._pathlist = value
 
@@ -168,9 +168,9 @@ class FittingState:
     @population.setter
     def population(self, value: np.ndarray):
         pop_shape = value.shape
+        num_cols = pop_shape[1]
         if not 'population' in self._group:
-            self._group.create_dataset("population", shape=pop_shape, data=value, maxshape=(None, None), compression = COMPRESSION)
-        else:
+            self._group.create_dataset("population", shape=pop_shape, data=value, maxshape=(None, None), chunks=(10000,num_cols), compression = COMPRESSION)
             dset = cast(h5py.Dataset, self._group["population"])
             if dset.shape != pop_shape:
                 dset.resize(pop_shape)        
@@ -264,10 +264,13 @@ class State:
     fit_stopped_future: Optional[asyncio.Future] = None
     abort_queue: Queue
 
-    def __init__(self, session_file_name: str = SESSION_FILE_NAME, in_memory: bool = False, backing_store: bool = False, read_only: bool = False ):
+    def __init__(self):
         # self.problem = problem
         # self.fitting = fitting if fitting is not None else FittingState()
         self.abort_queue = Queue()
+        self.setup_backing(':memory:', in_memory=True, backing_store=False)
+
+    def setup_backing(self, session_file_name: str = SESSION_FILE_NAME, in_memory: bool = False, backing_store: bool = False, read_only: bool = False ):
         import h5py
         hdf_kw = dict(libver="latest")
         if in_memory:
