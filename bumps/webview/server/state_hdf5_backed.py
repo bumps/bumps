@@ -1,3 +1,4 @@
+import asyncio
 from typing import TYPE_CHECKING, Optional, Dict, List, Any, Literal, cast
 import json
 import pickle
@@ -260,6 +261,7 @@ class State:
     dream: FittingState
     topics: TopicsDict
     fit_thread: Optional['FitThread'] = None
+    fit_stopped_future: Optional[asyncio.Future] = None
     abort_queue: Queue
 
     def __init__(self, session_file_name: str = SESSION_FILE_NAME, in_memory: bool = False, backing_store: bool = False, read_only: bool = False ):

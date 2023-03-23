@@ -210,8 +210,15 @@ async def start_fit(sid: str="", fitter_id: str="", kwargs=None):
 
 @sio.event
 async def stop_fit(sid: str = ""):
-    abort_queue = state.abort_queue
-    abort_queue.put_nowait(True)
+    if state.fit_thread is not None:
+        if state.fit_stopped_future is None:
+            loop = asyncio.get_running_loop()
+            state.fit_stopped_future = loop.create_future()
+        state.abort_queue.put(True)
+        await state.fit_stopped_future
+        state.fit_stopped_future = None
+
+
 
 def get_chisq(problem: bumps.fitproblem.FitProblem, nllf=None):
     nllf = problem.nllf() if nllf is None else nllf
@@ -332,6 +339,9 @@ async def _fit_complete_handler(event):
     await publish("", "fit_active", {})
     await publish("", "update_parameters", True)
     await log(event["info"], title=f"done with chisq {chisq}")
+    fut = state.fit_stopped_future
+    if fut is not None:
+        fut.set_result(True)
     if terminate:
         await shutdown()
 

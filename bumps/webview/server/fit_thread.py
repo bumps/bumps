@@ -15,8 +15,8 @@ from bumps.history import History
 #from .convergence_view import ConvergenceMonitor
 # ==============================================================================
 
-PROGRESS_DELAY = 2
-IMPROVEMENT_DELAY = 2
+PROGRESS_DELAY = 5
+IMPROVEMENT_DELAY = 5
 
 EVT_FIT_PROGRESS = Signal()
 EVT_FIT_COMPLETE = Signal()
@@ -237,3 +237,4 @@ class FitThread(Thread):
                    point=x, value=fx, info=captured_output)
         EVT_FIT_COMPLETE.send(evt)
         self.result = evt
+        mapper.stop_mapper(None)
