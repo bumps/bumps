@@ -237,4 +237,3 @@ class FitThread(Thread):
                    point=x, value=fx, info=captured_output)
         EVT_FIT_COMPLETE.send(evt)
         self.result = evt
-        mapper.stop_mapper(None)
