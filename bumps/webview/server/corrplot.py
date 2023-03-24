@@ -46,14 +46,11 @@ class Corr2d(object):
         Plot the correlation histograms on the specified figure
         """
 
-        return _plot(self.hists, self.labels, self.N)
+        fig = _plot(self.hists, self.labels, self.N)
+        if title is not None:
+            fig.update_layout(title=dict(text=title, xanchor="center", x=0.5))
 
-
-        # if title is not None:
-        #     fig.text(0.5, 0.95, title,
-        #              horizontalalignment='center',
-        #              fontproperties=FontProperties(size=16))
-        return _plot(fig, self.hists, self.labels, self.N)
+        return fig
 
 
 def _hists(data, ranges=None, **kw):
@@ -70,7 +67,7 @@ def _hists(data, ranges=None, **kw):
                 for j in range(i+1, n))
 
 
-def _plot(fig, hists, labels, n, show_ticks=None):
+def _plot(hists, labels, n, show_ticks=None):
     """
     Plot pair-wise correlation histograms
     """
