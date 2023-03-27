@@ -6,6 +6,7 @@ import './asyncSocket';
 import FitOptions from './components/FitOptions.vue';
 import PanelTabContainer from './components/PanelTabContainer.vue';
 import FileBrowser from './components/FileBrowser.vue';
+import ServerShutdown from './components/ServerShutdown.vue';
 
 const props = defineProps<{
   panels: {title: string, component: any }[],
@@ -290,6 +291,7 @@ onMounted(() => {
   </div>
   <FitOptions ref="fitOptions" :socket="socket" />
   <FileBrowser ref="fileBrowser" :socket="socket" :title="fileBrowserTitle" :chosenfile_in="model_loaded?.filename" :savefilename="fileBrowserSaveFilename" :callback="fileBrowserSelectCallback" />
+  <ServerShutdown :socket="socket" />
 </template>
 
 <style>
