@@ -662,6 +662,8 @@ async def disconnect_all_clients():
 @sio.event
 async def shutdown(sid: str=""):
     print("killing...")
+    await stop_fit()
+    await sio.emit("server_shutting_down")
     signal.raise_signal(signal.SIGTERM)
 
 VALUE_PRECISION = 6
@@ -774,6 +776,7 @@ def main(index: Callable=index, static_assets_path: Path=static_assets_path, arg
     parser.add_argument('--store', default=None, type=str, help='backing file for state')
     parser.add_argument('--exit', action='store_true', help='end process when fit complete (fit results lost unless store is specified)')
     parser.add_argument('--serializer', default='dill', type=str, choices=["pickle", "dill", "dataclass"], help='strategy for serializing problem, will use value from store if it has already been defined')
+    parser.add_argument('--trace', action='store_true', help='enable memory tracing (prints after every uncertainty update in dream)')
     # parser.add_argument('-c', '--config-file', type=str, help='path to JSON configuration to load')
     if arg_defaults is not None:
         parser.set_defaults(**arg_defaults)
@@ -788,6 +791,10 @@ def main(index: Callable=index, static_assets_path: Path=static_assets_path, arg
 
     if state.problem.serializer is None:
         state.problem.serializer = args.serializer
+
+    if args.trace:
+        global TRACE_MEMORY
+        TRACE_MEMORY = True
 
     # app.on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
     if args.fit is not None:
