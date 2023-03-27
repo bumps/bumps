@@ -16,6 +16,7 @@ Usage::
 """
 import sys
 import os
+import signal
 
 # {{{ http://code.activestate.com/recipes/496767/ (r1)
 # Converted to use ctypes by Paul Kienzle
@@ -108,6 +109,7 @@ def _MP_setup(namespace):
     # Using MPMapper class variables to store worker globals.
     # It doesn't matter if they conflict with the controller values since
     # they are in a different process.
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
     MPMapper.namespace = namespace
     nice()
 
@@ -166,8 +168,13 @@ class MPMapper(object):
         #MPMapper.namespace.modelargs = modelargs
 
         # Set the mapper to send problem_id/point value pairs
-        mapper = lambda points: MPMapper.pool.map(
-            _MP_run_problem, ((MPMapper.problem_id, p) for p in points))
+        def mapper(points):
+            try:
+                return MPMapper.pool.map(
+                    _MP_run_problem, ((MPMapper.problem_id, p) for p in points))
+            except KeyboardInterrupt:
+                MPMapper.stop_mapper(None)
+
         return mapper
 
     @staticmethod
