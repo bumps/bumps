@@ -27,7 +27,7 @@ try:
     from typing import Literal, Protocol, runtime_checkable
 except ImportError:
     from typing_extensions import Literal, Protocol, runtime_checkable
-from typing import Optional, Type, TypeVar, Any, Union, Dict, Callable, Tuple, List, Sequence, TYPE_CHECKING
+from typing import Iterable, Optional, Type, TypeVar, Any, Union, Dict, Callable, Tuple, List, Sequence, TYPE_CHECKING
 
 USE_PYDANTIC = os.environ.get('BUMPS_USE_PYDANTIC', "False") == "True"
 if USE_PYDANTIC:
@@ -55,6 +55,7 @@ def schema(
         eq: bool = True,
         init: bool = False,
         frozen: bool = False,
+        repr: bool = True,
     ) -> Callable[[Type[T]], Type[T]]:
     
     """ 
@@ -77,7 +78,7 @@ def schema(
         if include is not None and exclude is not None:
             raise ValueError(f"{fqn} schema: include array and exclude array are mutually exclusive - only define one")
 
-        dclass_kwargs: Dict[str, Any] = dict(init=init, eq=eq, frozen=frozen)
+        dclass_kwargs: Dict[str, Any] = dict(init=init, eq=eq, frozen=frozen, repr=repr)
 
         # TODO: when pydantic v2 is used, migrate to new function __pydantic_modify_json_schema__
         # instead of using Config class 
