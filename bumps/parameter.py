@@ -117,6 +117,8 @@ class OperatorMixin:
     # becoming part of the parameter expression.
     def __float__(self):
         return float(self.value)
+    def __int__(self):
+        return int(self.value)
     def __bool__(self):
         # Note: __bool__ must return true or false, so we can't handle
         # lazy constraint expressions like not a, a or b, a and b.
@@ -424,10 +426,10 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
     # Delegate to slots
     @property
     def value(self):
-        return float(self.slot)
+        return int(self.slot) if self.discrete else float(self.slot)
     @value.setter
     def value(self, update):
-        self.slot.value = update
+        self.slot.value = round(update) if self.discrete else update
     @property
     def fittable(self):
         return isinstance(self.slot, Variable)
@@ -572,6 +574,7 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
             if value is None:
                 value = float(bounds[0]) if bounds is not None else 0 # ? what else to do here?
             if isinstance(value, (float, int)):
+                value = round(value) if discrete else value
                 slot = Variable(value)
             elif isinstance(value, ValueProtocol):
                 slot = value
@@ -1414,35 +1417,6 @@ def current(s: List[Parameter]):
     return [p.value for p in s]
 
 # ========= trash ===================
-
-# this is a bit tricksy, because it's pretending to *be* an int
-# the fact that it has attributes that do stuff doesn't interfere
-# with its essential int-ness.
-class IntegerProperty(int):
-    backing_name: str = "_value"
-
-    def __new__(cls, backing_name="_value"):
-        i = int.__new__(cls, 0)
-        i.backing_name = backing_name
-        return i
-    def __get__(self, obj, owner=None) -> int:
-        if obj is None:
-            return self
-        else:
-            return getattr(obj, self.backing_name)
-    def __set__(self, obj, value: Union[float, int]):
-        setattr(obj, self.backing_name, int(value))
-    def __repr__(self):
-        return object.__repr__(self)
-
-
-class IntegerParameter(Parameter):
-    value: int
-    discrete: Literal[True] = True
-    _value: int
-
-    #value = property(_get_value, _set_value)
-    value = IntegerProperty("_value")
 
 
 # ==== Comparison operators ===
