@@ -230,7 +230,7 @@ class ParameterSchema:
     slot: Union['Variable', ValueType]
     limits: Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]] = (-inf, inf)
     bounds: Optional[Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]] = None
-    distribution: DistributionType = Uniform()
+    distribution: DistributionType = field(default_factory=Uniform)
     discrete: bool = False
 
 class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
