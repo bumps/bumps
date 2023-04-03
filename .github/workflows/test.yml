@@ -47,12 +47,6 @@ jobs:
         cd bumps/dream
         gcc -I../../Random123/include/ -fopenmp -shared -lm -fPIC compiled.c -o _compiled.so
 
-    - name: Build package [Linux only]
-      if: ${{ runner.os == 'Linux' }}
-      run: |
-        cd bumps/dream
-        gcc -I../../Random123/include/ -fopenmp -shared -lm -fPIC compiled.c -o _compiled.so
-
     - name: Test with pytest
       run: |
         pytest -v
