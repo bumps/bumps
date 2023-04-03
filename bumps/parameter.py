@@ -1485,7 +1485,6 @@ class Alias(object):
     parameter will have the full parameter semantics, including
     the ability to replace a fixed value with a parameter expression.
 
-    **Deprecated** :class:`Reference` does this better.
     """
 
     def __init__(self, obj, attr, p=None, name=None):
