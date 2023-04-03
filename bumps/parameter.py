@@ -650,16 +650,11 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
         return obj
 
 
-@schema(classname="Variable")
-class VariableSchema:
+class Variable(ValueProtocol):
     """
     Saved state for a random variable in the model.
     """
     value: float
-    ## uncomment if bounds are on variable rather than parameter
-    #bounds: Union[tuple(bounds_classes)] = field(default=mbounds.Unbounded(), init=False)
-
-class Variable(ValueProtocol, VariableSchema):
     def __init__(self, value):
         self.value = value
     def parameters(self):
@@ -833,9 +828,9 @@ class Expression(ValueProtocol):
 
     def __init__(self, op: Union[str, Operators], args):
         op = op if (isinstance(op, Operators) or isinstance(op, UserFunction)) else getattr(Operators, op)
-        self.op = op
-        self._fn = _lookup_operator(op.name)
-        self.args = args
+        object.__setattr__(self, 'op', op)
+        object.__setattr__(self, '_fn', _lookup_operator(op.name))
+        object.__setattr__(self, 'args', args)
 
     def parameters(self):
         # Walk expression tree combining parameters from each subexpression
@@ -1443,10 +1438,11 @@ class Constraint:
 
     def __init__(self, a, b, op):
         import operator
-        self.a, self.b = a, b
+        object.__setattr__(self, 'a', a)
+        object.__setattr__(self, 'b', b)
         op_name = str(Comparisons(op).name)
-        self.compare = getattr(operator, op_name.lower())
-        self.op = op
+        object.__setattr__(self, 'compare', getattr(operator, op_name.lower()))
+        object.__setattr__(self, 'op', op)
 
     # TODO: is this really necessary?  What is the reason for this trap?
     # It seems like being able to cast with bool(Constraint) would be
