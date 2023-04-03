@@ -68,6 +68,10 @@ from .parameter import to_dict, Parameter, Expression, Variable
 from .formatnum import format_uncertainty
 from . import util
 
+if 'SPHINXOPTS' in os.environ:
+    # export this only when building docs
+    __all__.append('FitProblemSchema')
+
 # Abstract base class:
 # can use "isinstance" to check if a class implements the protocol
 @util.runtime_checkable
