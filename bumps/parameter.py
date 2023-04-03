@@ -819,7 +819,7 @@ def _precedence(obj: Any) -> int:
         return OPERATOR_PRECEDENCE.get(obj.op.name, CALL_PRECEDENCE)
     return VALUE_PRECEDENCE
 
-@schema(init=False, eq=False)
+@schema(init=False, eq=False, frozen=True)
 class Expression(ValueProtocol):
     """
     Parameter expression
@@ -1431,7 +1431,7 @@ class Comparisons(Enum):
     #ne = '!='
 
 
-@schema()
+@schema(frozen=True)
 class Constraint:
     """ Express inequality constraints between model elements """
 
