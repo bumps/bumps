@@ -34,13 +34,14 @@ def var_plot_size(n):
     figheight = (TILE_H+V_SPACE)*nrow + T_MARGIN + B_MARGIN
     return figwidth, figheight
 
-def _make_var_axes(n):
+def _make_var_axes(n, fig=None):
     """
     Build a figure with one axis per parameter,
     and one axis (the last one) to contain the colorbar.
     Use to make the vars histogram figure.
     """
-    fig = plt.gcf()
+    if fig is None:
+        fig = plt.gcf()
     fig.clf()
     total_width, total_height = fig.get_size_inches()
 
@@ -96,36 +97,39 @@ def tile_axes_square(n):
     return cols, rows
 
 
-def plot_vars(draw, all_vstats, **kw):
+def plot_vars(draw, all_vstats, fig=None, **kw):
     n = len(all_vstats)
-    fig = _make_var_axes(n)
-    cbar = _make_fig_colorbar(draw.logp)
+    fig = _make_var_axes(n, fig=fig)
+    cbar = _make_fig_colorbar(draw.logp, fig=fig)
     for k, vstats in enumerate(all_vstats):
-        fig.sca(fig.axes[k])
-        plot_var(draw, vstats, k, cbar, **kw)
+        axes = fig.axes[k]
+        plot_var(draw, vstats, k, cbar, axes=axes, **kw)
+        fig.canvas.draw()
 
 
-def plot_var(draw, vstats, var, cbar, nbins=30):
+def plot_var(draw, vstats, var, cbar, nbins=30, axes=None):
     values = draw.points[:, var].flatten()
     bin_range = vstats.p95_range
     #bin_range = np.min(values), np.max(values)
-    _make_logp_histogram(values, draw.logp, nbins, bin_range,
-                         draw.weights, cbar)
-    _decorate_histogram(vstats)
-
-
-def _decorate_histogram(vstats):
     import pylab
+    if axes is None:
+        axes = pylab.gca()
+
+    _make_logp_histogram(values, draw.logp, nbins, bin_range,
+                         draw.weights, cbar, axes)
+    _decorate_histogram(vstats, axes)
+
+
+def _decorate_histogram(vstats, axes):
     from matplotlib.transforms import blended_transform_factory as blend
 
     l95, h95 = vstats.p95_range
     l68, h68 = vstats.p68_range
 
     # Shade things inside 1-sigma
-    pylab.axvspan(l68, h68, color='gold', alpha=0.5, zorder=-1)
+    axes.axvspan(l68, h68, color='gold', alpha=0.5, zorder=-1)
     # build transform with x=data, y=axes(0,1)
-    ax = pylab.gca()
-    transform = blend(ax.transData, ax.transAxes)
+    transform = blend(axes.transData, axes.transAxes)
 
     def marker(symbol, position):
         if position < l95:
@@ -134,23 +138,23 @@ def _decorate_histogram(vstats):
             symbol, position, ha = '>'+symbol, h95, 'right'
         else:
             symbol, position, ha = symbol, position, 'center'
-        pylab.text(position, 0.95, symbol, va='top', ha=ha,
+        axes.text(position, 0.95, symbol, va='top', ha=ha,
                    transform=transform, zorder=3, color='g')
-        #pylab.axvline(v)
+        #axes.axvline(v)
 
     marker('|', vstats.median)
     marker('E', vstats.mean)
     marker('*', vstats.best)
 
-    pylab.text(0.01, 0.95, vstats.label, zorder=2,
+    axes.text(0.01, 0.95, vstats.label, zorder=2,
                backgroundcolor=(1, 1, 0, 0.2),
                verticalalignment='top',
                horizontalalignment='left',
-               transform=pylab.gca().transAxes)
-    ax.set_yticklabels([])
+               transform=axes.transAxes)
+    axes.set_yticklabels([])
 
 
-def _make_fig_colorbar(logp):
+def _make_fig_colorbar(logp, fig=None):
     import matplotlib as mpl
     import pylab
 
@@ -164,7 +168,8 @@ def _make_fig_colorbar(logp):
     # Option 3: full range
     #vmin,vmax = -max(logp),-min(logp)
 
-    fig = pylab.gcf()
+    if fig is None:
+        fig = pylab.gcf()
     ax = fig.axes[-1]
     cmap = mpl.cm.copper
 
@@ -182,7 +187,10 @@ def _make_fig_colorbar(logp):
             self.delta = high - low
 
         def __call__(self, x, pos=None):
-            return format_value(x, self.delta)
+            # TODO: where did format_value come from?
+            # it does not exist anywhere in the project.
+            # return format_value(x, self.delta)
+            return '{:.3G}'.format(x)
 
     ticks = ()  #(vmin, vmax)
     formatter = MinDigitsFormatter(vmin, vmax)
@@ -203,7 +211,7 @@ def _make_fig_colorbar(logp):
     return cbar
 
 
-def _make_logp_histogram(values, logp, nbins, ci, weights, cbar):
+def _make_logp_histogram(values, logp, nbins, ci, weights, cbar, axes):
     from numpy import (ones_like, searchsorted, linspace, cumsum, diff,
                        unique, argsort, array, hstack, exp)
     if weights is None:
@@ -218,7 +226,6 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, cbar):
     #weightsum = cumsum(weights)
     #heights = diff(weightsum[idx])/weightsum[-1]  # normalized weights
 
-    import pylab
     edgecolors = None
     cmap = cbar.cmap
     cmap_edges = linspace(0, 1, cmap.N+1)[1:-1]
@@ -274,7 +281,7 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, cbar):
         tops = unique(hstack((change_point, len(pv)-1)))
         y = hstack((0, y_top[tops]))
         z = pv[tops][:, None]
-        pylab.pcolormesh(
+        axes.pcolormesh(
             x, y, z, norm=cbar.norm, cmap=cmap, edgecolors=edgecolors)
 
         # centerpoint, histogram height, maximum likelihood for each bin
@@ -291,7 +298,7 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, cbar):
     ml_peak = np.max(maxlikelihood)
     if ml_peak > hist_peak*1.3:
         maxlikelihood *= hist_peak*1.3/ml_peak
-    pylab.plot(centers, maxlikelihood, '-g')
+    axes.plot(centers, maxlikelihood, '-g')
 
     ## plot marginal gaussian approximation along with histogram
     #def G(x, mean, std):

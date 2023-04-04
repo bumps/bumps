@@ -12,7 +12,7 @@ from matplotlib.backends.backend_wxagg import NavigationToolbar2WxAgg as Toolbar
 # The Figure object is used to create backend-independent plot representations.
 from matplotlib.figure import Figure
 
-from ..fitproblem import MultiFitProblem
+from ..fitproblem import FitProblem
 
 from .util import EmbeddedPylab
 
@@ -157,7 +157,7 @@ class DataView(wx.Panel):
                     break
 
             # Preform the calculation
-            if isinstance(self.problem,MultiFitProblem):
+            if isinstance(self.problem,FitProblem):
                 #print "n=",len(self.problem.models)
                 for p in self.problem.models:
                     self._precalc(p)
@@ -179,10 +179,10 @@ class DataView(wx.Panel):
                 pylab.clf() # clear the canvas
                 #shift=20 if self.view == 'log' else 0
                 shift=0
-                if isinstance(self.problem, MultiFitProblem):
+                if isinstance(self.problem, FitProblem):
                     for i,p in enumerate(self.problem.models):
                         #if hasattr(p.fitness,'plot'):
-                        p.fitness.plot(view=self.view)
+                        p.plot(view=self.view)
                         if self._cancel_calculate: break
                     pylab.text(0.01, 0.01,
                                'chisq=%s' % self.problem.chisq_str(),

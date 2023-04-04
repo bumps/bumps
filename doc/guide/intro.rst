@@ -39,14 +39,14 @@ the line.
 Every fit file ends with a :func:`FitProblem <bumps.fitproblem.FitProblem>`
 definition::
 
-    problem = FitProblem(model)
+    problem = FitProblem(models)
 
 In fact, this is the only requirement of the fit file.  The Bumps engine
 loads the fit file, retieves the *problem* symbol and feeds it to one of the
 :mod:`fitters <bumps.fitters>`.  Some fit files do not even use *FitProblem* to
 define *problem*, or use *Parameter* objects for the fitted parameters, so
 long as *problem* implements the
-:class:`BaseFitProblem <bumps.fitproblem.BaseFitProblem>` interface, which
+:class:`FitProblem <bumps.fitproblem.FitProblem>` interface, which
 provides *getp* to get the existing parameter vector, *setp* to set a new
 parameter vector, *bounds* to return the parameter bounds, and *nllf* to
 to compute the negative log likelihood function.  The remaining methods are
@@ -60,7 +60,7 @@ pattern to use is::
 
     import bumps.names as bmp
     ...
-    problem = bmp.FitProblem(model)
+    problem = bmp.FitProblem(models)
 
 This documents to the reader unfamiliar with your code (such as you, dear
 reader, when looking at your model files two years from now) exactly where

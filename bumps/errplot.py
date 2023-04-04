@@ -123,10 +123,10 @@ def calc_errors(problem, points):
     return ret
 
 
-def show_errors(errs):
+def show_errors(errs, fig=None):
     """
     Display the confidence regions returned by :func:`calc_errors`.
 
     The content of *errs* depends on the active plugin.
     """
-    return plugin.show_errors(errs)
+    return plugin.show_errors(errs, fig=fig)

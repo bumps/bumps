@@ -76,8 +76,6 @@ are helpful:
 - :meth:`soft_range <Parameter.soft_range>` is a combination of *range*
   and *dev* in that the parameter has equal probability within [*low*,*high*]
   but Gaussian probability of width *std* as it strays outside of the range.
-- :meth:`pdf <Parameter.pdf>` is like *dev* but works with any continuous
-  `scipy.stats distribution <http://docs.scipy.org/doc/scipy/reference/stats.html>`_.
 
 All these methods set the *bounds* attribute on the parameter in one way
 or another.  See :mod:`bumps.bounds` for details.  Technically, setting

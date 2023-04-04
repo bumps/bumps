@@ -2,12 +2,14 @@
 Miscellaneous utility functions.
 """
 from __future__ import division
+import warnings
 
 __all__ = ["kbhit", "profile", "pushdir", "push_seed", "redirect_console"]
 
 import sys
 import os
 import types
+import inspect
 
 try:  # CRUFT: python 2.x
     from cStringIO import StringIO
@@ -20,6 +22,114 @@ from numpy import ascontiguousarray as _dense
 # so there is no longer a need for bumps.util.erf.
 from scipy.special import erf
 
+# this can be substituted with pydantic dataclass for schema-building...
+try:
+    from typing import Literal, Protocol, runtime_checkable
+except ImportError:
+    from typing_extensions import Literal, Protocol, runtime_checkable
+from typing import Iterable, Optional, Type, TypeVar, Any, Union, Dict, Callable, Tuple, List, Sequence, TYPE_CHECKING
+
+USE_PYDANTIC = os.environ.get('BUMPS_USE_PYDANTIC', "False") == "True"
+if USE_PYDANTIC:
+    from pydantic.dataclasses import dataclass
+    from numpy.typing import NDArray as _NDArray
+    # from pydantic_numpy import NDArray
+else:
+    from dataclasses import dataclass
+    if TYPE_CHECKING:
+        from numpy.typing import NDArray
+
+from dataclasses import field, is_dataclass, Field
+
+def field_desc(description: str) -> Any:
+    return field(metadata={"description": description})
+
+T = TypeVar('T')
+SCHEMA_ATTRIBUTE_NAME = '__bumps_schema__'
+
+def schema(
+        *,
+        include: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
+        classname: Optional[str] = None,
+        eq: bool = True,
+        init: bool = False,
+        frozen: bool = False,
+        repr: bool = True,
+    ) -> Callable[[Type[T]], Type[T]]:
+    
+    """ 
+    Create a dataclass from a subset of field names.
+    fields should be a list of strings corresponding to attribute names,
+    or if fields is None, all annotated attributes will be used as fields
+
+    if attribute "schema_description" is found, will be used for description of
+    generated schema, or else the class docstring will be used.
+    """
+    def set_dataclass(cls: Type[T]) -> Type[T]:
+        realname = cls.__name__
+        if cls.__name__ != cls.__qualname__:
+            warnings.warn(f"serialization does not work on nested classes: {cls.__qualname__} != {cls.__name__}")
+        name = realname if classname is None else classname
+        fqn = f"{cls.__module__}.{name}"
+
+        # check for invalid arguments:
+        # TODO: these arguments appear to never be used... drop them?
+        if include is not None and exclude is not None:
+            raise ValueError(f"{fqn} schema: include array and exclude array are mutually exclusive - only define one")
+
+        dclass_kwargs: Dict[str, Any] = dict(init=init, eq=eq, frozen=frozen, repr=repr)
+
+        # TODO: when pydantic v2 is used, migrate to new function __pydantic_modify_json_schema__
+        # instead of using Config class 
+        # (see https://github.com/pydantic/pydantic/blob/73373c3e08fe5fe23e4b05f549ea34e0da6a16b7/docs/examples/schema_extra_callable.py#L12)
+        if USE_PYDANTIC:
+            # only when generating schema...
+            class Config:
+                @staticmethod
+                def schema_extra(schema: Dict[str, Any], model: Any) -> None:
+                    model.__name__ = name
+                    schema.pop("title")
+                    props = schema.get("properties", {})
+                    if include is not None:
+                        for item in props:
+                            if not item in include:
+                                props.pop(item)
+                    elif exclude is not None:
+                        for item in exclude:
+                            props.pop(item)
+                    props['type'] = {'enum': [fqn]}
+
+            dclass_kwargs["config"] = Config
+            cls.__name__ = name
+
+        setattr(cls, SCHEMA_ATTRIBUTE_NAME, dict(include=include, exclude=exclude, fqn=fqn))
+        dataclass(**dclass_kwargs)(cls)
+        if cls.__name__ != realname:
+            cls.__name__ = realname
+        return cls
+
+    return set_dataclass
+
+def has_schema(cls):
+    return is_dataclass(cls) and hasattr(cls, SCHEMA_ATTRIBUTE_NAME)
+
+@schema(init=True)
+class NumpyArray:
+    """
+    Wrapper for numpy arrays:
+    on serialize, 
+     - array.tolist() is called and stored in 'values' attribute
+     - str(array.dtype) is stored in 'dtype' attribute
+
+     on deserialize,
+      - return new np.ndarray(values, dtype=dtype)
+    """
+    dtype: str
+    values: Sequence = field(default_factory=list)
+
+if USE_PYDANTIC:
+    NDArray = NumpyArray
 
 def parse_errfile(errfile):
     """

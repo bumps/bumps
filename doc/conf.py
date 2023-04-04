@@ -62,6 +62,7 @@ extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest',
 
 nitpick_ignore = [
     ('py:class', 'type'),
+    ('py:class', 'enum.Enum'),
     ('py:class', 'object'),
     ("py:class", "numpy.ndarray"),
     ("py:class", "np.ndarray"),

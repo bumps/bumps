@@ -84,9 +84,9 @@ def plot_all(state, portion=1.0, figfile=None):
         if figfile is not None:
             savefig(figfile+"-parcor"+figext)
 
-def plot_corrmatrix(draw, nbins=50):
+def plot_corrmatrix(draw, nbins=50, fig=None):
     c = corrplot.Corr2d(draw.points.T, bins=nbins, labels=draw.labels)
-    c.plot()
+    c.plot(fig=fig)
     #print "Correlation matrix\n",c.R()
 
 

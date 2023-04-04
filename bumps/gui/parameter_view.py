@@ -31,7 +31,7 @@ import wx.dataview as dv
 from uuid import uuid4 as uuid_generate
 import sys
 
-from ..parameter import BaseParameter
+from ..parameter import Parameter
 from .util import nice
 from . import signal
 
@@ -115,7 +115,7 @@ class ParametersModel(dv.PyDataViewModel):
 
         # Return False if it is a leaf
         node = self.ItemToObject(item)
-        return not isinstance(node["value"], BaseParameter)
+        return not isinstance(node["value"], Parameter)
 
     def GetParent(self, item):
         # Return the item which is this item's parent.
@@ -161,14 +161,14 @@ class ParametersModel(dv.PyDataViewModel):
             return mapper[col]
 
 
-        elif isinstance(par, BaseParameter):
+        elif isinstance(par, Parameter):
             if par.fittable:
                 if par.fixed:
                     fitted = False
                     low, high = '', ''
                 else:
                     fitted = True
-                    low, high = (str(v) for v in par.bounds.limits)
+                    low, high = (str(v) for v in par.prior.limits)
             else:
                 fitted = False
                 low, high = '', ''
@@ -194,7 +194,7 @@ class ParametersModel(dv.PyDataViewModel):
 
         node = self.ItemToObject(item)
         par = node["value"]
-        if isinstance(par, BaseParameter):
+        if isinstance(par, Parameter):
             if col == 0:
                 if par.fittable:
                     par.fixed = not value
@@ -203,14 +203,14 @@ class ParametersModel(dv.PyDataViewModel):
             elif col == 3:
                 if value == '': return
                 low = float(value)
-                high = par.bounds.limits[1]
-                if low != par.bounds.limits[0]:
+                high = par.prior.limits[1]
+                if low != par.prior.limits[0]:
                     par.range(low, high)
             elif col == 4:
                 if value == '': return
                 high = float(value)
-                low = par.bounds.limits[0]
-                if high != par.bounds.limits[1]:
+                low = par.prior.limits[0]
+                if high != par.prior.limits[1]:
                     par.range(low, high)
 
         if col == 0:
@@ -314,14 +314,14 @@ def params_to_dict(params):
             ref[k] = params_to_dict(params[k])
     elif isinstance(params, tuple) or isinstance(params, list):
         ref = [params_to_dict(v) for v in params]
-    elif isinstance(params, BaseParameter):
+    elif isinstance(params, Parameter):
         if params.fittable:
             if params.fixed:
                 fitted = 'No'
                 low, high = '', ''
             else:
                 fitted = 'Yes'
-                low, high = (str(v) for v in params.bounds.limits)
+                low, high = (str(v) for v in params.prior.limits)
         else:
             fitted = ''
             low, high = '', ''
@@ -346,7 +346,7 @@ def params_to_list(params, parent_uuid=None, output=None, path='M', links=None):
             #output.append(new_item)
             new_id = None
             params_to_list(v, parent_uuid=new_id, output=output, path=path+"[%d]" % (i,), links=links)
-    elif isinstance(params, BaseParameter):
+    elif isinstance(params, Parameter):
         link_path = links.get(id(params), "")
         if link_path == "":
             links[id(params)] = path

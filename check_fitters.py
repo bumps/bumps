@@ -74,11 +74,11 @@ def check_fit(fitter, store, targets):
     model_index = 0
     with open(errfiles[0]) as fid:
         for line in fid:
-            if line.startswith("[chisq="):
-                if line[7:10].lower() == 'inf':
+            if line.startswith("[overall chisq="):
+                if line[15:10].lower() == 'inf':
                     value = np.inf
                 else:
-                    value = float(line[7:].split("(")[0])
+                    value = float(line[15:].split("(")[0])
                 assert abs(value-targets[model_index]) < 1e-2, \
                     "error in %s: expected %.3f but got %.3f" \
                     % (fitter, targets[model_index], value)

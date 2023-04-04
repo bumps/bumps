@@ -624,7 +624,9 @@ class AppPanel(wx.Panel):
         except ImportError:
             from pickle import dump
         try:
-            if hasattr(self.model, 'save_json'):
+            if hasattr(plugin, 'save_json'):
+                plugin.save_json(self.model, path)
+            elif hasattr(self.model, 'save_json'):
                 self.model.save_json(path)
             with open(path,'wb') as fid:
                 dump(self.model, fid)
@@ -711,6 +713,8 @@ class AppPanel(wx.Panel):
         # Enable appropriate toolbar items.
         self.tb.EnableTool(self.tb_start.GetId(), True)
         self.tb.EnableTool(self.tb_stop.GetId(), True)
+        if hasattr(model, 'broken_constraints'):
+            signal.log_message(message="Unsatisfied constraints: \n\t%s" % (",\n\t".join(model.broken_constraints)))
         if hasattr(model, 'path'):
             signal.log_message(message="loaded "+model.path)
             self.GetTopLevelParent().SetTitle("Bumps: %s"%model.name)
