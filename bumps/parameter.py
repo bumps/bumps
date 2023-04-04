@@ -1413,6 +1413,24 @@ def current(s: List[Parameter]):
 
 # ========= trash ===================
 
+def copy_linked(has_parameters, free_names=None):
+    """
+    make a copy of an object with parameters
+     - then link all the parameters, except
+     - those with names matching "free_names"
+    """
+    assert callable(getattr(has_parameters, 'parameters', None)) == True
+    from copy import deepcopy
+    copied = deepcopy(has_parameters)
+    free_names = [] if free_names is None else free_names
+    original_pars = unique(has_parameters.parameters())
+    copied_pars = unique(copied.parameters())
+    for op, cp in zip(original_pars, copied_pars):
+        if not op.name in free_names:
+            cp.slot = op.slot
+        else:
+            cp.id = str(uuid.uuid4())
+    return copied
 
 # ==== Comparison operators ===
 class Comparisons(Enum):
