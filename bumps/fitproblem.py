@@ -610,7 +610,8 @@ class FitProblem(FitProblemSchema):
         if nllf == np.inf:
             failing.append("user constraints function")
         for c in self.constraints:
-            c_nllf = float(c)
+            # TODO: convert to list of residuals for Levenberg-Marquardt
+            c_nllf = float(c)**2
             nllf += c_nllf
             if c_nllf > 0:
                 failing.append(str(c))
