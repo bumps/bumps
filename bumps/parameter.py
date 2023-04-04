@@ -882,7 +882,12 @@ def _make_binary_op(op_name: str):
 def _make_math_fn(fn_name: str):
     op = getattr(Operators, fn_name)
     def fn(*args): # first of args is self
-        return Expression(op, args)
+        if any([isinstance(arg, ValueProtocol) for arg in args]):
+            return Expression(op, args)
+        else:
+            # then all the args are floats: just return a float!
+            realized_fn = _lookup_operator(op.name)
+            return realized_fn(*args)
     # define sin, etc., in the parameter and expression so that np.sin(a)
     # will resolve to Expression('sin', tuple(a)), etc.
     setattr(OperatorMixin, fn_name, fn)
@@ -1008,7 +1013,7 @@ pmath.acosh = acosh = pmath.arccosh
 pmath.atanh = atanh = pmath.arctanh
 
 pmath.__all__.extend((
-    'asin', 'acos', 'atan', 'atan2d',
+    'asin', 'acos', 'atan', 'atan2',
     'asind', 'acosd', 'atand', 'atan2d',
     'asinh', 'acosh', 'atanh',
     ))
