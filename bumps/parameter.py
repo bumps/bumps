@@ -31,7 +31,7 @@ from numpy import inf, isinf, isfinite
 
 from . import bounds as mbounds
 from . import pmath
-from .util import field, field_desc, schema
+from .util import field, field_desc, schema, dataclass
 
 BoundsType = mbounds.BoundsType
 
@@ -651,6 +651,7 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
         return obj
 
 
+@dataclass
 class Variable(ValueProtocol):
     """
     Saved state for a random variable in the model.
