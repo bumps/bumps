@@ -945,7 +945,7 @@ def function(fn: Callable):
     def wrapped(*args: 'ValueType'):
         return Expression(op, args)
     wrapped.__name__ = fn.__name__
-    wrapped.__doc__ = fn.__doc__
+    wrapped.__doc__ = fn.__doc__ if fn.__name__.endswith("d") else f"{fn.__name__}(Parameter)"
     # Add the symbol to pmath
     setattr(pmath, name, wrapped)
     pmath.__all__.append(name)
@@ -993,19 +993,19 @@ def arctan2d(dy, dx):
     return np.degrees(np.arctan2(dy, dx))
 
 # Aliases for arcsin, etc., both here in bumps.parameters and in bumps.pmath.
-pmath.asin = asin = np.arcsin
-pmath.acos = acos = np.arccos
-pmath.atan = atan = np.arctan
-pmath.atan2 = atan2 = np.arctan2
+pmath.asin = asin = pmath.arcsin
+pmath.acos = acos = pmath.arccos
+pmath.atan = atan = pmath.arctan
+pmath.atan2 = atan2 = pmath.arctan2
 
 pmath.asind = asind = arcsind
 pmath.acosd = acosd = arccosd
 pmath.atand = atand = arctand
 pmath.atan2d = atan2d = arctan2d
 
-pmath.asinh = asinh = np.arcsinh
-pmath.acosh = acosh = np.arccosh
-pmath.atanh = atanh = np.arctanh
+pmath.asinh = asinh = pmath.arcsinh
+pmath.acosh = acosh = pmath.arccosh
+pmath.atanh = atanh = pmath.arctanh
 
 pmath.__all__.extend((
     'asin', 'acos', 'atan', 'atan2d',
