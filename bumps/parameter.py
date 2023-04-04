@@ -115,6 +115,7 @@ class OperatorMixin:
     """
     # float(value) is special: it returns the current value rather than
     # becoming part of the parameter expression.
+    value: float
     def __float__(self):
         return float(self.value)
     def __int__(self):
@@ -822,11 +823,11 @@ class Expression(ValueProtocol):
     fittable = False
     fixed = True
 
-    op: Operators # Enumerated str type {function_name: display_name}
+    op: Union[Operators, 'UserFunction'] # Enumerated str type {function_name: display_name}
     args: Sequence[ValueType]
     _fn: Callable[..., float] # _fn(float, float, ...) -> float
 
-    def __init__(self, op: Union[str, Operators], args):
+    def __init__(self, op: Union[str, Operators, 'UserFunction'], args):
         op = op if (isinstance(op, Operators) or isinstance(op, UserFunction)) else getattr(Operators, op)
         object.__setattr__(self, 'op', op)
         object.__setattr__(self, '_fn', _lookup_operator(op.name))
@@ -917,24 +918,20 @@ class UserFunction:
     validator may fail on one of these functions.
     """
     name: str
-    value: str
     fn: Callable[..., float]
     # A function registry to remember the code associated with the name.
     # This is a class attribute, so it is initialized with an empty dict().
     # Ignore complaints from lint.
     # TODO: use pmath as our registry of available functions.
     registry: Dict[str, Callable[..., float]] = {}
-    wrapper: Dict[str, 'UserFunction'] = {}
-    def __init__(self, fn):
+    def __init__(self, fn: Callable):
         name = fn.__name__
         if name in UserFunction.registry:
             raise TypeError(f"Function {name} already registered in bumps.")
         UserFunction.registry[name] = fn
-        UserFunction.wrapper[name] = self
         self.name = name
-        self.value = name
 
-def function(fn):
+def function(fn: Callable):
     """
     Convert a function into a delayed evaluator.
 
@@ -944,7 +941,7 @@ def function(fn):
     """
     name = fn.__name__
     op = UserFunction(fn)
-    def wrapped(*args):
+    def wrapped(*args: 'ValueType'):
         return Expression(op, args)
     wrapped.__name__ = fn.__name__
     wrapped.__doc__ = fn.__doc__
