@@ -68,6 +68,12 @@ def jacobian(problem, p=None, step=None):
     point value p_j if the range on parameter j is infinite.
 
     The current point is preserved.
+
+    Note that the problem.residuals() method should not reuse memory for the
+    returned value otherwise the derivative calculation (f(x+dx) - f(x))/dx
+    will always be zero. The returned value need not be 1D, but it should be
+    contiguous so that it can be reshaped to 1D without an extra copy. This
+    will only be an issue for very large datasets.
     """
     p_init = problem.getp()
     if p is None:
@@ -76,7 +82,10 @@ def jacobian(problem, p=None, step=None):
     bounds = getattr(problem, 'bounds', lambda: None)()
     def f(p):
         problem.setp(p)
-        return problem.residuals()
+        # Return residuals as a vector even if f(x) returns a matrix otherwise
+        # we cannot build a stacked Jacobian. We use reshape() rather than
+        # flatten since this will avoid an unnecessary copy.
+        return np.reshape(problem.residuals(), -1)
     J = _jacobian_forward(f, p, bounds, eps=step)
     #J = nd.Jacobian(problem.residuals)(p)
     problem.setp(p_init)
@@ -86,7 +95,6 @@ def _jacobian_forward(f, p, bounds, eps=None):
     n = len(p)
     # TODO: default to double precision epsilon
     step = 1e-4 if eps is None else np.sqrt(eps)
-    fx = f(p)
 
     #print("p",p,"step",step)
     h = abs(p)*step
@@ -95,9 +103,11 @@ def _jacobian_forward(f, p, bounds, eps=None):
         h[h+p > bounds[1]] *= -1.0  # step backward if forward step is out of bounds
     ee = np.diag(h)
 
+    fx = f(p) # Maybe fx.copy() to protect against reuse
     J = []
     for i in range(n):
-        J.append((f(p + ee[i, :]) - fx)/h[i])
+        fx_plus = f(p + ee[i, :])
+        J.append((fx_plus - fx)/h[i])
     return np.vstack(J).T
 
 def _jacobian_central(f, p, bounds, eps=None):
@@ -114,7 +124,9 @@ def _jacobian_central(f, p, bounds, eps=None):
 
     J = []
     for i in range(n):
-        J.append((f(p + ee[i, :]) - f(p - ee[i, :])) / (2.0*h[i]))
+        fx_minus = f(p - ee[i, :]) # Maybe fx.copy() to protect against reuse
+        fx_plus = f(p + ee[i, :])
+        J.append((fx_plus - fx_minus) / (2.0*h[i]))
     return np.vstack(J).T
 
 

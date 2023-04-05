@@ -859,8 +859,14 @@ class MVNSingular:
         return self.dist.rvs(size=size)
 
     def entropy(self, N=10000):
+        # CRUFT scipy==1.10.0: scipy.stats briefly removed the dist.cov attribute.
+        if hasattr(self.dist, 'cov'):
+            cov = self.dist.cov
+        else:
+            cov = self.dist.cov_object.covariance
+
         with np.errstate(divide='ignore'):
-            return 0.5*log(np.linalg.det((2*pi*np.e)*self.dist.cov))
+            return 0.5*log(np.linalg.det((2*pi*np.e)*cov))
 
 class GaussianMixture:
     def __init__(self, w, mu=None, sigma=None):

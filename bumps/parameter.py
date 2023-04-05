@@ -31,7 +31,7 @@ from numpy import inf, isinf, isfinite
 
 from . import bounds as mbounds
 from . import pmath
-from .util import field, field_desc, schema
+from .util import field, field_desc, schema, dataclass
 
 BoundsType = mbounds.BoundsType
 
@@ -115,8 +115,11 @@ class OperatorMixin:
     """
     # float(value) is special: it returns the current value rather than
     # becoming part of the parameter expression.
+    value: float
     def __float__(self):
         return float(self.value)
+    def __int__(self):
+        return int(self.value)
     def __bool__(self):
         # Note: __bool__ must return true or false, so we can't handle
         # lazy constraint expressions like not a, a or b, a and b.
@@ -230,7 +233,7 @@ class ParameterSchema:
     slot: Union['Variable', ValueType]
     limits: Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]] = (-inf, inf)
     bounds: Optional[Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]] = None
-    distribution: DistributionType = Uniform()
+    distribution: DistributionType = field(default_factory=Uniform)
     discrete: bool = False
 
 class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
@@ -424,10 +427,10 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
     # Delegate to slots
     @property
     def value(self):
-        return float(self.slot)
+        return int(self.slot) if self.discrete else float(self.slot)
     @value.setter
     def value(self, update):
-        self.slot.value = update
+        self.slot.value = round(update) if self.discrete else update
     @property
     def fittable(self):
         return isinstance(self.slot, Variable)
@@ -572,6 +575,7 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
             if value is None:
                 value = float(bounds[0]) if bounds is not None else 0 # ? what else to do here?
             if isinstance(value, (float, int)):
+                value = round(value) if discrete else value
                 slot = Variable(value)
             elif isinstance(value, ValueProtocol):
                 slot = value
@@ -647,16 +651,12 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
         return obj
 
 
-@schema(classname="Variable")
-class VariableSchema:
+@dataclass
+class Variable(ValueProtocol):
     """
     Saved state for a random variable in the model.
     """
     value: float
-    ## uncomment if bounds are on variable rather than parameter
-    #bounds: Union[tuple(bounds_classes)] = field(default=mbounds.Unbounded(), init=False)
-
-class Variable(ValueProtocol, VariableSchema):
     def __init__(self, value):
         self.value = value
     def parameters(self):
@@ -816,7 +816,7 @@ def _precedence(obj: Any) -> int:
         return OPERATOR_PRECEDENCE.get(obj.op.name, CALL_PRECEDENCE)
     return VALUE_PRECEDENCE
 
-@schema(init=False, eq=False)
+@schema(init=False, eq=False, frozen=True)
 class Expression(ValueProtocol):
     """
     Parameter expression
@@ -824,15 +824,15 @@ class Expression(ValueProtocol):
     fittable = False
     fixed = True
 
-    op: Operators # Enumerated str type {function_name: display_name}
+    op: Union[Operators, 'UserFunction'] # Enumerated str type {function_name: display_name}
     args: Sequence[ValueType]
     _fn: Callable[..., float] # _fn(float, float, ...) -> float
 
-    def __init__(self, op: Union[str, Operators], args):
+    def __init__(self, op: Union[str, Operators, 'UserFunction'], args):
         op = op if (isinstance(op, Operators) or isinstance(op, UserFunction)) else getattr(Operators, op)
-        self.op = op
-        self._fn = _lookup_operator(op.name)
-        self.args = args
+        object.__setattr__(self, 'op', op)
+        object.__setattr__(self, '_fn', _lookup_operator(op.name))
+        object.__setattr__(self, 'args', args)
 
     def parameters(self):
         # Walk expression tree combining parameters from each subexpression
@@ -882,7 +882,12 @@ def _make_binary_op(op_name: str):
 def _make_math_fn(fn_name: str):
     op = getattr(Operators, fn_name)
     def fn(*args): # first of args is self
-        return Expression(op, args)
+        if any([isinstance(arg, ValueProtocol) for arg in args]):
+            return Expression(op, args)
+        else:
+            # then all the args are floats: just return a float!
+            realized_fn = _lookup_operator(op.name)
+            return realized_fn(*args)
     # define sin, etc., in the parameter and expression so that np.sin(a)
     # will resolve to Expression('sin', tuple(a)), etc.
     setattr(OperatorMixin, fn_name, fn)
@@ -919,24 +924,20 @@ class UserFunction:
     validator may fail on one of these functions.
     """
     name: str
-    value: str
     fn: Callable[..., float]
     # A function registry to remember the code associated with the name.
     # This is a class attribute, so it is initialized with an empty dict().
     # Ignore complaints from lint.
     # TODO: use pmath as our registry of available functions.
     registry: Dict[str, Callable[..., float]] = {}
-    wrapper: Dict[str, 'UserFunction'] = {}
-    def __init__(self, fn):
+    def __init__(self, fn: Callable):
         name = fn.__name__
         if name in UserFunction.registry:
             raise TypeError(f"Function {name} already registered in bumps.")
         UserFunction.registry[name] = fn
-        UserFunction.wrapper[name] = self
         self.name = name
-        self.value = name
 
-def function(fn):
+def function(fn: Callable):
     """
     Convert a function into a delayed evaluator.
 
@@ -946,10 +947,10 @@ def function(fn):
     """
     name = fn.__name__
     op = UserFunction(fn)
-    def wrapped(*args):
+    def wrapped(*args: 'ValueType'):
         return Expression(op, args)
     wrapped.__name__ = fn.__name__
-    wrapped.__doc__ = fn.__doc__
+    wrapped.__doc__ = fn.__doc__ if fn.__name__.endswith("d") else f"{fn.__name__}(Parameter)"
     # Add the symbol to pmath
     setattr(pmath, name, wrapped)
     pmath.__all__.append(name)
@@ -997,22 +998,22 @@ def arctan2d(dy, dx):
     return np.degrees(np.arctan2(dy, dx))
 
 # Aliases for arcsin, etc., both here in bumps.parameters and in bumps.pmath.
-pmath.asin = asin = np.arcsin
-pmath.acos = acos = np.arccos
-pmath.atan = atan = np.arctan
-pmath.atan2 = atan2 = np.arctan2
+pmath.asin = asin = pmath.arcsin
+pmath.acos = acos = pmath.arccos
+pmath.atan = atan = pmath.arctan
+pmath.atan2 = atan2 = pmath.arctan2
 
 pmath.asind = asind = arcsind
 pmath.acosd = acosd = arccosd
 pmath.atand = atand = arctand
 pmath.atan2d = atan2d = arctan2d
 
-pmath.asinh = asinh = np.arcsinh
-pmath.acosh = acosh = np.arccosh
-pmath.atanh = atanh = np.arctanh
+pmath.asinh = asinh = pmath.arcsinh
+pmath.acosh = acosh = pmath.arccosh
+pmath.atanh = atanh = pmath.arctanh
 
 pmath.__all__.extend((
-    'asin', 'acos', 'atan', 'atan2d',
+    'asin', 'acos', 'atan', 'atan2',
     'asind', 'acosd', 'atand', 'atan2d',
     'asinh', 'acosh', 'atanh',
     ))
@@ -1415,35 +1416,24 @@ def current(s: List[Parameter]):
 
 # ========= trash ===================
 
-# this is a bit tricksy, because it's pretending to *be* an int
-# the fact that it has attributes that do stuff doesn't interfere
-# with its essential int-ness.
-class IntegerProperty(int):
-    backing_name: str = "_value"
-
-    def __new__(cls, backing_name="_value"):
-        i = int.__new__(cls, 0)
-        i.backing_name = backing_name
-        return i
-    def __get__(self, obj, owner=None) -> int:
-        if obj is None:
-            return self
+def copy_linked(has_parameters, free_names=None):
+    """
+    make a copy of an object with parameters
+     - then link all the parameters, except
+     - those with names matching "free_names"
+    """
+    assert callable(getattr(has_parameters, 'parameters', None)) == True
+    from copy import deepcopy
+    copied = deepcopy(has_parameters)
+    free_names = [] if free_names is None else free_names
+    original_pars = unique(has_parameters.parameters())
+    copied_pars = unique(copied.parameters())
+    for op, cp in zip(original_pars, copied_pars):
+        if not op.name in free_names:
+            cp.slot = op.slot
         else:
-            return getattr(obj, self.backing_name)
-    def __set__(self, obj, value: Union[float, int]):
-        setattr(obj, self.backing_name, int(value))
-    def __repr__(self):
-        return object.__repr__(self)
-
-
-class IntegerParameter(Parameter):
-    value: int
-    discrete: Literal[True] = True
-    _value: int
-
-    #value = property(_get_value, _set_value)
-    value = IntegerProperty("_value")
-
+            cp.id = str(uuid.uuid4())
+    return copied
 
 # ==== Comparison operators ===
 class Comparisons(Enum):
@@ -1457,7 +1447,7 @@ class Comparisons(Enum):
     #ne = '!='
 
 
-@schema()
+@schema(frozen=True)
 class Constraint:
     """ Express inequality constraints between model elements """
 
@@ -1469,10 +1459,11 @@ class Constraint:
 
     def __init__(self, a, b, op):
         import operator
-        self.a, self.b = a, b
+        object.__setattr__(self, 'a', a)
+        object.__setattr__(self, 'b', b)
         op_name = str(Comparisons(op).name)
-        self.compare = getattr(operator, op_name.lower())
-        self.op = op
+        object.__setattr__(self, 'compare', getattr(operator, op_name.lower()))
+        object.__setattr__(self, 'op', op)
 
     # TODO: is this really necessary?  What is the reason for this trap?
     # It seems like being able to cast with bool(Constraint) would be
@@ -1511,7 +1502,6 @@ class Alias(object):
     parameter will have the full parameter semantics, including
     the ability to replace a fixed value with a parameter expression.
 
-    **Deprecated** :class:`Reference` does this better.
     """
 
     def __init__(self, obj, attr, p=None, name=None):

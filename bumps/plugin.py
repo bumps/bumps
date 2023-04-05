@@ -38,10 +38,7 @@ __all__ = [
     'show_errors',
     'data_view',
     'model_view',
-    'SCHEMA_SOURCES'
 ]
-
-SCHEMA_SOURCES = ()
 
 # TODO: refl1d wants to do the following after cli.getopts()
 #

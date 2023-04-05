@@ -68,6 +68,10 @@ from .parameter import to_dict, Parameter, Expression, Variable
 from .formatnum import format_uncertainty
 from . import util
 
+if 'SPHINXOPTS' in os.environ:
+    # export this only when building docs
+    __all__.append('FitProblemSchema')
+
 # Abstract base class:
 # can use "isinstance" to check if a class implements the protocol
 @util.runtime_checkable
@@ -606,7 +610,8 @@ class FitProblem(FitProblemSchema):
         if nllf == np.inf:
             failing.append("user constraints function")
         for c in self.constraints:
-            c_nllf = float(c)
+            # TODO: convert to list of residuals for Levenberg-Marquardt
+            c_nllf = float(c)**2
             nllf += c_nllf
             if c_nllf > 0:
                 failing.append(str(c))
