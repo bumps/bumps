@@ -40,6 +40,15 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
+v0.9.1 2023-04-05
+-----------------
+* added support for python 3.11, scipy 1.10, numpy 1.24, wx 4.1.1
+* fixed covariance calculation for n-D datasets
+* fixed batch mode I/O redirection cleanup
+* fixed openmp issue with DREAM bounds checker
+
+
+
 v0.9.0 2022-03-15
 -----------------
 * use MPFit in place of scipy.leastsq for bounds-constrained Levenberg-Marquardt
