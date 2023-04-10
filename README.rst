@@ -40,14 +40,16 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
-v0.9.1 2023-04-05
+v0.9.1 2023-04-10
 -----------------
 * added support for python 3.11, scipy 1.10, numpy 1.24, wx 4.1.1
 * fixed covariance calculation for n-D datasets
 * fixed batch mode I/O redirection cleanup
-* fixed openmp issue with DREAM bounds checker
-
-
+* fixed issue with DREAM bounds checker when running in parallel
+* default to single precision derivatives with lm (fixes issue in SasView
+  where OpenCL models failed with Levenberg-Marquardt)
+* improved support for repeat fitting within scripts and notebooks
+  (*start_mapper* should now work after *stop_mapper*)
 
 v0.9.0 2022-03-15
 -----------------
@@ -66,6 +68,9 @@ v0.8.1 2021-11-18
 * fixed Summary view sliders disappearing in linux
 * fixed uncertainty plots regenerating at each parameter update
 * improved documentation of uncertainty analysis
+
+Breaking change:
+* python 2.7 support discontinued
 
 v0.8.0 2020-12-16
 -----------------
