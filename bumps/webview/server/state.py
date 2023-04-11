@@ -1,6 +1,7 @@
 from collections import deque
 from queue import Queue
 from typing import Dict, List, Optional, TYPE_CHECKING
+import asyncio
 
 if TYPE_CHECKING:
     import bumps, bumps.fitproblem, bumps.dream.state
@@ -23,6 +24,7 @@ class State:
     hostname: str
     port: int
     abort_queue: Queue
+    fit_stopped_future: Optional[asyncio.Future] = None
     fit_thread: Optional['FitThread'] = None
 
     # State to be stored:
