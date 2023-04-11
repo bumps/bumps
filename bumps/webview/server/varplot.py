@@ -238,22 +238,3 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, cbar_edges, showscale
     #mean, std = np.average(values, weights=weights), np.std(values, ddof=1)
     #pdf = G(centers, mean, std)
     #pylab.plot(centers, pdf*np.sum(height)/np.sum(pdf), '-b')
-
-
-def test():
-    import pickle
-    test_data = pickle.loads(open("./varplot.pickle", 'rb').read())
-    draw = test_data['draw']
-    stats = test_data['stats']
-    import time
-    start_time = time.time()
-    fig = plot_vars(draw, stats)
-    print(f"generating plot took: {time.time() - start_time} seconds")
-    # print(fig)
-    # print(test_data.keys())
-    fig.write_json(open("varplot.json", "w"))
-    fig.write_html(open("varplot.html", "w"))
-    fig.show()
-
-if __name__ == '__main__':
-    test()
