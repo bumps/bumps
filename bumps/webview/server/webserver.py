@@ -317,7 +317,6 @@ async def _fit_progress_handler(event: Dict):
 def fit_progress_handler(event: Dict):
     asyncio.run_coroutine_threadsafe(_fit_progress_handler(event), app.loop)
 
-EVT_FIT_PROGRESS.connect(fit_progress_handler)
 
 async def _fit_complete_handler(event):
     print("complete event: ", event.get("message", ""))
@@ -347,8 +346,6 @@ async def _fit_complete_handler(event):
 
 def fit_complete_handler(event: Dict):
     asyncio.run_coroutine_threadsafe(_fit_complete_handler(event), app.loop)
-
-EVT_FIT_COMPLETE.connect(fit_complete_handler)
 
 async def log(message: str, title: Optional[str] = None):
     await publish("", "log", {"message": message, "title": title})
@@ -861,6 +858,9 @@ def main(index: Callable=index, static_assets_path: Path=static_assets_path, arg
     if TRACE_MEMORY:
         import tracemalloc
         tracemalloc.start()
+
+    EVT_FIT_PROGRESS.connect(fit_progress_handler)
+    EVT_FIT_COMPLETE.connect(fit_complete_handler)
 
     web.run_app(app, sock=sock)
 
