@@ -46,7 +46,6 @@ class GUIProgressMonitor(monitor.TimedUpdate):
 
     def show_improvement(self, history):
         evt = dict(
-            problem=self.problem,
             message="improvement",
             step=history.step[0],
             value=history.value[0],
@@ -98,7 +97,6 @@ class ConvergenceMonitor(monitor.Monitor):
 
         if self.rate > 0 and history.time[0] >= self.time+self.rate:
             evt = dict(
-                problem=self.problem,
                 message=self.message,
                 pop=self.progress())
             EVT_FIT_PROGRESS.send(evt)
@@ -112,7 +110,6 @@ class ConvergenceMonitor(monitor.Monitor):
         Close out the monitor
         """
         evt = dict(
-            problem=self.problem,
             message=self.message,
             pop=self.progress())
         EVT_FIT_PROGRESS.send(evt)
@@ -143,7 +140,6 @@ class DreamMonitor(monitor.Monitor):
             self.time = history.time[0]
             #self.win.uncertainty_state = self.uncertainty_state
             evt = dict(
-                problem=self.problem,
                 message="uncertainty_update",
                 uncertainty_state=deepcopy(self.uncertainty_state),
             )
@@ -157,7 +153,6 @@ class DreamMonitor(monitor.Monitor):
             # Note: win.uncertainty_state protected by win.fit_lock
             # self.win.uncertainty_state = self.uncertainty_state
             evt = dict(
-                problem=self.problem,
                 message="uncertainty_final",
                 uncertainty_state=deepcopy(self.uncertainty_state),
             )
