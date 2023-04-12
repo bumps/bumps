@@ -233,6 +233,7 @@ class FitProblem(FitProblemSchema):
     _parameters: util.List[Parameter]
     _parameters_by_id: util.Dict[str, Parameter]
     freevars: parameter.FreeVariables
+    dof: float = np.NaN
     # _all_constraints: util.List[util.Union[Parameter, Expression]]
 
     def __init__(self, models: util.Union[Fitness, util.List[Fitness]], weights=None, name=None,
@@ -700,7 +701,7 @@ def nllf_scale(problem: FitProblem):
     measurements.  To first approximation, the uncertainty in $\chi^2_N$
     is $k/(n-k)$
     """
-    dof = getattr(problem, 'dof', np.NaN)
+    dof = problem.dof
     if dof <= 0 or np.isnan(dof) or np.isinf(dof):
         return 1., 0.
     else:
