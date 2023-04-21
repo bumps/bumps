@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import itertools
 import threading
 import signal
+import socket
 from types import GeneratorType
 from typing import Callable, Dict, List, Literal, Optional, Union, Tuple, TypedDict, cast
 from datetime import datetime
@@ -745,22 +746,23 @@ def params_to_list(params, lookup=None, pathlist=None, links=None) -> List[Param
 
 import argparse
 
-
-class Namespace(argparse.Namespace):
+@dataclass
+class Options:
     """ provide type hints for arguments """
-    filename: Optional[str]
-    headless: bool
-    external: bool
-    port: int
-    hub: Optional[str]
-    fit: Optional[str]
-    start: bool
-    store: Optional[str]
-    exit: bool
-    serializer: SERIALIZERS
+    filename: Optional[str] = None
+    headless: bool = False
+    external: bool = False
+    port: int = 0
+    hub: Optional[str] = None
+    fit: Optional[str] = None
+    start: bool = False
+    store: Optional[str] = None
+    exit: bool = False
+    serializer: SERIALIZERS = "dill"
+    trace: bool = False
 
 
-def main(index: Callable=index, static_assets_path: Path=static_assets_path, arg_defaults: Optional[Dict]=None):
+def get_commandline_options(arg_defaults: Optional[Dict]=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('filename', nargs='?', help='problem file to load, .py or .json (serialized) fitproblem')
     # parser.add_argument('-d', '--debug', action='store_true', help='autoload modules on change')
@@ -777,27 +779,30 @@ def main(index: Callable=index, static_assets_path: Path=static_assets_path, arg
     # parser.add_argument('-c', '--config-file', type=str, help='path to JSON configuration to load')
     if arg_defaults is not None:
         parser.set_defaults(**arg_defaults)
-    args = parser.parse_args(namespace=Namespace())
+    args = parser.parse_args(namespace=Options())
+    return args
 
+
+def setup_app(index: Callable=index, static_assets_path: Path=static_assets_path, sock: Optional[socket.socket] = None, options: Options = Options()):
     if Path.exists(static_assets_path):
         app.router.add_static('/assets', static_assets_path)
     app.router.add_get('/', index)
 
-    if args.store is not None:
-        state.setup_backing(session_file_name=args.store, in_memory=False)
+    if options.store is not None:
+        state.setup_backing(session_file_name=options.store, in_memory=False)
 
     if state.problem.serializer is None:
-        state.problem.serializer = args.serializer
+        state.problem.serializer = options.serializer
 
-    if args.trace:
+    if options.trace:
         global TRACE_MEMORY
         TRACE_MEMORY = True
 
     # app.on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
-    if args.fit is not None:
-        app.on_startup.append(lambda App: publish('', 'fitter_active', args.fit))
+    if options.fit is not None:
+        app.on_startup.append(lambda App: publish('', 'fitter_active', options.fit))
 
-    fitter_id = args.fit
+    fitter_id = options.fit
     if fitter_id is None:
         fitter_active_topic = state.topics["fitter_active"]
         if len(fitter_active_topic) > 0:
@@ -809,16 +814,16 @@ def main(index: Callable=index, static_assets_path: Path=static_assets_path, arg
     # if args.steps is not None:
     #     fitter_settings["steps"] = args.steps
 
-    if args.filename is not None:
-        filepath = Path(args.filename)
+    if options.filename is not None:
+        filepath = Path(options.filename)
         pathlist = list(filepath.parent.parts)
         filename = filepath.name
-        start = args.start
+        start = options.start
         print(f"fitter for filename {filename} is {fitter_id}")
         async def startup_task(App=None):
             await load_problem_file("", pathlist, filename)
             if start:
-                await start_fit_thread("", fitter_id, fitter_settings, args.exit)
+                await start_fit_thread("", fitter_id, fitter_settings, options.exit)
         
         app.on_startup.append(startup_task)
 
@@ -835,21 +840,21 @@ def main(index: Callable=index, static_assets_path: Path=static_assets_path, arg
     # set initial path to cwd:
     state.problem.pathlist = list(Path().absolute().parts)
     app.add_routes(routes)
-    hostname = 'localhost' if not args.external else '0.0.0.0'
+    hostname = 'localhost' if not options.external else '0.0.0.0'
 
-    import socket
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind((hostname, args.port))
+    if sock is None:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind((hostname, options.port))
     host, port = sock.getsockname()
     state.hostname = host
     state.port = port
-    if args.hub is not None:
+    if options.hub is not None:
         async def register_instance(application: web.Application):
             async with ClientSession() as client_session:
-                await client_session.post(args.hub, json={"host": hostname, "port": port})
+                await client_session.post(options.hub, json={"host": hostname, "port": port})
         app.on_startup.append(register_instance)
-    if not args.headless:
+    if not options.headless:
         import webbrowser
         async def open_browser(app: web.Application):
             app.loop.call_later(0.25, lambda: webbrowser.open_new_tab(f"http://{hostname}:{port}/"))
@@ -862,7 +867,15 @@ def main(index: Callable=index, static_assets_path: Path=static_assets_path, arg
     EVT_FIT_PROGRESS.connect(fit_progress_handler)
     EVT_FIT_COMPLETE.connect(fit_complete_handler)
 
-    web.run_app(app, sock=sock)
+    return sock
+
+def main(options: Optional[Options] = None, sock: Optional[socket.socket] = None):
+    options = get_commandline_options() if options is None else options
+    asyncio.run(start_app(options, sock))
+
+async def start_app(options: Options, sock: socket.socket):
+    runsock = setup_app(options=options, sock=sock)
+    await web._run_app(app, sock=runsock)
 
 if __name__ == '__main__':
     main()
