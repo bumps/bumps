@@ -64,7 +64,7 @@ MODEL_EXT = '.json'
 
 FITTERS = (DreamFit, LevenbergMarquardtFit, SimplexFit, DEFit, MPFit, BFGSFit)
 FITTERS_BY_ID = dict([(fitter.id, fitter) for fitter in FITTERS])
-print(FITTERS_BY_ID)
+# print(FITTERS_BY_ID)
 FITTER_DEFAULTS = {}
 for fitter in FITTERS:
     FITTER_DEFAULTS[fitter.id] = {
@@ -157,13 +157,16 @@ async def load_problem_file(sid: str, pathlist: List[str], filename: str):
     # problem_state = ProblemState(problem, pathlist, filename)
     state.problem.filename = filename
     state.problem.pathlist = pathlist
-    state.problem.fitProblem = problem
-    print(f'model loaded: {path}')
-    await log(f'model loaded: {path}')
+    await set_problem(problem, path)
     await publish("", "model_loaded", {"pathlist": pathlist, "filename": filename})
+
+async def set_problem(problem: bumps.fitproblem.FitProblem, path: Optional[Path] = None):
+    state.problem.fitProblem = problem
+    path_string = "(no path)" if path is None else str(path)
+    print(f'model loaded: {path_string}')
+    await log(f'model loaded: {path_string}')
     await publish("", "update_model", True)
     await publish("", "update_parameters", True)
-
 
 @sio.event
 async def save_problem_file(sid: str, pathlist: Optional[List[str]] = None, filename: Optional[str] = None, overwrite: bool = False):
