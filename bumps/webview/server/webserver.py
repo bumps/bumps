@@ -31,7 +31,7 @@ mimetypes.add_type("image/png", ".png")
 mimetypes.add_type("image/svg+xml", ".svg")
 
 from bumps.fitters import DreamFit, LevenbergMarquardtFit, SimplexFit, DEFit, MPFit, BFGSFit, FitDriver, fit, nllf_scale, format_uncertainty
-from bumps.serialize import to_dict as serialize, async_from_dict as deserialize
+from bumps.serialize import to_dict as serialize, from_dict_threaded as deserialize
 from bumps.mapper import MPMapper
 from bumps.parameter import Parameter, Variable, unique
 import bumps.fitproblem
@@ -149,7 +149,7 @@ async def load_problem_file(sid: str, pathlist: List[str], filename: str):
     if filename.endswith(".json"):
         with open(path, "rt") as input_file:
             serialized = json.loads(input_file.read())
-        problem = await deserialize(serialized)
+        problem = deserialize(serialized)
     else:
         from bumps.cli import load_model
         problem = load_model(str(path))

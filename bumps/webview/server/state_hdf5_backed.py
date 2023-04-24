@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Optional, Dict, List, Any, Literal, cast
 import json
 import pickle
 from queue import Queue
-from bumps.serialize import from_dict, to_dict
+from bumps.serialize import from_dict, from_dict_threaded, to_dict
 import h5py
 import numpy as np
 
@@ -66,7 +66,7 @@ def serialize(problem: bumps.fitproblem.FitProblem, method: SERIALIZERS):
 
 def deserialize(serialized: bytes, method: SERIALIZERS):
     if method == 'dataclass':
-        return from_dict(json.loads(serialized))
+        return from_dict_threaded(json.loads(serialized))
     elif method == 'pickle':
         return pickle.loads(serialized)
     elif method == 'dill':

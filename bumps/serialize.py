@@ -119,6 +119,13 @@ async def async_from_dict(serialized, loop=None):
 def from_dict(serialized):
     return asyncio.run(async_from_dict(serialized))
 
+def from_dict_threaded(serialized):
+    # use this wrapper when another loop might be running
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(from_dict, serialized)
+        return future.result()
+
 async def async_load(filename):
     """ use in e.g. Jupyter notebooks """
     with open(filename, 'r') as fid:
