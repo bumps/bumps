@@ -52,7 +52,6 @@ import _plotly_utils.utils
 _plotly_utils.utils.find_closest_string = disable_find_closest_string
 ### END PATCH
 
-from .profile_plot import plot_sld_profile_plotly
 from .varplot import plot_vars
 from .state_hdf5_backed import SERIALIZERS, State
 # from .state import State
