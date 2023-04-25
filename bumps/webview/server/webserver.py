@@ -660,6 +660,7 @@ async def disconnect_all_clients():
         await sio.disconnect(client)
 
 @sio.event
+@rest_get
 async def shutdown(sid: str=""):
     print("killing...")
     await stop_fit()
@@ -762,6 +763,7 @@ class Options:
     exit: bool = False
     serializer: SERIALIZERS = "dill"
     trace: bool = False
+    zeroconf: bool = False
 
 
 def get_commandline_options(arg_defaults: Optional[Dict]=None):
@@ -778,6 +780,7 @@ def get_commandline_options(arg_defaults: Optional[Dict]=None):
     parser.add_argument('--exit', action='store_true', help='end process when fit complete (fit results lost unless store is specified)')
     parser.add_argument('--serializer', default='dill', type=str, choices=["pickle", "dill", "dataclass"], help='strategy for serializing problem, will use value from store if it has already been defined')
     parser.add_argument('--trace', action='store_true', help='enable memory tracing (prints after every uncertainty update in dream)')
+    parser.add_argument('--zeroconf', action='store_true', help='register with local zeroconf')
     # parser.add_argument('-c', '--config-file', type=str, help='path to JSON configuration to load')
     if arg_defaults is not None:
         parser.set_defaults(**arg_defaults)
@@ -861,6 +864,14 @@ def setup_app(index: Callable=index, static_assets_path: Path=static_assets_path
         async def open_browser(app: web.Application):
             app.loop.call_later(0.25, lambda: webbrowser.open_new_tab(f"http://{hostname}:{port}/"))
         app.on_startup.append(open_browser)
+
+    if options.zeroconf:
+        from .zeroconf_registry import LocalRegistry
+        registry = LocalRegistry()
+        async def register_zeroconf(app: web.Application):
+            return await registry.register(port, "Bumps")
+        app.on_startup.append(register_zeroconf)
+        app.on_shutdown.append(lambda App: registry.close())
 
     if TRACE_MEMORY:
         import tracemalloc
