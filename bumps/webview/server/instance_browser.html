@@ -1,0 +1,89 @@
+<html>
+    <header>
+    </header>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <style>
+        body, html {
+            height: 100%;
+            width: 100%;
+            border: 0;
+        }
+    </style>
+    <body>
+        <div id="app">
+            <h1>Running instances:</h1>
+            <div class="instance-list container">
+                <ul class="list-group">
+                    <li class="list-group-item" v-for="(instance, name, index) in instances" :key="instance.addr">
+                        {{name}}, running for {{age(instance)}}
+                        <button type="button" class="btn btn-primary" @click="open(instance.addresses[0])">Open</button>
+                        <button type="button" class="btn btn-danger" @click="shutdown(instance.addresses[0])">Shutdown</button>
+                    </li>
+                </ul>
+            </div>
+            <instance-list></instance-list>
+        </div>
+        <script type="module">
+            import { createApp } from "https://cdn.jsdelivr.net/npm/vue@3.2.47/dist/vue.esm-browser.js";
+            import socketio from "https://cdn.socket.io/4.6.0/socket.io.esm.min.js";
+
+            const socket = socketio.io();
+
+            const app = createApp({
+                data() {
+                    return {
+                        instances: {}
+                    }
+                },
+                methods: {
+                    async shutdown(target) {
+                        console.log(`shutting down target: ${target}`);
+                        fetch(`http://${target}/shutdown`);
+                    },
+                    open(target) {
+                        window.open(`http://${target}`, "_blank");
+                    },
+                    refresh() {
+                        socket.emit("get_servers", (servers) => {
+                            for (let sname in servers) {
+                                this.instances[sname] = servers[sname];
+                            }
+                            for (let sname in this.instances) {
+                                if (!(sname in servers)) {
+                                    delete this.instances[sname];
+                                }
+                            }
+                        })
+                    },
+                    age(instance) {
+                        const t = new Date();
+                        const s = new Date(instance.start_time);
+                        const diff = t - s;
+                        const hours = Math.floor(diff / 1000 / 60 / 60);
+                        const minutes = Math.floor(((diff / 1000 / 60 / 60 )- hours) * 60);
+                        return `${hours} h ${minutes} m`;
+                    }
+                },
+                mounted() {
+                    this.refresh();
+                    socket.on("connect", this.refresh);
+                    socket.on("update", this.refresh);
+                }
+                // template: "<my-checkbox></my-checkbox>",
+
+            })
+            // app.component(
+            //     "InstanceList",
+            //     {
+            //         template: '#instance-list-template',
+            //         data() {
+            //             return {
+            //                 instances: [{addr: "127.0.0.1:8080"}]
+            //             }
+            //         }
+            //     }
+            // );
+            app.mount("#app");
+        </script>
+    </body>
+</html>
