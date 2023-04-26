@@ -17,7 +17,7 @@ class LocalRegistry:
         properties.update({"start_time": datetime.datetime.now().timestamp()})
         info = AsyncServiceInfo(
             self.type_,
-            f"{name} ({port}).{self.type_}",
+            f"{name} (port: {port}).{self.type_}",
             addresses=["127.0.0.1"],
             port=port,
             host_ttl = 5,
