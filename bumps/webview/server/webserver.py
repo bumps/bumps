@@ -664,7 +664,12 @@ async def shutdown(sid: str=""):
     print("killing...")
     await stop_fit()
     await sio.emit("server_shutting_down")
-    signal.raise_signal(signal.SIGTERM)
+    shutdown_result = asyncio.gather(_shutdown(), return_exceptions=True)
+
+async def _shutdown():
+    raise web.GracefulExit()
+
+app["shutdown"] = lambda: asyncio.create_task(shutdown())
 
 VALUE_PRECISION = 6
 VALUE_FORMAT = "{{:.{:d}g}}".format(VALUE_PRECISION)
@@ -825,20 +830,27 @@ def setup_app(index: Callable=index, static_assets_path: Path=static_assets_path
         async def startup_task(App=None):
             await load_problem_file("", pathlist, filename)
             if start:
-                await start_fit_thread("", fitter_id, fitter_settings, options.exit)
+                await start_fit_thread("", fitter_id, fitter_settings["settings"], options.exit)
         
         app.on_startup.append(startup_task)
 
         # app.on_startup.append()
 
     # app.on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
+    async def add_signal_handler(app):
+        app.loop.add_signal_handler(signal.SIGINT, app["shutdown"])
+
+    app.on_startup.append(lambda App: add_signal_handler(App))
     async def notice(message: str):
         print(message)
     app.on_cleanup.append(lambda App: notice("cleanup task"))
     app.on_shutdown.append(lambda App: notice("shutdown task"))
     app.on_shutdown.append(lambda App: stop_fit())
-    app.on_shutdown.append(lambda App: disconnect_all_clients())
+    # app.on_shutdown.append(lambda App: sio.emit("server_shutting_down"))
+    # app.on_shutdown.append(lambda App: disconnect_all_clients())
     app.on_shutdown.append(lambda App: state.cleanup())
+    app.on_shutdown.append(lambda App: notice("shutdown complete"))
+
     # set initial path to cwd:
     state.problem.pathlist = list(Path().absolute().parts)
     app.add_routes(routes)
@@ -859,7 +871,8 @@ def setup_app(index: Callable=index, static_assets_path: Path=static_assets_path
     if not options.headless:
         import webbrowser
         async def open_browser(app: web.Application):
-            app.loop.call_later(0.25, lambda: webbrowser.open_new_tab(f"http://{hostname}:{port}/"))
+            loop = asyncio.get_event_loop()
+            loop.call_later(0.5, lambda: webbrowser.open_new_tab(f"http://{hostname}:{port}/"))
         app.on_startup.append(open_browser)
 
     if TRACE_MEMORY:
@@ -873,7 +886,10 @@ def setup_app(index: Callable=index, static_assets_path: Path=static_assets_path
 
 def main(options: Optional[Options] = None, sock: Optional[socket.socket] = None):
     options = get_commandline_options() if options is None else options
-    asyncio.run(start_app(options, sock))
+    try:
+        asyncio.run(start_app(options, sock))
+    except KeyboardInterrupt:
+        print("stopped by KeyboardInterrupt.")
 
 async def start_app(options: Options, sock: socket.socket):
     runsock = setup_app(options=options, sock=sock)
