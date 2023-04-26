@@ -757,6 +757,7 @@ import argparse
 @dataclass
 class Options:
     """ provide type hints for arguments """
+    app_name: str = "Bumps"
     filename: Optional[str] = None
     headless: bool = False
     external: bool = False
@@ -882,7 +883,7 @@ def setup_app(index: Callable=index, static_assets_path: Path=static_assets_path
         from .zeroconf_registry import LocalRegistry
         registry = LocalRegistry()
         async def register_zeroconf(app: web.Application):
-            return await registry.register(port, "Bumps")
+            return await registry.register(port, options.app_name)
         app.on_startup.append(register_zeroconf)
         app.on_shutdown.append(lambda App: registry.close())
 
@@ -900,6 +901,8 @@ def main(options: Optional[Options] = None, sock: Optional[socket.socket] = None
     try:
         asyncio.run(start_app(options, sock))
     except KeyboardInterrupt:
+        # on Windows, the loop.add_signal_handler call above does nothing,
+        # but aiohttp still stops on KeyboardInterrupt.
         print("stopped by KeyboardInterrupt.")
 
 async def start_app(options: Options, sock: socket.socket):
