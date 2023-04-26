@@ -37,7 +37,7 @@ def rest_get(fn):
 async def index(request):
     """Serve the client-side application."""
     # check if the locally-build site has the correct version:
-    return web.FileResponse(index_path / 'instance_browser.html')
+    return web.FileResponse(index_path / 'session_manager.html')
 
 @sio.event
 @rest_get
@@ -69,12 +69,13 @@ def setup_app():
     if not args.headless:
         import webbrowser
         async def open_browser(app: web.Application):
-            app.loop.call_later(0.25, lambda: webbrowser.open_new_tab(f"http://{hostname}:{port}/"))
+            loop = asyncio.get_event_loop()
+            loop.call_later(0.5, lambda: webbrowser.open_new_tab(f"http://{hostname}:{port}/"))
         app.on_startup.append(lambda App: open_browser(App))
 
     registry = LocalRegistry()
     async def register_zeroconf(app: web.Application):
-        return await registry.register(port, "Registry")
+        return await registry.register(port, "Session Manager")
     app.on_startup.append(register_zeroconf)
     app.on_shutdown.append(lambda App: registry.close())
 
