@@ -8,8 +8,8 @@ const props = defineProps<{socket: Socket}>();
 const dialog = ref<HTMLDivElement>();
 const isOpen = ref(false);
 const closeCancelled = ref(false);
-const timeRemaining = ref(5); // seconds
-const intervalHandle = ref(0);
+const shutdownTimer = ref(0);
+const CLOSE_DELAY = 2000; // try to auto-close window after 2 seconds.
 
 let modal: Modal;
 
@@ -18,23 +18,15 @@ onMounted(() => {
 
 });
 
-props.socket.on('server_shutting_down', () => {
-  timeRemaining.value = 5;
-  modal?.show();
-  intervalHandle.value = setInterval(() => {
-    timeRemaining.value--;
-    if (timeRemaining.value < 0) {
-      window.close();
-    }
-  }, 1000);
+props.socket.on('disconnect', () => {
+  modal?.show();  
+  shutdownTimer.value = setTimeout(() => {
+    window.close();
+  }, CLOSE_DELAY);
 });
 
-function closeWindow() {
-  window.close();
-}
-
 function cancelClose() {
-  clearInterval(intervalHandle.value);
+  clearTimeout(shutdownTimer.value);
   modal?.hide();
 }
 
@@ -46,15 +38,14 @@ function cancelClose() {
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="serverShutdownLabel">Server Shutting Down</h5>
-          <button type="button" class="btn-close" @click="closeWindow" aria-label="Close Window"></button>
+          <h5 class="modal-title" id="serverShutdownLabel">Server Disconnected</h5>
+          <button type="button" class="btn-close" @click="cancelClose" aria-label="dismiss dialog"></button>
         </div>
         <div class="modal-body">
-          <h3>This window will automatically close in {{ timeRemaining }} seconds.</h3>
+          <h3>This client window can be closed</h3>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-success" @click="closeWindow">Close Now</button>
-          <button type="button" class="btn btn-primary" @click="cancelClose">Cancel</button>
+          <button type="button" class="btn btn-primary" @click="cancelClose">Dismiss</button>
         </div>
       </div>
     </div>
