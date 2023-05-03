@@ -156,16 +156,18 @@ async def load_problem_file(sid: str, pathlist: List[str], filename: str):
     # problem_state = ProblemState(problem, pathlist, filename)
     state.problem.filename = filename
     state.problem.pathlist = pathlist
-    await set_problem(problem, path)
-    await publish("", "model_loaded", {"pathlist": pathlist, "filename": filename})
+    await set_problem(problem, Path(*pathlist), filename)
 
-async def set_problem(problem: bumps.fitproblem.FitProblem, path: Optional[Path] = None):
+async def set_problem(problem: bumps.fitproblem.FitProblem, path: Optional[Path] = None, filename: str = ""):
     state.problem.fitProblem = problem
-    path_string = "(no path)" if path is None else str(path)
+    pathlist = list(path.parts) if path is not None else []
+    path_string = "(no path)" if path is None else str(path / filename)
     print(f'model loaded: {path_string}')
     await log(f'model loaded: {path_string}')
     await publish("", "update_model", True)
     await publish("", "update_parameters", True)
+    await publish("", "model_loaded", {"pathlist": pathlist, "filename": filename})
+
 
 @sio.event
 async def save_problem_file(sid: str = "", pathlist: Optional[List[str]] = None, filename: Optional[str] = None, overwrite: bool = False):
