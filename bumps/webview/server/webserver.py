@@ -197,6 +197,48 @@ async def save_problem_file(sid: str = "", pathlist: Optional[List[str]] = None,
     return False
 
 @sio.event
+async def export_results(sid: str="", export_path: Union[str, List[str]]=""):
+    from bumps.util import redirect_console
+
+    problem_state = state.problem
+    if problem_state is None:
+        print("Save failed: no problem loaded.")
+        return
+
+    problem = problem_state.fitProblem
+    if not isinstance(export_path, list):
+        export_path = [export_path]
+    path = Path(*export_path)
+    basename = problem.name
+
+    # Storage directory
+    path.mkdir(parents=True, exist_ok=True)
+
+    # Ask model to save its information
+    problem.save(str(path / basename))
+
+    # Save a snapshot of the model that can (hopefully) be reloaded
+    await save_problem_file("", path.parts, f"{basename}.json")
+
+    # Save the current state of the parameters
+    with redirect_console(str(path / f"{basename}.out")):
+        problem.show()
+
+    pardata = "".join("%s %.15g\n"%(name, value) for name, value in
+                        zip(problem.labels(), problem.getp()))
+
+    open( path / f"{basename}.par",'wt').write(pardata)
+
+    # Produce model plots
+    problem.plot(figfile = str(path / basename))
+
+    # Produce uncertainty plots
+    if state.fitting.uncertainty_state is not None:
+        with redirect_console( str(path / f"{basename}.err")):
+            state.fitting.uncertainty_state.show(figfile = str(path / basename))
+        state.fitting.uncertainty_state.save(str(path / basename))
+
+@sio.event
 async def start_fit(sid: str="", fitter_id: str="", kwargs=None):
     kwargs = {} if kwargs is None else kwargs
     problem_state = state.problem
