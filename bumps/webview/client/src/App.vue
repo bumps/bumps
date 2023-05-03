@@ -10,6 +10,7 @@ import ServerShutdown from './components/ServerShutdown.vue';
 
 const props = defineProps<{
   panels: {title: string, component: any }[],
+  name?: string
 }>();
 
 const LAYOUTS = ["left-right", "top-bottom", "full"];
@@ -165,7 +166,7 @@ onMounted(() => {
       <div class="container-fluid">
         <div class="navbar-brand">
           <img src="./assets/bumps-icon_256x256x32.png" alt="" height="24" class="d-inline-block align-text-middle">
-          Refl1D
+          {{ name ?? "Bumps" }}
         </div>
         <button ref="menuToggle" class="navbar-toggler" type="button" data-bs-toggle="collapse"
           data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false"
