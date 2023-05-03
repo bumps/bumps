@@ -19,6 +19,7 @@ const fitOptions = ref<typeof FitOptions>();
 const fileBrowser = ref<typeof FileBrowser>();
 const fileBrowserSelectCallback = ref((pathlist: string[], filename: string) => { });
 const fileBrowserSaveFilename = ref<string>();
+const fileBrowserChosenFileIn = ref<string>();
 const fileBrowserTitle = ref("Load Model File");
 const model_loaded = shallowRef<{pathlist: string[], filename: string}>();
 const active_layout = ref("left-right");
@@ -74,14 +75,24 @@ function selectOpenFile() {
       socket.emit("load_problem_file", pathlist, filename);
     }
     fileBrowserSaveFilename.value = undefined;
+    fileBrowserChosenFileIn.value = model_loaded.value?.filename ?? "";
     fileBrowser.value.open();
   }
-  // const path = prompt("full path to file:");
-  // if (path != null) {
-  //   let defaulted_path = (path == '') ? '/home/bbm/dev/refl1d-modelbuilder/ISIS_GGG/GGG_GdIG_MultiFit.py' : path;
-  //   socket.emit("load_model_file", defaulted_path);
-  // }
-  // file_picker.value?.click();
+}
+
+function exportResults() {
+  if (fileBrowser.value) {
+    fileBrowserTitle.value = "Export results";
+    fileBrowserSelectCallback.value = (pathlist, filename) => {
+      if (filename !== "") {
+        pathlist.push(filename);
+      }
+      socket.emit("export_results", pathlist);
+    }
+    fileBrowserSaveFilename.value = "";
+    fileBrowserChosenFileIn.value = "";
+    fileBrowser.value.open();
+  }
 }
 
 async function saveFileAs(ev: Event) {
@@ -91,6 +102,7 @@ async function saveFileAs(ev: Event) {
       saveFile(ev, {pathlist, filename});
     }
     fileBrowserSaveFilename.value = model_loaded.value?.filename ?? "model.json";
+    fileBrowserChosenFileIn.value = model_loaded.value?.filename ?? "";
     fileBrowser.value.open();
   }
 }
@@ -182,6 +194,7 @@ onMounted(() => {
                 <li><button class="btn btn-link dropdown-item" @click="selectOpenFile">Open</button></li>
                 <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="saveFile">Save</button></li>
                 <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="saveFileAs">Save As</button></li>
+                <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="exportResults">Export Results</button></li>
                 <li><button class="btn btn-link dropdown-item" :class="{disabled: model_loaded === undefined}"  @click="reloadModel">Reload</button></li>
                 <li>
                   <hr class="dropdown-divider">
@@ -290,7 +303,7 @@ onMounted(() => {
 
   </div>
   <FitOptions ref="fitOptions" :socket="socket" />
-  <FileBrowser ref="fileBrowser" :socket="socket" :title="fileBrowserTitle" :chosenfile_in="model_loaded?.filename" :savefilename="fileBrowserSaveFilename" :callback="fileBrowserSelectCallback" />
+  <FileBrowser ref="fileBrowser" :socket="socket" :title="fileBrowserTitle" :chosenfile_in="fileBrowserChosenFileIn" :savefilename="fileBrowserSaveFilename" :callback="fileBrowserSelectCallback" />
   <ServerShutdown :socket="socket" />
 </template>
 

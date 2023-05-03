@@ -82,7 +82,7 @@ defineExpose({
           <button type="button" class="btn-close" @click="close" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <div v-if="savefilename" class="container border-bottom">
+          <div v-if="savefilename !== undefined" class="container border-bottom">
             <div class="row align-items-center mb-1">
               <div class="col-auto">
                 <label for="userfilename" class="col-form-label">Filename:</label>
