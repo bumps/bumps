@@ -168,7 +168,7 @@ async def set_problem(problem: bumps.fitproblem.FitProblem, path: Optional[Path]
     await publish("", "update_parameters", True)
 
 @sio.event
-async def save_problem_file(sid: str, pathlist: Optional[List[str]] = None, filename: Optional[str] = None, overwrite: bool = False):
+async def save_problem_file(sid: str = "", pathlist: Optional[List[str]] = None, filename: Optional[str] = None, overwrite: bool = False):
     problem_state = state.problem
     if problem_state is None:
         print("Save failed: no problem loaded.")
