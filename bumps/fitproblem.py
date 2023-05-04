@@ -737,6 +737,10 @@ def load_problem(filename, options=None) -> FitProblem:
 
     return problem
 
+def MultiFitProblem(*args, **kwargs) -> FitProblem:
+    warnings.warn(DeprecationWarning("use FitProblem directly instead of MultiFitProblem"))
+    return FitProblem(*args, **kwargs)
+
 def test_weighting():
 
     class SimpleFitness(Fitness):
