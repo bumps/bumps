@@ -27,6 +27,7 @@ const active_layout = ref("left-right");
 const active_panel = ref([0, 1]);
 const fit_active = ref<{ fitter_id?: string, options?: {}, num_steps?: number }>({});
 const fit_progress = ref<{ chisq?: string, step?: number, value?: number }>({});
+const notification = ref({show: false, title: "", content: ""});
 
 // Create a SocketIO connection, to be passed to child components
 // so that they can do their own communications with the host.
@@ -63,6 +64,18 @@ socket.on('fit_active', ({ message: { fitter_id, options, num_steps } }) => {
 socket.on('fit_progress', (event) => {
   fit_progress.value = event;
 });
+
+socket.on('export_started', (filename) => {
+  notification.value.title = "Exporting Results";
+  notification.value.content = `
+  <span>${filename}</span>
+  <div class="spinner-border spinner-border-sm text-primary" role="status">
+    <span class="visually-hidden">Exporting...</span>
+  </div>`;
+  notification.value.show = true;
+})
+
+socket.on('export_completed', () => {notification.value.show = false});
 
 function disconnect() {
   socket.disconnect();
@@ -306,6 +319,15 @@ onMounted(() => {
   <FitOptions ref="fitOptions" :socket="socket" />
   <FileBrowser ref="fileBrowser" :socket="socket" :title="fileBrowserTitle" :chosenfile_in="fileBrowserChosenFileIn" :savefilename="fileBrowserSaveFilename" :callback="fileBrowserSelectCallback" />
   <ServerShutdown :socket="socket" />
+  <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="toast" class="toast" :class="{show: notification.show}" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="toast-header">
+        <strong class="me-auto">{{notification.title}}</strong>
+        <button type="button" class="btn-close" @click="notification.show=false" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+      <div class="toast-body" v-html="notification.content"></div>
+    </div>
+  </div>
 </template>
 
 <style>
