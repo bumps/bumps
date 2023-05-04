@@ -186,7 +186,6 @@ async def save_problem_file(sid: str = "", pathlist: Optional[List[str]] = None,
 
     path = Path(*pathlist)
     save_filename = Path(filename).stem + MODEL_EXT
-    print({"path": path, "filename": save_filename})
     if not overwrite and Path.exists(path / save_filename):
         #confirmation needed:
         return {"filename": save_filename, "check_overwrite": True}
@@ -200,27 +199,46 @@ async def save_problem_file(sid: str = "", pathlist: Optional[List[str]] = None,
 
 @sio.event
 async def export_results(sid: str="", export_path: Union[str, List[str]]=""):
-    from bumps.util import redirect_console
+    from concurrent.futures import ThreadPoolExecutor
 
     problem_state = state.problem
     if problem_state is None:
         print("Save failed: no problem loaded.")
         return
 
-    problem = problem_state.fitProblem
+    problem = deepcopy(problem_state.fitProblem)
+    # TODO: if making a temporary copy of the uncertainty state is going to cause memory
+    # issues, we could try to copy and then fall back to just using the live object,
+    # or we could just always use the live object, which is unlikely to be changed before
+    # the export completes, anyway.
+    uncertainty_state = deepcopy(state.fitting.uncertainty_state)
+
     if not isinstance(export_path, list):
         export_path = [export_path]
     path = Path(*export_path)
+    await sio.emit("export_started", str(path))
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(_export_results, path, problem, uncertainty_state)
+        await asyncio.wrap_future(future)
+    await sio.emit("export_completed", str(path))
+
+
+def _export_results(path: Path, problem: bumps.fitproblem.FitProblem, uncertainty_state: Optional[bumps.dream.state.MCMCDraw]):
+    from bumps.util import redirect_console
+
     basename = problem.name
 
     # Storage directory
     path.mkdir(parents=True, exist_ok=True)
+    output_pathstr = str( path / basename )
 
     # Ask model to save its information
-    problem.save(str(path / basename))
+    problem.save(output_pathstr)
 
     # Save a snapshot of the model that can (hopefully) be reloaded
-    await save_problem_file("", path.parts, f"{basename}.json")
+    serialized = serialize(problem)
+    with open(output_pathstr + MODEL_EXT, "wt") as output_file:
+        output_file.write(json.dumps(serialized))
 
     # Save the current state of the parameters
     with redirect_console(str(path / f"{basename}.out")):
@@ -232,13 +250,13 @@ async def export_results(sid: str="", export_path: Union[str, List[str]]=""):
     open( path / f"{basename}.par",'wt').write(pardata)
 
     # Produce model plots
-    problem.plot(figfile = str(path / basename))
+    problem.plot(figfile = output_pathstr)
 
     # Produce uncertainty plots
-    if state.fitting.uncertainty_state is not None:
+    if uncertainty_state is not None:
         with redirect_console( str(path / f"{basename}.err")):
-            state.fitting.uncertainty_state.show(figfile = str(path / basename))
-        state.fitting.uncertainty_state.save(str(path / basename))
+            uncertainty_state.show(figfile = output_pathstr)
+        uncertainty_state.save(output_pathstr)
 
 @sio.event
 async def start_fit(sid: str="", fitter_id: str="", kwargs=None):
