@@ -182,21 +182,21 @@ async def save_problem_file(sid: str = "", pathlist: Optional[List[str]] = None,
 
     if pathlist is None or filename is None:
         print("no filename and path provided to save")
-        return
+        return {"filename": "", "check_overwrite": False}
 
     path = Path(*pathlist)
     save_filename = Path(filename).stem + MODEL_EXT
     print({"path": path, "filename": save_filename})
     if not overwrite and Path.exists(path / save_filename):
         #confirmation needed:
-        return save_filename
+        return {"filename": save_filename, "check_overwrite": True}
 
     serialized = serialize(problem_state.fitProblem)
     with open(Path(path, save_filename), "wt") as output_file:
         output_file.write(json.dumps(serialized))
 
-    await log(f'Saved: {filename} at path: {path}')
-    return False
+    await log(f'Saved: {save_filename} at path: {path}')
+    return {"filename": save_filename, "check_overwrite": False}
 
 @sio.event
 async def export_results(sid: str="", export_path: Union[str, List[str]]=""):
