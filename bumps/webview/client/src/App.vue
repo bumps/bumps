@@ -18,10 +18,15 @@ const connected = ref(false);
 const menuToggle = ref<HTMLButtonElement>();
 const fitOptions = ref<typeof FitOptions>();
 const fileBrowser = ref<typeof FileBrowser>();
-const fileBrowserSelectCallback = ref((pathlist: string[], filename: string) => { });
-const fileBrowserSaveFilename = ref<string>();
-const fileBrowserChosenFileIn = ref<string>();
-const fileBrowserTitle = ref("Load Model File");
+const fileBrowserSettings = ref({
+  chosenfile_in: "",
+  title: "",
+  show_name_input: false,
+  require_name: false,
+  name_input_label: "",
+  show_files: true,
+  callback: (pathlist: string[], filename: string) => {},
+});
 const model_loaded = shallowRef<{pathlist: string[], filename: string}>();
 const active_layout = ref("left-right");
 const active_panel = ref([0, 1]);
@@ -84,39 +89,50 @@ function disconnect() {
 
 function selectOpenFile() {
   if (fileBrowser.value) {
-    fileBrowserTitle.value = "Load Model File";
-    fileBrowserSelectCallback.value = (pathlist, filename) => {
+    const settings = fileBrowserSettings.value;
+    settings.title = "Load Model File";
+    settings.callback = (pathlist, filename) => {
       socket.emit("load_problem_file", pathlist, filename);
     }
-    fileBrowserSaveFilename.value = undefined;
-    fileBrowserChosenFileIn.value = model_loaded.value?.filename ?? "";
+    settings.chosenfile_in = model_loaded.value?.filename ?? "";
+    settings.show_name_input = false;
+    settings.require_name = true;
+    settings.show_files = true;
     fileBrowser.value.open();
   }
 }
 
 function exportResults() {
   if (fileBrowser.value) {
-    fileBrowserTitle.value = "Export results";
-    fileBrowserSelectCallback.value = (pathlist, filename) => {
+    const settings = fileBrowserSettings.value;
+    settings.title = "Export Results";
+    settings.callback = (pathlist, filename) => {
       if (filename !== "") {
         pathlist.push(filename);
       }
       socket.emit("export_results", pathlist);
     }
-    fileBrowserSaveFilename.value = "";
-    fileBrowserChosenFileIn.value = "";
+    settings.show_name_input = true;
+    settings.name_input_label = "Subdirectory";
+    settings.require_name = false;
+    settings.show_files = false;
+    settings.chosenfile_in = "";
     fileBrowser.value.open();
   }
 }
 
 async function saveFileAs(ev: Event) {
   if (fileBrowser.value) {
-    fileBrowserTitle.value = "Save Problem"
-    fileBrowserSelectCallback.value = (pathlist, filename) => {
+    const settings = fileBrowserSettings.value;
+    settings.title = "Save Problem"
+    settings.callback = (pathlist, filename) => {
       saveFile(ev, {pathlist, filename});
     }
-    fileBrowserSaveFilename.value = model_loaded.value?.filename ?? "model.json";
-    fileBrowserChosenFileIn.value = model_loaded.value?.filename ?? "";
+    settings.show_name_input = true;
+    settings.name_input_label = "Filename";
+    settings.require_name = true;
+    settings.show_files = true;
+    settings.chosenfile_in = model_loaded.value?.filename ?? "";
     fileBrowser.value.open();
   }
 }
@@ -317,7 +333,13 @@ onMounted(() => {
 
   </div>
   <FitOptions ref="fitOptions" :socket="socket" />
-  <FileBrowser ref="fileBrowser" :socket="socket" :title="fileBrowserTitle" :chosenfile_in="fileBrowserChosenFileIn" :savefilename="fileBrowserSaveFilename" :callback="fileBrowserSelectCallback" />
+  <FileBrowser ref="fileBrowser" :socket="socket"
+    :title="fileBrowserSettings.title"
+    :chosenfile_in="fileBrowserSettings.chosenfile_in"
+    :show_name_input="fileBrowserSettings.show_name_input"
+    :name_input_label="fileBrowserSettings.name_input_label"
+    :show_files="fileBrowserSettings.show_files"
+    :callback="fileBrowserSettings.callback" />
   <ServerShutdown :socket="socket" />
   <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
     <div id="toast" class="toast" :class="{show: notification.show}" role="alert" aria-live="assertive" aria-atomic="true">

@@ -6,9 +6,12 @@ import { Socket } from 'socket.io-client';
 const props = defineProps<{
   socket: Socket,
   title: string,
-  savefilename?: string,
+  show_files?: boolean,
+  show_name_input?: boolean,
+  require_name?: boolean,
+  name_input_label?: string,
   chosenfile_in?: string,
-  callback: (pathlist: string[], filename: string) => void
+  callback: (pathlist: string[], filename: string) => void,
 }>();
 
 const emit = defineEmits<{
@@ -82,10 +85,10 @@ defineExpose({
           <button type="button" class="btn-close" @click="close" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <div v-if="savefilename !== undefined" class="container border-bottom">
+          <div v-if="show_name_input === true" class="container border-bottom">
             <div class="row align-items-center mb-1">
               <div class="col-auto">
-                <label for="userfilename" class="col-form-label">Filename:</label>
+                <label for="userfilename" class="col-form-label">{{name_input_label}}:</label>
               </div>
               <div class="col">
                 <input type="text" id="userfilename" class="form-control" v-model="chosenFile">
@@ -109,7 +112,7 @@ defineExpose({
               </div>
             </div>
           </div>
-          <div class="container border-bottom">
+          <div class="container border-bottom" v-if="show_files">
             <h3>Files:</h3>
             <div class="row row-cols-3">
               <div class="btn col overflow-hidden border" :class="{'btn-warning': filename == chosenFile}"
@@ -121,7 +124,7 @@ defineExpose({
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" @click="close">Cancel</button>
-            <button type="button" class="btn btn-primary" :class="{disabled: chosenFile == ''}"
+            <button type="button" class="btn btn-primary" :class="{disabled: require_name && chosenFile == ''}"
               @click="chooseFile">OK</button>
           </div>
         </div>
