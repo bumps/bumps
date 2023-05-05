@@ -900,7 +900,11 @@ def setup_app(index: Callable=index, static_assets_path: Path=static_assets_path
 
     # app.on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
     async def add_signal_handler(app):
-        app.loop.add_signal_handler(signal.SIGINT, app["shutdown"])
+        try:
+            app.loop.add_signal_handler(signal.SIGINT, app["shutdown"])
+        except NotImplementedError:
+            # Windows does not implement this method, but still handles KeyboardInterrupt
+            pass
 
     app.on_startup.append(lambda App: add_signal_handler(App))
     async def notice(message: str):
