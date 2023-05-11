@@ -48,8 +48,6 @@ estimate step size.
 from __future__ import print_function
 
 import numpy as np
-#from . import numdifftools as nd
-#import numdifftools as nd
 
 def gradient(problem, p=None, step=None):
     r = problem.residuals()
@@ -353,11 +351,6 @@ def demo_hessian():
     H = _hessian_central(rosen, p, bounds=None, eps=1e-16)
     print("central difference H", H)
 
-    #from . import numdifftools as nd
-    #import numdifftools as nd
-    #Hfun = nd.Hessian(rosen)
-    #print("numdifftools H", Hfun(p))
-
 def demo_jacobian():
     y = np.array([1., 2., 3.])
     f = lambda x: x[0]*y + x[1]
@@ -366,11 +359,6 @@ def demo_jacobian():
     print("forward difference J", J)
     J = _jacobian_central(f, p, bounds=None, eps=1e-16)
     print("central difference J", J)
-
-    #from . import numdifftools as nd
-    #import numdifftools as nd
-    #Jfun = nd.Jacobian(f)
-    #print("numdifftools J", Jfun(p))
 
 # https://en.wikipedia.org/wiki/Hilbert_matrix
 # Note: 1-origin indices translated to 0-origin

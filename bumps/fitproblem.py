@@ -573,8 +573,9 @@ class BaseFitProblem(object):
 
     def cov(self):
         """
-        Return the covariance matrix as computed by numdifftools from the
-        Hessian matrix for the problem at the current parameter values.
+        Return the covariance matrix as computed from the Hessian matrix for
+        the problem at the current parameter values estimated by numerical
+        differentiation.
         """
         # TODO: remove from model
         warnings.warn("use cov and stderr from FitDriver, not problem.",
