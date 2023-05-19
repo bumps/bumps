@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass
 import itertools
-import threading
 import signal
 import socket
 from types import GeneratorType
@@ -40,17 +39,6 @@ import bumps.dream.views, bumps.dream.varplot, bumps.dream.stats, bumps.dream.st
 import bumps.errplot
 
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
-
-### BEGIN PATCH
-# patch the plotly library to disable levenshtein lookup for missing strings
-# which is taking a ridiculous amount of time in make_subplots
-# See: https://github.com/plotly/plotly.py/issues/4100
-def disable_find_closest_string(string, strings):
-    raise ValueError()
-
-import _plotly_utils.utils
-_plotly_utils.utils.find_closest_string = disable_find_closest_string
-### END PATCH
 
 from .varplot import plot_vars
 from .state_hdf5_backed import SERIALIZERS, State
@@ -431,7 +419,6 @@ async def get_data_plot(sid: str=""):
     fitProblem.plot()
     dfig = mpld3.fig_to_dict(fig)
     plt.close(fig)
-    # await sio.emit("profile_plot", dfig, to=sid)
     end_time = time.time()
     print("time to draw data plot:", end_time - start_time)
     return {"fig_type": "mpld3", "plotdata": dfig}
