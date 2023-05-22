@@ -42,7 +42,6 @@ state = State()
 app: Any
 
 def register(fn: Callable):
-    print(f"decorated: {fn}")
     REGISTRY[fn.__name__] = fn
     return fn
 
@@ -678,11 +677,10 @@ def to_json_compatible_dict(obj) -> JSON_TYPE:
         return obj.tolist()
     elif isinstance(obj, np.ndarray) and obj.dtype.kind == 'O':
         return to_json_compatible_dict(obj.tolist())
-    elif isinstance(obj, numbers.Number):
-        # JSON has only float type, not int
-        return str(obj) if np.isinf(obj) else float(obj)
-    elif isinstance(obj, str) or obj is None:
+    elif isinstance(obj, bool) or isinstance(obj, str) or obj is None:
         return obj
+    elif isinstance(obj, numbers.Number):
+        return str(obj) if np.isinf(obj) else float(obj)
     else:
         raise ValueError("obj %s is not serializable" % str(obj))
 
