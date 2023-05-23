@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import type { Socket } from 'socket.io-client';
 import { setupDrawLoop } from '../setupDrawLoop';
+import type { AsyncSocket } from '../asyncSocket';
 
 const title = "Parameters";
 const active_parameter = ref("");
 
 const props = defineProps<{
-  socket: Socket,
+  socket: AsyncSocket,
 }>();
 
 setupDrawLoop('update_parameters', props.socket, fetch_and_draw);
@@ -30,7 +30,7 @@ const parameters = ref<parameter_info[]>([]);
 const parameters_local = ref<parameter_info[]>([]);
 
 async function fetch_and_draw() {
-  const payload = await props.socket.asyncEmit('get_parameters', false);
+  const payload = await props.socket.asyncEmit('get_parameters', false) as parameter_info[];
   const pl = parameters_local.value;
   payload.forEach((p, i) => {
     if (!(pl[i]?.active)) {

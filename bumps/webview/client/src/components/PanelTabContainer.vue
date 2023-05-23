@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import type { Socket } from 'socket.io-client';
+import type { AsyncSocket } from '../asyncSocket';
 
 // type PanelComponent = DefineComponent<{socket: Socket, visible: boolean}, any>;
 
 const tabTriggers = ref<HTMLAnchorElement[]>([]);
 
 const props = defineProps<{
-  socket: Socket,
+  socket: AsyncSocket,
   panels: {title: string, component: unknown}[],
   active_panel: number
 }>();

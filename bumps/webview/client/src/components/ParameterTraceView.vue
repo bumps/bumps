@@ -14,10 +14,14 @@ const props = defineProps<{
 
 setupDrawLoop('uncertainty_update', props.socket, fetch_and_draw);
 
+type MplD3PlotData = {
+  width?: number,
+  height?: number,
+}
+
 async function fetch_and_draw() {
-  const payload = await props.socket.asyncEmit('get_parameter_trace_plot');
+  const payload = await props.socket.asyncEmit('get_parameter_trace_plot') as MplD3PlotData;
   let plotdata = { ...payload };
-  console.log({plotdata});
   plotdata.width = Math.round(plot_div.value?.clientWidth ?? 640) - 16;
   plotdata.height = Math.round(plot_div.value?.clientHeight ?? 480) - 16;
   mpld3.draw_figure(plot_div_id.value, plotdata, false, true);

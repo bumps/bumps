@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import type { Socket } from 'socket.io-client';
+import type { AsyncSocket } from '../asyncSocket';
 import { setupDrawLoop} from '../setupDrawLoop';
 
 const title = "Summary";
 
 const props = defineProps<{
-  socket: Socket,
+  socket: AsyncSocket,
 }>();
 
 setupDrawLoop('update_parameters', props.socket, fetch_and_draw, title);
@@ -26,7 +26,7 @@ const parameters_local01 = ref<number[]>([]);
 const parameters_localstr = ref<string[]>([]);
 
 async function fetch_and_draw() {
-  const payload: parameter_info[] = await props.socket.asyncEmit('get_parameters', true)
+  const payload: parameter_info[] = await props.socket.asyncEmit('get_parameters', true) as parameter_info[];
   const pv = parameters.value;
   payload.forEach((p, i) => {
     parameters_localstr.value[i] = p.value_str;
@@ -110,10 +110,6 @@ svg {
 
 td.editable {
   min-width: 5em;
-}
-
-td {
-
 }
 
 td > input {

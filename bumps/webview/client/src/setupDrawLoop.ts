@@ -1,8 +1,12 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue';
-import type { Socket } from 'socket.io-client';
-import './asyncSocket';
+import type { AsyncSocket } from './asyncSocket';
 
-export function setupDrawLoop(topic: string, socket: Socket, draw: Function, name: string = '') {
+type Message = {
+  timestamp: string,
+  message: object
+}
+
+export function setupDrawLoop(topic: string, socket: AsyncSocket, draw: Function, name: string = '') {
   const mounted = ref(false);
   const drawing_busy = ref(false);
   const draw_requested = ref(false);
@@ -32,10 +36,10 @@ export function setupDrawLoop(topic: string, socket: Socket, draw: Function, nam
     mounted.value = true;
     socket.on(topic, topic_callback);
 
-    const messages = await socket.asyncEmit('get_topic_messages', topic);
+    const messages = await socket.asyncEmit('get_topic_messages', topic) as Message[];
     // console.log(topic, messages);
     const last_message = messages.pop();
-    if (last_message) {
+    if (last_message !== undefined) {
       draw_requested.value = true;
       latest_timestamp.value = last_message.timestamp;
     }

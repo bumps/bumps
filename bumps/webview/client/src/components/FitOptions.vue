@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, shallowRef } from 'vue';
 import { Modal } from 'bootstrap/dist/js/bootstrap.esm';
-import type { Socket } from 'socket.io-client';
+import type { AsyncSocket } from '../asyncSocket';
 
-const props = defineProps<{socket: Socket}>();
+const props = defineProps<{socket: AsyncSocket}>();
 
 type FitSetting = { name: string, settings: object };
 const dialog = ref<HTMLDivElement>();

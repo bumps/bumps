@@ -11,3 +11,11 @@ Socket.prototype.asyncEmit = async function asyncEmit(ev: string, ...args: any[]
     this.emit(ev, ...args, resolve);
   })
 };
+
+export class AsyncSocket extends Socket {
+  async asyncEmit(ev: string, ...args: any[]) {
+    return new Promise((resolve, reject) => {
+      this.emit(ev, ...args, resolve);
+    });
+  }
+}

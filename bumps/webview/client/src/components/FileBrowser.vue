@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, onUpdated, computed, shallowRef } from 'vue';
 import { Modal } from 'bootstrap/dist/js/bootstrap.esm';
-import { Socket } from 'socket.io-client';
+import type { AsyncSocket } from '../asyncSocket';
 
 const props = defineProps<{
-  socket: Socket,
+  socket: AsyncSocket,
   title: string,
   show_files?: boolean,
   show_name_input?: boolean,
