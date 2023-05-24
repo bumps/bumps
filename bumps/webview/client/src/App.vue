@@ -2,7 +2,8 @@
 import { Button } from 'bootstrap/dist/js/bootstrap.esm.js';
 import { onMounted, ref, shallowRef } from 'vue';
 import { io } from 'socket.io-client';
-import './asyncSocket';
+import { AsyncSocket } from './asyncSocket';
+import './asyncSocket';  // patch Socket with asyncEmit
 import FitOptions from './components/FitOptions.vue';
 import PanelTabContainer from './components/PanelTabContainer.vue';
 import FileBrowser from './components/FileBrowser.vue';
@@ -95,8 +96,8 @@ function selectOpenFile() {
   if (fileBrowser.value) {
     const settings = fileBrowserSettings.value;
     settings.title = "Load Model File";
-    settings.callback = (pathlist, filename) => {
-      socket.emit("load_problem_file", pathlist, filename);
+    settings.callback = async (pathlist, filename) => {
+      await socket.asyncEmit("load_problem_file", pathlist, filename);
     }
     settings.chosenfile_in = model_loaded.value?.filename ?? "";
     settings.show_name_input = false;
@@ -110,11 +111,11 @@ function exportResults() {
   if (fileBrowser.value) {
     const settings = fileBrowserSettings.value;
     settings.title = "Export Results";
-    settings.callback = (pathlist, filename) => {
+    settings.callback = async (pathlist, filename) => {
       if (filename !== "") {
         pathlist.push(filename);
       }
-      socket.emit("export_results", pathlist);
+      await socket.asyncEmit("export_results", pathlist);
     }
     settings.show_name_input = true;
     settings.name_input_label = "Subdirectory";
@@ -148,20 +149,20 @@ async function saveFile(ev: Event, override?: {pathlist: string[], filename: str
   }
   const {pathlist, filename} = override ?? model_loaded.value;
   console.log('saving:', {pathlist, filename});
-  socket.emit("save_problem_file", pathlist, filename, false, async({filename, check_overwrite}: {filename: string, check_overwrite: boolean}) => {
+  await socket.asyncEmit("save_problem_file", pathlist, filename, false, async({filename, check_overwrite}: {filename: string, check_overwrite: boolean}) => {
     if (check_overwrite !== false) {
       const overwrite = await confirm(`File ${filename} exists: overwrite?`);
       if (overwrite) {
-        socket.emit("save_problem_file", pathlist, filename, overwrite);
+        await socket.asyncEmit("save_problem_file", pathlist, filename, overwrite);
       }
     }
   });
 }
 
-function reloadModel() {
+async function reloadModel() {
   if (model_loaded.value) {
     const {pathlist, filename} = model_loaded.value;
-    socket.emit("load_problem_file", pathlist, filename);
+    await socket.asyncEmit("load_problem_file", pathlist, filename);
   }
 }
 
@@ -169,22 +170,22 @@ function openFitOptions() {
   fitOptions.value?.open();
 }
 
-function startFit() {
+async function startFit() {
   const fitter_active = fitOptions.value?.fitter_active;
   const fitter_settings = fitOptions.value?.fitter_settings;
 
   if (fitter_active && fitter_settings) {
     const fit_args = fitter_settings[fitter_active];
-    socket.emit("start_fit_thread", fitter_active, fit_args.settings);
+    await socket.asyncEmit("start_fit_thread", fitter_active, fit_args.settings);
   }
 }
 
-function stopFit() {
-  socket.emit("stop_fit")
+async function stopFit() {
+  await socket.asyncEmit("stop_fit")
 }
 
-function quit() {
-  socket.emit("shutdown");
+async function quit() {
+  await socket.asyncEmit("shutdown");
 }
 
 onMounted(() => {

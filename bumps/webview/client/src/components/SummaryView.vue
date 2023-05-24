@@ -42,13 +42,13 @@ async function fetch_and_draw() {
 
 async function onMove(param_index) {
   // props.socket.volatile.emit('set_parameter01', parameters.value[param_index].name, parameters_local01.value[param_index]);
-  props.socket.emit('set_parameter', parameters.value[param_index].id, "value01", parameters_local01.value[param_index]);
+  props.socket.asyncEmit('set_parameter', parameters.value[param_index].id, "value01", parameters_local01.value[param_index]);
 }
 
 async function editItem(ev, item_name: "min" | "max" | "value", index: number) {
   const new_value = ev.target.innerText;
   if (validate_numeric(new_value)) {
-    props.socket.emit('set_parameter', parameters.value[index].id, item_name, new_value);
+    props.socket.asyncEmit('set_parameter', parameters.value[index].id, item_name, new_value);
   }
 }
 
@@ -62,7 +62,7 @@ function validate_numeric(value: string, allow_inf: boolean = false) {
 async function scrollParam(ev, index) {
   const sign = Math.sign(ev.deltaY);
   parameters_local01.value[index] -= 0.01 * sign;
-  props.socket.emit('set_parameter', parameters.value[index].id, "value01", parameters_local01.value[index]);
+  props.socket.asyncEmit('set_parameter', parameters.value[index].id, "value01", parameters_local01.value[index]);
 }
 
 async function onInactive(param) {
@@ -111,6 +111,7 @@ svg {
 td.editable {
   min-width: 5em;
 }
+
 
 td > input {
   min-width: 5em;

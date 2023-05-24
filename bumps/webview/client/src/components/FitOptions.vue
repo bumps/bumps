@@ -43,7 +43,8 @@ const OPTIONS_HELP = {
 // const active_settings = ref<{ name: string, settings: object}>({name: "", settings: {}});
 const active_settings = ref({});
 
-props.socket.emit("get_fitter_defaults", (new_fitter_defaults) => {
+props.socket.asyncEmit("get_fitter_defaults", (new_fitter_defaults) => {
+  console.log({new_fitter_defaults});
   fitter_defaults.value = new_fitter_defaults;
   fitter_settings.value = structuredClone(new_fitter_defaults);
 })
@@ -98,7 +99,7 @@ function process_settings() {
   }))
 }
 
-function save(start: boolean = false) {
+async function save(start: boolean = false) {
    if (anyIsInvalid.value) {
      return;
    }
@@ -106,10 +107,10 @@ function save(start: boolean = false) {
   new_settings[fitter_active_local.value] = { settings: process_settings() };
   const fitter_settings_local = process_settings();
   new_settings[fitter_active_local.value] = { settings: fitter_settings_local };
-  props.socket.emit("publish", "fitter_settings", new_settings);
-  props.socket.emit("publish", "fitter_active", fitter_active_local.value);
+  await props.socket.asyncEmit("publish", "fitter_settings", new_settings);
+  await props.socket.asyncEmit("publish", "fitter_active", fitter_active_local.value);
   if (start) {
-    props.socket.emit("start_fit_thread", fitter_active_local.value, fitter_settings_local);
+    await props.socket.asyncEmit("start_fit_thread", fitter_active_local.value, fitter_settings_local);
   }
   close();
 }

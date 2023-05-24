@@ -50,7 +50,7 @@ async function fetch_and_draw(reset: boolean = false) {
 }
 
 onMounted(() => {
-  props.socket.emit('get_model', (payload: json) => {
+  props.socket.asyncEmit('get_model', (payload: json) => {
     modelJson.value = payload;
   });
 })
