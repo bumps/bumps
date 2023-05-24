@@ -46,33 +46,12 @@ def rest_get(fn):
     # pass the function to the next decorator unchanged...
     return fn
 
-
-    try:
-        local_version = open(index_path / 'VERSION', 'rt').read().strip()
-    except FileNotFoundError:
-        local_version = None
-
-    print(index_path, local_version, client_version, local_version == client_version)
-    if client_version == local_version:
-        return web.FileResponse(index_path / 'index.html')
-    else:
-        CDN = f"https://cdn.jsdelivr.net/npm/bumps-webview-client@{client_version}/dist"
-        with open(client_path / 'index_template.txt', 'r') as index_template:
-            index_html = index_template.read().format(cdn=CDN)
-        return web.Response(body=index_html, content_type="text/html")
     
-@api.register
-async def connect(sid, environ, data=None):
-    # re-send last message for all topics
-    # now that panels are retrieving topics when they load, is this still
-    # needed or useful?
-    for topic, contents in api.state.topics.items():
-        message = contents[-1] if len(contents) > 0 else None
-        if message is not None:
-            await api.emit(topic, message, to=sid)
+@sio.event
+async def connect(sid: str, environ, data=None):
     print("connect ", sid)
 
-@api.register
+@sio.event
 def disconnect(sid):
     print('disconnect ', sid)
 
@@ -186,9 +165,9 @@ def setup_app(index: Callable=index, static_assets_path: Path=static_assets_path
         start = options.start
         print(f"fitter for filename {filename} is {fitter_id}")
         async def startup_task(App=None):
-            await api.load_problem_file("", pathlist, filename)
+            await api.load_problem_file(pathlist, filename)
             if start:
-                await api.start_fit_thread("", fitter_id, fitter_settings["settings"], options.exit)
+                await api.start_fit_thread(fitter_id, fitter_settings["settings"], options.exit)
         
         app.on_startup.append(startup_task)
 
