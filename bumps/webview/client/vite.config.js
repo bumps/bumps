@@ -30,7 +30,7 @@ export default ({mode}) => {
       rollupOptions: {
         output: {
           // Default
-          // dir: 'dist',
+          dir: join('dist', process.env.npm_package_version),
           entryFileNames: (mode == 'production') ? 'assets/[name].js' : 'assets/[name].[hash].js',
           assetFileNames: (mode == 'production') ? 'assets/[name][extname]' : undefined,
           // chunkFileNames: "chunk-[name].js",

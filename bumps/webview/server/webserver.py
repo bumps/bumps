@@ -30,9 +30,7 @@ routes = web.RouteTableDef()
 # sio = socketio.AsyncServer(cors_allowed_origins="*", serializer='msgpack')
 sio = socketio.AsyncServer(cors_allowed_origins="*")
 app = web.Application()
-client_path = Path(__file__).parent.parent / 'client'
-index_path = client_path / 'dist'
-static_assets_path = index_path / 'assets'
+CLIENT_PATH = Path(__file__).parent.parent / 'client'
 
 sio.attach(app)
 
@@ -48,11 +46,6 @@ def rest_get(fn):
     # pass the function to the next decorator unchanged...
     return fn
 
-async def index(request):
-    """Serve the client-side application."""
-    # check if the locally-build site has the correct version:
-    with open(client_path / 'package.json', 'r') as package_json:
-        client_version = json.load(package_json)['version'].strip()
 
     try:
         local_version = open(index_path / 'VERSION', 'rt').read().strip()
@@ -144,6 +137,19 @@ def setup_sio_api():
 def setup_app(index: Callable=index, static_assets_path: Path=static_assets_path, sock: Optional[socket.socket] = None, options: Options = Options()):
     if Path.exists(static_assets_path):
         app.router.add_static('/assets', static_assets_path)
+
+    async def index(request):
+        """Serve the client-side application."""
+        local_client_path = CLIENT_PATH / 'dist' / client_version
+
+        if local_client_path.is_dir():
+            return web.FileResponse(local_client_path / 'index.html')
+        else:
+            CDN = CDN_TEMPLATE.format(client_version=client_version)
+            with open(CLIENT_PATH / 'index_template.txt', 'r') as index_template:
+                index_html = index_template.read().format(cdn=CDN)
+            return web.Response(body=index_html, content_type="text/html")
+        
     app.router.add_get('/', index)
 
     if options.store is not None:
