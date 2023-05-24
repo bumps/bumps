@@ -1,30 +1,30 @@
 import { fileURLToPath, URL } from 'node:url'
+import { join } from 'node:path'
 
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import generateFile from 'vite-plugin-generate-file'
 
 // https://vitejs.dev/config/
 export default ({mode}) => {
   return defineConfig({
     plugins: [
       vue(),
-      generateFile([{
-        type: 'yaml',
-        output: 'VERSION',
-        data: process.env.npm_package_version.toString(),
-      }])
     ],
     base: '',
     resolve: {
       alias: {
-        '@': fileURLToPath(new URL('./src', import.meta.url))
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
+        './asyncSocket': (mode == 'standalone') ? join(process.cwd(), 'src', 'asyncWorkerSocket') : './asyncSocket',
+        'socket.io-client': (mode == 'standalone') ? join(process.cwd(), 'src', 'asyncWorkerSocket') : 'socket.io-client',
       }
     },
     define: {
       // By default, Vite doesn't include shims for NodeJS/
       // necessary for segment analytics lib to work
       global: {},
+    },
+    worker: {
+      format: 'es',
     },
     build: {
       rollupOptions: {
