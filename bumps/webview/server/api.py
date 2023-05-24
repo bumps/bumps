@@ -24,7 +24,7 @@ from .state_hdf5_backed import State
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
 from .varplot import plot_vars
 
-REGISTRY = {}
+REGISTRY: Dict[str, Callable] = {}
 MODEL_EXT = '.json'
 TRACE_MEMORY = False
 
@@ -71,7 +71,7 @@ TopicNameType = Literal[
 ]
 
 @register
-async def load_problem_file(sid: str, pathlist: List[str], filename: str):    
+async def load_problem_file(pathlist: List[str], filename: str):    
     path = Path(*pathlist, filename)
     print(f'model loading: {path}')
     await log(f'model_loading: {path}')
@@ -94,13 +94,13 @@ async def set_problem(problem: bumps.fitproblem.FitProblem, path: Optional[Path]
     path_string = "(no path)" if path is None else str(path / filename)
     print(f'model loaded: {path_string}')
     await log(f'model loaded: {path_string}')
-    await publish("", "update_model", True)
-    await publish("", "update_parameters", True)
-    await publish("", "model_loaded", {"pathlist": pathlist, "filename": filename})
+    await publish("update_model", True)
+    await publish("update_parameters", True)
+    await publish("model_loaded", {"pathlist": pathlist, "filename": filename})
 
 
 @register
-async def save_problem_file(sid: str = "", pathlist: Optional[List[str]] = None, filename: Optional[str] = None, overwrite: bool = False):
+async def save_problem_file(pathlist: Optional[List[str]] = None, filename: Optional[str] = None, overwrite: bool = False):
     problem_state = state.problem
     if problem_state is None:
         print("Save failed: no problem loaded.")
@@ -128,7 +128,7 @@ async def save_problem_file(sid: str = "", pathlist: Optional[List[str]] = None,
     return {"filename": save_filename, "check_overwrite": False}
 
 @register
-async def export_results(sid: str="", export_path: Union[str, List[str]]=""):
+async def export_results(export_path: Union[str, List[str]]=""):
     from concurrent.futures import ThreadPoolExecutor
 
     problem_state = state.problem
@@ -189,7 +189,7 @@ def _export_results(path: Path, problem: bumps.fitproblem.FitProblem, uncertaint
         uncertainty_state.save(output_pathstr)
 
 @register
-async def start_fit(sid: str="", fitter_id: str="", kwargs=None):
+async def start_fit(fitter_id: str="", kwargs=None):
     kwargs = {} if kwargs is None else kwargs
     problem_state = state.problem
     if problem_state is None:
@@ -204,7 +204,7 @@ async def start_fit(sid: str="", fitter_id: str="", kwargs=None):
         driver.show()
 
 @register
-async def stop_fit(sid: str = ""):
+async def stop_fit():
     if state.fit_thread is not None:
         if state.fit_stopped_future is None:
             loop = asyncio.get_running_loop()
@@ -242,7 +242,7 @@ def get_running_loop():
         return None
 
 @register
-async def start_fit_thread(sid: str="", fitter_id: str="", options=None, terminate_on_finish=False):
+async def start_fit_thread(fitter_id: str="", options=None, terminate_on_finish=False):
     options = {} if options is None else options    # session_id: str = app["active_session"]
     fitProblem = state.problem.fitProblem if state.problem is not None else None
     if fitProblem is None:
@@ -282,7 +282,7 @@ async def start_fit_thread(sid: str="", fitter_id: str="", options=None, termina
         fit_thread.start()
         state.fit_thread = fit_thread
         await emit("fit_progress", {}) # clear progress
-        await publish("", "fit_active", to_json_compatible_dict(dict(fitter_id=fitter_id, options=options, num_steps=num_steps)))
+        await publish("fit_active", to_json_compatible_dict(dict(fitter_id=fitter_id, options=options, num_steps=num_steps)))
         await log(json.dumps(to_json_compatible_dict(options), indent=2), title = f"starting fitter {fitter_id}")
 
 async def _fit_progress_handler(event: Dict):
@@ -304,17 +304,17 @@ async def _fit_progress_handler(event: Dict):
     if message == 'complete' or message == 'improvement':
         fitProblem.setp(event["point"])
         fitProblem.model_update()
-        await publish("", "update_parameters", True)
+        await publish("update_parameters", True)
         if message == 'complete':
-            await publish("", "fit_active", {})
+            await publish("fit_active", {})
     elif message == 'convergence_update':
         state.fitting.population = event["pop"]
-        await publish("", "convergence_update", True)
+        await publish("convergence_update", True)
     elif message == 'progress':
         await emit("fit_progress", to_json_compatible_dict(event))
     elif message == 'uncertainty_update' or message == 'uncertainty_final':
         state.fitting.uncertainty_state = cast(bumps.dream.state.MCMCDraw, event["uncertainty_state"])
-        await publish("", "uncertainty_update", True)
+        await publish("uncertainty_update", True)
 
 async def _fit_complete_handler(event):
     print("complete event: ", event.get("message", ""))
@@ -333,8 +333,8 @@ async def _fit_complete_handler(event):
     problem.setp(event["point"])
     problem.model_update()
     state.problem.fitProblem = problem
-    await publish("", "fit_active", {})
-    await publish("", "update_parameters", True)
+    await publish("fit_active", {})
+    await publish("update_parameters", True)
     await log(event["info"], title=f"done with chisq {chisq}")
     fut = state.fit_stopped_future
     if fut is not None:
@@ -356,10 +356,10 @@ EVT_FIT_PROGRESS.connect(fit_progress_handler, weak=True)
 EVT_FIT_COMPLETE.connect(fit_complete_handler, weak=True)
 
 async def log(message: str, title: Optional[str] = None):
-    await publish("", "log", {"message": message, "title": title})
+    await publish("log", {"message": message, "title": title})
 
 @register
-async def get_data_plot(sid: str=""):
+async def get_data_plot():
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = state.problem.fitProblem
@@ -380,14 +380,14 @@ async def get_data_plot(sid: str=""):
     
 
 @register
-async def get_model(sid: str=""):
+async def get_model():
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = state.problem.fitProblem
     return serialize(fitProblem)
 
 @register
-async def get_convergence_plot(sid: str=""):
+async def get_convergence_plot():
     # NOTE: this is slow.  Creating the figure takes around 0.15 seconds, 
     # and converting to mpld3 can take as much as 0.5 seconds.
     # Might want to replace with plotting on the client side (normalizing population takes around 1 ms)
@@ -423,7 +423,7 @@ async def get_convergence_plot(sid: str=""):
         return None
 
 @register
-async def get_correlation_plot(sid: str = "", nbins: int=50):
+async def get_correlation_plot(nbins: int=50):
     from .corrplot import Corr2d
     uncertainty_state = state.fitting.uncertainty_state
 
@@ -443,7 +443,7 @@ async def get_correlation_plot(sid: str = "", nbins: int=50):
         return None
 
 @register
-async def get_uncertainty_plot(sid: str = ""):
+async def get_uncertainty_plot():
     uncertainty_state = state.fitting.uncertainty_state
     if uncertainty_state is not None:
         import time
@@ -457,7 +457,7 @@ async def get_uncertainty_plot(sid: str = ""):
         return None
 
 @register
-async def get_model_uncertainty_plot(sid: str = ""):
+async def get_model_uncertainty_plot():
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = state.problem.fitProblem
@@ -486,7 +486,7 @@ async def get_model_uncertainty_plot(sid: str = ""):
         return None
 
 @register
-async def get_parameter_trace_plot(sid: str=""):
+async def get_parameter_trace_plot():
     uncertainty_state = state.fitting.uncertainty_state
     if uncertainty_state is not None:
         import mpld3
@@ -525,7 +525,7 @@ async def get_parameter_trace_plot(sid: str=""):
     
 
 @register
-async def get_parameters(sid: str = "", only_fittable: bool = False):
+async def get_parameters(only_fittable: bool = False):
     if state.problem is None or state.problem.fitProblem is None:
         return []
     fitProblem = state.problem.fitProblem
@@ -541,7 +541,7 @@ async def get_parameters(sid: str = "", only_fittable: bool = False):
     return to_json_compatible_dict(parameter_infos)
 
 @register
-async def set_parameter(sid: str, parameter_id: str, property: Literal["value01", "value", "min", "max"], value: Union[float, str, bool]):
+async def set_parameter(parameter_id: str, property: Literal["value01", "value", "min", "max"], value: Union[float, str, bool]):
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = state.problem.fitProblem
@@ -579,13 +579,13 @@ async def set_parameter(sid: str, parameter_id: str, property: Literal["value01"
             fitProblem.model_reset()
             # print(f"setting parameter: {parameter}.fixed to {value}")
             # model has been changed: setp and getp will return different values!
-            await publish("", "update_model", True)
+            await publish("update_model", True)
     fitProblem.model_update()
-    await publish("", "update_parameters", True)
+    await publish("update_parameters", True)
     return
 
 @register
-async def publish(sid: str, topic: TopicNameType, message=None):
+async def publish(topic: TopicNameType, message=None):
     timestamp_str = f"{datetime.now().timestamp():.6f}"
     contents = {"message": message, "timestamp": timestamp_str}
     # session = get_session(session_id)    
@@ -596,7 +596,7 @@ async def publish(sid: str, topic: TopicNameType, message=None):
 
 
 @register
-async def get_topic_messages(sid: str="", topic: Optional[TopicNameType] = None, max_num=None) -> List[Dict]:
+async def get_topic_messages(topic: Optional[TopicNameType] = None, max_num=None) -> List[Dict]:
     # this is a GET request in disguise -
     # emitter must handle the response in a callback,
     # as no separate response event is emitted.
@@ -614,7 +614,7 @@ async def get_topic_messages(sid: str="", topic: Optional[TopicNameType] = None,
         return list(itertools.islice(q, start, q_length))
 
 @register
-async def get_dirlisting(sid: str="", pathlist: Optional[List[str]]=None):
+async def get_dirlisting(pathlist: Optional[List[str]]=None):
     # GET request
     # TODO: use psutil to get disk listing as well?
     if pathlist is None:
@@ -630,17 +630,18 @@ async def get_dirlisting(sid: str="", pathlist: Optional[List[str]]=None):
     return dict(subfolders=subfolders, files=files)
 
 @register
-async def get_current_pathlist(sid: str="") -> Optional[List[str]]:
+async def get_current_pathlist() -> Optional[List[str]]:
     problem_state = state.problem
-    pathlist = problem_state.pathlist if problem_state is not None else None
+    pathlist = problem_state.pathlist if problem_state is not None else []
     return pathlist
 
 @register
-async def get_fitter_defaults(sid: str=""):
+async def get_fitter_defaults(*args):
+    print('fitter_default args:', args)
     return FITTER_DEFAULTS
 
 @register
-async def shutdown(sid: str=""):
+async def shutdown():
     print("killing...")
     await stop_fit()
     await emit("server_shutting_down")

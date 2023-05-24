@@ -106,12 +106,31 @@ def get_commandline_options(arg_defaults: Optional[Dict]=None):
     args = parser.parse_args(namespace=Options())
     return args
 
+def wrap_with_sid(function: Callable):
+    """ 
+    throw away first parameter sid: str
+    for compatibility with socket.io
+    (none of the API functions use sid value)
+    """
+    @functools.wraps(function)
+    async def with_sid(sid: str, *args, **kwargs):
+        print("args with sid: ", sid, args, kwargs)
+        return await function(*args, **kwargs)
+    return with_sid
 
 def setup_sio_api():
     api.app = app
     api.emit = sio.emit
     for (name, action) in api.REGISTRY.items():
-        sio.on(name, handler=action)
+        sio.on(name, handler=wrap_with_sid(action))
+
+
+def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPTIONS_CLASS()):
+    # check if the locally-build site has the correct version:
+    with open(CLIENT_PATH / 'package.json', 'r') as package_json:
+        client_version = json.load(package_json)['version'].strip()
+
+    static_assets_path = CLIENT_PATH / 'dist' / client_version / 'assets'
 
 def setup_app(index: Callable=index, static_assets_path: Path=static_assets_path, sock: Optional[socket.socket] = None, options: Options = Options()):
     if Path.exists(static_assets_path):
