@@ -1,5 +1,6 @@
 # from .main import setup_bumps
 from dataclasses import dataclass
+import functools
 import signal
 import socket
 from typing import Callable, Dict, Optional
@@ -23,6 +24,7 @@ from .fit_thread import EVT_FIT_PROGRESS
 from .state_hdf5_backed import SERIALIZERS
 
 TRACE_MEMORY = False
+CDN_TEMPLATE = "https://cdn.jsdelivr.net/npm/bumps-webview-client@{client_version}/dist"
 
 # can get by name and not just by id
 
@@ -71,10 +73,10 @@ app["shutdown"] = lambda: asyncio.create_task(api.shutdown())
 import argparse
 
 @dataclass
-class Options:
+class BumpsOptions:
     """ provide type hints for arguments """
     filename: Optional[str] = None
-    headless: bool = False
+    headless: bool = True
     external: bool = False
     port: int = 0
     hub: Optional[str] = None
@@ -85,6 +87,7 @@ class Options:
     serializer: SERIALIZERS = "dill"
     trace: bool = False
 
+OPTIONS_CLASS = BumpsOptions
 
 def get_commandline_options(arg_defaults: Optional[Dict]=None):
     parser = argparse.ArgumentParser()
@@ -98,12 +101,15 @@ def get_commandline_options(arg_defaults: Optional[Dict]=None):
     parser.add_argument('--start', action='store_true', help='start fit when problem loaded')
     parser.add_argument('--store', default=None, type=str, help='backing file for state')
     parser.add_argument('--exit', action='store_true', help='end process when fit complete (fit results lost unless store is specified)')
-    parser.add_argument('--serializer', default='dill', type=str, choices=["pickle", "dill", "dataclass"], help='strategy for serializing problem, will use value from store if it has already been defined')
+    parser.add_argument('--serializer', default=OPTIONS_CLASS.serializer, type=str, choices=["pickle", "dill", "dataclass"], help='strategy for serializing problem, will use value from store if it has already been defined')
     parser.add_argument('--trace', action='store_true', help='enable memory tracing (prints after every uncertainty update in dream)')
     # parser.add_argument('-c', '--config-file', type=str, help='path to JSON configuration to load')
+    namespace = OPTIONS_CLASS()
     if arg_defaults is not None:
-        parser.set_defaults(**arg_defaults)
-    args = parser.parse_args(namespace=Options())
+        print('arg_defaults: ', arg_defaults)
+        for k,v in arg_defaults.items():
+            setattr(namespace, k, v)
+    args = parser.parse_args(namespace=namespace)
     return args
 
 def wrap_with_sid(function: Callable):
@@ -124,7 +130,6 @@ def setup_sio_api():
     for (name, action) in api.REGISTRY.items():
         sio.on(name, handler=wrap_with_sid(action))
 
-
 def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPTIONS_CLASS()):
     # check if the locally-build site has the correct version:
     with open(CLIENT_PATH / 'package.json', 'r') as package_json:
@@ -132,7 +137,6 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
 
     static_assets_path = CLIENT_PATH / 'dist' / client_version / 'assets'
 
-def setup_app(index: Callable=index, static_assets_path: Path=static_assets_path, sock: Optional[socket.socket] = None, options: Options = Options()):
     if Path.exists(static_assets_path):
         app.router.add_static('/assets', static_assets_path)
 
@@ -239,14 +243,17 @@ def setup_app(index: Callable=index, static_assets_path: Path=static_assets_path
 
     return sock
 
-def main(options: Optional[Options] = None, sock: Optional[socket.socket] = None):
-    options = get_commandline_options() if options is None else options
+def main(options: Optional[OPTIONS_CLASS] = None, sock: Optional[socket.socket] = None):
+    # this entrypoint will be used to start gui, so set headless = False
+    # (other contexts e.g. jupyter notebook will directly call start_app)
+    options = get_commandline_options(arg_defaults={"headless": False}) if options is None else options
+    print(dict(options=options))
     try:
         asyncio.run(start_app(options, sock))
     except KeyboardInterrupt:
         print("stopped by KeyboardInterrupt.")
 
-async def start_app(options: Options, sock: socket.socket):
+async def start_app(options: OPTIONS_CLASS = OPTIONS_CLASS(), sock: socket.socket = None):
     setup_sio_api()
     runsock = setup_app(options=options, sock=sock)
     await web._run_app(app, sock=runsock)
