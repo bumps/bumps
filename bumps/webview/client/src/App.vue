@@ -46,7 +46,11 @@ const socket = io(sio_server, {
     // this is mostly here to test what happens on server fail:
    path: `${sio_base_path}socket.io`,
    reconnectionAttempts: 10
-});
+}) as AsyncSocket;
+
+const can_mount_local = (
+  ('mountLocal' in socket) && ('showDirectoryPicker' in window)
+)
 
 socket.on('connect', () => {
   console.log(socket.id);
@@ -222,6 +226,7 @@ onMounted(() => {
               </button>
               <ul class="dropdown-menu">
                 <li><button class="btn btn-link dropdown-item" @click="selectOpenFile">Open</button></li>
+                <li><button v-if="can_mount_local" class="btn btn-link dropdown-item" @click="socket.mountLocal">Mount Local Folder</button></li>
                 <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="saveFile">Save</button></li>
                 <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="saveFileAs">Save As</button></li>
                 <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="exportResults">Export Results</button></li>
