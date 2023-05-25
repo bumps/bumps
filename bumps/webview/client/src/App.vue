@@ -8,6 +8,7 @@ import FitOptions from './components/FitOptions.vue';
 import PanelTabContainer from './components/PanelTabContainer.vue';
 import FileBrowser from './components/FileBrowser.vue';
 import ServerShutdown from './components/ServerShutdown.vue';
+import ServerStartup from './components/ServerStartup.vue';
 
 const props = defineProps<{
   panels: {title: string, component: any }[],
@@ -34,6 +35,7 @@ const active_panel = ref([0, 1]);
 const fit_active = ref<{ fitter_id?: string, options?: {}, num_steps?: number }>({});
 const fit_progress = ref<{ chisq?: string, step?: number, value?: number }>({});
 const notification = ref({show: false, title: "", content: ""});
+const nativefs = ref<{syncfs: Function}>();
 
 // Create a SocketIO connection, to be passed to child components
 // so that they can do their own communications with the host.
@@ -156,6 +158,9 @@ async function saveFile(ev: Event, override?: {pathlist: string[], filename: str
         await socket.asyncEmit("save_problem_file", pathlist, filename, overwrite);
       }
     }
+    if (nativefs.value) {
+      nativefs.value.syncfs();
+    }
   });
 }
 
@@ -186,6 +191,13 @@ async function stopFit() {
 
 async function quit() {
   await socket.asyncEmit("shutdown");
+}
+
+async function mountLocal() {
+  const new_fs = await socket.mountLocal?.();
+  if (new_fs) {
+    nativefs.value = new_fs;
+  }
 }
 
 onMounted(() => {
@@ -227,7 +239,7 @@ onMounted(() => {
               </button>
               <ul class="dropdown-menu">
                 <li><button class="btn btn-link dropdown-item" @click="selectOpenFile">Open</button></li>
-                <li><button v-if="can_mount_local" class="btn btn-link dropdown-item" @click="socket.mountLocal">Mount Local Folder</button></li>
+                <li><button v-if="can_mount_local" class="btn btn-link dropdown-item" @click="mountLocal">Mount Local Folder</button></li>
                 <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="saveFile">Save</button></li>
                 <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="saveFileAs">Save As</button></li>
                 <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="exportResults">Export Results</button></li>
@@ -347,6 +359,7 @@ onMounted(() => {
     :show_files="fileBrowserSettings.show_files"
     :callback="fileBrowserSettings.callback" />
   <ServerShutdown :socket="socket" />
+  <ServerStartup :socket="socket" />
   <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
     <div id="toast" class="toast" :class="{show: notification.show}" role="alert" aria-live="assertive" aria-atomic="true">
       <div class="toast-header">
