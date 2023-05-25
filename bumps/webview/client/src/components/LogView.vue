@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import type { Socket } from 'socket.io-client';
+import type { AsyncSocket } from '../asyncSocket';
 
 const title = "Log";
 
 const props = defineProps<{
-  socket: Socket,
+  socket: AsyncSocket,
 }>();
 
 const log_info = ref<{message: string, title?: string}[]>([]);
@@ -13,7 +13,7 @@ const log_info = ref<{message: string, title?: string}[]>([]);
 props.socket.on('log', ({message: {message, title}}) => {
     log_info.value.push({message, title});
 });
-props.socket.emit('get_topic_messages', 'log', (messages) => {
+props.socket.asyncEmit('get_topic_messages', 'log', (messages) => {
   log_info.value = [...log_info.value, ...(messages.map((m) => m.message))];
 });
 

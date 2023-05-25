@@ -2,7 +2,8 @@
 import { Button } from 'bootstrap/dist/js/bootstrap.esm.js';
 import { onMounted, ref, shallowRef } from 'vue';
 import { io } from 'socket.io-client';
-import './asyncSocket';
+import { AsyncSocket } from './asyncSocket';
+import './asyncSocket';  // patch Socket with asyncEmit
 import FitOptions from './components/FitOptions.vue';
 import PanelTabContainer from './components/PanelTabContainer.vue';
 import FileBrowser from './components/FileBrowser.vue';
@@ -46,7 +47,11 @@ const socket = io(sio_server, {
     // this is mostly here to test what happens on server fail:
    path: `${sio_base_path}socket.io`,
    reconnectionAttempts: 10
-});
+}) as AsyncSocket;
+
+const can_mount_local = (
+  ('mountLocal' in socket) && ('showDirectoryPicker' in window)
+)
 
 socket.on('connect', () => {
   console.log(socket.id);
@@ -91,8 +96,8 @@ function selectOpenFile() {
   if (fileBrowser.value) {
     const settings = fileBrowserSettings.value;
     settings.title = "Load Model File";
-    settings.callback = (pathlist, filename) => {
-      socket.emit("load_problem_file", pathlist, filename);
+    settings.callback = async (pathlist, filename) => {
+      await socket.asyncEmit("load_problem_file", pathlist, filename);
     }
     settings.chosenfile_in = model_loaded.value?.filename ?? "";
     settings.show_name_input = false;
@@ -106,11 +111,11 @@ function exportResults() {
   if (fileBrowser.value) {
     const settings = fileBrowserSettings.value;
     settings.title = "Export Results";
-    settings.callback = (pathlist, filename) => {
+    settings.callback = async (pathlist, filename) => {
       if (filename !== "") {
         pathlist.push(filename);
       }
-      socket.emit("export_results", pathlist);
+      await socket.asyncEmit("export_results", pathlist);
     }
     settings.show_name_input = true;
     settings.name_input_label = "Subdirectory";
@@ -144,20 +149,20 @@ async function saveFile(ev: Event, override?: {pathlist: string[], filename: str
   }
   const {pathlist, filename} = override ?? model_loaded.value;
   console.log('saving:', {pathlist, filename});
-  socket.emit("save_problem_file", pathlist, filename, false, async({filename, check_overwrite}: {filename: string, check_overwrite: boolean}) => {
+  await socket.asyncEmit("save_problem_file", pathlist, filename, false, async({filename, check_overwrite}: {filename: string, check_overwrite: boolean}) => {
     if (check_overwrite !== false) {
       const overwrite = await confirm(`File ${filename} exists: overwrite?`);
       if (overwrite) {
-        socket.emit("save_problem_file", pathlist, filename, overwrite);
+        await socket.asyncEmit("save_problem_file", pathlist, filename, overwrite);
       }
     }
   });
 }
 
-function reloadModel() {
+async function reloadModel() {
   if (model_loaded.value) {
     const {pathlist, filename} = model_loaded.value;
-    socket.emit("load_problem_file", pathlist, filename);
+    await socket.asyncEmit("load_problem_file", pathlist, filename);
   }
 }
 
@@ -165,22 +170,22 @@ function openFitOptions() {
   fitOptions.value?.open();
 }
 
-function startFit() {
+async function startFit() {
   const fitter_active = fitOptions.value?.fitter_active;
   const fitter_settings = fitOptions.value?.fitter_settings;
 
   if (fitter_active && fitter_settings) {
     const fit_args = fitter_settings[fitter_active];
-    socket.emit("start_fit_thread", fitter_active, fit_args.settings);
+    await socket.asyncEmit("start_fit_thread", fitter_active, fit_args.settings);
   }
 }
 
-function stopFit() {
-  socket.emit("stop_fit")
+async function stopFit() {
+  await socket.asyncEmit("stop_fit")
 }
 
-function quit() {
-  socket.emit("shutdown");
+async function quit() {
+  await socket.asyncEmit("shutdown");
 }
 
 onMounted(() => {
@@ -222,6 +227,7 @@ onMounted(() => {
               </button>
               <ul class="dropdown-menu">
                 <li><button class="btn btn-link dropdown-item" @click="selectOpenFile">Open</button></li>
+                <li><button v-if="can_mount_local" class="btn btn-link dropdown-item" @click="socket.mountLocal">Mount Local Folder</button></li>
                 <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="saveFile">Save</button></li>
                 <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="saveFileAs">Save As</button></li>
                 <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="exportResults">Export Results</button></li>

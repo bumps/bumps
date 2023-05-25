@@ -262,6 +262,7 @@ class State:
     topics: TopicsDict
     fit_thread: Optional['FitThread'] = None
     fit_stopped_future: Optional[asyncio.Future] = None
+    calling_loop: Optional[asyncio.AbstractEventLoop] = None
     abort_queue: Queue
 
     def __init__(self):

@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import type { Socket } from 'socket.io-client';
+import type { AsyncSocket } from '../asyncSocket';
 import { setupDrawLoop} from '../setupDrawLoop';
 
 const title = "Summary";
 
 const props = defineProps<{
-  socket: Socket,
+  socket: AsyncSocket,
 }>();
 
 setupDrawLoop('update_parameters', props.socket, fetch_and_draw, title);
@@ -26,7 +26,7 @@ const parameters_local01 = ref<number[]>([]);
 const parameters_localstr = ref<string[]>([]);
 
 async function fetch_and_draw() {
-  const payload: parameter_info[] = await props.socket.asyncEmit('get_parameters', true)
+  const payload: parameter_info[] = await props.socket.asyncEmit('get_parameters', true) as parameter_info[];
   const pv = parameters.value;
   payload.forEach((p, i) => {
     parameters_localstr.value[i] = p.value_str;
@@ -42,13 +42,13 @@ async function fetch_and_draw() {
 
 async function onMove(param_index) {
   // props.socket.volatile.emit('set_parameter01', parameters.value[param_index].name, parameters_local01.value[param_index]);
-  props.socket.emit('set_parameter', parameters.value[param_index].id, "value01", parameters_local01.value[param_index]);
+  props.socket.asyncEmit('set_parameter', parameters.value[param_index].id, "value01", parameters_local01.value[param_index]);
 }
 
 async function editItem(ev, item_name: "min" | "max" | "value", index: number) {
   const new_value = ev.target.innerText;
   if (validate_numeric(new_value)) {
-    props.socket.emit('set_parameter', parameters.value[index].id, item_name, new_value);
+    props.socket.asyncEmit('set_parameter', parameters.value[index].id, item_name, new_value);
   }
 }
 
@@ -62,7 +62,7 @@ function validate_numeric(value: string, allow_inf: boolean = false) {
 async function scrollParam(ev, index) {
   const sign = Math.sign(ev.deltaY);
   parameters_local01.value[index] -= 0.01 * sign;
-  props.socket.emit('set_parameter', parameters.value[index].id, "value01", parameters_local01.value[index]);
+  props.socket.asyncEmit('set_parameter', parameters.value[index].id, "value01", parameters_local01.value[index]);
 }
 
 async function onInactive(param) {
@@ -112,9 +112,6 @@ td.editable {
   min-width: 5em;
 }
 
-td {
-
-}
 
 td > input {
   min-width: 5em;

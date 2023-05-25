@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /// <reference types="@types/uuid"/>
 import { ref } from 'vue';
-import { Socket } from 'socket.io-client';
+import type { AsyncSocket } from '../asyncSocket';
 import { v4 as uuidv4 } from 'uuid';
 import { setupDrawLoop } from '../setupDrawLoop';
 import * as Plotly from 'plotly.js/lib/core';
@@ -10,13 +10,13 @@ const title = "Convergence";
 const plot_div = ref<HTMLDivElement>();
 const plot_div_id = ref(`div-${uuidv4()}`);
 const props = defineProps<{
-  socket: Socket,
+  socket: AsyncSocket,
 }>();
 
 setupDrawLoop('convergence_update', props.socket, fetch_and_draw, title);
 
 async function fetch_and_draw() {
-  const payload = await props.socket.asyncEmit('get_convergence_plot');
+  const payload = await props.socket.asyncEmit('get_convergence_plot') as Plotly.PlotlyDataLayoutConfig;
   let plotdata = { ...payload };
   // console.log({plotdata});
   const { data, layout } = plotdata;

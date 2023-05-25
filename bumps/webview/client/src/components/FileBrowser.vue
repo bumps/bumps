@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, onUpdated, computed, shallowRef } from 'vue';
 import { Modal } from 'bootstrap/dist/js/bootstrap.esm';
-import { Socket } from 'socket.io-client';
+import type { AsyncSocket } from '../asyncSocket';
 
 const props = defineProps<{
-  socket: Socket,
+  socket: AsyncSocket,
   title: string,
   show_files?: boolean,
   show_name_input?: boolean,
@@ -20,7 +20,7 @@ const emit = defineEmits<{
 
 const dialog = ref<HTMLDivElement>();
 const isOpen = ref(false);
-const pathlist = ref(["/"]);
+const pathlist = shallowRef<string[]>(["/"]);
 // const pathlist = ref(["/", "Users", "bbm", "dev", "refl1d-modelbuilder"]);
 const subdirlist = shallowRef<string[]>([])
 const filelist = shallowRef<string[]>([])
@@ -36,8 +36,9 @@ function close() {
   isOpen.value = false;
 }
 
-function open() {
-  props.socket.emit('get_current_pathlist', (new_pathlist) => {
+async function open() {
+  await props.socket.asyncEmit('get_current_pathlist', (new_pathlist) => {
+    console.log({new_pathlist});
     setPath(new_pathlist);
   })
   chosenFile.value = props.chosenfile_in ?? "";
@@ -45,27 +46,26 @@ function open() {
   isOpen.value = true;
 }
 
-function subdirClick(subdir: string) {
+async function subdirClick(subdir: string) {
   pathlist.value.push(subdir);
-  setPath();
-  props.socket.emit("get_dirlisting", pathlist.value, ({ files, subfolders }) => {
+  await setPath(pathlist.value);
+  await props.socket.asyncEmit("get_dirlisting", pathlist.value, ({ files, subfolders }) => {
 
   })
 }
 
-function setPath(new_pathlist?: string[]) {
-  if (new_pathlist !== undefined) {
-    pathlist.value = new_pathlist;
-    // chosenFile.value = "";
-  }
-  props.socket.emit("get_dirlisting", pathlist.value, ({ files, subfolders }) => {
+async function setPath(new_pathlist?: string[]) {
+  console.log({new_pathlist});
+  pathlist.value = new_pathlist ?? [];
+  console.log({value: pathlist.value});
+  await props.socket.asyncEmit("get_dirlisting", pathlist.value, ({ files, subfolders }) => {
     subdirlist.value = subfolders.sort();
     filelist.value = files.sort();
   })
 }
 
-function chooseFile() {
-  props.callback(pathlist.value, chosenFile.value);
+async function chooseFile() {
+  await props.callback(pathlist.value, chosenFile.value);
   close();
 }
 

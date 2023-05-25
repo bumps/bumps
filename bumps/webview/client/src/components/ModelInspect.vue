@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue';
 import { setupDrawLoop } from '../setupDrawLoop';
 import JsonViewer from 'vue-json-viewer';
 import { getDiff } from 'json-difference';
-import type { Socket } from 'socket.io-client';
+import type { AsyncSocket } from '../asyncSocket';
 
 // from https://github.com/microsoft/TypeScript/issues/1897#issuecomment-1228063688
 type json =
@@ -15,11 +15,11 @@ type json =
   | { [key: string]: json };
 
 const title = "Model";
-const active_parameter = ref("");
+// @ts-ignore: intentionally infinite type recursion
 const modelJson = ref<json>({});
 
 const props = defineProps<{
-  socket: Socket,
+  socket: AsyncSocket,
 }>();
 
 setupDrawLoop('update_parameters', props.socket, fetch_and_draw);
@@ -27,7 +27,7 @@ setupDrawLoop('update_parameters', props.socket, fetch_and_draw);
 props.socket.on('model_loaded', () => { fetch_and_draw(true) });
 
 async function fetch_and_draw(reset: boolean = false) {
-  const payload: json = await props.socket.asyncEmit('get_model');
+  const payload = await props.socket.asyncEmit('get_model') as json;
   if (reset) {
     modelJson.value = payload;
   }
@@ -50,7 +50,7 @@ async function fetch_and_draw(reset: boolean = false) {
 }
 
 onMounted(() => {
-  props.socket.emit('get_model', (payload: json) => {
+  props.socket.asyncEmit('get_model', (payload: json) => {
     modelJson.value = payload;
   });
 })

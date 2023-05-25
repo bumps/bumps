@@ -1,37 +1,41 @@
 <script setup lang="ts">
 /// <reference types="@types/uuid"/>
 import { ref } from 'vue';
-import { Socket } from 'socket.io-client';
+import type { AsyncSocket } from '../asyncSocket';
 import { v4 as uuidv4 } from 'uuid';
 import { setupDrawLoop } from '../setupDrawLoop';
 import { cache } from '../plotcache';
 import * as Plotly from 'plotly.js/lib/core';
 import Bar from 'plotly.js/lib/bar';
 
+// workaround to PlotlyModule not being exported as type!
+type RegisterTypes = Parameters<typeof Plotly.register>[0];
+type PlotlyModule = Exclude<RegisterTypes, any[]>;
+
 Plotly.register([
-  Bar,
+  Bar as PlotlyModule,
 ])
 
 const title = "Uncertainty";
 const plot_div = ref<HTMLDivElement>();
 const plot_div_id = ref(`div-${uuidv4()}`);
 const props = defineProps<{
-  socket: Socket,
+  socket: AsyncSocket,
 }>();
 
 setupDrawLoop('uncertainty_update', props.socket, fetch_and_draw, title);
 
 async function fetch_and_draw(latest_timestamp: string) {
-  let { timestamp, plotdata } = cache[title] ?? {};
+  let { timestamp, plotdata } = cache[title] as { timestamp: string, plotdata: Plotly.PlotlyDataLayoutConfig } ?? {};
   if (timestamp !== latest_timestamp) {
     console.log("fetching new uncertainty plot", timestamp, latest_timestamp);
-    const payload = await props.socket.asyncEmit('get_uncertainty_plot');
+    const payload = await props.socket.asyncEmit('get_uncertainty_plot') as Plotly.PlotlyDataLayoutConfig;
     plotdata = { ...payload };
     cache[title] = {timestamp: latest_timestamp, plotdata};
   }
   const { data, layout } = plotdata;
-  delete layout.width;
-  delete layout.height;
+  delete layout?.width;
+  delete layout?.height;
   const config = { responsive: true }
   await Plotly.react(plot_div_id.value, [...data], layout, config);
 }

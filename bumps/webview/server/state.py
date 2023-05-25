@@ -26,6 +26,7 @@ class State:
     abort_queue: Queue
     fit_stopped_future: Optional[asyncio.Future] = None
     fit_thread: Optional['FitThread'] = None
+    calling_loop: Optional[asyncio.AbstractEventLoop] = None
 
     # State to be stored:
     problem: ProblemState

@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import type { Socket } from 'socket.io-client';
 import { setupDrawLoop } from '../setupDrawLoop';
+import type { AsyncSocket } from '../asyncSocket';
 
 const title = "Parameters";
 const active_parameter = ref("");
 
 const props = defineProps<{
-  socket: Socket,
+  socket: AsyncSocket,
 }>();
 
 setupDrawLoop('update_parameters', props.socket, fetch_and_draw);
@@ -30,7 +30,7 @@ const parameters = ref<parameter_info[]>([]);
 const parameters_local = ref<parameter_info[]>([]);
 
 async function fetch_and_draw() {
-  const payload = await props.socket.asyncEmit('get_parameters', false);
+  const payload = await props.socket.asyncEmit('get_parameters', false) as parameter_info[];
   const pl = parameters_local.value;
   payload.forEach((p, i) => {
     if (!(pl[i]?.active)) {
@@ -43,7 +43,7 @@ async function fetch_and_draw() {
 async function editItem(ev, item_name: "min" | "max" | "value", index: number) {
   const new_value = ev.target.innerText;
   if (validate_numeric(new_value)) {
-    props.socket.emit('set_parameter', parameters_local.value[index].id, item_name, new_value);
+    props.socket.asyncEmit('set_parameter', parameters_local.value[index].id, item_name, new_value);
   }
 }
 
@@ -62,7 +62,7 @@ async function onInactive(param) {
 async function setFittable(ev, index) {
   console.log(ev, ev.target, index, parameters_local.value[index].fixed);
   const parameter = parameters_local.value[index];
-  props.socket.emit('set_parameter', parameter.id, "fixed", !parameter.fixed);
+  props.socket.asyncEmit('set_parameter', parameter.id, "fixed", !parameter.fixed);
 }
 
 </script>
