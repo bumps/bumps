@@ -205,14 +205,18 @@ class FitThread(Thread):
                                  message="uncertainty_update",
                                  rate=self.uncertainty_update),
                     ]
-        # Only use parallel if the problem can be pickled
-        # or if multiprocessing is not available
-        mp_available = True
-        try:
-            import _multiprocessing
-        except ImportError:
-            mp_available = False
-        mapper = MPMapper if mp_available and can_pickle(self.problem) else SerialMapper
+
+        mapper = self.mapper
+        if mapper is None:
+            # fallback options if no mapper is specified
+            mp_available = True
+            try:
+                import _multiprocessing
+            except ImportError:
+                mp_available = False
+            # Only use MPMapper if the problem can be pickled
+            # and multiprocessing is available
+            mapper = MPMapper if mp_available and can_pickle(self.problem) else SerialMapper
 
         # Be safe and send a private copy of the problem to the fitting engine
         # print "fitclass",self.fitclass
