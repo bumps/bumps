@@ -637,7 +637,6 @@ async def get_current_pathlist() -> Optional[List[str]]:
 
 @register
 async def get_fitter_defaults(*args):
-    print('fitter_default args:', args)
     return FITTER_DEFAULTS
 
 @register

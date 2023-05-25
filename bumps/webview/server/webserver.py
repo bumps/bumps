@@ -120,7 +120,6 @@ def wrap_with_sid(function: Callable):
     """
     @functools.wraps(function)
     async def with_sid(sid: str, *args, **kwargs):
-        print("args with sid: ", sid, args, kwargs)
         return await function(*args, **kwargs)
     return with_sid
 
