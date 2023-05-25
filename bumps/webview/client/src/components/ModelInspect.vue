@@ -24,9 +24,9 @@ const props = defineProps<{
 
 setupDrawLoop('update_parameters', props.socket, fetch_and_draw);
 
-props.socket.on('model_loaded', () => { fetch_and_draw(true) });
+props.socket.on('model_loaded', () => { fetch_and_draw('', true) });
 
-async function fetch_and_draw(reset: boolean = false) {
+async function fetch_and_draw(timestamp: string = '', reset: boolean = false) {
   const payload = await props.socket.asyncEmit('get_model') as json;
   if (reset) {
     modelJson.value = payload;
