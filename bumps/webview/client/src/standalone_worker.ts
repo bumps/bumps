@@ -17,12 +17,10 @@ async function loadPyodideAndPackages() { // loads pyodide
     //import reductus library with micropip
     let api = await pyodide.runPythonAsync(`
     import micropip
-    await micropip.install("/assets/wheels/bumps-0.9.0-py3-none-any.whl")
-    await micropip.install("/assets/wheels/refl1d-0.8.15-py3-none-any.whl", keep_going=True, deps=False)
+    await micropip.install("./assets/wheels/bumps-0.9.0-py3-none-any.whl")
     await micropip.install("matplotlib")
     await micropip.install("plotly")
     await micropip.install("mpld3")
-    await micropip.install("periodictable")
     await micropip.install("blinker")
 
     print("pip imports finished")
