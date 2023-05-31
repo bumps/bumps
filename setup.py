@@ -50,6 +50,7 @@ dist = setup(
     ],
     packages=packages,
     package_data=gui_resources.package_data(),
+    include_package_data=True,
     scripts=scripts,
     # TODO: typing_extensions is only required for python 3.7 and below
     install_requires=['typing_extensions>=3.7.4', 'dataclasses; python_version < "3.7.0"'],
