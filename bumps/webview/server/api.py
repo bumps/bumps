@@ -10,6 +10,7 @@ import asyncio
 from pathlib import Path, PurePath
 import json
 from copy import deepcopy
+import sys
 
 from bumps.fitters import DreamFit, LevenbergMarquardtFit, SimplexFit, DEFit, MPFit, BFGSFit, FitDriver, fit, nllf_scale, format_uncertainty
 from bumps.mapper import MPMapper
@@ -26,6 +27,7 @@ from .varplot import plot_vars
 REGISTRY: Dict[str, Callable] = {}
 MODEL_EXT = '.json'
 TRACE_MEMORY = False
+CAN_THREAD = sys.platform != 'emscripten'
 
 FITTERS = (DreamFit, LevenbergMarquardtFit, SimplexFit, DEFit, MPFit, BFGSFit)
 FITTERS_BY_ID = dict([(fitter.id, fitter) for fitter in FITTERS])
@@ -148,9 +150,12 @@ async def export_results(export_path: Union[str, List[str]]=""):
         export_path = [export_path]
     path = Path(*export_path)
     await emit("export_started", str(path))
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(_export_results, path, problem, uncertainty_state)
-        await asyncio.wrap_future(future)
+    if CAN_THREAD:
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(_export_results, path, problem, uncertainty_state)
+            await asyncio.wrap_future(future)
+    else:
+        _export_results(path, problem, uncertainty_state)
     await emit("export_completed", str(path))
 
 
@@ -283,11 +288,14 @@ async def start_fit_thread(fitter_id: str="", options=None, terminate_on_finish=
             uncertainty_update=3600,
             terminate_on_finish=terminate_on_finish,
             )
-        fit_thread.start()
-        state.fit_thread = fit_thread
         await emit("fit_progress", {}) # clear progress
         await publish("fit_active", to_json_compatible_dict(dict(fitter_id=fitter_id, options=options, num_steps=num_steps)))
         await log(json.dumps(to_json_compatible_dict(options), indent=2), title = f"starting fitter {fitter_id}")
+        if CAN_THREAD:
+            fit_thread.start()
+        else:
+            fit_thread.run()
+        state.fit_thread = fit_thread
 
 async def _fit_progress_handler(event: Dict):
     # session_id = event["session_id"]
@@ -328,9 +336,10 @@ async def _fit_complete_handler(event):
     if fit_thread is not None:
         print(fit_thread)
         terminate = fit_thread.terminate_on_finish
-        fit_thread.join(1) # 1 second timeout on join
-        if fit_thread.is_alive():
-            await log("fit thread failed to complete")
+        if CAN_THREAD:
+            fit_thread.join(1) # 1 second timeout on join
+            if fit_thread.is_alive():
+                await log("fit thread failed to complete")
     state.fit_thread = None
     problem: bumps.fitproblem.FitProblem = event["problem"]
     chisq = nice(2*event["value"]/problem.dof)
