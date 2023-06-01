@@ -117,7 +117,7 @@ function exportResults() {
       if (filename !== "") {
         pathlist.push(filename);
       }
-      await socket.asyncEmit("export_results", pathlist);
+      socket.asyncEmit("export_results", pathlist);
     }
     settings.show_name_input = true;
     settings.name_input_label = "Subdirectory";
