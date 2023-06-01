@@ -55,6 +55,13 @@ def to_hdf5_group(state: 'State', group: 'Group'):
 
 CACHE_MISS = object()
 SERIALIZERS = Literal['dataclass', 'pickle', 'dill']
+SERIALIZER_EXTENSIONS = {
+    'dataclass': 'json',
+    'pickle': 'pickle',
+    'dill': 'pickle'
+}
+DEFAULT_SERIALIZER: SERIALIZERS = "dill"
+
 def serialize(problem: bumps.fitproblem.FitProblem, method: SERIALIZERS):
     if method == 'dataclass':
         return json.dumps(to_dict(problem)).encode()
@@ -78,7 +85,7 @@ class ProblemState:
     _filename: Optional[str]
     _pathlist: Optional[List[str]]
     _fitProblem: Optional[bumps.fitproblem.FitProblem]
-    _serializer: Optional[SERIALIZERS]
+    _serializer: Optional[SERIALIZERS] = DEFAULT_SERIALIZER
 
     def __init__(self, group: h5py.Group):
         self._group = group
