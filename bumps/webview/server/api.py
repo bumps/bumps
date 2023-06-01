@@ -162,8 +162,7 @@ async def export_results(export_path: Union[str, List[str]]=""):
 def _export_results(path: Path, problem: bumps.fitproblem.FitProblem, uncertainty_state: Optional[bumps.dream.state.MCMCDraw]):
     from bumps.util import redirect_console
 
-    basename = problem.name
-
+    basename = problem.name if problem.name is not None else "problem"
     # Storage directory
     path.mkdir(parents=True, exist_ok=True)
     output_pathstr = str( path / basename )
