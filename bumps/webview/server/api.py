@@ -12,7 +12,6 @@ import json
 from copy import deepcopy
 
 from bumps.fitters import DreamFit, LevenbergMarquardtFit, SimplexFit, DEFit, MPFit, BFGSFit, FitDriver, fit, nllf_scale, format_uncertainty
-from bumps.serialize import to_dict as serialize, from_dict_threaded as deserialize
 from bumps.mapper import MPMapper
 from bumps.parameter import Parameter, Variable, unique
 import bumps.fitproblem
@@ -20,7 +19,7 @@ import bumps.plotutil
 import bumps.dream.views, bumps.dream.varplot, bumps.dream.stats, bumps.dream.state
 import bumps.errplot
 
-from .state_hdf5_backed import State
+from .state_hdf5_backed import State, serialize, deserialize, SERIALIZER_EXTENSIONS
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
 from .varplot import plot_vars
 
@@ -77,8 +76,8 @@ async def load_problem_file(pathlist: List[str], filename: str):
     await log(f'model_loading: {path}')
     if filename.endswith(".json"):
         with open(path, "rt") as input_file:
-            serialized = json.loads(input_file.read())
-        problem = deserialize(serialized)
+            serialized = input_file.read()
+        problem = deserialize(serialized, method='dataclass')
     else:
         from bumps.cli import load_model
         problem = load_model(str(path))
@@ -115,14 +114,16 @@ async def save_problem_file(pathlist: Optional[List[str]] = None, filename: Opti
         return {"filename": "", "check_overwrite": False}
 
     path = Path(*pathlist)
-    save_filename = Path(filename).stem + MODEL_EXT
+    serializer = state.problem.serializer
+    extension = SERIALIZER_EXTENSIONS[serializer]
+    save_filename = f"{Path(filename).stem}.{extension}"
     if not overwrite and Path.exists(path / save_filename):
         #confirmation needed:
         return {"filename": save_filename, "check_overwrite": True}
 
-    serialized = serialize(problem_state.fitProblem)
-    with open(Path(path, save_filename), "wt") as output_file:
-        output_file.write(json.dumps(serialized))
+    serialized = serialize(problem_state.fitProblem, method=serializer)
+    with open(Path(path, save_filename), "wb") as output_file:
+        output_file.write(serialized)
 
     await log(f'Saved: {save_filename} at path: {path}')
     return {"filename": save_filename, "check_overwrite": False}
@@ -166,9 +167,12 @@ def _export_results(path: Path, problem: bumps.fitproblem.FitProblem, uncertaint
     problem.save(output_pathstr)
 
     # Save a snapshot of the model that can (hopefully) be reloaded
-    serialized = serialize(problem)
-    with open(output_pathstr + MODEL_EXT, "wt") as output_file:
-        output_file.write(json.dumps(serialized))
+    serializer = state.problem.serializer
+    extension = SERIALIZER_EXTENSIONS[serializer]
+    save_filename = f"{output_pathstr}.{extension}"
+    serialized = serialize(problem, serializer)
+    with open(save_filename, "wb") as output_file:
+        output_file.write(serialized)
 
     # Save the current state of the parameters
     with redirect_console(str(path / f"{basename}.out")):
@@ -384,7 +388,8 @@ async def get_model():
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = state.problem.fitProblem
-    return serialize(fitProblem)
+    serialized = serialize(fitProblem, 'dataclass') if state.problem.serializer == 'dataclass' else 'null'
+    return serialized
 
 @register
 async def get_convergence_plot():
