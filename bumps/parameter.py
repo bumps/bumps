@@ -1163,6 +1163,37 @@ class ParameterSet(ParameterSetSchema):
             p.pmp(*args, **kw)
 
 
+class Reference(Parameter):
+    """
+    Create an adaptor so that a model attribute can be treated as if it
+    were a parameter.  This allows only direct access, wherein the
+    storage for the parameter value is provided by the underlying model.
+
+    Indirect access, wherein the storage is provided by the parameter, cannot
+    be supported since the parameter has no way to detect that the model
+    is asking for the value of the attribute.  This means that model
+    attributes cannot be assigned to parameter expressions without some
+    trigger to update the values of the attributes in the model.
+
+    NOTE: this class can not be serialized with a dataclass schema
+    TODO: can sasmodels just use Parameter directly?
+    """
+
+    def __init__(self, obj, attr, **kw):
+        self.obj = obj
+        self.attr = attr
+        kw.setdefault('name', ".".join([obj.__class__.__name__, attr]))
+        Parameter.__init__(self, **kw)
+
+    @property
+    def value(self):
+        return getattr(self.obj, self.attr)
+
+    @value.setter
+    def value(self, value):
+        setattr(self.obj, self.attr, value)
+
+
 @schema(init=False)
 class FreeVariables(object):
     """
