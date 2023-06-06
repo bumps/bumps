@@ -15,6 +15,11 @@ const props = defineProps<{
   name?: string
 }>();
 
+type Message = {
+  timestamp: string,
+  message: object
+}
+
 const LAYOUTS = ["left-right", "top-bottom", "full"];
 const connected = ref(false);
 const menuToggle = ref<HTMLButtonElement>();
@@ -55,9 +60,13 @@ const can_mount_local = (
   ('mountLocal' in socket) && ('showDirectoryPicker' in window)
 )
 
-socket.on('connect', () => {
+socket.on('connect', async () => {
   console.log(socket.id);
   connected.value = true;
+  const model_messages = await socket.asyncEmit('get_topic_messages', 'model_loaded') as Message[];
+  if (model_messages.length > 0) {
+    model_loaded.value = model_messages[0].message as {pathlist: string[], filename: string};
+  }
 });
 
 socket.on('disconnect', (payload) => {
