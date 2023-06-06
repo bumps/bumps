@@ -24,7 +24,7 @@ from .fit_thread import EVT_FIT_PROGRESS
 from .state_hdf5_backed import SERIALIZERS
 
 TRACE_MEMORY = False
-CDN_TEMPLATE = "https://cdn.jsdelivr.net/npm/bumps-webview-client@{client_version}/dist"
+CDN_TEMPLATE = "https://cdn.jsdelivr.net/npm/bumps-webview-client@{client_version}/dist/{client_version}"
 
 # can get by name and not just by id
 
@@ -181,7 +181,7 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
     #     fitter_settings["steps"] = args.steps
 
     if options.filename is not None:
-        filepath = Path(options.filename)
+        filepath = Path(options.filename).absolute()
         pathlist = list(filepath.parent.parts)
         filename = filepath.name
         start = options.start

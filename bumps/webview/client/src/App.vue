@@ -180,6 +180,22 @@ async function reloadModel() {
   }
 }
 
+async function applyParameters(ev: Event) {
+  if (fileBrowser.value) {
+    const settings = fileBrowserSettings.value;
+    settings.title = "Apply Parameters"
+    settings.callback = (pathlist, filename) => {
+      socket.asyncEmit("apply_parameters", pathlist, filename);
+    }
+    settings.show_name_input = true;
+    settings.name_input_label = "Filename";
+    settings.require_name = true;
+    settings.show_files = true;
+    settings.chosenfile_in = "";
+    fileBrowser.value.open();
+  }
+}
+
 function openFitOptions() {
   fitOptions.value?.open();
 }
@@ -249,6 +265,7 @@ onMounted(() => {
               <ul class="dropdown-menu">
                 <li><button class="btn btn-link dropdown-item" @click="selectOpenFile">Open</button></li>
                 <li><button v-if="can_mount_local" class="btn btn-link dropdown-item" @click="mountLocal">Mount Local Folder</button></li>
+                <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="applyParameters">Apply Parameters</button></li>
                 <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="saveFile">Save</button></li>
                 <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="saveFileAs">Save As</button></li>
                 <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="exportResults">Export Results</button></li>

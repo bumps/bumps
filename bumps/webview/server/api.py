@@ -15,6 +15,7 @@ import sys
 from bumps.fitters import DreamFit, LevenbergMarquardtFit, SimplexFit, DEFit, MPFit, BFGSFit, FitDriver, fit, nllf_scale, format_uncertainty
 from bumps.mapper import MPMapper
 from bumps.parameter import Parameter, Variable, unique
+import bumps.cli
 import bumps.fitproblem
 import bumps.plotutil
 import bumps.dream.views, bumps.dream.varplot, bumps.dream.stats, bumps.dream.state
@@ -195,6 +196,18 @@ def _export_results(path: Path, problem: bumps.fitproblem.FitProblem, uncertaint
         with redirect_console( str(path / f"{basename}.err")):
             uncertainty_state.show(figfile = output_pathstr)
         uncertainty_state.save(output_pathstr)
+
+@register
+async def apply_parameters(pathlist: List[str], filename: str):
+    path = Path(*pathlist)
+    fullpath = path / filename
+    try:
+        bumps.cli.load_best(state.problem.fitProblem, fullpath)
+        await publish("update_parameters", True)
+        await log(f"applied parameters from {fullpath}")
+    except Exception:
+        await log(f"unable to apply parameters from {fullpath}")
+
 
 @register
 async def start_fit(fitter_id: str="", kwargs=None):
