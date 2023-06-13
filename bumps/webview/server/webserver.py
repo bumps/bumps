@@ -166,7 +166,7 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
 
     # app.on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
     if options.fit is not None:
-        app.on_startup.append(lambda App: api.publish('', 'fitter_active', options.fit))
+        app.on_startup.append(lambda App: api.publish('fitter_active', options.fit))
 
     fitter_id = options.fit
     if fitter_id is None:
