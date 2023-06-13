@@ -16,6 +16,11 @@ import numpy as np
 from numpy import inf, isinf
 from . import util
 from .compiled import dll
+try:
+    from numba import njit
+except ImportError:
+    def njit(*args, **kw):
+        return lambda f: f
 
 def make_bounds_handler(bounds, style='reflect'):
     """
@@ -75,8 +80,7 @@ class Bounds(object):
             self.c_interface(len(pop), len(self.low), pop.ctypes,
                              self.low.ctypes, self.high.ctypes)
         else:
-            for x in pop:
-                self.apply(x)
+            self.apply(self.low, self.high, pop)
         return pop
 
 
@@ -88,24 +92,24 @@ class ReflectBounds(Bounds):
     def __init__(self, low, high):
         self.low, self.high = [np.ascontiguousarray(v, 'd') for v in (low, high)]
 
-    def apply(self, y):
+    @staticmethod
+    @njit(cache=True)
+    def apply(minn, maxn, pop):
         """
         Update x so all values lie within bounds
 
         Returns x for convenience.  E.g., y = bounds.apply(x+0)
         """
-        minn, maxn = self.low, self.high
+        for y in pop:
+            # Reflect points which are out of bounds
+            idx = y < minn
+            y[idx] = 2*minn[idx] - y[idx]
+            idx = y > maxn
+            y[idx] = 2*maxn[idx] - y[idx]
 
-        # Reflect points which are out of bounds
-        idx = y < minn
-        y[idx] = 2*minn[idx] - y[idx]
-        idx = y > maxn
-        y[idx] = 2*maxn[idx] - y[idx]
-
-        # Randomize points which are still out of bounds
-        idx = (y < minn) | (y > maxn)
-        y[idx] = minn[idx] + util.rng.rand(sum(idx))*(maxn[idx]-minn[idx])
-        return y
+            # Randomize points which are still out of bounds
+            idx = (y < minn) | (y > maxn)
+            y[idx] = minn[idx] + util.rng.rand(sum(idx))*(maxn[idx]-minn[idx])
 
 
 class ClipBounds(Bounds):
@@ -116,14 +120,14 @@ class ClipBounds(Bounds):
     def __init__(self, low, high):
         self.low, self.high = [np.ascontiguousarray(v, 'd') for v in (low, high)]
 
-    def apply(self, y):
-        minn, maxn = self.low, self.high
-        idx = y < minn
-        y[idx] = minn[idx]
-        idx = y > maxn
-        y[idx] = maxn[idx]
-
-        return y
+    @staticmethod
+    @njit(cache=True)
+    def apply(minn, maxn, pop):
+        for y in pop:
+            idx = y < minn
+            y[idx] = minn[idx]
+            idx = y > maxn
+            y[idx] = maxn[idx]
 
 
 class FoldBounds(Bounds):
@@ -134,26 +138,25 @@ class FoldBounds(Bounds):
     def __init__(self, low, high):
         self.low, self.high = [np.ascontiguousarray(v, 'd') for v in (low, high)]
 
-    def apply(self, y):
-        minn, maxn = self.low, self.high
+    @staticmethod
+    @njit(cache=True)
+    def apply(minn, maxn, pop):
+        for y in pop:
+            # Deal with semi-infinite cases using reflection
+            idx = (y < minn) & isinf(maxn)
+            y[idx] = 2*minn[idx] - y[idx]
+            idx = (y > maxn) & isinf(minn)
+            y[idx] = 2*maxn[idx] - y[idx]
 
-        # Deal with semi-infinite cases using reflection
-        idx = (y < minn) & isinf(maxn)
-        y[idx] = 2*minn[idx] - y[idx]
-        idx = (y > maxn) & isinf(minn)
-        y[idx] = 2*maxn[idx] - y[idx]
+            # Wrap points which are out of bounds
+            idx = y < minn
+            y[idx] = maxn[idx] - (minn[idx] - y[idx])
+            idx = y > maxn
+            y[idx] = minn[idx] + (y[idx] - maxn[idx])
 
-        # Wrap points which are out of bounds
-        idx = y < minn
-        y[idx] = maxn[idx] - (minn[idx] - y[idx])
-        idx = y > maxn
-        y[idx] = minn[idx] + (y[idx] - maxn[idx])
-
-        # Randomize points which are still out of bounds
-        idx = (y < minn) | (y > maxn)
-        y[idx] = minn[idx] + util.rng.rand(sum(idx))*(maxn[idx]-minn[idx])
-
-        return y
+            # Randomize points which are still out of bounds
+            idx = (y < minn) | (y > maxn)
+            y[idx] = minn[idx] + util.rng.rand(sum(idx))*(maxn[idx]-minn[idx])
 
 
 class RandomBounds(Bounds):
@@ -164,20 +167,19 @@ class RandomBounds(Bounds):
     def __init__(self, low, high):
         self.low, self.high = [np.ascontiguousarray(v, 'd') for v in (low, high)]
 
-    def apply(self, y):
-        minn, maxn = self.low, self.high
+    @staticmethod
+    @njit(cache=True)
+    def apply(minn, maxn, pop):
+        for y in pop:
+            # Deal with semi-infinite cases using reflection
+            idx = (y < minn) & isinf(maxn)
+            y[idx] = 2*minn[idx] - y[idx]
+            idx = (y > maxn) & isinf(minn)
+            y[idx] = 2*maxn[idx] - y[idx]
 
-        # Deal with semi-infinite cases using reflection
-        idx = (y < minn) & isinf(maxn)
-        y[idx] = 2*minn[idx] - y[idx]
-        idx = (y > maxn) & isinf(minn)
-        y[idx] = 2*maxn[idx] - y[idx]
-
-        # The remainder are selected uniformly from the bounded region
-        idx = (y < minn) | (y > maxn)
-        y[idx] = minn[idx] + util.rng.rand(sum(idx))*(maxn[idx]-minn[idx])
-
-        return y
+            # The remainder are selected uniformly from the bounded region
+            idx = (y < minn) | (y > maxn)
+            y[idx] = minn[idx] + util.rng.rand(sum(idx))*(maxn[idx]-minn[idx])
 
 
 class IgnoreBounds(Bounds):
@@ -188,8 +190,9 @@ class IgnoreBounds(Bounds):
     def __init__(self, low=None, high=None):
         self.low, self.high = [np.ascontiguousarray(v, 'd') for v in (low, high)]
 
-    def apply(self, y):
-        return y
+    @staticmethod
+    def apply(minn, maxn, pop):
+        pass
 
 
 def test():
