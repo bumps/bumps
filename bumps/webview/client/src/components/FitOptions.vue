@@ -139,6 +139,23 @@ const anyIsInvalid = computed(() => {
   return Object.entries(active_settings.value).some(([sname, value]) => !validate(value, sname));
 })
 
+onMounted(async () => {
+  let messages;
+  let last_message;
+
+  messages = await props.socket.asyncEmit('get_topic_messages', 'fitter_active');
+  last_message = messages.pop();
+  if (last_message !== undefined) {
+    fitter_active.value = last_message.message;
+  }
+
+  messages = await props.socket.asyncEmit('get_topic_messages', 'fitter_settings');
+  last_message = messages.pop();
+  if (last_message !== undefined) {
+    fitter_settings.value = last_message.message;
+  }
+});
+
 defineExpose({
   close,
   open,
