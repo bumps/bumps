@@ -49,12 +49,12 @@ def register(fn: Callable):
 
 async def emit(
     event: Any,
-    data: Any | None = None,
-    to: Any | None = None,
-    room: Any | None = None,
-    skip_sid: Any | None = None,
-    namespace: Any | None = None,
-    callback: Any | None = None,
+    data: Optional[Any] = None,
+    to: Optional[Any] = None,
+    room: Optional[Any] = None,
+    skip_sid: Optional[Any] = None,
+    namespace: Optional[Any] = None,
+    callback: Optional[Any] = None,
     ignore_queue: bool = False
 ) -> Coroutine[Any, Any, None] :
     # to be defined when initializing server
