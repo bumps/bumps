@@ -217,7 +217,7 @@ async def start_fit(fitter_id: str="", kwargs=None):
         await log("Error: Can't start fit if no problem loaded")
     else:
         fitProblem = problem_state.fitProblem
-        mapper = MPMapper.start_mapper(fitProblem, None, cpus=0)
+        mapper = MPMapper.start_mapper(fitProblem, None, cpus=state.parallel)
         monitors = []
         fitclass = FITTERS_BY_ID[fitter_id]
         driver = FitDriver(fitclass=fitclass, mapper=mapper, problem=fitProblem, monitors=monitors, **kwargs)
@@ -289,11 +289,13 @@ async def start_fit_thread(fitter_id: str="", options=None, terminate_on_finish=
         # state.fitting.uncertainty_state = None
         num_steps = get_num_steps(fitter_id, num_params, options)
         state.abort_queue = abort_queue = Queue()
+
         fit_thread = FitThread(
             abort_queue=abort_queue,
             problem=fitProblem,
             fitclass=fitclass,
             options=options,
+            parallel=state.parallel,
             # session_id=session_id,
             # Number of seconds between updates to the GUI, or 0 for no updates
             convergence_update=5,

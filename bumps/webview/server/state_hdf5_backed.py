@@ -264,6 +264,7 @@ class TopicsDict:
 class State:
     hostname: str
     port: int
+    parallel: int
     problem: ProblemState
     dream: FittingState
     topics: TopicsDict

@@ -165,7 +165,7 @@ class FitThread(Thread):
     """Run the fit in a separate thread from the GUI thread."""
 
     def __init__(self, abort_queue: Queue, problem=None,
-                 fitclass=None, options=None, mapper=None,
+                 fitclass=None, options=None, mapper=None, parallel=0,
                  convergence_update=5, uncertainty_update=300,
                  terminate_on_finish=False):
         # base class initialization
@@ -177,6 +177,7 @@ class FitThread(Thread):
         self.fitclass = fitclass
         self.options = options if isinstance(options, dict) else dict()
         self.mapper = mapper
+        self.parallel = parallel
         self.convergence_update = convergence_update
         self.uncertainty_update = uncertainty_update
         self.terminate_on_finish = terminate_on_finish
@@ -225,7 +226,7 @@ class FitThread(Thread):
         driver = FitDriver(
             self.fitclass, problem=problem,
             monitors=monitors, abort_test=self.abort_test,
-            mapper=mapper.start_mapper(problem, []),
+            mapper=mapper.start_mapper(problem, [], cpus=self.parallel),
             **self.options)
 
         x, fx = driver.fit()
