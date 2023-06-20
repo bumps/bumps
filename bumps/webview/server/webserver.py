@@ -51,6 +51,10 @@ def rest_get(fn):
     
 @sio.event
 async def connect(sid: str, environ, data=None):
+    for topic, contents in api.state.topics.items():
+        message = contents[-1] if len(contents) > 0 else None
+        if message is not None:
+            await sio.emit(topic, message, to=sid)
     print("connect ", sid)
 
 @sio.event
