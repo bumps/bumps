@@ -339,6 +339,7 @@ def read_uncertainty_state(group: 'Group', skip=0, report=0, derived_vars=0):
     state = MCMCDraw(0, 0, 0, 0, 0, 0, thinning)
     #print("gen, var, pop", Ngen, Nvar, Npop)
     state.draws = Ngen * Npop
+    state.labels = [label.decode() for label in loaded["labels"][()]]
     state.generation = Ngen
     state._gen_index = 0
     state._gen_draws = loaded["gen_draws"][()]
