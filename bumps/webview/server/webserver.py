@@ -10,6 +10,9 @@ import socketio
 from pathlib import Path
 import json
 
+import matplotlib
+matplotlib.use("agg")
+
 import mimetypes
 mimetypes.add_type("text/css", ".css")
 mimetypes.add_type("text/html", ".html")
