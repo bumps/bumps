@@ -451,7 +451,7 @@ async def get_convergence_plot():
         return None
 
 @register
-async def get_correlation_plot(nbins: int=50):
+async def get_correlation_plot(sort: bool=True, max_rows: int=8, nbins: int=50):
     from .corrplot import Corr2d
     uncertainty_state = state.fitting.uncertainty_state
 
@@ -461,7 +461,7 @@ async def get_correlation_plot(nbins: int=50):
         print('queueing new correlation plot...', start_time)
         draw = uncertainty_state.draw()
         c = Corr2d(draw.points.T, bins=nbins, labels=draw.labels)
-        fig = c.plot()
+        fig = c.plot(sort=sort, max_rows=max_rows)
         print("time to render but not serialize...", time.time() - start_time)
         serialized = to_json_compatible_dict(fig.to_dict())
         end_time = time.time()

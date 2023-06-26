@@ -41,12 +41,21 @@ class Corr2d(object):
         """
         return self.hists[i, j]
 
-    def plot(self, title=None):
+    def plot(self, title=None, sort=True, max_rows=25, indices=None):
         """
         Plot the correlation histograms on the specified figure
-        """
 
-        fig = _plot(self.hists, self.labels, self.N)
+        Use supplied indices to select parameters by index, else
+        generate indices (optionally sorted by max correlation coeff.)
+        """
+        if indices is None:
+            if sort:
+                coeffs = (self.R() - np.eye(self.N))
+                max_corr = np.max(coeffs**2, axis=0)
+                indices = np.argsort(max_corr)[:-max_rows-2:-1]
+            else:
+                indices = np.arange(min(max_rows + 1, self.N), dtype=np.int32)
+        fig = _plot(self.hists, self.labels, indices=indices)
         if title is not None:
             fig.update_layout(title=dict(text=title, xanchor="center", x=0.5))
 
@@ -67,7 +76,7 @@ def _hists(data, ranges=None, **kw):
                 for j in range(i+1, n))
 
 
-def _plot(hists, labels, n, show_ticks=None):
+def _plot(hists, labels, indices, show_ticks=None):
     """
     Plot pair-wise correlation histograms
     """
@@ -76,17 +85,21 @@ def _plot(hists, labels, n, show_ticks=None):
     #              ha="center", va="center")
     #     return
     
+    n = len(indices)
     vmin, vmax = float('inf'), float('-inf')
-    for data, _, _ in hists.values():
-        positive = data[data > 0]
-        if len(positive) > 0:
-            vmin = min(vmin, np.amin(positive))
-            vmax = max(vmax, np.amax(positive))
+    for i, index in enumerate(indices[:-1]):
+        for cross_index in indices[i+1:]:
+            ii, jj = sorted((index, cross_index))
+            data, _, _ = hists[(ii, jj)]
+            positive = data[data > 0]
+            if len(positive) > 0:
+                vmin = min(vmin, np.amin(positive))
+                vmax = max(vmax, np.amax(positive))
     
     fig = make_subplots(rows=n-1, cols=n-1, horizontal_spacing=0, vertical_spacing=0, shared_yaxes=True, shared_xaxes=True)
     COLORSCALE = ["white", "yellow", "green", "blue", "red"]
 
-    for i in range(0, n-1):
+    for i, index in enumerate(indices[:-1]):
         fig.add_annotation(
             xref="x domain",
             yref="y domain",
@@ -96,11 +109,12 @@ def _plot(hists, labels, n, show_ticks=None):
             showarrow=False,
             col=i+1,
             row=n-i-1,
-            text=labels[i],
+            text=labels[index],
             textangle=-90
         )
-        for j in range(i+1, n):
-            data, x, y = hists[(i, j)]
+        for j, cross_index in enumerate(indices[i+1:], start=i+1):
+            ii, jj = sorted((index, cross_index))
+            data, x, y = hists[(ii, jj)]
             data = np.clip(data, vmin, vmax)
             trace = go.Heatmap(z=np.log10(data), coloraxis='coloraxis', hoverinfo='skip')
             fig.add_traces([trace], rows=n-i-1, cols=j)
