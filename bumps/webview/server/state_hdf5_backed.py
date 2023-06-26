@@ -266,7 +266,7 @@ class State:
     port: int
     parallel: int
     problem: ProblemState
-    dream: FittingState
+    fitting: FittingState
     topics: TopicsDict
     fit_thread: Optional['FitThread'] = None
     fit_stopped_future: Optional[asyncio.Future] = None
