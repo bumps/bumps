@@ -11,9 +11,14 @@ __all__ = ['Corr2d']
 
 import numpy as np
 from numpy import inf
+from typing import List
 
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+
+# if more than this many variables are to be plotted, put them all
+# on a single axis for efficiency (no linked axes)
+MAKE_SINGLE_BREAKPOINT = 9
 
 class Corr2d(object):
     """
@@ -48,14 +53,20 @@ class Corr2d(object):
         Use supplied indices to select parameters by index, else
         generate indices (optionally sorted by max correlation coeff.)
         """
+        num_to_show = min(max_rows, self.N - 1)
         if indices is None:
             if sort:
                 coeffs = (self.R() - np.eye(self.N))
                 max_corr = np.max(coeffs**2, axis=0)
                 indices = np.argsort(max_corr)[:-max_rows-2:-1]
+                labels = _disambiguated(self.labels)
             else:
-                indices = np.arange(min(max_rows + 1, self.N), dtype=np.int32)
-        fig = _plot(self.hists, self.labels, indices=indices)
+                indices = np.arange(num_to_show + 1, dtype=np.int32)
+                labels = self.labels
+        if num_to_show > MAKE_SINGLE_BREAKPOINT:
+            fig = _plot_single_heatmap(self.hists, labels, indices=indices)
+        else:
+            fig = _plot(self.hists, labels, indices=indices)
         if title is not None:
             fig.update_layout(title=dict(text=title, xanchor="center", x=0.5))
 
@@ -80,11 +91,7 @@ def _plot(hists, labels, indices, show_ticks=None):
     """
     Plot pair-wise correlation histograms
     """
-    # if n <= 1:
-    #     fig.text(0.5, 0.5, "No correlation plots when only one variable",
-    #              ha="center", va="center")
-    #     return
-    
+
     n = len(indices)
     vmin, vmax = float('inf'), float('-inf')
     for i, index in enumerate(indices[:-1]):
@@ -104,8 +111,9 @@ def _plot(hists, labels, indices, show_ticks=None):
             xref="x domain",
             yref="y domain",
             xanchor="right",
-            x=-0.1,
-            y=0.1,
+            yanchor="bottom",
+            x=-0.05,
+            y=0.05,
             showarrow=False,
             col=i+1,
             row=n-i-1,
@@ -119,6 +127,22 @@ def _plot(hists, labels, indices, show_ticks=None):
             trace = go.Heatmap(z=np.log10(data), coloraxis='coloraxis', hoverinfo='skip')
             fig.add_traces([trace], rows=n-i-1, cols=j)
     
+    # Add annotation for last parameter:
+    fig.add_annotation(
+        xref="x domain",
+        yref="y domain",
+        xanchor="left",
+        yanchor="bottom",
+        x=0.05,
+        y=1.05,
+        showarrow=False,
+        col=i+1,
+        row=n-i-1,
+        text=labels[index+1],
+        textangle=0
+    )
+
+
     log_cbar = dict(
         tickvals=np.arange(int(np.log10(vmax)) + 1),
         ticktext=10 ** np.arange(int(np.log10(vmax)) + 1),
@@ -129,6 +153,80 @@ def _plot(hists, labels, indices, show_ticks=None):
     fig.update_xaxes(visible=False)
     fig.update_yaxes(visible=False)
     return fig
+
+def _plot_single_heatmap(hists, labels, indices, show_ticks=None):
+    """
+    Plot pair-wise correlation histograms
+    """
+
+    n = len(indices)
+    vmin, vmax = float('inf'), float('-inf')
+    for i, index in enumerate(indices[:-1]):
+        for cross_index in indices[i+1:]:
+            ii, jj = sorted((index, cross_index))
+            data, _, _ = hists[(ii, jj)]
+            positive = data[data > 0]
+            if len(positive) > 0:
+                vmin = min(vmin, np.amin(positive))
+                vmax = max(vmax, np.amax(positive))
+
+    fig = go.Figure()
+    COLORSCALE = ["white", "yellow", "green", "blue", "red"]
+
+    for i, index in enumerate(indices[:-1]):
+        fig.add_annotation(
+            xanchor="right",
+            yanchor="bottom",
+            x=i+1,
+            y=i,
+            showarrow=False,
+            text=labels[index],
+            textangle=-90
+        )
+        for j, cross_index in enumerate(indices[i+1:], start=i+1):
+            ii, jj = sorted((index, cross_index))
+            data, x, y = hists[(ii, jj)]
+            data = np.clip(data, vmin, vmax)
+            sx, sy = data.shape
+            dx = 1.0 / sx
+            dy = 1.0 / sy
+            trace = go.Heatmap(z=np.log10(data), y=[i, i+dx], x=[j,j+dy], coloraxis='coloraxis', hoverinfo='skip')
+            fig.add_traces([trace])
+
+    # Add annotation for last parameter:
+    fig.add_annotation(
+        xanchor="left",
+        yanchor="bottom",
+        x=i+1,
+        y=i+1,
+        showarrow=False,
+        text=labels[indices[i+1]],
+        textangle=0
+    )
+
+    log_cbar = dict(
+        tickvals=np.arange(int(np.log10(vmax)) + 1),
+        ticktext=10 ** np.arange(int(np.log10(vmax)) + 1),
+    )
+    fig.update_layout(coloraxis={'colorscale': COLORSCALE, "cmin": np.log10(vmin), "cmax": np.log10(vmax), 'colorbar': log_cbar})
+    fig.update_layout(plot_bgcolor='rgba(0, 0, 0, 0)')
+    # fig.update_layout(height=600, width=800)
+    fig.update_xaxes(visible=False)
+    fig.update_yaxes(visible=False)
+    return fig
+
+
+def _disambiguated(labels: List[str]):
+    label_count = {}
+    output = []
+    for label in labels:
+        label_count.setdefault(label, 0)
+        count = label_count[label]
+        l = f"{label} ({count})" if count > 0 else label
+        output.append(l)
+        label_count[label] += 1
+    return output
+
 
 ### NOT USED AT THE MOMENT: all below
 ###
