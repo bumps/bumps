@@ -304,11 +304,17 @@ class State:
             session_file.swmr_mode = True
 
 
-    async def cleanup(self):
+    def cleanup(self):
         self.session_file.close()
 
+    def __del__(self):
+        self.cleanup()
+
+    async def async_cleanup(self):
+        self.cleanup()
+
     def __exit__(self, exc_type, exc_value, exc_traceback):
-        self.session_file.close()
+        self.cleanup()
 
 def write_uncertainty_state(state: 'MCMCDraw', group: 'Group', compression=COMPRESSION):
         to_save = {}

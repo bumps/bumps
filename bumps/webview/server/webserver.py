@@ -220,7 +220,7 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
     app.on_cleanup.append(lambda App: notice("cleanup task"))
     app.on_shutdown.append(lambda App: notice("shutdown task"))
     app.on_shutdown.append(lambda App: api.stop_fit())
-    app.on_shutdown.append(lambda App: api.state.cleanup())
+    app.on_shutdown.append(lambda App: api.state.async_cleanup())
     app.on_shutdown.append(lambda App: notice("shutdown complete"))
 
     # set initial path to cwd:
