@@ -273,11 +273,17 @@ class State:
     calling_loop: Optional[asyncio.AbstractEventLoop] = None
     abort_queue: Queue
 
-    def __init__(self):
+    def __init__(self, session_file_name: Optional[str] = None):
         # self.problem = problem
         # self.fitting = fitting if fitting is not None else FittingState()
         self.abort_queue = Queue()
-        self.setup_backing(':memory:', in_memory=True, backing_store=False)
+        if session_file_name is not None:
+            self.setup_backing(session_file_name=session_file_name)
+        else:
+            self.setup_backing(':memory:', in_memory=True, backing_store=False)
+
+    def __enter__(self):
+        return self
 
     def setup_backing(self, session_file_name: str = SESSION_FILE_NAME, in_memory: bool = False, backing_store: bool = False, read_only: bool = False ):
         import h5py
@@ -299,6 +305,9 @@ class State:
 
 
     async def cleanup(self):
+        self.session_file.close()
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
         self.session_file.close()
 
 def write_uncertainty_state(state: 'MCMCDraw', group: 'Group', compression=COMPRESSION):
