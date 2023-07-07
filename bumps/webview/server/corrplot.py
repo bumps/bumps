@@ -124,7 +124,8 @@ def _plot(hists, labels, indices, show_ticks=None):
             ii, jj = sorted((index, cross_index))
             data, x, y = hists[(ii, jj)]
             data = np.clip(data, vmin, vmax)
-            trace = go.Heatmap(z=np.log10(data), coloraxis='coloraxis', hoverinfo='skip')
+            hovertemplate = f"{labels[index]}<br>{labels[cross_index]}<extra></extra>"
+            trace = go.Heatmap(z=np.log10(data), coloraxis='coloraxis', hovertemplate=hovertemplate)
             fig.add_traces([trace], rows=n-i-1, cols=j)
     
     # Add annotation for last parameter:
@@ -149,6 +150,7 @@ def _plot(hists, labels, indices, show_ticks=None):
     )
     fig.update_layout(coloraxis={'colorscale': COLORSCALE, "cmin": np.log10(vmin), "cmax": np.log10(vmax), 'colorbar': log_cbar})
     fig.update_layout(plot_bgcolor='rgba(0, 0, 0, 0)')
+    fig.update_layout(hoverlabel=dict(bgcolor='white', font_size=16))
     # fig.update_layout(height=600, width=800)
     fig.update_xaxes(visible=False)
     fig.update_yaxes(visible=False)
@@ -190,7 +192,8 @@ def _plot_single_heatmap(hists, labels, indices, show_ticks=None):
             sx, sy = data.shape
             dx = 1.0 / sx
             dy = 1.0 / sy
-            trace = go.Heatmap(z=np.log10(data), y=[i, i+dx], x=[j,j+dy], coloraxis='coloraxis', hoverinfo='skip')
+            hovertemplate = f"{labels[index]}<br>{labels[cross_index]}<extra></extra>"
+            trace = go.Heatmap(z=np.log10(data), y=[i, i+dx], x=[j,j+dy], coloraxis='coloraxis', hovertemplate=hovertemplate)
             fig.add_traces([trace])
 
     # Add annotation for last parameter:
@@ -210,6 +213,7 @@ def _plot_single_heatmap(hists, labels, indices, show_ticks=None):
     )
     fig.update_layout(coloraxis={'colorscale': COLORSCALE, "cmin": np.log10(vmin), "cmax": np.log10(vmax), 'colorbar': log_cbar})
     fig.update_layout(plot_bgcolor='rgba(0, 0, 0, 0)')
+    fig.update_layout(hoverlabel=dict(bgcolor='white', font_size=16))
     # fig.update_layout(height=600, width=800)
     fig.update_xaxes(visible=False)
     fig.update_yaxes(visible=False)
