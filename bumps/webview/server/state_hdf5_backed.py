@@ -85,7 +85,7 @@ class ProblemState:
     _filename: Optional[str]
     _pathlist: Optional[List[str]]
     _fitProblem: Optional[bumps.fitproblem.FitProblem]
-    _serializer: Optional[SERIALIZERS] = DEFAULT_SERIALIZER
+    _serializer: Optional[SERIALIZERS]
 
     def __init__(self, group: h5py.Group):
         self._group = group
