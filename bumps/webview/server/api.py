@@ -734,7 +734,12 @@ def params_to_list(params, lookup=None, pathlist=None, links=None) -> List[Param
             params_to_list(params[k], lookup=lookup, pathlist=pathlist + [k])
     elif isinstance(params, tuple) or isinstance(params, list):
         for i, v in enumerate(params):
-            params_to_list(v, lookup=lookup, pathlist=pathlist + [f"[{i:d}]"])
+            # add index to last item in pathlist (in-place):
+            new_pathlist = pathlist.copy()
+            if len(pathlist) < 1:
+                new_pathlist.append("")
+            new_pathlist[-1] = f"{new_pathlist[-1]}[{i:d}]"
+            params_to_list(v, lookup=lookup, pathlist=new_pathlist)
     elif isinstance(params, Parameter):
         path = ".".join(pathlist)
         existing = lookup.get(params.id, None)
