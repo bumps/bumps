@@ -64,7 +64,7 @@ import numpy as np
 from numpy import inf, isnan, NaN, isfinite
 
 from . import parameter, bounds as mbounds
-from .parameter import to_dict, Parameter, Expression, Variable
+from .parameter import to_dict, Parameter, Expression, Variable, tag_all
 from .formatnum import format_uncertainty
 from . import util
 
@@ -240,7 +240,8 @@ class FitProblem(FitProblemSchema):
                  constraints=None,
                  penalty_nllf="inf",
                  freevars=None,
-                 soft_limit:Optional[float]=None,  # TODO: deprecate
+                 soft_limit:Optional[float]=None,  # TODO: deprecate,
+                 auto_tag=False
                  ):
         if not isinstance(models, (list, tuple)):
             models = [models]
@@ -256,6 +257,10 @@ class FitProblem(FitProblemSchema):
             names = ["M%d" % i for i, _ in enumerate(models)]
             freevars = parameter.FreeVariables(names=names)
         self.freevars = freevars
+        if auto_tag:
+            for index, model in enumerate(models):
+                model_name = model.name if model.name is not None else f"Model{index}"
+                tag_all(model.parameters(), model_name)
         self._models = models
         if weights is None:
             weights = [1.0 for _ in models]
