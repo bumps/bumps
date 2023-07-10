@@ -747,6 +747,7 @@ def params_to_list(params, lookup=None, pathlist=None, links=None) -> List[Param
                 "id": params.id,
                 "name": str(params.name),
                 "paths": [path],
+                "tags": params.tags,
                 "writable": type(params.slot) in [Variable, Parameter], 
                 "value_str": value_str, "fittable": params.fittable, "fixed": params.fixed }
             if has_prior:
