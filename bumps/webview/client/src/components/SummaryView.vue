@@ -83,12 +83,12 @@ const COLORS = [
   "blue",
   "red",
   "green",
-  "DarkYellow",
+  "goldenrod",
   "grey",
   "orange",
   "purple",
   "teal",
-  "LightGreen",
+  "lightgreen",
   "brown",
   "black"
 ];
@@ -125,7 +125,7 @@ const filtered_parameters = computed(() => {
 <template>
   <TagFilter ref="tag_filter" :all_tags="all_tags"></TagFilter>
   <table class="table table-sm">
-    <thead class="border-bottom py-1">
+    <thead class="border-bottom py-1 sticky-top text-white bg-secondary">
       <tr>
         <th scope="col">Fit Parameter</th>
         <th scope="col"></th>

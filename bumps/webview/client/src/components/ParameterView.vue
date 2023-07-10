@@ -69,7 +69,7 @@ async function setFittable(ev, index) {
         
 <template>
   <table class="table">
-    <thead class="border-bottom py-1">
+    <thead class="border-bottom py-1 sticky-top text-white bg-secondary">
       <tr>
         <th scope="col">Fit?</th>
         <th scope="col">Name</th>
