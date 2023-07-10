@@ -235,6 +235,7 @@ class ParameterSchema:
     bounds: Optional[Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]] = None
     distribution: DistributionType = field(default_factory=Uniform)
     discrete: bool = False
+    tags: List[str] = field(default_factory=list)
 
 class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
     """
@@ -553,6 +554,7 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
             bounds: Optional[Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]]=None,
             distribution: DistributionType = Uniform(),
             discrete: bool = False,
+            tags: Optional[List[str]] = None,
             **kw):
         # Check if we are started with value=range or bounds=range; if we
         # are given bounds, then assume this is a fitted parameter, otherwise
@@ -586,6 +588,7 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
         self.slot = slot
         self.name = name
         self.id = id if id is not None else str(uuid.uuid4())
+        self.tags = tags if tags is not None else []
         if limits is None:
             limits = (-np.inf, np.inf)
         self.limits  = (
@@ -643,6 +646,16 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
         # Replace the slot with a new variable initialized to the only variable value
         self.slot = Variable(self.value)
 
+    def add_tag(self, tag: str):
+        if not tag in self.tags:
+            self.tags.append(tag)
+
+    def remove_tag(self, tag: Optional[str] = None):
+        if tag is None:
+            self.tags = []
+        else:
+            self.tags = [t for t in self.tags if not t == tag]
+
     def __copy__(self):
         """ copy will only be called when a new instance is desired, with a different id """
         obj = type(self).__new__(self.__class__)
@@ -650,6 +663,24 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
         obj.id = str(uuid.uuid4())
         return obj
 
+def tag_all(parameter_tree, tag, remove=False):
+    if isinstance(parameter_tree, dict):
+        tag_all([item for item in parameter_tree.values()], tag, remove=remove)
+    elif hasattr(parameter_tree, 'add_tag'):
+        if remove:
+            parameter_tree.remove_tag(tag)
+        else:
+            parameter_tree.add_tag(tag)
+    elif hasattr(parameter_tree, 'parameters'):
+        tag_all(parameter_tree.parameters(), tag, remove=remove)
+    elif hasattr(parameter_tree, '__iter__'):
+        for item in parameter_tree:
+            tag_all(item, tag, remove=remove)
+    else:
+        warnings.warn(f"parameter tree should have only list, object and Parameter items: {parameter_tree}")
+
+def untag_all(parameter_tree, tag: Optional[str]=None):
+    tag_all(parameter_tree, tag, remove=True)
 
 @dataclass
 class Variable(ValueProtocol):
