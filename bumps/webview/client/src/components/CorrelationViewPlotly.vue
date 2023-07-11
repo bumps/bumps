@@ -49,6 +49,10 @@ async function fetch_and_draw(latest_timestamp?: string) {
   if (!callback_registered.value) {
     if (plot_div.value?.on) {
       plot_div.value.on('plotly_click', (ev) => {
+        // if we're already showing only one plot, bail out:
+        if (vars.value.length === 2) {
+          return
+        }
         // we are putting an array of numbers in customdata on the server side.
         vars.value = (ev as Plotly.PlotMouseEvent).points[0].data.customdata as number[];
         fetch_and_draw();
@@ -88,7 +92,7 @@ function reset_vars() {
 </template>
 
 <style scoped>
-div.plot-div >>> g.hovertext > path {
+div.plot-div :deep(g.hovertext > path) {
   opacity: 0.5;
 }
 </style>
