@@ -152,8 +152,8 @@ def _plot(hists, labels, indices, show_ticks=None):
     fig.update_layout(plot_bgcolor='rgba(0, 0, 0, 0)')
     fig.update_layout(hoverlabel=dict(bgcolor='white', font_size=16))
     # fig.update_layout(height=600, width=800)
-    fig.update_xaxes(visible=False)
-    fig.update_yaxes(visible=False)
+    fig.update_xaxes(showticklabels=False, showline=True, mirror=True, linewidth=1, linecolor='black')
+    fig.update_yaxes(showticklabels=False, showline=True, mirror=True, linewidth=1, linecolor='black')
     return fig
 
 def _plot_single_heatmap(hists, labels, indices, show_ticks=None):
@@ -193,8 +193,9 @@ def _plot_single_heatmap(hists, labels, indices, show_ticks=None):
             dx = 1.0 / sx
             dy = 1.0 / sy
             hovertemplate = f"{labels[index]}<br>{labels[cross_index]}<extra></extra>"
-            trace = go.Heatmap(z=np.log10(data), y=[i, i+dx], x=[j,j+dy], coloraxis='coloraxis', hovertemplate=hovertemplate, customdata=[ii,jj])
-            fig.add_traces([trace])
+            heatmap_trace = go.Heatmap(z=np.log10(data), y=[i, i+dx], x=[j,j+dy], coloraxis='coloraxis', hovertemplate=hovertemplate, customdata=[ii,jj])
+            border_trace = go.Scatter(x=[j, j+1, j+1, j, j], y=[i, i, i+1, i+1, i], mode='lines', line=dict(color='black', width=1), showlegend=False, hoverinfo='skip')
+            fig.add_traces([heatmap_trace, border_trace])
 
     # Add annotation for last parameter:
     fig.add_annotation(
