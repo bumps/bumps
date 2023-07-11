@@ -37,7 +37,7 @@ defineExpose({
     </div>
     <h6>Filters:</h6>
     <div class="row pb-1 ps-1">
-      <div class="col-1 text-end">show</div>
+      <div class="col-1 text-end">include</div>
       <div class="col">
       <span 
         class="badge rounded-pill me-1" 
@@ -51,7 +51,7 @@ defineExpose({
       </div>
     </div>
     <div class="row pb-1 ps-1">
-      <div class="col-1 text-end">hide</div>
+      <div class="col-1 text-end">exclude</div>
       <div class="col">
         <span 
         class="badge rounded-pill me-1" 
