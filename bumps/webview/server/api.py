@@ -1,3 +1,4 @@
+from functools import lru_cache
 import itertools
 from types import GeneratorType
 from typing import Any, Callable, Coroutine, Dict, List, Literal, Mapping, Optional, Sequence, Union, Tuple, TypedDict, cast
@@ -450,8 +451,8 @@ async def get_convergence_plot():
     else:
         return None
 
-@register
-async def get_correlation_plot(sort: bool=True, max_rows: int=8, nbins: int=50):
+@lru_cache(maxsize=30)
+def _get_correlation_plot(sort: bool=True, max_rows: int=8, nbins: int=50, vars=None, timestamp: str=""):
     from .corrplot import Corr2d
     uncertainty_state = state.fitting.uncertainty_state
 
@@ -459,7 +460,7 @@ async def get_correlation_plot(sort: bool=True, max_rows: int=8, nbins: int=50):
         import time
         start_time = time.time()
         print('queueing new correlation plot...', start_time)
-        draw = uncertainty_state.draw()
+        draw = uncertainty_state.draw(vars=vars)
         c = Corr2d(draw.points.T, bins=nbins, labels=draw.labels)
         fig = c.plot(sort=sort, max_rows=max_rows)
         print("time to render but not serialize...", time.time() - start_time)
@@ -469,6 +470,12 @@ async def get_correlation_plot(sort: bool=True, max_rows: int=8, nbins: int=50):
         return serialized
     else:
         return None
+
+@register
+async def get_correlation_plot(sort: bool=True, max_rows: int=8, nbins: int=50, vars=None, timestamp: str=""):
+    # need vars to be immutable (hashable) for caching based on arguments:
+    vars = tuple(vars) if vars is not None else None
+    return _get_correlation_plot(sort=sort, max_rows=max_rows, nbins=nbins, vars=vars, timestamp=timestamp)
 
 @register
 async def get_uncertainty_plot():
@@ -752,7 +759,7 @@ def params_to_list(params, lookup=None, pathlist=None, links=None) -> List[Param
                 "id": params.id,
                 "name": str(params.name),
                 "paths": [path],
-                "tags": params.tags,
+                "tags": getattr(params, 'tags', []),
                 "writable": type(params.slot) in [Variable, Parameter], 
                 "value_str": value_str, "fittable": params.fittable, "fixed": params.fixed }
             if has_prior:
