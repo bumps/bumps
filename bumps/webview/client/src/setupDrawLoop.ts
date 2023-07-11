@@ -12,7 +12,11 @@ export function setupDrawLoop(topic: string, socket: AsyncSocket, draw: Function
   const draw_requested = ref(false);
   const latest_timestamp = ref<string>();
 
-  const topic_callback = function() {
+  const topic_callback = function(message) {
+    const new_timestamp = message?.timestamp;
+    if (new_timestamp !== undefined) {
+      latest_timestamp.value = new_timestamp;
+    }
     draw_requested.value = true;
   }
 
@@ -40,8 +44,7 @@ export function setupDrawLoop(topic: string, socket: AsyncSocket, draw: Function
     // console.log(topic, messages);
     const last_message = messages.pop();
     if (last_message !== undefined) {
-      draw_requested.value = true;
-      latest_timestamp.value = last_message.timestamp;
+      topic_callback(last_message);
     }
     window.requestAnimationFrame(draw_if_needed);
   });
