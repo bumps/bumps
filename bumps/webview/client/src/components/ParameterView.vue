@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { setupDrawLoop } from '../setupDrawLoop';
 import type { AsyncSocket } from '../asyncSocket';
+import TagFilter from './ParameterTagFilter.vue'
 
 const title = "Parameters";
 const active_parameter = ref("");
@@ -15,6 +16,7 @@ setupDrawLoop('update_parameters', props.socket, fetch_and_draw);
 type parameter_info = {
   name: string,
   id: string,
+  tags: string[],
   fittable: boolean,
   fixed: boolean,
   paths: string[],
@@ -28,6 +30,7 @@ type parameter_info = {
 
 const parameters = ref<parameter_info[]>([]);
 const parameters_local = ref<parameter_info[]>([]);
+const tag_filter = ref<typeof TagFilter>();
 
 async function fetch_and_draw() {
   const payload = await props.socket.asyncEmit('get_parameters', false) as parameter_info[];
@@ -68,6 +71,7 @@ async function setFittable(ev, index) {
 </script>
         
 <template>
+  <TagFilter ref="tag_filter" :parameters="parameters_local"></TagFilter>
   <table class="table">
     <thead class="border-bottom py-1 sticky-top text-white bg-secondary">
       <tr>
@@ -78,12 +82,21 @@ async function setFittable(ev, index) {
       </tr>
     </thead>
     <tbody>
-      <tr class="py-1" v-for="(param, index) in parameters_local" :key="param.id">
+      <tr class="py-1" v-for="(param, index) in tag_filter?.filtered_parameters" :key="param.id">
         <td>
           <input class="form-check-input" v-if="param.fittable" type="checkbox" :checked="!param.fixed"
             @click.prevent="setFittable($event, index)" />
         </td>
-        <td>{{ param.name }}</td>
+        <td>{{ param.name }}
+          <span 
+            v-if="tag_filter?.show_tags"
+            v-for="tag in param.tags"
+            class="badge rounded-pill me-1" 
+            :style="{color: 'white', 'background-color': tag_filter.tag_colors[tag]}"
+            >
+            {{ tag }}
+          </span>
+        </td>
         <td :contenteditable="param.writable" spellcheck="false" @blur="editItem($event, 'value', index)"
           @keydown.enter="$event?.target?.blur()">{{ param.value_str }}
         </td>

@@ -74,56 +74,10 @@ async function onInactive(param) {
   fetch_and_draw();
 }
 
-const all_tags = computed(() => {
-  const tag_names = Array.from(new Set(parameters.value.map((p) => p.tags ?? []).flat()));
-  return Object.fromEntries(tag_names.map((t,i) => [t, COLORS[i%COLORS.length]]));
-});
-
-const COLORS = [
-  "blue",
-  "red",
-  "green",
-  "goldenrod",
-  "grey",
-  "orange",
-  "purple",
-  "teal",
-  "lightgreen",
-  "brown",
-  "black"
-];
-
-const tag_colors = computed(() => {
-  return Object.fromEntries(all_tags.value.map((t,i) => [t, COLORS[i%COLORS.length]]));
-});
-
-const filtered_parameters = computed(() => {
-  const to_show = tag_filter.value?.tags_to_show ?? [];
-  const to_hide = tag_filter.value?.tags_to_hide ?? [];
-  return parameters.value.filter(({tags}: {tags: string[]}) => {
-    if ((to_hide.length > 0) && tags.some((t) => to_hide.includes(t))) {
-      return false;
-    }
-    // then we're not specifically hiding it...
-    else if (to_show.length > 0) {
-      if (tags.some((t) => to_show.includes(t))) {
-        return true;
-      }
-      else {
-        return false;
-      }
-    }
-    // then we're not specifying to_show, show by default:
-    else {
-      return true;
-    }
-  });
-});
-
 </script>
         
 <template>
-  <TagFilter ref="tag_filter" :all_tags="all_tags"></TagFilter>
+  <TagFilter ref="tag_filter" :parameters="parameters"></TagFilter>
   <table class="table table-sm">
     <thead class="border-bottom py-1 sticky-top text-white bg-secondary">
       <tr>
@@ -135,13 +89,13 @@ const filtered_parameters = computed(() => {
       </tr>
     </thead>
     <tbody>
-      <tr class="py-1" v-for="(param, index) in filtered_parameters" :key="param.id">
+      <tr class="py-1" v-for="(param, index) in tag_filter?.filtered_parameters" :key="param.id">
         <td>{{ param.name }}
           <span 
             v-if="tag_filter?.show_tags"
             v-for="tag in param.tags"
             class="badge rounded-pill me-1" 
-            :style="{color: 'white', 'background-color': all_tags[tag]}"
+            :style="{color: 'white', 'background-color': tag_filter.tag_colors[tag]}"
             >
             {{ tag }}
           </span>
