@@ -123,6 +123,10 @@ def _plot(hists, labels, indices, show_ticks=None):
         for j, cross_index in enumerate(indices[i+1:], start=i+1):
             ii, jj = sorted((index, cross_index))
             data, x, y = hists[(ii, jj)]
+            if index > cross_index:
+                # then we have reversed the order of the axes...
+                data = data.T
+                x, y = (y, x)
             data = np.clip(data, vmin, vmax)
             hovertemplate = f"{labels[index]}<br>{labels[cross_index]}<extra></extra>"
             trace = go.Heatmap(z=np.log10(data), coloraxis='coloraxis', hovertemplate=hovertemplate, customdata=[ii,jj])
@@ -188,6 +192,10 @@ def _plot_single_heatmap(hists, labels, indices, show_ticks=None):
         for j, cross_index in enumerate(indices[i+1:], start=i+1):
             ii, jj = sorted((index, cross_index))
             data, x, y = hists[(ii, jj)]
+            if index > cross_index:
+                # then we have reversed the order of the axes...
+                data = data.T
+                x, y = (y, x)
             data = np.clip(data, vmin, vmax)
             sx, sy = data.shape
             dx = 1.0 / sx
