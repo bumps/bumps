@@ -409,4 +409,8 @@ body,
 div#connection_status {
   pointer-events: none;
 }
+
+.dropdown-menu {
+  z-index: 2000;
+}
 </style>
