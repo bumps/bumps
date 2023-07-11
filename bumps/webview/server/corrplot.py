@@ -125,7 +125,7 @@ def _plot(hists, labels, indices, show_ticks=None):
             data, x, y = hists[(ii, jj)]
             data = np.clip(data, vmin, vmax)
             hovertemplate = f"{labels[index]}<br>{labels[cross_index]}<extra></extra>"
-            trace = go.Heatmap(z=np.log10(data), coloraxis='coloraxis', hovertemplate=hovertemplate)
+            trace = go.Heatmap(z=np.log10(data), coloraxis='coloraxis', hovertemplate=hovertemplate, customdata=[ii,jj])
             fig.add_traces([trace], rows=n-i-1, cols=j)
     
     # Add annotation for last parameter:
@@ -139,7 +139,7 @@ def _plot(hists, labels, indices, show_ticks=None):
         showarrow=False,
         col=i+1,
         row=n-i-1,
-        text=labels[index+1],
+        text=labels[indices[-1]],
         textangle=0
     )
 
@@ -193,7 +193,7 @@ def _plot_single_heatmap(hists, labels, indices, show_ticks=None):
             dx = 1.0 / sx
             dy = 1.0 / sy
             hovertemplate = f"{labels[index]}<br>{labels[cross_index]}<extra></extra>"
-            trace = go.Heatmap(z=np.log10(data), y=[i, i+dx], x=[j,j+dy], coloraxis='coloraxis', hovertemplate=hovertemplate)
+            trace = go.Heatmap(z=np.log10(data), y=[i, i+dx], x=[j,j+dy], coloraxis='coloraxis', hovertemplate=hovertemplate, customdata=[ii,jj])
             fig.add_traces([trace])
 
     # Add annotation for last parameter:
@@ -203,7 +203,7 @@ def _plot_single_heatmap(hists, labels, indices, show_ticks=None):
         x=i+1,
         y=i+1,
         showarrow=False,
-        text=labels[indices[i+1]],
+        text=labels[indices[-1]],
         textangle=0
     )
 
