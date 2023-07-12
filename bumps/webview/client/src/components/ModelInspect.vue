@@ -49,9 +49,14 @@ async function fetch_and_draw(timestamp: string = '', reset: boolean = false) {
   }
 }
 
+const decoder = new TextDecoder('utf-8');
+
 onMounted(() => {
-  props.socket.asyncEmit('get_model', (payload: json) => {
-    modelJson.value = payload;
+  props.socket.asyncEmit('get_model', (payload: ArrayBuffer) => {
+    console.log({payload});
+    const json_bytes = new Uint8Array(payload);
+    const json_value: json = JSON.parse(decoder.decode(json_bytes));
+    modelJson.value = json_value;
   });
 })
 
