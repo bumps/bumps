@@ -686,11 +686,19 @@ async def get_dirlisting(pathlist: Optional[List[str]]=None):
     subfolders = []
     files = []
     for p in Path(*pathlist).iterdir():
+        stat = p.stat()
+        mtime = stat.st_mtime
+        fileinfo = {
+            "name": p.name,
+            "modified": mtime
+        }
         if p.is_dir():
-            subfolders.append(p.name)
+            fileinfo["size"] = len(list(p.glob('*')))
+            subfolders.append(fileinfo)
         else:
             # files.append(p.resolve().name)
-            files.append(p.name)
+            fileinfo["size"] = stat.st_size
+            files.append(fileinfo)
     return dict(subfolders=subfolders, files=files)
 
 @register
