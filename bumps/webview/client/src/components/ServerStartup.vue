@@ -13,8 +13,6 @@ let modal: Modal;
 onMounted(() => {
   modal = new Modal(loading_dialog.value, { backdrop: 'static', keyboard: false });
   loading_dialog.value?.addEventListener("shown.bs.modal", (e) => {
-    console.log('shown.bs.modal', e);
-    console.log('transitioning? ', modal._isTransitioning);
     if (connected.value) {
       modal.hide();
     }
@@ -24,7 +22,7 @@ onMounted(() => {
 
 props.socket.on('connect', () => {
   connected.value = true;
-  console.log('connected!', modal, modal.hide);
+  console.log('connected!');
   modal?.hide();
 });
 
