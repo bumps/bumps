@@ -133,6 +133,16 @@ async def save_problem_file(pathlist: Optional[List[str]] = None, filename: Opti
     return {"filename": save_filename, "check_overwrite": False}
 
 @register
+async def get_serializer():
+    output = {"serializer": "", "extension": ""}
+    problem_state = state.problem
+    if problem_state is not None:
+        serializer = problem_state.serializer
+        output["serializer"] = serializer
+        output["extension"] = SERIALIZER_EXTENSIONS[serializer]
+    return output
+
+@register
 async def export_results(export_path: Union[str, List[str]]=""):
     from concurrent.futures import ThreadPoolExecutor
 
