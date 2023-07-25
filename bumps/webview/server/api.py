@@ -209,6 +209,25 @@ def _export_results(path: Path, problem: bumps.fitproblem.FitProblem, uncertaint
         uncertainty_state.save(output_pathstr)
 
 @register
+async def save_parameters(pathlist: List[str], filename: str, overwrite: bool = False):
+    problem_state = state.problem
+    if problem_state is None:
+        await log("Error: Can't save parameters if no problem loaded")
+        return
+    problem = problem_state.fitProblem
+    path = Path(*pathlist)
+    if not overwrite and Path.exists(path / filename):
+        #confirmation needed:
+        return {"filename": filename, "check_overwrite": True}
+
+    pardata = "".join("%s %.15g\n" % (name, value)
+                      for name, value in zip(problem.labels(), problem.getp()))
+    
+    with open( path / filename, "wt") as pars_file:
+        pars_file.write(pardata)
+    return {"filename": filename, "check_overwrite": False}
+
+@register
 async def apply_parameters(pathlist: List[str], filename: str):
     path = Path(*pathlist)
     fullpath = path / filename
