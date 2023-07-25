@@ -238,7 +238,7 @@ defineExpose({
                   > 
                   <td>{{ fileinfo.name }}</td>
                   <td>{{ formatSize(fileinfo.size) }}</td>
-                  <td>{{ formatRelative(subDays(new Date(fileinfo.modified * 1000), 3), new Date()) }}</td>
+                  <td>{{ formatRelative(new Date(fileinfo.modified * 1000), new Date()) }}</td>
                 </tr>
               </tbody>
             </table>
