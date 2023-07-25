@@ -32,6 +32,7 @@ const fileBrowserSettings = ref({
   require_name: false,
   name_input_label: "",
   show_files: true,
+  search_patterns: [],
   callback: (pathlist: string[], filename: string) => {},
 });
 const model_loaded = shallowRef<{pathlist: string[], filename: string}>();
@@ -114,6 +115,7 @@ function selectOpenFile() {
     settings.show_name_input = false;
     settings.require_name = true;
     settings.show_files = true;
+    settings.search_patterns = [".py, .pickle, .json", ".py", ".json", ".pickle"];
     fileBrowser.value.open();
   }
 }
@@ -133,12 +135,16 @@ function exportResults() {
     settings.require_name = false;
     settings.show_files = false;
     settings.chosenfile_in = "";
+    settings.search_patterns = [];
     fileBrowser.value.open();
   }
 }
 
 async function saveFileAs(ev: Event) {
   if (fileBrowser.value) {
+    const { extension } = await socket.asyncEmit("get_serializer") as { extension: string };
+    const filename_in = model_loaded.value?.filename ?? "";
+    const new_filename = `${filename_in.replace(/(\.[^\.]+)$/, '')}.${extension}`;
     const settings = fileBrowserSettings.value;
     settings.title = "Save Problem"
     settings.callback = (pathlist, filename) => {
@@ -148,7 +154,8 @@ async function saveFileAs(ev: Event) {
     settings.name_input_label = "Filename";
     settings.require_name = true;
     settings.show_files = true;
-    settings.chosenfile_in = model_loaded.value?.filename ?? "";
+    settings.chosenfile_in = new_filename;
+    settings.search_patterns = [`.${extension}`];
     fileBrowser.value.open();
   }
 }
@@ -192,6 +199,34 @@ async function applyParameters(ev: Event) {
     settings.require_name = true;
     settings.show_files = true;
     settings.chosenfile_in = "";
+    settings.search_patterns = [".par"];
+    fileBrowser.value.open();
+  }
+}
+
+async function saveParameters(ev: Event, override?: {pathlist: string[], filename: string}) {
+  if (fileBrowser.value) {
+    const settings = fileBrowserSettings.value;
+    settings.title = "Save Parameters"
+    settings.callback = (pathlist, filename) => {
+      socket.asyncEmit("save_parameters", pathlist, filename, false, async({filename, check_overwrite}: {filename: string, check_overwrite: boolean}) => {
+        if (check_overwrite !== false) {
+        const overwrite = await confirm(`File ${filename} exists: overwrite?`);
+          if (overwrite) {
+            await socket.asyncEmit("save_parameters", pathlist, filename, overwrite);
+          }
+        }
+        if (nativefs.value) {
+          nativefs.value.syncfs();
+        }
+      });
+    }
+    settings.show_name_input = true;
+    settings.name_input_label = "Filename";
+    settings.require_name = true;
+    settings.show_files = true;
+    settings.search_patterns = [".par"];
+    settings.chosenfile_in = "manual_save.par";
     fileBrowser.value.open();
   }
 }
@@ -265,9 +300,10 @@ onMounted(() => {
               <ul class="dropdown-menu">
                 <li><button class="btn btn-link dropdown-item" @click="selectOpenFile">Open</button></li>
                 <li><button v-if="can_mount_local" class="btn btn-link dropdown-item" @click="mountLocal">Mount Local Folder</button></li>
+                <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="saveParameters">Save Parameters</button></li>
                 <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="applyParameters">Apply Parameters</button></li>
-                <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="saveFile">Save</button></li>
-                <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="saveFileAs">Save As</button></li>
+                <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="saveFile">Save Problem</button></li>
+                <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="saveFileAs">Save Problem As</button></li>
                 <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="exportResults">Export Results</button></li>
                 <li><button class="btn btn-link dropdown-item" :class="{disabled: model_loaded === undefined}"  @click="reloadModel">Reload</button></li>
                 <li>
@@ -383,6 +419,7 @@ onMounted(() => {
     :show_name_input="fileBrowserSettings.show_name_input"
     :name_input_label="fileBrowserSettings.name_input_label"
     :show_files="fileBrowserSettings.show_files"
+    :search_patterns="fileBrowserSettings.search_patterns"
     :callback="fileBrowserSettings.callback" />
   <ServerShutdown :socket="socket" />
   <ServerStartup :socket="socket" />
