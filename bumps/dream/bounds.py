@@ -70,18 +70,26 @@ class Bounds(object):
     c_interface = None # type: Callable[[int, int, Any, Any, Any], None]
     low = None # type: np.ndarray
     high = None # type: np.ndarray
-    def apply(self, x):
-        """Force x values within bounds"""
+
+    @staticmethod
+    def apply(minn, maxn, pop):
+        """Force pop (population) values within bounds"""
         raise NotImplementedError
 
-    def __call__(self, pop):
-        """Force x values within bounds for each member of the population"""
+    def __call__(self, population):
+        """
+        Force parameter values within bounds for each member of the population
+        (population is expected to be a 2d array of shape (M, N) where
+         - M is the size of the population
+         - N is then number of parameters
+        Returns population for convenience.  E.g., y = bounds(x+0)
+        """
         if self.c_interface is not None:
-            self.c_interface(len(pop), len(self.low), pop.ctypes,
+            self.c_interface(len(population), len(self.low), population.ctypes,
                              self.low.ctypes, self.high.ctypes)
         else:
-            self.apply(self.low, self.high, pop)
-        return pop
+            self.apply(self.low, self.high, population)
+        return population
 
 
 class ReflectBounds(Bounds):
@@ -96,9 +104,7 @@ class ReflectBounds(Bounds):
     @njit(cache=True)
     def apply(minn, maxn, pop):
         """
-        Update x so all values lie within bounds
-
-        Returns x for convenience.  E.g., y = bounds.apply(x+0)
+        Update pop so all values lie within bounds
         """
         for y in pop:
             # Reflect points which are out of bounds
@@ -201,28 +207,29 @@ def test():
     from numpy import array
 
     bounds = list(zip([5, 10], [-inf, -10], [-5, inf], [-inf, inf]))
-    v = np.ascontiguousarray([6, -12, 6, -12], 'd')
+    v = np.ascontiguousarray([[6, -12, 6, -12]], 'd')
     for t in 'none', 'reflect', 'clip', 'fold', 'randomize':
-        assert norm(make_bounds_handler(bounds, t).apply(v+0) - v) == 0
-    v = np.ascontiguousarray([12, 12, -12, -12], 'd')
+        w = make_bounds_handler(bounds, t)
+        assert norm(w(v+0) - v) == 0
+    v = np.ascontiguousarray([[12, 12, -12, -12]], 'd')
     for t in 'none', 'reflect', 'clip', 'fold':
         w = make_bounds_handler(bounds, t)
-        assert norm(w(array([v, v, v])) - w.apply(v+0)) == 0
-    assert norm(make_bounds_handler(bounds, 'none').apply(v+0) - v) == 0
-    assert norm(make_bounds_handler(bounds, 'reflect').apply(v+0)
+        assert norm(w(v.repeat(3, axis=0)) - w(v+0)) == 0
+    assert norm(make_bounds_handler(bounds, 'none')(v+0) - v) == 0
+    assert norm(make_bounds_handler(bounds, 'reflect')(v+0)
                 - [8, -32, 2, -12]) == 0
-    assert norm(make_bounds_handler(bounds, 'clip').apply(v+0)
+    assert norm(make_bounds_handler(bounds, 'clip')(v+0)
                 - [10, -10, -5, -12]) == 0
-    assert norm(make_bounds_handler(bounds, 'fold').apply(v+0)
+    assert norm(make_bounds_handler(bounds, 'fold')(v+0)
                 - [7, -32, 2, -12]) == 0
-    w = make_bounds_handler(bounds, 'randomize').apply(v+0)
-    assert 5 <= w[0] <= 10 and w[1] == -32 and w[2] == 2 and w[3] == -12
-    v = np.ascontiguousarray([20, 1, 1, 1], 'd')
-    w = make_bounds_handler(bounds, 'reflect').apply(v+0)
-    assert 5 <= w[0] <= 10
-    v = np.ascontiguousarray([20, 1, 1, 1], 'd')
-    w = make_bounds_handler(bounds, 'fold').apply(v+0)
-    assert 5 <= w[0] <= 10
+    w = make_bounds_handler(bounds, 'randomize')(v+0)
+    assert 5 <= w[0,0] <= 10 and w[0,1] == -32 and w[0,2] == 2 and w[0,3] == -12
+    v = np.ascontiguousarray([[20, 1, 1, 1]], 'd')
+    w = make_bounds_handler(bounds, 'reflect')(v+0)
+    assert 5 <= w[0,0] <= 10
+    v = np.ascontiguousarray([[20, 1, 1, 1]], 'd')
+    w = make_bounds_handler(bounds, 'fold')(v+0)
+    assert 5 <= w[0,0] <= 10
 
 
 if __name__ == "__main__":
