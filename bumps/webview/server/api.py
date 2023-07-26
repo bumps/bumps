@@ -22,7 +22,7 @@ import bumps.plotutil
 import bumps.dream.views, bumps.dream.varplot, bumps.dream.stats, bumps.dream.state
 import bumps.errplot
 
-from .state_hdf5_backed import State, serialize, deserialize, SERIALIZER_EXTENSIONS
+from .state_hdf5_backed import State, serialize_problem, deserialize_problem, SERIALIZER_EXTENSIONS
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
 from .varplot import plot_vars
 
@@ -81,7 +81,7 @@ async def load_problem_file(pathlist: List[str], filename: str):
     if filename.endswith(".json"):
         with open(path, "rt") as input_file:
             serialized = input_file.read()
-        problem = deserialize(serialized, method='dataclass')
+        problem = deserialize_problem(serialized, method='dataclass')
     else:
         from bumps.cli import load_model
         problem = load_model(str(path))
@@ -125,7 +125,7 @@ async def save_problem_file(pathlist: Optional[List[str]] = None, filename: Opti
         #confirmation needed:
         return {"filename": save_filename, "check_overwrite": True}
 
-    serialized = serialize(problem_state.fitProblem, method=serializer)
+    serialized = serialize_problem(problem_state.fitProblem, method=serializer)
     with open(Path(path, save_filename), "wb") as output_file:
         output_file.write(serialized)
 
@@ -186,7 +186,7 @@ def _export_results(path: Path, problem: bumps.fitproblem.FitProblem, uncertaint
     serializer = state.problem.serializer
     extension = SERIALIZER_EXTENSIONS[serializer]
     save_filename = f"{output_pathstr}.{extension}"
-    serialized = serialize(problem, serializer)
+    serialized = serialize_problem(problem, serializer)
     with open(save_filename, "wb") as output_file:
         output_file.write(serialized)
 
@@ -357,6 +357,7 @@ async def _fit_progress_handler(event: Dict):
     if fitProblem is None:
         raise ValueError("should never happen: fit progress reported for session in which fitProblem is undefined")
     message = event.get("message", None)
+    print('fit progress: ', dict(message=message))
     if message == 'complete' or message == 'improvement':
         fitProblem.setp(event["point"])
         fitProblem.model_update()
@@ -369,6 +370,7 @@ async def _fit_progress_handler(event: Dict):
     elif message == 'progress':
         await emit("fit_progress", to_json_compatible_dict(event))
     elif message == 'uncertainty_update' or message == 'uncertainty_final':
+        print(message)
         state.fitting.uncertainty_state = cast(bumps.dream.state.MCMCDraw, event["uncertainty_state"])
         await publish("uncertainty_update", True)
 
@@ -441,7 +443,7 @@ async def get_model():
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = state.problem.fitProblem
-    serialized = serialize(fitProblem, 'dataclass') if state.problem.serializer == 'dataclass' else 'null'
+    serialized = serialize_problem(fitProblem, 'dataclass') if state.problem.serializer == 'dataclass' else 'null'
     return serialized
 
 @register

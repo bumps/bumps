@@ -1,5 +1,5 @@
 import asyncio
-from typing import TYPE_CHECKING, Optional, Dict, List, Any, Literal, cast
+from typing import TYPE_CHECKING, Optional, Dict, List, Tuple, Any, Literal, cast
 import json
 import pickle
 from queue import Queue
@@ -12,7 +12,7 @@ from bumps.dream.state import MCMCDraw
 
 
 if TYPE_CHECKING:
-    from .webserver import TopicNameType
+    from .api import TopicNameType
     from h5py import Group, Dataset
     from .fit_thread import FitThread
 
@@ -62,7 +62,7 @@ SERIALIZER_EXTENSIONS = {
 }
 DEFAULT_SERIALIZER: SERIALIZERS = "dill"
 
-def serialize(problem: bumps.fitproblem.FitProblem, method: SERIALIZERS):
+def serialize_problem(problem: bumps.fitproblem.FitProblem, method: SERIALIZERS):
     if method == 'dataclass':
         return json.dumps(to_dict(problem)).encode()
     elif method == 'pickle':
@@ -71,7 +71,7 @@ def serialize(problem: bumps.fitproblem.FitProblem, method: SERIALIZERS):
         import dill
         return dill.dumps(problem)
 
-def deserialize(serialized: bytes, method: SERIALIZERS):
+def deserialize_problem(serialized: bytes, method: SERIALIZERS):
     if method == 'dataclass':
         return from_dict_threaded(json.loads(serialized))
     elif method == 'pickle':
@@ -80,122 +80,132 @@ def deserialize(serialized: bytes, method: SERIALIZERS):
         import dill
         return dill.loads(serialized)
 
-class ProblemState:
+class HasGroup:
     _group: h5py.Group
-    _filename: Optional[str]
-    _pathlist: Optional[List[str]]
-    _fitProblem: Optional[bumps.fitproblem.FitProblem]
-    _serializer: Optional[SERIALIZERS]
+
+
+class DatasetBackedAttribute:
+    compression: Optional[int]
+    chunks: Optional[Tuple[int]]
+    dtype: str
+    shape: Tuple[int]
+    maxshape: Optional[Tuple[int]]
+
+    def __init__(self, dtype="|S512", compression=None, chunks=None, shape=(), maxshape=None):
+        self.dtype = dtype
+        self.compression = compression
+        self.shape = shape
+        self.chunks = chunks
+        self.maxshape = maxshape
+
+    def __set_name__(self, owner: HasGroup, name: str):
+        self.public_name = name
+        self.private_name = f"_{name}"
+
+    def __get__(self, obj: HasGroup, objtype=None):
+        # check cache:
+        cached_val = getattr(obj, self.private_name, CACHE_MISS)
+        if cached_val is CACHE_MISS:
+            dset = obj._group.require_dataset(self.public_name, shape=self.shape, dtype=self.dtype, compression=self.compression, maxshape=self.maxshape, exact='maxshape')
+            backing_val = self._deserialize(dset[()], obj)
+            setattr(obj, self.private_name, backing_val)
+            cached_val = backing_val
+        return cached_val
+
+    def __set__(self, obj: HasGroup, value):
+        dset = obj._group[self.public_name]
+        if self.maxshape is not None and value.shape != dset.shape:
+            # resizable dataset:
+            dset.resize(value.shape)
+        dset[()] = self._serialize(value, obj)
+        dset.flush()
+        setattr(obj, self.private_name, value)
+
+    def _serialize(self, value, obj=None):
+        return value
+    
+    def _deserialize(self, value, obj=None):
+        return value
+
+
+class StringAttribute(DatasetBackedAttribute):
+    def _serialize(self, value, obj=None):
+        return value.encode()
+    
+    def _deserialize(self, value, obj=None):
+        return value.decode()
+
+
+class JSONAttribute(DatasetBackedAttribute):
+    def _serialize(self, value, obj=None):
+        return json.dumps(value)
+
+    def _deserialize(self, value, obj=None):
+        return json.loads(value) if value else None
+
+
+class FitProblemAttribute(DatasetBackedAttribute):
+    def _serialize(self, value, obj):
+        return serialize_problem(value, obj.serializer)
+
+    def _deserialize(self, value, obj):
+        return deserialize_problem(value, obj.serializer)
+
+
+class ProblemState(HasGroup):
+    pathlist: Optional[List[str]] = JSONAttribute()
+    fitProblem: Optional[bumps.fitproblem.FitProblem] = FitProblemAttribute(shape=(1,), dtype=f"|S{MAX_PROBLEM_SIZE}", compression=COMPRESSION)
+    serializer: Optional[SERIALIZERS] = StringAttribute()
+    filename: str = StringAttribute()
+
+    def __init__(self, group: h5py.Group):
+        super()
+        self._group = group
+        # call the getters to initialize HDF backing:
+        for attrname in ['filename', 'serializer', 'pathlist', 'fitProblem']:
+            getattr(self, attrname)
+
+UNCERTAINTY_DTYPE = 'f'
+
+class UncertaintyState(HasGroup):
+    AR = DatasetBackedAttribute(shape=(0), compression=COMPRESSION, dtype=UNCERTAINTY_DTYPE, maxshape=(None,))
+    gen_draws = DatasetBackedAttribute(shape=(0), compression=COMPRESSION, dtype=UNCERTAINTY_DTYPE, maxshape=(None,))
+    labels = DatasetBackedAttribute(shape=(0), compression=COMPRESSION, dtype=h5py.string_dtype(), maxshape=(None,))
+    thin_draws = DatasetBackedAttribute(shape=(0), compression=COMPRESSION, dtype=UNCERTAINTY_DTYPE, maxshape=(None,))
+    gen_logp = DatasetBackedAttribute(shape=(0,0), compression=COMPRESSION, dtype=UNCERTAINTY_DTYPE, maxshape=(None, None), chunks=(100,100))
+    thin_logp = DatasetBackedAttribute(shape=(0,0), compression=COMPRESSION, dtype=UNCERTAINTY_DTYPE, maxshape=(None, None), chunks=(100,100))
+    thin_point = DatasetBackedAttribute(shape=(0,0,0), compression=COMPRESSION, dtype=UNCERTAINTY_DTYPE, maxshape=(None, None, None), chunks=(100,100,100))
+    update_CR_weight = DatasetBackedAttribute(shape=(0,0), compression=COMPRESSION, dtype=UNCERTAINTY_DTYPE, maxshape=(None, None), chunks=(100,100))
+    update_draws = DatasetBackedAttribute(shape=(0), compression=COMPRESSION, dtype=UNCERTAINTY_DTYPE, maxshape=(None,))
 
     def __init__(self, group: h5py.Group):
         self._group = group
-        self._group.require_dataset('filename', shape=(), dtype='|S512')
-        self._group.require_dataset('serializer', shape=(), dtype='|S12')
-        self._group.require_dataset('pathlist', (), dtype='|S512')
-        self._group.require_dataset('fitProblem', (1,), dtype=f"|S{MAX_PROBLEM_SIZE}", compression=COMPRESSION)
+        # call the getters to initialize HDF backing:
+        for attrname in ['AR', 'gen_draws', 'labels', 'thin_draws', 'gen_logp', 'thin_logp', 'thin_point', 'update_CR_weight', 'update_draws']:
+            print("initializing: ", attrname)
+            getattr(self, attrname)
 
-    @property
-    def filename(self) -> Optional[str]:
-        # check cache:
-        cached_val = getattr(self, '_filename', CACHE_MISS)
-        if cached_val is CACHE_MISS:
-            backing_val = self._group['filename'][()] if 'filename' in self._group else None
-            setattr(self, '_filename', backing_val)
-            cached_val = backing_val
-        return cached_val
-    
-    @filename.setter
-    def filename(self, value: str):
-        dset = self._group.require_dataset('filename', shape=(), dtype='|S512')
-        dset[()] = value
-        self._filename = value
 
-    @property
-    def serializer(self) -> Optional[SERIALIZERS]:
-        # check cache:
-        cached_val = getattr(self, '_serializer', CACHE_MISS)
-        if cached_val is CACHE_MISS:
-            backing_val = self._group['serializer'][()].decode() if 'serializer' in self._group else None
-            setattr(self, '_serializer', backing_val)
-            cached_val = backing_val
-        return cached_val
-
-    @serializer.setter
-    def serializer(self, value: SERIALIZERS):
-        dset = self._group.require_dataset('serializer', shape=(), dtype='|S12')
-        dset[()] = value
-        self._serializer = value
-
-    @property
-    def pathlist(self) -> Optional[List[str]]:
-        cached_val = getattr(self, '_pathlist', CACHE_MISS)
-        if cached_val is CACHE_MISS:
-            backing_val = json.loads(self._group['pathlist'][()]) if 'pathlist' in self._group else None
-            setattr(self, '_pathlist', backing_val)
-            cached_val = backing_val
-        return cached_val
-    
-    @pathlist.setter
-    def pathlist(self, value: List[str]):
-        dset = self._group.require_dataset('pathlist', (), dtype='|S512')
-        dset[()] = json.dumps(value)
-        self._pathlist = value
-
-    @property
-    def fitProblem(self) -> Optional[bumps.fitproblem.FitProblem]:
-        cached_val = getattr(self, '_fitProblem', CACHE_MISS)
-        if cached_val is CACHE_MISS:
-            backing_val = deserialize(self._group['fitProblem'][0], self.serializer) if 'fitProblem' in self._group else None
-            setattr(self, '_fitProblem', backing_val)
-            cached_val = backing_val
-        return cached_val
-
-    @fitProblem.setter
-    def fitProblem(self, value: bumps.fitproblem.FitProblem):
-        dset = self._group.require_dataset('fitProblem', (1,), dtype=f"|S{MAX_PROBLEM_SIZE}", compression=COMPRESSION)
-        serialized = serialize(value, self.serializer)
-        dset[()] = serialized
-        print('serialized: ', len(serialized))
-        # dset.flush()
-        # self._group.file.flush()
-        self._fitProblem = value
-
-class FittingState:
-    _group: h5py.Group
+class FittingState(HasGroup):
     # cache items:
-    _population: np.ndarray
+    population: np.ndarray = DatasetBackedAttribute(dtype='f', compression=COMPRESSION, chunks=(10000,100), shape=(0,0), maxshape=(None, None))
+    uncertainty_state: 'MCMCDraw'
+    uncertainty_group: 'Group'
+    _uncertainty_state_storage: UncertaintyState
     _uncertainty_state: 'MCMCDraw'
 
     def __init__(self, group: h5py.Group):
         self._group = group
-
-    @property
-    def population(self) -> Optional[np.ndarray]:
-        cached_val = getattr(self, '_population', CACHE_MISS)
-        if cached_val is CACHE_MISS:
-            backing_val = self._group['population'][()] if 'population' in self._group else None
-            if backing_val is not None:
-                setattr(self, '_population', backing_val)
-            cached_val = backing_val
-        return cached_val
-    
-    @population.setter
-    def population(self, value: np.ndarray):
-        pop_shape = value.shape
-        num_cols = pop_shape[1]
-        if not 'population' in self._group:
-            self._group.create_dataset("population", shape=pop_shape, data=value, maxshape=(None, None), chunks=(10000,num_cols), compression = COMPRESSION)
-        dset = cast(h5py.Dataset, self._group["population"])
-        if dset.shape != pop_shape:
-            dset.resize(pop_shape)        
-        dset[()] = value
-        self._population = value
+        self.uncertainty_group = group.require_group('uncertainty_state')
+        self._uncertainty_state_storage = UncertaintyState(self.uncertainty_group)
+        for attrname in ['population']:
+            getattr(self, attrname)
 
     @property
     def uncertainty_state(self):
         cached_val = getattr(self, '_uncertainty_state', CACHE_MISS)
         if cached_val is CACHE_MISS:
-            backing_val = read_uncertainty_state(self._group) if 'gen_draws' in self._group else None
+            backing_val = read_uncertainty_state(self._uncertainty_state_storage)
             if backing_val is not None:
                 setattr(self, '_uncertainty_state', backing_val)
             cached_val = backing_val
@@ -203,10 +213,9 @@ class FittingState:
 
     @uncertainty_state.setter
     def uncertainty_state(self, value: 'MCMCDraw'):
-        print("writing uncertainty state: ", value)
-        write_uncertainty_state(value, self._group)
+        write_uncertainty_state(value, self._uncertainty_state_storage)
         self._uncertainty_state = value
-        print("done writing uncertainty state.")
+
 
 class Topic:
     dataset: h5py.Dataset
@@ -323,61 +332,49 @@ class State:
     def __exit__(self, exc_type, exc_value, exc_traceback):
         self.cleanup()
 
-def write_uncertainty_state(state: 'MCMCDraw', group: 'Group', compression=COMPRESSION):
-        to_save = {}
+
+
+def write_uncertainty_state(state: 'MCMCDraw', storage: UncertaintyState):
         # Build 2-D data structures
-        to_save["gen_draws"], to_save["gen_logp"] = state.logp(full=True)
-        _, to_save["AR"] = state.acceptance_rate()
+        storage.gen_draws, storage.gen_logp = state.logp(full=True)
+        _, storage.AR = state.acceptance_rate()
 
-        to_save["thin_draws"], to_save["thin_point"], to_save["thin_logp"] = state.chains()
-        to_save["update_draws"], to_save["update_CR_weight"] = state.CR_weight()
-        to_save["labels"] = np.array(state.labels, dtype=h5py.string_dtype())
+        storage.thin_draws, storage.thin_point, storage.thin_logp = state.chains()
+        storage.update_draws, storage.update_CR_weight = state.CR_weight()
+        storage.labels = np.array(state.labels, dtype=h5py.string_dtype())
 
-        #TODO: missing _outliers from save_state
-        for field_name, data in to_save.items():
-            print(field_name, field_name in group)
-            if field_name in group:
-                dataset = cast(h5py.Dataset, group[field_name])
-                if dataset.shape != data.shape:
-                    dataset.resize(data.shape)
-                dataset[()] = data
-            else:
-                maxshape = tuple([None for dim in data.shape])
-                dataset = group.create_dataset(field_name, data=data, maxshape=maxshape, compression=compression)
-
-
-def read_uncertainty_state(group: 'Group', skip=0, report=0, derived_vars=0):
+def read_uncertainty_state(storage: UncertaintyState, skip=0, report=0, derived_vars=0):
 
     loaded: Dict[str, np.ndarray] = dict(group.items())
     
     # Guess dimensions
-    Ngen = loaded["gen_draws"].shape[0]
+    Ngen = storage.gen_draws.shape[0]
     thinning = 1
-    Nthin, Npop, Nvar = loaded["thin_point"].shape
-    Nupdate, Ncr = loaded["update_CR_weight"].shape
+    Nthin, Npop, Nvar = loaded.thin_point.shape
+    Nupdate, Ncr = loaded.update_CR_weight.shape
     Nthin -= skip
 
     # Create empty draw and fill it with loaded data
     state = MCMCDraw(0, 0, 0, 0, 0, 0, thinning)
     #print("gen, var, pop", Ngen, Nvar, Npop)
     state.draws = Ngen * Npop
-    state.labels = [label.decode() for label in loaded["labels"][()]]
+    state.labels = [label.decode() for label in loaded.labels]
     state.generation = Ngen
     state._gen_index = 0
-    state._gen_draws = loaded["gen_draws"][()]
-    state._gen_acceptance_rate = loaded["AR"][()]
-    state._gen_logp = loaded["gen_logp"][()]
+    state._gen_draws = loaded.gen_draws
+    state._gen_acceptance_rate = loaded.AR
+    state._gen_logp = loaded.gen_logp
     state.thinning = thinning
     state._thin_count = Ngen//thinning
     state._thin_index = 0
-    state._thin_draws = loaded["thin_draws"][()]
-    state._thin_logp = loaded["thin_logp"][()]
-    state._thin_point = loaded["thin_point"][()]
+    state._thin_draws = loaded.thin_draws
+    state._thin_logp = loaded.thin_logp
+    state._thin_point = loaded.thin_point
     state._gen_current = state._thin_point[-1].copy()
     state._update_count = Nupdate
     state._update_index = 0
-    state._update_draws = loaded["update_draws"][()]
-    state._update_CR_weight = loaded["update_CR_weight"][()]
+    state._update_draws = loaded.update_draws
+    state._update_CR_weight = loaded.update_CR_weight
     state._outliers = []
 
     bestidx = np.unravel_index(np.argmax(loaded["thin_logp"]), loaded["thin_logp"].shape)
