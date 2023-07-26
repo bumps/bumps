@@ -89,6 +89,10 @@ class ProblemState:
 
     def __init__(self, group: h5py.Group):
         self._group = group
+        self._group.require_dataset('filename', shape=(), dtype='|S512')
+        self._group.require_dataset('serializer', shape=(), dtype='|S12')
+        self._group.require_dataset('pathlist', (), dtype='|S512')
+        self._group.require_dataset('fitProblem', (1,), dtype=f"|S{MAX_PROBLEM_SIZE}", compression=COMPRESSION)
 
     @property
     def filename(self) -> Optional[str]:
@@ -151,6 +155,9 @@ class ProblemState:
         dset = self._group.require_dataset('fitProblem', (1,), dtype=f"|S{MAX_PROBLEM_SIZE}", compression=COMPRESSION)
         serialized = serialize(value, self.serializer)
         dset[()] = serialized
+        print('serialized: ', len(serialized))
+        # dset.flush()
+        # self._group.file.flush()
         self._fitProblem = value
 
 class FittingState:
@@ -178,10 +185,10 @@ class FittingState:
         num_cols = pop_shape[1]
         if not 'population' in self._group:
             self._group.create_dataset("population", shape=pop_shape, data=value, maxshape=(None, None), chunks=(10000,num_cols), compression = COMPRESSION)
-            dset = cast(h5py.Dataset, self._group["population"])
-            if dset.shape != pop_shape:
-                dset.resize(pop_shape)        
-            dset[()] = value
+        dset = cast(h5py.Dataset, self._group["population"])
+        if dset.shape != pop_shape:
+            dset.resize(pop_shape)        
+        dset[()] = value
         self._population = value
 
     @property
@@ -278,7 +285,7 @@ class State:
         # self.fitting = fitting if fitting is not None else FittingState()
         self.abort_queue = Queue()
         if session_file_name is not None:
-            self.setup_backing(session_file_name=session_file_name)
+            self.setup_backing(session_file_name=session_file_name, in_memory=True, backing_store=True)
         else:
             self.setup_backing(':memory:', in_memory=True, backing_store=False)
 
