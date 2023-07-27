@@ -4,12 +4,10 @@ import json
 import pickle
 from queue import Queue
 from bumps.serialize import from_dict, from_dict_threaded, to_dict
-import h5py
 import numpy as np
 
 import bumps.fitproblem
 from bumps.dream.state import MCMCDraw
-
 
 if TYPE_CHECKING:
     from .api import TopicNameType
@@ -81,7 +79,7 @@ def deserialize_problem(serialized: bytes, method: SERIALIZERS):
         return dill.loads(serialized)
 
 class HasGroup:
-    _group: h5py.Group
+    _group: 'Group'
 
 
 class DatasetBackedAttribute:
@@ -106,20 +104,22 @@ class DatasetBackedAttribute:
         # check cache:
         cached_val = getattr(obj, self.private_name, CACHE_MISS)
         if cached_val is CACHE_MISS:
-            dset = obj._group.require_dataset(self.public_name, shape=self.shape, dtype=self.dtype, compression=self.compression, maxshape=self.maxshape, exact='maxshape')
-            backing_val = self._deserialize(dset[()], obj)
+            backing_val = self._deserialize(self.get_dataset(obj)[()], obj)
             setattr(obj, self.private_name, backing_val)
             cached_val = backing_val
         return cached_val
 
     def __set__(self, obj: HasGroup, value):
-        dset = obj._group[self.public_name]
+        dataset = self.get_dataset(obj)
         if self.maxshape is not None and value.shape != dset.shape:
             # resizable dataset:
-            dset.resize(value.shape)
-        dset[()] = self._serialize(value, obj)
-        dset.flush()
+            dataset.resize(value.shape)
+        dataset[()] = self._serialize(value, obj)
+        dataset.flush()
         setattr(obj, self.private_name, value)
+
+    def get_dataset(self, obj):
+        return obj._group.require_dataset(self.public_name, shape=self.shape, dtype=self.dtype, compression=self.compression, maxshape=self.maxshape, exact='maxshape')
 
     def _serialize(self, value, obj=None):
         return value
@@ -158,19 +158,19 @@ class ProblemState(HasGroup):
     serializer: Optional[SERIALIZERS] = StringAttribute()
     filename: str = StringAttribute()
 
-    def __init__(self, group: h5py.Group):
-        super()
+    def __init__(self, group: 'Group'):
         self._group = group
         # call the getters to initialize HDF backing:
         for attrname in ['filename', 'serializer', 'pathlist', 'fitProblem']:
             getattr(self, attrname)
 
 UNCERTAINTY_DTYPE = 'f'
+MAX_LABEL_LENGTH = 1024
 
 class UncertaintyState(HasGroup):
     AR = DatasetBackedAttribute(shape=(0), compression=COMPRESSION, dtype=UNCERTAINTY_DTYPE, maxshape=(None,))
     gen_draws = DatasetBackedAttribute(shape=(0), compression=COMPRESSION, dtype=UNCERTAINTY_DTYPE, maxshape=(None,))
-    labels = DatasetBackedAttribute(shape=(0), compression=COMPRESSION, dtype=h5py.string_dtype(), maxshape=(None,))
+    labels = DatasetBackedAttribute(shape=(0), compression=COMPRESSION, dtype='|S1024', maxshape=(None,))
     thin_draws = DatasetBackedAttribute(shape=(0), compression=COMPRESSION, dtype=UNCERTAINTY_DTYPE, maxshape=(None,))
     gen_logp = DatasetBackedAttribute(shape=(0,0), compression=COMPRESSION, dtype=UNCERTAINTY_DTYPE, maxshape=(None, None), chunks=(100,100))
     thin_logp = DatasetBackedAttribute(shape=(0,0), compression=COMPRESSION, dtype=UNCERTAINTY_DTYPE, maxshape=(None, None), chunks=(100,100))
@@ -178,7 +178,7 @@ class UncertaintyState(HasGroup):
     update_CR_weight = DatasetBackedAttribute(shape=(0,0), compression=COMPRESSION, dtype=UNCERTAINTY_DTYPE, maxshape=(None, None), chunks=(100,100))
     update_draws = DatasetBackedAttribute(shape=(0), compression=COMPRESSION, dtype=UNCERTAINTY_DTYPE, maxshape=(None,))
 
-    def __init__(self, group: h5py.Group):
+    def __init__(self, group: 'Group'):
         self._group = group
         # call the getters to initialize HDF backing:
         for attrname in ['AR', 'gen_draws', 'labels', 'thin_draws', 'gen_logp', 'thin_logp', 'thin_point', 'update_CR_weight', 'update_draws']:
@@ -194,7 +194,7 @@ class FittingState(HasGroup):
     _uncertainty_state_storage: UncertaintyState
     _uncertainty_state: 'MCMCDraw'
 
-    def __init__(self, group: h5py.Group):
+    def __init__(self, group: 'Group'):
         self._group = group
         self.uncertainty_group = group.require_group('uncertainty_state')
         self._uncertainty_state_storage = UncertaintyState(self.uncertainty_group)
@@ -218,10 +218,10 @@ class FittingState(HasGroup):
 
 
 class Topic:
-    dataset: h5py.Dataset
+    dataset: 'Dataset'
     maxlen: Optional[int] = 1
 
-    def __init__(self, dataset: h5py.Dataset, maxlen: Optional[int] = 1):
+    def __init__(self, dataset: 'Dataset', maxlen: Optional[int] = 1):
         self.dataset = dataset
         self.maxlen = maxlen
 
@@ -268,7 +268,7 @@ class TopicsDict:
                 topic_dataset = group.create_dataset(topic_name, shape=(0,), maxshape=(maxlen,), dtype=f"|S{MAX_TOPIC_MESSAGE}", compression=COMPRESSION)
     
     def __getitem__(self, key: 'TopicNameType') -> Topic:
-        topic_dataset = cast(h5py.Dataset, self.group[key])
+        topic_dataset = self.group[key]
         return Topic(topic_dataset, maxlen=topic_dataset.maxshape[0])
     
     def get(self, key: 'TopicNameType', default: Any) -> Topic:
@@ -377,9 +377,9 @@ def read_uncertainty_state(storage: UncertaintyState, skip=0, report=0, derived_
     state._update_CR_weight = loaded.update_CR_weight
     state._outliers = []
 
-    bestidx = np.unravel_index(np.argmax(loaded["thin_logp"]), loaded["thin_logp"].shape)
-    state._best_logp = loaded["thin_logp"][bestidx]
-    state._best_x = loaded["thin_point"][bestidx]
+    bestidx = np.unravel_index(np.argmax(loaded.thin_logp), loaded.thin_logp.shape)
+    state._best_logp = loaded.thin_logp[bestidx]
+    state._best_x = loaded.thin_point[bestidx]
     state._best_gen = 0
 
     return state
