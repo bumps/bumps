@@ -182,7 +182,6 @@ class UncertaintyState(HasGroup):
         self._group = group
         # call the getters to initialize HDF backing:
         for attrname in ['AR', 'gen_draws', 'labels', 'thin_draws', 'gen_logp', 'thin_logp', 'thin_point', 'update_CR_weight', 'update_draws']:
-            print("initializing: ", attrname)
             getattr(self, attrname)
 
 
