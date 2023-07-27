@@ -357,7 +357,6 @@ async def _fit_progress_handler(event: Dict):
     if fitProblem is None:
         raise ValueError("should never happen: fit progress reported for session in which fitProblem is undefined")
     message = event.get("message", None)
-    print('fit progress: ', dict(message=message))
     if message == 'complete' or message == 'improvement':
         fitProblem.setp(event["point"])
         fitProblem.model_update()
@@ -370,7 +369,6 @@ async def _fit_progress_handler(event: Dict):
     elif message == 'progress':
         await emit("fit_progress", to_json_compatible_dict(event))
     elif message == 'uncertainty_update' or message == 'uncertainty_final':
-        print(message)
         state.fitting.uncertainty_state = cast(bumps.dream.state.MCMCDraw, event["uncertainty_state"])
         await publish("uncertainty_update", True)
 
