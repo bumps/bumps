@@ -343,14 +343,12 @@ def write_uncertainty_state(state: 'MCMCDraw', storage: UncertaintyState):
 
         storage.thin_draws, storage.thin_point, storage.thin_logp = state.chains()
         storage.update_draws, storage.update_CR_weight = state.CR_weight()
-        storage.labels = np.array(state.labels, dtype=h5py.string_dtype())
+        storage.labels = np.array(state.labels, dtype="|S1024")
 
-def read_uncertainty_state(storage: UncertaintyState, skip=0, report=0, derived_vars=0):
+def read_uncertainty_state(loaded: UncertaintyState, skip=0, report=0, derived_vars=0):
 
-    loaded: Dict[str, np.ndarray] = dict(group.items())
-    
     # Guess dimensions
-    Ngen = storage.gen_draws.shape[0]
+    Ngen = loaded.gen_draws.shape[0]
     thinning = 1
     Nthin, Npop, Nvar = loaded.thin_point.shape
     Nupdate, Ncr = loaded.update_CR_weight.shape
