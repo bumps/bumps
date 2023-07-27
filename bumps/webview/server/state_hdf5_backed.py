@@ -20,37 +20,6 @@ MAX_TOPIC_MESSAGE = 1024*100 # 100k
 MAX_PROBLEM_SIZE = 10*1024*1024 # 10 MB problem max size
 SESSION_FILE_NAME = "session.h5"
 
-def to_hdf5_group(state: 'State', group: 'Group'):
-    import h5py
-    fitting_grp = group.create_group("fitting")
-    topics_grp = group.create_group("topics")
-    problem_grp = group.create_group("problem")
-
-    if state.fitting.population is not None:
-        pop_shape = state.fitting.population.shape
-        fitting_grp.create_dataset("population", shape=pop_shape, maxshape=(None, pop_shape[1]), compression = COMPRESSION)
-    if state.fitting.uncertainty_state is not None:
-        write_uncertainty_state(state.fitting.uncertainty_state, fitting_grp)
-
-    for topic, contents in state.topics.items():
-        num_entries = len(contents)
-        maxlen = contents.maxlen
-        topic_dataset = topics_grp.create_dataset(topic, shape=(num_entries,), maxshape=(contents.maxlen), dtype=f"|S{MAX_TOPIC_MESSAGE}", compression=COMPRESSION)
-        for idx, message in enumerate(contents):
-            topic_dataset[idx] = json.dumps(message)
-
-    if state.problem is not None:
-        if state.problem.fitProblem is not None:
-            problem_json = json.dumps(to_dict(state.problem.fitProblem))
-            problem_grp['fitProblem'] = problem_json
-            problem_grp['fitProblem'].attrs["Content-Type"] = "application/json"
-        if state.problem.filename is not None:
-            problem_grp['filename'] = state.problem.filename
-        if state.problem.pathlist is not None:
-            pathlist_json = json.dumps(state.problem.pathlist)
-            problem_grp['pathlist'] = pathlist_json
-            problem_grp['pathlist'].attrs["Content-Type"] = "application/json"
-
 CACHE_MISS = object()
 SERIALIZERS = Literal['dataclass', 'pickle', 'dill']
 SERIALIZER_EXTENSIONS = {
