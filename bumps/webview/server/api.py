@@ -446,9 +446,6 @@ async def get_model():
 
 @register
 async def get_convergence_plot():
-    # NOTE: this is slow.  Creating the figure takes around 0.15 seconds, 
-    # and converting to mpld3 can take as much as 0.5 seconds.
-    # Might want to replace with plotting on the client side (normalizing population takes around 1 ms)
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = state.problem.fitProblem
