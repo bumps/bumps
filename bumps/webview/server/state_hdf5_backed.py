@@ -135,11 +135,12 @@ class ProblemState(HasGroup):
 
 UNCERTAINTY_DTYPE = 'f'
 MAX_LABEL_LENGTH = 1024
+LABEL_DTYPE = f"|S{MAX_LABEL_LENGTH}"
 
 class UncertaintyState(HasGroup):
     AR = DatasetBackedAttribute(shape=(0), compression=COMPRESSION, dtype=UNCERTAINTY_DTYPE, maxshape=(None,))
     gen_draws = DatasetBackedAttribute(shape=(0), compression=COMPRESSION, dtype=UNCERTAINTY_DTYPE, maxshape=(None,))
-    labels = DatasetBackedAttribute(shape=(0), compression=COMPRESSION, dtype='|S1024', maxshape=(None,))
+    labels = DatasetBackedAttribute(shape=(0), compression=COMPRESSION, dtype=LABEL_DTYPE, maxshape=(None,))
     thin_draws = DatasetBackedAttribute(shape=(0), compression=COMPRESSION, dtype=UNCERTAINTY_DTYPE, maxshape=(None,))
     gen_logp = DatasetBackedAttribute(shape=(0,0), compression=COMPRESSION, dtype=UNCERTAINTY_DTYPE, maxshape=(None, None), chunks=(100,100))
     thin_logp = DatasetBackedAttribute(shape=(0,0), compression=COMPRESSION, dtype=UNCERTAINTY_DTYPE, maxshape=(None, None), chunks=(100,100))
@@ -311,7 +312,7 @@ def write_uncertainty_state(state: 'MCMCDraw', storage: UncertaintyState):
 
         storage.thin_draws, storage.thin_point, storage.thin_logp = state.chains()
         storage.update_draws, storage.update_CR_weight = state.CR_weight()
-        storage.labels = np.array(state.labels, dtype="|S1024")
+        storage.labels = np.array(state.labels, dtype=LABEL_DTYPE)
 
 def read_uncertainty_state(loaded: UncertaintyState, skip=0, report=0, derived_vars=0):
 
