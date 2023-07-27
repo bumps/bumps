@@ -248,9 +248,11 @@ class Topic:
 
 class TopicsDict:
     group: 'Group'
+    lookup: Dict[str, Topic]
 
     def __init__(self, group: 'Group'):
         self.group = group
+        self.lookup = {}
         for topic_name, maxlen in (
             ("log", None),
             ("update_parameters", 1),
@@ -266,16 +268,16 @@ class TopicsDict:
                 topic_dataset = group[topic_name]
             else:
                 topic_dataset = group.create_dataset(topic_name, shape=(0,), maxshape=(maxlen,), dtype=f"|S{MAX_TOPIC_MESSAGE}", compression=COMPRESSION)
-    
+            self.lookup[topic_name] = Topic(topic_dataset, maxlen=maxlen)
+
     def __getitem__(self, key: 'TopicNameType') -> Topic:
-        topic_dataset = self.group[key]
-        return Topic(topic_dataset, maxlen=topic_dataset.maxshape[0])
+        return self.lookup[key]
     
     def get(self, key: 'TopicNameType', default: Any) -> Topic:
-        return self[key] if key in self.group else default
+        return self.lookup[key] if key in self.lookup else default
 
     def items(self):
-        return [(topic_name, self[topic_name]) for topic_name in self.group.keys()]
+        return self.lookup.items()
 
 class State:
     hostname: str
