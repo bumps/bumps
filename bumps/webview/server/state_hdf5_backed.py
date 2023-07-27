@@ -111,7 +111,7 @@ class DatasetBackedAttribute:
 
     def __set__(self, obj: HasGroup, value):
         dataset = self.get_dataset(obj)
-        if self.maxshape is not None and value.shape != dset.shape:
+        if self.maxshape is not None and value.shape != dataset.shape:
             # resizable dataset:
             dataset.resize(value.shape)
         dataset[()] = self._serialize(value, obj)
