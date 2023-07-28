@@ -133,6 +133,11 @@ async def save_problem_file(pathlist: Optional[List[str]] = None, filename: Opti
     return {"filename": save_filename, "check_overwrite": False}
 
 @register
+async def save_session_copy(pathlist: List[str], filename: str):
+    path = Path(*pathlist)
+    state.copy_session_file(str(path / filename))
+
+@register
 async def get_serializer():
     output = {"serializer": "", "extension": ""}
     problem_state = state.problem
