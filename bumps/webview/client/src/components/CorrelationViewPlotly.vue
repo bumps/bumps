@@ -24,6 +24,9 @@ const n_bins = ref(50);
 const callback_registered = ref(false);
 const stored_timestamp = ref("");
 const vars = ref<number[]>([]);
+// don't use the one from setupDrawLoop because we are calling
+// fetch_and_draw locally:
+const drawing_busy = ref(false);
 
 const props = defineProps<{
   socket: AsyncSocket,
@@ -40,11 +43,18 @@ async function fetch_and_draw(latest_timestamp?: string) {
   // send timestamp to control server-side cache
   const timestamp = stored_timestamp.value;
   const output_vars = (vars.value.length > 0) ? [...vars.value] : null;
+  const loading_delay = 50; // ms
+  // if the plot loads faster than the timeout, don't show spinner
+  const show_loader = setTimeout(() => {
+    drawing_busy.value = true;
+  }, loading_delay);
   const payload = await props.socket.asyncEmit('get_correlation_plot', do_sort.value, max_rows.value, n_bins.value, output_vars, timestamp) as Plotly.PlotlyDataLayoutConfig;
   const plotdata = { ...payload };
   const { data, layout } = plotdata;
   const config = { responsive: true, scrollZoom: true }
   await Plotly.react(plot_div_id.value, [...data], layout, config);
+  clearTimeout(show_loader);
+  drawing_busy.value = false;
 
   if (!callback_registered.value) {
     if (plot_div.value?.on) {
@@ -86,7 +96,11 @@ function reset_vars() {
       </div>
     </div>
     <button class="btn btn-primary" v-if="vars.length > 0" @click="reset_vars">Reset plot</button>
-    <div class="flex-grow-1 plot-div" ref="plot_div" :id="plot_div_id">
+    <div class="flex-grow-1 position-relative">
+      <div class="w-100 h-100 plot-div" ref="plot_div" :id="plot_div_id"></div>
+      <div class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center loading" v-if="drawing_busy">
+        <span class="spinner-border text-primary"></span>
+      </div>
     </div>
   </div>
 </template>
@@ -94,5 +108,13 @@ function reset_vars() {
 <style scoped>
 div.plot-div :deep(g.hovertext > path) {
   opacity: 0.5;
+}
+
+div.loading {
+  background-color: rgba(255, 255, 255, 0.4);
+}
+span.spinner-border {
+  width: 3rem;
+  height: 3rem;
 }
 </style>
