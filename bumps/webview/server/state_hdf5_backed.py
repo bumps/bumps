@@ -5,13 +5,14 @@ import pickle
 from queue import Queue
 from bumps.serialize import from_dict, from_dict_threaded, to_dict
 import numpy as np
+import warnings
 
 import bumps.fitproblem
 from bumps.dream.state import MCMCDraw
 
 if TYPE_CHECKING:
     from .api import TopicNameType
-    from h5py import Group, Dataset
+    from h5py import Group, Dataset, File
     from .fit_thread import FitThread
 
 # slow, small:
@@ -260,6 +261,10 @@ class State:
     calling_loop: Optional[asyncio.AbstractEventLoop] = None
     abort_queue: Queue
 
+    _session_file: "File"
+    _session_file_name: str
+    _session_in_memory: bool
+
     def __init__(self, session_file_name: Optional[str] = None):
         # self.problem = problem
         # self.fitting = fitting if fitting is not None else FittingState()
@@ -280,7 +285,9 @@ class State:
         if read_only:
             hdf_kw["swmr"] = True
         mode = "r" if read_only else "a"
-        self.session_file = session_file = h5py.File(session_file_name, mode, **hdf_kw)
+        self._session_file = session_file = h5py.File(session_file_name, mode, **hdf_kw)
+        self._session_file_name = session_file_name
+        self._session_in_memory = in_memory
         topics_group = session_file.require_group("topics")
         problem_group = session_file.require_group("problem")
         fitting_group = session_file.require_group("fitting")
@@ -290,9 +297,17 @@ class State:
         if not read_only:
             session_file.swmr_mode = True
 
+    def copy_session_file(self, session_copy_name: str):
+        import h5py
+        if not self._session_in_memory and session_copy_name == self._session_file_name:
+            warnings.warn(f"Can not save a copy with current filename: {session_copy_name}")
+            return
+        with h5py.File(session_copy_name, "w") as session_copy:
+            for key in self._session_file:
+                self._session_file.copy(key, session_copy, name=key)
 
     def cleanup(self):
-        self.session_file.close()
+        self._session_file.close()
 
     def __del__(self):
         self.cleanup()
