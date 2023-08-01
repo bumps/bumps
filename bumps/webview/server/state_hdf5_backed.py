@@ -121,7 +121,7 @@ class FitProblemAttribute(DatasetBackedAttribute):
         return serialize_problem(value, obj.serializer)
 
     def _deserialize(self, value, obj):
-        return deserialize_problem(value, obj.serializer)
+        return deserialize_problem(value[0], obj.serializer)
 
 
 class ProblemState(HasGroup):
