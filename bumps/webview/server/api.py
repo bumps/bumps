@@ -138,6 +138,13 @@ async def save_session_copy(pathlist: List[str], filename: str):
     state.copy_session_file(str(path / filename))
 
 @register
+async def load_session(pathlist: List[str], filename: str):
+    path = Path(*pathlist)
+    state.setup_backing(str(path / filename))
+    await publish("update_model", True)
+    await publish("update_parameters", True)
+
+@register
 async def get_serializer():
     output = {"serializer": "", "extension": ""}
     problem_state = state.problem
