@@ -736,7 +736,7 @@ class Operators(str, Enum):
     add = "add"
     sub = "sub"
     mul = "mul"
-    truediv = "div"
+    truediv = "truediv"
     div = "intdiv"
     pow = "pow"
     # unary functional
