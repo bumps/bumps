@@ -1,11 +1,12 @@
 import asyncio
-from typing import TYPE_CHECKING, Optional, Dict, List, Tuple, Any, Literal, cast
+from typing import TYPE_CHECKING, Optional, Dict, List, Tuple, Any, Literal, cast, IO
 import json
 import pickle
 from queue import Queue
 from bumps.serialize import from_dict, from_dict_threaded, to_dict
 import numpy as np
 import warnings
+import io
 
 import bumps.fitproblem
 from bumps.dream.state import MCMCDraw
@@ -20,6 +21,7 @@ COMPRESSION = 9
 MAX_TOPIC_MESSAGE = 1024*100 # 100k
 MAX_PROBLEM_SIZE = 10*1024*1024 # 10 MB problem max size
 SESSION_FILE_NAME = "session.h5"
+HDF5_VERSION = "v112"
 
 CACHE_MISS = object()
 SERIALIZERS = Literal['dataclass', 'pickle', 'dill']
@@ -260,34 +262,32 @@ class State:
     fit_stopped_future: Optional[asyncio.Future] = None
     calling_loop: Optional[asyncio.AbstractEventLoop] = None
     abort_queue: Queue
+    session_file_name: Optional[str]
 
     _session_file: "File"
-    _session_file_name: str
-    _session_in_memory: bool
 
     def __init__(self, session_file_name: Optional[str] = None):
         # self.problem = problem
         # self.fitting = fitting if fitting is not None else FittingState()
         self.abort_queue = Queue()
-        if session_file_name is not None:
-            self.setup_backing(session_file_name=session_file_name, in_memory=True, backing_store=True)
-        else:
-            self.setup_backing(':memory:', in_memory=True, backing_store=False)
+        self.setup_backing(session_file_name)
 
     def __enter__(self):
         return self
 
-    def setup_backing(self, session_file_name: str = SESSION_FILE_NAME, in_memory: bool = False, backing_store: bool = False, read_only: bool = False ):
+    def setup_backing(self, session_file_name: Optional[str] = SESSION_FILE_NAME, read_only: bool = False ):
         import h5py
-        hdf_kw = dict(libver="latest")
-        if in_memory:
-            hdf_kw.update(dict(driver="core", backing_store=backing_store))
+        backing_store = (session_file_name is not None)
+        hdf_kw = dict(libver=HDF5_VERSION, driver="core", backing_store=backing_store)
         if read_only:
             hdf_kw["swmr"] = True
         mode = "r" if read_only else "a"
-        self._session_file = session_file = h5py.File(session_file_name, mode, **hdf_kw)
-        self._session_file_name = session_file_name
-        self._session_in_memory = in_memory
+        self.session_file_name = session_file_name
+        hdf_filename = session_file_name if session_file_name is not None else ":memory:"
+        old_session = getattr(self, '_session_file', None)
+        self._session_file = session_file = h5py.File(hdf_filename, mode, **hdf_kw)
+        
+
         topics_group = session_file.require_group("topics")
         problem_group = session_file.require_group("problem")
         fitting_group = session_file.require_group("fitting")
@@ -297,14 +297,24 @@ class State:
         if not read_only:
             session_file.swmr_mode = True
 
+        # close any open session files 
+        if hasattr(old_session, 'close'):
+            old_session.close()
+
     def copy_session_file(self, session_copy_name: str):
         import h5py
-        if not self._session_in_memory and session_copy_name == self._session_file_name:
+        if session_copy_name == self.session_file_name:
             warnings.warn(f"Can not save a copy with current filename: {session_copy_name}")
             return
-        with h5py.File(session_copy_name, "w") as session_copy:
-            for key in self._session_file:
-                self._session_file.copy(key, session_copy, name=key)
+        if self.session_file_name is not None:
+            with h5py.File(self.session_file_name, "r", libver=HDF5_VERSION, swmr=True) as source, h5py.File(session_copy_name, "w", libver=HDF5_VERSION) as dest:
+                for key in source:
+                    source.copy(key, dest, name=key)
+        else:
+            source = self._session_file
+            with h5py.File(session_copy_name, "w", libver=HDF5_VERSION) as dest:
+                for key in source:
+                    source.copy(key, dest, name=key)
 
     def cleanup(self):
         self._session_file.close()
