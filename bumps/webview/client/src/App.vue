@@ -231,6 +231,40 @@ async function saveParameters(ev: Event, override?: {pathlist: string[], filenam
   }
 }
 
+async function saveSessionCopy(ev: Event, pathlist: string[], filename: string) {
+  if (fileBrowser.value) {
+    const settings = fileBrowserSettings.value;
+    settings.title = "Save Session (Copy)"
+    settings.callback = (pathlist, filename) => {
+      socket.asyncEmit("save_session_copy", pathlist, filename);
+    }
+    settings.show_name_input = true;
+    settings.name_input_label = "Filename";
+    settings.require_name = true;
+    settings.show_files = true;
+    settings.search_patterns = [".h5"];
+    settings.chosenfile_in = "";
+    fileBrowser.value.open();
+  }
+}
+
+async function loadSession(ev: Event, pathlist: string[], filename: string) {
+  if (fileBrowser.value) {
+    const settings = fileBrowserSettings.value;
+    settings.title = "Open Session (create or append)"
+    settings.callback = (pathlist, filename) => {
+      socket.asyncEmit("load_session", pathlist, filename);
+    }
+    settings.show_name_input = true;
+    settings.name_input_label = "Filename";
+    settings.require_name = true;
+    settings.show_files = true;
+    settings.search_patterns = [".h5"];
+    settings.chosenfile_in = "";
+    fileBrowser.value.open();
+  }
+}
+
 function openFitOptions() {
   fitOptions.value?.open();
 }
@@ -298,12 +332,14 @@ onMounted(() => {
                 File
               </button>
               <ul class="dropdown-menu">
-                <li><button class="btn btn-link dropdown-item" @click="selectOpenFile">Open</button></li>
                 <li><button v-if="can_mount_local" class="btn btn-link dropdown-item" @click="mountLocal">Mount Local Folder</button></li>
+                <li><button class="btn btn-link dropdown-item" @click="selectOpenFile">Load Problem</button></li>
                 <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="saveParameters">Save Parameters</button></li>
                 <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="applyParameters">Apply Parameters</button></li>
                 <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="saveFile">Save Problem</button></li>
                 <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="saveFileAs">Save Problem As</button></li>
+                <li title="Create or Append to session HDF5"><button class="btn btn-link dropdown-item" @click="loadSession">Open Session</button></li>
+                <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="saveSessionCopy">Save Session (Copy)</button></li>
                 <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="exportResults">Export Results</button></li>
                 <li><button class="btn btn-link dropdown-item" :class="{disabled: model_loaded === undefined}"  @click="reloadModel">Reload</button></li>
                 <li>

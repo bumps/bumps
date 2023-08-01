@@ -163,9 +163,9 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
     app.router.add_get('/', index)
 
     if options.store is not None:
-        api.state.setup_backing(session_file_name=options.store, in_memory=False)
+        api.state.setup_backing(session_file_name=options.store)
 
-    if api.state.problem.serializer is None:
+    if api.state.problem.serializer is None or api.state.problem.serializer == "":
         api.state.problem.serializer = options.serializer
 
     if options.trace:

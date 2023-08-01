@@ -22,7 +22,7 @@ import bumps.plotutil
 import bumps.dream.views, bumps.dream.varplot, bumps.dream.stats, bumps.dream.state
 import bumps.errplot
 
-from .state_hdf5_backed import State, serialize, deserialize, SERIALIZER_EXTENSIONS
+from .state_hdf5_backed import State, serialize_problem, deserialize_problem, SERIALIZER_EXTENSIONS
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
 from .varplot import plot_vars
 
@@ -81,7 +81,7 @@ async def load_problem_file(pathlist: List[str], filename: str):
     if filename.endswith(".json"):
         with open(path, "rt") as input_file:
             serialized = input_file.read()
-        problem = deserialize(serialized, method='dataclass')
+        problem = deserialize_problem(serialized, method='dataclass')
     else:
         from bumps.cli import load_model
         problem = load_model(str(path))
@@ -125,12 +125,24 @@ async def save_problem_file(pathlist: Optional[List[str]] = None, filename: Opti
         #confirmation needed:
         return {"filename": save_filename, "check_overwrite": True}
 
-    serialized = serialize(problem_state.fitProblem, method=serializer)
+    serialized = serialize_problem(problem_state.fitProblem, method=serializer)
     with open(Path(path, save_filename), "wb") as output_file:
         output_file.write(serialized)
 
     await log(f'Saved: {save_filename} at path: {path}')
     return {"filename": save_filename, "check_overwrite": False}
+
+@register
+async def save_session_copy(pathlist: List[str], filename: str):
+    path = Path(*pathlist)
+    state.copy_session_file(str(path / filename))
+
+@register
+async def load_session(pathlist: List[str], filename: str):
+    path = Path(*pathlist)
+    state.setup_backing(str(path / filename))
+    await publish("update_model", True)
+    await publish("update_parameters", True)
 
 @register
 async def get_serializer():
@@ -186,7 +198,7 @@ def _export_results(path: Path, problem: bumps.fitproblem.FitProblem, uncertaint
     serializer = state.problem.serializer
     extension = SERIALIZER_EXTENSIONS[serializer]
     save_filename = f"{output_pathstr}.{extension}"
-    serialized = serialize(problem, serializer)
+    serialized = serialize_problem(problem, serializer)
     with open(save_filename, "wb") as output_file:
         output_file.write(serialized)
 
@@ -441,7 +453,7 @@ async def get_model():
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = state.problem.fitProblem
-    serialized = serialize(fitProblem, 'dataclass') if state.problem.serializer == 'dataclass' else 'null'
+    serialized = serialize_problem(fitProblem, 'dataclass') if state.problem.serializer == 'dataclass' else 'null'
     return serialized
 
 @register
