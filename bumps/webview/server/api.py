@@ -513,10 +513,11 @@ def _get_correlation_plot(sort: bool=True, max_rows: int=8, nbins: int=50, vars=
 async def get_correlation_plot(sort: bool=True, max_rows: int=8, nbins: int=50, vars=None, timestamp: str=""):
     # need vars to be immutable (hashable) for caching based on arguments:
     vars = tuple(vars) if vars is not None else None
-    return _get_correlation_plot(sort=sort, max_rows=max_rows, nbins=nbins, vars=vars, timestamp=timestamp)
+    result = await asyncio.to_thread(_get_correlation_plot, sort=sort, max_rows=max_rows, nbins=nbins, vars=vars, timestamp=timestamp)
+    return result
 
-@register
-async def get_uncertainty_plot():
+@lru_cache(maxsize=30)
+def _get_uncertainty_plot(timestamp: str=""):
     uncertainty_state = state.fitting.uncertainty_state
     if uncertainty_state is not None:
         import time
@@ -525,9 +526,15 @@ async def get_uncertainty_plot():
         draw = uncertainty_state.draw()
         stats = bumps.dream.stats.var_stats(draw)
         fig = plot_vars(draw, stats)
+        print("time to draw uncertainty plot: ", time.time() - start_time)
         return to_json_compatible_dict(fig.to_dict())
     else:
         return None
+
+@register
+async def get_uncertainty_plot(timestamp: str=""):
+    result = await asyncio.to_thread(_get_uncertainty_plot, timestamp=timestamp)
+    return result
 
 @register
 async def get_model_uncertainty_plot():
