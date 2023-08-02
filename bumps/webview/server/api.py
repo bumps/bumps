@@ -339,7 +339,7 @@ async def start_fit_thread(fitter_id: str="", options=None, terminate_on_finish=
             # session_id=session_id,
             # Number of seconds between updates to the GUI, or 0 for no updates
             convergence_update=5,
-            uncertainty_update=3600,
+            uncertainty_update=300,
             terminate_on_finish=terminate_on_finish,
             )
         await emit("fit_progress", {}) # clear progress
