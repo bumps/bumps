@@ -5,7 +5,7 @@ from typing import Any, Callable, Coroutine, Dict, List, Literal, Mapping, Optio
 from datetime import datetime
 import numbers
 import warnings
-from queue import Queue
+from threading import Event
 import numpy as np
 import asyncio
 from pathlib import Path, PurePath
@@ -269,14 +269,11 @@ async def start_fit(fitter_id: str="", kwargs=None):
 @register
 async def stop_fit():
     if state.fit_thread is not None:
-        if state.fit_stopped_future is None:
-            loop = asyncio.get_running_loop()
-            state.fit_stopped_future = loop.create_future()
-        state.abort_queue.put(True)
-        await state.fit_stopped_future
-        state.fit_stopped_future = None
-
-
+        if state.fit_thread.is_alive():
+            state.fit_abort_event.set()
+            loop = getattr(state, 'calling_loop', None)
+            if loop is not None:
+                await loop.run_in_executor(None, state.fit_complete_event.wait)
 
 def get_chisq(problem: bumps.fitproblem.FitProblem, nllf=None):
     nllf = problem.nllf() if nllf is None else nllf
@@ -330,10 +327,11 @@ async def start_fit_thread(fitter_id: str="", options=None, terminate_on_finish=
         # state.abort = False
         # state.fitting.uncertainty_state = None
         num_steps = get_num_steps(fitter_id, num_params, options)
-        state.abort_queue = abort_queue = Queue()
+        state.fit_abort_event.clear()
+        state.fit_complete_event.clear()
 
         fit_thread = FitThread(
-            abort_queue=abort_queue,
+            abort_event=state.fit_abort_event,
             problem=fitProblem,
             fitclass=fitclass,
             options=options,
@@ -397,17 +395,19 @@ async def _fit_complete_handler(event):
             if fit_thread.is_alive():
                 await log("fit thread failed to complete")
     state.fit_thread = None
-    problem: bumps.fitproblem.FitProblem = event["problem"]
-    chisq = nice(2*event["value"]/problem.dof)
-    problem.setp(event["point"])
-    problem.model_update()
-    state.problem.fitProblem = problem
     await publish("fit_active", {})
-    await publish("update_parameters", True)
-    await log(event["info"], title=f"done with chisq {chisq}")
-    fut = state.fit_stopped_future
-    if fut is not None:
-        fut.set_result(True)
+    if message == "error":
+        await log(event["traceback"], title=f"fit failed with error: {event.get('error_string')}")
+    else:
+        problem: bumps.fitproblem.FitProblem = event["problem"]
+        chisq = nice(2*event["value"]/problem.dof)
+        problem.setp(event["point"])
+        problem.model_update()
+        state.problem.fitProblem = problem
+        await publish("update_parameters", True)
+        await log(event["info"], title=f"done with chisq {chisq}")
+
+    state.fit_complete_event.set()
     if terminate:
         await shutdown()
 
@@ -736,6 +736,7 @@ VALUE_FORMAT = "{{:.{:d}g}}".format(VALUE_PRECISION)
 def nice(v, digits=4):
     """Fix v to a value with a given number of digits of precision"""
     from math import log10, floor
+    v = float(v)
     if v == 0. or not np.isfinite(v):
         return v
     else:
@@ -811,7 +812,7 @@ def params_to_list(params, lookup=None, pathlist=None, links=None) -> List[Param
             if has_prior:
                 assert(params.prior is not None)
                 lo, hi = params.prior.limits
-                new_item['value01'] = params.prior.get01(params.value)
+                new_item['value01'] = params.prior.get01(float(params.value))
                 new_item['min_str'] = VALUE_FORMAT.format(nice(lo))
                 new_item['max_str'] = VALUE_FORMAT.format(nice(hi))
             lookup[params.id] = new_item

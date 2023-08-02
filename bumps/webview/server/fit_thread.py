@@ -1,7 +1,8 @@
 
 from copy import deepcopy
 from threading import Thread
-from queue import Queue
+from threading import Event
+import traceback
 
 from blinker import Signal
 
@@ -164,7 +165,7 @@ class DreamMonitor(monitor.Monitor):
 class FitThread(Thread):
     """Run the fit in a separate thread from the GUI thread."""
 
-    def __init__(self, abort_queue: Queue, problem=None,
+    def __init__(self, abort_event: Event, problem=None,
                  fitclass=None, options=None, mapper=None, parallel=0,
                  convergence_update=5, uncertainty_update=300,
                  terminate_on_finish=False):
@@ -172,7 +173,7 @@ class FitThread(Thread):
         # Process.__init__(self)
 
         Thread.__init__(self)
-        self.abort_queue = abort_queue
+        self.abort_event = abort_event
         self.problem = problem
         self.fitclass = fitclass
         self.options = options if isinstance(options, dict) else dict()
@@ -183,7 +184,7 @@ class FitThread(Thread):
         self.terminate_on_finish = terminate_on_finish
 
     def abort_test(self):
-        return not self.abort_queue.empty()
+        return self.abort_event.is_set()
 
     def run(self):
         # TODO: we have no interlocks on changes in problem state.  What
@@ -194,52 +195,58 @@ class FitThread(Thread):
         # NOTE: Problem must be the original problem (not a copy) when used
         # inside the GUI monitor otherwise AppPanel will not be able to
         # recognize that it is the same problem when updating views.
-        monitors = [GUIProgressMonitor(self.problem),
-                    ConvergenceMonitor(self.problem, 
-                                       rate=self.convergence_update),
-                    # GUIMonitor(self.problem,
-                    #            message="convergence_update",
-                    #            monitor=ConvergenceMonitor(),
-                    #            rate=self.convergence_update),
-                    DreamMonitor(self.problem,
-                                 fitter=self.fitclass,
-                                 message="uncertainty_update",
-                                 rate=self.uncertainty_update),
-                    ]
+        try:
+            monitors = [GUIProgressMonitor(self.problem),
+                        ConvergenceMonitor(self.problem,
+                                        rate=self.convergence_update),
+                        # GUIMonitor(self.problem,
+                        #            message="convergence_update",
+                        #            monitor=ConvergenceMonitor(),
+                        #            rate=self.convergence_update),
+                        DreamMonitor(self.problem,
+                                    fitter=self.fitclass,
+                                    message="uncertainty_update",
+                                    rate=self.uncertainty_update),
+                        ]
 
-        mapper = self.mapper
-        if mapper is None:
-            # fallback options if no mapper is specified
-            mp_available = True
-            try:
-                import _multiprocessing
-            except ImportError:
-                mp_available = False
-            # Only use MPMapper if the problem can be pickled
-            # and multiprocessing is available
-            mapper = MPMapper if mp_available and can_pickle(self.problem) else SerialMapper
+            mapper = self.mapper
+            if mapper is None:
+                # fallback options if no mapper is specified
+                mp_available = True
+                try:
+                    import _multiprocessing
+                except ImportError:
+                    mp_available = False
+                # Only use MPMapper if the problem can be pickled
+                # and multiprocessing is available
+                mapper = MPMapper if mp_available and can_pickle(self.problem) else SerialMapper
 
-        # Be safe and send a private copy of the problem to the fitting engine
-        # print "fitclass",self.fitclass
-        problem = deepcopy(self.problem)
-        # print "fitclass id",id(self.fitclass),self.fitclass,threading.current_thread()
-        driver = FitDriver(
-            self.fitclass, problem=problem,
-            monitors=monitors, abort_test=self.abort_test,
-            mapper=mapper.start_mapper(problem, [], cpus=self.parallel),
-            **self.options)
+            # Be safe and send a private copy of the problem to the fitting engine
+            # print "fitclass",self.fitclass
+            problem = deepcopy(self.problem)
+            # print "fitclass id",id(self.fitclass),self.fitclass,threading.current_thread()
+            driver = FitDriver(
+                self.fitclass, problem=problem,
+                monitors=monitors, abort_test=self.abort_test,
+                mapper=mapper.start_mapper(problem, [], cpus=self.parallel),
+                **self.options)
 
-        x, fx = driver.fit()
-        # Give final state message from monitors
-        for M in monitors:
-            if hasattr(M, 'final'):
-                M.final()
+            x, fx = driver.fit()
+            # Give final state message from monitors
+            for M in monitors:
+                if hasattr(M, 'final'):
+                    M.final()
 
-        with redirect_console() as fid:
-            driver.show()
-            captured_output = fid.getvalue()
+            with redirect_console() as fid:
+                driver.show()
+                captured_output = fid.getvalue()
 
-        evt = dict(message="complete", problem=self.problem,
-                   point=x, value=fx, info=captured_output)
-        EVT_FIT_COMPLETE.send(evt)
-        self.result = evt
+            evt = dict(message="complete", problem=self.problem,
+                    point=x, value=fx, info=captured_output)
+            EVT_FIT_COMPLETE.send(evt)
+            self.result = evt
+
+        except Exception as exc:
+            tb = "".join(traceback.TracebackException.from_exception(exc).format())
+            evt = dict(message="error", error_string=str(exc), traceback=tb)
+            EVT_FIT_COMPLETE.send(evt)

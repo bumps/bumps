@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Optional, Dict, List, Tuple, Any, Literal, cas
 import json
 import pickle
 from queue import Queue
+from threading import Event
 from bumps.serialize import from_dict, from_dict_threaded, to_dict
 import numpy as np
 import warnings
@@ -259,9 +260,11 @@ class State:
     fitting: FittingState
     topics: TopicsDict
     fit_thread: Optional['FitThread'] = None
-    fit_stopped_future: Optional[asyncio.Future] = None
+    fit_abort: Optional[Event] = None
+    fit_abort_event: Event
+    fit_complete_event: Event
     calling_loop: Optional[asyncio.AbstractEventLoop] = None
-    abort_queue: Queue
+    fit_enabled: Event
     session_file_name: Optional[str]
 
     _session_file: "File"
@@ -269,7 +272,8 @@ class State:
     def __init__(self, session_file_name: Optional[str] = None):
         # self.problem = problem
         # self.fitting = fitting if fitting is not None else FittingState()
-        self.abort_queue = Queue()
+        self.fit_abort_event = Event()
+        self.fit_complete_event = Event()
         self.setup_backing(session_file_name)
 
     def __enter__(self):
