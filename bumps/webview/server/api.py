@@ -284,15 +284,12 @@ def get_chisq(problem: bumps.fitproblem.FitProblem, nllf=None):
 def get_num_steps(fitter_id: str, num_fitparams: int, options: Optional[Dict] = None):
     options = FITTER_DEFAULTS[fitter_id] if options is None else options
     steps = options['steps']
-    burn = options['burn']
-    if fitter_id == 'dream' and steps == 0:
-        print('dream: ', options)
-        total_pop = options['pop'] * num_fitparams
-        print('total_pop: ', total_pop)
-        steps = int(options['samples'] / total_pop)
-        print('sample_steps: ', steps)
-        print('steps: ', options['burn'] + steps)
-    return burn + steps
+    if fitter_id == 'dream':
+        if steps == 0:
+            total_pop = options['pop'] * num_fitparams
+            steps = int(options['samples'] / total_pop)
+        steps += options['burn']
+    return steps
 
 def get_running_loop():
     try:
