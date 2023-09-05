@@ -347,6 +347,9 @@ def read_uncertainty_state(loaded: UncertaintyState, skip=0, report=0, derived_v
 
     # Guess dimensions
     Ngen = loaded.gen_draws.shape[0]
+    if Ngen == 0:
+        # no uncertainty state has been written
+        return None
     thinning = 1
     Nthin, Npop, Nvar = loaded.thin_point.shape
     Nupdate, Ncr = loaded.update_CR_weight.shape
