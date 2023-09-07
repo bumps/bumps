@@ -101,6 +101,11 @@ async def set_problem(problem: bumps.fitproblem.FitProblem, path: Optional[Path]
     await publish("update_model", True)
     await publish("update_parameters", True)
     await publish("model_loaded", {"pathlist": pathlist, "filename": filename})
+    await emit("add_notification", {
+        "title": "Model loaded:",
+        "content": str(path),
+        "timeout": 2000,
+    })
 
 
 @register
