@@ -65,6 +65,9 @@ class State:
     def setup_backing(self, session_file_name: Optional[str] = SESSION_FILE_NAME, read_only: bool = False ):
         self.session_file_name = session_file_name
 
+    def save(self):
+        pass
+
     def copy_session_file(self, session_copy_name: str):
         pass
 
