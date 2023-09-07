@@ -96,7 +96,6 @@ async def set_problem(problem: bumps.fitproblem.FitProblem, path: Optional[Path]
     state.problem.fitProblem = problem
     pathlist = list(path.parts) if path is not None else []
     path_string = "(no path)" if path is None else str(path / filename)
-    print(f'model loaded: {path_string}')
     await log(f'model loaded: {path_string}')
     await publish("update_model", True)
     await publish("update_parameters", True)
@@ -106,6 +105,7 @@ async def set_problem(problem: bumps.fitproblem.FitProblem, path: Optional[Path]
         "content": str(path),
         "timeout": 2000,
     })
+    state.save()
 
 
 @register
@@ -149,6 +149,8 @@ async def load_session(pathlist: List[str], filename: str):
     state.setup_backing(str(path / filename))
     await publish("update_model", True)
     await publish("update_parameters", True)
+    if state.problem.filename is not None and state.problem.pathlist is not None:
+        await publish("model_loaded", {"pathlist": pathlist, "filename": filename})
 
 @register
 async def get_serializer():
@@ -353,6 +355,7 @@ async def start_fit_thread(fitter_id: str="", options=None, terminate_on_finish=
         await emit("fit_progress", {}) # clear progress
         await publish("fit_active", to_json_compatible_dict(dict(fitter_id=fitter_id, options=options, num_steps=num_steps)))
         await log(json.dumps(to_json_compatible_dict(options), indent=2), title = f"starting fitter {fitter_id}")
+        state.save()
         if CAN_THREAD:
             fit_thread.start()
         else:
@@ -389,6 +392,7 @@ async def _fit_progress_handler(event: Dict):
     elif message == 'uncertainty_update' or message == 'uncertainty_final':
         state.fitting.uncertainty_state = cast(bumps.dream.state.MCMCDraw, event["uncertainty_state"])
         await publish("uncertainty_update", True)
+        state.save()
 
 async def _fit_complete_handler(event):
     print("complete event: ", event.get("message", ""))
@@ -739,6 +743,7 @@ async def get_fitter_defaults(*args):
 async def shutdown():
     print("killing...")
     await stop_fit()
+    state.save()
     await emit("server_shutting_down")
     shutdown_result = asyncio.gather(_shutdown(), return_exceptions=True)
 
