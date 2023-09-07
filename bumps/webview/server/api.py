@@ -12,6 +12,7 @@ from pathlib import Path, PurePath
 import json
 from copy import deepcopy
 import sys
+import uuid
 
 from bumps.fitters import DreamFit, LevenbergMarquardtFit, SimplexFit, DEFit, MPFit, BFGSFit, FitDriver, fit, nllf_scale, format_uncertainty
 from bumps.mapper import MPMapper
@@ -173,14 +174,20 @@ async def export_results(export_path: Union[str, List[str]]=""):
     if not isinstance(export_path, list):
         export_path = [export_path]
     path = Path(*export_path)
-    await emit("export_started", str(path))
+    notification_id = uuid.uuid4().hex
+    export_notification = {
+        "title": "Export started",
+        "content": f"<span>{str(path)}</span>",
+        "id": notification_id,
+    }
+    await emit("add_notification", export_notification)
     if CAN_THREAD:
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(_export_results, path, problem, uncertainty_state)
             await asyncio.wrap_future(future)
     else:
         _export_results(path, problem, uncertainty_state)
-    await emit("export_completed", str(path))
+    await emit("cancel_notification", notification_id)
 
 
 def _export_results(path: Path, problem: bumps.fitproblem.FitProblem, uncertainty_state: Optional[bumps.dream.state.MCMCDraw]):
