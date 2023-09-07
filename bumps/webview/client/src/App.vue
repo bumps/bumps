@@ -40,7 +40,7 @@ const active_layout = ref("left-right");
 const active_panel = ref([0, 1]);
 const fit_active = ref<{ fitter_id?: string, options?: {}, num_steps?: number }>({});
 const fit_progress = ref<{ chisq?: string, step?: number, value?: number }>({});
-const notification = ref({show: false, title: "", content: ""});
+const notifications = ref<{title: string, content: string, id: string, spinner: boolean}[]>([]);
 const nativefs = ref<{syncfs: Function}>();
 
 // Create a SocketIO connection, to be passed to child components
@@ -87,17 +87,22 @@ socket.on('fit_progress', (event) => {
   fit_progress.value = event;
 });
 
-socket.on('export_started', (filename) => {
-  notification.value.title = "Exporting Results";
-  notification.value.content = `
-  <span>${filename}</span>
-  <div class="spinner-border spinner-border-sm text-primary" role="status">
-    <span class="visually-hidden">Exporting...</span>
-  </div>`;
-  notification.value.show = true;
-})
+socket.on('add_notification', ({title, content, id, timeout}: {title: string, content: string, id: string, timeout?: number}) => {
+  const has_timeout = (timeout !== undefined);
+  notifications.value.push({title, content, id, spinner: !has_timeout});
+  if (has_timeout) {
+    setTimeout(cancelNotification, timeout, id);
+  }
+});
 
-socket.on('export_completed', () => {notification.value.show = false});
+function cancelNotification(id: string) {
+  const index = notifications.value.findIndex(({id: item_id}) => (item_id === id));
+  if (index > -1) {
+    notifications.value.splice(index, 1);
+  }
+}
+
+socket.on('cancel_notification', cancelNotification);
 
 function disconnect() {
   socket.disconnect();
@@ -459,13 +464,18 @@ onMounted(() => {
     :callback="fileBrowserSettings.callback" />
   <ServerShutdown :socket="socket" />
   <ServerStartup :socket="socket" />
-  <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
-    <div id="toast" class="toast" :class="{show: notification.show}" role="alert" aria-live="assertive" aria-atomic="true">
+  <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div v-for="notification in notifications" :key="notification.id" class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
       <div class="toast-header">
         <strong class="me-auto">{{notification.title}}</strong>
-        <button type="button" class="btn-close" @click="notification.show=false" data-bs-dismiss="toast" aria-label="Close"></button>
+        <button type="button" class="btn-close" @click="cancelNotification(notification.id)" data-bs-dismiss="toast" aria-label="Close"></button>
       </div>
-      <div class="toast-body" v-html="notification.content"></div>
+      <div class="toast-body">
+        <div v-html="notification.content"></div>
+        <div v-if="notification.spinner" class="spinner-border spinner-border-sm text-primary" role="status">
+          <span class="visually-hidden">{{ notification.title }} ongoing...</span>
+        </div>
+      </div>
     </div>
   </div>
 </template>
