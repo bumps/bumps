@@ -52,9 +52,7 @@ const sio_base_path = urlParams.get('base_path') ?? window.location.pathname;
 const sio_server = urlParams.get('server') ?? '';
 
 const socket = io(sio_server, {
-    // this is mostly here to test what happens on server fail:
    path: `${sio_base_path}socket.io`,
-   reconnectionAttempts: 10
 }) as AsyncSocket;
 
 const can_mount_local = (
