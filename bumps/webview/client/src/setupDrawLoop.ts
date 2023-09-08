@@ -1,4 +1,4 @@
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { ref, onActivated, onDeactivated } from 'vue';
 import type { AsyncSocket } from './asyncSocket';
 
 type Message = {
@@ -36,7 +36,7 @@ export function setupDrawLoop(topic: string, socket: AsyncSocket, draw: Function
     window.requestAnimationFrame(draw_if_needed);
   }
 
-  onMounted(async () => {
+  onActivated(async () => {
     mounted.value = true;
     socket.on(topic, topic_callback);
 
@@ -49,7 +49,7 @@ export function setupDrawLoop(topic: string, socket: AsyncSocket, draw: Function
     window.requestAnimationFrame(draw_if_needed);
   });
 
-  onBeforeUnmount(() => { 
+  onDeactivated(() => {
     mounted.value = false;
     socket.off(topic, topic_callback);
   });

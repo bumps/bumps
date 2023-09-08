@@ -30,7 +30,9 @@ function setActive(index: number) {
     </li>
   </ul>
   <div class="tab-content d-flex flex-column flex-grow-1 overflow-auto">
+    <KeepAlive>
       <component :is="panels[active_panel].component" :socket="props.socket"></component>
+    </KeepAlive>
   </div>
 </template>
 
