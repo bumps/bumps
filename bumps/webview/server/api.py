@@ -487,10 +487,11 @@ async def get_convergence_plot():
         c = bumps.plotutil.coordinated_colors(base=(0.4,0.8,0.2))
         cp = dict((k, f"rgba({','.join([str(int(cmp*255)) for cmp in cc])})") for k,cc in c.items())
         fig = go.Figure()
+        hovertemplate = "(%{{x}}, %{{y}})<br>{label}<extra></extra>"
         if npop==5:
-            fig.add_trace(go.Scatter(x=iternum[tail:], y=pop[tail:,3], mode="lines", line_width=0, showlegend=False))
-            fig.add_trace(go.Scatter(x=iternum[tail:], y=pop[tail:,1], fill="tonexty", mode="lines", line_color=cp["light"], line_width=0, showlegend=False))
-            fig.add_trace(go.Scatter(x=iternum[tail:], y=pop[tail:,2], name="80% range", mode="lines", line_color=cp["base"]))
+            fig.add_trace(go.Scatter(x=iternum[tail:], y=pop[tail:,3], mode="lines", line_color=cp["light"], line_width=0, showlegend=False, hovertemplate=hovertemplate.format(label="90%")))
+            fig.add_trace(go.Scatter(x=iternum[tail:], y=pop[tail:,1], name="80% range", fill="tonexty", mode="lines", line_color=cp["light"], line_width=0, hovertemplate=hovertemplate.format(label="10%")))
+            fig.add_trace(go.Scatter(x=iternum[tail:], y=pop[tail:,2], name="median", mode="lines", line_color=cp["base"], opacity=0.6))
 
         fig.add_trace(go.Scatter(x=iternum[tail:], y=best[tail:], name="best", line_color=cp["dark"], mode="lines"))
         fig.update_layout(template="simple_white", legend=dict(x=1,y=1,xanchor="right",yanchor="top"))
