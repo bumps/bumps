@@ -458,8 +458,15 @@ async def get_data_plot():
     end_time = time.time()
     print("time to draw data plot:", end_time - start_time)
     return {"fig_type": "mpld3", "plotdata": dfig}
-    
 
+
+@register
+async def set_model(serialized):
+    fitProblem = deserialize_problem(serialized, method='dataclass')
+    state.problem.fitProblem = fitProblem
+    await publish("update_model", True)
+    await publish("update_parameters", True)
+ 
 @register
 async def get_model():
     if state.problem is None or state.problem.fitProblem is None:
