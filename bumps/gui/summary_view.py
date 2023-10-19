@@ -112,7 +112,7 @@ class SummaryView(scrolled.ScrolledPanel):
 
     def _update_model(self):
         #print "drawing"
-        self.parameters = self.model._parameters
+        self.parameters = self.model._parameters if self.model is not None else []
         self.sizer.Clear(True)
         #self.sizer.Clear()
         self.display_list = []
