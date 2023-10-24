@@ -91,19 +91,28 @@ async def load_problem_file(pathlist: List[str], filename: str):
     state.problem.pathlist = pathlist
     await set_problem(problem, Path(*pathlist), filename)
 
-async def set_problem(problem: bumps.fitproblem.FitProblem, path: Optional[Path] = None, filename: str = ""):
+
+@register
+async def set_serialized_problem(serialized):
+    fitProblem = deserialize_problem(serialized, method='dataclass')
+    await set_problem(fitProblem, update=True);
+ 
+
+async def set_problem(problem: bumps.fitproblem.FitProblem, path: Optional[Path] = None, filename: str = "", update: bool = False):
     state.problem.fitProblem = problem
-    pathlist = list(path.parts) if path is not None else []
-    path_string = "(no path)" if path is None else str(path / filename)
-    await log(f'model loaded: {path_string}')
     await publish("update_model", True)
     await publish("update_parameters", True)
-    await publish("model_loaded", {"pathlist": pathlist, "filename": filename})
-    await emit("add_notification", {
-        "title": "Model loaded:",
-        "content": str(path),
-        "timeout": 2000,
-    })
+
+    if not update:
+        pathlist = list(path.parts) if path is not None else []
+        path_string = "(no path)" if path is None else str(path / filename)
+        await log(f'model loaded: {path_string}')
+        await publish("model_loaded", {"pathlist": pathlist, "filename": filename})
+        await emit("add_notification", {
+            "title": "Model loaded:",
+            "content": str(path),
+            "timeout": 2000,
+        })
     state.save()
 
 
@@ -457,7 +466,6 @@ async def get_data_plot():
     end_time = time.time()
     print("time to draw data plot:", end_time - start_time)
     return {"fig_type": "mpld3", "plotdata": dfig}
-    
 
 @register
 async def get_model():
