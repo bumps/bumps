@@ -19,7 +19,6 @@ from bumps.mapper import MPMapper
 from bumps.parameter import Parameter, Variable, unique
 import bumps.cli
 import bumps.fitproblem
-import bumps.plotutil
 import bumps.dream.views, bumps.dream.varplot, bumps.dream.stats, bumps.dream.state
 import bumps.errplot
 
@@ -484,16 +483,15 @@ async def get_convergence_plot():
         iternum = np.arange(1,ni+1)
         tail = int(0.25*ni)
 
-        c = bumps.plotutil.coordinated_colors(base=(0.4,0.8,0.2))
-        cp = dict((k, f"rgba({','.join([str(int(cmp*255)) for cmp in cc])})") for k,cc in c.items())
         fig = go.Figure()
         hovertemplate = "(%{{x}}, %{{y}})<br>{label}<extra></extra>"
         if npop==5:
-            fig.add_trace(go.Scatter(x=iternum[tail:], y=pop[tail:,3], mode="lines", line_color=cp["light"], line_width=0, showlegend=False, hovertemplate=hovertemplate.format(label="90%")))
-            fig.add_trace(go.Scatter(x=iternum[tail:], y=pop[tail:,1], name="80% range", fill="tonexty", mode="lines", line_color=cp["light"], line_width=0, hovertemplate=hovertemplate.format(label="10%")))
-            fig.add_trace(go.Scatter(x=iternum[tail:], y=pop[tail:,2], name="median", mode="lines", line_color=cp["base"], opacity=0.6))
+            fig.add_trace(go.Scattergl(x=iternum[tail:], y=pop[tail:,3], mode="lines", line_color="lightgreen", line_width=0, showlegend=False, hovertemplate=hovertemplate.format(label="80%")))
+            fig.add_trace(go.Scattergl(x=iternum[tail:], y=pop[tail:,1], name="20% to 80% range", fill="tonexty", mode="lines", line_color="lightgreen", line_width=0, hovertemplate=hovertemplate.format(label="20%")))
+            fig.add_trace(go.Scattergl(x=iternum[tail:], y=pop[tail:,2], name="population median", mode="lines", line_color="green", opacity=0.5))
+            fig.add_trace(go.Scattergl(x=iternum[tail:], y=pop[tail:,0], name="population best", mode="lines", line=dict(color="green", dash="dot")))
 
-        fig.add_trace(go.Scatter(x=iternum[tail:], y=best[tail:], name="best", line_color=cp["dark"], mode="lines"))
+        fig.add_trace(go.Scatter(x=iternum[tail:], y=best[tail:], name="best", line=dict(color="red", width=1), mode="lines"))
         fig.update_layout(template="simple_white", legend=dict(x=1,y=1,xanchor="right",yanchor="top"))
         fig.update_layout(title=dict(text="Convergence", xanchor="center", x=0.5))
         fig.update_xaxes(title="iteration number")
