@@ -29,7 +29,7 @@ async function fetch_and_draw(latest_timestamp: string) {
   let { timestamp, plotdata } = cache[title] as { timestamp: string, plotdata: Plotly.PlotlyDataLayoutConfig } ?? {};
   if (timestamp !== latest_timestamp) {
     console.log("fetching new uncertainty plot", timestamp, latest_timestamp);
-    const payload = await props.socket.asyncEmit('get_uncertainty_plot') as Plotly.PlotlyDataLayoutConfig;
+    const payload = await props.socket.asyncEmit('get_uncertainty_plot', latest_timestamp) as Plotly.PlotlyDataLayoutConfig;
     plotdata = { ...payload };
     cache[title] = {timestamp: latest_timestamp, plotdata};
   }
