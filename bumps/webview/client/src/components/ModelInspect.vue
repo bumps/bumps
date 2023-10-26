@@ -27,14 +27,16 @@ setupDrawLoop('update_parameters', props.socket, fetch_and_draw);
 props.socket.on('model_loaded', () => { fetch_and_draw('', true) });
 
 async function fetch_and_draw(timestamp: string = '', reset: boolean = false) {
-  const payload = await props.socket.asyncEmit('get_model') as json;
+  const payload = await props.socket.asyncEmit('get_model') as ArrayBuffer;
+  const json_bytes = new Uint8Array(payload);
+  const json_value: json = JSON.parse(decoder.decode(json_bytes));
   if (reset) {
-    modelJson.value = payload;
+    modelJson.value = json_value;
   }
   else {
     // do update of existing model:
     const old_model: json = modelJson.value as Record<string, any>;
-    const new_model: json = payload as Record<string, any>;
+    const new_model: json = json_value as Record<string, any>;
     const diff = getDiff(old_model, new_model);
     for (let [path, oldval, newval] of diff.edited) {
       const { target, parent, key } = resolve_diffpath(old_model, path);
@@ -52,11 +54,7 @@ async function fetch_and_draw(timestamp: string = '', reset: boolean = false) {
 const decoder = new TextDecoder('utf-8');
 
 onMounted(() => {
-  props.socket.asyncEmit('get_model', (payload: ArrayBuffer) => {
-    const json_bytes = new Uint8Array(payload);
-    const json_value: json = JSON.parse(decoder.decode(json_bytes));
-    modelJson.value = json_value;
-  });
+  fetch_and_draw('', true);
 })
 
 // function* traverse(o: object, path: string[]=[]) {
