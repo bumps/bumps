@@ -9,6 +9,8 @@ import asyncio
 import socketio
 from pathlib import Path
 import json
+import re
+import sys
 
 import matplotlib
 matplotlib.use("agg")
@@ -138,6 +140,14 @@ def setup_sio_api():
     for (name, action) in api.REGISTRY.items():
         sio.on(name, handler=wrap_with_sid(action))
 
+def get_absolute_path(path_in=None):
+    path = Path(path_in) if path_in is not None else Path()
+    abs_pathlist = list(path.absolute().parts)
+    if sys.platform == 'win32':
+        print(abs_pathlist)
+        abs_pathlist[0] = re.sub(r'^([A-Z]):\\$', r'\\\\?\\\1:\\', abs_pathlist[0])
+    return Path(*abs_pathlist)
+
 def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPTIONS_CLASS()):
     # check if the locally-build site has the correct version:
     with open(CLIENT_PATH / 'package.json', 'r') as package_json:
@@ -192,7 +202,7 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
     #     fitter_settings["steps"] = args.steps
 
     if options.filename is not None:
-        filepath = Path(options.filename).absolute()
+        filepath = get_absolute_path(options.filename)
         pathlist = list(filepath.parent.parts)
         filename = filepath.name
         start = options.start
@@ -224,7 +234,7 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
     app.on_shutdown.append(lambda App: notice("shutdown complete"))
 
     # set initial path to cwd:
-    api.state.problem.pathlist = list(Path().absolute().parts)
+    api.state.problem.pathlist = list(get_absolute_path().parts)
     app.add_routes(routes)
     hostname = 'localhost' if not options.external else '0.0.0.0'
 
