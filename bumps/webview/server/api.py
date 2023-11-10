@@ -721,6 +721,8 @@ async def get_dirlisting(pathlist: Optional[List[str]]=None):
     subfolders = []
     files = []
     for p in Path(*pathlist).iterdir():
+        if not p.exists():
+            continue
         stat = p.stat()
         mtime = stat.st_mtime
         fileinfo = {
