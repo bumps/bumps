@@ -91,7 +91,7 @@ jobs:
             body: "A persistent prerelease where build artifacts for the current tip will be deposited\n\n## Last updated: " + (new Date()).toDateString()
           });
           // delete existing release assets (if needed) and upload new ones:
-          const to_update = ["Refl1D-windows-exe-${{ env.branch_name }}.tar.gz", "Refl1D-${{ env.branch_name }}-self-extracting.exe"];
+          const to_update = ["Bumps-windows-exe-${{ env.branch_name }}.tar.gz", "Bumps-${{ env.branch_name }}-self-extracting.exe"];
           for (let fn of to_update) {
             let asset_id = (sid_release.data.assets.find((a) => (a.name == fn)) ?? {}).id;
             if (asset_id) {
