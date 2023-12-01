@@ -580,7 +580,7 @@ class FitProblem(FitProblemSchema):
         self.dof = self.model_points()
         self.dof -= len(self._parameters)
         if self.dof <= 0:
-            raise ValueError("Need more data points than fitting parameters")
+            warnings.warn(f"Need more data points (currently: {self.model_points()}) than fitting parameters ({len(self._parameters)})")
         #self.constraints = pars.constraints()
         # Find the constraints on variables and expressions that we need to compute
         # parameter_constraints = [p.slot for p in all_parameters if isinstance(p.slot, Variable) and p.has_prior()]
