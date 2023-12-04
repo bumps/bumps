@@ -278,5 +278,8 @@ async def start_app(options: OPTIONS_CLASS = OPTIONS_CLASS(), sock: socket.socke
     runsock = setup_app(options=options, sock=sock)
     await web._run_app(app, sock=runsock)
 
+def create_server_task():
+    return asyncio.create_task(start_app())
+
 if __name__ == '__main__':
     main()
