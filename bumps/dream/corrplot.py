@@ -41,12 +41,13 @@ class Corr2d(object):
     def R(self):
         return np.corrcoef(self.data)
 
-    def __getitem__(self, i, j):
+    def __getitem__(self, key):
         """
         Retrieve correlation histogram for data[i] X data[j].
 
         Returns bin i edges, bin j edges, and histogram
         """
+        i, j = key
         return self.hists[i, j]
 
     def plot(self, title=None):
