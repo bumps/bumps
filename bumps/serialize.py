@@ -204,11 +204,14 @@ def save_file(filename, problem):
 def load_file(filename):
     with open(filename, 'r') as fid:
         serialized: SerializedObject = json.loads(fid.read())
-        return deserialize(serialized)
+        final_version, migrated = migrate(serialized)
+        print("final version: ", final_version)
+        return deserialize(migrated)
     
 #### MIGRATIONS
-
-
+def validate_version(version: str, variable_name="from_version"):
+    if version not in list(SCHEMA_VERSIONS):
+        raise ValueError(f"must choose a valid {variable_name} from this list: {[s.value for s in SCHEMA_VERSIONS]}")
 
 def migrate(serialized: dict, from_version: Optional[SCHEMA_VERSIONS] = None, to_version: Optional[SCHEMA_VERSIONS] = SCHEMA):
     """
@@ -219,4 +222,44 @@ def migrate(serialized: dict, from_version: Optional[SCHEMA_VERSIONS] = None, to
     Also by default, the target version is the current schema, which can be overriden with
     the `to_version` keyword argument
     """
-    pass
+
+    if from_version is None:
+        from_version = serialized.get("$schema", SCHEMA_VERSIONS.REFL1D_DRAFT_O1) # fall back to first version if not specified
+
+    validate_version(from_version, "from_version")
+    validate_version(to_version, "to_version")
+
+    current_version = from_version
+    while current_version != to_version:
+        print(f"migrating {current_version}...")
+        current_version, serialized = MIGRATIONS[current_version](serialized)
+
+    return current_version, serialized
+
+
+def _migrate_draft_01_to_draft_02(serialized: dict):
+    references = {}
+    def build_references(obj):
+        if isinstance(obj, dict):
+            obj = obj.copy()
+            t: str = obj.get('type', MISSING)
+            obj_id: str = obj.get("id", MISSING)
+            if obj_id is not MISSING and not t in [MISSING, REFERENCE_TYPE_NAME]:
+                references.setdefault(obj_id, obj)
+            for v in obj.values():
+                build_references(v)
+        elif isinstance(obj, list):
+            for v in obj:
+                build_references(v)
+
+    build_references(serialized)
+    migrated = {
+        "$schema": SCHEMA_VERSIONS.REFL1D_DRAFT_02.value,
+        "object": serialized,
+        "references": references,
+    }
+    return SCHEMA_VERSIONS.REFL1D_DRAFT_02, migrated
+
+MIGRATIONS = {
+    SCHEMA_VERSIONS.REFL1D_DRAFT_O1: _migrate_draft_01_to_draft_02
+}
