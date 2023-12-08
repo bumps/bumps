@@ -16,6 +16,14 @@ from collections import defaultdict
 from .util import SCHEMA_ATTRIBUTE_NAME, NumpyArray
 
 DEBUG = False
+
+class SCHEMA_VERSIONS(str, Enum):
+    REFL1D_DRAFT_O1 = "refl1d-draft-01"
+    REFL1D_DRAFT_02 = "refl1d-draft-02"
+
+SCHEMA = SCHEMA_VERSIONS.REFL1D_DRAFT_02
+REFERENCES_KEY = "references"
+REFERENCE_IDENTIFIER = "$ref"
 MISSING = object()
 REFERENCE_TYPE_NAME = "Reference"
 REFERENCE_TYPE = Literal["Reference"]
@@ -122,10 +130,6 @@ def _find_ref_dependencies(obj, dependencies: set):
 
 #### end deserializer helpers
 
-SCHEMA = "refl1d-draft-02"
-REFERENCES_KEY = "references"
-REFERENCE_IDENTIFIER = "$ref"
-
 def serialize(obj, use_refs=True):
     references = {}
 
@@ -200,3 +204,18 @@ def load_file(filename):
     with open(filename, 'r') as fid:
         serialized: SerializedObject = json.loads(fid.read())
         return deserialize(serialized)
+    
+#### MIGRATIONS
+
+
+
+def migrate(serialized: dict, from_version: Optional[SCHEMA_VERSIONS] = None, to_version: Optional[SCHEMA_VERSIONS] = SCHEMA):
+    """
+    Migrate a serialized object from one version to another 
+    By default, the `from_version` is determined by inspection of the serialized object.
+    This is overriden by setting the `from_version` keyword argument to a member of `SCHEMA_VERSIONS`
+
+    Also by default, the target version is the current schema, which can be overriden with
+    the `to_version` keyword argument
+    """
+    pass
