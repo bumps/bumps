@@ -19,10 +19,10 @@ from .util import SCHEMA_ATTRIBUTE_NAME, schema, NumpyArray
 DEBUG = False
 
 class SCHEMA_VERSIONS(str, Enum):
-    REFL1D_DRAFT_O1 = "refl1d-draft-01"
-    REFL1D_DRAFT_02 = "refl1d-draft-02"
+    BUMPS_DRAFT_O1 = "bumps-draft-01"
+    BUMPS_DRAFT_02 = "bumps-draft-02"
 
-SCHEMA = SCHEMA_VERSIONS.REFL1D_DRAFT_02
+SCHEMA = SCHEMA_VERSIONS.BUMPS_DRAFT_02
 REFERENCES_KEY = "references"
 REFERENCE_IDENTIFIER = "$ref"
 MISSING = object()
@@ -224,7 +224,7 @@ def migrate(serialized: dict, from_version: Optional[SCHEMA_VERSIONS] = None, to
     """
 
     if from_version is None:
-        from_version = serialized.get("$schema", SCHEMA_VERSIONS.REFL1D_DRAFT_O1) # fall back to first version if not specified
+        from_version = serialized.get("$schema", SCHEMA_VERSIONS.BUMPS_DRAFT_O1) # fall back to first version if not specified
 
     validate_version(from_version, "from_version")
     validate_version(to_version, "to_version")
@@ -254,12 +254,12 @@ def _migrate_draft_01_to_draft_02(serialized: dict):
 
     build_references(serialized)
     migrated = {
-        "$schema": SCHEMA_VERSIONS.REFL1D_DRAFT_02.value,
+        "$schema": SCHEMA_VERSIONS.BUMPS_DRAFT_02.value,
         "object": serialized,
         "references": references,
     }
-    return SCHEMA_VERSIONS.REFL1D_DRAFT_02, migrated
+    return SCHEMA_VERSIONS.BUMPS_DRAFT_02, migrated
 
 MIGRATIONS = {
-    SCHEMA_VERSIONS.REFL1D_DRAFT_O1: _migrate_draft_01_to_draft_02
+    SCHEMA_VERSIONS.BUMPS_DRAFT_O1: _migrate_draft_01_to_draft_02
 }
