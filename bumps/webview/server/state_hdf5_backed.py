@@ -8,7 +8,7 @@ import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional, TYPE_CHECKING
 from threading import Event
-from bumps.serialize import from_dict, from_dict_threaded, to_dict
+from bumps.serialize import serialize, deserialize
 import h5py
 import numpy as np
 
@@ -39,8 +39,9 @@ DEFAULT_SERIALIZER: SERIALIZERS = "dill"
 
 def serialize_problem(problem: 'bumps.fitproblem.FitProblem', method: SERIALIZERS):
     if method == 'dataclass':
-        return json.dumps(to_dict(problem)).encode()
+        return json.dumps(serialize(problem)).encode()
     elif method == 'pickle':
+        import pickle
         return pickle.dumps(problem)
     elif method == 'dill':
         import dill
@@ -48,8 +49,9 @@ def serialize_problem(problem: 'bumps.fitproblem.FitProblem', method: SERIALIZER
 
 def deserialize_problem(serialized: bytes, method: SERIALIZERS):
     if method == 'dataclass':
-        return from_dict_threaded(json.loads(serialized))
+        return deserialize(json.loads(serialized))
     elif method == 'pickle':
+        import pickle
         return pickle.loads(serialized)
     elif method == 'dill':
         import dill
