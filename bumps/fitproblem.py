@@ -663,11 +663,13 @@ class FitProblem(FitProblemSchema):
             show_parameters(f, subs=subs)
         print("[overall chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
 
-    def plot(self, p=None, fignum=1, figfile=None, view=None):
+    def plot(self, p=None, fignum=1, figfile=None, view=None, model_indices=None):
         import pylab
         if p is not None:
             self.setp(p)
         for i, f in enumerate(self.models):
+            if model_indices is not None and i not in model_indices:
+                continue
             if not hasattr(f, 'plot'):
                 continue
             f.plot(view=view)

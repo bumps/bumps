@@ -448,7 +448,7 @@ async def log(message: str, title: Optional[str] = None):
     await publish("log", {"message": message, "title": title})
 
 @register
-async def get_data_plot():
+async def get_data_plot(model_indices: Optional[List[int]] = None):
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = state.problem.fitProblem
@@ -460,12 +460,19 @@ async def get_data_plot():
     start_time = time.time()
     print('queueing new data plot...', start_time)
     fig = plt.figure()
-    fitProblem.plot()
+    fitProblem.plot(model_indices)
     dfig = mpld3.fig_to_dict(fig)
     plt.close(fig)
     end_time = time.time()
     print("time to draw data plot:", end_time - start_time)
     return {"fig_type": "mpld3", "plotdata": dfig}
+
+@register
+async def get_model_names():
+    problem = state.problem.fitProblem
+    if problem is None:
+        return None
+    return [p.name if p.name is not None else f"model_{i}" for (i,p) in enumerate(problem.models)]
 
 @register
 async def get_model():
