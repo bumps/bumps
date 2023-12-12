@@ -248,14 +248,30 @@ class State:
                 self.write_topics(root_group)
         shutil.move(tmp_name, session_filename)
 
-    def read_session_file(self, session_filename: str):
+    def read_session_file(self, session_filename: str, read_problem: bool = True, read_fitstate: bool = True):
         try:
             with h5py.File(session_filename, 'r') as root_group:
-                self.problem.read(root_group)
-                self.fitting.read(root_group)
+                if read_problem:
+                    self.problem.read(root_group)
+                if read_fitstate:
+                    self.fitting.read(root_group)
                 self.read_topics(root_group)
         except Exception as e:
             print(f"could not load session file {session_filename} because of {e}")
+
+    def read_problem_from_session(self, session_filename: str):
+        try:
+            with h5py.File(session_filename, 'r') as root_group:
+                self.fitting.read(root_group)
+        except Exception as e:
+            print(f"could not load fitProblem from {session_filename} because of {e}")
+
+    def read_fitstate_from_session(self, session_filename: str):
+        try:
+            with h5py.File(session_filename, 'r') as root_group:
+                self.fitting.read(root_group)
+        except Exception as e:
+            print(f"could not load fit state from {session_filename} because of {e}")
 
     def write_topics(self, parent: 'Group'):
         group = parent.require_group('topics')
