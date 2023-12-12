@@ -14,6 +14,7 @@ parts of the model, or different models.
 import operator
 import sys
 import builtins
+from dataclasses import dataclass, field, InitVar
 from functools import reduce
 import warnings
 from copy import copy
@@ -31,7 +32,7 @@ from numpy import inf, isinf, isfinite
 
 from . import bounds as mbounds
 from . import pmath
-from .util import field, field_desc, schema, dataclass
+from .util import field_desc, schema_config
 
 BoundsType = mbounds.BoundsType
 
@@ -78,12 +79,12 @@ def to_dict(p):
         return str(p)
 
 
-@schema(init=True)
+@dataclass(init=False)
 class Uniform:
     """ Uniform distribution with hard boundaries """
 
 
-@schema()
+@dataclass(init=False)
 class Normal:
     """ Normal distribution (Gaussian) """
     std: float = field_desc("standard deviation (1-sigma)")
@@ -94,7 +95,7 @@ class Normal:
 
 # Leave out of schema for now.
 # TODO: determine if this is used by anyone
-#@schema(init=True)
+#@dataclass(init=False)
 class UniformSoftBounded:
     """ Uniform distribution with error-function PDF on boundaries """
     std: float = field_desc("width of the edge distribution")
@@ -143,7 +144,7 @@ class ValueProtocol(OperatorMixin):
         return []
 
 
-@schema()
+@dataclass(init=False)
 class Calculation(ValueProtocol): # the name Function is taken (though deprecated)
     """
     A Parameter with a model-specific, calculated value.
@@ -222,22 +223,9 @@ class SupportsPrior:
         self.prior = prior
 
 
-@schema(classname="Parameter", eq=False)
-class ParameterSchema:
-    """
-    Saved state for a slot in the parameter model.
-    """
-    id: str = field(metadata={"format": "uuid"})
-    name: Optional[str] = field(default=None, init=False)
-    fixed: bool = True
-    slot: Union['Variable', ValueType]
-    limits: Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]] = (-inf, inf)
-    bounds: Optional[Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]] = None
-    distribution: DistributionType = field(default_factory=Uniform)
-    discrete: bool = False
-    tags: List[str] = field(default_factory=list)
-
-class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
+@schema_config()
+@dataclass(init=False)
+class Parameter(ValueProtocol, SupportsPrior):
     """
     A parameter is a container for a symbolic value.
 
@@ -317,7 +305,16 @@ class Parameter(ValueProtocol, ParameterSchema, SupportsPrior):
     # Parameters may be dependent on other parameters, and the
     # fit engine will need to access them.
     #prior: Optional[BoundsType]
-    limits: Tuple[float, float]
+    id: str = field(metadata={"format": "uuid"})
+    name: Optional[str] = field(default=None, init=False)
+    fixed: bool = True
+    slot: Union['Variable', ValueType]
+    limits: Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]] = (-inf, inf)
+    bounds: Optional[Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]] = None
+    distribution: DistributionType = field(default_factory=Uniform)
+    discrete: bool = False
+    tags: List[str] = field(default_factory=list)
+    
     _fixed: bool
 
     def parameters(self):
@@ -688,13 +685,13 @@ class Variable(ValueProtocol):
     Saved state for a random variable in the model.
     """
     value: float
-    def __init__(self, value):
-        self.value = value
+
     def parameters(self):
         return []
 
 
-@schema(frozen=True, init=False)
+@schema_config()
+@dataclass(init=True, frozen=True, eq=False)
 class Constant(ValueProtocol): # type: ignore
     """
     Saved state for an unmodifiable value.
@@ -704,17 +701,11 @@ class Constant(ValueProtocol): # type: ignore
     """
 
     value: float
-    name: Optional[str]
-    id: str = field(metadata={"format": "uuid"})
+    name: Optional[str] = None
+    id: str = field(metadata={"format": "uuid"}, default_factory=lambda: str(uuid.uuid4()))
 
     fittable = False  # class property fixed across all objects
     fixed = True # class property fixed across all objects
-
-    def __init__(self, value: float, name: Optional[str]=None, id: Optional[str]=None):
-        object.__setattr__(self, "value", value)
-        object.__setattr__(self, "name", name)
-        _id = id if id is not None else str(uuid.uuid4())
-        object.__setattr__(self, "id", _id)
 
     def parameters(self):
         return [self]
@@ -821,13 +812,13 @@ OPERATOR_STRING = {
 
 
 def _lookup_operator(op_name):
-    if not hasattr(Operators, op_name) and op_name not in UserFunction.registry:
+    if not hasattr(Operators, op_name) and op_name not in UserFunctionRegistry:
         raise ValueError(f"function {op_name} is not available")
     fn = None
     # Check plugins first so we can override lookups in operator and numpy.
     # This is needed for min/max.
-    if fn is None: # plugin functions from UserFunction registry
-        fn = UserFunction.registry.get(op_name, None)
+    if fn is None: # plugin functions from UserFunctionRegistry
+        fn = UserFunctionRegistry.get(op_name, None)
     if fn is None:
         fn = getattr(operator, op_name, None) # operators from operators
     if fn is None: # math functions from numpy
@@ -847,7 +838,7 @@ def _precedence(obj: Any) -> int:
         return OPERATOR_PRECEDENCE.get(obj.op.name, CALL_PRECEDENCE)
     return VALUE_PRECEDENCE
 
-@schema(init=False, eq=False, frozen=True)
+@dataclass(init=False)
 class Expression(ValueProtocol):
     """
     Parameter expression
@@ -941,7 +932,10 @@ def _build_operator_mixin():
         _make_math_fn(fn_name)
 _build_operator_mixin()
 
+UserFunctionRegistry: Dict[str, Callable[..., float]] = {}
+
 # TODO: allow schema validation on user-defined functions
+@dataclass(init=False)
 class UserFunction:
     """
     User-defined functions.
@@ -955,17 +949,15 @@ class UserFunction:
     validator may fail on one of these functions.
     """
     name: str
-    fn: Callable[..., float]
     # A function registry to remember the code associated with the name.
     # This is a class attribute, so it is initialized with an empty dict().
     # Ignore complaints from lint.
     # TODO: use pmath as our registry of available functions.
-    registry: Dict[str, Callable[..., float]] = {}
     def __init__(self, fn: Callable):
         name = fn.__name__
-        if name in UserFunction.registry:
+        if name in UserFunctionRegistry:
             raise TypeError(f"Function {name} already registered in bumps.")
-        UserFunction.registry[name] = fn
+        UserFunctionRegistry[name] = fn
         self.name = name
 
 def function(fn: Callable):
@@ -1052,16 +1044,14 @@ pmath.__all__.extend((
 #restate these for export, now that they're all defined:
 ValueType = Union[Parameter, Expression, Calculation, float]
 
-@schema(classname="ParameterSet")
-class ParameterSetSchema:
+@dataclass(init=False)
+class ParameterSet:
     """
     A parameter that depends on the model.
     """
     names: Optional[List[str]]
     reference: Parameter
     parameterlist: Optional[List[Parameter]]
-
-class ParameterSet(ParameterSetSchema):
 
     def __init__(self,
             reference: Parameter,
@@ -1225,7 +1215,7 @@ class Reference(Parameter):
         setattr(self.obj, self.attr, value)
 
 
-@schema(init=False)
+@dataclass(init=False)
 class FreeVariables(object):
     """
     A collection of parameter sets for a group of models.
@@ -1509,7 +1499,7 @@ class Comparisons(Enum):
     #ne = '!='
 
 
-@schema(frozen=True)
+@dataclass(init=False)
 class Constraint:
     """ Express inequality constraints between model elements """
 

@@ -54,6 +54,7 @@ __all__ = ['pm', 'pmp', 'pm_raw', 'pmp_raw', 'nice_range', 'init_bounds',
            'Bounds', 'Unbounded', 'Bounded', 'BoundedAbove', 'BoundedBelow',
            'Distribution', 'Normal', 'BoundedNormal', 'SoftBounded']
 
+from dataclasses import dataclass, field
 import math
 from math import log, log10, sqrt, pi, ceil, floor
 
@@ -66,13 +67,13 @@ except ImportError:
     # failure if it doesn't exist.
     pass
 
-from .util import field, schema, Optional, Any, Union, Dict, Callable, Literal, Tuple, List, Literal
+from .util import Optional, Any, Union, Dict, Callable, Literal, Tuple, List, Literal
 
 LimitValue = Union[float, Literal["-inf", "inf"]]
 LimitsType = Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]
 
 # TODO: should we use this in the bounds limits?
-# @schema()
+# @dataclass(init=False)
 # class ExtendedFloat(float):
 #     __root__: Union[float, Literal["inf", "-inf"]]
 #     def __new__(cls, *args, **kw):
@@ -334,7 +335,7 @@ def num_format(v):
         return "NaN"
 
 
-@schema()
+@dataclass(init=False)
 class Unbounded(Bounds):
     """
     Unbounded parameter.
@@ -373,7 +374,7 @@ class Unbounded(Bounds):
         return v
 
 
-@schema()
+@dataclass(init=True)
 class BoundedBelow(Bounds):
     """
     Semidefinite range bounded below.
@@ -394,9 +395,6 @@ class BoundedBelow(Bounds):
     """
     base: float
     type = "BoundedBelow"
-
-    def __init__(self, base):
-        self.base = base
 
     @property
     def limits(self):
@@ -440,7 +438,7 @@ class BoundedBelow(Bounds):
         return x + self.base
 
 
-@schema()
+@dataclass(init=True)
 class BoundedAbove(Bounds):
     """
     Semidefinite range bounded above.
@@ -458,9 +456,6 @@ class BoundedAbove(Bounds):
     that P = 1 in range, and 0 outside.
     """
     base: float
-
-    def __init__(self, base):
-        self.base = base
 
     @property
     def limits(self):
@@ -504,7 +499,7 @@ class BoundedAbove(Bounds):
         return x + self.base
 
 
-@schema()
+@dataclass(init=True)
 class Bounded(Bounds):
     """
     Bounded range.
@@ -525,10 +520,10 @@ class Bounded(Bounds):
     #     lo, hi = limits
     #     return cls(lo, hi)
 
-    def __init__(self, lo, hi):
-        self.lo = lo
-        self.hi = hi
-        self._nllf_scale = log(hi - lo)
+    # def __init__(self, lo, hi):
+    #     self.lo = lo
+    #     self.hi = hi
+    #     self._nllf_scale = log(hi - lo)
 
     @property
     def limits(self):
@@ -617,7 +612,7 @@ class Distribution(Bounds):
             )
 
 
-@schema()
+@dataclass(init=False, frozen=True)
 class Normal(Distribution):
     """
     Parameter is pulled from a normal distribution.
@@ -629,6 +624,9 @@ class Normal(Distribution):
 
     *mean* is the expected value of the parameter and *std* is the 1-sigma
     standard deviation.
+
+    class is 'frozen' because a new object should be created if 
+    `mean` or `std` are changed.
     """
     mean: float = 0.0
     std: float = 1.0
@@ -656,7 +654,7 @@ class Normal(Distribution):
         self.__init__(mean=mean, std=std)
 
 
-@schema()
+@dataclass(init=False, frozen=True)
 class BoundedNormal(Bounds):
     """
     truncated normal bounds
@@ -674,12 +672,14 @@ class BoundedNormal(Bounds):
             -inf if lo is None else float(lo),
             inf if hi is None else float(hi)
         )
-        self.lo, self.hi = limits
-        self.mean, self.std = mean, std
+        object.__setattr__(self, 'lo', limits[0])
+        object.__setattr__(self, 'hi', limits[1])
+        object.__setattr__(self, 'mean', mean)
+        object.__setattr__(self, 'std', std)
 
-        self._left = normal_distribution.cdf((limits[0]-mean)/std)
-        self._delta = normal_distribution.cdf((limits[1]-mean)/std) - self._left
-        self._nllf_scale = log(2 * pi * std ** 2)/2 + log(self._delta)
+        object.__setattr__(self, '_left', normal_distribution.cdf((limits[0]-mean)/std))
+        object.__setattr__(self, '_delta', normal_distribution.cdf((limits[1]-mean)/std) - self._left)
+        object.__setattr__(self, '_nllf_scale', log(2 * pi * std ** 2)/2 + log(self._delta))
 
     @property
     def limits(self):
@@ -760,7 +760,7 @@ class BoundedNormal(Bounds):
         return "(%s,%s), norm(%s,%s)" % tuple(num_format(v) for v in vals)
 
 
-@schema()
+@dataclass(init=False, frozen=True)
 class SoftBounded(Bounds):
     """
     Parameter is pulled from a stretched normal distribution.

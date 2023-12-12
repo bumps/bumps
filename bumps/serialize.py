@@ -12,7 +12,7 @@ import warnings
 import asyncio
 from collections import defaultdict
 
-from .util import SCHEMA_ATTRIBUTE_NAME, schema, NumpyArray
+from .util import SCHEMA_ATTRIBUTE_NAME, NumpyArray
 
 DEBUG = False
 MISSING = object()
@@ -156,8 +156,8 @@ class Serializer:
     def to_dict(self, obj):
         if hasattr(obj, SCHEMA_ATTRIBUTE_NAME):
             schema_opts = getattr(obj, SCHEMA_ATTRIBUTE_NAME)
-            include = schema_opts.get("include")
-            exclude = schema_opts.get("exclude")
+            include = schema_opts.get("include", None)
+            exclude = schema_opts.get("exclude", None)
             if self.use_refs and hasattr(obj, 'id') and obj.id in self.refs:
                 return dict(id=obj.id, type=REFERENCE_TYPE)
             else:
