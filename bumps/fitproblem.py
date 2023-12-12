@@ -58,6 +58,7 @@ import logging
 import warnings
 import builtins
 
+from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
@@ -75,7 +76,7 @@ if 'SPHINXOPTS' in os.environ:
 # Abstract base class:
 # can use "isinstance" to check if a class implements the protocol
 @util.runtime_checkable
-@util.schema(init=False)
+@dataclass(init=False)
 class Fitness(util.Protocol):
     """
     Manage parameters, data, and theory function evaluation.
@@ -173,21 +174,14 @@ def chisq_str(fitness: Fitness) -> str:
     text = format_uncertainty(chisq, None)
     return text
 
-def show_parameters(fitness: Fitness, subs: Optional[util.Dict[util.Any, Parameter]]=None):
+def show_parameters(fitness: Fitness, subs: util.Optional[util.Dict[util.Any, Parameter]]=None):
     """Print the available parameters to the console as a tree."""
     print(parameter.format(fitness.parameters(), freevars=subs))
     print("[chisq=%s, nllf=%g]" % (chisq_str(fitness), fitness.nllf()))
 
-@util.schema(classname="FitProblem", init=False, eq=False)
-class FitProblemSchema:
-    name: util.Optional[str] = None
-    models: util.List[Fitness]
-    freevars: util.Optional[parameter.FreeVariables] = None
-    weights: util.Union[util.List[float], util.Literal[None]] = None
-    constraints: util.Optional[util.Sequence[parameter.Constraint]] = None
-    penalty_nllf: util.Union[float, util.Literal["inf"]] = "inf"
 
-class FitProblem(FitProblemSchema):
+@dataclass(init=False, eq=False)
+class FitProblem:
     r"""
 
         *models* is a sequence of :class:`Fitness` instances.
@@ -229,18 +223,26 @@ class FitProblem(FitProblemSchema):
     linear.
     """  
 
+    name: util.Optional[str]
+    models: util.List[Fitness]
+    freevars: util.Optional[parameter.FreeVariables]
+    weights: util.Union[util.List[float], util.Literal[None]]
+    constraints: util.Optional[util.Sequence[parameter.Constraint]]
+    penalty_nllf: util.Union[float, util.Literal["inf"]]
+
     _constraints_function: util.Callable[..., float]
+    _models: util.List[Fitness]
     _parameters: util.List[Parameter]
     _parameters_by_id: util.Dict[str, Parameter]
-    freevars: parameter.FreeVariables
-    dof: float = np.NaN
+    _dof: float = np.NaN # not a schema field, and is not used in __init__
+
     # _all_constraints: util.List[util.Union[Parameter, Expression]]
 
     def __init__(self, models: util.Union[Fitness, util.List[Fitness]], weights=None, name=None,
                  constraints=None,
                  penalty_nllf="inf",
                  freevars=None,
-                 soft_limit:Optional[float]=None,  # TODO: deprecate,
+                 soft_limit:util.Optional[float]=None,  # TODO: deprecate,
                  auto_tag=False
                  ):
         if not isinstance(models, (list, tuple)):
@@ -280,6 +282,10 @@ class FitProblem(FitProblemSchema):
         if len(self._models) == 1:
             return self._models[0]
         raise ValueError('problem.fitness is not defined')
+
+    @property
+    def dof(self):
+        return self._dof
 
     # TODO: make this @property\ndef models(self): ...
     @property
@@ -577,8 +583,8 @@ class FitProblem(FitProblemSchema):
         self._parameters_by_id = pars_by_id
         # TODO: shimmed to allow non-Parameter in Parameter attribute spots.
         self._bounded = [p for p in all_parameters if hasattr(p, 'has_prior') and p.has_prior()]
-        self.dof = self.model_points()
-        self.dof -= len(self._parameters)
+        self._dof = self.model_points()
+        self._dof -= len(self._parameters)
         if self.dof <= 0:
             warnings.warn(f"Need more data points (currently: {self.model_points()}) than fitting parameters ({len(self._parameters)})")
         #self.constraints = pars.constraints()
