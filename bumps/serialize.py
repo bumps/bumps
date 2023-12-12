@@ -115,7 +115,7 @@ def _instantiate(klass: type, typename: str, serialized: dict):
     return hydrated
 
 def _to_ndarray(obj: dict):
-        return np.asarray(obj['values'], dtype=np.dtype(obj.get('dtype', float)))
+    return np.asarray(obj['values'], dtype=np.dtype(obj.get('dtype', float)))
 
 def _find_ref_dependencies(obj, dependencies: set):
     if isinstance(obj, dict):
