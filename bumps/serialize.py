@@ -17,11 +17,12 @@ from .util import SCHEMA_ATTRIBUTE_NAME, NumpyArray
 DEBUG = False
 MISSING = object()
 REFERENCE_TYPE = "Reference"
+TYPE_KEY = '__class__'
 
 @dataclass
 class Reference:
     id: str
-    type: Literal[REFERENCE_TYPE]
+    __class__: Literal[REFERENCE_TYPE]
 
 class Deserializer(object):
     def __init__(self, loop=None):
@@ -35,7 +36,7 @@ class Deserializer(object):
     async def rehydrate(self, obj):
         if isinstance(obj, dict):
             obj = obj.copy()
-            t: str = obj.pop('type', MISSING)
+            t: str = obj.pop(TYPE_KEY, MISSING)
             if t == REFERENCE_TYPE:
                 obj_id: str = obj.get("id", MISSING)
                 if obj_id is MISSING:
@@ -150,7 +151,7 @@ class Serializer:
         cls = dclass.__class__
         fqn = f"{cls.__module__}.{cls.__qualname__}"
         output = dict([(f.name, self.to_dict(getattr(dclass, f.name))) for f in all_fields])
-        output["type"] = fqn
+        output[TYPE_KEY] = fqn
         return output
 
     def to_dict(self, obj):
@@ -159,7 +160,7 @@ class Serializer:
             include = schema_opts.get("include", None)
             exclude = schema_opts.get("exclude", None)
             if self.use_refs and hasattr(obj, 'id') and obj.id in self.refs:
-                return dict(id=obj.id, type=REFERENCE_TYPE)
+                return {"id": obj.id, TYPE_KEY: REFERENCE_TYPE}
             else:
                 output = self.dataclass_to_dict(obj, include=include, exclude=exclude)
                 if self.use_refs and hasattr(obj, 'id'):
@@ -177,7 +178,7 @@ class Serializer:
             return type(obj)((self.to_dict(k), self.to_dict(v))
                             for k, v in obj.items())
         elif isinstance(obj, np.ndarray) and obj.dtype.kind in ['f', 'i', 'U']:
-            return dict(type="bumps.util.NumpyArray", dtype=str(obj.dtype), values=obj.tolist())
+            return {TYPE_KEY: "bumps.util.NumpyArray", "dtype": str(obj.dtype), "values": obj.tolist()}
         elif isinstance(obj, np.ndarray) and obj.dtype.kind == 'O':
             return self.to_dict(obj.tolist())
         elif isinstance(obj, float):
