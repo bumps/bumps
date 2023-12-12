@@ -6,7 +6,7 @@ from dataclasses import is_dataclass, fields, dataclass
 import graphlib
 import json
 from importlib import import_module
-from typing import Any, Dict, List, Literal, Optional, Tuple, TypeAlias, TypedDict, Union
+from typing import Any, Dict, List, Literal, Optional, Tuple, TypedDict, Union
 from types import GeneratorType
 import traceback
 import warnings
@@ -33,12 +33,12 @@ class Reference:
     id: str
     type: REFERENCE_TYPE
 
-JSON: TypeAlias = dict[str, "JSON"] | list["JSON"] | str | int | float | bool | None 
+JSON = Union[Dict[str, "JSON"], List["JSON"],  str, int, float, bool, None]
 
 class SerializedObject(TypedDict, total=True):
     schema: str
     object: JSON
-    references: dict[str, JSON]
+    references: Dict[str, JSON]
 
 def deserialize(serialized: SerializedObject):
     """ rehydrate all items in serialzed['references'] then 
@@ -65,7 +65,7 @@ def deserialize(serialized: SerializedObject):
     return _rehydrate(serialized['object'], references)
 
 #### deserializer helpers:
-def _rehydrate(obj, references: dict[str, object]):
+def _rehydrate(obj, references: Dict[str, object]):
     if isinstance(obj, dict):
         obj = obj.copy()
         t: str = obj.pop('type', MISSING)
