@@ -27,6 +27,7 @@ REFERENCE_IDENTIFIER = "$ref"
 MISSING = object()
 REFERENCE_TYPE_NAME = "Reference"
 REFERENCE_TYPE = Literal["Reference"]
+TYPE_KEY = "__class__"
 
 @dataclass
 class Reference:
@@ -68,7 +69,7 @@ def deserialize(serialized: SerializedObject):
 def _rehydrate(obj, references: Dict[str, object]):
     if isinstance(obj, dict):
         obj = obj.copy()
-        t: str = obj.pop('type', MISSING)
+        t: str = obj.pop(TYPE_KEY, MISSING)
         if t == REFERENCE_TYPE_NAME:
             obj_id: str = obj.get("id", MISSING)
             if obj_id is MISSING:
@@ -119,7 +120,7 @@ def _to_ndarray(obj: dict):
 
 def _find_ref_dependencies(obj, dependencies: set):
     if isinstance(obj, dict):
-        if obj.get('type', None) == REFERENCE_TYPE:
+        if obj.get(TYPE_KEY, None) == REFERENCE_TYPE:
             dependencies.add(obj['id'])
         else:
             for v in obj.values():
@@ -147,7 +148,7 @@ def serialize(obj, use_refs=True):
         cls = dclass.__class__
         fqn = f"{cls.__module__}.{cls.__qualname__}"
         output = dict([(f.name, obj_to_dict(getattr(dclass, f.name))) for f in all_fields])
-        output["type"] = fqn
+        output[TYPE_KEY] = fqn
         return output
 
     def obj_to_dict(obj):
@@ -241,7 +242,9 @@ def _migrate_draft_01_to_draft_02(serialized: dict):
     def build_references(obj):
         if isinstance(obj, dict):
             obj = obj.copy()
-            t: str = obj.get('type', MISSING)
+            t: str = obj.pop("type", obj.pop(TYPE_KEY, MISSING))
+            if t is not MISSING:
+                obj[TYPE_KEY] = t
             obj_id: str = obj.get("id", MISSING)
             if obj_id is not MISSING and not t in [MISSING, REFERENCE_TYPE_NAME]:
                 references.setdefault(obj_id, obj)
