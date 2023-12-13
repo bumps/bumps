@@ -54,6 +54,15 @@ def next_color():
     import pylab
     lines = pylab.gca()._get_lines
     try:
+        base = lines.get_next_color()
+    except Exception:
+        try: # Cruft 1.7 - 3.7?
+            base = next(lines.prop_cycler)['color']
+        except Exception:
+            try: # Cruft 1.4-1.6?
+                base = next(lines.color_cycle)
+            except Exception:  # Cruft 1.3 and earlier
+                base = lines._get_next_cycle_color()
         base = next(lines.prop_cycler)['color']
     except Exception:
         try: # Cruft 1.4-1.6?
