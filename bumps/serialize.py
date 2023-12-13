@@ -135,7 +135,7 @@ def serialize(obj, use_refs=True):
     references = {}
 
     def make_ref(obj_id: str):
-        return dict(id=obj_id, type=REFERENCE_TYPE_NAME)
+        return {"id": obj_id, TYPE_KEY: REFERENCE_TYPE_NAME}
 
     def dataclass_to_dict(dclass, include=None, exclude=None):
         all_fields = fields(dclass)
@@ -172,7 +172,7 @@ def serialize(obj, use_refs=True):
         elif isinstance(obj, dict):
             return type(obj)((obj_to_dict(k), obj_to_dict(v)) for k, v in obj.items())
         elif isinstance(obj, np.ndarray) and obj.dtype.kind in ['f', 'i', 'U']:
-            return dict(type="bumps.util.NumpyArray", dtype=str(obj.dtype), values=obj.tolist())
+            return {TYPE_KEY: "bumps.util.NumpyArray", "dtype": str(obj.dtype), "values": obj.tolist()}
         elif isinstance(obj, np.ndarray) and obj.dtype.kind == 'O':
             return obj_to_dict(obj.tolist())
         elif isinstance(obj, Enum):
@@ -241,7 +241,6 @@ def _migrate_draft_01_to_draft_02(serialized: dict):
     references = {}
     def build_references(obj):
         if isinstance(obj, dict):
-            obj = obj.copy()
             t: str = obj.pop("type", obj.pop(TYPE_KEY, MISSING))
             if t is not MISSING:
                 obj[TYPE_KEY] = t
