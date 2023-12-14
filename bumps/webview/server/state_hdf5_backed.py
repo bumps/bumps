@@ -41,6 +41,7 @@ def serialize_problem(problem: 'bumps.fitproblem.FitProblem', method: SERIALIZER
     if method == 'dataclass':
         return json.dumps(to_dict(problem)).encode()
     elif method == 'pickle':
+        import pickle
         return pickle.dumps(problem)
     elif method == 'dill':
         import dill
@@ -50,6 +51,7 @@ def deserialize_problem(serialized: bytes, method: SERIALIZERS):
     if method == 'dataclass':
         return from_dict_threaded(json.loads(serialized))
     elif method == 'pickle':
+        import pickle
         return pickle.loads(serialized)
     elif method == 'dill':
         import dill
