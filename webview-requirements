@@ -8,3 +8,4 @@ matplotlib
 nodejs
 h5py
 dill
+graphlib_backport; python_version < '3.9'
