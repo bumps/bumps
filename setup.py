@@ -26,7 +26,7 @@ packages = find_packages(exclude=['amqp_map', 'fit_functions', 'jobqueue'])
 #dependency_check('numpy>=1.0', 'scipy>=0.6', 'matplotlib>=1.0', 'wx>=2.8.9')
 # print bumps.package_data()
 
-scripts = ['bin/bumps.bat'] if os.name == 'nt' else ['bin/bumps']
+scripts = ['bin/bumps.bat'] if os.name == 'nt' else ['bin/bumps', 'bin/bumps-webview']
 #sys.dont_write_bytecode = False
 dist = setup(
     name='bumps',
