@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Button } from 'bootstrap/dist/js/bootstrap.esm.js';
-import { onMounted, ref, shallowRef } from 'vue';
+import { computed, onMounted, ref, shallowRef } from 'vue';
 import { io } from 'socket.io-client';
 import { AsyncSocket } from './asyncSocket';
 import './asyncSocket';  // patch Socket with asyncEmit
@@ -17,6 +17,8 @@ import {
   connected,
   model_loaded,
   notifications,
+  menu_items,
+  socket as socket_ref,
 } from './app_state';
 import FitOptions from './components/FitOptions.vue';
 import PanelTabContainer from './components/PanelTabContainer.vue';
@@ -49,6 +51,7 @@ const sio_server = urlParams.get('server') ?? '';
 const socket = io(sio_server, {
    path: `${sio_base_path}socket.io`,
 }) as AsyncSocket;
+socket_ref.value = socket;
 
 const can_mount_local = (
   ('mountLocal' in socket) && ('showDirectoryPicker' in window)
@@ -291,6 +294,19 @@ async function mountLocal() {
   }
 }
 
+const model_not_loaded = computed(() => (!model_loaded.value));
+menu_items.value = [
+  { text: "Load Problem", action: selectOpenFile },
+  { text: "Save Parameters", action: saveParameters, disabled: model_not_loaded },
+  { text: "Apply Parameters", action: applyParameters, disabled: model_not_loaded },
+  { text: "Save Problem", action: saveFile, disabled: model_not_loaded },
+  { text: "Save Problem As...", action: saveFileAs, disabled: model_not_loaded },
+  { text: "Open Session", action: loadSession, disabled: model_not_loaded, help: "Create or Append to Session HDF5" },
+  { text: "Save Session (Copy)", action: saveSessionCopy, disabled: model_not_loaded },
+  { text: "Export Results", action: exportResults, disabled: model_not_loaded },
+  { text: "Reload Model", action: reloadModel, disabled: model_not_loaded },
+]
+
 onMounted(() => {
   const menuToggleButton = new Button(menuToggle.value);
 });
@@ -330,15 +346,9 @@ onMounted(() => {
               </button>
               <ul class="dropdown-menu">
                 <li><button v-if="can_mount_local" class="btn btn-link dropdown-item" @click="mountLocal">Mount Local Folder</button></li>
-                <li><button class="btn btn-link dropdown-item" @click="selectOpenFile">Load Problem</button></li>
-                <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="saveParameters">Save Parameters</button></li>
-                <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="applyParameters">Apply Parameters</button></li>
-                <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="saveFile">Save Problem</button></li>
-                <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="saveFileAs">Save Problem As</button></li>
-                <li title="Create or Append to session HDF5"><button class="btn btn-link dropdown-item" @click="loadSession">Open Session</button></li>
-                <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="saveSessionCopy">Save Session (Copy)</button></li>
-                <li><button class="btn btn-link dropdown-item" :disabled="!model_loaded" @click="exportResults">Export Results</button></li>
-                <li><button class="btn btn-link dropdown-item" :class="{disabled: model_loaded === undefined}"  @click="reloadModel">Reload</button></li>
+                <li v-for="menu_item of menu_items" :key="menu_item.text" :title="menu_item.help">
+                  <button class="btn btn-link dropdown-item" @click="menu_item.action" :disabled="menu_item.disabled ?? false">{{ menu_item.text }}</button>
+                </li>
                 <li>
                   <hr class="dropdown-divider">
                 </li>
