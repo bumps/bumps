@@ -99,6 +99,8 @@ async def set_serialized_problem(serialized):
  
 
 async def set_problem(problem: bumps.fitproblem.FitProblem, path: Optional[Path] = None, filename: str = "", update: bool = False):
+    if state.problem is None or state.problem.fitProblem is None:
+        update = False
     state.problem.fitProblem = problem
     await publish("update_model", True)
     await publish("update_parameters", True)
