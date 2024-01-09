@@ -1,16 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, shallowRef } from 'vue';
 import { Modal } from 'bootstrap/dist/js/bootstrap.esm';
+import { fitter_settings, fitter_active } from '../app_state';
+import type { FitSetting } from '../app_state';
 import type { AsyncSocket } from '../asyncSocket';
 
 const props = defineProps<{socket: AsyncSocket}>();
 
-type FitSetting = { name: string, settings: object };
 const dialog = ref<HTMLDivElement>();
 const isOpen = ref(false);
 const fitter_defaults = shallowRef<{ [fit_name: string]: FitSetting }>({});
-const fitter_settings = shallowRef<{ [fit_name: string]: FitSetting }>({});
-const fitter_active = ref<string>("amoeba");
 const fitter_active_local = ref("amoeba");
 
 const FIT_FIELDS = {
@@ -159,8 +158,6 @@ onMounted(async () => {
 defineExpose({
   close,
   open,
-  fitter_settings,
-  fitter_active
 })
 </script>
 

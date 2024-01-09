@@ -4,6 +4,20 @@ import { onMounted, ref, shallowRef } from 'vue';
 import { io } from 'socket.io-client';
 import { AsyncSocket } from './asyncSocket';
 import './asyncSocket';  // patch Socket with asyncEmit
+import {
+  active_panel,
+  active_layout,
+  fitter_settings,
+  fit_active,
+  fitter_active,
+  fit_progress,
+  fitOptions,
+  fileBrowser,
+  fileBrowserSettings,
+  connected,
+  model_loaded,
+  notifications,
+} from './app_state';
 import FitOptions from './components/FitOptions.vue';
 import PanelTabContainer from './components/PanelTabContainer.vue';
 import FileBrowser from './components/FileBrowser.vue';
@@ -21,26 +35,7 @@ type Message = {
 }
 
 const LAYOUTS = ["left-right", "top-bottom", "full"];
-const connected = ref(false);
 const menuToggle = ref<HTMLButtonElement>();
-const fitOptions = ref<typeof FitOptions>();
-const fileBrowser = ref<typeof FileBrowser>();
-const fileBrowserSettings = ref({
-  chosenfile_in: "",
-  title: "",
-  show_name_input: false,
-  require_name: false,
-  name_input_label: "",
-  show_files: true,
-  search_patterns: [],
-  callback: (pathlist: string[], filename: string) => {},
-});
-const model_loaded = shallowRef<{pathlist: string[], filename: string}>();
-const active_layout = ref("left-right");
-const active_panel = ref([0, 1]);
-const fit_active = ref<{ fitter_id?: string, options?: {}, num_steps?: number }>({});
-const fit_progress = ref<{ chisq?: string, step?: number, value?: number }>({});
-const notifications = ref<{title: string, content: string, id: string, spinner: boolean}[]>([]);
 const nativefs = ref<{syncfs: Function}>();
 
 // Create a SocketIO connection, to be passed to child components
@@ -273,12 +268,11 @@ function openFitOptions() {
 }
 
 async function startFit() {
-  const fitter_active = fitOptions.value?.fitter_active;
-  const fitter_settings = fitOptions.value?.fitter_settings;
-
-  if (fitter_active && fitter_settings) {
-    const fit_args = fitter_settings[fitter_active];
-    await socket.asyncEmit("start_fit_thread", fitter_active, fit_args.settings);
+  const active = fitter_active.value;
+  const settings = fitter_settings.value;
+  if (active && settings) {
+    const fit_args = settings[active];
+    await socket.asyncEmit("start_fit_thread", active, fit_args.settings);
   }
 }
 
@@ -409,7 +403,7 @@ onMounted(() => {
                   <span>Fitting: </span>
                 </div>
                 <button class="btn btn-light btn-sm me-2" @click="openFitOptions">
-                  {{ fitOptions?.fitter_active ?? "" }}
+                  {{ fitter_active ?? "" }}
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-gear" viewBox="0 0 16 16">
                     <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
                     <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z"/>
