@@ -60,7 +60,7 @@ def deserialize_problem(serialized: bytes, method: SERIALIZERS):
         return dill.loads(serialized)
 
 
-def write_string_data(group: 'Group', name: str, data: str, maxsize=102400):
+def write_string_data(group: 'Group', name: str, data: str, maxsize=1024*1024):
     if data is not None:
         dset = group.create_dataset(name, data=[data], compression=COMPRESSION, dtype=f"|S{maxsize}")
     else:
@@ -68,7 +68,7 @@ def write_string_data(group: 'Group', name: str, data: str, maxsize=102400):
     return dset
 
 def read_string_data(group: 'Group', name: str):
-    raw_data = group[name]
+    raw_data = group[name][()]
     if isinstance(raw_data, h5py.Empty):
         return None
     else:
@@ -100,7 +100,12 @@ def write_json(group: 'Group', name: str, data):
 
 def read_json(group: 'Group', name: str):
     serialized = read_string_data(group, name)
-    return json.loads(serialized) if serialized is not None else None
+    try:
+        # if JSON fails to load, then just return None
+        result = json.loads(serialized) if serialized is not None else None
+    except Exception:
+        result = None
+    return result
 
 def write_ndarray(group: 'Group', name: str, data: Optional[np.ndarray], dtype=UNCERTAINTY_DTYPE):
     if data is not None:
@@ -110,8 +115,8 @@ def write_ndarray(group: 'Group', name: str, data: Optional[np.ndarray], dtype=U
     return dset
 
 def read_ndarray(group: 'Group', name: str):
-    raw_data = group[name]
-    return None if isinstance(raw_data, h5py.Empty) else raw_data[()]
+    raw_data = group[name][()]
+    return None if isinstance(raw_data, h5py.Empty) else raw_data
 
 class StringAttribute:
     @classmethod
