@@ -47,7 +47,6 @@ implicit root (i.e. top-level) directory.
 
 Need to update this for bumps rather refl1d standalone gui distribution.
 """
-from six.moves import input
 
 import os
 import sys
