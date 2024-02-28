@@ -5,6 +5,7 @@ import type { AsyncSocket } from '../asyncSocket';
 import { v4 as uuidv4 } from 'uuid';
 import { setupDrawLoop } from '../setupDrawLoop';
 import * as Plotly from 'plotly.js/lib/core';
+import { SVGDownloadButton } from '../plotly_extras.mjs';
 
 const title = "Convergence";
 const plot_div = ref<HTMLDivElement>();
@@ -20,7 +21,7 @@ async function fetch_and_draw() {
   let plotdata = { ...payload };
   // console.log({plotdata});
   const { data, layout } = plotdata;
-  const config = { responsive: true, scrollZoom: true }
+  const config = { responsive: true, scrollZoom: true, modeBarButtonsToAdd: [ SVGDownloadButton ] };
   await Plotly.react(plot_div_id.value, [...data], layout, config);
 }
 

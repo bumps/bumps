@@ -7,6 +7,7 @@ import { setupDrawLoop } from '../setupDrawLoop';
 import { cache } from '../plotcache';
 import * as Plotly from 'plotly.js/lib/core';
 import Bar from 'plotly.js/lib/bar';
+import { SVGDownloadButton } from '../plotly_extras.mjs';
 
 // workaround to PlotlyModule not being exported as type!
 type RegisterTypes = Parameters<typeof Plotly.register>[0];
@@ -36,7 +37,7 @@ async function fetch_and_draw(latest_timestamp: string) {
   const { data, layout } = plotdata;
   delete layout?.width;
   delete layout?.height;
-  const config = { responsive: true }
+  const config = { responsive: true, scrollZoom: true, modeBarButtonsToAdd: [ SVGDownloadButton ] };
   await Plotly.react(plot_div_id.value, [...data], layout, config);
 }
 

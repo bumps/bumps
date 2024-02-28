@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { setupDrawLoop } from '../setupDrawLoop';
 import * as Plotly from 'plotly.js/lib/core';
 import Heatmap from 'plotly.js/lib/heatmap';
+import { SVGDownloadButton } from '../plotly_extras.mjs';
 
 // workaround to PlotlyModule not being exported as type!
 type RegisterTypes = Parameters<typeof Plotly.register>[0];
@@ -51,7 +52,7 @@ async function fetch_and_draw(latest_timestamp?: string) {
   const payload = await props.socket.asyncEmit('get_correlation_plot', do_sort.value, max_rows.value, n_bins.value, output_vars, timestamp) as Plotly.PlotlyDataLayoutConfig;
   const plotdata = { ...payload };
   const { data, layout } = plotdata;
-  const config = { responsive: true, scrollZoom: true }
+  const config: Partial<Plotly.Config> = { responsive: true, scrollZoom: true, modeBarButtonsToAdd: [ SVGDownloadButton ] };
   await Plotly.react(plot_div_id.value, [...data], layout, config);
   clearTimeout(show_loader);
   drawing_busy.value = false;
