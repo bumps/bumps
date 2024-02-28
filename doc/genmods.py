@@ -225,7 +225,7 @@ DREAM_MODULES = [
     ('metropolis', 'MCMC step acceptance test'),
     ('model', 'MCMC model types'),
     ('outliers', 'Chain outlier tests'),
-    ('parcoord', 'Parallel coordinates plot')
+    ('parcoord', 'Parallel coordinates plot'),
     ('state', 'Sampling history for MCMC'),
     ('stats', 'Statistics helper functions'),
     ('tile', 'Split a rectangle into n panes'),
