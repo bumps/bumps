@@ -1,7 +1,6 @@
 import numpy as np
 
 def plot(draw, nlines=150, control_var=None):
-    # type: (Draw) -> None
     """
     Plot parallel coordinates from a draw from the distribution.
 
