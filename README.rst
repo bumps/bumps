@@ -48,6 +48,8 @@ v0.9.2 2024-02-29
   (Convergence tests, Parallel coordinates plot)
 * added numba.njit-accelerated fallback bounds.apply methods to dream
   (still uses compiled C DLL if available)
+* provide MAX_CORR attribute on the CorrelationView; clear the figure
+  if the number of variables exceeds MAX_CORR
 
 v0.9.1 2023-04-10
 -----------------
