@@ -7,12 +7,16 @@ chain at which the chain can be said to have converged, or -1 if
 the log probabilities are still improving throughout the chain.
 """
 from __future__ import division, print_function
+from typing import TYPE_CHECKING
 
-__all__ = ["burn_point"]
+__all__ = ["burn_point", "ks_converged"]
 
 import numpy as np
 from scipy.stats import ks_2samp, kstest, chi2
 from numpy.random import choice
+
+if TYPE_CHECKING:
+    from .state import MCMCDraw
 
 # TODO is cramer von mises better than a KS test?
 
@@ -131,6 +135,8 @@ def _check_nllf_distribution(data, df, n_draw, trials, alpha):
     return alpha > np.mean(p_vals)
 
 def burn_point(state, method='window', trials=TRIALS, **kwargs):
+    # type: ("MCMCDraw", str, int, **dict) -> int
+
     r"""
     Determines the point at which the MCMC chain seems to have converged.
 
