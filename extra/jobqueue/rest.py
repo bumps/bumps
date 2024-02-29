@@ -15,8 +15,8 @@
 #     Will Holcomb <wholcomb@gmail.com>
 #   python-rest-client
 #     Benjamin O'Steen
-from six import StringIO
-from six.moves.urllib import parse
+from io import StringIO
+from urllib import parse
 
 import email
 import httplib2

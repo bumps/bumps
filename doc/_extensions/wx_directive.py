@@ -15,7 +15,7 @@ plot_formats configuration variable.
 
 # Note: adapted from matplotlib.sphinxext.plot_directive by Paul Kienzle
 
-from six.moves import StringIO
+from io import StringIO
 
 import sys, os, glob, shutil, hashlib, imp, warnings
 import re

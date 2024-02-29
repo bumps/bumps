@@ -13,7 +13,7 @@ References::
     (Same title as above, but as a technical report.)
     http://www.icsi.berkeley.edu/~storn/deshort1.ps
 """
-from six.moves import reduce
+from functools import reduce
 
 from numpy import sum as numpysum
 from numpy import asarray

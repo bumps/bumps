@@ -3,7 +3,7 @@
 Parse URLs
 """
 
-from six.moves.urllib import parse
+from urllib import parse
 
 class URL(object):
     """

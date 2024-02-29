@@ -3,7 +3,8 @@ Standard math functions for parameter expressions.
 """
 import math
 
-from six.moves import reduce, builtins
+from functools import reduce
+import builtins
 
 from .parameter import function
 __all__ = [
