@@ -3,7 +3,7 @@ Standard math functions for parameter expressions.
 """
 import math
 
-from functoons import reduce
+from functools import reduce
 import builtins
 
 from .parameter import function
