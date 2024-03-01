@@ -72,13 +72,17 @@ async def disconnect_all_clients():
     clients = list(sio.manager.rooms.get('/', {None: {}}).get(None).keys())
     for client in clients:
         await sio.disconnect(client)
+    while clients:
+        clients = list(sio.manager.rooms.get('/', {None: {}}).get(None).keys())
+        await asyncio.sleep(0.1)
 
 async def _shutdown():
+    await disconnect_all_clients()
+    print("webserver shutdown tasks complete")
+    await asyncio.sleep(0.1)
     raise web.GracefulExit()
 
 api._shutdown = _shutdown
-
-app["shutdown"] = lambda: asyncio.create_task(api.shutdown())
 
 import argparse
 
@@ -140,7 +144,6 @@ def wrap_with_sid(function: Callable):
     return with_sid
 
 def setup_sio_api():
-    api.app = app
     api.emit = sio.emit
     for (name, action) in api.REGISTRY.items():
         sio.on(name, handler=wrap_with_sid(action))
@@ -231,20 +234,13 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
         # app.on_startup.append()
 
     # app.on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
-    async def add_signal_handler(app):
-        try:
-            app.loop.add_signal_handler(signal.SIGINT, app["shutdown"])
-        except NotImplementedError:
-            # Windows does not implement this method, but still handles KeyboardInterrupt
-            pass
 
-    app.on_startup.append(lambda App: add_signal_handler(App))
     async def notice(message: str):
         print(message)
     app.on_cleanup.append(lambda App: notice("cleanup task"))
     app.on_shutdown.append(lambda App: notice("shutdown task"))
-    app.on_shutdown.append(lambda App: api.stop_fit())
-    app.on_shutdown.append(lambda App: api.state.async_cleanup())
+    # not sure why, but have to call shutdown twice to get it to work:
+    app.on_shutdown.append(lambda App: api.shutdown())
     app.on_shutdown.append(lambda App: notice("shutdown complete"))
 
     # set initial path to cwd:
@@ -282,15 +278,18 @@ def main(options: Optional[OPTIONS_CLASS] = None, sock: Optional[socket.socket] 
     # (other contexts e.g. jupyter notebook will directly call start_app)
     options = get_commandline_options(arg_defaults={"headless": False}) if options is None else options
     print(dict(options=options))
-    try:
-        asyncio.run(start_app(options, sock))
-    except KeyboardInterrupt:
-        print("stopped by KeyboardInterrupt.")
+    setup_sio_api()
+    runsock = setup_app(options=options, sock=None)
+    web.run_app(app, sock=runsock)
 
 async def start_app(options: OPTIONS_CLASS = OPTIONS_CLASS(), sock: socket.socket = None):
     setup_sio_api()
     runsock = setup_app(options=options, sock=sock)
-    await web._run_app(app, sock=runsock)
+    runner = web.AppRunner(app, handle_signals=False)
+    await runner.setup()
+    site = web.SockSite(runner, sock=runsock)
+    await site.start()
+    print(f"webserver started on {api.state.hostname}:{api.state.port}")
 
 def create_server_task():
     return asyncio.create_task(start_app())

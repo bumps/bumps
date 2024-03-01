@@ -42,7 +42,6 @@ for fitter in FITTERS:
     }
 
 state = State()
-app: Any
 
 def register(fn: Callable):
     REGISTRY[fn.__name__] = fn
