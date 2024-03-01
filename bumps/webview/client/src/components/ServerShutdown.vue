@@ -18,7 +18,7 @@ onMounted(() => {
 
 });
 
-props.socket.on('disconnect', () => {
+props.socket.on('server_shutting_down', () => {
   modal?.show();  
   shutdownTimer.value = setTimeout(() => {
     window.close();
