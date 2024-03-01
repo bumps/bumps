@@ -4,6 +4,7 @@ import functools
 import signal
 import socket
 from typing import Callable, Dict, Optional
+import warnings
 from aiohttp import web, ClientSession
 import asyncio
 import socketio
@@ -91,6 +92,8 @@ class BumpsOptions:
     hub: Optional[str] = None
     fit: Optional[str] = None
     start: bool = False
+    read_store: Optional[str] = None
+    write_store: Optional[str] = None
     store: Optional[str] = None
     exit: bool = False
     serializer: SERIALIZERS = "dill"
@@ -109,8 +112,10 @@ def get_commandline_options(arg_defaults: Optional[Dict]=None):
     parser.add_argument('--hub', default=None, type=str, help='api address of parent hub (only used when called as subprocess)')
     parser.add_argument('--fit', default=None, type=str, choices=list(api.FITTERS_BY_ID.keys()), help='fitting engine to use; see manual for details')
     parser.add_argument('--start', action='store_true', help='start fit when problem loaded')
-    parser.add_argument('--store', default=None, type=str, help='backing file for state')
-    parser.add_argument('--exit', action='store_true', help='end process when fit complete (fit results lost unless store is specified)')
+    parser.add_argument('--store', default=None, type=str, help='set read_store and write_store to same file')
+    parser.add_argument('--read_store', default=None, type=str, help='read initial session state from file (overrides --store)')
+    parser.add_argument('--write_store', default=None, type=str, help='output file for session state (overrides --store)')
+    parser.add_argument('--exit', action='store_true', help='end process when fit complete (fit results lost unless write_store is specified)')
     parser.add_argument('--serializer', default=OPTIONS_CLASS.serializer, type=str, choices=["pickle", "dill", "dataclass"], help='strategy for serializing problem, will use value from store if it has already been defined')
     parser.add_argument('--trace', action='store_true', help='enable memory tracing (prints after every uncertainty update in dream)')
     parser.add_argument('--parallel', default=0, type=int, help='run fit using multiprocessing for parallelism; use --parallel=0 for all cpus')
@@ -172,8 +177,17 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
         
     app.router.add_get('/', index)
 
-    if options.store is not None:
-        api.state.setup_backing(session_file_name=options.store)
+    if options.read_store is not None and options.store is not None:
+        warnings.warn("read_store and store are both set; read_store will be used to initialize state")
+    if options.write_store is not None and options.store is not None:
+        warnings.warn("write_store and store are both set; write_store will be used to save state")
+
+    read_store = options.read_store if options.read_store is not None else options.store
+    write_store = options.write_store if options.write_store is not None else options.store
+    if read_store is not None:
+        api.state.read_session_file(read_store)
+    if write_store is not None:
+        api.state.session_file_name = write_store
 
     if api.state.problem.serializer is None or api.state.problem.serializer == "":
         api.state.problem.serializer = options.serializer
