@@ -40,6 +40,17 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
+v0.9.2 2024-03-05
+-----------------
+* added testing for python 3.12
+* fixed issue with matplotlib >= 3.8.0 (see #129)
+* added missing documents to dream manual
+  (Convergence tests, Parallel coordinates plot)
+* added numba.njit-accelerated fallback bounds.apply methods to dream
+  (still uses compiled C DLL if available)
+* provide MAX_CORR attribute on the CorrelationView; clear the figure
+  if the number of variables exceeds MAX_CORR
+
 v0.9.1 2023-04-10
 -----------------
 * added support for python 3.11, scipy 1.10, numpy 1.24, wx 4.1.1
