@@ -24,27 +24,43 @@ class Corr2d(object):
     """
     Generate and manage 2D correlation histograms.
     """
-    def __init__(self, data, labels=None, **kw):
+    def __init__(self, data, labels=None, **histogram2d_kw):
         if labels is None:
             labels = ["P"+str(i+1) for i, _ in enumerate(data)]
         self.N = len(data)
         self.labels = labels
         self.data = data
-        self.hists = _hists(data, **kw)
+        self.histogram2d_kw = histogram2d_kw # e.g. bins=(50,50), range=[(0,1),(0,1)]
+        self._hists = {} # cache for histograms
         self.fig = None
         #for k, v in self.hists.items():
         #    print k, (v[1][0], v[1][-1]), (v[2][0], v[2][-1])
+        low, high = np.min(data, axis=1), np.max(data, axis=1)
+        self.default_ranges = [(l, h) for l, h in zip(low, high)]
 
     def R(self):
         return np.corrcoef(self.data)
-
-    def __getitem__(self, i, j):
+    
+    def __getitem__(self, indices):
         """
         Retrieve correlation histogram for data[i] X data[j].
 
         Returns bin i edges, bin j edges, and histogram
         """
-        return self.hists[i, j]
+        i, j = indices
+        if (i, j) not in self._hists:
+            self._hists[(i, j)] = self.calculate_histogram(i, j, range=None, **self.histogram2d_kw)
+        return self._hists[(i, j)]
+
+    def calculate_histogram(self, i, j, range=None, **histogram2d_kw):
+        """
+        Calculate the histogram for data[i] X data[j].
+
+        Returns bin i edges, bin j edges, and histogram
+        """
+        if range is None:
+            range = [self.default_ranges[i], self.default_ranges[j]]
+        return np.histogram2d(self.data[i], self.data[j], range=range, **histogram2d_kw)
 
     def plot(self, title=None, sort=True, max_rows=25, indices=None):
         """
@@ -64,27 +80,13 @@ class Corr2d(object):
                 indices = np.arange(num_to_show + 1, dtype=np.int32)
                 labels = self.labels
         if num_to_show > MAKE_SINGLE_BREAKPOINT:
-            fig = _plot_single_heatmap(self.hists, labels, indices=indices)
+            fig = _plot_single_heatmap(self, labels, indices=indices)
         else:
-            fig = _plot(self.hists, labels, indices=indices)
+            fig = _plot(self, labels, indices=indices)
         if title is not None:
             fig.update_layout(title=dict(text=title, xanchor="center", x=0.5))
 
         return fig
-
-
-def _hists(data, ranges=None, **kw):
-    """
-    Generate pair-wise correlation histograms
-    """
-    n = len(data)
-    if ranges is None:
-        low, high = np.min(data, axis=1), np.max(data, axis=1)
-        ranges = [(l, h) for l, h in zip(low, high)]
-    return dict(((i, j), np.histogram2d(data[i], data[j],
-                                        range=[ranges[i], ranges[j]], **kw))
-                for i in range(0, n)
-                for j in range(i+1, n))
 
 
 def _plot(hists, labels, indices, show_ticks=None):
