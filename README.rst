@@ -40,7 +40,7 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
-v0.9.2 2024-02-29
+v0.9.2 2024-03-05
 -----------------
 * added testing for python 3.12
 * fixed issue with matplotlib >= 3.8.0 (see #129)
