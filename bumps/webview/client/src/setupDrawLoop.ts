@@ -30,11 +30,22 @@ export function setupDrawLoop(topic: string, socket: AsyncSocket, draw: Function
     else if (draw_requested.value) {
       drawing_busy.value = true;
       draw_requested.value = false;
-      await draw(latest_timestamp.value);
+      try {
+        // Need to continue the draw loop even if draw fails
+        await draw(latest_timestamp.value);
+      }
+      catch (e) {
+        // TODO: should this notify the user?
+        console.error(`Error drawing ${name}:`, e);
+        // add sleep to avoid runaway error loop
+        await sleep(1000);
+      }
       drawing_busy.value = false;
     }
     window.requestAnimationFrame(draw_if_needed);
   }
+
+  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
   onActivated(async () => {
     mounted.value = true;
