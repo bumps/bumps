@@ -490,7 +490,6 @@ async def get_convergence_plot():
     fitProblem = state.problem.fitProblem
     population = state.fitting.population
     if population is not None:
-        import plotly.graph_objects as go
         normalized_pop = 2*population/fitProblem.dof
         best, pop = normalized_pop[:, 0], normalized_pop[:, 1:]
 
