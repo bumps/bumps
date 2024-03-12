@@ -8,6 +8,7 @@ import warnings
 from aiohttp import web, ClientSession
 import asyncio
 import socketio
+from typing import Union
 from pathlib import Path
 import json
 import re
@@ -293,6 +294,30 @@ async def start_app(options: OPTIONS_CLASS = OPTIONS_CLASS(), sock: socket.socke
 
 def create_server_task():
     return asyncio.create_task(start_app())
+
+def display_inline_jupyter(width: Union[str,int]="100%", height: Union[str, int]=600) -> None:
+    """
+    Display the web server in an iframe.
+
+    This is useful for displaying the web server in a Jupyter notebook.
+
+    :param width: The width of the iframe.
+    :param height: The height of the iframe.
+    """
+    import os
+    from IPython.display import display, IFrame
+    from bumps.webview.server import api
+
+    port = getattr(api.state, 'port', None)
+    if port is None:
+        raise ValueError("The web server has not been started.")
+
+    # detect if running through Jupyter Hub
+    if 'JUPYTERHUB_SERVICE_PREFIX' in os.environ:
+        src = f"{os.environ['JUPYTERHUB_SERVICE_PREFIX']}/proxy/{port}/"
+    else:
+        src = f"http://localhost:{port}/"
+    display(IFrame(src=src, width=width, height=height))
 
 if __name__ == '__main__':
     main()
