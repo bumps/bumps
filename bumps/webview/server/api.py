@@ -491,28 +491,28 @@ async def get_convergence_plot():
     population = state.fitting.population
     if population is not None:
         import plotly.graph_objects as go
-
         normalized_pop = 2*population/fitProblem.dof
         best, pop = normalized_pop[:, 0], normalized_pop[:, 1:]
 
         ni,npop = pop.shape
         iternum = np.arange(1,ni+1)
         tail = int(0.25*ni)
-
-        fig = go.Figure()
+        fig = {"data": [], "layout": {}} # go.Figure()
         hovertemplate = "(%{{x}}, %{{y}})<br>{label}<extra></extra>"
+        x = iternum[tail:].tolist()
         if npop==5:
-            fig.add_trace(go.Scattergl(x=iternum[tail:], y=pop[tail:,3], mode="lines", line_color="lightgreen", line_width=0, showlegend=False, hovertemplate=hovertemplate.format(label="80%")))
-            fig.add_trace(go.Scattergl(x=iternum[tail:], y=pop[tail:,1], name="20% to 80% range", fill="tonexty", mode="lines", line_color="lightgreen", line_width=0, hovertemplate=hovertemplate.format(label="20%")))
-            fig.add_trace(go.Scattergl(x=iternum[tail:], y=pop[tail:,2], name="population median", mode="lines", line_color="green", opacity=0.5))
-            fig.add_trace(go.Scattergl(x=iternum[tail:], y=pop[tail:,0], name="population best", mode="lines", line=dict(color="green", dash="dot")))
+            fig['data'].append(dict(type="scattergl", x=x, y=pop[tail:,4].tolist(), mode="lines", line=dict(color="lightblue", width=0), showlegend=False, hovertemplate=hovertemplate.format(label="95%")))
+            fig['data'].append(dict(type="scattergl", x=x, y=pop[tail:,3].tolist(), mode="lines", line=dict(color="lightgreen", width=0), showlegend=False, hovertemplate=hovertemplate.format(label="80%")))
+            fig['data'].append(dict(type="scattergl", x=x, y=pop[tail:,1].tolist(), name="20% to 80% range", fill="tonexty", mode="lines", line=dict(color="lightgreen", width=0), hovertemplate=hovertemplate.format(label="20%")))
+            fig['data'].append(dict(type="scattergl", x=x, y=pop[tail:,2].tolist(), name="population median", mode="lines", line=dict(color="green"), opacity=0.5))
+            fig['data'].append(dict(type="scattergl", x=x, y=pop[tail:,0].tolist(), name="population best", mode="lines", line=dict(color="green", dash="dot")))
 
-        fig.add_trace(go.Scatter(x=iternum[tail:], y=best[tail:], name="best", line=dict(color="red", width=1), mode="lines"))
-        fig.update_layout(template="simple_white", legend=dict(x=1,y=1,xanchor="right",yanchor="top"))
-        fig.update_layout(title=dict(text="Convergence", xanchor="center", x=0.5))
-        fig.update_xaxes(title="iteration number")
-        fig.update_yaxes(title="chisq")
-        return to_json_compatible_dict(fig.to_dict())
+        fig['data'].append(dict(type="scattergl", x=x, y=best[tail:].tolist(), name="best", line=dict(color="red", width=1), mode="lines"))
+        fig['layout'].update(dict(template="simple_white", legend=dict(x=1,y=1,xanchor="right",yanchor="top")))
+        fig['layout'].update(dict(title=dict(text="Convergence", xanchor="center", x=0.5)))
+        fig['layout'].update(dict(xaxis=dict(title="iteration number", showline=True, showgrid=False, zeroline=False)))
+        fig['layout'].update(dict(yaxis=dict(title="chisq", showline=True, showgrid=False, zeroline=False)))
+        return to_json_compatible_dict(fig)
     else:
         return None
 
