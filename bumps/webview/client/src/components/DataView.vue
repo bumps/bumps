@@ -40,7 +40,7 @@ async function fetch_and_draw() {
   if (fig_type === 'plotly') {
     const { data, layout } = plotdata as Plotly.PlotlyDataLayoutConfig;
     const config = {responsive: true}
-    await Plotly.react(plot_div_id.value, [...data], layout, config);
+    await Plotly.react(plot_div.value as HTMLDivElement, [...data], layout, config);
   }
   else if (fig_type === 'mpld3') {
     let mpld3_data = plotdata as { width: number, height: number };
@@ -56,7 +56,7 @@ function toggle_multiple(value) {
     current_models.value.splice(0, current_models.value.length -1);
     draw_requested.value = true;
   }
-  Plotly.Plots.resize(plot_div_id.value);
+  Plotly.Plots.resize(plot_div.value);
 }
 
 </script>

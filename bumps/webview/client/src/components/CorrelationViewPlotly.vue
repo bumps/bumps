@@ -2,7 +2,6 @@
 /// <reference types="@types/uuid"/>
 import { ref } from 'vue';
 import type { AsyncSocket } from '../asyncSocket';
-import { v4 as uuidv4 } from 'uuid';
 import { setupDrawLoop } from '../setupDrawLoop';
 import * as Plotly from 'plotly.js/lib/core';
 import Heatmap from 'plotly.js/lib/heatmap';
@@ -17,8 +16,7 @@ Plotly.register([
 ])
 
 const title = "Correlations";
-const plot_div = ref<Plotly.PlotlyHTMLElement>();
-const plot_div_id = ref(`div-${uuidv4()}`);
+const plot_div = ref<Plotly.PlotlyHTMLElement | HTMLDivElement>();
 const do_sort = ref(true);
 const max_rows = ref(25);
 const n_bins = ref(50);
@@ -53,7 +51,7 @@ async function fetch_and_draw(latest_timestamp?: string) {
   const plotdata = { ...payload };
   const { data, layout } = plotdata;
   const config: Partial<Plotly.Config> = { responsive: true, scrollZoom: true, modeBarButtonsToAdd: [ SVGDownloadButton ] };
-  await Plotly.react(plot_div_id.value, [...data], layout, config);
+  await Plotly.react(plot_div.value as HTMLDivElement, [...data], layout, config);
   clearTimeout(show_loader);
   drawing_busy.value = false;
 
@@ -98,7 +96,7 @@ function reset_vars() {
     </div>
     <button class="btn btn-primary" v-if="vars.length > 0" @click="reset_vars">Reset plot</button>
     <div class="flex-grow-1 position-relative">
-      <div class="w-100 h-100 plot-div" ref="plot_div" :id="plot_div_id"></div>
+      <div class="w-100 h-100 plot-div" ref="plot_div"></div>
       <div class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center loading" v-if="drawing_busy">
         <span class="spinner-border text-primary"></span>
       </div>

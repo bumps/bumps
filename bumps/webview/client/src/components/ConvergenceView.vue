@@ -2,14 +2,12 @@
 /// <reference types="@types/uuid"/>
 import { ref } from 'vue';
 import type { AsyncSocket } from '../asyncSocket';
-import { v4 as uuidv4 } from 'uuid';
 import { setupDrawLoop } from '../setupDrawLoop';
 import * as Plotly from 'plotly.js/lib/core';
 import { SVGDownloadButton } from '../plotly_extras.mjs';
 
 const title = "Convergence";
 const plot_div = ref<HTMLDivElement>();
-const plot_div_id = ref(`div-${uuidv4()}`);
 const props = defineProps<{
   socket: AsyncSocket,
 }>();
@@ -22,14 +20,14 @@ async function fetch_and_draw() {
   // console.log({plotdata});
   const { data, layout } = plotdata;
   const config = { responsive: true, scrollZoom: true, modeBarButtonsToAdd: [ SVGDownloadButton ] };
-  await Plotly.react(plot_div_id.value, [...data], layout, config);
+  await Plotly.react(plot_div.value as HTMLDivElement, [...data], layout, config);
 }
 
 </script>
     
 <template>
   <div class="container d-flex flex-grow-1 flex-column">
-    <div class="flex-grow-1" ref="plot_div" :id="plot_div_id">
+    <div class="flex-grow-1" ref="plot_div">
     </div>
   </div>
 </template>
