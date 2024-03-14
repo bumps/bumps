@@ -434,23 +434,23 @@ onMounted(() => {
     </nav>
     <div class="flex-grow-1 row overflow-hidden" v-if="active_layout === 'left-right'">
       <div class="col d-flex flex-column mh-100 border-end border-success border-3">
-        <PanelTabContainer :panels="panels" :socket="socket" :active_panel="active_panel[0]" @panel_changed="(n) => { active_panel[0] = n }"/>
+        <PanelTabContainer :panels="panels" :socket="socket" :active_panel="active_panel[0]" @panel_changed="(n: number) => { active_panel[0] = n }"/>
       </div>
       <div class="col d-flex flex-column mh-100">
-        <PanelTabContainer :panels="panels" :socket="socket" :active_panel="active_panel[1]" @panel_changed="(n) => { active_panel[1] = n }"/>
+        <PanelTabContainer :panels="panels" :socket="socket" :active_panel="active_panel[1]" @panel_changed="(n: number) => { active_panel[1] = n }"/>
       </div>
     </div>
     <div class="flex-grow-1 d-flex flex-column" v-if="active_layout === 'top-bottom'">
       <div class="d-flex flex-column flex-grow-1" style="overflow-y:scroll;">
-        <PanelTabContainer :panels="panels" :socket="socket" :active_panel="active_panel[0]" @panel_changed="(n) => { active_panel[0] = n }"/>
+        <PanelTabContainer :panels="panels" :socket="socket" :active_panel="active_panel[0]" @panel_changed="(n: number) => { active_panel[0] = n }"/>
       </div>
       <div class="d-flex flex-column flex-grow-1">
-        <PanelTabContainer :panels="panels" :socket="socket" :active_panel="active_panel[1]" @panel_changed="(n) => { active_panel[1] = n }"/>
+        <PanelTabContainer :panels="panels" :socket="socket" :active_panel="active_panel[1]" @panel_changed="(n: number) => { active_panel[1] = n }"/>
       </div>
     </div>
     <div class="flex-grow-1 row overflow-hidden" v-if="active_layout === 'full'">
       <div class="col d-flex flex-column mh-100">
-        <PanelTabContainer :panels="panels" :socket="socket" :active_panel="active_panel[0]" @panel_changed="(n) => { active_panel[0] = n }"/>
+        <PanelTabContainer :panels="panels" :socket="socket" :active_panel="active_panel[0]" @panel_changed="(n: number) => { active_panel[0] = n }"/>
       </div>
     </div>
 
