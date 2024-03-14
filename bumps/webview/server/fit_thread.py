@@ -166,7 +166,8 @@ class FitThread(Thread):
     """Run the fit in a separate thread from the GUI thread."""
 
     def __init__(self, abort_event: Event, problem=None,
-                 fitclass=None, options=None, mapper=None, parallel=0,
+                 fitclass=None, fitter_id=None,
+                 options=None, mapper=None, parallel=0,
                  convergence_update=5, uncertainty_update=300,
                  terminate_on_finish=False):
         # base class initialization
@@ -176,6 +177,7 @@ class FitThread(Thread):
         self.abort_event = abort_event
         self.problem = problem
         self.fitclass = fitclass
+        self.fitter_id = fitter_id
         self.options = options if isinstance(options, dict) else dict()
         self.mapper = mapper
         self.parallel = parallel
@@ -242,7 +244,7 @@ class FitThread(Thread):
                 captured_output = fid.getvalue()
 
             evt = dict(message="complete", problem=self.problem,
-                    point=x, value=fx, info=captured_output)
+                    point=x, value=fx, info=captured_output, fitter_id = self.fitter_id)
             EVT_FIT_COMPLETE.send(evt)
             self.result = evt
 

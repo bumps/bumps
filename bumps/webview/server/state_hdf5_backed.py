@@ -1,4 +1,6 @@
 import asyncio
+from copy import deepcopy
+from datetime import datetime
 from typing import TYPE_CHECKING, Optional, Dict, List, Tuple, Any, Literal, cast, IO
 from collections import deque
 import json
@@ -60,49 +62,49 @@ def deserialize_problem(serialized: bytes, method: SERIALIZERS):
         return dill.loads(serialized)
 
 
-def write_string_data(group: 'Group', name: str, data: str, maxsize=1024*1024):
+def write_bytes_data(group: 'Group', name: str, data: Optional[bytes]):
     if data is not None:
-        dset = group.create_dataset(name, data=[data], compression=COMPRESSION, dtype=f"|S{maxsize}")
+        dset = group.create_dataset(name, data=[np.void(data)], compression=COMPRESSION)
     else:
         dset = group.create_dataset(name, dtype="S1") # empty
     return dset
 
-def read_string_data(group: 'Group', name: str):
+def read_bytes_data(group: 'Group', name: str) -> Optional[bytes]:
     raw_data = group[name][()]
     if isinstance(raw_data, h5py.Empty):
         return None
     else:
-        return raw_data[0]
+        return raw_data[0].tobytes()
 
 def write_fitproblem(group: 'Group', name: str, fitProblem: 'bumps.fitproblem.FitProblem', serializer: SERIALIZERS):
     serialized = serialize_problem(fitProblem, serializer) if fitProblem is not None else None
-    dset = write_string_data(group, name, serialized, maxsize=MAX_PROBLEM_SIZE)
+    dset = write_bytes_data(group, name, serialized)
     return dset
 
 def read_fitproblem(group: 'Group', name: str, serializer: SERIALIZERS):
-    serialized = read_string_data(group, name)
+    serialized = read_bytes_data(group, name)
     fitProblem = deserialize_problem(serialized, serializer) if serialized is not None else None
     return fitProblem
 
 def write_string(group: 'Group', name: str, value: Optional[str]):
     serialized = value.encode() if value is not None else None
-    dset = write_string_data(group, name, serialized)
+    dset = write_bytes_data(group, name, serialized)
     return dset
 
 def read_string(group: 'Group', name: str):
-    serialized = read_string_data(group, name)
+    serialized = read_bytes_data(group, name)
     return serialized.decode() if serialized is not None else None
 
 def write_json(group: 'Group', name: str, data):
     serialized = json.dumps(data) if data is not None else None
-    dset = write_string_data(group, name, serialized)
+    dset = write_bytes_data(group, name, serialized.encode())
     return dset
 
 def read_json(group: 'Group', name: str):
-    serialized = read_string_data(group, name)
+    serialized = read_bytes_data(group, name)
     try:
         # if JSON fails to load, then just return None
-        result = json.loads(serialized) if serialized is not None else None
+        result = json.loads(serialized.decode()) if serialized is not None else None
     except Exception:
         result = None
     return result
@@ -132,6 +134,7 @@ class ProblemState:
     pathlist: Optional[List[str]] = None
     serializer: Optional[SERIALIZERS] = None
     filename: Optional[str] = None
+    label: Optional[str] = None
 
     def write(self, parent: 'Group'):
         group = parent.require_group('problem')
@@ -139,6 +142,7 @@ class ProblemState:
         write_string(group, 'serializer', self.serializer)
         write_json(group, 'pathlist', self.pathlist)
         write_string(group, 'filename', self.filename)
+        write_string(group, 'label', self.label)
 
     def read(self, parent: 'Group'):
         group = parent.require_group('problem')
@@ -147,7 +151,54 @@ class ProblemState:
         print('fitProblem: ', self.fitProblem)
         self.pathlist = read_json(group, 'pathlist')
         self.filename = read_string(group, 'filename')
-               
+        self.label = read_string(group, 'label')
+
+class ProblemHistoryItem:
+    problem_state: ProblemState
+    timestamp: str
+    label: str
+    chisq_str: str
+
+
+class ProblemHistory:
+    store: List[ProblemHistoryItem]
+
+    def __init__(self):
+        self.store = []
+
+    def write(self, parent: 'Group'):
+        group = parent.require_group('problem_history')
+        for item in self.store:
+            problem_state = item.problem_state
+            name = item.timestamp
+            item_group = group.require_group(name)
+            problem_state.write(item_group)
+            item_group.attrs['chisq'] = item.chisq_str
+            item_group.attrs['label'] = item.label
+
+    def read(self, parent: 'Group'):
+        group = parent.get('problem_history', [])
+        self.store = []
+        for name in group:
+            item_group = group[name]
+            problem_state = ProblemState()
+            problem_state.read(item_group)
+            item = ProblemHistoryItem()
+            item.problem_state = problem_state
+            item.label = item_group.attrs['label']
+            item.chisq_str = item_group.attrs['chisq']
+            item.timestamp = name
+            self.store.append(item)
+
+    def remove_item(self, timestamp: str):
+        self.store = [item for item in self.store if item.timestamp != timestamp]
+
+    def add_item(self, item: ProblemHistoryItem):
+        self.store.append(item)
+
+    def list(self):
+        return [dict(timestamp=item.timestamp, label=item.label, chisq_str=item.chisq_str) for item in self.store]
+
 
 class UncertaintyStateStorage:
     AR: Optional['np.ndarray'] = None
@@ -193,6 +244,19 @@ class FittingState:
             uncertainty_state_storage.read(group)
             self.uncertainty_state = read_uncertainty_state(uncertainty_state_storage)
 
+class FitterSettings:
+    fitter: Optional[str] = None
+    fitter_settings: Optional[Dict] = None
+
+    def write(self, parent: 'Group'):
+        group = parent.require_group('fitter_settings')
+        write_string(group, 'fitter', self.fitter)
+        write_json(group, 'fitter_settings', self.fitter_settings)
+
+    def read(self, parent: 'Group'):
+        group = parent.require_group('fitter_settings')
+        self.fitter = read_string(group, 'fitter')
+        self.fitter_settings = read_json(group, 'fitter_settings')
 
 class State:
     # These attributes are ephemeral, not to be serialized/stored:
@@ -210,11 +274,13 @@ class State:
     # State to be stored:
     problem: ProblemState
     fitting: FittingState
+    problem_history: ProblemHistory
     topics: Dict['TopicNameType', 'deque[Dict]']
 
     def __init__(self, session_file_name: Optional[str] = None):
         self.problem = ProblemState()
         self.fitting = FittingState()
+        self.problem_history = ProblemHistory()
         self.fit_abort_event = Event()
         self.fit_complete_event = Event()
         self.topics = {
@@ -240,6 +306,32 @@ class State:
                 self.read_session_file(session_file_name)
             else:
                 self.save()
+
+    def save_to_history(self, label: str):
+        if self.problem.fitProblem is None:
+            return
+        item = ProblemHistoryItem()
+        item.problem_state = deepcopy(self.problem)
+        item.timestamp = str(datetime.now())
+        item.label = label
+        item.chisq_str = item.problem_state.fitProblem.chisq_str()
+        self.problem_history.add_item(item)
+
+    def get_history(self):
+        return dict(problem_history=self.problem_history.list())
+
+    def remove_history_item(self, timestamp: str):
+        self.problem_history.remove_item(timestamp)
+
+    def reload_history_item(self, timestamp: str):
+        for item in self.problem_history.store:
+            if item.timestamp == timestamp:
+                print("problem found!", timestamp)
+                problem_state = item.problem_state
+                print('chisq of found item: ', problem_state.fitProblem.chisq_str())
+                self.problem = deepcopy(problem_state)
+                return
+        raise ValueError(f"Could not find history item with timestamp {timestamp}")
 
     def save(self):
         if self.session_file_name is not None:

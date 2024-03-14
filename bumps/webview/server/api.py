@@ -73,7 +73,8 @@ TopicNameType = Literal[
 ]
 
 @register
-async def load_problem_file(pathlist: List[str], filename: str):    
+
+async def load_problem_file(pathlist: List[str], filename: str, autosave_previous=True):
     path = Path(*pathlist, filename)
     print(f'model loading: {path}')
     await log(f'model_loading: {path}')
@@ -86,15 +87,19 @@ async def load_problem_file(pathlist: List[str], filename: str):
         problem = load_model(str(path))
     assert isinstance(problem, bumps.fitproblem.FitProblem)
     # problem_state = ProblemState(problem, pathlist, filename)
+    if autosave_previous and state.problem is not None and state.problem.fitProblem is not None:
+        await save_to_history("autosaved before loading new model")
     state.problem.filename = filename
     state.problem.pathlist = pathlist
     await set_problem(problem, Path(*pathlist), filename)
 
 
 @register
-async def set_serialized_problem(serialized):
+async def set_serialized_problem(serialized, new_model: bool = False):
     fitProblem = deserialize_problem(serialized, method='dataclass')
-    await set_problem(fitProblem, update=True);
+    if new_model and state.problem is not None and state.problem.fitProblem is not None:
+        await save_to_history("autosaved before creating new model")
+    await set_problem(fitProblem, update=True)
  
 
 async def set_problem(problem: bumps.fitproblem.FitProblem, path: Optional[Path] = None, filename: str = "", update: bool = False):
@@ -115,6 +120,31 @@ async def set_problem(problem: bumps.fitproblem.FitProblem, path: Optional[Path]
             "timeout": 2000,
         })
     state.save()
+
+
+@register
+async def get_history():
+    return state.get_history()
+
+
+@register
+async def remove_history_item(timestamp: str):
+    state.remove_history_item(timestamp)
+    await emit("history_update", True)
+
+
+@register
+async def save_to_history(label: str):
+    state.save_to_history(label)
+    await emit("history_update", True)
+
+
+@register
+async def reload_history_item(timestamp: str):
+    state.reload_history_item(timestamp)
+    # await emit("history_update", True)
+    await publish("update_model", True)
+    await publish("update_parameters", True)
 
 
 @register
@@ -352,6 +382,7 @@ async def start_fit_thread(fitter_id: str="", options=None, terminate_on_finish=
         fit_thread = FitThread(
             abort_event=state.fit_abort_event,
             problem=fitProblem,
+            fitter_id=fitter_id,
             fitclass=fitclass,
             options=options,
             parallel=state.parallel,
@@ -364,6 +395,7 @@ async def start_fit_thread(fitter_id: str="", options=None, terminate_on_finish=
         await emit("fit_progress", {}) # clear progress
         await publish("fit_active", to_json_compatible_dict(dict(fitter_id=fitter_id, options=options, num_steps=num_steps)))
         await log(json.dumps(to_json_compatible_dict(options), indent=2), title = f"starting fitter {fitter_id}")
+        await save_to_history(f"fit started: {fitter_id}")
         state.save()
         if CAN_THREAD:
             fit_thread.start()
@@ -425,6 +457,7 @@ async def _fit_complete_handler(event):
         problem.setp(event["point"])
         problem.model_update()
         state.problem.fitProblem = problem
+        await save_to_history(f"fit complete: {event['fitter_id']}")
         await publish("update_parameters", True)
         await log(event["info"], title=f"done with chisq {chisq}")
 
