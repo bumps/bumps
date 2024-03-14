@@ -452,7 +452,7 @@ async def log(message: str, title: Optional[str] = None):
 async def get_data_plot(model_indices: Optional[List[int]] = None):
     if state.problem is None or state.problem.fitProblem is None:
         return None
-    fitProblem = state.problem.fitProblem
+    fitProblem = deepcopy(state.problem.fitProblem)
     import mpld3
     import matplotlib
     matplotlib.use("agg")
