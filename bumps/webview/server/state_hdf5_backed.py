@@ -134,7 +134,6 @@ class ProblemState:
     pathlist: Optional[List[str]] = None
     serializer: Optional[SERIALIZERS] = None
     filename: Optional[str] = None
-    label: Optional[str] = None
 
     def write(self, parent: 'Group'):
         group = parent.require_group('problem')
@@ -142,7 +141,6 @@ class ProblemState:
         write_string(group, 'serializer', self.serializer)
         write_json(group, 'pathlist', self.pathlist)
         write_string(group, 'filename', self.filename)
-        write_string(group, 'label', self.label)
 
     def read(self, parent: 'Group'):
         group = parent.require_group('problem')
@@ -151,7 +149,6 @@ class ProblemState:
         print('fitProblem: ', self.fitProblem)
         self.pathlist = read_json(group, 'pathlist')
         self.filename = read_string(group, 'filename')
-        self.label = read_string(group, 'label')
 
 class ProblemHistoryItem:
     problem_state: ProblemState
@@ -346,16 +343,19 @@ class State:
             with h5py.File(output_file, 'w') as root_group:
                 self.problem.write(root_group)
                 self.fitting.write(root_group)
+                self.problem_history.write(root_group)
                 self.write_topics(root_group)
         shutil.move(tmp_name, session_filename)
 
-    def read_session_file(self, session_filename: str, read_problem: bool = True, read_fitstate: bool = True):
+    def read_session_file(self, session_filename: str, read_problem: bool = True, read_fitstate: bool = True, read_history: bool = True):
         try:
             with h5py.File(session_filename, 'r') as root_group:
                 if read_problem:
                     self.problem.read(root_group)
                 if read_fitstate:
                     self.fitting.read(root_group)
+                if read_history:
+                    self.problem_history.read(root_group)
                 self.read_topics(root_group)
         except Exception as e:
             print(f"could not load session file {session_filename} because of {e}")
