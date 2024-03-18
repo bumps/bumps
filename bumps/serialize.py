@@ -1,5 +1,6 @@
 
 
+from copy import deepcopy
 from enum import Enum
 import numpy as np
 from dataclasses import is_dataclass, fields, dataclass
@@ -239,20 +240,36 @@ def migrate(serialized: dict, from_version: Optional[SCHEMA_VERSIONS] = None, to
 
 def _migrate_draft_01_to_draft_02(serialized: dict):
     references = {}
-    def build_references(obj):
+
+    def rename_type(obj):
         if isinstance(obj, dict):
             t: str = obj.pop("type", obj.pop(TYPE_KEY, MISSING))
             if t is not MISSING:
                 obj[TYPE_KEY] = t
+            for v in obj.values():
+                rename_type(v)
+        elif isinstance(obj, list):
+            for v in obj:
+                rename_type(v)
+
+    def build_references(obj):
+        if isinstance(obj, dict):
+            t: str = obj.get(TYPE_KEY, MISSING)
             obj_id: str = obj.get("id", MISSING)
             if obj_id is not MISSING and not t in [MISSING, REFERENCE_TYPE_NAME]:
-                references.setdefault(obj_id, obj)
+                if not obj_id in references:
+                    references[obj_id] = deepcopy(obj)
+                obj[TYPE_KEY] = REFERENCE_TYPE_NAME
+                for k in list(obj.keys()):
+                    if k not in [TYPE_KEY, "id"]:
+                        del obj[k]
             for v in obj.values():
                 build_references(v)
         elif isinstance(obj, list):
             for v in obj:
                 build_references(v)
 
+    rename_type(serialized)
     build_references(serialized)
     migrated = {
         "$schema": SCHEMA_VERSIONS.BUMPS_DRAFT_02.value,
