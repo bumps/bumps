@@ -295,7 +295,7 @@ async def start_app(options: OPTIONS_CLASS = OPTIONS_CLASS(), sock: socket.socke
 def create_server_task():
     return asyncio.create_task(start_app())
 
-def display_inline_jupyter(width: Union[str,int]="100%", height: Union[str, int]=600) -> None:
+def display_inline_jupyter(width: Union[str,int]="100%", height: Union[str, int]=600, single_panel=None) -> None:
     """
     Display the web server in an iframe.
 
@@ -317,7 +317,8 @@ def display_inline_jupyter(width: Union[str,int]="100%", height: Union[str, int]
         src = f"{os.environ['JUPYTERHUB_SERVICE_PREFIX']}/proxy/{port}/"
     else:
         src = f"http://localhost:{port}/"
-    display(IFrame(src=src, width=width, height=height))
+    kwargs = dict(single_panel=single_panel) if single_panel is not None else {}
+    display(IFrame(src=src, width=width, height=height, extras=['style="resize: both;"'], **kwargs))
 
 if __name__ == '__main__':
     main()

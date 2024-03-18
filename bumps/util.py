@@ -75,7 +75,8 @@ class NumpyArray:
     values: Sequence = field(default_factory=list)
 
 if USE_PYDANTIC:
-    NDArray = NumpyArray
+    from typing import TypeAlias
+    NDArray: TypeAlias = NumpyArray
 
 def parse_errfile(errfile):
     """

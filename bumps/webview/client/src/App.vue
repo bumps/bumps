@@ -47,6 +47,17 @@ const urlParams = new URLSearchParams(queryString);
 
 const sio_base_path = urlParams.get('base_path') ?? window.location.pathname;
 const sio_server = urlParams.get('server') ?? '';
+const single_panel = urlParams.get('single_panel');
+if (single_panel !== null) {
+  active_layout.value = 'full';
+  const panel_index = props.panels.findIndex(({title}) => (title.toLowerCase() == single_panel.toLowerCase()));
+  if (panel_index > -1) {
+    active_panel.value[0] = panel_index;
+  }
+  else {
+    console.error(`Panel ${single_panel} not found`);
+  }
+}
 
 const socket = io(sio_server, {
    path: `${sio_base_path}socket.io`,
@@ -315,7 +326,7 @@ onMounted(() => {
 
 <template>
   <div class="h-100 w-100 m-0 d-flex flex-column">
-    <nav class="navbar navbar-expand-sm navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-sm navbar-dark bg-dark" v-if="single_panel === null">
       <div class="container-fluid">
         <div class="navbar-brand">
           <img src="./assets/bumps-icon_256x256x32.png" alt="" height="24" class="d-inline-block align-text-middle">
@@ -450,7 +461,7 @@ onMounted(() => {
     </div>
     <div class="flex-grow-1 row overflow-hidden" v-if="active_layout === 'full'">
       <div class="col d-flex flex-column mh-100">
-        <PanelTabContainer :panels="panels" :socket="socket" :active_panel="active_panel[0]" @panel_changed="(n: number) => { active_panel[0] = n }"/>
+        <PanelTabContainer :panels="panels" :socket="socket" :active_panel="active_panel[0]" @panel_changed="(n: number) => { active_panel[0] = n }" :hide_tabs="single_panel !== null"/>
       </div>
     </div>
 
