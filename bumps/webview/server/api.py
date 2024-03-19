@@ -500,7 +500,7 @@ async def get_convergence_plot():
         hovertemplate = "(%{{x}}, %{{y}})<br>{label}<extra></extra>"
         x = iternum[tail:].tolist()
         if npop==5:
-            fig['data'].append(dict(type="scattergl", x=x, y=pop[tail:,4].tolist(), mode="lines", line=dict(color="lightblue", width=0), showlegend=False, hovertemplate=hovertemplate.format(label="95%")))
+            # fig['data'].append(dict(type="scattergl", x=x, y=pop[tail:,4].tolist(), name="95%", mode="lines", line=dict(color="lightblue", width=1), showlegend=True, hovertemplate=hovertemplate.format(label="95%")))
             fig['data'].append(dict(type="scattergl", x=x, y=pop[tail:,3].tolist(), mode="lines", line=dict(color="lightgreen", width=0), showlegend=False, hovertemplate=hovertemplate.format(label="80%")))
             fig['data'].append(dict(type="scattergl", x=x, y=pop[tail:,1].tolist(), name="20% to 80% range", fill="tonexty", mode="lines", line=dict(color="lightgreen", width=0), hovertemplate=hovertemplate.format(label="20%")))
             fig['data'].append(dict(type="scattergl", x=x, y=pop[tail:,2].tolist(), name="population median", mode="lines", line=dict(color="green"), opacity=0.5))
