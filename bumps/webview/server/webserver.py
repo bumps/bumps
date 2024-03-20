@@ -290,10 +290,27 @@ async def start_app(options: OPTIONS_CLASS = OPTIONS_CLASS(), sock: socket.socke
     await runner.setup()
     site = web.SockSite(runner, sock=runsock)
     await site.start()
-    print(f"webserver started on {api.state.hostname}:{api.state.port}")
+    url = get_server_url()
+    print(f"webserver started: {url}")
 
 def create_server_task():
     return asyncio.create_task(start_app())
+
+
+def get_server_url():
+    import os
+    from bumps.webview.server import api
+
+    port = getattr(api.state, 'port', None)
+    if port is None:
+        raise ValueError("The web server has not been started.")
+
+    # detect if running through Jupyter Hub
+    if 'JUPYTERHUB_SERVICE_PREFIX' in os.environ:
+        url = f"{os.environ['JUPYTERHUB_SERVICE_PREFIX']}/proxy/{port}/"
+    else:
+        url = f"http://{api.state.hostname}:{port}/"
+    return url
 
 def display_inline_jupyter(width: Union[str,int]="100%", height: Union[str, int]=600, single_panel=None) -> None:
     """
@@ -304,21 +321,23 @@ def display_inline_jupyter(width: Union[str,int]="100%", height: Union[str, int]
     :param width: The width of the iframe.
     :param height: The height of the iframe.
     """
-    import os
     from IPython.display import display, IFrame
-    from bumps.webview.server import api
 
-    port = getattr(api.state, 'port', None)
-    if port is None:
-        raise ValueError("The web server has not been started.")
-
-    # detect if running through Jupyter Hub
-    if 'JUPYTERHUB_SERVICE_PREFIX' in os.environ:
-        src = f"{os.environ['JUPYTERHUB_SERVICE_PREFIX']}/proxy/{port}/"
-    else:
-        src = f"http://localhost:{port}/"
+    url = get_server_url()
     kwargs = dict(single_panel=single_panel) if single_panel is not None else {}
-    display(IFrame(src=src, width=width, height=height, extras=['style="resize: both;"'], **kwargs))
+    display(IFrame(src=url, width=width, height=height, extras=['style="resize: both;"'], **kwargs))
+
+def open_tab_link(single_panel=None) -> None:
+    """
+    Open the web server in a new tab in the default web browser.
+    """
+    from IPython.display import Javascript, display, HTML
+
+    url = get_server_url()
+    if single_panel is not None:
+        url += f"?single_panel={single_panel}"
+    src = f'<h3><a href="{url}" target="_blank">Open Webview in Tab</a></h3>'
+    display(HTML(src))
 
 if __name__ == '__main__':
     main()
