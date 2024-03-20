@@ -312,8 +312,8 @@ menu_items.value = [
   { text: "Apply Parameters", action: applyParameters, disabled: model_not_loaded },
   { text: "Save Problem", action: saveFile, disabled: model_not_loaded },
   { text: "Save Problem As...", action: saveFileAs, disabled: model_not_loaded },
-  { text: "Open Session", action: loadSession, disabled: model_not_loaded, help: "Create or Append to Session HDF5" },
-  { text: "Save Session (Copy)", action: saveSessionCopy, disabled: model_not_loaded },
+  { text: "Open Session", action: loadSession, help: "Create or Append to Session HDF5" },
+  { text: "Save Session (Copy)", action: saveSessionCopy },
   { text: "Export Results", action: exportResults, disabled: model_not_loaded },
   { text: "Reload Model", action: reloadModel, disabled: model_not_loaded },
 ]
