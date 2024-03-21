@@ -115,6 +115,8 @@ def write_ndarray(group: 'Group', name: str, data: Optional[np.ndarray], dtype=U
     return dset
 
 def read_ndarray(group: 'Group', name: str):
+    if not name in group:
+        return None
     raw_data = group[name][()]
     return None if isinstance(raw_data, h5py.Empty) else raw_data
 
@@ -159,16 +161,17 @@ class UncertaintyStateStorage:
     thin_point: Optional['np.ndarray'] = None
     update_CR_weight: Optional['np.ndarray'] = None
     update_draws: Optional['np.ndarray'] = None
+    good_chains: Optional['np.ndarray'] = None
 
     def write(self, parent: 'Group'):
         group = parent.require_group('uncertainty_state')
-        for attrname in ['AR', 'gen_draws', 'thin_draws', 'gen_logp', 'thin_logp', 'thin_point', 'update_CR_weight', 'update_draws']:
+        for attrname in ['AR', 'gen_draws', 'thin_draws', 'gen_logp', 'thin_logp', 'thin_point', 'update_CR_weight', 'update_draws', 'good_chains']:
             write_ndarray(group, attrname, getattr(self, attrname), dtype=UNCERTAINTY_DTYPE)
         write_ndarray(group, 'labels', self.labels, dtype=LABEL_DTYPE)
 
     def read(self, parent: 'Group'):
         group = parent['uncertainty_state']
-        for attrname in ['AR', 'gen_draws', 'labels', 'thin_draws', 'gen_logp', 'thin_logp', 'thin_point', 'update_CR_weight', 'update_draws']:
+        for attrname in ['AR', 'gen_draws', 'labels', 'thin_draws', 'gen_logp', 'thin_logp', 'thin_point', 'update_CR_weight', 'update_draws', 'good_chains']:
             setattr(self, attrname, read_ndarray(group, attrname))
 
 class FittingState:
@@ -315,6 +318,8 @@ def write_uncertainty_state(state: 'MCMCDraw', storage: UncertaintyStateStorage)
         storage.thin_draws, storage.thin_point, storage.thin_logp = state.chains()
         storage.update_draws, storage.update_CR_weight = state.CR_weight()
         storage.labels = np.array(state.labels, dtype=LABEL_DTYPE)
+        good_chains = state._good_chains
+        storage.good_chains = None if isinstance(good_chains, slice) else good_chains
 
 def read_uncertainty_state(loaded: UncertaintyStateStorage, skip=0, report=0, derived_vars=0):
 
@@ -324,6 +329,7 @@ def read_uncertainty_state(loaded: UncertaintyStateStorage, skip=0, report=0, de
     Nthin, Npop, Nvar = loaded.thin_point.shape
     Nupdate, Ncr = loaded.update_CR_weight.shape
     Nthin -= skip
+    good_chains = loaded.good_chains
 
     # Create empty draw and fill it with loaded data
     state = MCMCDraw(0, 0, 0, 0, 0, 0, thinning)
@@ -352,5 +358,7 @@ def read_uncertainty_state(loaded: UncertaintyStateStorage, skip=0, report=0, de
     state._best_logp = loaded.thin_logp[bestidx]
     state._best_x = loaded.thin_point[bestidx]
     state._best_gen = 0
+
+    state._good_chains = slice(None, None) if good_chains is None else good_chains.astype(int)
 
     return state
