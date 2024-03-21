@@ -13,6 +13,7 @@ import h5py
 import numpy as np
 
 from bumps.dream.state import MCMCDraw
+from .logger import logger
 
 if TYPE_CHECKING:
     import bumps, bumps.fitproblem, bumps.dream.state
@@ -146,7 +147,6 @@ class ProblemState:
         group = parent.require_group('problem')
         self.serializer = read_string(group, 'serializer')
         self.fitProblem = read_fitproblem(group, 'fitProblem', self.serializer)
-        print('fitProblem: ', self.fitProblem)
         self.pathlist = read_json(group, 'pathlist')
         self.filename = read_string(group, 'filename')
                
@@ -225,6 +225,7 @@ class State:
             "update_parameters": deque([], maxlen=1),
             "update_model": deque([], maxlen=1),
             "model_loaded": deque([], maxlen=1),
+            "session_output_file": deque([], maxlen=1),
             "fit_active": deque([], maxlen=1),
             "convergence_update": deque([], maxlen=1),
             "uncertainty_update": deque([], maxlen=1),
@@ -269,21 +270,21 @@ class State:
                     self.fitting.read(root_group)
                 self.read_topics(root_group)
         except Exception as e:
-            print(f"could not load session file {session_filename} because of {e}")
+            logger.warning(f"could not load session file {session_filename} because of {e}")
 
     def read_problem_from_session(self, session_filename: str):
         try:
             with h5py.File(session_filename, 'r') as root_group:
                 self.fitting.read(root_group)
         except Exception as e:
-            print(f"could not load fitProblem from {session_filename} because of {e}")
+            logger.warning(f"could not load fitProblem from {session_filename} because of {e}")
 
     def read_fitstate_from_session(self, session_filename: str):
         try:
             with h5py.File(session_filename, 'r') as root_group:
                 self.fitting.read(root_group)
         except Exception as e:
-            print(f"could not load fit state from {session_filename} because of {e}")
+            logger.warning(f"could not load fit state from {session_filename} because of {e}")
 
     def write_topics(self, parent: 'Group'):
         group = parent.require_group('topics')
@@ -333,7 +334,6 @@ def read_uncertainty_state(loaded: UncertaintyStateStorage, skip=0, report=0, de
 
     # Create empty draw and fill it with loaded data
     state = MCMCDraw(0, 0, 0, 0, 0, 0, thinning)
-    #print("gen, var, pop", Ngen, Nvar, Npop)
     state.draws = Ngen * Npop
     state.labels = [label.decode() for label in loaded.labels]
     state.generation = Ngen

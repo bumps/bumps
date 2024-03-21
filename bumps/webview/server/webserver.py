@@ -29,6 +29,7 @@ mimetypes.add_type("image/svg+xml", ".svg")
 from . import api
 from .fit_thread import EVT_FIT_PROGRESS
 from .state_hdf5_backed import SERIALIZERS
+from .logger import logger, list_handler, console_handler
 
 TRACE_MEMORY = False
 CDN_TEMPLATE = "https://cdn.jsdelivr.net/npm/bumps-webview-client@{client_version}/dist/{client_version}"
@@ -62,11 +63,11 @@ async def connect(sid: str, environ, data=None):
         message = contents[-1] if len(contents) > 0 else None
         if message is not None:
             await sio.emit(topic, message, to=sid)
-    print("connect ", sid)
+    logger.info(f"connect {sid}")
 
 @sio.event
 def disconnect(sid):
-    print('disconnect ', sid)
+    logger.info(f"disconnect {sid}")
 
 async def disconnect_all_clients():
     # disconnect all clients:
@@ -79,7 +80,7 @@ async def disconnect_all_clients():
 
 async def _shutdown():
     await disconnect_all_clients()
-    print("webserver shutdown tasks complete")
+    logger.info("webserver shutdown tasks complete")
     await asyncio.sleep(0.1)
     raise web.GracefulExit()
 
@@ -127,7 +128,7 @@ def get_commandline_options(arg_defaults: Optional[Dict]=None):
     # parser.add_argument('-c', '--config-file', type=str, help='path to JSON configuration to load')
     namespace = OPTIONS_CLASS()
     if arg_defaults is not None:
-        print('arg_defaults: ', arg_defaults)
+        logger.debug(f'arg_defaults: {arg_defaults}')
         for k,v in arg_defaults.items():
             setattr(namespace, k, v)
     args = parser.parse_args(namespace=namespace)
@@ -153,7 +154,6 @@ def get_absolute_path(path_in=None):
     path = Path(path_in) if path_in is not None else Path()
     abs_pathlist = list(path.absolute().parts)
     if sys.platform == 'win32':
-        print(abs_pathlist)
         abs_pathlist[0] = re.sub(r'^([A-Z]):\\$', r'\\\\?\\\1:\\', abs_pathlist[0])
     return Path(*abs_pathlist)
 
@@ -224,7 +224,7 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
         pathlist = list(filepath.parent.parts)
         filename = filepath.name
         start = options.start
-        print(f"fitter for filename {filename} is {fitter_id}")
+        logger.debug(f"fitter for filename {filename} is {fitter_id}")
         async def startup_task(App=None):
             await api.load_problem_file(pathlist, filename)
             if start:
@@ -237,7 +237,7 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
     # app.on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
 
     async def notice(message: str):
-        print(message)
+        logger.info(message)
     app.on_cleanup.append(lambda App: notice("cleanup task"))
     app.on_shutdown.append(lambda App: notice("shutdown task"))
     # not sure why, but have to call shutdown twice to get it to work:
@@ -277,21 +277,29 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
 def main(options: Optional[OPTIONS_CLASS] = None, sock: Optional[socket.socket] = None):
     # this entrypoint will be used to start gui, so set headless = False
     # (other contexts e.g. jupyter notebook will directly call start_app)
+    logger.addHandler(console_handler)
     options = get_commandline_options(arg_defaults={"headless": False}) if options is None else options
-    print(dict(options=options))
+    logger.info(dict(options=options))
     setup_sio_api()
     runsock = setup_app(options=options, sock=None)
     web.run_app(app, sock=runsock)
 
-async def start_app(options: OPTIONS_CLASS = OPTIONS_CLASS(), sock: socket.socket = None):
+async def start_app(options: OPTIONS_CLASS = OPTIONS_CLASS(), sock: socket.socket = None, jupyter_link: bool = False):
+    # this function is called from jupyter notebook, so set headless = True
+    options.headless = True
+    # redirect logging to a list
+    logger.addHandler(list_handler)
     setup_sio_api()
     runsock = setup_app(options=options, sock=sock)
     runner = web.AppRunner(app, handle_signals=False)
     await runner.setup()
     site = web.SockSite(runner, sock=runsock)
     await site.start()
-    url = get_server_url()
-    print(f"webserver started: {url}")
+    if jupyter_link:
+        return open_tab_link()
+    else:
+        url = get_server_url()
+        print(f"webserver started: {url}")
 
 def create_server_task():
     return asyncio.create_task(start_app())

@@ -25,6 +25,8 @@ import bumps.errplot
 from .state_hdf5_backed import State, serialize_problem, deserialize_problem, SERIALIZER_EXTENSIONS
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
 from .varplot import plot_vars
+from .logger import logger, console_handler
+
 
 REGISTRY: Dict[str, Callable] = {}
 MODEL_EXT = '.json'
@@ -33,7 +35,6 @@ CAN_THREAD = sys.platform != 'emscripten'
 
 FITTERS = (DreamFit, LevenbergMarquardtFit, SimplexFit, DEFit, MPFit, BFGSFit)
 FITTERS_BY_ID = dict([(fitter.id, fitter) for fitter in FITTERS])
-# print(FITTERS_BY_ID)
 FITTER_DEFAULTS = {}
 for fitter in FITTERS:
     FITTER_DEFAULTS[fitter.id] = {
@@ -75,7 +76,7 @@ TopicNameType = Literal[
 @register
 async def load_problem_file(pathlist: List[str], filename: str):    
     path = Path(*pathlist, filename)
-    print(f'model loading: {path}')
+    logger.info(f'model loading: {path}')
     await log(f'model_loading: {path}')
     if filename.endswith(".json"):
         with open(path, "rt") as input_file:
@@ -121,7 +122,7 @@ async def set_problem(problem: bumps.fitproblem.FitProblem, path: Optional[Path]
 async def save_problem_file(pathlist: Optional[List[str]] = None, filename: Optional[str] = None, overwrite: bool = False):
     problem_state = state.problem
     if problem_state is None:
-        print("Save failed: no problem loaded.")
+        logger.warning("Save failed: no problem loaded.")
         return
     if pathlist is None:
         pathlist = problem_state.pathlist
@@ -129,7 +130,7 @@ async def save_problem_file(pathlist: Optional[List[str]] = None, filename: Opti
         filename = problem_state.filename
 
     if pathlist is None or filename is None:
-        print("no filename and path provided to save")
+        logger.warning("no filename and path provided to save")
         return {"filename": "", "check_overwrite": False}
 
     path = Path(*pathlist)
@@ -177,7 +178,7 @@ async def export_results(export_path: Union[str, List[str]]=""):
 
     problem_state = state.problem
     if problem_state is None:
-        print("Save failed: no problem loaded.")
+        logger.warning("Save failed: no problem loaded.")
         return
 
     problem = deepcopy(problem_state.fitProblem)
@@ -332,7 +333,7 @@ async def start_fit_thread(fitter_id: str="", options=None, terminate_on_finish=
         fitclass = FITTERS_BY_ID[fitter_id]
         if state.fit_thread is not None:
             # warn that fit is alread running...
-            print("fit already running...")
+            logger.warning("fit already running...")
             await log("Can't start fit, a fit is already running...")
             return
         
@@ -404,12 +405,10 @@ async def _fit_progress_handler(event: Dict):
         state.save()
 
 async def _fit_complete_handler(event):
-    print("complete event: ", event.get("message", ""))
     message = event.get("message", None)
     fit_thread = state.fit_thread
     terminate = False
     if fit_thread is not None:
-        print(fit_thread)
         terminate = fit_thread.terminate_on_finish
         if CAN_THREAD:
             fit_thread.join(1) # 1 second timeout on join
@@ -419,6 +418,7 @@ async def _fit_complete_handler(event):
     await publish("fit_active", {})
     if message == "error":
         await log(event["traceback"], title=f"fit failed with error: {event.get('error_string')}")
+        logger.warning(f"fit failed with error: {event.get('error_string')}")
     else:
         problem: bumps.fitproblem.FitProblem = event["problem"]
         chisq = nice(2*event["value"]/problem.dof)
@@ -427,6 +427,7 @@ async def _fit_complete_handler(event):
         state.problem.fitProblem = problem
         await publish("update_parameters", True)
         await log(event["info"], title=f"done with chisq {chisq}")
+        logger.info(f"fit done with chisq {chisq}")
 
     state.fit_complete_event.set()
     if terminate:
@@ -459,13 +460,13 @@ async def get_data_plot(model_indices: Optional[List[int]] = None):
     import matplotlib.pyplot as plt
     import time
     start_time = time.time()
-    print('queueing new data plot...', start_time)
+    logger.info(f'queueing new data plot... {start_time}')
     fig = plt.figure()
     fitProblem.plot(model_indices)
     dfig = mpld3.fig_to_dict(fig)
     plt.close(fig)
     end_time = time.time()
-    print("time to draw data plot:", end_time - start_time)
+    logger.info(f"time to draw data plot: {end_time - start_time}")
     return {"fig_type": "mpld3", "plotdata": dfig}
 
 @register
@@ -523,14 +524,14 @@ def _get_correlation_plot(sort: bool=True, max_rows: int=8, nbins: int=50, vars=
     if isinstance(uncertainty_state, bumps.dream.state.MCMCDraw):
         import time
         start_time = time.time()
-        print('queueing new correlation plot...', start_time)
+        logger.info(f'queueing new correlation plot... {start_time}')
         draw = uncertainty_state.draw(vars=vars)
         c = Corr2d(draw.points.T, bins=nbins, labels=draw.labels)
         fig = c.plot(sort=sort, max_rows=max_rows)
-        print("time to render but not serialize...", time.time() - start_time)
+        logger.info(f"time to render but not serialize... {time.time() - start_time}")
         serialized = to_json_compatible_dict(fig.to_dict())
         end_time = time.time()
-        print("time to draw correlation plot:", end_time - start_time)
+        logger.info(f"time to draw correlation plot: {end_time - start_time}")
         return serialized
     else:
         return None
@@ -548,11 +549,11 @@ def _get_uncertainty_plot(timestamp: str=""):
     if uncertainty_state is not None:
         import time
         start_time = time.time()
-        print('queueing new uncertainty plot...', start_time)
+        logger.info(f'queueing new uncertainty plot... {start_time}')
         draw = uncertainty_state.draw()
         stats = bumps.dream.stats.var_stats(draw)
         fig = plot_vars(draw, stats)
-        print("time to draw uncertainty plot: ", time.time() - start_time)
+        logger.info(f"time to draw uncertainty plot: {time.time() - start_time}")
         return to_json_compatible_dict(fig.to_dict())
     else:
         return None
@@ -575,18 +576,18 @@ async def get_model_uncertainty_plot():
         import matplotlib.pyplot as plt
         import time
         start_time = time.time()
-        print('queueing new model uncertainty plot...', start_time)
+        logger.info(f'queueing new model uncertainty plot... {start_time}')
 
         fig = plt.figure()
         errs = bumps.errplot.calc_errors_from_state(fitProblem, uncertainty_state)
-        print('errors calculated: ', time.time() - start_time)
+        logger.info(f'errors calculated: {time.time() - start_time}')
         bumps.errplot.show_errors(errs, fig=fig)
-        print("time to render but not serialize...", time.time() - start_time)
+        logger.info(f"time to render but not serialize... {time.time() - start_time}")
         fig.canvas.draw()
         dfig = mpld3.fig_to_dict(fig)
         plt.close(fig)
         end_time = time.time()
-        print("time to draw model uncertainty plot:", end_time - start_time)
+        logger.info(f"time to draw model uncertainty plot: {end_time - start_time}")
         return dfig
     else:
         return None
@@ -602,7 +603,7 @@ async def get_parameter_trace_plot():
         import time
 
         start_time = time.time()
-        print('queueing new parameter_trace plot...', start_time)
+        logger.info(f'queueing new parameter_trace plot... {start_time}')
 
         fig = plt.figure()
         axes = fig.add_subplot(111)
@@ -620,11 +621,11 @@ async def get_parameter_trace_plot():
         axes.set_ylabel(label)
         fig.canvas.draw()
 
-        print("time to render but not serialize...", time.time() - start_time)
+        logger.info(f"time to render but not serialize... {time.time() - start_time}")
         dfig = mpld3.fig_to_dict(fig)
         plt.close(fig)
         end_time = time.time()
-        print("time to draw parameter_trace plot:", end_time - start_time)
+        logger.info(f"time to draw parameter_trace plot: {end_time - start_time}")
         return dfig
     else:
         return None
@@ -683,7 +684,7 @@ async def set_parameter(parameter_id: str, property: Literal["value01", "value",
         if parameter.fittable:
             parameter.fixed = bool(value)
             fitProblem.model_reset()
-            # print(f"setting parameter: {parameter}.fixed to {value}")
+            # logger.info(f"setting parameter: {parameter}.fixed to {value}")
             # model has been changed: setp and getp will return different values!
             await publish("update_model", True)
     fitProblem.model_update()
@@ -698,7 +699,7 @@ async def publish(topic: TopicNameType, message=None):
     state.topics[topic].append(contents)
     # if session_id == app["active_session"]:
     await emit(topic, contents)
-    # print("emitted: ", topic, contents)
+    # logger.info(f"emitted: {topic} :: {contents}")
 
 
 @register
@@ -757,7 +758,7 @@ async def get_fitter_defaults(*args):
 
 @register
 async def shutdown():
-    print("killing...")
+    logger.info("killing...")
     await stop_fit()
     state.save()
     await emit("server_shutting_down")
