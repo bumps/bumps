@@ -125,26 +125,34 @@ class DreamMonitor(monitor.Monitor):
     def __init__(self, problem, message, fitter, rate=0):
         self.time = 0
         self.rate = rate  # rate=0 for no progress update, only final
+        self.update_counter = 0
         self.problem = problem
         self.fitter = fitter
         self.message = message
         self.uncertainty_state = None
+        # emit None uncertainty state to start with
+        evt = dict(
+            message=message,
+            uncertainty_state=None,
+        )
+        EVT_FIT_PROGRESS.send(evt)
 
     def config_history(self, history):
         history.requires(time=1)
 
     def __call__(self, history):
         self.uncertainty_state = getattr(history, 'uncertainty_state', None)
-        if (self.rate > 0 and history.time[0] >= self.time+self.rate
-                and self.uncertainty_state is not None):
-            # Note: win.uncertainty_state protected by win.fit_lock
-            self.time = history.time[0]
-            #self.win.uncertainty_state = self.uncertainty_state
-            evt = dict(
-                message="uncertainty_update",
-                uncertainty_state=deepcopy(self.uncertainty_state),
-            )
-            EVT_FIT_PROGRESS.send(evt)
+        self.time = history.time[0]
+        if (self.rate > 0):
+            update_counter = history.time[0] // self.rate
+            if update_counter > self.update_counter:
+                self.update_counter = update_counter
+                evt = dict(
+                    message=self.message,
+                    time = self.time,
+                    uncertainty_state=deepcopy(self.uncertainty_state),
+                )
+                EVT_FIT_PROGRESS.send(evt)
 
     def final(self):
         """
@@ -155,6 +163,7 @@ class DreamMonitor(monitor.Monitor):
             # self.win.uncertainty_state = self.uncertainty_state
             evt = dict(
                 message="uncertainty_final",
+                time=self.time,
                 uncertainty_state=deepcopy(self.uncertainty_state),
             )
             EVT_FIT_PROGRESS.send(evt)
