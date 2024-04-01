@@ -298,6 +298,8 @@ async def stop_fit():
             loop = getattr(state, 'calling_loop', None)
             if loop is not None:
                 await loop.run_in_executor(None, state.fit_complete_event.wait)
+    else:
+        await publish("fit_active", {})
 
 def get_chisq(problem: bumps.fitproblem.FitProblem, nllf=None):
     nllf = problem.nllf() if nllf is None else nllf
