@@ -521,7 +521,7 @@ class Parameter(ValueProtocol, SupportsPrior):
         """
         # Need to constrain the parameter to fit within fixed limits and
         # to receive a name if a name has not already been provided.
-        if isinstance(value, Parameter):
+        if isinstance(value, ValueProtocol):
             return value
         else:
             return cls(value, **kw)
