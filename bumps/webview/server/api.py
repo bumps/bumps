@@ -62,15 +62,16 @@ async def emit(
     pass
 
 TopicNameType = Literal[
-    "log",
-    "update_parameters",
-    "update_model",
-    "model_loaded",
-    "fit_active",
-    "uncertainty_update",
-    "convergence_update",
-    "fitter_settings",
-    "fitter_active",
+    "log", # log messages
+    "update_parameters", # parameters have changed
+    "update_model", # model has changed
+    "model_loaded", # pathlist, filename
+    "fit_active", # fitter_id (set in client)
+    "uncertainty_update", # true when uncertainty state available
+    "convergence_update", # true when convergence state available
+    "fitter_settings", # dict of fitter settings for all fitters
+    "fitter_active", # fitter_id, options, num_steps
+    # "fit_progress", # step, value, chisq, point
 ]
 
 @register
@@ -161,6 +162,7 @@ async def load_session(pathlist: List[str], filename: str):
     await publish("update_parameters", True)
     if state.problem.filename is not None and state.problem.pathlist is not None:
         await publish("model_loaded", {"pathlist": pathlist, "filename": filename})
+    await publish("fit_active", {})
 
 @register
 async def get_serializer():
