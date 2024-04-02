@@ -224,9 +224,12 @@ def _export_results(path: Path, problem: bumps.fitproblem.FitProblem, uncertaint
     serializer = state.problem.serializer
     extension = SERIALIZER_EXTENSIONS[serializer]
     save_filename = f"{output_pathstr}.{extension}"
-    serialized = serialize_problem(problem, serializer)
-    with open(save_filename, "wb") as output_file:
-        output_file.write(serialized)
+    try:
+        serialized = serialize_problem(problem, serializer)
+        with open(save_filename, "wb") as output_file:
+            output_file.write(serialized)
+    except Exception as exc:
+        logger.error(f"Error exporting model: {exc}")
 
     # Save the current state of the parameters
     with redirect_console(str(path / f"{basename}.out")):
