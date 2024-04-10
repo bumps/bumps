@@ -469,7 +469,7 @@ async def get_data_plot(model_indices: Optional[List[int]] = None):
     start_time = time.time()
     logger.info(f'queueing new data plot... {start_time}')
     fig = plt.figure()
-    fitProblem.plot(model_indices)
+    fitProblem.plot(model_indices=model_indices)
     dfig = mpld3.fig_to_dict(fig)
     plt.close(fig)
     end_time = time.time()
