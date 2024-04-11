@@ -223,18 +223,21 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
         filepath = get_absolute_path(options.filename)
         pathlist = list(filepath.parent.parts)
         filename = filepath.name
-        start = options.start
         logger.debug(f"fitter for filename {filename} is {fitter_id}")
-        async def startup_task(App=None):
+        async def load_problem(App=None):
             await api.load_problem_file(pathlist, filename)
-            if start:
-                await api.start_fit_thread(fitter_id, fitter_settings["settings"], options.exit)
         
-        app.on_startup.append(startup_task)
+        app.on_startup.append(load_problem)
 
-        # app.on_startup.append()
-
-    # app.on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
+    if options.start:
+        async def start_fit(App=None):
+            if api.state.problem is not None:
+                await api.start_fit_thread(fitter_id, fitter_settings["settings"], options.exit)
+        app.on_startup.append(start_fit)
+    else:
+        # signal that no fit is running at startup, even if a fit was
+        # interrupted and the state was saved:
+        app.on_startup.append(lambda App: api.publish('fit_active', {}))
 
     async def notice(message: str):
         logger.info(message)
