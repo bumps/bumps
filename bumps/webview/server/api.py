@@ -469,7 +469,13 @@ async def get_data_plot(model_indices: Optional[List[int]] = None):
     start_time = time.time()
     logger.info(f'queueing new data plot... {start_time}')
     fig = plt.figure()
-    fitProblem.plot(model_indices=model_indices)
+    for i, model in enumerate(fitProblem.models):
+        if model_indices is not None and i not in model_indices:
+            continue
+        model.plot()
+    plt.text(0.01, 0.01,
+             'chisq=%s' % fitProblem.chisq_str(),
+             transform=plt.gca().transAxes)
     dfig = mpld3.fig_to_dict(fig)
     plt.close(fig)
     end_time = time.time()
