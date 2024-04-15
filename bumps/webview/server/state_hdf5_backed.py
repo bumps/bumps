@@ -46,8 +46,7 @@ def serialize_problem(problem: 'bumps.fitproblem.FitProblem', method: SERIALIZER
         return pickle.dumps(problem)
     elif method == 'dill':
         import dill
-        dill.settings['recurse'] = True
-        return dill.dumps(problem)
+        return dill.dumps(problem, recurse=True)
 
 def deserialize_problem(serialized: bytes, method: SERIALIZERS):
     if method == 'dataclass':
@@ -62,46 +61,44 @@ def deserialize_problem(serialized: bytes, method: SERIALIZERS):
         return dill.loads(serialized)
 
 
-def write_string_data(group: 'Group', name: str, data: str, maxsize=1024*1024):
-    if data is not None:
-        dset = group.create_dataset(name, data=[data], compression=COMPRESSION, dtype=f"|S{maxsize}")
-    else:
-        dset = group.create_dataset(name, dtype="S1") # empty
-    return dset
+def write_bytes_data(group: 'Group', name: str, data: bytes):
+    saved_data = [data] if data is not None else []
+    return group.create_dataset(name, data=np.void(saved_data), compression=COMPRESSION)
 
-def read_string_data(group: 'Group', name: str):
+def read_bytes_data(group: 'Group', name: str):
     raw_data = group[name][()]
-    if isinstance(raw_data, h5py.Empty):
-        return None
-    else:
+    size = raw_data.size
+    if size is not None and size > 0:
         return raw_data[0]
+    else:
+        return None
 
 def write_fitproblem(group: 'Group', name: str, fitProblem: 'bumps.fitproblem.FitProblem', serializer: SERIALIZERS):
     serialized = serialize_problem(fitProblem, serializer) if fitProblem is not None else None
-    dset = write_string_data(group, name, serialized, maxsize=MAX_PROBLEM_SIZE)
+    dset = write_bytes_data(group, name, serialized)
     return dset
 
 def read_fitproblem(group: 'Group', name: str, serializer: SERIALIZERS):
-    serialized = read_string_data(group, name)
+    serialized = read_bytes_data(group, name)
     fitProblem = deserialize_problem(serialized, serializer) if serialized is not None else None
     return fitProblem
 
 def write_string(group: 'Group', name: str, value: Optional[str]):
     serialized = value.encode() if value is not None else None
-    dset = write_string_data(group, name, serialized)
+    dset = write_bytes_data(group, name, serialized)
     return dset
 
 def read_string(group: 'Group', name: str):
-    serialized = read_string_data(group, name)
+    serialized = read_bytes_data(group, name)
     return serialized.decode() if serialized is not None else None
 
 def write_json(group: 'Group', name: str, data):
     serialized = json.dumps(data) if data is not None else None
-    dset = write_string_data(group, name, serialized)
+    dset = write_bytes_data(group, name, serialized.encode())
     return dset
 
 def read_json(group: 'Group', name: str):
-    serialized = read_string_data(group, name)
+    serialized = read_bytes_data(group, name)
     try:
         # if JSON fails to load, then just return None
         result = json.loads(serialized) if serialized is not None else None
@@ -110,17 +107,18 @@ def read_json(group: 'Group', name: str):
     return result
 
 def write_ndarray(group: 'Group', name: str, data: Optional[np.ndarray], dtype=UNCERTAINTY_DTYPE):
-    if data is not None:
-        dset = group.create_dataset(name, data=data, dtype=dtype, compression=UNCERTAINTY_COMPRESSION)
-    else:
-        dset = group.create_dataset(name, dtype='f') # empty
-    return dset
+    saved_data = [data] if data is not None else []
+    return group.create_dataset(name, data=saved_data, dtype=dtype, compression=UNCERTAINTY_COMPRESSION)
 
 def read_ndarray(group: 'Group', name: str):
     if not name in group:
         return None
     raw_data = group[name][()]
-    return None if isinstance(raw_data, h5py.Empty) else raw_data
+    size = raw_data.size
+    if size is not None and size > 0:
+        return raw_data
+    else:
+        return None
 
 class StringAttribute:
     @classmethod
