@@ -107,7 +107,7 @@ def read_json(group: 'Group', name: str):
     return result
 
 def write_ndarray(group: 'Group', name: str, data: Optional[np.ndarray], dtype=UNCERTAINTY_DTYPE):
-    saved_data = [data] if data is not None else []
+    saved_data = data if data is not None else []
     return group.create_dataset(name, data=saved_data, dtype=dtype, compression=UNCERTAINTY_COMPRESSION)
 
 def read_ndarray(group: 'Group', name: str):
