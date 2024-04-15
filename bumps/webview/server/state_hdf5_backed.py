@@ -46,6 +46,7 @@ def serialize_problem(problem: 'bumps.fitproblem.FitProblem', method: SERIALIZER
         return pickle.dumps(problem)
     elif method == 'dill':
         import dill
+        dill.settings['recurse'] = True
         return dill.dumps(problem)
 
 def deserialize_problem(serialized: bytes, method: SERIALIZERS):
