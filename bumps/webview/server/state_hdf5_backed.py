@@ -69,7 +69,7 @@ def read_bytes_data(group: 'Group', name: str):
     raw_data = group[name][()]
     size = raw_data.size
     if size is not None and size > 0:
-        return raw_data[0]
+        return raw_data[0].tobytes()
     else:
         return None
 
