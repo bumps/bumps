@@ -274,7 +274,7 @@ class State:
     def read_problem_from_session(self, session_filename: str):
         try:
             with h5py.File(session_filename, 'r') as root_group:
-                self.fitting.read(root_group)
+                self.problem.read(root_group)
         except Exception as e:
             logger.warning(f"could not load fitProblem from {session_filename} because of {e}")
 
