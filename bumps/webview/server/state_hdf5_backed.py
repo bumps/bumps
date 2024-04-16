@@ -69,7 +69,19 @@ def read_bytes_data(group: 'Group', name: str):
     raw_data = group[name][()]
     size = raw_data.size
     if size is not None and size > 0:
-        return raw_data[0].tobytes()
+        return raw_data.tobytes().rstrip(b'\x00')
+    else:
+        return None
+
+def write_string(group: 'Group', name: str, data: str, encoding='utf-8'):
+    saved_data = np.bytes_([data]) if data is not None else []
+    return group.create_dataset(name, data=saved_data, compression=COMPRESSION, dtype=h5py.string_dtype(encoding=encoding))
+
+def read_string(group: 'Group', name: str):
+    raw_data = group[name][()]
+    size = raw_data.size
+    if size is not None and size > 0:
+        return np.bytes_(raw_data.flat[0]).decode()
     else:
         return None
 
@@ -83,22 +95,13 @@ def read_fitproblem(group: 'Group', name: str, serializer: SERIALIZERS):
     fitProblem = deserialize_problem(serialized, serializer) if serialized is not None else None
     return fitProblem
 
-def write_string(group: 'Group', name: str, value: Optional[str]):
-    serialized = value.encode() if value is not None else None
-    dset = write_bytes_data(group, name, serialized)
-    return dset
-
-def read_string(group: 'Group', name: str):
-    serialized = read_bytes_data(group, name)
-    return serialized.decode() if serialized is not None else None
-
 def write_json(group: 'Group', name: str, data):
     serialized = json.dumps(data) if data is not None else None
-    dset = write_bytes_data(group, name, serialized.encode())
+    dset = write_string(group, name, serialized.encode())
     return dset
 
 def read_json(group: 'Group', name: str):
-    serialized = read_bytes_data(group, name)
+    serialized = read_string(group, name)
     try:
         # if JSON fails to load, then just return None
         result = json.loads(serialized) if serialized is not None else None
@@ -294,6 +297,7 @@ class State:
         group = parent.require_group('topics')
         for topic in group:
             topic_data = read_json(group, topic)
+            topic_data = np.array([topic_data]).flatten()
             if topic_data is not None:
                 self.topics[topic].extend(topic_data)
 
