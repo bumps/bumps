@@ -149,6 +149,7 @@ def setup_sio_api():
     api.emit = sio.emit
     for (name, action) in api.REGISTRY.items():
         sio.on(name, handler=wrap_with_sid(action))
+        rest_get(action)
 
 def get_absolute_path(path_in=None):
     path = Path(path_in) if path_in is not None else Path()
