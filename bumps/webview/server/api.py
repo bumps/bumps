@@ -523,6 +523,7 @@ async def get_convergence_plot():
         fig['data'].append(dict(type="scattergl", x=x, y=best[tail:].tolist(), name="best", line=dict(color="red", width=1), mode="lines"))
         fig['layout'].update(dict(template="simple_white", legend=dict(x=1,y=1,xanchor="right",yanchor="top")))
         fig['layout'].update(dict(title=dict(text="Convergence", xanchor="center", x=0.5)))
+        fig['layout'].update(dict(uirevision=1))
         fig['layout'].update(dict(xaxis=dict(title="iteration number", showline=True, showgrid=False, zeroline=False)))
         fig['layout'].update(dict(yaxis=dict(title="chisq", showline=True, showgrid=False, zeroline=False)))
         return to_json_compatible_dict(fig)
