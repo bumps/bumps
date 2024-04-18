@@ -49,7 +49,6 @@ def tile_axes_square(n):
 
 def plot_vars(draw: 'Draw', all_vstats, **kw):
     from plotly.subplots import make_subplots
-
     n = len(all_vstats)
     ncol, nrow = tile_axes_square(n)
 
@@ -61,41 +60,49 @@ def plot_vars(draw: 'Draw', all_vstats, **kw):
     # fig = make_subplots(rows=nrow, cols=ncol, subplot_titles=titles)
     fig = make_subplots(rows=nrow, cols=ncol)
     fig.update_yaxes(secondary_y = True)
+    fig.update_xaxes(dict(exponentformat='e'), overwrite=True)
+    fig.update_xaxes(showticklabels=True, showline=True, mirror=True, linewidth=1, linecolor='black', showgrid=False)
+    fig.update_yaxes(showticklabels=False, showline=True, mirror=True, linewidth=1, linecolor='black', showgrid=False)
+    fig.update_layout(coloraxis = {'colorscale': HISTOGRAM_COLORMAP, "cmin": vmin, "cmax": vmax})
+    fig.update_layout(height=nrow*300, width=ncol*400)
+    fig.update_layout(plot_bgcolor='rgba(0, 0, 0, 0)')
+    fig.update_layout(hoverlabel=dict(bgcolor='white', font_size=16))
+
+    fig = fig.to_dict()
+    fig['layout'].update(shapes=[], annotations=[])
 
     for k, vstats in enumerate(all_vstats):
         row = (k // ncol) + 1
         col = (k % ncol) + 1
-        plot_var(fig, draw, vstats, k, cbar_edges=cbar_edges, row=row, col=col, **kw)
-    
-    fig.update_xaxes(dict(exponentformat='e'), overwrite=True)
-    fig.update_yaxes(dict(showticklabels=False))
-    fig.update_layout(height=600, width=800, coloraxis_colorbar_title="-logP")
-    fig.update_layout(coloraxis = {'colorscale': HISTOGRAM_COLORMAP, "cmin": vmin, "cmax": vmax})
+        subplot = k + 1
+        plot_var(fig, draw, vstats, k, cbar_edges=cbar_edges, subplot=subplot, **kw)
 
     return fig
 
 
-def plot_var(fig: 'go.Figure', draw: 'Draw', vstats: 'VarStats', var: int, cbar_edges: np.ndarray, nbins=30, row=None, col=None):
-    import plotly.graph_objects as go
+def plot_var(fig: 'go.Figure', draw: 'Draw', vstats: 'VarStats', var: int, cbar_edges: np.ndarray, nbins=30, subplot=None):
     values = draw.points[:, var].flatten()
     bin_range = vstats.p95_range
     #bin_range = np.min(values), np.max(values)
-    showscale = (row == 0 and col == 0)
+    # showscale = (subplot == 1)
     showscale = True
     traces = _make_logp_histogram(values, draw.logp, nbins, bin_range,
-                         draw.weights, cbar_edges=cbar_edges, showscale=showscale)
+                         draw.weights, cbar_edges=cbar_edges, showscale=showscale, subplot=subplot)
 
-    fig.add_traces(traces, rows=row, cols=col)
-    _decorate_histogram(vstats, fig, row=row, col=col)
+    fig['data'].extend(traces)
+    _decorate_histogram(vstats, fig, subplot=subplot)
 
 
-def _decorate_histogram(vstats: 'VarStats', fig: 'go.Figure', col: typing.Optional[int]=None, row: typing.Optional[int]=None):
+def _decorate_histogram(vstats: 'VarStats', fig: dict, subplot: int = 1):
     import plotly.graph_objects as go
 
+    xaxis, yaxis = subplot_axis_names(subplot)
     l95, h95 = vstats.p95_range
     l68, h68 = vstats.p68_range
     # Shade things inside 1-sigma
-    fig.add_vrect(x0=l68, x1=h68, fillcolor='gold', opacity=0.5, layer='below', line={"width": 0}, col=col, row=row)
+
+    shading_rect = dict(type='rect', x0=l68, x1=h68, y0=0, y1=1, fillcolor='gold', opacity=0.5, layer='below', line={"width": 0}, xref=xaxis, yref=f"{yaxis} domain")
+    fig['layout']['shapes'].append(shading_rect)
 
     def marker(symbol, position, info_template):
         if position < l95:
@@ -104,40 +111,37 @@ def _decorate_histogram(vstats: 'VarStats', fig: 'go.Figure', col: typing.Option
             symbol, position, ha = '>'+symbol, h95, 'right'
         else:
             symbol, position, ha = symbol, position, 'center'
-        fig.add_annotation(
-            xref="x",
-            yref="y domain",
+        new_marker = dict(
+            xref=xaxis,
+            yref=f"{yaxis} domain",
             x=position,
             y=0.95,
             text=symbol,
             showarrow=False,
             font=dict(color=ANNOTATION_COLOR),
-            col=col,
-            row=row,
             hovertext=info_template.format(position=position)
-        )
 
+        )
+        fig['layout']['annotations'].append(new_marker)
         #pylab.axvline(v)
 
     marker('|', vstats.median, "median: {position}")
     marker('E', vstats.mean, "mean: {position}")
     marker('*', vstats.best, "best: {position}")
     
-    fig.add_annotation(
-        xref="x domain",
-        yref="y domain",
+    label_annotation = dict(
+        xref=f"{xaxis} domain",
+        yref=f"{yaxis} domain",
         x = 0.0,
         y = 1.1,
         text = vstats.label,
-        col=col,
-        row=row,
-        showarrow=False
+        showarrow=False,
     )
+    fig['layout']['annotations'].append(label_annotation)
 
-def _make_logp_histogram(values, logp, nbins, ci, weights, cbar_edges, showscale=False):
+def _make_logp_histogram(values, logp, nbins, ci, weights, cbar_edges, showscale=False, subplot=None):
     from numpy import (ones_like, searchsorted, linspace, cumsum, diff,
                        unique, argsort, array, hstack, exp)
-    import plotly.graph_objects as go
 
     if weights is None:
         weights = ones_like(logp)
@@ -213,7 +217,16 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, cbar_edges, showscale
         bin_max_likelihood = exp(cbar_edges[0] - pv[0])
         bins.append(((xlo+xhi)/2, bin_height, bin_max_likelihood))
 
-    bar_trace = go.Bar(x=xscatt, y=yscatt, showlegend=False, hoverinfo='skip', marker=dict(color=zscatt, coloraxis='coloraxis', line=dict(width=0)))
+    xaxis, yaxis = subplot_axis_names(subplot)
+    bar_trace = dict(
+        type='bar',
+        x=xscatt, y=yscatt,
+        showlegend=False, hoverinfo='skip',
+        marker=dict(color=zscatt, coloraxis='coloraxis',
+        line=dict(width=0)),
+        xaxis=xaxis,
+        yaxis=yaxis
+    )
     # Check for broken distribution
     if not bins:
         return
@@ -227,7 +240,15 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, cbar_edges, showscale
     if ml_peak > hist_peak*1.3:
         maxlikelihood *= hist_peak*1.3/ml_peak
     
-    scatter_trace = go.Scatter(x=centers, y=maxlikelihood, hoverinfo='skip', showlegend=False, line={"color": LINE_COLOR})
+    scatter_trace = dict(
+        type='scatter',
+        x=centers, y=maxlikelihood,
+        hoverinfo='skip',
+        showlegend=False,
+        line={"color": LINE_COLOR},
+        xaxis=xaxis,
+        yaxis=yaxis,
+    )
     # return dict(bar_trace=bar_trace, scatter_trace=scatter_trace)
     return [bar_trace, scatter_trace]
 
@@ -238,3 +259,9 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, cbar_edges, showscale
     #mean, std = np.average(values, weights=weights), np.std(values, ddof=1)
     #pdf = G(centers, mean, std)
     #pylab.plot(centers, pdf*np.sum(height)/np.sum(pdf), '-b')
+
+def subplot_axis_names(subplot: int):
+    if subplot == 1:
+        return "x", "y"
+    else:
+        return f"x{subplot}", f"y{subplot}"

@@ -568,7 +568,7 @@ def _get_uncertainty_plot(timestamp: str=""):
         stats = bumps.dream.stats.var_stats(draw)
         fig = plot_vars(draw, stats)
         logger.info(f"time to draw uncertainty plot: {time.time() - start_time}")
-        return to_json_compatible_dict(fig.to_dict())
+        return to_json_compatible_dict(fig)
     else:
         return None
 
