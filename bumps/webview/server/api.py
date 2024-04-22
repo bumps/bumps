@@ -136,8 +136,8 @@ async def remove_history_item(timestamp: str):
 
 
 @register
-async def save_to_history(label: str):
-    state.save_to_history(label)
+async def save_to_history(label: str, include_population: bool = False, include_uncertainty: bool = False):
+    state.save_to_history(label, include_population=include_population, include_uncertainty=include_uncertainty)
     await emit("history_update", True)
 
 
@@ -151,6 +151,11 @@ async def reload_history_item(timestamp: str):
 @register
 async def set_keep_history(timestamp: str, keep: bool):
     state.history.set_keep(timestamp, keep)
+    await emit("history_update", True)
+
+@register
+async def update_history_label(timestamp: str, label: str):
+    state.history.update_label(timestamp, label)
     await emit("history_update", True)
 
 @register
@@ -473,7 +478,7 @@ async def _fit_complete_handler(event):
         problem.setp(event["point"])
         problem.model_update()
         state.problem.fitProblem = problem
-        await save_to_history(f"fit complete: {event['fitter_id']}")
+        await save_to_history(f"fit complete: {event['fitter_id']}", include_population=True, include_uncertainty=True)
         await publish("update_parameters", True)
         await log(event["info"], title=f"done with chisq {chisq}")
         logger.info(f"fit done with chisq {chisq}")
