@@ -106,7 +106,7 @@ def read_json(group: 'Group', name: str):
     serialized = read_string(group, name)
     try:
         # if JSON fails to load, then just return None
-        result = json.loads(serialized.decode()) if serialized is not None else None
+        result = json.loads(serialized) if serialized is not None else None
     except Exception:
         result = None
     return result
@@ -194,7 +194,8 @@ class History:
             item.fitting.read(item_group)
             item.label = item_group.attrs['label']
             item.chisq_str = item_group.attrs['chisq']
-            item.keep = item_group.attrs['keep']
+            # keep is a boolean, but h5py returns np.bool_ which is not JSON serializable
+            item.keep = bool(item_group.attrs['keep'])
             item.timestamp = name
             self.store.append(item)
 
@@ -205,12 +206,24 @@ class History:
         self.store.append(item)
 
     def list(self):
-        return [dict(timestamp=item.timestamp, label=item.label, chisq_str=item.chisq_str) for item in self.store]
+        return [dict(timestamp=item.timestamp,
+                     label=item.label,
+                     chisq_str=item.chisq_str,
+                     keep=item.keep,
+                     has_population=(item.fitting.population is not None),
+                     has_uncertainty=(item.fitting.uncertainty_state is not None),
+                    ) for item in self.store]
     
     def set_keep(self, timestamp: str, keep: bool):
         for item in self.store:
             if item.timestamp == timestamp:
                 item.keep = keep
+                return
+
+    def update_label(self, timestamp: str, label: str):
+        for item in self.store:
+            if item.timestamp == timestamp:
+                item.label = label
                 return
 
 
@@ -377,16 +390,19 @@ class State:
             with h5py.File(output_file, 'w') as root_group:
                 self.problem.write(root_group)
                 self.fitting.write(root_group)
+                self.history.write(root_group)
                 self.write_topics(root_group)
         shutil.move(tmp_name, session_filename)
 
-    def read_session_file(self, session_filename: str, read_problem: bool = True, read_fitstate: bool = True):
+    def read_session_file(self, session_filename: str, read_problem: bool = True, read_fitstate: bool = True, read_history: bool = True):
         try:
             with h5py.File(session_filename, 'r') as root_group:
                 if read_problem:
                     self.problem.read(root_group)
                 if read_fitstate:
                     self.fitting.read(root_group)
+                if read_history:
+                    self.history.read(root_group)
                 self.read_topics(root_group)
         except Exception as e:
             logger.warning(f"could not load session file {session_filename} because of {e}")
