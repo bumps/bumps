@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import type { AsyncSocket } from '../asyncSocket';
+import { add_notification } from '../app_state';
 
 const title = "History";
 
@@ -13,6 +14,8 @@ type HistoryItem = {
   label: string,
   chisq_str: string,
   keep: boolean,
+  has_population: boolean,
+  has_uncertainty: boolean,
 };
 
 const history = ref<HistoryItem[]>([]);
@@ -27,9 +30,17 @@ props.socket.on('history_update', async () => {
 });
 props.socket.asyncEmit('get_history', (new_history: { problem_history: HistoryItem[]}) => { history.value = new_history.problem_history });
 
-async function remove_history_item(timestamp: string) {
+async function remove_history_item(timestamp: string, keep: boolean) {
   console.log('remove_history_item', timestamp);
-  await props.socket.asyncEmit('remove_history_item', timestamp);
+  if (keep) {
+    add_notification({
+      "title": "Forbidden", 
+      "content": "Cannot remove history item marked to keep",
+      "timeout": 4000 });
+    return;
+  } else {
+    await props.socket.asyncEmit('remove_history_item', timestamp);
+  }
 }
 
 async function manual_save() {
@@ -48,6 +59,11 @@ async function reload_history(timestamp: string) {
 async function toggle_keep(timestamp: string, current_keep: boolean) {
   console.log('toggle_keep', timestamp);
   await props.socket.asyncEmit('set_keep_history', timestamp, !current_keep);
+}
+
+async function update_label(timestamp: string, new_label: string) {
+  console.log('update_label', timestamp, new_label);
+  await props.socket.asyncEmit('update_history_label', timestamp, new_label);
 }
 
 </script>
@@ -71,25 +87,32 @@ async function toggle_keep(timestamp: string, current_keep: boolean) {
     </div>
     <h2 class="mx-auto">History</h2>
     <ul class="list-group">
-      <li v-for="({timestamp, label, chisq_str, keep}, index) of history" :key="index" class="list-group-item">
+      <li 
+        v-for="({timestamp, label, chisq_str, keep, has_population, has_uncertainty}, index) of history"
+        :key="timestamp" class="list-group-item"
+      >
         <div class="d-flex w-100 justify-content-between">
           <button
             type="button"
             class="btn-close"
             aria-label="Close"
-            @click="remove_history_item(timestamp)">
+            @click="remove_history_item(timestamp, keep)">
           </button>
-          <span class="me-1">{{ label }}</span>
+          <span class="px-2" contenteditable="true" plaintext-only @blur="update_label(timestamp, $event.target.innerText)">{{ label }}</span>
           <span>
             <small class="me-1">{{ chisq_str }}</small>
-            <button class="btn btn-secondary btn-sm" @click="reload_history(timestamp)">Load</button>
+            <button class="btn btn-secondary btn-sm mx-1" @click="reload_history(timestamp)">
+              Load
+              <span v-if="has_population" class="badge bg-primary" title="has population">P</span>
+              <span v-if="has_uncertainty" class="badge bg-warning" title="has uncertainty">U</span>
+            </button>
+            <span class="form-check form-check-inline">
+              <input class="form-check-input" type="checkbox" :checked="keep" @click="toggle_keep(timestamp, keep)" :id="`keep-${index}`">
+              <label class="form-check-label" :for="`keep-${index}`">
+                keep
+              </label>
+            </span>
           </span>
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" :value="keep" @click="toggle_keep(timestamp, keep)" :id="`keep-${index}`">
-            <label class="form-check-label" :for="`keep-${index}`">
-              keep
-            </label>
-          </div>
         </div>
       </li>
     </ul>
