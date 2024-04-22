@@ -1,6 +1,7 @@
 import { ref, shallowRef } from 'vue';
 import type { Ref } from 'vue';
 import type { AsyncSocket } from './asyncSocket';
+import { v4 as uuidv4 } from 'uuid';
 
 interface ModalDialog {
   open: () => void,
@@ -31,3 +32,21 @@ export const fitter_settings = shallowRef<{ [fit_name: string]: FitSetting }>({}
 export const fitter_active = ref<string>("amoeba");
 export const notifications = ref<{ title: string, content: string, id: string, spinner: boolean }[]>([]);
 export const menu_items = ref<{disabled?: Ref<boolean>, text: string, action: Function, help?: string}[]>([]);
+
+export function add_notification({title, content, id, timeout}: {title: string, content: string, id?: string, timeout?: number}) {
+  if (id === undefined) {
+    id = uuidv4();
+  }
+  const has_timeout = (timeout !== undefined);
+  notifications.value.push({title, content, id, spinner: !has_timeout});
+  if (has_timeout) {
+    setTimeout(cancelNotification, timeout, id);
+  }
+}
+
+export function cancelNotification(id: string) {
+  const index = notifications.value.findIndex(({id: item_id}) => (item_id === id));
+  if (index > -1) {
+    notifications.value.splice(index, 1);
+  }
+}
