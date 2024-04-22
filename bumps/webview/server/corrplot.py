@@ -204,7 +204,7 @@ def _plot_single_heatmap(hists, labels, indices, show_ticks=None):
             dy = 1.0 / sy
             hovertemplate = f"{labels[index]}<br>{labels[cross_index]}<extra></extra>"
             heatmap_trace = go.Heatmap(z=np.log10(data), y=[i, i+dx], x=[j,j+dy], coloraxis='coloraxis', hovertemplate=hovertemplate, customdata=[ii,jj])
-            border_trace = go.Scatter(x=[j, j+1, j+1, j, j], y=[i, i, i+1, i+1, i], mode='lines', line=dict(color='black', width=1), showlegend=False, hoverinfo='skip')
+            border_trace = go.Scattergl(x=[j, j+1, j+1, j, j], y=[i, i, i+1, i+1, i], mode='lines', line=dict(color='black', width=1), showlegend=False, hoverinfo='skip')
             fig.add_traces([heatmap_trace, border_trace])
 
     # Add annotation for last parameter:
