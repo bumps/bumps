@@ -558,15 +558,16 @@ async def get_correlation_plot(sort: bool=True, max_rows: int=8, nbins: int=50, 
     return result
 
 @lru_cache(maxsize=30)
-def _get_uncertainty_plot(timestamp: str=""):
+def _get_uncertainty_plot(timestamp: str="", cbar_colors: int=8):
     uncertainty_state = state.fitting.uncertainty_state
     if uncertainty_state is not None:
         import time
         start_time = time.time()
         logger.info(f'queueing new uncertainty plot... {start_time}')
         draw = uncertainty_state.draw()
+        nbins = max(min(draw.points.shape[0]//20000, 100), 30)
         stats = bumps.dream.stats.var_stats(draw)
-        fig = plot_vars(draw, stats)
+        fig = plot_vars(draw, stats, nbins=nbins, cbar_colors=cbar_colors)
         logger.info(f"time to draw uncertainty plot: {time.time() - start_time}")
         return to_json_compatible_dict(fig)
     else:
@@ -574,7 +575,7 @@ def _get_uncertainty_plot(timestamp: str=""):
 
 @register
 async def get_uncertainty_plot(timestamp: str=""):
-    result = await asyncio.to_thread(_get_uncertainty_plot, timestamp=timestamp)
+    result = await asyncio.to_thread(_get_uncertainty_plot, timestamp=timestamp, cbar_colors=8)
     return result
 
 @register

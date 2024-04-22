@@ -33,7 +33,7 @@ if typing.TYPE_CHECKING:
 CBAR_COLORS = 64
 LINE_COLOR = "red"
 ANNOTATION_COLOR = "blue"
-HISTOGRAM_COLORMAP = "Greens_r"
+HISTOGRAM_COLORMAP = "Cividis"
 
 
 def tile_axes_square(n):
@@ -47,14 +47,14 @@ def tile_axes_square(n):
     return cols, rows
 
 
-def plot_vars(draw: 'Draw', all_vstats, **kw):
+def plot_vars(draw: 'Draw', all_vstats, cbar_colors=CBAR_COLORS, **kw):
     from plotly.subplots import make_subplots
     n = len(all_vstats)
     ncol, nrow = tile_axes_square(n)
 
     snllf = np.sort(-draw.logp)
     vmin, vmax = snllf[0], snllf[int(0.98*(len(snllf)-1))]  # robust range
-    cbar_edges = np.linspace(vmin, vmax, CBAR_COLORS)
+    cbar_edges = np.linspace(vmin, vmax, cbar_colors)
     # titles = [vstats.label for vstats in all_vstats]
 
     # fig = make_subplots(rows=nrow, cols=ncol, subplot_titles=titles)
@@ -67,6 +67,7 @@ def plot_vars(draw: 'Draw', all_vstats, **kw):
     fig.update_layout(height=nrow*300, width=ncol*400)
     fig.update_layout(plot_bgcolor='rgba(0, 0, 0, 0)')
     fig.update_layout(hoverlabel=dict(bgcolor='white', font_size=16))
+    fig.update_layout(bargap=0)
 
     fig = fig.to_dict()
     fig['layout'].update(shapes=[], annotations=[])
@@ -83,11 +84,12 @@ def plot_vars(draw: 'Draw', all_vstats, **kw):
 def plot_var(fig: 'go.Figure', draw: 'Draw', vstats: 'VarStats', var: int, cbar_edges: np.ndarray, nbins=30, subplot=None):
     values = draw.points[:, var].flatten()
     bin_range = vstats.p95_range
+    sort_index = draw.get_argsort_indices(var)
     #bin_range = np.min(values), np.max(values)
     # showscale = (subplot == 1)
     showscale = True
     traces = _make_logp_histogram(values, draw.logp, nbins, bin_range,
-                         draw.weights, cbar_edges=cbar_edges, showscale=showscale, subplot=subplot)
+                         draw.weights, sort_index, cbar_edges=cbar_edges, showscale=showscale, subplot=subplot)
 
     fig['data'].extend(traces)
     _decorate_histogram(vstats, fig, subplot=subplot)
@@ -101,7 +103,7 @@ def _decorate_histogram(vstats: 'VarStats', fig: dict, subplot: int = 1):
     l68, h68 = vstats.p68_range
     # Shade things inside 1-sigma
 
-    shading_rect = dict(type='rect', x0=l68, x1=h68, y0=0, y1=1, fillcolor='gold', opacity=0.5, layer='below', line={"width": 0}, xref=xaxis, yref=f"{yaxis} domain")
+    shading_rect = dict(type='rect', x0=l68, x1=h68, y0=0, y1=1, fillcolor='lightblue', opacity=0.5, layer='below', line={"width": 0}, xref=xaxis, yref=f"{yaxis} domain")
     fig['layout']['shapes'].append(shading_rect)
 
     def marker(symbol, position, info_template):
@@ -119,15 +121,15 @@ def _decorate_histogram(vstats: 'VarStats', fig: dict, subplot: int = 1):
             text=symbol,
             showarrow=False,
             font=dict(color=ANNOTATION_COLOR),
-            hovertext=info_template.format(position=position)
+            hovertext=info_template.format(position=position, label=vstats.label),
 
         )
         fig['layout']['annotations'].append(new_marker)
         #pylab.axvline(v)
 
-    marker('|', vstats.median, "median: {position}")
-    marker('E', vstats.mean, "mean: {position}")
-    marker('*', vstats.best, "best: {position}")
+    marker('|', vstats.median, "{label}<br>median: {position}")
+    marker('E', vstats.mean, "{label}<br>mean: {position}")
+    marker('*', vstats.best, "{label}<br>best: {position}")
     
     label_annotation = dict(
         xref=f"{xaxis} domain",
@@ -136,17 +138,17 @@ def _decorate_histogram(vstats: 'VarStats', fig: dict, subplot: int = 1):
         y = 1.1,
         text = vstats.label,
         showarrow=False,
+        name='label',
     )
     fig['layout']['annotations'].append(label_annotation)
 
-def _make_logp_histogram(values, logp, nbins, ci, weights, cbar_edges, showscale=False, subplot=None):
+def _make_logp_histogram(values, logp, nbins, ci, weights, idx, cbar_edges, showscale=False, subplot=None):
     from numpy import (ones_like, searchsorted, linspace, cumsum, diff,
                        unique, argsort, array, hstack, exp)
 
     if weights is None:
         weights = ones_like(logp)
-    # TODO: values are being sorted to collect stats and again to plot
-    idx = argsort(values)
+    # use sorting index calculated during stats collection:
     values, weights, logp = values[idx], weights[idx], logp[idx]
     #open('/tmp/out','a').write("ci=%s, range=%s\n"
     #                           % (ci,(min(values),max(values))))
