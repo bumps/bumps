@@ -148,6 +148,10 @@ async def reload_history_item(timestamp: str):
     await publish("update_model", True)
     await publish("update_parameters", True)
 
+@register
+async def set_keep_history(timestamp: str, keep: bool):
+    state.history.set_keep(timestamp, keep)
+    await emit("history_update", True)
 
 @register
 async def save_problem_file(pathlist: Optional[List[str]] = None, filename: Optional[str] = None, overwrite: bool = False):
@@ -347,6 +351,11 @@ def get_num_steps(fitter_id: str, num_fitparams: int, options: Optional[Dict] = 
     steps = options['steps']
     if fitter_id == 'dream':
         if steps == 0:
+            # initial = problem.getp()
+            # initial[~isfinite(initial)] = 1.
+            # pop_size = int(math.ceil(pop * len(initial))) if pop > 0 else int(-pop)
+            # if steps == 0:
+            # steps = (draws + pop_size-1) // pop_size
             total_pop = options['pop'] * num_fitparams
             steps = int(options['samples'] / total_pop)
         steps += options['burn']

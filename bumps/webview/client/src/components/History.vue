@@ -12,6 +12,7 @@ type HistoryItem = {
   timestamp: string,
   label: string,
   chisq_str: string,
+  keep: boolean,
 };
 
 const history = ref<HistoryItem[]>([]);
@@ -44,6 +45,11 @@ async function reload_history(timestamp: string) {
   }
 }
 
+async function toggle_keep(timestamp: string, current_keep: boolean) {
+  console.log('toggle_keep', timestamp);
+  await props.socket.asyncEmit('set_keep_history', timestamp, !current_keep);
+}
+
 </script>
         
 <template>
@@ -65,7 +71,7 @@ async function reload_history(timestamp: string) {
     </div>
     <h2 class="mx-auto">History</h2>
     <ul class="list-group">
-      <li v-for="({timestamp, label, chisq_str}, index) of history" :key="index" class="list-group-item">
+      <li v-for="({timestamp, label, chisq_str, keep}, index) of history" :key="index" class="list-group-item">
         <div class="d-flex w-100 justify-content-between">
           <button
             type="button"
@@ -78,6 +84,12 @@ async function reload_history(timestamp: string) {
             <small class="me-1">{{ chisq_str }}</small>
             <button class="btn btn-secondary btn-sm" @click="reload_history(timestamp)">Load</button>
           </span>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" :value="keep" @click="toggle_keep(timestamp, keep)" :id="`keep-${index}`">
+            <label class="form-check-label" :for="`keep-${index}`">
+              keep
+            </label>
+          </div>
         </div>
       </li>
     </ul>

@@ -139,7 +139,6 @@ class ProblemState:
     pathlist: Optional[List[str]] = None
     serializer: Optional[SERIALIZERS] = None
     filename: Optional[str] = None
-    label: Optional[str] = None
 
     def write(self, parent: 'Group'):
         group = parent.require_group('problem')
@@ -147,7 +146,6 @@ class ProblemState:
         write_string(group, 'serializer', self.serializer)
         write_json(group, 'pathlist', self.pathlist)
         write_string(group, 'filename', self.filename)
-        write_string(group, 'label', self.label)
 
     def read(self, parent: 'Group'):
         group = parent.require_group('problem')
@@ -155,7 +153,6 @@ class ProblemState:
         self.fitProblem = read_fitproblem(group, 'fitProblem', self.serializer)
         self.pathlist = read_json(group, 'pathlist')
         self.filename = read_string(group, 'filename')
-        self.label = read_string(group, 'label')
 
 class HistoryItem:
     problem: ProblemState
@@ -163,6 +160,7 @@ class HistoryItem:
     timestamp: str
     label: str
     chisq_str: str
+    keep: bool
 
 
 class History:
@@ -182,6 +180,7 @@ class History:
             fitting.write(item_group, include_uncertainty_state=include_uncertainty_state)
             item_group.attrs['chisq'] = item.chisq_str
             item_group.attrs['label'] = item.label
+            item_group.attrs['keep'] = item.keep
 
     def read(self, parent: 'Group'):
         group = parent.get('problem_history', [])
@@ -195,6 +194,7 @@ class History:
             item.fitting.read(item_group)
             item.label = item_group.attrs['label']
             item.chisq_str = item_group.attrs['chisq']
+            item.keep = item_group.attrs['keep']
             item.timestamp = name
             self.store.append(item)
 
@@ -206,6 +206,12 @@ class History:
 
     def list(self):
         return [dict(timestamp=item.timestamp, label=item.label, chisq_str=item.chisq_str) for item in self.store]
+    
+    def set_keep(self, timestamp: str, keep: bool):
+        for item in self.store:
+            if item.timestamp == timestamp:
+                item.keep = keep
+                return
 
 
 class UncertaintyStateStorage:
@@ -285,13 +291,13 @@ class State:
     # State to be stored:
     problem: ProblemState
     fitting: FittingState
-    problem_history: History
+    history: History
     topics: Dict['TopicNameType', 'deque[Dict]']
 
     def __init__(self, session_file_name: Optional[str] = None):
         self.problem = ProblemState()
         self.fitting = FittingState()
-        self.problem_history = History()
+        self.history = History()
         self.fit_abort_event = Event()
         self.fit_complete_event = Event()
         self.topics = {
@@ -319,29 +325,42 @@ class State:
             else:
                 self.save()
 
-    def save_to_history(self, label: str):
+    def save_to_history(self, label: str, include_population: bool = False, include_uncertainty: bool = False, keep: bool = False):
         if self.problem.fitProblem is None:
             return
         item = HistoryItem()
-        item.problem_state = deepcopy(self.problem)
+        item.problem = deepcopy(self.problem)
+        item.fitting = FittingState()
+        if include_population:
+            item.fitting.population = self.fitting.population
+        if include_uncertainty:
+            # uncertainty_state is not mutated, so we can safely use it here
+            # rather than making a memory-hogging copy on first use.
+            item.fitting.uncertainty_state = self.fitting.uncertainty_state
+
         item.timestamp = str(datetime.now())
         item.label = label
-        item.chisq_str = item.problem_state.fitProblem.chisq_str()
-        self.problem_history.add_item(item)
+        item.chisq_str = item.problem.fitProblem.chisq_str()
+        item.keep = keep
+        self.history.add_item(item)
 
     def get_history(self):
-        return dict(problem_history=self.problem_history.list())
+        return dict(problem_history=self.history.list())
 
     def remove_history_item(self, timestamp: str):
-        self.problem_history.remove_item(timestamp)
+        self.history.remove_item(timestamp)
 
     def reload_history_item(self, timestamp: str):
-        for item in self.problem_history.store:
+        for item in self.history.store:
             if item.timestamp == timestamp:
                 print("problem found!", timestamp)
-                problem_state = item.problem_state
+                problem_state = item.problem
                 print('chisq of found item: ', problem_state.fitProblem.chisq_str())
                 self.problem = deepcopy(problem_state)
+                if item.fitting.population is not None:
+                    self.fitting.population = item.fitting.population
+                if item.fitting.uncertainty_state is not None:
+                    self.fitting.uncertainty_state = item.fitting.uncertainty_state
                 return
         raise ValueError(f"Could not find history item with timestamp {timestamp}")
 
@@ -371,6 +390,7 @@ class State:
                 self.read_topics(root_group)
         except Exception as e:
             logger.warning(f"could not load session file {session_filename} because of {e}")
+            raise(e)
 
     def read_problem_from_session(self, session_filename: str):
         try:
