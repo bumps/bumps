@@ -69,60 +69,72 @@ async function update_label(timestamp: string, new_label: string) {
 </script>
         
 <template>
-  <div class="history">
-    <div class="container-fluid">
-      <div class="row p-2">
-        <div class="col-auto">
-          <button
-            type="button"
-            class="btn btn-primary"
-            @click="manual_save">
-            Save current problem state
-          </button>
-        </div>
-        <div class="col">
-          <input type="text" class="form-control" id="history_label" v-model="history_label" placeholder="save label">
-        </div>
+  <div class="history container d-flex flex-column flex-grow-1">
+    <div class="row p-1 align-items-center">
+      <div class="col-auto">
+        <button
+          type="button"
+          class="btn btn-primary"
+          @click="manual_save">
+          Save current state
+        </button>
+      </div>
+      <div class="col text-end">
+        <input class="form-check-input" type="checkbox" id="auto_save" checked>
+        <label class="form-check-label" for="auto_save">Auto save</label>
+      </div>
+      <div class="col-auto">
+        <input class="form-control-sm" type="number" id="auto_save_length" value="10" min="1" step="1">
+        <label class="col-form-label" for="auto_save_length">history length</label>
       </div>
     </div>
-    <h2 class="mx-auto">History</h2>
-    <ul class="list-group">
-      <li 
-        v-for="({timestamp, label, chisq_str, keep, has_population, has_uncertainty}, index) of history"
-        :key="timestamp" class="list-group-item"
-      >
-        <div class="d-flex w-100 justify-content-between">
-          <button
-            type="button"
-            class="btn-close"
-            aria-label="Close"
-            @click="remove_history_item(timestamp, keep)">
-          </button>
-          <span class="px-2" contenteditable="true" plaintext-only @blur="update_label(timestamp, $event.target.innerText)">{{ label }}</span>
-          <span>
-            <small class="me-1">{{ chisq_str }}</small>
-            <button class="btn btn-secondary btn-sm mx-1" @click="reload_history(timestamp)">
-              Load
-              <span v-if="has_population" class="badge bg-primary" title="has population">P</span>
-              <span v-if="has_uncertainty" class="badge bg-warning" title="has uncertainty">U</span>
-            </button>
-            <span class="form-check form-check-inline">
-              <input class="form-check-input" type="checkbox" :checked="keep" @click="toggle_keep(timestamp, keep)" :id="`keep-${index}`">
-              <label class="form-check-label" :for="`keep-${index}`">
-                keep
-              </label>
-            </span>
-          </span>
-        </div>
-      </li>
-    </ul>
+    <div class="px-2 flex-grow-1 flex-shrink-1 overflow-auto">
+      <table class="table table-sm flex-grow-0">
+          <thead class="border-bottom py-1 sticky-top text-white bg-secondary">
+            <tr class="text-center">
+              <th scope="col"></th>
+              <th scope="col">Label</th>
+              <th scope="col">Chisq</th>
+              <th scope="col"></th>
+              <th scope="col">Keep</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="py-1 align-middle" v-for="({timestamp, label, chisq_str, keep, has_population, has_uncertainty}, index) of history" :key="timestamp">
+              <td class="align-items-center">
+                <button
+                  type="button"
+                  class="btn-close"
+                  aria-label="Close"
+                  @click="remove_history_item(timestamp, keep)">
+                </button>
+              </td>
+              <td class="px-2" contenteditable="true" plaintext-only @blur="update_label(timestamp, $event.target.innerText)">{{ label }}</td>
+              <td>
+                <small>{{ chisq_str }}</small>
+              </td>
+              <td class="text-nowrap">
+                <button class="btn btn-secondary btn-sm mx-1 text-nowrap" @click="reload_history(timestamp)">
+                  Load
+                </button>
+                <span v-show="has_population" class="badge bg-success" title="has population">P</span>
+                <span v-show="has_uncertainty" class="badge bg-warning" title="has uncertainty">U</span>
+              </td>
+              <td class="text-center">
+                  <input class="form-check-input" type="checkbox" :checked="keep" @click="toggle_keep(timestamp, keep)">
+              </td>
+            </tr>
+          </tbody>
+      </table>
+    </div>
   </div>
 </template>
     
 <style scoped>
-.history {
-  padding: 1em;
+input#auto_save_length {
+  width: 4em;
 }
+
 .btn-close {
   cursor: pointer;
 }
