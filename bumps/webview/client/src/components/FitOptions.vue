@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, shallowRef } from 'vue';
-import { Modal } from 'bootstrap/dist/js/bootstrap.esm';
-import { fitter_settings, fitter_active } from '../app_state';
-import type { FitSetting } from '../app_state';
-import type { AsyncSocket } from '../asyncSocket';
+import { Modal } from 'bootstrap/dist/js/bootstrap.esm.js';
+import { fitter_settings, fitter_active } from '../app_state.ts';
+import type { FitSetting } from '../app_state.ts';
+import type { AsyncSocket } from '../asyncSocket.ts';
 
 const props = defineProps<{socket: AsyncSocket}>();
 

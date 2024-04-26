@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /// <reference types="@types/uuid"/>
 import { ref } from 'vue';
-import type { AsyncSocket } from '../asyncSocket';
+import type { AsyncSocket } from '../asyncSocket.ts';
 import { setupDrawLoop } from '../setupDrawLoop';
 import * as Plotly from 'plotly.js/lib/core';
 import { SVGDownloadButton } from '../plotly_extras.mjs';

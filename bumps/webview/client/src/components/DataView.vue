@@ -4,7 +4,7 @@ import { ref, onMounted, watch, onUpdated, computed, shallowRef, ssrContextKey }
 import * as Plotly from 'plotly.js/lib/core';
 import mpld3 from 'mpld3';
 import { v4 as uuidv4 } from 'uuid';
-import type { AsyncSocket } from '../asyncSocket';
+import type { AsyncSocket } from '../asyncSocket.ts';
 import { setupDrawLoop } from '../setupDrawLoop';
 
 type ModelNameInfo = {name: string, model_index: number};

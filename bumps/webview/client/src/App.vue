@@ -2,8 +2,8 @@
 import { Button } from 'bootstrap/dist/js/bootstrap.esm.js';
 import { computed, onMounted, ref, shallowRef } from 'vue';
 import { io } from 'socket.io-client';
-import { AsyncSocket } from './asyncSocket';
-import './asyncSocket';  // patch Socket with asyncEmit
+import { AsyncSocket } from './asyncSocket.ts';
+import './asyncSocket.ts';  // patch Socket with asyncEmit
 import {
   active_panel,
   active_layout,
@@ -19,7 +19,7 @@ import {
   notifications,
   menu_items,
   socket as socket_ref,
-} from './app_state';
+} from './app_state.ts';
 import FitOptions from './components/FitOptions.vue';
 import PanelTabContainer from './components/PanelTabContainer.vue';
 import FileBrowser from './components/FileBrowser.vue';

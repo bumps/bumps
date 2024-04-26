@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import type { AsyncSocket } from '../asyncSocket';
+import type { AsyncSocket } from '../asyncSocket.ts';
 
 // type PanelComponent = DefineComponent<{socket: Socket, visible: boolean}, any>;
 

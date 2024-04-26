@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue';
 import { setupDrawLoop } from '../setupDrawLoop';
 import JsonViewer from 'vue-json-viewer';
 import { getDiff } from 'json-difference';
-import type { AsyncSocket } from '../asyncSocket';
+import type { AsyncSocket } from '../asyncSocket.ts';
 
 // from https://github.com/microsoft/TypeScript/issues/1897#issuecomment-1228063688
 type json =

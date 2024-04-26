@@ -14,8 +14,8 @@ export default ({mode}) => {
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
-        './asyncSocket': (mode == 'standalone') ? join(process.cwd(), 'src', 'asyncWorkerSocket') : './asyncSocket',
-        'socket.io-client': (mode == 'standalone') ? join(process.cwd(), 'src', 'asyncWorkerSocket') : 'socket.io-client',
+        './asyncSocket.ts': (mode == 'standalone') ? join(process.cwd(), 'src', 'asyncWorkerSocket.ts') : './asyncSocket.ts',
+        'socket.io-client': (mode == 'standalone') ? join(process.cwd(), 'src', 'asyncWorkerSocket.ts') : 'socket.io-client',
       }
     },
     define: {

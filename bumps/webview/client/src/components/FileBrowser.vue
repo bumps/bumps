@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { format, formatDistance, formatRelative, subDays } from 'date-fns'
 import { ref, onMounted, watch, onUpdated, computed, shallowRef } from 'vue';
-import { Modal } from 'bootstrap/dist/js/bootstrap.esm';
-import type { AsyncSocket } from '../asyncSocket';
+import { Modal } from 'bootstrap/dist/js/bootstrap.esm.js';
+import type { AsyncSocket } from '../asyncSocket.ts';
 
 const props = defineProps<{
   socket: AsyncSocket,

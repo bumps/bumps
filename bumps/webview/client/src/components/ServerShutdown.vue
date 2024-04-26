@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, shallowRef } from 'vue';
-import { Modal } from 'bootstrap/dist/js/bootstrap.esm';
-import type { AsyncSocket } from '../asyncSocket';
+import { Modal } from 'bootstrap/dist/js/bootstrap.esm.js';
+import type { AsyncSocket } from '../asyncSocket.ts';
 
 const props = defineProps<{socket:AsyncSocket}>();
 

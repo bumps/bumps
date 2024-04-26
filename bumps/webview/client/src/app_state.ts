@@ -1,6 +1,6 @@
 import { ref, shallowRef } from 'vue';
 import type { Ref } from 'vue';
-import type { AsyncSocket } from './asyncSocket';
+import type { AsyncSocket } from './asyncSocket.ts';
 
 interface ModalDialog {
   open: () => void,
