@@ -15,7 +15,7 @@ include bumps.iss
 include setup_py2exe.py
 include bin/*
 recursive-include bumps/webview/client/dist *.html *.js *.css *.svg *.png
-recursive-include bumps/webview/client/src *.html *.js *.css *.svg *.png *.vue
+recursive-include bumps/webview/client/src *.html *.js *.mjs *.css *.svg *.png *.vue
 include bumps/webview/client/*.html
 include bumps/webview/client/*.js
 include bumps/webview/client/*.json
