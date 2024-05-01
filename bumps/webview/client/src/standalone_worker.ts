@@ -9,7 +9,7 @@ var pyodide: PyodideInterface;
 
 async function loadPyodideAndPackages() { // loads pyodide
     pyodide = await loadPyodide({
-        indexURL: "https://cdn.jsdelivr.net/pyodide/v0.23.2/full/"
+        indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/"
     }); // run the function and wait for the result (base library)
 
     await pyodide.loadPackage(["numpy", "scipy", "pytz", "h5py", "micropip"]); // waits until these python packpages are loaded to continue
@@ -59,9 +59,11 @@ type EventCallback = (message?: any) => any;
 
 export class Server {
     handlers: { [signal: string]: EventCallback[] }
+    nativefs: any
 
     constructor() {
         this.handlers = {};
+        this.nativefs = null;
         this.init();
     }
 
@@ -100,12 +102,16 @@ export class Server {
         this.handlers[signal] = signal_handlers;
     }
 
-    async mount(dirHandle) {
+    async mount(dirHandle: FileSystemDirectoryHandle) {
         // const dirHandle = await self.showDirectoryPicker();
         console.log({dirHandle});   
         const nativefs = await pyodide.mountNativeFS("/home/pyodide/user_mount", dirHandle);
+        this.nativefs = nativefs;
     }
 
+    async syncFS() {
+        let r = await this.nativefs?.syncfs?.();
+    }
     
     async asyncEmit(signal: string, message?: any) {
         const jsMessage = message?.toJs({dict_converter: Object.fromEntries}) ?? null;
