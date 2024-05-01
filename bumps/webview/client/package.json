@@ -17,14 +17,16 @@
     "plotly.js": "^2.26.0",
     "socket.io-client": "^4.5.2",
     "uuid": "^9.0.0",
-    "vue": "^3.2.38",
+    "vue": "^3.4.26",
     "vue-json-viewer": "^3.0.4"
   },
   "devDependencies": {
     "@types/plotly.js": "^2.12.5",
     "@types/uuid": "^8.3.4",
     "@vitejs/plugin-vue": "^3.0.3",
-    "pyodide": "^0.23.2",
     "vite": "^3.2.5"
+  },
+  "optionalDependencies": {
+    "pyodide": "^0.25.1"
   }
 }
