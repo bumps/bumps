@@ -1,6 +1,12 @@
 # bumps-webview-client
 
-This template should help get you started developing with Vue 3 in Vite.
+This is the Javascript + HTML client for the webview interface in Bumps
+
+## Starting the server
+
+```sh
+python -m bumps.webview.server
+```
 
 ## Recommended IDE Setup
 
@@ -22,10 +28,21 @@ npm install
 npm run dev
 ```
 
-### Compile and Minify for Production
+### Compile and Minify
+This will create a new folder `./dist/<client version>/` and build the client there,
+with a unique tag in the name (suitable for local testing), e.g. `./dist/<client version>/assets/index.BaQLi6ia.js`
 
 ```sh
 npm run build
+```
+
+### Compile for publishing to NPM
+This will create a new folder `./dist/<client version>/` and build the client
+with reproducible artifact names, e.g. `./dist/<client version>/assets/index.js`
+(suitable for packaging and publishing to NPM)
+
+```sh
+npm run build_prod
 ```
 
 # Publishing new client versions:
