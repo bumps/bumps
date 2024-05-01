@@ -38,7 +38,7 @@ type Message = {
 
 const LAYOUTS = ["left-right", "top-bottom", "full"];
 const menuToggle = ref<HTMLButtonElement>();
-const nativefs = ref<{syncfs: Function}>();
+const nativefs = ref(false);
 
 // Create a SocketIO connection, to be passed to child components
 // so that they can do their own communications with the host.
@@ -187,7 +187,7 @@ async function saveFile(ev: Event, override?: {pathlist: string[], filename: str
       }
     }
     if (nativefs.value) {
-      nativefs.value.syncfs();
+      await socket.syncFS();
     }
   });
 }
@@ -229,7 +229,7 @@ async function saveParameters(ev: Event, override?: {pathlist: string[], filenam
           }
         }
         if (nativefs.value) {
-          nativefs.value.syncfs();
+          await socket.syncFS();
         }
       });
     }
@@ -247,8 +247,11 @@ async function saveSessionCopy(ev: Event, pathlist: string[], filename: string) 
   if (fileBrowser.value) {
     const settings = fileBrowserSettings.value;
     settings.title = "Save Session (Copy)"
-    settings.callback = (pathlist, filename) => {
-      socket.asyncEmit("save_session_copy", pathlist, filename);
+    settings.callback = async (pathlist, filename) => {
+      await socket.asyncEmit("save_session_copy", pathlist, filename);
+      if (nativefs.value) {
+        await socket.syncFS();
+      }
     }
     settings.show_name_input = true;
     settings.name_input_label = "Filename";
@@ -299,10 +302,8 @@ async function quit() {
 }
 
 async function mountLocal() {
-  const new_fs = await socket.mountLocal?.();
-  if (new_fs) {
-    nativefs.value = new_fs;
-  }
+  const success = (await socket.mountLocal?.()) ?? false;
+  nativefs.value = success;
 }
 
 const model_not_loaded = computed(() => (!model_loaded.value));
