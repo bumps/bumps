@@ -255,13 +255,14 @@ class State:
         self.write_session_file(session_copy_name)
 
     def write_session_file(self, session_filename: str):
-        tmp_fd, tmp_name = tempfile.mkstemp(dir=Path('.'))
+        tmp_fd, tmp_name = tempfile.mkstemp(dir=Path(session_filename).parent, prefix=Path(session_filename).name, suffix='.tmp')
         with os.fdopen(tmp_fd, 'w+b') as output_file:
             with h5py.File(output_file, 'w') as root_group:
                 self.problem.write(root_group)
                 self.fitting.write(root_group)
                 self.write_topics(root_group)
         shutil.move(tmp_name, session_filename)
+        os.chmod(session_filename, 0o644)
 
     def read_session_file(self, session_filename: str, read_problem: bool = True, read_fitstate: bool = True):
         try:
