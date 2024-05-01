@@ -2,7 +2,7 @@
 /// <reference types="@types/plotly.js" />
 import { ref, onMounted, watch, onUpdated, computed, shallowRef, ssrContextKey } from 'vue';
 import * as Plotly from 'plotly.js/lib/core';
-import mpld3 from 'mpld3';
+import 'mpld3';
 import { v4 as uuidv4 } from 'uuid';
 import type { AsyncSocket } from '../asyncSocket.ts';
 import { setupDrawLoop } from '../setupDrawLoop';
@@ -15,6 +15,14 @@ const show_multiple = ref(false);
 const model_names = ref<string[]>([]);
 const current_models = ref<number[][]>([[0]]);
 
+// add types to mpld3
+declare global {
+  interface mpld3 {
+    draw_figure: (div_id: string, data: { width: number, height: number }, process: boolean | Function, clearElem: boolean) => void;
+  }
+  var mpld3: mpld3;
+}
+
 const props = defineProps<{
   socket: AsyncSocket,
 }>();
@@ -22,9 +30,10 @@ const props = defineProps<{
 const { draw_requested } = setupDrawLoop('update_parameters', props.socket, fetch_and_draw);
 
 async function get_model_names() {
-  const output = await props.socket.asyncEmit("get_model_names");
   const new_names = await props.socket.asyncEmit("get_model_names") as string[];
-  const num_models = new_names.length;
+  if (new_names == null) {
+    return;
+  }
   model_names.value = new_names;
   current_models.value = [[0]]; //Array.from({length: num_models}).map((_, i) => [i]);
 }
