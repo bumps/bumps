@@ -2,7 +2,6 @@ import { wrap, proxy } from 'comlink';
 import type { Endpoint, Remote } from 'comlink';
 // import './standalone_worker';
 import type { Server } from './standalone_worker';
-import { off } from 'process';
 
 export function io() {
   const worker = new Worker(new URL("./standalone_worker.ts", import.meta.url), {type: 'module'});
