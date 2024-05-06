@@ -356,6 +356,7 @@ async def start_fit_thread(fitter_id: str="", options=None, terminate_on_finish=
         num_steps = get_num_steps(fitter_id, num_params, options)
         state.fit_abort_event.clear()
         state.fit_complete_event.clear()
+        state.fit_uncertainty_final.clear()
 
         fit_thread = FitThread(
             abort_event=state.fit_abort_event,
@@ -410,6 +411,9 @@ async def _fit_progress_handler(event: Dict):
         state.fitting.uncertainty_state = cast(bumps.dream.state.MCMCDraw, event["uncertainty_state"])
         await publish("uncertainty_update", True)
         state.save()
+        if message == 'uncertainty_final':
+            # fit is not complete until uncertainty is saved.
+            state.fit_uncertainty_final.set()
 
 async def _fit_complete_handler(event):
     message = event.get("message", None)
@@ -436,7 +440,10 @@ async def _fit_complete_handler(event):
         await log(event["info"], title=f"done with chisq {chisq}")
         logger.info(f"fit done with chisq {chisq}")
 
-    state.fit_complete_event.set()
+    if fit_thread.fitclass.id == 'dream':
+        # print("waiting for uncertainty to complete...")
+        await asyncio.to_thread(state.fit_uncertainty_final.wait)
+
     if terminate:
         await shutdown()
 

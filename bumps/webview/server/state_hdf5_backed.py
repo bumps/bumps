@@ -208,6 +208,7 @@ class State:
     fit_abort: Optional[Event] = None
     fit_abort_event: Event
     fit_complete_event: Event
+    fit_uncertainty_final: Event
     fit_enabled: Event
     calling_loop: Optional[asyncio.AbstractEventLoop] = None
     session_file_name: Optional[str] = None
@@ -222,6 +223,7 @@ class State:
         self.fitting = FittingState()
         self.fit_abort_event = Event()
         self.fit_complete_event = Event()
+        self.fit_uncertainty_final = Event()
         self.topics = {
             "log": deque([]),
             "update_parameters": deque([], maxlen=1),
