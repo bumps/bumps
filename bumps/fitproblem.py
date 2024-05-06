@@ -155,6 +155,14 @@ def no_constraints() -> float:
     """default constraints function for FitProblem"""
     return 0
 
+def fit_parameters(fitness: Fitness) -> util.List[Parameter]:
+    """
+    Return a list of fittable (non-fixed) parameters in the model
+    """
+    parameters = parameter.unique(fitness.parameters())
+    return [p for p in parameters if isinstance(getattr(p, 'slot', None), parameter.Variable) and not p.fixed]
+
+
 def chisq_str(fitness: Fitness) -> str:
     """
     Return a string representing the chisq equivalent of the nllf.
@@ -167,8 +175,18 @@ def chisq_str(fitness: Fitness) -> str:
     in the total nllf.  The constraint value is displayed separately.
     """
 
-    chisq = fitness.nllf() / fitness.numpoints()
-    text = format_uncertainty(chisq, None)
+    pars = fit_parameters(fitness)
+    dof = fitness.numpoints() - len(pars)
+    if dof <= 0 or np.isnan(dof) or np.isinf(dof):
+        chisq_norm, chisq_err = 1., 0.
+    else:
+        #return 2./dof, 1./dof
+        from scipy.stats import chi2
+        npars = max(len(pars), 1)
+        chisq_norm, chisq_err = 2./dof, chi2.ppf(ONE_SIGMA, npars)/dof
+    
+    chisq = fitness.nllf() * chisq_norm
+    text = format_uncertainty(chisq, chisq_err)
     return text
 
 def show_parameters(fitness: Fitness, subs: util.Optional[util.Dict[util.Any, Parameter]]=None):
