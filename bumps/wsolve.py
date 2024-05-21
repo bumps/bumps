@@ -432,13 +432,13 @@ def test():
     _, pi = poly.pi(px)  # Same y is returend from pi and ci
     py, ci = poly.ci(px)
 
-    # Uncomment these to show target values
-    # print "Tp = [%.16g, %.16g]"%(p[0],p[1])
-    # print "Tdp = [%.16g, %.16g]"%(dp[0],dp[1])
-    # "Tpi,Tci = %.16g, %.16g"%(pi,ci)
-    Tp = np.array([7.787249069840737, 1.503992847461524])
+    ## Uncomment these to show target values
+    #print("    Tp = np.array([%.16g, %.16g])"%(tuple(poly.coeff.tolist())))
+    #print("    Tdp = np.array([%.16g, %.16g])"%(tuple(poly.std.tolist())))
+    #print("    Tpi, Tci = %.16g, %.16g"%(pi[0],ci[0]))
+    Tp = np.array([7.787249069840739, 1.503992847461522])
     Tdp = np.array([1.522338103010216, 2.117633626902384])
-    Tpi, Tci = 7.611128464981324, 2.342860389884832
+    Tpi, Tci = 7.611128464981326, 2.34286039211232
 
     perr = np.max(np.abs(poly.coeff - Tp))
     dperr = np.max(np.abs(poly.std - Tdp))
@@ -446,6 +446,7 @@ def test():
     pierr = np.abs(pi - Tpi)
     assert perr < 1e-14, "||p-Tp||=%g" % perr
     assert dperr < 1e-14, "||dp-Tdp||=%g" % dperr
+    # TODO: change target error level once scipy 1.13 becomes the norm
     # Target values are only accurate to 9 digits for scipy < 1.13
     assert cierr < 1e-8, "||ci-Tci||=%g" % cierr
     assert pierr < 1e-8, "||pi-Tpi||=%g" % pierr
