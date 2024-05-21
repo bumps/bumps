@@ -435,7 +435,7 @@ def test():
     # Uncomment these to show target values
     # print "Tp = [%.16g, %.16g]"%(p[0],p[1])
     # print "Tdp = [%.16g, %.16g]"%(dp[0],dp[1])
-    # print "Tpi,Tci = %.16g, %.16g"%(pi,ci)
+    # "Tpi,Tci = %.16g, %.16g"%(pi,ci)
     Tp = np.array([7.787249069840737, 1.503992847461524])
     Tdp = np.array([1.522338103010216, 2.117633626902384])
     Tpi, Tci = 7.611128464981324, 2.342860389884832
@@ -446,8 +446,9 @@ def test():
     pierr = np.abs(pi - Tpi)
     assert perr < 1e-14, "||p-Tp||=%g" % perr
     assert dperr < 1e-14, "||dp-Tdp||=%g" % dperr
-    assert cierr < 1e-14, "||ci-Tci||=%g" % cierr
-    assert pierr < 1e-14, "||pi-Tpi||=%g" % pierr
+    # Target values are only accurate to 9 digits for scipy < 1.13
+    assert cierr < 1e-8, "||ci-Tci||=%g" % cierr
+    assert pierr < 1e-8, "||pi-Tpi||=%g" % pierr
     assert_array_almost_equal_nulp(py, poly(px), nulp=8)
 
 if __name__ == "__main__":
