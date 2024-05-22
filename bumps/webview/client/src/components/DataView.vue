@@ -2,7 +2,7 @@
 /// <reference types="@types/plotly.js" />
 import { ref, onMounted, watch, onUpdated, computed, shallowRef, ssrContextKey } from 'vue';
 import * as Plotly from 'plotly.js/lib/core';
-import 'mpld3';
+import * as mpld3 from 'mpld3';
 import { v4 as uuidv4 } from 'uuid';
 import type { AsyncSocket } from '../asyncSocket.ts';
 import { setupDrawLoop } from '../setupDrawLoop';

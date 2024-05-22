@@ -4,7 +4,7 @@ import { ref } from 'vue';
 import { Socket } from 'socket.io-client';
 import { v4 as uuidv4 } from 'uuid';
 import { setupDrawLoop } from '../setupDrawLoop';
-import mpld3 from 'mpld3';
+import * as mpld3 from 'mpld3';
 
 const plot_div = ref<HTMLDivElement>();
 const plot_div_id = ref(`div-${uuidv4()}`);

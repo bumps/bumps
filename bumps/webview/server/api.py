@@ -114,7 +114,7 @@ async def set_problem(problem: bumps.fitproblem.FitProblem, path: Optional[Path]
         state.shared.model_filename = filename
         state.shared.model_pathlist = pathlist
         state.shared.model_loaded = now_string()
-        await add_notification(str(path), title="Model loaded", timeout=2000)
+        await add_notification(content=path_string, title="Model loaded", timeout=2000)
     state.save()
 
 

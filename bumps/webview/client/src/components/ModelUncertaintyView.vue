@@ -5,7 +5,7 @@ import type { AsyncSocket } from '../asyncSocket.ts';
 import { v4 as uuidv4 } from 'uuid';
 import { setupDrawLoop } from '../setupDrawLoop';
 import { cache } from '../plotcache';
-import mpld3 from 'mpld3';
+import * as mpld3 from 'mpld3';
 
 const title = "Model Uncertainty"
 const plot_div = ref<HTMLDivElement>();
