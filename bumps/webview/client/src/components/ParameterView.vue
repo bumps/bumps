@@ -11,7 +11,7 @@ const props = defineProps<{
   socket: AsyncSocket,
 }>();
 
-setupDrawLoop('update_parameters', props.socket, fetch_and_draw);
+setupDrawLoop('updated_parameters', props.socket, fetch_and_draw);
 
 type parameter_info = {
   name: string,

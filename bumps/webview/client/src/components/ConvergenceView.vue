@@ -12,7 +12,7 @@ const props = defineProps<{
   socket: AsyncSocket,
 }>();
 
-setupDrawLoop('convergence_update', props.socket, fetch_and_draw, title);
+setupDrawLoop('updated_convergence', props.socket, fetch_and_draw, title);
 
 async function fetch_and_draw() {
   const payload = await props.socket.asyncEmit('get_convergence_plot') as Plotly.PlotlyDataLayoutConfig;

@@ -1,6 +1,7 @@
 # from .main import setup_bumps
 from dataclasses import dataclass
 import functools
+import os
 import signal
 import socket
 from typing import Callable, Dict, Optional
@@ -28,7 +29,7 @@ mimetypes.add_type("image/svg+xml", ".svg")
 
 from . import api
 from .fit_thread import EVT_FIT_PROGRESS
-from .state_hdf5_backed import SERIALIZERS
+from .state_hdf5_backed import SERIALIZERS, UNDEFINED
 from .logger import logger, list_handler, console_handler
 
 TRACE_MEMORY = False
@@ -82,6 +83,8 @@ async def _shutdown():
     await disconnect_all_clients()
     logger.info("webserver shutdown tasks complete")
     await asyncio.sleep(0.1)
+    if 'SLURM_JOB_ID' in os.environ:
+        os.system(f"scancel {os.environ['SLURM_JOB_ID']}")
     raise web.GracefulExit()
 
 api._shutdown = _shutdown
@@ -204,14 +207,12 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
 
     # app.on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
     if options.fit is not None:
-        app.on_startup.append(lambda App: api.publish('fitter_active', options.fit))
+        app.on_startup.append(lambda App: api.state.shared.set('selected_fitter', options.fit))
 
     fitter_id = options.fit
     if fitter_id is None:
-        fitter_active_topic = api.state.topics["fitter_active"]
-        if len(fitter_active_topic) > 0:
-            fitter_id = fitter_active_topic[-1]["message"]
-    if fitter_id is None:
+        fitter_id = api.state.shared.selected_fitter
+    if fitter_id is None or fitter_id is UNDEFINED:
         fitter_id = 'amoeba'
     fitter_settings = api.FITTER_DEFAULTS[fitter_id]
 
@@ -238,7 +239,7 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
     else:
         # signal that no fit is running at startup, even if a fit was
         # interrupted and the state was saved:
-        app.on_startup.append(lambda App: api.publish('fit_active', {}))
+        app.on_startup.append(lambda App: api.state.shared.set('active_fit', {}))
 
     async def notice(message: str):
         logger.info(message)
@@ -310,7 +311,6 @@ def create_server_task():
 
 
 def get_server_url():
-    import os
     from bumps.webview.server import api
 
     port = getattr(api.state, 'port', None)
@@ -320,8 +320,10 @@ def get_server_url():
     # detect if running through Jupyter Hub
     if 'JUPYTERHUB_SERVICE_PREFIX' in os.environ:
         url = f"{os.environ['JUPYTERHUB_SERVICE_PREFIX']}/proxy/{port}/"
-    else:
+    elif api.state.hostname == 'localhost': # local server
         url = f"http://{api.state.hostname}:{port}/"
+    else: # external server, e.g. TACC
+        url = f"/proxy/{port}/"
     return url
 
 def display_inline_jupyter(width: Union[str,int]="100%", height: Union[str, int]=600, single_panel=None) -> None:

@@ -22,7 +22,7 @@ const props = defineProps<{
   socket: AsyncSocket,
 }>();
 
-setupDrawLoop('update_parameters', props.socket, fetch_and_draw);
+setupDrawLoop('updated_parameters', props.socket, fetch_and_draw);
 
 props.socket.on('model_loaded', () => { fetch_and_draw('', true) });
 

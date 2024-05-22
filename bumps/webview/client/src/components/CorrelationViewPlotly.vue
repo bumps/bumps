@@ -31,7 +31,7 @@ const props = defineProps<{
   socket: AsyncSocket,
 }>();
 
-setupDrawLoop('uncertainty_update', props.socket, fetch_and_draw, title);
+setupDrawLoop('updated_uncertainty', props.socket, fetch_and_draw, title);
 
 
 async function fetch_and_draw(latest_timestamp?: string) {

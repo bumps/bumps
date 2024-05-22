@@ -22,7 +22,8 @@ export const fileBrowserSettings = ref({
   search_patterns: [""],
   callback: (pathlist: string[], filename: string) => { },
 });
-export const model_loaded = shallowRef<{ pathlist: string[], filename: string }>();
+export const model_filename = ref<string>();
+export const model_pathlist = ref<string[]>([]);
 export const active_layout = ref("left-right");
 export const active_panel = ref([0, 1]);
 export const fit_active = ref<{ fitter_id?: string, options?: {}, num_steps?: number }>({});

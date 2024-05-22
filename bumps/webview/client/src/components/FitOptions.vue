@@ -48,12 +48,12 @@ props.socket.asyncEmit("get_fitter_defaults", (new_fitter_defaults) => {
   fitter_settings.value = structuredClone(new_fitter_defaults);
 })
 
-props.socket.on('fitter_settings', ({timestamp, message: new_fitter_settings}) => {
-    fitter_settings.value = new_fitter_settings
+props.socket.on('fitter_settings', (new_fitter_settings) => {
+  fitter_settings.value = new_fitter_settings;
 });
 
-props.socket.on('fitter_active', ({timestamp, message: new_fitter_active}) => {
-    fitter_active.value = new_fitter_active
+props.socket.on('selected_fitter', (new_fitter_active: string) => {
+  fitter_active.value = new_fitter_active;
 });
 
 let modal: Modal;
@@ -99,15 +99,15 @@ function process_settings() {
 }
 
 async function save(start: boolean = false) {
-   if (anyIsInvalid.value) {
-     return;
-   }
-   const new_settings = structuredClone(fitter_settings.value);
+  if (anyIsInvalid.value) {
+    return;
+  }
+  const new_settings = structuredClone(fitter_settings.value);
   new_settings[fitter_active_local.value] = { settings: process_settings() };
   const fitter_settings_local = process_settings();
   new_settings[fitter_active_local.value] = { settings: fitter_settings_local };
-  await props.socket.asyncEmit("publish", "fitter_settings", new_settings);
-  await props.socket.asyncEmit("publish", "fitter_active", fitter_active_local.value);
+  await props.socket.asyncEmit("set_shared_setting", "fitter_settings", new_settings);
+  await props.socket.asyncEmit("set_shared_setting", "fitter_active", fitter_active_local.value);
   if (start) {
     await props.socket.asyncEmit("start_fit_thread", fitter_active_local.value, fitter_settings_local);
   }
@@ -139,19 +139,13 @@ const anyIsInvalid = computed(() => {
 })
 
 onMounted(async () => {
-  let messages;
-  let last_message;
-
-  messages = await props.socket.asyncEmit('get_topic_messages', 'fitter_active');
-  last_message = messages.pop();
-  if (last_message !== undefined) {
-    fitter_active.value = last_message.message;
+  const new_fitter_active = await props.socket.asyncEmit('get_shared_setting', 'selected_fitter');
+  const new_fitter_settings = await props.socket.asyncEmit('get_shared_setting', 'fitter_settings');
+  if (new_fitter_active !== undefined) {
+    fitter_active.value = new_fitter_active;
   }
-
-  messages = await props.socket.asyncEmit('get_topic_messages', 'fitter_settings');
-  last_message = messages.pop();
-  if (last_message !== undefined) {
-    fitter_settings.value = last_message.message;
+  if (new_fitter_settings !== undefined) {
+    fitter_settings.value = new_fitter_settings;
   }
 });
 

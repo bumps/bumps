@@ -22,7 +22,7 @@ import bumps.fitproblem
 import bumps.dream.views, bumps.dream.varplot, bumps.dream.stats, bumps.dream.state
 import bumps.errplot
 
-from .state_hdf5_backed import State, serialize_problem, deserialize_problem, SERIALIZER_EXTENSIONS
+from .state_hdf5_backed import UNDEFINED, UNDEFINED_TYPE, State, serialize_problem, deserialize_problem, SERIALIZER_EXTENSIONS
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
 from .varplot import plot_vars
 from .logger import logger, console_handler
@@ -88,8 +88,9 @@ async def load_problem_file(pathlist: List[str], filename: str):
         problem = load_model(str(path))
     assert isinstance(problem, bumps.fitproblem.FitProblem)
     # problem_state = ProblemState(problem, pathlist, filename)
-    state.problem.filename = filename
-    state.problem.pathlist = pathlist
+    state.shared.model_filename = filename
+    state.shared.model_pathlist = pathlist
+    state.shared.model_loaded = now_string()
     await set_problem(problem, Path(*pathlist), filename)
 
 
@@ -103,19 +104,17 @@ async def set_problem(problem: bumps.fitproblem.FitProblem, path: Optional[Path]
     if state.problem is None or state.problem.fitProblem is None:
         update = False
     state.problem.fitProblem = problem
-    await publish("update_model", True)
-    await publish("update_parameters", True)
+    state.shared.updated_model = now_string()
+    state.shared.updated_parameters = now_string()
 
     if not update:
         pathlist = list(path.parts) if path is not None else []
         path_string = "(no path)" if path is None else str(path / filename)
         await log(f'model loaded: {path_string}')
-        await publish("model_loaded", {"pathlist": pathlist, "filename": filename})
-        await emit("add_notification", {
-            "title": "Model loaded:",
-            "content": str(path),
-            "timeout": 2000,
-        })
+        state.shared.model_filename = filename
+        state.shared.model_pathlist = pathlist
+        state.shared.model_loaded = now_string()
+        await add_notification(str(path), title="Model loaded", timeout=2000)
     state.save()
 
 
@@ -158,11 +157,8 @@ async def save_session_copy(pathlist: List[str], filename: str):
 async def load_session(pathlist: List[str], filename: str):
     path = Path(*pathlist)
     state.setup_backing(str(path / filename))
-    await publish("update_model", True)
-    await publish("update_parameters", True)
-    if state.problem.filename is not None and state.problem.pathlist is not None:
-        await publish("model_loaded", {"pathlist": pathlist, "filename": filename})
-    await publish("fit_active", {})
+    state.shared.updated_model = now_string()
+    state.shared.updated_parameters = now_string()
 
 @register
 async def get_serializer():
@@ -193,20 +189,16 @@ async def export_results(export_path: Union[str, List[str]]=""):
     if not isinstance(export_path, list):
         export_path = [export_path]
     path = Path(*export_path)
-    notification_id = uuid.uuid4().hex
-    export_notification = {
-        "title": "Export started",
-        "content": f"<span>{str(path)}</span>",
-        "id": notification_id,
-    }
-    await emit("add_notification", export_notification)
-    if CAN_THREAD:
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(_export_results, path, problem, uncertainty_state)
-            await asyncio.wrap_future(future)
-    else:
-        _export_results(path, problem, uncertainty_state)
-    await emit("cancel_notification", notification_id)
+    notification_id = await add_notification(content=f"<span>{str(path)}</span>", title="Export started", timeout=None)
+    try:
+        if CAN_THREAD:
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(_export_results, path, problem, uncertainty_state)
+                await asyncio.wrap_future(future)
+        else:
+            _export_results(path, problem, uncertainty_state)
+    finally:
+        await emit("cancel_notification", notification_id)
 
 
 def _export_results(path: Path, problem: bumps.fitproblem.FitProblem, uncertainty_state: Optional[bumps.dream.state.MCMCDraw]):
@@ -274,10 +266,12 @@ async def apply_parameters(pathlist: List[str], filename: str):
     fullpath = path / filename
     try:
         bumps.cli.load_best(state.problem.fitProblem, fullpath)
-        await publish("update_parameters", True)
+        state.shared.updated_parameters = now_string()
         await log(f"applied parameters from {fullpath}")
+        await add_notification(f"applied parameters from {fullpath}", title="Parameters applied", timeout=2000)
     except Exception:
         await log(f"unable to apply parameters from {fullpath}")
+        await add_notification(f"unable to apply parameters from {fullpath}", title="Error applying parameters", timeout=2000)
 
 
 @register
@@ -304,7 +298,7 @@ async def stop_fit():
             if loop is not None:
                 await loop.run_in_executor(None, state.fit_complete_event.wait)
     else:
-        await publish("fit_active", {})
+        state.shared.active_fit = {}
 
 def get_chisq(problem: bumps.fitproblem.FitProblem, nllf=None):
     nllf = problem.nllf() if nllf is None else nllf
@@ -371,7 +365,7 @@ async def start_fit_thread(fitter_id: str="", options=None, terminate_on_finish=
             terminate_on_finish=terminate_on_finish,
             )
         await emit("fit_progress", {}) # clear progress
-        await publish("fit_active", to_json_compatible_dict(dict(fitter_id=fitter_id, options=options, num_steps=num_steps)))
+        state.shared.active_fit = to_json_compatible_dict(dict(fitter_id=fitter_id, options=options, num_steps=num_steps))
         await log(json.dumps(to_json_compatible_dict(options), indent=2), title = f"starting fitter {fitter_id}")
         state.save()
         if CAN_THREAD:
@@ -399,17 +393,17 @@ async def _fit_progress_handler(event: Dict):
     if message == 'complete' or message == 'improvement':
         fitProblem.setp(event["point"])
         fitProblem.model_update()
-        await publish("update_parameters", True)
+        state.shared.updated_parameters = now_string()
         if message == 'complete':
-            await publish("fit_active", {})
+            state.shared.active_fit = {}
     elif message == 'convergence_update':
         state.fitting.population = event["pop"]
-        await publish("convergence_update", True)
+        state.shared.updated_convergence = now_string()
     elif message == 'progress':
         await emit("fit_progress", to_json_compatible_dict(event))
     elif message == 'uncertainty_update' or message == 'uncertainty_final':
         state.fitting.uncertainty_state = cast(bumps.dream.state.MCMCDraw, event["uncertainty_state"])
-        await publish("uncertainty_update", True)
+        state.shared.updated_uncertainty = now_string()
         state.save()
         if message == 'uncertainty_final':
             # fit is not complete until uncertainty is saved.
@@ -426,7 +420,7 @@ async def _fit_complete_handler(event):
             if fit_thread.is_alive():
                 await log("fit thread failed to complete")
     state.fit_thread = None
-    await publish("fit_active", {})
+    state.shared.active_fit = {}
     if message == "error":
         await log(event["traceback"], title=f"fit failed with error: {event.get('error_string')}")
         logger.warning(f"fit failed with error: {event.get('error_string')}")
@@ -436,7 +430,7 @@ async def _fit_complete_handler(event):
         problem.setp(event["point"])
         problem.model_update()
         state.problem.fitProblem = problem
-        await publish("update_parameters", True)
+        state.shared.updated_parameters = now_string()
         await log(event["info"], title=f"done with chisq {chisq}")
         logger.info(f"fit done with chisq {chisq}")
 
@@ -461,7 +455,12 @@ EVT_FIT_PROGRESS.connect(fit_progress_handler, weak=True)
 EVT_FIT_COMPLETE.connect(fit_complete_handler, weak=True)
 
 async def log(message: str, title: Optional[str] = None):
-    await publish("log", {"message": message, "title": title})
+    topic = "log"
+    contents = {"message": {"message": message, "title": title}, "timestamp": now_string()}
+    # session = get_session(session_id)    
+    state.topics[topic].append(contents)
+    # if session_id == app["active_session"]:
+    await emit(topic, contents)
 
 @register
 async def get_data_plot(model_indices: Optional[List[int]] = None):
@@ -708,13 +707,16 @@ async def set_parameter(parameter_id: str, property: Literal["value01", "value",
             fitProblem.model_reset()
             # logger.info(f"setting parameter: {parameter}.fixed to {value}")
             # model has been changed: setp and getp will return different values!
-            await publish("update_model", True)
+            state.shared.updated_model = now_string()
     fitProblem.model_update()
-    await publish("update_parameters", True)
+    state.shared.updated_parameters = now_string()
     return
 
+def now_string():
+    return f"{datetime.now().timestamp():.6f}"
+
 @register
-async def publish(topic: TopicNameType, message=None):
+async def publish(topic: str, message: Any = None):
     timestamp_str = f"{datetime.now().timestamp():.6f}"
     contents = {"message": message, "timestamp": timestamp_str}
     # session = get_session(session_id)    
@@ -723,6 +725,22 @@ async def publish(topic: TopicNameType, message=None):
     await emit(topic, contents)
     # logger.info(f"emitted: {topic} :: {contents}")
 
+@register
+async def get_shared_setting(setting: str):
+    value = await state.shared.get(setting)
+    json_value = to_json_compatible_dict(value)
+    print('get_shared_setting', setting, value, json_value, type(json_value))
+    return json_value
+
+@register
+async def set_shared_setting(setting: str, value: Any):
+    await state.shared.set(setting, value)
+
+async def notify_shared_setting(setting: str, value: Any):
+    print("notify_shared_setting", setting, value, type(value))
+    await emit(setting, to_json_compatible_dict(value))
+
+state.shared.notify = notify_shared_setting
 
 @register
 async def get_topic_messages(topic: Optional[TopicNameType] = None, max_num=None) -> List[Dict]:
@@ -769,10 +787,9 @@ async def get_dirlisting(pathlist: Optional[List[str]]=None):
     return dict(subfolders=subfolders, files=files)
 
 @register
-async def get_current_pathlist() -> Optional[List[str]]:
-    problem_state = state.problem
-    pathlist = problem_state.pathlist if problem_state is not None else []
-    return pathlist
+async def get_current_pathlist() -> Union[UNDEFINED_TYPE, List[str]]:
+    pathlist = state.shared.model_pathlist
+    return to_json_compatible_dict(pathlist)
 
 @register
 async def get_fitter_defaults(*args):
@@ -785,6 +802,15 @@ async def shutdown():
     state.save()
     await emit("server_shutting_down")
     shutdown_result = asyncio.gather(_shutdown(), return_exceptions=True)
+
+async def add_notification(content: str, title: str = "Notification", timeout: Optional[int] = None):
+    id = None
+    if timeout is None:
+        id = uuid.uuid4().hex
+        await emit("add_notification", {"title": title, "content": content, "id": id})
+    else:
+        await emit("add_notification", {"title": title, "content": content, "timeout": timeout})
+    return id
 
 async def _shutdown():
     raise SystemExit(0)
@@ -822,6 +848,8 @@ def to_json_compatible_dict(obj) -> JSON_TYPE:
         return obj
     elif isinstance(obj, numbers.Number):
         return str(obj) if np.isinf(obj) else float(obj)
+    elif isinstance(obj, UNDEFINED_TYPE):
+        return None
     else:
         raise ValueError("obj %s is not serializable" % str(obj))
 

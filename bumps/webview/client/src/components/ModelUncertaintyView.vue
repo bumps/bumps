@@ -15,7 +15,7 @@ const props = defineProps<{
   socket: AsyncSocket,
 }>();
 
-const { drawing_busy } = setupDrawLoop('uncertainty_update', props.socket, fetch_and_draw, title);
+const { drawing_busy } = setupDrawLoop('updated_uncertainty', props.socket, fetch_and_draw, title);
 
 type MplD3PlotData = {
   width?: number,

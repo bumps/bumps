@@ -33,7 +33,7 @@ async function on_change_show_labels() {
   }
 }
 
-const { drawing_busy } = setupDrawLoop('uncertainty_update', props.socket, fetch_and_draw, title);
+const { drawing_busy } = setupDrawLoop('updated_uncertainty', props.socket, fetch_and_draw, title);
 
 async function fetch_and_draw(latest_timestamp: string) {
   let { timestamp, plotdata } = cache[title] as { timestamp: string, plotdata: Plotly.PlotlyDataLayoutConfig } ?? {};

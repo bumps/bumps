@@ -182,9 +182,16 @@ class LinearModel(object):
         #
         from scipy.stats import t  # lazy import in case scipy not present
         y = np.dot(X, self.x).ravel()
+        print("y", f"{y[0]:.18f}")
+        print("DoF", f"{self.DoF:.18f}")
+        print("rnorm", f"{self.rnorm:.18f}")
         s = t.ppf(1-alpha/2, self.DoF) * self.rnorm/np.sqrt(self.DoF)
-        t = np.dot(X, self._SVinv)
-        dy = s * np.sqrt(pred + np.sum(t**2, axis=1))
+        print('ppf', f"{t.ppf(1-alpha/2, self.DoF):.18f}", alpha, self.DoF)
+        print("s", f"{s:.18f}")
+        tt = np.dot(X, self._SVinv)
+        print("t", [f"{ttt:.18f}" for ttt in tt[0]])
+        dy = s * np.sqrt(pred + np.sum(tt**2, axis=1))
+        print("dy", f"{dy[0]:.18f}")
         return y, dy
 
     def ci(self, A, sigma=1):
@@ -427,10 +434,14 @@ def test():
     x = np.array([0, 1, 2, 3, 4], 'd')
     y = np.array([2.5, 7.9, 13.9, 21.1, 44.4], 'd')
     dy = np.array([1.7, 2.4, 3.6, 4.8, 6.2], 'd')
+    print(x.dtype, y.dtype, dy.dtype)
     poly = wpolyfit(x, y, dy, 1)
+    print([f"{v:.18f}" for v in poly.coeff])
+    print(poly.coeff.dtype)
     px = np.array([1.5], 'd')
     _, pi = poly.pi(px)  # Same y is returend from pi and ci
     py, ci = poly.ci(px)
+    print('py, ci, pi', f"{py[0]:.18f}, {ci[0]:.18f}, {pi[0]:.18f}")
 
     # Uncomment these to show target values
     # print "Tp = [%.16g, %.16g]"%(p[0],p[1])
@@ -440,7 +451,9 @@ def test():
     Tdp = np.array([1.522338103010216, 2.117633626902384])
     Tpi, Tci = 7.611128464981324, 2.342860389884832
 
+    print(Tp.dtype)
     perr = np.max(np.abs(poly.coeff - Tp))
+    print(poly.coeff - Tp)
     dperr = np.max(np.abs(poly.std - Tdp))
     cierr = np.abs(ci - Tci)
     pierr = np.abs(pi - Tpi)

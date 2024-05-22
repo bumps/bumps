@@ -1,6 +1,7 @@
 import asyncio
-from typing import TYPE_CHECKING, Optional, Dict, List, Tuple, Any, Literal, cast, IO
+from typing import TYPE_CHECKING, Optional, Dict, List, NewType, Tuple, TypedDict, Any, Literal, Union, cast, IO
 from collections import deque
+from dataclasses import dataclass, fields
 import json
 import shutil
 import os
@@ -38,6 +39,11 @@ SERIALIZER_EXTENSIONS = {
 }
 DEFAULT_SERIALIZER: SERIALIZERS = "dill"
 
+@dataclass(frozen=True)
+class UNDEFINED_TYPE: pass
+
+UNDEFINED = UNDEFINED_TYPE()
+
 def serialize_problem(problem: 'bumps.fitproblem.FitProblem', method: SERIALIZERS):
     if method == 'dataclass':
         return json.dumps(serialize(problem)).encode()
@@ -66,6 +72,8 @@ def write_bytes_data(group: 'Group', name: str, data: bytes):
     return group.create_dataset(name, data=np.void(saved_data), compression=COMPRESSION)
 
 def read_bytes_data(group: 'Group', name: str):
+    if not name in group:
+        return UNDEFINED
     raw_data = group[name][()]
     size = raw_data.size
     if size is not None and size > 0:
@@ -78,6 +86,8 @@ def write_string(group: 'Group', name: str, data: str, encoding='utf-8'):
     return group.create_dataset(name, data=saved_data, compression=COMPRESSION, dtype=h5py.string_dtype(encoding=encoding))
 
 def read_string(group: 'Group', name: str):
+    if not name in group:
+        return UNDEFINED
     raw_data = group[name][()]
     size = raw_data.size
     if size is not None and size > 0:
@@ -91,6 +101,8 @@ def write_fitproblem(group: 'Group', name: str, fitProblem: 'bumps.fitproblem.Fi
     return dset
 
 def read_fitproblem(group: 'Group', name: str, serializer: SERIALIZERS):
+    if not name in group:
+        return UNDEFINED
     serialized = read_bytes_data(group, name)
     fitProblem = deserialize_problem(serialized, serializer) if serialized is not None else None
     return fitProblem
@@ -101,6 +113,8 @@ def write_json(group: 'Group', name: str, data):
     return dset
 
 def read_json(group: 'Group', name: str):
+    if not name in group:
+        return UNDEFINED
     serialized = read_string(group, name)
     try:
         # if JSON fails to load, then just return None
@@ -115,7 +129,7 @@ def write_ndarray(group: 'Group', name: str, data: Optional[np.ndarray], dtype=U
 
 def read_ndarray(group: 'Group', name: str):
     if not name in group:
-        return None
+        return UNDEFINED
     raw_data = group[name][()]
     size = raw_data.size
     if size is not None and size > 0:
@@ -134,9 +148,7 @@ class StringAttribute:
 
 class ProblemState:
     fitProblem: Optional['bumps.fitproblem.FitProblem'] = None
-    pathlist: Optional[List[str]] = None
     serializer: Optional[SERIALIZERS] = None
-    filename: Optional[str] = None
 
     def write(self, parent: 'Group'):
         group = parent.require_group('problem')
@@ -217,6 +229,7 @@ class State:
     problem: ProblemState
     fitting: FittingState
     topics: Dict['TopicNameType', 'deque[Dict]']
+    shared: 'SharedState'
 
     def __init__(self, session_file_name: Optional[str] = None):
         self.problem = ProblemState()
@@ -226,16 +239,9 @@ class State:
         self.fit_uncertainty_final = Event()
         self.topics = {
             "log": deque([]),
-            "update_parameters": deque([], maxlen=1),
-            "update_model": deque([], maxlen=1),
-            "model_loaded": deque([], maxlen=1),
-            "session_output_file": deque([], maxlen=1),
-            "fit_active": deque([], maxlen=1),
-            "convergence_update": deque([], maxlen=1),
-            "uncertainty_update": deque([], maxlen=1),
-            "fitter_settings": deque([], maxlen=1),
-            "fitter_active": deque([], maxlen=1),
+
         }
+        self.shared = SharedState()
 
     def __enter__(self):
         return self
@@ -274,6 +280,7 @@ class State:
                 if read_fitstate:
                     self.fitting.read(root_group)
                 self.read_topics(root_group)
+                self.shared.read()
         except Exception as e:
             logger.warning(f"could not load session file {session_filename} because of {e}")
 
@@ -303,6 +310,9 @@ class State:
             topic_data = np.array([topic_data]).flatten()
             if topic_data is not None:
                 self.topics[topic].extend(topic_data)
+
+    def get_last_message(self, topic: 'TopicNameType'):
+        return self.topics[topic][-1] if len(self.topics[topic]) > 0 else None
 
     def cleanup(self):
         pass
@@ -368,3 +378,49 @@ def read_uncertainty_state(loaded: UncertaintyStateStorage, skip=0, report=0, de
     state._good_chains = slice(None, None) if good_chains is None else good_chains.astype(int)
 
     return state
+
+class ActiveFit(TypedDict):
+    fitter_id: str
+    options: Dict[str, Any]
+    num_steps: int
+    
+Timestamp = NewType('Timestamp', str)
+
+@dataclass
+class SharedState:
+    updated_convergence: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
+    updated_uncertainty: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
+    updated_parameters: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
+    updated_model: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
+    selected_fitter: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
+    fitter_settings: Union[UNDEFINED_TYPE, Dict[str, Dict]] = UNDEFINED
+    active_fit: Union[UNDEFINED_TYPE, ActiveFit] = UNDEFINED
+    model_filename: Union[UNDEFINED_TYPE, str] = UNDEFINED
+    model_pathlist: Union[UNDEFINED_TYPE, List[str]] = UNDEFINED
+    model_loaded: Union[UNDEFINED_TYPE, bool] = UNDEFINED
+    
+    async def notify(self, name, value):
+        pass
+
+    def __setattr__(self, name, value):
+        super().__setattr__(name, value)
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(self.notify(name, value))
+
+    async def set(self, name, value):
+        super().__setattr__(name, value)
+        await self.notify(name, value)
+
+    async def get(self, name):
+        return getattr(self, name, UNDEFINED)
+
+    def write(self, parent: 'Group'):
+        group = parent.require_group('shared')
+        for field in fields(self):
+            write_json(group, field.name, getattr(self, field.name))
+
+    def read(self, parent: 'Group'):
+        group = parent['shared']
+        for field in fields(self):
+            setattr(self, field.name, read_json(group, field.name))

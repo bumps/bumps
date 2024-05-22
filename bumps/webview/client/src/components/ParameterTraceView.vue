@@ -12,7 +12,7 @@ const props = defineProps<{
   socket: Socket,
 }>();
 
-setupDrawLoop('uncertainty_update', props.socket, fetch_and_draw);
+setupDrawLoop('updated_uncertainty', props.socket, fetch_and_draw);
 
 type MplD3PlotData = {
   width?: number,

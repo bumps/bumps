@@ -27,7 +27,7 @@ const props = defineProps<{
   socket: AsyncSocket,
 }>();
 
-const { draw_requested } = setupDrawLoop('update_parameters', props.socket, fetch_and_draw);
+const { draw_requested } = setupDrawLoop('updated_parameters', props.socket, fetch_and_draw);
 
 async function get_model_names() {
   const new_names = await props.socket.asyncEmit("get_model_names") as string[];

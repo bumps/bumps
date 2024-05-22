@@ -10,13 +10,10 @@ export function setupDrawLoop(topic: string, socket: AsyncSocket, draw: Function
   const mounted = ref(false);
   const drawing_busy = ref(false);
   const draw_requested = ref(false);
-  const latest_timestamp = ref<string>();
+  const latest_value = ref<unknown>();
 
-  const topic_callback = function(message) {
-    const new_timestamp = message?.timestamp;
-    if (new_timestamp !== undefined) {
-      latest_timestamp.value = new_timestamp;
-    }
+  const topic_callback = function(value: unknown) {
+    latest_value.value = value;
     draw_requested.value = true;
   }
 
@@ -32,7 +29,7 @@ export function setupDrawLoop(topic: string, socket: AsyncSocket, draw: Function
       draw_requested.value = false;
       try {
         // Need to continue the draw loop even if draw fails
-        await draw(latest_timestamp.value);
+        await draw(latest_value.value);
       }
       catch (e) {
         // TODO: should this notify the user?
@@ -50,12 +47,9 @@ export function setupDrawLoop(topic: string, socket: AsyncSocket, draw: Function
   onActivated(async () => {
     mounted.value = true;
     socket.on(topic, topic_callback);
-
-    const messages = await socket.asyncEmit('get_topic_messages', topic) as Message[];
-    // console.log(topic, messages);
-    const last_message = messages.pop();
-    if (last_message !== undefined) {
-      topic_callback(last_message);
+    const value = await socket.asyncEmit('get_shared_setting', topic);
+    if (value !== undefined) {
+      topic_callback(value);
     }
     window.requestAnimationFrame(draw_if_needed);
   });
