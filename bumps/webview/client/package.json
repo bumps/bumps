@@ -1,6 +1,6 @@
 {
   "name": "bumps-webview-client",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,7 +14,7 @@
     "comlink": "^4.4.1",
     "date-fns": "^2.30.0",
     "json-difference": "^1.8.2",
-    "mpld3": "^0.5.8",
+    "mpld3": "^0.5.10",
     "plotly.js": "^2.32.0",
     "socket.io-client": "^4.5.2",
     "uuid": "^9.0.0",
