@@ -728,16 +728,13 @@ async def publish(topic: str, message: Any = None):
 @register
 async def get_shared_setting(setting: str):
     value = await state.shared.get(setting)
-    json_value = to_json_compatible_dict(value)
-    print('get_shared_setting', setting, value, json_value, type(json_value))
-    return json_value
+    return to_json_compatible_dict(value)
 
 @register
 async def set_shared_setting(setting: str, value: Any):
     await state.shared.set(setting, value)
 
 async def notify_shared_setting(setting: str, value: Any):
-    print("notify_shared_setting", setting, value, type(value))
     await emit(setting, to_json_compatible_dict(value))
 
 state.shared.notify = notify_shared_setting
