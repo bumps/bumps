@@ -34,4 +34,5 @@ export class AsyncSocket extends Socket {
       return result;
     })
   }
+  async syncFS() {}
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button } from 'bootstrap/dist/js/bootstrap.esm.js';
+import { Button } from 'bootstrap';
 import { computed, onMounted, ref, shallowRef } from 'vue';
 import { io } from 'socket.io-client';
 import { AsyncSocket } from './asyncSocket.ts';
@@ -8,8 +8,8 @@ import {
   active_panel,
   active_layout,
   fitter_settings,
-  fit_active,
-  fitter_active,
+  active_fit,
+  selected_fitter,
   fit_progress,
   fitOptions,
   fileBrowser,
@@ -26,6 +26,7 @@ import PanelTabContainer from './components/PanelTabContainer.vue';
 import FileBrowser from './components/FileBrowser.vue';
 import ServerShutdown from './components/ServerShutdown.vue';
 import ServerStartup from './components/ServerStartup.vue';
+import SessionMenu from './components/SessionMenu.vue';
 
 const props = defineProps<{
   panels: {title: string, component: any }[],
@@ -92,7 +93,7 @@ socket.on('model_pathlist', (pathlist: string[]) => {
 });
 
 socket.on('active_fit', ({ fitter_id, options, num_steps }) => {
-  fit_active.value = { fitter_id, options, num_steps };
+  active_fit.value = { fitter_id, options, num_steps };
 });
 
 socket.on('fit_progress', (event) => {
@@ -248,49 +249,12 @@ async function saveParameters(ev: Event, override?: {pathlist: string[], filenam
   }
 }
 
-async function saveSessionCopy(ev: Event, pathlist: string[], filename: string) {
-  if (fileBrowser.value) {
-    const settings = fileBrowserSettings.value;
-    settings.title = "Save Session (Copy)"
-    settings.callback = async (pathlist, filename) => {
-      await socket.asyncEmit("save_session_copy", pathlist, filename);
-      if (nativefs.value) {
-        await socket.syncFS();
-      }
-    }
-    settings.show_name_input = true;
-    settings.name_input_label = "Filename";
-    settings.require_name = true;
-    settings.show_files = true;
-    settings.search_patterns = [".h5"];
-    settings.chosenfile_in = "";
-    fileBrowser.value.open();
-  }
-}
-
-async function loadSession(ev: Event, pathlist: string[], filename: string) {
-  if (fileBrowser.value) {
-    const settings = fileBrowserSettings.value;
-    settings.title = "Open Session (create or append)"
-    settings.callback = (pathlist, filename) => {
-      socket.asyncEmit("load_session", pathlist, filename);
-    }
-    settings.show_name_input = true;
-    settings.name_input_label = "Filename";
-    settings.require_name = true;
-    settings.show_files = true;
-    settings.search_patterns = [".h5"];
-    settings.chosenfile_in = "";
-    fileBrowser.value.open();
-  }
-}
-
 function openFitOptions() {
   fitOptions.value?.open();
 }
 
 async function startFit() {
-  const active = fitter_active.value;
+  const active = selected_fitter.value;
   const settings = fitter_settings.value;
   if (active && settings) {
     const fit_args = settings[active];
@@ -318,14 +282,12 @@ menu_items.value = [
   { text: "Apply Parameters", action: applyParameters, disabled: model_not_loaded },
   { text: "Save Problem", action: saveFile, disabled: model_not_loaded },
   { text: "Save Problem As...", action: saveFileAs, disabled: model_not_loaded },
-  { text: "Open Session", action: loadSession, help: "Create or Append to Session HDF5" },
-  { text: "Save Session (Copy)", action: saveSessionCopy },
   { text: "Export Results", action: exportResults, disabled: model_not_loaded },
   { text: "Reload Model", action: reloadModel, disabled: model_not_loaded },
 ]
 
 onMounted(() => {
-  const menuToggleButton = new Button(menuToggle.value);
+  const menuToggleButton = new Button(menuToggle.value as HTMLElement);
 });
 
 </script>
@@ -372,6 +334,7 @@ onMounted(() => {
                 <li><button class="btn btn-link dropdown-item" @click="quit">Quit</button></li>
               </ul>
             </li>
+            <SessionMenu :socket="socket" />
             <!-- <li class="nav-item dropdown">
               <button class="btn btn-link nav-link dropdown-toggle"  role="button" data-bs-toggle="dropdown"
                 aria-expanded="false">
@@ -414,13 +377,13 @@ onMounted(() => {
           <div class="flex-grow-1 px-4 m-0">
             <h4 class="m-0">
               <!-- <div class="rounded p-2 bg-primary">Fitting: </div> -->
-              <div v-if="fit_active.fitter_id !== undefined" class="badge bg-secondary p-2 align-middle">
+              <div v-if="active_fit.fitter_id !== undefined" class="badge bg-secondary p-2 align-middle">
                 <div class="align-middle pt-2 pb-1 px-1 d-inline-block">
-                  <span>Fitting: {{ fit_active.fitter_id }} step {{ fit_progress?.step }} of
-                  {{ fit_active?.num_steps }}, chisq={{ fit_progress.chisq }}</span>
+                  <span>Fitting: {{ active_fit.fitter_id }} step {{ fit_progress?.step }} of
+                  {{ active_fit?.num_steps }}, chisq={{ fit_progress.chisq }}</span>
                   <div class="progress mt-1" style="height:3px;">
                     <div class="progress-bar" role="progressbar" :aria-valuenow="fit_progress?.step" 
-                      aria-valuemin="0" :aria-valuemax="fit_active?.num_steps ?? 100" :style="{width: ((fit_progress.step ?? 0) * 100 / (fit_active.num_steps ?? 1)).toFixed(1) + '%'}"></div>
+                      aria-valuemin="0" :aria-valuemax="active_fit?.num_steps ?? 100" :style="{width: ((fit_progress.step ?? 0) * 100 / (active_fit.num_steps ?? 1)).toFixed(1) + '%'}"></div>
                   </div>
                 </div>
                 <button class="btn btn-danger btn-sm" @click="stopFit">Stop</button>
@@ -430,7 +393,7 @@ onMounted(() => {
                   <span>Fitting: </span>
                 </div>
                 <button class="btn btn-light btn-sm me-2" @click="openFitOptions">
-                  {{ fitter_active ?? "" }}
+                  {{ selected_fitter ?? "" }}
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-gear" viewBox="0 0 16 16">
                     <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
                     <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z"/>
@@ -476,6 +439,7 @@ onMounted(() => {
   <FileBrowser ref="fileBrowser" :socket="socket"
     :title="fileBrowserSettings.title"
     :chosenfile_in="fileBrowserSettings.chosenfile_in"
+    :pathlist_in="fileBrowserSettings.pathlist_in"
     :show_name_input="fileBrowserSettings.show_name_input"
     :name_input_label="fileBrowserSettings.name_input_label"
     :show_files="fileBrowserSettings.show_files"

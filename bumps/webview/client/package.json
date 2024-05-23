@@ -22,9 +22,11 @@
     "vue-json-viewer": "^3.0.4"
   },
   "devDependencies": {
+    "@types/bootstrap": "^5.2.10",
     "@types/plotly.js": "^2.12.5",
     "@types/uuid": "^8.3.4",
     "@vitejs/plugin-vue": "^5.0.4",
+    "bootstrap-icons": "^1.11.3",
     "pyodide": "^0.25.1",
     "vite": "^5.2.10"
   }

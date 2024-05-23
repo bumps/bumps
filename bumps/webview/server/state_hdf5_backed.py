@@ -154,15 +154,15 @@ class ProblemState:
         group = parent.require_group('problem')
         write_fitproblem(group, 'fitProblem', self.fitProblem, self.serializer)
         write_string(group, 'serializer', self.serializer)
-        write_json(group, 'pathlist', self.pathlist)
-        write_string(group, 'filename', self.filename)
+        # write_json(group, 'pathlist', self.pathlist)
+        # write_string(group, 'filename', self.filename)
 
     def read(self, parent: 'Group'):
         group = parent.require_group('problem')
         self.serializer = read_string(group, 'serializer')
         self.fitProblem = read_fitproblem(group, 'fitProblem', self.serializer)
-        self.pathlist = read_json(group, 'pathlist')
-        self.filename = read_string(group, 'filename')
+        # self.pathlist = read_json(group, 'pathlist')
+        # self.filename = read_string(group, 'filename')
                
 
 class UncertaintyStateStorage:
@@ -223,7 +223,6 @@ class State:
     fit_uncertainty_final: Event
     fit_enabled: Event
     calling_loop: Optional[asyncio.AbstractEventLoop] = None
-    session_file_name: Optional[str] = None
 
     # State to be stored:
     problem: ProblemState
@@ -231,7 +230,7 @@ class State:
     topics: Dict['TopicNameType', 'deque[Dict]']
     shared: 'SharedState'
 
-    def __init__(self, session_file_name: Optional[str] = None):
+    def __init__(self):
         self.problem = ProblemState()
         self.fitting = FittingState()
         self.fit_abort_event = Event()
@@ -246,23 +245,27 @@ class State:
     def __enter__(self):
         return self
 
-    def setup_backing(self, session_file_name: Optional[str] = SESSION_FILE_NAME, read_only: bool = False ):
+    def setup_backing(self, session_file_name: str, session_pathlist: list[str], read_only: bool = False ):
         if not read_only:
-            self.session_file_name = session_file_name
+            self.shared.session_output_file = session_file_name
+            self.shared.session_pathlist = session_pathlist
         if session_file_name is not None:
             if Path(session_file_name).exists():
                 self.read_session_file(session_file_name)
             else:
                 self.save()
+    
+    def autosave(self):
+        if self.shared.autosave_session:
+            self.save()
 
     def save(self):
-        if self.session_file_name is not None:
-            self.write_session_file(self.session_file_name)
-
-    def copy_session_file(self, session_copy_name: str):
-        self.write_session_file(session_copy_name)
+        if self.shared.session_output_file not in [None, UNDEFINED] and self.shared.session_pathlist not in [None, UNDEFINED]:
+            full_path = Path(*self.shared.session_pathlist) / self.shared.session_output_file
+            self.write_session_file(full_path)
 
     def write_session_file(self, session_filename: str):
+        # Session filename is assumed to be a full path
         tmp_fd, tmp_name = tempfile.mkstemp(dir=Path(session_filename).parent, prefix=Path(session_filename).name, suffix='.tmp')
         with os.fdopen(tmp_fd, 'w+b') as output_file:
             with h5py.File(output_file, 'w') as root_group:
@@ -398,6 +401,9 @@ class SharedState:
     model_filename: Union[UNDEFINED_TYPE, str] = UNDEFINED
     model_pathlist: Union[UNDEFINED_TYPE, List[str]] = UNDEFINED
     model_loaded: Union[UNDEFINED_TYPE, bool] = UNDEFINED
+    session_output_file: Union[UNDEFINED_TYPE, str] = UNDEFINED
+    session_pathlist: Union[UNDEFINED_TYPE, List[str]] = UNDEFINED
+    autosave_session: Union[UNDEFINED_TYPE, bool] = UNDEFINED
     
     async def notify(self, name, value):
         pass

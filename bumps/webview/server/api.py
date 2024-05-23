@@ -63,15 +63,6 @@ async def emit(
 
 TopicNameType = Literal[
     "log", # log messages
-    "update_parameters", # parameters have changed
-    "update_model", # model has changed
-    "model_loaded", # pathlist, filename
-    "fit_active", # fitter_id (set in client)
-    "uncertainty_update", # true when uncertainty state available
-    "convergence_update", # true when convergence state available
-    "fitter_settings", # dict of fitter settings for all fitters
-    "fitter_active", # fitter_id, options, num_steps
-    # "fit_progress", # step, value, chisq, point
 ]
 
 @register
@@ -115,7 +106,7 @@ async def set_problem(problem: bumps.fitproblem.FitProblem, path: Optional[Path]
         state.shared.model_pathlist = pathlist
         state.shared.model_loaded = now_string()
         await add_notification(content=path_string, title="Model loaded", timeout=2000)
-    state.save()
+    state.autosave()
 
 
 @register
@@ -149,16 +140,28 @@ async def save_problem_file(pathlist: Optional[List[str]] = None, filename: Opti
     return {"filename": save_filename, "check_overwrite": False}
 
 @register
-async def save_session_copy(pathlist: List[str], filename: str):
-    path = Path(*pathlist)
-    state.copy_session_file(str(path / filename))
+async def save_session():
+    state.save()
 
 @register
-async def load_session(pathlist: List[str], filename: str):
+async def save_session_copy(pathlist: List[str], filename: str):
     path = Path(*pathlist)
-    state.setup_backing(str(path / filename))
+    state.write_session_file(str(path / filename))
+
+@register
+async def load_session(pathlist: List[str], filename: str, read_only: bool = False):
+    path = Path(*pathlist)
+    state.setup_backing(filename, pathlist, read_only=read_only)
     state.shared.updated_model = now_string()
     state.shared.updated_parameters = now_string()
+
+@register
+async def set_session_output_file(pathlist: Optional[List[str]] = None, filename: Optional[str] = None):
+    if filename is None or pathlist is None:
+        await state.shared.set('session_output_file', None)
+    else:
+        path = Path(*pathlist)
+        await state.shared.set('session_output_file', str(path / filename))
 
 @register
 async def get_serializer():
@@ -367,7 +370,7 @@ async def start_fit_thread(fitter_id: str="", options=None, terminate_on_finish=
         await emit("fit_progress", {}) # clear progress
         state.shared.active_fit = to_json_compatible_dict(dict(fitter_id=fitter_id, options=options, num_steps=num_steps))
         await log(json.dumps(to_json_compatible_dict(options), indent=2), title = f"starting fitter {fitter_id}")
-        state.save()
+        state.autosave()
         if CAN_THREAD:
             fit_thread.start()
         else:
@@ -404,7 +407,7 @@ async def _fit_progress_handler(event: Dict):
     elif message == 'uncertainty_update' or message == 'uncertainty_final':
         state.fitting.uncertainty_state = cast(bumps.dream.state.MCMCDraw, event["uncertainty_state"])
         state.shared.updated_uncertainty = now_string()
-        state.save()
+        state.autosave()
         if message == 'uncertainty_final':
             # fit is not complete until uncertainty is saved.
             state.fit_uncertainty_final.set()
@@ -796,7 +799,7 @@ async def get_fitter_defaults(*args):
 async def shutdown():
     logger.info("killing...")
     await stop_fit()
-    state.save()
+    state.autosave()
     await emit("server_shutting_down")
     shutdown_result = asyncio.gather(_shutdown(), return_exceptions=True)
 

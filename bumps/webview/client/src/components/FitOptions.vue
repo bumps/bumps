@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, shallowRef } from 'vue';
 import { Modal } from 'bootstrap/dist/js/bootstrap.esm.js';
-import { fitter_settings, fitter_active } from '../app_state.ts';
+import { fitter_settings, selected_fitter } from '../app_state.ts';
 import type { FitSetting } from '../app_state.ts';
 import type { AsyncSocket } from '../asyncSocket.ts';
 
@@ -10,7 +10,7 @@ const props = defineProps<{socket: AsyncSocket}>();
 const dialog = ref<HTMLDivElement>();
 const isOpen = ref(false);
 const fitter_defaults = shallowRef<{ [fit_name: string]: FitSetting }>({});
-const fitter_active_local = ref("amoeba");
+const selected_fitter_local = ref("amoeba");
 
 const FIT_FIELDS = {
   'starts': ['Starts', 'integer'],
@@ -52,8 +52,8 @@ props.socket.on('fitter_settings', (new_fitter_settings) => {
   fitter_settings.value = new_fitter_settings;
 });
 
-props.socket.on('selected_fitter', (new_fitter_active: string) => {
-  fitter_active.value = new_fitter_active;
+props.socket.on('selected_fitter', (new_selected_fitter: string) => {
+  selected_fitter.value = new_selected_fitter;
 });
 
 let modal: Modal;
@@ -68,8 +68,8 @@ function close() {
 }
 
 function open() {
-  // copy the  fitter_active_local from the server state:
-  fitter_active_local.value = fitter_active.value;
+  // copy the  selected_fitter_local from the server state:
+  selected_fitter_local.value = selected_fitter.value;
   changeActiveFitter();
   modal?.show();
 }
@@ -77,7 +77,7 @@ function open() {
 const fit_names = computed(() => Object.keys(fitter_defaults?.value));
 
 function changeActiveFitter() {
-  active_settings.value = structuredClone(fitter_settings.value[fitter_active_local.value]?.settings) ?? {};
+  active_settings.value = structuredClone(fitter_settings.value[selected_fitter_local.value]?.settings) ?? {};
 }
 
 function process_settings() {
@@ -103,19 +103,19 @@ async function save(start: boolean = false) {
     return;
   }
   const new_settings = structuredClone(fitter_settings.value);
-  new_settings[fitter_active_local.value] = { settings: process_settings() };
+  new_settings[selected_fitter_local.value] = { settings: process_settings() };
   const fitter_settings_local = process_settings();
-  new_settings[fitter_active_local.value] = { settings: fitter_settings_local };
+  new_settings[selected_fitter_local.value] = { settings: fitter_settings_local };
   await props.socket.asyncEmit("set_shared_setting", "fitter_settings", new_settings);
-  await props.socket.asyncEmit("set_shared_setting", "fitter_active", fitter_active_local.value);
+  await props.socket.asyncEmit("set_shared_setting", "selected_fitter", selected_fitter_local.value);
   if (start) {
-    await props.socket.asyncEmit("start_fit_thread", fitter_active_local.value, fitter_settings_local);
+    await props.socket.asyncEmit("start_fit_thread", selected_fitter_local.value, fitter_settings_local);
   }
   close();
 }
 
 function reset() {
-  active_settings.value = structuredClone(fitter_defaults.value[fitter_active_local.value].settings) ?? {};
+  active_settings.value = structuredClone(fitter_defaults.value[selected_fitter_local.value].settings) ?? {};
 }
 
 function validate(value, field_name) {
@@ -139,10 +139,10 @@ const anyIsInvalid = computed(() => {
 })
 
 onMounted(async () => {
-  const new_fitter_active = await props.socket.asyncEmit('get_shared_setting', 'selected_fitter');
+  const new_selected_fitter = await props.socket.asyncEmit('get_shared_setting', 'selected_fitter');
   const new_fitter_settings = await props.socket.asyncEmit('get_shared_setting', 'fitter_settings');
-  if (new_fitter_active !== undefined) {
-    fitter_active.value = new_fitter_active;
+  if (new_selected_fitter !== undefined) {
+    selected_fitter.value = new_selected_fitter;
   }
   if (new_fitter_settings !== undefined) {
     fitter_settings.value = new_fitter_settings;
@@ -169,7 +169,7 @@ defineExpose({
             <div class="row border-bottom">
               <div class="col">
                 <div class="form-check" v-for="fname in fit_names.slice(0,3)" :key="fname">
-                  <input class="form-check-input" v-model="fitter_active_local" type="radio" name="flexRadio"
+                  <input class="form-check-input" v-model="selected_fitter_local" type="radio" name="flexRadio"
                     :id="fname" :value="fname" @change="changeActiveFitter">
                   <label class="form-check-label" :for="fname">
                     {{fitter_defaults[fname].name}}
@@ -179,7 +179,7 @@ defineExpose({
               </div>
               <div class="col">
                 <div class="form-check" v-for="fname in fit_names.slice(3)" :key="fname">
-                  <input class="form-check-input" v-model="fitter_active_local" type="radio" name="flexRadio"
+                  <input class="form-check-input" v-model="selected_fitter_local" type="radio" name="flexRadio"
                     :id="fname" :value="fname" @change="changeActiveFitter">
                   <label class="form-check-label" :for="fname">
                     {{fitter_defaults[fname].name}}
@@ -189,8 +189,8 @@ defineExpose({
               </div>
             </div>
             <div class="row p-2">
-              <div class="row p-1 text-secondary" v-if="fitter_active_local in OPTIONS_HELP">
-                <span><em>{{ OPTIONS_HELP[fitter_active_local] }}</em></span>
+              <div class="row p-1 text-secondary" v-if="selected_fitter_local in OPTIONS_HELP">
+                <span><em>{{ OPTIONS_HELP[selected_fitter_local] }}</em></span>
               </div>
               <div class="row p-1" v-for="(value, sname, index) in active_settings" :key="sname">
                 <label class="col-sm-4 col-form-label" :for="'setting_' + index">{{FIT_FIELDS[sname][0]}}</label>

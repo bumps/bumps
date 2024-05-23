@@ -12,6 +12,7 @@ const props = defineProps<{
   require_name?: boolean,
   name_input_label?: string,
   chosenfile_in?: string,
+  pathlist_in?: string[],
   search_patterns?: string[], // comma-delimited glob patterns
   callback: (pathlist: string[], filename: string) => void,
 }>();
@@ -46,7 +47,7 @@ const active_search_regexp = ref<RegExp | null>(null);
 
 let modal: Modal;
 onMounted(() => {
-  modal = new Modal(dialog.value, { backdrop: 'static', keyboard: false });
+  modal = new Modal(dialog.value as HTMLElement, { backdrop: 'static', keyboard: false });
 });
 
 function close() {
@@ -55,10 +56,13 @@ function close() {
 }
 
 async function open() {
-  await props.socket.asyncEmit('get_current_pathlist', (new_pathlist) => {
+  await props.socket.asyncEmit('get_current_pathlist', (new_pathlist: string[]) => {
     setPath(new_pathlist);
   })
   chosenFile.value = props.chosenfile_in ?? "";
+  if (props.pathlist_in) {
+    pathlist.value = props.pathlist_in;
+  }
   if (props.search_patterns && props.search_patterns.length > 0) {
     active_search_pattern.value = props.search_patterns[0];
   }
@@ -104,7 +108,7 @@ async function setPath(new_pathlist?: string[]) {
 const PREFIXES = ["", "k", "M", "G", "T", "P"];
 const SCALES = PREFIXES.map((_, i) => Math.pow(1024, i));
 const LOG_1024 = Math.log(1024);
-function formatSize(bytes) {
+function formatSize(bytes: number) {
   const scale = (bytes > 0) ? Math.min(5, Math.floor(Math.log(bytes) / LOG_1024)) : 0;
   const prefix = PREFIXES[scale];
   const reduced = bytes / SCALES[scale];
