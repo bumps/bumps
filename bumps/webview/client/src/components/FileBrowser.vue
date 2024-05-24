@@ -92,7 +92,6 @@ async function subdirClick(subdir: string) {
 }
 
 async function setPath(new_pathlist?: string[]) {
-  pathlist.value = new_pathlist ?? [];
   await props.socket.asyncEmit("get_dirlisting", new_pathlist, ({ drives: drives_in, files, subfolders, pathlist: abs_pathlist }: { drives: string[], pathlist: string[], files: FileInfo[], subfolders: FileInfo[]}) => {
     subdirlist.value = subfolders.sort(FileInfoSorter);
     filelist.value = files;
