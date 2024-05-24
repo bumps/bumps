@@ -182,16 +182,9 @@ class LinearModel(object):
         #
         from scipy.stats import t  # lazy import in case scipy not present
         y = np.dot(X, self.x).ravel()
-        print("y", f"{y[0]:.18f}")
-        print("DoF", f"{self.DoF:.18f}")
-        print("rnorm", f"{self.rnorm:.18f}")
         s = t.ppf(1-alpha/2, self.DoF) * self.rnorm/np.sqrt(self.DoF)
-        print('ppf', f"{t.ppf(1-alpha/2, self.DoF):.18f}", alpha, self.DoF)
-        print("s", f"{s:.18f}")
-        tt = np.dot(X, self._SVinv)
-        print("t", [f"{ttt:.18f}" for ttt in tt[0]])
-        dy = s * np.sqrt(pred + np.sum(tt**2, axis=1))
-        print("dy", f"{dy[0]:.18f}")
+        t = np.dot(X, self._SVinv)
+        dy = s * np.sqrt(pred + np.sum(t**2, axis=1))
         return y, dy
 
     def ci(self, A, sigma=1):
@@ -434,33 +427,29 @@ def test():
     x = np.array([0, 1, 2, 3, 4], 'd')
     y = np.array([2.5, 7.9, 13.9, 21.1, 44.4], 'd')
     dy = np.array([1.7, 2.4, 3.6, 4.8, 6.2], 'd')
-    print(x.dtype, y.dtype, dy.dtype)
     poly = wpolyfit(x, y, dy, 1)
-    print([f"{v:.18f}" for v in poly.coeff])
-    print(poly.coeff.dtype)
     px = np.array([1.5], 'd')
     _, pi = poly.pi(px)  # Same y is returend from pi and ci
     py, ci = poly.ci(px)
-    print('py, ci, pi', f"{py[0]:.18f}, {ci[0]:.18f}, {pi[0]:.18f}")
 
-    # Uncomment these to show target values
-    # print "Tp = [%.16g, %.16g]"%(p[0],p[1])
-    # print "Tdp = [%.16g, %.16g]"%(dp[0],dp[1])
-    # print "Tpi,Tci = %.16g, %.16g"%(pi,ci)
-    Tp = np.array([7.787249069840737, 1.503992847461524])
+    ## Uncomment these to show target values
+    #print("    Tp = np.array([%.16g, %.16g])"%(tuple(poly.coeff.tolist())))
+    #print("    Tdp = np.array([%.16g, %.16g])"%(tuple(poly.std.tolist())))
+    #print("    Tpi, Tci = %.16g, %.16g"%(pi[0],ci[0]))
+    Tp = np.array([7.787249069840739, 1.503992847461522])
     Tdp = np.array([1.522338103010216, 2.117633626902384])
-    Tpi, Tci = 7.611128464981324, 2.342860389884832
+    Tpi, Tci = 7.611128464981326, 2.34286039211232
 
-    print(Tp.dtype)
     perr = np.max(np.abs(poly.coeff - Tp))
-    print(poly.coeff - Tp)
     dperr = np.max(np.abs(poly.std - Tdp))
     cierr = np.abs(ci - Tci)
     pierr = np.abs(pi - Tpi)
     assert perr < 1e-14, "||p-Tp||=%g" % perr
     assert dperr < 1e-14, "||dp-Tdp||=%g" % dperr
-    assert cierr < 1e-14, "||ci-Tci||=%g" % cierr
-    assert pierr < 1e-14, "||pi-Tpi||=%g" % pierr
+    # TODO: change target error level once scipy 1.13 becomes the norm
+    # Target values are only accurate to 9 digits for scipy < 1.13
+    assert cierr < 1e-8, "||ci-Tci||=%g" % cierr
+    assert pierr < 1e-8, "||pi-Tpi||=%g" % pierr
     assert_array_almost_equal_nulp(py, poly(px), nulp=8)
 
 if __name__ == "__main__":
