@@ -155,7 +155,12 @@ def setup_sio_api():
         rest_get(action)
 
 def get_absolute_path(path_in=None):
-    path = Path(path_in) if path_in is not None else Path()
+    if path_in is None:
+        path = Path()
+    elif isinstance(path_in, str):
+        path = Path(path_in)
+    elif isinstance(path_in, list):
+        path = Path(*path_in)
     abs_pathlist = list(path.absolute().parts)
     if sys.platform == 'win32':
         abs_pathlist[0] = re.sub(r'^([A-Z]):\\$', r'\\\\?\\\1:\\', abs_pathlist[0])
@@ -193,9 +198,14 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
     read_store = options.read_store if options.read_store is not None else options.store
     write_store = options.write_store if options.write_store is not None else options.store
     if read_store is not None:
-        api.state.read_session_file(read_store)
+        read_store_path = get_absolute_path(read_store)
+        api.state.read_session_file(str(read_store_path))
+        if write_store is None:
+            api.state.shared.session_output_file = dict(pathlist=list(read_store_path.parent.parts), filename=read_store_path.name)
     if write_store is not None:
-        api.state.session_file_name = write_store
+        write_store_path = get_absolute_path(write_store)
+        api.state.shared.session_output_file = dict(pathlist=list(write_store_path.parent.parts), filename=write_store_path.name)
+        api.state.shared.autosave_session = True
 
     if api.state.problem.serializer is None or api.state.problem.serializer == "":
         api.state.problem.serializer = options.serializer
@@ -250,7 +260,6 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
     app.on_shutdown.append(lambda App: notice("shutdown complete"))
 
     # set initial path to cwd:
-    api.state.problem.pathlist = list(get_absolute_path().parts)
     app.add_routes(routes)
     hostname = 'localhost' if not options.external else '0.0.0.0'
 

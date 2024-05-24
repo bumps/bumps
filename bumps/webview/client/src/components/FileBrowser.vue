@@ -3,18 +3,10 @@ import { format, formatDistance, formatRelative, subDays } from 'date-fns'
 import { ref, onMounted, watch, onUpdated, computed, shallowRef } from 'vue';
 import { Modal } from 'bootstrap/dist/js/bootstrap.esm.js';
 import type { AsyncSocket } from '../asyncSocket.ts';
+import type { FileBrowserSettings } from '../app_state';
 
 const props = defineProps<{
-  socket: AsyncSocket,
-  title: string,
-  show_files?: boolean,
-  show_name_input?: boolean,
-  require_name?: boolean,
-  name_input_label?: string,
-  chosenfile_in?: string,
-  pathlist_in?: string[],
-  search_patterns?: string[], // comma-delimited glob patterns
-  callback: (pathlist: string[], filename: string) => void,
+  socket: AsyncSocket
 }>();
 
 const emit = defineEmits<{
@@ -34,7 +26,7 @@ const DOWN_ARROW = "▼";
 
 const dialog = ref<HTMLDivElement>();
 const isOpen = ref(false);
-const pathlist = shallowRef<string[]>(["/"]);
+const pathlist = shallowRef<string[]>([]);
 const subdirlist = shallowRef<FileInfo[]>([])
 const filelist = shallowRef<FileInfo[]>([])
 const filtered_filelist = shallowRef<FileInfo[]>([]);
@@ -44,6 +36,8 @@ const reversed = ref(false);
 const step = ref(1);
 const active_search_pattern = ref<string | null>(null);
 const active_search_regexp = ref<RegExp | null>(null);
+const callback = ref<(pathlist: string[], filename: string) => void>(() => {});
+const settings = ref<FileBrowserSettings>();
 
 let modal: Modal;
 onMounted(() => {
@@ -55,16 +49,16 @@ function close() {
   isOpen.value = false;
 }
 
-async function open() {
-  await props.socket.asyncEmit('get_current_pathlist', (new_pathlist: string[]) => {
-    setPath(new_pathlist);
-  })
-  chosenFile.value = props.chosenfile_in ?? "";
-  if (props.pathlist_in) {
-    pathlist.value = props.pathlist_in;
+async function open(settings_in: FileBrowserSettings) {
+  settings.value = settings_in;
+  chosenFile.value = settings_in.chosenfile_in ?? "";
+  if (settings_in.pathlist_in) {
+    pathlist.value = settings_in.pathlist_in;
   }
-  if (props.search_patterns && props.search_patterns.length > 0) {
-    active_search_pattern.value = props.search_patterns[0];
+  await setPath(pathlist.value ?? []);
+  if (settings_in.search_patterns && settings_in.search_patterns.length > 0) {
+    // this triggers doSorting and filtering...
+    active_search_pattern.value = settings_in.search_patterns[0];
   }
   modal?.show();
   isOpen.value = true;
@@ -98,10 +92,12 @@ async function subdirClick(subdir: string) {
 
 async function setPath(new_pathlist?: string[]) {
   pathlist.value = new_pathlist ?? [];
-  await props.socket.asyncEmit("get_dirlisting", pathlist.value, ({ files, subfolders }: {files: FileInfo[], subfolders: FileInfo[]}) => {
+  await props.socket.asyncEmit("get_dirlisting", new_pathlist, ({ files, subfolders, pathlist: abs_pathlist }: { pathlist: string[], files: FileInfo[], subfolders: FileInfo[]}) => {
     subdirlist.value = subfolders.sort(FileInfoSorter);
     filelist.value = files;
     filtered_filelist.value = files.filter(FileInfoSearch).sort(FileInfoSorter);
+    // server include absolute pathlist in response...
+    pathlist.value = abs_pathlist;
   })
 }
 
@@ -117,7 +113,7 @@ function formatSize(bytes: number) {
 }
 
 async function chooseFile() {
-  await props.callback(pathlist.value, chosenFile.value);
+  await settings.value?.callback(pathlist.value, chosenFile.value);
   close();
 }
 
@@ -182,7 +178,7 @@ defineExpose({
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header">
-            <h5 class="modal-title" id="fileBrowserLabel">{{title}}</h5>
+            <h5 class="modal-title" id="fileBrowserLabel">{{settings?.title}}</h5>
             <button type="button" class="btn-close" @click="close" aria-label="Close"></button>
         </div>
         <div class="p-1 border-bottom">
@@ -195,10 +191,10 @@ defineExpose({
               </ol>
             </nav>
           </div>
-          <div v-if="show_name_input === true" class="container">
+          <div v-if="settings?.show_name_input === true" class="container">
             <div class="row align-items-center mb-1">
               <div class="col-auto">
-                <label for="userfilename" class="col-form-label">{{name_input_label}}:</label>
+                <label for="userfilename" class="col-form-label">{{settings?.name_input_label}}:</label>
               </div>
               <div class="col">
                 <input 
@@ -222,7 +218,8 @@ defineExpose({
               </div>
             </div>
           </div>
-          <div class="container" v-if="show_files">
+          <div>show files: {{ settings?.show_files }}</div>
+          <div class="container" v-if="settings?.show_files">
             <h5>Files:</h5>
             <table class="table table-sm">
               <thead>
@@ -249,16 +246,16 @@ defineExpose({
           </div>  
         </div>
         <div class="modal-footer">
-          <label v-if="search_patterns && search_patterns.length > 0">Search: 
+          <label v-if="settings?.search_patterns && settings?.search_patterns.length > 0">Search: 
             <select v-model="active_search_pattern">
-              <option v-for="search_pattern in search_patterns" :key="search_pattern">
+              <option v-for="search_pattern in settings?.search_patterns ?? []" :key="search_pattern">
                 {{ search_pattern }}
               </option>
               <option :value="null">All files</option>
             </select>
           </label>
           <button type="button" class="btn btn-secondary" @click="close">Cancel</button>
-          <button type="button" class="btn btn-primary" :class="{disabled: require_name && chosenFile == ''}"
+          <button type="button" class="btn btn-primary" :class="{disabled: settings?.require_name && chosenFile == ''}"
             @click="chooseFile">OK</button>
         </div>
       </div>

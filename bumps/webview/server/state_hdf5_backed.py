@@ -247,8 +247,7 @@ class State:
 
     def setup_backing(self, session_file_name: str, session_pathlist: list[str], read_only: bool = False ):
         if not read_only:
-            self.shared.session_output_file = session_file_name
-            self.shared.session_pathlist = session_pathlist
+            self.shared.session_output_file = dict(filename=session_file_name, pathlist=session_pathlist)
         if session_file_name is not None:
             if Path(session_file_name).exists():
                 self.read_session_file(session_file_name)
@@ -260,25 +259,27 @@ class State:
             self.save()
 
     def save(self):
-        if self.shared.session_output_file not in [None, UNDEFINED] and self.shared.session_pathlist not in [None, UNDEFINED]:
-            full_path = Path(*self.shared.session_pathlist) / self.shared.session_output_file
+        if self.shared.session_output_file not in [None, UNDEFINED]:
+            pathlist = self.shared.session_output_file['pathlist']
+            filename = self.shared.session_output_file['filename']
+            full_path = Path(*pathlist) / filename
             self.write_session_file(full_path)
 
-    def write_session_file(self, session_filename: str):
+    def write_session_file(self, session_fullpath: str):
         # Session filename is assumed to be a full path
-        tmp_fd, tmp_name = tempfile.mkstemp(dir=Path(session_filename).parent, prefix=Path(session_filename).name, suffix='.tmp')
+        tmp_fd, tmp_name = tempfile.mkstemp(dir=Path(session_fullpath).parent, prefix=Path(session_fullpath).name, suffix='.tmp')
         with os.fdopen(tmp_fd, 'w+b') as output_file:
             with h5py.File(output_file, 'w') as root_group:
                 self.problem.write(root_group)
                 self.fitting.write(root_group)
                 self.write_topics(root_group)
                 self.shared.write(root_group)
-        shutil.move(tmp_name, session_filename)
-        os.chmod(session_filename, 0o644)
+        shutil.move(tmp_name, session_fullpath)
+        os.chmod(session_fullpath, 0o644)
 
-    def read_session_file(self, session_filename: str, read_problem: bool = True, read_fitstate: bool = True):
+    def read_session_file(self, session_fullpath: str, read_problem: bool = True, read_fitstate: bool = True):
         try:
-            with h5py.File(session_filename, 'r') as root_group:
+            with h5py.File(session_fullpath, 'r') as root_group:
                 if read_problem:
                     self.problem.read(root_group)
                 if read_fitstate:
@@ -286,21 +287,21 @@ class State:
                 self.read_topics(root_group)
                 self.shared.read(root_group)
         except Exception as e:
-            logger.warning(f"could not load session file {session_filename} because of {e}")
+            logger.warning(f"could not load session file {session_fullpath} because of {e}")
 
-    def read_problem_from_session(self, session_filename: str):
+    def read_problem_from_session(self, session_fullpath: str):
         try:
-            with h5py.File(session_filename, 'r') as root_group:
+            with h5py.File(session_fullpath, 'r') as root_group:
                 self.problem.read(root_group)
         except Exception as e:
-            logger.warning(f"could not load fitProblem from {session_filename} because of {e}")
+            logger.warning(f"could not load fitProblem from {session_fullpath} because of {e}")
 
-    def read_fitstate_from_session(self, session_filename: str):
+    def read_fitstate_from_session(self, session_fullpath: str):
         try:
-            with h5py.File(session_filename, 'r') as root_group:
+            with h5py.File(session_fullpath, 'r') as root_group:
                 self.fitting.read(root_group)
         except Exception as e:
-            logger.warning(f"could not load fit state from {session_filename} because of {e}")
+            logger.warning(f"could not load fit state from {session_fullpath} because of {e}")
 
     def write_topics(self, parent: 'Group'):
         group = parent.require_group('topics')
@@ -387,6 +388,10 @@ class ActiveFit(TypedDict):
     fitter_id: str
     options: Dict[str, Any]
     num_steps: int
+
+class FileInfo(TypedDict):
+    filename: str
+    pathlist: List[str]
     
 Timestamp = NewType('Timestamp', str)
 
@@ -396,14 +401,12 @@ class SharedState:
     updated_uncertainty: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
     updated_parameters: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
     updated_model: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
-    selected_fitter: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
+    selected_fitter: Union[UNDEFINED_TYPE, str] = UNDEFINED
     fitter_settings: Union[UNDEFINED_TYPE, Dict[str, Dict]] = UNDEFINED
     active_fit: Union[UNDEFINED_TYPE, ActiveFit] = UNDEFINED
-    model_filename: Union[UNDEFINED_TYPE, str] = UNDEFINED
-    model_pathlist: Union[UNDEFINED_TYPE, List[str]] = UNDEFINED
+    model_file: Union[UNDEFINED_TYPE, FileInfo] = UNDEFINED
     model_loaded: Union[UNDEFINED_TYPE, bool] = UNDEFINED
-    session_output_file: Union[UNDEFINED_TYPE, str] = UNDEFINED
-    session_pathlist: Union[UNDEFINED_TYPE, List[str]] = UNDEFINED
+    session_output_file: Union[UNDEFINED_TYPE, FileInfo] = UNDEFINED
     autosave_session: Union[UNDEFINED_TYPE, bool] = UNDEFINED
     
     async def notify(self, name, value):

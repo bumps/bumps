@@ -79,8 +79,7 @@ async def load_problem_file(pathlist: List[str], filename: str):
         problem = load_model(str(path))
     assert isinstance(problem, bumps.fitproblem.FitProblem)
     # problem_state = ProblemState(problem, pathlist, filename)
-    state.shared.model_filename = filename
-    state.shared.model_pathlist = pathlist
+    state.shared.model_file = dict(filename=filename, pathlist=pathlist)
     state.shared.model_loaded = now_string()
     await set_problem(problem, Path(*pathlist), filename)
 
@@ -102,8 +101,7 @@ async def set_problem(problem: bumps.fitproblem.FitProblem, path: Optional[Path]
         pathlist = list(path.parts) if path is not None else []
         path_string = "(no path)" if path is None else str(path / filename)
         await log(f'model loaded: {path_string}')
-        state.shared.model_filename = filename
-        state.shared.model_pathlist = pathlist
+        state.shared.model_file = dict(filename=filename, pathlist=pathlist)
         state.shared.model_loaded = now_string()
         await add_notification(content=path_string, title="Model loaded", timeout=2000)
     state.autosave()
@@ -160,8 +158,7 @@ async def set_session_output_file(pathlist: Optional[List[str]] = None, filename
     if filename is None or pathlist is None:
         await state.shared.set('session_output_file', None)
     else:
-        path = Path(*pathlist)
-        await state.shared.set('session_output_file', str(path / filename))
+        await state.shared.set('session_output_file', dict(filename=filename, pathlist=pathlist))
 
 @register
 async def get_serializer():
@@ -764,11 +761,10 @@ async def get_topic_messages(topic: Optional[TopicNameType] = None, max_num=None
 async def get_dirlisting(pathlist: Optional[List[str]]=None):
     # GET request
     # TODO: use psutil to get disk listing as well?
-    if pathlist is None:
-        pathlist = []
     subfolders = []
     files = []
-    for p in Path(*pathlist).iterdir():
+    abs_path = get_absolute_path(pathlist)
+    for p in abs_path.iterdir():
         if not p.exists():
             continue
         stat = p.stat()
@@ -784,12 +780,7 @@ async def get_dirlisting(pathlist: Optional[List[str]]=None):
             # files.append(p.resolve().name)
             fileinfo["size"] = stat.st_size
             files.append(fileinfo)
-    return dict(subfolders=subfolders, files=files)
-
-@register
-async def get_current_pathlist() -> Union[UNDEFINED_TYPE, List[str]]:
-    pathlist = state.shared.model_pathlist
-    return to_json_compatible_dict(pathlist)
+    return dict(pathlist=abs_path.parts, subfolders=subfolders, files=files)
 
 @register
 async def get_fitter_defaults(*args):
@@ -908,3 +899,15 @@ def params_to_list(params, lookup=None, pathlist=None, links=None) -> List[Param
         subparams = params.parameters()
         params_to_list(subparams, lookup=lookup, pathlist=pathlist)
     return list(lookup.values())
+
+def get_absolute_path(path_in=None):
+    if path_in is None:
+        path = Path()
+    elif isinstance(path_in, str):
+        path = Path(path_in)
+    elif isinstance(path_in, list):
+        path = Path(*path_in)
+    abs_pathlist = list(path.absolute().parts)
+    if sys.platform == 'win32':
+        abs_pathlist[0] = re.sub(r'^([A-Z]):\\$', r'\\\\?\\\1:\\', abs_pathlist[0])
+    return Path(*abs_pathlist)

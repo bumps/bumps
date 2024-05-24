@@ -2,7 +2,7 @@
 import { Button } from 'bootstrap';
 import { computed, onMounted, ref, shallowRef } from 'vue';
 import { io } from 'socket.io-client';
-import { AsyncSocket } from './asyncSocket.ts';
+import type { AsyncSocket } from './asyncSocket.ts';
 import './asyncSocket.ts';  // patch Socket with asyncEmit
 import {
   active_panel,
@@ -13,10 +13,9 @@ import {
   fit_progress,
   fitOptions,
   fileBrowser,
-  fileBrowserSettings,
+  FileBrowserSettings,
   connected,
-  model_filename,
-  model_pathlist,
+  model_file,
   notifications,
   menu_items,
   socket as socket_ref,
@@ -73,10 +72,8 @@ const can_mount_local = (
 socket.on('connect', async () => {
   console.log(socket.id);
   connected.value = true;
-  const filename = await socket.asyncEmit('get_shared_setting', 'model_filename') as string;
-  model_filename.value = filename;
-  const pathlist = await socket.asyncEmit('get_shared_setting', 'model_pathlist') as string[];
-  model_pathlist.value = pathlist;
+  const file_info = await socket.asyncEmit('get_shared_setting', 'model_file') as { pathlist: string[], filename: string } | undefined;
+  model_file.value = file_info;
 });
 
 socket.on('disconnect', (payload) => {
@@ -84,12 +81,8 @@ socket.on('disconnect', (payload) => {
   connected.value = false;
 })
 
-socket.on('model_filename', (filename: string) => {
-  model_filename.value = filename;
-});
-
-socket.on('model_pathlist', (pathlist: string[]) => {
-  model_pathlist.value = pathlist;
+socket.on('model_file', ( file_info: { filename: string, pathlist: string[] } ) => {
+  model_file.value = file_info;
 });
 
 socket.on('active_fit', ({ fitter_id, options, num_steps }) => {
@@ -124,67 +117,69 @@ function disconnect() {
 
 function selectOpenFile() {
   if (fileBrowser.value) {
-    const settings = fileBrowserSettings.value;
-    settings.title = "Load Model File";
-    settings.callback = async (pathlist, filename) => {
-      await socket.asyncEmit("load_problem_file", pathlist, filename);
+    const settings: FileBrowserSettings = {
+      title: "Load Model File",
+      callback: async (pathlist, filename) => {
+        await socket.asyncEmit("load_problem_file", pathlist, filename);
+      },
+      chosenfile_in: model_file.value?.filename ?? "",
+      show_name_input: false,
+      require_name: true,
+      show_files: true,
+      search_patterns: [".py, .pickle, .json", ".py", ".json", ".pickle"],
     }
-    settings.chosenfile_in = model_filename.value ?? "";
-    settings.show_name_input = false;
-    settings.require_name = true;
-    settings.show_files = true;
-    settings.search_patterns = [".py, .pickle, .json", ".py", ".json", ".pickle"];
-    fileBrowser.value.open();
+    fileBrowser.value.open(settings);
   }
 }
 
 function exportResults() {
   if (fileBrowser.value) {
-    const settings = fileBrowserSettings.value;
-    settings.title = "Export Results";
-    settings.callback = async (pathlist, filename) => {
-      if (filename !== "") {
-        pathlist.push(filename);
-      }
-      socket.asyncEmit("export_results", pathlist);
+    const settings: FileBrowserSettings = {
+      title: "Export Results",
+      callback: async (pathlist, filename) => {
+        if (filename !== "") {
+          pathlist.push(filename);
+        }
+        socket.asyncEmit("export_results", pathlist);
+      },
+      show_name_input: true,
+      name_input_label: "Subdirectory",
+      require_name: false,
+      show_files: false,
+      chosenfile_in: "",
+      search_patterns: [],
     }
-    settings.show_name_input = true;
-    settings.name_input_label = "Subdirectory";
-    settings.require_name = false;
-    settings.show_files = false;
-    settings.chosenfile_in = "";
-    settings.search_patterns = [];
-    fileBrowser.value.open();
+    fileBrowser.value.open(settings);
   }
 }
 
 async function saveFileAs(ev: Event) {
   if (fileBrowser.value) {
     const { extension } = await socket.asyncEmit("get_serializer") as { extension: string };
-    const filename_in = model_filename.value ?? "";
+    const filename_in = model_file.value?.filename ?? "";
     const new_filename = `${filename_in.replace(/(\.[^\.]+)$/, '')}.${extension}`;
-    const settings = fileBrowserSettings.value;
-    settings.title = "Save Problem"
-    settings.callback = (pathlist, filename) => {
-      saveFile(ev, {pathlist, filename});
+    const settings: FileBrowserSettings = {
+      title: "Save Problem",
+      callback: (pathlist, filename) => {
+        saveFile(ev, {pathlist, filename});
+      },
+      show_name_input: true,
+      name_input_label: "Filename",
+      require_name: true,
+      show_files: true,
+      chosenfile_in: new_filename,
+      search_patterns: [`.${extension}`],
     }
-    settings.show_name_input = true;
-    settings.name_input_label = "Filename";
-    settings.require_name = true;
-    settings.show_files = true;
-    settings.chosenfile_in = new_filename;
-    settings.search_patterns = [`.${extension}`];
-    fileBrowser.value.open();
+    fileBrowser.value.open(settings);
   }
 }
 
 async function saveFile(ev: Event, override?: {pathlist: string[], filename: string}) {
-  if (model_filename.value === undefined) {
+  if (model_file.value === undefined) {
     alert('no file to save');
     return;
   }
-  const pathlist = model_pathlist.value ?? override?.pathlist;
-  const filename = model_filename.value ?? override?.filename;
+  const { filename, pathlist } = override ?? model_file.value;
   console.log('saving:', {pathlist, filename});
   await socket.asyncEmit("save_problem_file", pathlist, filename, false, async({filename, check_overwrite}: {filename: string, check_overwrite: boolean}) => {
     if (check_overwrite !== false) {
@@ -200,52 +195,55 @@ async function saveFile(ev: Event, override?: {pathlist: string[], filename: str
 }
 
 async function reloadModel() {
-  if (model_filename.value && model_pathlist.value) {
-    await socket.asyncEmit("load_problem_file", model_pathlist.value, model_filename.value);
+  if (model_file.value) {
+    const { filename, pathlist } = model_file.value;
+    await socket.asyncEmit("load_problem_file", pathlist, filename);
   }
 }
 
 async function applyParameters(ev: Event) {
   if (fileBrowser.value) {
-    const settings = fileBrowserSettings.value;
-    settings.title = "Apply Parameters"
-    settings.callback = (pathlist, filename) => {
-      socket.asyncEmit("apply_parameters", pathlist, filename);
+    const settings: FileBrowserSettings = {
+      title: "Apply Parameters",
+      callback: (pathlist, filename) => {
+        socket.asyncEmit("apply_parameters", pathlist, filename);
+      },
+      show_name_input: true,
+      name_input_label: "Filename",
+      require_name: true,
+      show_files: true,
+      chosenfile_in: "",
+      search_patterns: [".par"],
     }
-    settings.show_name_input = true;
-    settings.name_input_label = "Filename";
-    settings.require_name = true;
-    settings.show_files = true;
-    settings.chosenfile_in = "";
-    settings.search_patterns = [".par"];
-    fileBrowser.value.open();
+    fileBrowser.value.open(settings);
   }
 }
 
 async function saveParameters(ev: Event, override?: {pathlist: string[], filename: string}) {
   if (fileBrowser.value) {
-    const settings = fileBrowserSettings.value;
-    settings.title = "Save Parameters"
-    settings.callback = (pathlist, filename) => {
-      socket.asyncEmit("save_parameters", pathlist, filename, false, async({filename, check_overwrite}: {filename: string, check_overwrite: boolean}) => {
-        if (check_overwrite !== false) {
-        const overwrite = await confirm(`File ${filename} exists: overwrite?`);
-          if (overwrite) {
-            await socket.asyncEmit("save_parameters", pathlist, filename, overwrite);
+    const settings: FileBrowserSettings = {
+      title: "Save Parameters",
+      callback: (pathlist, filename) => {
+        socket.asyncEmit("save_parameters", pathlist, filename, false, async({filename, check_overwrite}: {filename: string, check_overwrite: boolean}) => {
+          if (check_overwrite !== false) {
+          const overwrite = await confirm(`File ${filename} exists: overwrite?`);
+            if (overwrite) {
+              await socket.asyncEmit("save_parameters", pathlist, filename, overwrite);
+            }
           }
-        }
-        if (nativefs.value) {
-          await socket.syncFS();
-        }
-      });
+          if (nativefs.value) {
+            await socket.syncFS();
+          }
+        });
+      },
+      show_name_input: true,
+      name_input_label: "Filename",
+      require_name: true,
+      show_files: true,
+      search_patterns: [".par"],
+      chosenfile_in: "manual_save.par",
     }
-    settings.show_name_input = true;
-    settings.name_input_label = "Filename";
-    settings.require_name = true;
-    settings.show_files = true;
-    settings.search_patterns = [".par"];
-    settings.chosenfile_in = "manual_save.par";
-    fileBrowser.value.open();
+    fileBrowser.value.open(settings);
   }
 }
 
@@ -275,15 +273,14 @@ async function mountLocal() {
   nativefs.value = success;
 }
 
-const model_not_loaded = computed(() => (!model_filename.value));
 menu_items.value = [
   { text: "Load Problem", action: selectOpenFile },
-  { text: "Save Parameters", action: saveParameters, disabled: model_not_loaded },
-  { text: "Apply Parameters", action: applyParameters, disabled: model_not_loaded },
-  { text: "Save Problem", action: saveFile, disabled: model_not_loaded },
-  { text: "Save Problem As...", action: saveFileAs, disabled: model_not_loaded },
-  { text: "Export Results", action: exportResults, disabled: model_not_loaded },
-  { text: "Reload Model", action: reloadModel, disabled: model_not_loaded },
+  { text: "Save Parameters", action: saveParameters, disabled: !model_file.value },
+  { text: "Apply Parameters", action: applyParameters, disabled: !model_file.value },
+  { text: "Save Problem", action: saveFile, disabled: !model_file.value },
+  { text: "Save Problem As...", action: saveFileAs, disabled: !model_file.value },
+  { text: "Export Results", action: exportResults, disabled: !model_file.value },
+  { text: "Reload Model", action: reloadModel, disabled: !model_file.value },
 ]
 
 onMounted(() => {
@@ -436,15 +433,7 @@ onMounted(() => {
 
   </div>
   <FitOptions ref="fitOptions" :socket="socket" />
-  <FileBrowser ref="fileBrowser" :socket="socket"
-    :title="fileBrowserSettings.title"
-    :chosenfile_in="fileBrowserSettings.chosenfile_in"
-    :pathlist_in="fileBrowserSettings.pathlist_in"
-    :show_name_input="fileBrowserSettings.show_name_input"
-    :name_input_label="fileBrowserSettings.name_input_label"
-    :show_files="fileBrowserSettings.show_files"
-    :search_patterns="fileBrowserSettings.search_patterns"
-    :callback="fileBrowserSettings.callback" />
+  <FileBrowser ref="fileBrowser" :socket="socket" />
   <ServerShutdown :socket="socket" />
   <ServerStartup :socket="socket" />
   <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 11">

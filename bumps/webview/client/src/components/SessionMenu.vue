@@ -1,33 +1,29 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import type { AsyncSocket } from '../asyncSocket';
-import { fileBrowser, fileBrowserSettings, active_fit } from '../app_state';
+import { fileBrowser, active_fit } from '../app_state';
+import type { FileBrowserSettings } from '../app_state';
 
 const title = "Session";
 const props = defineProps<{
   socket: AsyncSocket,
 }>();
-const session_pathlist = ref<string[]>([]);
-const session_output_file = ref<string>('');
+const session_output_file = ref<{ filename: string, pathlist: string[] }>();
 const autosave_session = ref(false);
 
-function handle_file_message(payload: string) {
+function handle_file_message(payload: { filename: string, pathlist: string[] }) {
   console.log("session_output_file", payload);
   session_output_file.value = payload;
 }
-function handle_pathlist_message(payload: string[]) {
-  session_pathlist.value = payload;
-}
+
 function handle_autosave_message(payload: boolean) {
   console.log("autosave_session", payload);
   autosave_session.value = payload;
 }
 
 props.socket.asyncEmit('get_shared_setting', 'session_output_file', handle_file_message);
-props.socket.asyncEmit('get_shared_setting', 'session_pathlist', handle_pathlist_message);
 props.socket.asyncEmit('get_shared_setting', 'autosave_session', handle_autosave_message);
 props.socket.on('session_output_file', handle_file_message);
-props.socket.on('session_pathlist', handle_pathlist_message);
 props.socket.on('autosave_session', handle_autosave_message);
 
 async function toggle_autosave() {
@@ -65,72 +61,68 @@ async function readSession(readOnly: boolean) {
     }
   }
   if (fileBrowser.value) {
-    const settings = fileBrowserSettings.value;
-    settings.title = "Read Session"
-    settings.callback = (pathlist, filename) => {
-      props.socket.asyncEmit("load_session", pathlist, filename, readOnly);
-    }
-    settings.show_name_input = true;
-    settings.name_input_label = "Session Filename";
-    settings.require_name = true;
-    settings.show_files = true;
-    settings.search_patterns = [".h5"];
-    settings.chosenfile_in = "";
-    settings.pathlist_in = session_pathlist.value;
-    fileBrowser.value.open();
+    const settings: FileBrowserSettings = {
+      title: "Read Session",
+      callback: (pathlist, filename) => {
+        props.socket.asyncEmit("load_session", pathlist, filename, readOnly);
+      },
+      show_name_input: true,
+      name_input_label: "Session Filename",
+      require_name: true,
+      show_files: true,
+      search_patterns: [".h5"],
+      chosenfile_in: "",
+      pathlist_in: session_output_file.value?.pathlist,
+    };
+    fileBrowser.value.open(settings);
   }
 }
 
 async function saveSessionCopy() {
   if (fileBrowser.value) {
-    const settings = fileBrowserSettings.value;
-    settings.title = "Save Session (Copy)"
-    settings.callback = async (pathlist, filename) => {
-      await props.socket.asyncEmit("save_session_copy", pathlist, filename);
-      await props.socket.syncFS();
-    }
-    settings.show_name_input = true;
-    settings.name_input_label = "Filename";
-    settings.require_name = true;
-    settings.show_files = true;
-    settings.search_patterns = [".h5"];
-    settings.chosenfile_in = "";
-    if (session_pathlist.value?.length > 0) {
-      settings.pathlist_in = session_pathlist.value;
-    }
-    fileBrowser.value.open();
+    const settings: FileBrowserSettings = {
+      title: "Save Session (Copy)",
+      callback: async (pathlist, filename) => {
+        await props.socket.asyncEmit("save_session_copy", pathlist, filename);
+        await props.socket.syncFS();
+      },
+      show_name_input: true,
+      name_input_label: "Filename",
+      require_name: true,
+      show_files: true,
+      search_patterns: [".h5"],
+      chosenfile_in: "",
+      pathlist_in: session_output_file.value?.pathlist,
+    };
+    fileBrowser.value.open(settings);
   }
 }
 
 async function setOutputFile(enable_autosave = true, immediate_save = false) {
   if (fileBrowser.value) {
-    const settings = fileBrowserSettings.value;
-    settings.title = "Set Output File"
-    settings.callback = async (pathlist, filename) => {
-      await props.socket.asyncEmit("set_shared_setting", "session_output_file", filename);
-      await props.socket.asyncEmit("set_shared_setting", "session_pathlist", pathlist);
-      if (enable_autosave) {
-        await props.socket.asyncEmit("set_shared_setting", "autosave_session", true);
-      }
-      if (immediate_save) {
-        await props.socket.asyncEmit("save_session", pathlist, filename);
-        await props.socket.syncFS();
-      }
-    }
-    settings.show_name_input = true;
-    settings.name_input_label = "Output Filename";
-    settings.require_name = true;
-    settings.show_files = true;
-    settings.search_patterns = [".h5"];
-    settings.chosenfile_in = session_output_file.value;
-    if (session_pathlist.value?.length > 0) {
-      settings.pathlist_in = session_pathlist.value;
-    }
-    fileBrowser.value.open();
+    const settings: FileBrowserSettings = {
+      title: "Set Output File",
+      callback: async (pathlist, filename) => {
+        await props.socket.asyncEmit("set_shared_setting", "session_output_file", { filename, pathlist });
+        if (enable_autosave) {
+          await props.socket.asyncEmit("set_shared_setting", "autosave_session", true);
+        }
+        if (immediate_save) {
+          await props.socket.asyncEmit("save_session");
+          await props.socket.syncFS();
+        }
+      },
+      show_name_input: true,
+      name_input_label: "Output Filename",
+      require_name: true,
+      show_files: true,
+      search_patterns: [".h5"],
+      chosenfile_in: session_output_file.value?.filename,
+      pathlist_in: session_output_file.value?.pathlist,
+    };
+    fileBrowser.value.open(settings);
   }
-
 }
-
 
 async function unsetOutputFile() {
   await props.socket.asyncEmit('set_shared_setting', 'session_output_file', null);
@@ -156,7 +148,7 @@ async function unsetOutputFile() {
       </li>
       <li>
         <span class="" v-if="session_output_file">
-          <span class="dropdown-item-text">{{ session_output_file }}</span>
+          <span class="dropdown-item-text">{{ session_output_file.filename }}</span>
         </span>
       </li>
       <li>
