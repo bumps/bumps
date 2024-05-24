@@ -27,8 +27,9 @@ const DOWN_ARROW = "▼";
 const dialog = ref<HTMLDivElement>();
 const isOpen = ref(false);
 const pathlist = shallowRef<string[]>([]);
-const subdirlist = shallowRef<FileInfo[]>([])
-const filelist = shallowRef<FileInfo[]>([])
+const subdirlist = shallowRef<FileInfo[]>([]);
+const filelist = shallowRef<FileInfo[]>([]);
+const drives = ref<string[]>([]);
 const filtered_filelist = shallowRef<FileInfo[]>([]);
 const chosenFile = ref("");
 const sortby = ref<sortOrder>("name");
@@ -92,12 +93,13 @@ async function subdirClick(subdir: string) {
 
 async function setPath(new_pathlist?: string[]) {
   pathlist.value = new_pathlist ?? [];
-  await props.socket.asyncEmit("get_dirlisting", new_pathlist, ({ files, subfolders, pathlist: abs_pathlist }: { pathlist: string[], files: FileInfo[], subfolders: FileInfo[]}) => {
+  await props.socket.asyncEmit("get_dirlisting", new_pathlist, ({ drives: drives_in, files, subfolders, pathlist: abs_pathlist }: { drives: string[], pathlist: string[], files: FileInfo[], subfolders: FileInfo[]}) => {
     subdirlist.value = subfolders.sort(FileInfoSorter);
     filelist.value = files;
     filtered_filelist.value = files.filter(FileInfoSearch).sort(FileInfoSorter);
     // server include absolute pathlist in response...
     pathlist.value = abs_pathlist;
+    drives.value = drives_in;
   })
 }
 
@@ -182,6 +184,15 @@ defineExpose({
             <button type="button" class="btn-close" @click="close" aria-label="Close"></button>
         </div>
         <div class="p-1 border-bottom">
+          <div class="container py-1 px-3" v-if="drives.length > 1">
+            <nav aria-label="breadcrumb">
+              <ol class="breadcrumb mb-0">
+                <li v-for="drive in drives" :key="drive" class="breadcrumb-item">
+                  <a href="#" @click.prevent="setPath([drive])">{{drive}}</a>
+                </li>
+              </ol>
+            </nav>
+          </div>
           <div class="container py-1 px-3">
             <nav aria-label="breadcrumb">
               <ol class="breadcrumb mb-0">

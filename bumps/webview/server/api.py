@@ -11,6 +11,7 @@ import asyncio
 from pathlib import Path, PurePath
 import json
 from copy import deepcopy
+import os
 import sys
 import uuid
 
@@ -763,7 +764,7 @@ async def get_dirlisting(pathlist: Optional[List[str]]=None):
     # TODO: use psutil to get disk listing as well?
     subfolders = []
     files = []
-    abs_path = get_absolute_path(pathlist)
+    abs_path = Path().absolute() if pathlist is None else Path(*pathlist).absolute()
     for p in abs_path.iterdir():
         if not p.exists():
             continue
@@ -780,7 +781,9 @@ async def get_dirlisting(pathlist: Optional[List[str]]=None):
             # files.append(p.resolve().name)
             fileinfo["size"] = stat.st_size
             files.append(fileinfo)
-    return dict(pathlist=abs_path.parts, subfolders=subfolders, files=files)
+    # for Windows: list drives as well
+    drives = os.listdrives() if hasattr(os, 'listdrives') else []
+    return dict(drives=drives, pathlist=abs_path.parts, subfolders=subfolders, files=files)
 
 @register
 async def get_fitter_defaults(*args):
@@ -899,15 +902,3 @@ def params_to_list(params, lookup=None, pathlist=None, links=None) -> List[Param
         subparams = params.parameters()
         params_to_list(subparams, lookup=lookup, pathlist=pathlist)
     return list(lookup.values())
-
-def get_absolute_path(path_in=None):
-    if path_in is None:
-        path = Path()
-    elif isinstance(path_in, str):
-        path = Path(path_in)
-    elif isinstance(path_in, list):
-        path = Path(*path_in)
-    abs_pathlist = list(path.absolute().parts)
-    if sys.platform == 'win32':
-        abs_pathlist[0] = re.sub(r'^([A-Z]):\\$', r'\\\\?\\\1:\\', abs_pathlist[0])
-    return Path(*abs_pathlist)
