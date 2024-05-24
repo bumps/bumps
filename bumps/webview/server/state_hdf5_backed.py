@@ -245,7 +245,7 @@ class State:
     def __enter__(self):
         return self
 
-    def setup_backing(self, session_file_name: str, session_pathlist: list[str], read_only: bool = False ):
+    def setup_backing(self, session_file_name: str, session_pathlist: List[str], read_only: bool = False ):
         if not read_only:
             self.shared.session_output_file = dict(filename=session_file_name, pathlist=session_pathlist)
         if session_file_name is not None:
