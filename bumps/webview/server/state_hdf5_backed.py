@@ -272,6 +272,7 @@ class State:
                 self.problem.write(root_group)
                 self.fitting.write(root_group)
                 self.write_topics(root_group)
+                self.shared.write(root_group)
         shutil.move(tmp_name, session_filename)
         os.chmod(session_filename, 0o644)
 
@@ -283,7 +284,7 @@ class State:
                 if read_fitstate:
                     self.fitting.read(root_group)
                 self.read_topics(root_group)
-                self.shared.read()
+                self.shared.read(root_group)
         except Exception as e:
             logger.warning(f"could not load session file {session_filename} because of {e}")
 
@@ -424,9 +425,13 @@ class SharedState:
     def write(self, parent: 'Group'):
         group = parent.require_group('shared')
         for field in fields(self):
-            write_json(group, field.name, getattr(self, field.name))
+            value = getattr(self, field.name)
+            if value is not UNDEFINED:
+                write_json(group, field.name, value)
 
     def read(self, parent: 'Group'):
-        group = parent['shared']
+        group = parent.get('shared')
+        if group is None:
+            return
         for field in fields(self):
             setattr(self, field.name, read_json(group, field.name))
