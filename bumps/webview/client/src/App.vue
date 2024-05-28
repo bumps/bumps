@@ -273,14 +273,16 @@ async function mountLocal() {
   nativefs.value = success;
 }
 
+const model_not_loaded = computed(() => model_file.value == null);
+
 menu_items.value = [
   { text: "Load Problem", action: selectOpenFile },
-  { text: "Save Parameters", action: saveParameters, disabled: !model_file.value },
-  { text: "Apply Parameters", action: applyParameters, disabled: !model_file.value },
-  { text: "Save Problem", action: saveFile, disabled: !model_file.value },
-  { text: "Save Problem As...", action: saveFileAs, disabled: !model_file.value },
-  { text: "Export Results", action: exportResults, disabled: !model_file.value },
-  { text: "Reload Model", action: reloadModel, disabled: !model_file.value },
+  { text: "Save Parameters", action: saveParameters, disabled: model_not_loaded },
+  { text: "Apply Parameters", action: applyParameters, disabled: model_not_loaded },
+  { text: "Save Problem", action: saveFile, disabled: model_not_loaded },
+  { text: "Save Problem As...", action: saveFileAs, disabled: model_not_loaded },
+  { text: "Export Results", action: exportResults, disabled: model_not_loaded },
+  { text: "Reload Model", action: reloadModel, disabled: model_not_loaded },
 ]
 
 onMounted(() => {

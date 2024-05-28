@@ -3,7 +3,7 @@ import type { Ref } from 'vue';
 import type { AsyncSocket } from './asyncSocket.ts';
 
 interface ModalDialog {
-  open: (...args) => void,
+  open: (...args: unknown[]) => void,
   close: () => void,
 }
 
