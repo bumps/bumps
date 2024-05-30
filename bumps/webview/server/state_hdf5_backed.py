@@ -238,7 +238,6 @@ class State:
         self.fit_uncertainty_final = Event()
         self.topics = {
             "log": deque([]),
-
         }
         self.shared = SharedState()
 
@@ -249,8 +248,9 @@ class State:
         if not read_only:
             self.shared.session_output_file = dict(filename=session_file_name, pathlist=session_pathlist)
         if session_file_name is not None:
-            if Path(session_file_name).exists():
-                self.read_session_file(session_file_name)
+            full_path = Path(*session_pathlist) / session_file_name
+            if full_path.exists():
+                self.read_session_file(full_path)
             else:
                 self.save()
     
@@ -313,7 +313,7 @@ class State:
         for topic in group:
             topic_data = read_json(group, topic)
             topic_data = np.array([topic_data]).flatten()
-            if topic_data is not None:
+            if topic_data is not None and topic in self.topics:
                 self.topics[topic].extend(topic_data)
 
     def get_last_message(self, topic: 'TopicNameType'):
@@ -380,7 +380,7 @@ def read_uncertainty_state(loaded: UncertaintyStateStorage, skip=0, report=0, de
     state._best_x = loaded.thin_point[bestidx]
     state._best_gen = 0
 
-    state._good_chains = slice(None, None) if good_chains is None else good_chains.astype(int)
+    state._good_chains = slice(None, None) if (good_chains is None or good_chains is UNDEFINED) else good_chains.astype(int)
 
     return state
 
