@@ -12,7 +12,6 @@ from pathlib import Path, PurePath
 import json
 from copy import deepcopy
 import os
-import sys
 import uuid
 
 from bumps.fitters import DreamFit, LevenbergMarquardtFit, SimplexFit, DEFit, MPFit, BFGSFit, FitDriver, fit, nllf_scale, format_uncertainty
@@ -32,7 +31,6 @@ from .logger import logger, console_handler
 REGISTRY: Dict[str, Callable] = {}
 MODEL_EXT = '.json'
 TRACE_MEMORY = False
-CAN_THREAD = sys.platform != 'emscripten'
 
 FITTERS = (DreamFit, LevenbergMarquardtFit, SimplexFit, DEFit, MPFit, BFGSFit)
 FITTERS_BY_ID = dict([(fitter.id, fitter) for fitter in FITTERS])
@@ -192,12 +190,7 @@ async def export_results(export_path: Union[str, List[str]]=""):
     path = Path(*export_path)
     notification_id = await add_notification(content=f"<span>{str(path)}</span>", title="Export started", timeout=None)
     try:
-        if CAN_THREAD:
-            with ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(_export_results, path, problem, uncertainty_state)
-                await asyncio.wrap_future(future)
-        else:
-            _export_results(path, problem, uncertainty_state)
+        await asyncio.to_thread(_export_results, path, problem, uncertainty_state)
     finally:
         await emit("cancel_notification", notification_id)
 
@@ -369,10 +362,7 @@ async def start_fit_thread(fitter_id: str="", options=None, terminate_on_finish=
         state.shared.active_fit = to_json_compatible_dict(dict(fitter_id=fitter_id, options=options, num_steps=num_steps))
         await log(json.dumps(to_json_compatible_dict(options), indent=2), title = f"starting fitter {fitter_id}")
         state.autosave()
-        if CAN_THREAD:
-            fit_thread.start()
-        else:
-            fit_thread.run()
+        fit_thread.start()
         state.fit_thread = fit_thread
 
 async def _fit_progress_handler(event: Dict):
@@ -416,10 +406,9 @@ async def _fit_complete_handler(event):
     terminate = False
     if fit_thread is not None:
         terminate = fit_thread.terminate_on_finish
-        if CAN_THREAD:
-            fit_thread.join(1) # 1 second timeout on join
-            if fit_thread.is_alive():
-                await log("fit thread failed to complete")
+        fit_thread.join(1) # 1 second timeout on join
+        if fit_thread.is_alive():
+            await log("fit thread failed to complete")
     state.fit_thread = None
     state.shared.active_fit = {}
     if message == "error":
