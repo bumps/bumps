@@ -428,6 +428,8 @@ async def _fit_complete_handler(event):
         # print("waiting for uncertainty to complete...")
         await asyncio.to_thread(state.fit_uncertainty_final.wait)
 
+    state.fit_complete_event.set()
+
     if terminate:
         await shutdown()
 
