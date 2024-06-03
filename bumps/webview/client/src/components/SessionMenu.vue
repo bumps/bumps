@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, shallowRef } from 'vue';
 import type { AsyncSocket } from '../asyncSocket';
 import { fileBrowser, active_fit } from '../app_state';
 import type { FileBrowserSettings } from '../app_state';
@@ -8,7 +8,7 @@ const title = "Session";
 const props = defineProps<{
   socket: AsyncSocket,
 }>();
-const session_output_file = ref<{ filename: string, pathlist: string[] }>();
+const session_output_file = shallowRef<{ filename: string, pathlist: string[] }>();
 const autosave_session = ref(false);
 
 function handle_file_message(payload: { filename: string, pathlist: string[] }) {
