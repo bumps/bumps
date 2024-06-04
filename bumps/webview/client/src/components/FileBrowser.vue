@@ -2,6 +2,7 @@
 import { format, formatDistance, formatRelative, subDays } from 'date-fns'
 import { ref, onMounted, watch, onUpdated, computed, shallowRef } from 'vue';
 import { Modal } from 'bootstrap/dist/js/bootstrap.esm.js';
+import { addNotification } from '../app_state';
 import type { AsyncSocket } from '../asyncSocket.ts';
 import type { FileBrowserSettings } from '../app_state';
 
@@ -91,15 +92,34 @@ async function subdirClick(subdir: string) {
   await setPath(pathlist.value);
 }
 
+interface DirListing {
+  drives: string[],
+  pathlist: string[],
+  files: FileInfo[],
+  subfolders: FileInfo[]
+}
+
+interface DirListingError {
+  error: string
+}
+
+props.socket.on("base_path", (pathlist_in: string[]) => {
+  pathlist.value = pathlist_in;
+})
+
 async function setPath(new_pathlist?: string[]) {
-  await props.socket.asyncEmit("get_dirlisting", new_pathlist, ({ drives: drives_in, files, subfolders, pathlist: abs_pathlist }: { drives: string[], pathlist: string[], files: FileInfo[], subfolders: FileInfo[]}) => {
-    subdirlist.value = subfolders.sort(FileInfoSorter);
-    filelist.value = files;
-    filtered_filelist.value = files.filter(FileInfoSearch).sort(FileInfoSorter);
-    // server include absolute pathlist in response...
-    pathlist.value = abs_pathlist;
-    drives.value = drives_in;
-  })
+  let result = await props.socket.asyncEmit("get_dirlisting", new_pathlist) as DirListing | DirListingError;
+  if ('error' in result) {
+    addNotification({ title: result.error, content: "reverting to base path", timeout: 3000 });
+    result = await props.socket.asyncEmit("get_dirlisting", null) as DirListing;
+  }
+  const { drives: drives_in, pathlist: abs_pathlist, files, subfolders } = result;
+  subdirlist.value = subfolders.sort(FileInfoSorter);
+  filelist.value = files;
+  filtered_filelist.value = files.filter(FileInfoSearch).sort(FileInfoSorter);
+  // server include absolute pathlist in response...
+  pathlist.value = abs_pathlist;
+  drives.value = drives_in;
 }
 
 const PREFIXES = ["", "k", "M", "G", "T", "P"];
