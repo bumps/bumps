@@ -409,6 +409,8 @@ class SharedState:
     model_loaded: Union[UNDEFINED_TYPE, bool] = UNDEFINED
     session_output_file: Union[UNDEFINED_TYPE, FileInfo] = UNDEFINED
     autosave_session: Union[UNDEFINED_TYPE, bool] = UNDEFINED
+
+    _not_reloaded = ["active_fit", "autosave_session", "session_output_file"]
     
     async def notify(self, name, value):
         pass
@@ -438,4 +440,5 @@ class SharedState:
         if group is None:
             return
         for field in fields(self):
-            setattr(self, field.name, read_json(group, field.name))
+            if not field.name in self._not_reloaded:
+                setattr(self, field.name, read_json(group, field.name))
