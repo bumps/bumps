@@ -19,6 +19,8 @@ import {
   notifications,
   menu_items,
   socket as socket_ref,
+  addNotification,
+  cancelNotification,
 } from './app_state.ts';
 import FitOptions from './components/FitOptions.vue';
 import PanelTabContainer from './components/PanelTabContainer.vue';
@@ -93,21 +95,7 @@ socket.on('fit_progress', (event) => {
   fit_progress.value = event;
 });
 
-socket.on('add_notification', ({title, content, id, timeout}: {title: string, content: string, id: string, timeout?: number}) => {
-  const has_timeout = (timeout !== undefined);
-  notifications.value.push({title, content, id, spinner: !has_timeout});
-  if (has_timeout) {
-    setTimeout(cancelNotification, timeout, id);
-  }
-});
-
-function cancelNotification(id: string) {
-  const index = notifications.value.findIndex(({id: item_id}) => (item_id === id));
-  if (index > -1) {
-    notifications.value.splice(index, 1);
-  }
-}
-
+socket.on('add_notification', addNotification);
 socket.on('cancel_notification', cancelNotification);
 
 function disconnect() {

@@ -1,4 +1,5 @@
 import { ref, shallowRef } from 'vue';
+import { v4 as uuidv4 } from 'uuid';
 import type { Ref } from 'vue';
 import type { AsyncSocket } from './asyncSocket.ts';
 
@@ -35,3 +36,20 @@ export const fitter_settings = shallowRef<{ [fit_name: string]: FitSetting }>({}
 export const selected_fitter = ref<string>("amoeba");
 export const notifications = ref<{ title: string, content: string, id: string, spinner: boolean }[]>([]);
 export const menu_items = ref<{disabled?: Ref<boolean> | boolean, text: string, action: Function, help?: string}[]>([]);
+
+export function cancelNotification(id: string) {
+  const index = notifications.value.findIndex(({id: item_id}) => (item_id === id));
+  if (index > -1) {
+    notifications.value.splice(index, 1);
+  }
+}
+
+export function addNotification({ title, content, timeout }: {title: string, content: string, timeout?: number }) {
+  const has_timeout = (timeout !== undefined);
+  const id = uuidv4();
+  notifications.value.push({title, content, id, spinner: !has_timeout});
+  if (has_timeout) {
+    setTimeout(cancelNotification, timeout, id);
+  }
+  return id;
+}
