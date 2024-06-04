@@ -108,6 +108,7 @@ class BumpsOptions:
     serializer: SERIALIZERS = "dill"
     trace: bool = False
     parallel: int = 0
+    path: Optional[str] = None
 
 OPTIONS_CLASS = BumpsOptions
 
@@ -128,6 +129,7 @@ def get_commandline_options(arg_defaults: Optional[Dict]=None):
     parser.add_argument('--serializer', default=OPTIONS_CLASS.serializer, type=str, choices=["pickle", "dill", "dataclass"], help='strategy for serializing problem, will use value from store if it has already been defined')
     parser.add_argument('--trace', action='store_true', help='enable memory tracing (prints after every uncertainty update in dream)')
     parser.add_argument('--parallel', default=0, type=int, help='run fit using multiprocessing for parallelism; use --parallel=0 for all cpus')
+    parser.add_argument('--path', default=None, type=str, help='set initial path for save and load dialogs')
     # parser.add_argument('-c', '--config-file', type=str, help='path to JSON configuration to load')
     namespace = OPTIONS_CLASS()
     if arg_defaults is not None:
@@ -177,6 +179,12 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
             return web.Response(body=index_html, content_type="text/html")
         
     app.router.add_get('/', index)
+
+    if options.path is not None:
+        if Path(options.path).exists():
+            api.state.base_path = options.path
+        else:
+            logger.warning(f"specified path {options.path} does not exist, reverting to current directory")
 
     if options.read_store is not None and options.store is not None:
         warnings.warn("read_store and store are both set; read_store will be used to initialize state")
