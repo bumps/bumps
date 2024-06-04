@@ -78,6 +78,12 @@ async def load_problem_file(pathlist: List[str], filename: str):
         problem = load_model(str(path))
     assert isinstance(problem, bumps.fitproblem.FitProblem)
     # problem_state = ProblemState(problem, pathlist, filename)
+    try:
+        serialized_problem = serialize_problem(problem, method='dataclass')
+        state.problem.serializer = 'dataclass'
+    except Exception as exc:
+        logger.info(f"Could not serialize problem as JSON (dataclass): {exc}")
+        state.problem.serializer = 'pickle'
     state.shared.model_file = dict(filename=filename, pathlist=pathlist)
     state.shared.model_loaded = now_string()
     await set_problem(problem, Path(*pathlist), filename)
@@ -86,6 +92,7 @@ async def load_problem_file(pathlist: List[str], filename: str):
 @register
 async def set_serialized_problem(serialized):
     fitProblem = deserialize_problem(serialized, method='dataclass')
+    state.problem.serializer = 'dataclass'
     await set_problem(fitProblem, update=True);
  
 
@@ -755,7 +762,10 @@ async def get_dirlisting(pathlist: Optional[List[str]]=None):
     # TODO: use psutil to get disk listing as well?
     subfolders = []
     files = []
-    abs_path = Path().absolute() if pathlist is None else Path(*pathlist).absolute()
+    path = Path(state.base_path) if (pathlist is None or len(pathlist) == 0) else Path(*pathlist)
+    abs_path = path.absolute()
+    if not abs_path.exists():
+        return { "error": f"Path does not exist: {abs_path}" }
     for p in abs_path.iterdir():
         if not p.exists():
             continue
