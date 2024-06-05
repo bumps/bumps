@@ -65,7 +65,7 @@ TopicNameType = Literal[
 ]
 
 @register
-async def load_problem_file(pathlist: List[str], filename: str):    
+async def load_problem_file(pathlist: List[str], filename: str, autosave_previous: bool = True):
     path = Path(*pathlist, filename)
     logger.info(f'model loading: {path}')
     await log(f'model_loading: {path}')
@@ -84,33 +84,76 @@ async def load_problem_file(pathlist: List[str], filename: str):
     except Exception as exc:
         logger.info(f"Could not serialize problem as JSON (dataclass): {exc}")
         state.problem.serializer = 'pickle'
+    if (state.shared.autosave_history and
+        autosave_previous and
+        state.problem is not None and
+        state.problem.fitProblem is not None):
+        await save_to_history("autosaved before loading new model")
     state.shared.model_file = dict(filename=filename, pathlist=pathlist)
     state.shared.model_loaded = now_string()
     await set_problem(problem, Path(*pathlist), filename)
 
 
 @register
-async def set_serialized_problem(serialized):
+async def set_serialized_problem(serialized, new_model: bool = False, name: Optional[str] = None):
     fitProblem = deserialize_problem(serialized, method='dataclass')
     state.problem.serializer = 'dataclass'
-    await set_problem(fitProblem, update=True);
+    await set_problem(fitProblem, new_model=new_model, name=name)
  
 
-async def set_problem(problem: bumps.fitproblem.FitProblem, path: Optional[Path] = None, filename: str = "", update: bool = False):
+async def set_problem(problem: bumps.fitproblem.FitProblem, path: Optional[Path] = None, filename: str = "", new_model: bool = True, name: Optional[str] = None):
     if state.problem is None or state.problem.fitProblem is None:
         update = False
     state.problem.fitProblem = problem
+    name = name if name is not None else problem.name
+    if name is None:
+        name = filename
     state.shared.updated_model = now_string()
     state.shared.updated_parameters = now_string()
 
-    if not update:
+    if new_model:
         pathlist = list(path.parts) if path is not None else []
         path_string = "(no path)" if path is None else str(path / filename)
         await log(f'model loaded: {path_string}')
         state.shared.model_file = dict(filename=filename, pathlist=pathlist)
         state.shared.model_loaded = now_string()
+        if (state.shared.autosave_history and
+            state.problem is not None and
+            state.problem.fitProblem is not None):
+            await save_to_history(f"Loaded model: {name}")
         await add_notification(content=path_string, title="Model loaded", timeout=2000)
     state.autosave()
+
+
+@register
+async def get_history():
+    return state.get_history()
+
+
+@register
+async def remove_history_item(timestamp: str):
+    state.remove_history_item(timestamp)
+    state.shared.updated_history = now_string()
+
+
+@register
+async def save_to_history(label: str, include_population: bool = False, include_uncertainty: bool = False):
+    state.save_to_history(label, include_population=include_population, include_uncertainty=include_uncertainty)
+
+@register
+async def reload_history_item(timestamp: str):
+    state.reload_history_item(timestamp)
+
+
+@register
+async def set_keep_history(timestamp: str, keep: bool):
+    state.history.set_keep(timestamp, keep)
+    state.shared.updated_history = now_string()
+
+@register
+async def update_history_label(timestamp: str, label: str):
+    state.history.update_label(timestamp, label)
+    state.shared.updated_history = now_string()
 
 
 @register
@@ -301,7 +344,11 @@ async def stop_fit():
     else:
         state.shared.active_fit = {}
 
-def get_chisq(problem: bumps.fitproblem.FitProblem, nllf=None):
+@register
+async def get_chisq(problem: Optional[bumps.fitproblem.FitProblem]=None, nllf=None):
+    problem = state.problem.fitProblem if problem is None else problem
+    if problem is None:
+        return ''
     nllf = problem.nllf() if nllf is None else nllf
     scale, err = nllf_scale(problem)
     chisq = format_uncertainty(scale*nllf, err)
@@ -427,6 +474,8 @@ async def _fit_complete_handler(event):
         problem.setp(event["point"])
         problem.model_update()
         state.problem.fitProblem = problem
+        if state.shared.autosave_history:
+            await save_to_history(f"fit complete: {event['fitter_id']}", include_population=True, include_uncertainty=True)
         state.shared.updated_parameters = now_string()
         await log(event["info"], title=f"done with chisq {chisq}")
         logger.info(f"fit done with chisq {chisq}")
