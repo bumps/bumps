@@ -109,6 +109,7 @@ class BumpsOptions:
     trace: bool = False
     parallel: int = 0
     path: Optional[str] = None
+    no_auto_history: bool = False
 
 OPTIONS_CLASS = BumpsOptions
 
@@ -130,6 +131,7 @@ def get_commandline_options(arg_defaults: Optional[Dict]=None):
     parser.add_argument('--trace', action='store_true', help='enable memory tracing (prints after every uncertainty update in dream)')
     parser.add_argument('--parallel', default=0, type=int, help='run fit using multiprocessing for parallelism; use --parallel=0 for all cpus')
     parser.add_argument('--path', default=None, type=str, help='set initial path for save and load dialogs')
+    parser.add_argument('--no_auto_history', action='store_true', help='disable auto-appending problem state to history on load and at fit end')
     # parser.add_argument('-c', '--config-file', type=str, help='path to JSON configuration to load')
     namespace = OPTIONS_CLASS()
     if arg_defaults is not None:
@@ -205,6 +207,9 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
 
     if api.state.problem.serializer is None or api.state.problem.serializer == "":
         api.state.problem.serializer = options.serializer
+
+    if options.no_auto_history:
+        api.state.shared.autosave_history = False
 
     if options.trace:
         global TRACE_MEMORY
