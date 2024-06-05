@@ -1,4 +1,6 @@
 import asyncio
+from copy import deepcopy
+from datetime import datetime
 from typing import TYPE_CHECKING, Optional, Dict, List, NewType, Tuple, TypedDict, Any, Literal, Union, cast, IO
 from collections import deque
 from dataclasses import dataclass, fields
@@ -43,6 +45,9 @@ DEFAULT_SERIALIZER: SERIALIZERS = "dill"
 class UNDEFINED_TYPE: pass
 
 UNDEFINED = UNDEFINED_TYPE()
+
+def now_string():
+    return f"{datetime.now().timestamp():.6f}"
 
 def serialize_problem(problem: 'bumps.fitproblem.FitProblem', method: SERIALIZERS):
     if method == 'dataclass':
@@ -164,6 +169,93 @@ class ProblemState:
         # self.pathlist = read_json(group, 'pathlist')
         # self.filename = read_string(group, 'filename')
                
+class HistoryItem:
+    problem: ProblemState
+    fitting: Optional['FittingState']
+    timestamp: str
+    label: str
+    chisq_str: str
+    keep: bool
+
+
+class History:
+    store: List[HistoryItem]
+
+    def __init__(self):
+        self.store = []
+
+    def write(self, parent: 'Group', include_uncertainty_state=True):
+        group = parent.require_group('problem_history')
+        for item in self.store:
+            problem = item.problem
+            fitting = item.fitting
+            name = item.timestamp
+            item_group = group.require_group(name)
+            problem.write(item_group)
+            fitting.write(item_group, include_uncertainty_state=include_uncertainty_state)
+            item_group.attrs['chisq'] = item.chisq_str
+            item_group.attrs['label'] = item.label
+            item_group.attrs['keep'] = item.keep
+
+    def read(self, parent: 'Group'):
+        group = parent.get('problem_history', [])
+        self.store = []
+        for name in group:
+            item = HistoryItem()
+            item_group = group[name]
+            item.problem = ProblemState()
+            item.fitting = FittingState()
+            item.problem.read(item_group)
+            item.fitting.read(item_group)
+            item.label = item_group.attrs['label']
+            item.chisq_str = item_group.attrs['chisq']
+            # keep is a boolean, but h5py returns np.bool_ which is not JSON serializable
+            item.keep = bool(item_group.attrs['keep'])
+            item.timestamp = name
+            self.store.append(item)
+
+    def remove_item(self, timestamp: str):
+        self.store = [item for item in self.store if item.timestamp != timestamp]
+
+    def prune(self, target_length: int):
+        # remove oldest items with keep=False until the length is target_length
+        num_to_remove = len(self.store) - target_length
+        if num_to_remove <= 0:
+            return
+        indices_to_remove = []
+        for index, item in enumerate(self.store):
+            if not item.keep:
+                indices_to_remove.append(index)
+                num_to_remove -= 1
+                if num_to_remove == 0:
+                    break
+        for index in reversed(indices_to_remove):
+            self.store.pop(index)
+
+    def add_item(self, item: HistoryItem, target_length: int):
+        self.prune(target_length)
+        self.store.append(item)
+
+    def list(self):
+        return [dict(timestamp=item.timestamp,
+                     label=item.label,
+                     chisq_str=item.chisq_str,
+                     keep=item.keep,
+                     has_population=(item.fitting.population is not None),
+                     has_uncertainty=(item.fitting.uncertainty_state is not None),
+                    ) for item in self.store]
+
+    def set_keep(self, timestamp: str, keep: bool):
+        for item in self.store:
+            if item.timestamp == timestamp:
+                item.keep = keep
+                return
+
+    def update_label(self, timestamp: str, label: str):
+        for item in self.store:
+            if item.timestamp == timestamp:
+                item.label = label
+                return
 
 class UncertaintyStateStorage:
     AR: Optional['np.ndarray'] = None
@@ -192,12 +284,12 @@ class FittingState:
     population: Optional[List] = None
     uncertainty_state: Optional['bumps.dream.state.MCMCDraw'] = None
 
-    def write(self, parent: 'Group'):
+    def write(self, parent: 'Group', include_uncertainty_state=True):
         group = parent.require_group('fitting')
         write_ndarray(group, 'population', self.population)
         uncertainty_state_storage = UncertaintyStateStorage()
         uncertainty_state = self.uncertainty_state
-        if uncertainty_state is not None:
+        if uncertainty_state is not None and include_uncertainty_state:
             write_uncertainty_state(uncertainty_state, uncertainty_state_storage)
             uncertainty_state_storage.write(group)
 
@@ -228,12 +320,14 @@ class State:
     # State to be stored:
     problem: ProblemState
     fitting: FittingState
+    history: History
     topics: Dict['TopicNameType', 'deque[Dict]']
     shared: 'SharedState'
 
     def __init__(self):
         self.problem = ProblemState()
         self.fitting = FittingState()
+        self.history = History()
         self.fit_abort_event = Event()
         self.fit_complete_event = Event()
         self.fit_uncertainty_final = Event()
@@ -254,6 +348,51 @@ class State:
                 self.read_session_file(full_path)
             else:
                 self.save()
+
+    def save_to_history(self, label: str, include_population: bool = False, include_uncertainty: bool = False, keep: bool = False):
+        if self.problem.fitProblem is None:
+            return
+        item = HistoryItem()
+        item.problem = deepcopy(self.problem)
+        item.fitting = FittingState()
+        if include_population:
+            item.fitting.population = self.fitting.population
+        if include_uncertainty:
+            # uncertainty_state is not mutated, so we can safely use it here
+            # rather than making a memory-hogging copy on first use.
+            item.fitting.uncertainty_state = self.fitting.uncertainty_state
+
+        item.timestamp = str(datetime.now())
+        item.label = label
+        item.chisq_str = item.problem.fitProblem.chisq_str()
+        item.keep = keep
+        self.history.add_item(item, self.shared.autosave_history_length - 1)
+        self.shared.updated_history = now_string()
+
+
+    def get_history(self):
+        return dict(problem_history=self.history.list())
+
+    def remove_history_item(self, timestamp: str):
+        self.history.remove_item(timestamp)
+
+    def reload_history_item(self, timestamp: str):
+        for item in self.history.store:
+            if item.timestamp == timestamp:
+                print("problem found!", timestamp)
+                problem_state = item.problem
+                print('chisq of found item: ', problem_state.fitProblem.chisq_str())
+                self.problem = deepcopy(problem_state)
+                self.shared.updated_model = now_string()
+                self.shared.updated_parameters = now_string()
+                if item.fitting.population is not None:
+                    self.fitting.population = item.fitting.population
+                    self.shared.updated_convergence = now_string()
+                if item.fitting.uncertainty_state is not None:
+                    self.fitting.uncertainty_state = item.fitting.uncertainty_state
+                    self.shared.updated_uncertainty = now_string()
+                return
+        raise ValueError(f"Could not find history item with timestamp {timestamp}")
     
     def autosave(self):
         if self.shared.autosave_session:
@@ -402,13 +541,16 @@ class SharedState:
     updated_uncertainty: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
     updated_parameters: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
     updated_model: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
+    updated_history: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
     selected_fitter: Union[UNDEFINED_TYPE, str] = UNDEFINED
     fitter_settings: Union[UNDEFINED_TYPE, Dict[str, Dict]] = UNDEFINED
     active_fit: Union[UNDEFINED_TYPE, ActiveFit] = UNDEFINED
     model_file: Union[UNDEFINED_TYPE, FileInfo] = UNDEFINED
     model_loaded: Union[UNDEFINED_TYPE, bool] = UNDEFINED
     session_output_file: Union[UNDEFINED_TYPE, FileInfo] = UNDEFINED
-    autosave_session: Union[UNDEFINED_TYPE, bool] = UNDEFINED
+    autosave_session: bool = False
+    autosave_history: bool = True
+    autosave_history_length: int = 10
 
     _not_reloaded = ["active_fit", "autosave_session", "session_output_file"]
     
