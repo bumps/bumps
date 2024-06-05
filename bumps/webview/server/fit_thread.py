@@ -251,7 +251,7 @@ class FitThread(Thread):
                 captured_output = fid.getvalue()
 
             evt = dict(message="complete", problem=self.problem,
-                    point=x, value=fx, info=captured_output)
+                    point=x, value=fx, info=captured_output, fitter_id = self.fitclass.id)
             EVT_FIT_COMPLETE.send(evt)
             self.result = evt
 
