@@ -36,6 +36,8 @@ export const fitter_settings = shallowRef<{ [fit_name: string]: FitSetting }>({}
 export const selected_fitter = ref<string>("amoeba");
 export const notifications = ref<{ title: string, content: string, id: string, spinner: boolean }[]>([]);
 export const menu_items = ref<{disabled?: Ref<boolean> | boolean, text: string, action: Function, help?: string}[]>([]);
+export const autosave_history = ref(false);
+export const autosave_history_length = ref(10);
 
 export function cancelNotification(id: string) {
   const index = notifications.value.findIndex(({id: item_id}) => (item_id === id));
