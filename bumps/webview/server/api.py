@@ -79,11 +79,11 @@ async def load_problem_file(pathlist: List[str], filename: str, autosave_previou
     assert isinstance(problem, bumps.fitproblem.FitProblem)
     # problem_state = ProblemState(problem, pathlist, filename)
     try:
-        serialized_problem = serialize_problem(problem, method='dataclass')
+        _serialized_problem = serialize_problem(problem, method='dataclass')
         state.problem.serializer = 'dataclass'
     except Exception as exc:
-        logger.info(f"Could not serialize problem as JSON (dataclass): {exc}")
-        state.problem.serializer = 'pickle'
+        logger.info(f"Could not serialize problem as JSON (dataclass): {exc}, switching to dill")
+        state.problem.serializer = 'dill'
     if (state.shared.autosave_history and
         autosave_previous and
         state.problem is not None and
