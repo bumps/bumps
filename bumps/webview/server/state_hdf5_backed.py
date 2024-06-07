@@ -549,6 +549,7 @@ class SharedState:
     model_loaded: Union[UNDEFINED_TYPE, bool] = UNDEFINED
     session_output_file: Union[UNDEFINED_TYPE, FileInfo] = UNDEFINED
     autosave_session: bool = False
+    autosave_session_interval: int = 300
     autosave_history: bool = True
     autosave_history_length: int = 10
 
