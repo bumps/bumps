@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import { onMounted, ref, shallowRef } from 'vue';
 import type { AsyncSocket } from '../asyncSocket';
-import { fileBrowser, active_fit } from '../app_state';
+import { fileBrowser, active_fit, session_output_file, autosave_session, autosave_session_interval } from '../app_state';
 import type { FileBrowserSettings } from '../app_state';
 
 const title = "Session";
 const props = defineProps<{
   socket: AsyncSocket,
 }>();
-const session_output_file = shallowRef<{ filename: string, pathlist: string[] }>();
-const autosave_session = ref(false);
 
 function handle_file_message(payload: { filename: string, pathlist: string[] }) {
   console.log("session_output_file", payload);
@@ -21,10 +19,17 @@ function handle_autosave_message(payload: boolean) {
   autosave_session.value = payload;
 }
 
+function handle_autosave_interval_message(payload: number) {
+  console.log("autosave_session_interval", payload);
+  autosave_session_interval.value = payload;
+}
+
 props.socket.asyncEmit('get_shared_setting', 'session_output_file', handle_file_message);
 props.socket.asyncEmit('get_shared_setting', 'autosave_session', handle_autosave_message);
+props.socket.asyncEmit('get_shared_setting', 'autosave_session_interval', handle_autosave_interval_message);
 props.socket.on('session_output_file', handle_file_message);
 props.socket.on('autosave_session', handle_autosave_message);
+props.socket.on('autosave_session_interval', handle_autosave_interval_message);
 
 async function toggle_autosave() {
   // if turning on autosave, but session_file is not set, then prompt for a file
@@ -36,6 +41,11 @@ async function toggle_autosave() {
   }
   await props.socket.asyncEmit('set_shared_setting', 'autosave_session', !autosave_session.value);
   // setTimeout(closeMenu, 1000); 
+}
+
+async function set_interval(new_interval: number) {
+  await props.socket.asyncEmit('set_shared_setting', 'autosave_session_interval', new_interval);
+  closeMenu();
 }
 
 async function saveSession() {
@@ -140,16 +150,25 @@ async function unsetOutputFile() {
     <ul class="dropdown-menu" id="session-dropdown-menu">
       <li class="dropdown-item">
         <div class="form-check form-switch">
+          <label class="form-check-label" for="autoSaveSessionCheckbox">Autosave</label>
           <input class="form-check-input" type="checkbox" role="switch" id="autoSaveSessionCheckbox"
             :checked="autosave_session" @change="toggle_autosave"
             >
-          <label class="form-check-label" for="autoSaveSessionCheckbox">Autosave</label>
         </div>
       </li>
       <li>
         <span class="" v-if="session_output_file">
           <span class="dropdown-item-text">{{ session_output_file.filename }}</span>
         </span>
+      </li>
+      <li class="dropdown-item">
+        <div class="row">
+          <label for="autosaveIntervalInput" class="col col-form-label col-form-label-sm">Interval (s)</label>
+          <div class="col-auto">
+            <input type="number" class="form-control form-control" id="autosaveIntervalInput"
+            :value="autosave_session_interval" @change="set_interval($event.target.value)">
+          </div>
+        </div>
       </li>
       <li>
         <hr class="dropdown-divider">

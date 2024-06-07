@@ -38,6 +38,9 @@ export const notifications = ref<{ title: string, content: string, id: string, s
 export const menu_items = ref<{disabled?: Ref<boolean> | boolean, text: string, action: Function, help?: string}[]>([]);
 export const autosave_history = ref(false);
 export const autosave_history_length = ref(10);
+export const session_output_file = shallowRef<{ filename: string, pathlist: string[] }>();
+export const autosave_session = ref(false);
+export const autosave_session_interval = ref(300);
 
 export function cancelNotification(id: string) {
   const index = notifications.value.findIndex(({id: item_id}) => (item_id === id));
