@@ -120,7 +120,7 @@ async def set_problem(problem: bumps.fitproblem.FitProblem, path: Optional[Path]
         if (state.shared.autosave_history and
             state.problem is not None and
             state.problem.fitProblem is not None):
-            await save_to_history(f"Loaded model: {name}")
+            await save_to_history(f"Loaded model: {name}", keep=True)
         await add_notification(content=path_string, title="Model loaded", timeout=2000)
     state.autosave()
 
@@ -137,8 +137,8 @@ async def remove_history_item(timestamp: str):
 
 
 @register
-async def save_to_history(label: str, include_population: bool = False, include_uncertainty: bool = False):
-    state.save_to_history(label, include_population=include_population, include_uncertainty=include_uncertainty)
+async def save_to_history(label: str, include_population: bool = False, include_uncertainty: bool = False, keep: bool = False):
+    state.save_to_history(label, include_population=include_population, include_uncertainty=include_uncertainty, keep=keep)
 
 @register
 async def reload_history_item(timestamp: str):
@@ -409,7 +409,7 @@ async def start_fit_thread(fitter_id: str="", options=None, terminate_on_finish=
             # session_id=session_id,
             # Number of seconds between updates to the GUI, or 0 for no updates
             convergence_update=5,
-            uncertainty_update=300,
+            uncertainty_update=state.shared.autosave_session_interval,
             terminate_on_finish=terminate_on_finish,
             )
         await emit("fit_progress", {}) # clear progress
