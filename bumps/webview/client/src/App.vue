@@ -128,7 +128,9 @@ function exportResults() {
         if (filename !== "") {
           pathlist.push(filename);
         }
-        socket.asyncEmit("export_results", pathlist);
+        socket.asyncEmit("export_results", pathlist).then(() => {
+          socket?.syncFS?.();
+        })
       },
       show_name_input: true,
       name_input_label: "Subdirectory",
@@ -148,7 +150,7 @@ async function saveFileAs(ev: Event) {
     const new_filename = `${filename_in.replace(/(\.[^\.]+)$/, '')}.${extension}`;
     const settings: FileBrowserSettings = {
       title: "Save Problem",
-      callback: (pathlist, filename) => {
+      callback: async (pathlist, filename) => {
         saveFile(ev, {pathlist, filename});
       },
       show_name_input: true,
@@ -193,8 +195,8 @@ async function applyParameters(ev: Event) {
   if (fileBrowser.value) {
     const settings: FileBrowserSettings = {
       title: "Apply Parameters",
-      callback: (pathlist, filename) => {
-        socket.asyncEmit("apply_parameters", pathlist, filename);
+      callback: async (pathlist, filename) => {
+        await socket.asyncEmit("apply_parameters", pathlist, filename);
       },
       show_name_input: true,
       name_input_label: "Filename",
@@ -211,8 +213,8 @@ async function saveParameters(ev: Event, override?: {pathlist: string[], filenam
   if (fileBrowser.value) {
     const settings: FileBrowserSettings = {
       title: "Save Parameters",
-      callback: (pathlist, filename) => {
-        socket.asyncEmit("save_parameters", pathlist, filename, false, async({filename, check_overwrite}: {filename: string, check_overwrite: boolean}) => {
+      callback: async (pathlist, filename) => {
+        await socket.asyncEmit("save_parameters", pathlist, filename, false, async({filename, check_overwrite}: {filename: string, check_overwrite: boolean}) => {
           if (check_overwrite !== false) {
           const overwrite = await confirm(`File ${filename} exists: overwrite?`);
             if (overwrite) {
