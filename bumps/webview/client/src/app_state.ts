@@ -49,9 +49,9 @@ export function cancelNotification(id: string) {
   }
 }
 
-export function addNotification({ title, content, timeout }: {title: string, content: string, timeout?: number }) {
+export function addNotification({ title, content, timeout, id }: {title: string, content: string, timeout?: number, id?: string}) {
   const has_timeout = (timeout !== undefined);
-  const id = uuidv4();
+  id = id || uuidv4();
   notifications.value.push({title, content, id, spinner: !has_timeout});
   if (has_timeout) {
     setTimeout(cancelNotification, timeout, id);
