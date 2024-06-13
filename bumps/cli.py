@@ -125,9 +125,13 @@ def save_best(fitdriver, problem, best, view=None):
     # TODO: avoid recalculating if problem is already at best.
     problem.setp(best)
     # print "remembering best"
-    pardata = "".join("%s %.15g\n" % (name, value)
-                      for name, value in zip(problem.labels(), problem.getp()))
-    open(problem.output_path + ".par", 'wt').write(pardata)
+    fitted_pardata = "".join("%s %.15g\n" % (p.name, p.value)
+                      for p in problem._parameters)
+    fixed_pardata = "".join("%s %.15g\n" % (p.name, p.value)
+                      for p in problem._fixed_parameters)
+
+    pstring = "%s\n# Unfitted (fixed) parameters:\n\n%s" % (fitted_pardata, fixed_pardata)
+    open(problem.output_path + ".par", 'wt').write(pstring)
 
     fitdriver.save(problem.output_path)
     with util.redirect_console(problem.output_path + ".err"):
@@ -166,11 +170,14 @@ def load_best(problem, path):
     targets = {label: [] for label in labels}
     with open(path, 'rt') as fid:
         for line in fid:
+            if line.startswith('#'):
+                continue
             m = PARS_PATTERN.match(line)
-            label, value = m.group('label'), float(m.group('value'))
-            # Accumulate values for labels only if they appear in the model.
-            if label in targets:
-                targets[label].append(value)
+            if m is not None:
+                label, value = m.group('label'), float(m.group('value'))
+                # Accumulate values for labels only if they appear in the model.
+                if label in targets:
+                    targets[label].append(value)
 
     # Populate model with named parameters in the order they occur in the
     # parameter file. Identify the missing parameters if any, adding them

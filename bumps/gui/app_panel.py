@@ -649,9 +649,14 @@ class AppPanel(wx.Panel):
         # Save the current state of the parameters
         with redirect_console(output_path+".out"):
             self.model.show()
-        pardata = "".join("%s %.15g\n"%(name, value) for name, value in
-                          zip(self.model.labels(), self.model.getp()))
-        open(output_path+".par",'wt').write(pardata)
+
+        fitted_pardata = "".join("%s %.15g\n" % (p.name, p.value)
+                      for p in self.model._parameters)
+        fixed_pardata = "".join("%s %.15g\n" % (p.name, p.value)
+                        for p in self.model._fixed_parameters)
+
+        pstring = "%s\n# Unfitted (fixed) parameters:\n\n%s" % (fitted_pardata, fixed_pardata)
+        open(output_path+".par",'wt').write(pstring)
 
         # Produce model plots
         self.model.plot(figfile=output_path)
