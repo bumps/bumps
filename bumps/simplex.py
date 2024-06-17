@@ -141,7 +141,7 @@ def simplex(f, x0=None, bounds=None, radius=0.05,
 
     """
     fcalls, func = wrap_function(f, bounds)
-    x0 = np.asfarray(x0).flatten()
+    x0 = np.asarray(x0, dtype=float).flatten()
     # print "x0",x0
     N = len(x0)
     rank = len(x0.shape)

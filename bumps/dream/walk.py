@@ -10,12 +10,12 @@ from __future__ import division
 
 __all__ = ["walk"]
 
-from numpy import asarray, ones_like, NaN, isnan
+from numpy import asarray, ones_like, nan, isnan
 
 from . import util
 
 
-def walk(n=1000, mu=0, sigma=1, alpha=0.01, s0=NaN):
+def walk(n=1000, mu=0, sigma=1, alpha=0.01, s0=nan):
     """
     Mean reverting random walk.
 

@@ -59,7 +59,7 @@ import logging
 import warnings
 
 import numpy as np
-from numpy import inf, isnan, NaN
+from numpy import inf, isnan, nan
 
 from . import parameter, bounds as mbounds
 from .parameter import to_dict
@@ -510,7 +510,7 @@ class BaseFitProblem(object):
             info = (traceback.format_exc(),
                     parameter.summarize(self._parameters))
             logging.error("\n".join(info))
-            return NaN, NaN, NaN
+            return nan, nan, nan
 
     def __call__(self, pvec=None):
         """
@@ -772,7 +772,7 @@ def nllf_scale(problem):
     measurements.  To first approximation, the uncertainty in $\chi^2_N$
     is $k/(n-k)$
     """
-    dof = getattr(problem, 'dof', np.NaN)
+    dof = getattr(problem, 'dof', np.nan)
     if dof <= 0 or np.isnan(dof) or np.isinf(dof):
         return 1., 0.
     else:
