@@ -38,7 +38,6 @@ const reversed = ref(false);
 const step = ref(1);
 const active_search_pattern = ref<string | null>(null);
 const active_search_regexp = ref<RegExp | null>(null);
-const callback = ref<(pathlist: string[], filename: string) => void>(() => {});
 const settings = ref<FileBrowserSettings>();
 
 let modal: Modal;

@@ -850,7 +850,7 @@ async def shutdown():
 async def add_notification(content: str, title: str = "Notification", timeout: Optional[int] = None):
     id = None
     if timeout is None:
-        id = uuid.uuid4().hex
+        id = str(uuid.uuid4())
         await emit("add_notification", {"title": title, "content": content, "id": id})
     else:
         await emit("add_notification", {"title": title, "content": content, "timeout": timeout})
