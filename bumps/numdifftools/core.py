@@ -176,7 +176,7 @@ def default_scale(method='forward', n=1, order=2):
                                 ).get(method, 0))
 
 
-def valarray(shape, value=np.NaN, typecode=None):
+def valarray(shape, value=np.nan, typecode=None):
     """Return an array of all value."""
     if typecode is None:
         typecode = bool

@@ -62,7 +62,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
-from numpy import inf, isnan, NaN, isfinite
+from numpy import inf, isnan, nan, isfinite
 
 from . import parameter, bounds as mbounds
 from .parameter import to_dict, Parameter, Expression, Variable, tag_all
@@ -249,7 +249,7 @@ class FitProblem:
     _models: util.List[Fitness]
     _parameters: util.List[Parameter]
     _parameters_by_id: util.Dict[str, Parameter]
-    _dof: float = np.NaN # not a schema field, and is not used in __init__
+    _dof: float = np.nan # not a schema field, and is not used in __init__
 
     # _all_constraints: util.List[util.Union[Parameter, Expression]]
 
@@ -512,7 +512,7 @@ class FitProblem:
             info = (traceback.format_exc(),
                     parameter.summarize(self._parameters))
             logging.error("\n".join(info))
-            return NaN, NaN, NaN, []
+            return nan, nan, nan, []
 
     def __call__(self, pvec=None):
         """
