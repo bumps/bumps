@@ -41,7 +41,7 @@ Example::
 from __future__ import division
 import math
 
-from numpy import isinf, isnan, inf, NaN
+from numpy import isinf, isnan, inf, nan
 
 __all__ = ['format_value', 'format_uncertainty',
            'format_uncertainty_compact', 'format_uncertainty_pm',
@@ -294,10 +294,10 @@ def test_compact():
     # non-finite values
     assert value_str(-inf, None) == "-inf"
     assert value_str(inf, None) == "inf"
-    assert value_str(NaN, None) == "NaN"
+    assert value_str(nan, None) == "NaN"
 
     # bad or missing uncertainty
-    assert value_str(-1.23567, NaN) == "-1.23567"
+    assert value_str(-1.23567, nan) == "-1.23567"
     assert value_str(-1.23567, -inf) == "-1.23567"
     assert value_str(-1.23567, -0.1) == "-1.23567"
     assert value_str(-1.23567, 0) == "-1.23567"
@@ -426,10 +426,10 @@ def test_pm():
     # non-finite values
     assert value_str(-inf, None) == "-inf"
     assert value_str(inf, None) == "inf"
-    assert value_str(NaN, None) == "NaN"
+    assert value_str(nan, None) == "NaN"
 
     # bad or missing uncertainty
-    assert value_str(-1.23567, NaN) == "-1.23567"
+    assert value_str(-1.23567, nan) == "-1.23567"
     assert value_str(-1.23567, -inf) == "-1.23567"
     assert value_str(-1.23567, -0.1) == "-1.23567"
     assert value_str(-1.23567, 0) == "-1.23567"
