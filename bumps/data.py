@@ -97,7 +97,8 @@ def _read_part(fh, key_sep=None, col_sep=None, comment="#", multi_part=False):
         # Blank lines indicate a section break.
         if not line.strip():
             # Skip blank lines if we are parsing the data as a single part file
-            if not multi_part:
+            # or if the "section" has no data due to blank lines in the header.
+            if not multi_part or not data:
                 continue
             # If we are at the beginning of a section, then iseof is True and
             # continuing to the next loop iteration will skip them. If we have
