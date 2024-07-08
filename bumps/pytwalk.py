@@ -14,7 +14,7 @@ from __future__ import print_function
 __all__ = ["pytwalk"]
 
 from numpy.random import uniform, normal
-from numpy import ones, zeros, cumsum, shape, mat, cov, mean, ceil, matrix, sqrt
+from numpy import ones, zeros, cumsum, shape, asmatrix as mat, cov, mean, ceil, matrix, sqrt
 from numpy import floor, exp, log, sum, pi, arange
 
 # Some auxiliary functions and constants
