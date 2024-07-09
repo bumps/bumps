@@ -40,6 +40,12 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
+v0.9.3 2024-07-09
+-----------------
+* fixed issues with numpy > = 2.0
+  (see #140, `numpy.NaN` deprecated and removed)
+* fixed issues with refactor of scipy.stats (see #139)
+
 v0.9.2 2024-03-05
 -----------------
 * added testing for python 3.12
