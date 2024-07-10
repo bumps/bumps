@@ -412,6 +412,7 @@ class State:
             with h5py.File(output_file, 'w') as root_group:
                 self.problem.write(root_group)
                 self.fitting.write(root_group)
+                self.history.write(root_group)
                 self.write_topics(root_group)
                 self.shared.write(root_group)
         shutil.move(tmp_name, session_fullpath)
@@ -424,6 +425,7 @@ class State:
                     self.problem.read(root_group)
                 if read_fitstate:
                     self.fitting.read(root_group)
+                self.history.read(root_group)
                 self.read_topics(root_group)
                 self.shared.read(root_group)
         except Exception as e:
