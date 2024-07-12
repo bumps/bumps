@@ -785,7 +785,7 @@ async def set_shared_setting(setting: str, value: Any):
 async def notify_shared_setting(setting: str, value: Any):
     await emit(setting, to_json_compatible_dict(value))
 
-state.shared.notify = notify_shared_setting
+object.__setattr__(state.shared, 'notify', notify_shared_setting)
 
 @register
 async def get_topic_messages(topic: Optional[TopicNameType] = None, max_num=None) -> List[Dict]:
