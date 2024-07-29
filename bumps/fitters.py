@@ -607,6 +607,17 @@ class MPFit(FitBase):
         # measurements
         residuals = np.hstack(
             (self.problem.residuals().flat, self.problem.parameter_residuals()))
+        # TODO: contrained nllf has MLE different from L-M.
+        # nllf is model + parameter + constraints nllf = sum r^2/2 + P where
+        # r is the augmented residuals = measurement and parameter residuals
+        # and P is the constraints nllf.
+        # L-M is optimizing chisq = sum r'^2 where r' is the residuals we
+        # return. The existing code divides P amongst the residuals, giving
+        # each one an additional D = sign(r) P / N, which gives
+        #    sum r'^2 = sum(r + D)^2 = sum r^2 + D sum 2r + N D^2
+        # This is not a multiple of nllf, and will likely have a different
+        # maximum.
+
         # Tally costs for broken constraints
         extra_cost = self.problem.constraints_nllf()
         # Spread the cost over the residuals.  Since we are smoothly increasing

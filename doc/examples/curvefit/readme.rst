@@ -24,3 +24,4 @@ where multiple values are tracked at each time step.
     sim.rst
     ode.rst
     ode2.rst
+    weighted.rst
