@@ -83,8 +83,6 @@ async def _shutdown():
     await disconnect_all_clients()
     logger.info("webserver shutdown tasks complete")
     await asyncio.sleep(0.1)
-    if 'SLURM_JOB_ID' in os.environ:
-        os.system(f"scancel {os.environ['SLURM_JOB_ID']}")
     raise web.GracefulExit()
 
 api._shutdown = _shutdown
