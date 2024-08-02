@@ -1354,7 +1354,13 @@ def format(p, indent=0, freevars=None, field=None):
             s += str(p) + " = "
         s += "%g" % p.value
         if not p.fixed:
-            s += " in [%g,%g]" %  tuple(p.bounds)
+            if p.prior is not None:
+                bounds = p.prior.limits
+            elif p.bounds is not None:
+                bounds = p.bounds
+            else:
+                bounds = p.limits
+            s += " in [%g,%g]" %  tuple(bounds)
         return s
 
     elif isinstance(p, Parameter):
