@@ -227,8 +227,8 @@ class FitThread(Thread):
                 except ImportError:
                     mp_available = False
                 # Only use MPMapper if the problem can be pickled
-                # and multiprocessing is available
-                mapper = MPMapper if mp_available and can_pickle(self.problem) else SerialMapper
+                # and multiprocessing is available, and parallel != 1
+                mapper = MPMapper if mp_available and self.parallel != 1 and can_pickle(self.problem) else SerialMapper
 
             # Be safe and send a private copy of the problem to the fitting engine
             # print "fitclass",self.fitclass
