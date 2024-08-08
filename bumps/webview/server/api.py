@@ -467,7 +467,7 @@ async def _fit_complete_handler(event):
     state.shared.active_fit = {}
     if message == "error":
         await log(event["traceback"], title=f"fit failed with error: {event.get('error_string')}")
-        logger.warning(f"fit failed with error: {event.get('error_string')}")
+        logger.warning(f"fit failed with error: {event.get('error_string')}\n{event['traceback']}")
     else:
         problem: bumps.fitproblem.FitProblem = event["problem"]
         chisq = nice(2*event["value"]/problem.dof)
