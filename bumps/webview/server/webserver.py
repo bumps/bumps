@@ -9,7 +9,7 @@ import warnings
 from aiohttp import web, ClientSession
 import asyncio
 import socketio
-from typing import Union
+from typing import Union, List
 from pathlib import Path
 import json
 import re
@@ -31,6 +31,7 @@ from . import api
 from .fit_thread import EVT_FIT_PROGRESS
 from .state_hdf5_backed import SERIALIZERS, UNDEFINED
 from .logger import logger, list_handler, console_handler
+from . import persistent_settings
 
 TRACE_MEMORY = False
 CDN_TEMPLATE = "https://cdn.jsdelivr.net/npm/bumps-webview-client@{client_version}/dist/{client_version}"
@@ -42,6 +43,7 @@ routes = web.RouteTableDef()
 sio = socketio.AsyncServer(cors_allowed_origins="*")
 app = web.Application()
 CLIENT_PATH = Path(__file__).parent.parent / 'client'
+APPLICATION_NAME = "bumps"
 
 sio.attach(app)
 
@@ -69,6 +71,11 @@ async def connect(sid: str, environ, data=None):
 @sio.event
 def disconnect(sid):
     logger.info(f"disconnect {sid}")
+
+@sio.event
+async def set_base_path(sid: str, pathlist: List[str]):
+    path = str(Path(*pathlist))
+    persistent_settings.set_value("base_path", path, application=APPLICATION_NAME)
 
 async def disconnect_all_clients():
     # disconnect all clients:
@@ -180,6 +187,7 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
         
     app.router.add_get('/', index)
 
+    api.state.base_path = persistent_settings.get_value('base_path', str(Path().absolute()), application=APPLICATION_NAME)
     if options.path is not None:
         if Path(options.path).exists():
             api.state.base_path = options.path

@@ -133,6 +133,7 @@ function formatSize(bytes: number) {
 }
 
 async function chooseFile() {
+  await props.socket.asyncEmit("set_base_path", pathlist.value);
   await settings.value?.callback(pathlist.value, chosenFile.value);
   close();
 }
