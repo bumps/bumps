@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { setupDrawLoop } from '../setupDrawLoop';
-import JsonViewer from 'vue-json-viewer';
+import VueJsonPretty from 'vue-json-pretty';
 import { getDiff } from 'json-difference';
 import type { AsyncSocket } from '../asyncSocket.ts';
+import 'vue-json-pretty/lib/styles.css';
+
 
 // from https://github.com/microsoft/TypeScript/issues/1897#issuecomment-1228063688
 type json =
@@ -94,5 +96,5 @@ function resolve_diffpath(o: object, diffpath: string) {
 </script>
 
 <template>
-  <JsonViewer :value="modelJson" />
+  <vue-json-pretty :data="modelJson" :deep="1" :showLength="true" />
 </template>
