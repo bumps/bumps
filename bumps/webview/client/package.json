@@ -6,7 +6,6 @@
     "dev": "vite",
     "build": "vite build --emptyOutDir -m development",
     "build_prod": "vite build --emptyOutDir -m production",
-    "build_standalone": "vite build --sourcemap --emptyOutDir -m standalone",
     "preview": "vite preview --port 4173"
   },
   "dependencies": {
