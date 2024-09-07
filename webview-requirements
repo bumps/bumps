@@ -1,0 +1,11 @@
+scipy
+aiohttp
+blinker
+python-socketio
+plotly
+mpld3
+matplotlib
+nodejs
+h5py
+dill
+graphlib_backport; python_version < '3.9'

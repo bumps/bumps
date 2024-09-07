@@ -14,6 +14,13 @@ include master_builder.py
 include bumps.iss
 include setup_py2exe.py
 include bin/*
-
+recursive-include bumps/webview/client/dist *.html *.js *.css *.svg *.png
+recursive-include bumps/webview/client/src *.html *.js *.mjs *.css *.svg *.png *.ts *.vue
+include bumps/webview/client/*.html
+include bumps/webview/client/*.js
+include bumps/webview/client/*.json
+include bumps/webview/client/*.txt
+include extra/*.svg extra/*.png
 # Delete files
 #prune this that
+prune bumps/webview/client/node_modules

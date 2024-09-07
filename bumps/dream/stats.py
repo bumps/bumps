@@ -36,11 +36,13 @@ def _var_stats_one(draw, var):
 
     best_idx = np.argmax(draw.logp)
     best = values[best_idx]
+    x_sort_index = draw.get_argsort_indices(var)
 
     # Choose the interval for the histogram
     #credible_interval = shortest_credible_interval
     p95, p68, p0 = credible_interval(x=values, weights=weights,
-                                     ci=[0.95, ONE_SIGMA, 0.0])
+                                     ci=[0.95, ONE_SIGMA, 0.0],
+                                     x_sort_index=x_sort_index)
 
     ## reporting uncertainty on credible intervals?
     ## might be nice to pair sd on credible intervals
@@ -54,7 +56,7 @@ def _var_stats_one(draw, var):
     #     % (p68,p95,p0,(min(values),max(values))))
     #if p0[0] != p0[1]: raise RuntimeError("wrong median %s"%(str(p0),))
 
-    mean, std = stats(x=values, weights=weights)
+    mean, std = stats(x=values, weights=weights, x_sort_index=x_sort_index)
 
     vstats = VarStats(label=draw.labels[var], index=var+1,
                       p95=p95, p95_range=(p95[0], p95[1]+integer*0.9999999999),
@@ -158,7 +160,7 @@ def parse_var(line):
         return None
 
 
-def stats(x, weights=None):
+def stats(x, weights=None, x_sort_index=None):
     """
     Find mean and standard deviation of a set of weighted samples.
 
@@ -167,7 +169,9 @@ def stats(x, weights=None):
     in the sample), but this is good enough when the sample size is large.
     """
     if weights is None:
-        x = np.sort(x)
+        if x_sort_index is None:
+            x_sort_index = np.argsort(x)
+        x = x[x_sort_index]
         mean, std = np.mean(x), np.std(x, ddof=1)
     else:
         mean = np.mean(x*weights)/np.sum(weights)
@@ -178,7 +182,7 @@ def stats(x, weights=None):
     return mean, std
 
 
-def credible_interval(x, ci, weights=None):
+def credible_interval(x, ci, weights=None, x_sort_index=None):
     r"""
     Find the credible interval covering the portion *ci* of the data.
 
@@ -205,14 +209,15 @@ def credible_interval(x, ci, weights=None):
     n = x.size
     ci = np.asarray(ci, 'd')
     target = (1 + np.vstack((-ci, +ci))).T/2
+    if x_sort_index is None:
+        x_sort_index = np.argsort(x)
 
     if weights is None:
         cdf = np.linspace(0.5/n, 1-0.5/n, n)
         #cdf = np.linspace(1, n, n)/(n+1)
-        result = np.interp(target, cdf, np.sort(x))
+        result = np.interp(target, cdf, x[x_sort_index])
     else:
-        index = np.argsort(x)
-        x, weights = x[index], weights[index]
+        x, weights = x[x_sort_index], weights[x_sort_index]
         # convert weights to cdf
         cdf = np.cumsum(weights)
         cdf /= cdf[-1]

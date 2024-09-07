@@ -1,0 +1,29 @@
+{
+  "name": "bumps-webview-client",
+  "version": "0.1.16",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build --emptyOutDir -m development",
+    "build_prod": "vite build --emptyOutDir -m production",
+    "preview": "vite preview --port 4173"
+  },
+  "dependencies": {
+    "bootstrap": "^5.2.1",
+    "date-fns": "^2.30.0",
+    "json-difference": "^1.8.2",
+    "mpld3": "^0.5.10",
+    "plotly.js": "^2.32.0",
+    "socket.io-client": "^4.5.2",
+    "uuid": "^9.0.0",
+    "vue": "^3.4.26"
+  },
+  "devDependencies": {
+    "@types/bootstrap": "^5.2.10",
+    "@types/plotly.js": "^2.12.5",
+    "@types/uuid": "^8.3.4",
+    "@vitejs/plugin-vue": "^5.0.4",
+    "vite": "^5.4.2",
+    "vue-json-pretty": "^2.4.0"
+  }
+}

@@ -85,7 +85,6 @@ def jacobian(problem, p=None, step=None):
         # flatten since this will avoid an unnecessary copy.
         return np.reshape(problem.residuals(), -1)
     J = _jacobian_forward(f, p, bounds, eps=step)
-    #J = nd.Jacobian(problem.residuals)(p)
     problem.setp(p_init)
     return J
 
@@ -140,8 +139,6 @@ def hessian(problem, p=None, step=None):
     p = np.asarray(p)
     bounds = getattr(problem, 'bounds', lambda: None)()
     H = _hessian_forward(problem.nllf, p, bounds=bounds, eps=step)
-    #H = nd.Hessian(problem.nllf)(p)
-    #print("Hessian",H)
     problem.setp(p_init)
     return H
 

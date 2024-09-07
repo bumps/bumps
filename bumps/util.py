@@ -2,17 +2,16 @@
 Miscellaneous utility functions.
 """
 from __future__ import division
+import warnings
 
 __all__ = ["kbhit", "profile", "pushdir", "push_seed", "redirect_console"]
 
 import sys
 import os
 import types
+import inspect
 
-try:  # CRUFT: python 2.x
-    from cStringIO import StringIO
-except ImportError:
-    from io import StringIO
+from io import StringIO
 
 import numpy as np
 from numpy import ascontiguousarray as _dense
@@ -20,6 +19,64 @@ from numpy import ascontiguousarray as _dense
 # so there is no longer a need for bumps.util.erf.
 from scipy.special import erf
 
+# this can be substituted with pydantic dataclass for schema-building...
+try:
+    from typing import Literal, Protocol, runtime_checkable
+except ImportError:
+    from typing_extensions import Literal, Protocol, runtime_checkable
+from typing import Iterable, Optional, Type, TypeVar, Any, Union, Dict, Callable, Tuple, List, Sequence, TYPE_CHECKING
+
+USE_PYDANTIC = os.environ.get('BUMPS_USE_PYDANTIC', "False") == "True"
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
+from dataclasses import dataclass, field, is_dataclass, Field
+
+def field_desc(description: str) -> Any:
+    return field(metadata={"description": description})
+
+T = TypeVar('T')
+SCHEMA_ATTRIBUTE_NAME = '__bumps_schema__'
+
+def schema_config(
+        include: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
+    ) -> Callable[[Type[T]], Type[T]]:
+    
+    """ 
+    Add an attribute for configuring serialization
+    (presence of SCHEMA_ATTRIBUTE_NAME attribute is used during
+    serialization of unique instances e.g. Parameter)
+    """
+    def add_schema_config(cls: Type[T]) -> Type[T]:
+        if include is not None and exclude is not None:
+            raise ValueError(f"{fqn} schema: include array and exclude array are mutually exclusive - only define one")
+
+        setattr(cls, SCHEMA_ATTRIBUTE_NAME, dict(include=include, exclude=exclude))
+        return cls
+
+    return add_schema_config
+
+def has_schema_config(cls):
+    return is_dataclass(cls) and hasattr(cls, SCHEMA_ATTRIBUTE_NAME)
+
+@dataclass(init=True)
+class NumpyArray:
+    """
+    Wrapper for numpy arrays:
+    on serialize, 
+     - array.tolist() is called and stored in 'values' attribute
+     - str(array.dtype) is stored in 'dtype' attribute
+
+     on deserialize,
+      - return new np.ndarray(values, dtype=dtype)
+    """
+    dtype: str
+    values: Sequence = field(default_factory=list)
+
+if USE_PYDANTIC:
+    from typing import TypeAlias
+    NDArray: TypeAlias = NumpyArray
 
 def parse_errfile(errfile):
     """

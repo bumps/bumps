@@ -1091,6 +1091,13 @@ class Draw(object):
             self.integers = state._integer_vars[vars] if vars else None
         else:
             self.integers = None
+        self._argsort_indices = {}
+
+    # cache the argsort indices for each variable
+    def get_argsort_indices(self, var: int):
+        if var not in self._argsort_indices:
+            self._argsort_indices[var] = np.argsort(self.points[:, var].flatten())
+        return self._argsort_indices[var]
 
 
 def _sample(state, portion, vars, selection, thin):

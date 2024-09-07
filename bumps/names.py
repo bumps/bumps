@@ -22,16 +22,12 @@ The following symbols are defined:
 - :class:`Curve <bumps.curve.Curve>` for defining models from functions
 - :class:`PoissonCurve <bumps.curve.PoissonCurve>` for modelling data with Poisson uncertainty
 - :class:`PDF <bumps.pdfwrapper.PDF>` for fitting a probability distribution directly
-- :func:`FitProblem <bumps.fitproblem.FitProblem>` for defining the fit (see
-    :class:`BaseFitProblem <bumps.fitproblem.BaseFitProblem>` or
-    :class:`MultiFitProblem <bumps.fitproblem.MultiFitProblem>` for details,
-    depending on whether you are fitting a single model or multiple models
-    simultaneously).
+- :class:`FitProblem <bumps.fitproblem.FitProblem>` for defining the fit.
 """
 
 #__all__ = [ 'sys', 'np', 'inf', 'pmath',
 #    'Parameter', 'FreeVariables', 'Distribution', 'PDF', 'Curve', 'PoissonCurve',
-#        'FitProblem', 'MultiFitProblem' ]
+#        'FitProblem' ]
 
 import sys
 import numpy as np
@@ -48,6 +44,6 @@ from .parameter import sind, cosd, tand, arcsind, arccosd, arctand, arctan2d
 from .bounds import Distribution
 from .pdfwrapper import PDF, VectorPDF, DirectProblem
 from .curve import Curve, PoissonCurve
-from .fitproblem import FitProblem, MultiFitProblem
+from .fitproblem import FitProblem, Fitness
 from .fitters import fit
 from .util import relative_import

@@ -38,7 +38,7 @@ def auto_shift(offset):
 
 # ======== Color functions ========
 
-def next_color():
+def next_color(axes=None):
     """
     Return the next color in the plot color cycle.
 
@@ -52,7 +52,9 @@ def next_color():
         plt.plot(x, y, '-', color=dhsv(color, dv=-0.2))
     """
     import pylab
-    lines = pylab.gca()._get_lines
+    if axes is None:
+        axes = pylab.gca()
+    lines = axes._get_lines
     try:
         base = lines.get_next_color()
     except Exception:
@@ -118,7 +120,7 @@ def dhsv(color, dh=0., ds=0., dv=0., da=0.):
 
 # ==== Specialized plotters =====
 
-def plot_quantiles(x, y, contours, color, alpha=None):
+def plot_quantiles(x, y, contours, color, alpha=None, axes=None):
     """
     Plot quantile curves for a set of lines.
 
@@ -137,18 +139,20 @@ def plot_quantiles(x, y, contours, color, alpha=None):
     default value, alpha=2./(#contours+1), works pretty well.
     """
     _, q = form_quantiles(y, contours)
-    _plot_quantiles(x, q, color, alpha)
+    _plot_quantiles(x, q, color, alpha, axes=axes)
 
-def _plot_quantiles(x, q, color, alpha):
+def _plot_quantiles(x, q, color, alpha, axes=None):
     import pylab
     # print "p",p
     # print "q",q[:,:,0]
     # print "y",y[:,0]
+    if axes is None:
+        axes = pylab.gca()
     if alpha is None:
         alpha = 2. / (len(q) + 1)
     edgecolor = dhsv(color, ds=-(1 - alpha), dv=(1 - alpha))
     for lo, hi in q:
-        pylab.fill_between(x, lo, hi,
+        axes.fill_between(x, lo, hi,
                            facecolor=color, edgecolor=edgecolor,
                            alpha=alpha)
 

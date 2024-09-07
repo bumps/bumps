@@ -608,7 +608,7 @@ class MPFit(FitBase):
         residuals = np.hstack(
             (self.problem.residuals().flat, self.problem.parameter_residuals()))
         # Tally costs for broken constraints
-        extra_cost = self.problem.constraints_nllf()
+        extra_cost, failing_constraints = self.problem.constraints_nllf()
         # Spread the cost over the residuals.  Since we are smoothly increasing
         # residuals as we leave the boundary, this should push us back into the
         # boundary (within tolerance) during the lm fit.
@@ -681,7 +681,8 @@ class LevenbergMarquardtFit(FitBase):
         residuals = np.hstack(
             (self.problem.residuals().flat, self.problem.parameter_residuals()))
         # Tally costs for straying outside the boundaries plus other costs
-        extra_cost = stray_cost + self.problem.constraints_nllf()
+        constraints_cost, failing_constraints = self.problem.constraints_nllf()
+        extra_cost = stray_cost + constraints_cost
         # Spread the cost over the residuals.  Since we are smoothly increasing
         # residuals as we leave the boundary, this should push us back into the
         # boundary (within tolerance) during the lm fit.
