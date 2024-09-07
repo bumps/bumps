@@ -51,8 +51,8 @@ dist = setup(
     packages=packages,
     package_data=gui_resources.package_data(),
     scripts=scripts,
-    install_requires=[],
-    #install_requires=['numpy>=1.0', 'scipy>=0.7.0', 'matplotlib>=1.0'],
+    install_requires=['six'],
+    #install_requires=['six', 'numpy>=1.0', 'scipy>=0.7.0', 'matplotlib>=1.0'],
     #install_requires = ['httplib2'],
 )
 
