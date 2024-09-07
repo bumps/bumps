@@ -12,7 +12,7 @@ A graphical interface allows direct manipulation of the model parameters.
 See https://bumps.readthedocs.io for online manuals.
 """
 
-__version__ = "0.9.3"
+__version__ = "1.0-pre"
 
 def data_files():
     """

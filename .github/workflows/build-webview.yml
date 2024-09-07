@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 env:
-  branch_name: webview
+  branch_name: master
 
 jobs:
   test_and_build:
