@@ -48,8 +48,6 @@ estimate step size.
 from __future__ import print_function
 
 import numpy as np
-#from . import numdifftools as nd
-#import numdifftools as nd
 
 def gradient(problem, p=None, step=None):
     r = problem.residuals()
@@ -87,7 +85,6 @@ def jacobian(problem, p=None, step=None):
         # flatten since this will avoid an unnecessary copy.
         return np.reshape(problem.residuals(), -1)
     J = _jacobian_forward(f, p, bounds, eps=step)
-    #J = nd.Jacobian(problem.residuals)(p)
     problem.setp(p_init)
     return J
 
@@ -142,8 +139,6 @@ def hessian(problem, p=None, step=None):
     p = np.asarray(p)
     bounds = getattr(problem, 'bounds', lambda: None)()
     H = _hessian_forward(problem.nllf, p, bounds=bounds, eps=step)
-    #H = nd.Hessian(problem.nllf)(p)
-    #print("Hessian",H)
     problem.setp(p_init)
     return H
 
@@ -353,11 +348,6 @@ def demo_hessian():
     H = _hessian_central(rosen, p, bounds=None, eps=1e-16)
     print("central difference H", H)
 
-    #from . import numdifftools as nd
-    #import numdifftools as nd
-    #Hfun = nd.Hessian(rosen)
-    #print("numdifftools H", Hfun(p))
-
 def demo_jacobian():
     y = np.array([1., 2., 3.])
     f = lambda x: x[0]*y + x[1]
@@ -366,11 +356,6 @@ def demo_jacobian():
     print("forward difference J", J)
     J = _jacobian_central(f, p, bounds=None, eps=1e-16)
     print("central difference J", J)
-
-    #from . import numdifftools as nd
-    #import numdifftools as nd
-    #Jfun = nd.Jacobian(f)
-    #print("numdifftools J", Jfun(p))
 
 # https://en.wikipedia.org/wiki/Hilbert_matrix
 # Note: 1-origin indices translated to 0-origin
