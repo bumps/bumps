@@ -62,7 +62,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
-from numpy import inf, isnan, nan, isfinite
+from numpy import inf, isnan, nan
 
 from . import parameter, bounds as mbounds
 from .parameter import to_dict, Parameter, Expression, Variable, tag_all
@@ -575,7 +575,7 @@ class FitProblem:
                 value = p.value
                 if (p.limits[0] > value) or (value > p.limits[1]):
                     broken.append(f"{p}={value} is outside {p.limits}")
-                elif not isfinite(p.prior.nllf(value)):
+                elif not np.isfinite(p.prior.nllf(value)):
                     broken.append(f"{p}={value} is outside {p.prior}")
 
         broken.extend([f"constraint {c} is unsatisfied" for c in self.constraints if float(c) == inf])
