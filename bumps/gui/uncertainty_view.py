@@ -33,6 +33,12 @@ class UncertaintyView(PlotView):
 
 
 class CorrelationView(PlotView):
+    """
+    CorrelationView has a maximum number of correlations that it will show.
+    Change this by setting CorrelationView.MAX_CORR, either in the individual
+    view or in the class.
+    """
+    MAX_CORR = 15
     title = "Correlations"
 
     def update_parameters(self, *args, **kw):
@@ -41,12 +47,11 @@ class CorrelationView(PlotView):
     def plot(self):
         if not self.plot_state:
             return
-        # suppress correlation plot if too many variables
-        if self.plot_state.Nvar > 15:
-            return
-        history = self.plot_state
         with self.pylab_interface as pylab:
             pylab.clf()
+            if self.plot_state.Nvar > self.MAX_CORR:
+                return
+            history = self.plot_state
             dream_views.plot_corrmatrix(history.draw())
             pylab.draw()
 

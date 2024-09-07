@@ -335,7 +335,7 @@ class BFGSFit(FitBase):
     BFGS estimates Hessian and its Cholesky decomposition, but initial
     tests give uncertainties quite different from the directly computed
     Jacobian in Levenburg-Marquardt or the Hessian estimated at the
-    minimum by numdifftools.
+    minimum by numerical differentiation.
 
     To use the internal 'H' and 'L' and save some computation time, then
     use::

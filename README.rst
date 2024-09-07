@@ -40,6 +40,34 @@ For now this requires an install from source rather than pip.
 Release notes
 =============
 
+v0.9.3 2024-07-09
+-----------------
+* fixed issues with numpy > = 2.0
+  (see #140, `numpy.NaN` deprecated and removed)
+* fixed issues with refactor of scipy.stats (see #139)
+
+v0.9.2 2024-03-05
+-----------------
+* added testing for python 3.12
+* fixed issue with matplotlib >= 3.8.0 (see #129)
+* added missing documents to dream manual
+  (Convergence tests, Parallel coordinates plot)
+* added numba.njit-accelerated fallback bounds.apply methods to dream
+  (still uses compiled C DLL if available)
+* provide MAX_CORR attribute on the CorrelationView; clear the figure
+  if the number of variables exceeds MAX_CORR
+
+v0.9.1 2023-04-10
+-----------------
+* added support for python 3.11, scipy 1.10, numpy 1.24, wx 4.1.1
+* fixed covariance calculation for n-D datasets
+* fixed batch mode I/O redirection cleanup
+* fixed issue with DREAM bounds checker when running in parallel
+* default to single precision derivatives with lm (fixes issue in SasView
+  where OpenCL models failed with Levenberg-Marquardt)
+* improved support for repeat fitting within scripts and notebooks
+  (*start_mapper* should now work after *stop_mapper*)
+
 v0.9.0 2022-03-15
 -----------------
 * use MPFit in place of scipy.leastsq for bounds-constrained Levenberg-Marquardt
@@ -57,6 +85,9 @@ v0.8.1 2021-11-18
 * fixed Summary view sliders disappearing in linux
 * fixed uncertainty plots regenerating at each parameter update
 * improved documentation of uncertainty analysis
+
+Breaking change:
+* python 2.7 support discontinued
 
 v0.8.0 2020-12-16
 -----------------
