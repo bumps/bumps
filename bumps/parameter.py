@@ -13,7 +13,7 @@ parts of the model, or different models.
 #__all__ = [ 'Parameter']
 import operator
 import sys
-from functools import reduce
+from six.moves import reduce
 import warnings
 from copy import copy
 import math
