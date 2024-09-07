@@ -59,7 +59,7 @@ import logging
 import warnings
 
 import numpy as np
-from numpy import inf, isnan, nan
+from numpy import inf, isnan, NaN
 
 from . import parameter, bounds as mbounds
 from .parameter import to_dict
@@ -510,7 +510,7 @@ class BaseFitProblem(object):
             info = (traceback.format_exc(),
                     parameter.summarize(self._parameters))
             logging.error("\n".join(info))
-            return nan, nan, nan
+            return NaN, NaN, NaN
 
     def __call__(self, pvec=None):
         """
@@ -573,9 +573,8 @@ class BaseFitProblem(object):
 
     def cov(self):
         """
-        Return the covariance matrix as computed from the Hessian matrix for
-        the problem at the current parameter values estimated by numerical
-        differentiation.
+        Return the covariance matrix as computed by numdifftools from the
+        Hessian matrix for the problem at the current parameter values.
         """
         # TODO: remove from model
         warnings.warn("use cov and stderr from FitDriver, not problem.",
@@ -772,7 +771,7 @@ def nllf_scale(problem):
     measurements.  To first approximation, the uncertainty in $\chi^2_N$
     is $k/(n-k)$
     """
-    dof = getattr(problem, 'dof', np.nan)
+    dof = getattr(problem, 'dof', np.NaN)
     if dof <= 0 or np.isnan(dof) or np.isinf(dof):
         return 1., 0.
     else:
