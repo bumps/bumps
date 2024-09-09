@@ -79,7 +79,7 @@ jobs:
     needs: test_and_build
     runs-on: ubuntu-latest
     environment:
-      name: pypi
+      name: pypi_deployment
       url: https://pypi.org/p/bumps
     permissions:
       id-token: write
