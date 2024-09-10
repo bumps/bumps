@@ -67,7 +67,10 @@ jobs:
       run: dir dist
 
     - name: Install wheel
-      run: python -m pip install dist/bumps-1.0rc0-py3-none-any.whl
+      run: |
+        $wheel = Get-ChildItem -Path dist -Filter "bumps-*-py3-none-any.whl" | Select-Object -First 1
+        python -m pip install $wheel.FullName
+      shell: pwsh
 
 #  test-wheel:
 #    runs-on: ${{ matrix.cfg.os }}
