@@ -50,21 +50,7 @@ jobs:
       run: |
         python -m build
 
-    - name: show files
-      run: |
-        ls -R artifacts
-        echo "SRC_DIST=$(ls dist/*.tar.gz)" >> $GITHUB_ENV
-        echo "PY3_WHL=$(ls dist/*.whl)" >> $GITHUB_ENV
-
-    - name: Update current release
-      if: startsWith(github.ref, 'refs/tags')
-      uses: johnwbyrd/update-release@v1
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        files: |
-          ${{ env.PY3_WHL }}
-
-      # See the following for how to upload to a release
+    # See the following for how to upload to a release
     #  https://eugene-babichenko.github.io/blog/2020/05/09/github-actions-cross-platform-auto-releases/
     - name: Archive artifacts
       uses: actions/upload-artifact@v4
