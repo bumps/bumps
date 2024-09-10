@@ -135,7 +135,7 @@ jobs:
 
   upload-to-pypi:
     runs-on: ubuntu-latest
-    needs: build-wheel
+    needs: test-wheel
     steps:
     - name: Download wheel
       uses: actions/download-artifact@v3
