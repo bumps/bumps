@@ -9,6 +9,8 @@ from numpy import zeros, ones, empty, dot, cov, eye, sqrt, sum, all
 from numpy import where, array
 from numpy.linalg import norm, cholesky, LinAlgError
 
+from .util import draw, rng
+
 try:
     from numba import njit, prange
     @njit(cache=True)
@@ -33,9 +35,6 @@ except ImportError:
         return lambda f: f
     prange = range
     pchoice = rng.choice
-
-
-from .util import draw, rng
 
 EPS = 1e-6
 _DE, _SNOOKER, _DIRECT = 0, 1, 2
