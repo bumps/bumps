@@ -5,15 +5,42 @@ from __future__ import division, print_function
 
 __all__ = ["de_step"]
 
-from numpy import zeros, ones, dot, cov, eye, sqrt, sum, all
-from numpy import where, select
+from numpy import zeros, ones, empty, dot, cov, eye, sqrt, sum, all
+from numpy import where, array
 from numpy.linalg import norm, cholesky, LinAlgError
+
+try:
+    from numba import njit, prange
+    @njit(cache=True)
+    def pchoice(choices, size=0, replace=True, p=None):
+        if p is None:
+            return rng.choice(choices, size=size, replace=replace)
+        # TODO: if choices is an array, then shape should be an array
+        result = empty(size, dtype=choices.dtype)
+        num_choices = choices.shape[0]
+        for index in prange(size):
+            u = rng.rand()
+            cdf = 0.
+            for k in range(num_choices):
+                cdf += p[k]
+                if (u <= cdf):
+                    result[index] = choices[k]
+            #else: should never get here if choices sum to 1
+        return result
+
+except ImportError:
+    def njit(*args, **kw):
+        return lambda f: f
+    prange = range
+    pchoice = rng.choice
+
+
 from .util import draw, rng
 
 EPS = 1e-6
-_SNOOKER, _DE, _DIRECT = 0, 1, 2
+_DE, _SNOOKER, _DIRECT = 0, 1, 2
 
-
+@njit(cache=True)
 def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
             snooker_rate=0.1, noise=1e-6, scale=1.0):
     """
@@ -33,13 +60,16 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
     # ratio of de to direct.
     u = rng.rand(Nchain)
     de_rate = 0.8 * (1-snooker_rate)
-    alg = select([u < snooker_rate, u < snooker_rate+de_rate],
-                 [_SNOOKER, _DE], default=_DIRECT)
+    alg = zeros(Nchain, dtype='int') # _DE = 0
+    alg[u>=de_rate] = _SNOOKER
+    alg[u>=de_rate+snooker_rate] = _DIRECT
+    #alg = select([u < snooker_rate, u < snooker_rate+de_rate],
+    #             [_SNOOKER, _DE], default=_DIRECT)
     # [PAK] CR selection moved from crossover into DE step
-    CR_used = rng.choice(CR[:, 0], size=Nchain, replace=True, p=CR[:, 1])
+    CR_used = pchoice(CR[:, 0], size=Nchain, replace=True, p=CR[:, 1])
 
     # Chains evolve using information from other chains to create offspring
-    for qq in range(Nchain):
+    for qq in prange(Nchain):
 
         if alg[qq] == _DE:  # Use DE with cross-over ratio
 
@@ -57,7 +87,7 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
             # sure at least one dim is selected
             vars = where(rng.rand(Nvar) > CR_used[qq])[0]
             if len(vars) == 0:
-                vars = [rng.randint(Nvar)]
+                vars = array([rng.randint(Nvar)])
 
             # Weight the size of the jump inversely proportional to the
             # number of contributions, both from the parameters being
@@ -109,19 +139,20 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
         else:
             raise RuntimeError("Select failed...should never happen")
 
-        # If no step was specified (exceedingly unlikely!), then
-        # select a delta at random from a gaussian approximation to the
-        # current population
-        if all(delta_x[qq] == 0):
-            try:
-                #print "No step"
-                # Compute the Cholesky Decomposition of x_old
-                R = (2.38/sqrt(Nvar)) * cholesky(cov(pop.T) + EPS*eye(Nvar))
-                # Generate jump using multinormal distribution
-                delta_x[qq] = dot(rng.randn(*(1, Nvar)), R)
-            except LinAlgError:
-                print("Bad cholesky")
-                delta_x[qq] = rng.randn(Nvar)
+        # Didn't implement this in the compiled version (yet)
+        ## If no step was specified (exceedingly unlikely!), then
+        ## select a delta at random from a gaussian approximation to the
+        ## current population
+        #if all(delta_x[qq] == 0):
+        #    try:
+        #        #print "No step"
+        #        # Compute the Cholesky Decomposition of x_old
+        #        R = (2.38/sqrt(Nvar)) * cholesky(cov(pop.T) + EPS*eye(Nvar))
+        #        # Generate jump using multinormal distribution
+        #        delta_x[qq] = dot(rng.randn(*(1, Nvar)), R)
+        #    except LinAlgError:
+        #        print("Bad cholesky")
+        #        delta_x[qq] = rng.randn(Nvar)
 
     # Update x_old with delta_x and noise
     delta_x *= scale

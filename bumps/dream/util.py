@@ -7,7 +7,13 @@ __all__ = ["draw", "console"]
 import numpy as np
 import numpy.random as rng
 
+try:
+    from numba import njit
+except ImportError:
+    def njit(*args, **kw):
+        return lambda f: f
 
+@njit(cache=True)
 def draw(k, n):
     """
     Select k things from a pool of n without replacement.
@@ -17,7 +23,7 @@ def draw(k, n):
         result = rng.permutation(n)[:k]
     else:
         s = set()
-        result = np.empty(k, 'i')
+        result = np.empty(k, np.int64)
         for i in range(k):
             p = rng.randint(n)
             while p in s:
