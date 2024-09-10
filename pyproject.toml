@@ -8,7 +8,13 @@ authors = [
 ]
 license = { file = "LICENSE.txt" }
 dependencies = [
-    'typing_extensions>=3.7.4', 'dataclasses; python_version < "3.7.0"'
+    'dill',
+    'dataclasses',
+    'matplotlib',
+    'numpy',
+    'scikit-learn',
+    'scipy',
+    'typing_extensions>=3.7.4',
 ]
 classifiers=[
     'Development Status :: 4 - Beta',
@@ -25,6 +31,14 @@ classifiers=[
 requires-python = ">=3.8"
 
 [project.optional-dependencies]
+dev = [
+    'build',
+    'pytest',
+    'pytest-cov',
+    'wheel',
+    'setuptools',
+    'twine',
+]
 webview = [
     'scipy',
     'aiohttp',
