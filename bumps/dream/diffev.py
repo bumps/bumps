@@ -7,7 +7,7 @@ __all__ = ["de_step"]
 
 from numpy import zeros, ones, empty, dot, cov, eye, sqrt, sum, all
 from numpy import where, array
-from numpy.linalg import norm, cholesky, LinAlgError
+from numpy.linalg import norm
 
 from .util import draw, rng
 
@@ -143,6 +143,7 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
         ## select a delta at random from a gaussian approximation to the
         ## current population
         #if all(delta_x[qq] == 0):
+        #    from numpy.linalg import cholesky, LinAlgError
         #    try:
         #        #print "No step"
         #        # Compute the Cholesky Decomposition of x_old
