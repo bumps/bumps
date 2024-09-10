@@ -63,14 +63,20 @@ jobs:
         name: wheel
         path: dist
 
-    - name: List dist directory contents
-      run: dir dist
-
     - name: Install wheel
       run: |
         $wheel = Get-ChildItem -Path dist -Filter "bumps-*-py3-none-any.whl" | Select-Object -First 1
         python -m pip install $wheel.FullName
       shell: pwsh
+
+    - name: Run tests
+      run: pytest -v --ignore=bumps/webview
+
+    - name: Check examples
+      run: python check_examples.py --chisq
+
+    - name: Check fitters
+      run: python check_fitters.py
 
 #  test-wheel:
 #    runs-on: ${{ matrix.cfg.os }}
