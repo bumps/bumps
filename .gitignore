@@ -16,6 +16,7 @@
 /bumps.egg-info/
 bumps.iss-include
 iss-version
+bumps/_version.py
 
 # doc targets
 /doc/_build/
