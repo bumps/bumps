@@ -8,9 +8,6 @@ authors = [
 ]
 license = { file = "LICENSE.txt" }
 dependencies = [
-    'dill',
-    'graphlib',
-    'matplotlib',
     'numpy',
     'scikit-learn',
     'scipy',
@@ -43,6 +40,8 @@ dev = [
 webview = [
     'aiohttp',
     'blinker',
+    'dill',
+    'matplotlib',
     'python-socketio',
     'plotly',
     'mpld3',
