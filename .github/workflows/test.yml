@@ -1,10 +1,14 @@
 name: Test
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  workflow_run:
+    workflows: ["Build the Python wheel and upload as artifact"]
+    types:
+      - completed
 
 jobs:
   test:
-
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ${{ matrix.cfg.os }}
     strategy:
       matrix:
