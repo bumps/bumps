@@ -16,6 +16,7 @@ dependencies = [
     'scikit-learn',
     'scipy',
     'typing_extensions>=3.7.4',
+    'graphlib_backport; python_version < "3.9"'
 ]
 classifiers=[
     'Development Status :: 4 - Beta',
@@ -38,20 +39,16 @@ dev = [
     'pytest-cov',
     'wheel',
     'setuptools',
-    'twine',
+    'sphinx',
 ]
 webview = [
-    'scipy',
     'aiohttp',
     'blinker',
     'python-socketio',
     'plotly',
     'mpld3',
-    'matplotlib',
     'nodejs',
-    'h5py',
-    'dill',
-    'graphlib_backport; python_version < "3.9"'
+    'h5py'
 ]
 
 [project.urls]
