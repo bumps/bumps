@@ -9,7 +9,6 @@ authors = [
 license = { file = "LICENSE.txt" }
 dependencies = [
     'dill',
-    'dataclasses',
     'graphlib',
     'matplotlib',
     'numpy',
