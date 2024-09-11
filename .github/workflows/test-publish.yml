@@ -1,0 +1,118 @@
+name: Test and Publish to PyPI
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+
+  # Build a pure Python wheel and upload as an artifact
+  build-wheel:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies for building the wheel
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install -e .[dev]
+
+    - name: Create the wheel
+      run: python -m build --wheel --no-isolation
+
+    - name: Upload the wheel artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: wheel
+        path: dist/bumps-*-py3-none-any.whl
+
+  # Test the wheel on different platforms, test webview, and check docs build
+  test:
+    runs-on: ${{ matrix.cfg.os }}
+    needs: build-wheel
+
+    strategy:
+      matrix:
+        cfg:
+          - { os: ubuntu-latest, py: 3.8 }
+          - { os: ubuntu-latest, py: 3.9, doc: 1 }
+          - { os: ubuntu-latest, py: "3.10" }
+          - { os: ubuntu-latest, py: 3.11 }
+          - { os: ubuntu-latest, py: 3.12 }
+          - { os: windows-latest, py: 3.9 }
+          - { os: macos-latest, py: 3.9 }
+      fail-fast: false
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.cfg.py }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.cfg.py }}
+
+    - name: Download the wheel
+      uses: actions/download-artifact@v3
+      with:
+        name: wheel
+        path: dist
+
+    - name: Install the wheel for Windows configuration
+      if: ${{ runner.os == 'Windows' }}
+      run: |
+        $wheel = Get-ChildItem -Path dist -Filter "bumps-*-py3-none-any.whl" | Select-Object -First 1
+        python -m pip install $wheel.FullName
+      shell: pwsh
+
+    - name: Install the wheel for configurations other than Windows
+      if: ${{ runner.os != 'Windows' }}
+      run: python -m pip install dist/bumps-*-py3-none-any.whl
+
+    - name: Install dependencies for testing
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install pytest pytest-cov
+        python -m pip install -r webview-requirements
+
+    - name: Run tests, except for webview
+      run: pytest -v --ignore=bumps/webview
+
+    - name: Run tests
+      run: pytest -v
+
+    - name: Check examples
+      run: python check_examples.py --chisq
+
+    - name: Check fitters
+      run: python check_fitters.py
+
+    - name: Check that the docs build (linux only)
+      if: matrix.cfg.doc == 1
+      run: |
+        python -m pip install sphinx
+        make -j 4 -C doc SPHINXOPTS="-W --keep-going -n" html
+
+  # Upload wheel to PyPI only when a tag is pushed, and its name begins with 'v'
+  upload-to-pypi:
+    runs-on: ubuntu-latest
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+
+    - name: Download wheel
+      uses: actions/download-artifact@v3
+      with:
+        name: wheel
+        path: dist
+
+    - name: Upload the wheel to PyPI
+      uses: pypa/gh-action-pypi-publish@v1.5.1
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_API_TOKEN }}
