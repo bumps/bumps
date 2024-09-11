@@ -592,7 +592,8 @@ class Parameter(ValueProtocol, SupportsPrior):
             (-np.inf if limits[0] is None else float(limits[0])),
             (np.inf if limits[1] is None else float(limits[1])))
         if bounds is not None:
-            bounds = (float(bounds[0]), float(bounds[1]))
+            bounds = ((-np.inf if bounds[0] is None else float(bounds[0])),
+                      (np.inf if bounds[1] is None else float(bounds[1])))
         self.bounds = bounds
         self.distribution = distribution
         # Note: fixed is True unless fixed=False or bounds=bounds were given
