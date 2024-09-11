@@ -1,4 +1,4 @@
-name: Build the Python wheel and upload as artifact
+name: Build-Python-Wheel
 
 
 on: [push, pull_request, workflow_dispatch]
