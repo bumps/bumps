@@ -3,6 +3,7 @@ name: Download wheel and install
 on:
   workflow_run:
     workflows: ["Build-Python-Wheel"]
+    branches: [ '*' ]
     types:
       - completed
 
