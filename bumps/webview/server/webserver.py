@@ -336,7 +336,7 @@ def get_server_url():
     # detect if running through Jupyter Hub
     if 'JUPYTERHUB_SERVICE_PREFIX' in os.environ:
         url = f"{os.environ['JUPYTERHUB_SERVICE_PREFIX']}/proxy/{port}/"
-    elif api.state.hostname == 'localhost': # local server
+    elif api.state.hostname == 'localhost' or api.state.hostname == '127.0.0.1': # local server
         url = f"http://{api.state.hostname}:{port}/"
     else: # external server, e.g. TACC
         url = f"/proxy/{port}/"
