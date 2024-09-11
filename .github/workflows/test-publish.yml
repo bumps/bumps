@@ -82,16 +82,19 @@ jobs:
     - name: Run tests, except for webview
       run: pytest -v --ignore=bumps/webview
 
+    - name: Run tests
+      run: pytest -v
+
     - name: Check examples
       run: python check_examples.py --chisq
 
     - name: Check fitters
       run: python check_fitters.py
 
-    - name: Run tests for webview
-      run: |
-        python -m pip install -r webview-requirements
-        pytest -v bumps/webview
+#    - name: Run tests for webview
+#      run: |
+#        python -m pip install -r webview-requirements
+#        pytest -v bumps/webview
 
     - name: Check that the docs build (linux only)
       if: matrix.cfg.doc == 1
