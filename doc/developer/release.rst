@@ -20,7 +20,9 @@ from the latest tag in the git repository.
     $ versioningit
     0.9.4.dev656
 
-2. Create the new tag and push it to the remote. Pushing a tag starts the GitHub workflow to publish
+2. Add release notes and commit to master.
+
+3. Create the new tag and push it to the remote. Pushing a tag starts the GitHub workflow to publish
 to PyPI (defined in `.github/workflows/pypi-publish.yml
 <https://github.com/bumps/bumps/tree/master/.github/workflows/pypi-publish.yml>`_)::
 
