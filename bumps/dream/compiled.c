@@ -7,7 +7,7 @@ Differential evolution MCMC stepper.
 
 #include <stdio.h>  // for debugging
 
-#ifdef _M_X64s
+#ifdef _MSC_VER
     #define DLL_EXPORT __declspec(dllexport)
 #else
     #define DLL_EXPORT
