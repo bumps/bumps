@@ -16,7 +16,7 @@ import uuid
 
 from bumps.fitters import DreamFit, LevenbergMarquardtFit, SimplexFit, DEFit, MPFit, BFGSFit, FitDriver, fit, nllf_scale, format_uncertainty
 from bumps.mapper import MPMapper
-from bumps.parameter import Parameter, Variable, unique
+from bumps.parameter import Parameter, Constant, Variable, unique
 import bumps.cli
 import bumps.fitproblem
 import bumps.dream.views, bumps.dream.varplot, bumps.dream.stats, bumps.dream.state
@@ -925,20 +925,28 @@ def params_to_list(params, lookup=None, pathlist=None, links=None) -> List[Param
                 new_pathlist.append("")
             new_pathlist[-1] = f"{new_pathlist[-1]}[{i:d}]"
             params_to_list(v, lookup=lookup, pathlist=new_pathlist)
-    elif isinstance(params, Parameter):
+    elif isinstance(params, Parameter) or isinstance(params, Constant):
         path = ".".join(pathlist)
         existing = lookup.get(params.id, None)
         if existing is not None:
             existing["paths"].append(".".join(pathlist))
         else:
             value_str = VALUE_FORMAT.format(nice(params.value))
-            has_prior = params.has_prior()
+            if hasattr(params, "has_prior"):
+                has_prior = params.has_prior()
+            else:
+                has_prior = False
+
+            if hasattr(params, "slot"):
+                writable = type(params.slot) in [Variable, Parameter]
+            else:
+                writable = False
             new_item: ParamInfo = { 
                 "id": params.id,
                 "name": str(params.name),
                 "paths": [path],
                 "tags": getattr(params, 'tags', []),
-                "writable": type(params.slot) in [Variable, Parameter], 
+                "writable": writable,
                 "value_str": value_str, "fittable": params.fittable, "fixed": params.fixed }
             if has_prior:
                 assert(params.prior is not None)
