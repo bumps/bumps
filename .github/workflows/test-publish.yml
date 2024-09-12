@@ -24,7 +24,7 @@ jobs:
 
     - name: build webview
       run: |
-        cd bumps/webview
+        cd bumps/webview/client
         npm install
         npm run build_prod
 
