@@ -55,8 +55,8 @@ jobs:
           - { os: ubuntu-latest, py: "3.10" }
           - { os: ubuntu-latest, py: 3.11 }
           - { os: ubuntu-latest, py: 3.12 }
-          - { os: windows-latest, py: 3.9 }
-          - { os: macos-latest, py: 3.9 }
+          - { os: windows-latest, py: "3.10" }
+          - { os: macos-latest, py: "3.10" }
       fail-fast: false
 
     steps:
@@ -125,6 +125,4 @@ jobs:
 
     - name: Upload the wheel to PyPI
       uses: pypa/gh-action-pypi-publish@v1.5.1
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_API_TOKEN }}
+
