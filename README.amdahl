@@ -1,12 +1,17 @@
-To use the compiled de stepper and bounds checks use:
+For large fits across mutliple nodes you may find that the proposal step is a bottleneck.
+The compiled DE stepper can speed this up by a factor of 2 compared to the numba
+version that is usually used. This might help on large allocations, but not enough
+to support it in the automatic build infrastructure.
+
+To use the compiled de stepper and bounds checks on unix use:
 
     (cd bumps/dream && cc compiled.c -I ../../Random123/include/ -O2 -fopenmp -shared -lm -o _compiled.so -fPIC -DMAX_THREADS=64)
 
-Note: OS/X clang doesn't support OpenMP:
+On OS/X clang doesn't support OpenMP:
 
     (cd bumps/dream && cc compiled.c -I ../../Random123/include/ -O2 -shared -lm -o _compiled.so -fPIC -DMAX_THREADS=64)
 
-MSVC on windows using Visual Studio build tools (2022) [not yet working]:
+MSVC on windows using Visual Studio build tools (2022):
 
     % set up compiler environment
     "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" x86_amd64

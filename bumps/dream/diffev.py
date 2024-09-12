@@ -63,7 +63,7 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
     differential evolution step. The number of pairs is chosen at random, with
     the difference vectors between the pairs averaged when creating the DE step.
 
-    *eps* determines the noise added to the DE step.
+    *eps* determines the jitter added to the DE step.
 
     *snooker_rate* determines the probability of using the snooker stepper.
     Otherwise use DE stepper 80% of the time, or apply the difference between
@@ -71,9 +71,9 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
 
     *scale=1* scales the difference vector (constant, not stochastic)
 
-    *noise=1e-6* adds random noise to the difference vector. This noise is relative
-    rather than absolute in case the parameter value is far from 1.0. Noise
-    is also scaled by *scale*.
+    *noise=1e-6* adds random noise to the non-zero components of the
+    difference vector. This noise is relative rather than absolute to allow
+    for parameter values far from 1.0. Noise is also scaled by *scale*.
     """
     Npop, Nvar = pop.shape
 
@@ -103,8 +103,10 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
             k = rng.randint(max_pairs)+1
             # [PAK: same as k = DEversion[qq, 1] in matlab version]
 
+            # TODO: make sure we don't fail if too few chains.
             # Select 2*k members at random different from the current member
             perm = draw(2*k, Npop-1)
+            # TODO: rewrite draw so that it accepts a not_matching int
             perm[perm >= qq] += 1
             r1, r2 = perm[:k], perm[k:2*k]
 
@@ -207,13 +209,13 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
 
 def _check():
     from numpy import arange, vstack, ascontiguousarray
-    max_pairs, snooker_rate, eps, scale = 2, 0.1, 0.05, 1.0
-    nchain, npop, nvar = 4, 10, 7
+    max_pairs, snooker_rate, eps, noise, scale = 2, 0.1, 0.05, 1e-6, 1.0
+    nchain, npop, nvar, ncr = 4, 10, 7, 4
 
     pop = 100*arange(npop*nvar, dtype='d').reshape((npop, nvar))
     pop = pop*(1+rng.rand(*pop.shape)*0.1)
-    ratios = 1./(rng.randint(4, size=nvar)+1)
-    weights = [1/nvar] * nvar
+    ratios = 1./(rng.randint(4, size=ncr)+1) # 4 => ratios in [0.2, 0.25, 0.333, 0.5, 1.0]
+    weights = [1/ncr] * ncr  # equal-weight for each CR
     #print(ratios, weights)
     CR = ascontiguousarray(vstack((ratios, weights)).T, dtype='d')
     work = lambda: de_step(nchain, pop, CR, max_pairs=max_pairs, eps=eps)
@@ -238,9 +240,11 @@ population.
         from .compiled import dll
         dll_work = lambda: dll.de_step(
             nchain, nvar, len(CR),
-            pop.ctypes, CR.ctypes, max_pairs,
-            c_double(snooker_rate),
+            pop.ctypes, CR.ctypes,
+            max_pairs,
             c_double(eps),
+            c_double(snooker_rate),
+            c_double(noise),
             c_double(scale),
             x_new.ctypes,
             _step_alpha.ctypes,
@@ -249,8 +253,7 @@ population.
 
         print("small pop time (ms)", timeit(work, number=10000)/10)
         if dll:
-            print("trying to run C")
-            print("small pop time compiled (ms)", timeit(dll_work, number=2))
+            print("small pop time compiled (ms)", timeit(dll_work, number=10000)/10)
         else:
             print("no dlls")
 
@@ -258,10 +261,10 @@ population.
         npop = nchain
         pop = 100*arange(npop*nvar, dtype='d').reshape((npop, nvar))
         pop = pop*(1+rng.rand(*pop.shape)*0.1)
-        print("large pop time (ms)", timeit(work, number=1000))
+        print("large pop time (ms)", timeit(work, number=100))
         if dll:
             x_new, _step_alpha, used = work() # need this line to define new return vectors for dll
-            #print("large pop time compiled (ms)", timeit(dll_work, number=10000)/10)
+            print("large pop time compiled (ms)", timeit(dll_work, number=100))
 
 if __name__ == "__main__":
     _check()
