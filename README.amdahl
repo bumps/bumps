@@ -6,6 +6,13 @@ Note: OS/X clang doesn't support OpenMP:
 
     (cd bumps/dream && cc compiled.c -I ../../Random123/include/ -O2 -shared -lm -o _compiled.so -fPIC)
 
+MSVC on windows using Visual Studio build tools (2022) [not yet working]:
+
+    % set up compiler environment
+    "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" x86_amd64
+    cd bumps\dream
+    cl compiled.c -I ..\..\Random123\include /O2 /openmp /LD /GL /Fe_compiled.so
+
 This only works when _compiled.so is in the bumps/dream directory.  If running
 from a pip installed version, you will need to fetch the bumps repository:
 
