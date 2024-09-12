@@ -56,10 +56,7 @@ homepage = "https://bumps.readthedocs.io"
 repository = "https://github.com/bumps/bumps"
 
 [build-system]
-requires = [
-    "setuptools",
-    "versioningit"
-]
+requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.dynamic]
