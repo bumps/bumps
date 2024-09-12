@@ -15,6 +15,5 @@ Contents
    getting_started/index.rst
    tutorial/index.rst
    guide/index.rst
-   developer/index.rst
    api/index.rst
    dream/index.rst
