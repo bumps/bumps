@@ -19,16 +19,24 @@ def draw(k, n):
     Select k things from a pool of n without replacement.
     """
     # At k == n/4, an extra 0.15*k draws are needed to get k unique draws
+    # TODO: silently returns too few values if k > n
     if k > n/4:
         result = rng.permutation(n)[:k]
     else:
-        s = set()
         result = np.empty(k, np.int64)
         for i in range(k):
-            p = rng.randint(n)
-            while p in s:
+            # select an item not already selected
+            while True:
                 p = rng.randint(n)
-            s.add(p)
+                for j in range(i):
+                    # if there is a match then break out of the for-loop and
+                    # go to the next while iteration, generating a new proposal
+                    if j == p:
+                        break
+                # unusual syntax: if you make it to the end of the for loop
+                # then there were no matches, so break out of the while loop
+                else:
+                    break
             result[i] = p
     return result
 
