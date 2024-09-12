@@ -24,7 +24,7 @@ jobs:
         python -m pip install -e .[dev]
 
     - name: Create the wheel
-      run: python -m build --wheel --no-isolation
+      run: python -m build
 
     - name: Upload the wheel artifact
       uses: actions/upload-artifact@v3
