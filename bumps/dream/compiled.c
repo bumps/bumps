@@ -7,6 +7,10 @@ Differential evolution MCMC stepper.
 
 #include <stdio.h>  // for debugging
 
+#if defined(_M_X64)
+   #define DLL_EXPORT __declspec(dllexport)
+#endif
+
 // Random library with a separate generator for each thread of
 // an OpenMP threaded program.  Assumes max 64 threads.  If OpenMP is
 // not available, then operates single threaded.
@@ -14,6 +18,11 @@ Differential evolution MCMC stepper.
 #include <omp.h>
 #else
 #define omp_get_thread_num() 0
+#endif
+
+// M_PI missing from MSVC math.h
+#ifndef M_PI
+#  define M_PI 3.141592653589793
 #endif
 
 // Limit to the number of threads so static thread-local data can be
@@ -370,7 +379,7 @@ _perform_step(int qq, int Nchain, int Nvar, int NCR,
 
 }
 
-void
+DLL_EXPORT void
 de_step(int Nchain, int Nvar, int NCR,
         double pop[], double CR[][2],
         int max_pairs, double eps,
@@ -387,6 +396,7 @@ de_step(int Nchain, int Nvar, int NCR,
     #ifdef _OPENMP
     #pragma omp parallel for
     #endif
+    //printf("calling step\n")
     for (qq = 0; qq < Nchain; qq++) {
         _perform_step(qq, Nchain, Nvar, NCR, pop, CR,
                       max_pairs, eps, snooker_rate, de_rate,
@@ -395,7 +405,8 @@ de_step(int Nchain, int Nvar, int NCR,
 }
 
 
-void bounds_reflect(int Nchain, int Nvar, double pop[], double low[], double high[])
+DLL_EXPORT void 
+bounds_reflect(int Nchain, int Nvar, double pop[], double low[], double high[])
 {
     int k, p, idx;
 
@@ -418,7 +429,8 @@ void bounds_reflect(int Nchain, int Nvar, double pop[], double low[], double hig
 }
 
 
-void bounds_clip(int Nchain, int Nvar, double pop[], double low[], double high[])
+DLL_EXPORT void 
+bounds_clip(int Nchain, int Nvar, double pop[], double low[], double high[])
 {
     int k, p, idx;
 
@@ -438,7 +450,8 @@ void bounds_clip(int Nchain, int Nvar, double pop[], double low[], double high[]
 }
 
 
-void bounds_fold(int Nchain, int Nvar, double pop[], double low[], double high[])
+DLL_EXPORT void
+bounds_fold(int Nchain, int Nvar, double pop[], double low[], double high[])
 {
     int k, p, idx;
 
@@ -469,7 +482,8 @@ void bounds_fold(int Nchain, int Nvar, double pop[], double low[], double high[]
 }
 
 
-void bounds_random(int Nchain, int Nvar, double pop[], double low[], double high[])
+DLL_EXPORT void
+bounds_random(int Nchain, int Nvar, double pop[], double low[], double high[])
 {
     int k, p, idx;
 
@@ -497,6 +511,7 @@ void bounds_random(int Nchain, int Nvar, double pop[], double low[], double high
 }
 
 
-void bounds_ignore(int Nchain, int Nvar, double pop[], double low[], double high[])
+DLL_EXPORT void
+bounds_ignore(int Nchain, int Nvar, double pop[], double low[], double high[])
 {
 }

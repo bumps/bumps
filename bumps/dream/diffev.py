@@ -12,6 +12,7 @@ from numpy.linalg import norm
 from .util import draw, rng
 
 try:
+    #raise ImportError("skip numpy")
     from numba import njit, prange
     @njit(cache=True)
     def pchoice(choices, size=0, replace=True, p=None):
@@ -45,9 +46,34 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
     """
     Generates offspring using METROPOLIS HASTINGS monte-carlo markov chain
 
-    The number of chains may be smaller than the population size if the
-    population is selected from both the current generation and the
-    ancestors.
+    *Nchain* is the number of simultaneous changes that are running.
+
+    *pop* is an array of shape [Npop x Nvar] providing the active points used
+    to generate the next proposal for each chain. This may be larger than the
+    Nchains if the caller is using ancestor generations for active population.
+    The current population is assumed to be the first *Nchain* rows of *pip*..
+
+    *CR* is an array of [Ncrossover x 2] crossover ratios with weights. The
+    crossover ratio is the probability of selecting a particular dimension when
+    generating the difference vector. The weights are used to select the
+    crossover ratio. The weights are adjusted dynamically during the fit based
+    on the acceptance rate of points generated with each crossover ratio.
+
+    *max_pairs* determines the maximum number of pairs which contribute to the
+    differential evolution step. The number of pairs is chosen at random, with
+    the difference vectors between the pairs averaged when creating the DE step.
+
+    *eps* determines the noise added to the DE step.
+
+    *snooker_rate* determines the probability of using the snooker stepper.
+    Otherwise use DE stepper 80% of the time, or apply the difference between
+    pairs the other 20% of the time.
+
+    *scale=1* scales the difference vector (constant, not stochastic)
+
+    *noise=1e-6* adds random noise to the difference vector. This noise is relative
+    rather than absolute in case the parameter value is far from 1.0. Noise
+    is also scaled by *scale*.
     """
     Npop, Nvar = pop.shape
 
@@ -55,7 +81,7 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
     delta_x = zeros((Nchain, Nvar))
     step_alpha = ones(Nchain)
 
-    # Choose snooker, de or direct according to snooker_rate, and 80:20
+    # Choose snooker, de or direct according` to snooker_rate, and 80:20
     # ratio of de to direct.
     u = rng.rand(Nchain)
     de_rate = 0.8 * (1-snooker_rate)
@@ -84,9 +110,10 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
 
             # Select the dims to update based on the crossover ratio, making
             # sure at least one dim is selected
-            vars = where(rng.rand(Nvar) > CR_used[qq])[0]
+            vars = where(rng.rand(Nvar) <= CR_used[qq])[0]
             if len(vars) == 0:
                 vars = array([rng.randint(Nvar)])
+            #print("for chain", qq, CR_used[qq], "% update", vars)
 
             # Weight the size of the jump inversely proportional to the
             # number of contributions, both from the parameters being
@@ -156,6 +183,9 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
 
     # Update x_old with delta_x and noise
     delta_x *= scale
+    #print("alg", alg)
+    #print("CR_used", CR_used)
+    #print("delta_x", delta_x)
 
     # [PAK] The noise term needs to depend on the fitting range
     # of the parameter rather than using a fixed noise value for all
@@ -176,23 +206,62 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
 
 
 def _check():
-    from numpy import arange
-    nchain, npop, nvar = 4, 10, 3
+    from numpy import arange, vstack, ascontiguousarray
+    max_pairs, snooker_rate, eps, scale = 2, 0.1, 0.05, 1.0
+    nchain, npop, nvar = 4, 10, 7
 
-    pop = 100*arange(npop*nvar).reshape((npop, nvar))
-    pop += rng.rand(*pop.shape)*1e-6
-    cr = 1./(rng.randint(4, size=nvar)+1)
-    x_new, _step_alpha, used = de_step(nchain, pop, cr, max_pairs=2, eps=0.05)
+    pop = 100*arange(npop*nvar, dtype='d').reshape((npop, nvar))
+    pop = pop*(1+rng.rand(*pop.shape)*0.1)
+    ratios = 1./(rng.randint(4, size=nvar)+1)
+    weights = [1/nvar] * nvar
+    #print(ratios, weights)
+    CR = ascontiguousarray(vstack((ratios, weights)).T, dtype='d')
+    work = lambda: de_step(nchain, pop, CR, max_pairs=max_pairs, eps=eps)
+    x_new, _step_alpha, used = work()
+    #print(f"{pop=}")
+    #print(f"{x_new=}")
+    #print(f"{_step_alpha=}")
+    #print(f"{used=}")
     print("""\
 The following table shows the expected portion of the dimensions that
 are changed and the rounded value of the change for each point in the
 population.
 """)
-    for r, i, u in zip(cr, range(8), used):
-        rstr = ("%3d%% " % (r*100)) if u else "full "
-        vstr = " ".join("%4d" % (int(v/100+0.5)) for v in x_new[i]-pop[i])
+    for k, u in enumerate(used):
+        rstr = f"{int(u*100):4d}% " if u else " full "
+        vstr = " ".join(f"{v:.2f}" for v in x_new[k]-pop[k])
         print(rstr+vstr)
 
+    if 1: # timing check
+        from timeit import timeit
+        from ctypes import c_double
+        from .compiled import dll
+        dll_work = lambda: dll.de_step(
+            nchain, nvar, len(CR),
+            pop.ctypes, CR.ctypes, max_pairs,
+            c_double(snooker_rate),
+            c_double(eps),
+            c_double(scale),
+            x_new.ctypes,
+            _step_alpha.ctypes,
+            used.ctypes,
+            )
+
+        print("small pop time (ms)", timeit(work, number=10000)/10)
+        if dll:
+            print("trying to run C")
+            print("small pop time compiled (ms)", timeit(dll_work, number=2))
+        else:
+            print("no dlls")
+
+        nchain, nvar = 1000, 50
+        npop = nchain
+        pop = 100*arange(npop*nvar, dtype='d').reshape((npop, nvar))
+        pop = pop*(1+rng.rand(*pop.shape)*0.1)
+        print("large pop time (ms)", timeit(work, number=1000))
+        if dll:
+            x_new, _step_alpha, used = work() # need this line to define new return vectors for dll
+            #print("large pop time compiled (ms)", timeit(dll_work, number=10000)/10)
 
 if __name__ == "__main__":
     _check()
