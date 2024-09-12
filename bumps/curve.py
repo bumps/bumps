@@ -43,6 +43,7 @@ __all__ = ["Curve", "PoissonCurve", "plot_err"]
 
 import inspect
 import warnings
+from typing import Callable
 
 import numpy as np
 from numpy import log, pi, sqrt
@@ -234,6 +235,7 @@ class Curve(object):
         self._state = state
         self._plot = plot
         self._cached_theory = None
+        self._plot_callbacks = {}
 
     def update(self):
         self._cached_theory = None
@@ -345,6 +347,19 @@ class Curve(object):
 
             pylab.subplot2grid((plot_ratio, 1), (plot_ratio-1, 0), sharex=h)
             _plot_resids(x, resid, colors=colors, labels=labels, view=view)
+
+    def register_webview_plot(self, plot_title: str, plot_function: Callable):
+        # Plot function syntax: f(model, problem, state)
+        
+        self._plot_callbacks.update({plot_title: plot_function})
+
+    def get_plot_titles(self):
+
+        return list(self._plot_callbacks.keys())
+    
+    def get_plot(self, title, problem, state):
+
+        return self._plot_callbacks[title](self, problem, state)
 
 def _plot_resids(x, resid, colors, labels, view):
     import pylab

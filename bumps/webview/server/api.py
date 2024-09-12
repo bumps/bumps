@@ -13,6 +13,7 @@ import json
 from copy import deepcopy
 import os
 import uuid
+import traceback
 
 from bumps.fitters import DreamFit, LevenbergMarquardtFit, SimplexFit, DEFit, MPFit, BFGSFit, FitDriver, fit, nllf_scale, format_uncertainty
 from bumps.mapper import MPMapper
@@ -26,7 +27,7 @@ from .state_hdf5_backed import UNDEFINED, UNDEFINED_TYPE, State, serialize_probl
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
 from .varplot import plot_vars
 from .logger import logger, console_handler
-
+from .custom_plot import process_custom_plot, CustomWebviewPlot
 
 REGISTRY: Dict[str, Callable] = {}
 MODEL_EXT = '.json'
@@ -550,6 +551,49 @@ async def get_model():
     fitProblem = state.problem.fitProblem
     serialized = serialize_problem(fitProblem, 'dataclass') if state.problem.serializer == 'dataclass' else 'null'
     return serialized
+
+@register
+async def get_custom_plot_names():
+    if state.problem is None or state.problem.fitProblem is None:
+        return None
+    fitProblem = state.problem.fitProblem
+    output: List[Dict[int, str]] = []
+    for model_index, model in enumerate(fitProblem.models):
+        output += [dict(model_index=model_index,
+                        name=title)
+                        for title in model.get_plot_titles()]
+    return output
+
+async def create_custom_plot(model_index: int, plot_title: str) -> CustomWebviewPlot:
+
+    if state.problem is None or state.problem.fitProblem is None:
+        return None
+    fitProblem = deepcopy(state.problem.fitProblem)
+    uncertainty_state = state.fitting.uncertainty_state
+
+    # update model
+    model = list(fitProblem.models)[model_index]
+    if plot_title in model.get_plot_titles():
+        try:
+            model.update()
+            model.nllf()
+            plot_item: CustomWebviewPlot = model.get_plot(plot_title, fitProblem, uncertainty_state)
+        except:
+            plot_item = CustomWebviewPlot(fig_type='error',
+                                          plotdata=traceback.format_exc())
+
+        return process_custom_plot(plot_item)
+            
+    return {}
+   
+@register
+async def get_custom_plot(model_index: int, plot_title: str):
+    output = CustomWebviewPlot(figtype='error', plotdata='no plot')
+    if model_index is not None:
+        figdict = await create_custom_plot(model_index=model_index, plot_title=plot_title)
+        
+    output = to_json_compatible_dict(figdict)
+    return output
 
 @register
 async def get_convergence_plot():

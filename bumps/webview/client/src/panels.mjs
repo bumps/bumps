@@ -8,6 +8,7 @@ import CorrelationView from './components/CorrelationViewPlotly.vue';
 import ParameterTraceView from './components/ParameterTraceView.vue';
 import ModelUncertaintyView from './components/ModelUncertaintyView.vue';
 import UncertaintyView from './components/UncertaintyView.vue';
+import CustomPlot from './components/CustomPlot.vue';
 import History from './components/History.vue';
 
 export const panels = [
@@ -22,5 +23,6 @@ export const panels = [
     {title: 'Trace', component: ParameterTraceView},
     {title: 'Model Uncertainty', component: ModelUncertaintyView},
     {title: 'Uncertainty', component: UncertaintyView},
+    {title: 'Custom', component: CustomPlot}
   ];
   
