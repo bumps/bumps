@@ -22,9 +22,9 @@ from the latest tag in the git repository.
 
 2. Add release notes and commit to master.
 
-3. Create the new tag and push it to the remote. Pushing a tag starts the GitHub workflow to publish
-to PyPI (defined in `.github/workflows/pypi-publish.yml
-<https://github.com/bumps/bumps/tree/master/.github/workflows/pypi-publish.yml>`_)::
+3. Create the new tag and push it to the remote. Pushing a tag starts the GitHub workflow job to
+publish to PyPI (defined in `.github/workflows/test-publish.yml
+<https://github.com/bumps/bumps/blob/master/.github/workflows/test-publish.yml>`_)::
 
     $ git tag v1.0.0
     $ versioningit
