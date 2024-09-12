@@ -18,6 +18,16 @@ jobs:
       with:
         python-version: '3.10'
 
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 20
+
+    - name: build webview
+      run: |
+        cd bumps/webview/client
+        npm install
+        npm run build_prod
+
     - name: Install dependencies for building the wheel
       run: |
         python -m pip install --upgrade pip
