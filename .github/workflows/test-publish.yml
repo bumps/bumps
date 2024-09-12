@@ -123,6 +123,5 @@ jobs:
         name: wheel
         path: dist
 
-    - name: Upload the wheel to PyPI
-      uses: pypa/gh-action-pypi-publish@v1.5.1
-
+    - name: Publish package distributions to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
