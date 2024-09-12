@@ -51,23 +51,19 @@ from __future__ import division, with_statement
 
 __all__ = ['Fitness', 'FitProblem', 'load_problem']
 
-import sys
-import os
-import traceback
+from dataclasses import dataclass
 import logging
+import os
+import sys
+import traceback
 import warnings
-import builtins
-
-from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 from numpy import inf, isnan, nan
 
-from . import parameter, bounds as mbounds
-from .parameter import to_dict, Parameter, Expression, Variable, tag_all
+from . import parameter, util
+from .parameter import to_dict, Parameter, Variable, tag_all
 from .formatnum import format_uncertainty
-from . import util
 
 
 # Abstract base class:
@@ -88,9 +84,6 @@ class Fitness(util.Protocol):
         model parameters are a hierarchical structure of lists and
         dictionaries.
         """
-        raise NotImplementedError()
-
-    def to_dict(self):
         raise NotImplementedError()
 
     def update(self):
