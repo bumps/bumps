@@ -36,7 +36,6 @@ dev = [
     'wheel',
     'setuptools',
     'sphinx',
-    'versioningit'
 ]
 webview = [
     'aiohttp',
