@@ -51,3 +51,33 @@ to merge with the main repository.
 
 Please make sure that the documentation is up to date, and can be properly
 processed by the sphinx documentation system.  See `_docbuild` for details.
+
+Creating a New Release
+======================
+
+A developer with maintainer status can tag a new release and publish a package to the `Python
+Package Index (PyPI) <https://pypi.org/project/bumps/>`_. Bumps uses
+`versioningit <https://versioningit.readthedocs.io/>`_ to generate the version number
+from the latest tag in the git repository.
+
+1. Update the local copy of the master branch::
+
+    $ # update information from all remotes
+    $ git fetch -p -P -t --all
+    $ # update local copy of master
+    $ git checkout master
+    $ git rebase origin/master
+    $ # check the current version number (latest tag v0.9.3 + 656 commits)
+    $ versioningit
+    0.9.4.dev656
+
+2. Add release notes and commit to master.
+
+3. Create the new tag and push it to the remote. Pushing a tag starts the GitHub workflow job to
+publish to PyPI (defined in `.github/workflows/test-publish.yml
+<https://github.com/bumps/bumps/blob/master/.github/workflows/test-publish.yml>`_)::
+
+    $ git tag v1.0.0
+    $ versioningit
+    1.0.0
+    $ git push origin --tags master
