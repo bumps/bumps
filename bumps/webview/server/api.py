@@ -574,11 +574,12 @@ async def get_custom_plot_names():
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = state.problem.fitProblem
-    output: List[Dict[int, str]] = []
+    output: List[dict] = []
     for model_index, model in enumerate(fitProblem.models):
         output += [dict(model_index=model_index,
+                        change_with=plotinfo['change_with'],
                         name=title)
-                        for title in model.get_plot_titles()]
+                   for title, plotinfo in model._plot_callbacks.items()]
     return output
 
 async def create_custom_plot(model_index: int, plot_title: str) -> CustomWebviewPlot:
@@ -590,11 +591,11 @@ async def create_custom_plot(model_index: int, plot_title: str) -> CustomWebview
 
     # update model
     model = list(fitProblem.models)[model_index]
-    if plot_title in model.get_plot_titles():
+    if plot_title in model._plot_callbacks.keys():
         try:
             model.update()
             model.nllf()
-            plot_item: CustomWebviewPlot = model.get_plot(plot_title, fitProblem, uncertainty_state)
+            plot_item: CustomWebviewPlot = await asyncio.to_thread(model.create_webview_plot, plot_title, fitProblem, uncertainty_state)
         except:
             plot_item = CustomWebviewPlot(fig_type='error',
                                           plotdata=traceback.format_exc())

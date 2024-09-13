@@ -8,11 +8,12 @@ import type { AsyncSocket } from '../asyncSocket.ts';
 import { setupDrawLoop } from '../setupDrawLoop';
 import { configWithSVGDownloadButton } from '../plotly_extras.mjs';
 
-type PlotNameInfo = {name: string, model_index: number};
+type PlotNameInfo = {name: string, change_with: string, model_index: number};
+const title = 'Custom'
 const plot_div = ref<HTMLDivElement | null>(null);
 const plot_div_id = ref(`div-${uuidv4()}`);
 const plot_title_names = ref<PlotNameInfo[]>([]);
-const current_plot_name = ref<PlotNameInfo>({"name": "", "model_index": 0});
+//const current_plot_name = ref<PlotNameInfo>({"name": "", "change_with": "parameters", "model_index": 0});
 const current_plot_index = ref<number>(0);
 const error_text = ref<string>("")
 
@@ -33,7 +34,7 @@ async function get_custom_plot_names() {
   if (new_names == null) {
     return;
   }
-  plot_title_names.value = new_names
+  plot_title_names.value = new_names.filter(a => a.change_with === 'parameter')
   current_plot_index.value = 0
 }
 
