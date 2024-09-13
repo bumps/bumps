@@ -21,5 +21,6 @@ def process_custom_plot(plot_item: CustomWebviewPlot) -> CustomWebviewPlot:
     
     del plot_data # is this necessary? Does plot_item['plot_data'] also need to be deleted?
     
-    return CustomWebviewPlot(fig_type=figtype, plotdata=figdict)
+    return CustomWebviewPlot(fig_type=figtype,
+                             plotdata=figdict)
 

@@ -10,6 +10,7 @@ import ModelUncertaintyView from './components/ModelUncertaintyView.vue';
 import UncertaintyView from './components/UncertaintyView.vue';
 import CustomPlot from './components/CustomPlot.vue';
 import History from './components/History.vue';
+import CustomUncertaintyPlot from './components/CustomUncertaintyPlot.vue';
 
 export const panels = [
     {title: 'Data', component: DataView},
@@ -23,6 +24,7 @@ export const panels = [
     {title: 'Trace', component: ParameterTraceView},
     {title: 'Model Uncertainty', component: ModelUncertaintyView},
     {title: 'Uncertainty', component: UncertaintyView},
-    {title: 'Custom', component: CustomPlot}
+    {title: 'Custom', component: CustomPlot},
+    {title: 'Custom Uncertainty', component: CustomUncertaintyPlot}
   ];
   
