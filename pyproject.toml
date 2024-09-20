@@ -65,8 +65,8 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.dynamic]
 version = { attr = "bumps.__version__" }
 
-[tool.setuptools]
-packages = ['bumps', 'bumps.dream', 'bumps.gui', 'bumps.mystic', 'bumps.webview.server']
+[tool.setuptools.packages.find]
+include = ["bumps*"]
 
 [tool.versioningit.vcs]
 method = "git"
