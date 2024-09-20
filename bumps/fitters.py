@@ -1305,3 +1305,36 @@ def fit(problem, method=FIT_DEFAULT_ID, verbose=False, **options):
     if hasattr(driver.fitter, 'state'):
         result.state = driver.fitter.state
     return result
+
+def test_fitters():
+    """
+    Run the fit tests to make sure they work.
+    """
+    from .curve import Curve
+    from .fitproblem import FitProblem
+
+    x = [1, 2, 3, 4, 5, 6]
+    y = [2.1, 4.0, 6.3, 8.03, 9.6, 11.9]
+    dy = [0.05, 0.05, 0.2, 0.05, 0.2, 0.2]
+
+    def line(x, m, b=0):
+        return m*x + b
+
+    M = Curve(line, x, y, dy, m=2, b=2)
+    M.m.range(0, 4)
+    M.b.range(-5, 5)
+
+    problem = FitProblem(M)
+
+    # Set the tolerance for the tests (relative)
+    fit_value_tol = 1e-3
+    fit_error_tol = 1e-3
+    expected_value = [1.106e-1, 1.970]
+    expected_error = [5.799e-2, 2.055e-2]
+
+    for fitter_name in FIT_ACTIVE_IDS:
+        result = fit(problem, method=fitter_name, verbose=False)
+        assert np.allclose(result.x, expected_value, rtol=fit_value_tol)
+        if fitter_name != "dream":
+            # dream error bars vary too much to test
+            assert np.allclose(result.dx, expected_error, rtol=fit_error_tol)
