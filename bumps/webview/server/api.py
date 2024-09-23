@@ -587,7 +587,7 @@ async def create_custom_plot(model_index: int, plot_title: str) -> CustomWebview
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = deepcopy(state.problem.fitProblem)
-    uncertainty_state = state.fitting.uncertainty_state
+    uncertainty_state = deepcopy(state.fitting.uncertainty_state)
 
     # update model
     model = list(fitProblem.models)[model_index]
