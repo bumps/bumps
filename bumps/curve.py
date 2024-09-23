@@ -44,6 +44,7 @@ __all__ = ["Curve", "PoissonCurve", "plot_err"]
 import inspect
 import warnings
 from typing import Callable, Literal
+from copy import deepcopy
 
 import numpy as np
 from numpy import log, pi, sqrt
@@ -360,7 +361,7 @@ class Curve(object):
 
     def create_webview_plot(self, title, problem, state):
 
-        return self._plot_callbacks[title]['func'](self, problem, state)
+        return self._plot_callbacks[title]['func'](deepcopy(self), problem, state)
 
 def _plot_resids(x, resid, colors, labels, view):
     import pylab
