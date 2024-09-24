@@ -412,8 +412,7 @@ async def start_fit_thread(fitter_id: str="", options=None, terminate_on_finish=
             uncertainty_update=state.shared.autosave_session_interval,
             terminate_on_finish=terminate_on_finish,
             )
-        await emit("fit_progress", {}) # clear progress
-        state.shared.active_fit = to_json_compatible_dict(dict(fitter_id=fitter_id, options=options, num_steps=num_steps))
+        state.shared.active_fit = to_json_compatible_dict(dict(fitter_id=fitter_id, options=options, num_steps=num_steps, step=0, chisq="", value=0))
         await log(json.dumps(to_json_compatible_dict(options), indent=2), title = f"starting fitter {fitter_id}")
         state.autosave()
         fit_thread.start()
@@ -445,7 +444,9 @@ async def _fit_progress_handler(event: Dict):
         state.fitting.population = event["pop"]
         state.shared.updated_convergence = now_string()
     elif message == 'progress':
-        await emit("fit_progress", to_json_compatible_dict(event))
+        active_fit = state.shared.active_fit
+        active_fit.update({"step": event["step"], "chisq": event["chisq"]})
+        state.shared.active_fit = active_fit
     elif message == 'uncertainty_update' or message == 'uncertainty_final':
         state.fitting.uncertainty_state = cast(bumps.dream.state.MCMCDraw, event["uncertainty_state"])
         state.shared.updated_uncertainty = now_string()

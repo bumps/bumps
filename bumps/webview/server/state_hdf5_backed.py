@@ -530,6 +530,9 @@ class ActiveFit(TypedDict):
     fitter_id: str
     options: Dict[str, Any]
     num_steps: int
+    step: int
+    chisq: str
+    value: float
 
 class FileInfo(TypedDict):
     filename: str
