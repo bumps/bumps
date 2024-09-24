@@ -4,7 +4,6 @@ on:
     # Pattern matched against refs/tags
     tags:        
       - 'client-v*'           # Push events to every tag like client-v0.6.15
-  workflow_dispatch:
 
 jobs:
   build:
@@ -19,8 +18,10 @@ jobs:
         with:
           node-version: '20.x'
           registry-url: 'https://registry.npmjs.org'
-      - run: npm i
-      - run: npm run build_prod
-      - run: npm publish --provenance --access public
+      - run: |
+          cd bumps/webview/client
+          npm i
+          npm run build_prod
+      - run: cd bumps/webview/client && npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
