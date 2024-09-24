@@ -158,7 +158,7 @@ def wrap_with_sid(function: Callable):
     return with_sid
 
 def setup_sio_api():
-    api.emit = sio.emit
+    api.EMITTERS["socketio"] = sio.emit
     for (name, action) in api.REGISTRY.items():
         sio.on(name, handler=wrap_with_sid(action))
         rest_get(action)
