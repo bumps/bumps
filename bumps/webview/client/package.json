@@ -2,6 +2,11 @@
   "name": "bumps-webview-client",
   "version": "0.1.17",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bumps/bumps",
+    "directory": "bumps/webview/client"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build --emptyOutDir -m development",
