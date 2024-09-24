@@ -1,7 +1,7 @@
 from functools import lru_cache
 import itertools
 from types import GeneratorType
-from typing import Any, Callable, Coroutine, Dict, List, Literal, Mapping, Optional, Sequence, Union, Tuple, TypedDict, cast
+from typing import Any, Awaitable, Callable, Coroutine, Dict, List, Literal, Mapping, Optional, Protocol, Sequence, Union, Tuple, TypedDict, cast
 from datetime import datetime
 import numbers
 import warnings
@@ -47,18 +47,34 @@ def register(fn: Callable):
     REGISTRY[fn.__name__] = fn
     return fn
 
+class Emitter(Protocol):
+    def __call__(
+        self,
+        event: str,
+        data: Optional[Any] = None,
+        to: Optional[str] = None,
+        room: Optional[str] = None,
+        skip_sid: Optional[str] = None,
+        namespace: Optional[str] = None,
+        callback: Optional[Callable] = None,
+        ignore_queue: bool = False
+    ) -> Awaitable: ...
+
+EMITTERS: Dict[str, Emitter] = {}
+
 async def emit(
-    event: Any,
-    data: Optional[Any] = None,
-    to: Optional[Any] = None,
-    room: Optional[Any] = None,
-    skip_sid: Optional[Any] = None,
-    namespace: Optional[Any] = None,
-    callback: Optional[Any] = None,
-    ignore_queue: bool = False
-) -> Coroutine[Any, Any, None] :
-    # to be defined when initializing server
-    pass
+        event: str,
+        data: Optional[Any] = None,
+        to: Optional[str] = None,
+        room: Optional[str] = None,
+        skip_sid: Optional[str] = None,
+        namespace: Optional[str] = None,
+        callback: Optional[Callable] = None,
+        ignore_queue: bool = False):
+    results = {}
+    for emitter_name, emitter_fn in EMITTERS.items():
+        results[emitter_name] = await emitter_fn(event, data=data, to=to, room=room, skip_sid=skip_sid, namespace=namespace, callback=callback, ignore_queue=ignore_queue)
+    return results
 
 TopicNameType = Literal[
     "log", # log messages
@@ -786,7 +802,7 @@ async def set_shared_setting(setting: str, value: Any):
 async def notify_shared_setting(setting: str, value: Any):
     await emit(setting, to_json_compatible_dict(value))
 
-object.__setattr__(state.shared, 'notify', notify_shared_setting)
+state.shared._notification_callbacks["emit"] = notify_shared_setting
 
 @register
 async def get_topic_messages(topic: Optional[TopicNameType] = None, max_num=None) -> List[Dict]:
