@@ -115,6 +115,7 @@ class BumpsOptions:
     parallel: int = 0
     path: Optional[str] = None
     no_auto_history: bool = False
+    convergence_heartbeat: bool = False
 
 OPTIONS_CLASS = BumpsOptions
 
@@ -137,6 +138,7 @@ def get_commandline_options(arg_defaults: Optional[Dict]=None):
     parser.add_argument('--parallel', default=0, type=int, help='run fit using multiprocessing for parallelism; use --parallel=0 for all cpus')
     parser.add_argument('--path', default=None, type=str, help='set initial path for save and load dialogs')
     parser.add_argument('--no_auto_history', action='store_true', help='disable auto-appending problem state to history on load and at fit end')
+    parser.add_argument('--convergence_heartbeat', action='store_true', help='enable convergence heartbeat for jupyter kernel (keeps kernel alive during fit)')
     # parser.add_argument('-c', '--config-file', type=str, help='path to JSON configuration to load')
     namespace = OPTIONS_CLASS()
     if arg_defaults is not None:
@@ -162,6 +164,16 @@ def setup_sio_api():
     for (name, action) in api.REGISTRY.items():
         sio.on(name, handler=wrap_with_sid(action))
         rest_get(action)
+
+def enable_convergence_kernel_heartbeat():
+    from comm import create_comm
+    comm = create_comm(target_name="heartbeat")
+
+    async def send_heartbeat_on_convergence(event: str, *args, **kwargs):
+        if event == "updated_convergence":
+            comm.send({"status": "alive"})
+
+    api.EMITTERS["convergence_heartbeat"] = send_heartbeat_on_convergence
 
 def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPTIONS_CLASS()):
     # check if the locally-build site has the correct version:
@@ -289,6 +301,9 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
             loop.call_later(0.5, lambda: webbrowser.open_new_tab(f"http://{hostname}:{port}/"))
         app.on_startup.append(open_browser)
 
+    if options.convergence_heartbeat:
+        enable_convergence_kernel_heartbeat()
+
     if TRACE_MEMORY:
         import tracemalloc
         tracemalloc.start()
@@ -305,7 +320,7 @@ def main(options: Optional[OPTIONS_CLASS] = None, sock: Optional[socket.socket] 
     runsock = setup_app(options=options, sock=None)
     web.run_app(app, sock=runsock)
 
-async def start_app(options: OPTIONS_CLASS = OPTIONS_CLASS(), sock: socket.socket = None, jupyter_link: bool = False):
+async def start_app(options: OPTIONS_CLASS = OPTIONS_CLASS(), sock: socket.socket = None, jupyter_link: bool = False, jupyter_heartbeat: bool = False):
     # this function is called from jupyter notebook, so set headless = True
     options.headless = True
     # redirect logging to a list
@@ -316,6 +331,10 @@ async def start_app(options: OPTIONS_CLASS = OPTIONS_CLASS(), sock: socket.socke
     await runner.setup()
     site = web.SockSite(runner, sock=runsock)
     await site.start()
+
+    if jupyter_heartbeat:
+        enable_convergence_kernel_heartbeat()
+
     if jupyter_link:
         return open_tab_link()
     else:
