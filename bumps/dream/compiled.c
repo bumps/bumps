@@ -7,13 +7,24 @@ Differential evolution MCMC stepper.
 
 #include <stdio.h>  // for debugging
 
+#ifdef _MSC_VER
+    #define DLL_EXPORT __declspec(dllexport)
+#else
+    #define DLL_EXPORT
+#endif
+
 // Random library with a separate generator for each thread of
-// an OpenMP threaded program.  Assumes max 64 threads.  If OpenMP is
+// an OpenMP threaded program.  Assumes mafx 64 threads.  If OpenMP is
 // not available, then operates single threaded.
 #ifdef _OPENMP
 #include <omp.h>
 #else
 #define omp_get_thread_num() 0
+#endif
+
+// M_PI missing from MSVC math.h
+#ifndef M_PI
+#  define M_PI 3.141592653589793
 #endif
 
 // Limit to the number of threads so static thread-local data can be
@@ -138,10 +149,21 @@ double randu(void)
 // Specialized for k << n.  If n is large and k -> n then argsort on
 // a random uniform draw is a better bet.  If you don't want to exclude
 // any numbers, set not_matching to total_num.
+// TODO: raise an error instead of silently using replacement.
+// The current behaviour is good enough for this code base, so not fixing here.
 void rand_draw(int num_to_draw, int total_num, randint_t not_matching,
                randint_t p[])
 {
     int i, j;
+    // Handle the case where num_to_draw is too big
+    if (num_to_draw > total_num - 1) {
+        for (i = 0; i < total_num; i++) {
+            p[i] = i;
+        }
+        num_to_draw -= total_num;
+        p += total_num;
+    }
+    //printf("draw %d from %d != %llu\n", num_to_draw, total_num, not_matching);
     for (i=0; i < num_to_draw; i++) {
         while (1) {
             int proposed = randint(total_num);
@@ -151,7 +173,6 @@ void rand_draw(int num_to_draw, int total_num, randint_t not_matching,
                 p[i] = proposed;
                 break;
             }
-            // TODO: maybe check that num_to_draw is total_num + 1
         }
     }
 }
@@ -232,9 +253,9 @@ _perform_step(int qq, int Nchain, int Nvar, int NCR,
 //printf("pop in c: ");
 //for (k=0; k < Nvar; k++) printf("%g ", pop[qq*Nvar+k]);
 //printf("\n");
+//printf("alg: %d\n", alg);
     switch (alg) {
-    case _DE:  // Use DE with cross-over ratio
-        {
+    case _DE: { // Use DE with cross-over ratio
         int var, num_crossover, active;
         double crossover_ratio, CR_cdf, distance, jiggle;
 
@@ -289,10 +310,9 @@ _perform_step(int qq, int Nchain, int Nvar, int NCR,
         step_alpha[qq] = 1.;
 
         break;
-        }
+    }
 
-    case _SNOOKER: // Use snooker update
-        {
+    case _SNOOKER: { // Use snooker update
         double num, denom, gamma_scale;
 
         // Select current and three others
@@ -324,12 +344,12 @@ _perform_step(int qq, int Nchain, int Nvar, int NCR,
 
         CR_used[qq] = 0.;
         break;
-        }
+    }
 
-    case _DIRECT:  // Use one pair and all dimensions
-        {
+    case _DIRECT: { // Use one pair and all dimensions
         // Note that there is no F scaling, dimension selection or noise
         int p[2];
+
         rand_draw(2, Nchain, qq, chains);
         double *R1 = &pop[chains[0]*Nvar];
         double *R2 = &pop[chains[1]*Nvar];
@@ -338,10 +358,10 @@ _perform_step(int qq, int Nchain, int Nvar, int NCR,
         CR_used[qq] = 0.;
 
         break;
-        }
+    }
     }
 
-//printf("%d -> ", alg);
+//printf("alg %d -> ", alg);
 //for (k=0; k < Nvar; k++) printf("%g ", x_new[k]);
 //printf("\n");
 
@@ -359,7 +379,7 @@ _perform_step(int qq, int Nchain, int Nvar, int NCR,
 
     // relative noise
     for (k=0; k < Nvar; k++) x_new[k] += xin[k]*(1.+scale*noise*randn());
-//printf("%d -> ", alg);
+//printf("alg %d -> ", alg);
 //for (k=0; k < Nvar; k++) printf("%g ", x_new[k]);
 //printf("\n");
 
@@ -368,7 +388,7 @@ _perform_step(int qq, int Nchain, int Nvar, int NCR,
 
 }
 
-void
+DLL_EXPORT void
 de_step(int Nchain, int Nvar, int NCR,
         double pop[], double CR[][2],
         int max_pairs, double eps,
@@ -380,6 +400,10 @@ de_step(int Nchain, int Nvar, int NCR,
 
     //Choose snooker, de or direct according to snooker_rate, and 80:20
     // ratio of de to direct.
+
+    //printf("in de_step with (%d,%d,%d) pairs=%d eps=%g snooker=%g noise=%g scale=%g\n",
+    //Nchain, Nvar, NCR, max_pairs, eps, snooker_rate, noise, scale);
+    //printf("points pop=%p CR=%p x_new=%p step_alpha=%p CR_used=%p\n", pop, CR, x_new, step_alpha, CR_used);
 
     // Chains evolve using information from other chains to create offspring
     #ifdef _OPENMP
@@ -393,7 +417,8 @@ de_step(int Nchain, int Nvar, int NCR,
 }
 
 
-void bounds_reflect(int Nchain, int Nvar, double pop[], double low[], double high[])
+DLL_EXPORT void 
+bounds_reflect(int Nchain, int Nvar, double pop[], double low[], double high[])
 {
     int k, p, idx;
 
@@ -416,7 +441,8 @@ void bounds_reflect(int Nchain, int Nvar, double pop[], double low[], double hig
 }
 
 
-void bounds_clip(int Nchain, int Nvar, double pop[], double low[], double high[])
+DLL_EXPORT void 
+bounds_clip(int Nchain, int Nvar, double pop[], double low[], double high[])
 {
     int k, p, idx;
 
@@ -436,7 +462,8 @@ void bounds_clip(int Nchain, int Nvar, double pop[], double low[], double high[]
 }
 
 
-void bounds_fold(int Nchain, int Nvar, double pop[], double low[], double high[])
+DLL_EXPORT void
+bounds_fold(int Nchain, int Nvar, double pop[], double low[], double high[])
 {
     int k, p, idx;
 
@@ -467,7 +494,8 @@ void bounds_fold(int Nchain, int Nvar, double pop[], double low[], double high[]
 }
 
 
-void bounds_random(int Nchain, int Nvar, double pop[], double low[], double high[])
+DLL_EXPORT void
+bounds_random(int Nchain, int Nvar, double pop[], double low[], double high[])
 {
     int k, p, idx;
 
@@ -495,6 +523,7 @@ void bounds_random(int Nchain, int Nvar, double pop[], double low[], double high
 }
 
 
-void bounds_ignore(int Nchain, int Nvar, double pop[], double low[], double high[])
+DLL_EXPORT void
+bounds_ignore(int Nchain, int Nvar, double pop[], double low[], double high[])
 {
 }
