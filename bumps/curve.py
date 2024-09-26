@@ -361,7 +361,7 @@ class Curve(object):
 
     def create_webview_plot(self, title, problem, state):
 
-        return self._plot_callbacks[title]['func'](deepcopy(self), problem, state)
+        return self._plot_callbacks[title]['func'](self, problem, state)
 
 def _plot_resids(x, resid, colors, labels, view):
     import pylab
