@@ -41,25 +41,35 @@ const COLORS = [
   "black"
 ];
 
-const filtered_parameters = computed(() => {
-  return props.parameters.filter(({tags}: {tags: string[]}) => {
-    if ((tags_to_hide.value.length > 0) && tags.some((t) => tags_to_hide.value.includes(t))) {
-      return false;
-    }
-    // then we're not specifically hiding it...
-    else if (tags_to_show.value.length > 0) {
-      if (tags.some((t) => tags_to_show.value.includes(t))) {
-        return true;
-      }
-      else {
-        return false;
-      }
-    }
-    // then we're not specifying to_show, show by default:
-    else {
+function should_show(tags: string[]) {
+  if ((tags_to_hide.value.length > 0) && tags.some((t) => tags_to_hide.value.includes(t))) {
+    return false;
+  }
+  // then we're not specifically hiding it...
+  else if (tags_to_show.value.length > 0) {
+    if (tags.some((t) => tags_to_show.value.includes(t))) {
       return true;
     }
-  });
+    else {
+      return false;
+    }
+  }
+  // then we're not specifying to_show, show by default:
+  else {
+    return true;
+  }
+}
+
+const filtered_parameters = computed(() => {
+  // return list of { parameter, index } objects
+  // that should be shown based on tag filters
+  return props.parameters.map((parameter, index) => {
+    return {
+      parameter,
+      index,
+      show: should_show(parameter.tags)
+    }
+  }).filter(({show}) => show);
 });
 
 defineExpose({

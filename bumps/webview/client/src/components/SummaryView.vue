@@ -89,11 +89,11 @@ async function onInactive(param) {
       </tr>
     </thead>
     <tbody>
-      <tr class="py-1" v-for="(param, index) in tag_filter?.filtered_parameters" :key="param.id">
-        <td>{{ param.name }}
+      <tr class="py-1" v-for="{ parameter, index } in tag_filter?.filtered_parameters" :key="parameter.id">
+        <td>{{ parameter.name }}
           <span 
             v-if="tag_filter?.show_tags"
-            v-for="tag in param.tags"
+            v-for="tag in parameter.tags"
             class="badge rounded-pill me-1" 
             :style="{color: 'white', 'background-color': tag_filter.tag_colors[tag]}"
             >
@@ -102,8 +102,8 @@ async function onInactive(param) {
         </td>
         <td>
           <input type="range" class="form-range" min="0" max="1.0" step="0.005"
-            v-model.number="parameters_local01[index]" @mousedown="param.active = true" @input="onMove(index)"
-            @change="onInactive(param)" @wheel="scrollParam($event, index)" />
+            v-model.number="parameters_local01[index]" @mousedown="parameter.active = true" @input="onMove(index)"
+            @change="onInactive(parameter)" @wheel="scrollParam($event, index)" />
         </td>
         <td class="editable" contenteditable="true" spellcheck="false" @blur="editItem($event, 'value', index)"
           @keydown.enter="$event?.target?.blur()">{{ parameters_localstr[index] }}</td>
