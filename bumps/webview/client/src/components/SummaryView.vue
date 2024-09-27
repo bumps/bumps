@@ -108,9 +108,9 @@ async function onInactive(param) {
         <td class="editable" contenteditable="true" spellcheck="false" @blur="editItem($event, 'value', index)"
           @keydown.enter="$event?.target?.blur()">{{ parameters_localstr[index] }}</td>
         <td class="editable" contenteditable="true" spellcheck="false" @blur="editItem($event, 'min', index)"
-          @keydown.enter="$event?.target?.blur()">{{ param.min_str }}</td>
+          @keydown.enter="$event?.target?.blur()">{{ parameter.min_str }}</td>
         <td class="editable" contenteditable="true" spellcheck="false" @blur="editItem($event, 'max', index)"
-          @keydown.enter="$event?.target?.blur()">{{ param.max_str }}</td>
+          @keydown.enter="$event?.target?.blur()">{{ parameter.max_str }}</td>
       </tr>
     </tbody>
   </table>
