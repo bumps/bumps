@@ -359,9 +359,9 @@ class Curve(object):
         self._plot_callbacks.update({plot_title: dict(func=plot_function,
                                                       change_with=change_with)})
 
-    def create_webview_plot(self, title, problem, state):
+    def create_webview_plot(self, title, problem, state, nshown):
 
-        return self._plot_callbacks[title]['func'](self, problem, state)
+        return self._plot_callbacks[title]['func'](self, problem, state, nshown)
 
 def _plot_resids(x, resid, colors, labels, view):
     import pylab
