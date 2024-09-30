@@ -17,6 +17,7 @@ const plot_title_names = ref<PlotNameInfo[]>([]);
 //const current_plot_name = ref<PlotNameInfo>({"name": "", "change_with": "uncertainty", "model_index": 0});
 const current_plot_index = ref<number>(0);
 const error_text = ref<string>("")
+const nshown = ref(50);
 
 // add types to mpld3
 declare global {
@@ -46,17 +47,17 @@ onMounted(async () => {
 
 const { draw_requested, drawing_busy } = setupDrawLoop('updated_uncertainty', props.socket, fetch_and_draw, title);
 
-async function fetch_and_draw(latest_timestamp: string) {
+async function fetch_and_draw(latest_timestamp?: string) {
 
     let cache_key = title + plot_title_names.value[current_plot_index.value].model_index + plot_title_names.value[current_plot_index.value].name
     let read_cache = cache[cache_key] as { timestamp: string, plotdata: object } ?? {};
     let timestamp = read_cache.timestamp
     let payload = read_cache.plotdata
     //console.log([timestamp, latest_timestamp])
-    if (timestamp !== latest_timestamp) {
+    if (latest_timestamp === undefined || timestamp !== latest_timestamp) {
         console.log("fetching new model uncertainty plot", timestamp, latest_timestamp);
 
-        payload = await props.socket.asyncEmit('get_custom_plot', plot_title_names.value[current_plot_index.value].model_index, plot_title_names.value[current_plot_index.value].name);
+        payload = await props.socket.asyncEmit('get_custom_plot', plot_title_names.value[current_plot_index.value].model_index, plot_title_names.value[current_plot_index.value].name, nshown.value);
         cache[cache_key] = {timestamp: latest_timestamp, plotdata: payload};    
     }
     //console.log(payload)
@@ -90,13 +91,23 @@ async function fetch_and_draw(latest_timestamp: string) {
 
 <template>
   <div class="container d-flex flex-column flex-grow-1">
-    <select
-      v-model="current_plot_index"
-      @change="draw_requested = true"
-      >
-      <option v-for="(plot_title, index) in plot_title_names" :key="index" :value="index">
-        {{ plot_title.model_index }}:  {{ plot_title.name ?? "" }} </option>
-    </select>
+    <div class="row g-3">
+      <div class="col-md-8">
+        <select
+          v-model="current_plot_index"
+          @change="draw_requested = true"
+          >
+          <option v-for="(plot_title, index) in plot_title_names" :key="index" :value="index">
+            {{ plot_title.model_index }}:  {{ plot_title.name ?? "" }} </option>
+        </select>
+      </div>
+      <div class="col-md-2 align-right justify-content-md-right">
+        <label class="form-label" for="n-shown">Num. shown:</label>
+      </div>
+      <div class="col-md-2 align-left">
+        <input class="form-control" type="number" v-model="nshown" id="n-shown" @change="fetch_and_draw()" />
+      </div>
+    </div>      
     <div v-if="error_text" class="flex-grow-0" ref="error_div">
       <div style="color:red; font-size: larger; font-weight: bold;">
         Plotting error:
