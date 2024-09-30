@@ -565,7 +565,7 @@ async def get_custom_plot_names():
                    for title, plotinfo in model._plot_callbacks.items()]
     return output
 
-async def create_custom_plot(model_index: int, plot_title: str) -> CustomWebviewPlot:
+async def create_custom_plot(model_index: int, plot_title: str, nshown: int) -> CustomWebviewPlot:
 
     if state.problem is None or state.problem.fitProblem is None:
         return None
@@ -578,7 +578,7 @@ async def create_custom_plot(model_index: int, plot_title: str) -> CustomWebview
         try:
             model.update()
             model.nllf()
-            plot_item: CustomWebviewPlot = await asyncio.to_thread(model.create_webview_plot, plot_title, fitProblem, uncertainty_state)
+            plot_item: CustomWebviewPlot = await asyncio.to_thread(model.create_webview_plot, plot_title, fitProblem, uncertainty_state, nshown)
         except:
             plot_item = CustomWebviewPlot(fig_type='error',
                                           plotdata=traceback.format_exc())
@@ -588,10 +588,10 @@ async def create_custom_plot(model_index: int, plot_title: str) -> CustomWebview
     return {}
    
 @register
-async def get_custom_plot(model_index: int, plot_title: str):
+async def get_custom_plot(model_index: int, plot_title: str, nshown: int = 1):
     output = CustomWebviewPlot(figtype='error', plotdata='no plot')
     if model_index is not None:
-        figdict = await create_custom_plot(model_index=model_index, plot_title=plot_title)
+        figdict = await create_custom_plot(model_index=model_index, plot_title=plot_title, nshown=nshown)
         
     output = to_json_compatible_dict(figdict)
     return output
