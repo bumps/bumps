@@ -236,7 +236,7 @@ class Curve(object):
         self._state = state
         self._plot = plot
         self._cached_theory = None
-        self._plot_callbacks = {}
+        self._webview_plots = {}
 
     def update(self):
         self._cached_theory = None
@@ -352,16 +352,15 @@ class Curve(object):
     def register_webview_plot(self,
                               plot_title: str,
                               plot_function: Callable,
-                              change_with: Literal['parameter'] | Literal['uncertainty']):
+                              change_with: Literal['parameter', 'uncertainty']):
         # Plot function syntax: f(model, problem, state)
         # change_with = 'parameter' or 'uncertainty'
         
-        self._plot_callbacks.update({plot_title: dict(func=plot_function,
-                                                      change_with=change_with)})
-
-    def create_webview_plot(self, title, problem, state, nshown):
-
-        return self._plot_callbacks[title]['func'](self, problem, state, nshown)
+        self._webview_plots[plot_title] = dict(func=plot_function,
+                                                 change_with=change_with)
+    @property
+    def webview_plots(self):
+        return self._webview_plots
 
 def _plot_resids(x, resid, colors, labels, view):
     import pylab
