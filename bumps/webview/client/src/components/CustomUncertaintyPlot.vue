@@ -9,15 +9,15 @@ import { setupDrawLoop } from '../setupDrawLoop';
 import { cache } from '../plotcache';
 import { configWithSVGDownloadButton } from '../plotly_extras.mjs';
 
-type PlotNameInfo = {name: string, change_with: string, model_index: number};
-const title = "Custom Uncertainty"
+type PlotInfo = {title: string, change_with: string, model_index: number};
+const panel_title = "Custom Uncertainty"
 const plot_div = ref<HTMLDivElement | null>(null);
 const plot_div_id = ref(`div-${uuidv4()}`);
-const plot_title_names = ref<PlotNameInfo[]>([]);
+const plot_infos = ref<PlotInfo[]>([]);
 //const current_plot_name = ref<PlotNameInfo>({"name": "", "change_with": "uncertainty", "model_index": 0});
 const current_plot_index = ref<number>(0);
 const error_text = ref<string>("")
-const nshown = ref(50);
+const n_samples = ref(50);
 
 // add types to mpld3
 declare global {
@@ -31,60 +31,59 @@ const props = defineProps<{
   socket: AsyncSocket,
 }>();
 
-async function get_custom_plot_names() {
-  const new_names = await props.socket.asyncEmit("get_custom_plot_names") as PlotNameInfo[];
-  if (new_names == null) {
+async function get_custom_plot_info() {
+  const new_infos = await props.socket.asyncEmit("get_custom_plot_info") as PlotInfo[];
+  if (new_infos == null) {
     return;
   }
-  plot_title_names.value = new_names.filter(a => a.change_with === "uncertainty")
+  plot_infos.value = new_infos.filter(a => a.change_with === "uncertainty")
   current_plot_index.value = 0
 }
 
-props.socket.on('model_loaded', get_custom_plot_names);
+props.socket.on('model_loaded', get_custom_plot_info);
 onMounted(async () => {
-  await get_custom_plot_names();
+  await get_custom_plot_info();
 });
 
-const { draw_requested, drawing_busy } = setupDrawLoop('updated_uncertainty', props.socket, fetch_and_draw, title);
+const { draw_requested, drawing_busy } = setupDrawLoop('updated_uncertainty', props.socket, fetch_and_draw, panel_title);
 
 async function fetch_and_draw(latest_timestamp?: string) {
+  const { model_index, title } = plot_infos.value[current_plot_index.value];
+  const cache_key = `${panel_title}:${model_index}:${title}:${n_samples.value}`;
+  const read_cache = cache[cache_key] as { timestamp: string, plotdata: object } ?? {};
+  const timestamp = read_cache.timestamp;
+  let payload = read_cache.plotdata;
+  //console.log([timestamp, latest_timestamp])
+  if (latest_timestamp === undefined || timestamp !== latest_timestamp) {
+    console.log("fetching new model uncertainty plot", timestamp, latest_timestamp);
+    payload = await props.socket.asyncEmit('get_custom_plot', model_index, title, n_samples.value);
+    cache[cache_key] = {timestamp: latest_timestamp, plotdata: payload};
+  }
+  //console.log(payload)
+  const { fig_type, plotdata } = payload as { fig_type: 'plotly' | 'matplotlib' | 'error', plotdata: object};
+  if (fig_type === 'plotly') {
+    error_text.value = "";
+    const { data, layout } = plotdata as Plotly.PlotlyDataLayoutConfig;
+    const config: Partial<Plotly.Config> = {
+      responsive: true,
+      edits: {
+      legendPosition: true
+      }, 
+      ...configWithSVGDownloadButton
+    }
 
-    let cache_key = title + plot_title_names.value[current_plot_index.value].model_index + plot_title_names.value[current_plot_index.value].name
-    let read_cache = cache[cache_key] as { timestamp: string, plotdata: object } ?? {};
-    let timestamp = read_cache.timestamp
-    let payload = read_cache.plotdata
-    //console.log([timestamp, latest_timestamp])
-    if (latest_timestamp === undefined || timestamp !== latest_timestamp) {
-        console.log("fetching new model uncertainty plot", timestamp, latest_timestamp);
-
-        payload = await props.socket.asyncEmit('get_custom_plot', plot_title_names.value[current_plot_index.value].model_index, plot_title_names.value[current_plot_index.value].name, nshown.value);
-        cache[cache_key] = {timestamp: latest_timestamp, plotdata: payload};    
-    }
-    //console.log(payload)
-    let { fig_type, plotdata } = payload as { fig_type: 'plotly' | 'matplotlib' | 'error', plotdata: object};
-    if (fig_type === 'plotly') {
-        error_text.value = ""
-        const { data, layout } = plotdata as Plotly.PlotlyDataLayoutConfig;
-        const config: Partial<Plotly.Config> = {
-        responsive: true,
-        edits: {
-        legendPosition: true
-        }, 
-        ...configWithSVGDownloadButton
-        }
-
-        await Plotly.react(plot_div.value as HTMLDivElement, [...data], layout, config);
-    }
-    else if (fig_type === 'matplotlib') {
-        error_text.value = ""
-        let mpld3_data = plotdata as { width: number, height: number };
-        mpld3_data.width = Math.round(plot_div.value?.clientWidth ?? 640) - 16;
-        mpld3_data.height = Math.round(plot_div.value?.clientHeight ?? 480) - 16;
-        mpld3.draw_figure(plot_div_id.value, mpld3_data, false, true);
-    }
-    else if (fig_type === 'error') {
-        error_text.value = String(plotdata).replace(/[\n]+/g, "<br>")
-    }
+    await Plotly.react(plot_div.value as HTMLDivElement, [...data], layout, config);
+  }
+  else if (fig_type === 'matplotlib') {
+    error_text.value = ""
+    let mpld3_data = plotdata as { width: number, height: number };
+    mpld3_data.width = Math.round(plot_div.value?.clientWidth ?? 640) - 16;
+    mpld3_data.height = Math.round(plot_div.value?.clientHeight ?? 480) - 16;
+    mpld3.draw_figure(plot_div_id.value, mpld3_data, false, true);
+  }
+  else if (fig_type === 'error') {
+      error_text.value = String(plotdata).replace(/[\n]+/g, "<br>")
+  }
 }
 
 </script>
@@ -97,15 +96,16 @@ async function fetch_and_draw(latest_timestamp?: string) {
           v-model="current_plot_index"
           @change="draw_requested = true"
           >
-          <option v-for="(plot_title, index) in plot_title_names" :key="index" :value="index">
-            {{ plot_title.model_index }}:  {{ plot_title.name ?? "" }} </option>
+          <option v-for="(plot_info, index) in plot_infos" :key="index" :value="index">
+            {{ plot_info.model_index }}:  {{ plot_info.title ?? "" }} </option>
         </select>
       </div>
       <div class="col-md-2 align-right justify-content-md-right">
-        <label class="form-label" for="n-shown">Num. shown:</label>
+        <label class="form-label" for="n_samples"
+          title="Number of samples to draw from the uncertainty population">Num. samples:</label>
       </div>
       <div class="col-md-2 align-left">
-        <input class="form-control" type="number" v-model="nshown" id="n-shown" @change="fetch_and_draw()" />
+        <input class="form-control" type="number" v-model="n_samples" id="n_samples" @change="fetch_and_draw()" />
       </div>
     </div>      
     <div v-if="error_text" class="flex-grow-0" ref="error_div">
