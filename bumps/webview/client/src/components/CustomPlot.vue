@@ -8,11 +8,11 @@ import type { AsyncSocket } from '../asyncSocket.ts';
 import { setupDrawLoop } from '../setupDrawLoop';
 import { configWithSVGDownloadButton } from '../plotly_extras.mjs';
 
-type PlotNameInfo = {name: string, change_with: string, model_index: number};
+type PlotInfo = {title: string, change_with: string, model_index: number};
 const title = 'Custom'
 const plot_div = ref<HTMLDivElement | null>(null);
 const plot_div_id = ref(`div-${uuidv4()}`);
-const plot_title_names = ref<PlotNameInfo[]>([]);
+const plot_infos = ref<PlotInfo[]>([]);
 //const current_plot_name = ref<PlotNameInfo>({"name": "", "change_with": "parameters", "model_index": 0});
 const current_plot_index = ref<number>(0);
 const error_text = ref<string>("")
@@ -29,24 +29,25 @@ const props = defineProps<{
   socket: AsyncSocket,
 }>();
 
-async function get_custom_plot_names() {
-  const new_names = await props.socket.asyncEmit("get_custom_plot_names") as PlotNameInfo[];
-  if (new_names == null) {
+async function get_custom_plot_infos() {
+  const new_infos = await props.socket.asyncEmit("get_custom_plot_info") as PlotInfo[];
+  if (new_infos == null) {
     return;
   }
-  plot_title_names.value = new_names.filter(a => a.change_with === 'parameter')
+  plot_infos.value = new_infos.filter(a => a.change_with === 'parameter')
   current_plot_index.value = 0
 }
 
-props.socket.on('model_loaded', get_custom_plot_names);
+props.socket.on('model_loaded', get_custom_plot_infos);
 onMounted(async () => {
-  await get_custom_plot_names();
+  await get_custom_plot_infos();
 });
 
 const { draw_requested } = setupDrawLoop('updated_parameters', props.socket, fetch_and_draw);
 
 async function fetch_and_draw() {
-  const payload = await props.socket.asyncEmit('get_custom_plot', plot_title_names.value[current_plot_index.value].model_index, plot_title_names.value[current_plot_index.value].name);
+  const { model_index, title } = plot_infos.value[current_plot_index.value];
+  const payload = await props.socket.asyncEmit('get_custom_plot', model_index, title);
   let { fig_type, plotdata } = payload as { fig_type: 'plotly' | 'matplotlib' | 'error', plotdata: object};
   if (fig_type === 'plotly') {
     error_text.value = ""
@@ -82,8 +83,8 @@ async function fetch_and_draw() {
       v-model="current_plot_index"
       @change="draw_requested = true"
       >
-      <option v-for="(plot_title, index) in plot_title_names" :key="index" :value="index">
-        {{ plot_title.model_index }}:  {{ plot_title.name ?? "" }} </option>
+      <option v-for="(plot_info, index) in plot_infos" :key="index" :value="index">
+        {{ plot_info.model_index }}:  {{ plot_info.title ?? "" }} </option>
     </select>
     <div v-if="error_text" class="flex-grow-0" ref="error_div">
       <div style="color:red; font-size: larger; font-weight: bold;">
