@@ -579,6 +579,10 @@ class WebviewPlotFunction(Protocol):
                  ) -> dict:
         ...
 
+# custom plots are an opt-in feature for models
+# they are defined in the model file as a dictionary of functions
+# with a "change_with" key that specifies whether the plot should
+# change with the uncertainty state or with the parameters
 @register
 async def get_custom_plot_info():
     if state.problem is None or state.problem.fitProblem is None:
