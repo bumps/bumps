@@ -569,20 +569,34 @@ async def get_model():
     serialized = serialize_problem(fitProblem, 'dataclass') if state.problem.serializer == 'dataclass' else 'null'
     return serialized
 
+
+class WebviewPlotFunction(Protocol):
+    def __call__(self,
+                 model: bumps.fitproblem.Fitness,
+                 problem: bumps.fitproblem.FitProblem,
+                 state: Optional[bumps.dream.state.MCMCDraw]=None,
+                 n_samples: Optional[int]=None,
+                 ) -> dict:
+        ...
+
 @register
-async def get_custom_plot_names():
+async def get_custom_plot_info():
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = state.problem.fitProblem
     output: List[dict] = []
     for model_index, model in enumerate(fitProblem.models):
-        output += [dict(model_index=model_index,
-                        change_with=plotinfo['change_with'],
-                        name=title)
-                   for title, plotinfo in model._plot_callbacks.items()]
+        model_webview_plots = getattr(model, 'webview_plots', {})
+        for title, plotinfo in model_webview_plots.items():
+            output.append({
+                "model_index": model_index,
+                "change_with": plotinfo['change_with'],
+                "title": title
+            })
+
     return output
 
-async def create_custom_plot(model_index: int, plot_title: str, nshown: int) -> CustomWebviewPlot:
+async def create_custom_plot(model_index: int, plot_title: str, n_samples: int = 1) -> CustomWebviewPlot:
 
     if state.problem is None or state.problem.fitProblem is None:
         return None
@@ -591,11 +605,17 @@ async def create_custom_plot(model_index: int, plot_title: str, nshown: int) -> 
 
     # update model
     model = list(fitProblem.models)[model_index]
-    if plot_title in model._plot_callbacks.keys():
+    webview_plots = getattr(model, 'webview_plots', {})
+    plot_info = webview_plots.get(plot_title, {})
+    plot_function: WebviewPlotFunction = webview_plots.get(plot_title, {}).get('func', None)
+    if plot_function is not None:
         try:
             model.update()
             model.nllf()
-            plot_item: CustomWebviewPlot = await asyncio.to_thread(model.create_webview_plot, plot_title, fitProblem, uncertainty_state, nshown)
+            if plot_info.get('change_with', None) == 'uncertainty':
+                plot_item: CustomWebviewPlot = await asyncio.to_thread(plot_function, model, fitProblem, uncertainty_state, n_samples)
+            else:
+                plot_item: CustomWebviewPlot = await asyncio.to_thread(plot_function, model, fitProblem)
         except:
             plot_item = CustomWebviewPlot(fig_type='error',
                                           plotdata=traceback.format_exc())
@@ -605,10 +625,10 @@ async def create_custom_plot(model_index: int, plot_title: str, nshown: int) -> 
     return {}
    
 @register
-async def get_custom_plot(model_index: int, plot_title: str, nshown: int = 1):
+async def get_custom_plot(model_index: int, plot_title: str, n_samples: int = 1):
     output = CustomWebviewPlot(figtype='error', plotdata='no plot')
     if model_index is not None:
-        figdict = await create_custom_plot(model_index=model_index, plot_title=plot_title, nshown=nshown)
+        figdict = await create_custom_plot(model_index=model_index, plot_title=plot_title, n_samples=n_samples)
         
     output = to_json_compatible_dict(figdict)
     return output
