@@ -1,7 +1,7 @@
 from typing import Literal, TypedDict, Any
 
 class CustomWebviewPlot(TypedDict):
-    fig_type: Literal['plotly'] | Literal ['matplotlib'] | Literal['error'] = 'plotly'
+    fig_type: Literal['plotly', 'matplotlib', 'error'] = 'plotly'
     plotdata: Any
 
 def process_custom_plot(plot_item: CustomWebviewPlot) -> CustomWebviewPlot:
