@@ -25,6 +25,7 @@ import bumps.errplot
 from .state_hdf5_backed import UNDEFINED, UNDEFINED_TYPE, State, serialize_problem, deserialize_problem, SERIALIZER_EXTENSIONS
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
 from .varplot import plot_vars
+from .traceplot import plot_trace
 from .logger import logger, console_handler
 
 
@@ -679,40 +680,46 @@ async def get_model_uncertainty_plot():
         return None
 
 @register
-async def get_parameter_trace_plot():
+async def get_parameter_labels():
+    # Required to support get_parameter_trace_plot because ordering must be preserved.
+    # There is no way to know whether a disambiguated name occurred first or second from
+    # get_parameters. Uses fitProblem because uncertainty state might not exist and
+    # list of parameters should be updated on model_loaded.
+    # Should probably be able to call these parameters by ID.
+
+    if state.problem is None or state.problem.fitProblem is None:
+        return None
+    fitProblem = state.problem.fitProblem
+    if fitProblem is not None:
+        return to_json_compatible_dict(fitProblem.labels())
+    else:
+        return None
+
+@register
+async def get_parameter_trace_plot(var: int):
+    
     uncertainty_state = state.fitting.uncertainty_state
+    logger.info(f'Got parameter_trace plot request with index {var}')
     if uncertainty_state is not None:
-        import mpld3
-        import matplotlib
-        matplotlib.use("agg")
-        import matplotlib.pyplot as plt
         import time
 
         start_time = time.time()
         logger.info(f'queueing new parameter_trace plot... {start_time}')
 
-        fig = plt.figure()
-        axes = fig.add_subplot(111)
-
         # begin plotting:
-        var = 0
         portion = None
         draw, points, _ = uncertainty_state.chains()
         label = uncertainty_state.labels[var]
         start = int((1-portion)*len(draw)) if portion else 0
         genid = np.arange(uncertainty_state.generation-len(draw)+start, uncertainty_state.generation)+1
-        axes.plot(genid*uncertainty_state.thinning,
-             np.squeeze(points[start:, uncertainty_state._good_chains, var]))
-        axes.set_xlabel('Generation number')
-        axes.set_ylabel(label)
-        fig.canvas.draw()
+        fig = plot_trace(genid*uncertainty_state.thinning,
+             np.squeeze(points[start:, uncertainty_state._good_chains, var]).T, label=label, alpha=0.2)
 
         logger.info(f"time to render but not serialize... {time.time() - start_time}")
-        dfig = mpld3.fig_to_dict(fig)
-        plt.close(fig)
+        dfig = fig.to_dict()
         end_time = time.time()
         logger.info(f"time to draw parameter_trace plot: {end_time - start_time}")
-        return dfig
+        return to_json_compatible_dict(dfig)
     else:
         return None
     
