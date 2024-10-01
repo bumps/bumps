@@ -18,7 +18,9 @@ Differential evolution MCMC stepper.
 
 // Limit to the number of threads so static thread-local data can be
 // pre-allocated with the right size.
+#ifndef MAX_THREADS
 #define MAX_THREADS 64
+#endif
 
 // ==== Generator definition ====
 // Uses:
