@@ -105,7 +105,7 @@ async function fetch_and_draw(latest_timestamp?: string) {
           title="Number of samples to draw from the uncertainty population">Num. samples:</label>
       </div>
       <div class="col-md-2 align-left">
-        <input class="form-control" type="number" v-model="n_samples" id="n_samples" @change="fetch_and_draw()" />
+        <input class="form-control" type="number" v-model="n_samples" id="n_samples" @change="draw_requested = true" />
       </div>
     </div>      
     <div v-if="error_text" class="flex-grow-0" ref="error_div">
