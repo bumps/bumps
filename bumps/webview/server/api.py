@@ -758,17 +758,12 @@ async def get_parameter_labels():
 
     if state.problem is None or state.problem.fitProblem is None:
         return None
-    fitProblem = state.problem.fitProblem
-    if fitProblem is not None:
-        return to_json_compatible_dict(fitProblem.labels())
-    else:
-        return None
+    return to_json_compatible_dict(state.problem.fitProblem.labels())
 
 @register
 async def get_parameter_trace_plot(var: int):
     
     uncertainty_state = state.fitting.uncertainty_state
-    logger.info(f'Got parameter_trace plot request with index {var}')
     if uncertainty_state is not None:
         import time
 
@@ -782,7 +777,7 @@ async def get_parameter_trace_plot(var: int):
         start = int((1-portion)*len(draw)) if portion else 0
         genid = np.arange(uncertainty_state.generation-len(draw)+start, uncertainty_state.generation)+1
         fig = plot_trace(genid*uncertainty_state.thinning,
-             np.squeeze(points[start:, uncertainty_state._good_chains, var]).T, label=label, alpha=0.2)
+             np.squeeze(points[start:, uncertainty_state._good_chains, var]).T, label=label, alpha=0.4)
 
         logger.info(f"time to render but not serialize... {time.time() - start_time}")
         dfig = fig.to_dict()
