@@ -557,13 +557,13 @@ class SharedState:
     autosave_history: bool = True
     autosave_history_length: int = 10
 
-    _not_reloaded = ["active_fit", "autosave_session", "session_output_file"]
+    _not_reloaded = ["active_fit", "autosave_session", "session_output_file", "_notification_callbacks"]
     _notification_callbacks: Dict[str, Callable[[str, Any], Awaitable[None]]] = field(default_factory=dict)
 
     def __setattr__(self, name: str, value):
         super().__setattr__(name, value)
         loop = asyncio.get_event_loop()
-        if loop.is_running():
+        if loop.is_running() and hasattr(self, '_notification_callbacks'):
             for callback in self._notification_callbacks.values():
                 loop.create_task(callback(name, value))
 
@@ -578,9 +578,10 @@ class SharedState:
     def write(self, parent: 'Group'):
         group = parent.require_group('shared')
         for field in fields(self):
-            value = getattr(self, field.name)
-            if value is not UNDEFINED:
-                write_json(group, field.name, value)
+            if not field.name in self._not_reloaded:
+                value = getattr(self, field.name)
+                if value is not UNDEFINED:
+                    write_json(group, field.name, value)
 
     def read(self, parent: 'Group'):
         group = parent.get('shared')
