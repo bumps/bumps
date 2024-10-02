@@ -2,12 +2,15 @@
 Build trace plots (plotly)
 """
 
+from typing import Union
+
 __all__ = ['plot_trace']
 
 import numpy as np
 from .colors import COLORS
 
-def plot_trace(x: list | np.ndarray, ys: list | np.ndarray, label='', alpha=0.4):
+# TODO: when minimum python version is 3.10, can use | to combine types 
+def plot_trace(x: Union[list, np.ndarray], ys: Union[list, np.ndarray], label='', alpha=0.4):
 
     import plotly.graph_objs as go
 
