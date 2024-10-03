@@ -120,7 +120,7 @@ async function fetch_and_draw(latest_timestamp?: string) {
         <input class="form-control" type="number" v-model="n_samples" id="n_samples" @change="draw_requested = true" />
       </div>
     </div>      
-    <div v-if="figtype=='error'" class="flex-grow-0" ref="error_div">
+    <div v-if="figtype==='error'" class="flex-grow-0" ref="error_div">
       <div style="color:red; font-size: larger; font-weight: bold;">
         Plotting error:
       </div>
