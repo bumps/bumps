@@ -8,9 +8,10 @@ import type { AsyncSocket } from '../asyncSocket.ts';
 import { setupDrawLoop } from '../setupDrawLoop';
 import { cache } from '../plotcache';
 import { configWithSVGDownloadButton } from '../plotly_extras.mjs';
+import { TableData} from './CSVTable.vue'
+import CSVTable from './CSVTable.vue'
 
 type PlotInfo = {title: string, change_with: string, model_index: number};
-type TableData = {raw: string, header: string[], rows: string[][]}
 const panel_title = "Custom Uncertainty"
 const figtype = ref<String>("")
 const plot_div = ref<HTMLDivElement | null>(null);
@@ -20,7 +21,6 @@ const current_plot_index = ref<number>(0);
 const error_text = ref<string>("")
 const n_samples = ref(50);
 const table_data = ref<TableData>({raw: "", header: [], rows: [[]]})
-const hidden_download = ref<HTMLAnchorElement>();
 
 // add types to mpld3
 declare global {
@@ -43,14 +43,6 @@ async function get_custom_plot_info() {
   current_plot_index.value = 0
 }
 
-async function download_csv() {
-  if (table_data.value.raw) {
-    const a = hidden_download.value as HTMLAnchorElement;
-    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(table_data.value.raw);
-    a.click();
-  }
-}
-
 props.socket.on('model_loaded', get_custom_plot_info);
 onMounted(async () => {
   await get_custom_plot_info();
@@ -71,7 +63,7 @@ async function fetch_and_draw(latest_timestamp?: string) {
     cache[cache_key] = {timestamp: latest_timestamp, plotdata: payload};
   }
   //console.log(payload)
-  const { fig_type, plotdata } = payload as { fig_type: 'plotly' | 'matplotlib' | 'error', plotdata: object};
+  const { fig_type, plotdata } = payload as { fig_type: 'plotly' | 'matplotlib' | 'table' | 'error', plotdata: object};
   figtype.value = fig_type
   if (fig_type === 'plotly') {
     await nextTick();
@@ -135,22 +127,7 @@ async function fetch_and_draw(latest_timestamp?: string) {
       <div v-html="error_text"></div>
     </div>
     <div v-else-if="figtype==='table'" class="flex-grow-0" ref="table_div">
-      <div>
-        <button class="btn btn-primary btn-sm" @click="download_csv">Download CSV</button>
-        <a ref="hidden_download" class="hidden" download='table.csv' type='text/csv'>Download CSV</a>
-      </div>
-      <table class="table">
-        <thead class="border-bottom py-1 sticky-top text-white bg-secondary">
-          <tr>
-            <th v-for="header_item in table_data.header" scope="col">{{ header_item }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr class="py-1" v-for="table_row in table_data.rows">
-            <td v-for="table_item in table_row" scope="col">{{ table_item }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <CSVTable :table_data="table_data"></CSVTable>
     </div>
     <div v-else class="flex-grow-1 position-relative">
       <div class="w-100 h-100 plot-div" ref="plot_div" :id=plot_div_id></div>
