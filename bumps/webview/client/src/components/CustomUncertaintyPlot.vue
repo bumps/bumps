@@ -10,17 +10,16 @@ import { cache } from '../plotcache';
 import { configWithSVGDownloadButton } from '../plotly_extras.mjs';
 
 type PlotInfo = {title: string, change_with: string, model_index: number};
-type TableData = {header: string[], rows: string[][]}
+type TableData = {raw: string, header: string[], rows: string[][]}
 const panel_title = "Custom Uncertainty"
 const figtype = ref<String>("")
 const plot_div = ref<HTMLDivElement | null>(null);
 const plot_div_id = ref(`div-${uuidv4()}`);
 const plot_infos = ref<PlotInfo[]>([]);
-//const current_plot_name = ref<PlotNameInfo>({"name": "", "change_with": "uncertainty", "model_index": 0});
 const current_plot_index = ref<number>(0);
 const error_text = ref<string>("")
 const n_samples = ref(50);
-const table_data = ref<TableData>({header: [], rows: [[]]})
+const table_data = ref<TableData>({raw: "", header: [], rows: [[]]})
 const hidden_download = ref<HTMLAnchorElement>();
 
 // add types to mpld3
@@ -45,10 +44,11 @@ async function get_custom_plot_info() {
 }
 
 async function download_csv() {
-  const a = hidden_download.value as HTMLAnchorElement;
-  const new_csv = await props.socket.asyncEmit("get_csv_from_table", table_data.value) as string;
-  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(new_csv);
-  a.click();
+  if (table_data.value.raw) {
+    const a = hidden_download.value as HTMLAnchorElement;
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(table_data.value.raw);
+    a.click();
+  }
 }
 
 props.socket.on('model_loaded', get_custom_plot_info);
@@ -100,6 +100,10 @@ async function fetch_and_draw(latest_timestamp?: string) {
   else if (fig_type === 'error') {
       error_text.value = String(plotdata).replace(/[\n]+/g, "<br>");
   }
+  else {
+    figtype.value = 'error';
+    error_text.value = "Unknown figure type " + fig_type;
+  }
 }
 
 </script>
@@ -150,9 +154,9 @@ async function fetch_and_draw(latest_timestamp?: string) {
     </div>
     <div v-else class="flex-grow-1 position-relative">
       <div class="w-100 h-100 plot-div" ref="plot_div" :id=plot_div_id></div>
-      <div class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center loading" v-if="drawing_busy">
-        <span class="spinner-border text-primary"></span>
-      </div>
+    </div>
+    <div class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center loading" v-if="drawing_busy">
+      <span class="spinner-border text-primary"></span>
     </div>
   </div>
 </template>

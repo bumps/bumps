@@ -6,11 +6,14 @@ def csv2dict(csvdata: str) -> dict:
     with io.StringIO(csvdata) as f:
         reader = csv.DictReader(f)
         result=dict(header=reader.fieldnames,
-                    rows=[row for row in reader])    
+                    rows=[row for row in reader],
+                    raw=csvdata)    
     
     return result
 
 def dict2csv(csvdict: dict) -> str:
+    # No longer needed since raw csv data are added to the table data
+    # dictionary in csv2dict
     with io.StringIO() as f:
         writer = csv.DictWriter(f, fieldnames=csvdict['header'])
         writer.writerows(csvdict['rows'])
