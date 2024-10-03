@@ -27,7 +27,7 @@ from .state_hdf5_backed import UNDEFINED, UNDEFINED_TYPE, State, serialize_probl
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
 from .varplot import plot_vars
 from .logger import logger, console_handler
-from .custom_plot import process_custom_plot, CustomWebviewPlot, dict2csv
+from .custom_plot import process_custom_plot, CustomWebviewPlot
 
 REGISTRY: Dict[str, Callable] = {}
 MODEL_EXT = '.json'
