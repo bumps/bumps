@@ -27,7 +27,7 @@ from .state_hdf5_backed import UNDEFINED, UNDEFINED_TYPE, State, serialize_probl
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
 from .varplot import plot_vars
 from .logger import logger, console_handler
-from .custom_plot import process_custom_plot, CustomWebviewPlot
+from .custom_plot import process_custom_plot, CustomWebviewPlot, dict2csv
 
 REGISTRY: Dict[str, Callable] = {}
 MODEL_EXT = '.json'
@@ -636,6 +636,10 @@ async def get_custom_plot(model_index: int, plot_title: str, n_samples: int = 1)
         
     output = to_json_compatible_dict(figdict)
     return output
+
+@register
+async def get_csv_from_table(table_data: dict):
+    return to_json_compatible_dict(dict2csv(table_data))
 
 @register
 async def get_convergence_plot():
