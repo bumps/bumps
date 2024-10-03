@@ -10,7 +10,9 @@ import { cache } from '../plotcache';
 import { configWithSVGDownloadButton } from '../plotly_extras.mjs';
 
 type PlotInfo = {title: string, change_with: string, model_index: number};
+type TableData = {header: string[], rows: string[][]}
 const panel_title = "Custom Uncertainty"
+const figtype = ref<String>("")
 const plot_div = ref<HTMLDivElement | null>(null);
 const plot_div_id = ref(`div-${uuidv4()}`);
 const plot_infos = ref<PlotInfo[]>([]);
@@ -18,6 +20,8 @@ const plot_infos = ref<PlotInfo[]>([]);
 const current_plot_index = ref<number>(0);
 const error_text = ref<string>("")
 const n_samples = ref(50);
+const table_data = ref<TableData>({header: [], rows: [[]]})
+const hidden_download = ref<HTMLAnchorElement>();
 
 // add types to mpld3
 declare global {
@@ -38,6 +42,13 @@ async function get_custom_plot_info() {
   }
   plot_infos.value = new_infos.filter(a => a.change_with === "uncertainty")
   current_plot_index.value = 0
+}
+
+async function download_csv() {
+  const a = hidden_download.value as HTMLAnchorElement;
+  const new_csv = await props.socket.asyncEmit("get_csv_from_table", table_data.value) as string;
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(new_csv);
+  a.click();
 }
 
 props.socket.on('model_loaded', get_custom_plot_info);
@@ -61,8 +72,8 @@ async function fetch_and_draw(latest_timestamp?: string) {
   }
   //console.log(payload)
   const { fig_type, plotdata } = payload as { fig_type: 'plotly' | 'matplotlib' | 'error', plotdata: object};
+  figtype.value = fig_type
   if (fig_type === 'plotly') {
-    error_text.value = "";
     await nextTick();
     const { data, layout } = plotdata as Plotly.PlotlyDataLayoutConfig;
     const config: Partial<Plotly.Config> = {
@@ -76,12 +87,15 @@ async function fetch_and_draw(latest_timestamp?: string) {
     await Plotly.react(plot_div.value as HTMLDivElement, [...data], layout, config);
   }
   else if (fig_type === 'matplotlib') {
-    error_text.value = "";
     await nextTick();
     let mpld3_data = plotdata as { width: number, height: number };
     mpld3_data.width = Math.round(plot_div.value?.clientWidth ?? 640) - 16;
     mpld3_data.height = Math.round(plot_div.value?.clientHeight ?? 480) - 16;
     mpld3.draw_figure(plot_div_id.value, mpld3_data, false, true);
+  }
+  else if (fig_type === 'table') {
+    await nextTick();
+    table_data.value = plotdata as TableData;
   }
   else if (fig_type === 'error') {
       error_text.value = String(plotdata).replace(/[\n]+/g, "<br>");
@@ -110,11 +124,29 @@ async function fetch_and_draw(latest_timestamp?: string) {
         <input class="form-control" type="number" v-model="n_samples" id="n_samples" @change="draw_requested = true" />
       </div>
     </div>      
-    <div v-if="error_text" class="flex-grow-0" ref="error_div">
+    <div v-if="figtype=='error'" class="flex-grow-0" ref="error_div">
       <div style="color:red; font-size: larger; font-weight: bold;">
         Plotting error:
       </div>
       <div v-html="error_text"></div>
+    </div>
+    <div v-else-if="figtype==='table'" class="flex-grow-0" ref="table_div">
+      <div>
+        <button class="btn btn-primary btn-sm" @click="download_csv">Download CSV</button>
+        <a ref="hidden_download" class="hidden" download='table.csv' type='text/csv'>Download CSV</a>
+      </div>
+      <table class="table">
+        <thead class="border-bottom py-1 sticky-top text-white bg-secondary">
+          <tr>
+            <th v-for="header_item in table_data.header" scope="col">{{ header_item }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="py-1" v-for="table_row in table_data.rows">
+            <td v-for="table_item in table_row" scope="col">{{ table_item }}</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
     <div v-else class="flex-grow-1 position-relative">
       <div class="w-100 h-100 plot-div" ref="plot_div" :id=plot_div_id></div>
@@ -128,6 +160,9 @@ async function fetch_and_draw(latest_timestamp?: string) {
 <style scoped>
 svg {
   width: 100%;
+}
+.hidden {
+  display: none;
 }
 span.spinner-border {
   width: 3rem;
