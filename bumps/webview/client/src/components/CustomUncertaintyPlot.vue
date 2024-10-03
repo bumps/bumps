@@ -126,7 +126,7 @@ async function fetch_and_draw(latest_timestamp?: string) {
       </div>
       <div v-html="error_text"></div>
     </div>
-    <div v-else-if="figtype==='table'" class="flex-grow-0" ref="table_div">
+    <div v-else-if="figtype==='table'" class="flex-grow-0">
       <CSVTable :table_data="table_data"></CSVTable>
     </div>
     <div v-else class="flex-grow-1 position-relative">
