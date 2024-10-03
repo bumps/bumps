@@ -638,10 +638,6 @@ async def get_custom_plot(model_index: int, plot_title: str, n_samples: int = 1)
     return output
 
 @register
-async def get_csv_from_table(table_data: dict):
-    return to_json_compatible_dict(dict2csv(table_data))
-
-@register
 async def get_convergence_plot():
     if state.problem is None or state.problem.fitProblem is None:
         return None
