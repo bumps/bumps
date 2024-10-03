@@ -1,7 +1,28 @@
+import io
+import csv
 from typing import Literal, TypedDict, Any
 
+def csv2dict(csvdata: str) -> dict:
+    with io.StringIO(csvdata) as f:
+        reader = csv.DictReader(f)
+        result=dict(header=reader.fieldnames,
+                    rows=[row for row in reader],
+                    raw=csvdata)    
+    
+    return result
+
+def dict2csv(csvdict: dict) -> str:
+    # No longer needed since raw csv data are added to the table data
+    # dictionary in csv2dict
+    with io.StringIO() as f:
+        writer = csv.DictWriter(f, fieldnames=csvdict['header'])
+        writer.writerows(csvdict['rows'])
+        result = f.getvalue()
+
+    return result
+
 class CustomWebviewPlot(TypedDict):
-    fig_type: Literal['plotly', 'matplotlib', 'error'] = 'plotly'
+    fig_type: Literal['plotly', 'matplotlib', 'table', 'error'] = 'plotly'
     plotdata: Any
 
 def process_custom_plot(plot_item: CustomWebviewPlot) -> CustomWebviewPlot:
@@ -14,6 +35,8 @@ def process_custom_plot(plot_item: CustomWebviewPlot) -> CustomWebviewPlot:
     elif figtype == 'matplotlib':
         import mpld3
         figdict = mpld3.fig_to_dict(plot_data)
+    elif figtype == 'table':
+        figdict = csv2dict(plot_data)
     elif figtype == 'error':
         figdict = plot_data
     else:

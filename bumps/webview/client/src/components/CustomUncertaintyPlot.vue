@@ -8,16 +8,19 @@ import type { AsyncSocket } from '../asyncSocket.ts';
 import { setupDrawLoop } from '../setupDrawLoop';
 import { cache } from '../plotcache';
 import { configWithSVGDownloadButton } from '../plotly_extras.mjs';
+import { TableData} from './CSVTable.vue'
+import CSVTable from './CSVTable.vue'
 
 type PlotInfo = {title: string, change_with: string, model_index: number};
 const panel_title = "Custom Uncertainty"
+const figtype = ref<String>("")
 const plot_div = ref<HTMLDivElement | null>(null);
 const plot_div_id = ref(`div-${uuidv4()}`);
 const plot_infos = ref<PlotInfo[]>([]);
-//const current_plot_name = ref<PlotNameInfo>({"name": "", "change_with": "uncertainty", "model_index": 0});
 const current_plot_index = ref<number>(0);
 const error_text = ref<string>("")
 const n_samples = ref(50);
+const table_data = ref<TableData>({raw: "", header: [], rows: [[]]})
 
 // add types to mpld3
 declare global {
@@ -60,9 +63,9 @@ async function fetch_and_draw(latest_timestamp?: string) {
     cache[cache_key] = {timestamp: latest_timestamp, plotdata: payload};
   }
   //console.log(payload)
-  const { fig_type, plotdata } = payload as { fig_type: 'plotly' | 'matplotlib' | 'error', plotdata: object};
+  const { fig_type, plotdata } = payload as { fig_type: 'plotly' | 'matplotlib' | 'table' | 'error', plotdata: object};
+  figtype.value = fig_type
   if (fig_type === 'plotly') {
-    error_text.value = "";
     await nextTick();
     const { data, layout } = plotdata as Plotly.PlotlyDataLayoutConfig;
     const config: Partial<Plotly.Config> = {
@@ -76,15 +79,22 @@ async function fetch_and_draw(latest_timestamp?: string) {
     await Plotly.react(plot_div.value as HTMLDivElement, [...data], layout, config);
   }
   else if (fig_type === 'matplotlib') {
-    error_text.value = "";
     await nextTick();
     let mpld3_data = plotdata as { width: number, height: number };
     mpld3_data.width = Math.round(plot_div.value?.clientWidth ?? 640) - 16;
     mpld3_data.height = Math.round(plot_div.value?.clientHeight ?? 480) - 16;
     mpld3.draw_figure(plot_div_id.value, mpld3_data, false, true);
   }
+  else if (fig_type === 'table') {
+    await nextTick();
+    table_data.value = plotdata as TableData;
+  }
   else if (fig_type === 'error') {
       error_text.value = String(plotdata).replace(/[\n]+/g, "<br>");
+  }
+  else {
+    figtype.value = 'error';
+    error_text.value = "Unknown figure type " + fig_type;
   }
 }
 
@@ -110,17 +120,20 @@ async function fetch_and_draw(latest_timestamp?: string) {
         <input class="form-control" type="number" v-model="n_samples" id="n_samples" @change="draw_requested = true" />
       </div>
     </div>      
-    <div v-if="error_text" class="flex-grow-0" ref="error_div">
+    <div v-if="figtype==='error'" class="flex-grow-0" ref="error_div">
       <div style="color:red; font-size: larger; font-weight: bold;">
         Plotting error:
       </div>
       <div v-html="error_text"></div>
     </div>
+    <div v-else-if="figtype==='table'" class="flex-grow-0">
+      <CSVTable :table_data="table_data"></CSVTable>
+    </div>
     <div v-else class="flex-grow-1 position-relative">
       <div class="w-100 h-100 plot-div" ref="plot_div" :id=plot_div_id></div>
-      <div class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center loading" v-if="drawing_busy">
-        <span class="spinner-border text-primary"></span>
-      </div>
+    </div>
+    <div class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center loading" v-if="drawing_busy">
+      <span class="spinner-border text-primary"></span>
     </div>
   </div>
 </template>
@@ -128,6 +141,9 @@ async function fetch_and_draw(latest_timestamp?: string) {
 <style scoped>
 svg {
   width: 100%;
+}
+.hidden {
+  display: none;
 }
 span.spinner-border {
   width: 3rem;
