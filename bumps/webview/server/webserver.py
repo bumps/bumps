@@ -34,7 +34,6 @@ from .logger import logger, list_handler, console_handler
 from . import persistent_settings
 
 TRACE_MEMORY = False
-CDN_TEMPLATE = "https://cdn.jsdelivr.net/npm/bumps-webview-client@{client_version}/dist/{client_version}"
 
 # can get by name and not just by id
 
@@ -44,6 +43,15 @@ sio = socketio.AsyncServer(cors_allowed_origins="*")
 app = web.Application()
 CLIENT_PATH = Path(__file__).parent.parent / 'client'
 APPLICATION_NAME = "bumps"
+static_assets_path = CLIENT_PATH / 'dist' / 'assets'
+app.router.add_static('/assets', static_assets_path)
+
+async def index(request):
+    """Serve the client-side application."""
+
+    return web.FileResponse(CLIENT_PATH / 'dist'/ 'index.html')
+
+app.router.add_get('/', index)
 
 sio.attach(app)
 
@@ -176,28 +184,6 @@ def enable_convergence_kernel_heartbeat():
     api.EMITTERS["convergence_heartbeat"] = send_heartbeat_on_convergence
 
 def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPTIONS_CLASS()):
-    # check if the locally-build site has the correct version:
-    with open(CLIENT_PATH / 'package.json', 'r') as package_json:
-        client_version = json.load(package_json)['version'].strip()
-
-    static_assets_path = CLIENT_PATH / 'dist' / client_version / 'assets'
-
-    if Path.exists(static_assets_path):
-        app.router.add_static('/assets', static_assets_path)
-
-    async def index(request):
-        """Serve the client-side application."""
-        local_client_path = CLIENT_PATH / 'dist' / client_version
-
-        if local_client_path.is_dir():
-            return web.FileResponse(local_client_path / 'index.html')
-        else:
-            CDN = CDN_TEMPLATE.format(client_version=client_version)
-            with open(CLIENT_PATH / 'index_template.txt', 'r') as index_template:
-                index_html = index_template.read().format(cdn=CDN)
-            return web.Response(body=index_html, content_type="text/html")
-        
-    app.router.add_get('/', index)
 
     api.state.base_path = persistent_settings.get_value('base_path', str(Path().absolute()), application=APPLICATION_NAME)
     if options.path is not None:
