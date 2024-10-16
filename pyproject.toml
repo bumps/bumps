@@ -75,11 +75,6 @@ default-tag = "0.0.1"
 [tool.versioningit.next-version]
 method = "smallest"
 
-[tool.versioningit.format]
-distance = "{next_version}.dev{distance}"
-dirty = "{version}+d{build_date:%Y%m%d}"
-distance-dirty = "{next_version}.dev{distance}+d{build_date:%Y%m%d%H%M}"
-
 [tool.versioningit.write]
 file = "bumps/_version.py"
 
