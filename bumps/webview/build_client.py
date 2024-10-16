@@ -8,7 +8,7 @@ def build_client(
     sourcemap=False,
     cleanup=False,
 ):
-    """Build the refl1d webview client."""
+    """Build the bumps webview client."""
 
     # check if npm is installed
     if not shutil.which("npm"):
