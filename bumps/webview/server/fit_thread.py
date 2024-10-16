@@ -93,7 +93,7 @@ class ConvergenceMonitor(monitor.Monitor):
             p = np.sort(pop)
             QI,Qmid, = int(0.2*n),int(0.5*n)
             self.pop.append((best, p[0],p[QI],p[Qmid],p[-1-QI],p[-1]))
-        except AttributeError:
+        except (AttributeError, TypeError):
             self.pop.append((best, ))
 
         if self.rate > 0 and history.time[0] >= self.time+self.rate:
