@@ -43,10 +43,6 @@ sio = socketio.AsyncServer(cors_allowed_origins="*")
 app = web.Application()
 CLIENT_PATH = Path(__file__).parent.parent / 'client'
 APPLICATION_NAME = "bumps"
-static_assets_path = CLIENT_PATH / 'dist' / 'assets'
-
-if static_assets_path.exists():
-    app.router.add_static('/assets', static_assets_path)
 
 async def index(request):
     """Serve the client-side application."""
@@ -192,6 +188,10 @@ def enable_convergence_kernel_heartbeat():
     api.EMITTERS["convergence_heartbeat"] = send_heartbeat_on_convergence
 
 def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPTIONS_CLASS()):
+    static_assets_path = CLIENT_PATH / 'dist' / 'assets'
+
+    if static_assets_path.exists():
+        app.router.add_static('/assets', static_assets_path)
 
     api.state.base_path = persistent_settings.get_value('base_path', str(Path().absolute()), application=APPLICATION_NAME)
     if options.path is not None:
