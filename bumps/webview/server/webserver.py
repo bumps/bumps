@@ -44,11 +44,19 @@ app = web.Application()
 CLIENT_PATH = Path(__file__).parent.parent / 'client'
 APPLICATION_NAME = "bumps"
 static_assets_path = CLIENT_PATH / 'dist' / 'assets'
-app.router.add_static('/assets', static_assets_path)
+
+if static_assets_path.exists():
+    app.router.add_static('/assets', static_assets_path)
 
 async def index(request):
     """Serve the client-side application."""
-
+    index_path = CLIENT_PATH / 'dist' / 'index.html'
+    if not index_path.exists():
+        return web.Response(
+            body=f"<h2>Client not built</h2>\
+                <div>Please run <pre>python -m {APPLICATION_NAME}.webview.build_client</pre></div>",
+            content_type='text/html',
+            status=404)
     return web.FileResponse(CLIENT_PATH / 'dist'/ 'index.html')
 
 app.router.add_get('/', index)
