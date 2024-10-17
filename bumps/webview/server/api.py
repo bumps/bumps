@@ -499,10 +499,6 @@ async def _fit_complete_handler(event):
         await log(event["info"], title=f"done with chisq {chisq}")
         logger.info(f"fit done with chisq {chisq}")
 
-    if fit_thread.fitclass.id == 'dream':
-        # print("waiting for uncertainty to complete...")
-        await asyncio.to_thread(state.fit_uncertainty_final.wait)
-
     state.fit_complete_event.set()
 
     if terminate:
@@ -515,6 +511,8 @@ def fit_progress_handler(event: Dict):
 
 def fit_complete_handler(event: Dict):
     loop = getattr(state, 'calling_loop', None)
+    if event["message"] != "error":
+        state.fit_uncertainty_final.wait()
     if loop is not None:
         asyncio.run_coroutine_threadsafe(_fit_complete_handler(event), loop)
 
