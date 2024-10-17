@@ -158,15 +158,14 @@ class DreamMonitor(monitor.Monitor):
         """
         Close out the monitor
         """
-        if self.uncertainty_state is not None:
-            # Note: win.uncertainty_state protected by win.fit_lock
-            # self.win.uncertainty_state = self.uncertainty_state
-            evt = dict(
-                message="uncertainty_final",
-                time=self.time,
-                uncertainty_state=deepcopy(self.uncertainty_state),
-            )
-            EVT_FIT_PROGRESS.send(evt)
+        # Note: win.uncertainty_state protected by win.fit_lock
+        # self.win.uncertainty_state = self.uncertainty_state
+        evt = dict(
+            message="uncertainty_final",
+            time=self.time,
+            uncertainty_state=deepcopy(self.uncertainty_state),
+        )
+        EVT_FIT_PROGRESS.send(evt)
 
 # ==============================================================================
 
