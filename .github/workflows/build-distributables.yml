@@ -1,0 +1,58 @@
+name: Build conda-packed distribution
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+env:
+  branch_name: master
+
+jobs:
+  build_and_publish:
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      matrix:
+        config:
+          - { os: ubuntu-latest, py: "3.11" }
+          - { os: windows-latest, py: "3.11" }
+          - { os: macos-latest, py: "3.11" }
+          - { os: macos-13, py: "3.11" }
+          # all using to stable abi
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ env.branch_name }}
+        fetch-depth: 0
+
+    - uses: conda-incubator/setup-miniconda@v3
+      with:
+        auto-update-conda: true
+        python-version: ${{ matrix.config.py }}
+
+    - name: Build conda-packed (all platforms)
+      shell: bash -el {0}
+      run: |
+        conda activate base
+        ./extra/build_conda_packed.sh
+        ls artifacts/*
+        {
+          echo 'DISTRIBUTABLES<<EOF'
+          ls artifacts/*
+          echo EOF
+        } >> "$GITHUB_ENV"
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: artifacts-${{ matrix.config.os }}-${{ matrix.config.py }}
+        path: artifacts/*
+
+    - name: Update current release
+      if: startsWith(github.ref, 'refs/tags')
+      uses: johnwbyrd/update-release@v1.0.0
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        files: |
+          ${{ env.DISTRIBUTABLES }}
