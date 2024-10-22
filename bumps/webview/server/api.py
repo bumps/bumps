@@ -898,9 +898,13 @@ async def get_dirlisting(pathlist: Optional[List[str]]=None):
     subfolders = []
     files = []
     path = Path(state.base_path) if (pathlist is None or len(pathlist) == 0) else Path(*pathlist)
+    if not path.exists():
+        await add_notification(
+            f"Path does not exist: {path}, falling back to current working directory", 
+            title="Error", timeout=2000)
+        path = Path.cwd()
+
     abs_path = path.absolute()
-    if not abs_path.exists():
-        return { "error": f"Path does not exist: {abs_path}" }
     for p in abs_path.iterdir():
         if not p.exists():
             continue
