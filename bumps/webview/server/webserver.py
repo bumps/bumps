@@ -116,6 +116,7 @@ class BumpsOptions:
     path: Optional[str] = None
     no_auto_history: bool = False
     convergence_heartbeat: bool = False
+    use_persistent_path: bool = False
 
 OPTIONS_CLASS = BumpsOptions
 
@@ -139,6 +140,7 @@ def get_commandline_options(arg_defaults: Optional[Dict]=None):
     parser.add_argument('--path', default=None, type=str, help='set initial path for save and load dialogs')
     parser.add_argument('--no_auto_history', action='store_true', help='disable auto-appending problem state to history on load and at fit end')
     parser.add_argument('--convergence_heartbeat', action='store_true', help='enable convergence heartbeat for jupyter kernel (keeps kernel alive during fit)')
+    parser.add_argument('--use_persistent_path', action='store_true', help='save most recently used path to disk for persistence between sessions')
     # parser.add_argument('-c', '--config-file', type=str, help='path to JSON configuration to load')
     namespace = OPTIONS_CLASS()
     if arg_defaults is not None:
@@ -199,12 +201,12 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
         
     app.router.add_get('/', index)
 
-    api.state.base_path = persistent_settings.get_value('base_path', str(Path().absolute()), application=APPLICATION_NAME)
-    if options.path is not None:
-        if Path(options.path).exists():
-            api.state.base_path = options.path
-        else:
-            logger.warning(f"specified path {options.path} does not exist, reverting to current directory")
+    if options.use_persistent_path:
+        api.state.base_path = persistent_settings.get_value('base_path', str(Path().absolute()), application=APPLICATION_NAME)
+    elif options.path is not None and Path(options.path).exists():
+        api.state.base_path = options.path
+    else:
+        api.state.base_path = str(Path.cwd().absolute())
 
     if options.read_store is not None and options.store is not None:
         warnings.warn("read_store and store are both set; read_store will be used to initialize state")
