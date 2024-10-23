@@ -10,7 +10,7 @@ from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
 from types import GeneratorType
-from typing import ( Any, Callable, Coroutine, Dict, List, Literal, Mapping, Optional, Sequence, TypedDict, Union, cast )
+from typing import ( Any, Callable, Dict, List, Literal, Mapping, Optional, Protocol, Sequence, TypedDict, Union, cast )
 
 import numpy as np
 
