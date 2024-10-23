@@ -35,6 +35,7 @@ from bumps.fitters import (
 from bumps.mapper import MPMapper
 from bumps.parameter import Constant, Parameter, Variable, unique
 
+from .custom_plot import CustomWebviewPlot
 from .fit_thread import EVT_FIT_COMPLETE, EVT_FIT_PROGRESS, FitThread
 from .logger import logger
 from .state_hdf5_backed import (
