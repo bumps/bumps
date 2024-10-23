@@ -1,31 +1,33 @@
-from functools import lru_cache
-import itertools
-from types import GeneratorType
-from typing import Any, Callable, Coroutine, Dict, List, Literal, Mapping, Optional, Sequence, Union, Tuple, TypedDict, cast
-from datetime import datetime
-import numbers
-import warnings
-from threading import Event
-import numpy as np
 import asyncio
-from pathlib import Path, PurePath
+import itertools
 import json
-from copy import deepcopy
+import numbers
 import os
 import uuid
+import warnings
+from copy import deepcopy
+from datetime import datetime
+from functools import lru_cache
+from pathlib import Path
+from types import GeneratorType
+from typing import Any, Callable, Coroutine, Dict, List, Literal, Mapping, Optional, Sequence, Union, TypedDict, cast
 
-from bumps.fitters import DreamFit, LevenbergMarquardtFit, SimplexFit, DEFit, MPFit, BFGSFit, FitDriver, fit, nllf_scale, format_uncertainty
+import numpy as np
+
+from bumps.fitters import DreamFit, LevenbergMarquardtFit, SimplexFit, DEFit, MPFit, BFGSFit, FitDriver, nllf_scale, format_uncertainty
 from bumps.mapper import MPMapper
 from bumps.parameter import Parameter, Variable, unique
 import bumps.cli
 import bumps.fitproblem
-import bumps.dream.views, bumps.dream.varplot, bumps.dream.stats, bumps.dream.state
+import bumps.dream.state
+import bumps.dream.stats
+import bumps.dream.varplot
+import bumps.dream.views
 import bumps.errplot
-
-from .state_hdf5_backed import UNDEFINED, UNDEFINED_TYPE, State, serialize_problem, deserialize_problem, SERIALIZER_EXTENSIONS
+from .state_hdf5_backed import UNDEFINED_TYPE, State, serialize_problem, deserialize_problem, SERIALIZER_EXTENSIONS
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
 from .varplot import plot_vars
-from .logger import logger, console_handler
+from .logger import logger
 
 
 REGISTRY: Dict[str, Callable] = {}

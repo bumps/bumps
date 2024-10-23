@@ -167,7 +167,7 @@ async function unsetOutputFile() {
           <label for="autosaveIntervalInput" class="col col-form-label col-form-label-sm">Interval (s)</label>
           <div class="col-auto">
             <input type="number" class="form-control form-control" id="autosaveIntervalInput"
-            :value="autosave_session_interval" @change="set_interval($event.target.valueAsNumber)">
+            :value="autosave_session_interval" @change="set_interval((($event.target as HTMLInputElement)?.valueAsNumber) ?? 0)">
           </div>
         </div>
       </li>
