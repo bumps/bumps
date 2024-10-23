@@ -29,6 +29,7 @@ mimetypes.add_type("image/svg+xml", ".svg")
 
 from . import api
 from .fit_thread import EVT_FIT_PROGRESS
+from .fit_options import apply_fit_options
 from .state_hdf5_backed import SERIALIZERS, UNDEFINED
 from .logger import logger, list_handler, console_handler
 from . import persistent_settings
@@ -117,6 +118,8 @@ class BumpsOptions:
     no_auto_history: bool = False
     convergence_heartbeat: bool = False
     use_persistent_path: bool = False
+    fit_options: Optional[List[str]] = None
+
 
 OPTIONS_CLASS = BumpsOptions
 
@@ -136,11 +139,12 @@ def get_commandline_options(arg_defaults: Optional[Dict]=None):
     parser.add_argument('--exit', action='store_true', help='end process when fit complete (fit results lost unless write_store is specified)')
     parser.add_argument('--serializer', default=OPTIONS_CLASS.serializer, type=str, choices=["pickle", "dill", "dataclass"], help='strategy for serializing problem, will use value from store if it has already been defined')
     parser.add_argument('--trace', action='store_true', help='enable memory tracing (prints after every uncertainty update in dream)')
-    parser.add_argument('--parallel', default=0, type=int, help='run fit using multiprocessing for parallelism; use --parallel=0 for all cpus')
+    parser.add_argument('--parallel', default=0, type=int, help='run fit using multiprocessing for parallelism; default is --parallel=0 for all cpus')
     parser.add_argument('--path', default=None, type=str, help='set initial path for save and load dialogs')
     parser.add_argument('--no_auto_history', action='store_true', help='disable auto-appending problem state to history on load and at fit end')
     parser.add_argument('--convergence_heartbeat', action='store_true', help='enable convergence heartbeat for jupyter kernel (keeps kernel alive during fit)')
     parser.add_argument('--use_persistent_path', action='store_true', help='save most recently used path to disk for persistence between sessions')
+    parser.add_argument('--fit_options', nargs='*', type=str, help='fit options as key=value pairs')
     # parser.add_argument('-c', '--config-file', type=str, help='path to JSON configuration to load')
     namespace = OPTIONS_CLASS()
     if arg_defaults is not None:
@@ -245,7 +249,7 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
         fitter_id = api.state.shared.selected_fitter
     if fitter_id is None or fitter_id is UNDEFINED:
         fitter_id = 'amoeba'
-    fitter_settings = api.FITTER_DEFAULTS[fitter_id]
+    fitter_settings = apply_fit_options(fitter_id=fitter_id, fit_options=options.fit_options)
 
     api.state.parallel = options.parallel
 
