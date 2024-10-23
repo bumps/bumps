@@ -81,7 +81,7 @@ async function onInactive(param) {
   <table class="table table-sm">
     <thead class="border-bottom py-1 sticky-top text-white bg-secondary">
       <tr>
-        <th scope="col">Fit Parameter</th>
+        <th scope="col">Fit Parameter ({{ tag_filter?.filtered_parameters?.length ?? 0 }})</th>
         <th scope="col"></th>
         <th scope="col">Value</th>
         <th scope="col">Min</th>
