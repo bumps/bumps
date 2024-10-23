@@ -1,0 +1,20 @@
+#!/usr/bin/osascript
+
+on run argv
+   tell application "Finder"
+      set base_path to container of (container of (path to me)) as alias
+   end tell
+   set env_activate to "source " & quoted form of ((POSIX path of base_path) & "env/bin/activate") & ";"
+   if application "Terminal" is not running then
+      tell application "Terminal"
+         activate
+         delay 2
+         set currentTab to do script env_activate in window 1
+      end tell
+   else
+      tell application "Terminal"
+         set currentTab to do script env_activate
+         activate
+      end tell
+   end if
+end run 

@@ -10,7 +10,6 @@ import {
   fitter_settings,
   active_fit,
   selected_fitter,
-  fit_progress,
   fitOptions,
   fileBrowser,
   FileBrowserSettings,
@@ -76,6 +75,11 @@ socket.on('connect', async () => {
   connected.value = true;
   const file_info = await socket.asyncEmit('get_shared_setting', 'model_file') as { pathlist: string[], filename: string } | undefined;
   model_file.value = file_info;
+  const current_active_fit = await socket.asyncEmit('get_shared_setting', 'active_fit') as { 
+    fitter_id?: string, options?: any, num_steps?: number, chisq?: string, step?: number, value?: number } | undefined;
+  if (current_active_fit) {
+    active_fit.value = current_active_fit;
+  }
 });
 
 socket.on('disconnect', (payload) => {
@@ -87,12 +91,8 @@ socket.on('model_file', ( file_info: { filename: string, pathlist: string[] } ) 
   model_file.value = file_info;
 });
 
-socket.on('active_fit', ({ fitter_id, options, num_steps }) => {
-  active_fit.value = { fitter_id, options, num_steps };
-});
-
-socket.on('fit_progress', (event) => {
-  fit_progress.value = event;
+socket.on('active_fit', ({ fitter_id, options, num_steps, step, chisq }) => {
+  active_fit.value = { fitter_id, options, num_steps, step, chisq };
 });
 
 socket.on('add_notification', addNotification);
@@ -368,11 +368,11 @@ onMounted(() => {
               <!-- <div class="rounded p-2 bg-primary">Fitting: </div> -->
               <div v-if="active_fit.fitter_id !== undefined" class="badge bg-secondary p-2 align-middle">
                 <div class="align-middle pt-2 pb-1 px-1 d-inline-block">
-                  <span>Fitting: {{ active_fit.fitter_id }} step {{ fit_progress?.step }} of
-                  {{ active_fit?.num_steps }}, chisq={{ fit_progress.chisq }}</span>
+                  <span>Fitting: {{ active_fit.fitter_id }} step {{ active_fit?.step }} of
+                  {{ active_fit?.num_steps }}, chisq={{ active_fit.chisq }}</span>
                   <div class="progress mt-1" style="height:3px;">
-                    <div class="progress-bar" role="progressbar" :aria-valuenow="fit_progress?.step" 
-                      aria-valuemin="0" :aria-valuemax="active_fit?.num_steps ?? 100" :style="{width: ((fit_progress.step ?? 0) * 100 / (active_fit.num_steps ?? 1)).toFixed(1) + '%'}"></div>
+                    <div class="progress-bar" role="progressbar" :aria-valuenow="active_fit?.step"
+                      aria-valuemin="0" :aria-valuemax="active_fit?.num_steps ?? 100" :style="{width: ((active_fit.step ?? 0) * 100 / (active_fit.num_steps ?? 1)).toFixed(1) + '%'}"></div>
                   </div>
                 </div>
                 <button class="btn btn-danger btn-sm" @click="stopFit">Stop</button>

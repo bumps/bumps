@@ -1,15 +1,14 @@
 import asyncio
 from copy import deepcopy
 from datetime import datetime
-from typing import TYPE_CHECKING, Optional, Dict, List, NewType, Tuple, TypedDict, Any, Literal, Union, cast, IO
+from typing import TYPE_CHECKING, Awaitable, Callable, Optional, Dict, List, NewType, Tuple, TypedDict, Any, Literal, Union, cast, IO
 from collections import deque
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, field, fields
 import json
 import shutil
 import os
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Optional, TYPE_CHECKING
 from threading import Event
 from bumps.serialize import serialize, deserialize, migrate
 import h5py
@@ -530,6 +529,9 @@ class ActiveFit(TypedDict):
     fitter_id: str
     options: Dict[str, Any]
     num_steps: int
+    step: int
+    chisq: str
+    value: float
 
 class FileInfo(TypedDict):
     filename: str
@@ -555,20 +557,20 @@ class SharedState:
     autosave_history: bool = True
     autosave_history_length: int = 10
 
-    _not_reloaded = ["active_fit", "autosave_session", "session_output_file"]
-    
-    async def notify(self, name, value):
-        pass
+    _not_reloaded = ["active_fit", "autosave_session", "session_output_file", "_notification_callbacks"]
+    _notification_callbacks: Dict[str, Callable[[str, Any], Awaitable[None]]] = field(default_factory=dict)
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: str, value):
         super().__setattr__(name, value)
         loop = asyncio.get_event_loop()
-        if loop.is_running():
-            loop.create_task(self.notify(name, value))
+        if loop.is_running() and hasattr(self, '_notification_callbacks'):
+            for callback in self._notification_callbacks.values():
+                loop.create_task(callback(name, value))
 
     async def set(self, name, value):
         super().__setattr__(name, value)
-        await self.notify(name, value)
+        for callback in self._notification_callbacks.values():
+            await callback(name, value)
 
     async def get(self, name):
         return getattr(self, name, UNDEFINED)
@@ -576,9 +578,10 @@ class SharedState:
     def write(self, parent: 'Group'):
         group = parent.require_group('shared')
         for field in fields(self):
-            value = getattr(self, field.name)
-            if value is not UNDEFINED:
-                write_json(group, field.name, value)
+            if not field.name in self._not_reloaded:
+                value = getattr(self, field.name)
+                if value is not UNDEFINED:
+                    write_json(group, field.name, value)
 
     def read(self, parent: 'Group'):
         group = parent.get('shared')

@@ -115,6 +115,8 @@ class BumpsOptions:
     parallel: int = 0
     path: Optional[str] = None
     no_auto_history: bool = False
+    convergence_heartbeat: bool = False
+    use_persistent_path: bool = False
 
 OPTIONS_CLASS = BumpsOptions
 
@@ -137,6 +139,8 @@ def get_commandline_options(arg_defaults: Optional[Dict]=None):
     parser.add_argument('--parallel', default=0, type=int, help='run fit using multiprocessing for parallelism; use --parallel=0 for all cpus')
     parser.add_argument('--path', default=None, type=str, help='set initial path for save and load dialogs')
     parser.add_argument('--no_auto_history', action='store_true', help='disable auto-appending problem state to history on load and at fit end')
+    parser.add_argument('--convergence_heartbeat', action='store_true', help='enable convergence heartbeat for jupyter kernel (keeps kernel alive during fit)')
+    parser.add_argument('--use_persistent_path', action='store_true', help='save most recently used path to disk for persistence between sessions')
     # parser.add_argument('-c', '--config-file', type=str, help='path to JSON configuration to load')
     namespace = OPTIONS_CLASS()
     if arg_defaults is not None:
@@ -158,10 +162,20 @@ def wrap_with_sid(function: Callable):
     return with_sid
 
 def setup_sio_api():
-    api.emit = sio.emit
+    api.EMITTERS["socketio"] = sio.emit
     for (name, action) in api.REGISTRY.items():
         sio.on(name, handler=wrap_with_sid(action))
         rest_get(action)
+
+def enable_convergence_kernel_heartbeat():
+    from comm import create_comm
+    comm = create_comm(target_name="heartbeat")
+
+    async def send_heartbeat_on_convergence(event: str, *args, **kwargs):
+        if event == "updated_convergence":
+            comm.send({"status": "alive"})
+
+    api.EMITTERS["convergence_heartbeat"] = send_heartbeat_on_convergence
 
 def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPTIONS_CLASS()):
     # check if the locally-build site has the correct version:
@@ -187,12 +201,12 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
         
     app.router.add_get('/', index)
 
-    api.state.base_path = persistent_settings.get_value('base_path', str(Path().absolute()), application=APPLICATION_NAME)
-    if options.path is not None:
-        if Path(options.path).exists():
-            api.state.base_path = options.path
-        else:
-            logger.warning(f"specified path {options.path} does not exist, reverting to current directory")
+    if options.use_persistent_path:
+        api.state.base_path = persistent_settings.get_value('base_path', str(Path().absolute()), application=APPLICATION_NAME)
+    elif options.path is not None and Path(options.path).exists():
+        api.state.base_path = options.path
+    else:
+        api.state.base_path = str(Path.cwd().absolute())
 
     if options.read_store is not None and options.store is not None:
         warnings.warn("read_store and store are both set; read_store will be used to initialize state")
@@ -289,6 +303,9 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
             loop.call_later(0.5, lambda: webbrowser.open_new_tab(f"http://{hostname}:{port}/"))
         app.on_startup.append(open_browser)
 
+    if options.convergence_heartbeat:
+        enable_convergence_kernel_heartbeat()
+
     if TRACE_MEMORY:
         import tracemalloc
         tracemalloc.start()
@@ -305,7 +322,7 @@ def main(options: Optional[OPTIONS_CLASS] = None, sock: Optional[socket.socket] 
     runsock = setup_app(options=options, sock=None)
     web.run_app(app, sock=runsock)
 
-async def start_app(options: OPTIONS_CLASS = OPTIONS_CLASS(), sock: socket.socket = None, jupyter_link: bool = False):
+async def start_app(options: OPTIONS_CLASS = OPTIONS_CLASS(), sock: socket.socket = None, jupyter_link: bool = False, jupyter_heartbeat: bool = False):
     # this function is called from jupyter notebook, so set headless = True
     options.headless = True
     # redirect logging to a list
@@ -316,6 +333,10 @@ async def start_app(options: OPTIONS_CLASS = OPTIONS_CLASS(), sock: socket.socke
     await runner.setup()
     site = web.SockSite(runner, sock=runsock)
     await site.start()
+
+    if jupyter_heartbeat:
+        enable_convergence_kernel_heartbeat()
+
     if jupyter_link:
         return open_tab_link()
     else:
@@ -336,7 +357,7 @@ def get_server_url():
     # detect if running through Jupyter Hub
     if 'JUPYTERHUB_SERVICE_PREFIX' in os.environ:
         url = f"{os.environ['JUPYTERHUB_SERVICE_PREFIX']}/proxy/{port}/"
-    elif api.state.hostname == 'localhost': # local server
+    elif api.state.hostname in ("localhost", "127.0.0.1"): # local server
         url = f"http://{api.state.hostname}:{port}/"
     else: # external server, e.g. TACC
         url = f"/proxy/{port}/"

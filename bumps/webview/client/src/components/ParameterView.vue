@@ -82,7 +82,7 @@ async function setFittable(ev, index) {
       </tr>
     </thead>
     <tbody>
-      <tr class="py-1" v-for="(param, index) in tag_filter?.filtered_parameters" :key="param.id">
+      <tr class="py-1" v-for="{ parameter: param, index } in tag_filter?.filtered_parameters" :key="param.id">
         <td>
           <input class="form-check-input" v-if="param.fittable" type="checkbox" :checked="!param.fixed"
             @click.prevent="setFittable($event, index)" />

@@ -10,25 +10,41 @@ from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
 from types import GeneratorType
-from typing import Any, Callable, Coroutine, Dict, List, Literal, Mapping, Optional, Sequence, Union, TypedDict, cast
+from typing import ( Any, Callable, Coroutine, Dict, List, Literal, Mapping, Optional, Sequence, TypedDict, Union, cast )
 
 import numpy as np
 
-from bumps.fitters import DreamFit, LevenbergMarquardtFit, SimplexFit, DEFit, MPFit, BFGSFit, FitDriver, nllf_scale, format_uncertainty
-from bumps.mapper import MPMapper
-from bumps.parameter import Parameter, Variable, unique
 import bumps.cli
-import bumps.fitproblem
 import bumps.dream.state
 import bumps.dream.stats
 import bumps.dream.varplot
 import bumps.dream.views
 import bumps.errplot
-from .state_hdf5_backed import UNDEFINED_TYPE, State, serialize_problem, deserialize_problem, SERIALIZER_EXTENSIONS
-from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
-from .varplot import plot_vars
-from .logger import logger
+import bumps.fitproblem
+from bumps.fitters import (
+    BFGSFit,
+    DEFit,
+    DreamFit,
+    FitDriver,
+    LevenbergMarquardtFit,
+    MPFit,
+    SimplexFit,
+    format_uncertainty,
+    nllf_scale,
+)
+from bumps.mapper import MPMapper
+from bumps.parameter import Constant, Parameter, Variable, unique
 
+from .fit_thread import EVT_FIT_COMPLETE, EVT_FIT_PROGRESS, FitThread
+from .logger import logger
+from .state_hdf5_backed import (
+    SERIALIZER_EXTENSIONS,
+    UNDEFINED_TYPE,
+    State,
+    deserialize_problem,
+    serialize_problem,
+)
+from .varplot import plot_vars
 
 REGISTRY: Dict[str, Callable] = {}
 MODEL_EXT = '.json'
@@ -49,18 +65,34 @@ def register(fn: Callable):
     REGISTRY[fn.__name__] = fn
     return fn
 
+class Emitter(Protocol):
+    def __call__(
+        self,
+        event: str,
+        data: Optional[Any] = None,
+        to: Optional[str] = None,
+        room: Optional[str] = None,
+        skip_sid: Optional[str] = None,
+        namespace: Optional[str] = None,
+        callback: Optional[Callable] = None,
+        ignore_queue: bool = False
+    ) -> Awaitable: ...
+
+EMITTERS: Dict[str, Emitter] = {}
+
 async def emit(
-    event: Any,
-    data: Optional[Any] = None,
-    to: Optional[Any] = None,
-    room: Optional[Any] = None,
-    skip_sid: Optional[Any] = None,
-    namespace: Optional[Any] = None,
-    callback: Optional[Any] = None,
-    ignore_queue: bool = False
-) -> Coroutine[Any, Any, None] :
-    # to be defined when initializing server
-    pass
+        event: str,
+        data: Optional[Any] = None,
+        to: Optional[str] = None,
+        room: Optional[str] = None,
+        skip_sid: Optional[str] = None,
+        namespace: Optional[str] = None,
+        callback: Optional[Callable] = None,
+        ignore_queue: bool = False):
+    results = {}
+    for emitter_name, emitter_fn in EMITTERS.items():
+        results[emitter_name] = await emitter_fn(event, data=data, to=to, room=room, skip_sid=skip_sid, namespace=namespace, callback=callback, ignore_queue=ignore_queue)
+    return results
 
 TopicNameType = Literal[
     "log", # log messages
@@ -414,8 +446,7 @@ async def start_fit_thread(fitter_id: str="", options=None, terminate_on_finish=
             uncertainty_update=state.shared.autosave_session_interval,
             terminate_on_finish=terminate_on_finish,
             )
-        await emit("fit_progress", {}) # clear progress
-        state.shared.active_fit = to_json_compatible_dict(dict(fitter_id=fitter_id, options=options, num_steps=num_steps))
+        state.shared.active_fit = to_json_compatible_dict(dict(fitter_id=fitter_id, options=options, num_steps=num_steps, step=0, chisq="", value=0))
         await log(json.dumps(to_json_compatible_dict(options), indent=2), title = f"starting fitter {fitter_id}")
         state.autosave()
         fit_thread.start()
@@ -447,7 +478,9 @@ async def _fit_progress_handler(event: Dict):
         state.fitting.population = event["pop"]
         state.shared.updated_convergence = now_string()
     elif message == 'progress':
-        await emit("fit_progress", to_json_compatible_dict(event))
+        active_fit = state.shared.active_fit
+        active_fit.update({"step": event["step"], "chisq": event["chisq"]})
+        state.shared.active_fit = active_fit
     elif message == 'uncertainty_update' or message == 'uncertainty_final':
         state.fitting.uncertainty_state = cast(bumps.dream.state.MCMCDraw, event["uncertainty_state"])
         state.shared.updated_uncertainty = now_string()
@@ -482,10 +515,6 @@ async def _fit_complete_handler(event):
         await log(event["info"], title=f"done with chisq {chisq}")
         logger.info(f"fit done with chisq {chisq}")
 
-    if fit_thread.fitclass.id == 'dream':
-        # print("waiting for uncertainty to complete...")
-        await asyncio.to_thread(state.fit_uncertainty_final.wait)
-
     state.fit_complete_event.set()
 
     if terminate:
@@ -498,6 +527,8 @@ def fit_progress_handler(event: Dict):
 
 def fit_complete_handler(event: Dict):
     loop = getattr(state, 'calling_loop', None)
+    if event["message"] != "error":
+        state.fit_uncertainty_final.wait()
     if loop is not None:
         asyncio.run_coroutine_threadsafe(_fit_complete_handler(event), loop)
 
@@ -517,11 +548,12 @@ async def get_data_plot(model_indices: Optional[List[int]] = None):
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = deepcopy(state.problem.fitProblem)
-    import mpld3
     import matplotlib
+    import mpld3
     matplotlib.use("agg")
-    import matplotlib.pyplot as plt
     import time
+
+    import matplotlib.pyplot as plt
     start_time = time.time()
     logger.info(f'queueing new data plot... {start_time}')
     fig = plt.figure()
@@ -552,6 +584,74 @@ async def get_model():
     fitProblem = state.problem.fitProblem
     serialized = serialize_problem(fitProblem, 'dataclass') if state.problem.serializer == 'dataclass' else 'null'
     return serialized
+
+
+class WebviewPlotFunction(Protocol):
+    def __call__(self,
+                 model: bumps.fitproblem.Fitness,
+                 problem: bumps.fitproblem.FitProblem,
+                 state: Optional[bumps.dream.state.MCMCDraw]=None,
+                 n_samples: Optional[int]=None,
+                 ) -> dict:
+        ...
+
+# custom plots are an opt-in feature for models
+# they are defined in the model file as a dictionary of functions
+# with a "change_with" key that specifies whether the plot should
+# change with the uncertainty state or with the parameters
+@register
+async def get_custom_plot_info():
+    if state.problem is None or state.problem.fitProblem is None:
+        return None
+    fitProblem = state.problem.fitProblem
+    output: List[dict] = []
+    for model_index, model in enumerate(fitProblem.models):
+        model_webview_plots = getattr(model, 'webview_plots', {})
+        for title, plotinfo in model_webview_plots.items():
+            output.append({
+                "model_index": model_index,
+                "change_with": plotinfo['change_with'],
+                "title": title
+            })
+
+    return output
+
+async def create_custom_plot(model_index: int, plot_title: str, n_samples: int = 1) -> CustomWebviewPlot:
+
+    if state.problem is None or state.problem.fitProblem is None:
+        return None
+    fitProblem = deepcopy(state.problem.fitProblem)
+    uncertainty_state = state.fitting.uncertainty_state
+
+    # update model
+    model = list(fitProblem.models)[model_index]
+    webview_plots = getattr(model, 'webview_plots', {})
+    plot_info = webview_plots.get(plot_title, {})
+    plot_function: WebviewPlotFunction = webview_plots.get(plot_title, {}).get('func', None)
+    if plot_function is not None:
+        try:
+            model.update()
+            model.nllf()
+            if plot_info.get('change_with', None) == 'uncertainty':
+                plot_item: CustomWebviewPlot = await asyncio.to_thread(plot_function, model, fitProblem, uncertainty_state, n_samples)
+            else:
+                plot_item: CustomWebviewPlot = await asyncio.to_thread(plot_function, model, fitProblem)
+        except:
+            plot_item = CustomWebviewPlot(fig_type='error',
+                                          plotdata=traceback.format_exc())
+
+        return process_custom_plot(plot_item)
+            
+    return {}
+   
+@register
+async def get_custom_plot(model_index: int, plot_title: str, n_samples: int = 1):
+    output = CustomWebviewPlot(figtype='error', plotdata='no plot')
+    if model_index is not None:
+        figdict = await create_custom_plot(model_index=model_index, plot_title=plot_title, n_samples=n_samples)
+        
+    output = to_json_compatible_dict(figdict)
+    return output
 
 @register
 async def get_convergence_plot():
@@ -641,11 +741,12 @@ async def get_model_uncertainty_plot():
     fitProblem = state.problem.fitProblem
     uncertainty_state = state.fitting.uncertainty_state
     if uncertainty_state is not None:
-        import mpld3
         import matplotlib
+        import mpld3
         matplotlib.use("agg")
-        import matplotlib.pyplot as plt
         import time
+
+        import matplotlib.pyplot as plt
         start_time = time.time()
         logger.info(f'queueing new model uncertainty plot... {start_time}')
 
@@ -664,40 +765,41 @@ async def get_model_uncertainty_plot():
         return None
 
 @register
-async def get_parameter_trace_plot():
+async def get_parameter_labels():
+    # Required to support get_parameter_trace_plot because ordering must be preserved.
+    # There is no way to know whether a disambiguated name occurred first or second from
+    # get_parameters. Uses fitProblem because uncertainty state might not exist and
+    # list of parameters should be updated on model_loaded.
+    # Should probably be able to call these parameters by ID.
+
+    if state.problem is None or state.problem.fitProblem is None:
+        return None
+    return to_json_compatible_dict(state.problem.fitProblem.labels())
+
+@register
+async def get_parameter_trace_plot(var: int):
+    
     uncertainty_state = state.fitting.uncertainty_state
     if uncertainty_state is not None:
-        import mpld3
-        import matplotlib
-        matplotlib.use("agg")
-        import matplotlib.pyplot as plt
         import time
 
         start_time = time.time()
         logger.info(f'queueing new parameter_trace plot... {start_time}')
 
-        fig = plt.figure()
-        axes = fig.add_subplot(111)
-
         # begin plotting:
-        var = 0
         portion = None
         draw, points, _ = uncertainty_state.chains()
         label = uncertainty_state.labels[var]
         start = int((1-portion)*len(draw)) if portion else 0
         genid = np.arange(uncertainty_state.generation-len(draw)+start, uncertainty_state.generation)+1
-        axes.plot(genid*uncertainty_state.thinning,
-             np.squeeze(points[start:, uncertainty_state._good_chains, var]))
-        axes.set_xlabel('Generation number')
-        axes.set_ylabel(label)
-        fig.canvas.draw()
+        fig = plot_trace(genid*uncertainty_state.thinning,
+             np.squeeze(points[start:, uncertainty_state._good_chains, var]).T, label=label, alpha=0.4)
 
         logger.info(f"time to render but not serialize... {time.time() - start_time}")
-        dfig = mpld3.fig_to_dict(fig)
-        plt.close(fig)
+        dfig = fig.to_dict()
         end_time = time.time()
         logger.info(f"time to draw parameter_trace plot: {end_time - start_time}")
-        return dfig
+        return to_json_compatible_dict(dfig)
     else:
         return None
     
@@ -787,7 +889,7 @@ async def set_shared_setting(setting: str, value: Any):
 async def notify_shared_setting(setting: str, value: Any):
     await emit(setting, to_json_compatible_dict(value))
 
-object.__setattr__(state.shared, 'notify', notify_shared_setting)
+state.shared._notification_callbacks["emit"] = notify_shared_setting
 
 @register
 async def get_topic_messages(topic: Optional[TopicNameType] = None, max_num=None) -> List[Dict]:
@@ -814,9 +916,13 @@ async def get_dirlisting(pathlist: Optional[List[str]]=None):
     subfolders = []
     files = []
     path = Path(state.base_path) if (pathlist is None or len(pathlist) == 0) else Path(*pathlist)
+    if not path.exists():
+        await add_notification(
+            f"Path does not exist: {path}, falling back to current working directory", 
+            title="Error", timeout=2000)
+        path = Path.cwd()
+
     abs_path = path.absolute()
-    if not abs_path.exists():
-        return { "error": f"Path does not exist: {abs_path}" }
     for p in abs_path.iterdir():
         if not p.exists():
             continue
@@ -866,7 +972,7 @@ VALUE_FORMAT = "{{:.{:d}g}}".format(VALUE_PRECISION)
 
 def nice(v, digits=4):
     """Fix v to a value with a given number of digits of precision"""
-    from math import log10, floor
+    from math import floor, log10
     v = float(v)
     if v == 0. or not np.isfinite(v):
         return v
@@ -927,20 +1033,28 @@ def params_to_list(params, lookup=None, pathlist=None, links=None) -> List[Param
                 new_pathlist.append("")
             new_pathlist[-1] = f"{new_pathlist[-1]}[{i:d}]"
             params_to_list(v, lookup=lookup, pathlist=new_pathlist)
-    elif isinstance(params, Parameter):
+    elif isinstance(params, Parameter) or isinstance(params, Constant):
         path = ".".join(pathlist)
         existing = lookup.get(params.id, None)
         if existing is not None:
             existing["paths"].append(".".join(pathlist))
         else:
             value_str = VALUE_FORMAT.format(nice(params.value))
-            has_prior = params.has_prior()
+            if hasattr(params, "has_prior"):
+                has_prior = params.has_prior()
+            else:
+                has_prior = False
+
+            if hasattr(params, "slot"):
+                writable = type(params.slot) in [Variable, Parameter]
+            else:
+                writable = False
             new_item: ParamInfo = { 
                 "id": params.id,
                 "name": str(params.name),
                 "paths": [path],
                 "tags": getattr(params, 'tags', []),
-                "writable": type(params.slot) in [Variable, Parameter], 
+                "writable": writable,
                 "value_str": value_str, "fittable": params.fittable, "fixed": params.fixed }
             if has_prior:
                 assert(params.prior is not None)

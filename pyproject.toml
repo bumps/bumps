@@ -65,8 +65,8 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.dynamic]
 version = { attr = "bumps.__version__" }
 
-[tool.setuptools]
-packages = ['bumps', 'bumps.dream', 'bumps.gui', 'bumps.webview.server']
+[tool.setuptools.packages.find]
+include = ["bumps*"]
 
 [tool.versioningit.vcs]
 method = "git"
@@ -74,11 +74,6 @@ default-tag = "0.0.1"
 
 [tool.versioningit.next-version]
 method = "smallest"
-
-[tool.versioningit.format]
-distance = "{next_version}.dev{distance}"
-dirty = "{version}+d{build_date:%Y%m%d}"
-distance-dirty = "{next_version}.dev{distance}+d{build_date:%Y%m%d%H%M}"
 
 [tool.versioningit.write]
 file = "bumps/_version.py"
