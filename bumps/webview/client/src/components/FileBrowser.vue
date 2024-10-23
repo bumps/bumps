@@ -131,33 +131,6 @@ function formatSize(bytes: number) {
 }
 
 /** TODO: what if chosenFile has a / in it? */
-function parse(input) {
-  console.log(`\n`);
-  console.log({ input });
-  // clean up input
-  input = input.endsWith(".") ? input.slice(0, -1) : input.trim();
-  let filename;
-  if (!input.includes(".")) {
-    // filename has no dot
-    filename = `${input}.session.h5`;
-  } else if (input.endsWith(".h5") || input.endsWith(".hdf5")) {
-    // filename has a valid extension
-    if (input.includes("session")) {
-      // filename has "session"
-      filename = input;
-    } else {
-      // add "session" before the extension
-      filename = `${input.split(".").slice(0, -1).join(".")}.session.${input.split(".").pop()}`;
-    }
-  } else {
-    // filename has a dot but not a valid extension
-    filename = input.includes("session") ? `${input}.h5` : `${input}.session.h5`;
-  }
-  console.log({ filename });
-  return filename;
-}
-
-/** TODO: what if chosenFile has a / in it? */
 async function chooseFile() {
   let filename: string;
   let input = chosenFile.value;
