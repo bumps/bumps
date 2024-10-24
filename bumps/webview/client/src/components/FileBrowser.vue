@@ -137,29 +137,13 @@ async function chooseFile() {
   let filename: string;
   let input = chosenFile.value;
   if (input.includes("/")) {
-    // const parts = input.split("/");
-    // filename = parts.pop() ?? "";
-    // pathlist.value = [...pathlist.value, ...parts];
     alert("FileBrowser: '/' in filename not yet supported");
     return;
   }
   // clean up input
-  input = input.endsWith(".") ? input.slice(0, -1) : input.trim();
-  if (!input.includes(".")) {
-    // filename has no dot
-    filename = `${input}.session.h5`;
-  } else if (!input.endsWith(".h5") && !input.endsWith(".hdf5")) {
-    // filename has a valid extension
-    if (input.includes("session")) {
-      // filename has "session"
-      filename = input;
-    } else {
-      // add "session" before the extension
-      filename = `${input.split(".").slice(0, -1).join(".")}.session.${input.split(".").pop()}`;
-    }
-  } else {
-    // filename has a dot but not a valid extension
-    filename = input.includes("session") ? `${input}.h5` : `${input}.session.h5`;
+  filename = input.endsWith(".") ? input.slice(0, -1) : input.trim();
+  if (!input.endsWith(".h5") && !input.endsWith(".hdf5")) {
+    filename = `${filename}.session.h5`;
   }
   await props.socket.asyncEmit("set_base_path", pathlist.value);
   await settings.value?.callback(pathlist.value, filename);
