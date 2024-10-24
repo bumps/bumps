@@ -44,7 +44,10 @@ async function toggle_autosave() {
 }
 
 async function set_interval(new_interval: number) {
-
+  if (isNaN(new_interval)) {
+    alert("Invalid interval value");
+    return;
+  }
   await props.socket.asyncEmit('set_shared_setting', 'autosave_session_interval', new_interval);
   closeMenu();
 }
@@ -167,7 +170,7 @@ async function unsetOutputFile() {
           <label for="autosaveIntervalInput" class="col col-form-label col-form-label-sm">Interval (s)</label>
           <div class="col-auto">
             <input type="number" class="form-control form-control" id="autosaveIntervalInput"
-            :value="autosave_session_interval" @change="set_interval($event.target.valueAsNumber)">
+            :value="autosave_session_interval" @change="set_interval((($event.target as HTMLInputElement).valueAsNumber))">
           </div>
         </div>
       </li>

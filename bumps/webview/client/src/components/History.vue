@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, defineProps } from 'vue';
+import { ref, onMounted } from 'vue';
 import type { AsyncSocket } from '../asyncSocket';
 import { addNotification, autosave_history, autosave_history_length } from '../app_state';
 

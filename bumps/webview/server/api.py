@@ -897,7 +897,7 @@ async def get_dirlisting(pathlist: Optional[List[str]]=None):
     # TODO: use psutil to get disk listing as well?
     subfolders = []
     files = []
-    path = Path(state.base_path) if (pathlist is None or len(pathlist) == 0) else Path(*pathlist)
+    path = Path(*pathlist) if pathlist else Path(state.base_path)
     if not path.exists():
         await add_notification(
             f"Path does not exist: {path}, falling back to current working directory", 
