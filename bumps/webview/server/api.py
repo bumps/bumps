@@ -1,51 +1,34 @@
-import asyncio
+from functools import lru_cache
 import itertools
-import json
+from types import GeneratorType
+from typing import Any, Awaitable, Callable, Coroutine, Dict, List, Literal, Mapping, Optional, Protocol, Sequence, Union, Tuple, TypedDict, cast
+from datetime import datetime
 import numbers
+import warnings
+from threading import Event
+import numpy as np
+import asyncio
+from pathlib import Path, PurePath
+import json
+from copy import deepcopy
 import os
 import uuid
-import warnings
-from copy import deepcopy
-from datetime import datetime
-from functools import lru_cache
-from pathlib import Path
-from types import GeneratorType
-from typing import ( Any, Awaitable, Callable, Dict, List, Literal, Mapping, Optional, Protocol, Sequence, TypedDict, Union, cast )
+import traceback
 
-import numpy as np
-
-import bumps.cli
-import bumps.dream.state
-import bumps.dream.stats
-import bumps.dream.varplot
-import bumps.dream.views
-import bumps.errplot
-import bumps.fitproblem
-from bumps.fitters import (
-    BFGSFit,
-    DEFit,
-    DreamFit,
-    FitDriver,
-    LevenbergMarquardtFit,
-    MPFit,
-    SimplexFit,
-    format_uncertainty,
-    nllf_scale,
-)
+from bumps.fitters import DreamFit, LevenbergMarquardtFit, SimplexFit, DEFit, MPFit, BFGSFit, FitDriver, fit, nllf_scale, format_uncertainty
 from bumps.mapper import MPMapper
-from bumps.parameter import Constant, Parameter, Variable, unique
+from bumps.parameter import Parameter, Constant, Variable, unique
+import bumps.cli
+import bumps.fitproblem
+import bumps.dream.views, bumps.dream.varplot, bumps.dream.stats, bumps.dream.state
+import bumps.errplot
 
-from .custom_plot import CustomWebviewPlot
-from .fit_thread import EVT_FIT_COMPLETE, EVT_FIT_PROGRESS, FitThread
-from .logger import logger
-from .state_hdf5_backed import (
-    SERIALIZER_EXTENSIONS,
-    UNDEFINED_TYPE,
-    State,
-    deserialize_problem,
-    serialize_problem,
-)
+from .state_hdf5_backed import UNDEFINED, UNDEFINED_TYPE, State, serialize_problem, deserialize_problem, SERIALIZER_EXTENSIONS
+from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
 from .varplot import plot_vars
+from .traceplot import plot_trace
+from .logger import logger, console_handler
+from .custom_plot import process_custom_plot, CustomWebviewPlot
 
 REGISTRY: Dict[str, Callable] = {}
 MODEL_EXT = '.json'
@@ -549,12 +532,11 @@ async def get_data_plot(model_indices: Optional[List[int]] = None):
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = deepcopy(state.problem.fitProblem)
-    import matplotlib
     import mpld3
+    import matplotlib
     matplotlib.use("agg")
-    import time
-
     import matplotlib.pyplot as plt
+    import time
     start_time = time.time()
     logger.info(f'queueing new data plot... {start_time}')
     fig = plt.figure()
@@ -742,12 +724,11 @@ async def get_model_uncertainty_plot():
     fitProblem = state.problem.fitProblem
     uncertainty_state = state.fitting.uncertainty_state
     if uncertainty_state is not None:
-        import matplotlib
         import mpld3
+        import matplotlib
         matplotlib.use("agg")
-        import time
-
         import matplotlib.pyplot as plt
+        import time
         start_time = time.time()
         logger.info(f'queueing new model uncertainty plot... {start_time}')
 
@@ -916,7 +897,7 @@ async def get_dirlisting(pathlist: Optional[List[str]]=None):
     # TODO: use psutil to get disk listing as well?
     subfolders = []
     files = []
-    path = Path(state.base_path) if (pathlist is None or len(pathlist) == 0) else Path(*pathlist)
+    path = Path(*pathlist) if pathlist else Path(state.base_path)
     if not path.exists():
         await add_notification(
             f"Path does not exist: {path}, falling back to current working directory", 
@@ -973,7 +954,7 @@ VALUE_FORMAT = "{{:.{:d}g}}".format(VALUE_PRECISION)
 
 def nice(v, digits=4):
     """Fix v to a value with a given number of digits of precision"""
-    from math import floor, log10
+    from math import log10, floor
     v = float(v)
     if v == 0. or not np.isfinite(v):
         return v
