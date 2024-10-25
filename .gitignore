@@ -37,4 +37,3 @@ __pycache__/
 .mplconfig
 
 bumps/webview/client/node_modules/
-bumps/webview/client/dist/
