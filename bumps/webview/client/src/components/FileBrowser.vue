@@ -134,19 +134,8 @@ function formatSize(bytes: number) {
 
 /** TODO: what if chosenFile has a / in it? */
 async function chooseFile() {
-  let filename: string;
-  let input = chosenFile.value;
-  if (input.includes("/")) {
-    alert("FileBrowser: '/' in filename not yet supported");
-    return;
-  }
-  // clean up input
-  filename = input.endsWith(".") ? input.slice(0, -1) : input.trim();
-  if (!input.endsWith(".h5") && !input.endsWith(".hdf5")) {
-    filename = `${filename}.session.h5`;
-  }
   await props.socket.asyncEmit("set_base_path", pathlist.value);
-  await settings.value?.callback(pathlist.value, filename);
+  await settings.value?.callback(pathlist.value, chosenFile.value);
   close();
 }
 

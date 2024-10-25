@@ -117,6 +117,14 @@ async function setOutputFile(enable_autosave = true, immediate_save = false) {
     const settings: FileBrowserSettings = {
       title: "Set Output File",
       callback: async (pathlist, filename) => {
+        let input = filename;
+        if (input.includes("/")) {
+            alert("FileBrowser: '/' in filename not yet supported");
+            return;
+        }
+        if (!input.endsWith(".h5") && !input.endsWith(".hdf5")) {
+            filename = `${filename}.session.h5`;
+        }
         await props.socket.asyncEmit("set_shared_setting", "session_output_file", { filename, pathlist });
         if (enable_autosave) {
           await props.socket.asyncEmit("set_shared_setting", "autosave_session", true);
