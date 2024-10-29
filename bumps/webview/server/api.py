@@ -680,7 +680,7 @@ def _get_correlation_plot(sort: bool=True, max_rows: int=8, nbins: int=50, vars=
         logger.info(f'queueing new correlation plot... {start_time}')
         draw = uncertainty_state.draw(vars=vars)
         c = Corr2d(draw.points.T, bins=nbins, labels=draw.labels)
-        fig = c.plot(sort=sort, max_rows=max_rows)
+        fig = c.plot(sort=sort, max_rows=max_rows, parallel=state.parallel)
         logger.info(f"time to render but not serialize... {time.time() - start_time}")
         serialized = to_json_compatible_dict(fig.to_dict())
         end_time = time.time()
