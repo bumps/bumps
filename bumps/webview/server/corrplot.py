@@ -62,7 +62,7 @@ class Corr2d(object):
             range = [self.default_ranges[i], self.default_ranges[j]]
         return np.histogram2d(self.data[i], self.data[j], range=range, **histogram2d_kw)
 
-    def plot(self, title=None, sort=True, max_rows=25, indices=None):
+    def plot(self, title=None, sort=True, max_rows=25, indices=None, parallel: int = 1):
         """
         Plot the correlation histograms on the specified figure
 
@@ -79,6 +79,10 @@ class Corr2d(object):
             else:
                 indices = np.arange(num_to_show + 1, dtype=np.int32)
                 labels = self.labels
+
+        if parallel != 1:
+            _parallel_precalculate_histograms(self, indices, parallel=parallel)
+
         if num_to_show > MAKE_SINGLE_BREAKPOINT:
             fig = _plot_single_heatmap(self, labels, indices=indices)
         else:
@@ -87,6 +91,30 @@ class Corr2d(object):
             fig.update_layout(title=dict(text=title, xanchor="center", x=0.5))
 
         return fig
+
+def _pool_calculate_histogram(args):
+        """
+        Calculate the histogram for data[i] X data[j].
+
+        Returns bin i edges, bin j edges, and histogram
+        """
+        shared_memory, shape, dtype, i, j, range, histogram2d_kw = args
+        data = np.frombuffer(shared_memory.buf, dtype=dtype).reshape(shape)
+        return np.histogram2d(data[i], data[j], range=range, **histogram2d_kw)
+
+def _parallel_precalculate_histograms(hists: Corr2d, indices: List[int], parallel: int = 1):
+    from concurrent.futures import ProcessPoolExecutor
+    from multiprocessing.managers import SharedMemoryManager
+
+
+    with ProcessPoolExecutor(max_workers=parallel if parallel > 0 else None) as pool, \
+         SharedMemoryManager() as smm:
+        shm = smm.SharedMemory(size=hists.data.nbytes)
+        shared_data = np.ndarray(hists.data.shape, dtype=hists.data.dtype, buffer=shm.buf)
+        shared_data[:] = hists.data
+        index_pairs = [(i, j) for i in indices for j in indices if i < j]
+        args_list = [(shm, hists.data.shape, hists.data.dtype, i, j, None, hists.histogram2d_kw) for i, j in index_pairs]
+        hists._hists = dict(zip(index_pairs, pool.map(_pool_calculate_histogram, args_list)))
 
 
 def _plot(hists, labels, indices, show_ticks=None):
