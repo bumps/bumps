@@ -306,7 +306,7 @@ class State:
     # These attributes are ephemeral, not to be serialized/stored:
     hostname: str
     port: int
-    parallel: int
+    parallel: int = 0
     fit_thread: Optional['FitThread'] = None
     fit_abort: Optional[Event] = None
     fit_abort_event: Event
@@ -562,7 +562,11 @@ class SharedState:
 
     def __setattr__(self, name: str, value):
         super().__setattr__(name, value)
-        loop = asyncio.get_event_loop()
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            # no event loop running, so no need to notify
+            return
         if loop.is_running() and hasattr(self, '_notification_callbacks'):
             for callback in self._notification_callbacks.values():
                 loop.create_task(callback(name, value))
