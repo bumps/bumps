@@ -551,7 +551,7 @@ async def get_data_plot(model_indices: Optional[List[int]] = None):
     plt.close(fig)
     end_time = time.time()
     logger.info(f"time to draw data plot: {end_time - start_time}")
-    return {"fig_type": "mpld3", "plotdata": dfig}
+    return {"fig_type": "mpld3", "plotdata": to_json_compatible_dict(dfig)}
 
 @register
 async def get_model_names():
@@ -981,7 +981,7 @@ def to_json_compatible_dict(obj) -> JSON_TYPE:
     elif isinstance(obj, bool) or isinstance(obj, str) or obj is None:
         return obj
     elif isinstance(obj, numbers.Number):
-        return str(obj) if np.isinf(obj) else float(obj)
+        return str(obj) if not np.isfinite(obj) else float(obj)
     elif isinstance(obj, UNDEFINED_TYPE):
         return None
     else:
