@@ -895,3 +895,14 @@ def _put01_inf(v):
     return x
 
 BoundsType = Union[Unbounded, Bounded, BoundedAbove, BoundedBelow, BoundedNormal, SoftBounded, Normal]
+
+def test_normal():
+    """
+    Test the normal distribution
+    """
+    epsilon = 1e-10
+    n = Normal(mean=0.5, std=1.0)
+    assert abs(n.nllf(0.5) - 0.9189385332046727) < epsilon
+    assert abs(n.nllf(1.0) - n.nllf(0.0)) < epsilon
+    assert abs(n.residual(0.5) - 0.0) < epsilon
+    assert abs(n.residual(1.0) - 0.5) < epsilon
