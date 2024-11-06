@@ -51,6 +51,7 @@ functions::
 """
 from __future__ import division
 __all__ = ['pm', 'pmp', 'pm_raw', 'pmp_raw', 'nice_range', 'init_bounds',
+           'DistProtocol',
            'Bounds', 'Unbounded', 'Bounded', 'BoundedAbove', 'BoundedBelow',
            'Distribution', 'Normal', 'BoundedNormal', 'SoftBounded']
 
@@ -556,6 +557,10 @@ class Bounded(Bounds):
 
 
 class DistProtocol(Protocol):
+    """
+    Protocol for a distribution object, implementing the scipy.stats interface.
+    (also including args, kwds and name)
+    """
     name: str
     args: Tuple[float, ...]
     kwds: Dict[str, Any]
@@ -571,9 +576,8 @@ class Distribution(Bounds):
     """
     Parameter is pulled from a distribution.
 
-    *dist* must implement the distribution interface from scipy.stats.
-    In particular, it should define methods rvs, nnlf, cdf and ppf and
-    attributes args and dist.name.
+    *dist* must implement the distribution interface from scipy.stats,
+    described in the DistProtocol class.
     """
 
     dist: DistProtocol = None
