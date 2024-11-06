@@ -67,7 +67,7 @@ except ImportError:
     # failure if it doesn't exist.
     pass
 
-from .util import Optional, Any, Union, Dict, Callable, Literal, Tuple, List, Literal
+from typing import Optional, Any, Dict, Union, Literal, Tuple, Protocol
 
 LimitValue = Union[float, Literal["-inf", "inf"]]
 LimitsType = Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]
@@ -555,6 +555,17 @@ class Bounded(Bounds):
         return self.put01(_get01_inf(v))
 
 
+class DistProtocol(Protocol):
+    name: str
+    args: Tuple[float, ...]
+    kwds: Dict[str, Any]
+
+    def rvs(self, n: int) -> float: ...
+    def nnlf(self, value: float) -> float: ...
+    def cdf(self, value: float) -> float: ...
+    def ppf(self, value: float) -> float: ...
+    def pdf(self, value: float) -> float: ...
+
 
 class Distribution(Bounds):
     """
@@ -564,11 +575,11 @@ class Distribution(Bounds):
     In particular, it should define methods rvs, nnlf, cdf and ppf and
     attributes args and dist.name.
     """
-    #dist: DistProtocol = None
-    #dist: Any = None
+
+    dist: DistProtocol = None
 
     def __init__(self, dist):
-        self.dist = dist
+        object.__setattr__(self, "dist", dist)
 
     def random(self, n=1, target=1.0):
         return self.dist.rvs(n)
@@ -612,7 +623,7 @@ class Distribution(Bounds):
             )
 
 
-@dataclass(init=False, frozen=True)
+@dataclass(frozen=True)
 class Normal(Distribution):
     """
     Parameter is pulled from a normal distribution.
@@ -628,12 +639,14 @@ class Normal(Distribution):
     class is 'frozen' because a new object should be created if 
     `mean` or `std` are changed.
     """
+
     mean: float = 0.0
     std: float = 1.0
+    _nllf_scale: float = field(init=False)
 
-    def __init__(self, mean:float=0, std:float=1):
-        Distribution.__init__(self, normal_distribution(mean, std))
-        self._nllf_scale = log(2 * pi * std ** 2)/2
+    def __post_init__(self):
+        Distribution.__init__(self, normal_distribution(self.mean, self.std))
+        object.__setattr__(self, "_nllf_scale", log(2 * pi * self.std**2) / 2)
 
     def nllf(self, value):
         # P(v) = exp(-0.5*(v-mean)**2/std**2)/sqrt(2*pi*std**2)
@@ -663,6 +676,10 @@ class BoundedNormal(Bounds):
     std: float = 1.0
     lo: Union[float, Literal["-inf"]]
     hi: Union[float, Literal["inf"]]
+
+    _left: float = field(init=False)
+    _delta: float = field(init=False)
+    _nllf_scale: float = field(init=False)
 
     def __init__(self, mean:float=0, std:float=1, limits=(-inf, inf), hi="inf", lo="-inf"):
         if limits is not None:
