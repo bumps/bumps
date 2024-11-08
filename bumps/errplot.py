@@ -74,12 +74,9 @@ def reload_errors(model, store, nshown=50, random=True):
     return calc_errors_from_state(
         problem, state, nshown=nshown, random=random)
 
-
-def calc_errors_from_state(problem, state, nshown=50, random=True, portion=1.0):
+def error_points_from_state(state, nshown=50, random=True, portion=1.0):
     """
-    Compute confidence regions for a problem from the
-    Align the sample profiles and compute the residual difference from
-    the measured data for a set of points returned from DREAM.
+    Return a set of points from the state for calculating errors.
 
     *nshown* is the number of samples to include from the state.
 
@@ -89,8 +86,9 @@ def calc_errors_from_state(problem, state, nshown=50, random=True, portion=1.0):
     to generation), but not random if your burn-in was too short, and
     you want to select from the end.
 
-    Returns *errs* for :func:`show_errors`.
+    Returns *points* for :func:`calc_errors`.
     """
+
     points, _logp = state.sample(portion=portion)
     if points.shape[0] < nshown:
         nshown = points.shape[0]
@@ -98,7 +96,19 @@ def calc_errors_from_state(problem, state, nshown=50, random=True, portion=1.0):
     # the best point at the end.
     if random:
         points = points[np.random.permutation(len(points) - 1)]
-    return calc_errors(problem, points[-nshown:-1])
+    return points[-nshown:-1]
+
+def calc_errors_from_state(problem, state, nshown=50, random=True, portion=1.0):
+    """
+    Compute confidence regions for a problem from the
+    Align the sample profiles and compute the residual difference from
+    the measured data for a set of points returned from DREAM.
+
+    Returns *errs* for :func:`show_errors`.
+    """
+
+    points = error_points_from_state(state, nshown=nshown, random=random, portion=portion)
+    return calc_errors(problem, points)
 
 
 def calc_errors(problem, points):
