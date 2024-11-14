@@ -4,6 +4,7 @@ declare module 'socket.io-client' {
   class Socket {
     public asyncEmit(ev: string, ...args: any[]): Promise<any>;
     public syncFS(): Promise<void>;
+    public on(event: string, callback: (payload: any) => void): void;
   }
 }
 
@@ -20,6 +21,8 @@ Socket.prototype.asyncEmit = async function asyncEmit(ev: string, ...args: any[]
     return result;
   })
 };
+
+// Socket.prototype.on = function on(event: string, callback: (payload: any) => void): void {};
 
 Socket.prototype.syncFS = async function syncFS() {}
 
