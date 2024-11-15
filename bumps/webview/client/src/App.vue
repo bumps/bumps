@@ -20,6 +20,7 @@ import {
   socket as socket_ref,
   addNotification,
   cancelNotification,
+  shared_state,
 } from './app_state.ts';
 import FitOptions from './components/FitOptions.vue';
 import PanelTabContainer from './components/PanelTabContainer.vue';
@@ -73,6 +74,7 @@ const can_mount_local = (
 socket.on('connect', async () => {
   console.log(socket.id);
   connected.value = true;
+  shared_state.init(socket);
   const file_info = await socket.asyncEmit('get_shared_setting', 'model_file') as { pathlist: string[], filename: string } | undefined;
   model_file.value = file_info;
   const current_active_fit = await socket.asyncEmit('get_shared_setting', 'active_fit') as { 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import type { Ref } from 'vue';
 import type { AsyncSocket } from '../asyncSocket.ts';
 
 // type PanelComponent = DefineComponent<{socket: Socket, visible: boolean}, any>;
@@ -8,7 +9,7 @@ const tabTriggers = ref<HTMLAnchorElement[]>([]);
 
 const props = defineProps<{
   socket: AsyncSocket,
-  panels: {title: string, component: unknown}[],
+  panels: {title: string, component: unknown, show?: () => Ref<boolean>}[],
   active_panel: number,
   hide_tabs?: boolean,
 }>();
@@ -26,8 +27,8 @@ function setActive(index: number) {
 
 <template>
   <ul class="nav nav-tabs" v-if="!hide_tabs">
-    <li class="nav-item" v-for="(panel, index) in props.panels" :key="index">
-      <a ref="tabTriggers" :class="{'nav-link': true, active: index == active_panel}" href="#" @click="setActive(index)">{{panels[index]?.title}}</a>
+    <li class="nav-item" v-for="(panel, index) in props.panels" :key="index" >
+      <a ref="tabTriggers" v-if="panel?.show?.() ?? true" :class="{'nav-link': true, active: index == active_panel}" href="#" @click="setActive(index)">{{panels[index]?.title}}</a>
     </li>
   </ul>
   <div class="tab-content d-flex flex-column flex-grow-1 overflow-auto">

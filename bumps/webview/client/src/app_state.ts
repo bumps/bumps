@@ -41,6 +41,68 @@ export const session_output_file = shallowRef<{ filename: string, pathlist: stri
 export const autosave_session = ref(false);
 export const autosave_session_interval = ref(300);
 
+
+class SharedState {
+  public updated_convergence: Ref<undefined | string> = ref(undefined);
+  public updated_uncertainty: Ref<undefined | string> = ref(undefined);
+  public updated_parameters: Ref<undefined | string> = ref(undefined);
+  public updated_model: Ref<undefined | string> = ref(undefined);
+  public updated_history: Ref<undefined | string> = ref(undefined);
+  public selected_fitter: Ref<undefined | string> = ref(undefined);
+  public fitter_settings: Ref<undefined | {[fit_name: string]: FitSetting}> = ref(undefined);
+  public active_fit: Ref<undefined | { fitter_id?: string, options?: {}, num_steps?: number, chisq?: string, step?: number, value?: number }> = ref(undefined);
+  public model_file: Ref<undefined | { filename: string, pathlist: string[] }> = ref(undefined);
+  public model_loaded: Ref<undefined | string> = ref(undefined);
+  public session_output_file: Ref<undefined | { filename: string, pathlist: string[] }> = ref(undefined);
+  public autosave_session: Ref<boolean> = ref(false);
+  public autosave_session_interval: Ref<number> = ref(300);
+  public autosave_history: Ref<boolean> = ref(true);
+  public autosave_history_length: Ref<number> = ref(10);
+  public uncertainty_available: Ref<undefined | object> = ref(undefined);
+  public custom_plots_available: Ref<undefined | object> = ref(undefined);
+}
+
+export class AutoupdateState {
+  value: SharedState;
+  constructor() {
+    this.value = new SharedState();
+    // this.value.active_fit.value = undefined;
+    // this.value.autosave_history.value = true;
+    // this.value.autosave_history_length.value = 10;
+    // this.value.autosave_session.value = false;
+    // this.value.autosave_session_interval.value = 300;
+    // this.value.custom_plots_available.value = undefined;
+    // this.value.fitter_settings.value = undefined;
+    // this.value.model_file.value = undefined;
+    // this.value.model_loaded.value = undefined;
+    // this.value.selected_fitter.value = undefined;
+    // this.value.session_output_file.value = undefined;
+    // this.value.uncertainty_available.value = undefined;
+    // this.value.updated_convergence.value = undefined;
+    // this.value.updated_history.value = undefined;
+    // this.value.updated_model.value = undefined;
+    // this.value.updated_parameters.value = undefined;
+    // this.value.updated_uncertainty.value = undefined;
+  }
+
+  async init(socket: AsyncSocket) {
+    for (const key in this.value) {
+      const initial_value = await socket.asyncEmit(`get_shared_setting`, key);
+      this.value[key].value = initial_value;
+    }
+
+    for (const key in this.value) {
+      socket.on(key, (value) => {
+        console.log(`Received update for ${key}: ${JSON.stringify(value, null, 2)}`);
+        this.value[key].value = value;
+        console.log(`Updated ${key}`, this.value[key].value);
+      });
+    }
+  }
+}
+
+export const shared_state = new AutoupdateState();
+
 export function cancelNotification(id: string) {
   const index = notifications.value.findIndex(({id: item_id}) => (item_id === id));
   if (index > -1) {

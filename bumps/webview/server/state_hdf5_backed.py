@@ -536,6 +536,14 @@ class ActiveFit(TypedDict):
 class FileInfo(TypedDict):
     filename: str
     pathlist: List[str]
+
+class UncertaintyAvailable(TypedDict):
+    available: bool
+    num_points: int
+
+class CustomPlotsAvailable(TypedDict):
+    parameter_based: bool
+    uncertainty_based: bool
     
 Timestamp = NewType('Timestamp', str)
 
@@ -546,7 +554,7 @@ class SharedState:
     updated_parameters: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
     updated_model: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
     updated_history: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
-    selected_fitter: Union[UNDEFINED_TYPE, str] = UNDEFINED
+    selected_fitter: Union[UNDEFINED_TYPE, str] = "amoeba"
     fitter_settings: Union[UNDEFINED_TYPE, Dict[str, Dict]] = UNDEFINED
     active_fit: Union[UNDEFINED_TYPE, ActiveFit] = UNDEFINED
     model_file: Union[UNDEFINED_TYPE, FileInfo] = UNDEFINED
@@ -556,6 +564,8 @@ class SharedState:
     autosave_session_interval: int = 300
     autosave_history: bool = True
     autosave_history_length: int = 10
+    uncertainty_available: Union[UNDEFINED_TYPE, UncertaintyAvailable] = UNDEFINED
+    custom_plots_available: Union[UNDEFINED_TYPE, CustomPlotsAvailable] = UNDEFINED
 
     _not_reloaded = ["active_fit", "autosave_session", "session_output_file", "_notification_callbacks"]
     _notification_callbacks: Dict[str, Callable[[str, Any], Awaitable[None]]] = field(default_factory=dict)

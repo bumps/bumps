@@ -11,6 +11,11 @@ import UncertaintyView from './components/UncertaintyView.vue';
 import CustomPlot from './components/CustomPlot.vue';
 import History from './components/History.vue';
 import CustomUncertaintyPlot from './components/CustomUncertaintyPlot.vue';
+import { shared_state } from './app_state';
+
+export const show_uncertainty = () => shared_state.value.uncertainty_available?.value?.available ?? false;
+export const show_custom_plots = () => shared_state.value.custom_plots_available?.value?.parameter_based ?? false;
+export const show_custom_uncertainty_plots = () => shared_state.value.custom_plots_available?.value?.uncertainty_based ?? false;
 
 export const panels = [
     {title: 'Data', component: DataView},
@@ -20,11 +25,10 @@ export const panels = [
     {title: 'Convergence', component: ConvergenceView},
     {title: 'Model', component: ModelInspect},
     {title: 'Parameters', component: ParameterView},
-    {title: 'Correlations', component: CorrelationView},
-    {title: 'Trace', component: ParameterTraceView},
-    {title: 'Model Uncertainty', component: ModelUncertaintyView},
-    {title: 'Uncertainty', component: UncertaintyView},
-    {title: 'Custom', component: CustomPlot},
-    {title: 'Custom Uncertainty', component: CustomUncertaintyPlot}
-  ];
-  
+    {title: 'Correlations', component: CorrelationView, show: show_uncertainty},
+    {title: 'Trace', component: ParameterTraceView, show: show_uncertainty},
+    {title: 'Model Uncertainty', component: ModelUncertaintyView, show: show_uncertainty},
+    {title: 'Uncertainty', component: UncertaintyView, show: show_uncertainty},
+    {title: 'Custom', component: CustomPlot, show: show_custom_plots},
+    {title: 'Custom Uncertainty', component: CustomUncertaintyPlot, show: show_custom_uncertainty_plots},
+];

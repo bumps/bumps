@@ -109,6 +109,7 @@ async def load_problem_file(pathlist: List[str], filename: str, autosave_previou
         await save_to_history("autosaved before loading new model")
     state.shared.model_file = dict(filename=filename, pathlist=pathlist)
     state.shared.model_loaded = now_string()
+    state.shared.custom_plots_available = {"parameter_based": False, "uncertainty_based": False}
     await set_problem(problem, Path(*pathlist), filename)
 
 
@@ -468,6 +469,10 @@ async def _fit_progress_handler(event: Dict):
     elif message == 'uncertainty_update' or message == 'uncertainty_final':
         state.fitting.uncertainty_state = cast(bumps.dream.state.MCMCDraw, event["uncertainty_state"])
         state.shared.updated_uncertainty = now_string()
+        state.shared.uncertainty_available = {
+            "available": state.fitting.uncertainty_state is not None,
+            "num_points": state.fitting.uncertainty_state.Nsamples if state.fitting.uncertainty_state is not None else 0
+        }
         state.autosave()
         if message == 'uncertainty_final':
             # fit is not complete until uncertainty is saved.
