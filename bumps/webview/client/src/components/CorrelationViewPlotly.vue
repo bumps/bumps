@@ -5,7 +5,7 @@ import type { AsyncSocket } from '../asyncSocket.ts';
 import { setupDrawLoop } from '../setupDrawLoop';
 import * as Plotly from 'plotly.js/lib/core';
 import Heatmap from 'plotly.js/lib/heatmap';
-import { SVGDownloadButton } from '../plotly_extras.mjs';
+import { SVGDownloadButton } from '../plotly_extras';
 
 // workaround to PlotlyModule not being exported as type!
 type RegisterTypes = Parameters<typeof Plotly.register>[0];

@@ -4,7 +4,7 @@ import { ref } from 'vue';
 import type { AsyncSocket } from '../asyncSocket.ts';
 import { setupDrawLoop } from '../setupDrawLoop';
 import * as Plotly from 'plotly.js/lib/core';
-import { SVGDownloadButton } from '../plotly_extras.mjs';
+import { SVGDownloadButton } from '../plotly_extras';
 
 const title = "Convergence";
 const plot_div = ref<HTMLDivElement>();
