@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Button } from 'bootstrap';
 import { computed, onMounted, ref, shallowRef } from 'vue';
 import { io } from 'socket.io-client';
 import type { AsyncSocket } from './asyncSocket.ts';
@@ -40,8 +39,7 @@ type Message = {
   message: object
 }
 
-const LAYOUTS = ["left-right", "top-bottom", "full"];
-const menuToggle = ref<HTMLButtonElement>();
+const show_menu = ref(false);
 const nativefs = ref(false);
 
 // Create a SocketIO connection, to be passed to child components
@@ -293,12 +291,13 @@ if (can_mount_local) {
           <img src="./assets/bumps-icon_256x256x32.png" alt="" height="24" class="d-inline-block align-text-middle">
           {{ name ?? "Bumps" }}
         </div>
-        <button ref="menuToggle" class="navbar-toggler" type="button" data-bs-toggle="collapse"
-          data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false"
+        <button class="navbar-toggler" type="button"
+          @click="show_menu = !show_menu"
+          aria-controls="navbarSupportedContent" aria-expanded="false"
           aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
         </button>
-        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <div class="collapse navbar-collapse" :class="{show: show_menu}" id="navbarSupportedContent">
           <ul class="navbar-nav me-auto mb-2 mb-lg-0">
             <DropDown title="File" v-slot="{ hide }">
               <li v-for="menu_item of file_menu_items" :key="menu_item.text" :title="menu_item.help">
