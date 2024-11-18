@@ -4,7 +4,7 @@ export const SVGDownloadButton = {
   name: 'Download as SVG',
   title: 'Download as SVG',
   icon: Plotly.Icons.camera,
-  click: function(gd) {
+  click: function(gd: Plotly.RootOrData) {
     Plotly.downloadImage(gd, {
       format: 'svg',
       width: null,
