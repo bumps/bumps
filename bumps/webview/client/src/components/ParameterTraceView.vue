@@ -5,7 +5,7 @@ import { Socket } from 'socket.io-client';
 import { v4 as uuidv4 } from 'uuid';
 import { setupDrawLoop } from '../setupDrawLoop';
 import * as Plotly from 'plotly.js/lib/core';
-import { configWithSVGDownloadButton } from '../plotly_extras.mjs';
+import { configWithSVGDownloadButton } from '../plotly_extras';
 
 const plot_data = shallowRef<Plotly.Data[]>([]);
 const plot_layout = shallowRef<Partial<Plotly.Layout>>();

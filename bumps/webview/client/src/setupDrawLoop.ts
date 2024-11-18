@@ -1,5 +1,5 @@
 import { ref, onActivated, onDeactivated } from 'vue';
-import type { AsyncSocket } from './asyncSocket.ts';
+import type { AsyncSocket } from './asyncSocket';
 
 type Message = {
   timestamp: string,

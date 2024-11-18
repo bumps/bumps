@@ -4,7 +4,7 @@ import { ref } from 'vue';
 import type { AsyncSocket } from '../asyncSocket.ts';
 import { v4 as uuidv4 } from 'uuid';
 import { setupDrawLoop } from '../setupDrawLoop';
-import { cache } from '../plotcache';
+import { cache } from '../plot_cache';
 import * as mpld3 from 'mpld3';
 
 const title = "Correlations"

@@ -11,13 +11,13 @@ interface ModalDialog {
 export class FileBrowserSettings {
   chosenfile_in?: string
   pathlist_in?: string[]
-  title: string
-  show_name_input: boolean
-  require_name: boolean
+  title!: string
+  show_name_input!: boolean
+  require_name!: boolean
   name_input_label?: string
-  show_files: boolean
-  search_patterns: string[]
-  callback: (pathlist: string[], filename: string) => Promise<void>
+  show_files!: boolean
+  search_patterns!: string[]
+  callback!: (pathlist: string[], filename: string) => Promise<void>
 };
 
 export type FitSetting = { name: string, settings: object };
