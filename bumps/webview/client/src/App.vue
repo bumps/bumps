@@ -16,10 +16,11 @@ import {
   connected,
   model_file,
   notifications,
-  menu_items,
+  file_menu_items,
   socket as socket_ref,
   addNotification,
   cancelNotification,
+  LAYOUTS,
 } from './app_state.ts';
 import FitOptions from './components/FitOptions.vue';
 import PanelTabContainer from './components/PanelTabContainer.vue';
@@ -27,6 +28,7 @@ import FileBrowser from './components/FileBrowser.vue';
 import ServerShutdown from './components/ServerShutdown.vue';
 import ServerStartup from './components/ServerStartup.vue';
 import SessionMenu from './components/SessionMenu.vue';
+import DropDown from './components/DropDown.vue';
 
 const props = defineProps<{
   panels: {title: string, component: any }[],
@@ -265,7 +267,7 @@ async function mountLocal() {
 
 const model_not_loaded = computed(() => model_file.value == null);
 
-menu_items.value = [
+file_menu_items.value = [
   { text: "Load Problem", action: selectOpenFile },
   { text: "Save Parameters", action: saveParameters, disabled: model_not_loaded },
   { text: "Apply Parameters", action: applyParameters, disabled: model_not_loaded },
@@ -273,11 +275,13 @@ menu_items.value = [
   { text: "Save Problem As...", action: saveFileAs, disabled: model_not_loaded },
   { text: "Export Results", action: exportResults, disabled: model_not_loaded },
   { text: "Reload Model", action: reloadModel, disabled: model_not_loaded },
+  { text: "---" },
+  { text: "Quit", action: quit },
 ]
 
-onMounted(() => {
-  const menuToggleButton = new Button(menuToggle.value as HTMLElement);
-});
+if (can_mount_local) {
+  file_menu_items.value.splice(0, 0, { text: "Mount Local Folder", action: mountLocal });
+}
 
 </script>
 
@@ -296,72 +300,23 @@ onMounted(() => {
         </button>
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
           <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-            <!-- <li class="nav-item dropdown">
-              <div class="nav-link dropdown-toggle"  role="button" data-bs-toggle="dropdown"
-                aria-expanded="false">
-                Session
-              </div>
-              <ul class="dropdown-menu">
-                <li><button class="btn btn-link dropdown-item"  @click="connect">New</div></li>
-                <li><button class="btn btn-link dropdown-item"  @click="disconnect">Disconnect</div></li>
-                <li><button class="btn btn-link dropdown-item"  @click="reconnect">Existing</div></li>
-              </ul>
-            </li> -->
-            <li class="nav-item dropdown">
-              <button class="btn btn-link nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"
-                aria-expanded="false">
-                File
-              </button>
-              <ul class="dropdown-menu">
-                <li><button v-if="can_mount_local" class="btn btn-link dropdown-item" @click="mountLocal">Mount Local Folder</button></li>
-                <li v-for="menu_item of menu_items" :key="menu_item.text" :title="menu_item.help">
-                  <button class="btn btn-link dropdown-item" @click="menu_item.action" :disabled="menu_item.disabled ?? false">{{ menu_item.text }}</button>
-                </li>
-                <li>
-                  <hr class="dropdown-divider">
-                </li>
-                <li><button class="btn btn-link dropdown-item" @click="quit">Quit</button></li>
-              </ul>
-            </li>
+            <DropDown title="File" v-slot="{ hide }">
+              <li v-for="menu_item of file_menu_items" :key="menu_item.text" :title="menu_item.help">
+                <hr v-if="menu_item.text === '---'" class="dropdown-divider">
+                <button v-else class="btn btn-link dropdown-item"
+                  @click="menu_item.action?.(); hide()"
+                  :disabled="menu_item.disabled ?? false">{{ menu_item.text }}</button>
+              </li>
+            </DropDown>
             <SessionMenu :socket="socket" />
-            <!-- <li class="nav-item dropdown">
-              <button class="btn btn-link nav-link dropdown-toggle"  role="button" data-bs-toggle="dropdown"
-                aria-expanded="false">
-                Fitting
-              </button>
-              <ul class="dropdown-menu">
-                <li><button class="btn btn-link dropdown-item"  @click="startFit">Start</button></li>
-                <li><button class="btn btn-link dropdown-item"  @click="stopFit">Stop</button></li>
-                <li>
-                  <hr class="dropdown-divider">
-                </li>
-                <li><button class="btn btn-link dropdown-item"  @click="openFitOptions">Options...</button></li>
-              </ul>
-            </li> -->
-            <li class="nav-item dropdown">
-              <button class="btn btn-link nav-link dropdown-toggle"  role="button" data-bs-toggle="dropdown"
-                aria-expanded="false">
-                Layout
-              </button>
-              <ul class="dropdown-menu">
-                <li v-for="layout in LAYOUTS" :key="layout" :class="{layout: true, active: active_layout === layout}">
-                  <button class="btn btn-link dropdown-item" :class="{layout: true, active: active_layout === layout}" @click="active_layout = layout">{{ layout }}</button>
-                </li>
-              </ul>
-            </li>
-
-            <!-- <li class="nav-item dropdown">
-              <div class="nav-link dropdown-toggle"  role="button" data-bs-toggle="dropdown"
-                aria-expanded="false">
-                Reflectivity
-              </div>
-              <ul class="dropdown-menu">
-                <li v-for="plot_type in REFLECTIVITY_PLOTS" :key="plot_type">
-                  <div :class="{'dropdown-item': true, active: (plot_type === reflectivity_type)}" 
-                    @click="set_reflectivity(plot_type)">{{plot_type}}</div>
-                </li>
-              </ul>
-            </li> -->
+            <DropDown title="Layout" v-slot="{ hide }">
+              <li v-for="layout in LAYOUTS" :key="layout" :class="{layout: true, active: active_layout === layout}">
+                <button 
+                  class="btn btn-link dropdown-item"
+                  :class="{layout: true, active: active_layout === layout}"
+                  @click="active_layout = layout; hide()">{{ layout }}</button>
+              </li>
+            </DropDown>
           </ul>
           <div class="flex-grow-1 px-4 m-0">
             <h4 class="m-0">
