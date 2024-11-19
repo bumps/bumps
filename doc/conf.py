@@ -10,7 +10,6 @@
 #
 # All configuration values have a default; values that are commented out
 # serve to show the default.
-from __future__ import print_function, with_statement
 
 import sys, os
 sys.dont_write_bytecode = True

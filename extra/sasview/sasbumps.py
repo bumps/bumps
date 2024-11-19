@@ -1,4 +1,3 @@
-from __future__ import division, print_function
 __all__ = ['Experiment', 'load_data', 'load_model', 'load_fit', 'sim_data',
            'Parameter', 'FitProblem', 'FreeVariables',
            'pmath', 'preview', 'fit', 'np', 'sys', 'sans', 'seed']

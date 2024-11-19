@@ -25,7 +25,6 @@
 #    d\hat\lambda^2 = \int_0^\infty (\lambda - \hat\lambda)^2 P(\lambda|k) d\lambda
 #
 
-from __future__ import division, print_function
 import numpy as np
 from pylab import *
 

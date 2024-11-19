@@ -28,7 +28,6 @@ so *S* < 1e-4 cannot be modeled reliably.
 Population size *h* is set to 20 per mode.  A good choice for number of
 sequences *k* is not yet determined.
 """
-from __future__ import print_function
 
 import numpy as np
 from bumps.dream.model import MVNormal, Mixture

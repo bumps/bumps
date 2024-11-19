@@ -13,7 +13,6 @@ simulations.
 The expected distribution for p1+p2 can be determined from the linear model
 y = a*x.  This is reported along with the values estimated from MCMC.
 """
-from __future__ import print_function
 
 from pylab import *  # Numeric functions and plotting
 from dream import *  # sampler functions

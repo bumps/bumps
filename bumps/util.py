@@ -1,7 +1,7 @@
 """
 Miscellaneous utility functions.
 """
-from __future__ import division
+
 import warnings
 
 __all__ = ["kbhit", "profile", "pushdir", "push_seed", "redirect_console"]
@@ -15,6 +15,7 @@ from io import StringIO
 
 import numpy as np
 from numpy import ascontiguousarray as _dense
+
 # **DEPRECATED** we can import erf directly from scipy.special.erf
 # so there is no longer a need for bumps.util.erf.
 from scipy.special import erf
@@ -26,28 +27,31 @@ except ImportError:
     from typing_extensions import Literal, Protocol, runtime_checkable
 from typing import Iterable, Optional, Type, TypeVar, Any, Union, Dict, Callable, Tuple, List, Sequence, TYPE_CHECKING
 
-USE_PYDANTIC = os.environ.get('BUMPS_USE_PYDANTIC', "False") == "True"
+USE_PYDANTIC = os.environ.get("BUMPS_USE_PYDANTIC", "False") == "True"
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
 from dataclasses import dataclass, field, is_dataclass, Field
 
+
 def field_desc(description: str) -> Any:
     return field(metadata={"description": description})
 
-T = TypeVar('T')
-SCHEMA_ATTRIBUTE_NAME = '__bumps_schema__'
+
+T = TypeVar("T")
+SCHEMA_ATTRIBUTE_NAME = "__bumps_schema__"
+
 
 def schema_config(
-        include: Optional[List[str]] = None,
-        exclude: Optional[List[str]] = None,
-    ) -> Callable[[Type[T]], Type[T]]:
-    
-    """ 
+    include: Optional[List[str]] = None,
+    exclude: Optional[List[str]] = None,
+) -> Callable[[Type[T]], Type[T]]:
+    """
     Add an attribute for configuring serialization
     (presence of SCHEMA_ATTRIBUTE_NAME attribute is used during
     serialization of unique instances e.g. Parameter)
     """
+
     def add_schema_config(cls: Type[T]) -> Type[T]:
         if include is not None and exclude is not None:
             raise ValueError(f"{fqn} schema: include array and exclude array are mutually exclusive - only define one")
@@ -57,26 +61,32 @@ def schema_config(
 
     return add_schema_config
 
+
 def has_schema_config(cls):
     return is_dataclass(cls) and hasattr(cls, SCHEMA_ATTRIBUTE_NAME)
+
 
 @dataclass(init=True)
 class NumpyArray:
     """
     Wrapper for numpy arrays:
-    on serialize, 
+    on serialize,
      - array.tolist() is called and stored in 'values' attribute
      - str(array.dtype) is stored in 'dtype' attribute
 
      on deserialize,
       - return new np.ndarray(values, dtype=dtype)
     """
+
     dtype: str
     values: Sequence = field(default_factory=list)
 
+
 if USE_PYDANTIC:
     from typing import TypeAlias
+
     NDArray: TypeAlias = NumpyArray
+
 
 def parse_errfile(errfile):
     """
@@ -96,6 +106,7 @@ def parse_errfile(errfile):
         errfile = glob.glob(os.path.join(path, '*.err'))[0]
     """
     from .dream.stats import parse_var
+
     pars = []
     chisq = []
     overall = None
@@ -127,13 +138,15 @@ def profile(fn, *args, **kw):
     import pstats
 
     result = [None]
+
     def call():
         result[0] = fn(*args, **kw)
-    datafile = 'profile.out'
-    cProfile.runctx('call()', dict(call=call), {}, datafile)
+
+    datafile = "profile.out"
+    cProfile.runctx("call()", dict(call=call), {}, datafile)
     stats = pstats.Stats(datafile)
     # order='calls'
-    order = 'cumulative'
+    order = "cumulative"
     # order='pcalls'
     # order='time'
     stats.sort_stats(order)
@@ -148,21 +161,23 @@ def kbhit():
     """
     try:  # Windows
         import msvcrt
+
         return msvcrt.kbhit()
     except ImportError:  # Unix
         import select
+
         i, _, _ = select.select([sys.stdin], [], [], 0.0001)
         return sys.stdin in i
 
 
 class DynamicModule(types.ModuleType):
     def __init__(self, path, name):
-       self.__path__ = [path]
-       self.__name__ = name
-       # In the bowels of importlib the parent spec attribute is used to
-       # avoid circular imports, but only if spec is not None. This behaviour
-       # was observed on python 3.11, and perhaps earlier.
-       self.__spec__ = None
+        self.__path__ = [path]
+        self.__name__ = name
+        # In the bowels of importlib the parent spec attribute is used to
+        # avoid circular imports, but only if spec is not None. This behaviour
+        # was observed on python 3.11, and perhaps earlier.
+        self.__spec__ = None
 
 
 def relative_import(filename, module_name="relative_import"):
@@ -176,10 +191,8 @@ def relative_import(filename, module_name="relative_import"):
     can be used both within and outside of bumps.
     """
     path = os.path.dirname(os.path.abspath(filename))
-    if (module_name in sys.modules
-            and not isinstance(sys.modules[module_name], DynamicModule)):
-        raise ImportError("relative import would override the existing module %s. Use another name"
-                          % module_name)
+    if module_name in sys.modules and not isinstance(sys.modules[module_name], DynamicModule):
+        raise ImportError("relative import would override the existing module %s. Use another name" % module_name)
     sys.modules[module_name] = DynamicModule(path, module_name)
     return module_name
 
@@ -224,6 +237,7 @@ class redirect_console(object):
         captured to string
 
     """
+
     def __init__(self, stdout=None, stderr=None):
         self.open_files = []
         self.sys_stdout = []
@@ -232,18 +246,18 @@ class redirect_console(object):
         if stdout is None:
             self.open_files.append(StringIO())
             self.stdout = self.open_files[-1]
-        elif hasattr(stdout, 'write'):
+        elif hasattr(stdout, "write"):
             self.stdout = stdout
         else:
-            self.open_files.append(open(stdout, 'w'))
+            self.open_files.append(open(stdout, "w"))
             self.stdout = self.open_files[-1]
 
         if stderr is None:
             self.stderr = self.stdout
-        elif hasattr(stderr, 'write'):
+        elif hasattr(stderr, "write"):
             self.stderr = stderr
         else:
-            self.open_files.append(open(stderr, 'w'))
+            self.open_files.append(open(stderr, "w"))
             self.stderr = self.open_files[-1]
 
     def __del__(self):
@@ -264,6 +278,7 @@ class redirect_console(object):
         del self.sys_stderr[-1]
         return False
 
+
 class push_python_path(object):
     """
     Change sys.path for the duration of a with statement.
@@ -279,6 +294,7 @@ class push_python_path(object):
         >>> restored_path = list(sys.path)
         >>> assert original_path == restored_path
     """
+
     def __init__(self, path):
         self.path = path
 
@@ -306,6 +322,7 @@ class pushdir(object):
         >>> restored_wd = os.getcwd()
         >>> assert original_wd == restored_wd
     """
+
     def __init__(self, path):
         self.path = os.path.abspath(path)
 
@@ -375,6 +392,7 @@ class push_seed(object):
         Exception raised
         899
     """
+
     def __init__(self, seed=None):
         self._state = np.random.get_state()
         np.random.seed(seed)

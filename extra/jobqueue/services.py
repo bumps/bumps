@@ -11,7 +11,6 @@ the system using, for example::
     import integration
     services.integrate = integration.service.service
 """
-from __future__ import print_function
 
 # TODO: modify runjob so that services can be downloaded
 # TODO: support over the wire transport for privileged users

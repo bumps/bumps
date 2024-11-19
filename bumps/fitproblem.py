@@ -43,13 +43,13 @@ Summary of problem attributes::
     cov() -> Matrix   # for --cov in opts
 
 """
+
 # Don't include print_function in imports; since the model coded is exec'd
 # in the __future__ context of this file, it would force the models to use the
 # new print function syntax.  load_problem() should be moved to its own file
 # to avoid this issue.
-from __future__ import division, with_statement
 
-__all__ = ['Fitness', 'FitProblem', 'load_problem']
+__all__ = ["Fitness", "FitProblem", "load_problem"]
 
 from dataclasses import dataclass
 import logging
@@ -135,7 +135,7 @@ class Fitness(util.Protocol):
         """
         pass
 
-    def plot(self, view='linear'):
+    def plot(self, view="linear"):
         """
         Plot the model to the current figure.  You only get one figure, but you
         can make it as complex as you want.  This will be saved as a png on
@@ -148,12 +148,13 @@ def no_constraints() -> float:
     """default constraints function for FitProblem"""
     return 0
 
+
 def fit_parameters(fitness: Fitness) -> util.List[Parameter]:
     """
     Return a list of fittable (non-fixed) parameters in the model
     """
     parameters = parameter.unique(fitness.parameters())
-    return [p for p in parameters if isinstance(getattr(p, 'slot', None), parameter.Variable) and not p.fixed]
+    return [p for p in parameters if isinstance(getattr(p, "slot", None), parameter.Variable) and not p.fixed]
 
 
 def chisq_str(fitness: Fitness) -> str:
@@ -171,18 +172,20 @@ def chisq_str(fitness: Fitness) -> str:
     pars = fit_parameters(fitness)
     dof = fitness.numpoints() - len(pars)
     if dof <= 0 or np.isnan(dof) or np.isinf(dof):
-        chisq_norm, chisq_err = 1., 0.
+        chisq_norm, chisq_err = 1.0, 0.0
     else:
-        #return 2./dof, 1./dof
+        # return 2./dof, 1./dof
         from scipy.stats import chi2
+
         npars = max(len(pars), 1)
-        chisq_norm, chisq_err = 2./dof, chi2.ppf(ONE_SIGMA, npars)/dof
-    
+        chisq_norm, chisq_err = 2.0 / dof, chi2.ppf(ONE_SIGMA, npars) / dof
+
     chisq = fitness.nllf() * chisq_norm
     text = format_uncertainty(chisq, chisq_err)
     return text
 
-def show_parameters(fitness: Fitness, subs: util.Optional[util.Dict[util.Any, Parameter]]=None):
+
+def show_parameters(fitness: Fitness, subs: util.Optional[util.Dict[util.Any, Parameter]] = None):
     """Print the available parameters to the console as a tree."""
     print(parameter.format(fitness.parameters(), freevars=subs))
     print("[chisq=%s, nllf=%g]" % (chisq_str(fitness), fitness.nllf()))
@@ -210,7 +213,7 @@ class FitProblem:
         *name* name of the problem
 
         *constraints* is a list of Constraint objects, which have a method to
-        calculate the nllf for that constraint. 
+        calculate the nllf for that constraint.
         Also supports an alternate form which cannot be serialized:
         A function which returns the negative log likelihood
         of seeing the parameters independent from the fitness function.  Use
@@ -229,7 +232,7 @@ class FitProblem:
 
     New in 0.9.0: weights are now squared when computing the sum rather than
     linear.
-    """  
+    """
 
     name: util.Optional[str]
     models: util.List[Fitness]
@@ -242,17 +245,21 @@ class FitProblem:
     _models: util.List[Fitness]
     _parameters: util.List[Parameter]
     _parameters_by_id: util.Dict[str, Parameter]
-    _dof: float = np.nan # not a schema field, and is not used in __init__
+    _dof: float = np.nan  # not a schema field, and is not used in __init__
 
     # _all_constraints: util.List[util.Union[Parameter, Expression]]
 
-    def __init__(self, models: util.Union[Fitness, util.List[Fitness]], weights=None, name=None,
-                 constraints=None,
-                 penalty_nllf="inf",
-                 freevars=None,
-                 soft_limit:util.Optional[float]=None,  # TODO: deprecate,
-                 auto_tag=False
-                 ):
+    def __init__(
+        self,
+        models: util.Union[Fitness, util.List[Fitness]],
+        weights=None,
+        name=None,
+        constraints=None,
+        penalty_nllf="inf",
+        freevars=None,
+        soft_limit: util.Optional[float] = None,  # TODO: deprecate,
+        auto_tag=False,
+    ):
         if not isinstance(models, (list, tuple)):
             models = [models]
         if callable(constraints):
@@ -277,19 +284,19 @@ class FitProblem:
         self.weights = weights
         self.penalty_nllf = float(penalty_nllf)
         self.set_active_model(0)  # Set the active model to model 0
-        self.model_reset() # sets self._all_constraints
+        self.model_reset()  # sets self._all_constraints
         self.name = name
 
     @staticmethod
     def _null_constraints_function():
-        return 0.
+        return 0.0
 
     @property
     def fitness(self):
-        warnings.warn('Deprecated: use of problem.fitness will be removed at some point')
+        warnings.warn("Deprecated: use of problem.fitness will be removed at some point")
         if len(self._models) == 1:
             return self._models[0]
-        raise ValueError('problem.fitness is not defined')
+        raise ValueError("problem.fitness is not defined")
 
     @property
     def dof(self):
@@ -317,22 +324,22 @@ class FitProblem:
     def model_parameters(self):
         """Return parameters from all models"""
         pars = {}
-        pars['models'] = [f.parameters() for f in self.models]
+        pars["models"] = [f.parameters() for f in self.models]
         free = self.freevars.parameters()
         if free:
-            pars['freevars'] = free
+            pars["freevars"] = free
         return pars
 
     def to_dict(self):
         return {
-            'type': type(self).__name__,
-            'name': self.name,
-            'models': to_dict(self._models),
-            'weights': self.weights,
-            'penalty_nllf': self.penalty_nllf,
+            "type": type(self).__name__,
+            "name": self.name,
+            "models": to_dict(self._models),
+            "weights": self.weights,
+            "penalty_nllf": self.penalty_nllf,
             # TODO: constraints may be a function.
-            'constraints': to_dict(self.constraints),
-            'freevars': to_dict(self.freevars),
+            "constraints": to_dict(self.constraints),
+            "freevars": to_dict(self.freevars),
         }
 
     def __repr__(self):
@@ -364,7 +371,7 @@ class FitProblem:
             p.value = v
         # TODO: setp_hook is a hack to support parameter expressions in sasview
         # Don't depend on this existing long term.
-        setp_hook = getattr(self, 'setp_hook', no_constraints)
+        setp_hook = getattr(self, "setp_hook", no_constraints)
         setp_hook()
         self.model_update()
 
@@ -372,12 +379,12 @@ class FitProblem:
         """
         Returns the current value of the parameter vector.
         """
-        return np.array([p.value for p in self._parameters], 'd')
+        return np.array([p.value for p in self._parameters], "d")
 
     def bounds(self):
         """Return the bounds for each parameter as a 2 x N array"""
         limits = [p.prior.limits for p in self._parameters]
-        return np.array(limits, 'd').T if limits else np.empty((2, 0))
+        return np.array(limits, "d").T if limits else np.empty((2, 0))
 
     def randomize(self, n=None):
         """
@@ -394,13 +401,12 @@ class FitProblem:
         # TODO: split into two: randomize and random_pop
         if n is None:
             self.setp(self.randomize(n=1)[0])
-            return   # Not returning anything since no n is requested
+            return  # Not returning anything since no n is requested
 
         # TODO: apply hard limits on parameters
         target = self.getp()
-        target[~np.isfinite(target)] = 1.
-        pop = [p.prior.random(n, target=v)
-               for p, v in zip(self._parameters, target)]
+        target[~np.isfinite(target)] = 1.0
+        pop = [p.prior.random(n, target=v) for p, v in zip(self._parameters, target)]
         return np.array(pop).T
 
     def nllf(self, pvec=None) -> float:
@@ -416,10 +422,10 @@ class FitProblem:
         penalty should be large enough that it is effectively excluded from
         the parameter space returned from uncertainty analysis.
 
-        the model is not actually calculated if any of the parameters are 
+        the model is not actually calculated if any of the parameters are
         out of bounds, or any of the constraints are not satisfied, but
-        instead are assigned a value of *penalty_nllf*.  
-        this will prevent expensive models from spending time computing 
+        instead are assigned a value of *penalty_nllf*.
+        this will prevent expensive models from spending time computing
         values in the unfeasible region.
         """
         if pvec is not None:
@@ -476,7 +482,7 @@ class FitProblem:
         chisq = pmodel * chisq_norm
         text = format_uncertainty(chisq, chisq_err)
         constraints = pparameter + pconstraints
-        if constraints > 0.:
+        if constraints > 0.0:
             text += " constraints=%g" % constraints
         if len(failing_constraints) > 0:
             text += " failing_constraints=%s" % str(failing_constraints)
@@ -489,7 +495,7 @@ class FitProblem:
             if isnan(pparameter):
                 # TODO: make sure errors get back to the user
                 info = ["Parameter nllf is wrong"]
-                info += ["%s %g"%(p, p.nllf()) for p in self._bounded]
+                info += ["%s %g" % (p, p.nllf()) for p in self._bounded]
                 logging.error("\n  ".join(info))
             pconstraints, failing_constraints = self.constraints_nllf()
             failing_constraints += failing_parameter_constraints
@@ -498,12 +504,11 @@ class FitProblem:
             # since inf <= inf is True but inf < inf is False.
             penalty_nllf = self.penalty_nllf if self.penalty_nllf is not None else np.inf
             pmodel = self.model_nllf() if len(failing_constraints) == 0 else penalty_nllf
-                     
+
             return pparameter, pconstraints, pmodel, failing_constraints
         except Exception:
             # TODO: make sure errors get back to the user
-            info = (traceback.format_exc(),
-                    parameter.summarize(self._parameters))
+            info = (traceback.format_exc(), parameter.summarize(self._parameters))
             logging.error("\n".join(info))
             return nan, nan, nan, []
 
@@ -551,20 +556,20 @@ class FitProblem:
         for p in all_parameters:
             # slot = p.slot
             # value = p.value
-            
+
             # TODO: this is a shim to accomodate Expression, Calculation etc. being
             # put into attributes that have type "Parameter" (in user scripts)
-            # Do we cause those scripts to break instead?  
+            # Do we cause those scripts to break instead?
             # Or do we autoconvert to .equals()?
-            if hasattr(p, 'add_prior'):
+            if hasattr(p, "add_prior"):
                 p.add_prior(p.distribution, bounds=p.bounds, limits=p.limits)
 
-            # TODO: currently this logic for showing breaking constraints to the user 
+            # TODO: currently this logic for showing breaking constraints to the user
             # is in the chisq_str execution path instead of on model_reset - should it be here instead?
 
             # While we are walking all parameters check which constraints aren't satisfied
             # Build up a list of strings to help the user initialize the model correctly
-            if hasattr(p, 'limits'):
+            if hasattr(p, "limits"):
                 value = p.value
                 if (p.limits[0] > value) or (value > p.limits[1]):
                     broken.append(f"{p}={value} is outside {p.limits}")
@@ -573,7 +578,7 @@ class FitProblem:
 
         broken.extend([f"constraint {c} is unsatisfied" for c in self.constraints if float(c) == inf])
         if self._constraints_function() == inf:
-             broken.append("user constraint function is unsatisfied")
+            broken.append("user constraint function is unsatisfied")
         if len(broken) > 0:
             warnings.warn("Unsatisfied constraints: [%s]" % (",\n".join(broken)))
         self.broken_constraints = broken
@@ -582,20 +587,22 @@ class FitProblem:
         pars = []
         pars_by_id = {}
         for p in all_parameters:
-            if hasattr(p, 'id'):
+            if hasattr(p, "id"):
                 pars_by_id[p.id] = p
-            slot = getattr(p, 'slot', None)
+            slot = getattr(p, "slot", None)
             if isinstance(slot, Variable) and not p.fixed:
                 pars.append(p)
         self._parameters = pars
         self._parameters_by_id = pars_by_id
         # TODO: shimmed to allow non-Parameter in Parameter attribute spots.
-        self._bounded = [p for p in all_parameters if hasattr(p, 'has_prior') and p.has_prior()]
+        self._bounded = [p for p in all_parameters if hasattr(p, "has_prior") and p.has_prior()]
         self._dof = self.model_points()
         self._dof -= len(self._parameters)
         if self.dof <= 0:
-            warnings.warn(f"Need more data points (currently: {self.model_points()}) than fitting parameters ({len(self._parameters)})")
-        #self.constraints = pars.constraints()
+            warnings.warn(
+                f"Need more data points (currently: {self.model_points()}) than fitting parameters ({len(self._parameters)})"
+            )
+        # self.constraints = pars.constraints()
         # Find the constraints on variables and expressions that we need to compute
         # parameter_constraints = [p.slot for p in all_parameters if isinstance(p.slot, Variable) and p.has_prior()]
         # expression_constraints = [p.slot for p in all_parameters if isinstance(p.slot, Expression) and p.has_prior()]
@@ -615,12 +622,12 @@ class FitProblem:
         # computation is cheap before jumping to a more expensive
         # subspace.  SrFit does this.
         for f in self.models:
-            if hasattr(f, 'update'):
+            if hasattr(f, "update"):
                 f.update()
 
     def model_nllf(self):
         """Return cost function for all data sets"""
-        return sum(w**2*f.nllf() for w, f in zip(self.weights, self.models))
+        return sum(w**2 * f.nllf() for w, f in zip(self.weights, self.models))
 
     def constraints_nllf(self) -> util.Tuple[float, util.List[str]]:
         """Return the cost function for all constraints"""
@@ -631,7 +638,7 @@ class FitProblem:
             failing.append("user constraints function")
         for c in self.constraints:
             # TODO: convert to list of residuals for Levenberg-Marquardt
-            c_nllf = float(c)**2
+            c_nllf = float(c) ** 2
             nllf += c_nllf
             if c_nllf > 0:
                 failing.append(str(c))
@@ -658,42 +665,41 @@ class FitProblem:
         """
         True if all underlying fitness functions define residuals.
         """
-        return all(hasattr(f, 'residuals') for f in self.models)
+        return all(hasattr(f, "residuals") for f in self.models)
 
     def residuals(self):
-        resid = np.hstack([w * f.residuals()
-                           for w, f in zip(self.weights, self.models)])
+        resid = np.hstack([w * f.residuals() for w, f in zip(self.weights, self.models)])
         return resid
 
     def save(self, basename):
         for i, f in enumerate(self.models):
-            if hasattr(f, 'save'):
+            if hasattr(f, "save"):
                 f.save(basename + "-%d" % (i + 1))
 
     def show(self):
         for i, f in enumerate(self.models):
-            print("-- Model %d %s" % (i, getattr(f, 'name', '')))
+            print("-- Model %d %s" % (i, getattr(f, "name", "")))
             subs = self.freevars.get_model(i) if self.freevars else {}
             show_parameters(f, subs=subs)
         print("[overall chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
 
     def plot(self, p=None, fignum=1, figfile=None, view=None, model_indices=None):
         import pylab
+
         if p is not None:
             self.setp(p)
         for i, f in enumerate(self.models):
             if model_indices is not None and i not in model_indices:
                 continue
-            if not hasattr(f, 'plot'):
+            if not hasattr(f, "plot"):
                 continue
             f.plot(view=view)
             pylab.figure(i + fignum)
             f.plot(view=view)
-            pylab.suptitle('Model %d - %s' % (i, f.name))
-            pylab.text(0.01, 0.01, 'chisq=%s' % chisq_str(f),
-                   transform=pylab.gca().transAxes)
+            pylab.suptitle("Model %d - %s" % (i, f.name))
+            pylab.text(0.01, 0.01, "chisq=%s" % chisq_str(f), transform=pylab.gca().transAxes)
             if figfile is not None:
-                pylab.savefig(figfile + "-model%d.png" % i, format='png')
+                pylab.savefig(figfile + "-model%d.png" % i, format="png")
 
     # Note: restore default behaviour of getstate/setstate rather than
     # inheriting from BaseFitProblem
@@ -706,6 +712,8 @@ class FitProblem:
 
 # TODO: consider adding nllf_scale to FitProblem.
 ONE_SIGMA = 0.68268949213708585
+
+
 def nllf_scale(problem: FitProblem):
     r"""
     Return the scale factor for reporting the problem nllf as an approximate
@@ -724,12 +732,14 @@ def nllf_scale(problem: FitProblem):
     """
     dof = problem.dof
     if dof <= 0 or np.isnan(dof) or np.isinf(dof):
-        return 1., 0.
+        return 1.0, 0.0
     else:
-        #return 2./dof, 1./dof
+        # return 2./dof, 1./dof
         from scipy.stats import chi2
+
         npars = max(len(problem.getp()), 1)
-        return 2./dof, chi2.ppf(ONE_SIGMA, npars)/dof
+        return 2.0 / dof, chi2.ppf(ONE_SIGMA, npars) / dof
+
 
 def load_problem(filename, options=None) -> FitProblem:
     """
@@ -749,7 +759,7 @@ def load_problem(filename, options=None) -> FitProblem:
     old_argv = sys.argv
     sys.argv = [filename] + options if options else [filename]
     source = open(filename).read()
-    code = compile(source, filename, 'exec')
+    code = compile(source, filename, "exec")
     exec(code, ctx)
     sys.argv = old_argv
     problem = ctx.get("problem", None)
@@ -758,30 +768,35 @@ def load_problem(filename, options=None) -> FitProblem:
 
     return problem
 
+
 def MultiFitProblem(*args, **kwargs) -> FitProblem:
     warnings.warn(DeprecationWarning("use FitProblem directly instead of MultiFitProblem"))
     return FitProblem(*args, **kwargs)
 
-def test_weighting():
 
+def test_weighting():
     class SimpleFitness(Fitness):
-        def __init__(self, a=0., name="fit"):
-            self.a = parameter.Parameter.default(a, name=name+" a")
+        def __init__(self, a=0.0, name="fit"):
+            self.a = parameter.Parameter.default(a, name=name + " a")
+
         def parameters(self):
-            return {'a': self.a}
+            return {"a": self.a}
+
         def numpoints(self):
             return 1
+
         def residuals(self):
-            y, dy = 0, 1 # fit to constant 0 +/- 1
-            return np.array([(self.a.value - y)/dy])
+            y, dy = 0, 1  # fit to constant 0 +/- 1
+            return np.array([(self.a.value - y) / dy])
+
         def nllf(self):
-            return sum(r**2 for r in self.residuals())/2
+            return sum(r**2 for r in self.residuals()) / 2
 
     weights = 2, 3
     models = [SimpleFitness(4.0), SimpleFitness(5.0)]
     problem = FitProblem(models, weights=weights)
 
     # Need to use problem.models to cycle through models in case FreeVariables is used in problem
-    assert (problem.residuals() == np.hstack([w*M.residuals() for w, M in zip(weights, problem.models)])).all()
-    assert problem.nllf() == sum(w**2*M.nllf() for w, M in zip(weights, problem.models))
-    assert problem.nllf() == sum(problem.residuals()**2)/2
+    assert (problem.residuals() == np.hstack([w * M.residuals() for w, M in zip(weights, problem.models)])).all()
+    assert problem.nllf() == sum(w**2 * M.nllf() for w, M in zip(weights, problem.models))
+    assert problem.nllf() == sum(problem.residuals() ** 2) / 2

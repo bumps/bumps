@@ -1,4 +1,3 @@
-from __future__ import print_function
 
 # Look for the peak fitter in the same file as the modeller
 import os, sys

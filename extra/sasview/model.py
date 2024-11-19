@@ -1,4 +1,3 @@
-from __future__ import print_function
 
 # ======
 # Put current directory and sasview directory on path.

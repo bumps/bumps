@@ -4,7 +4,6 @@ Surjanovic, S. & Bingham, D. (2013).
 Virtual Library of Simulation Experiments: Test Functions and Datasets.
 Retrieved April 18, 2016, from http://www.sfu.ca/~ssurjano.
 """
-from __future__ import print_function
 
 from functools import reduce, wraps
 import inspect
