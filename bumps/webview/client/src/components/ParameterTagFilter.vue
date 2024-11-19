@@ -97,9 +97,9 @@ defineExpose({
       <div class="col">
       <span 
         class="badge rounded-pill me-1" 
-        :class="{checked: tags_to_show.includes(tag)}" 
+        :class="{checked: tags_to_show.includes(tag as string)}" 
         v-for="(tag_color, tag) in tag_colors" 
-        @click="toggle(tag, 'show')"
+        @click="toggle(tag as string, 'show')"
         :style="{color: 'white', 'background-color': tag_color}"
         >
         {{ tag }}
@@ -111,9 +111,9 @@ defineExpose({
       <div class="col">
         <span 
         class="badge rounded-pill me-1" 
-        :class="{checked: tags_to_hide.includes(tag)}" 
+        :class="{checked: tags_to_hide.includes(tag as string)}" 
         v-for="(tag_color, tag, tag_index) in tag_colors" 
-        @click="toggle(tag, 'hide')"
+        @click="toggle(tag as string, 'hide')"
         :style="{color: 'white', 'background-color': tag_color}"
         >
         {{ tag }}
