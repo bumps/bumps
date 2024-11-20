@@ -27,7 +27,7 @@ function setActive(index: number) {
 <template>
   <ul class="nav nav-tabs" v-if="!hide_tabs">
     <li class="nav-item" v-for="(panel, index) in props.panels" :key="index">
-      <a ref="tabTriggers" :class="{'nav-link': true, active: index == active_panel}" href="#" @click="setActive(index)">{{panels[index]?.title}}</a>
+      <a ref="tabTriggers" :class="{'nav-link': true, active: index == active_panel}" href="#" @click.prevent="setActive(index)">{{panels[index]?.title}}</a>
     </li>
   </ul>
   <div class="tab-content d-flex flex-column flex-grow-1 overflow-auto">
