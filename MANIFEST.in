@@ -13,6 +13,8 @@ include MANIFEST.in  # this file
 include bin/*
 recursive-include bumps/webview/client/dist *.html *.js *.css *.svg *.png
 recursive-include bumps/webview/client/src *.html *.js *.mjs *.css *.svg *.png *.ts *.vue
+recursive-include bumps/dream/Random123/include/Random123 *.h
+include bumps/dream/Random123/LICENSE
 include bumps/webview/client/*.html
 include bumps/webview/client/*.js
 include bumps/webview/client/*.json

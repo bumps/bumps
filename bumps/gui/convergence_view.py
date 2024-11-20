@@ -23,6 +23,7 @@ class ConvergenceMonitor(monitor.Monitor):
             pop = history.population_values[0]
             n = len(pop)
             p = np.sort(pop)
+<<<<<<< HEAD
             (
                 QI,
                 Qmid,
@@ -31,6 +32,12 @@ class ConvergenceMonitor(monitor.Monitor):
         except AttributeError:
             self.pop.append((best,))
 
+=======
+            QI,Qmid, = int(0.2*n),int(0.5*n)
+            self.pop.append((best, p[0],p[QI],p[Qmid],p[-1-QI],p[-1]))
+        except (AttributeError, TypeError):
+            self.pop.append((best, ))
+>>>>>>> master
     def progress(self):
         if not self.pop:
             return dict(pop=np.empty((0, 1), "d"))
