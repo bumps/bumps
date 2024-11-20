@@ -1,0 +1,91 @@
+name: Test Webview Client
+
+on: pull_request
+
+defaults:
+  run:
+    working-directory: ./bumps/webview/client
+
+jobs:
+  # test that app can build without issues
+  test-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install packages
+        run: bun install
+
+      - name: Run test
+        run: bun run build
+
+  # test that app is properly formatted and linted
+  test-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install packages
+        run: bun install
+
+      - name: Run test
+        run: bun run test:lint
+
+  # test that app has no typescript errors
+#   test-types:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+
+#       - name: Set up Bun
+#         uses: oven-sh/setup-bun@v2
+
+#       - name: Install packages
+#         run: bun install
+
+#       - name: Run test
+#         run: bun run test:types
+
+  # run unit tests
+#   test-unit:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+
+#       - name: Set up Bun
+#         uses: oven-sh/setup-bun@v2
+
+#       - name: Install packages
+#         run: bun install
+
+#       - name: Run test
+#         run: bun run test:unit
+
+  # run end to end integration tests
+#   test-e2e:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+
+#       - name: Set up Bun
+#         uses: oven-sh/setup-bun@v2
+
+#       - name: Install packages
+#         run: bun install
+
+#       - name: Install Playwright
+#         run: bunx playwright install
+
+#       - name: Run test
+#         run: bun run test:e2e
