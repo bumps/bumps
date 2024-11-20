@@ -81,7 +81,7 @@ enum r123_enum_threefry64x2 {
     // Output from skein_rot_search: (srs64_B64-X1000)
     // Random seed = 1. BlockSize = 128 bits. sampleCnt =  1024. rounds =  8, minHW_or=57
     // Start: Tue Mar  1 10:07:48 2011
-    // rMin = 0.136. #0325[*15] [CRC=455A682F. hw_OR=64. cnt=16384. blkSize= 128].format   
+    // rMin = 0.136. #0325[*15] [CRC=455A682F. hw_OR=64. cnt=16384. blkSize= 128].format
     */
     R_64x2_0_0=16,
     R_64x2_1_0=42,
@@ -160,7 +160,7 @@ R123_CUDA_DEVICE R123_STATIC_INLINE uint64_t RotL_64(uint64_t x, unsigned int N)
 {
     return (x << (N & 63)) | (x >> ((64-N) & 63));
 }
-    
+
 R123_CUDA_DEVICE R123_STATIC_INLINE R123_FORCE_INLINE(uint32_t RotL_32(uint32_t x, unsigned int N));
 R123_CUDA_DEVICE R123_STATIC_INLINE uint32_t RotL_32(uint32_t x, unsigned int N)
 {
@@ -763,21 +763,21 @@ _threefryNxWclass_tpl(4x64)
 /* The _tpl macros don't quite work to do string-pasting inside comments.
    so we just write out the boilerplate documentation four times... */
 
-/** 
+/**
 @defgroup ThreefryNxW Threefry Classes and Typedefs
 
 The ThreefryNxW classes export the member functions, typedefs and
 operator overloads required by a @ref CBRNG "CBRNG" class.
 
-As described in  
-<a href="http://dl.acm.org/citation.cfm?doid=2063405"><i>Parallel Random Numbers:  As Easy as 1, 2, 3</i> </a>, 
+As described in
+<a href="http://dl.acm.org/citation.cfm?doid=2063405"><i>Parallel Random Numbers:  As Easy as 1, 2, 3</i> </a>,
 the Threefry family is closely related to the Threefish block cipher from
-<a href="http://www.skein-hash.info/"> Skein Hash Function</a>.  
+<a href="http://www.skein-hash.info/"> Skein Hash Function</a>.
 Threefry is \b not suitable for cryptographic use.
 
 Threefry uses integer addition, bitwise rotation, xor and permutation of words to randomize its output.
 
-@class r123::Threefry2x32_R 
+@class r123::Threefry2x32_R
 @ingroup ThreefryNxW
 
 exports the member functions, typedefs and operator overloads required by a @ref CBRNG "CBRNG" class.
@@ -793,9 +793,9 @@ ROUNDS=13 or more for Threefry2x32.
   Threefry2x32 is equivalent to Threefry2x32_R<20>.    With 20 rounds,
   Threefry2x32 has a considerable safety margin over the minimum number
   of rounds with no known statistical flaws, but still has excellent
-   performance. 
+   performance.
 
-@class r123::Threefry2x64_R 
+@class r123::Threefry2x64_R
 @ingroup ThreefryNxW
 
 exports the member functions, typedefs and operator overloads required by a @ref CBRNG "CBRNG" class.
@@ -816,11 +816,11 @@ ROUNDS=14 or more for Threefry2x64.
   Threefry2x64 is equivalent to Threefry2x64_R<20>.    With 20 rounds,
   Threefry2x64 has a considerable safety margin over the minimum number
   of rounds with no known statistical flaws, but still has excellent
-   performance. 
+   performance.
 
 
 
-@class r123::Threefry4x32_R 
+@class r123::Threefry4x32_R
 @ingroup ThreefryNxW
 
 exports the member functions, typedefs and operator overloads required by a @ref CBRNG "CBRNG" class.
@@ -836,11 +836,11 @@ ROUNDS=12 or more for Threefry4x32.
   Threefry4x32 is equivalent to Threefry4x32_R<20>.    With 20 rounds,
   Threefry4x32 has a considerable safety margin over the minimum number
   of rounds with no known statistical flaws, but still has excellent
-   performance. 
+   performance.
 
 
 
-@class r123::Threefry4x64_R 
+@class r123::Threefry4x64_R
 @ingroup ThreefryNxW
 
 exports the member functions, typedefs and operator overloads required by a @ref CBRNG "CBRNG" class.
@@ -856,7 +856,7 @@ ROUNDS=12 or more for Threefry4x64.
   Threefry4x64 is equivalent to Threefry4x64_R<20>.    With 20 rounds,
   Threefry4x64 has a considerable safety margin over the minimum number
   of rounds with no known statistical flaws, but still has excellent
-   performance. 
+   performance.
 */
 
 #endif

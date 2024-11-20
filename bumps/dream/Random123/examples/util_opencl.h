@@ -115,7 +115,7 @@ static char *print_cl_errstring(cl_int err) {
         case CL_INVALID_MIP_LEVEL:                return strdup("Invalid mip-map level");
         default:                                  return strdup("Unknown");
     }
-} 
+}
 
 static const char *cldevtypestr(cl_device_type c) {
     switch (c) {
@@ -338,7 +338,7 @@ static UCLInfo *opencl_init(const char *devstr, const char *src,
 
 static void opencl_done(UCLInfo *tp) {
     cl_int err;
-    
+
     dprintf(("opencl_done\n"));
     CHECK(clReleaseCommandQueue(tp->cmdq));
     tp->cmdq = 0;

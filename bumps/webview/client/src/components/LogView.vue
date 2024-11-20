@@ -18,7 +18,7 @@ props.socket.asyncEmit('get_topic_messages', 'log', (messages) => {
 });
 
 </script>
-        
+
 <template>
   <div class="log">
     <div class="message" v-for="({message, title}, index) of log_info" :key="index">
@@ -30,7 +30,7 @@ props.socket.asyncEmit('get_topic_messages', 'log', (messages) => {
     </div>
   </div>
 </template>
-    
+
 <style scoped>
 
 div.log {

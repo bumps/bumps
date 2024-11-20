@@ -8,7 +8,7 @@ as 1, 2, 3</i>, Salmon, Moraes, Dror & Shaw, SC11, Seattle, Washington, USA, 201
 They are intended for use in statistical
 applications and Monte Carlo simulation
 and have passed all of the rigorous
-SmallCrush, Crush and BigCrush tests in the 
+SmallCrush, Crush and BigCrush tests in the
 <a href="http://www.iro.umontreal.ca/~simardr/testu01/tu01.html">
 extensive TestU01 suite</a> of statistical tests for random number generators.
 They are \b not suitable for use in cryptography or security
@@ -21,7 +21,7 @@ Random123 CBRNGs require a few cycles per byte of random data
 returned and return random data in convenient sizes (arrays of
 two or four elements, each element is an unsigned integer of 32
 or 64 bits.  The range of random numbers is the full
-representable range of the 32 or 64 bit unsigned integer) 
+representable range of the 32 or 64 bit unsigned integer)
 The \c <Random123/u01.h> header contains utility functions
 to convert 32- and 64-bit unsigned integers to open or closed
 ranges of single or double precision floating point numbers.
@@ -30,14 +30,14 @@ The Random123 library was written by John Salmon and Mark Moraes.  It is
 available from
 <a href="http://deshawresearch.com/resources_random123.html">
 http://deshawresearch.com/resources_random123.html.</a>  Please see
-the @ref LICENSE "license" for terms and conditions.  Please 
+the @ref LICENSE "license" for terms and conditions.  Please
 send
 feedback, including bug reports, suggestions, patches, etc. to
 random123@deshawresearch.com.
 
 \section overview Overview
 
-Unlike conventional RNGs, counter-based RNGs are 
+Unlike conventional RNGs, counter-based RNGs are
 <b>stateless</b> functions (or function classes i.e. functors) whose
 arguments are a \e counter, and a \e key
 and returns a result of the same type as the counter.
@@ -75,7 +75,7 @@ threefry, \c philox, \c ars, \c aesni.  The RNG functions themselves have names 
 Several families of CBRNGs are available in this version of the library:
 <ul>
 <li> @ref ThreefryNxW "Threefry" is a <b>non-cryptographic</b>
-adaptation of the Threefish block cipher from the <a href="http://www.skein-hash.info/"> Skein Hash Function</a>.  
+adaptation of the Threefish block cipher from the <a href="http://www.skein-hash.info/"> Skein Hash Function</a>.
 See @ref r123::Threefry2x32, @ref r123::Threefry4x32, @ref r123::Threefry2x64, @ref r123::Threefry4x64.
 <li> @ref PhiloxNxW "Philox" uses a Feistel network and integer multiplication.
 See @ref r123::Philox2x32, @ref r123::Philox4x32, @ref r123::Philox2x64, @ref r123::Philox4x64.
@@ -84,7 +84,7 @@ that supports 64-bit multiplication producing a 128-bit result.
 <li> @ref AESNI "AESNI" uses the Advanced Encryption Standard (AES) New Instruction,
 available on certain modern x86 processors (some models of Intel Westmere and Sandy Bridge,
 and AMD Interlagos, as of 2011).   AESNI CBRNGs can operate on four 32bit words (internally converting
-them to the 128bit SSE type needed by the AES-NI instructions, or on a single m128i "word", 
+them to the 128bit SSE type needed by the AES-NI instructions, or on a single m128i "word",
 which holds the SSE type.
 See @ref r123::AESNI4x32, @ref r123::AESNI1xm128i.
 <li> @ref AESNI "ARS" (Advanced Randomization System) is a \b non-cryptographic simplification of @ref AESNI "AESNI".
@@ -98,7 +98,7 @@ there is nothing to compile before using it and nothing to link after
 you have <c>\#include</c>d it in your source files.  Simply direct your C or
 C++ compiler to find the header files in the \c include/ directory that
 was unpacked from the distribution tar file and use the Random123
-header files, types and functions in your application.  
+header files, types and functions in your application.
 
 In addition to the \c include/ files which implement the library the
 distribution also contains an \c examples/ directory.  Users are <b>
@@ -126,8 +126,8 @@ uk[0] = ???; // some user_supplied_seed
 RNG::key_type k=uk;
 
 for(...){
-   c[0] = ???; // some loop-dependent application variable 
-   c[1] = ???; // another loop-dependent application variable 
+   c[0] = ???; // some loop-dependent application variable
+   c[1] = ???; // another loop-dependent application variable
    RNG::ctr_type r = rng(c, k);
    // use the random values in r for some operation related to
    // this iteration on objectid
@@ -174,7 +174,7 @@ as CUDA device functions if they are included in a CUDA kernel source file
 and compiled with a CUDA compiler (nvcc).  They can be used exactly
 as described/documented for regular C or C++ programs.  Note that
 CUDA device functions and host functions share the same namespace, so
-it is not currently possible to use Random123 functions in 
+it is not currently possible to use Random123 functions in
 both the host portion and the device portion of the same .cu source file.
 To work around this, you must compile Random123-using host code in
 a separate .c source file from your .cu device-resident code.
@@ -186,13 +186,13 @@ static memory per thread.  This is undesirable and not intentional,
 but we do not have a workaround other than to suggest adjusting memory
 allocation accordingly.
 
-The  
+The
 pi_cuda.cu and pi_cudapp.cu examples illustrate the use of CUDA.
 
 \section opencl The OpenCL platform
 
 The functions in the Random123 C API can all be used in
-OpenCL kernels, just as in regular C functions. 
+OpenCL kernels, just as in regular C functions.
 As with CUDA, the Nx32 forms are faster than the Nx64 variants on current (2011)
 32-bit GPU architectures.
 
@@ -353,5 +353,3 @@ We are grateful for contributions from the following users:
 <li> Bogdan Opanchuk - pointing out the inconsistent rotation constants in the implementation of threefry2xW in version 1.07 and earlier.
 </ul>
 */
-
-

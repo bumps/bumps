@@ -10,8 +10,10 @@ import numpy.random as rng
 try:
     from numba import njit
 except ImportError:
+
     def njit(*args, **kw):
         return lambda f: f
+
 
 @njit(cache=True)
 def draw(k, n):
@@ -19,19 +21,11 @@ def draw(k, n):
     Select k things from a pool of n without replacement.
     """
     # At k == n/4, an extra 0.15*k draws are needed to get k unique draws
-<<<<<<< HEAD
+    # TODO: silently returns too few values if k > n
     if k > n / 4:
         result = rng.permutation(n)[:k]
     else:
-        s = set()
-        result = np.empty(k, "i")
-=======
-    # TODO: silently returns too few values if k > n
-    if k > n/4:
-        result = rng.permutation(n)[:k]
-    else:
         result = np.empty(k, np.int64)
->>>>>>> master
         for i in range(k):
             # select an item not already selected
             while True:

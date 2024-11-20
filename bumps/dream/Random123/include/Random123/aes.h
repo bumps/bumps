@@ -49,17 +49,17 @@ typedef struct r123array4x32 aesni4x32_ukey_t;
 enum r123_enum_aesni1xm128i { aesni1xm128i_rounds = 10 };
 
 /** \cond HIDDEN_FROM_DOXYGEN */
-R123_STATIC_INLINE __m128i AES_128_ASSIST (__m128i temp1, __m128i temp2) { 
-    __m128i temp3; 
-    temp2 = _mm_shuffle_epi32 (temp2 ,0xff); 
+R123_STATIC_INLINE __m128i AES_128_ASSIST (__m128i temp1, __m128i temp2) {
+    __m128i temp3;
+    temp2 = _mm_shuffle_epi32 (temp2 ,0xff);
     temp3 = _mm_slli_si128 (temp1, 0x4);
     temp1 = _mm_xor_si128 (temp1, temp3);
     temp3 = _mm_slli_si128 (temp3, 0x4);
     temp1 = _mm_xor_si128 (temp1, temp3);
     temp3 = _mm_slli_si128 (temp3, 0x4);
     temp1 = _mm_xor_si128 (temp1, temp3);
-    temp1 = _mm_xor_si128 (temp1, temp2); 
-    return temp1; 
+    temp1 = _mm_xor_si128 (temp1, temp2);
+    return temp1;
 }
 
 R123_STATIC_INLINE void aesni1xm128iexpand(aesni1xm128i_ukey_t uk, __m128i ret[11])
@@ -109,11 +109,11 @@ R123_STATIC_INLINE void aesni1xm128iexpand(aesni1xm128i_ukey_t uk, __m128i ret[1
     ret[10] = rkey;
 }
 /** \endcond */
-    
+
 #ifdef __cplusplus
 /** @ingroup AESNI */
-struct aesni1xm128i_key_t{ 
-    __m128i k[11]; 
+struct aesni1xm128i_key_t{
+    __m128i k[11];
     aesni1xm128i_key_t(){
         aesni1xm128i_ukey_t uk;
         uk.v[0].m = _mm_setzero_si128();
@@ -139,8 +139,8 @@ struct aesni1xm128i_key_t{
     }
 };
 #else
-typedef struct { 
-    __m128i k[11]; 
+typedef struct {
+    __m128i k[11];
 }aesni1xm128i_key_t;
 
 /** @ingroup AESNI */
@@ -211,7 +211,7 @@ R123_STATIC_INLINE aesni4x32_ctr_t aesni4x32_R(unsigned int Nrounds, aesni4x32_c
 
 #ifdef __cplusplus
 namespace r123{
-/** 
+/**
 @defgroup AESNI ARS and AESNI Classes and Typedefs
 
 The ARS4x32, ARS1xm128i, AESNI4x32 and AESNI1xm128i classes export the member functions, typedefs and
@@ -220,7 +220,7 @@ operator overloads required by a @ref CBRNG "CBRNG" class.
 ARS1xm128i and AESNI1xm128i are based on the AES block cipher and rely on the AES-NI hardware instructions
 available on some some new (2011) CPUs.
 
-The ARS1xm128i CBRNG and the use of AES for random number generation are described in 
+The ARS1xm128i CBRNG and the use of AES for random number generation are described in
 <a href="http://dl.acm.org/citation.cfm?doid=2063405"><i>Parallel Random Numbers:  As Easy as 1, 2, 3</i> </a>.
 Although it uses some cryptographic primitives, ARS1xm128i uses a cryptographically weak key schedule and is \b not suitable for cryptographic use.
 
@@ -268,13 +268,13 @@ struct AESNI4x32{
 
 AESNI1xm128i_R is provided for completeness, but is only instantiable with ROUNDS=10, in
 which case it is identical to AESNI1xm128i */
-template <unsigned ROUNDS=10> 
+template <unsigned ROUNDS=10>
 struct AESNI1xm128i_R : public AESNI1xm128i{
     R123_STATIC_ASSERT(ROUNDS==10, "AESNI1xm128i_R<R> is only valid with R=10");
 };
 
 /** @class AESNI4x32_R **/
-template <unsigned ROUNDS=10> 
+template <unsigned ROUNDS=10>
 struct AESNI4x32_R : public AESNI4x32{
     R123_STATIC_ASSERT(ROUNDS==10, "AESNI4x32_R<R> is only valid with R=10");
 };

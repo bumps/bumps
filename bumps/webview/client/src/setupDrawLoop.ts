@@ -32,7 +32,7 @@ export function setupDrawLoop(topic: string, socket: AsyncSocket, draw: Function
         await draw(latest_value.value);
       }
       catch (e) {
-        // TODO: should this notify the user? 
+        // TODO: should this notify the user?
         // ! Yes.
         console.error(`Error drawing ${name}:`, e);
         // add sleep to avoid runaway error loop

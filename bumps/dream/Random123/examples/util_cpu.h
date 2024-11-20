@@ -152,7 +152,7 @@ static double clockspeedHz(int *nnodes, char **modelnamep){
     if(nnodes) *nnodes = ncpu;
     if(modelnamep){
 	char buf[256];
-	if(fgets(buf, sizeof(buf), fp) == NULL) 
+	if(fgets(buf, sizeof(buf), fp) == NULL)
 	    *modelnamep = ntcsdup("error reading sysctl");
 	else
 	    *modelnamep = ntcsdup(buf);

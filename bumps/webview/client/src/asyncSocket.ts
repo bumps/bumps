@@ -1,7 +1,7 @@
 import { Socket } from 'socket.io-client';
 
 declare module 'socket.io-client' {
-  // 
+  //
   class Socket {
     public asyncEmit(ev: string, ...args: any[]): Promise<any>;
     public syncFS(): Promise<void>;

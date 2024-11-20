@@ -36,7 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "util_opencl.h"
 #include "pi_check.h"
 
-// Include preprocessed kernel declaration for the array src 
+// Include preprocessed kernel declaration for the array src
 // The GNUmakefile will create pi_opencl_kernel.i in the build
 // directory, and then compile this with -I., so use #include <angle> .
 #include <pi_opencl_kernel.i>

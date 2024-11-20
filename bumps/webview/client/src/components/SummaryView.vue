@@ -75,7 +75,7 @@ async function onInactive(param) {
 }
 
 </script>
-        
+
 <template>
   <TagFilter ref="tag_filter" :parameters="parameters"></TagFilter>
   <table class="table table-sm">
@@ -91,10 +91,10 @@ async function onInactive(param) {
     <tbody>
       <tr class="py-1" v-for="{ parameter, index } in tag_filter?.filtered_parameters" :key="parameter.id">
         <td>{{ parameter.name }}
-          <span 
+          <span
             v-if="tag_filter?.show_tags"
             v-for="tag in parameter.tags"
-            class="badge rounded-pill me-1" 
+            class="badge rounded-pill me-1"
             :style="{color: 'white', 'background-color': tag_filter.tag_colors[tag]}"
             >
             {{ tag }}
@@ -115,7 +115,7 @@ async function onInactive(param) {
     </tbody>
   </table>
 </template>
-    
+
 <style scoped>
 svg {
   width: 100%;

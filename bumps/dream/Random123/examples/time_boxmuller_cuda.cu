@@ -178,4 +178,3 @@ int main(int argc, char **argv){
     cuda_done(infop);
     return 0;
 }
-    

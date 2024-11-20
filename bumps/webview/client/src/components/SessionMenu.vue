@@ -40,7 +40,7 @@ async function toggle_autosave() {
     return;
   }
   await props.socket.asyncEmit('set_shared_setting', 'autosave_session', !autosave_session.value);
-  // setTimeout(closeMenu, 1000); 
+  // setTimeout(closeMenu, 1000);
 }
 
 async function set_interval(new_interval: number) {

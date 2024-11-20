@@ -61,7 +61,7 @@ async function fetch_and_draw() {
     responsive: true,
     edits: {
       legendPosition: true
-    }, 
+    },
     ...configWithSVGDownloadButton
     }
 
@@ -77,14 +77,14 @@ async function fetch_and_draw() {
   else if (fig_type === 'table') {
     await nextTick();
     table_data.value = plotdata as TableData;
-  }  
+  }
   else if (fig_type === 'error') {
     error_text.value = String(plotdata).replace(/[\n]+/g, "<br>");
   }
   else {
     figtype.value = 'error';
     error_text.value = "Unknown figure type " + fig_type;
-  }  
+  }
 }
 
 </script>

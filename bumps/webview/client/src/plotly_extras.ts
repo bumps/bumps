@@ -16,6 +16,6 @@ export const SVGDownloadButton = {
 
 export const configWithSVGDownloadButton = {
     modeBarButtonsToAdd: [
-      SVGDownloadButton      
+      SVGDownloadButton
     ]
 }

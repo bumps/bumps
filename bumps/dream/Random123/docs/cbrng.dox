@@ -24,7 +24,7 @@ error or substitute an alternative compatible
 CBRNG.)
 
 The API descriptions below are generic, but apply to
-all the different @ref families "families" of 
+all the different @ref families "families" of
 Random123 CBRNGs.
 
 \section arrays Fixed-size Array Types
@@ -35,7 +35,7 @@ types; these types
 contain fixed-size arrays of W-bit types (\c uintW_t for the
 most part, but also a special r123m128i wrapper for the @ref
 AESNI "ARS and AESNI" CBRNGs). The counter argument
-and the return value have the same type, 
+and the return value have the same type,
 referred to as \c ctr_type in C++, and \c ctr_t in C.  The
 type of the key argument is referred to as \c key_type in C++,
 and \c key_t in C.
@@ -46,7 +46,7 @@ C programs can access these elements as \c r.v[0], ... \c r.v[N-1] for
 the \c uintW_t types.
 
 In C++, these array types closely resemble the C++0x std::array<N, uintW_t> template, but do not
-require C++0x libraries or compiler features. 
+require C++0x libraries or compiler features.
 C++ programs can access array elements via operator[]
 \c r[0], ... \c r[N-1], or via most of the capabilities
 of a C++ "Container" e.g. \c at(), \c begin(), \c end(),
@@ -60,7 +60,7 @@ If the compiler environment supports it,
 of \c __m128i SSE type, which can be accessed as \c r.v[0].m.
 The @ref r123::ARS1xm128i_R RNGs
 use \c r123array1xm128i for both \c ctr_type and \c key_type.
-For the @ref AESNI "AESNI" RNG, \c ctr_type is an \c r123array1xm128i, but 
+For the @ref AESNI "AESNI" RNG, \c ctr_type is an \c r123array1xm128i, but
 \c key_type is an opaque type, which must be initialized
 by assignment from a <c>userkey_type</c> (an r123array1xm128i).
 
@@ -71,11 +71,11 @@ application, e.g., Philox4x32 for applications that need random data in
 32-bit words.  If the application's needs don't match the counter's value_type,
 it is tempting to use "type punning" and pointer casts to interconvert between
 types.  Such conversions require great care and are very difficult to do
-safely without use of unions or memcpy.  
+safely without use of unions or memcpy.
 See <a
 href="http://blog.worldofcoding.com/2010/02/solving-gcc-44-strict-aliasing-problems.html">
 here</a>
-and 
+and
 <a href="http://dbp-consulting.com/tutorials/StrictAliasing.html">
 here</a>
 for discussions of the pitfalls related to aliasing.
@@ -135,13 +135,13 @@ and <c>g(c,k)</c> returns a value of type \c G::ctr_type.
 <li> g() is a stateless, pure function.  That is, g(c,k) may be called
 any number of times in any context and always returns the same result
 for the same inputs.  In particular, c1==c2 and k1==k2 implies that g(c1,k1)
-== g(c2,k2).  
-<li> For constant k, g(*,k) is a bijection.  That is, 
+== g(c2,k2).
+<li> For constant k, g(*,k) is a bijection.  That is,
 g(c1,k) == g(c2,k) if and only if c1 == c2.
 <li> g "randomizes" its inputs.  That is,
 for most sequences of inputs (c1,k1),
 (c2, k2), ...  (including those obtained by following highly
-regular patterns of incrementing and striding 
+regular patterns of incrementing and striding
 through the counter and user key spaces) the output sequence, g(c1, k1),
 g(c2, k2), ...  looks like a a sequence of uniformly distributed
 random variables drawn from the set of all ctr_types.
@@ -153,7 +153,7 @@ catastrophically poor) random number generator.  Too many rounds and time is was
 with little or no improvement in the randomness of the output.  Each of the CBRNGs
 has a specific number of rounds which the authors believe is a reasonable compromise
 between speed and quality.  In all cases, the default number of rounds includes a margin
-of safety above the minimum number of rounds that have passed all of the SmallCrush, Crush and BigCrush 
+of safety above the minimum number of rounds that have passed all of the SmallCrush, Crush and BigCrush
 tests in the <a href="http://www.iro.umontreal.ca/~simardr/testu01/tu01.html"> TestU01</a> suite.
 
 Users may, however wish to employ a different numbers of rounds.  Each of the above

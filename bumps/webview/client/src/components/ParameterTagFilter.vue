@@ -95,10 +95,10 @@ defineExpose({
     <div class="row pb-1 ps-1">
       <div class="col-1 text-end">include</div>
       <div class="col">
-      <span 
-        class="badge rounded-pill me-1" 
-        :class="{checked: tags_to_show.includes(tag as string)}" 
-        v-for="(tag_color, tag) in tag_colors" 
+      <span
+        class="badge rounded-pill me-1"
+        :class="{checked: tags_to_show.includes(tag as string)}"
+        v-for="(tag_color, tag) in tag_colors"
         @click="toggle(tag as string, 'show')"
         :style="{color: 'white', 'background-color': tag_color}"
         >
@@ -109,10 +109,10 @@ defineExpose({
     <div class="row pb-1 ps-1">
       <div class="col-1 text-end">exclude</div>
       <div class="col">
-        <span 
-        class="badge rounded-pill me-1" 
-        :class="{checked: tags_to_hide.includes(tag as string)}" 
-        v-for="(tag_color, tag, tag_index) in tag_colors" 
+        <span
+        class="badge rounded-pill me-1"
+        :class="{checked: tags_to_hide.includes(tag as string)}"
+        v-for="(tag_color, tag, tag_index) in tag_colors"
         @click="toggle(tag as string, 'hide')"
         :style="{color: 'white', 'background-color': tag_color}"
         >

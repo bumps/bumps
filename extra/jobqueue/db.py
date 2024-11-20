@@ -8,18 +8,22 @@ from sqlalchemy import String, Integer, DateTime, Float, Enum
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
-DB_URI = 'sqlite:///'+os.path.expanduser('~/.jobqueue.db')
+DB_URI = "sqlite:///" + os.path.expanduser("~/.jobqueue.db")
 DEBUG = False
 
 Record = declarative_base()
 Session = sessionmaker(autocommit=False)
+
+
 def connect():
     engine = db.create_engine(DB_URI, echo=DEBUG)
     Record.metadata.create_all(engine)
     Session.configure(bind=engine)
 
+
 # Job status enum
-STATUS = ['PENDING','ACTIVE','CANCEL','COMPLETE','ERROR','DELETE']
+STATUS = ["PENDING", "ACTIVE", "CANCEL", "COMPLETE", "ERROR", "DELETE"]
+
 
 class Job(Record):
     """
@@ -46,20 +50,20 @@ class Job(Record):
     stored in the directory indicated by jobid.
     """
 
-    __tablename__ = 'jobs'
+    __tablename__ = "jobs"
 
-    id = Column(Integer, Sequence('jobid_seq'), primary_key=True)
+    id = Column(Integer, Sequence("jobid_seq"), primary_key=True)
     name = Column(String(80))
-    origin = Column(String(45)) # <netinet/in.h> #define INET6_ADDRSTRLEN 46
+    origin = Column(String(45))  # <netinet/in.h> #define INET6_ADDRSTRLEN 46
     date = Column(DateTime, default=datetime.utcnow, index=True)
     start = Column(DateTime)
     stop = Column(DateTime)
     priority = Column(Float, index=True)
-    notify = Column(String(254)) # RFC 3696 errata 1690: max email=254
+    notify = Column(String(254))  # RFC 3696 errata 1690: max email=254
     status = Column(Enum(*STATUS, name="status_enum"), index=True)
 
     def __init__(self, name, origin, notify, priority):
-        self.status = 'PENDING'
+        self.status = "PENDING"
         self.name = name
         self.origin = origin
         self.notify = notify
@@ -67,6 +71,7 @@ class Job(Record):
 
     def __repr__(self):
         return "<Job('%s')>" % (self.name)
+
 
 class ActiveJob(Record):
     """
@@ -79,10 +84,11 @@ class ActiveJob(Record):
     *date* : DateTime utc
         Date the job was queued
     """
+
     # TODO: split queue into its own table, and create an additional table
     # TODO: to track how much work is done by each queue
     __tablename__ = "active_jobs"
-    id = Column(Integer, Sequence('activeid_seq'), primary_key=True)
+    id = Column(Integer, Sequence("activeid_seq"), primary_key=True)
     jobid = Column(Integer, ForeignKey(Job.id), unique=True)
     queue = Column(String(256))
     date = Column(DateTime, default=datetime.utcnow)
@@ -96,6 +102,7 @@ class ActiveJob(Record):
     def __repr__(self):
         return "<ActiveJob('%s','%s')>" % (self.job_id, self.queue)
 
+
 class RemoteQueue(Record):
     """
     *id* : Integer
@@ -105,8 +112,8 @@ class RemoteQueue(Record):
     *public_key* : String(80)
         Public key for the remote server
     """
+
     __tablename__ = "remote_queues"
-    id = Column(Integer, Sequence('remotequeueid_seq'),
-                   primary_key=True)
+    id = Column(Integer, Sequence("remotequeueid_seq"), primary_key=True)
     name = Column(String(80))
     public_key = Column(String(80))

@@ -43,8 +43,8 @@ case "$1" in
 $usage" >&2; exit 1;;
 esac
 set -e
-${CC-cc} -xc -E -P -nostdinc -D__OPENCL_VERSION__=1 $CPPFLAGS "$1" | 
-	${GENCL_INDENT} | 
+${CC-cc} -xc -E -P -nostdinc -D__OPENCL_VERSION__=1 $CPPFLAGS "$1" |
+	${GENCL_INDENT} |
 	${GENCL_AWK} 'BEGIN {print "static const char *opencl_src = \"\\n\\"}
 	{gsub("\\", "\\\\", $0); gsub("\"", "\\\"", $0); print $0 "\\n\\"}
 	END {print "\";"}' > "$2"

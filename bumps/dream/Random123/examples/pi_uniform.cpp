@@ -133,4 +133,3 @@ void pi(typename CBRNG::key_type k){
     }
     errs += pi_check(hits, tries);
  }
-

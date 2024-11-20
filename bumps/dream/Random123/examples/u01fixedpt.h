@@ -56,7 +56,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
      -  W = 32 or 64
      -  M = 24 or 53 (float or double)
      -  open0 or closed0 : whether the output is open or closed at 0.0
-     -  open1 or closed1 : whether the output is open or closed at 1.0 
+     -  open1 or closed1 : whether the output is open or closed at 1.0
 
     The W=64 M=24 cases are not implemented.  To obtain an M=24 float
     from a uint64_t, use a cast (possibly with right-shift and bitwise
@@ -83,7 +83,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
         there are 2^P possible values:
         {1, 2, ..., 2^P}/2^P
 
-     open_open:   Let P=min(M, W+1) 
+     open_open:   Let P=min(M, W+1)
         there are 2^(P-1) possible values:
         {1, 3, 5, ..., 2^P-1}/2^P
 
@@ -93,7 +93,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
         The extreme values (0.0 and 1.0) are
         returned with half the frequency of
         all others.
-    
+
     On x86 hardware, especially on 32bit machines, the use of
     internal 80bit x87-style floating point may result in
     'bonus' precision, which may cause closed intervals to not

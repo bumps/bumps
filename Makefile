@@ -13,7 +13,7 @@ clean: ## Delete some cruft from builds/testing/etc.
 		.coverage build dist \
 		doc/_build doc/api doc/tutorial \
 		.pytest_cache \
-		.ruff_cache 
+		.ruff_cache
 
 .PHONY: test
 test: ## Run pytest and doc tests

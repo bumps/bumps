@@ -57,8 +57,8 @@ R123_STATIC_INLINE double now(){
 #else // _MSC_VER
 #include <sys/time.h>
 R123_STATIC_INLINE double now(){
-    struct timeval tv; 
-    gettimeofday(&tv, 0); 
+    struct timeval tv;
+    gettimeofday(&tv, 0);
     return 1.e-6*tv.tv_usec + tv.tv_sec;
 }
 #endif // _MSC_VER

@@ -58,7 +58,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // obviously not guaranteed that all compilers will be that smart, so
 // other implementations might be preferable, e.g., using an intrinsic
 // or an asm block.  On the other hand, for 32-bit multiplies,
-// this *is* perfectly standard C99 - any C99 compiler should 
+// this *is* perfectly standard C99 - any C99 compiler should
 // understand it and produce correct code.  For 64-bit multiplies,
 // it's only usable if the compiler recognizes that it can do
 // arithmetic on a 128-bit type.  That happens to be true for gcc on
@@ -73,7 +73,7 @@ R123_CUDA_DEVICE R123_STATIC_INLINE Word mulhilo##W(Word a, Word b, Word* hip){ 
 
 /*
 // A template for mulhilo using gnu-style asm syntax.
-// INSN can be "mulw", "mull" or "mulq".  
+// INSN can be "mulw", "mull" or "mulq".
 // FIXME - porting to other architectures, we'll need still-more conditional
 // branching here.  Note that intrinsics are usually preferable.
 */
@@ -169,7 +169,7 @@ R123_STATIC_INLINE Word mulhilo##W(Word a, Word b, Word *hip){               \
 /*
 // N.B.  There's an MSVC intrinsic called _emul,
 // which *might* compile into better code than
-// _mulhilo_dword_tpl 
+// _mulhilo_dword_tpl
 */
 #if R123_USE_MULHILO32_ASM
 #ifdef __powerpc__
@@ -208,7 +208,7 @@ _mulhilo_fail_tpl(64, uint64_t)
 /*
 // The multipliers and Weyl constants are "hard coded".
 // To change them, you can #define them with different
-// values before #include-ing this file. 
+// values before #include-ing this file.
 // This isn't terribly elegant, but it works for C as
 // well as C++.  A nice C++-only solution would be to
 // use template parameters in the style of <random>
@@ -329,7 +329,7 @@ R123_CUDA_DEVICE R123_STATIC_INLINE philox##N##x##W##_ctr_t philox##N##x##W##_R(
     if(R>15){ key = _philox##N##x##W##bumpkey(key); ctr = _philox##N##x##W##round(ctr, key); } \
     return ctr;                                                         \
 }
-         
+
 _philox2xWbumpkey_tpl(32)
 _philox4xWbumpkey_tpl(32)
 _philox2xWround_tpl(32, uint32_t) /* philo2x32round */
@@ -387,19 +387,19 @@ _PhiloxNxW_base_tpl(r123array4x64, r123array2x64, 4, 64) // Philox4x64_R<R>
 /* The _tpl macros don't quite work to do string-pasting inside comments.
    so we just write out the boilerplate documentation four times... */
 
-/** 
+/**
 @defgroup PhiloxNxW Philox Classes and Typedefs
 
 The PhiloxNxW classes export the member functions, typedefs and
 operator overloads required by a @ref CBRNG "CBRNG" class.
 
-As described in  
+As described in
 <a href="http://dl.acm.org/citation.cfm?doid=2063405"><i>Parallel Random Numbers:  As Easy as 1, 2, 3</i> </a>.
 The Philox family of counter-based RNGs use integer multiplication, xor and permutation of W-bit words
 to scramble its N-word input key.  Philox is a mnemonic for Product HI LO Xor).
 
 
-@class r123::Philox2x32_R 
+@class r123::Philox2x32_R
 @ingroup PhiloxNxW
 
 exports the member functions, typedefs and operator overloads required by a @ref CBRNG "CBRNG" class.
@@ -415,11 +415,11 @@ ROUNDS=6 or more for Philox2x32.
   Philox2x32 is equivalent to Philox2x32_R<10>.    With 10 rounds,
   Philox2x32 has a considerable safety margin over the minimum number
   of rounds with no known statistical flaws, but still has excellent
-   performance. 
+   performance.
 
 
 
-@class r123::Philox2x64_R 
+@class r123::Philox2x64_R
 @ingroup PhiloxNxW
 
 exports the member functions, typedefs and operator overloads required by a @ref CBRNG "CBRNG" class.
@@ -435,11 +435,11 @@ ROUNDS=6 or more for Philox2x64.
   Philox2x64 is equivalent to Philox2x64_R<10>.    With 10 rounds,
   Philox2x64 has a considerable safety margin over the minimum number
   of rounds with no known statistical flaws, but still has excellent
-   performance. 
+   performance.
 
 
 
-@class r123::Philox4x32_R 
+@class r123::Philox4x32_R
 @ingroup PhiloxNxW
 
 exports the member functions, typedefs and operator overloads required by a @ref CBRNG "CBRNG" class.
@@ -458,11 +458,11 @@ ROUNDS=8 or more for Philox4x32.
   Philox4x32 is equivalent to Philox4x32_R<10>.    With 10 rounds,
   Philox4x32 has a considerable safety margin over the minimum number
   of rounds with no known statistical flaws, but still has excellent
-   performance. 
+   performance.
 
 
 
-@class r123::Philox4x64_R 
+@class r123::Philox4x64_R
 @ingroup PhiloxNxW
 
 exports the member functions, typedefs and operator overloads required by a @ref CBRNG "CBRNG" class.
@@ -478,7 +478,7 @@ ROUNDS=7 or more for Philox4x64.
   Philox4x64 is equivalent to Philox4x64_R<10>.    With 10 rounds,
   Philox4x64 has a considerable safety margin over the minimum number
   of rounds with no known statistical flaws, but still has excellent
-   performance. 
+   performance.
 */
 
 #endif /* __cplusplus */

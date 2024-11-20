@@ -227,7 +227,7 @@ defineExpose({
                 <label for="userfilename" class="col-form-label">{{settings?.name_input_label}}:</label>
               </div>
               <div class="col">
-                <input 
+                <input
                   type="text"
                   id="userfilename"
                   class="form-control"
@@ -260,23 +260,23 @@ defineExpose({
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="fileinfo in filtered_filelist" 
+                <tr v-for="fileinfo in filtered_filelist"
                   :key="fileinfo.name"
                   @click="chosenFile=fileinfo.name"
                   :title="fileinfo.name"
                   @dblclick="chosenFile=fileinfo.name;chooseFile()"
                   :class="{'table-warning': fileinfo.name == chosenFile}"
-                  > 
+                  >
                   <td>{{ fileinfo.name }}</td>
                   <td>{{ formatSize(fileinfo.size) }}</td>
                   <td>{{ formatRelative(new Date(fileinfo.modified * 1000), new Date()) }}</td>
                 </tr>
               </tbody>
             </table>
-          </div>  
+          </div>
         </div>
         <div class="modal-footer">
-          <label v-if="settings?.search_patterns && settings?.search_patterns.length > 0">Search: 
+          <label v-if="settings?.search_patterns && settings?.search_patterns.length > 0">Search:
             <select v-model="active_search_pattern">
               <option v-for="search_pattern in settings?.search_patterns ?? []" :key="search_pattern">
                 {{ search_pattern }}

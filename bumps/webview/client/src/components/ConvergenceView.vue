@@ -24,7 +24,7 @@ async function fetch_and_draw() {
 }
 
 </script>
-    
+
 <template>
   <div class="container d-flex flex-grow-1 flex-column">
     <div class="flex-grow-1" ref="plot_div">

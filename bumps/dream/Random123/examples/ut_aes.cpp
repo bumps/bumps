@@ -80,7 +80,7 @@ int main(int, char **){
 #else
     cout << "The AES-NI Bijections are not compiled into this binary.  Skipping AES-NI tests\n";
 #endif
-    
+
     // And let's do it with AESOpenSSL.  But since AESOpenSSL has its own
     // format for keys and counters we make a union for the key types and
     // use ReinterpretCtr to wrap a union around the counter types.

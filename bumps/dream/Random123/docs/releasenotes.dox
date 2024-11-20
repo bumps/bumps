@@ -17,7 +17,7 @@ chosen incorrectly after the 20th round.  There is no reason to
 suspect that the incorrectly chosen rotation constants were "bad"
 or "deficient" so there is no reason to suspect the quality of the
 random numbers produced.  Using threefry with R>20 would have been
-rare in any case.  The fix simply makes the implementation correspond 
+rare in any case.  The fix simply makes the implementation correspond
 correctly to the description in the paper.
 <li> Add examples/uniform.hpp, examples/boxmuller.hpp and
      examples/ua.hpp, containing example code to generate uniformly
@@ -100,7 +100,7 @@ new kat_vectors - there are now three tests for each tested generator: gen(ctr=0
    </ul></li>
 <li> make keyinit functions device/kernel functions in CUDA/OpenCL </li>
 <li> replace r123array::assemble methods with r123array::seed(SeedSeq) template </li>
-<li> cleanup of signatures of Engine and MicroURNG methods: 
+<li> cleanup of signatures of Engine and MicroURNG methods:
    <ul>
       <li> Engine(ukey_type&amp;) and MicroURNG(ctr_type, ukey_type) constructors.</li>
       <li> Engine(SeedSeq&amp;) takes a reference argument, and, when C++0x &lt;type_traits&gt;

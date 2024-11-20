@@ -21,7 +21,7 @@ will inherit settings for these variables from the environment,
 or they may be set on the command line.  If none  are set,
 compilation will proceed using system-wide default flags, generally
 without advanced optimization, architectural tuning, warnings, or other
-common options.  
+common options.
 
 Before putting the Random123 library to use in an application,
 it is important to test it using the same compiler flags and
@@ -107,7 +107,7 @@ Unit tests include:
 There are two extremely short examples that show all the code necessary to
 obtain and print a few random numbers in C and C++:
 <ul>
-<li> simple.c 
+<li> simple.c
 <li> simplepp.cpp
 </ul>
 
@@ -188,8 +188,8 @@ multithreaded performance, uses all cores available on the platform.
 <li> time_opencl - uses the C API within OpenCL to run on GPUs or CPUs.
 </ul>
 
-time_serial, time_thread, time_cuda, time_opencl all use a common 
-kernel defined in time_random123.h.  They all use various 
+time_serial, time_thread, time_cuda, time_opencl all use a common
+kernel defined in time_random123.h.  They all use various
 util_* header files for utility functions and platform-related
 boilerplate (also used by the pi_* examples).
 

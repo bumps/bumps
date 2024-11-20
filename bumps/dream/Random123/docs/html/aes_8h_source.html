@@ -31,8 +31,8 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
                onmouseout="return searchBox.OnSearchSelectHide()"
                alt=""/>
           <input type="text" id="MSearchField" value="Search" accesskey="S"
-               onfocus="searchBox.OnSearchFieldFocus(true)" 
-               onblur="searchBox.OnSearchFieldFocus(false)" 
+               onfocus="searchBox.OnSearchFieldFocus(true)"
+               onblur="searchBox.OnSearchFieldFocus(false)"
                onkeyup="searchBox.OnSearchFieldChange(event)"/>
           </span><span class="right">
             <a id="MSearchClose" href="javascript:searchBox.CloseResultsWindow()"><img id="MSearchCloseImg" border="0" src="search/close.png" alt=""/></a>
@@ -88,7 +88,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00034"></a>00034 <span class="preprocessor"></span>
 <a name="l00035"></a>00035 <span class="preprocessor">#include &quot;<a class="code" href="compilerfeatures_8h.html">features/compilerfeatures.h</a>&quot;</span>
 <a name="l00036"></a>00036 <span class="preprocessor">#include &quot;<a class="code" href="array_8h.html">array.h</a>&quot;</span>
-<a name="l00037"></a>00037 
+<a name="l00037"></a>00037
 <a name="l00038"></a>00038 <span class="comment">/* Implement a bona fide AES block cipher.  It&#39;s minimally</span>
 <a name="l00039"></a>00039 <span class="comment">// checked against the test vector in FIPS-197 in ut_aes.cpp. */</span>
 <a name="l00040"></a>00040 <span class="preprocessor">#if R123_USE_AES_NI</span>
@@ -97,70 +97,70 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00045"></a><a class="code" href="group__AESNI.html#gaf4fa221e6387d0454e2e6399245bdead">00045</a> <span class="keyword">typedef</span> <span class="keyword">struct </span><a class="code" href="structr123array1xm128i.html">r123array1xm128i</a> <a class="code" href="structr123array1xm128i.html">aesni1xm128i_ukey_t</a>;
 <a name="l00047"></a><a class="code" href="group__AESNI.html#gac2c3248ec3b03591d442cf634fb51af5">00047</a> <span class="keyword">typedef</span> <span class="keyword">struct </span><a class="code" href="structr123array4x32.html">r123array4x32</a> <a class="code" href="structr123array4x32.html">aesni4x32_ukey_t</a>;
 <a name="l00049"></a><a class="code" href="group__AESNI.html#ga2814629101926e23001d564630ba7b86">00049</a> <span class="keyword">enum</span> <a class="code" href="group__AESNI.html#ga2814629101926e23001d564630ba7b86">r123_enum_aesni1xm128i</a> { <a class="code" href="group__AESNI.html#gga2814629101926e23001d564630ba7b86a2c404c51fea10eeacb032081dbab2408">aesni1xm128i_rounds</a> = 10 };
-<a name="l00050"></a>00050 
-<a name="l00052"></a>00052 R123_STATIC_INLINE __m128i AES_128_ASSIST (__m128i temp1, __m128i temp2) { 
-<a name="l00053"></a>00053     __m128i temp3; 
-<a name="l00054"></a>00054     temp2 = _mm_shuffle_epi32 (temp2 ,0xff); 
+<a name="l00050"></a>00050
+<a name="l00052"></a>00052 R123_STATIC_INLINE __m128i AES_128_ASSIST (__m128i temp1, __m128i temp2) {
+<a name="l00053"></a>00053     __m128i temp3;
+<a name="l00054"></a>00054     temp2 = _mm_shuffle_epi32 (temp2 ,0xff);
 <a name="l00055"></a>00055     temp3 = _mm_slli_si128 (temp1, 0x4);
 <a name="l00056"></a>00056     temp1 = _mm_xor_si128 (temp1, temp3);
 <a name="l00057"></a>00057     temp3 = _mm_slli_si128 (temp3, 0x4);
 <a name="l00058"></a>00058     temp1 = _mm_xor_si128 (temp1, temp3);
 <a name="l00059"></a>00059     temp3 = _mm_slli_si128 (temp3, 0x4);
 <a name="l00060"></a>00060     temp1 = _mm_xor_si128 (temp1, temp3);
-<a name="l00061"></a>00061     temp1 = _mm_xor_si128 (temp1, temp2); 
-<a name="l00062"></a>00062     <span class="keywordflow">return</span> temp1; 
+<a name="l00061"></a>00061     temp1 = _mm_xor_si128 (temp1, temp2);
+<a name="l00062"></a>00062     <span class="keywordflow">return</span> temp1;
 <a name="l00063"></a>00063 }
-<a name="l00064"></a>00064 
+<a name="l00064"></a>00064
 <a name="l00065"></a>00065 R123_STATIC_INLINE <span class="keywordtype">void</span> aesni1xm128iexpand(<a class="code" href="structr123array1xm128i.html">aesni1xm128i_ukey_t</a> uk, __m128i ret[11])
 <a name="l00066"></a>00066 {
 <a name="l00067"></a>00067     __m128i rkey = uk.<a class="code" href="structr123array1xm128i.html#ab6d5e4b23c04e12c1aad7aaf38ff2bd5">v</a>[0].<a class="code" href="structr123m128i.html#a9b9908268281aace8028a3f34980634d">m</a>;
 <a name="l00068"></a>00068     __m128i tmp2;
-<a name="l00069"></a>00069 
+<a name="l00069"></a>00069
 <a name="l00070"></a>00070     ret[0] = rkey;
 <a name="l00071"></a>00071     tmp2 = _mm_aeskeygenassist_si128(rkey, 0x1);
 <a name="l00072"></a>00072     rkey = AES_128_ASSIST(rkey, tmp2);
 <a name="l00073"></a>00073     ret[1] = rkey;
-<a name="l00074"></a>00074 
+<a name="l00074"></a>00074
 <a name="l00075"></a>00075     tmp2 = _mm_aeskeygenassist_si128(rkey, 0x2);
 <a name="l00076"></a>00076     rkey = AES_128_ASSIST(rkey, tmp2);
 <a name="l00077"></a>00077     ret[2] = rkey;
-<a name="l00078"></a>00078 
+<a name="l00078"></a>00078
 <a name="l00079"></a>00079     tmp2 = _mm_aeskeygenassist_si128(rkey, 0x4);
 <a name="l00080"></a>00080     rkey = AES_128_ASSIST(rkey, tmp2);
 <a name="l00081"></a>00081     ret[3] = rkey;
-<a name="l00082"></a>00082 
+<a name="l00082"></a>00082
 <a name="l00083"></a>00083     tmp2 = _mm_aeskeygenassist_si128(rkey, 0x8);
 <a name="l00084"></a>00084     rkey = AES_128_ASSIST(rkey, tmp2);
 <a name="l00085"></a>00085     ret[4] = rkey;
-<a name="l00086"></a>00086 
+<a name="l00086"></a>00086
 <a name="l00087"></a>00087     tmp2 = _mm_aeskeygenassist_si128(rkey, 0x10);
 <a name="l00088"></a>00088     rkey = AES_128_ASSIST(rkey, tmp2);
 <a name="l00089"></a>00089     ret[5] = rkey;
-<a name="l00090"></a>00090 
+<a name="l00090"></a>00090
 <a name="l00091"></a>00091     tmp2 = _mm_aeskeygenassist_si128(rkey, 0x20);
 <a name="l00092"></a>00092     rkey = AES_128_ASSIST(rkey, tmp2);
 <a name="l00093"></a>00093     ret[6] = rkey;
-<a name="l00094"></a>00094 
+<a name="l00094"></a>00094
 <a name="l00095"></a>00095     tmp2 = _mm_aeskeygenassist_si128(rkey, 0x40);
 <a name="l00096"></a>00096     rkey = AES_128_ASSIST(rkey, tmp2);
 <a name="l00097"></a>00097     ret[7] = rkey;
-<a name="l00098"></a>00098 
+<a name="l00098"></a>00098
 <a name="l00099"></a>00099     tmp2 = _mm_aeskeygenassist_si128(rkey, 0x80);
 <a name="l00100"></a>00100     rkey = AES_128_ASSIST(rkey, tmp2);
 <a name="l00101"></a>00101     ret[8] = rkey;
-<a name="l00102"></a>00102 
+<a name="l00102"></a>00102
 <a name="l00103"></a>00103     tmp2 = _mm_aeskeygenassist_si128(rkey, 0x1b);
 <a name="l00104"></a>00104     rkey = AES_128_ASSIST(rkey, tmp2);
 <a name="l00105"></a>00105     ret[9] = rkey;
-<a name="l00106"></a>00106 
+<a name="l00106"></a>00106
 <a name="l00107"></a>00107     tmp2 = _mm_aeskeygenassist_si128(rkey, 0x36);
 <a name="l00108"></a>00108     rkey = AES_128_ASSIST(rkey, tmp2);
 <a name="l00109"></a>00109     ret[10] = rkey;
 <a name="l00110"></a>00110 }
 <a name="l00113"></a>00113 <span class="preprocessor">#ifdef __cplusplus</span>
 <a name="l00114"></a>00114 <span class="preprocessor"></span>
-<a name="l00115"></a><a class="code" href="structaesni1xm128i__key__t.html">00115</a> <span class="keyword">struct </span><a class="code" href="structaesni1xm128i__key__t.html">aesni1xm128i_key_t</a>{ 
-<a name="l00116"></a><a class="code" href="structaesni1xm128i__key__t.html#a60cefca96e55b73732f570e844efbe54">00116</a>     __m128i <a class="code" href="structaesni1xm128i__key__t.html#a60cefca96e55b73732f570e844efbe54">k</a>[11]; 
+<a name="l00115"></a><a class="code" href="structaesni1xm128i__key__t.html">00115</a> <span class="keyword">struct </span><a class="code" href="structaesni1xm128i__key__t.html">aesni1xm128i_key_t</a>{
+<a name="l00116"></a><a class="code" href="structaesni1xm128i__key__t.html#a60cefca96e55b73732f570e844efbe54">00116</a>     __m128i <a class="code" href="structaesni1xm128i__key__t.html#a60cefca96e55b73732f570e844efbe54">k</a>[11];
 <a name="l00117"></a><a class="code" href="structaesni1xm128i__key__t.html#af1002e5b771616db8f12c793fc994c41">00117</a>     <a class="code" href="structaesni1xm128i__key__t.html#af1002e5b771616db8f12c793fc994c41">aesni1xm128i_key_t</a>(){
 <a name="l00118"></a>00118         <a class="code" href="structr123array1xm128i.html">aesni1xm128i_ukey_t</a> uk;
 <a name="l00119"></a>00119         uk.<a class="code" href="structr123array1xm128i.html#ab6d5e4b23c04e12c1aad7aaf38ff2bd5">v</a>[0].<a class="code" href="structr123m128i.html#a9b9908268281aace8028a3f34980634d">m</a> = _mm_setzero_si128();
@@ -186,10 +186,10 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00139"></a>00139     }
 <a name="l00140"></a>00140 };
 <a name="l00141"></a>00141 <span class="preprocessor">#else</span>
-<a name="l00142"></a>00142 <span class="preprocessor"></span><span class="keyword">typedef</span> <span class="keyword">struct </span>{ 
-<a name="l00143"></a>00143     __m128i k[11]; 
+<a name="l00142"></a>00142 <span class="preprocessor"></span><span class="keyword">typedef</span> <span class="keyword">struct </span>{
+<a name="l00143"></a>00143     __m128i k[11];
 <a name="l00144"></a>00144 }<a class="code" href="structaesni1xm128i__key__t.html">aesni1xm128i_key_t</a>;
-<a name="l00145"></a>00145 
+<a name="l00145"></a>00145
 <a name="l00147"></a>00147 R123_STATIC_INLINE <a class="code" href="structaesni1xm128i__key__t.html">aesni1xm128i_key_t</a> aesni1xm128ikeyinit(<a class="code" href="structr123array1xm128i.html">aesni1xm128i_ukey_t</a> uk){
 <a name="l00148"></a>00148     <a class="code" href="structaesni1xm128i__key__t.html">aesni1xm128i_key_t</a> ret;
 <a name="l00149"></a>00149     aesni1xm128iexpand(uk, ret.<a class="code" href="structaesni1xm128i__key__t.html#a60cefca96e55b73732f570e844efbe54">k</a>);
@@ -215,13 +215,13 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00170"></a>00170       <span class="keywordflow">return</span> ret;
 <a name="l00171"></a>00171     }
 <a name="l00172"></a>00172 }
-<a name="l00173"></a>00173 
+<a name="l00173"></a>00173
 <a name="l00175"></a><a class="code" href="group__AESNI.html#ga89d9042c08ae5eef4c98bfb9609ebd34">00175</a> R123_STATIC_INLINE <a class="code" href="structr123array1xm128i.html">aesni1xm128i_ctr_t</a> <a class="code" href="group__AESNI.html#ga89d9042c08ae5eef4c98bfb9609ebd34">aesni1xm128i_R</a>(<span class="keywordtype">unsigned</span> R, <a class="code" href="structr123array1xm128i.html">aesni1xm128i_ctr_t</a> in, <a class="code" href="structaesni1xm128i__key__t.html">aesni1xm128i_key_t</a> k){
 <a name="l00176"></a>00176     R123_ASSERT(R==10);
 <a name="l00177"></a>00177     <span class="keywordflow">return</span> <a class="code" href="group__AESNI.html#ga3ba5daca2d4d076ece24900084e71311">aesni1xm128i</a>(in, k);
 <a name="l00178"></a>00178 }
-<a name="l00179"></a>00179 
-<a name="l00180"></a>00180 
+<a name="l00179"></a>00179
+<a name="l00180"></a>00180
 <a name="l00182"></a><a class="code" href="group__AESNI.html#gae7459b3f4ee0e424cb4f13b4d5efc1fe">00182</a> <span class="keyword">typedef</span> <span class="keyword">struct </span><a class="code" href="structr123array4x32.html">r123array4x32</a> <a class="code" href="structr123array4x32.html">aesni4x32_ctr_t</a>;
 <a name="l00184"></a><a class="code" href="group__AESNI.html#ga6d88accdcfa339b48e14021a572e269b">00184</a> <span class="keyword">typedef</span> <a class="code" href="structaesni1xm128i__key__t.html">aesni1xm128i_key_t</a> <a class="code" href="structaesni1xm128i__key__t.html">aesni4x32_key_t</a>;
 <a name="l00186"></a><a class="code" href="group__AESNI.html#ga1557a9d6e95543a3c4ca9082a4c14b0d">00186</a> <span class="keyword">enum</span> <a class="code" href="group__AESNI.html#ga1557a9d6e95543a3c4ca9082a4c14b0d">r123_enum_aesni4x32</a> { <a class="code" href="aes_8h.html#a0e4c28ad2773dac7eb59004947c9e02b">aesni4x32_rounds</a> = 10 };
@@ -232,7 +232,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00192"></a>00192     aesni1xm128iexpand(uk128, ret.<a class="code" href="structaesni1xm128i__key__t.html#a60cefca96e55b73732f570e844efbe54">k</a>);
 <a name="l00193"></a>00193     <span class="keywordflow">return</span> ret;
 <a name="l00194"></a>00194 }
-<a name="l00195"></a>00195 
+<a name="l00195"></a>00195
 <a name="l00198"></a><a class="code" href="group__AESNI.html#gae28b030e9786a6f36a47df8f211a750b">00198</a> R123_STATIC_INLINE <a class="code" href="structr123array4x32.html">aesni4x32_ctr_t</a> <a class="code" href="group__AESNI.html#gae28b030e9786a6f36a47df8f211a750b">aesni4x32_R</a>(<span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> Nrounds, <a class="code" href="structr123array4x32.html">aesni4x32_ctr_t</a> c, <a class="code" href="structaesni1xm128i__key__t.html">aesni4x32_key_t</a> k){
 <a name="l00199"></a>00199     <a class="code" href="structr123array1xm128i.html">aesni1xm128i_ctr_t</a> c128;
 <a name="l00200"></a>00200     c128.<a class="code" href="structr123array1xm128i.html#ab6d5e4b23c04e12c1aad7aaf38ff2bd5">v</a>[0].<a class="code" href="structr123m128i.html#a9b9908268281aace8028a3f34980634d">m</a> = _mm_set_epi32(c.<a class="code" href="structr123array4x32.html#ac8e6785120a3031b211fc8aa7d03d83f">v</a>[3], c.<a class="code" href="structr123array4x32.html#ac8e6785120a3031b211fc8aa7d03d83f">v</a>[2], c.<a class="code" href="structr123array4x32.html#ac8e6785120a3031b211fc8aa7d03d83f">v</a>[1], c.<a class="code" href="structr123array4x32.html#ac8e6785120a3031b211fc8aa7d03d83f">v</a>[0]);
@@ -240,7 +240,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00202"></a>00202     _mm_storeu_si128((__m128i*)&amp;c.<a class="code" href="structr123array4x32.html#ac8e6785120a3031b211fc8aa7d03d83f">v</a>[0], c128.<a class="code" href="structr123array1xm128i.html#ab6d5e4b23c04e12c1aad7aaf38ff2bd5">v</a>[0].<a class="code" href="structr123m128i.html#a9b9908268281aace8028a3f34980634d">m</a>);
 <a name="l00203"></a>00203     <span class="keywordflow">return</span> c;
 <a name="l00204"></a>00204 }
-<a name="l00205"></a>00205 
+<a name="l00205"></a>00205
 <a name="l00206"></a><a class="code" href="aes_8h.html#a0e4c28ad2773dac7eb59004947c9e02b">00206</a> <span class="preprocessor">#define aesni4x32_rounds aesni1xm128i_rounds</span>
 <a name="l00207"></a>00207 <span class="preprocessor"></span>
 <a name="l00210"></a><a class="code" href="group__AESNI.html#gae3950c524818b49d1cdfad481880a33a">00210</a> <span class="preprocessor">#define aesni4x32(c,k) aesni4x32_R(aesni4x32_rounds, c, k)</span>
@@ -256,7 +256,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00251"></a>00251         <span class="keywordflow">return</span> <a class="code" href="group__AESNI.html#ga3ba5daca2d4d076ece24900084e71311">aesni1xm128i</a>(ctr, key);
 <a name="l00252"></a>00252     }
 <a name="l00253"></a>00253 };
-<a name="l00254"></a>00254 
+<a name="l00254"></a>00254
 <a name="l00255"></a>00255 <span class="comment">/* @class AESNI4x32 */</span>
 <a name="l00256"></a><a class="code" href="structr123_1_1AESNI4x32.html">00256</a> <span class="keyword">struct </span><a class="code" href="structr123_1_1AESNI4x32.html">AESNI4x32</a>{
 <a name="l00257"></a><a class="code" href="structr123_1_1AESNI4x32.html#ab8a1f8a822eecfc9e587bad76792df32">00257</a>     <span class="keyword">typedef</span> <a class="code" href="structr123array4x32.html">aesni4x32_ctr_t</a> <a class="code" href="structr123array4x32.html">ctr_type</a>;
@@ -267,21 +267,21 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00262"></a>00262         <span class="keywordflow">return</span> <a class="code" href="group__AESNI.html#gae3950c524818b49d1cdfad481880a33a">aesni4x32</a>(ctr, key);
 <a name="l00263"></a>00263     }
 <a name="l00264"></a>00264 };
-<a name="l00265"></a>00265 
-<a name="l00271"></a>00271 <span class="keyword">template</span> &lt;<span class="keywordtype">unsigned</span> ROUNDS=10&gt; 
+<a name="l00265"></a>00265
+<a name="l00271"></a>00271 <span class="keyword">template</span> &lt;<span class="keywordtype">unsigned</span> ROUNDS=10&gt;
 <a name="l00272"></a><a class="code" href="structr123_1_1AESNI1xm128i__R.html">00272</a> <span class="keyword">struct </span><a class="code" href="structr123_1_1AESNI1xm128i__R.html">AESNI1xm128i_R</a> : <span class="keyword">public</span> <a class="code" href="structr123_1_1AESNI1xm128i.html">AESNI1xm128i</a>{
 <a name="l00273"></a>00273     R123_STATIC_ASSERT(ROUNDS==10, <span class="stringliteral">&quot;AESNI1xm128i_R&lt;R&gt; is only valid with R=10&quot;</span>);
 <a name="l00274"></a>00274 };
-<a name="l00275"></a>00275 
-<a name="l00277"></a>00277 <span class="keyword">template</span> &lt;<span class="keywordtype">unsigned</span> ROUNDS=10&gt; 
+<a name="l00275"></a>00275
+<a name="l00277"></a>00277 <span class="keyword">template</span> &lt;<span class="keywordtype">unsigned</span> ROUNDS=10&gt;
 <a name="l00278"></a><a class="code" href="structr123_1_1AESNI4x32__R.html">00278</a> <span class="keyword">struct </span><a class="code" href="structr123_1_1AESNI4x32__R.html">AESNI4x32_R</a> : <span class="keyword">public</span> <a class="code" href="structr123_1_1AESNI4x32.html">AESNI4x32</a>{
 <a name="l00279"></a>00279     R123_STATIC_ASSERT(ROUNDS==10, <span class="stringliteral">&quot;AESNI4x32_R&lt;R&gt; is only valid with R=10&quot;</span>);
 <a name="l00280"></a>00280 };
 <a name="l00281"></a>00281 } <span class="comment">// namespace r123</span>
 <a name="l00282"></a>00282 <span class="preprocessor">#endif </span><span class="comment">/* __cplusplus */</span>
-<a name="l00283"></a>00283 
+<a name="l00283"></a>00283
 <a name="l00284"></a>00284 <span class="preprocessor">#endif </span><span class="comment">/* R123_USE_AES_NI */</span>
-<a name="l00285"></a>00285 
+<a name="l00285"></a>00285
 <a name="l00286"></a>00286 <span class="preprocessor">#if R123_USE_AES_OPENSSL</span>
 <a name="l00287"></a>00287 <span class="preprocessor"></span><span class="preprocessor">#include &lt;openssl/aes.h&gt;</span>
 <a name="l00288"></a>00288 <span class="keyword">typedef</span> <span class="keyword">struct </span><a class="code" href="structr123array16x8.html">r123array16x8</a> aesopenssl16x8_ctr_t;
@@ -319,7 +319,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00320"></a>00320     AES_encrypt((<span class="keyword">const</span> <span class="keywordtype">unsigned</span> <span class="keywordtype">char</span>*)&amp;ctr.v[0], (<span class="keywordtype">unsigned</span> <span class="keywordtype">char</span> *)&amp;ret.v[0], &amp;key.k);
 <a name="l00321"></a>00321     <span class="keywordflow">return</span> ret;
 <a name="l00322"></a>00322 }
-<a name="l00323"></a>00323 
+<a name="l00323"></a>00323
 <a name="l00324"></a>00324 <span class="preprocessor">#define aesopenssl16x8_rounds aesni4x32_rounds</span>
 <a name="l00325"></a>00325 <span class="preprocessor"></span><span class="preprocessor">#define aesopenssl16x8(c,k) aesopenssl16x8_R(aesopenssl16x8_rounds)</span>
 <a name="l00326"></a>00326 <span class="preprocessor"></span>
@@ -339,7 +339,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00340"></a>00340 } <span class="comment">// namespace r123</span>
 <a name="l00341"></a>00341 <span class="preprocessor">#endif </span><span class="comment">/* __cplusplus */</span>
 <a name="l00342"></a>00342 <span class="preprocessor">#endif </span><span class="comment">/* R123_USE_AES_OPENSSL */</span>
-<a name="l00343"></a>00343 
+<a name="l00343"></a>00343
 <a name="l00344"></a>00344 <span class="preprocessor">#endif</span>
 </pre></div></div>
 </div>
@@ -352,7 +352,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 
 <!-- iframe showing the search results (closed by default) -->
 <div id="MSearchResultsWindow">
-<iframe src="" frameborder="0" 
+<iframe src="" frameborder="0"
         name="MSearchResults" id="MSearchResults">
 </iframe>
 </div>

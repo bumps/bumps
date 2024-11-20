@@ -69,7 +69,7 @@ async function setFittable(ev, index) {
 }
 
 </script>
-        
+
 <template>
   <TagFilter ref="tag_filter" :parameters="parameters_local"></TagFilter>
   <table class="table">
@@ -88,10 +88,10 @@ async function setFittable(ev, index) {
             @click.prevent="setFittable($event, index)" />
         </td>
         <td>{{ param.name }}
-          <span 
+          <span
             v-if="tag_filter?.show_tags"
             v-for="tag in param.tags"
-            class="badge rounded-pill me-1" 
+            class="badge rounded-pill me-1"
             :style="{color: 'white', 'background-color': tag_filter.tag_colors[tag]}"
             >
             {{ tag }}
@@ -107,7 +107,7 @@ async function setFittable(ev, index) {
     </tbody>
   </table>
 </template>
-    
+
 <style scoped>
 
 table {

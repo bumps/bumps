@@ -60,4 +60,3 @@ void host_execute_tests(kat_instance *tests_host, size_t ntests){
     CHECKCALL(cudaFree(tests_dev));
     cuda_done(infop);
 }
-

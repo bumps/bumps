@@ -77,7 +77,7 @@ socket.on('connect', async () => {
   connected.value = true;
   const file_info = await socket.asyncEmit('get_shared_setting', 'model_file') as { pathlist: string[], filename: string } | undefined;
   model_file.value = file_info;
-  const current_active_fit = await socket.asyncEmit('get_shared_setting', 'active_fit') as { 
+  const current_active_fit = await socket.asyncEmit('get_shared_setting', 'active_fit') as {
     fitter_id?: string, options?: any, num_steps?: number, chisq?: string, step?: number, value?: number } | undefined;
   if (current_active_fit) {
     active_fit.value = current_active_fit;
@@ -359,7 +359,7 @@ onMounted(() => {
               </div>
               <ul class="dropdown-menu">
                 <li v-for="plot_type in REFLECTIVITY_PLOTS" :key="plot_type">
-                  <div :class="{'dropdown-item': true, active: (plot_type === reflectivity_type)}" 
+                  <div :class="{'dropdown-item': true, active: (plot_type === reflectivity_type)}"
                     @click="set_reflectivity(plot_type)">{{plot_type}}</div>
                 </li>
               </ul>

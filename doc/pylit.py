@@ -113,10 +113,9 @@ with embedded documentation.
 #
 # ::
 
-
 _version = "0.7.9"
 
-__docformat__ = 'restructuredtext'
+__docformat__ = "restructuredtext"
 
 
 # Introduction
@@ -147,8 +146,10 @@ import re, optparse
 # http://code.activestate.com/recipes/389639/
 # ::
 
+
 class DefaultDict(dict):
     """Minimalistic Dictionary with default value."""
+
     def __init__(self, default=None, *args, **kwargs):
         self.update(dict(*args, **kwargs))
         self.default = default
@@ -187,16 +188,19 @@ defaults = optparse.Values()
 #
 # Mapping of code file extensions to code language::
 
-defaults.languages  = DefaultDict("python", # fallback language
-                                  {".c":   "c",
-                                   ".cc":  "c++",
-                                   ".css": "css",
-                                   ".py":  "python",
-                                   ".sh":  "shell",
-                                   ".sl":  "slang",
-                                   ".sty": "latex",
-                                   ".tex": "latex"
-                                  })
+defaults.languages = DefaultDict(
+    "python",  # fallback language
+    {
+        ".c": "c",
+        ".cc": "c++",
+        ".css": "css",
+        ".py": "python",
+        ".sh": "shell",
+        ".sl": "slang",
+        ".sty": "latex",
+        ".tex": "latex",
+    },
+)
 
 # Will be overridden by the ``--language`` command line option.
 #
@@ -229,15 +233,9 @@ defaults.text_extensions = [".txt", ".rst"]
 #
 # **Comment strings include trailing whitespace.** ::
 
-defaults.comment_strings = DefaultDict('# ',
-                                       {"css":    '// ',
-                                        "c":      '// ',
-                                        "c++":    '// ',
-                                        "latex":  '% ',
-                                        "python": '# ',
-                                        "shell":  '# ',
-                                        "slang":  '% '
-                                       })
+defaults.comment_strings = DefaultDict(
+    "# ", {"css": "// ", "c": "// ", "c++": "// ", "latex": "% ", "python": "# ", "shell": "# ", "slang": "% "}
+)
 
 
 # header_string
@@ -250,7 +248,7 @@ defaults.comment_strings = DefaultDict('# ',
 #
 # Default is a comment marker::
 
-defaults.header_string = '..'
+defaults.header_string = ".."
 
 
 # .. _code_block_marker:
@@ -261,7 +259,7 @@ defaults.header_string = '..'
 # Markup at the end of a documentation block.
 # Default is Docutils' marker for a `literal block`_::
 
-defaults.code_block_markers = DefaultDict('::')
+defaults.code_block_markers = DefaultDict("::")
 
 # The `code_block_marker` string is `inserted into a regular expression`_.
 # Language-specific markers can be defined programmatically, e.g. in a
@@ -341,7 +339,7 @@ defaults.postprocessors = {}
 #
 # Number of spaces to indent code blocks in `Code2Text.code_block_handler`_::
 
-defaults.codeindent =  2
+defaults.codeindent = 2
 
 # In `Text2Code.code_block_handler`_, the codeindent is determined by the
 # first recognised code line (header or first indented literal block
@@ -352,7 +350,7 @@ defaults.codeindent =  2
 #
 # What to do if the outfile already exists? (ignored if `outfile` == '-')::
 
-defaults.overwrite = 'update'
+defaults.overwrite = "update"
 
 # Recognised values:
 #
@@ -388,68 +386,68 @@ except ImportError:
 # -----------------
 # ::
 
-class TextCodeConverter(object):
-    """Parent class for the converters `Text2Code` and `Code2Text`.
-    """
 
-# The parent class defines data attributes and functions used in both
-# `Text2Code`_ converting a text source to executable code source, and
-# `Code2Text`_ converting commented code to a text source.
-#
-# Data attributes
-# ~~~~~~~~~~~~~~~
-#
-# Class default values are fetched from the `defaults`_ object and can be
-# overridden by matching keyword arguments during class instantiation. This
-# also works with keyword arguments to `get_converter`_ and `main`_, as these
-# functions pass on unused keyword args to the instantiation of a converter
-# class. ::
+class TextCodeConverter(object):
+    """Parent class for the converters `Text2Code` and `Code2Text`."""
+
+    # The parent class defines data attributes and functions used in both
+    # `Text2Code`_ converting a text source to executable code source, and
+    # `Code2Text`_ converting commented code to a text source.
+    #
+    # Data attributes
+    # ~~~~~~~~~~~~~~~
+    #
+    # Class default values are fetched from the `defaults`_ object and can be
+    # overridden by matching keyword arguments during class instantiation. This
+    # also works with keyword arguments to `get_converter`_ and `main`_, as these
+    # functions pass on unused keyword args to the instantiation of a converter
+    # class. ::
 
     language = defaults.languages.default
     comment_strings = defaults.comment_strings
-    comment_string = "" # set in __init__ (if empty)
-    codeindent =  defaults.codeindent
+    comment_string = ""  # set in __init__ (if empty)
+    codeindent = defaults.codeindent
     header_string = defaults.header_string
     code_block_markers = defaults.code_block_markers
-    code_block_marker = "" # set in __init__ (if empty)
+    code_block_marker = ""  # set in __init__ (if empty)
     strip = defaults.strip
     strip_marker = defaults.strip_marker
     add_missing_marker = defaults.add_missing_marker
-    directive_option_regexp = re.compile(r' +:(\w|[-._+:])+:( |$)')
-    state = "" # type of current block, see `TextCodeConverter.convert`_
+    directive_option_regexp = re.compile(r" +:(\w|[-._+:])+:( |$)")
+    state = ""  # type of current block, see `TextCodeConverter.convert`_
 
-# Interface methods
-# ~~~~~~~~~~~~~~~~~
-#
-# .. _TextCodeConverter.__init__:
-#
-# __init__
-# """"""""
-#
-# Initialising sets the `data` attribute, an iterable object yielding lines of
-# the source to convert. [#]_
-#
-# .. [#] The most common choice of data is a `file` object with the text
-#        or code source.
-#
-#        To convert a string into a suitable object, use its splitlines method
-#        like ``"2 lines\nof source".splitlines(True)``.
-#
-#
-# Additional keyword arguments are stored as instance variables,
-# overwriting the class defaults::
+    # Interface methods
+    # ~~~~~~~~~~~~~~~~~
+    #
+    # .. _TextCodeConverter.__init__:
+    #
+    # __init__
+    # """"""""
+    #
+    # Initialising sets the `data` attribute, an iterable object yielding lines of
+    # the source to convert. [#]_
+    #
+    # .. [#] The most common choice of data is a `file` object with the text
+    #        or code source.
+    #
+    #        To convert a string into a suitable object, use its splitlines method
+    #        like ``"2 lines\nof source".splitlines(True)``.
+    #
+    #
+    # Additional keyword arguments are stored as instance variables,
+    # overwriting the class defaults::
 
     def __init__(self, data, **keyw):
         """data   --  iterable data object
-                      (list, file, generator, string, ...)
-           **keyw --  remaining keyword arguments are
-                      stored as data-attributes
+                   (list, file, generator, string, ...)
+        **keyw --  remaining keyword arguments are
+                   stored as data-attributes
         """
         self.data = data
         self.__dict__.update(keyw)
 
-# If empty, `code_block_marker` and `comment_string` are set according
-# to the `language`::
+        # If empty, `code_block_marker` and `comment_string` are set according
+        # to the `language`::
 
         if not self.code_block_marker:
             self.code_block_marker = self.code_block_markers[self.language]
@@ -457,165 +455,158 @@ class TextCodeConverter(object):
             self.comment_string = self.comment_strings[self.language]
         self.stripped_comment_string = self.comment_string.rstrip()
 
-# Pre- and postprocessing filters are set (with
-# `TextCodeConverter.get_filter`_)::
+        # Pre- and postprocessing filters are set (with
+        # `TextCodeConverter.get_filter`_)::
 
         self.preprocessor = self.get_filter("preprocessors", self.language)
         self.postprocessor = self.get_filter("postprocessors", self.language)
 
-# .. _inserted into a regular expression:
-#
-# Finally, a regular_expression for the `code_block_marker` is compiled
-# to find valid cases of `code_block_marker` in a given line and return
-# the groups: ``\1 prefix, \2 code_block_marker, \3 remainder`` ::
+        # .. _inserted into a regular expression:
+        #
+        # Finally, a regular_expression for the `code_block_marker` is compiled
+        # to find valid cases of `code_block_marker` in a given line and return
+        # the groups: ``\1 prefix, \2 code_block_marker, \3 remainder`` ::
 
         marker = self.code_block_marker
-        if marker == '::':
+        if marker == "::":
             # the default marker may occur at the end of a text line
-            self.marker_regexp = re.compile('^( *(?!\.\.).*)(::)([ \n]*)$')
+            self.marker_regexp = re.compile("^( *(?!\.\.).*)(::)([ \n]*)$")
         else:
             # marker must be on a separate line
-            self.marker_regexp = re.compile('^( *)(%s)(.*\n?)$' % marker)
+            self.marker_regexp = re.compile("^( *)(%s)(.*\n?)$" % marker)
 
-# .. _TextCodeConverter.__iter__:
-#
-# __iter__
-# """"""""
-#
-# Return an iterator for the instance. Iteration yields lines of converted
-# data.
-#
-# The iterator is a chain of iterators acting on `self.data` that does
-#
-# * preprocessing
-# * text<->code format conversion
-# * postprocessing
-#
-# Pre- and postprocessing are only performed, if filters for the current
-# language are registered in `defaults.preprocessors`_ and|or
-# `defaults.postprocessors`_. The filters must accept an iterable as first
-# argument and yield the processed input data line-wise.
-# ::
+    # .. _TextCodeConverter.__iter__:
+    #
+    # __iter__
+    # """"""""
+    #
+    # Return an iterator for the instance. Iteration yields lines of converted
+    # data.
+    #
+    # The iterator is a chain of iterators acting on `self.data` that does
+    #
+    # * preprocessing
+    # * text<->code format conversion
+    # * postprocessing
+    #
+    # Pre- and postprocessing are only performed, if filters for the current
+    # language are registered in `defaults.preprocessors`_ and|or
+    # `defaults.postprocessors`_. The filters must accept an iterable as first
+    # argument and yield the processed input data line-wise.
+    # ::
 
     def __iter__(self):
-        """Iterate over input data source and yield converted lines
-        """
+        """Iterate over input data source and yield converted lines"""
         return self.postprocessor(self.convert(self.preprocessor(self.data)))
 
-
-# .. _TextCodeConverter.__call__:
-#
-# __call__
-# """"""""
-# The special `__call__` method allows the use of class instances as callable
-# objects. It returns the converted data as list of lines::
+    # .. _TextCodeConverter.__call__:
+    #
+    # __call__
+    # """"""""
+    # The special `__call__` method allows the use of class instances as callable
+    # objects. It returns the converted data as list of lines::
 
     def __call__(self):
         """Iterate over state-machine and return results as list of lines"""
         return [line for line in self]
 
-
-# .. _TextCodeConverter.__str__:
-#
-# __str__
-# """""""
-# Return converted data as string::
+    # .. _TextCodeConverter.__str__:
+    #
+    # __str__
+    # """""""
+    # Return converted data as string::
 
     def __str__(self):
         return "".join(self())
 
-
-# Helpers and convenience methods
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#
-# .. _TextCodeConverter.convert:
-#
-# convert
-# """""""
-#
-# The `convert` method generates an iterator that does the actual  code <-->
-# text format conversion. The converted data is yielded line-wise and the
-# instance's `status` argument indicates whether the current line is "header",
-# "documentation", or "code_block"::
+    # Helpers and convenience methods
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    #
+    # .. _TextCodeConverter.convert:
+    #
+    # convert
+    # """""""
+    #
+    # The `convert` method generates an iterator that does the actual  code <-->
+    # text format conversion. The converted data is yielded line-wise and the
+    # instance's `status` argument indicates whether the current line is "header",
+    # "documentation", or "code_block"::
 
     def convert(self, lines):
         """Iterate over lines of a program document and convert
         between "text" and "code" format
         """
 
-# Initialise internal data arguments. (Done here, so that every new iteration
-# re-initialises them.)
-#
-# `state`
-#   the "type" of the currently processed block of lines. One of
-#
-#   :"":              initial state: check for header,
-#   :"header":        leading code block: strip `header_string`,
-#   :"documentation": documentation part: comment out,
-#   :"code_block":    literal blocks containing source code: unindent.
-#
-# ::
+        # Initialise internal data arguments. (Done here, so that every new iteration
+        # re-initialises them.)
+        #
+        # `state`
+        #   the "type" of the currently processed block of lines. One of
+        #
+        #   :"":              initial state: check for header,
+        #   :"header":        leading code block: strip `header_string`,
+        #   :"documentation": documentation part: comment out,
+        #   :"code_block":    literal blocks containing source code: unindent.
+        #
+        # ::
 
         self.state = ""
 
-# `_codeindent`
-#   * Do not confuse the internal attribute `_codeindent` with the configurable
-#     `codeindent` (without the leading underscore).
-#   * `_codeindent` is set in `Text2Code.code_block_handler`_ to the indent of
-#     first non-blank "code_block" line and stripped from all "code_block" lines
-#     in the text-to-code conversion,
-#   * `codeindent` is set in `__init__` to `defaults.codeindent`_ and added to
-#     "code_block" lines in the code-to-text conversion.
-#
-# ::
+        # `_codeindent`
+        #   * Do not confuse the internal attribute `_codeindent` with the configurable
+        #     `codeindent` (without the leading underscore).
+        #   * `_codeindent` is set in `Text2Code.code_block_handler`_ to the indent of
+        #     first non-blank "code_block" line and stripped from all "code_block" lines
+        #     in the text-to-code conversion,
+        #   * `codeindent` is set in `__init__` to `defaults.codeindent`_ and added to
+        #     "code_block" lines in the code-to-text conversion.
+        #
+        # ::
 
         self._codeindent = 0
 
-# `_textindent`
-#   * set by `Text2Code.documentation_handler`_ to the minimal indent of a
-#     documentation block,
-#   * used in `Text2Code.set_state`_ to find the end of a code block.
-#
-# ::
+        # `_textindent`
+        #   * set by `Text2Code.documentation_handler`_ to the minimal indent of a
+        #     documentation block,
+        #   * used in `Text2Code.set_state`_ to find the end of a code block.
+        #
+        # ::
 
         self._textindent = 0
 
-# `_add_code_block_marker`
-#   If the last paragraph of a documentation block does not end with a
-#   code_block_marker_, it should be added (otherwise, the back-conversion
-#   fails.).
-#
-#   `_add_code_block_marker` is set by `Code2Text.documentation_handler`_
-#   and evaluated by `Code2Text.code_block_handler`_, because the
-#   documentation_handler does not know whether the next block will be
-#   documentation (with no need for a code_block_marker) or a code block.
-#
-# ::
+        # `_add_code_block_marker`
+        #   If the last paragraph of a documentation block does not end with a
+        #   code_block_marker_, it should be added (otherwise, the back-conversion
+        #   fails.).
+        #
+        #   `_add_code_block_marker` is set by `Code2Text.documentation_handler`_
+        #   and evaluated by `Code2Text.code_block_handler`_, because the
+        #   documentation_handler does not know whether the next block will be
+        #   documentation (with no need for a code_block_marker) or a code block.
+        #
+        # ::
 
         self._add_code_block_marker = False
 
-
-
-# Determine the state of the block and convert with the matching "handler"::
+        # Determine the state of the block and convert with the matching "handler"::
 
         for block in collect_blocks(expandtabs_filter(lines)):
             self.set_state(block)
-            for line in getattr(self, self.state+"_handler")(block):
+            for line in getattr(self, self.state + "_handler")(block):
                 yield line
 
-
-# .. _TextCodeConverter.get_filter:
-#
-# get_filter
-# """"""""""
-# ::
+    # .. _TextCodeConverter.get_filter:
+    #
+    # get_filter
+    # """"""""""
+    # ::
 
     def get_filter(self, filter_set, language):
         """Return language specific filter"""
         if self.__class__ == Text2Code:
-            key = "text2"+language
+            key = "text2" + language
         elif self.__class__ == Code2Text:
-            key = language+"2text"
+            key = language + "2text"
         else:
             key = ""
         try:
@@ -625,14 +616,12 @@ class TextCodeConverter(object):
             pass
         return identity_filter
 
-
-# get_indent
-# """"""""""
-# Return the number of leading spaces in `line`::
+    # get_indent
+    # """"""""""
+    # Return the number of leading spaces in `line`::
 
     def get_indent(self, line):
-        """Return the indentation of `string`.
-        """
+        """Return the indentation of `string`."""
         return len(line) - len(line.lstrip())
 
 
@@ -658,32 +647,31 @@ class TextCodeConverter(object):
 # TextCodeConverter_ and adds functions specific to the text-to-code format
 # conversion::
 
-class Text2Code(TextCodeConverter):
-    """Convert a (reStructured) text source to code source
-    """
 
-# .. _Text2Code.set_state:
-#
-# set_state
-# ~~~~~~~~~
-# ::
+class Text2Code(TextCodeConverter):
+    """Convert a (reStructured) text source to code source"""
+
+    # .. _Text2Code.set_state:
+    #
+    # set_state
+    # ~~~~~~~~~
+    # ::
 
     def set_state(self, block):
-        """Determine state of `block`. Set `self.state`
-        """
+        """Determine state of `block`. Set `self.state`"""
 
-# `set_state` is used inside an iteration. Hence, if we are out of data, a
-# StopItertion exception should be raised::
+        # `set_state` is used inside an iteration. Hence, if we are out of data, a
+        # StopItertion exception should be raised::
 
         if not block:
             raise StopIteration
 
-# The new state depends on the active state (from the last block) and
-# features of the current block. It is either "header", "documentation", or
-# "code_block".
-#
-# If the current state is "" (first block), check for
-# the  `header_string` indicating a leading code block::
+        # The new state depends on the active state (from the last block) and
+        # features of the current block. It is either "header", "documentation", or
+        # "code_block".
+        #
+        # If the current state is "" (first block), check for
+        # the  `header_string` indicating a leading code block::
 
         if self.state == "":
             # print "set state for %r"%block
@@ -692,79 +680,78 @@ class Text2Code(TextCodeConverter):
             else:
                 self.state = "documentation"
 
-# If the current state is "documentation", the next block is also
-# documentation. The end of a documentation part is detected in the
-# `Text2Code.documentation_handler`_::
+        # If the current state is "documentation", the next block is also
+        # documentation. The end of a documentation part is detected in the
+        # `Text2Code.documentation_handler`_::
 
         # elif self.state == "documentation":
         #    self.state = "documentation"
 
-# A "code_block" ends with the first less indented, non-blank line.
-# `_textindent` is set by the documentation handler to the indent of the
-# preceding documentation block::
+        # A "code_block" ends with the first less indented, non-blank line.
+        # `_textindent` is set by the documentation handler to the indent of the
+        # preceding documentation block::
 
         elif self.state in ["code_block", "header"]:
-            indents = [self.get_indent(line) for line in block
-                       if line.rstrip()]
+            indents = [self.get_indent(line) for line in block if line.rstrip()]
             # print "set_state:", indents, self._textindent
             if indents and min(indents) <= self._textindent:
-                self.state = 'documentation'
+                self.state = "documentation"
             else:
-                self.state = 'code_block'
+                self.state = "code_block"
 
-# TODO: (or not to do?) insert blank line before the first line with too-small
-# codeindent using self.ensure_trailing_blank_line(lines, line) (would need
-# split and push-back of the documentation part)?
-#
-# .. _Text2Code.header_handler:
-#
-# header_handler
-# ~~~~~~~~~~~~~~
-#
-# Sometimes code needs to remain on the first line(s) of the document to be
-# valid. The most common example is the "shebang" line that tells a POSIX
-# shell how to process an executable file::
+    # TODO: (or not to do?) insert blank line before the first line with too-small
+    # codeindent using self.ensure_trailing_blank_line(lines, line) (would need
+    # split and push-back of the documentation part)?
+    #
+    # .. _Text2Code.header_handler:
+    #
+    # header_handler
+    # ~~~~~~~~~~~~~~
+    #
+    # Sometimes code needs to remain on the first line(s) of the document to be
+    # valid. The most common example is the "shebang" line that tells a POSIX
+    # shell how to process an executable file::
 
-#!/usr/bin/env python
+    #!/usr/bin/env python
 
-# In Python, the special comment to indicate the encoding, e.g.
-# ``# -*- coding: iso-8859-1 -*-``, must occur before any other comment
-# or code too.
-#
-# If we want to keep the line numbers in sync for text and code source, the
-# reStructured Text markup for these header lines must start at the same line
-# as the first header line. Therefore, header lines could not be marked as
-# literal block (this would require the ``::`` and an empty line above the
-# code_block).
-#
-# OTOH, a comment may start at the same line as the comment marker and it
-# includes subsequent indented lines. Comments are visible in the reStructured
-# Text source but hidden in the pretty-printed output.
-#
-# With a header converted to comment in the text source, everything before
-# the first documentation block (i.e. before the first paragraph using the
-# matching comment string) will be hidden away (in HTML or PDF output).
-#
-# This seems a good compromise, the advantages
-#
-# * line numbers are kept
-# * the "normal" code_block conversion rules (indent/unindent by `codeindent` apply
-# * greater flexibility: you can hide a repeating header in a project
-#   consisting of many source files.
-#
-# set off the disadvantages
-#
-# - it may come as surprise if a part of the file is not "printed",
-# - one more syntax element to learn for rst newbies to start with pylit,
-#   (however, starting from the code source, this will be auto-generated)
-#
-# In the case that there is no matching comment at all, the complete code
-# source will become a comment -- however, in this case it is not very likely
-# the source is a literate document anyway.
-#
-# If needed for the documentation, it is possible to quote the header in (or
-# after) the first documentation block, e.g. as `parsed literal`.
-# ::
+    # In Python, the special comment to indicate the encoding, e.g.
+    # ``# -*- coding: iso-8859-1 -*-``, must occur before any other comment
+    # or code too.
+    #
+    # If we want to keep the line numbers in sync for text and code source, the
+    # reStructured Text markup for these header lines must start at the same line
+    # as the first header line. Therefore, header lines could not be marked as
+    # literal block (this would require the ``::`` and an empty line above the
+    # code_block).
+    #
+    # OTOH, a comment may start at the same line as the comment marker and it
+    # includes subsequent indented lines. Comments are visible in the reStructured
+    # Text source but hidden in the pretty-printed output.
+    #
+    # With a header converted to comment in the text source, everything before
+    # the first documentation block (i.e. before the first paragraph using the
+    # matching comment string) will be hidden away (in HTML or PDF output).
+    #
+    # This seems a good compromise, the advantages
+    #
+    # * line numbers are kept
+    # * the "normal" code_block conversion rules (indent/unindent by `codeindent` apply
+    # * greater flexibility: you can hide a repeating header in a project
+    #   consisting of many source files.
+    #
+    # set off the disadvantages
+    #
+    # - it may come as surprise if a part of the file is not "printed",
+    # - one more syntax element to learn for rst newbies to start with pylit,
+    #   (however, starting from the code source, this will be auto-generated)
+    #
+    # In the case that there is no matching comment at all, the complete code
+    # source will become a comment -- however, in this case it is not very likely
+    # the source is a literate document anyway.
+    #
+    # If needed for the documentation, it is possible to quote the header in (or
+    # after) the first documentation block, e.g. as `parsed literal`.
+    # ::
 
     def header_handler(self, lines):
         """Format leading code block"""
@@ -774,31 +761,28 @@ class Text2Code(TextCodeConverter):
         for line in self.code_block_handler(lines):
             yield line
 
-
-# .. _Text2Code.documentation_handler:
-#
-# documentation_handler
-# ~~~~~~~~~~~~~~~~~~~~~
-#
-# The 'documentation' handler processes everything that is not recognised as
-# "code_block". Documentation is quoted with `self.comment_string`
-# (or filtered with `--strip=True`).
-#
-# If end-of-documentation marker is detected,
-#
-# * set state to 'code_block'
-# * set `self._textindent` (needed by `Text2Code.set_state`_ to find the
-#   next "documentation" block)
-#
-# ::
+    # .. _Text2Code.documentation_handler:
+    #
+    # documentation_handler
+    # ~~~~~~~~~~~~~~~~~~~~~
+    #
+    # The 'documentation' handler processes everything that is not recognised as
+    # "code_block". Documentation is quoted with `self.comment_string`
+    # (or filtered with `--strip=True`).
+    #
+    # If end-of-documentation marker is detected,
+    #
+    # * set state to 'code_block'
+    # * set `self._textindent` (needed by `Text2Code.set_state`_ to find the
+    #   next "documentation" block)
+    #
+    # ::
 
     def documentation_handler(self, lines):
-        """Convert documentation blocks from text to code format
-        """
+        """Convert documentation blocks from text to code format"""
         for line in lines:
             # test lines following the code-block marker for false positives
-            if (self.state == "code_block" and line.rstrip()
-                and not self.directive_option_regexp.search(line)):
+            if self.state == "code_block" and line.rstrip() and not self.directive_option_regexp.search(line):
                 self.state = "documentation"
             # test for end of documentation block
             if self.marker_regexp.search(line):
@@ -813,37 +797,34 @@ class Text2Code(TextCodeConverter):
             else:
                 yield self.comment_string + line
 
-
-
-
-# .. _Text2Code.code_block_handler:
-#
-# code_block_handler
-# ~~~~~~~~~~~~~~~~~~
-#
-# The "code_block" handler is called with an indented literal block. It
-# removes leading whitespace up to the indentation of the first code line in
-# the file (this deviation from Docutils behaviour allows indented blocks of
-# Python code). ::
+    # .. _Text2Code.code_block_handler:
+    #
+    # code_block_handler
+    # ~~~~~~~~~~~~~~~~~~
+    #
+    # The "code_block" handler is called with an indented literal block. It
+    # removes leading whitespace up to the indentation of the first code line in
+    # the file (this deviation from Docutils behaviour allows indented blocks of
+    # Python code). ::
 
     def code_block_handler(self, block):
-        """Convert indented literal blocks to source code format
-        """
+        """Convert indented literal blocks to source code format"""
 
-# If still unset, determine the indentation of code blocks from first non-blank
-# code line::
+        # If still unset, determine the indentation of code blocks from first non-blank
+        # code line::
 
         if self._codeindent == 0:
             self._codeindent = self.get_indent(block[0])
 
-# Yield unindented lines after check whether we can safely unindent. If the
-# line is less indented then `_codeindent`, something got wrong. ::
+        # Yield unindented lines after check whether we can safely unindent. If the
+        # line is less indented then `_codeindent`, something got wrong. ::
 
         for line in block:
             if line.lstrip() and self.get_indent(line) < self._codeindent:
-                raise ValueError("code block contains line less indented " \
-                      "than %d spaces \n%r"%(self._codeindent, block))
-            yield line.replace(" "*self._codeindent, "", 1)
+                raise ValueError(
+                    "code block contains line less indented " "than %d spaces \n%r" % (self._codeindent, block)
+                )
+            yield line.replace(" " * self._codeindent, "", 1)
 
 
 # Code2Text
@@ -857,27 +838,28 @@ class Text2Code(TextCodeConverter):
 # TextCodeConverter_ and adds functions specific to the text-to-code  format
 # conversion::
 
-class Code2Text(TextCodeConverter):
-    """Convert code source to text source
-    """
 
-# set_state
-# ~~~~~~~~~
-#
-# Check if block is "header", "documentation", or "code_block":
-#
-# A paragraph is "documentation", if every non-blank line starts with a
-# matching comment string (including whitespace except for commented blank
-# lines) ::
+class Code2Text(TextCodeConverter):
+    """Convert code source to text source"""
+
+    # set_state
+    # ~~~~~~~~~
+    #
+    # Check if block is "header", "documentation", or "code_block":
+    #
+    # A paragraph is "documentation", if every non-blank line starts with a
+    # matching comment string (including whitespace except for commented blank
+    # lines) ::
 
     def set_state(self, block):
         """Determine state of `block`."""
         for line in block:
             # skip documentation lines (commented, blank or blank comment)
-            if (line.startswith(self.comment_string)
+            if (
+                line.startswith(self.comment_string)
                 or not line.rstrip()
                 or line.rstrip() == self.comment_string.rstrip()
-               ):
+            ):
                 continue
             # non-commented line found:
             if self.state == "":
@@ -892,12 +874,11 @@ class Code2Text(TextCodeConverter):
             #     return
             self.state = "documentation"
 
-
-# header_handler
-# ~~~~~~~~~~~~~~
-#
-# Handle a leading code block. (See `Text2Code.header_handler`_ for a
-# discussion of the "header" state.) ::
+    # header_handler
+    # ~~~~~~~~~~~~~~
+    #
+    # Handle a leading code block. (See `Text2Code.header_handler`_ for a
+    # discussion of the "header" state.) ::
 
     def header_handler(self, lines):
         """Format leading code block"""
@@ -911,53 +892,51 @@ class Code2Text(TextCodeConverter):
         for line in lines:
             yield line
 
-# .. _Code2Text.documentation_handler:
-#
-# documentation_handler
-# ~~~~~~~~~~~~~~~~~~~~~
-#
-# The *documentation state* handler converts a comment to a documentation
-# block by stripping the leading `comment string` from every line::
+    # .. _Code2Text.documentation_handler:
+    #
+    # documentation_handler
+    # ~~~~~~~~~~~~~~~~~~~~~
+    #
+    # The *documentation state* handler converts a comment to a documentation
+    # block by stripping the leading `comment string` from every line::
 
     def documentation_handler(self, block):
-        """Uncomment documentation blocks in source code
-        """
+        """Uncomment documentation blocks in source code"""
 
-# Strip comment strings::
+        # Strip comment strings::
 
         lines = [self.uncomment_line(line) for line in block]
 
-# If the code block is stripped, the literal marker would lead to an
-# error when the text is converted with Docutils. Strip it as well. ::
+        # If the code block is stripped, the literal marker would lead to an
+        # error when the text is converted with Docutils. Strip it as well. ::
 
         if self.strip or self.strip_marker:
             self.strip_code_block_marker(lines)
 
-# Otherwise, check for the `code_block_marker`_ at the end of the
-# documentation block (skipping directive options that might follow it)::
+        # Otherwise, check for the `code_block_marker`_ at the end of the
+        # documentation block (skipping directive options that might follow it)::
 
         elif self.add_missing_marker:
             for line in lines[::-1]:
                 if self.marker_regexp.search(line):
                     self._add_code_block_marker = False
                     break
-                if (line.rstrip() and
-                    not self.directive_option_regexp.search(line)):
+                if line.rstrip() and not self.directive_option_regexp.search(line):
                     self._add_code_block_marker = True
                     break
             else:
                 self._add_code_block_marker = True
 
-# Yield lines::
+        # Yield lines::
 
         for line in lines:
             yield line
 
-# uncomment_line
-# ~~~~~~~~~~~~~~
-#
-# Return documentation line after stripping comment string. Consider the
-# case that a blank line has a comment string without trailing whitespace::
+    # uncomment_line
+    # ~~~~~~~~~~~~~~
+    #
+    # Return documentation line after stripping comment string. Consider the
+    # case that a blank line has a comment string without trailing whitespace::
 
     def uncomment_line(self, line):
         """Return uncommented documentation line"""
@@ -966,18 +945,17 @@ class Code2Text(TextCodeConverter):
             line = line.replace(self.stripped_comment_string, "", 1)
         return line
 
-# .. _Code2Text.code_block_handler:
-#
-# code_block_handler
-# ~~~~~~~~~~~~~~~~~~
-#
-# The `code_block` handler returns the code block as indented literal
-# block (or filters it, if ``self.strip == True``). The amount of the code
-# indentation is controlled by `self.codeindent` (default 2).  ::
+    # .. _Code2Text.code_block_handler:
+    #
+    # code_block_handler
+    # ~~~~~~~~~~~~~~~~~~
+    #
+    # The `code_block` handler returns the code block as indented literal
+    # block (or filters it, if ``self.strip == True``). The amount of the code
+    # indentation is controlled by `self.codeindent` (default 2).  ::
 
     def code_block_handler(self, lines):
-        """Covert code blocks to text format (indent or strip)
-        """
+        """Covert code blocks to text format (indent or strip)"""
         if self.strip == True:
             return
         # eventually insert transition marker
@@ -988,44 +966,43 @@ class Code2Text(TextCodeConverter):
             self._add_code_block_marker = False
             self.state = "code_block"
         for line in lines:
-            yield " "*self.codeindent + line
+            yield " " * self.codeindent + line
 
-
-
-# strip_code_block_marker
-# ~~~~~~~~~~~~~~~~~~~~~~~
-#
-# Replace the literal marker with the equivalent of Docutils replace rules
-#
-# * strip ``::``-line (and preceding blank line) if on a line on its own
-# * strip ``::`` if it is preceded by whitespace.
-# * convert ``::`` to a single colon if preceded by text
-#
-# `lines` is a list of documentation lines (with a trailing blank line).
-# It is modified in-place::
+    # strip_code_block_marker
+    # ~~~~~~~~~~~~~~~~~~~~~~~
+    #
+    # Replace the literal marker with the equivalent of Docutils replace rules
+    #
+    # * strip ``::``-line (and preceding blank line) if on a line on its own
+    # * strip ``::`` if it is preceded by whitespace.
+    # * convert ``::`` to a single colon if preceded by text
+    #
+    # `lines` is a list of documentation lines (with a trailing blank line).
+    # It is modified in-place::
 
     def strip_code_block_marker(self, lines):
         try:
             line = lines[-2]
         except IndexError:
-            return # just one line (no trailing blank line)
+            return  # just one line (no trailing blank line)
 
         # match with regexp: `match` is None or has groups
         # \1 leading text, \2 code_block_marker, \3 remainder
         match = self.marker_regexp.search(line)
 
-        if not match:                 # no code_block_marker present
+        if not match:  # no code_block_marker present
             return
-        if not match.group(1):        # `code_block_marker` on an extra line
-            del(lines[-2])
+        if not match.group(1):  # `code_block_marker` on an extra line
+            del lines[-2]
             # delete preceding line if it is blank
             if len(lines) >= 2 and not lines[-2].lstrip():
-                del(lines[-2])
+                del lines[-2]
         elif match.group(1).rstrip() < match.group(1):
             # '::' follows whitespace
             lines[-2] = match.group(1).rstrip() + match.group(3)
-        else:                         # '::' follows text
-            lines[-2] = match.group(1).rstrip() + ':' + match.group(3)
+        else:  # '::' follows text
+            lines[-2] = match.group(1).rstrip() + ":" + match.group(3)
+
 
 # Filters
 # =======
@@ -1045,9 +1022,11 @@ class Code2Text(TextCodeConverter):
 # The most basic filter is the identity filter, that returns its argument as
 # iterator::
 
+
 def identity_filter(data):
     """Return data iterator without any processing"""
     return iter(data)
+
 
 # expandtabs_filter
 # -----------------
@@ -1056,6 +1035,7 @@ def identity_filter(data):
 #
 # This filter is applied to the input data by `TextCodeConverter.convert`_ as
 # hard tabs can lead to errors when the indentation is changed. ::
+
 
 def expandtabs_filter(data):
     """Yield data tokens with hard-tabs expanded"""
@@ -1068,6 +1048,7 @@ def expandtabs_filter(data):
 #
 # A filter to aggregate "paragraphs" (blocks separated by blank
 # lines). Yields lists of lines::
+
 
 def collect_blocks(lines):
     """collect lines in a list
@@ -1091,7 +1072,6 @@ def collect_blocks(lines):
     yield block
 
 
-
 # dumb_c_preprocessor
 # -------------------
 #
@@ -1112,18 +1092,18 @@ def collect_blocks(lines):
 #
 # ::
 
+
 def dumb_c_preprocessor(data):
     """change `C` ``/* `` `` */`` comments into C++ ``// `` comments"""
     comment_string = defaults.comment_strings["c++"]
     boc_string = "/* "
     eoc_string = " */"
     for line in data:
-        if (line.startswith(boc_string)
-            and line.rstrip().endswith(eoc_string)
-           ):
+        if line.startswith(boc_string) and line.rstrip().endswith(eoc_string):
             line = line.replace(boc_string, comment_string, 1)
             line = "".join(line.rsplit(eoc_string, 1))
         yield line
+
 
 # Unfortunately, the `replace` method of strings does not support negative
 # numbers for the `count` argument:
@@ -1141,6 +1121,7 @@ def dumb_c_preprocessor(data):
 #
 # Undo the preparations by the dumb_c_preprocessor and re-insert valid comment
 # delimiters ::
+
 
 def dumb_c_postprocessor(data):
     """change C++ ``// `` comments into `C` ``/* `` `` */`` comments"""
@@ -1161,10 +1142,10 @@ def dumb_c_postprocessor(data):
 #
 # ::
 
-defaults.preprocessors['c2text'] = dumb_c_preprocessor
-defaults.preprocessors['css2text'] = dumb_c_preprocessor
-defaults.postprocessors['text2c'] = dumb_c_postprocessor
-defaults.postprocessors['text2css'] = dumb_c_postprocessor
+defaults.preprocessors["c2text"] = dumb_c_preprocessor
+defaults.preprocessors["css2text"] = dumb_c_preprocessor
+defaults.postprocessors["text2c"] = dumb_c_postprocessor
+defaults.postprocessors["text2css"] = dumb_c_postprocessor
 
 
 # Command line use
@@ -1220,26 +1201,26 @@ defaults.postprocessors['text2css'] = dumb_c_postprocessor
 # The following class adds `as_dict`_, `complete`_ and `__getattr__`_
 # methods to `optparse.Values`::
 
-class OptionValues(optparse.Values):
 
-# .. _OptionValues.as_dict:
-#
-# as_dict
-# ~~~~~~~
-#
-# For use as keyword arguments, it is handy to have the options in a
-# dictionary. `as_dict` returns a copy of the instances object dictionary::
+class OptionValues(optparse.Values):
+    # .. _OptionValues.as_dict:
+    #
+    # as_dict
+    # ~~~~~~~
+    #
+    # For use as keyword arguments, it is handy to have the options in a
+    # dictionary. `as_dict` returns a copy of the instances object dictionary::
 
     def as_dict(self):
         """Return options as dictionary object"""
         return self.__dict__.copy()
 
-# .. _OptionValues.complete:
-#
-# complete
-# ~~~~~~~~
-#
-# ::
+    # .. _OptionValues.complete:
+    #
+    # complete
+    # ~~~~~~~~
+    #
+    # ::
 
     def complete(self, **keyw):
         """
@@ -1252,13 +1233,13 @@ class OptionValues(optparse.Values):
             if key not in self.__dict__:
                 setattr(self, key, keyw[key])
 
-# .. _OptionValues.__getattr__:
-#
-# __getattr__
-# ~~~~~~~~~~~
-#
-# To replace calls using ``options.ensure_value("OPTION", None)`` with the
-# more concise ``options.OPTION``, we define `__getattr__` [#]_ ::
+    # .. _OptionValues.__getattr__:
+    #
+    # __getattr__
+    # ~~~~~~~~~~~
+    #
+    # To replace calls using ``options.ensure_value("OPTION", None)`` with the
+    # more concise ``options.OPTION``, we define `__getattr__` [#]_ ::
 
     def __getattr__(self, name):
         """Return default value for non existing options"""
@@ -1277,76 +1258,80 @@ class OptionValues(optparse.Values):
 # The `PylitOptions` class comprises an option parser and methods for parsing
 # and completion of command line options::
 
+
 class PylitOptions(object):
     """Storage and handling of command line options for pylit"""
 
-# Instantiation
-# ~~~~~~~~~~~~~
-#
-# ::
+    # Instantiation
+    # ~~~~~~~~~~~~~
+    #
+    # ::
 
     def __init__(self):
-        """Set up an `OptionParser` instance for pylit command line options
-
-        """
+        """Set up an `OptionParser` instance for pylit command line options"""
         p = optparse.OptionParser(usage=main.__doc__, version=_version)
 
         # Conversion settings
 
-        p.add_option("-c", "--code2txt", dest="txt2code", action="store_false",
-                     help="convert code source to text source")
-        p.add_option("-t", "--txt2code", action="store_true",
-                     help="convert text source to code source")
-        p.add_option("--language",
-                     choices = list(defaults.languages.values()),
-                     help="use LANGUAGE native comment style")
-        p.add_option("--comment-string", dest="comment_string",
-                     help="documentation block marker in code source "
-                     "(including trailing whitespace, "
-                     "default: language dependent)")
-        p.add_option("-m", "--code-block-marker", dest="code_block_marker",
-                     help="syntax token starting a code block. (default '::')")
-        p.add_option("--codeindent", type="int",
-                     help="Number of spaces to indent code blocks with "
-                     "text2code (default %d)" % defaults.codeindent)
+        p.add_option(
+            "-c", "--code2txt", dest="txt2code", action="store_false", help="convert code source to text source"
+        )
+        p.add_option("-t", "--txt2code", action="store_true", help="convert text source to code source")
+        p.add_option("--language", choices=list(defaults.languages.values()), help="use LANGUAGE native comment style")
+        p.add_option(
+            "--comment-string",
+            dest="comment_string",
+            help="documentation block marker in code source "
+            "(including trailing whitespace, "
+            "default: language dependent)",
+        )
+        p.add_option(
+            "-m",
+            "--code-block-marker",
+            dest="code_block_marker",
+            help="syntax token starting a code block. (default '::')",
+        )
+        p.add_option(
+            "--codeindent",
+            type="int",
+            help="Number of spaces to indent code blocks with " "text2code (default %d)" % defaults.codeindent,
+        )
 
         # Output file handling
 
-        p.add_option("--overwrite", action="store",
-                     choices = ["yes", "update", "no"],
-                     help="overwrite output file (default 'update')")
-        p.add_option("--replace", action="store_true",
-                     help="move infile to a backup copy (appending '~')")
-        p.add_option("-s", "--strip", action="store_true",
-                     help='"export" by stripping documentation or code')
+        p.add_option(
+            "--overwrite",
+            action="store",
+            choices=["yes", "update", "no"],
+            help="overwrite output file (default 'update')",
+        )
+        p.add_option("--replace", action="store_true", help="move infile to a backup copy (appending '~')")
+        p.add_option("-s", "--strip", action="store_true", help='"export" by stripping documentation or code')
 
         # Special actions
 
-        p.add_option("-d", "--diff", action="store_true",
-                     help="test for differences to existing file")
-        p.add_option("--doctest", action="store_true",
-                     help="run doctest.testfile() on the text version")
-        p.add_option("-e", "--execute", action="store_true",
-                     help="execute code (Python only)")
+        p.add_option("-d", "--diff", action="store_true", help="test for differences to existing file")
+        p.add_option("--doctest", action="store_true", help="run doctest.testfile() on the text version")
+        p.add_option("-e", "--execute", action="store_true", help="execute code (Python only)")
 
         self.parser = p
 
-# .. _PylitOptions.parse_args:
-#
-# parse_args
-# ~~~~~~~~~~
-#
-# The `parse_args` method calls the `optparse.OptionParser` on command
-# line or provided args and returns the result as `PylitOptions.Values`
-# instance. Defaults can be provided as keyword arguments::
+    # .. _PylitOptions.parse_args:
+    #
+    # parse_args
+    # ~~~~~~~~~~
+    #
+    # The `parse_args` method calls the `optparse.OptionParser` on command
+    # line or provided args and returns the result as `PylitOptions.Values`
+    # instance. Defaults can be provided as keyword arguments::
 
     def parse_args(self, args=sys.argv[1:], **keyw):
         """parse command line arguments using `optparse.OptionParser`
 
-           parse_args(args, **keyw) -> OptionValues instance
+        parse_args(args, **keyw) -> OptionValues instance
 
-            args --  list of command line arguments.
-            keyw --  keyword arguments or dictionary of option defaults
+         args --  list of command line arguments.
+         keyw --  keyword arguments or dictionary of option defaults
         """
         # parse arguments
         (values, args) = self.parser.parse_args(args, OptionValues(keyw))
@@ -1360,14 +1345,14 @@ class PylitOptions(object):
 
         return values
 
-# .. _PylitOptions.complete_values:
-#
-# complete_values
-# ~~~~~~~~~~~~~~~
-#
-# Complete an OptionValues instance `values`.  Use module-level defaults and
-# context information to set missing option values to sensible defaults (if
-# possible) ::
+    # .. _PylitOptions.complete_values:
+    #
+    # complete_values
+    # ~~~~~~~~~~~~~~~
+    #
+    # Complete an OptionValues instance `values`.  Use module-level defaults and
+    # context information to set missing option values to sensible defaults (if
+    # possible) ::
 
     def complete_values(self, values):
         """complete option values with module and context sensible defaults
@@ -1376,15 +1361,15 @@ class PylitOptions(object):
         values -- OptionValues instance
         """
 
-# Complete with module-level defaults_::
+        # Complete with module-level defaults_::
 
         values.complete(**defaults.__dict__)
 
-# Ensure infile is a string::
+        # Ensure infile is a string::
 
         values.ensure_value("infile", "")
 
-# Guess conversion direction from `infile` filename::
+        # Guess conversion direction from `infile` filename::
 
         if values.txt2code is None:
             in_extension = os.path.splitext(values.infile)[1]
@@ -1393,17 +1378,17 @@ class PylitOptions(object):
             elif in_extension in list(values.languages.keys()):
                 values.txt2code = False
 
-# Auto-determine the output file name::
+        # Auto-determine the output file name::
 
         values.ensure_value("outfile", self._get_outfile_name(values))
 
-# Second try: Guess conversion direction from outfile filename::
+        # Second try: Guess conversion direction from outfile filename::
 
         if values.txt2code is None:
             out_extension = os.path.splitext(values.outfile)[1]
             values.txt2code = not (out_extension in values.text_extensions)
 
-# Set the language of the code::
+        # Set the language of the code::
 
         if values.txt2code is True:
             code_extension = os.path.splitext(values.outfile)[1]
@@ -1413,53 +1398,50 @@ class PylitOptions(object):
 
         return values
 
-# _get_outfile_name
-# ~~~~~~~~~~~~~~~~~
-#
-# Construct a matching filename for the output file. The output filename is
-# constructed from `infile` by the following rules:
-#
-# * '-' (stdin) results in '-' (stdout)
-# * strip the `text_extension`_ (txt2code) or
-# * add the `text_extension`_ (code2txt)
-# * fallback: if no guess can be made, add ".out"
-#
-#   .. TODO: use values.outfile_extension if it exists?
-#
-# ::
+    # _get_outfile_name
+    # ~~~~~~~~~~~~~~~~~
+    #
+    # Construct a matching filename for the output file. The output filename is
+    # constructed from `infile` by the following rules:
+    #
+    # * '-' (stdin) results in '-' (stdout)
+    # * strip the `text_extension`_ (txt2code) or
+    # * add the `text_extension`_ (code2txt)
+    # * fallback: if no guess can be made, add ".out"
+    #
+    #   .. TODO: use values.outfile_extension if it exists?
+    #
+    # ::
 
     def _get_outfile_name(self, values):
-        """Return a matching output filename for `infile`
-        """
+        """Return a matching output filename for `infile`"""
         # if input is stdin, default output is stdout
-        if values.infile == '-':
-            return '-'
+        if values.infile == "-":
+            return "-"
 
         # Derive from `infile` name: strip or add text extension
         (base, ext) = os.path.splitext(values.infile)
         if ext in values.text_extensions:
-            return base # strip
+            return base  # strip
         if ext in list(values.languages.keys()) or values.txt2code == False:
-            return values.infile + values.text_extensions[0] # add
+            return values.infile + values.text_extensions[0]  # add
         # give up
         return values.infile + ".out"
 
-# .. _PylitOptions.__call__:
-#
-# __call__
-# ~~~~~~~~
-#
-# The special `__call__` method allows to use PylitOptions instances as
-# *callables*: Calling an instance parses the argument list to extract option
-# values and completes them based on "context-sensitive defaults".  Keyword
-# arguments are passed to `PylitOptions.parse_args`_ as default values. ::
+    # .. _PylitOptions.__call__:
+    #
+    # __call__
+    # ~~~~~~~~
+    #
+    # The special `__call__` method allows to use PylitOptions instances as
+    # *callables*: Calling an instance parses the argument list to extract option
+    # values and completes them based on "context-sensitive defaults".  Keyword
+    # arguments are passed to `PylitOptions.parse_args`_ as default values. ::
 
     def __call__(self, args=sys.argv[1:], **keyw):
-        """parse and complete command line args return option values
-        """
+        """parse and complete command line args return option values"""
         values = self.parse_args(args, **keyw)
         return self.complete_values(values)
-
 
 
 # Helper functions
@@ -1473,7 +1455,8 @@ class PylitOptions(object):
 # However,  this leaves the uninitiated user with a non-responding application
 # if (s)he just tries the script without any arguments) ::
 
-def open_streams(infile = '-', outfile = '-', overwrite='update', **keyw):
+
+def open_streams(infile="-", outfile="-", overwrite="update", **keyw):
     """Open and return the input and output stream
 
     open_streams(infile, outfile) -> (in_stream, out_stream)
@@ -1489,24 +1472,26 @@ def open_streams(infile = '-', outfile = '-', overwrite='update', **keyw):
     if not infile:
         strerror = "Missing input file name ('-' for stdin; -h for help)"
         raise IOError(2, strerror, infile)
-    if infile == '-':
+    if infile == "-":
         in_stream = sys.stdin
     else:
-        in_stream = open(infile, 'r')
-    if outfile == '-':
+        in_stream = open(infile, "r")
+    if outfile == "-":
         out_stream = sys.stdout
-    elif overwrite == 'no' and os.path.exists(outfile):
+    elif overwrite == "no" and os.path.exists(outfile):
         raise IOError(1, "Output file exists!", outfile)
-    elif overwrite == 'update' and is_newer(outfile, infile):
+    elif overwrite == "update" and is_newer(outfile, infile):
         raise IOError(1, "Output file is newer than input file!", outfile)
     else:
-        out_stream = open(outfile, 'w')
+        out_stream = open(outfile, "w")
     return (in_stream, out_stream)
+
 
 # is_newer
 # ~~~~~~~~
 #
 # ::
+
 
 def is_newer(path1, path2):
     """Check if `path1` is newer than `path2` (using mtime)
@@ -1540,6 +1525,7 @@ def is_newer(path1, path2):
 #
 # Get an instance of the converter state machine::
 
+
 def get_converter(data, txt2code=True, **keyw):
     if txt2code:
         return Text2Code(data, **keyw)
@@ -1554,51 +1540,49 @@ def get_converter(data, txt2code=True, **keyw):
 # ~~~~~~~~~~~
 # ::
 
-def run_doctest(infile="-", txt2code=True,
-                globs={}, verbose=False, optionflags=0, **keyw):
-    """run doctest on the text source
-    """
 
-# Allow imports from the current working dir by prepending an empty string to
-# sys.path (see doc of sys.path())::
+def run_doctest(infile="-", txt2code=True, globs={}, verbose=False, optionflags=0, **keyw):
+    """run doctest on the text source"""
 
-    sys.path.insert(0, '')
+    # Allow imports from the current working dir by prepending an empty string to
+    # sys.path (see doc of sys.path())::
 
-# Import classes from the doctest module::
+    sys.path.insert(0, "")
+
+    # Import classes from the doctest module::
 
     from doctest import DocTestParser, DocTestRunner
 
-# Read in source. Make sure it is in text format, as tests in comments are not
-# found by doctest::
+    # Read in source. Make sure it is in text format, as tests in comments are not
+    # found by doctest::
 
     (data, out_stream) = open_streams(infile, "-")
     if txt2code is False:
-        keyw.update({'add_missing_marker': False})
+        keyw.update({"add_missing_marker": False})
         converter = Code2Text(data, **keyw)
         docstring = str(converter)
     else:
         docstring = data.read()
 
-# decode doc string if there is a "magic comment" in the first or second line
-# (http://docs.python.org/reference/lexical_analysis.html#encoding-declarations)
-# ::
+    # decode doc string if there is a "magic comment" in the first or second line
+    # (http://docs.python.org/reference/lexical_analysis.html#encoding-declarations)
+    # ::
 
-    firstlines = ' '.join(docstring.splitlines()[:2])
-    match = re.search('coding[=:]\s*([-\w.]+)', firstlines)
+    firstlines = " ".join(docstring.splitlines()[:2])
+    match = re.search("coding[=:]\s*([-\w.]+)", firstlines)
     if match:
         docencoding = match.group(1)
         docstring = docstring.decode(docencoding)
 
-# Use the doctest Advanced API to run all doctests in the source text::
+    # Use the doctest Advanced API to run all doctests in the source text::
 
-    test = DocTestParser().get_doctest(docstring, globs, name="",
-                                       filename=infile, lineno=0)
+    test = DocTestParser().get_doctest(docstring, globs, name="", filename=infile, lineno=0)
     runner = DocTestRunner(verbose, optionflags)
     runner.run(test)
     runner.summarize
     # give feedback also if no failures occurred
     if not runner.failures:
-        print("%d failures in %d tests"%(runner.failures, runner.tries))
+        print("%d failures in %d tests" % (runner.failures, runner.tries))
     return runner.failures, runner.tries
 
 
@@ -1607,7 +1591,8 @@ def run_doctest(infile="-", txt2code=True,
 #
 # ::
 
-def diff(infile='-', outfile='-', txt2code=True, **keyw):
+
+def diff(infile="-", outfile="-", txt2code=True, **keyw):
     """Report differences between converted infile and existing outfile
 
     If outfile does not exist or is '-', do a round-trip conversion and
@@ -1623,29 +1608,33 @@ def diff(infile='-', outfile='-', txt2code=True, **keyw):
     converter = get_converter(data, txt2code, **keyw)
     new = converter()
 
-    if outfile != '-' and os.path.exists(outfile):
+    if outfile != "-" and os.path.exists(outfile):
         outstream = open(outfile)
         old = outstream.readlines()
         oldname = outfile
-        newname = "<conversion of %s>"%infile
+        newname = "<conversion of %s>" % infile
     else:
         old = data
         oldname = infile
         # back-convert the output data
         converter = get_converter(new, not txt2code)
         new = converter()
-        newname = "<round-conversion of %s>"%infile
+        newname = "<round-conversion of %s>" % infile
 
     # find and print the differences
     is_different = False
     # print type(old), old
     # print type(new), new
-    delta = difflib.unified_diff(old, new,
-    # delta = difflib.unified_diff(["heute\n", "schon\n"], ["heute\n", "noch\n"],
-                                      fromfile=oldname, tofile=newname)
+    delta = difflib.unified_diff(
+        old,
+        new,
+        # delta = difflib.unified_diff(["heute\n", "schon\n"], ["heute\n", "noch\n"],
+        fromfile=oldname,
+        tofile=newname,
+    )
     for line in delta:
         is_different = True
-        print(line, end=' ')
+        print(line, end=" ")
     if not is_different:
         print(oldname)
         print(newname)
@@ -1660,9 +1649,9 @@ def diff(infile='-', outfile='-', txt2code=True, **keyw):
 #
 # Does not work with `eval`, as code is not just one expression. ::
 
+
 def execute(infile="-", txt2code=True, **keyw):
-    """Execute the input file. Convert first, if it is a text source.
-    """
+    """Execute the input file. Convert first, if it is a text source."""
 
     data = open(infile)
     if txt2code:
@@ -1687,6 +1676,7 @@ def execute(infile="-", txt2code=True, **keyw):
 #
 # ::
 
+
 def main(args=sys.argv[1:], **defaults):
     """%prog [options] INFILE [OUTFILE]
 
@@ -1696,12 +1686,12 @@ def main(args=sys.argv[1:], **defaults):
     The special filename '-' stands for standard in and output.
     """
 
-# Parse and complete the options::
+    # Parse and complete the options::
 
     options = PylitOptions()(args, **defaults)
     # print "infile", repr(options.infile)
 
-# Special actions with early return::
+    # Special actions with early return::
 
     if options.doctest:
         return run_doctest(**options.as_dict())
@@ -1712,7 +1702,7 @@ def main(args=sys.argv[1:], **defaults):
     if options.execute:
         return execute(**options.as_dict())
 
-# Open in- and output streams::
+    # Open in- and output streams::
 
     try:
         (data, out_stream) = open_streams(**options.as_dict())
@@ -1720,11 +1710,11 @@ def main(args=sys.argv[1:], **defaults):
         print("IOError: %s %s" % (ex.filename, ex.strerror))
         sys.exit(ex.errno)
 
-# Get a converter instance::
+    # Get a converter instance::
 
     converter = get_converter(data, **options.as_dict())
 
-# Convert and write to out_stream::
+    # Convert and write to out_stream::
 
     out_stream.write(str(converter))
 
@@ -1732,27 +1722,24 @@ def main(args=sys.argv[1:], **defaults):
         print("extract written to", out_stream.name)
         out_stream.close()
 
-# If input and output are from files, set the modification time (`mtime`) of
-# the output file to the one of the input file to indicate that the contained
-# information is equal. [#]_ ::
+        # If input and output are from files, set the modification time (`mtime`) of
+        # the output file to the one of the input file to indicate that the contained
+        # information is equal. [#]_ ::
 
         try:
-            os.utime(options.outfile, (os.path.getatime(options.outfile),
-                                       os.path.getmtime(options.infile))
-                    )
+            os.utime(options.outfile, (os.path.getatime(options.outfile), os.path.getmtime(options.infile)))
         except OSError:
             pass
 
     ## print "mtime", os.path.getmtime(options.infile),  options.infile
     ## print "mtime", os.path.getmtime(options.outfile), options.outfile
 
-
-# .. [#] Make sure the corresponding file object (here `out_stream`) is
-#        closed, as otherwise the change will be overwritten when `close` is
-#        called afterwards (either explicitly or at program exit).
-#
-#
-# Rename the infile to a backup copy if ``--replace`` is set::
+    # .. [#] Make sure the corresponding file object (here `out_stream`) is
+    #        closed, as otherwise the change will be overwritten when `close` is
+    #        called afterwards (either explicitly or at program exit).
+    #
+    #
+    # Rename the infile to a backup copy if ``--replace`` is set::
 
     if options.replace:
         os.rename(options.infile, options.infile + "~")
@@ -1760,7 +1747,7 @@ def main(args=sys.argv[1:], **defaults):
 
 # Run main, if called from the command line::
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
 
 

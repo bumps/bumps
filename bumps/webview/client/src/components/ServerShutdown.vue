@@ -19,7 +19,7 @@ onMounted(() => {
 });
 
 props.socket.on('server_shutting_down', () => {
-  modal?.show();  
+  modal?.show();
   shutdownTimer.value = setTimeout(() => {
     window.close();
   }, CLOSE_DELAY);

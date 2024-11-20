@@ -30,7 +30,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
- /* ut_uniform.cpp:   unit test for uniform.hpp.  
+ /* ut_uniform.cpp:   unit test for uniform.hpp.
 
     This is a "sanity test" of u01, uneg11 and u01fixedpt.  We confirm
     that a histogram of few thousand calls to each of the functions
@@ -62,7 +62,7 @@ typename r123::make_unsigned<T>::type U(T x){ return x; }
 
 template <typename T>
 typename r123::make_signed<T>::type S(T x){ return x; }
-        
+
 #define Chk(u, Rng, Ftype) do{                            \
         chk<Ftype, Rng>(#u, #Rng, #Ftype, &u<Ftype, Rng::ctr_type::value_type>); \
     }while(0)
@@ -95,7 +95,7 @@ void chk(const std::string& fname, const std::string& rngname, const std::string
     // prime number seems less likely to tickle the rounding-related
     // corner cases, which is aruably both good and bad.
     const int NBINS=26;
-    
+
     int hist[NBINS] = {};
     for(int i=0; i<1000; ++i){
         c = c.incr();
@@ -115,7 +115,7 @@ void chk(const std::string& fname, const std::string& rngname, const std::string
     }
     if(checking){
         if( oss.str() != refmap[key] ){
-            printf("MISMATCH:  %s:\n\tcomputed histogram=%s\n\treference histogram=%s\n", 
+            printf("MISMATCH:  %s:\n\tcomputed histogram=%s\n\treference histogram=%s\n",
                    key.c_str(),
                    oss.str().c_str(),
                    refmap[key].c_str());
@@ -148,7 +148,7 @@ int main(int argc, char **argv){
     Chk(uneg11, Threefry4x64, float);
     Chk(uneg11, Threefry4x64, double);
     Chk(uneg11, Threefry4x64, long double);
-    
+
     Chk(u01fixedpt, Threefry4x32, float);
     Chk(u01fixedpt, Threefry4x32, double);
     Chk(u01fixedpt, Threefry4x32, long double);

@@ -78,7 +78,7 @@ __m128i m128i_from_string(const std::string& s) {
 
 std::string m128i_to_string(__m128i m) {
     char hex[M128_STR_SIZE];
-    
+
     m128i_to_charbuf(m, hex);
     return std::string(hex);
 }

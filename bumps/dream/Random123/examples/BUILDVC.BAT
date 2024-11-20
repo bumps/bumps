@@ -2,7 +2,7 @@
 :: amd64 (if you want to do a 64bit compile on a 64bit machine),
 :: or x86_amd64 (if you want to compile for amd64 on an x86)
 :: With no argument, will default to amd64 on Win64 and x86 otherwise.
-:: Call this with the argument "run" if you want to only run the 
+:: Call this with the argument "run" if you want to only run the
 :: previously compiled executables.
 @echo off
 setlocal
@@ -45,6 +45,6 @@ set BUILDFILES= ( kat_c.c kat_cpp.cpp pi_aes.cpp pi_capi.c pi_cppapi.cpp pi_micr
 FOR %%A IN %BUILDFILES% DO (
 	%CC% %CFLAGS% %%A
 	if errorlevel 1 exit /b 1
-	%%~nA 
+	%%~nA
 	if errorlevel 1 exit /b 1 )
 endlocal

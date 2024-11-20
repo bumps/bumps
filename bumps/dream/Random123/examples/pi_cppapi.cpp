@@ -39,7 +39,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // inscribed circle.
 
 // This version uses the C++ API to Threefry4x64, and the
-// ReinterpretCtr template to get 32-bit values.  
+// ReinterpretCtr template to get 32-bit values.
 
 // Note - by using ReinterpretCtr, the result depends on the
 // endianness of the hardware it runs on even though the underlying

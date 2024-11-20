@@ -59,7 +59,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace r123{
 
 template <typename Ftype, typename IAtype>
-static inline auto ua01(IAtype in) -> 
+static inline auto ua01(IAtype in) ->
     std::array<Ftype, IAtype::static_size>
 {
     std::array<Ftype, IAtype::static_size> ret;
@@ -71,7 +71,7 @@ static inline auto ua01(IAtype in) ->
 }
 
 template <typename Ftype, typename IAtype>
-static inline auto uaneg11(IAtype in) -> 
+static inline auto uaneg11(IAtype in) ->
     std::array<Ftype, IAtype::static_size>
 {
     std::array<Ftype, IAtype::static_size> ret;
@@ -83,7 +83,7 @@ static inline auto uaneg11(IAtype in) ->
 }
 
 template <typename Ftype, typename IAtype>
-static inline auto ua01fixedpt(IAtype in) -> 
+static inline auto ua01fixedpt(IAtype in) ->
     std::array<Ftype, IAtype::static_size>
 {
     std::array<Ftype, IAtype::static_size> ret;
@@ -98,4 +98,3 @@ static inline auto ua01fixedpt(IAtype in) ->
 } // namespace r123
 
 #endif
-
