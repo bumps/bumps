@@ -51,33 +51,34 @@ Summary of problem attributes::
 
 __all__ = ["Fitness", "FitProblem", "load_problem"]
 
-from dataclasses import dataclass
 import logging
 import os
 import sys
 import traceback
 import warnings
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, List, Literal, Optional, Protocol, Sequence, Tuple, Union, runtime_checkable
 
 import numpy as np
 from numpy import inf, isnan, nan
 
 from . import parameter, util
-from .parameter import to_dict, Parameter, Variable, tag_all
 from .formatnum import format_uncertainty
+from .parameter import Parameter, Variable, tag_all, to_dict
 
 
 # Abstract base class:
 # can use "isinstance" to check if a class implements the protocol
-@util.runtime_checkable
+@runtime_checkable
 @dataclass(init=False)
-class Fitness(util.Protocol):
+class Fitness(Protocol):
     """
     Manage parameters, data, and theory function evaluation.
 
     See :ref:`fitness` for a detailed explanation.
     """
 
-    def parameters(self) -> util.List[Parameter]:
+    def parameters(self) -> List[Parameter]:
         """
         return the parameters in the model.
 
@@ -149,7 +150,7 @@ def no_constraints() -> float:
     return 0
 
 
-def fit_parameters(fitness: Fitness) -> util.List[Parameter]:
+def fit_parameters(fitness: Fitness) -> List[Parameter]:
     """
     Return a list of fittable (non-fixed) parameters in the model
     """
@@ -185,7 +186,7 @@ def chisq_str(fitness: Fitness) -> str:
     return text
 
 
-def show_parameters(fitness: Fitness, subs: util.Optional[util.Dict[util.Any, Parameter]] = None):
+def show_parameters(fitness: Fitness, subs: Optional[Dict[Any, Parameter]] = None):
     """Print the available parameters to the console as a tree."""
     print(parameter.format(fitness.parameters(), freevars=subs))
     print("[chisq=%s, nllf=%g]" % (chisq_str(fitness), fitness.nllf()))
@@ -234,30 +235,30 @@ class FitProblem:
     linear.
     """
 
-    name: util.Optional[str]
-    models: util.List[Fitness]
-    freevars: util.Optional[parameter.FreeVariables]
-    weights: util.Union[util.List[float], util.Literal[None]]
-    constraints: util.Optional[util.Sequence[parameter.Constraint]]
-    penalty_nllf: util.Union[float, util.Literal["inf"]]
+    name: Optional[str]
+    models: List[Fitness]
+    freevars: Optional[parameter.FreeVariables]
+    weights: Union[List[float], Literal[None]]
+    constraints: Optional[Sequence[parameter.Constraint]]
+    penalty_nllf: Union[float, Literal["inf"]]
 
-    _constraints_function: util.Callable[..., float]
-    _models: util.List[Fitness]
-    _parameters: util.List[Parameter]
-    _parameters_by_id: util.Dict[str, Parameter]
+    _constraints_function: Callable[..., float]
+    _models: List[Fitness]
+    _parameters: List[Parameter]
+    _parameters_by_id: Dict[str, Parameter]
     _dof: float = np.nan  # not a schema field, and is not used in __init__
 
-    # _all_constraints: util.List[util.Union[Parameter, Expression]]
+    # _all_constraints: List[Union[Parameter, Expression]]
 
     def __init__(
         self,
-        models: util.Union[Fitness, util.List[Fitness]],
+        models: Union[Fitness, List[Fitness]],
         weights=None,
         name=None,
         constraints=None,
         penalty_nllf="inf",
         freevars=None,
-        soft_limit: util.Optional[float] = None,  # TODO: deprecate,
+        soft_limit: Optional[float] = None,  # TODO: deprecate,
         auto_tag=False,
     ):
         if not isinstance(models, (list, tuple)):
@@ -444,7 +445,7 @@ class FitProblem:
             return inf
         return cost
 
-    def parameter_nllf(self) -> util.Tuple[float, util.List[str]]:
+    def parameter_nllf(self) -> Tuple[float, List[str]]:
         """
         Returns negative log likelihood of seeing parameters p.
         """
@@ -489,7 +490,7 @@ class FitProblem:
 
         return text
 
-    def _nllf_components(self) -> util.Tuple[float, float, float, util.List[str]]:
+    def _nllf_components(self) -> Tuple[float, float, float, List[str]]:
         try:
             pparameter, failing_parameter_constraints = self.parameter_nllf()
             if isnan(pparameter):
@@ -527,7 +528,7 @@ class FitProblem:
         """Return a table of current parameter values with range bars."""
         return parameter.summarize(self._parameters)
 
-    def labels(self) -> util.List[str]:
+    def labels(self) -> List[str]:
         """Return the list of labels, one per fitted parameter."""
         return [p.name for p in self._parameters]
 
@@ -629,7 +630,7 @@ class FitProblem:
         """Return cost function for all data sets"""
         return sum(w**2 * f.nllf() for w, f in zip(self.weights, self.models))
 
-    def constraints_nllf(self) -> util.Tuple[float, util.List[str]]:
+    def constraints_nllf(self) -> Tuple[float, List[str]]:
         """Return the cost function for all constraints"""
         failing = []
         nllf = 0.0

@@ -4,29 +4,30 @@ Miscellaneous utility functions.
 
 __all__ = ["kbhit", "profile", "pushdir", "push_seed", "redirect_console"]
 
-import sys
 import os
+import sys
 import types
-
+from dataclasses import dataclass, field, is_dataclass
 from io import StringIO
-
-import numpy as np
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    List,
+    Optional,
+    Sequence,
+    Type,
+    TypeVar,
+)
 
 # **DEPRECATED** we can import erf directly from scipy.special.erf
 # so there is no longer a need for bumps.util.erf.
-
 # this can be substituted with pydantic dataclass for schema-building...
-try:
-    from typing import Literal, Protocol, runtime_checkable
-except ImportError:
-    from typing_extensions import Literal, Protocol, runtime_checkable
-from typing import Iterable, Optional, Type, TypeVar, Any, Union, Dict, Callable, Tuple, List, Sequence, TYPE_CHECKING
+import numpy as np
 
 USE_PYDANTIC = os.environ.get("BUMPS_USE_PYDANTIC", "False") == "True"
 if TYPE_CHECKING:
     from numpy.typing import NDArray
-
-from dataclasses import dataclass, field, is_dataclass
 
 
 def field_desc(description: str) -> Any:
@@ -48,6 +49,7 @@ def schema_config(
     """
 
     def add_schema_config(cls: Type[T]) -> Type[T]:
+        fqn = f"{cls.__module__}.{cls.__qualname__}"
         if include is not None and exclude is not None:
             raise ValueError(f"{fqn} schema: include array and exclude array are mutually exclusive - only define one")
 

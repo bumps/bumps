@@ -12,20 +12,18 @@ parts of the model, or different models.
 """
 
 # __all__ = [ 'Parameter']
-import operator
 import builtins
-from dataclasses import dataclass, field
-from functools import reduce
+import operator
+import uuid
 import warnings
 from copy import copy
-import uuid
+from dataclasses import dataclass, field
 from enum import Enum
-
-from typing import Optional, Any, Union, Dict, Callable, Tuple, List, Sequence
-from .util import Literal
+from functools import reduce
+from typing import Any, Callable, Dict, List, Literal, Optional, Sequence, Tuple, Union
 
 import numpy as np
-from numpy import inf, isinf, isfinite
+from numpy import inf, isfinite, isinf
 
 from . import bounds as mbounds
 from . import pmath
@@ -65,6 +63,7 @@ def to_dict(p):
     elif False and callable(p):
         # TODO: consider including functions and arbitrary values
         import base64
+
         import dill
 
         encoding = base64.encodebytes(dill.dumps(p)).decode("ascii")
