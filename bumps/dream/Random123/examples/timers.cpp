@@ -73,7 +73,7 @@ int main(int argc, char **argv){
         timer<AESNI1xm128i >();
     }else{
         cout << "Skipping Bijections that use AES-NI instructions that are not available on this platform\n";
-    }
+    } 
     }
 #else
     cout << "This binary is not compiled with AES-NI support.  Skipping the ARS bijections\n";
@@ -133,7 +133,7 @@ int main(int argc, char **argv){
     return 0;
 }
 
-
+    
 namespace{
 
 // To prevent the compiler from noticing that the result of the
@@ -142,11 +142,11 @@ namespace{
 // the ctr_types are sufficiently container-like that we can just
 // loop over the contents, doing += on each value_type
 template <typename CtrType>
-CtrType& operator+=(CtrType& lhs, CtrType rhs){
+CtrType& operator+=(CtrType& lhs, CtrType rhs){ 
     typename CtrType::const_iterator rp = rhs.cbegin();
     for(typename CtrType::iterator lp=lhs.begin(); lp!=lhs.end(); ++lp)
             *lp ^= *rp++;
-        return lhs;
+        return lhs; 
 }
 
 // We've accumulated it, but we still have to use it.  A non-zero
@@ -165,7 +165,7 @@ bool nz(const CtrType v){
 // to a fancy compiler-specific builtin type, and you can only overload
 // += on classes and enums.  So instead we specialize += on the
 // array instead of on the value_type:
-template<>
+template<> 
 r123array1xm128i& operator+=(r123array1xm128i& lhs, r123array1xm128i rhs){
     typedef r123array1xm128i CtrType;
     CtrType::const_iterator rp = rhs.cbegin();
@@ -190,14 +190,14 @@ void timer(){
         std::istringstream iss((std::string(envp)));
         iss >> c0;
     }
-
+     
     typename B::ukey_type uk = {{}};
     if( (envp = getenv("TIMERS_KEY"))){
         std::istringstream iss((std::string(envp)));
         iss >> uk;
     }
     typename B::key_type k(uk);
-
+   
     ctr_type c = c0;
     double clk;
     ::timer(&clk);
@@ -228,9 +228,11 @@ void timer(){
         }
     }
     cout << " (best of 5) " << bestN << " bijections in " << bestdur << " sec. rate: " << bestrate*1.e-9 << "GB/s  cpB: " << clockspeed/bestrate << endl;
-
+        
     if(!nz(sum))
         cout << "Don't let the compiler optimize it all away... sum==0.  That's a surprise!\n";
 }
 
 } // namespace <anonymous>
+
+

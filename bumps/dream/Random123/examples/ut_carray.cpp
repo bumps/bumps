@@ -62,7 +62,7 @@ template<>
 inline r123m128i fff<r123m128i>(){ r123m128i M; M.m=_mm_set_epi32(~0, ~0, ~0, ~0); return M;}
 
 template<>
-inline R123_ULONG_LONG ull<r123m128i>(const r123m128i& t){
+inline R123_ULONG_LONG ull<r123m128i>(const r123m128i& t){ 
     return _mm_extract_lo64(t.m);
 }
 
@@ -199,7 +199,7 @@ void doit(size_t N, size_t W){
     // == and !=
     assert(iota == uninitialized);
     assert(!(iota != uninitialized));
-
+    
     for(size_t i=0; i<N; ++i){
         atype notequal = iota;
         ++notequal[i];
@@ -213,7 +213,7 @@ void doit(size_t N, size_t W){
     // in llvm.  However, if it shows up in other contexts, some
     // kind of #ifndef might be appropriate.  N.B.  There's another
     // exception test below and one in ut_M128.cpp
-    // check that at throws
+    // check that at throws 
     bool caught = false;
     try{
         iota.at(N);
@@ -255,7 +255,7 @@ void doit(size_t N, size_t W){
         }
     }
 
-    // incr
+    // incr 
 
 #ifndef __PGI
     atype a = {{}};
@@ -314,3 +314,4 @@ int main(int, char **){
     doit<r123array16x8>(16, 8);
     return 0;
 }
+

@@ -100,7 +100,7 @@ void do_test(kat_instance* ti){
     // MicroURNG:  throws if the top 32 bits of the high word of ctr
     // are non-zero.
     typedef typename GEN::ctr_type::value_type value_type;
-
+    
     value_type hibits = data.ctr[data.ctr.size()-1]>>( std::numeric_limits<value_type>::digits - 32 );
     try{
         r123::MicroURNG<GEN> urng(data.ctr, data.ukey);

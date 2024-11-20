@@ -72,7 +72,7 @@ typename r123::make_unsigned<T>::type U(T x){ return x; }
 
 template <typename T>
 typename r123::make_signed<T>::type S(T x){ return x; }
-
+        
 bool checking = true;
 int nfail = 0;
 int nuntested = 0;
@@ -114,62 +114,62 @@ int notfound = 0;
 // ChkSignInvariance verifies that.
 template <typename IType>
 void ChkSignInvariance(const std::string& s, IType i){
-    if( u01<float>(S(i)) != u01<float>(U(i)) ){
-        printf("INVARIANT FAILURE:  u01<float>(Signed(x)) != u01<float>(Unsigned(x)) x=%s\n", s.c_str());
-        nfail++;
-    }
-    if( uneg11<float>(S(i)) != uneg11<float>(U(i)) ){
+    if( u01<float>(S(i)) != u01<float>(U(i)) ){ 
+        printf("INVARIANT FAILURE:  u01<float>(Signed(x)) != u01<float>(Unsigned(x)) x=%s\n", s.c_str()); 
+        nfail++;                                                        
+    }                                                                   
+    if( uneg11<float>(S(i)) != uneg11<float>(U(i)) ){                   
         printf("INVARIANT FAILURE:  uneg11<float>(Signed(x)) != uneg11<float>(Unsigned(x)) x=%s\n", s.c_str());
-        nfail++;
-    }
-    if( u01fixedpt<float>(S(i)) != u01fixedpt<float>(U(i)) ){
-        printf("INVARIANT FAILURE:  u01<float>(Signed(x)) != u01<float>(Unsigned(x)) x=%s\n", s.c_str());
-        nfail++;
-    }
+        nfail++;                                                        
+    }                                                                   
+    if( u01fixedpt<float>(S(i)) != u01fixedpt<float>(U(i)) ){           
+        printf("INVARIANT FAILURE:  u01<float>(Signed(x)) != u01<float>(Unsigned(x)) x=%s\n", s.c_str()); 
+        nfail++;                                                        
+    }                                                                   
 
-    if( u01<double>(S(i)) != u01<double>(U(i)) ){
-        printf("INVARIANT FAILURE:  u01<double>(Signed(x)) != u01<double>(Unsigned(x)) x=%s\n", s.c_str());
-        nfail++;
-    }
-    if( uneg11<double>(S(i)) != uneg11<double>(U(i)) ){
+    if( u01<double>(S(i)) != u01<double>(U(i)) ){ 
+        printf("INVARIANT FAILURE:  u01<double>(Signed(x)) != u01<double>(Unsigned(x)) x=%s\n", s.c_str()); 
+        nfail++;                                                        
+    }                                                                   
+    if( uneg11<double>(S(i)) != uneg11<double>(U(i)) ){                   
         printf("INVARIANT FAILURE:  uneg11<double>(Signed(x)) != uneg11<double>(Unsigned(x)) x=%s\n", s.c_str());
-        nfail++;
-    }
-    if( u01fixedpt<double>(S(i)) != u01fixedpt<double>(U(i)) ){
-        printf("INVARIANT FAILURE:  u01<double>(Signed(x)) != u01<double>(Unsigned(x)) x=%s\n", s.c_str());
-        nfail++;
-    }
+        nfail++;                                                        
+    }                                                                   
+    if( u01fixedpt<double>(S(i)) != u01fixedpt<double>(U(i)) ){           
+        printf("INVARIANT FAILURE:  u01<double>(Signed(x)) != u01<double>(Unsigned(x)) x=%s\n", s.c_str()); 
+        nfail++;                                                        
+    }                                                                   
 
-    if( u01<long double>(S(i)) != u01<long double>(U(i)) ){
-        printf("INVARIANT FAILURE:  u01<long double>(Signed(x)) != u01<long double>(Unsigned(x)) x=%s\n", s.c_str());
-        nfail++;
-    }
-    if( uneg11<long double>(S(i)) != uneg11<long double>(U(i)) ){
+    if( u01<long double>(S(i)) != u01<long double>(U(i)) ){ 
+        printf("INVARIANT FAILURE:  u01<long double>(Signed(x)) != u01<long double>(Unsigned(x)) x=%s\n", s.c_str()); 
+        nfail++;                                                        
+    }                                                                   
+    if( uneg11<long double>(S(i)) != uneg11<long double>(U(i)) ){                   
         printf("INVARIANT FAILURE:  uneg11<long double>(Signed(x)) != uneg11<long double>(Unsigned(x)) x=%s\n", s.c_str());
-        nfail++;
-    }
-    if( u01fixedpt<long double>(S(i)) != u01fixedpt<long double>(U(i)) ){
-        printf("INVARIANT FAILURE:  u01<long double>(Signed(x)) != u01<long double>(Unsigned(x)) x=%s\n", s.c_str());
-        nfail++;
-    }
+        nfail++;                                                        
+    }                                                                   
+    if( u01fixedpt<long double>(S(i)) != u01fixedpt<long double>(U(i)) ){           
+        printf("INVARIANT FAILURE:  u01<long double>(Signed(x)) != u01<long double>(Unsigned(x)) x=%s\n", s.c_str()); 
+        nfail++;                                                        
+    }                                                                   
 }
 
 template <typename T>
 void DoOne(const std::string s, const char* astr, volatile T x){
     std::string ss = s + " a=" + astr;
     volatile long double ldx = x;
-    if(checking){
-        if( katmap.find(ss) == katmap.end() ){
+    if(checking){                                 
+        if( katmap.find(ss) == katmap.end() ){   
             printf("NOT FOUND: katmap[%s]\n", ss.c_str());
-            notfound++;
-        }else{
-            if(ldx!=katmap[ss]){
-                printf("MISMATCH:  %s: computed=%.21Lg reference=%.21Lg\n", ss.c_str(), ldx, katmap[ss]);
-                nfail++;
-            }
-        }
-    }else{
-        printf("insert(\"%s\", %#.21LgL);\n", ss.c_str(), ldx);
+            notfound++;                           
+        }else{                                    
+            if(ldx!=katmap[ss]){                  
+                printf("MISMATCH:  %s: computed=%.21Lg reference=%.21Lg\n", ss.c_str(), ldx, katmap[ss]); 
+                nfail++;                                                
+            }                                                           
+        }                                                               
+    }else{                                                              
+        printf("insert(\"%s\", %#.21LgL);\n", ss.c_str(), ldx);     
     }
 }
 
@@ -189,13 +189,13 @@ void DO3264(int a){
 
     DO( minu32 + uint32_t(a), astr );
     DO( minu64 + uint64_t(a), astr );
-    DO( mini32 + int32_t(a), astr );
-    DO( mini64 + int64_t(a), astr );
+    DO( mini32 + int32_t(a), astr ); 
+    DO( mini64 + int64_t(a), astr ); 
 
     DO( maxu32 - uint32_t(a), astr );
     DO( maxu64 - uint64_t(a), astr );
-    DO( maxi32 - int32_t(a), astr );
-    DO( maxi64 - int64_t(a), astr );
+    DO( maxi32 - int32_t(a), astr ); 
+    DO( maxi64 - int64_t(a), astr ); 
 }
 
 int main(int argc, char **argv){
@@ -215,7 +215,7 @@ int main(int argc, char **argv){
                "*/\n", argv[0], argv[1], argv[0], argv[0]);
     }
     fill_katmap();
-
+    
 
     DO3264(0);
     DO3264(1);
@@ -269,7 +269,7 @@ int main(int argc, char **argv){
                argv[0], notfound);
     }
     if(nuntested){
-        printf("// %s: WARNING:  %d tests were not performed because the floating point rep does not match the IEEE format used to compute reference values\n",
+        printf("// %s: WARNING:  %d tests were not performed because the floating point rep does not match the IEEE format used to compute reference values\n", 
                argv[0], nuntested);
     }
     if(nfail){

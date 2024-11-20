@@ -64,7 +64,7 @@ namespace r123{
 \code
        typedef ?someCBRNG? RNG;
        RNG::ctr_type c = ...; // under application control
-       RNG::key_type k = ...; //
+       RNG::key_type k = ...; // 
        std::normal_distribution<float> nd;
        MicroURNG<RNG> urng(c, k);
        for(???){
@@ -112,7 +112,7 @@ public:
     }
 
     // _Min and _Max work around a bug in the library shipped with MacOS Xcode 4.5.2.
-    // See the commment in conventional/Engine.hpp.
+    // See the commment in conventional/Engine.hpp.  
     const static result_type _Min = 0;
     const static result_type _Max = ~((result_type)0);
 

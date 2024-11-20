@@ -31,8 +31,8 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
                onmouseout="return searchBox.OnSearchSelectHide()"
                alt=""/>
           <input type="text" id="MSearchField" value="Search" accesskey="S"
-               onfocus="searchBox.OnSearchFieldFocus(true)"
-               onblur="searchBox.OnSearchFieldFocus(false)"
+               onfocus="searchBox.OnSearchFieldFocus(true)" 
+               onblur="searchBox.OnSearchFieldFocus(false)" 
                onkeyup="searchBox.OnSearchFieldChange(event)"/>
           </span><span class="right">
             <a id="MSearchClose" href="javascript:searchBox.CloseResultsWindow()"><img id="MSearchCloseImg" border="0" src="search/close.png" alt=""/></a>
@@ -86,10 +86,10 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00032"></a>00032 <span class="preprocessor">#ifndef __r123_gslmicrorng_dot_h__</span>
 <a name="l00033"></a>00033 <span class="preprocessor"></span><span class="preprocessor">#define __r123_gslmicrorng_dot_h__</span>
 <a name="l00034"></a>00034 <span class="preprocessor"></span>
-<a name="l00035"></a>00035
+<a name="l00035"></a>00035 
 <a name="l00036"></a>00036 <span class="preprocessor">#include &lt;gsl/gsl_rng.h&gt;</span>
 <a name="l00037"></a>00037 <span class="preprocessor">#include &lt;string.h&gt;</span>
-<a name="l00038"></a>00038
+<a name="l00038"></a>00038 
 <a name="l00079"></a><a class="code" href="gsl__microrng_8h.html#a21c7bb64a536a1704c6dc96856b78297">00079</a> <span class="preprocessor">#define GSL_MICRORNG(NAME, CBRNGNAME)                                   \</span>
 <a name="l00080"></a>00080 <span class="preprocessor">const gsl_rng_type *gsl_rng_##NAME;                                     \</span>
 <a name="l00081"></a>00081 <span class="preprocessor">                                                                        \</span>
@@ -146,7 +146,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00132"></a>00132 }                                                                       \
 <a name="l00133"></a>00133                                                                         \
 <a name="l00134"></a>00134 const gsl_rng_type *gsl_rng_##NAME = &amp;NAME##_type
-<a name="l00135"></a>00135
+<a name="l00135"></a>00135 
 <a name="l00136"></a>00136 <span class="preprocessor">#endif</span>
 </pre></div></div>
 </div>
@@ -159,7 +159,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 
 <!-- iframe showing the search results (closed by default) -->
 <div id="MSearchResultsWindow">
-<iframe src="" frameborder="0"
+<iframe src="" frameborder="0" 
         name="MSearchResults" id="MSearchResults">
 </iframe>
 </div>

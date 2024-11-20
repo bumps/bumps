@@ -42,7 +42,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
    and can be invoked a limited number of times between calls to NAME_reset.
 
    When the underlying CBRNG's \c ctr_t is an \ref arrayNxW "r123arrayNxW",
-   and the gsl_rng_NAME may called up to \c N*2^32 times
+   and the gsl_rng_NAME may called up to \c N*2^32 times 
    between calls to \c NAME_reset.
 
    \c NAME_reset takes a gsl_rng_NAME type, a counter and a key as arguments.
@@ -73,7 +73,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 	}
    }
    @endcode
-
+   
 */
 
 #define GSL_MICRORNG(NAME, CBRNGNAME)                                   \

@@ -49,7 +49,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
    int main(int argc, char **argv){
        gsl_rng *r = gsl_rng_alloc(gsl_rng_cbrng);
-       ... use r as you would use any other gsl_rng ...
+       ... use r as you would use any other gsl_rng ...   
     }
     @endcode
 
@@ -62,7 +62,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     coded to work with GSL random number generators, and that wish
     to use the RNGs in the Random123 library.
 
- */
+ */ 
 
 #define GSL_CBRNG(NAME, CBRNGNAME)                                      \
 const gsl_rng_type *gsl_rng_##NAME;                                     \
@@ -125,3 +125,4 @@ static const gsl_rng_type NAME##_type = {                               \
 const gsl_rng_type *gsl_rng_##NAME = &NAME##_type
 
 #endif
+

@@ -31,8 +31,8 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
                onmouseout="return searchBox.OnSearchSelectHide()"
                alt=""/>
           <input type="text" id="MSearchField" value="Search" accesskey="S"
-               onfocus="searchBox.OnSearchFieldFocus(true)"
-               onblur="searchBox.OnSearchFieldFocus(false)"
+               onfocus="searchBox.OnSearchFieldFocus(true)" 
+               onblur="searchBox.OnSearchFieldFocus(false)" 
                onkeyup="searchBox.OnSearchFieldChange(event)"/>
           </span><span class="right">
             <a id="MSearchClose" href="javascript:searchBox.CloseResultsWindow()"><img id="MSearchCloseImg" border="0" src="search/close.png" alt=""/></a>
@@ -76,8 +76,8 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
          CXX11_UNRESTRICTED_UNIONS
          CXX11_EXPLICIT_CONVERSIONS
          CXX11_LONG_LONG
-         CXX11
-
+         CXX11 
+   
          X86INTRIN_H
          IA32INTRIN_H
          XMMINTRIN_H
@@ -94,7 +94,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
          MULHILO64_C99
 
          U01_DOUBLE
-
+	 
 </pre></div><p> Most have obvious meanings. Some non-obvious ones:</p>
 <p>AES_NI and AES_OPENSSL are not mutually exclusive. You can have one, both or neither.</p>
 <p>GNU_UINT128 says that it's safe to use __uint128_t, but it does not require its use. In particular, it should be used in mulhilo&lt;uint64_t&gt; only if MULHILO64_ASM is unset.</p>
@@ -153,7 +153,7 @@ R123_BUILTIN_EXPECT(expr,likely_value) - expands to something with the semantics
 
 <!-- iframe showing the search results (closed by default) -->
 <div id="MSearchResultsWindow">
-<iframe src="" frameborder="0"
+<iframe src="" frameborder="0" 
         name="MSearchResults" id="MSearchResults">
 </iframe>
 </div>

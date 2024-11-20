@@ -62,7 +62,7 @@ namespace r123{
   For example, a MicroURNG allows one to use C++0x "Random Number
   Distributions"  without giving up control over the counters
   and keys.
-*/
+*/ 
 
 template<typename CBRNG>
 struct Engine {
@@ -85,7 +85,7 @@ protected:
         if( elem != 0 ) {
             v = b(c, key);
 	}
-    }
+    }        
 public:
     explicit Engine() : b(), c(), elem() {
 	ukey_type x = {{}};
@@ -101,7 +101,7 @@ public:
     // overload resolution unless the type qualifies as a SeedSeq.
     // How that is determined is unspecified, except that "as a
     // minimum a type shall not qualify as a SeedSeq if it is
-    // implicitly convertible to a result_type."
+    // implicitly convertible to a result_type."  
     //
     // First, we make sure that even the non-const copy constructor
     // works as expected.  In addition, if we've got C++0x
@@ -136,7 +136,7 @@ public:
 #if R123_USE_CXX11_TYPE_TRAITS
                     , typename std::enable_if<!std::is_convertible<SeedSeq, result_type>::value>::type* =0
 #endif
-              ){
+              ){ 
         *this = Engine(s);
     }
     void seed(){
@@ -200,7 +200,7 @@ public:
         c.incr(skip);
         fix_invariant();
     }
-
+         
     //--------------------------
     // Some bonus methods, not required for a Random Number
     // Engine
@@ -211,10 +211,10 @@ public:
     explicit Engine(ukey_type &uk) : key(uk), ukey(uk), c(), elem(){}
     void seed(const ukey_type& uk){
         *this = Engine(uk);
-    }
+    }        
     void seed(ukey_type& uk){
         *this = Engine(uk);
-    }
+    }        
 
     // Forward the e(counter) to the CBRNG we are templated
     // on, using the current value of the key.

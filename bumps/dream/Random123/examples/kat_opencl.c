@@ -36,7 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // that pre-processes foo.ocl into foo.i, containing
 // a definition like:
 //  const char opencl_src[] = "preprocessed text of foo.ocl"
-// Thus, with gencl, this file says
+// Thus, with gencl, this file says 
 //    #include <foo.i>
 // and the binary obtained by compiling it
 // is fully "baked".  Runtime behavior doesn't depend
@@ -75,9 +75,9 @@ void host_execute_tests(kat_instance *tests, size_t ntests){
 #if USE_GENCL
     infop = opencl_init(NULL, opencl_src, "");
 #else
-    infop = opencl_init(NULL, "#include <kat_dev_execute.h>",
-                        " -I" SRCDIR
-                        " -I" SRCDIR "/../include "
+    infop = opencl_init(NULL, "#include <kat_dev_execute.h>", 
+                        " -I" SRCDIR 
+                        " -I" SRCDIR "/../include " 
                         " -DKAT_KERNEL=__kernel "
                         " -DKAT_GLOBAL=__global "
                         " -DKAT_UINT=uint" );

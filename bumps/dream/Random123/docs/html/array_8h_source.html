@@ -31,8 +31,8 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
                onmouseout="return searchBox.OnSearchSelectHide()"
                alt=""/>
           <input type="text" id="MSearchField" value="Search" accesskey="S"
-               onfocus="searchBox.OnSearchFieldFocus(true)"
-               onblur="searchBox.OnSearchFieldFocus(false)"
+               onfocus="searchBox.OnSearchFieldFocus(true)" 
+               onblur="searchBox.OnSearchFieldFocus(false)" 
                onkeyup="searchBox.OnSearchFieldChange(event)"/>
           </span><span class="right">
             <a id="MSearchClose" href="javascript:searchBox.CloseResultsWindow()"><img id="MSearchCloseImg" border="0" src="search/close.png" alt=""/></a>
@@ -87,7 +87,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00033"></a>00033 <span class="preprocessor"></span><span class="preprocessor">#define _r123array_dot_h__</span>
 <a name="l00034"></a>00034 <span class="preprocessor"></span><span class="preprocessor">#include &quot;<a class="code" href="compilerfeatures_8h.html">features/compilerfeatures.h</a>&quot;</span>
 <a name="l00035"></a>00035 <span class="preprocessor">#include &quot;<a class="code" href="sse_8h.html">features/sse.h</a>&quot;</span>
-<a name="l00036"></a>00036
+<a name="l00036"></a>00036 
 <a name="l00037"></a>00037 <span class="preprocessor">#ifndef __cplusplus</span>
 <a name="l00038"></a>00038 <span class="preprocessor"></span><span class="preprocessor">#define CXXMETHODS(_N, W, T)</span>
 <a name="l00039"></a>00039 <span class="preprocessor"></span><span class="preprocessor">#define CXXOVERLOADS(_N, W, T)</span>
@@ -99,7 +99,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00045"></a>00045 <span class="preprocessor">#include &lt;iterator&gt;</span>
 <a name="l00046"></a>00046 <span class="preprocessor">#include &lt;limits&gt;</span>
 <a name="l00047"></a>00047 <span class="preprocessor">#include &lt;iostream&gt;</span>
-<a name="l00048"></a>00048
+<a name="l00048"></a>00048 
 <a name="l00068"></a>00068 <span class="keyword">template</span> &lt;<span class="keyword">typename</span> value_type&gt;
 <a name="l00069"></a>00069 <span class="keyword">inline</span> R123_CUDA_DEVICE value_type <a class="code" href="sse_8h.html#a99c42d1da8da3a4a273556a7817b5c1f">assemble_from_u32</a>(uint32_t *p32){
 <a name="l00070"></a>00070     value_type v=0;
@@ -107,7 +107,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00072"></a>00072         v |= ((value_type)(*p32++)) &lt;&lt; (32*i);
 <a name="l00073"></a>00073     <span class="keywordflow">return</span> v;
 <a name="l00074"></a>00074 }
-<a name="l00075"></a>00075
+<a name="l00075"></a>00075 
 <a name="l00076"></a>00076 <span class="comment">// Work-alike methods and typedefs modeled on std::array:</span>
 <a name="l00077"></a>00077 <span class="preprocessor">#define CXXMETHODS(_N, W, T)                                            \</span>
 <a name="l00078"></a>00078 <span class="preprocessor">    typedef T value_type;                                               \</span>
@@ -234,8 +234,8 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00199"></a>00199         }                                                               \
 <a name="l00200"></a>00200         return *this;                                                   \
 <a name="l00201"></a>00201     }                                                                   \
-<a name="l00202"></a>00202
-<a name="l00203"></a>00203
+<a name="l00202"></a>00202     
+<a name="l00203"></a>00203                                                                         
 <a name="l00204"></a>00204 <span class="comment">// There are several tricky considerations for the insertion and extraction</span>
 <a name="l00205"></a>00205 <span class="comment">// operators:</span>
 <a name="l00206"></a>00206 <span class="comment">// - we would like to be able to print r123array16x8 as a sequence of 16 integers,</span>
@@ -244,25 +244,25 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00209"></a>00209 <span class="comment">// - we do not want an int conversion operator in r123m128i because it causes</span>
 <a name="l00210"></a>00210 <span class="comment">//   lots of ambiguity problems with automatic promotions.</span>
 <a name="l00211"></a>00211 <span class="comment">// Solution: r123arrayinsertable and r123arrayextractable</span>
-<a name="l00212"></a>00212
+<a name="l00212"></a>00212 
 <a name="l00213"></a>00213 <span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;
 <a name="l00214"></a>00214 <span class="keyword">struct </span>r123arrayinsertable{
 <a name="l00215"></a>00215     <span class="keyword">const</span> T&amp; v;
-<a name="l00216"></a>00216     r123arrayinsertable(<span class="keyword">const</span> T&amp; t_) : v(t_) {}
+<a name="l00216"></a>00216     r123arrayinsertable(<span class="keyword">const</span> T&amp; t_) : v(t_) {} 
 <a name="l00217"></a>00217     <span class="keyword">friend</span> std::ostream&amp; operator&lt;&lt;(std::ostream&amp; os, const r123arrayinsertable&lt;T&gt;&amp; t){
 <a name="l00218"></a>00218         <span class="keywordflow">return</span> os &lt;&lt; t.v;
 <a name="l00219"></a>00219     }
 <a name="l00220"></a>00220 };
-<a name="l00221"></a>00221
+<a name="l00221"></a>00221 
 <a name="l00222"></a>00222 <span class="keyword">template</span>&lt;&gt;
 <a name="l00223"></a>00223 <span class="keyword">struct </span>r123arrayinsertable&lt;uint8_t&gt;{
 <a name="l00224"></a>00224     <span class="keyword">const</span> uint8_t&amp; v;
-<a name="l00225"></a>00225     r123arrayinsertable(<span class="keyword">const</span> uint8_t&amp; t_) : v(t_) {}
+<a name="l00225"></a>00225     r123arrayinsertable(<span class="keyword">const</span> uint8_t&amp; t_) : v(t_) {} 
 <a name="l00226"></a>00226     <span class="keyword">friend</span> std::ostream&amp; operator&lt;&lt;(std::ostream&amp; os, const r123arrayinsertable&lt;uint8_t&gt;&amp; t){
 <a name="l00227"></a>00227         <span class="keywordflow">return</span> os &lt;&lt; (int)t.v;
 <a name="l00228"></a>00228     }
 <a name="l00229"></a>00229 };
-<a name="l00230"></a>00230
+<a name="l00230"></a>00230 
 <a name="l00231"></a>00231 <span class="keyword">template</span>&lt;<span class="keyword">typename</span> T&gt;
 <a name="l00232"></a>00232 <span class="keyword">struct </span>r123arrayextractable{
 <a name="l00233"></a>00233     T&amp; v;
@@ -271,11 +271,11 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00236"></a>00236         <span class="keywordflow">return</span> is &gt;&gt; t.v;
 <a name="l00237"></a>00237     }
 <a name="l00238"></a>00238 };
-<a name="l00239"></a>00239
+<a name="l00239"></a>00239 
 <a name="l00240"></a>00240 <span class="keyword">template</span>&lt;&gt;
 <a name="l00241"></a>00241 <span class="keyword">struct </span>r123arrayextractable&lt;uint8_t&gt;{
 <a name="l00242"></a>00242     uint8_t&amp; v;
-<a name="l00243"></a>00243     r123arrayextractable(uint8_t&amp; t_) : v(t_) {}
+<a name="l00243"></a>00243     r123arrayextractable(uint8_t&amp; t_) : v(t_) {} 
 <a name="l00244"></a>00244     <span class="keyword">friend</span> std::istream&amp; <a class="code" href="array_8h.html#ace3112deae6709884feac904b1c260a1">operator&gt;&gt;</a>(std::istream&amp; is, r123arrayextractable&lt;uint8_t&gt;&amp; t){
 <a name="l00245"></a>00245         <span class="keywordtype">int</span> i;
 <a name="l00246"></a>00246         is &gt;&gt;  i;
@@ -283,7 +283,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00248"></a>00248         <span class="keywordflow">return</span> is;
 <a name="l00249"></a>00249     }
 <a name="l00250"></a>00250 };
-<a name="l00251"></a>00251
+<a name="l00251"></a>00251 
 <a name="l00252"></a>00252 <span class="preprocessor">#define CXXOVERLOADS(_N, W, T)                                          \</span>
 <a name="l00253"></a>00253 <span class="preprocessor">                                                                        \</span>
 <a name="l00254"></a>00254 <span class="preprocessor">inline std::ostream&amp; operator&lt;&lt;(std::ostream&amp; os, const r123array##_N##x##W&amp; a){   \</span>
@@ -304,9 +304,9 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00269"></a>00269 <span class="preprocessor">namespace r123{                                                        \</span>
 <a name="l00270"></a>00270 <span class="preprocessor"> typedef r123array##_N##x##W Array##_N##x##W;                          \</span>
 <a name="l00271"></a>00271 <span class="preprocessor">}</span>
-<a name="l00272"></a>00272 <span class="preprocessor"></span>
+<a name="l00272"></a>00272 <span class="preprocessor"></span>                                                                        
 <a name="l00273"></a>00273 <span class="preprocessor">#endif </span><span class="comment">/* __cplusplus */</span>
-<a name="l00274"></a>00274
+<a name="l00274"></a>00274 
 <a name="l00275"></a>00275 <span class="comment">/* _r123array_tpl expands to a declaration of struct r123arrayNxW.  </span>
 <a name="l00276"></a>00276 <span class="comment"></span>
 <a name="l00277"></a>00277 <span class="comment">   In C, it&#39;s nothing more than a struct containing an array of N</span>
@@ -319,7 +319,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00284"></a>00284 <span class="comment">   counter and key types.  ArrayNxW, in the r123 namespace is</span>
 <a name="l00285"></a>00285 <span class="comment">   a typedef equivalent to r123arrayNxW.</span>
 <a name="l00286"></a>00286 <span class="comment">*/</span>
-<a name="l00287"></a>00287
+<a name="l00287"></a>00287 
 <a name="l00288"></a>00288 <span class="preprocessor">#define _r123array_tpl(_N, W, T)                   \</span>
 <a name="l00289"></a>00289 <span class="preprocessor">                        \</span>
 <a name="l00290"></a><a class="code" href="array_8h.html#ace3112deae6709884feac904b1c260a1">00290</a> <span class="preprocessor">                            \</span>
@@ -334,13 +334,13 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00301"></a>00301 _r123array_tpl(2, 32, uint32_t)  <span class="comment">/* r123array2x32 */</span>
 <a name="l00302"></a><a class="code" href="array_8h.html#af831caf1f33e800dad6a659523525a78">00302</a> _r123array_tpl(4, 32, uint32_t)  <span class="comment">/* r123array4x32 */</span>
 <a name="l00303"></a>00303 _r123array_tpl(8, 32, uint32_t)  <span class="comment">/* r123array8x32 */</span>
-<a name="l00304"></a>00304
+<a name="l00304"></a>00304 
 <a name="l00305"></a>00305 _r123array_tpl(1, 64, uint64_t)  <span class="comment">/* r123array1x64 */</span>
 <a name="l00306"></a>00306 _r123array_tpl(2, 64, uint64_t)  <span class="comment">/* r123array2x64 */</span>
 <a name="l00307"></a>00307 _r123array_tpl(4, 64, uint64_t)  <span class="comment">/* r123array4x64 */</span>
-<a name="l00308"></a>00308
+<a name="l00308"></a>00308 
 <a name="l00309"></a><a class="code" href="array_8h.html#a9b64205709c0daaea3b05bbf7ea5a322">00309</a> _r123array_tpl(16, 8, uint8_t)  <span class="comment">/* r123array16x8 for ARSsw, AESsw */</span>
-<a name="l00310"></a>00310
+<a name="l00310"></a>00310 
 <a name="l00311"></a>00311 <span class="preprocessor">#if R123_USE_SSE</span>
 <a name="l00312"></a>00312 <span class="preprocessor"></span>_r123array_tpl(1, m128i, <a class="code" href="structr123m128i.html">r123m128i</a>) <span class="comment">/* r123array1x128i for ARSni, AESni */</span>
 <a name="l00313"></a>00313 <span class="preprocessor">#endif</span>
@@ -364,7 +364,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 
 <!-- iframe showing the search results (closed by default) -->
 <div id="MSearchResultsWindow">
-<iframe src="" frameborder="0"
+<iframe src="" frameborder="0" 
         name="MSearchResults" id="MSearchResults">
 </iframe>
 </div>

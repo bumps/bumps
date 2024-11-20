@@ -31,8 +31,8 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
                onmouseout="return searchBox.OnSearchSelectHide()"
                alt=""/>
           <input type="text" id="MSearchField" value="Search" accesskey="S"
-               onfocus="searchBox.OnSearchFieldFocus(true)"
-               onblur="searchBox.OnSearchFieldFocus(false)"
+               onfocus="searchBox.OnSearchFieldFocus(true)" 
+               onblur="searchBox.OnSearchFieldFocus(false)" 
                onkeyup="searchBox.OnSearchFieldChange(event)"/>
           </span><span class="right">
             <a id="MSearchClose" href="javascript:searchBox.CloseResultsWindow()"><img id="MSearchCloseImg" border="0" src="search/close.png" alt=""/></a>
@@ -88,8 +88,8 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00034"></a>00034 <span class="preprocessor"></span>
 <a name="l00037"></a>00037 <span class="preprocessor">#include &quot;<a class="code" href="compilerfeatures_8h.html">features/compilerfeatures.h</a>&quot;</span>
 <a name="l00038"></a>00038 <span class="preprocessor">#include &quot;<a class="code" href="array_8h.html">array.h</a>&quot;</span>
-<a name="l00039"></a>00039
-<a name="l00040"></a>00040
+<a name="l00039"></a>00039 
+<a name="l00040"></a>00040 
 <a name="l00041"></a>00041 <span class="comment">/*</span>
 <a name="l00042"></a>00042 <span class="comment">// Macros _Foo_tpl are code generation &#39;templates&#39;  They define</span>
 <a name="l00043"></a>00043 <span class="comment">// inline functions with names obtained by mangling Foo and the</span>
@@ -154,7 +154,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00102"></a>00102 <span class="preprocessor">    return ax;                                                  \</span>
 <a name="l00103"></a>00103 <span class="preprocessor">}</span>
 <a name="l00104"></a>00104 <span class="preprocessor"></span><span class="preprocessor">#endif </span><span class="comment">/* __powerpc__ */</span>
-<a name="l00105"></a>00105
+<a name="l00105"></a>00105 
 <a name="l00106"></a>00106 <span class="comment">/*</span>
 <a name="l00107"></a>00107 <span class="comment">// A template for mulhilo using MSVC-style intrinsics</span>
 <a name="l00108"></a>00108 <span class="comment">// For example,_umul128 is an msvc intrinsic, c.f.</span>
@@ -207,7 +207,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00155"></a>00155     *hip = hi;                                                          \
 <a name="l00156"></a>00156     return lo;                                                          \
 <a name="l00157"></a>00157 }
-<a name="l00158"></a>00158
+<a name="l00158"></a>00158 
 <a name="l00159"></a>00159 <span class="comment">/*</span>
 <a name="l00160"></a>00160 <span class="comment">// A template for mulhilo on a platform that can&#39;t do it</span>
 <a name="l00161"></a>00161 <span class="comment">// We could put a C version here, but is it better to run *VERY*</span>
@@ -381,7 +381,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00329"></a>00329 <span class="preprocessor">    if(R&gt;15){ key = _philox##N##x##W##bumpkey(key); ctr = _philox##N##x##W##round(ctr, key); } \</span>
 <a name="l00330"></a>00330 <span class="preprocessor">    return ctr;                                                         \</span>
 <a name="l00331"></a>00331 <span class="preprocessor">}</span>
-<a name="l00332"></a>00332 <span class="preprocessor"></span>
+<a name="l00332"></a>00332 <span class="preprocessor"></span>         
 <a name="l00333"></a>00333 _philox2xWbumpkey_tpl(32)
 <a name="l00334"></a>00334 _philox4xWbumpkey_tpl(32)
 <a name="l00335"></a>00335 _philox2xWround_tpl(32, uint32_t) <span class="comment">/* philo2x32round */</span>
@@ -397,17 +397,17 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00347"></a><a class="code" href="group__PhiloxNxW.html#gaca9df5cdadde758a63952daa97ddff91">00347</a> _philoxNxW_tpl(2, 1, 64, uint64_t)    <span class="comment">/* philox2x64bijection */</span>
 <a name="l00348"></a><a class="code" href="group__PhiloxNxW.html#gaf603860d055cee96c75f6986641e9cad">00348</a> _philoxNxW_tpl(4, 2, 64, uint64_t)    <span class="comment">/* philox4x64bijection */</span>
 <a name="l00349"></a>00349 <span class="preprocessor">#endif </span><span class="comment">/* R123_USE_PHILOX_64BIT */</span>
-<a name="l00350"></a>00350
+<a name="l00350"></a>00350 
 <a name="l00351"></a><a class="code" href="philox_8h.html#ab2496424917f063a4990f01943a07fe0">00351</a> <span class="preprocessor">#define philox2x32(c,k) philox2x32_R(philox2x32_rounds, c, k)</span>
 <a name="l00352"></a><a class="code" href="philox_8h.html#a432a3df828dd51acd0b7ec2fee1d4d7e">00352</a> <span class="preprocessor"></span><span class="preprocessor">#define philox4x32(c,k) philox4x32_R(philox4x32_rounds, c, k)</span>
 <a name="l00353"></a>00353 <span class="preprocessor"></span><span class="preprocessor">#if R123_USE_PHILOX_64BIT</span>
 <a name="l00354"></a><a class="code" href="philox_8h.html#ae6b57a71e4efa369cc19416fc088b5a5">00354</a> <span class="preprocessor"></span><span class="preprocessor">#define philox2x64(c,k) philox2x64_R(philox2x64_rounds, c, k)</span>
 <a name="l00355"></a><a class="code" href="philox_8h.html#a62fb1b4d9775396303ebb2a801fea8e6">00355</a> <span class="preprocessor"></span><span class="preprocessor">#define philox4x64(c,k) philox4x64_R(philox4x64_rounds, c, k)</span>
 <a name="l00356"></a>00356 <span class="preprocessor"></span><span class="preprocessor">#endif </span><span class="comment">/* R123_USE_PHILOX_64BIT */</span>
-<a name="l00357"></a>00357
+<a name="l00357"></a>00357 
 <a name="l00358"></a>00358 <span class="preprocessor">#ifdef __cplusplus</span>
 <a name="l00359"></a>00359 <span class="preprocessor"></span><span class="preprocessor">#include &lt;stdexcept&gt;</span>
-<a name="l00360"></a>00360
+<a name="l00360"></a>00360 
 <a name="l00363"></a>00363 <span class="preprocessor">#define _PhiloxNxW_base_tpl(CType, KType, N, W)                         \</span>
 <a name="l00364"></a>00364 <span class="preprocessor">namespace r123{                                                          \</span>
 <a name="l00365"></a>00365 <span class="preprocessor">template&lt;unsigned int ROUNDS&gt;                                             \</span>
@@ -433,9 +433,9 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <a name="l00386"></a>00386 <span class="preprocessor"></span>
 <a name="l00387"></a>00387 <span class="comment">/* The _tpl macros don&#39;t quite work to do string-pasting inside comments.</span>
 <a name="l00388"></a>00388 <span class="comment">   so we just write out the boilerplate documentation four times... */</span>
-<a name="l00389"></a>00389
+<a name="l00389"></a>00389 
 <a name="l00484"></a>00484 <span class="preprocessor">#endif </span><span class="comment">/* __cplusplus */</span>
-<a name="l00485"></a>00485
+<a name="l00485"></a>00485 
 <a name="l00486"></a>00486 <span class="preprocessor">#endif </span><span class="comment">/* _philox_dot_h_ */</span>
 </pre></div></div>
 </div>
@@ -448,7 +448,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 
 <!-- iframe showing the search results (closed by default) -->
 <div id="MSearchResultsWindow">
-<iframe src="" frameborder="0"
+<iframe src="" frameborder="0" 
         name="MSearchResults" id="MSearchResults">
 </iframe>
 </div>

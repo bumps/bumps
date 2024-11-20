@@ -165,7 +165,7 @@ int main(int argc, char **argv)
     uint count = 0;
     UCLInfo *infop;
     int keyctroffset = 0;
-
+    
     progname = argv[0];
     if (argc > 3|| (argv[1] && argv[1][0] == '-')) {
 	fprintf(stderr, "Usage: %s [COUNT [DEVICESTRING]]\n", progname);

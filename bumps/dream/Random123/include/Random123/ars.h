@@ -139,7 +139,7 @@ The ars4x32 macro provides a C API interface to the @ref AESNI "ARS" CBRNG with 
 
 #ifdef __cplusplus
 namespace r123{
-/**
+/** 
 @ingroup AESNI
 
 ARS1xm128i_R exports the member functions, typedefs and operator overloads required by a @ref CBRNG class.

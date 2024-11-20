@@ -61,7 +61,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
    into the binary at compile-time, dev_execute_tests for opencl is implemented in
    kat_opencl_kernel.ocl, which is processed by gencl.sh into
    kat_opencl_kernel.i, which is thein #include-ed by kat_opencl.c.
-
+   
 */
 #include "util.h"
 #include "kat.h"
@@ -75,7 +75,7 @@ size_t nfailed = 0;
 const char *progname;
 
 extern void host_execute_tests(kat_instance *tests, size_t ntests);
-
+                
 /* A little hack to keep track of the test vectors that we don't know how to deal with: */
 int nunknowns = 0;
 #define MAXUNKNOWNS 20
@@ -139,10 +139,10 @@ int read_##base##N##x##W(const char *line, kat_instance* tinst){        \
 static int readtest(const char *line, kat_instance* tinst){
     int nchar;
     char name[LINESIZE];
-    if( line[0] == '#') return 0;
+    if( line[0] == '#') return 0;                                       
     sscanf(line, "%s%n", name, &nchar);
     if(!have_aesni){
-        /* skip any tests that require AESNI */
+        /* skip any tests that require AESNI */ 
         if(strncmp(name, "aes", 3)==0 ||
            strncmp(name, "ars", 3)==0){
             register_unknown(name);
@@ -216,7 +216,7 @@ int main(int argc, char **argv){
     const char *p;
     const char *inname;
     char filename[LINESIZE];
-
+    
     progname = argv[0];
 
     /* If there's an argument, open that file.

@@ -102,13 +102,13 @@ void doit(){
     // e.g., that they pass the Known Answer Test for some set of test vectors.
     // Here, we simply check that the output of the Engine corresponds, in the expected
     // way to the output of the underlying bijection.
-
+    
     // Check that the first few values out of the engine correspond
     // to output from the underlying bijection.
     BType b;
     ctype c1 = {{}};
     ktype k = e.getseed();
-    e.seed();
+    e.seed(); 
     for(int i=0; i<100; ++i){
         c1[0]++;
         ctype rb = b(c1, k);
@@ -124,7 +124,7 @@ void doit(){
     assert(e2 != e);
     e2.discard(100*c1.size());
     ASSERTEQ(e2, e);
-
+    
     for(int disc=1; disc<50; ++disc){
         e.discard(disc);
         assert( e != e2 );
@@ -132,7 +132,7 @@ void doit(){
         ASSERTEQ(e2, e);
     }
 
-    // Check that saving and restoring state and the copy constructor
+    // Check that saving and restoring state and the copy constructor 
     // works as expected.
     ostringstream oss;
     oss << e2;
@@ -161,7 +161,7 @@ void doit(){
         iss >> e3;
     }
     ASSERTEQ(e3, esave);
-
+    
     // Check that the constructor-from-rvalue works.
     EType e4((rtype)99);
     EType e5;
@@ -199,7 +199,7 @@ void doit(){
     }
 #endif
 
-    // Finally do a kat test.
+    // Finally do a kat test.  
     EType ekat;
     ekat.discard(1000);
     typename EType::result_type r = ekat();
@@ -237,3 +237,4 @@ int main(int, char **){
     cout << "ut_Engine:  all OK" << endl;
     return 0;
 }
+

@@ -109,7 +109,7 @@ int main(int argc, char **argv){
     CBRNGD::ukey_type keyd = {{}};
     size_t Ntry = DEF_N;
     char *dumpfname;
-
+    
     dumpfname = getenv("BOXMULLER_DUMPFILE");
     if(argc>1) {
 	if (argv[1][0] == '-') {
@@ -129,3 +129,4 @@ int main(int argc, char **argv){
     timedcall<CBRNGD,double,r123::double2>("double", keyd, Ntry, dumpfname);
     return 0;
 }
+    

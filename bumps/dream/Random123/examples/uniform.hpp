@@ -47,7 +47,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //   uneg11:  output is as dense as possible in {-1,1}, never 0.0.  May
 //     return 1.0 or -1.0 if and only if the number of output mantissa bits
 //     is less than the width of the input.
-//   u01fixedpt:  output is "fixed point", equispaced, open at both ends,
+//   u01fixedpt:  output is "fixed point", equispaced, open at both ends, 
 //      and is never 0.0, 0.5 nor 1.0.
 //
 // The behavior of u01 and uneg11 depend on the pre-processor symbol:
@@ -106,14 +106,14 @@ R123_MK_SIGNED_UNSIGNED(__int128_t, __uint128_t);
 
 #if defined(__CUDACC__) || defined(_LIBCPP_HAS_NO_CONSTEXPR)
 // Amazing! cuda thinks numeric_limits::max() is a __host__ function, so
-// we can't use it in a device function.
+// we can't use it in a device function.  
 //
 // The LIBCPP_HAS_NO_CONSTEXP test catches situations where the libc++
 // library thinks that the compiler doesn't support constexpr, but we
 // think it does.  As a consequence, the library declares
 // numeric_limits::max without constexpr.  This workaround should only
 // affect a narrow range of compiler/library pairings.
-//
+// 
 // In both cases, we find max() by computing ~(unsigned)0 right-shifted
 // by is_signed.
 template <typename T>
@@ -136,7 +136,7 @@ R123_CONSTEXPR R123_STATIC_INLINE T maxTvalue(){
 //
 //  If the input is a uniformly distributed integer, then the
 //  result is a uniformly distributed floating point number in [0, 1].
-//  The result is never exactly 0.0.
+//  The result is never exactly 0.0.  
 //  The smallest value returned is 2^-W.
 //  Let M be the number of mantissa bits in Ftype.
 //  If W>M  then the largest value retured is 1.0.
@@ -207,3 +207,4 @@ R123_CUDA_DEVICE R123_STATIC_INLINE Ftype u01fixedpt(Itype in){
 } // namespace r123
 
 #endif
+

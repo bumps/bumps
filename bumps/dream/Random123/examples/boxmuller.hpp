@@ -49,7 +49,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 //   r123::float2  r123::boxmuller(uint32_t u0, uint32_t u1);
 //   r123::double2 r123::boxmuller(uint64_t u0, uint64_t u1);
-//
+//  
 // float2 and double2 are identical to their synonymous global-
 // namespace structures in CUDA.
 //
