@@ -65,6 +65,9 @@ build-backend = "setuptools.build_meta"
 line-length = 120
 extend-exclude = ["bumps/dream/Random123", "bumps/webview/client"]
 
+[tool.ruff.lint.per-file-ignores]
+"bumps/names.py" = ["F401"] # Unused import
+
 # [tool.ruff.lint]
 # select = [
 #     "E",   # pycodestyle
