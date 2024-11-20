@@ -28,8 +28,12 @@ test: ## Run pytest and doc tests
 .PHONY: lint
 lint: lint-backend lint-frontend ## Run all linters
 
+.PHONY: lint-backend-check
+lint-backend-check: ## Run ruff linting on python code
+	@ruff check bumps/ run.py test.py check_*.py
+
 .PHONY: lint-backend
-lint-backend: ## Run ruff linting on python code
+lint-backend: ## Run ruff linting fix on python code
 	@ruff check --fix bumps/ run.py test.py check_*.py
 
 .PHONY: lint-frontend-check

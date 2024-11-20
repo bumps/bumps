@@ -19,8 +19,8 @@ import numpy as np
 try:
     from typing import Literal, Protocol, runtime_checkable
 except ImportError:
-    pass
-from typing import Optional, Type, TypeVar, Any, Callable, List, Sequence, TYPE_CHECKING
+    from typing_extensions import Literal, Protocol, runtime_checkable
+from typing import Iterable, Optional, Type, TypeVar, Any, Union, Dict, Callable, Tuple, List, Sequence, TYPE_CHECKING
 
 USE_PYDANTIC = os.environ.get("BUMPS_USE_PYDANTIC", "False") == "True"
 if TYPE_CHECKING:
