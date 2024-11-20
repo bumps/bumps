@@ -38,6 +38,7 @@ dev = [
     'setuptools',
     'sphinx',
     'versioningit',
+    'matplotlib',
 ]
 webview = [
     'aiohttp',

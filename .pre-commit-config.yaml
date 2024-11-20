@@ -19,4 +19,6 @@ repos:
       #   args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
         args: [--config=pyproject.toml]
-        exclude: bumps/dream/Random123
+        exclude: |
+          bumps/dream/Random123
+          bumps/webview/client

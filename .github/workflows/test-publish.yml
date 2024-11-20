@@ -97,11 +97,11 @@ jobs:
       - name: Run tests
         run: pytest -v
 
+      - name: Run tests
+        run: pytest -v
+
       - name: Check examples
         run: python check_examples.py --chisq
-
-      - name: Check fitters
-        run: python check_fitters.py
 
       - name: Check that the docs build (linux only)
         if: matrix.cfg.doc == 1

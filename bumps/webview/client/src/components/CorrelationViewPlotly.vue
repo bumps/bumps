@@ -51,23 +51,21 @@ async function fetch_and_draw(latest_timestamp?: string) {
   const plotdata = { ...payload };
   const { data, layout } = plotdata;
   const config: Partial<Plotly.Config> = { responsive: true, scrollZoom: true, modeBarButtonsToAdd: [ SVGDownloadButton ] };
-  await Plotly.react(plot_div.value as HTMLDivElement, [...data], layout, config);
+  const plotlyElement = await Plotly.react(plot_div.value as HTMLDivElement, [...data], layout, config);
   clearTimeout(show_loader);
   drawing_busy.value = false;
 
   if (!callback_registered.value) {
-    if (plot_div.value?.on) {
-      plot_div.value.on('plotly_click', (ev) => {
-        // if we're already showing only one plot, bail out:
-        if (vars.value.length === 2) {
-          return
-        }
-        // we are putting an array of numbers in customdata on the server side.
-        vars.value = (ev as Plotly.PlotMouseEvent).points[0].data.customdata as number[];
-        fetch_and_draw();
-      });
-      callback_registered.value = true;
-    }
+    plotlyElement.on('plotly_click', (ev: Plotly.PlotMouseEvent) => {
+      // if we're already showing only one plot, bail out:
+      if (vars.value.length === 2) {
+        return
+      }
+      // we are putting an array of numbers in customdata on the server side.
+      vars.value = ev.points[0].data.customdata as number[];
+      fetch_and_draw();
+    });
+    callback_registered.value = true;
   }
 }
 

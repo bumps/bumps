@@ -65,7 +65,9 @@ function toggle_multiple(value) {
     current_models.value.splice(0, current_models.value.length -1);
     draw_requested.value = true;
   }
-  Plotly.Plots.resize(plot_div.value);
+  if (plot_div.value) {
+    Plotly.Plots.resize(plot_div.value);
+  }
 }
 
 </script>

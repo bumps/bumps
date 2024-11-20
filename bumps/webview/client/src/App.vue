@@ -42,7 +42,6 @@ type Message = {
 
 const LAYOUTS = ["left-right", "top-bottom", "full"];
 const menuToggle = ref<HTMLButtonElement>();
-const nativefs = ref(false);
 
 // Create a SocketIO connection, to be passed to child components
 // so that they can do their own communications with the host.
@@ -130,9 +129,7 @@ function exportResults() {
         if (filename !== "") {
           pathlist.push(filename);
         }
-        socket.asyncEmit("export_results", pathlist).then(() => {
-          socket?.syncFS?.();
-        })
+        await socket.asyncEmit("export_results", pathlist);
       },
       show_name_input: true,
       name_input_label: "Subdirectory",
@@ -180,9 +177,6 @@ async function saveFile(ev: Event, override?: {pathlist: string[], filename: str
         await socket.asyncEmit("save_problem_file", pathlist, filename, overwrite);
       }
     }
-    if (nativefs.value) {
-      await socket.syncFS();
-    }
   });
 }
 
@@ -223,9 +217,6 @@ async function saveParameters(ev: Event, override?: {pathlist: string[], filenam
               await socket.asyncEmit("save_parameters", pathlist, filename, overwrite);
             }
           }
-          if (nativefs.value) {
-            await socket.syncFS();
-          }
         });
       },
       show_name_input: true,
@@ -258,11 +249,6 @@ async function stopFit() {
 
 async function quit() {
   await socket.asyncEmit("shutdown");
-}
-
-async function mountLocal() {
-  const success = (await socket.mountLocal?.()) ?? false;
-  nativefs.value = success;
 }
 
 const model_not_loaded = computed(() => model_file.value == null);
