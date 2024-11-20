@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, shallowRef } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { Button } from "bootstrap";
 import { io } from "socket.io-client";
 import type { AsyncSocket } from "./asyncSocket.ts";
@@ -34,11 +34,6 @@ const props = defineProps<{
   panels: { title: string; component: any }[];
   name?: string;
 }>();
-
-type Message = {
-  timestamp: string;
-  message: object;
-};
 
 const LAYOUTS = ["left-right", "top-bottom", "full"];
 const menuToggle = ref<HTMLButtonElement>();
@@ -106,10 +101,10 @@ socket.on("active_fit", ({ fitter_id, options, num_steps, step, chisq }) => {
 socket.on("add_notification", addNotification);
 socket.on("cancel_notification", cancelNotification);
 
-function disconnect() {
-  socket.disconnect();
-  connected.value = false;
-}
+// function disconnect() {
+//   socket.disconnect();
+//   connected.value = false;
+// }
 
 function selectOpenFile() {
   if (fileBrowser.value) {
@@ -200,7 +195,7 @@ async function reloadModel() {
   }
 }
 
-async function applyParameters(ev: Event) {
+async function applyParameters() {
   if (fileBrowser.value) {
     const settings: FileBrowserSettings = {
       title: "Apply Parameters",

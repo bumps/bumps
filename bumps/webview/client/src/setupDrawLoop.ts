@@ -2,11 +2,6 @@ import { onActivated, onDeactivated, ref } from "vue";
 import { addNotification } from "./app_state";
 import type { AsyncSocket } from "./asyncSocket";
 
-type Message = {
-  timestamp: string;
-  message: object;
-};
-
 export function setupDrawLoop(topic: string, socket: AsyncSocket, draw: Function, name: string = "") {
   const mounted = ref(false);
   const drawing_busy = ref(false);
