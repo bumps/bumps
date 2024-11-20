@@ -6,13 +6,18 @@ to support it in the automatic build infrastructure.
 Update: MSVC is 6x faster than numba on one machine. Need to check performance with and
 without compiled on HPC hardware to know if the compiled version is required.
 
-To use the compiled de stepper and bounds checks on unix use:
+To use the compiled de stepper and bounds checks, first make sure the "random123" library submodule has been checked out
 
-    (cd bumps/dream && cc compiled.c -I ../../Random123/include/ -O2 -fopenmp -shared -lm -o _compiled.so -fPIC -DMAX_THREADS=64)
+    git submodule init
+    git submodule update
+
+Then, to compile on unix use:
+
+    (cd bumps/dream && cc compiled.c -I ./random123/include/ -O2 -fopenmp -shared -lm -o _compiled.so -fPIC -DMAX_THREADS=64)
 
 On OS/X clang doesn't support OpenMP:
 
-    (cd bumps/dream && cc compiled.c -I ../../Random123/include/ -O2 -shared -lm -o _compiled.so -fPIC -DMAX_THREADS=64)
+    (cd bumps/dream && cc compiled.c -I ./random123/include/ -O2 -shared -lm -o _compiled.so -fPIC -DMAX_THREADS=64)
 
 MSVC on windows using Visual Studio build tools (2022):
 

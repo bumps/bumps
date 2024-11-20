@@ -166,13 +166,19 @@ case, the DE stepper and the bounds check.  Compiling this in C with OpenMP
 allows us to scale to hundreds of nodes until the stepper again becomes a
 bottleneck.
 
-To use the compiled DE stepper and bounds checks use::
+To use the compiled de stepper and bounds checks, 
+first make sure the "random123" library submodule has been checked out::
 
-    (cd bumps/dream && cc compiled.c -I ../../Random123/include/ -O2 -fopenmp -shared -lm -o _compiled.so -fPIC)
+    git submodule init
+    git submodule update
+
+Then, to compile on unix use::
+
+    (cd bumps/dream && cc compiled.c -I ./random123/include/ -O2 -fopenmp -shared -lm -o _compiled.so -fPIC)
 
 Note: clang doesn't support OpenMP, so on OS/X use::
 
-    (cd bumps/dream && cc compiled.c -I ../../Random123/include/ -O2 -shared -lm -o _compiled.so -fPIC)
+    (cd bumps/dream && cc compiled.c -I ./random123/include/ -O2 -shared -lm -o _compiled.so -fPIC)
 
 This only works when _compiled.so is in the bumps/dream directory.  If running
 from a pip installed version, you will need to fetch the bumps repository::
