@@ -13,7 +13,7 @@ def compile_dll(nthreads=None, use_openmp=True, dry_run=False):
 
     os.chdir(Path(__file__).parent)
     openmp_flag = "-fopenmp" if use_openmp else ""
-    flags = f"-I ./Random123/include/ -O2 {openmp_flag} -shared -lm -o _compiled.so -fPIC -DMAX_THREADS={nthreads}"
+    flags = f"-I ./random123/include/ -O2 {openmp_flag} -shared -lm -o _compiled.so -fPIC -DMAX_THREADS={nthreads}"
     compile_command = f"{CC} compiled.c {flags}"
     if dry_run:
         print(f"Would compile: {compile_command}")
