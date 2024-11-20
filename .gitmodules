@@ -1,0 +1,3 @@
+[submodule "bumps/dream/random123"]
+	path = bumps/dream/random123
+	url = https://github.com/DEShawResearch/random123.git
