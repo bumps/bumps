@@ -8,7 +8,6 @@ const props = defineProps<{socket: AsyncSocket}>();
 
 const dialog = ref<HTMLDialogElement>();
 const isOpen = ref(false);
-const fitter_defaults = shallowRef<{ [fit_name: string]: FitSetting }>({});
 const selected_fitter_local = ref("amoeba");
 
 const FIT_FIELDS = {
@@ -42,9 +41,7 @@ const OPTIONS_HELP = {
 const active_settings = ref({});
 
 props.socket.asyncEmit("get_fitter_defaults", (new_fitter_defaults) => {
-  console.log({new_fitter_defaults});
-  fitter_defaults.value = new_fitter_defaults;
-  fitter_settings.value = structuredClone(new_fitter_defaults);
+  default_fitter_settings.value = new_fitter_defaults;
 })
 
 props.socket.on('fitter_settings', (new_fitter_settings) => {
@@ -62,16 +59,17 @@ function close() {
 
 function open() {
   // copy the  selected_fitter_local from the server state:
-  selected_fitter_local.value = selected_fitter.value;
+  selected_fitter_local.value = selected_fitter.value ?? default_fitter;
   changeActiveFitter();
   isOpen.value = true;
   dialog.value?.showModal();
 }
 
-const fit_names = computed(() => Object.keys(fitter_defaults?.value));
+const fit_names = computed(() => Object.keys(default_fitter_settings?.value));
+const fitter_settings_with_defaults = computed(() => ((fitter_settings.value) ?? default_fitter_settings.value));
 
 function changeActiveFitter() {
-  active_settings.value = structuredClone(fitter_settings.value[selected_fitter_local.value]?.settings) ?? {};
+  active_settings.value = structuredClone(fitter_settings_with_defaults.value[selected_fitter_local.value]?.settings) ?? {};
 }
 
 function process_settings() {
@@ -96,10 +94,10 @@ async function save(start: boolean = false) {
   if (anyIsInvalid.value) {
     return;
   }
-  const new_settings = structuredClone(fitter_settings.value);
-  new_settings[selected_fitter_local.value] = { settings: process_settings() };
+  const new_settings = structuredClone(fitter_settings_with_defaults.value);
+  const name = selected_fitter_local.value;
   const fitter_settings_local = process_settings();
-  new_settings[selected_fitter_local.value] = { settings: fitter_settings_local };
+  new_settings[name] = { name, settings: fitter_settings_local };
   await props.socket.asyncEmit("set_shared_setting", "fitter_settings", new_settings);
   await props.socket.asyncEmit("set_shared_setting", "selected_fitter", selected_fitter_local.value);
   if (start) {
@@ -109,7 +107,7 @@ async function save(start: boolean = false) {
 }
 
 function reset() {
-  active_settings.value = structuredClone(fitter_defaults.value[selected_fitter_local.value].settings) ?? {};
+  active_settings.value = structuredClone(default_fitter_settings.value[selected_fitter_local.value].settings) ?? {};
 }
 
 function validate(value, field_name) {
@@ -133,14 +131,8 @@ const anyIsInvalid = computed(() => {
 })
 
 onMounted(async () => {
-  const new_selected_fitter = await props.socket.asyncEmit('get_shared_setting', 'selected_fitter');
-  const new_fitter_settings = await props.socket.asyncEmit('get_shared_setting', 'fitter_settings');
-  if (new_selected_fitter !== undefined) {
-    selected_fitter.value = new_selected_fitter;
-  }
-  if (new_fitter_settings !== undefined) {
-    fitter_settings.value = new_fitter_settings;
-  }
+  selected_fitter.value = await props.socket.asyncEmit('get_shared_setting', 'selected_fitter');
+  fitter_settings.value = await props.socket.asyncEmit('get_shared_setting', 'fitter_settings');
 });
 
 defineExpose({

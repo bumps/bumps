@@ -5,23 +5,75 @@ from __future__ import division, print_function
 
 __all__ = ["de_step"]
 
-from numpy import zeros, ones, dot, cov, eye, sqrt, sum, all
-from numpy import where, select
-from numpy.linalg import norm, cholesky, LinAlgError
+from numpy import zeros, ones, empty, dot, cov, eye, sqrt, sum, all
+from numpy import where, array
+from numpy.linalg import norm
+
 from .util import draw, rng
 
+try:
+    #raise ImportError("skip numpy")
+    from numba import njit, prange
+    @njit(cache=True)
+    def pchoice(choices, size=0, replace=True, p=None):
+        if p is None:
+            return rng.choice(choices, size=size, replace=replace)
+        # TODO: if choices is an array, then shape should be an array
+        result = empty(size, dtype=choices.dtype)
+        num_choices = choices.shape[0]
+        for index in prange(size):
+            u = rng.rand()
+            cdf = 0.
+            for k in range(num_choices):
+                cdf += p[k]
+                if (u <= cdf):
+                    result[index] = choices[k]
+            #else: should never get here if choices sum to 1
+        return result
+
+except ImportError:
+    def njit(*args, **kw):
+        return lambda f: f
+    prange = range
+    pchoice = rng.choice
+
 EPS = 1e-6
-_SNOOKER, _DE, _DIRECT = 0, 1, 2
+_DE, _SNOOKER, _DIRECT = 0, 1, 2
 
-
+@njit(cache=True)
 def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
             snooker_rate=0.1, noise=1e-6, scale=1.0):
     """
     Generates offspring using METROPOLIS HASTINGS monte-carlo markov chain
 
-    The number of chains may be smaller than the population size if the
-    population is selected from both the current generation and the
-    ancestors.
+    *Nchain* is the number of simultaneous changes that are running.
+
+    *pop* is an array of shape [Npop x Nvar] providing the active points used
+    to generate the next proposal for each chain. This may be larger than the
+    Nchains if the caller is using ancestor generations for active population.
+    The current population is assumed to be the first *Nchain* rows of *pip*..
+
+    *CR* is an array of [Ncrossover x 2] crossover ratios with weights. The
+    crossover ratio is the probability of selecting a particular dimension when
+    generating the difference vector. The weights are used to select the
+    crossover ratio. The weights are adjusted dynamically during the fit based
+    on the acceptance rate of points generated with each crossover ratio.
+
+    *max_pairs* determines the maximum number of pairs which contribute to the
+    differential evolution step. The number of pairs is chosen at random, with
+    the difference vectors between the pairs averaged when creating the DE step.
+
+    *eps* determines the jitter added to the DE step.
+
+    *snooker_rate* determines the probability of using the snooker stepper.
+    Otherwise use DE stepper 80% of the time, or apply the difference between
+    pairs the other 20% of the time.
+
+    *scale=1* scales the difference vector (constant, not stochastic)
+
+    *noise=1e-6* adds random noise to the non-zero components of the
+    difference vector. This noise is relative rather than absolute to allow
+    for parameter values far from 1.0. Noise is also scaled by *scale*.
     """
     Npop, Nvar = pop.shape
 
@@ -29,17 +81,20 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
     delta_x = zeros((Nchain, Nvar))
     step_alpha = ones(Nchain)
 
-    # Choose snooker, de or direct according to snooker_rate, and 80:20
+    # Choose snooker, de or direct according` to snooker_rate, and 80:20
     # ratio of de to direct.
     u = rng.rand(Nchain)
     de_rate = 0.8 * (1-snooker_rate)
-    alg = select([u < snooker_rate, u < snooker_rate+de_rate],
-                 [_SNOOKER, _DE], default=_DIRECT)
+    alg = zeros(Nchain, dtype='int') # _DE = 0
+    alg[u>=de_rate] = _SNOOKER
+    alg[u>=de_rate+snooker_rate] = _DIRECT
+    #alg = select([u < snooker_rate, u < snooker_rate+de_rate],
+    #             [_SNOOKER, _DE], default=_DIRECT)
     # [PAK] CR selection moved from crossover into DE step
-    CR_used = rng.choice(CR[:, 0], size=Nchain, replace=True, p=CR[:, 1])
+    CR_used = pchoice(CR[:, 0], size=Nchain, replace=True, p=CR[:, 1])
 
     # Chains evolve using information from other chains to create offspring
-    for qq in range(Nchain):
+    for qq in prange(Nchain):
 
         if alg[qq] == _DE:  # Use DE with cross-over ratio
 
@@ -48,16 +103,19 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
             k = rng.randint(max_pairs)+1
             # [PAK: same as k = DEversion[qq, 1] in matlab version]
 
+            # TODO: make sure we don't fail if too few chains.
             # Select 2*k members at random different from the current member
             perm = draw(2*k, Npop-1)
+            # TODO: rewrite draw so that it accepts a not_matching int
             perm[perm >= qq] += 1
             r1, r2 = perm[:k], perm[k:2*k]
 
             # Select the dims to update based on the crossover ratio, making
             # sure at least one dim is selected
-            vars = where(rng.rand(Nvar) > CR_used[qq])[0]
+            vars = where(rng.rand(Nvar) <= CR_used[qq])[0]
             if len(vars) == 0:
-                vars = [rng.randint(Nvar)]
+                vars = array([rng.randint(Nvar)])
+            #print("for chain", qq, CR_used[qq], "% update", vars)
 
             # Weight the size of the jump inversely proportional to the
             # number of contributions, both from the parameters being
@@ -109,22 +167,27 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
         else:
             raise RuntimeError("Select failed...should never happen")
 
-        # If no step was specified (exceedingly unlikely!), then
-        # select a delta at random from a gaussian approximation to the
-        # current population
-        if all(delta_x[qq] == 0):
-            try:
-                #print "No step"
-                # Compute the Cholesky Decomposition of x_old
-                R = (2.38/sqrt(Nvar)) * cholesky(cov(pop.T) + EPS*eye(Nvar))
-                # Generate jump using multinormal distribution
-                delta_x[qq] = dot(rng.randn(*(1, Nvar)), R)
-            except LinAlgError:
-                print("Bad cholesky")
-                delta_x[qq] = rng.randn(Nvar)
+        # Didn't implement this in the compiled version (yet)
+        ## If no step was specified (exceedingly unlikely!), then
+        ## select a delta at random from a gaussian approximation to the
+        ## current population
+        #if all(delta_x[qq] == 0):
+        #    from numpy.linalg import cholesky, LinAlgError
+        #    try:
+        #        #print "No step"
+        #        # Compute the Cholesky Decomposition of x_old
+        #        R = (2.38/sqrt(Nvar)) * cholesky(cov(pop.T) + EPS*eye(Nvar))
+        #        # Generate jump using multinormal distribution
+        #        delta_x[qq] = dot(rng.randn(*(1, Nvar)), R)
+        #    except LinAlgError:
+        #        print("Bad cholesky")
+        #        delta_x[qq] = rng.randn(Nvar)
 
     # Update x_old with delta_x and noise
     delta_x *= scale
+    #print("alg", alg)
+    #print("CR_used", CR_used)
+    #print("delta_x", delta_x)
 
     # [PAK] The noise term needs to depend on the fitting range
     # of the parameter rather than using a fixed noise value for all
@@ -145,23 +208,63 @@ def de_step(Nchain, pop, CR, max_pairs=2, eps=0.05,
 
 
 def _check():
-    from numpy import arange
-    nchain, npop, nvar = 4, 10, 3
+    from numpy import arange, vstack, ascontiguousarray
+    max_pairs, snooker_rate, eps, noise, scale = 2, 0.1, 0.05, 1e-6, 1.0
+    nchain, npop, nvar, ncr = 4, 10, 7, 4
 
-    pop = 100*arange(npop*nvar).reshape((npop, nvar))
-    pop += rng.rand(*pop.shape)*1e-6
-    cr = 1./(rng.randint(4, size=nvar)+1)
-    x_new, _step_alpha, used = de_step(nchain, pop, cr, max_pairs=2, eps=0.05)
+    pop = 100*arange(npop*nvar, dtype='d').reshape((npop, nvar))
+    pop = pop*(1+rng.rand(*pop.shape)*0.1)
+    ratios = 1./(rng.randint(4, size=ncr)+1) # 4 => ratios in [0.2, 0.25, 0.333, 0.5, 1.0]
+    weights = [1/ncr] * ncr  # equal-weight for each CR
+    #print(ratios, weights)
+    CR = ascontiguousarray(vstack((ratios, weights)).T, dtype='d')
+    work = lambda: de_step(nchain, pop, CR, max_pairs=max_pairs, eps=eps)
+    x_new, _step_alpha, used = work()
+    #print(f"{pop=}")
+    #print(f"{x_new=}")
+    #print(f"{_step_alpha=}")
+    #print(f"{used=}")
     print("""\
 The following table shows the expected portion of the dimensions that
 are changed and the rounded value of the change for each point in the
 population.
 """)
-    for r, i, u in zip(cr, range(8), used):
-        rstr = ("%3d%% " % (r*100)) if u else "full "
-        vstr = " ".join("%4d" % (int(v/100+0.5)) for v in x_new[i]-pop[i])
+    for k, u in enumerate(used):
+        rstr = f"{int(u*100):4d}% " if u else " full "
+        vstr = " ".join(f"{v:.2f}" for v in x_new[k]-pop[k])
         print(rstr+vstr)
 
+    if 1: # timing check
+        from timeit import timeit
+        from ctypes import c_double
+        from .compiled import dll
+        dll_work = lambda: dll.de_step(
+            nchain, nvar, len(CR),
+            pop.ctypes, CR.ctypes,
+            max_pairs,
+            c_double(eps),
+            c_double(snooker_rate),
+            c_double(noise),
+            c_double(scale),
+            x_new.ctypes,
+            _step_alpha.ctypes,
+            used.ctypes,
+            )
+
+        print("small pop time (ms)", timeit(work, number=10000)/10)
+        if dll:
+            print("small pop time compiled (ms)", timeit(dll_work, number=10000)/10)
+        else:
+            print("no dlls")
+
+        nchain, nvar = 1000, 50
+        npop = nchain
+        pop = 100*arange(npop*nvar, dtype='d').reshape((npop, nvar))
+        pop = pop*(1+rng.rand(*pop.shape)*0.1)
+        print("large pop time (ms)", timeit(work, number=100))
+        if dll:
+            x_new, _step_alpha, used = work() # need this line to define new return vectors for dll
+            print("large pop time compiled (ms)", timeit(dll_work, number=100))
 
 if __name__ == "__main__":
     _check()
