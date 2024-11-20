@@ -2,36 +2,31 @@
 Miscellaneous utility functions.
 """
 
-import warnings
-
 __all__ = ["kbhit", "profile", "pushdir", "push_seed", "redirect_console"]
 
 import sys
 import os
 import types
-import inspect
 
 from io import StringIO
 
 import numpy as np
-from numpy import ascontiguousarray as _dense
 
 # **DEPRECATED** we can import erf directly from scipy.special.erf
 # so there is no longer a need for bumps.util.erf.
-from scipy.special import erf
 
 # this can be substituted with pydantic dataclass for schema-building...
 try:
     from typing import Literal, Protocol, runtime_checkable
 except ImportError:
-    from typing_extensions import Literal, Protocol, runtime_checkable
-from typing import Iterable, Optional, Type, TypeVar, Any, Union, Dict, Callable, Tuple, List, Sequence, TYPE_CHECKING
+    pass
+from typing import Optional, Type, TypeVar, Any, Callable, List, Sequence, TYPE_CHECKING
 
 USE_PYDANTIC = os.environ.get("BUMPS_USE_PYDANTIC", "False") == "True"
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-from dataclasses import dataclass, field, is_dataclass, Field
+from dataclasses import dataclass, field, is_dataclass
 
 
 def field_desc(description: str) -> Any:

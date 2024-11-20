@@ -69,7 +69,7 @@ class ParseOpts(object):
         flag_args = [
             v[2:]  # convert --flag => flag
             for v in args
-            if v.startswith("--") and not "=" in v
+            if v.startswith("--") and "=" not in v
         ]
         value_args = dict(
             v[2:].split("=", 1)  # convert --flag=value => (flag, value)
@@ -113,7 +113,7 @@ class ChoiceList(object):
         self.choices = choices
 
     def __call__(self, value):
-        if not value in self.choices:
+        if value not in self.choices:
             raise ValueError('invalid option "%s": use %s' % (value, "|".join(self.choices)))
         else:
             return value

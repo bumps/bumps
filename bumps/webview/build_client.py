@@ -23,7 +23,7 @@ def build_client(
 
     # build the client
     print("Building the webview client...")
-    cmd = f"npm run build"
+    cmd = "npm run build"
     if sourcemap:
         cmd += " -- --sourcemap"
     os.system(cmd)

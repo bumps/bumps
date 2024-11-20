@@ -109,8 +109,6 @@ def plot_var(
 
 
 def _decorate_histogram(vstats: "VarStats", fig: dict, subplot: int = 1):
-    import plotly.graph_objects as go
-
     xaxis, yaxis = subplot_axis_names(subplot)
     l95, h95 = vstats.p95_range
     l68, h68 = vstats.p68_range
@@ -168,7 +166,7 @@ def _decorate_histogram(vstats: "VarStats", fig: dict, subplot: int = 1):
 
 
 def _make_logp_histogram(values, logp, nbins, ci, weights, idx, cbar_edges, showscale=False, subplot=None):
-    from numpy import ones_like, searchsorted, linspace, cumsum, diff, unique, argsort, array, hstack, exp
+    from numpy import ones_like, searchsorted, linspace, cumsum, unique, argsort, array, hstack, exp
 
     if weights is None:
         weights = ones_like(logp)

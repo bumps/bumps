@@ -43,17 +43,15 @@ import shutil
 import numpy as np
 # np.seterr(all="raise")
 
-from . import fitters
 from .fitters import FitDriver, StepMonitor, ConsoleMonitor, CheckpointMonitor, nllf_scale
 from .mapper import MPMapper, AMQPMapper, MPIMapper, SerialMapper
-from .formatnum import format_uncertainty
 from . import util
 from . import initpop
 from . import __version__
 from . import plugin
 from . import options
 
-from .util import pushdir, push_python_path
+from .util import pushdir
 
 
 def install_plugin(p):

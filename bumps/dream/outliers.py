@@ -145,7 +145,6 @@ def test_outliers():
     # Test replacement
 
     # Construct a state object
-    from numpy.linalg import norm
     from .state import MCMCDraw
 
     ngen, npop = chains.shape

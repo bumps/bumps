@@ -4,7 +4,7 @@ Differential evolution MCMC stepper.
 
 __all__ = ["de_step"]
 
-from numpy import zeros, ones, empty, dot, cov, eye, sqrt, sum, all
+from numpy import zeros, ones, empty, sqrt, sum
 from numpy import where, array
 from numpy.linalg import norm
 

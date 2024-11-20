@@ -1167,7 +1167,6 @@ def mvn_entropy_test():
 
 def demo():
     # hide module load time from Timer
-    from sklearn.neighbors import NearestNeighbors
 
     ## Bootstrap didn't help, but leave the test code in place for now
     # D = Dirichlet(alpha=[0.02]*20)

@@ -363,7 +363,8 @@ def vfs_init():
     os.path.isdir = vfs.fs_isdir
 
     try:
-        import nt, ntpath
+        import nt
+        import ntpath
 
         nt.chdir = vfs.fs_chdir
         nt.listdir = vfs.fs_listdir
@@ -377,7 +378,8 @@ def vfs_init():
         pass
 
     try:
-        import posix, posixpath
+        import posix
+        import posixpath
 
         posix.chdir = vfs.fs_chdir
         posix.listdir = vfs.fs_listdir
@@ -510,7 +512,8 @@ if sys.version_info[0] == 2:
         os.path.isdir = fs_isdir
 
         try:
-            import nt, ntpath
+            import nt
+            import ntpath
 
             nt.chdir = fs_chdir
             nt.listdir = fs_listdir
@@ -524,7 +527,8 @@ if sys.version_info[0] == 2:
             pass
 
         try:
-            import posix, posixpath
+            import posix
+            import posixpath
 
             posix.chdir = fs_chdir
             posix.listdir = fs_listdir

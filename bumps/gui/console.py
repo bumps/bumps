@@ -7,7 +7,8 @@ TODO: Fix cut/paste for multiline commands
 TODO: Trigger change notification when numpy array has changed
 """
 
-import wx, wx.py
+import wx
+import wx.py
 
 
 def shapestr(v):
@@ -64,7 +65,6 @@ plot(x,y)
         self.shell.interp.runcode(compile(self.init_code, "__main__", "exec"))
 
         # steal draw_if_interactive
-        import pylab
         from matplotlib._pylab_helpers import Gcf
         from matplotlib import pyplot
 

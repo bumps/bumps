@@ -209,7 +209,7 @@ def _make_fig_colorbar(logp, fig=None):
 
 
 def _make_logp_histogram(values, logp, nbins, ci, weights, cbar, axes):
-    from numpy import ones_like, searchsorted, linspace, cumsum, diff, unique, argsort, array, hstack, exp
+    from numpy import ones_like, searchsorted, linspace, cumsum, unique, argsort, array, hstack, exp
 
     if weights is None:
         weights = ones_like(logp)

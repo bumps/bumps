@@ -7,7 +7,9 @@ import asyncio
 from .state_hdf5_backed import SERIALIZERS
 
 if TYPE_CHECKING:
-    import bumps, bumps.fitproblem, bumps.dream.state
+    import bumps
+    import bumps.fitproblem
+    import bumps.dream.state
     from .webserver import TopicNameType
     from .fit_thread import FitThread
 

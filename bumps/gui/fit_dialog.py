@@ -35,7 +35,6 @@ import wx.lib.newevent
 
 from .. import options
 from .input_list import InputListPanel
-from .utilities import phoenix
 
 (FitterChangedEvent, EVT_FITTER_CHANGED) = wx.lib.newevent.NewCommandEvent()
 

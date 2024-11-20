@@ -13,17 +13,15 @@ parts of the model, or different models.
 
 # __all__ = [ 'Parameter']
 import operator
-import sys
 import builtins
-from dataclasses import dataclass, field, InitVar
+from dataclasses import dataclass, field
 from functools import reduce
 import warnings
 from copy import copy
 import uuid
-from functools import wraps
 from enum import Enum
 
-from typing import Type, TypeVar, Optional, Any, Union, Dict, Callable, Tuple, List, Sequence
+from typing import Optional, Any, Union, Dict, Callable, Tuple, List, Sequence
 from .util import Literal
 
 import numpy as np
@@ -673,7 +671,7 @@ class Parameter(ValueProtocol, SupportsPrior):
         self.slot = Variable(self.value)
 
     def add_tag(self, tag: str):
-        if not tag in self.tags:
+        if tag not in self.tags:
             self.tags.append(tag)
 
     def remove_tag(self, tag: Optional[str] = None):
@@ -1558,7 +1556,7 @@ def copy_linked(has_parameters, free_names=None):
     original_pars = unique(has_parameters.parameters())
     copied_pars = unique(copied.parameters())
     for op, cp in zip(original_pars, copied_pars):
-        if not op.name in free_names:
+        if op.name not in free_names:
             cp.slot = op.slot
         else:
             cp.id = str(uuid.uuid4())

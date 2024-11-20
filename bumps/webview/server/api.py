@@ -5,7 +5,6 @@ from typing import (
     Any,
     Awaitable,
     Callable,
-    Coroutine,
     Dict,
     List,
     Literal,
@@ -14,17 +13,15 @@ from typing import (
     Protocol,
     Sequence,
     Union,
-    Tuple,
     TypedDict,
     cast,
 )
 from datetime import datetime
 import numbers
 import warnings
-from threading import Event
 import numpy as np
 import asyncio
-from pathlib import Path, PurePath
+from pathlib import Path
 import json
 from copy import deepcopy
 import os
@@ -39,7 +36,6 @@ from bumps.fitters import (
     MPFit,
     BFGSFit,
     FitDriver,
-    fit,
     nllf_scale,
     format_uncertainty,
 )
@@ -47,11 +43,13 @@ from bumps.mapper import MPMapper
 from bumps.parameter import Parameter, Constant, Variable, unique
 import bumps.cli
 import bumps.fitproblem
-import bumps.dream.views, bumps.dream.varplot, bumps.dream.stats, bumps.dream.state
+import bumps.dream.views
+import bumps.dream.varplot
+import bumps.dream.stats
+import bumps.dream.state
 import bumps.errplot
 
 from .state_hdf5_backed import (
-    UNDEFINED,
     UNDEFINED_TYPE,
     State,
     serialize_problem,
@@ -61,7 +59,7 @@ from .state_hdf5_backed import (
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
 from .varplot import plot_vars
 from .traceplot import plot_trace
-from .logger import logger, console_handler
+from .logger import logger
 from .custom_plot import process_custom_plot, CustomWebviewPlot
 
 REGISTRY: Dict[str, Callable] = {}
@@ -307,8 +305,6 @@ async def get_serializer():
 
 @register
 async def export_results(export_path: Union[str, List[str]] = ""):
-    from concurrent.futures import ThreadPoolExecutor
-
     problem_state = state.problem
     if problem_state is None:
         logger.warning("Save failed: no problem loaded.")

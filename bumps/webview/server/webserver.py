@@ -2,7 +2,6 @@
 from dataclasses import dataclass
 import functools
 import os
-import signal
 import socket
 from typing import Callable, Dict, Optional
 import warnings
@@ -12,8 +11,6 @@ import socketio
 from typing import Union, List
 from pathlib import Path
 import json
-import re
-import sys
 
 import matplotlib
 
@@ -30,7 +27,6 @@ mimetypes.add_type("image/png", ".png")
 mimetypes.add_type("image/svg+xml", ".svg")
 
 from . import api
-from .fit_thread import EVT_FIT_PROGRESS
 from .state_hdf5_backed import SERIALIZERS, UNDEFINED
 from .logger import logger, list_handler, console_handler
 from . import persistent_settings
@@ -472,7 +468,7 @@ def open_tab_link(single_panel=None) -> None:
     """
     Open the web server in a new tab in the default web browser.
     """
-    from IPython.display import Javascript, display, HTML
+    from IPython.display import display, HTML
 
     url = get_server_url()
     if single_panel is not None:

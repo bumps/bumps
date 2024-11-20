@@ -16,7 +16,7 @@ from scipy.stats import ks_2samp, kstest, chi2
 from numpy.random import choice
 
 if TYPE_CHECKING:
-    from .state import MCMCDraw
+    pass
 
 # TODO is cramer von mises better than a KS test?
 

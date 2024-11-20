@@ -59,14 +59,15 @@ try:
 except:
     from StringIO import StringIO
 
-import wx, wx.aui
+import wx
+import wx.aui
 
 from bumps import plugin
 from bumps import cli
 from bumps import options as bumps_options
 
 from .about import APP_TITLE
-from .utilities import resource_dir, resource, log_time
+from .utilities import resource_dir, log_time
 
 
 def warn_with_traceback(message, category, filename, lineno, file=None, line=None):

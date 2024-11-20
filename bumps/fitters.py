@@ -3,7 +3,6 @@ Interfaces to various optimizers.
 """
 
 import sys
-from copy import copy
 import warnings
 
 # CRUFT: time.clock() removed from python 3.8

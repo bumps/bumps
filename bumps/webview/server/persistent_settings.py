@@ -15,7 +15,7 @@ def set_value(key: str, value: str, application: str = DEFAULT_APPLICATION):
         with open(settings_path, "w") as f:
             f.write(value)
         return True
-    except Exception as e:
+    except Exception:
         return False
 
 
@@ -24,5 +24,5 @@ def get_value(key: str, default_value: Optional[str] = None, application: str = 
     try:
         with open(settings_path, "r") as f:
             return f.read()
-    except Exception as e:
+    except Exception:
         return default_value

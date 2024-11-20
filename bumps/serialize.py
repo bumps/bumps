@@ -5,14 +5,12 @@ from dataclasses import is_dataclass, fields, dataclass
 import graphlib
 import json
 from importlib import import_module
-from typing import Any, Dict, List, Literal, Optional, Tuple, TypedDict, Union
+from typing import Dict, List, Literal, Optional, TypedDict, Union
 from types import GeneratorType
 import traceback
 import warnings
-import asyncio
-from collections import defaultdict
 
-from .util import SCHEMA_ATTRIBUTE_NAME, NumpyArray
+from .util import SCHEMA_ATTRIBUTE_NAME
 
 DEBUG = False
 
@@ -153,7 +151,7 @@ def serialize(obj, use_refs=True):
         if include is not None:
             all_fields = [f for f in all_fields if f.name in include]
         elif exclude is not None:
-            all_fields = [f for f in all_fields if not f.name in exclude and not f.name.startswith("_")]
+            all_fields = [f for f in all_fields if f.name not in exclude and not f.name.startswith("_")]
         else:
             all_fields = [f for f in all_fields if not f.name.startswith("_")]
         cls = dclass.__class__
@@ -269,8 +267,8 @@ def _migrate_draft_01_to_draft_02(serialized: dict):
         if isinstance(obj, dict):
             t: str = obj.get(TYPE_KEY, MISSING)
             obj_id: str = obj.get("id", MISSING)
-            if obj_id is not MISSING and not t in [MISSING, REFERENCE_TYPE_NAME]:
-                if not obj_id in references:
+            if obj_id is not MISSING and t not in [MISSING, REFERENCE_TYPE_NAME]:
+                if obj_id not in references:
                     references[obj_id] = deepcopy(obj)
                 obj[TYPE_KEY] = REFERENCE_TYPE_NAME
                 for k in list(obj.keys()):

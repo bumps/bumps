@@ -45,7 +45,6 @@ __all__ = ["Curve", "PoissonCurve", "plot_err"]
 import inspect
 import warnings
 from typing import Callable, Literal
-from copy import deepcopy
 
 import numpy as np
 from numpy import log, pi, sqrt

@@ -26,7 +26,6 @@ used for informational display purposes.  Note that the product version is
 maintained in the version.py file and therefore is imported here.
 """
 
-import os
 import wx
 
 try:

@@ -7,12 +7,11 @@ __all__ = ["plot_all", "plot_corr", "plot_corrmatrix", "plot_trace", "plot_logp"
 import math
 
 import numpy as np
-from numpy import arange, squeeze, linspace, meshgrid, vstack, inf
+from numpy import arange, squeeze, linspace, meshgrid, vstack
 from scipy.stats import gaussian_kde
 
 from . import corrplot
 from . import varplot
-from .formatnum import format_value
 from .stats import var_stats, format_vars, save_vars
 
 
@@ -169,7 +168,7 @@ def plot_traces(state, vars=None, portion=None):
 
 
 def plot_trace(state, var=0, portion=None):
-    from pylab import plot, title, xlabel, ylabel
+    from pylab import plot, xlabel, ylabel
 
     draw, points, _ = state.chains()
     label = state.labels[var]

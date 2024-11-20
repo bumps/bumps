@@ -133,7 +133,6 @@ Version 1.0: October 2008  Adaption updated and generalized CR implementation
 __all__ = ["Dream"]
 
 import sys
-import os
 import time
 from ctypes import c_double
 
@@ -141,14 +140,12 @@ import numpy as np
 
 from .state import MCMCDraw
 from .metropolis import metropolis, metropolis_dr, dr_step
-from .gelman import gelman
 from .crossover import AdaptiveCrossover, LogAdaptiveCrossover
 from .diffev import de_step
 from .bounds import make_bounds_handler
 from .compiled import dll
 from .util import rng
 from .convergence import ks_converged
-from .outliers import identify_outliers
 
 # Everything should be available in state, but lets be lazy for now
 LAST_TIME = 0

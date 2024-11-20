@@ -119,7 +119,7 @@ class MCMCModel(object):
     bounds = None
 
     def nllf(self, x):
-        raise NotImplemented
+        raise NotImplementedError
 
     def log_density(self, x):
         return -self.nllf(x)

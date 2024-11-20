@@ -217,7 +217,6 @@ class IgnoreBounds(Bounds):
 def test():
     """bounds handlers test"""
     from numpy.linalg import norm
-    from numpy import array
 
     bounds = list(zip([5, 10], [-inf, -10], [-5, inf], [-inf, inf]))
     v = np.ascontiguousarray([[6, -12, 6, -12]], "d")

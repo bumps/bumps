@@ -1,5 +1,4 @@
 from ..dream import views as dream_views
-from ..dream import stats as dream_stats
 from ..dream import varplot as dream_varplot
 from .. import errplot
 from .plot_view import PlotView

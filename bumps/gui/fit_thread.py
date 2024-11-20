@@ -1,6 +1,5 @@
 from copy import deepcopy
 from threading import Thread
-import os
 
 import wx.lib.newevent
 

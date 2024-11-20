@@ -522,7 +522,9 @@ class AppPanel(wx.Panel):
         if event.message == "uncertainty_final":
             event.message = "uncertainty_update"  # don't do model uncertainty
             n = 0
-            import psutil, time, gc
+            import psutil
+            import time
+            import gc
 
             pid = os.getpid()
             proc = psutil.Process()

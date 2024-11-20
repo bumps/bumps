@@ -11,7 +11,6 @@ Uses false color plots of density.
 __all__ = ["Corr2d"]
 
 import numpy as np
-from numpy import inf
 from typing import List
 
 import plotly.graph_objects as go
