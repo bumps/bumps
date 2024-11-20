@@ -29,6 +29,7 @@ requires-python = ">=3.8"
 [project.optional-dependencies]
 dev = [
     'build',
+    'matplotlib',   # for testing
     'pre-commit',
     'pytest',
     'pytest-cov',
