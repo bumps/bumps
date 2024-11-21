@@ -84,10 +84,15 @@ from .outliers import identify_outliers
 from .util import draw, rng
 from .gelman import gelman
 
-EXT = ".mc.gz"
-CREATE = gzip.open
+import lzma
+from io import StringIO, BytesIO
+
+#EXT = ".mc.gz"
+#CREATE = gzip.open
 #EXT = ".mc"
 #CREATE = open
+EXT = ".mc.xz"
+CREATE = open
 
 # CRUFT: python 2 uses bytes rather than unicode for strings
 try:
@@ -99,6 +104,14 @@ except NameError:
     # python 3.x
     def write(fid, s):
         fid.write(s.encode('utf-8') if isinstance(s, str) else s)
+
+def savetxtlzma(fid, ame, a):
+    savetxt(fid, a)
+    f = open(ame, 'wb')
+    s = lzma.compress(fid.getvalue())
+    f.write(s)
+    f.close()
+    fid.close()
 
 class NoTrace:
     def write(self, data):
@@ -143,25 +156,25 @@ def save_state(state, filename):
 
     # Write convergence info
     write(trace, "writing chain\n")
-    fid = CREATE(filename+'-chain'+EXT, 'wb')
+    ame = filename+'-chain'+EXT
+    fid = BytesIO()
     write(fid, '# draws acceptance_rate %d*logp\n' % Npop)
-    savetxt(fid, chain)
-    fid.close()
+    savetxtlzma(fid, ame, chain)
 
     # Write point info
     write(trace, "writing point\n")
-    fid = CREATE(filename+'-point'+EXT, 'wb')
+    ame = filename+'-point'+EXT
+    fid = BytesIO()
     write(fid, '# logp point (Nthin x Npop x Nvar = [%d,%d,%d])\n'
           % (Nthin, Npop, Nvar))
-    savetxt(fid, point)
-    fid.close()
+    savetxtlzma(fid, ame, point)
 
     # Write stats
     write(trace, "writing stats\n")
-    fid = CREATE(filename+'-stats'+EXT, 'wb')
+    ame = filename+'-stats'+EXT
+    fid = BytesIO()
     write(fid, '# draws %d*CR_weight\n' % Ncr)
-    savetxt(fid, stats)
-    fid.close()
+    savetxtlzma(fid, ame, stats)
     write(trace, "done state save\n")
     trace.close()
 
@@ -177,6 +190,14 @@ def loadtxt(file, report=0):
         if file.endswith('.gz'):
             #print("opening with gzip")
             fh = gzip.open(file, 'rt')
+        elif file.endswith('.xz'):
+            print(file + " opening with lzma")
+            fh = lzma.open(file, 'r')
+            b = fh.read()
+            fh.close()
+
+            s = b.decode()
+            fh = StringIO(s)
         else:
             fh = open(file, 'rt')
     else:
@@ -217,6 +238,20 @@ def openmc(filename):
             fh = open(filename[:-3], 'rt')
         else:
             raise RuntimeError("file %s does not exist"%filename)
+    elif filename.endswith('.xz'):
+        if os.path.exists(filename):
+            print("opening with lzma")
+            fh = lzma.open(filename, 'r')
+            b = fh.read()
+            fh.close()
+
+            s = b.decode()
+            fh = StringIO(s)
+        elif os.path.exists(filename[:-3]):
+            fh = open(filename[:-3], 'rt')
+        else:
+            raise RuntimeError("file %s does not exist"%filename)
+        
     else:
         if os.path.exists(filename):
             fh = open(filename, 'rt')
