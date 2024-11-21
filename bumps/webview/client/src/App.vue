@@ -10,6 +10,7 @@ import {
   active_fit,
   selected_fitter,
   default_fitter,
+  default_fitter_settings,
   fitOptions,
   fileBrowser,
   FileBrowserSettings,
@@ -66,10 +67,6 @@ const socket = io(sio_server, {
    path: `${sio_base_path}socket.io`,
 }) as AsyncSocket;
 socket_ref.value = socket;
-
-const can_mount_local = (
-  ('mountLocal' in socket) && ('showDirectoryPicker' in window)
-)
 
 socket.on('connect', async () => {
   console.log(socket.id);
@@ -264,10 +261,6 @@ file_menu_items.value = [
   { text: "---" },
   { text: "Quit", action: quit },
 ]
-
-if (can_mount_local) {
-  file_menu_items.value.splice(0, 0, { text: "Mount Local Folder", action: mountLocal });
-}
 
 </script>
 
