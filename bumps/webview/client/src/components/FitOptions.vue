@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, shallowRef } from 'vue';
-import { Modal } from 'bootstrap/dist/js/bootstrap.esm.js';
-import { fitter_settings, default_fitter_settings, selected_fitter, default_fitter } from '../app_state.ts';
+import { ref, onMounted, computed } from 'vue';
+import { default_fitter, default_fitter_settings, fitter_settings, selected_fitter } from '../app_state.ts';
 import type { AsyncSocket } from '../asyncSocket.ts';
 
 const props = defineProps<{socket: AsyncSocket}>();
 
-const dialog = ref<HTMLDivElement>();
+const dialog = ref<HTMLDialogElement>();
 const isOpen = ref(false);
 const selected_fitter_local = ref("amoeba");
 
@@ -52,22 +51,17 @@ props.socket.on('selected_fitter', (new_selected_fitter: string) => {
   selected_fitter.value = new_selected_fitter;
 });
 
-let modal: Modal;
-
-onMounted(() => {
-  modal = new Modal(dialog.value, { backdrop: 'static', keyboard: false });
-
-});
-
 function close() {
-  modal?.hide();
+  isOpen.value = false;
+  dialog.value?.close();
 }
 
 function open() {
   // copy the  selected_fitter_local from the server state:
   selected_fitter_local.value = selected_fitter.value ?? default_fitter;
   changeActiveFitter();
-  modal?.show();
+  isOpen.value = true;
+  dialog.value?.showModal();
 }
 
 const fit_names = computed(() => Object.keys(default_fitter_settings?.value));
@@ -147,71 +141,78 @@ defineExpose({
 </script>
 
 <template>
-  <div ref="dialog" class="modal fade" id="fitOptionsModal" tabindex="-1" aria-labelledby="fitOptionsLabel"
-    :aria-hidden="isOpen">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="fitOptionsLabel">Fit Options</h5>
-          <button type="button" class="btn-close" @click="close" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <div class="container">
-            <div class="row border-bottom">
-              <div class="col">
-                <div class="form-check" v-for="fname in fit_names.slice(0,3)" :key="fname">
-                  <input class="form-check-input" v-model="selected_fitter_local" type="radio" name="flexRadio"
-                    :id="fname" :value="fname" @change="changeActiveFitter">
-                  <label class="form-check-label" :for="fname">
-                    {{default_fitter_settings[fname].name}}
-                    <span v-if="fname !== 'scipy.leastsq'">({{ fname }})</span>
-                  </label>
+  <dialog ref="dialog">
+    <div class="modal show" id="fitOptionsModal" tabindex="-1" aria-labelledby="fitOptionsLabel"
+      :aria-hidden="!isOpen">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="fitOptionsLabel">Fit Options</h5>
+            <button type="button" class="btn-close" @click="close" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="container">
+              <div class="row border-bottom">
+                <div class="col">
+                  <div class="form-check" v-for="fname in fit_names.slice(0,3)" :key="fname">
+                    <input class="form-check-input" v-model="selected_fitter_local" type="radio" name="flexRadio"
+                      :id="fname" :value="fname" @change="changeActiveFitter">
+                    <label class="form-check-label" :for="fname">
+                      {{default_fitter_settings[fname].name}}
+                      <span v-if="fname !== 'scipy.leastsq'">({{ fname }})</span>
+                    </label>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="form-check" v-for="fname in fit_names.slice(3)" :key="fname">
+                    <input class="form-check-input" v-model="selected_fitter_local" type="radio" name="flexRadio"
+                      :id="fname" :value="fname" @change="changeActiveFitter">
+                    <label class="form-check-label" :for="fname">
+                      {{default_fitter_settings[fname].name}}
+                      <span v-if="fname !== 'scipy.leastsq'">({{ fname }})</span>
+                    </label>
+                  </div>
                 </div>
               </div>
-              <div class="col">
-                <div class="form-check" v-for="fname in fit_names.slice(3)" :key="fname">
-                  <input class="form-check-input" v-model="selected_fitter_local" type="radio" name="flexRadio"
-                    :id="fname" :value="fname" @change="changeActiveFitter">
-                  <label class="form-check-label" :for="fname">
-                    {{default_fitter_settings[fname].name}}
-                    <span v-if="fname !== 'scipy.leastsq'">({{ fname }})</span>
-                  </label>
+              <div class="row p-2">
+                <div class="row p-1 text-secondary" v-if="selected_fitter_local in OPTIONS_HELP">
+                  <span><em>{{ OPTIONS_HELP[selected_fitter_local] }}</em></span>
                 </div>
-              </div>
-            </div>
-            <div class="row p-2">
-              <div class="row p-1 text-secondary" v-if="selected_fitter_local in OPTIONS_HELP">
-                <span><em>{{ OPTIONS_HELP[selected_fitter_local] }}</em></span>
-              </div>
-              <div class="row p-1" v-for="(value, sname, index) in active_settings" :key="sname">
-                <label class="col-sm-4 col-form-label" :for="'setting_' + index">{{FIT_FIELDS[sname][0]}}</label>
-                <div class="col-sm-8">
-                  <select v-if="Array.isArray(FIT_FIELDS[sname][1])" v-model="active_settings[sname]" class="form-select">
-                    <option v-for="opt in FIT_FIELDS[sname][1]">{{opt}}</option>
-                  </select>
-                  <input v-else-if="FIT_FIELDS[sname][1]==='boolean'" class="form-check-input m-2" type="checkbox"
-                    v-model="active_settings[sname]" />
-                  <input v-else :class="{'form-control': true, 'is-invalid': !validate(active_settings[sname], sname)}"
-                    type="text" v-model="active_settings[sname]" @keydown.enter="save" />
+                <div class="row p-1" v-for="(value, sname, index) in active_settings" :key="sname">
+                  <label class="col-sm-4 col-form-label" :for="'fitter_setting_' + index">{{FIT_FIELDS[sname][0]}}</label>
+                  <div class="col-sm-8">
+                    <select v-if="Array.isArray(FIT_FIELDS[sname][1])" v-model="active_settings[sname]" class="form-select" 
+                      :name="sname" :id="'fitter_setting_' + index">
+                      <option v-for="opt in FIT_FIELDS[sname][1]">{{opt}}</option>
+                    </select>
+                    <input v-else-if="FIT_FIELDS[sname][1]==='boolean'" class="form-check-input m-2" type="checkbox"
+                      v-model="active_settings[sname]" :name="sname" :id="'fitter_setting_' + index"/>
+                    <input v-else :class="{'form-control': true, 'is-invalid': !validate(active_settings[sname], sname)}"
+                      type="text" v-model="active_settings[sname]" @keydown.enter="save" :name="sname" :id="'fitter_setting_' + index"/>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" @click="reset">Reset Defaults</button>
-          <button type="button" class="btn btn-success" :class="{disabled: anyIsInvalid}" @click="save(true)">Save and Start</button>
-          <button type="button" class="btn btn-primary" :class="{disabled: anyIsInvalid}" @click="save(false)">
-            Save Changes</button>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" @click="reset">Reset Defaults</button>
+            <button type="button" class="btn btn-success" :class="{disabled: anyIsInvalid}" @click="save(true)">Save and Start</button>
+            <button type="button" class="btn btn-primary" :class="{disabled: anyIsInvalid}" @click="save(false)">
+              Save Changes</button>
 
+          </div>
         </div>
       </div>
     </div>
-  </div>
+  </dialog>
 </template>
 
 <style scoped>
 .form-check label {
   user-select: none;
+}
+
+div.modal {
+  display: block;
 }
 </style>
