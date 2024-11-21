@@ -179,15 +179,16 @@ defineExpose({
                   <span><em>{{ OPTIONS_HELP[selected_fitter_local] }}</em></span>
                 </div>
                 <div class="row p-1" v-for="(value, sname, index) in active_settings" :key="sname">
-                  <label class="col-sm-4 col-form-label" :for="'setting_' + index">{{FIT_FIELDS[sname][0]}}</label>
+                  <label class="col-sm-4 col-form-label" :for="'fitter_setting_' + index">{{FIT_FIELDS[sname][0]}}</label>
                   <div class="col-sm-8">
-                    <select v-if="Array.isArray(FIT_FIELDS[sname][1])" v-model="active_settings[sname]" class="form-select">
+                    <select v-if="Array.isArray(FIT_FIELDS[sname][1])" v-model="active_settings[sname]" class="form-select" 
+                      :name="sname" :id="'fitter_setting_' + index">
                       <option v-for="opt in FIT_FIELDS[sname][1]">{{opt}}</option>
                     </select>
                     <input v-else-if="FIT_FIELDS[sname][1]==='boolean'" class="form-check-input m-2" type="checkbox"
-                      v-model="active_settings[sname]" />
+                      v-model="active_settings[sname]" :name="sname" :id="'fitter_setting_' + index"/>
                     <input v-else :class="{'form-control': true, 'is-invalid': !validate(active_settings[sname], sname)}"
-                      type="text" v-model="active_settings[sname]" @keydown.enter="save" />
+                      type="text" v-model="active_settings[sname]" @keydown.enter="save" :name="sname" :id="'fitter_setting_' + index"/>
                   </div>
                 </div>
               </div>
