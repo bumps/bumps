@@ -158,7 +158,7 @@ defineExpose({
                     <input class="form-check-input" v-model="selected_fitter_local" type="radio" name="flexRadio"
                       :id="fname" :value="fname" @change="changeActiveFitter">
                     <label class="form-check-label" :for="fname">
-                      {{fitter_defaults[fname].name}}
+                      {{default_fitter_settings[fname].name}}
                       <span v-if="fname !== 'scipy.leastsq'">({{ fname }})</span>
                     </label>
                   </div>
@@ -168,7 +168,7 @@ defineExpose({
                     <input class="form-check-input" v-model="selected_fitter_local" type="radio" name="flexRadio"
                       :id="fname" :value="fname" @change="changeActiveFitter">
                     <label class="form-check-label" :for="fname">
-                      {{fitter_defaults[fname].name}}
+                      {{default_fitter_settings[fname].name}}
                       <span v-if="fname !== 'scipy.leastsq'">({{ fname }})</span>
                     </label>
                   </div>
