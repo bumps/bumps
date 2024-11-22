@@ -1,32 +1,34 @@
 <script setup lang="ts">
 /// <reference types="@types/uuid"/>
-import { ref } from "vue";
-import * as Plotly from "plotly.js/lib/core";
-import type { AsyncSocket } from "../asyncSocket.ts";
-import { SVGDownloadButton } from "../plotly_extras";
-import { setupDrawLoop } from "../setupDrawLoop";
+import { ref } from 'vue';
+import type { AsyncSocket } from '../asyncSocket.ts';
+import { setupDrawLoop } from '../setupDrawLoop';
+import * as Plotly from 'plotly.js/lib/core';
+import { SVGDownloadButton } from '../plotly_extras';
 
 const title = "Convergence";
 const plot_div = ref<HTMLDivElement>();
 const props = defineProps<{
-  socket: AsyncSocket;
+  socket: AsyncSocket,
 }>();
 
-setupDrawLoop("updated_convergence", props.socket, fetch_and_draw, title);
+setupDrawLoop('updated_convergence', props.socket, fetch_and_draw, title);
 
 async function fetch_and_draw() {
-  const payload = (await props.socket.asyncEmit("get_convergence_plot")) as Plotly.PlotlyDataLayoutConfig;
+  const payload = await props.socket.asyncEmit('get_convergence_plot') as Plotly.PlotlyDataLayoutConfig;
   let plotdata = { ...payload };
   // console.log({plotdata});
   const { data, layout } = plotdata;
-  const config = { responsive: true, scrollZoom: true, modeBarButtonsToAdd: [SVGDownloadButton] };
+  const config = { responsive: true, scrollZoom: true, modeBarButtonsToAdd: [ SVGDownloadButton ] };
   await Plotly.react(plot_div.value as HTMLDivElement, [...data], layout, config);
 }
-</script>
 
+</script>
+    
 <template>
   <div class="container d-flex flex-grow-1 flex-column">
-    <div ref="plot_div" class="flex-grow-1"></div>
+    <div class="flex-grow-1" ref="plot_div">
+    </div>
   </div>
 </template>
 
