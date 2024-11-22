@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { ref } from "vue";
 import TagFilter from "./ParameterTagFilter.vue";
 import type { AsyncSocket } from "../asyncSocket.ts";
 import { setupDrawLoop } from "../setupDrawLoop";

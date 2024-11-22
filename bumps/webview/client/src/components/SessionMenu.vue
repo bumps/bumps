@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, shallowRef } from "vue";
+import DropDown from "./DropDown.vue";
 import {
   active_fit,
   autosave_session,
@@ -154,62 +155,75 @@ async function unsetOutputFile() {
 </script>
 
 <template>
-  <li class="nav-item dropdown">
-    <button class="btn btn-link nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-      Session
-      <input class="form-check-input" type="checkbox" :checked="autosave_session" readonly />
-    </button>
-    <ul id="session-dropdown-menu" class="dropdown-menu">
-      <li class="dropdown-item">
-        <div class="form-check form-switch">
-          <label class="form-check-label" for="autoSaveSessionCheckbox">Autosave</label>
+  <DropDown v-slot="{ hide }" title="Session">
+    <li class="dropdown-item">
+      <div class="form-check form-switch">
+        <label class="form-check-label" for="autoSaveSessionCheckbox">Autosave</label>
+        <input
+          id="autoSaveSessionCheckbox"
+          class="form-check-input"
+          type="checkbox"
+          role="switch"
+          :checked="autosave_session"
+          @change="toggle_autosave"
+        />
+      </div>
+    </li>
+    <li>
+      <span v-if="session_output_file" class="">
+        <span class="dropdown-item-text">{{ session_output_file.filename }}</span>
+      </span>
+    </li>
+    <li class="dropdown-item">
+      <div class="row">
+        <label for="autosaveIntervalInput" class="col col-form-label col-form-label-sm">Interval (s)</label>
+        <div class="col-auto">
           <input
-            id="autoSaveSessionCheckbox"
-            class="form-check-input"
-            type="checkbox"
-            role="switch"
-            :checked="autosave_session"
-            @change="toggle_autosave"
+            id="autosaveIntervalInput"
+            type="number"
+            class="form-control form-control"
+            :value="autosave_session_interval"
+            @change="set_interval(($event.target as HTMLInputElement).valueAsNumber)"
           />
         </div>
-      </li>
-      <li>
-        <span v-if="session_output_file" class="">
-          <span class="dropdown-item-text">{{ session_output_file.filename }}</span>
-        </span>
-      </li>
-      <li class="dropdown-item">
-        <div class="row">
-          <label for="autosaveIntervalInput" class="col col-form-label col-form-label-sm">Interval (s)</label>
-          <div class="col-auto">
-            <input
-              id="autosaveIntervalInput"
-              type="number"
-              class="form-control form-control"
-              :value="autosave_session_interval"
-              @change="set_interval($event.target.valueAsNumber)"
-            />
-          </div>
-        </div>
-      </li>
-      <li>
-        <hr class="dropdown-divider" />
-      </li>
-      <li>
-        <button
-          class="btn btn-link dropdown-item"
-          :class="{ disabled: active_fit?.fitter_id }"
-          @click="readSession(false)"
-        >
-          Open Session
-        </button>
-      </li>
-      <li>
-        <button class="btn btn-link dropdown-item" @click="saveSession">Save Session</button>
-      </li>
-      <li>
-        <button class="btn btn-link dropdown-item" @click="setOutputFile(false, true)">Save Session As</button>
-      </li>
-    </ul>
-  </li>
+      </div>
+    </li>
+    <li>
+      <hr class="dropdown-divider" />
+    </li>
+    <li>
+      <button
+        class="btn btn-link dropdown-item"
+        :class="{ disabled: active_fit?.fitter_id }"
+        @click="
+          readSession(false);
+          hide();
+        "
+      >
+        Open Session
+      </button>
+    </li>
+    <li>
+      <button
+        class="btn btn-link dropdown-item"
+        @click="
+          saveSession();
+          hide();
+        "
+      >
+        Save Session
+      </button>
+    </li>
+    <li>
+      <button
+        class="btn btn-link dropdown-item"
+        @click="
+          setOutputFile(false, true);
+          hide();
+        "
+      >
+        Save Session As
+      </button>
+    </li>
+  </DropDown>
 </template>

@@ -35,6 +35,7 @@ export default [
       "prefer-const": 0,
       "@typescript-eslint/ban-ts-comment": ["error", { "ts-ignore": "allow-with-description" }],
       "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": "warn",
       "prettier/prettier": [
         "warn",
         {},
@@ -42,6 +43,7 @@ export default [
           usePrettierrc: true,
         },
       ],
+      "vue/no-html": "off",
       "vuejs-accessibility/label-has-for": [
         "error",
         {

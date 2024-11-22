@@ -26,7 +26,7 @@ const show_labels = ref(true);
 async function on_change_show_labels() {
   let { timestamp, plotdata } = (cache[title] as { timestamp: string; plotdata: Plotly.PlotlyDataLayoutConfig }) ?? {};
   if (plotdata) {
-    apply_label_visibility(plotdata.layout, show_labels.value);
+    apply_label_visibility(plotdata.layout as Plotly.Layout, show_labels.value);
     await Plotly.react(plot_div_id.value, [...plotdata.data], plotdata.layout);
   }
 }

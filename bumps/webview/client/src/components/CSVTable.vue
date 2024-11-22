@@ -29,12 +29,12 @@ async function download_csv() {
     <table class="table">
       <thead class="border-bottom py-1 sticky-top text-white bg-secondary">
         <tr>
-          <th v-for="header_item in table_data.header" scope="col">{{ header_item }}</th>
+          <th v-for="header_item in table_data.header" :key="header_item" scope="col">{{ header_item }}</th>
         </tr>
       </thead>
       <tbody>
-        <tr v-for="table_row in table_data.rows" class="py-1">
-          <td v-for="table_item in table_row" scope="col">{{ table_item }}</td>
+        <tr v-for="table_row in table_data.rows" :key="table_row" class="py-1">
+          <td v-for="table_item in table_row" :key="table_item" scope="col">{{ table_item }}</td>
         </tr>
       </tbody>
     </table>
