@@ -1,14 +1,12 @@
 """
 Wx-Pylab magic for displaying plots within an application's window.
 """
-
 from math import log10, floor
 import string
 
 import wx
 
 import numpy as np
-
 
 class EmbeddedPylab(object):
     """
@@ -58,28 +56,22 @@ class EmbeddedPylab(object):
     in matplotlib.backend_bases for examples showing how to use matplotlib
     with other GUI toolkits.
     """
-
     def __init__(self, canvas):
         # delay loading pylab until matplotlib.use() is called
         from matplotlib.backend_bases import FigureManagerBase
-
         self.fm = FigureManagerBase(canvas, -1)
-
     def __enter__(self):
         # delay loading pylab until matplotlib.use() is called
         import pylab
         from matplotlib._pylab_helpers import Gcf
-
         # Note: don't need to track and restore the current active since it
         # will automatically be restored when we pop the current figure.
         Gcf.set_active(self.fm)
         return pylab
-
     def __exit__(self, *args, **kw):
         # delay loading pylab until matplotlib.use() is called
         from matplotlib._pylab_helpers import Gcf
-
-        if hasattr(Gcf, "_activeQue"):  # CRUFT: MPL < 3.3.1
+        if hasattr(Gcf, '_activeQue'):  # CRUFT: MPL < 3.3.1
             Gcf._activeQue = [f for f in Gcf._activeQue if f is not self.fm]
             try:
                 del Gcf.figs[-1]
@@ -88,25 +80,19 @@ class EmbeddedPylab(object):
         else:
             Gcf.figs.pop(self.fm.num, None)
 
-
 class Validator(wx.PyValidator):
     def __init__(self, flag):
         wx.PyValidator.__init__(self)
         self.flag = flag
         self.Bind(wx.EVT_CHAR, self.OnChar)
-
     def Clone(self):
         return Validator(self.flag)
-
     def Validate(self, win):
         return True
-
     def TransferToWindow(self):
         return True
-
     def TransferFromWindow(self):
         return True
-
     def OnChar(self, evt):
         key = chr(evt.GetKeyCode())
         if self.flag == "no-alpha" and key in string.letters:
@@ -115,13 +101,12 @@ class Validator(wx.PyValidator):
             return
         evt.Skip()
 
-
 def nice(v, digits=4):
     """Fix v to a value with a given number of digits of precision"""
-    if v == 0.0 or not np.isfinite(v):
+    if v == 0. or not np.isfinite(v):
         return v
     else:
-        sign = v / abs(v)
+        sign = v/abs(v)
         place = floor(log10(abs(v)))
-        scale = 10 ** (place - (digits - 1))
-        return sign * floor(abs(v) / scale + 0.5) * scale
+        scale = 10**(place-(digits-1))
+        return sign*floor(abs(v)/scale+0.5)*scale

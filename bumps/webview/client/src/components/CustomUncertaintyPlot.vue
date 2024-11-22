@@ -72,7 +72,7 @@ async function fetch_and_draw(latest_timestamp?: string) {
       responsive: true,
       edits: {
       legendPosition: true
-      },
+      }, 
       ...configWithSVGDownloadButton
     }
 
@@ -119,7 +119,7 @@ async function fetch_and_draw(latest_timestamp?: string) {
       <div class="col-md-2 align-left">
         <input class="form-control" type="number" v-model="n_samples" id="n_samples" @change="draw_requested = true" />
       </div>
-    </div>
+    </div>      
     <div v-if="figtype==='error'" class="flex-grow-0" ref="error_div">
       <div style="color:red; font-size: larger; font-weight: bold;">
         Plotting error:

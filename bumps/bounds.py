@@ -49,25 +49,11 @@ functions::
     nice_range(lo,hi)
         return (lo,hi) limited to 2 significant digits
 """
-
-__all__ = [
-    "pm",
-    "pmp",
-    "pm_raw",
-    "pmp_raw",
-    "nice_range",
-    "init_bounds",
-    "DistProtocol",
-    "Bounds",
-    "Unbounded",
-    "Bounded",
-    "BoundedAbove",
-    "BoundedBelow",
-    "Distribution",
-    "Normal",
-    "BoundedNormal",
-    "SoftBounded",
-]
+from __future__ import division
+__all__ = ['pm', 'pmp', 'pm_raw', 'pmp_raw', 'nice_range', 'init_bounds',
+           'DistProtocol',
+           'Bounds', 'Unbounded', 'Bounded', 'BoundedAbove', 'BoundedBelow',
+           'Distribution', 'Normal', 'BoundedNormal', 'SoftBounded']
 
 from dataclasses import dataclass, field
 import math
@@ -75,7 +61,6 @@ from math import log, log10, sqrt, pi, ceil, floor
 
 from numpy import inf, isinf, isfinite, clip
 import numpy.random as RNG
-
 try:
     from scipy.stats import norm as normal_distribution
 except ImportError:
@@ -100,7 +85,7 @@ LimitsType = Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]
 #         return float.__repr__(self)
 
 
-def pm(v, plus, minus=None, limits: Optional[LimitsType] = None):
+def pm(v, plus, minus=None, limits: Optional[LimitsType]=None):
     """
     Return the tuple (~v-dv,~v+dv), where ~expr is a 'nice' number near to
     to the value of expr.  For example::
@@ -131,7 +116,6 @@ def pmp(v, plus, minus=None, limits=None):
     return (~v-pm%v, ~v+pp%v).
     """
     return nice_range(limited_range(pmp_raw(v, plus, minus), limits=limits))
-
 
 # Generate ranges using x +/- dx or x +/- p%*x
 
@@ -165,7 +149,6 @@ def pmp_raw(v, plus, minus=None):
 
     return (b1, b2) if v > 0 else (b2, b1)
 
-
 def limited_range(bounds, limits=None):
     """
     Given a range and limits, fix the endpoints to lie within the range
@@ -174,7 +157,6 @@ def limited_range(bounds, limits=None):
         return clip(bounds[0], *limits), clip(bounds[1], *limits)
     return bounds
 
-
 def nice_range(bounds):
     """
     Given a range, return an enclosing range accurate to two digits.
@@ -182,12 +164,12 @@ def nice_range(bounds):
     step = bounds[1] - bounds[0]
     if step > 0:
         d = 10 ** (floor(log10(step)) - 1)
-        return floor(bounds[0] / d) * d, ceil(bounds[1] / d) * d
+        return floor(bounds[0]/d)*d, ceil(bounds[1]/d)*d
     else:
         return bounds
 
 
-def init_bounds(v) -> "Bounds":
+def init_bounds(v) -> 'Bounds':
     """
     Returns a bounds object of the appropriate type given the arguments.
 
@@ -237,7 +219,6 @@ class Bounds:
     is being optimized is also a probability, then this is an easy way to
     incorporate information from other sorts of measurements into the model.
     """
-
     # TODO: need derivatives wrt bounds transforms
 
     @property
@@ -330,16 +311,15 @@ class Bounds:
         return a (differentiable) nonzero value when outside the bounds
         """
         lo, hi = self.limits
-        dlo = 0.0 if v >= lo else abs(v - lo)
-        dhi = 0.0 if v <= hi else abs(v - hi)
+        dlo = 0. if v >= lo else abs(v - lo)
+        dhi = 0. if v <= hi else abs(v - hi)
         return dlo + dhi
 
     def to_dict(self):
         return dict(
             type=type(self).__name__,
             limits=self.limits,
-        )
-
+            )
 
 # CRUFT: python 2.5 doesn't format indefinite numbers properly on windows
 
@@ -367,15 +347,14 @@ class Unbounded(Bounds):
     log likelihood of P is inf everywhere.  A value inf will interfere
     with optimization routines, and so we instead choose P == 1 everywhere.
     """
-
     type = "Unbounded"
 
     def __init__(self, *args, **kw):
         pass
 
     def random(self, n=1, target=1.0):
-        scale = target + (target == 0.0)
-        return RNG.randn(n) * scale
+        scale = target + (target == 0.)
+        return RNG.randn(n)*scale
 
     def nllf(self, value):
         return 0
@@ -415,7 +394,6 @@ class BoundedBelow(Bounds):
     is indistinguishable from values outside the range.  Instead we say
     that P = 1 in range, and 0 outside.
     """
-
     base: float
     type = "BoundedBelow"
 
@@ -426,10 +404,10 @@ class BoundedBelow(Bounds):
     def start_value(self):
         return self.base + 1
 
-    def random(self, n=1, target: float = 1.0):
+    def random(self, n=1, target:float=1.):
         target = max(abs(target), abs(self.base))
-        scale = target + float(target == 0.0)
-        return self.base + abs(RNG.randn(n) * scale)
+        scale = target + float(target == 0.)
+        return self.base + abs(RNG.randn(n)*scale)
 
     def nllf(self, value):
         return 0 if value >= self.base else inf
@@ -440,7 +418,7 @@ class BoundedBelow(Bounds):
     def get01(self, x):
         m, e = math.frexp(x - self.base)
         if m >= 0 and e <= _E_MAX:
-            v = (e + m) / (2.0 * _E_MAX)
+            v = (e + m) / (2. * _E_MAX)
             return v
         else:
             return 0 if m < 0 else 1
@@ -454,10 +432,10 @@ class BoundedBelow(Bounds):
 
     def getfull(self, x):
         v = x - self.base
-        return v if v >= 1 else 2 - 1.0 / v
+        return v if v >= 1 else 2 - 1. / v
 
     def putfull(self, v):
-        x = v if v >= 1 else 1.0 / (2 - v)
+        x = v if v >= 1 else 1. / (2 - v)
         return x + self.base
 
 
@@ -478,7 +456,6 @@ class BoundedAbove(Bounds):
     is indistinguishable from values outside the range.  Instead we say
     that P = 1 in range, and 0 outside.
     """
-
     base: float
 
     @property
@@ -488,10 +465,10 @@ class BoundedAbove(Bounds):
     def start_value(self):
         return self.base - 1
 
-    def random(self, n=1, target: float = 1.0):
+    def random(self, n=1, target:float=1.0):
         target = max(abs(self.base), abs(target))
-        scale = target + float(target == 0.0)
-        return self.base - abs(RNG.randn(n) * scale)
+        scale = target + float(target == 0.)
+        return self.base - abs(RNG.randn(n)*scale)
 
     def nllf(self, value):
         return 0 if value <= self.base else inf
@@ -502,7 +479,7 @@ class BoundedAbove(Bounds):
     def get01(self, x):
         m, e = math.frexp(self.base - x)
         if m >= 0 and e <= _E_MAX:
-            v = (e + m) / (2.0 * _E_MAX)
+            v = (e + m) / (2. * _E_MAX)
             return 1 - v
         else:
             return 1 if m < 0 else 0
@@ -516,10 +493,10 @@ class BoundedAbove(Bounds):
 
     def getfull(self, x):
         v = x - self.base
-        return v if v <= -1 else -2 - 1.0 / v
+        return v if v <= -1 else -2 - 1. / v
 
     def putfull(self, v):
-        x = v if v <= -1 else -1.0 / (v + 2)
+        x = v if v <= -1 else -1. / (v + 2)
         return x + self.base
 
 
@@ -536,7 +513,6 @@ class Bounded(Bounds):
     and for a more natural mapping between nllf and chisq, we instead
     set the probability to 0.  This choice will not affect the fits.
     """
-
     lo: float = field(metadata={"description": "lower end of bounds"})
     hi: float = field(metadata={"description": "upper end of bounds"})
 
@@ -555,7 +531,7 @@ class Bounded(Bounds):
         return (self.lo, self.hi)
 
     def random(self, n=1, target=1.0):
-        # print("= uniform",lo,hi)
+        #print("= uniform",lo,hi)
         return RNG.uniform(self.lo, self.hi, size=n)
 
     def nllf(self, value):
@@ -585,7 +561,6 @@ class DistProtocol(Protocol):
     Protocol for a distribution object, implementing the scipy.stats interface.
     (also including args, kwds and name)
     """
-
     name: str
     args: Tuple[float, ...]
     kwds: Dict[str, Any]
@@ -640,7 +615,8 @@ class Distribution(Bounds):
         self.dist = cls(*args, **kwds)
 
     def __str__(self):
-        return "%s(%s)" % (self.dist.dist.name, ",".join(str(s) for s in self.dist.args))
+        return "%s(%s)" % (self.dist.dist.name,
+                           ",".join(str(s) for s in self.dist.args))
 
     def to_dict(self):
         return dict(
@@ -648,7 +624,7 @@ class Distribution(Bounds):
             limits=self.limits,
             # TODO: how to handle arbitrary distribution function in save/load?
             dist=type(self.dist).__name__,
-        )
+            )
 
 
 @dataclass(frozen=True)
@@ -664,7 +640,7 @@ class Normal(Distribution):
     *mean* is the expected value of the parameter and *std* is the 1-sigma
     standard deviation.
 
-    class is 'frozen' because a new object should be created if
+    class is 'frozen' because a new object should be created if 
     `mean` or `std` are changed.
     """
 
@@ -681,11 +657,11 @@ class Normal(Distribution):
         # -log(P(v)) = -(-0.5*(v-mean)**2/std**2 - log( (2*pi*std**2) ** 0.5))
         #            = 0.5*(v-mean)**2/std**2 + log(2*pi*std**2)/2
         mean, std = self.dist.args
-        return 0.5 * ((value - mean) / std) ** 2 + self._nllf_scale
+        return 0.5 * ((value-mean)/std)**2 + self._nllf_scale
 
     def residual(self, value):
         mean, std = self.dist.args
-        return (value - mean) / std
+        return (value-mean)/std
 
     def __getstate__(self):
         return self.dist.args  # args is mean,std
@@ -700,7 +676,6 @@ class BoundedNormal(Bounds):
     """
     truncated normal bounds
     """
-
     mean: float = 0.0
     std: float = 1.0
     lo: Union[float, Literal["-inf"]]
@@ -710,19 +685,22 @@ class BoundedNormal(Bounds):
     _delta: float = field(init=False)
     _nllf_scale: float = field(init=False)
 
-    def __init__(self, mean: float = 0, std: float = 1, limits=(-inf, inf), hi="inf", lo="-inf"):
+    def __init__(self, mean:float=0, std:float=1, limits=(-inf, inf), hi="inf", lo="-inf"):
         if limits is not None:
             # for backward compatibility:
             lo, hi = limits
-        limits = (-inf if lo is None else float(lo), inf if hi is None else float(hi))
-        object.__setattr__(self, "lo", limits[0])
-        object.__setattr__(self, "hi", limits[1])
-        object.__setattr__(self, "mean", mean)
-        object.__setattr__(self, "std", std)
+        limits = (
+            -inf if lo is None else float(lo),
+            inf if hi is None else float(hi)
+        )
+        object.__setattr__(self, 'lo', limits[0])
+        object.__setattr__(self, 'hi', limits[1])
+        object.__setattr__(self, 'mean', mean)
+        object.__setattr__(self, 'std', std)
 
-        object.__setattr__(self, "_left", normal_distribution.cdf((limits[0] - mean) / std))
-        object.__setattr__(self, "_delta", normal_distribution.cdf((limits[1] - mean) / std) - self._left)
-        object.__setattr__(self, "_nllf_scale", log(2 * pi * std**2) / 2 + log(self._delta))
+        object.__setattr__(self, '_left', normal_distribution.cdf((limits[0]-mean)/std))
+        object.__setattr__(self, '_delta', normal_distribution.cdf((limits[1]-mean)/std) - self._left)
+        object.__setattr__(self, '_nllf_scale', log(2 * pi * std ** 2)/2 + log(self._delta))
 
     @property
     def limits(self):
@@ -735,7 +713,8 @@ class BoundedNormal(Bounds):
         This can also be used as a scale bar to show approximately how close to
         the end of the range the value is.
         """
-        v = (normal_distribution.cdf((x - self.mean) / self.std) - self._left) / self._delta
+        v = ((normal_distribution.cdf((x-self.mean)/self.std) - self._left)
+             / self._delta)
         return clip(v, 0, 1)
 
     def put01(self, v):
@@ -769,7 +748,7 @@ class BoundedNormal(Bounds):
         likelihood scaled so that the maximum probability is one.
         """
         if value in self:
-            return 0.5 * ((value - self.mean) / self.std) ** 2 + self._nllf_scale
+            return 0.5 * ((value-self.mean)/self.std)**2 + self._nllf_scale
         else:
             return inf
 
@@ -796,10 +775,8 @@ class BoundedNormal(Bounds):
 
     def __str__(self):
         vals = (
-            self.limits[0],
-            self.limits[1],
-            self.mean,
-            self.std,
+            self.limits[0], self.limits[1],
+            self.mean, self.std,
         )
         return "(%s,%s), norm(%s,%s)" % tuple(num_format(v) for v in vals)
 
@@ -820,7 +797,6 @@ class SoftBounded(Bounds):
     into the range [0,1] for each parameter we don't need to use soft
     constraints, and this acts just like the rectangular distribution.
     """
-
     lo: float = 0.0
     hi: float = 1.0
     std: float = 1.0
@@ -877,7 +853,6 @@ class SoftBounded(Bounds):
 _E_MIN = -1023
 _E_MAX = 1024
 
-
 def _get01_inf(x):
     """
     Convert a floating point number to a value in [0,1].
@@ -911,7 +886,7 @@ def _put01_inf(v):
     # return tan(pi*(v-0.5))
 
     v = (v - 0.5) * 4 * _E_MAX
-    s = math.copysign(1.0, v)
+    s = math.copysign(1., v)
     v *= s
     e = int(v)
     m = v - e
@@ -919,9 +894,7 @@ def _put01_inf(v):
     # print "< x,e,m,s,v",x,e+_e_min,s*m,s,v
     return x
 
-
 BoundsType = Union[Unbounded, Bounded, BoundedAbove, BoundedBelow, BoundedNormal, SoftBounded, Normal]
-
 
 def test_normal():
     """

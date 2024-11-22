@@ -36,7 +36,7 @@ async function fetch_and_draw(latest_timestamp: string) {
 }
 
 </script>
-
+    
 <template>
   <div class="container d-flex flex-grow-1 flex-column">
     <div class="flex-grow-1" ref="plot_div" :id="plot_div_id">

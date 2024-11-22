@@ -14,7 +14,6 @@ Usage::
     result = mapper(points)
     Mapper.stop_mapper(mapper)
 """
-
 import sys
 import os
 import signal
@@ -24,7 +23,6 @@ import signal
 
 
 PROCESS_ALL_ACCESS = 0x1F0FFF
-
 
 def can_pickle(problem, check=False):
     """
@@ -55,7 +53,6 @@ def can_pickle(problem, check=False):
     except Exception:
         return False
 
-
 def setpriority(pid=None, priority=1):
     """
     Set The Priority of a Windows Process.  Priority is a value between 0-5
@@ -63,34 +60,32 @@ def setpriority(pid=None, priority=1):
     of the current python process but can take any valid process ID.
     """
 
-    # import win32api,win32process,win32con
+    #import win32api,win32process,win32con
     from ctypes import windll
 
-    priorityclasses = [
-        0x40,  # IDLE_PRIORITY_CLASS,
-        0x4000,  # BELOW_NORMAL_PRIORITY_CLASS,
-        0x20,  # NORMAL_PRIORITY_CLASS,
-        0x8000,  # ABOVE_NORMAL_PRIORITY_CLASS,
-        0x80,  # HIGH_PRIORITY_CLASS,
-        0x100,  # REALTIME_PRIORITY_CLASS
-    ]
+    priorityclasses = [0x40,   # IDLE_PRIORITY_CLASS,
+                       0x4000,  # BELOW_NORMAL_PRIORITY_CLASS,
+                       0x20,   # NORMAL_PRIORITY_CLASS,
+                       0x8000,  # ABOVE_NORMAL_PRIORITY_CLASS,
+                       0x80,   # HIGH_PRIORITY_CLASS,
+                       0x100,  # REALTIME_PRIORITY_CLASS
+                      ]
     if pid is None:
         pid = windll.kernel32.GetCurrentProcessId()
     handle = windll.kernel32.OpenProcess(PROCESS_ALL_ACCESS, True, pid)
     windll.kernel32.SetPriorityClass(handle, priorityclasses[priority])
-
-
 # end of http://code.activestate.com/recipes/496767/ }}}
 
 
 def nice():
-    if os.name == "nt":
+    if os.name == 'nt':
         setpriority(priority=1)
     else:
         os.nice(5)
 
 
 class SerialMapper(object):
+
     @staticmethod
     def start_worker(problem):
         pass
@@ -106,10 +101,9 @@ class SerialMapper(object):
 
 
 # Load the problem in the remote process rather than pickling
-# def _MP_load_problem(*modelargs):
+#def _MP_load_problem(*modelargs):
 #    from .fitproblem import load_problem
 #    _MP_set_problem(load_problem(*modelargs))
-
 
 def _MP_setup(namespace):
     # Using MPMapper class variables to store worker globals.
@@ -123,11 +117,10 @@ def _MP_setup(namespace):
 def _MP_run_problem(problem_point_pair):
     problem_id, point = problem_point_pair
     if problem_id != MPMapper.problem_id:
-        # print(f"Fetching problem {problem_id} from namespace")
+        #print(f"Fetching problem {problem_id} from namespace")
         # Problem is pickled using dill when it is available
         try:
             import dill
-
             MPMapper.problem = dill.loads(MPMapper.namespace.pickled_problem)
         except ImportError:
             MPMapper.problem = MPMapper.namespace.problem
@@ -168,17 +161,17 @@ class MPMapper(object):
         MPMapper.problem_id += 1
         try:
             import dill
-
             MPMapper.namespace.pickled_problem = dill.dumps(problem, recurse=True)
         except ImportError:
             MPMapper.namespace.problem = problem
         ## Store the modelargs and the problem name if pickling doesn't work
-        # MPMapper.namespace.modelargs = modelargs
+        #MPMapper.namespace.modelargs = modelargs
 
         # Set the mapper to send problem_id/point value pairs
         def mapper(points):
             try:
-                return MPMapper.pool.map(_MP_run_problem, ((MPMapper.problem_id, p) for p in points))
+                return MPMapper.pool.map(
+                    _MP_run_problem, ((MPMapper.problem_id, p) for p in points))
             except KeyboardInterrupt:
                 MPMapper.stop_mapper(None)
 
@@ -195,48 +188,50 @@ class MPMapper(object):
         # Don't reset problem id; it keeps count even when mapper is restarted.
         ##MPMapper.problem_id = 0
 
-
 def _MPI_set_problem(problem, comm, root=0):
     import dill
-
     pickled_problem = dill.dumps(problem, recurse=True) if comm.rank == root else None
     pickled_problem = comm.bcast(pickled_problem, root=root)
     return problem if comm.rank == root else dill.loads(pickled_problem)
 
-
 def _MPI_map(problem, points, comm, root=0):
-    # print(f"{comm.rank}: mapping points")
+    #print(f"{comm.rank}: mapping points")
     import numpy as np
     from mpi4py import MPI
 
     # Send number of points and number of variables per point.
     # root: return result if there are points otherwise return False
     # worker: return True if there are points otherwise return False
-    npoints, nvars = comm.bcast(points.shape if comm.rank == root else None, root=root)
+    npoints, nvars = comm.bcast(
+        points.shape if comm.rank == root else None, root=root)
     if npoints == 0:
         return False
 
     # Divvy points equally across all processes
     whole = points if comm.rank == root else None
     idx = np.arange(comm.size)
-    size = np.ones(comm.size, idx.dtype) * (npoints // comm.size) + (idx < npoints % comm.size)
+    size = np.ones(comm.size, idx.dtype) * \
+        (npoints // comm.size) + (idx < npoints % comm.size)
     offset = np.cumsum(np.hstack((0, size[:-1])))
-    part = np.empty((size[comm.rank], nvars), dtype="d")
-    comm.Scatterv((whole, (size * nvars, offset * nvars), MPI.DOUBLE), (part, MPI.DOUBLE), root=root)
+    part = np.empty((size[comm.rank], nvars), dtype='d')
+    comm.Scatterv((whole, (size * nvars, offset * nvars), MPI.DOUBLE),
+                  (part, MPI.DOUBLE),
+                  root=root)
 
     # Evaluate models assigned to each processor
-    partial_result = np.array([problem.nllf(pk) for pk in part], dtype="d")
+    partial_result = np.array([problem.nllf(pk) for pk in part], dtype='d')
 
     # Collect results
-    result = np.empty(npoints, dtype="d") if comm.rank == root else True
+    result = np.empty(npoints, dtype='d') if comm.rank == root else True
     comm.Barrier()
-    comm.Gatherv((partial_result, MPI.DOUBLE), (result, (size, offset), MPI.DOUBLE), root=root)
+    comm.Gatherv((partial_result, MPI.DOUBLE),
+                 (result, (size, offset), MPI.DOUBLE),
+                 root=root)
     comm.Barrier()
     return result
 
-
 class MPIMapper(object):
-    _first_fit = True  # The first problem is set when the worker starts
+    _first_fit = True # The first problem is set when the worker starts
 
     @staticmethod
     def start_worker(problem):
@@ -248,26 +243,25 @@ class MPIMapper(object):
 
         Each worker sits in a loop waiting for the next batch of points
         for the problem, or for the next problem. Set t
-        problem is set to None, then exit the process and never
+        problem is set to None, then exit the process and never 
         """
         from mpi4py import MPI
-
         comm, root = MPI.COMM_WORLD, 0
 
         # If worker, sit in a loop waiting for the next point.
         # If the point is empty, then wait for a new problem.
         # If the problem is None then we are done, otherwise wait for next point.
         if comm.rank != root:
-            # print(f"{comm.rank}: looping")
+            #print(f"{comm.rank}: looping")
             while True:
                 result = _MPI_map(problem, None, comm, root)
                 if not result:
                     problem = _MPI_set_problem(None, comm, root)
                     if problem is None:
                         break
-                    # print(f"{comm.rank}: changing problem")
+                    #print(f"{comm.rank}: changing problem")
 
-            # print(f"{comm.rank}: finalizing")
+            #print(f"{comm.rank}: finalizing")
             MPI.Finalize()
 
             # Exit the program after the worker is done. Don't return
@@ -280,7 +274,6 @@ class MPIMapper(object):
     def start_mapper(problem, modelargs=None, cpus=0):
         # Only root can get here---worker is stuck in start_worker
         from mpi4py import MPI
-
         comm, root = MPI.COMM_WORLD, 0
         import numpy as np
 
@@ -292,12 +285,12 @@ class MPIMapper(object):
         # Note: setting problem to None stops the program, so call finalize().
         mapper = lambda points: _MPI_map(problem, points, comm, root)
         if not MPIMapper._first_fit:
-            # print(f"{comm.rank}: replacing problem")
+            #print(f"{comm.rank}: replacing problem")
             # Send an empty set of points to signal a new problem is coming.
-            mapper(np.empty((0, 0), "d"))
+            mapper(np.empty((0, 0), 'd'))
             _MPI_set_problem(problem, comm, root)
             if problem is None:
-                # print(f"{comm.rank}: finalizing root")
+                #print(f"{comm.rank}: finalizing root")
                 MPI.Finalize()
         MPIMapper._first_fit = False
         return mapper
@@ -309,18 +302,18 @@ class MPIMapper(object):
 
 
 class AMQPMapper(object):
+
     @staticmethod
     def start_worker(problem):
-        # sys.stderr = open("bumps-%d.log"%os.getpid(),"w")
-        # print >>sys.stderr,"worker is starting"; sys.stdout.flush()
+        #sys.stderr = open("bumps-%d.log"%os.getpid(),"w")
+        #print >>sys.stderr,"worker is starting"; sys.stdout.flush()
         from amqp_map.config import SERVICE_HOST
         from amqp_map.core import connect, start_worker as serve
-
         server = connect(SERVICE_HOST)
-        # os.system("echo 'serving' > /tmp/map.%d"%(os.getpid()))
+        #os.system("echo 'serving' > /tmp/map.%d"%(os.getpid()))
         # print "worker is serving"; sys.stdout.flush()
         serve(server, "bumps", problem.nllf)
-        # print >>sys.stderr,"worker ended"; sys.stdout.flush()
+        #print >>sys.stderr,"worker ended"; sys.stdout.flush()
 
     @staticmethod
     def start_mapper(problem, modelargs=None, cpus=0):
@@ -337,20 +330,19 @@ class AMQPMapper(object):
         for _ in range(cpus):
             cmd = [sys.argv[0], "--worker"] + modelargs
             # print "starting",sys.argv[0],"in",os.getcwd(),"with",cmd
-            pipe = subprocess.Popen(cmd, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            pipe = subprocess.Popen(cmd, universal_newlines=True,
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             pipes.append(pipe)
         for pipe in pipes:
             if pipe.poll() > 0:
-                raise RuntimeError(
-                    "subprocess returned %d\nout: %s\nerr: %s" % (pipe.returncode, pipe.stdout, pipe.stderr)
-                )
-        # os.system(" ".join(cmd+["&"]))
+                raise RuntimeError("subprocess returned %d\nout: %s\nerr: %s"
+                    % (pipe.returncode, pipe.stdout, pipe.stderr))
+        #os.system(" ".join(cmd+["&"]))
         import atexit
 
         def exit_fun():
             for p in pipes:
                 p.terminate()
-
         atexit.register(exit_fun)
 
         # print "returning mapper",mapper

@@ -87,6 +87,7 @@ managing updates to history and feeding them to the fit progress monitors.
 
 
 class History(object):
+
     """
     Collection of traces.
 
@@ -122,7 +123,8 @@ class History(object):
                 mon = getattr(self, k)
                 mon.requires(v)
             except AttributeError:
-                raise AttributeError("history does not provide " + k + "\nuse one of " + self._trace_names())
+                raise AttributeError("history does not provide " + k
+                                     + "\nuse one of " + self._trace_names())
 
     def accumulate(self, **kw):
         """
@@ -162,7 +164,9 @@ class History(object):
         return Trace(keep=keep, name=name)
 
     def _traces(self):
-        return [trace for trace in self.__dict__.values() if isinstance(trace, Trace)]
+        return [trace
+                for trace in self.__dict__.values()
+                if isinstance(trace, Trace)]
 
     def _trace_names(self):
         traces = [trace.name for trace in self._traces()]
@@ -190,6 +194,7 @@ class History(object):
 
 
 class Trace(object):
+
     """
     Value trace.
 
@@ -207,7 +212,6 @@ class Trace(object):
     Note that snapshot/restore uses lists to represent numpy arrays, which
     may cause problems if the trace is capturing lists.
     """
-
     # Implementation note:
     # Traces are stored in reverse order because append is faster than insert.
     # This detail is hidden from the caller since __getitem__ returns the
@@ -254,7 +258,8 @@ class Trace(object):
 
     def __getitem__(self, key):
         if key < 0:
-            raise IndexError(self.name + " can only be accessed from the beginning")
+            raise IndexError(self.name
+                             + " can only be accessed from the beginning")
         try:
             return self._storage[-key - 1]
         except IndexError:
@@ -264,7 +269,8 @@ class Trace(object):
         raise TypeError("cannot write directly to a trace; use put instead")
 
     def __str__(self):
-        return "Trace " + self.name + ": " + ", ".join([str(k) for k in reversed(self._storage)])
+        return ("Trace " + self.name + ": "
+                + ", ".join([str(k) for k in reversed(self._storage)]))
 
     def snapshot(self):
         """
@@ -274,7 +280,6 @@ class Trace(object):
         converted to json.
         """
         import numpy as np
-
         if isinstance(self._storage[0], np.ndarray):
             return [v.tolist() for v in self._storage]
         else:
@@ -287,10 +292,9 @@ class Trace(object):
         Lists are converted to numpy arrays.
         """
         import numpy as np
-
         if isinstance(state[0], list):
             state = [np.asarray(v) for v in state]
         if len(state) > self.keep:
-            self._storage = state[-self.keep :]
+            self._storage = state[-self.keep:]
         else:
             self._storage = state[:]

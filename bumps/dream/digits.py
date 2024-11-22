@@ -26,6 +26,7 @@ notes:
 the expression of uncertainty in measurement" - Propagation of distributions
 using a Monte Carlo method (No. JCGM 101:2008). Geneva, Switzerland.
 """
+from __future__ import division, print_function
 
 # TODO: needs a refactor before going into production
 
@@ -48,7 +49,6 @@ import numpy.ma as ma
 
 from .stats import credible_interval
 
-
 def credible_interval_sd(data, ci, fn=None, method=None, cuts=None):
     if fn is None:
         # ugly hack here
@@ -56,28 +56,28 @@ def credible_interval_sd(data, ci, fn=None, method=None, cuts=None):
 
     if method is None:
         # do something clever to choose gum or jack
-        method = "gum"
+        method = 'gum'
 
     # Determine the number of cuts
     if cuts is None or cuts <= 0:
         # Use groups of 10000 unless looking for ci > 0.99, in which case
         # use groups of 100/(1-ci).
-        M = max(int(100 / (1 - ci)), 10000)
+        M = max(int(100/(1-ci)), 10000)
         cuts = len(data) // M
     if cuts < 3:
         cuts = 3
 
-    if method == "gum":
+
+    if method == 'gum':
         return gum_sd(data, fn, ci)
-    elif method == "jack":
+    elif method == 'jack':
         return jack_sd(data, fn, ci)
     else:
-        raise ValueError("Unknown sd method" + method)
+        raise ValueError("Unknown sd method"+method)
 
 
 # TODO does not handle either CI function natively
 # requires a 1d ndarray return value
-
 
 def gum_sd(data, f, ci, cuts=10):
     """
@@ -85,7 +85,7 @@ def gum_sd(data, f, ci, cuts=10):
     """
     # reshape data into blocks, skipping the first partial block
     M = len(data) // cuts
-    data = data[-M * cuts :].reshape((cuts, M))
+    data = data[-M*cuts:].reshape((cuts, M))
     # compute the variance of the statistic over the sub-blocks
     stat = np.apply_along_axis(f, 1, data, ci)
     var = np.var(stat, axis=0, ddof=1)
@@ -100,7 +100,7 @@ def jack_sd(data, f, ci, cuts=10):
     """
     # reshape data into blocks, skipping the first partial block
     M = len(data) // cuts
-    data = data[-M * cuts :].reshape((cuts, M))
+    data = data[-M*cuts:].reshape((cuts, M))
     # compute the standard deviation of the statistic over the sub-blocks
     std = np.apply_along_axis(fast_jack, 1, data, f, ci)
     # estimate standard deviation of the statistic for the full data set
@@ -174,7 +174,7 @@ class FastJackknife(object):
         self._fill_interval(drop_stats, (idx_lo, idx_hi), true_stat)
         self._fill_interval(drop_stats, (idx_hi, self.n - 1), true_stat)
 
-        return sqrt((self.n - 1) * var(drop_stats, axis=0, ddof=1))
+        return sqrt((self.n-1)*var(drop_stats, axis=0, ddof=1))
 
     def _fill_interval(self, drop_stats, interval, ev, splits=None):
         lo, hi = interval
@@ -183,7 +183,7 @@ class FastJackknife(object):
         a = np.array([v_lo, v_hi, ev]).T
         g = lambda ar: (ar[0] == ar).all()
         if np.apply_along_axis(g, 1, a).all():
-            for i in range(lo, hi + 1):
+            for i in range(lo, hi+1):
                 drop_stats[i] = v_hi
         elif hi == lo:
             drop_stats[hi] = v_hi
@@ -191,13 +191,12 @@ class FastJackknife(object):
             drop_stats[hi] = v_hi
             drop_stats[lo] = v_lo
         else:
-            splits = max(int(np.ceil(np.log10(hi - lo))), 2)
-            dx = (hi - lo) // splits
-            intervals = [[lo + dx * i, lo + dx * (i + 1)] for i in range(splits)]
+            splits = max(int(np.ceil(np.log10(hi-lo))), 2)
+            dx = (hi - lo)//splits
+            intervals = [[lo+dx*i, lo+dx*(i+1)] for i in range(splits)]
             intervals[-1][1] = hi
             for inter in intervals:
                 self._fill_interval(drop_stats, inter, np.mean((v_lo, v_hi), axis=0))
-
 
 def n_dig(sx, sd):
     """
@@ -208,5 +207,5 @@ def n_dig(sx, sd):
 
     Adapted from section 7.9.2 of gum suppliment 1
     """
-    l = np.log10(4 * sx)
-    return np.floor(np.log10(sd)) - l + 1  # return as float or round now?
+    l = np.log10(4*sx)
+    return np.floor(np.log10(sd)) - l + 1 #return as float or round now?

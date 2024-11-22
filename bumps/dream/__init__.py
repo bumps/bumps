@@ -16,10 +16,10 @@ the rng on the dream class may be a better option.
 
 from .model import MCMCModel
 from .core import Dream
-# from .core import dream
-# from .initpop import *  # cov_init, lhs_init
-# from .model import *    #
-# from .state import *    # load_state, save_state
-# from .views import *    # plotting routines
-# from .util import console
-# from .stats import *
+#from .core import dream
+#from .initpop import *  # cov_init, lhs_init
+#from .model import *    #
+#from .state import *    # load_state, save_state
+#from .views import *    # plotting routines
+#from .util import console
+#from .stats import *

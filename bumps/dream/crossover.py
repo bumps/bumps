@@ -44,13 +44,12 @@ For *Extra.pCR != 'Update'* in the matlab interface use::
     CR = Crossover(CR=[1./Ncr], pCR=[1])
 
 """
+from __future__ import division, print_function
 
 __all__ = [
-    "Crossover",
-    "BaseAdaptiveCrossover",
-    "AdaptiveCrossover",
+    "Crossover", "BaseAdaptiveCrossover", "AdaptiveCrossover",
     "LogAdaptiveCrossover",
-]
+    ]
 
 import numpy as np
 from numpy import ones, zeros, arange, isscalar, std, trunc, log10, logspace
@@ -65,12 +64,11 @@ class Crossover(object):
 
     *weight* is the relative weighting of each CR, or None for equal weights.
     """
-
     def __init__(self, CR, weight=None):
         if isscalar(CR):
             CR, weight = [CR], [1]
-        CR, weight = [np.asarray(v, "d") for v in (CR, weight)]
-        self.CR, self.weight = CR, weight / np.sum(weight)
+        CR, weight = [np.asarray(v, 'd') for v in (CR, weight)]
+        self.CR, self.weight = CR, weight/np.sum(weight)
 
     def reset(self):
         pass
@@ -93,12 +91,11 @@ class BaseAdaptiveCrossover(object):
     """
     Adapted weight crossover ratios.
     """
-
-    weight = None  # type: np.ndarray
-    _count = None  # type: np.ndarray
-    _distance = None  # type: np.ndarray
-    _generations = 0  # type: int
-    _Nchains = 0  # type: int
+    weight = None # type: np.ndarray
+    _count = None # type: np.ndarray
+    _distance = None # type: np.ndarray
+    _generations = 0 # type: int
+    _Nchains = 0 # type: int
 
     def _set_CRs(self, CR):
         self.CR = CR
@@ -123,7 +120,7 @@ class BaseAdaptiveCrossover(object):
         # Calculate the standard deviation of each dimension of X
         r = std(xnew, ddof=1, axis=0)
         # Compute the Euclidean distance between new X and old X
-        d = np.sum(((xold - xnew) / r) ** 2, axis=1)
+        d = np.sum(((xold - xnew)/r)**2, axis=1)
         # Use this information to update sum_p2 to update N_CR
         count, total = distance_per_CR(self.CR, d, used)
         self._count += count
@@ -142,13 +139,12 @@ class BaseAdaptiveCrossover(object):
         total_distance = np.sum(self._distance)
         if total_distance > 0 and self._Nchains > 0:
             # [PAK] Make sure no count is zero by adding one to all counts
-            self.weight = self._distance / (self._count + 1)
-            self.weight *= self._Nchains / total_distance
+            self.weight = self._distance/(self._count+1)
+            self.weight *= self._Nchains/total_distance
 
         # [PAK] Adjust weights toward uniform; this guarantees nonzero weights.
-        self.weight += 0.1 * np.sum(self.weight)
+        self.weight += 0.1*np.sum(self.weight)
         self.weight /= np.sum(self.weight)
-
 
 class AdaptiveCrossover(BaseAdaptiveCrossover):
     """
@@ -157,11 +153,10 @@ class AdaptiveCrossover(BaseAdaptiveCrossover):
     *N* is the number of CRs to use.  CR is set to [1/N, 2/N, ..., 1], with
     initial weights [1/N, 1/N, ..., 1/N].
     """
-
     def __init__(self, N):
         if N < 2:
             raise ValueError("Need more than one CR for AdaptiveCrossover")
-        self._set_CRs((arange(N) + 1) / N)  # Equally spaced CRs
+        self._set_CRs((arange(N)+1)/N)  # Equally spaced CRs
 
 
 # [PAK] Add log spaced adaptive cross-over for high dimensional tightly
@@ -181,11 +176,9 @@ class LogAdaptiveCrossover(BaseAdaptiveCrossover):
     parameters each time.  Lower values of *N* give too few high density CRs,
     and higher values give too many low density CRs.
     """
-
     def __init__(self, dim, N=4.5):
         # Log spaced CR from 1/dim to dim/dim
-        self._set_CRs(logspace(0, log10(dim), trunc(N * log10(dim) + 1)) / dim)
-
+        self._set_CRs(logspace(0, log10(dim), trunc(N*log10(dim)+1))/dim)
 
 def distance_per_CR(available_CRs, distances, used):
     """
@@ -200,3 +193,4 @@ def distance_per_CR(available_CRs, distances, used):
     total = np.asarray([np.sum(distances[used == p]) for p in available_CRs])
     count = np.asarray([np.sum(used == p) for p in available_CRs])
     return count, total
+

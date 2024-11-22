@@ -1,7 +1,7 @@
 import { Socket } from 'socket.io-client';
 
 declare module 'socket.io-client' {
-  //
+  // 
   interface Socket {
     asyncEmit(ev: string, ...args: any[]): Promise<any>;
     // public emit(event: string, ...args: any[]): void;

@@ -1,3 +1,5 @@
+
+
 from copy import deepcopy
 from enum import Enum
 import numpy as np
@@ -5,20 +7,20 @@ from dataclasses import is_dataclass, fields, dataclass
 import graphlib
 import json
 from importlib import import_module
-from typing import Dict, List, Literal, Optional, TypedDict, Union
+from typing import Any, Dict, List, Literal, Optional, Tuple, TypedDict, Union
 from types import GeneratorType
 import traceback
 import warnings
+import asyncio
+from collections import defaultdict
 
-from .util import SCHEMA_ATTRIBUTE_NAME
+from .util import SCHEMA_ATTRIBUTE_NAME, NumpyArray
 
 DEBUG = False
-
 
 class SCHEMA_VERSIONS(str, Enum):
     BUMPS_DRAFT_O1 = "bumps-draft-01"
     BUMPS_DRAFT_02 = "bumps-draft-02"
-
 
 SCHEMA = SCHEMA_VERSIONS.BUMPS_DRAFT_02
 REFERENCES_KEY = "references"
@@ -28,26 +30,22 @@ REFERENCE_TYPE_NAME = "Reference"
 REFERENCE_TYPE = Literal["Reference"]
 TYPE_KEY = "__class__"
 
-
 @dataclass
 class Reference:
     id: str
     type: REFERENCE_TYPE
 
-
-JSON = Union[Dict[str, "JSON"], List["JSON"], str, int, float, bool, None]
-
+JSON = Union[Dict[str, "JSON"], List["JSON"],  str, int, float, bool, None]
 
 class SerializedObject(TypedDict, total=True):
     schema: str
     object: JSON
     references: Dict[str, JSON]
 
-
 def deserialize(serialized: SerializedObject):
-    """rehydrate all items in serialzed['references'] then
-    - reydrate all objects in serialized['object']
-    - replacing `Reference` types with python objects from `references`
+    """ rehydrate all items in serialzed['references'] then 
+     - reydrate all objects in serialized['object']
+     - replacing `Reference` types with python objects from `references`
     """
 
     serialized_references = serialized[REFERENCES_KEY]
@@ -66,8 +64,7 @@ def deserialize(serialized: SerializedObject):
     # references is now full of deserialized objects,
     # and we're ready to rehydrate the entire tree...
 
-    return _rehydrate(serialized["object"], references)
-
+    return _rehydrate(serialized['object'], references)
 
 #### deserializer helpers:
 def _rehydrate(obj, references: Dict[str, object]):
@@ -80,7 +77,7 @@ def _rehydrate(obj, references: Dict[str, object]):
                 raise ValueError("object id is required for Reference type")
             # requires that self.references is populated with rehydrated objects:
             return references[obj_id]
-        elif t == "bumps.util.NumpyArray":
+        elif t == 'bumps.util.NumpyArray':
             # skip processing values list in ndarray
             return _to_ndarray(obj)
         else:
@@ -92,14 +89,14 @@ def _rehydrate(obj, references: Dict[str, object]):
                 # obj values are now rehydrated: instantiate the class from 'type'
             else:
                 try:
-                    module_name, class_name = t.rsplit(".", 1)
+                    module_name, class_name = t.rsplit('.', 1)
                     # print(module_name, class_name)
                     klass = getattr(import_module(module_name), class_name)
                     hydrated = _instantiate(klass, t, obj)
                     return hydrated
                 except Exception as e:
                     # there is a type, but it is not found...
-                    raise ValueError("type %s not found!, error: %s" % (t, e), obj)
+                    raise ValueError("type %s not found!, error: %s" % (t,e), obj)
     elif isinstance(obj, list):
         # rehydrate all the items
         return [_rehydrate(v, references) for v in obj]
@@ -107,38 +104,33 @@ def _rehydrate(obj, references: Dict[str, object]):
         # it's a bare value - just return
         return obj
 
-
 def _instantiate(klass: type, typename: str, serialized: dict):
     s = serialized.copy()
-    # if klass provides 'from_dict' method, use it -
+    # if klass provides 'from_dict' method, use it - 
     # otherwise use klass.__init__ directly.
-    class_factory = getattr(klass, "from_dict", klass)
+    class_factory = getattr(klass, 'from_dict', klass)
     try:
         hydrated = class_factory(**s)
     except Exception as e:
         print(class_factory, s, typename)
-        raise e
+        raise e            
     return hydrated
 
-
 def _to_ndarray(obj: dict):
-    return np.asarray(obj["values"], dtype=np.dtype(obj.get("dtype", float)))
-
+    return np.asarray(obj['values'], dtype=np.dtype(obj.get('dtype', float)))
 
 def _find_ref_dependencies(obj, dependencies: set):
     if isinstance(obj, dict):
         if obj.get(TYPE_KEY, None) == REFERENCE_TYPE:
-            dependencies.add(obj["id"])
+            dependencies.add(obj['id'])
         else:
             for v in obj.values():
-                _find_ref_dependencies(v, dependencies)
+                _find_ref_dependencies(v, dependencies)    
     elif isinstance(obj, list):
         for v in obj:
             _find_ref_dependencies(v, dependencies)
 
-
 #### end deserializer helpers
-
 
 def serialize(obj, use_refs=True):
     references = {}
@@ -151,9 +143,9 @@ def serialize(obj, use_refs=True):
         if include is not None:
             all_fields = [f for f in all_fields if f.name in include]
         elif exclude is not None:
-            all_fields = [f for f in all_fields if f.name not in exclude and not f.name.startswith("_")]
+            all_fields = [f for f in all_fields if not f.name in exclude and not f.name.startswith('_')]
         else:
-            all_fields = [f for f in all_fields if not f.name.startswith("_")]
+            all_fields = [f for f in all_fields if not f.name.startswith('_')]
         cls = dclass.__class__
         fqn = f"{cls.__module__}.{cls.__qualname__}"
         output = dict([(f.name, obj_to_dict(getattr(dclass, f.name))) for f in all_fields])
@@ -165,7 +157,7 @@ def serialize(obj, use_refs=True):
             schema_opts = getattr(obj, SCHEMA_ATTRIBUTE_NAME)
             include = schema_opts.get("include", None)
             exclude = schema_opts.get("exclude", None)
-            use_ref = use_refs and hasattr(obj, "id")
+            use_ref = use_refs and hasattr(obj, 'id')
             if (not use_ref) or (obj.id not in references):
                 # only calculate dict if it's not already in refs, or if not using refs
                 obj_dict = dataclass_to_dict(obj, include=include, exclude=exclude)
@@ -180,9 +172,9 @@ def serialize(obj, use_refs=True):
         #     return tuple(to_dict(v) for v in obj)
         elif isinstance(obj, dict):
             return type(obj)((obj_to_dict(k), obj_to_dict(v)) for k, v in obj.items())
-        elif isinstance(obj, np.ndarray) and obj.dtype.kind in ["f", "i", "U"]:
+        elif isinstance(obj, np.ndarray) and obj.dtype.kind in ['f', 'i', 'U']:
             return {TYPE_KEY: "bumps.util.NumpyArray", "dtype": str(obj.dtype), "values": obj.tolist()}
-        elif isinstance(obj, np.ndarray) and obj.dtype.kind == "O":
+        elif isinstance(obj, np.ndarray) and obj.dtype.kind == 'O':
             return obj_to_dict(obj.tolist())
         elif isinstance(obj, Enum):
             return obj_to_dict(obj.value)
@@ -193,39 +185,38 @@ def serialize(obj, use_refs=True):
         else:
             raise ValueError("obj %s is not serializable" % str(obj))
 
-    serialized = {"$schema": SCHEMA, "object": obj_to_dict(obj), REFERENCES_KEY: references}
+    serialized = {
+        "$schema": SCHEMA,
+        "object": obj_to_dict(obj),
+        REFERENCES_KEY: references
+    }
     return serialized
 
 
 def save_file(filename, problem):
     try:
         p = serialize(problem)
-        with open(filename, "w") as fid:
+        with open(filename, 'w') as fid:
             json.dump(p, fid)
     except Exception:
         traceback.print_exc()
         warnings.warn(f"failed to create JSON file {filename} for fit problem")
 
-
 def load_file(filename):
-    with open(filename, "r") as fid:
+    with open(filename, 'r') as fid:
         serialized: SerializedObject = json.loads(fid.read())
         final_version, migrated = migrate(serialized)
         print("final version: ", final_version)
         return deserialize(migrated)
-
-
+    
 #### MIGRATIONS
 def validate_version(version: str, variable_name="from_version"):
     if version not in list(SCHEMA_VERSIONS):
         raise ValueError(f"must choose a valid {variable_name} from this list: {[s.value for s in SCHEMA_VERSIONS]}")
 
-
-def migrate(
-    serialized: dict, from_version: Optional[SCHEMA_VERSIONS] = None, to_version: Optional[SCHEMA_VERSIONS] = SCHEMA
-):
+def migrate(serialized: dict, from_version: Optional[SCHEMA_VERSIONS] = None, to_version: Optional[SCHEMA_VERSIONS] = SCHEMA):
     """
-    Migrate a serialized object from one version to another
+    Migrate a serialized object from one version to another 
     By default, the `from_version` is determined by inspection of the serialized object.
     This is overriden by setting the `from_version` keyword argument to a member of `SCHEMA_VERSIONS`
 
@@ -234,9 +225,7 @@ def migrate(
     """
 
     if from_version is None:
-        from_version = serialized.get(
-            "$schema", SCHEMA_VERSIONS.BUMPS_DRAFT_O1
-        )  # fall back to first version if not specified
+        from_version = serialized.get("$schema", SCHEMA_VERSIONS.BUMPS_DRAFT_O1) # fall back to first version if not specified
 
     validate_version(from_version, "from_version")
     validate_version(to_version, "to_version")
@@ -267,8 +256,8 @@ def _migrate_draft_01_to_draft_02(serialized: dict):
         if isinstance(obj, dict):
             t: str = obj.get(TYPE_KEY, MISSING)
             obj_id: str = obj.get("id", MISSING)
-            if obj_id is not MISSING and t not in [MISSING, REFERENCE_TYPE_NAME]:
-                if obj_id not in references:
+            if obj_id is not MISSING and not t in [MISSING, REFERENCE_TYPE_NAME]:
+                if not obj_id in references:
                     references[obj_id] = deepcopy(obj)
                 obj[TYPE_KEY] = REFERENCE_TYPE_NAME
                 for k in list(obj.keys()):
@@ -289,5 +278,6 @@ def _migrate_draft_01_to_draft_02(serialized: dict):
     }
     return SCHEMA_VERSIONS.BUMPS_DRAFT_02, migrated
 
-
-MIGRATIONS = {SCHEMA_VERSIONS.BUMPS_DRAFT_O1: _migrate_draft_01_to_draft_02}
+MIGRATIONS = {
+    SCHEMA_VERSIONS.BUMPS_DRAFT_O1: _migrate_draft_01_to_draft_02
+}

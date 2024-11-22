@@ -120,28 +120,19 @@ from numpy import inf, isinf
 
 from .condition import Condition
 
-
 # ==== Norms ====
 def norm_1(x):
     """1-norm: sum(|x_i|)"""
     return np.sum(abs(x))
-
-
 def norm_2(x):
     """2-norm: sqrt(sum(|x_i|^2))"""
-    return math.sqrt(np.sum(abs(x) ** 2))
-
-
+    return math.sqrt(np.sum(abs(x)**2))
 def norm_inf(x):
     """inf-norm: max(|x_i|)"""
     return max(abs(x))
-
-
 def norm_min(x):
     """min-norm: min(|x_i|); this is not a true norm"""
     return min(abs(x))
-
-
 def norm_p(p):
     """p-norm: sum(|x_i|^p)^(1/p)"""
     if isinf(p):
@@ -154,8 +145,7 @@ def norm_p(p):
     elif p == 2:
         return norm_2
     else:
-        return lambda x: np.sum(abs(x) ** p) ** (1 / p)
-
+        return lambda x: np.sum(abs(x)**p)**(1/p)
 
 # ==== Conditions ====
 class Dx(Condition):
@@ -191,53 +181,45 @@ class Dx(Condition):
         *condition* (f(history) : boolean)
             a callable returning true if the condition is met
     """
-
     def __init__(self, tol=0.001, norm=norm_2, n=1, scaled=True):
         self.tol = tol
         self.norm = norm
         self.n = n
         self.scaled = scaled
-
     def _scaled_condition(self, history):
-        x1, x2 = history.point[0], history.point[self.n]
+        x1,x2 = history.point[0], history.point[self.n]
         scale = history.upper_bound - history.lower_bound
-        scale[isinf(scale)] = ((abs(x1) + abs(x2)) / 2)[isinf(scale)]
+        scale[isinf(scale)] = ((abs(x1)+abs(x2))/2)[isinf(scale)]
         scale[scale == 0] = 1
-        return self.norm((x2 - x1) / scale)
-
+        return self.norm((x2-x1)/scale)
     def _raw_condition(self, history):
-        x1, x2 = history.point[0], history.point[self.n]
-        return self.norm(x2 - x1)
-
+        x1,x2 = history.point[0], history.point[self.n]
+        return self.norm(x2-x1)
     def config_history(self, history):
         """
         Needs the previous n points from history.
         """
         if self.tol > 0:
-            history.requires(point=self.n + 1)
-
+            history.requires(point=self.n+1)
     def _subcall(self, history):
         """
         Returns True if the tolerance is met.
         """
-        if self.tol == 0 or len(history.point) < self.n + 1:
+        if self.tol == 0 or len(history.point) < self.n+1:
             return False  # Cannot succeed until at least n generations
         elif self.scaled:
             return self._scaled_condition(history)
         else:
             return self._raw_condition(history)
-
     def __call__(self, history):
         return self._subcall(history) < self.tol
-
     def completeness(self, history):
-        return self._subcall(history) / self.tol
-
+        return self._subcall(history)/self.tol
     def __str__(self):
         if self.scaled:
-            return "||(x[k] - x[k-%d])/range|| < %g" % (self.n, self.tol)
+            return "||(x[k] - x[k-%d])/range|| < %g"%(self.n,self.tol)
         else:
-            return "||x[k] - x[k-%d]|| < %g" % (self.n, self.tol)
+            return "||x[k] - x[k-%d]|| < %g"%(self.n,self.tol)
 
 
 class Df(Condition):
@@ -268,48 +250,41 @@ class Df(Condition):
         *condition* (f(history) : boolean)
             a callable returning true if the condition is met
     """
-
     def __init__(self, tol=0.001, n=1, scaled=True):
         self.tol = tol
         self.n = n
         self.scaled = scaled
-
     def _scaled_condition(self, history):
-        f1, f2 = history.value[0], history.value[self.n]
-        scale = (abs(f1) + abs(f2)) / 2
-        if scale == 0:
-            scale = 1
-        # print "Df",f1,f2,abs(float(f2-f1)/scale),self.tol
-        return abs(float(f2 - f1) / scale)
-
+        f1,f2 = history.value[0], history.value[self.n]
+        scale = (abs(f1)+abs(f2))/2
+        if scale == 0: scale = 1
+        #print "Df",f1,f2,abs(float(f2-f1)/scale),self.tol
+        return abs(float(f2-f1)/scale)
     def _raw_condition(self, history):
-        f1, f2 = history.value[0], history.value[self.n]
-        return abs(f2 - f1)
-
+        f1,f2 = history.value[0], history.value[self.n]
+        return abs(f2-f1)
     def config_history(self, history):
         """
         Needs the previous n points from history.
         """
         if self.tol > 0:
-            history.requires(value=self.n + 1)
-
+            history.requires(value=self.n+1)
     def __call__(self, history):
         """
         Returns True if the tolerance is met.
         """
-        if self.tol == 0 or len(history.value) < self.n + 1:
+        if self.tol == 0 or len(history.value) < self.n+1:
             return False  # Cannot succeed until at least n generations
         elif self.scaled:
             return self._scaled_condition(history) < self.tol
         else:
             return self._raw_condition(history) < self.tol
-
     def __str__(self):
         if self.scaled:
-            return "|F[k]-F[k-%d]| / (|F[k]|+|F[k-%d]|)/2 < %g" % (self.n, self.n, self.tol)
+            return "|F[k]-F[k-%d]| / (|F[k]|+|F[k-%d]|)/2 < %g" % (
+                self.n,self.n,self.tol)
         else:
-            return "|F[k]-F[k-%d]| < %g" % (self.n, self.tol)
-
+            return "|F[k]-F[k-%d]| < %g" % (self.n,self.tol)
 
 class Worse(Condition):
     """
@@ -339,45 +314,39 @@ class Worse(Condition):
         *condition* (f(history) : boolean)
             a callable returning true if the condition is met
     """
-
     def __init__(self, tol=0, n=1, scaled=True):
         self.tol = tol
         self.n = n
         self.scaled = scaled
-
     def _scaled_condition(self, history):
-        f1, f2 = history.value[0], history.value[self.n]
-        scale = (abs(f1) + abs(f2)) / 2
-        if scale == 0:
-            scale = 1
-        return float(f2 - f1) / scale
-
+        f1,f2 = history.value[0], history.value[self.n]
+        scale = (abs(f1)+abs(f2))/2
+        if scale == 0: scale = 1
+        return float(f2-f1)/scale
     def _raw_condition(self, history):
-        f1, f2 = history.value[0], history.value[self.n]
-        return f2 - f1
-
+        f1,f2 = history.value[0], history.value[self.n]
+        return f2-f1
     def config_history(self, history):
         """
         Needs the previous n points from history.
         """
-        history.requires(value=self.n + 1)
-
+        history.requires(value=self.n+1)
     def __call__(self, history):
         """
         Returns True if the tolerance is met.
         """
-        if self.tol == 0 or len(history.value) < self.n + 1:
+        if self.tol == 0 or len(history.value) < self.n+1:
             return False  # Cannot succeed until at least n generations
         elif self.scaled:
             return self._scaled_condition(history) < -self.tol
         else:
             return self._raw_condition(history) < -self.tol
-
     def __str__(self):
         if self.scaled:
-            return "F[k]-F[k-%d] / (|F[k]|+|F[k-%d]|)/2 < -%g" % (self.n, self.n, self.tol)
+            return "F[k]-F[k-%d] / (|F[k]|+|F[k-%d]|)/2 < -%g" % (
+                self.n,self.n,self.tol)
         else:
-            return "F[k]-F[k-%d] < -%g" % (self.n, self.tol)
+            return "F[k]-F[k-%d] < -%g" % (self.n,self.tol)
 
 
 class Grad:
@@ -408,31 +377,25 @@ class Grad:
         *condition* (f(history) : boolean)
             a callable returning true if the condition is met
     """
-
     def __init__(self, tol=0.001, norm=norm_2, scaled=True):
         self.tol = tol
         self.norm = norm
         self.scaled = scaled
-
     def _scaled_condition(self, history):
         df = history.gradient[0]
         f = history.value[0]
         scale = abs(f)
-        if scale == 0:
-            scale = 1
-        return self.norm(df / float(scale))
-
+        if scale == 0: scale = 1
+        return self.norm(df/float(scale))
     def _raw_condition(self, history):
         df = history.gradient[0]
         return self.norm(df)
-
     def config_history(self, history):
         """
         Needs the previous n points from history.
         """
         if self.tol > 0:
             history.requires(gradient=1, value=1)
-
     def __call__(self, history):
         """
         Returns True if the tolerance is met.
@@ -443,7 +406,6 @@ class Grad:
             return self._scaled_condition(history) < self.tol
         else:
             return self._raw_condition(history) < self.tol
-
     def __str__(self):
         if self.scaled:
             return "|| del F[k]/F[k] || < %g" % (self.tol)
@@ -459,15 +421,12 @@ class r_best:
 
     scipy.optimize.fmin uses r_best(norm_inf) as its measure of radius.
     """
-
     def __init__(self, norm):
         self.norm = norm
-
     def __call__(self, population, best, scale):
         P = np.asarray(population)
-        r = max(self.norm(p - best) / scale for p in P)
+        r = max(self.norm(p - best)/scale for p in P)
         return r
-
 
 class r_centroid:
     """
@@ -475,16 +434,13 @@ class r_centroid:
 
         max ||(y - <y>)/scale|| for y in population
     """
-
     def __init__(self, norm):
         self.norm = norm
-
     def __call__(self, population, best, scale):
         P = np.asarray(population)
-        c_i = np.mean(P, axis=0)
-        r = max(self.norm(p - c_i) / scale for p in P)
+        c_i = np.mean(P,axis=0)
+        r = max(self.norm(p - c_i)/scale for p in P)
         return r
-
 
 def r_boundingbox(population, best, scale):
     """
@@ -493,11 +449,10 @@ def r_boundingbox(population, best, scale):
         (product (max(y_i) - min(y_i))/scale)**1/k  for i in dimensions-k
     """
     P = np.asarray(population)
-    lo = max(P, index=0)
-    hi = max(P, index=0)
-    r = np.prod((hi - lo) / scale) ** (1 / len(hi))
+    lo = max(P,index=0)
+    hi = max(P,index=0)
+    r = np.prod((hi-lo)/scale)**(1/len(hi))
     return r
-
 
 class r_hull:
     """
@@ -505,19 +460,15 @@ class r_hull:
 
         1/2 max || (y1 - y2)/scale || for y1,y2 in population
     """
-
     def __init__(self, norm):
         self.norm = norm
-
     def __call__(self, population, best, scale):
         r = 0
-        for i, y1 in enumerate(population):
-            for y2 in population[i + 1 :]:
-                d = self.norm(y2 - y1) / scale
-                if d > r:
-                    r = d
-        return r / 2
-
+        for i,y1 in enumerate(population):
+            for y2 in population[i+1:]:
+                d = self.norm(y2-y1)/scale
+                if d > r: r = d
+        return r/2
 
 class Rx(Condition):
     """
@@ -562,37 +513,32 @@ class Rx(Condition):
         *condition* (f(history) : boolean)
             a callable returning true if the condition is met
     """
-
     def __init__(self, tol=0, radius=r_centroid(norm_2), scaled=False):
         self.tol = tol
         self.radius = radius
         self.scaled = scaled
-
     def _scaled_condition(self, history):
         P = np.asarray(history.population_points[0])
         scale = history.upper_bound - history.lower_bound
         idx = isinf(scale)
         if any(idx):
-            range = np.sum(abs(P), axis=0) / P.shape[0]
+            range = np.sum(abs(P),axis=0)/P.shape[0]
             scale[idx] = range[idx]
         scale[scale == 0] = 1
         r = self.radius(P, history.point[0], scale)
-        # print "Rx=%g, scale=%g"%(r,scale)
+        #print "Rx=%g, scale=%g"%(r,scale)
         return r
-
     def _raw_condition(self, history):
         P = np.asarray(history.population_points[0])
-        r = self.radius(P, history.point[0], scale=1.0)
-        # print "Rx=%g"%r
+        r = self.radius(P, history.point[0], scale=1.)
+        #print "Rx=%g"%r
         return r
-
     def config_history(self, history):
         """
         Needs the previous n points from history.
         """
         if self.tol > 0:
-            history.requires(population_points=1, point=1)
-
+            history.requires(population_points=1,point=1)
     def __call__(self, history):
         """
         Returns True if the tolerance is met.
@@ -603,13 +549,11 @@ class Rx(Condition):
             return self._scaled_condition(history) < self.tol
         else:
             return self._raw_condition(history) < self.tol
-
     def __str__(self):
         if self.scaled:
             return "radius(population/scale) < %g" % (self.tol)
         else:
             return "radius(population) < %g" % (self.tol)
-
 
 class Rf(Condition):
     """
@@ -634,33 +578,27 @@ class Rf(Condition):
         *condition* (f(history) : boolean)
             a callable returning true if the condition is met
     """
-
     def __init__(self, tol=0, scaled=True):
         self.tol = tol
         self.scaled = scaled
-
     def _scaled_condition(self, history):
         Pf = np.asarray(history.population_values)
         scale = np.mean(abs(Pf))
-        if scale == 0:
-            scale = 1
-        r = float(np.max(Pf) - np.min(Pf)) / scale
-        # print "Rf = %g, scale=%g"%(r,scale)
+        if scale == 0: scale = 1
+        r = float(np.max(Pf) - np.min(Pf))/scale
+        #print "Rf = %g, scale=%g"%(r,scale)
         return r
-
     def _raw_condition(self, history):
         P = np.asarray(history.population_values)
         r = np.max(P) - np.min(P)
-        # print "Rf = %g"%r
+        #print "Rf = %g"%r
         return r
-
     def config_history(self, history):
         """
         Needs the previous n points from history.
         """
         if self.tol > 0:
             history.requires(population_values=1)
-
     def __call__(self, history):
         """
         Returns True if the tolerance is met.
@@ -671,7 +609,6 @@ class Rf(Condition):
             return self._scaled_condition(history) < self.tol
         else:
             return self._raw_condition(history) < self.tol
-
     def __str__(self):
         if self.scaled:
             return "(max(F(p)) - min(F(p))/mean(|F(p)|) < %g" % (self.tol)
@@ -707,31 +644,26 @@ class Cx(Condition):
         *condition* (f(history) : boolean)
             a callable returning true if the condition is met
     """
-
     def __init__(self, tol=0.001, point=0, norm=norm_2, scaled=True):
         self.tol = tol
         self.point = point
         self.norm = norm_2
         self.scaled = scaled
-
     def _scaled_condition(self, history):
         x = history.point[0]
         scale = history.upper_bound - history.lower_bound
         scale[isinf(scale)] = abs(self.point)[isinf(scale)]
         scale[scale == 0] = 1
-        return self.norm((x - self.point) / scale)
-
+        return self.norm((x - self.point)/scale)
     def _raw_condition(self, history):
         x = history.point[0]
         return self.norm(x - self.point)
-
     def config_history(self, history):
         """
         Needs the previous point from history.
         """
         if self.tol > 0:
             history.requires(point=1)
-
     def __call__(self, history):
         """
         Returns True if the tolerance is met.
@@ -742,12 +674,11 @@ class Cx(Condition):
             return self._scaled_condition(history) < self.tol
         else:
             return self._raw_condition(history) < self.tol
-
     def __str__(self):
         if self.scaled:
-            return "||(x[k] - Z)/range|| < %g" % (self.tol)
+            return "||(x[k] - Z)/range|| < %g"%(self.tol)
         else:
-            return "||x[k] - Z|| < %g" % (self.tol)
+            return "||x[k] - Z|| < %g"%(self.tol)
 
 
 class Cf(Condition):
@@ -775,29 +706,23 @@ class Cf(Condition):
         *condition* (f(history) : boolean)
             a callable returning true if the condition is met
     """
-
     def __init__(self, tol=0.001, value=0, scaled=True):
         self.tol = tol
         self.value = value
-        if value == 0:
-            scaled = False
+        if value == 0: scaled = False
         self.scaled = scaled
-
     def _scaled_condition(self, history):
         value = history.value[0]
-        return abs(float(value - self.value) / self.value)
-
+        return abs(float(value - self.value)/self.value)
     def _raw_condition(self, history):
         value = history.value[0]
         return abs(value - self.value)
-
     def config_history(self, history):
         """
         Needs the previous point from history.
         """
         if self.tol > 0:
             history.requires(value=1)
-
     def __call__(self, history):
         """
         Returns True if the tolerance is met.
@@ -808,12 +733,12 @@ class Cf(Condition):
             return self._scaled_condition(history) < self.tol
         else:
             return self._raw_condition(history) < self.tol
-
     def __str__(self):
         if self.scaled:
-            return "|(F[k] - A)/A| < %g" % (self.tol)
+            return "|(F[k] - A)/A| < %g"%(self.tol)
         else:
-            return "|F[k] - A| < %g" % (self.tol)
+            return "|F[k] - A| < %g"%(self.tol)
+
 
 
 class Steps(Condition):
@@ -834,21 +759,15 @@ class Steps(Condition):
         *condition* (f(history) : boolean)
             a callable returning true if the condition is met
     """
-
     def __init__(self, steps=np.inf):
         self.steps = steps
-
     def __call__(self, history):
-        if len(history.step) < 1:
-            return False
+        if len(history.step) < 1: return False
         return history.step[0] >= self.steps
-
     def config_history(self, history):
         history.requires(step=1)
-
     def __str__(self):
-        return "steps >= %d" % self.steps
-
+        return "steps >= %d"%self.steps
 
 class Calls(Condition):
     """
@@ -868,21 +787,15 @@ class Calls(Condition):
         *condition* (f(history) : boolean)
             a callable returning true if the condition is met
     """
-
     def __init__(self, calls=np.inf):
         self.calls = calls
-
     def __call__(self, history):
-        if len(history.calls) < 1:
-            return False
+        if len(history.calls) < 1: return False
         return history.calls[0] >= self.calls
-
     def config_history(self, history):
         history.requires(calls=1)
-
     def __str__(self):
-        return "calls >= %d" % self.calls
-
+        return "calls >= %d"%self.calls
 
 class Time(Condition):
     """
@@ -902,20 +815,15 @@ class Time(Condition):
         *condition* (f(history) : boolean)
             a callable returning true if the condition is met
     """
-
     def __init__(self, time=inf):
         self.time = time
-
     def __call__(self, history):
-        if len(history.time) < 1:
-            return False
+        if len(history.time) < 1: return False
         return history.time[0] >= self.time
-
     def config_history(self, history):
         history.requires(time=1)
-
     def __str__(self):
-        return "time >= %g" % self.time
+        return "time >= %g"%self.time
 
 
 class CPU(Condition):
@@ -936,21 +844,15 @@ class CPU(Condition):
         *condition* (f(history) : boolean)
             a callable returning true if the condition is met
     """
-
     def __init__(self, time=np.inf):
         self.time = time
-
     def __call__(self, history):
-        if len(history.cpu_time) < 1:
-            return False
+        if len(history.cpu_time) < 1: return False
         return history.cpu_time[0] >= self.time
-
     def config_history(self, history):
         history.requires(cpu_time=1)
-
     def __str__(self):
-        return "cpu_time >= %g" % self.time
-
+        return "cpu_time >= %g"%self.time
 
 """
 class Feasible: value can be used ** Not implemented **
@@ -967,6 +869,6 @@ class Invalid: values are well defined
 
 def parse_condition(cond):
     import math
-    from . import stop
-
+    from . import stop 
     return eval(cond, stop.__dict__.copy().update(math.__dict__))
+

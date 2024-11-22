@@ -46,7 +46,7 @@ async function remove_history_item(timestamp: string, keep: boolean) {
   console.log('remove_history_item', timestamp);
   if (keep) {
     addNotification({
-      "title": "Forbidden",
+      "title": "Forbidden", 
       "content": "Cannot remove history item marked to keep",
       "timeout": 4000 });
     return;
@@ -93,7 +93,7 @@ onMounted(async () => {
 });
 
 </script>
-
+        
 <template>
   <div class="history container d-flex flex-column flex-grow-1">
     <div class="row p-1 align-items-center">
@@ -111,7 +111,7 @@ onMounted(async () => {
         <label class="form-check-label" for="auto_save" title="Append problem state to history on load and at fit end">Auto append</label>
       </div>
       <div class="col-auto">
-        <input class="form-control-sm" type="number" id="auto_save_length"
+        <input class="form-control-sm" type="number" id="auto_save_length" 
           :value="autosave_history_length"
           @change="set_autosave_history_length($event.target.value)"
           min="1" step="1">
@@ -165,7 +165,7 @@ onMounted(async () => {
     </div>
   </div>
 </template>
-
+    
 <style scoped>
 input#auto_save_length {
   width: 4em;

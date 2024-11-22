@@ -78,7 +78,6 @@ Normally the And and Or calculations an short circuit, and only
 compute what they need to guarantee the resulting truth value.
 """
 
-
 class Condition(object):
     """
     Condition abstract base class.
@@ -87,25 +86,18 @@ class Condition(object):
     which returns True if the condition is satisfied, and
     False otherwise.
     """
-
     def __and__(self, condition):
         return And(self, condition)
-
     def __or__(self, condition):
         return Or(self, condition)
-
     def __xor__(self, condition):
         return Xor(self, condition)
-
     def __invert__(self):
         return Not(self)
-
     def __call__(self, *args, **kw):
         raise NotImplementedError
-
     def _negate(self):
         return _Bar(self)
-
     def status(self, *args, **kw):
         """
         Evaluate the condition, returning both the status and a list of
@@ -118,43 +110,35 @@ class Condition(object):
             return stat, [self]
         else:
             return stat, [Not(self)]
-
     def primitives(self):
         """
         Return a list of terms in the condition.
         """
         return set([self])
 
-
 class And(Condition):
     """
     True if both conditions are satisfied.
     """
-
     def __init__(self, left, right):
-        self.left, self.right = left, right
-
+        self.left,self.right = left,right
     def __call__(self, *args, **kw):
         return self.left(*args, **kw) and self.right(*args, **kw)
-
     def __str__(self):
-        return "(%s and %s)" % (self.left, self.right)
-
+        return "(%s and %s)"%(self.left,self.right)
     def _negate(self):
-        return Or(self.left._negate(), self.right._negate())
-
+        return Or(self.left._negate(),self.right._negate())
     def status(self, *args, **kw):
-        lstat, lcond = self.left.status(*args, **kw)
-        rstat, rcond = self.right.status(*args, **kw)
+        lstat,lcond = self.left.status(*args, **kw)
+        rstat,rcond = self.right.status(*args, **kw)
         if lstat and rstat:
-            return True, lcond + rcond
+            return True,lcond+rcond
         elif lstat:
-            return False, rcond
+            return False,rcond
         elif rstat:
-            return False, lcond
+            return False,lcond
         else:
-            return False, lcond + rcond
-
+            return False,lcond+rcond
     def primitives(self):
         return self.left.primitives() | self.right.primitives()
 
@@ -163,95 +147,72 @@ class Or(Condition):
     """
     True if either condition is satisfied
     """
-
     def __init__(self, left, right):
-        self.left, self.right = left, right
-
+        self.left,self.right = left,right
     def __call__(self, *args, **kw):
         return self.left(*args, **kw) or self.right(*args, **kw)
-
     def __str__(self):
-        return "(%s or %s)" % (self.left, self.right)
-
+        return "(%s or %s)"%(self.left,self.right)
     def _negate(self):
-        return And(self.left._negate(), self.right._negate())
-
+        return And(self.left._negate(),self.right._negate())
     def status(self, *args, **kw):
-        lstat, lcond = self.left.status(*args, **kw)
-        rstat, rcond = self.right.status(*args, **kw)
+        lstat,lcond = self.left.status(*args, **kw)
+        rstat,rcond = self.right.status(*args, **kw)
         if lstat and rstat:
-            return True, lcond + rcond
+            return True,lcond+rcond
         elif lstat:
-            return True, lcond
+            return True,lcond
         elif rstat:
-            return True, rcond
+            return True,rcond
         else:
-            return False, lcond + rcond
-
+            return False,lcond+rcond
     def primitives(self):
         return self.left.primitives() | self.right.primitives()
-
 
 class Xor(Condition):
     """
     True if only one condition is satisfied
     """
-
     def __init__(self, left, right):
-        self.left, self.right = left, right
-
+        self.left,self.right = left,right
     def __call__(self, *args, **kw):
-        l, r = self.left(*args, **kw), self.right(*args, **kw)
+        l,r = self.left(*args, **kw),self.right(*args, **kw)
         return (l or r) and not (l and r)
-
     def __str__(self):
-        return "(%s xor %s)" % (self.left, self.right)
-
+        return "(%s xor %s)"%(self.left,self.right)
     def _negate(self):
-        return Xor(self.left, self.right._negate())
-
+        return Xor(self.left,self.right._negate())
     def status(self, *args, **kw):
-        lstat, lcond = self.left.status(*args, **kw)
-        rstat, rcond = self.right.status(*args, **kw)
+        lstat,lcond = self.left.status(*args, **kw)
+        rstat,rcond = self.right.status(*args, **kw)
         if lstat ^ rstat:
-            return True, lcond + rcond
+            return True,lcond+rcond
         else:
-            return False, lcond + rcond
-
+            return False,lcond+rcond
     def primitives(self):
         return self.left.primitives() | self.right.primitives()
-
 
 class Not(Condition):
     """
     True if condition is not satisfied
     """
-
     def __init__(self, condition):
         self.condition = condition
-
     def __call__(self, *args, **kw):
         return not self.condition(*args, **kw)
-
     def __str__(self):
-        return "not " + str(self.condition)
-
+        return "not "+str(self.condition)
     def _negate(self):
         return self.condition
-
     def status(self, *args, **kw):
-        stat, cond = self.condition.status()
+        stat,cond = self.condition.status()
         return not stat, cond
-
     def __eq__(self, other):
-        return isinstance(other, Not) and self.condition == other.condition
-
+        return isinstance(other,Not) and self.condition == other.condition
     def __ne__(self, other):
-        return not isinstance(other, Not) or self.condition != other.condition
-
+        return not isinstance(other,Not) or self.condition != other.condition
     def primitives(self):
         return self.condition.primitives()
-
 
 class _Bar(Condition):
     """
@@ -259,41 +220,30 @@ class _Bar(Condition):
     negated primitives when computing status.  It should not be used
     externally.
     """
-
     def __init__(self, condition):
         self.condition = condition
-
     def __call__(self, *args, **kw):
         return not self.condition(*args, **kw)
-
     def _negate(self):
         return self.condition
-
     def status(self, *args, **kw):
-        stat, cond = self.condition.status(*args, **kw)
+        stat,cond = self.condition.status(*args,**kw)
         return not stat, cond
-
     def __str__(self):
-        return "not " + str(self.condition)
-
+        return "not "+str(self.condition)
     def primitives(self):
         return self.condition.primitives()
-
 
 class Constant(Condition):
     """
     Constants true and false.
     """
-
     def __init__(self, value):
         self._value = value
-
     def __call__(self, *args, **kw):
         return self._value
-
     def __str__(self):
         return str(self._value)
-
 
 true = Constant(True)
 false = Constant(False)

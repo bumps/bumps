@@ -26,11 +26,12 @@ used for informational display purposes.  Note that the product version is
 maintained in the version.py file and therefore is imported here.
 """
 
+import os
 import wx
 
 try:
     from agw.hyperlink import HyperLinkCtrl
-except ImportError:  # if it's not there, try the older location.
+except ImportError: # if it's not there, try the older location.
     from wx.lib.agw.hyperlink import HyperLinkCtrl
 
 from wx.lib.wordwrap import wordwrap
@@ -114,28 +115,26 @@ APP_TUTORIAL = """\
 For the Bumps User's Guide and Reference Manual, please visit:\
 """
 
-# ==============================================================================
-
+#==============================================================================
 
 class AboutDialog(wx.Dialog):
     """
     This class creates a pop-up About Dialog box with several display options.
     """
 
-    def __init__(
-        self,
-        parent=None,
-        id=wx.ID_ANY,
-        title="About",
-        pos=wx.DefaultPosition,
-        size=wx.DefaultSize,
-        style=wx.DEFAULT_DIALOG_STYLE,
-        show_name=True,
-        show_notice=True,
-        show_link=True,
-        show_link_docs=False,
-        info="...",
-    ):
+    def __init__(self,
+                 parent=None,
+                 id = wx.ID_ANY,
+                 title="About",
+                 pos=wx.DefaultPosition,
+                 size=wx.DefaultSize,
+                 style=wx.DEFAULT_DIALOG_STYLE,
+                 show_name=True,
+                 show_notice=True,
+                 show_link=True,
+                 show_link_docs=False,
+                 info="..."
+                ):
         wx.Dialog.__init__(self, parent, id, title, pos, size, style)
 
         # Display the application's icon in the title bar.
@@ -152,7 +151,8 @@ class AboutDialog(wx.Dialog):
 
         # Display program name and version.
         if show_name:
-            prog = wx.StaticText(self, wx.ID_ANY, label=(APP_NAME + " " + APP_VERSION))
+            prog = wx.StaticText(self, wx.ID_ANY,
+                                 label=(APP_NAME + " " + APP_VERSION))
             font = prog.GetFont()
             font.SetPointSize(font.GetPointSize() + 1)
             font.SetWeight(wx.BOLD)
@@ -164,12 +164,15 @@ class AboutDialog(wx.Dialog):
 
         # Display hyperlink to the home page and/or doc page.
         if show_link:
-            hyper1 = HyperLinkCtrl(self, wx.ID_ANY, label=APP_PROJECT_TAG, URL=APP_PROJECT_URL)
+            hyper1 = HyperLinkCtrl(self, wx.ID_ANY, label=APP_PROJECT_TAG,
+                                                    URL=APP_PROJECT_URL)
         if show_link_docs:
-            hyper2 = HyperLinkCtrl(self, wx.ID_ANY, label=APP_TUTORIAL_TAG, URL=APP_TUTORIAL_URL)
+            hyper2 = HyperLinkCtrl(self, wx.ID_ANY, label=APP_TUTORIAL_TAG,
+                                                    URL=APP_TUTORIAL_URL)
 
         # Display the body of text for this about dialog box.
-        info = wx.StaticText(self, wx.ID_ANY, label=wordwrap(info, 530, wx.ClientDC(self)))
+        info = wx.StaticText(self, wx.ID_ANY,
+                             label=wordwrap(info, 530, wx.ClientDC(self)))
         # Create the OK button control.
         ok_button = wx.Button(self, wx.ID_OK, "OK")
         ok_button.SetDefault()
@@ -177,15 +180,15 @@ class AboutDialog(wx.Dialog):
         # Use a vertical box sizer to manage the widget layout..
         sizer = wx.BoxSizer(wx.VERTICAL)
         if show_name:
-            sizer.Add(prog, 0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL, border=10)
+            sizer.Add(prog, 0, wx.ALL|wx.ALIGN_CENTER_HORIZONTAL, border=10)
         if show_notice:
-            sizer.Add(copyright, 0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL, border=10)
+            sizer.Add(copyright, 0, wx.ALL|wx.ALIGN_CENTER_HORIZONTAL, border=10)
         sizer.Add(info, 0, wx.ALL, border=10)
         if show_link:
             sizer.Add(hyper1, 0, wx.ALL, border=10)
         if show_link_docs:
             sizer.Add(hyper2, 0, wx.ALL, border=10)
-        sizer.Add(ok_button, 0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL, border=10)
+        sizer.Add(ok_button, 0, wx.ALL|wx.ALIGN_CENTER_HORIZONTAL, border=10)
 
         # Finalize the sizer and establish the dimensions of the dialog box.
         self.SetSizer(sizer)

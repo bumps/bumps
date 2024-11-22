@@ -16,7 +16,9 @@ Additional strategies like uniform box in [0,1] or standard norm
 
 # Note: borrowed from DREAM and extended.
 
-__all__ = ["generate", "cov_init", "eps_init", "lhs_init", "random_init"]
+from __future__ import division, print_function
+
+__all__ = ['generate', 'cov_init', 'eps_init', 'lhs_init', 'random_init']
 
 import math
 import numpy as np
@@ -28,7 +30,7 @@ except ImportError:
     pass
 
 
-def generate(problem, init="eps", pop=10, use_point=True, **options):
+def generate(problem, init='eps', pop=10, use_point=True, **options):
     # type: (Any, str, int, bool, ...) -> np.ndarray
     """
     Population initializer.
@@ -49,27 +51,34 @@ def generate(problem, init="eps", pop=10, use_point=True, **options):
     all command line options.
     """
     initial = problem.getp()
-    initial[~isfinite(initial)] = 1.0
+    initial[~isfinite(initial)] = 1.
     pop_size = int(math.ceil(pop * len(initial))) if pop > 0 else int(-pop)
     bounds = problem.bounds()
-    if init == "random":
-        population = random_init(pop_size, initial, bounds, use_point=use_point, problem=problem)
-    elif init == "cov":
+    if init == 'random':
+        population = random_init(
+            pop_size, initial, bounds, use_point=use_point, problem=problem)
+    elif init == 'cov':
         cov = problem.cov()
-        population = cov_init(pop_size, initial, bounds, use_point=use_point, cov=cov)
-    elif init == "lhs":
-        population = lhs_init(pop_size, initial, bounds, use_point=use_point)
-    elif init == "eps":
-        population = eps_init(pop_size, initial, bounds, use_point=use_point, eps=1e-6)
+        population = cov_init(
+            pop_size, initial, bounds, use_point=use_point, cov=cov)
+    elif init == 'lhs':
+        population = lhs_init(
+            pop_size, initial, bounds, use_point=use_point)
+    elif init == 'eps':
+        population = eps_init(
+            pop_size, initial, bounds, use_point=use_point, eps=1e-6)
     else:
-        raise ValueError("Unknown population initializer '%s'" % init)
+        raise ValueError(
+            "Unknown population initializer '%s'" % init)
 
     # Use LHS to initialize any "free" parameters
     # TODO: find a better way to "free" parameters on --resume/--pars
-    undefined = getattr(problem, "undefined", None)
+    undefined = getattr(problem, 'undefined', None)
     if undefined is not None:
         del problem.undefined
-        population[:, undefined] = lhs_init(pop_size, initial[undefined], bounds[:, undefined], use_point=False)
+        population[:, undefined] = lhs_init(
+            pop_size, initial[undefined], bounds[:, undefined],
+            use_point=False)
 
     return population
 
@@ -109,24 +118,24 @@ def lhs_init(n, initial, bounds, use_point=False):
         # the initial value of the parameter as a hint.
         low, high = xmin[j], xmax[j]
         if np.isinf(low) and np.isinf(high):
-            if initial[j] < 0.0:
-                low, high = 2.0 * initial[j], 0.0
-            elif initial[j] > 0.0:
-                low, high = 0.0, 2.0 * initial[j]
+            if initial[j] < 0.:
+                low, high = 2.0*initial[j], 0.0
+            elif initial[j] > 0.:
+                low, high = 0.0, 2.0*initial[j]
             else:
                 low, high = -1.0, 1.0
         elif np.isinf(low):
             if initial[j] != high:
-                low, high = high - 2.0 * abs(high - initial[j]), high
+                low, high = high - 2.0*abs(high-initial[j]), high
             else:
                 low, high = high - 2.0, high
         elif np.isinf(high):
             if initial[j] != high:
-                low, high = low, low + 2.0 * abs(initial[j] - low)
+                low, high = low, low + 2.0*abs(initial[j] - low)
             else:
                 low, high = low, low + 2.0
         else:
-            pass  # low, high = low, high
+            pass   # low, high = low, high
 
         if use_point:
             # Put current value at position 0 in population
@@ -141,6 +150,7 @@ def lhs_init(n, initial, bounds, use_point=False):
             # Random permutation of bins
             perm = np.random.permutation(n)
             idx = slice(0, None)
+
 
         # Assign random value within each bin
         p = (perm + ran[idx, j]) / n
@@ -170,7 +180,7 @@ def cov_init(n, initial, bounds, use_point=False, cov=None, dx=None):
     if cov is None:
         if dx is None:
             dx = _get_scale_factor(0.2, bounds, initial)
-            # print("= dx",dx)
+            #print("= dx",dx)
         cov = diag(dx**2)
     xmin, xmax = bounds
     initial = clip(initial, xmin, xmax)
@@ -222,7 +232,7 @@ def eps_init(n, initial, bounds, use_point=False, eps=1e-6):
     # is unbounded.
     xmin, xmax = bounds
     scale = _get_scale_factor(eps, bounds, initial)
-    # print("= scale", scale)
+    #print("= scale", scale)
     initial = clip(initial, xmin, xmax)
     population = initial + scale * (2 * np.random.rand(n, len(xmin)) - 1)
     population = reflect(population, xmin, xmax)
@@ -230,17 +240,15 @@ def eps_init(n, initial, bounds, use_point=False, eps=1e-6):
         population[0] = initial
     return population
 
-
 def reflect(v, low, high):
     """
     Reflect v off the boundary, then clip to be sure it is within bounds
     """
     index = v < low
-    v[index] = (2 * low - v)[index]
+    v[index] = (2*low - v)[index]
     index = v > high
-    v[index] = (2 * high - v)[index]
+    v[index] = (2*high - v)[index]
     return clip(v, low, high)
-
 
 def _get_scale_factor(scale, bounds, initial):
     # type: (float, np.ndarray, np.ndarray) -> np.ndarray
@@ -249,59 +257,57 @@ def _get_scale_factor(scale, bounds, initial):
     dx[isinf(dx)] = abs(initial[isinf(dx)]) * scale
     dx[~isfinite(dx)] = scale
     dx[dx == 0] = scale
-    # print("min,max,dx",xmin,xmax,dx)
+    #print("min,max,dx",xmin,xmax,dx)
     return dx
-
 
 def demo_init(seed=1):
     # type: (Optional[int]) -> None
     from . import util
     from .bounds import init_bounds
-
     class Problem(object):
         def __init__(self, initial, bounds):
             self.initial = initial
             self._bounds = bounds
-
         def getp(self):
             return self.initial
-
         def bounds(self):
             return self._bounds
-
         def cov(self):
             return None
-
         def randomize(self, n=1):
             target = self.initial.copy()
-            target[~isfinite(target)] = 1.0
-            result = [init_bounds(pair).random(n, v) for v, pair in zip(self.initial, self._bounds.T)]
+            target[~isfinite(target)] = 1.
+            result = [init_bounds(pair).random(n, v)
+                      for v, pair in zip(self.initial, self._bounds.T)]
             return np.array(result).T
 
-    bounds = np.array([(2.0, inf), (-inf, -2.0), (-inf, inf), (5.0, 6.0), (-2.0, 3.0)]).T
+    bounds = np.array([(2., inf),
+                       (-inf, -2.),
+                       (-inf, inf),
+                       (5.0, 6.0),
+                       (-2.0, 3.0)]).T
     # generate takes care of bad values
-    # low = np.array([-inf]*5)
-    # high = np.array([inf]*5)
-    # bad = np.array([np.nan]*5)
-    zero = np.array([0.0] * 5)
-    below = np.array([-2.0, -4.0, -2.0, -3.0, -4.0])
-    above = np.array([3.0, 4.0, 2.0, 8.0, 5.0])
+    #low = np.array([-inf]*5)
+    #high = np.array([inf]*5)
+    #bad = np.array([np.nan]*5)
+    zero = np.array([0.]*5)
+    below = np.array([-2., -4., -2., -3., -4.])
+    above = np.array([3., 4., 2., 8., 5.])
     small = np.array([2.000001, -2.000001, 0.000001, 5.000001, -0.000001])
-    large = np.array([2000001.0, -2000001.0, 2000001.0, 5.5, -2.000001])
-    middle = np.array([100.0, -100.0, 100.0, 5.5, 0.5])
-    starting_points = "zero below above small large middle".split()
+    large = np.array([2000001., -2000001., 2000001., 5.5, -2.000001])
+    middle = np.array([100., -100., 100., 5.5, 0.5])
+    starting_points = 'zero below above small large middle'.split()
     np.set_printoptions(linewidth=100000)
     with util.push_seed(seed):
-        for init_type in ("cov", "random", "eps", "lhs"):
+        for init_type in ('cov', 'random', 'eps', 'lhs'):
             print("bounds:")
             print(bounds)
             for name in starting_points:
                 initial = locals()[name]
                 M = Problem(initial, bounds)
                 pop = generate(problem=M, init=init_type, pop=1)
-                print("%s init from %s" % (init_type, name), str(initial))
+                print("%s init from %s"%(init_type, name), str(initial))
                 print(pop)
-
 
 if __name__ == "__main__":
     demo_init(seed=None)

@@ -52,10 +52,11 @@ References:
      Statistical Association, San Francisco, August 1987.
 """
 
+from __future__ import division
+
 __all__ = ["ACR"]
 
 from scipy.stats import f
-
 finv = f.ppf
 
 
@@ -75,8 +76,8 @@ def ACR(p, n, alpha=0.05):
     a = alpha
     # F distribution critical value with p and n-p-1 degrees of freedom
     # using the Bonferroni correction.
-    fc = finv(1 - a / n, p, n - p - 1)
-    result = (p * (n - 1) ** 2 * fc) / (n * (n - p - 1) + (n * p * fc))
+    fc = finv(1-a/n, p, n-p-1)
+    result = (p*(n-1)**2*fc) / (n*(n-p-1)+(n*p*fc))
     # = ((-1*((1/(1+(fc*p/(n-p-1))))-1))*((n-1)^2))/n;
 
     return result

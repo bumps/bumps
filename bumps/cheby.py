@@ -24,7 +24,6 @@ control using 'interp', but the function may oscillate wildly outside
 the bounds.  Bounds on the oscillation are easier to control using
 'direct', but the shape of the profile is difficult to control.
 """
-
 # TODO: clipping volume fraction to [0,1] distorts parameter space
 # Option 0: clip to [0,1]
 # - Bayesian analysis: parameter values outside the domain will be equally
@@ -73,7 +72,8 @@ the bounds.  Bounds on the oscillation are easier to control using
 # - Newton methods: Hessian should point back to domain
 # - Direct methods: random walk should be biased toward the domain
 # - moderately complicated
-__all__ = ["profile", "cheby_approx", "cheby_val", "cheby_points", "cheby_coeff"]
+__all__ = ["profile", "cheby_approx",
+           "cheby_val", "cheby_points", "cheby_coeff"]
 
 import numpy as np
 from numpy import real, exp, pi, cos, arange, asarray
@@ -91,7 +91,7 @@ def profile(c, t, method):
     function $f$ evaluated at the chebyshev points returned by
     :func:`cheby_points`.
     """
-    if method == "interp":
+    if method == 'interp':
         c = cheby_coeff(c)
     return cheby_val(c, t)
 
@@ -133,7 +133,8 @@ def cheby_points(n, range=(0, 1)):
     Adjusting the range to $[x_L,x_R]$, the points become
     $x_k = \frac{1}{2} (p_k - x_L + 1)/(x_R-x_L)$.
     """
-    return 0.5 * (cos(pi * (arange(n) + 0.5) / n) - range[0] + 1) / (range[1] - range[0])
+    return 0.5 * (cos(pi * (arange(n) + 0.5) / n)
+                  - range[0] + 1) / (range[1] - range[0])
 
 
 def cheby_coeff(fx):
@@ -148,5 +149,5 @@ def cheby_coeff(fx):
     n = len(fx)
     w = exp((-0.5j * pi / n) * arange(n))
     y = np.hstack((fx[0::2], fx[1::2][::-1]))
-    c = (2.0 / n) * real(fft(y) * w)
+    c = (2. / n) * real(fft(y) * w)
     return c

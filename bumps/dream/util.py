@@ -10,10 +10,8 @@ import numpy.random as rng
 try:
     from numba import njit
 except ImportError:
-
     def njit(*args, **kw):
         return lambda f: f
-
 
 @njit(cache=True)
 def draw(k, n):
@@ -22,7 +20,7 @@ def draw(k, n):
     """
     # At k == n/4, an extra 0.15*k draws are needed to get k unique draws
     # TODO: silently returns too few values if k > n
-    if k > n / 4:
+    if k > n/4:
         result = rng.permutation(n)[:k]
     else:
         result = np.empty(k, np.int64)
@@ -50,18 +48,18 @@ def _check_uniform_draw():
     import pylab
 
     k, n = 50, 400
-    counts = np.zeros(n * k)
+    counts = np.zeros(n*k)
     idx = np.arange(k)
     for _ in range(100000):
         t = draw(k, n)
-        counts[k * t + idx] += 1
+        counts[k*t+idx] += 1
     pylab.subplot(211)
     pylab.pcolormesh(np.reshape(counts, (n, k)))
     pylab.colorbar()
-    pylab.title("drawn number vs. draw position")
+    pylab.title('drawn number vs. draw position')
     pylab.subplot(212)
     pylab.hist(counts)
-    pylab.title("number of draws per (number,position) bin")
+    pylab.title('number of draws per (number,position) bin')
     pylab.show()
 
 
@@ -88,7 +86,6 @@ def console():
         # Display outstanding plots and turn interactive on
         from matplotlib import interactive
         from matplotlib._pylab_helpers import Gcf
-
         for fig in Gcf.get_all_fig_managers():
             try:  # CRUFT
                 fig.show()
@@ -98,12 +95,10 @@ def console():
 
         # Start an ipython shell with the caller's local variables
         import IPython
-
         symbols = sys._getframe(1).f_locals
         ip = IPython.Shell.IPShell(user_ns=symbols)
         ip.mainloop()
     else:
         # Not a tty; try doing show() anyway
         import pylab
-
         pylab.show()

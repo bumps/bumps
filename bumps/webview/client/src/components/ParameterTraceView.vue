@@ -64,13 +64,13 @@ async function draw_plot() {
 
   let data = plot_data.value
   data.forEach(line => line.opacity = opacity)
-
+  
   await Plotly.react(plot_div.value as HTMLDivElement, [...data], plot_layout.value, plot_config.value);
 
 }
 
 </script>
-
+    
 <template>
   <div class="container d-flex flex-grow-1 flex-column">
     <select

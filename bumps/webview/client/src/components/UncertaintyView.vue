@@ -66,7 +66,7 @@ function apply_label_visibility(layout: Plotly.Layout, visible: boolean) {
 }
 
 </script>
-
+    
 <template>
   <div class="container d-flex flex-grow-1 flex-column">
     <div class="d-flex flex-row justify-content-between align-items-center">

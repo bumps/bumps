@@ -1,8 +1,10 @@
-import wx
+import sys
 
+import wx
 
 class FitView(wx.Panel):
     def __init__(self, parent):
+
         wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
         self.parent = parent
 
@@ -10,8 +12,9 @@ class FitView(wx.Panel):
         label1 = wx.StaticText(self, 1, label="Store Folder:")
 
         self.store_file = wx.TextCtrl(self, 2, value="", style=wx.TE_RIGHT)
-        sizer1.Add(label1, 0, border=5, flag=wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL | wx.ALL)
-        sizer1.Add(self.store_file, 1, wx.EXPAND | wx.RIGHT, border=10)
+        sizer1.Add(label1, 0, border=5,
+                        flag=wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.ALL)
+        sizer1.Add(self.store_file, 1, wx.EXPAND|wx.RIGHT, border=10)
 
         # Create the Fit button.
         self.btn_fit = wx.Button(self, wx.ID_ANY, "Fit")
@@ -23,7 +26,7 @@ class FitView(wx.Panel):
         sizer2.Add(self.btn_fit, 0, wx.ALL, 5)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add((10, 10), 0)  # whitespace
+        sizer.Add((10,10), 0)  # whitespace
         sizer.Add(sizer1, 0, wx.ALL, 5)
         sizer.Add(sizer2, 0, wx.ALL, 5)
 
@@ -44,9 +47,10 @@ class FitView(wx.Panel):
             send("fit", store=self.store)
 
         else:
-            print("stop logic goes here")
+            print('stop logic goes here')
             self.btn_fit.SetLabel("Fit")
             pass
+
 
     def OnFitComplete(self, event):
         self.btn_fit.SetLabel("Fit")

@@ -1,13 +1,13 @@
 """
 Option parser for bumps command line
 """
+from __future__ import print_function
 
 import sys
 
 import numpy as np
 
 from .fitters import FITTERS, FIT_AVAILABLE_IDS, FIT_ACTIVE_IDS, FIT_DEFAULT_ID
-
 
 # TODO: replace with standard argparse module
 class ParseOpts(object):
@@ -30,7 +30,6 @@ class ParseOpts(object):
     values set by the command line as attribute values.   Flag options
     will be True or False.
     """
-
     MINARGS = 0
     FLAGS = set()
     VALUES = set()
@@ -42,11 +41,12 @@ class ParseOpts(object):
 
     def __init__(self, args):
         if self.VALUES & self.FLAGS:
-            raise TypeError("option used as both a flag and a value: %s" % ",".join(self.VALUES & self.FLAGS))
+            raise TypeError("option used as both a flag and a value: %s"%
+                            ",".join(self.VALUES&self.FLAGS))
         self._parse(args)
 
     def _parse(self, args):
-        if any(v in args for v in ("-?", "-h", "-help")):
+        if any(v in args for v in ('-?', '-h', '-help')):
             print(self.USAGE)
             sys.exit()
 
@@ -58,39 +58,40 @@ class ParseOpts(object):
         # later (implicit) parameter take precedence over the earlier
         # parameters.
         args = [
-            (arg + "=" + str(self.IMPLICIT_VALUES[arg[2:]]) if arg[2:] in self.IMPLICIT_VALUES else arg) for arg in args
-        ]
+            (arg + "=" + str(self.IMPLICIT_VALUES[arg[2:]])
+             if arg[2:] in self.IMPLICIT_VALUES else arg)
+            for arg in args]
 
         # Parse options.
         # Given tuples [..., (a, 1), ..., (a, 2), ...], then dict(tuples)
         # will use the later value for the key rather than the earlier
         # value, which is what we want for the command line interpreter.
-        position_args = [v for v in sys.argv[1:] if not v.startswith("--")]
+        position_args = [v for v in sys.argv[1:] if not v.startswith('--')]
         flag_args = [
             v[2:]  # convert --flag => flag
-            for v in args
-            if v.startswith("--") and "=" not in v
-        ]
+            for v in args if v.startswith('--') and not '=' in v]
         value_args = dict(
-            v[2:].split("=", 1)  # convert --flag=value => (flag, value)
-            for v in args
-            if v.startswith("--") and "=" in v
-        )
+            v[2:].split('=', 1)  # convert --flag=value => (flag, value)
+            for v in args if v.startswith('--') and '=' in v)
 
         # Check that options are valid.
         # TODO: move type checking from FitConfig.set_from_cli to here.
         flags, values = set(flag_args), set(value_args.keys())
-        unknown = (flags | values) - (self.FLAGS | self.VALUES)
+        unknown = (flags|values) - (self.FLAGS|self.VALUES)
         unexpected_value = flags - self.FLAGS
-        blank_values = set(k for k, v in value_args.items() if k in self.VALUES and v == "")
+        blank_values = set(
+            k for k, v in value_args.items() if k in self.VALUES and v == "")
         missing_value = (values - self.VALUES) | blank_values
         errors = []
         if any(unknown):
-            errors.append("Unknown options --%s." % ", --".join(unknown))
+            errors.append(
+                "Unknown options --%s." % ", --".join(unknown))
         if any(unexpected_value):
-            errors.append("Unexpected value for --%s." % ", --".join(sorted(unexpected_value)))
+            errors.append(
+                "Unexpected value for --%s." % ", --".join(sorted(unexpected_value)))
         if any(missing_value):
-            errors.append("Missing value for --%s." % ", --".join(sorted(missing_value)))
+            errors.append(
+                "Missing value for --%s." % ", --".join(sorted(missing_value)))
         if errors:
             message = " ".join(errors + ["Use -? for help."])
             raise ValueError(message)
@@ -107,22 +108,23 @@ class ParseOpts(object):
 
 # === Fitter option parsing ===
 
-
 class ChoiceList(object):
+
     def __init__(self, *choices):
         self.choices = choices
 
     def __call__(self, value):
-        if value not in self.choices:
-            raise ValueError('invalid option "%s": use %s' % (value, "|".join(self.choices)))
+        if not value in self.choices:
+            raise ValueError('invalid option "%s": use %s'
+                             % (value, '|'.join(self.choices)))
         else:
             return value
 
 
 def yesno(value):
-    if value.lower() in ("true", "yes", "on", "1"):
+    if value.lower() in ('true', 'yes', 'on', '1'):
         return True
-    elif value.lower() in ("false", "no", "off", "0"):
+    elif value.lower() in ('false', 'no', 'off', '0'):
         return False
     raise ValueError('invalid option "%s": use yes|no')
 
@@ -154,17 +156,16 @@ FIT_FIELDS = dict(
     radius=("Simplex radius", float),
     # TODO: convert --trim into a boolean flag and update docs
     trim=("Burn-in trim", yesno),
-    outliers=("Outliers", ChoiceList("none", "iqr", "grubbs", "mahal")),
-)
+    outliers=("Outliers" , ChoiceList("none", "iqr", "grubbs", "mahal")),
+    )
 
 # Make sure all settings are parseable
 for fit in FITTERS:
-    assert all(opt in FIT_FIELDS for opt, _ in fit.settings), "Fitter %s contains unknown settings %s" % (
-        fit.id,
-        ", ".join(opt for opt, _ in sorted(fit.settings) if opt not in FIT_FIELDS),
-    )
+    assert all(opt in FIT_FIELDS for opt, _ in fit.settings), (
+        "Fitter %s contains unknown settings %s"
+        %(fit.id, ', '.join(opt for opt, _ in sorted(fit.settings)
+                            if opt not in FIT_FIELDS)))
 del fit
-
 
 class FitConfig(object):
     """
@@ -210,7 +211,6 @@ class FitConfig(object):
     *selected_fitter = FitClass* returns the class of the selected fitter.
 
     """
-
     def __init__(self, default=FIT_DEFAULT_ID, active=FIT_ACTIVE_IDS):
         # Keep a private copy of the configure settings rather than modifying
         # the global defaults
@@ -262,87 +262,49 @@ class FitConfig(object):
     def selected_fitter(self):
         return self.fitters[self.selected_id]
 
-
 #: FitConfig singleton for the common case in which only one config is needed.
 #: There may be other use cases, such as saving the fit config along with the
 #: rest of the state so that on resume the fit options are restored, but in that
 #: case the application will not be using the singleton.
 FIT_CONFIG = FitConfig()
 
-
 # === Bumps options parsing ===
 class BumpsOpts(ParseOpts):
     """
     Option parser for bumps.
     """
-
     MINARGS = 1
     # TODO: document all options in USAGE and doc/guide/options.rst
     # TODO: remove application-specific options like --staj
-    FLAGS = set(
-        (
-            "preview",
-            "chisq",
-            "profile",
-            "time_model",
-            "simulate",
-            "simrandom",
-            "shake",
-            "worker",  # internal, so not documented
-            "multiprocessing-fork",  # passed in when app is a frozen image
-            "remote",  # not active, so not documented
-            "batch",
-            "noshow",
-            "overwrite",
-            "stepmon",
-            "err",
-            "cov",
-            "edit",
-            "mpi",
-            "keep_best",
-            "staj",
-            # passed when not running bumps, but instead using a
-            # bundled application as a python distribution with domain
-            # specific models pre-defined.
-            "i",
-        )
-    )
-    VALUES = set(
-        (
-            "plot",
-            "store",
-            "resume",
-            "entropy",
-            "fit",
-            "noise",
-            "seed",
-            "pars",
-            "resynth",
-            "time",
-            "checkpoint",
-            "m",
-            "c",
-            "p",
-            "parallel",
-            "view",
-            "trim",
-            "alpha",
-            "outliers",
-            # The following options are for remote fitting via the
-            # fitting service, but this is not currently active.
-            "transport",
-            "notify",
-            "queue",
-        )
-    )
+    FLAGS = set(("preview", "chisq", "profile", "time_model",
+                 "simulate", "simrandom", "shake",
+                 "worker", # internal, so not documented
+                 "multiprocessing-fork", # passed in when app is a frozen image
+                 "remote", # not active, so not documented
+                 "batch", "noshow", "overwrite", "stepmon",
+                 "err", "cov", "edit", "mpi", "keep_best",
+                 "staj",
+                 # passed when not running bumps, but instead using a
+                 # bundled application as a python distribution with domain
+                 # specific models pre-defined.
+                 "i",
+                ))
+    VALUES = set(("plot", "store", "resume", "entropy", "fit", "noise", "seed",
+                  "pars", "resynth", "time",
+                  "checkpoint", "m", "c", "p", "parallel", "view",
+                  "trim", "alpha", "outliers",
+                  # The following options are for remote fitting via the
+                  # fitting service, but this is not currently active.
+                  "transport", "notify", "queue",
+                 ))
     # Add in parameters from the fitters
     VALUES |= set(FIT_FIELDS.keys())
     # --parallel is equivalent to --parallel=0
     IMPLICIT_VALUES = {
-        "parallel": "0",
-        "entropy": "llf",
-        "resume": "-",
-    }
+        'parallel': '0',
+        'entropy': 'llf',
+        'resume': '-',
+        }
     pars = None
     notify = ""
     queue = None
@@ -485,51 +447,48 @@ Options:
         start the interactive interpreter
     -?/-h/--help
         display this help
-""" % {
-        "fitter": "|".join(sorted(FIT_AVAILABLE_IDS)),
-        "plotter": "|".join(PLOTTERS),
-    }
+""" % {'fitter': '|'.join(sorted(FIT_AVAILABLE_IDS)),
+       'plotter': '|'.join(PLOTTERS),
+      }
 
-    #    --remote
-    #        queue fit to run on remote server
-    #    --notify=user@email
-    #        remote fit notification
-    #    --queue=http://reflectometry.org
-    #        remote job queue
-    #    --transport=mp  {amqp|mp|mpi}
-    #        use amqp/multiprocessing/mpi for parallel evaluation
+#    --remote
+#        queue fit to run on remote server
+#    --notify=user@email
+#        remote fit notification
+#    --queue=http://reflectometry.org
+#        remote job queue
+#    --transport=mp  {amqp|mp|mpi}
+#        use amqp/multiprocessing/mpi for parallel evaluation
 
-    _plot = "log"
+    _plot = 'log'
 
     def _set_plot(self, value):
         if value not in set(self.PLOTTERS):
-            raise ValueError("unknown plot type %s; use %s" % (value, "|".join(self.PLOTTERS)))
+            raise ValueError("unknown plot type %s; use %s"
+                             % (value, "|".join(self.PLOTTERS)))
         self._plot = value
-
     plot = property(fget=lambda self: self._plot, fset=_set_plot)
     store = None
     resume = None
     _fit = FIT_DEFAULT_ID
-
     @property
     def fit(self):
         return self._fit
-
     @fit.setter
     def fit(self, value):
         if value not in FIT_AVAILABLE_IDS:
-            raise ValueError("unknown fitter %s; use %s" % (value, "|".join(sorted(FIT_AVAILABLE_IDS))))
+            raise ValueError("unknown fitter %s; use %s"
+                             % (value, "|".join(sorted(FIT_AVAILABLE_IDS))))
         self._fit = value
-
     fit_config = FIT_CONFIG
-    TRANSPORTS = "amqp", "mp", "mpi", "celery"
-    _transport = "mp"
+    TRANSPORTS = 'amqp', 'mp', 'mpi', 'celery'
+    _transport = 'mp'
 
     def _set_transport(self, value):
         if value not in self.TRANSPORTS:
-            raise ValueError("unknown transport %s; use %s" % (value, "|".join(self.TRANSPORTS)))
+            raise ValueError("unknown transport %s; use %s"
+                             % (value, "|".join(self.TRANSPORTS)))
         self._transport = value
-
     transport = property(fget=lambda self: self._transport, fset=_set_transport)
     meshsteps = 40
 
