@@ -285,7 +285,7 @@ file_menu_items.value = [
                 <hr v-if="menu_item.text === '---'" class="dropdown-divider">
                 <button v-else class="btn btn-link dropdown-item"
                   @click="menu_item.action?.(); hide()"
-                  :disabled="menu_item.disabled ?? false">{{ menu_item.text }}</button>
+                  :disabled="menu_item.disabled?.value ?? false">{{ menu_item.text }}</button>
               </li>
             </DropDown>
             <SessionMenu :socket="socket" />
