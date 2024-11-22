@@ -6,9 +6,11 @@ Defines NumpyConsole class.
 TODO: Fix cut/paste for multiline commands
 TODO: Trigger change notification when numpy array has changed
 """
+
 from __future__ import print_function
 
 import wx, wx.py
+
 
 def shapestr(v):
     """Return shape string for numeric variables suitable for printing"""
@@ -17,7 +19,8 @@ def shapestr(v):
     except AttributeError:
         return "scalar"
     else:
-        return "array "+"x".join([str(i) for i in shape])
+        return "array " + "x".join([str(i) for i in shape])
+
 
 class NumpyConsole(wx.py.shell.ShellFrame):
     """
@@ -51,7 +54,7 @@ plot(x,y)
 
     def __init__(self, *args, **kwargs):
         # Start interpreter and monitor statement execution
-        msg = kwargs.pop('introText', self.introText)
+        msg = kwargs.pop("introText", self.introText)
         wx.py.shell.ShellFrame.__init__(self, *args, **kwargs)
 
         # Print welcome message.
@@ -60,30 +63,32 @@ plot(x,y)
         self.shell.prompt()
 
         # Initialize the interpreter namespace with useful commands
-        self.shell.interp.runcode(compile(self.init_code,"__main__","exec"))
+        self.shell.interp.runcode(compile(self.init_code, "__main__", "exec"))
 
         # steal draw_if_interactive
         import pylab
         from matplotlib._pylab_helpers import Gcf
         from matplotlib import pyplot
+
         self._dirty = set()
+
         def draw_if_interactive():
-            #print "calling draw_if_interactive with",Gcf.get_active()
+            # print "calling draw_if_interactive with",Gcf.get_active()
             self._dirty.add(Gcf.get_active())
+
         pyplot.draw_if_interactive = draw_if_interactive
 
         # add vars command to the interpreter
-        self.shell.interp.locals['vars'] = self._print_vars
+        self.shell.interp.locals["vars"] = self._print_vars
 
         # ignore the variables defined by numpy
         self.ignore = set(self.shell.interp.locals.keys())
-        self._existing = {} # No new variables recorded yet
+        self._existing = {}  # No new variables recorded yet
 
         # remember which variables are current so we can detect changes
-        wx.py.dispatcher.connect(receiver=self._onPush,
-                                 signal='Interpreter.push')
+        wx.py.dispatcher.connect(receiver=self._onPush, signal="Interpreter.push")
 
-    def filter(self,key,value):
+    def filter(self, key, value):
         """
         Return True if var should be listed in the available variables.
         """
@@ -95,8 +100,9 @@ plot(x,y)
         Return the list of key,value pairs for all locals not ignored.
         """
         locals = self.shell.interp.locals
-        for (k,v) in locals.items():
-            if self.filter(k,v): yield k,v
+        for k, v in locals.items():
+            if self.filter(k, v):
+                yield k, v
 
     def update(self, *args, **kw):
         """
@@ -105,20 +111,20 @@ plot(x,y)
         self.shell.interp.locals.update(*args, **kw)
         self._existing.update(*args, **kw)
 
-    def __setitem__(self,var,val):
+    def __setitem__(self, var, val):
         """
         Define or replace a variable in the interpreter.
         """
         self.shell.interp.locals[var] = val
         self._existing[var] = val
 
-    def __getitem__(self,var):
+    def __getitem__(self, var):
         """
         Retrieve a variable from the interpreter.
         """
         return self.shell.interp.locals[var]
 
-    def __delitem__(self,var):
+    def __delitem__(self, var):
         """
         Delete a variable from the interpreter.
         """
@@ -138,7 +144,7 @@ plot(x,y)
         self.shell.write(self, msg)
 
     # ==== Internal messages ====
-    def OnChanged(self,added=[],changed=[],removed=[]):
+    def OnChanged(self, added=[], changed=[], removed=[]):
         """
         Override this method to perform your changed operation.
 
@@ -147,11 +153,11 @@ plot(x,y)
         use a deep comparison to see if it has changed.
         """
         for var in added:
-            print("added",var, file=self.shell)
+            print("added", var, file=self.shell)
         for var in changed:
-            print("changed",var, file=self.shell)
+            print("changed", var, file=self.shell)
         for var in removed:
-            print("deleted",var, file=self.shell)
+            print("deleted", var, file=self.shell)
         print("override the OnChanged message to update your application state", file=self.shell)
 
     def _print_vars(self):
@@ -161,24 +167,24 @@ plot(x,y)
         This is a command available to the user as vars().
         """
         locals = self.shell.interp.locals
-        for (k,v) in self.items():
+        for k, v in self.items():
             print(k, shapestr(v), file=self.shell)
 
-
-    def _onPush(self,**kw):
+    def _onPush(self, **kw):
         """On command execution, detect if variable list has changed."""
         # Note: checking for modify is too hard ... build it into the types?
-        #print >>self.shell, "checking for add/delete..."
+        # print >>self.shell, "checking for add/delete..."
         # Update graphs if changed
         if self._dirty:
             import pylab
             from matplotlib._pylab_helpers import Gcf
-            #print "figs",Gcf.figs
-            #print "dirty",self._dirty
+
+            # print "figs",Gcf.figs
+            # print "dirty",self._dirty
             for fig in self._dirty:
-                #print fig, Gcf.figs.values(),fig in Gcf.figs.values()
+                # print fig, Gcf.figs.values(),fig in Gcf.figs.values()
                 if fig and fig in Gcf.figs.values():
-                    #print "drawing"
+                    # print "drawing"
                     fig.canvas.draw()
             pylab.show()
             self._dirty.clear()
@@ -186,23 +192,25 @@ plot(x,y)
         items = dict(list(self.items()))
         oldkeys = set(self._existing.keys())
         newkeys = set(items.keys())
-        added   = newkeys - oldkeys
+        added = newkeys - oldkeys
         removed = oldkeys - newkeys
-        changed = set(k for k in (oldkeys&newkeys)
-                      if items[k] is not self._existing[k])
+        changed = set(k for k in (oldkeys & newkeys) if items[k] is not self._existing[k])
         if added or changed or removed:
-            self.OnChanged(added=added,changed=changed,removed=removed)
+            self.OnChanged(added=added, changed=changed, removed=removed)
         self._existing = items
+
 
 def demo():
     """Example use of the console."""
     import numpy as np
+
     app = wx.App(redirect=False)
-    ignored = { 'f': lambda x: 3+x }
+    ignored = {"f": lambda x: 3 + x}
     console = NumpyConsole(locals=ignored)
-    console.update({ 'x': np.array([[42,15],[-10,12]]), 'z': 42. })
+    console.update({"x": np.array([[42, 15], [-10, 12]]), "z": 42.0})
     console.Show(True)
     app.MainLoop()
+
 
 if __name__ == "__main__":
     demo()

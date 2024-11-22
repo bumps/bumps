@@ -19,10 +19,20 @@ be used for example in experiment design, where you look at the expected
 parameter uncertainty when fitting simulated data from a range of experimental
 systems.
 """
+
 from __future__ import with_statement, print_function
 
-__all__ = ["main", "install_plugin", "set_mplconfig", "config_matplotlib",
-           "load_model", "preview", "load_best", "save_best", "resynth"]
+__all__ = [
+    "main",
+    "install_plugin",
+    "set_mplconfig",
+    "config_matplotlib",
+    "load_model",
+    "preview",
+    "load_best",
+    "save_best",
+    "resynth",
+]
 
 import sys
 import os
@@ -79,13 +89,13 @@ def load_model(path, model_options=None):
         if problem is None:
             # print "loading",filename,"from",directory
             # TODO: eliminate pickle!!
-            if filename.endswith('pickle'):
+            if filename.endswith("pickle"):
                 try:
                     import dill as pickle
                 except ImportError:
                     import pickle
                 # First see if it is a pickle
-                with open(filename, 'rb') as fd:
+                with open(filename, "rb") as fd:
                     problem = pickle.load(fd)
             else:
                 # Then see if it is a python model script
@@ -94,7 +104,7 @@ def load_model(path, model_options=None):
     # Guard against the user changing parameters after defining the problem.
     problem.model_reset()
     problem.path = os.path.abspath(path)
-    if not hasattr(problem, 'title'):
+    if not hasattr(problem, "title"):
         problem.title = filename
     problem.name, _ = os.path.splitext(filename)
     problem.options = model_options
@@ -106,6 +116,7 @@ def preview(problem, view=None):
     Show the problem plots and parameters.
     """
     import pylab
+
     problem.show()
     problem.plot(view=view)
     pylab.show()
@@ -125,9 +136,8 @@ def save_best(fitdriver, problem, best, view=None):
     # TODO: avoid recalculating if problem is already at best.
     problem.setp(best)
     # print "remembering best"
-    pardata = "".join("%s %.15g\n" % (name, value)
-                      for name, value in zip(problem.labels(), problem.getp()))
-    open(problem.output_path + ".par", 'wt').write(pardata)
+    pardata = "".join("%s %.15g\n" % (name, value) for name, value in zip(problem.labels(), problem.getp()))
+    open(problem.output_path + ".par", "wt").write(pardata)
 
     fitdriver.save(problem.output_path)
     with util.redirect_console(problem.output_path + ".err"):
@@ -138,6 +148,8 @@ def save_best(fitdriver, problem, best, view=None):
 
 
 PARS_PATTERN = re.compile(r"^(?P<label>.*) (?P<value>[^ ]*)\n$")
+
+
 def load_best(problem, path):
     """
     Reload individual parameter values from a saved .par file.
@@ -159,15 +171,15 @@ def load_best(problem, path):
     # WARNING: Labels are not unique! Need to track multiple instances of
     # the same label.
     if not os.path.isfile(path):
-        path = os.path.join(path, problem.name+".par")
+        path = os.path.join(path, problem.name + ".par")
     if not os.path.isfile(path):
         raise ValueError("Parameter file %s does not exist." % path)
     labels = problem.labels()
     targets = {label: [] for label in labels}
-    with open(path, 'rt') as fid:
+    with open(path, "rt") as fid:
         for line in fid:
             m = PARS_PATTERN.match(line)
-            label, value = m.group('label'), float(m.group('value'))
+            label, value = m.group("label"), float(m.group("value"))
             # Accumulate values for labels only if they appear in the model.
             if label in targets:
                 targets[label].append(value)
@@ -190,7 +202,9 @@ def load_best(problem, path):
     problem.setp(np.asarray(values))
     if any(undefined):
         problem.undefined = np.asarray(undefined)
-#CRUFT
+
+
+# CRUFT
 recall_best = load_best
 
 
@@ -201,9 +215,9 @@ def store_overwrite_query_gui(path):
     Use this in a call to :func:`make_store` from a graphical user interface.
     """
     import wx
+
     msg = path + " already exists. Press 'yes' to overwrite, or 'No' to abort and restart with newpath"
-    msg_dlg = wx.MessageDialog(None, msg, 'Overwrite Directory',
-                               wx.YES_NO | wx.ICON_QUESTION)
+    msg_dlg = wx.MessageDialog(None, msg, "Overwrite Directory", wx.YES_NO | wx.ICON_QUESTION)
     retCode = msg_dlg.ShowModal()
     msg_dlg.Destroy()
     if retCode != wx.ID_YES:
@@ -217,8 +231,7 @@ def store_overwrite_query(path):
     Use this in a call to :func:`make_store` from a command line interface.
     """
     print(path, "already exists.")
-    print(
-        "Press 'y' to overwrite, or 'n' to abort and restart with --overwrite, --resume, or --store=newpath")
+    print("Press 'y' to overwrite, or 'n' to abort and restart with --overwrite, --resume, or --store=newpath")
     ans = input("Overwrite [y/n]? ")
     if ans not in ("y", "Y", "yes"):
         sys.exit(1)
@@ -231,19 +244,20 @@ def make_store(problem, opts, exists_handler):
     # Determine if command line override
     if opts.store:
         problem.store = opts.store
-    if getattr(problem, 'store', None) is None:
+    if getattr(problem, "store", None) is None:
         raise RuntimeError(
-            "Need to specify '--store=path' on command line"
-            " or problem.store='path' in definition file.")
+            "Need to specify '--store=path' on command line" " or problem.store='path' in definition file."
+        )
     problem.output_path = os.path.join(problem.store, problem.name)
 
     # Check if already exists
-    store_exists = os.path.exists(problem.output_path + '.par')
+    store_exists = os.path.exists(problem.output_path + ".par")
     if not opts.overwrite and opts.resume is None and store_exists:
         if opts.batch:
             print(
                 problem.store + " already exists.  Restart with --overwrite, --resume, or --store=newpath",
-                file=sys.stderr)
+                file=sys.stderr,
+            )
             sys.exit(1)
         exists_handler(problem.output_path)
 
@@ -251,6 +265,7 @@ def make_store(problem, opts, exists_handler):
     if not os.path.exists(problem.store):
         os.mkdir(problem.store)
     shutil.copy2(problem.path, problem.store)
+
 
 def run_profiler(problem, steps):
     """
@@ -266,8 +281,8 @@ def run_profiler(problem, steps):
     #    4 ms convolution
     #    1 ms setting parameters and computing nllf
     from .util import profile
-    p = initpop.random_init(
-        int(steps), initial=None, bounds=None, use_point=False,problem=problem)
+
+    p = initpop.random_init(int(steps), initial=None, bounds=None, use_point=False, problem=problem)
     # Note: map is an iterator in python 3
     profile(lambda *args: list(map(*args)), problem.nllf, p)
 
@@ -281,10 +296,10 @@ def run_timer(mapper, problem, steps):
     will be run in parallel on separate cores.
     """
     import time
+
     T0 = time.time()
     steps = int(steps)
-    p = initpop.generate(
-        problem, init='random', pop=-steps, use_point=False)
+    p = initpop.generate(problem, init="random", pop=-steps, use_point=False)
     if p.shape == (0,):
         # No fitting parameters --- generate an empty population
         p = np.empty((steps, 0))
@@ -297,25 +312,27 @@ def start_remote_fit(problem, options, queue, notify):
     Queue remote fit.
     """
     from jobqueue.client import connect
+
     try:
         from dill import dumps as dill_dumps
+
         dumps = lambda obj: dill_dumps(obj, recurse=True)
     except ImportError:
         from pickle import dumps
 
-    data = dict(package='bumps',
-                version=__version__,
-                problem=dumps(problem),
-                options=dumps(options))
-    request = dict(service='fitter',
-                   version=__version__,  # fitter service version
-                   notify=notify,
-                   name=problem.title,
-                   data=data)
+    data = dict(package="bumps", version=__version__, problem=dumps(problem), options=dumps(options))
+    request = dict(
+        service="fitter",
+        version=__version__,  # fitter service version
+        notify=notify,
+        name=problem.title,
+        data=data,
+    )
 
     server = connect(queue)
     job = server.submit(request)
     return job
+
 
 # ==== Main ====
 
@@ -372,16 +389,16 @@ def resynth(fitdriver, problem, mapper, opts):
     line parameters.
     """
     make_store(problem, opts, exists_handler=store_overwrite_query)
-    fid = open(problem.output_path + ".rsy", 'at')
+    fid = open(problem.output_path + ".rsy", "at")
     fitdriver.mapper = mapper.start_mapper(problem, opts.args)
     for i in range(opts.resynth):
         problem.resynth_data()
         best, fbest = fitdriver.fit()
         scale, err = nllf_scale(problem)
         print("step %d chisq %g" % (i, scale * fbest))
-        fid.write('%.15g ' % (scale * fbest))
-        fid.write(' '.join('%.15g' % v for v in best))
-        fid.write('\n')
+        fid.write("%.15g " % (scale * fbest))
+        fid.write(" ".join("%.15g" % v for v in best))
+        fid.write("\n")
     problem.restore_data()
     fid.close()
 
@@ -390,16 +407,14 @@ def set_mplconfig(appdatadir):
     r"""
     Point the matplotlib config dir to %LOCALAPPDATA%\{appdatadir}\mplconfig.
     """
-    if hasattr(sys, 'frozen'):
-        if os.name == 'nt':
-            mplconfigdir = os.path.join(
-                os.environ['LOCALAPPDATA'], appdatadir, 'mplconfig')
-        elif sys.platform == 'darwin':
-            mplconfigdir = os.path.join(
-                os.path.expanduser('~/Library/Caches'), appdatadir, 'mplconfig')
+    if hasattr(sys, "frozen"):
+        if os.name == "nt":
+            mplconfigdir = os.path.join(os.environ["LOCALAPPDATA"], appdatadir, "mplconfig")
+        elif sys.platform == "darwin":
+            mplconfigdir = os.path.join(os.path.expanduser("~/Library/Caches"), appdatadir, "mplconfig")
         else:
             return  # do nothing on linux
-        mplconfigdir = os.environ.setdefault('MPLCONFIGDIR', mplconfigdir)
+        mplconfigdir = os.environ.setdefault("MPLCONFIGDIR", mplconfigdir)
         if not os.path.exists(mplconfigdir):
             os.makedirs(mplconfigdir)
 
@@ -423,18 +438,17 @@ def config_matplotlib(backend=None):
     # When running from a frozen environment created by py2exe, we will not
     # have a range of backends available, and must set the default to WXAgg.
     # With a full matplotlib distribution we can use whatever the user prefers.
-    if hasattr(sys, 'frozen'):
-        if 'MPLCONFIGDIR' not in os.environ:
-            raise RuntimeError(
-                r"MPLCONFIGDIR should be set to e.g., %LOCALAPPDATA%\YourApp\mplconfig")
+    if hasattr(sys, "frozen"):
+        if "MPLCONFIGDIR" not in os.environ:
+            raise RuntimeError(r"MPLCONFIGDIR should be set to e.g., %LOCALAPPDATA%\YourApp\mplconfig")
         if backend is None:
-            backend = 'WXAgg'
+            backend = "WXAgg"
 
     ## CRUFT: check that backend is valid, trying alternates if an import fails
-    #if backend is None:
+    # if backend is None:
     #    backend = os.environ.get('MPLBACKEND', mpl.rcParams['backend'])
-    #import importlib
-    #for name in (backend, 'MacOSX', 'Qt5Agg', 'Qt4Agg', 'Gtk3Agg', 'TkAgg', 'WXAgg'):
+    # import importlib
+    # for name in (backend, 'MacOSX', 'Qt5Agg', 'Qt4Agg', 'Gtk3Agg', 'TkAgg', 'WXAgg'):
     #    path = 'matplotlib.backends.backend_' + name.lower()
     #    try:
     #        importlib.import_module(path)
@@ -454,36 +468,37 @@ def config_matplotlib(backend=None):
     # otherwise it will have no effect.
     mpl.interactive(False)
 
-    #configure the plot style
+    # configure the plot style
     line_width = 1
     pad = 2
-    font_family = 'Arial' if os.name == 'nt' else 'sans-serif'
+    font_family = "Arial" if os.name == "nt" else "sans-serif"
     font_size = 12
     plot_style = {
-        'xtick.direction': 'in',
-        'ytick.direction': 'in',
-        'lines.linewidth': line_width,
-        'axes.linewidth': line_width,
-        'xtick.labelsize': font_size,
-        'ytick.labelsize': font_size,
-        'xtick.major.size': 5,
-        'ytick.major.size': 5,
-        'xtick.minor.size': 2.5,
-        'ytick.minor.size': 2.5,
-        'xtick.major.width': line_width,
-        'ytick.major.width': line_width,
-        'xtick.minor.width': line_width,
-        'ytick.minor.width': line_width,
-        'xtick.major.pad': pad,
-        'ytick.major.pad': pad,
-        'xtick.top': True,
-        'ytick.right': True,
-        'font.size': font_size,
-        'font.family': font_family,
-        'svg.fonttype': 'none',
-        'savefig.dpi': 100,
+        "xtick.direction": "in",
+        "ytick.direction": "in",
+        "lines.linewidth": line_width,
+        "axes.linewidth": line_width,
+        "xtick.labelsize": font_size,
+        "ytick.labelsize": font_size,
+        "xtick.major.size": 5,
+        "ytick.major.size": 5,
+        "xtick.minor.size": 2.5,
+        "ytick.minor.size": 2.5,
+        "xtick.major.width": line_width,
+        "ytick.major.width": line_width,
+        "xtick.minor.width": line_width,
+        "ytick.minor.width": line_width,
+        "xtick.major.pad": pad,
+        "ytick.major.pad": pad,
+        "xtick.top": True,
+        "ytick.right": True,
+        "font.size": font_size,
+        "font.family": font_family,
+        "svg.fonttype": "none",
+        "savefig.dpi": 100,
     }
     mpl.rcParams.update(plot_style)
+
 
 def beep():
     """
@@ -492,6 +507,7 @@ def beep():
     if sys.platform == "win32":
         try:
             import winsound
+
             winsound.MessageBeep(winsound.MB_OK)
         except Exception:
             pass
@@ -509,21 +525,23 @@ def run_command(c):
 def setup_logging():
     """Start logger"""
     import logging
+
     logging.basicConfig(level=logging.INFO)
+
 
 # From http://stackoverflow.com/questions/22373927/get-traceback-of-warnings
 # answered by mgab (2014-03-13)
 # edited by Gareth Rees (2015-11-28)
-def warn_with_traceback(message, category, filename, lineno,
-                        file=None, line=None):
+def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
     """
     Alternate warning printer which shows a traceback with the warning.
 
     To use, set *warnings.showwarning = warn_with_traceback*.
     """
     traceback.print_stack()
-    log = file if hasattr(file, 'write') else sys.stderr
+    log = file if hasattr(file, "write") else sys.stderr
     log.write(warnings.formatwarning(message, category, filename, lineno, line))
+
 
 def main():
     """
@@ -532,28 +550,31 @@ def main():
     Input parameters are taken from sys.argv.
     """
     # add full traceback to warnings
-    #warnings.showwarning = warn_with_traceback
+    # warnings.showwarning = warn_with_traceback
 
     if len(sys.argv) == 1:
         sys.argv.append("-?")
 
     # run command with bumps in the environment
-    if sys.argv[1] == '-m':
+    if sys.argv[1] == "-m":
         import runpy
+
         sys.argv = sys.argv[2:]
         runpy.run_module(sys.argv[0], run_name="__main__")
         sys.exit(0)
-    elif sys.argv[1] == '-p':
+    elif sys.argv[1] == "-p":
         import runpy
+
         sys.argv = sys.argv[2:]
         runpy.run_path(sys.argv[0], run_name="__main__")
         sys.exit()
-    elif sys.argv[1] == '-c':
+    elif sys.argv[1] == "-c":
         run_command(sys.argv[2])
         sys.exit()
-    elif sys.argv[1] == '-i':
+    elif sys.argv[1] == "-i":
         sys.argv = ["ipython", "--pylab"]
         from IPython import start_ipython
+
         sys.exit(start_ipython())
 
     opts = options.getopts()
@@ -561,6 +582,7 @@ def main():
 
     if opts.edit:
         from .gui.gui_app import main as gui
+
         gui()
         return
 
@@ -568,14 +590,13 @@ def main():
     # If no GUI specified and not editing, then use the default mpl
     # backend for the python version.
     if opts.batch or opts.remote or opts.noshow:  # no interactivity
-        config_matplotlib(backend='agg')
+        config_matplotlib(backend="agg")
     else:  # let preview use default graphs
         config_matplotlib()
 
     problem = initial_model(opts)
     if problem is None:
-        print("\n!!! Model file missing from command line --- abort !!!.",
-              file=sys.stderr)
+        print("\n!!! Model file missing from command line --- abort !!!.", file=sys.stderr)
         sys.exit(1)
 
     # TODO: AMQP mapper as implemented requires workers started up with
@@ -586,11 +607,11 @@ def main():
         MPIMapper.start_worker(problem)
         mapper = MPIMapper
     elif opts.parallel != "" or opts.worker:
-        if opts.transport == 'amqp':
+        if opts.transport == "amqp":
             mapper = AMQPMapper
-        elif opts.transport == 'mp':
+        elif opts.transport == "mp":
             mapper = MPMapper
-        elif opts.transport == 'celery':
+        elif opts.transport == "celery":
             mapper = CeleryMapper
         else:
             raise ValueError("unknown mapper")
@@ -602,15 +623,16 @@ def main():
 
     if np.isfinite(float(opts.time)):
         import time
+
         start_time = time.time()
-        stop_time = start_time + float(opts.time)*3600
+        stop_time = start_time + float(opts.time) * 3600
         abort_test = lambda: time.time() >= stop_time
     else:
         abort_test = lambda: False
 
     fitdriver = FitDriver(
-        opts.fit_config.selected_fitter, problem=problem, abort_test=abort_test,
-        **opts.fit_config.selected_values)
+        opts.fit_config.selected_fitter, problem=problem, abort_test=abort_test, **opts.fit_config.selected_values
+    )
 
     # Start fitter within the domain so that constraints are valid
     clipped = fitdriver.clip()
@@ -618,15 +640,14 @@ def main():
         print("Start value clipped to range for parameter", ", ".join(clipped))
 
     if opts.time_model:
-        run_timer(mapper.start_mapper(problem, opts.args),
-                  problem, steps=int(opts.steps))
+        run_timer(mapper.start_mapper(problem, opts.args), problem, steps=int(opts.steps))
     elif opts.profile:
         run_profiler(problem, steps=int(opts.steps))
     elif opts.chisq:
         if opts.cov:
             fitdriver.show_cov()
         print("chisq", problem.chisq_str())
-        #import pprint; pprint.pprint(problem.to_dict(), indent=2, width=272)
+        # import pprint; pprint.pprint(problem.to_dict(), indent=2, width=272)
     elif opts.preview:
         if opts.cov:
             fitdriver.show_cov()
@@ -638,23 +659,21 @@ def main():
         # Check that problem runs before submitting it remotely
         # TODO: this may fail if problem requires remote resources such as GPU
         print("initial chisq:", problem.chisq_str())
-        job = start_remote_fit(problem, opts,
-                               queue=opts.queue, notify=opts.notify)
-        print("remote job:", job['id'])
+        job = start_remote_fit(problem, opts, queue=opts.queue, notify=opts.notify)
+        print("remote job:", job["id"])
 
     else:
         # Show command line arguments and initial model
-        print("#", " ".join(sys.argv), "--seed=%d"%opts.seed)
+        print("#", " ".join(sys.argv), "--seed=%d" % opts.seed)
         problem.show()
 
         # Check that there are parameters to be fitted.
         if not len(problem.getp()):
-            print("\n!!! No parameters selected for fitting---abort !!!\n",
-                  file=sys.stderr)
+            print("\n!!! No parameters selected for fitting---abort !!!\n", file=sys.stderr)
             sys.exit(1)
 
         # Run the fit
-        if opts.resume == '-':
+        if opts.resume == "-":
             opts.resume = opts.store if os.path.exists(opts.store) else None
         if opts.resume:
             resume_path = os.path.join(opts.resume, problem.name)
@@ -677,7 +696,8 @@ def main():
         # * Figures are cumulative, with each checkpoint adding a new set
         # * Figures are slow! Can they go into a separate thread?  Can we
         #   have the problem cache the best value?
-        checkpoint_time = float(opts.checkpoint)*3600
+        checkpoint_time = float(opts.checkpoint) * 3600
+
         def checkpoint(history):
             problem = fitdriver.problem
             ## Use the following to save only the fitter state
@@ -686,19 +706,20 @@ def main():
             ## plots and other output files.  This won't work yet since
             ## plots are generated sequentially, with each checkpoint producing
             ## a completely new set of plots.
-            #best = history.point[0]
-            #save_best(fitdriver, problem, best, view=opts.view)
+            # best = history.point[0]
+            # save_best(fitdriver, problem, best, view=opts.view)
+
         monitors = [ConsoleMonitor(problem)]
         if checkpoint_time > 0 and np.isfinite(checkpoint_time):
             mon = CheckpointMonitor(checkpoint, progress=checkpoint_time)
             monitors.append(mon)
         if opts.stepmon:
-            fid = open(problem.output_path + '.log', 'w')
-            mon = StepMonitor(problem, fid, fields=['step', 'value'])
+            fid = open(problem.output_path + ".log", "w")
+            mon = StepMonitor(problem, fid, fields=["step", "value"])
             monitors.append(mon)
         fitdriver.monitors = monitors
 
-        #import time; t0=time.clock()
+        # import time; t0=time.clock()
         cpus = int(opts.parallel) if opts.parallel != "" else 0
         fitdriver.mapper = mapper.start_mapper(problem, opts.args, cpus=cpus)
         best, fbest = fitdriver.fit(resume=resume_path)
@@ -722,6 +743,7 @@ def main():
         if not opts.batch and not opts.mpi and not opts.noshow:
             beep()
             import pylab
+
             pylab.show()
 
 

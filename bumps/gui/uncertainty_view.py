@@ -38,6 +38,7 @@ class CorrelationView(PlotView):
     Change this by setting CorrelationView.MAX_CORR, either in the individual
     view or in the class.
     """
+
     MAX_CORR = 15
     title = "Correlations"
 

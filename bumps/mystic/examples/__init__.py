@@ -19,13 +19,13 @@ Models
 """
 
 # base classes
-#from .model import Fitness, Function
+# from .model import Fitness, Function
 
 # models
-#from .decay import decay
-#from .circle import dense_circle, sparse_circle, minimal_circle
+# from .decay import decay
+# from .circle import dense_circle, sparse_circle, minimal_circle
 
 # functions
-#from .corana import corana1d, corana2d, corana3d, corana4d
+# from .corana import corana1d, corana2d, corana3d, corana4d
 
 # end of file

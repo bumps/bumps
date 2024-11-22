@@ -419,7 +419,7 @@ de_step(int Nchain, int Nvar, int NCR,
 }
 
 
-DLL_EXPORT void 
+DLL_EXPORT void
 bounds_reflect(int Nchain, int Nvar, double pop[], double low[], double high[])
 {
     int k, p, idx;
@@ -443,7 +443,7 @@ bounds_reflect(int Nchain, int Nvar, double pop[], double low[], double high[])
 }
 
 
-DLL_EXPORT void 
+DLL_EXPORT void
 bounds_clip(int Nchain, int Nvar, double pop[], double low[], double high[])
 {
     int k, p, idx;

@@ -7,8 +7,8 @@
 #
 #    Files are copied with 'ditto' to preserve resource forks.  For
 #    convenience we also call FixupResourceForks after copying.  This
-#    allows you to use /Developer/Tools/SplitFork on your tree and 
-#    manipulate it with CVS, tar, etc.  Don't forget the -kb option 
+#    allows you to use /Developer/Tools/SplitFork on your tree and
+#    manipulate it with CVS, tar, etc.  Don't forget the -kb option
 #    when adding or committing app and ._app files to CVS!
 #
 #    This command will fail if a volume of the given name is already
@@ -47,10 +47,10 @@ mkdir $DISK-mount
 mount -t hfs $DEVICE $DISK-mount || (echo "mount $DISK-mount failed" && exit 1)
 
 # copy stuff to the disk and fixup resource forks
-for f in "$@"; do 
+for f in "$@"; do
     f=${f%/}		;# strip trailing /
     dest="$DISK-mount/${f##*/}"
-    ditto -rsrc "$f" "$dest" 
+    ditto -rsrc "$f" "$dest"
     test -d "$f" && /System/Library/CoreServices/FixupResourceForks "$dest"
 done
 

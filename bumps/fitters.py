@@ -1,6 +1,7 @@
 """
 Interfaces to various optimizers.
 """
+
 from __future__ import print_function, division
 
 import sys
@@ -30,14 +31,14 @@ class ConsoleMonitor(monitor.TimedUpdate):
     """
     Display fit progress on the console
     """
+
     def __init__(self, problem, progress=1, improvement=30):
-        monitor.TimedUpdate.__init__(self, progress=progress,
-                                     improvement=improvement)
+        monitor.TimedUpdate.__init__(self, progress=progress, improvement=improvement)
         self.problem = problem
 
     def show_progress(self, history):
         scale, err = nllf_scale(self.problem)
-        chisq = format_uncertainty(scale*history.value[0], err)
+        chisq = format_uncertainty(scale * history.value[0], err)
         print("step", history.step[0], "cost", chisq)
         sys.stdout.flush()
 
@@ -56,11 +57,12 @@ class CheckpointMonitor(monitor.TimedUpdate):
     """
     Periodically save fit state so that it can be resumed later.
     """
+
     #: Function to call at each checkpoint.
     checkpoint = None  # type: Callable[None, None]
-    def __init__(self, checkpoint, progress=60*30):
-        monitor.TimedUpdate.__init__(self, progress=progress,
-                                     improvement=np.inf)
+
+    def __init__(self, checkpoint, progress=60 * 30):
+        monitor.TimedUpdate.__init__(self, progress=progress, improvement=np.inf)
         self.checkpoint = checkpoint
         self._first = True
 
@@ -85,7 +87,8 @@ class StepMonitor(monitor.Monitor):
 
     The point field should be last in the list.
     """
-    FIELDS = ['step', 'time', 'value', 'point']
+
+    FIELDS = ["step", "time", "value", "point"]
 
     def __init__(self, problem, fid, fields=FIELDS):
         if any(f not in self.FIELDS for f in fields):
@@ -94,7 +97,7 @@ class StepMonitor(monitor.Monitor):
         self.fields = fields
         self.problem = problem
         self._pattern = "%%(%s)s\n" % (")s %(".join(fields))
-        fid.write("# " + ' '.join(fields) + '\n')
+        fid.write("# " + " ".join(fields) + "\n")
 
     def config_history(self, history):
         history.requires(time=1, value=1, point=1, step=1)
@@ -105,30 +108,33 @@ class StepMonitor(monitor.Monitor):
         step = "%d" % history.step[0]
         scale, _ = nllf_scale(self.problem)
         value = "%.15g" % (scale * history.value[0])
-        out = self._pattern % dict(point=point, time=time,
-                                   value=value, step=step)
+        out = self._pattern % dict(point=point, time=time, value=value, step=step)
         self.fid.write(out)
+
 
 class MonitorRunner(object):
     """
     Adaptor which allows solvers to accept progress monitors.
     """
+
     def __init__(self, monitors, problem):
         if monitors is None:
             monitors = [ConsoleMonitor(problem)]
         self.monitors = monitors
-        self.history = History(time=1, step=1, point=1, value=1,
-                               population_points=1, population_values=1)
+        self.history = History(time=1, step=1, point=1, value=1, population_points=1, population_values=1)
         for M in self.monitors:
             M.config_history(self.history)
         self._start = perf_counter()
 
-    def __call__(self, step, point, value,
-                 population_points=None, population_values=None):
-        self.history.update(time=perf_counter() - self._start,
-                            step=step, point=point, value=value,
-                            population_points=population_points,
-                            population_values=population_values)
+    def __call__(self, step, point, value, population_points=None, population_values=None):
+        self.history.update(
+            time=perf_counter() - self._start,
+            step=step,
+            point=point,
+            value=value,
+            population_points=population_points,
+            population_values=population_values,
+        )
         for M in self.monitors:
             M(self.history)
 
@@ -181,6 +187,7 @@ class FitBase(object):
     provide these estimates, then they will be computed from numerical
     derivatives at the minimum in the FitDriver method.
     """
+
     def __init__(self, problem):
         """Fit the models and show the results"""
         self.problem = problem
@@ -198,8 +205,9 @@ class MultiStart(FitBase):
     option is True, then restart near the best fit, otherwise restart at
     random.
     """
+
     name = "Multistart Monte Carlo"
-    settings = [('starts', 100)]
+    settings = [("starts", 100)]
 
     def __init__(self, fitter):
         FitBase.__init__(self, fitter.problem)
@@ -208,14 +216,14 @@ class MultiStart(FitBase):
     def solve(self, monitors=None, mapper=None, **options):
         # TODO: need better way of tracking progress
         import logging
-        starts = options.pop('starts', 1)
-        reset = not options.pop('keep_best', True)
+
+        starts = options.pop("starts", 1)
+        reset = not options.pop("keep_best", True)
         f_best = np.inf
         x_best = self.problem.getp()
         for _ in range(max(starts, 1)):
             logging.info("multistart round %d", _)
-            x, fx = self.fitter.solve(monitors=monitors, mapper=mapper,
-                                      **options)
+            x, fx = self.fitter.solve(monitors=monitors, mapper=mapper, **options)
             if fx < f_best:
                 x_best, f_best = x, fx
                 logging.info("multistart f(x),x: %s %s", str(fx), str(x_best))
@@ -224,9 +232,7 @@ class MultiStart(FitBase):
             else:
                 # Jitter
                 self.problem.setp(x_best)
-                pop = initpop.eps_init(1, self.problem.getp(),
-                                       self.problem.bounds(),
-                                       use_point=False, eps=1e-3)
+                pop = initpop.eps_init(1, self.problem.getp(), self.problem.bounds(), use_point=False, eps=1e-3)
                 self.problem.setp(pop[0])
         return x_best, f_best
 
@@ -235,11 +241,17 @@ class DEFit(FitBase):
     """
     Classic Storn and Price differential evolution optimizer.
     """
+
     name = "Differential Evolution"
     id = "de"
-    settings = [('steps', 1000), ('pop', 10), ('CR', 0.9), ('F', 2.0),
-                ('ftol', 1e-8), ('xtol', 1e-6), #('stop', ''),
-               ]
+    settings = [
+        ("steps", 1000),
+        ("pop", 10),
+        ("CR", 0.9),
+        ("F", 2.0),
+        ("ftol", 1e-8),
+        ("xtol", 1e-6),  # ('stop', ''),
+    ]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         if abort_test is None:
@@ -248,31 +260,35 @@ class DEFit(FitBase):
         from .mystic.optimizer import de
         from .mystic.solver import Minimizer
         from .mystic import stop
+
         if monitors is None:
             monitors = [ConsoleMonitor(self.problem)]
         if mapper is not None:
             _mapper = lambda p, v: mapper(v)
         else:
             _mapper = lambda p, v: list(map(self.problem.nllf, v))
-        resume = hasattr(self, 'state')
-        steps = options['steps'] + (self.state['step'][-1] if resume else 0)
-        strategy = de.DifferentialEvolution(npop=options['pop'],
-                                            CR=options['CR'],
-                                            F=options['F'],
-                                            crossover=de.c_bin,
-                                            mutate=de.rand1u)
+        resume = hasattr(self, "state")
+        steps = options["steps"] + (self.state["step"][-1] if resume else 0)
+        strategy = de.DifferentialEvolution(
+            npop=options["pop"], CR=options["CR"], F=options["F"], crossover=de.c_bin, mutate=de.rand1u
+        )
         success = parse_tolerance(options)
         failure = stop.Steps(steps)
         self.history = History()
         # Step adds to current step number if resume
-        minimize = Minimizer(strategy=strategy, problem=self.problem,
-                             history=self.history, monitors=monitors,
-                             success=success, failure=failure)
+        minimize = Minimizer(
+            strategy=strategy,
+            problem=self.problem,
+            history=self.history,
+            monitors=monitors,
+            success=success,
+            failure=failure,
+        )
         if resume:
             self.history.restore(self.state)
         x = minimize(mapper=_mapper, abort_test=abort_test, resume=resume)
-        #print(minimize.termination_condition())
-        #with open("/tmp/evals","a") as fid:
+        # print(minimize.termination_condition())
+        # with open("/tmp/evals","a") as fid:
         #   print >>fid,minimize.history.value[0],minimize.history.step[0],\
         #       minimize.history.step[0]*options['pop']*len(self.problem.getp())
         return x, self.history.value[0]
@@ -286,10 +302,11 @@ class DEFit(FitBase):
 
 def parse_tolerance(options):
     from .mystic import stop
-    if options.get('stop', ''):
-        return stop.parse_condition(options['stop'])
 
-    xtol, ftol = options['xtol'], options['ftol']
+    if options.get("stop", ""):
+        return stop.parse_condition(options["stop"])
+
+    xtol, ftol = options["xtol"], options["ftol"]
     if xtol == 0:
         if ftol == 0:
             return None
@@ -313,6 +330,7 @@ def load_history(path):
     Load fitter details from a history file.
     """
     import json
+
     with open(_history_file(path), "r") as fid:
         return json.load(fid)
 
@@ -324,6 +342,7 @@ def save_history(path, state):
     The content of the details are fitter specific.
     """
     import json
+
     with open(_history_file(path), "w") as fid:
         json.dump(state, fid)
 
@@ -343,39 +362,38 @@ class BFGSFit(FitBase):
         C = lsqerror.chol_cov(fit.result['L'])
         stderr = lsqerror.stderr(C)
     """
+
     name = "Quasi-Newton BFGS"
     id = "newton"
-    settings = [('steps', 3000), ('starts', 1),
-                ('ftol', 1e-6), ('xtol', 1e-12)]
+    settings = [("steps", 3000), ("starts", 1), ("ftol", 1e-6), ("xtol", 1e-12)]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         if abort_test is None:
             abort_test = lambda: False
         options = _fill_defaults(options, self.settings)
         from .quasinewton import quasinewton
-        self._update = MonitorRunner(problem=self.problem,
-                                     monitors=monitors)
-        result = quasinewton(fn=self.problem.nllf,
-                             x0=self.problem.getp(),
-                             monitor=self._monitor,
-                             abort_test=abort_test,
-                             itnlimit=options['steps'],
-                             gradtol=options['ftol'],
-                             steptol=1e-12,
-                             macheps=1e-8,
-                             eta=1e-8,
-                            )
+
+        self._update = MonitorRunner(problem=self.problem, monitors=monitors)
+        result = quasinewton(
+            fn=self.problem.nllf,
+            x0=self.problem.getp(),
+            monitor=self._monitor,
+            abort_test=abort_test,
+            itnlimit=options["steps"],
+            gradtol=options["ftol"],
+            steptol=1e-12,
+            macheps=1e-8,
+            eta=1e-8,
+        )
         self.result = result
-        #code = result['status']
-        #from .quasinewton import STATUS
-        #print("%d: %s, x=%s, fx=%s"
+        # code = result['status']
+        # from .quasinewton import STATUS
+        # print("%d: %s, x=%s, fx=%s"
         #      % (code, STATUS[code], result['x'], result['fx']))
-        return result['x'], result['fx']
+        return result["x"], result["fx"]
 
     def _monitor(self, step, x, fx):
-        self._update(step=step, point=x, value=fx,
-                     population_points=[x],
-                     population_values=[fx])
+        self._update(step=step, point=x, value=fx, population_points=[x], population_values=[fx])
         return True
 
 
@@ -383,35 +401,31 @@ class PSFit(FitBase):
     """
     Particle swarm optimizer.
     """
+
     name = "Particle Swarm"
     id = "ps"
-    settings = [('steps', 3000), ('pop', 1)]
+    settings = [("steps", 3000), ("pop", 1)]
 
     def solve(self, monitors=None, mapper=None, **options):
         options = _fill_defaults(options, self.settings)
         if mapper is None:
             mapper = lambda x: list(map(self.problem.nllf, x))
         from .random_lines import particle_swarm
-        self._update = MonitorRunner(problem=self.problem,
-                                     monitors=monitors)
-        low, high = self.problem.bounds()
-        cfo = dict(parallel_cost=mapper,
-                   n=len(low),
-                   x0=self.problem.getp(),
-                   x1=low,
-                   x2=high,
-                   f_opt=0,
-                   monitor=self._monitor)
-        npop = int(cfo['n'] * options['pop'])
 
-        result = particle_swarm(cfo, npop, maxiter=options['steps'])
+        self._update = MonitorRunner(problem=self.problem, monitors=monitors)
+        low, high = self.problem.bounds()
+        cfo = dict(
+            parallel_cost=mapper, n=len(low), x0=self.problem.getp(), x1=low, x2=high, f_opt=0, monitor=self._monitor
+        )
+        npop = int(cfo["n"] * options["pop"])
+
+        result = particle_swarm(cfo, npop, maxiter=options["steps"])
         satisfied_sc, n_feval, f_best, x_best = result
 
         return x_best, f_best
 
     def _monitor(self, step, x, fx, k):
-        self._update(step=step, point=x[:, k], value=fx[k],
-                     population_points=x.T, population_values=fx)
+        self._update(step=step, point=x[:, k], value=fx[k], population_points=x.T, population_values=fx)
         return True
 
 
@@ -419,9 +433,10 @@ class RLFit(FitBase):
     """
     Random lines optimizer.
     """
+
     name = "Random Lines"
     id = "rl"
-    settings = [('steps', 3000), ('starts', 20), ('pop', 0.5), ('CR', 0.9)]
+    settings = [("steps", 3000), ("starts", 20), ("pop", 0.5), ("CR", 0.9)]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         if abort_test is None:
@@ -430,28 +445,22 @@ class RLFit(FitBase):
         if mapper is None:
             mapper = lambda x: list(map(self.problem.nllf, x))
         from .random_lines import random_lines
-        self._update = MonitorRunner(problem=self.problem,
-                                     monitors=monitors)
-        low, high = self.problem.bounds()
-        cfo = dict(parallel_cost=mapper,
-                   n=len(low),
-                   x0=self.problem.getp(),
-                   x1=low,
-                   x2=high,
-                   f_opt=0,
-                   monitor=self._monitor)
-        npop = max(int(cfo['n'] * options['pop']), 3)
 
-        result = random_lines(cfo, npop, abort_test=abort_test,
-                              maxiter=options['steps'], CR=options['CR'])
+        self._update = MonitorRunner(problem=self.problem, monitors=monitors)
+        low, high = self.problem.bounds()
+        cfo = dict(
+            parallel_cost=mapper, n=len(low), x0=self.problem.getp(), x1=low, x2=high, f_opt=0, monitor=self._monitor
+        )
+        npop = max(int(cfo["n"] * options["pop"]), 3)
+
+        result = random_lines(cfo, npop, abort_test=abort_test, maxiter=options["steps"], CR=options["CR"])
         satisfied_sc, n_feval, f_best, x_best = result
 
         return x_best, f_best
 
     def _monitor(self, step, x, fx, k):
         # print "rl best",k, x.shape,fx.shape
-        self._update(step=step, point=x[:, k], value=fx[k],
-                     population_points=x.T, population_values=fx)
+        self._update(step=step, point=x[:, k], value=fx[k], population_points=x.T, population_values=fx)
         return True
 
 
@@ -459,34 +468,33 @@ class PTFit(FitBase):
     """
     Parallel tempering optimizer.
     """
+
     name = "Parallel Tempering"
     id = "pt"
-    settings = [('steps', 400), ('nT', 24), ('CR', 0.9),
-                ('burn', 100), ('Tmin', 0.1), ('Tmax', 10)]
+    settings = [("steps", 400), ("nT", 24), ("CR", 0.9), ("burn", 100), ("Tmin", 0.1), ("Tmax", 10)]
 
     def solve(self, monitors=None, mapper=None, **options):
         options = _fill_defaults(options, self.settings)
         # TODO: no mapper??
         from .partemp import parallel_tempering
-        self._update = MonitorRunner(problem=self.problem,
-                                     monitors=monitors)
-        t = np.logspace(np.log10(options['Tmin']),
-                        np.log10(options['Tmax']),
-                        options['nT'])
-        history = parallel_tempering(nllf=self.problem.nllf,
-                                     p=self.problem.getp(),
-                                     bounds=self.problem.bounds(),
-                                     # logfile="partemp.dat",
-                                     T=t,
-                                     CR=options['CR'],
-                                     steps=options['steps'],
-                                     burn=options['burn'],
-                                     monitor=self._monitor)
+
+        self._update = MonitorRunner(problem=self.problem, monitors=monitors)
+        t = np.logspace(np.log10(options["Tmin"]), np.log10(options["Tmax"]), options["nT"])
+        history = parallel_tempering(
+            nllf=self.problem.nllf,
+            p=self.problem.getp(),
+            bounds=self.problem.bounds(),
+            # logfile="partemp.dat",
+            T=t,
+            CR=options["CR"],
+            steps=options["steps"],
+            burn=options["burn"],
+            monitor=self._monitor,
+        )
         return history.best_point, history.best
 
     def _monitor(self, step, x, fx, P, E):
-        self._update(step=step, point=x, value=fx,
-                     population_points=P, population_values=E)
+        self._update(step=step, point=x, value=fx, population_points=P, population_values=E)
         return True
 
 
@@ -494,75 +502,81 @@ class SimplexFit(FitBase):
     """
     Nelder-Mead simplex optimizer.
     """
+
     name = "Nelder-Mead Simplex"
     id = "amoeba"
-    settings = [('steps', 1000), ('starts', 1), ('radius', 0.15),
-                ('xtol', 1e-6), ('ftol', 1e-8)]
+    settings = [("steps", 1000), ("starts", 1), ("radius", 0.15), ("xtol", 1e-6), ("ftol", 1e-8)]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         from .simplex import simplex
+
         if abort_test is None:
             abort_test = lambda: False
         options = _fill_defaults(options, self.settings)
         # TODO: no mapper??
-        self._update = MonitorRunner(problem=self.problem,
-                                     monitors=monitors)
-        #print("bounds", self.problem.bounds())
-        result = simplex(f=self.problem.nllf, x0=self.problem.getp(),
-                         bounds=self.problem.bounds(),
-                         abort_test=abort_test,
-                         update_handler=self._monitor,
-                         maxiter=options['steps'],
-                         radius=options['radius'],
-                         xtol=options['xtol'],
-                         ftol=options['ftol'])
+        self._update = MonitorRunner(problem=self.problem, monitors=monitors)
+        # print("bounds", self.problem.bounds())
+        result = simplex(
+            f=self.problem.nllf,
+            x0=self.problem.getp(),
+            bounds=self.problem.bounds(),
+            abort_test=abort_test,
+            update_handler=self._monitor,
+            maxiter=options["steps"],
+            radius=options["radius"],
+            xtol=options["xtol"],
+            ftol=options["ftol"],
+        )
         # Let simplex propose the starting point for the next amoeba
         # fit in a multistart amoeba context.  If the best is always
         # used, the fit can get stuck in a local minimum.
         self.problem.setp(result.next_start)
-        #print("amoeba %s %s"%(result.x,result.fx))
+        # print("amoeba %s %s"%(result.x,result.fx))
         return result.x, result.fx
 
     def _monitor(self, k, n, x, fx):
-        self._update(step=k, point=x[0], value=fx[0],
-                     population_points=x, population_values=fx)
+        self._update(step=k, point=x[0], value=fx[0], population_points=x, population_values=fx)
         return True
+
 
 class MPFit(FitBase):
     """
     MPFit optimizer.
     """
+
     name = "Levenberg-Marquardt"
     id = "lm"
-    settings = [('steps', 200), ('ftol', 1e-10), ('xtol', 1e-10)]
+    settings = [("steps", 200), ("ftol", 1e-10), ("xtol", 1e-10)]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         from .mpfit import mpfit
+
         if abort_test is None:
             abort_test = lambda: False
         options = _fill_defaults(options, self.settings)
         self._low, self._high = self.problem.bounds()
-        self._update = MonitorRunner(problem=self.problem,
-                                     monitors=monitors)
+        self._update = MonitorRunner(problem=self.problem, monitors=monitors)
         self._abort = abort_test
         x0 = self.problem.getp()
         parinfo = []
         for low, high in zip(*self.problem.bounds()):
-            parinfo.append({
-                #'value': None,  # passed in by xall instead
-                #'fixed': False,  # everything is varying
-                'limited': (np.isfinite(low), np.isfinite(high)),
-                'limits': (low, high),
-                #'parname': '',  # could probably ask problem for this...
-                # From the code, default step size is sqrt(eps)*abs(value)
-                # or eps if value is 0.  This seems okay.  The other
-                # other alternative is to limit it by bounds.
-                #'step': 0,  # compute step automatically
-                #'mpside': 0,  # 1, -1 or 2 for right-, left- or 2-sided deriv
-                #'mpmaxstep': 0.,  # max step for this parameter
-                #'tied': '',  # parameter expressions tying fit parameters
-                #'mpprint': 1,  # print the parameter value when iterating
-            })
+            parinfo.append(
+                {
+                    #'value': None,  # passed in by xall instead
+                    #'fixed': False,  # everything is varying
+                    "limited": (np.isfinite(low), np.isfinite(high)),
+                    "limits": (low, high),
+                    #'parname': '',  # could probably ask problem for this...
+                    # From the code, default step size is sqrt(eps)*abs(value)
+                    # or eps if value is 0.  This seems okay.  The other
+                    # other alternative is to limit it by bounds.
+                    #'step': 0,  # compute step automatically
+                    #'mpside': 0,  # 1, -1 or 2 for right-, left- or 2-sided deriv
+                    #'mpmaxstep': 0.,  # max step for this parameter
+                    #'tied': '',  # parameter expressions tying fit parameters
+                    #'mpprint': 1,  # print the parameter value when iterating
+                }
+            )
 
         result = mpfit(
             fcn=self._residuals,
@@ -570,13 +584,13 @@ class MPFit(FitBase):
             parinfo=parinfo,
             autoderivative=True,
             fastnorm=True,
-            double=0, # use single precision machine epsilon for derivative step
-            #damp=0,  # no damping when damp=0
+            double=0,  # use single precision machine epsilon for derivative step
+            # damp=0,  # no damping when damp=0
             # Stopping conditions
-            ftol=options['ftol'],
-            xtol=options['xtol'],
-            #gtol=1e-100, # exclude gtol test
-            maxiter=options['steps'],
+            ftol=options["ftol"],
+            xtol=options["xtol"],
+            # gtol=1e-100, # exclude gtol test
+            maxiter=options["steps"],
             # Progress monitor
             iterfunct=self._monitor,
             nprint=1,  # call monitor each iteration
@@ -592,10 +606,7 @@ class MPFit(FitBase):
 
         return x, fx
 
-
-    def _monitor(self, fcn, p, k, fnorm,
-                 functkw=None, parinfo=None,
-                 quiet=0, dof=None, **extra):
+    def _monitor(self, fcn, p, k, fnorm, functkw=None, parinfo=None, quiet=0, dof=None, **extra):
         self._update(k, p, fnorm)
 
     def _residuals(self, p, fjac=None):
@@ -605,8 +616,7 @@ class MPFit(FitBase):
         self.problem.setp(p)
         # treat prior probabilities on the parameters as additional
         # measurements
-        residuals = np.hstack(
-            (self.problem.residuals().flat, self.problem.parameter_residuals()))
+        residuals = np.hstack((self.problem.residuals().flat, self.problem.parameter_residuals()))
         # Tally costs for broken constraints
         extra_cost, failing_constraints = self.problem.constraints_nllf()
         # Spread the cost over the residuals.  Since we are smoothly increasing
@@ -620,9 +630,10 @@ class LevenbergMarquardtFit(FitBase):
     """
     Levenberg-Marquardt optimizer.
     """
+
     name = "Levenberg-Marquardt (scipy.leastsq)"
     id = "scipy.leastsq"
-    settings = [('steps', 200), ('ftol', 1.5e-8), ('xtol', 1.5e-8)]
+    settings = [("steps", 200), ("ftol", 1.5e-8), ("xtol", 1.5e-8)]
     # LM also has
     #    gtol: orthoganality between jacobian columns
     #    epsfcn: numerical derivative step size
@@ -631,21 +642,23 @@ class LevenbergMarquardtFit(FitBase):
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         from scipy import optimize
+
         if abort_test is None:
             abort_test = lambda: False
         options = _fill_defaults(options, self.settings)
         self._low, self._high = self.problem.bounds()
-        self._update = MonitorRunner(problem=self.problem,
-                                     monitors=monitors)
+        self._update = MonitorRunner(problem=self.problem, monitors=monitors)
         x0 = self.problem.getp()
-        maxfev = options['steps']*(len(x0)+1)
-        result = optimize.leastsq(self._bounded_residuals,
-                                  x0,
-                                  ftol=options['ftol'],
-                                  xtol=options['xtol'],
-                                  maxfev=maxfev,
-                                  epsfcn=1e-8,
-                                  full_output=True)
+        maxfev = options["steps"] * (len(x0) + 1)
+        result = optimize.leastsq(
+            self._bounded_residuals,
+            x0,
+            ftol=options["ftol"],
+            xtol=options["xtol"],
+            maxfev=maxfev,
+            epsfcn=1e-8,
+            full_output=True,
+        )
         x, cov_x, info, mesg, success = result
         if not 1 <= success <= 4:
             # don't treat "reached maxfev" as a true failure
@@ -678,8 +691,7 @@ class LevenbergMarquardtFit(FitBase):
         self.problem.setp(p + stray)
         # treat prior probabilities on the parameters as additional
         # measurements
-        residuals = np.hstack(
-            (self.problem.residuals().flat, self.problem.parameter_residuals()))
+        residuals = np.hstack((self.problem.residuals().flat, self.problem.parameter_residuals()))
         # Tally costs for straying outside the boundaries plus other costs
         constraints_cost, failing_constraints = self.problem.constraints_nllf()
         extra_cost = stray_cost + constraints_cost
@@ -691,8 +703,7 @@ class LevenbergMarquardtFit(FitBase):
 
     def _stray_delta(self, p):
         """calculate how far point is outside the boundary"""
-        return (np.where(p < self._low, self._low - p, 0)
-                + np.where(p > self._high, self._high - p, 0))
+        return np.where(p < self._low, self._low - p, 0) + np.where(p > self._high, self._high - p, 0)
 
     def cov(self):
         return self._cov
@@ -701,27 +712,23 @@ class LevenbergMarquardtFit(FitBase):
 class SnobFit(FitBase):
     name = "SNOBFIT"
     id = "snobfit"
-    settings = [('steps', 200)]
+    settings = [("steps", 200)]
 
     def solve(self, monitors=None, mapper=None, **options):
         options = _fill_defaults(options, self.settings)
         # TODO: no mapper??
         from snobfit.snobfit import snobfit
-        self._update = MonitorRunner(problem=self.problem,
-                                     monitors=monitors)
-        x, fx, _ = snobfit(self.problem, self.problem.getp(),
-                           self.problem.bounds(),
-                           fglob=0, callback=self._monitor)
+
+        self._update = MonitorRunner(problem=self.problem, monitors=monitors)
+        x, fx, _ = snobfit(self.problem, self.problem.getp(), self.problem.bounds(), fglob=0, callback=self._monitor)
         return x, fx
 
     def _monitor(self, k, x, fx, improved):
         # TODO: snobfit does have a population...
-        self._update(step=k, point=x, value=fx,
-                     population_points=[x], population_values=[fx])
+        self._update(step=k, point=x, value=fx, population_points=[x], population_values=[fx])
 
 
 class DreamModel(MCMCModel):
-
     """
     DREAM wrapper for fit problems.
     """
@@ -756,11 +763,17 @@ class DreamModel(MCMCModel):
 class DreamFit(FitBase):
     name = "DREAM"
     id = "dream"
-    settings = [('samples', int(1e4)), ('burn', 100), ('pop', 10),
-                ('init', 'eps'), ('thin', 1), ('alpha', 0.01),
-                ('outliers', 'none'), ('trim', False),
-                ('steps', 0),  # deprecated: use --samples instead
-               ]
+    settings = [
+        ("samples", int(1e4)),
+        ("burn", 100),
+        ("pop", 10),
+        ("init", "eps"),
+        ("thin", 1),
+        ("alpha", 0.01),
+        ("outliers", "none"),
+        ("trim", False),
+        ("steps", 0),  # deprecated: use --samples instead
+    ]
 
     def __init__(self, problem):
         FitBase.__init__(self, problem)
@@ -769,36 +782,40 @@ class DreamFit(FitBase):
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         from .dream import Dream
+
         if abort_test is None:
             abort_test = lambda: False
         options = _fill_defaults(options, self.settings)
 
         if mapper:
             self.dream_model.mapper = mapper
-        self._update = MonitorRunner(problem=self.dream_model.problem,
-                                     monitors=monitors)
+        self._update = MonitorRunner(problem=self.dream_model.problem, monitors=monitors)
 
         population = initpop.generate(self.dream_model.problem, **options)
         pop_size = population.shape[0]
-        draws, steps = int(options['samples']), options['steps']
+        draws, steps = int(options["samples"]), options["steps"]
         if steps == 0:
-            steps = (draws + pop_size-1) // pop_size
+            steps = (draws + pop_size - 1) // pop_size
         # TODO: need a better way to announce number of steps
         # maybe somehow print iteration # of # iters in the monitor?
-        print("# steps: %d, # draws: %d"%(steps, pop_size*steps))
+        print("# steps: %d, # draws: %d" % (steps, pop_size * steps))
         population = population[None, :, :]
-        sampler = Dream(model=self.dream_model, population=population,
-                        draws=pop_size * steps,
-                        burn=pop_size * options['burn'],
-                        thinning=options['thin'],
-                        monitor=self._monitor, alpha=options['alpha'],
-                        outlier_test=options['outliers'],
-                        DE_noise=1e-6)
+        sampler = Dream(
+            model=self.dream_model,
+            population=population,
+            draws=pop_size * steps,
+            burn=pop_size * options["burn"],
+            thinning=options["thin"],
+            monitor=self._monitor,
+            alpha=options["alpha"],
+            outlier_test=options["outliers"],
+            DE_noise=1e-6,
+        )
 
         self.state = sampler.sample(state=self.state, abort_test=abort_test)
 
-        self._trimmed = self.state.trim_portion() if options['trim'] else 1.0
-        #print("trimming", options['trim'], self._trimmed)
+        self._trimmed = self.state.trim_portion() if options["trim"] else 1.0
+        # print("trimming", options['trim'], self._trimmed)
         self.state.mark_outliers(portion=self._trimmed)
         self.state.keep_best()
         self.state.title = self.dream_model.problem.name
@@ -809,23 +826,23 @@ class DreamFit(FitBase):
         # get around this by just not writing state for the derived variables,
         # at which point we can remove this notice.
         # TODO: Add derived/visible variable support to other optimizers
-        fn, labels = getattr(self.problem, 'derive_vars', (None, None))
+        fn, labels = getattr(self.problem, "derive_vars", (None, None))
         if fn is not None:
             self.state.derive_vars(fn, labels=labels)
-        visible_vars = getattr(self.problem, 'visible_vars', None)
+        visible_vars = getattr(self.problem, "visible_vars", None)
         if visible_vars is not None:
             self.state.set_visible_vars(visible_vars)
-        integer_vars = getattr(self.problem, 'integer_vars', None)
+        integer_vars = getattr(self.problem, "integer_vars", None)
         if integer_vars is not None:
             self.state.set_integer_vars(integer_vars)
 
         x, fx = self.state.best()
 
         # Check that the last point is the best point
-        #points, logp = self.state.sample()
-        #assert logp[-1] == fx
-        #print(points[-1], x)
-        #assert all(points[-1, i] == xi for i, xi in enumerate(x))
+        # points, logp = self.state.sample()
+        # assert logp[-1] == fx
+        # print(points[-1], x)
+        # assert all(points[-1, i] == xi for i, xi in enumerate(x))
         return x, -fx
 
     def entropy(self, **kw):
@@ -836,8 +853,7 @@ class DreamFit(FitBase):
         self.state = self._update.history.uncertainty_state = state
         step = state.generation
         x, fx = state.best()
-        self._update(step=step, point=x, value=-fx,
-                     population_points=pop, population_values=-logp)
+        self._update(step=step, point=x, value=-fx, population_points=pop, population_values=-logp)
         return True
 
     def stderr(self):
@@ -849,22 +865,22 @@ class DreamFit(FitBase):
         from .dream.stats import var_stats
 
         vstats = var_stats(self.state.draw(portion=self._trimmed))
-        return np.array([(v.p68[1] - v.p68[0]) / 2 for v in vstats], 'd')
+        return np.array([(v.p68[1] - v.p68[0]) / 2 for v in vstats], "d")
 
-    #def cov(self):
+    # def cov(self):
     #    # Covariance estimate from final 1000 points
     #    return np.cov(self.state.draw().points[-1000:])
 
     def load(self, input_path):
         from .dream.state import load_state, path_contains_saved_state
+
         if path_contains_saved_state(input_path):
-            print("loading saved state from %s (this might take awhile) ..."
-                  % (input_path,))
-            fn, labels = getattr(self.problem, 'derive_vars', (None, []))
+            print("loading saved state from %s (this might take awhile) ..." % (input_path,))
+            fn, labels = getattr(self.problem, "derive_vars", (None, []))
             self.state = load_state(input_path, report=100, derived_vars=len(labels))
         else:
             # Warn if mc files are not found on --resume path
-            warnings.warn("No mcmc found; ignoring --resume=%r"%input_path)
+            warnings.warn("No mcmc found; ignoring --resume=%r" % input_path)
 
     def save(self, output_path):
         self.state.save(output_path)
@@ -880,14 +896,13 @@ class DreamFit(FitBase):
         # Produce error plot
         import pylab
         from . import errplot
+
         # TODO: shouldn't mix calc and display!
-        res = errplot.calc_errors_from_state(problem=self.dream_model.problem,
-                                             state=self.state,
-                                             portion=self._trimmed)
+        res = errplot.calc_errors_from_state(problem=self.dream_model.problem, state=self.state, portion=self._trimmed)
         if res is not None:
             pylab.figure()
             errplot.show_errors(res)
-            pylab.savefig(figfile + "-errors.png", format='png')
+            pylab.savefig(figfile + "-errors.png", format="png")
 
 
 class Resampler(FitBase):
@@ -898,11 +913,10 @@ class Resampler(FitBase):
         raise NotImplementedError()
 
     def solve(self, **options):
-        starts = options.pop('starts', 1)
-        restart = options.pop('restart', False)
+        starts = options.pop("starts", 1)
+        restart = options.pop("restart", False)
         x, fx = self.fitter.solve(**options)
-        points = _resampler(self.fitter, x, samples=starts,
-                            restart=restart, **options)
+        points = _resampler(self.fitter, x, samples=starts, restart=restart, **options)
         self.points = points  # save points for later plotting
         return x, fx
 
@@ -937,14 +951,12 @@ def _resampler(fitter, xinit, samples=100, restart=False, **options):
         # Restore the state of the problem
         fitter.problem.restore_data()
         fitter.problem.setp(xinit)
-        #fitter.problem.model_update()  # setp does model update
+        # fitter.problem.model_update()  # setp does model update
     return points
 
 
 class FitDriver(object):
-
-    def __init__(self, fitclass=None, problem=None, monitors=None,
-                 abort_test=None, mapper=None, **options):
+    def __init__(self, fitclass=None, problem=None, monitors=None, abort_test=None, mapper=None, **options):
         self.fitclass = fitclass
         self.problem = problem
         self.options = options
@@ -955,23 +967,19 @@ class FitDriver(object):
         self.result = None
 
     def fit(self, resume=None):
-
-        if hasattr(self, '_cov'):
+        if hasattr(self, "_cov"):
             del self._cov
-        if hasattr(self, '_stderr'):
+        if hasattr(self, "_stderr"):
             del self._stderr
         fitter = self.fitclass(self.problem)
         if resume:
             fitter.load(resume)
-        starts = self.options.get('starts', 1)
+        starts = self.options.get("starts", 1)
         if starts > 1:
             fitter = MultiStart(fitter)
         t0 = perf_counter()
         self.fitter = fitter
-        x, fx = fitter.solve(monitors=self.monitors,
-                             abort_test=self.abort_test,
-                             mapper=self.mapper,
-                             **self.options)
+        x, fx = fitter.solve(monitors=self.monitors, abort_test=self.abort_test, mapper=self.mapper, **self.options)
         self.time = perf_counter() - t0
         self.result = x, fx
         if x is not None:
@@ -990,20 +998,20 @@ class FitDriver(object):
         values = self.problem.getp()
         bounds = self.problem.bounds()
         new_values = np.clip(values, bounds[0], bounds[1])
-        clipped = [name for name, old, new in zip(labels, values, new_values)
-                   if old != new]
+        clipped = [name for name, old, new in zip(labels, values, new_values) if old != new]
         self.problem.setp(new_values)
         return clipped
 
     def entropy(self, method=None):
-        if hasattr(self.fitter, 'entropy'):
+        if hasattr(self.fitter, "entropy"):
             return self.fitter.entropy(method=method)
         else:
             from .dream import entropy
+
             return entropy.cov_entropy(self.cov()), 0
 
     def chisq(self):
-        if not hasattr(self, '_chisq'):
+        if not hasattr(self, "_chisq"):
             self._chisq = self.problem.chisq()
         return self._chisq
 
@@ -1034,11 +1042,11 @@ class FitDriver(object):
         # this case, the code will fall through to computing the covariance
         # matrix directly from the problem.  It will use the initial value
         # stored in the problem parameters because results will also be None.
-        if not hasattr(self, '_cov'):
+        if not hasattr(self, "_cov"):
             self._cov = None
-            if hasattr(self.fitter, 'cov'):
+            if hasattr(self.fitter, "cov"):
                 self._cov = self.fitter.cov()
-                #print("fitter cov", self._cov)
+                # print("fitter cov", self._cov)
         if self._cov is None:
             # Use Jacobian if residuals are available because it is faster
             # to compute.  Otherwise punt and use Hessian.  The has_residuals
@@ -1046,18 +1054,18 @@ class FitDriver(object):
             # the problem defines a residuals method but doesn't really
             # have residuals (e.g. to allow levenberg-marquardt to run even
             # though it is not fitting a sum-square problem).
-            if hasattr(self.problem, 'has_residuals'):
+            if hasattr(self.problem, "has_residuals"):
                 has_residuals = self.problem.has_residuals
             else:
-                has_residuals = hasattr(self.problem, 'residuals')
+                has_residuals = hasattr(self.problem, "residuals")
             x = self.problem.getp() if self.result is None else self.result[0]
             if has_residuals:
                 J = lsqerror.jacobian(self.problem, x)
-                #print("Jacobian", J)
+                # print("Jacobian", J)
                 self._cov = lsqerror.jacobian_cov(J)
             else:
                 H = lsqerror.hessian(self.problem, x)
-                #print("Hessian", H)
+                # print("Hessian", H)
                 self._cov = lsqerror.hessian_cov(H)
         return self._cov
 
@@ -1072,9 +1080,9 @@ class FitDriver(object):
         # Note: if fit() has not been run then self.fitter is None and in
         # particular, self.fitter will not have a stderr method defined so
         # it will compute stderr from covariance.
-        if not hasattr(self, '_stderr'):
+        if not hasattr(self, "_stderr"):
             self._stderr = None
-            if hasattr(self.fitter, 'stderr'):
+            if hasattr(self.fitter, "stderr"):
                 self._stderr = self.fitter.stderr()
         if self._stderr is None:
             # If no stderr from the fitter then compute it from the covariance
@@ -1091,16 +1099,15 @@ class FitDriver(object):
         Here, the covariance matrix may have been estimated by the fitter
         instead of the Hessian.
         """
-        if not hasattr(self, '_stderr_from_cov'):
+        if not hasattr(self, "_stderr_from_cov"):
             self._stderr_from_cov = lsqerror.stderr(self.cov())
         return self._stderr_from_cov
 
     def show(self):
-        if hasattr(self.fitter, 'show'):
+        if hasattr(self.fitter, "show"):
             self.fitter.show()
-        if hasattr(self.problem, 'show'):
+        if hasattr(self.problem, "show"):
             self.problem.show()
-
 
     # TODO: reenable the "implied variance" calculation
     def _unused_show_err(self):
@@ -1121,14 +1128,10 @@ class FitDriver(object):
         # for nonlinear systems, with the unexplained variance distributed
         # proportionately amongst the measurement uncertainties.
         norm = np.sqrt(self.chisq())
-        print("=== Uncertainty from curvature:     name"
-              " value(unc.)    "
-              " value(unc./chi)) ===")
+        print("=== Uncertainty from curvature:     name" " value(unc.)    " " value(unc./chi)) ===")
         for k, v, dv in zip(self.problem.labels(), self.problem.getp(), err):
-            print("%40s %-15s %-15s" % (k,
-                  format_uncertainty(v, dv),
-                  format_uncertainty(v, dv/norm)))
-        print("="*75)
+            print("%40s %-15s %-15s" % (k, format_uncertainty(v, dv), format_uncertainty(v, dv / norm)))
+        print("=" * 75)
 
     def show_err(self):
         """
@@ -1142,16 +1145,17 @@ class FitDriver(object):
         print("=== Uncertainty from curvature:     name   value(unc.) ===")
         for k, v, dv in zip(self.problem.labels(), self.problem.getp(), err):
             print(f"{k:>40s}   {format_uncertainty(v, dv):<15s}")
-        print("="*58)
+        print("=" * 58)
 
     def show_cov(self):
         cov = self.cov()
-        maxn = 1000 # max array dims to print
+        maxn = 1000  # max array dims to print
         cov_str = np.array2string(
             cov,
-            max_line_width=20*maxn, threshold=maxn*maxn,
-            precision=6, #suppress_small=True,
-            separator=', ',
+            max_line_width=20 * maxn,
+            threshold=maxn * maxn,
+            precision=6,  # suppress_small=True,
+            separator=", ",
         )
         print("=== Covariance matrix ===")
         print(cov_str)
@@ -1164,35 +1168,35 @@ class FitDriver(object):
 
     def save(self, output_path):
         # print "calling driver save"
-        if hasattr(self.fitter, 'save'):
+        if hasattr(self.fitter, "save"):
             self.fitter.save(output_path)
-        if hasattr(self.problem, 'save'):
+        if hasattr(self.problem, "save"):
             self.problem.save(output_path)
 
     def load(self, input_path):
         # print "calling driver save"
-        if hasattr(self.fitter, 'load'):
+        if hasattr(self.fitter, "load"):
             self.fitter.load(input_path)
-        if hasattr(self.problem, 'load'):
+        if hasattr(self.problem, "load"):
             self.problem.load(input_path)
 
     def plot(self, output_path, view=None):
         # print "calling fitter.plot"
-        if hasattr(self.problem, 'plot'):
+        if hasattr(self.problem, "plot"):
             self.problem.plot(figfile=output_path, view=view)
-        if hasattr(self.fitter, 'plot'):
+        if hasattr(self.fitter, "plot"):
             self.fitter.plot(output_path=output_path)
 
     def _save_fit_cov(self, output_path):
-        model = getattr(self.problem, 'name', self.problem.__class__.__name__)
+        model = getattr(self.problem, "name", self.problem.__class__.__name__)
         fitter = self.fitclass.id
         cov = self.cov()
         err = self.stderr_from_cov()
         chisq = self.chisq()
 
         state = {
-            'model': model,
-            'fitter': fitter,
+            "model": model,
+            "fitter": fitter,
         }
 
 
@@ -1208,6 +1212,8 @@ def _fill_defaults(options, settings):
 FITTERS = []
 FIT_AVAILABLE_IDS = []
 FIT_ACTIVE_IDS = []
+
+
 def register(fitter, active=True):
     """
     Register a new fitter with bumps, if it is not already there.
@@ -1220,8 +1226,7 @@ def register(fitter, active=True):
 
     # Check that there is no other fitter of that name
     if fitter.id in FIT_AVAILABLE_IDS:
-        raise ValueError("There is already a fitter registered as %r"
-                         % fitter.id)
+        raise ValueError("There is already a fitter registered as %r" % fitter.id)
 
     # Register the fitter.
     FITTERS.append(fitter)
@@ -1231,6 +1236,7 @@ def register(fitter, active=True):
     if active:
         FIT_ACTIVE_IDS.append(fitter.id)
 
+
 # Register the fitters
 register(SimplexFit, active=True)
 register(DEFit, active=True)
@@ -1238,15 +1244,16 @@ register(DreamFit, active=True)
 register(BFGSFit, active=True)
 register(LevenbergMarquardtFit, active=True)
 register(MPFit, active=True)
-#register(PSFit, active=False)
+# register(PSFit, active=False)
 register(PTFit, active=False)
-#register(RLFit, active=False)
-#register(SnobFit, active=False)
+# register(RLFit, active=False)
+# register(SnobFit, active=False)
 
 FIT_DEFAULT_ID = SimplexFit.id
 
 assert FIT_DEFAULT_ID in FIT_ACTIVE_IDS
 assert all(f in FIT_AVAILABLE_IDS for f in FIT_ACTIVE_IDS)
+
 
 def fit(problem, method=FIT_DEFAULT_ID, verbose=False, **options):
     """
@@ -1274,18 +1281,15 @@ def fit(problem, method=FIT_DEFAULT_ID, verbose=False, **options):
     """
     from scipy.optimize import OptimizeResult
 
-    #verbose = True
+    # verbose = True
     if method not in FIT_AVAILABLE_IDS:
-        raise ValueError("unknown method %r not one of %s"
-                         % (method, ", ".join(sorted(FIT_ACTIVE_IDS))))
+        raise ValueError("unknown method %r not one of %s" % (method, ", ".join(sorted(FIT_ACTIVE_IDS))))
     for fitclass in FITTERS:
         if fitclass.id == method:
             break
     monitors = None if verbose else []  # default is step monitor
-    driver = FitDriver(
-        fitclass=fitclass, problem=problem, monitors=monitors,
-        **options)
-    driver.clip() # make sure fit starts within domain
+    driver = FitDriver(fitclass=fitclass, problem=problem, monitors=monitors, **options)
+    driver.clip()  # make sure fit starts within domain
     x0 = problem.getp()
     x, fx = driver.fit()
     problem.setp(x)
@@ -1294,17 +1298,21 @@ def fit(problem, method=FIT_DEFAULT_ID, verbose=False, **options):
         print("final chisq", problem.chisq_str())
         driver.show_err()
     result = OptimizeResult(
-        x=x, dx=driver.stderr(),
+        x=x,
+        dx=driver.stderr(),
         fun=fx,
-        success=True, status=0, message="successful termination",
-        #nit=0, # number of iterations
-        #nfev=0, # number of function evaluations
-        #njev, nhev # jacobian and hessian evaluations
-        #maxcv=0, # max constraint violation
-        )
-    if hasattr(driver.fitter, 'state'):
+        success=True,
+        status=0,
+        message="successful termination",
+        # nit=0, # number of iterations
+        # nfev=0, # number of function evaluations
+        # njev, nhev # jacobian and hessian evaluations
+        # maxcv=0, # max constraint violation
+    )
+    if hasattr(driver.fitter, "state"):
         result.state = driver.fitter.state
     return result
+
 
 def test_fitters():
     """
@@ -1318,7 +1326,7 @@ def test_fitters():
     dy = [0.05, 0.05, 0.2, 0.05, 0.2, 0.2]
 
     def line(x, m, b=0):
-        return m*x + b
+        return m * x + b
 
     M = Curve(line, x, y, dy, m=2, b=2)
     M.m.range(0, 4)

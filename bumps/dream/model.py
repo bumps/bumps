@@ -96,10 +96,10 @@ Option 5 is like option 2 but the reported likelihoods do not take the
 on the 1-sigma uncertainty, so use the style given in option 2 for this case.
 
 """
+
 from __future__ import division
 
-__all__ = ['MCMCModel', 'Density', 'LogDensity', 'Simulation',
-           'MVNormal', 'Mixture']
+__all__ = ["MCMCModel", "Density", "LogDensity", "Simulation", "MVNormal", "Mixture"]
 
 import numpy as np
 from numpy import diag, log, exp, pi
@@ -116,6 +116,7 @@ class MCMCModel(object):
     on a point x, returning the negative log likelihood, or inf if the point
     is outside the domain.
     """
+
     labels = None
     bounds = None
 
@@ -138,6 +139,7 @@ class Density(MCMCModel):
 
     *f* is the density function
     """
+
     def __init__(self, f, bounds=None, labels=None):
         self.f, self.bounds, self.labels = f, bounds, labels
 
@@ -151,6 +153,7 @@ class LogDensity(MCMCModel):
 
     *f* is the log density function
     """
+
     def __init__(self, f, bounds=None, labels=None):
         self.f, self.bounds, self.labels = f, bounds, labels
 
@@ -181,42 +184,44 @@ class Simulation(MCMCModel):
         G = 1: double exponential
         G -> -1: uniform
     """
-    def __init__(self, f=None, bounds=None, data=None, sigma=1, gamma=0,
-                 labels=None):
+
+    def __init__(self, f=None, bounds=None, data=None, sigma=1, gamma=0, labels=None):
         self.f, self.bounds, self.labels = f, bounds, labels
         self.data, self.sigma, self.gamma = data, sigma, gamma
         cb, wb = exppow.exppow_pars(gamma)
-        self._offset = np.sum(log(wb/sigma * np.ones_like(data)))
+        self._offset = np.sum(log(wb / sigma * np.ones_like(data)))
         self._cb = cb
-        self._pow = 2/(1+gamma)
-        #print "cb", cb, "sqrt(2pi)*wb", sqrt(2*pi)*wb
-        #print "offset", self._offset
+        self._pow = 2 / (1 + gamma)
+        # print "cb", cb, "sqrt(2pi)*wb", sqrt(2*pi)*wb
+        # print "offset", self._offset
 
     def nllf(self, x):
         err = self.f(x) - self.data
-        log_p = self._offset - np.sum(self._cb * abs(err/self.sigma)**self._pow)
+        log_p = self._offset - np.sum(self._cb * abs(err / self.sigma) ** self._pow)
         return log_p
 
     def plot(self, x):
         import pylab
+
         v = pylab.arange(len(self.data))
-        pylab.plot(v, self.data, 'x', v, self.f(x), '-')
+        pylab.plot(v, self.data, "x", v, self.f(x), "-")
 
 
 class MVNormal(MCMCModel):
     """
     multivariate normal negative log likelihood function
     """
+
     def __init__(self, mu, sigma):
         self.mu, self.sigma = np.asarray(mu), np.asarray(sigma)
         # Precompute sigma contributions
         r = cholesky(sigma)
         self._rinv = inv(r)
-        self._c = 0.5*len(mu)*log(2*pi) + 0.5*np.sum(diag(r))
+        self._c = 0.5 * len(mu) * log(2 * pi) + 0.5 * np.sum(diag(r))
 
     def nllf(self, x):
         mu, c, rinv = self.mu, self._c, self._rinv
-        y = c + 0.5*np.sum(np.dot(x-mu, rinv)**2)
+        y = c + 0.5 * np.sum(np.dot(x - mu, rinv) ** 2)
         return y
 
 
@@ -229,17 +234,19 @@ class Mixture(MCMCModel):
     Models M1, M2, ... are MCMC models with M.nllf(x) returning the negative
     log likelihood of x.  Weights w1, w2, ... are arbitrary scalars.
     """
-    def __init__(self, *args):
 
+    def __init__(self, *args):
         models = args[::2]
         weights = args[1::2]
-        if (len(args) % 2 != 0
-                or not all(hasattr(M, 'nllf') for M in models)
-                or not all(np.isscalar(w) for w in weights)):
+        if (
+            len(args) % 2 != 0
+            or not all(hasattr(M, "nllf") for M in models)
+            or not all(np.isscalar(w) for w in weights)
+        ):
             raise TypeError("Expected MixtureModel(M1, w1, M2, w2, ...)")
         self.pairs = zip(models, weights)
         self.weight = np.sum(w for w in weights)
 
     def nllf(self, x):
-        p = [w*exp(-M.nllf(x)) for M, w in self.pairs]
-        return -log(np.sum(p)/self.weight)
+        p = [w * exp(-M.nllf(x)) for M, w in self.pairs]
+        return -log(np.sum(p) / self.weight)
