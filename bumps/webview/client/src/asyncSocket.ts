@@ -1,9 +1,10 @@
 import { Socket } from 'socket.io-client';
 
 declare module 'socket.io-client' {
-  class Socket {
-    public asyncEmit(ev: string, ...args: any[]): Promise<any>;
-    public syncFS(): Promise<void>;
+  // 
+  interface Socket {
+    asyncEmit(ev: string, ...args: any[]): Promise<any>;
+    // public emit(event: string, ...args: any[]): void;
   }
 }
 
@@ -20,7 +21,5 @@ Socket.prototype.asyncEmit = async function asyncEmit(ev: string, ...args: any[]
     return result;
   })
 };
-
-Socket.prototype.syncFS = async function syncFS() {}
 
 export class AsyncSocket extends Socket {};

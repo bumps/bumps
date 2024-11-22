@@ -1,5 +1,6 @@
 import { ref, onActivated, onDeactivated } from 'vue';
-import type { AsyncSocket } from './asyncSocket.ts';
+import { addNotification } from './app_state';
+import type { AsyncSocket } from './asyncSocket';
 
 type Message = {
   timestamp: string,
@@ -32,7 +33,7 @@ export function setupDrawLoop(topic: string, socket: AsyncSocket, draw: Function
         await draw(latest_value.value);
       }
       catch (e) {
-        // TODO: should this notify the user?
+        addNotification({title: 'Draw Error', content: `Error drawing ${name}: ${e}`, timeout: 5000});
         console.error(`Error drawing ${name}:`, e);
         // add sleep to avoid runaway error loop
         await sleep(1000);

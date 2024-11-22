@@ -4,10 +4,10 @@ import { ref } from 'vue';
 import type { AsyncSocket } from '../asyncSocket.ts';
 import { v4 as uuidv4 } from 'uuid';
 import { setupDrawLoop } from '../setupDrawLoop';
-import { cache } from '../plotcache';
+import { cache } from '../plot_cache';
 import * as Plotly from 'plotly.js/lib/core';
 import Bar from 'plotly.js/lib/bar';
-import { SVGDownloadButton } from '../plotly_extras.mjs';
+import { SVGDownloadButton } from '../plotly_extras';
 
 // workaround to PlotlyModule not being exported as type!
 type RegisterTypes = Parameters<typeof Plotly.register>[0];

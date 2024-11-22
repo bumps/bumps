@@ -11,16 +11,16 @@ interface ModalDialog {
 export class FileBrowserSettings {
   chosenfile_in?: string
   pathlist_in?: string[]
-  title: string
-  show_name_input: boolean
-  require_name: boolean
+  title!: string
+  show_name_input!: boolean
+  require_name!: boolean
   name_input_label?: string
-  show_files: boolean
-  search_patterns: string[]
-  callback: (pathlist: string[], filename: string) => Promise<void>
+  show_files!: boolean
+  search_patterns!: string[]
+  callback!: (pathlist: string[], filename: string) => Promise<void>
 };
 
-export const LAYOUTS = ["left-right", "top-bottom", "single"];
+export const LAYOUTS = ["left-right", "top-bottom", "full"];
 export type FitSetting = { name: string, settings: object };
 
 export const socket = ref<AsyncSocket>();
@@ -37,7 +37,7 @@ export const default_fitter_settings = shallowRef<{ [fit_name: string]: FitSetti
 export const selected_fitter = ref<string>();
 export const default_fitter = "amoeba";
 export const notifications = ref<{ title: string, content: string, id: string, spinner: boolean }[]>([]);
-export const file_menu_items = ref<{disabled?: Ref<boolean> | boolean, text: string, action?: () => void, help?: string}[]>([]);
+export const file_menu_items = shallowRef<{disabled?: Ref<boolean>, text: string, action?: Function, help?: string}[]>([]);
 export const autosave_history = ref(false);
 export const autosave_history_length = ref(10);
 export const session_output_file = shallowRef<{ filename: string, pathlist: string[] }>();

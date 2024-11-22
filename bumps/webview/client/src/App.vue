@@ -10,6 +10,7 @@ import {
   active_fit,
   selected_fitter,
   default_fitter,
+  default_fitter_settings,
   fitOptions,
   fileBrowser,
   FileBrowserSettings,
@@ -66,10 +67,6 @@ const socket = io(sio_server, {
    path: `${sio_base_path}socket.io`,
 }) as AsyncSocket;
 socket_ref.value = socket;
-
-const can_mount_local = (
-  ('mountLocal' in socket) && ('showDirectoryPicker' in window)
-)
 
 socket.on('connect', async () => {
   console.log(socket.id);
@@ -129,9 +126,7 @@ function exportResults() {
         if (filename !== "") {
           pathlist.push(filename);
         }
-        socket.asyncEmit("export_results", pathlist).then(() => {
-          socket?.syncFS?.();
-        })
+        await socket.asyncEmit("export_results", pathlist);
       },
       show_name_input: true,
       name_input_label: "Subdirectory",
@@ -179,9 +174,6 @@ async function saveFile(ev: Event, override?: {pathlist: string[], filename: str
         await socket.asyncEmit("save_problem_file", pathlist, filename, overwrite);
       }
     }
-    if (nativefs.value) {
-      await socket.syncFS();
-    }
   });
 }
 
@@ -222,9 +214,6 @@ async function saveParameters(ev: Event, override?: {pathlist: string[], filenam
               await socket.asyncEmit("save_parameters", pathlist, filename, overwrite);
             }
           }
-          if (nativefs.value) {
-            await socket.syncFS();
-          }
         });
       },
       show_name_input: true,
@@ -259,11 +248,6 @@ async function quit() {
   await socket.asyncEmit("shutdown");
 }
 
-async function mountLocal() {
-  const success = (await socket.mountLocal?.()) ?? false;
-  nativefs.value = success;
-}
-
 const model_not_loaded = computed(() => model_file.value == null);
 
 file_menu_items.value = [
@@ -277,10 +261,6 @@ file_menu_items.value = [
   { text: "---" },
   { text: "Quit", action: quit },
 ]
-
-if (can_mount_local) {
-  file_menu_items.value.splice(0, 0, { text: "Mount Local Folder", action: mountLocal });
-}
 
 </script>
 
@@ -305,7 +285,7 @@ if (can_mount_local) {
                 <hr v-if="menu_item.text === '---'" class="dropdown-divider">
                 <button v-else class="btn btn-link dropdown-item"
                   @click="menu_item.action?.(); hide()"
-                  :disabled="menu_item.disabled ?? false">{{ menu_item.text }}</button>
+                  :disabled="menu_item.disabled?.value ?? false">{{ menu_item.text }}</button>
               </li>
             </DropDown>
             <SessionMenu :socket="socket" />

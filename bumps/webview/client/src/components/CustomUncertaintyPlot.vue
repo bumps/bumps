@@ -6,8 +6,8 @@ import * as mpld3 from 'mpld3';
 import { v4 as uuidv4 } from 'uuid';
 import type { AsyncSocket } from '../asyncSocket.ts';
 import { setupDrawLoop } from '../setupDrawLoop';
-import { cache } from '../plotcache';
-import { configWithSVGDownloadButton } from '../plotly_extras.mjs';
+import { cache } from '../plot_cache';
+import { configWithSVGDownloadButton } from '../plotly_extras';
 import { TableData} from './CSVTable.vue'
 import CSVTable from './CSVTable.vue'
 
