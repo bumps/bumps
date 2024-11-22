@@ -20,7 +20,7 @@ export class FileBrowserSettings {
   callback!: (pathlist: string[], filename: string) => Promise<void>
 };
 
-export const LAYOUTS = ["left-right", "top-bottom", "single"];
+export const LAYOUTS = ["left-right", "top-bottom", "full"];
 export type FitSetting = { name: string, settings: object };
 
 export const socket = ref<AsyncSocket>();
