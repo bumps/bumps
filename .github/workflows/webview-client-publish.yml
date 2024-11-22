@@ -2,7 +2,7 @@ name: Publish Package to npmjs
 on:
   push:
     # Pattern matched against refs/tags
-    tags:        
+    tags:
       - 'client-v*'           # Push events to every tag like client-v0.6.15
   workflow_dispatch:
 
