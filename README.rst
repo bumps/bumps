@@ -21,7 +21,12 @@ for details on recent changes.
 
 If a compiler is available, then significant speedup is possible for DREAM using::
 
-    (cd bumps/dream && cc compiled.c -I ../../Random123/include/ -O2 -fopenmp -shared -lm -o _compiled.so -fPIC)
+    python -m bumps.dream.build_compiled
+
+(If you have installed from source, you must first check out the random123 library)::
+
+    git clone --branch v1.14.0 https://github.com/DEShawResearch/random123.git bumps/dream/random123
+    python -m bumps.dream.build_compiled
 
 For now this requires an install from source rather than pip.
 
