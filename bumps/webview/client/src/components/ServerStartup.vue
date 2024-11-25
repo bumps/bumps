@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import type { AsyncSocket } from '../asyncSocket.ts';
-import { is } from 'date-fns/locale';
+import { onMounted, ref } from "vue";
+import { is } from "date-fns/locale";
+import type { AsyncSocket } from "../asyncSocket.ts";
 
-const props = defineProps<{socket:AsyncSocket}>();
+const props = defineProps<{ socket: AsyncSocket }>();
 
 const loading_dialog = ref<HTMLDivElement>();
 const connected = ref(false);
 const status_string = ref<string>();
 const percent = ref<number>();
 
-props.socket.on('connect', () => {
+props.socket.on("connect", () => {
   connected.value = true;
-  console.log('connected!');
+  console.log("connected!");
 });
 
 interface ServerStartupStatus {
@@ -20,33 +20,43 @@ interface ServerStartupStatus {
   percent: number; // 0-100
 }
 
-props.socket.on('server_startup_status', (status: ServerStartupStatus) => {
+props.socket.on("server_startup_status", (status: ServerStartupStatus) => {
   status_string.value = status.status;
   percent.value = status.percent;
 });
 
-console.log('connected handler registered.');
-
+console.log("connected handler registered.");
 </script>
 
 <template>
   <dialog ref="loading_dialog" :open="!connected">
-    <div class="modal show" id="serverStartupModal" tabindex="-1" aria-labelledby="serverStartupLabel"
-      :aria-hidden="connected">
+    <div
+      id="serverStartupModal"
+      class="modal show"
+      tabindex="-1"
+      aria-labelledby="serverStartupLabel"
+      :aria-hidden="connected"
+    >
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="serverStartupLabel">
+            <h5 id="serverStartupLabel" class="modal-title">
               Server Connecting...
-              <div class="spinner-border text-primary" role="status" v-if="percent === undefined">
+              <div v-if="percent === undefined" class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Connecting...</span>
               </div>
             </h5>
           </div>
-          <div class="modal-body" v-if="status_string !== undefined">
+          <div v-if="status_string !== undefined" class="modal-body">
             <div class="progress">
-              <div class="progress-bar" role="progressbar" :style="{ width: percent + '%' }" :aria-valuenow="percent"
-                aria-valuemin="0" aria-valuemax="100"></div>
+              <div
+                class="progress-bar"
+                role="progressbar"
+                :style="{ width: percent + '%' }"
+                :aria-valuenow="percent"
+                aria-valuemin="0"
+                aria-valuemax="100"
+              ></div>
             </div>
             <p>{{ status_string }}</p>
           </div>
