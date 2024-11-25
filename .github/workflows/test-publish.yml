@@ -18,7 +18,7 @@ jobs:
       with:
         repository: 'DEShawResearch/random123'
         ref: v1.14.0
-        path: bumps/bumps/dream/random123
+        path: bumps/dream/random123
 
     - name: Set up Python
       uses: actions/setup-python@v5
