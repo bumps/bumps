@@ -36,13 +36,8 @@ const props = defineProps<{
   name?: string;
 }>();
 
-type Message = {
-  timestamp: string;
-  message: object;
-};
-
 const show_menu = ref(false);
-const nativefs = ref(false);
+// const nativefs = ref(false);
 
 // Create a SocketIO connection, to be passed to child components
 // so that they can do their own communications with the host.
