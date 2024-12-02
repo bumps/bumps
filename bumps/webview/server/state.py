@@ -14,16 +14,18 @@ if TYPE_CHECKING:
 
 SESSION_FILE_NAME = "session.h5"
 
+
 class ProblemState:
-    fitProblem: Optional['bumps.fitproblem.FitProblem'] = None
+    fitProblem: Optional["bumps.fitproblem.FitProblem"] = None
     pathlist: Optional[List[str]] = None
     serializer: Optional[SERIALIZERS] = None
     filename: Optional[str] = None
 
+
 class FittingState:
     abort: bool = False
     population: Optional[List] = None
-    uncertainty_state: Optional['bumps.dream.state.MCMCDraw']
+    uncertainty_state: Optional["bumps.dream.state.MCMCDraw"]
 
 
 class State:
@@ -32,7 +34,7 @@ class State:
     port: int
     parallel: int
     abort_queue: Queue
-    fit_thread: Optional['FitThread'] = None
+    fit_thread: Optional["FitThread"] = None
     fit_abort: Optional[Event] = None
     fit_abort_event: Event
     fit_complete_event: Event
@@ -43,7 +45,7 @@ class State:
     # State to be stored:
     problem: ProblemState
     fitting: FittingState
-    topics: Dict['TopicNameType', 'deque[Dict]']
+    topics: Dict["TopicNameType", "deque[Dict]"]
 
     def __init__(self, problem: Optional[ProblemState] = None, fitting: Optional[FittingState] = None):
         self.problem = problem if problem is not None else ProblemState()
@@ -62,7 +64,7 @@ class State:
             "fitter_active": deque([], maxlen=1),
         }
 
-    def setup_backing(self, session_file_name: Optional[str] = SESSION_FILE_NAME, read_only: bool = False ):
+    def setup_backing(self, session_file_name: Optional[str] = SESSION_FILE_NAME, read_only: bool = False):
         self.session_file_name = session_file_name
 
     def save(self):
@@ -85,5 +87,6 @@ class State:
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         self.cleanup()
+
     async def cleanup(self):
         pass

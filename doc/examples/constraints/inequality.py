@@ -25,8 +25,10 @@
 
 from bumps.names import *
 
+
 def line(x, m, b):
-    return m*x + b
+    return m * x + b
+
 
 x = [1, 2, 3, 4, 5, 6]
 y = [2.1, 4.0, 6.3, 8.03, 9.6, 11.9]
@@ -41,9 +43,11 @@ M.b.range(0, 5)
 # this is the soft limit value which we will use to avoid evaluating the
 # curve in the infeasible region.
 
+
 def constraints():
     m, b = M.m.value, M.b.value
-    return 0 if m < b else 1e6 + (m-b)**6
+    return 0 if m < b else 1e6 + (m - b) ** 6
+
 
 # Attach the constraints to the problem.  Give the soft limit value that is
 # used for the constraints.  Without the soft limit, the fit would stall

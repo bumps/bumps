@@ -19,7 +19,7 @@ Additional options are random box: rand(M, N) or random scatter: randn(M, N).
 
 from __future__ import division, print_function
 
-__all__ = ['lhs_init', 'cov_init']
+__all__ = ["lhs_init", "cov_init"]
 
 from numpy import eye, diag, asarray, empty
 from . import util
@@ -51,9 +51,9 @@ def lhs_init(N, bounds):
     # Now fill s
     for j in range(nvar):
         # Random permutation
-        idx = util.rng.permutation(N)+1
-        p = (idx-ran[:, j])/N
-        s[:, j] = xmin[j] + p*(xmax[j]-xmin[j])
+        idx = util.rng.permutation(N) + 1
+        p = (idx - ran[:, j]) / N
+        s[:, j] = xmin[j] + p * (xmax[j] - xmin[j])
 
     return s
 
@@ -71,16 +71,17 @@ def cov_init(N, x, cov=None, dx=None):
 
         pop = cov_init(cov=C, x=x, N=20)
     """
-    #return mean + dot(util.rng.randn(N, len(mean)), chol(cov))
+    # return mean + dot(util.rng.randn(N, len(mean)), chol(cov))
     if cov is None and dx is None:
         cov = eye(len(x))
     elif cov is None:
-        cov = diag(asarray(dx)**2)
+        cov = diag(asarray(dx) ** 2)
     return util.rng.multivariate_normal(mean=x, cov=cov, size=N)
 
 
 def demo():
     from numpy import arange
+
     print("Three ways of calling cov_init:")
     print("with cov", cov_init(N=4, x=[5, 6], cov=diag([0.1, 0.001])))
     print("with dx", cov_init(N=4, x=[5, 6], dx=[0.1, 0.001]))
@@ -90,7 +91,7 @@ The following array should have four columns.  Column 1 should have the
 numbers from 10 to 19, column 2 from 20 to 29, etc.  The columns are in
 random order with a random fractional part.
 """)
-    pop = lhs_init(N=10, bounds=(arange(1, 5), arange(2, 6)))*10
+    pop = lhs_init(N=10, bounds=(arange(1, 5), arange(2, 6))) * 10
     print(pop)
 
 

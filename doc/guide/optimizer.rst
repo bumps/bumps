@@ -513,7 +513,7 @@ equilibrium distribution.
     reduction in the mixing of Markov chain values, the *Correlation* plots are
     fuzzy and mostly empty, or show obvious correlations, and the *Uncertainty*
     plot shows black histograms (indicating that there are a few stray values
-    far away from the best) whilst the green maximum likelihood spikes do not 
+    far away from the best) whilst the green maximum likelihood spikes do not
     match the histogram (indicating that the region around the best value has
     not been adequately explored).
 
@@ -831,4 +831,3 @@ References
     some guarantees that the search is complete given reasonable assumptions
     about the fitting surface, initial trials did not perform well and the
     algorithm has not yet been tuned to our problems.
-

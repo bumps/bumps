@@ -1,6 +1,7 @@
 """
 Data handling utilities.
 """
+
 from __future__ import division
 
 import os
@@ -13,7 +14,7 @@ from numpy import inf, nan
 __all__ = ["indfloat", "parse_file"]
 
 
-def parse_multi(file, keysep=None, sep=None, comment='#'):
+def parse_multi(file, keysep=None, sep=None, comment="#"):
     """
     Parse a multi-part file.
 
@@ -44,16 +45,16 @@ def parse_multi(file, keysep=None, sep=None, comment='#'):
     parts = []
     with maybe_open(file) as fh:
         while True:
-            header, data, bins = _read_part(fh, comment=comment, multi_part=True,
-                                            col_sep=sep, key_sep=keysep)
+            header, data, bins = _read_part(fh, comment=comment, multi_part=True, col_sep=sep, key_sep=keysep)
             if header is None:
                 break
             if bins is not None:
-                header.setdefault('bins', bins)
+                header.setdefault("bins", bins)
             parts.append((header, data))
     return parts
 
-def parse_file(file, keysep=None, sep=None, comment='#'):
+
+def parse_file(file, keysep=None, sep=None, comment="#"):
     """
     Parse a file into a header and data.
 
@@ -79,15 +80,15 @@ def parse_file(file, keysep=None, sep=None, comment='#'):
     in the header, in which case the key will be ignored).
     """
     with maybe_open(file) as fh:
-        header, data, bins = _read_part(fh, comment=comment, multi_part=False,
-                                        col_sep=sep, key_sep=keysep)
+        header, data, bins = _read_part(fh, comment=comment, multi_part=False, col_sep=sep, key_sep=keysep)
     if header is None:
         raise IOError("data file is empty")
     # compatibility: strip quotes from values in key-value pairs
     header = dict((k, strip_quotes(v)) for k, v in header.items())
     if bins is not None:
-        header.setdefault('bins', bins)
+        header.setdefault("bins", bins)
     return header, data
+
 
 def _read_part(fh, key_sep=None, col_sep=None, comment="#", multi_part=False):
     header = {}
@@ -111,8 +112,7 @@ def _read_part(fh, key_sep=None, col_sep=None, comment="#", multi_part=False):
             break
 
         # Line is not blank, so process it.
-        columns, key, value = _parse_line(line, comment=comment,
-                                          col_sep=col_sep, key_sep=key_sep)
+        columns, key, value = _parse_line(line, comment=comment, col_sep=col_sep, key_sep=key_sep)
         if columns:
             data.append([indfloat(v) for v in columns])
         if key is not None:
@@ -136,7 +136,7 @@ def _read_part(fh, key_sep=None, col_sep=None, comment="#", multi_part=False):
         last_edge = data[-1][0]
         data = np.array(data[:-1]).T
         edges = np.hstack((data[0], last_edge))
-        data[0] = 0.5*(edges[:-1] + edges[1:])
+        data[0] = 0.5 * (edges[:-1] + edges[1:])
         bins = edges
     else:
         data = np.array(data).T
@@ -152,17 +152,17 @@ def maybe_open(file_or_path):
 
     If *file_or_path* is a string ending in ".gz" then open with gzip.
     """
-    if hasattr(file_or_path, 'readline'):
+    if hasattr(file_or_path, "readline"):
         # If it is a file handle, yield it and return without closing.
         fh = file_or_path
         yield fh
     else:
         # Otherwise it should be a path. Make sure it is at least a string.
         if not string_like(file_or_path):
-            raise ValueError('file must be a name or a file handle')
+            raise ValueError("file must be a name or a file handle")
         # Open file; if name ends in .gz then assume it is compressed.
         path = os.path.expanduser(file_or_path)
-        fh = gzip.open(path) if path.endswith('.gz') else open(path)
+        fh = gzip.open(path) if path.endswith(".gz") else open(path)
         try:
             yield fh
         finally:
@@ -174,13 +174,13 @@ def string_like(s):
     Return True if s operates like a string.
     """
     try:
-        s + ''
+        s + ""
     except Exception:
         return False
     return True
 
 
-def _parse_line(line, key_sep=None, col_sep=None, comment='#'):
+def _parse_line(line, key_sep=None, col_sep=None, comment="#"):
     # Find location of the comment character on the line
     idx = line.find(comment)
 
@@ -192,17 +192,17 @@ def _parse_line(line, key_sep=None, col_sep=None, comment='#'):
     # TODO: allow quoted strings or backslash escaped spaces for text columns
     if idx != 0:
         if idx > 0:
-            return line[:idx].split(col_sep), None, ''
+            return line[:idx].split(col_sep), None, ""
         else:
-            return line.split(col_sep), None, ''
+            return line.split(col_sep), None, ""
 
     # Split line on key separator
     parts = [p.strip() for p in line[1:].split(key_sep, 1)]
-    key, value = parts if len(parts) > 1 else (parts[0], '')
+    key, value = parts if len(parts) > 1 else (parts[0], "")
     key = strip_quotes(key)
 
     # If key is a number assume it is simply a commented out data point
-    if len(key) and (key[0] in '.-+0123456789' or key == 'inf' or key == 'nan'):
+    if len(key) and (key[0] in ".-+0123456789" or key == "inf" or key == "nan"):
         return [], None, None
 
     return [], key, value
@@ -211,8 +211,11 @@ def _parse_line(line, key_sep=None, col_sep=None, comment='#'):
 def strip_quotes(s):
     return s[1:-1] if len(s) and s[0] in "'\"" and s[0] == s[-1] else s
 
-INF_VALUES = set(('inf', '1/0', '1.#inf', 'infinity'))
-NAN_VALUES = set(('nan', '0/0', '1.#qnan', 'na', 'n/a'))
+
+INF_VALUES = set(("inf", "1/0", "1.#inf", "infinity"))
+NAN_VALUES = set(("nan", "0/0", "1.#qnan", "na", "n/a"))
+
+
 def indfloat(s):
     """
     Convert string to float, with support for inf and nan.
@@ -233,9 +236,8 @@ def indfloat(s):
         s = s.lower()
         if s in INF_VALUES:
             return inf
-        elif s and s[0] == '-' and s[1:] in INF_VALUES:
+        elif s and s[0] == "-" and s[1:] in INF_VALUES:
             return -inf
         elif s in NAN_VALUES:
             return nan
         raise
-

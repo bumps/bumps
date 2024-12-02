@@ -1,7 +1,8 @@
 from __future__ import with_statement
 
 import wx
-IS_MAC = (wx.Platform == '__WXMAC__')
+
+IS_MAC = wx.Platform == "__WXMAC__"
 
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.backends.backend_wxagg import NavigationToolbar2WxAgg as Toolbar
@@ -14,18 +15,18 @@ from .util import EmbeddedPylab
 
 
 class PlotView(wx.Panel):
-    title = 'Plot'
+    title = "Plot"
     default_size = (600, 400)
 
     def __init__(self, *args, **kw):
         wx.Panel.__init__(self, *args, **kw)
 
         # Can specify name on
-        if 'title' in kw:
-            self.title = kw['title']
+        if "title" in kw:
+            self.title = kw["title"]
 
         # Instantiate a figure object that will contain our plots.
-        figure = Figure(figsize=(1,1), dpi=72)
+        figure = Figure(figsize=(1, 1), dpi=72)
 
         # Initialize the figure canvas, mapping the figure object to the plot
         # engine backend.
@@ -46,8 +47,8 @@ class PlotView(wx.Panel):
 
         # Create a vertical box sizer to manage the widgets in the main panel.
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(canvas, 1, wx.EXPAND|wx.LEFT|wx.RIGHT, border=0)
-        sizer.Add(mpl_toolbar, 0, wx.EXPAND|wx.ALL, border=0)
+        sizer.Add(canvas, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, border=0)
+        sizer.Add(mpl_toolbar, 0, wx.EXPAND | wx.ALL, border=0)
 
         # Associate the sizer with its container.
         self.SetSizer(sizer)
@@ -59,8 +60,7 @@ class PlotView(wx.Panel):
         self.plot_state = None
         self.model = None
 
-
-        '''
+        """
         # Add context menu and keyboard support to canvas
         canvas.Bind(wx.EVT_RIGHT_DOWN, self.OnContextMenu)
         #canvas.Bind(wx.EVT_LEFT_DOWN, lambda evt: canvas.SetFocus())
@@ -74,7 +74,7 @@ class PlotView(wx.Panel):
         status_update = lambda msg: self.statusbar.SetStatusText(msg)
 
         canvas.mpl_connect('motion_notify_event', self.OnMotion),
-        '''
+        """
 
     '''
     def OnContextMenu(self,event):
@@ -112,14 +112,13 @@ class PlotView(wx.Panel):
     '''
 
     def OnShow(self, event):
-        #print "theory show"
+        # print "theory show"
         if not event.Show:
             return
         if self._need_newmodel:
             self._redraw(newmodel=True)
         elif self._need_plot:
             self._redraw(newmodel=False)
-
 
     def set_model(self, model):
         self.model = model
@@ -129,7 +128,7 @@ class PlotView(wx.Panel):
             self._redraw(newmodel=True)
 
     def update_model(self, model):
-        #print "profile update model"
+        # print "profile update model"
         if self.model != model:  # ignore updates to different models
             return
 
@@ -139,8 +138,9 @@ class PlotView(wx.Panel):
             self._redraw(newmodel=True)
 
     def update_parameters(self, model):
-        #print "profile update parameters"
-        if self.model != model: return
+        # print "profile update parameters"
+        if self.model != model:
+            return
 
         if not IS_MAC and not self.IsShown():
             self._need_plot = True
@@ -155,16 +155,16 @@ class PlotView(wx.Panel):
             # to cancel the running thread and force it to start
             # the calculation over.
             self.cancel_calculation = True
-            #print "canceling calculation"
+            # print "canceling calculation"
             return
 
-        #print("plotting", self.title)
+        # print("plotting", self.title)
         with self.pylab_interface as pylab:
             self._calculating = True
 
-            #print "calling again"
+            # print "calling again"
             while True:
-                #print "restarting"
+                # print "restarting"
                 # We are restarting the calculation, so clear the reset flag
                 self.cancel_calculation = False
 
@@ -182,12 +182,12 @@ class PlotView(wx.Panel):
         self._calculating = False
 
     def get_state(self):
-        #print "returning state",self.model,self.plot_state
+        # print "returning state",self.model,self.plot_state
         return self.model, self.plot_state
 
     def set_state(self, state):
         self.model, self.plot_state = state
-        #print "setting state",self.model,self.plot_state
+        # print "setting state",self.model,self.plot_state
         self.plot()
 
     def menu(self):
@@ -214,7 +214,7 @@ class PlotView(wx.Panel):
         For long calculations, periodically perform wx.YieldIfNeeded()
         and then if self.cancel_calculation is True, return from the plot.
         """
-        if hasattr(self.model, 'plot'):
+        if hasattr(self.model, "plot"):
             self.model.plot()
         else:
             raise NotImplementedError("PlotPanel needs a plot method")

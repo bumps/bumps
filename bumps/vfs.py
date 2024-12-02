@@ -51,6 +51,7 @@ to the reader; if you just pass a filename, then it will try opening it
 with the libc open function and fail.  Could potentially monkeypatch
 pandas to pre-open the file.
 """
+
 from __future__ import print_function
 
 import sys
@@ -73,8 +74,10 @@ except ImportError:
 try:
     from pathlib import PurePath
 except ImportError:
+
     class PurePath:
         pass
+
 
 # Sphinx hack: in order to avoid having sphinx pick up the docstrings for the
 # builtin functions (chdir and listdir don't format properly), simply suppress
@@ -124,12 +127,14 @@ __all__ = []
 #   lseek, read, dup, dup2, errno, error, closerange, isatty, openpty,
 #   mknod
 
+
 # Protect against reload(vfs). Assume that if the symbol is already a
 # wrapped symbol that we want to retrieve the original unwrapped symbol
 # rather than our wrapper. Additionally, assume nobody else is foolish
 # enough to be wrapping such low-level symbols...
 def _unwrap(fn):
-    return getattr(fn, '__wrapped__', fn)
+    return getattr(fn, "__wrapped__", fn)
+
 
 _py2_open = _unwrap(_py2_open)
 _py3_open = _unwrap(io.open)
@@ -142,6 +147,7 @@ _listdir = _unwrap(os.listdir)
 # TODO: maybe use builtin versions?
 _abspath = _unwrap(os.path.abspath)
 _realpath = _unwrap(os.path.realpath)
+
 
 class RealFS(object):
     def __enter__(self):
@@ -161,12 +167,15 @@ class RealFS(object):
     isdir = _isdir
     exists = _exists
 
+
 class ZipFS(object):
     """
     Opens a zip file as the root file system.
     """
+
     def __init__(self, path):
         import zipfile
+
         # TODO: can we open a zip within a zip?
         # Apparently yes, but only if we read the file into a byte stream and
         # then work from that file.  See the following stackoverflow answer:
@@ -182,24 +191,22 @@ class ZipFS(object):
     def __exit__(self, *args, **kw):
         popfs()
 
-    def open(self, file, mode="r", buffering=-1, encoding=None,
-             errors=None, newline=None, **kw):
+    def open(self, file, mode="r", buffering=-1, encoding=None, errors=None, newline=None, **kw):
         # abspath handles pathlib
         # Note: python 3 zipfile only supports mode rb; to get unicode
         # decoding, need to wrap the binary stream in a text I/O wrapper.
-        zipmode = 'r'
+        zipmode = "r"
         with RealFS():
             fd = self._zip.open(self.abspath(file)[1:], mode=zipmode)
-        if 'b' in mode:
+        if "b" in mode:
             return fd
         else:
-            return io.TextIOWrapper(fd, encoding=encoding, errors=errors,
-                newline=newline)
+            return io.TextIOWrapper(fd, encoding=encoding, errors=errors, newline=newline)
 
     def py2_open(self, name, mode="r", buffering=-1):
         # abspath handles pathlib
         # Note: python 2 zipfile supports modes r, rU, and U, but not rb
-        zipmode = 'r' if mode == 'rb' else mode
+        zipmode = "r" if mode == "rb" else mode
         with RealFS():
             fd = self._zip.open(self.abspath(name)[1:], mode=zipmode)
         return fd
@@ -220,7 +227,7 @@ class ZipFS(object):
             if not f.filename.startswith(path):
                 # it is not part of the tree
                 continue
-            parts = f.filename.split('/')
+            parts = f.filename.split("/")
             if len(parts) == 1:
                 # it is a leaf so report it
                 yield parts[0]
@@ -237,10 +244,10 @@ class ZipFS(object):
     def abspath(self, path):
         if isinstance(path, PurePath):
             path = path.as_posix()
-        if hasattr(path, 'decode'): # CRUFT: python 2
-            path= path.decode()
-        if path[0] != '/':
-            path = '/'.join((self._wd[:-1], path))
+        if hasattr(path, "decode"):  # CRUFT: python 2
+            path = path.decode()
+        if path[0] != "/":
+            path = "/".join((self._wd[:-1], path))
         return os.path.normpath(path)
 
     def realpath(self, filename):
@@ -266,15 +273,19 @@ class ZipFS(object):
 
 
 FS = RealFS
-FS_STACK = [] # type: List[RealFS]
+FS_STACK = []  # type: List[RealFS]
+
+
 def pushfs(fs):
     global FS
     FS_STACK.append(FS)
     FS = fs
 
+
 def popfs():
     global FS
     FS = FS_STACK.pop()
+
 
 # Note: We need fs redirection functions as bound methods since pathlib uses
 # them as class attributes. The usual filesystem methods are all builtin
@@ -287,11 +298,13 @@ def popfs():
 # or as an object attribute so it is easy to ignore.
 class VFS(object):
     if _py3_open is not None:
+
         @wraps(_py3_open)
         def fs_py3_open(self, *args, **kw):
             return FS.open(*args, **kw)
 
     if _py2_open is not None:
+
         @wraps(_py2_open)
         def fs_py2_open(self, *args, **kw):
             return FS.py2_open(*args, **kw)
@@ -327,7 +340,10 @@ class VFS(object):
     @wraps(_realpath)
     def fs_realpath(self, *args, **kw):
         return FS.realpath(*args, **kw)
+
+
 vfs = VFS()
+
 
 def vfs_init():
     """
@@ -345,11 +361,12 @@ def vfs_init():
     os.path.abspath = vfs.fs_abspath
     os.path.realpath = vfs.fs_realpath
     os.path.exists = vfs.fs_exists
-    os.path.isfile= vfs.fs_isfile
+    os.path.isfile = vfs.fs_isfile
     os.path.isdir = vfs.fs_isdir
 
     try:
         import nt, ntpath
+
         nt.chdir = vfs.fs_chdir
         nt.listdir = vfs.fs_listdir
         nt.getcwd = vfs.fs_getcwd
@@ -363,6 +380,7 @@ def vfs_init():
 
     try:
         import posix, posixpath
+
         posix.chdir = vfs.fs_chdir
         posix.listdir = vfs.fs_listdir
         posix.getcwd = vfs.fs_getcwd
@@ -382,6 +400,7 @@ def vfs_init():
     try:
         import pathlib
         from importlib import reload
+
         reload(pathlib)
     except ImportError:
         pass
@@ -389,6 +408,7 @@ def vfs_init():
 
 # CRUFT: use old wrappers for python 2 since new wrappers don't seem to work
 if sys.version_info[0] == 2:
+
     class RealFS(object):
         def __enter__(self):
             pushfs(self)
@@ -427,11 +447,13 @@ if sys.version_info[0] == 2:
             return _exists(path)
 
     if _py3_open is not None:
+
         @wraps(_py3_open)
         def fs_py3_open(*args, **kw):
             return FS.open(*args, **kw)
 
     if _py2_open is not None:
+
         @wraps(_py2_open)
         def fs_py2_open(*args, **kw):
             return FS.py2_open(*args, **kw)
@@ -486,11 +508,12 @@ if sys.version_info[0] == 2:
         os.path.abspath = fs_abspath
         os.path.realpath = fs_realpath
         os.path.exists = fs_exists
-        os.path.isfile= fs_isfile
+        os.path.isfile = fs_isfile
         os.path.isdir = fs_isdir
 
         try:
             import nt, ntpath
+
             nt.chdir = fs_chdir
             nt.listdir = fs_listdir
             nt.getcwd = fs_getcwd
@@ -504,6 +527,7 @@ if sys.version_info[0] == 2:
 
         try:
             import posix, posixpath
+
             posix.chdir = fs_chdir
             posix.listdir = fs_listdir
             posix.getcwd = fs_getcwd
@@ -523,6 +547,7 @@ if sys.version_info[0] == 2:
         try:
             import pathlib
             from importlib import reload
+
             reload(pathlib)
         except ImportError:
             pass

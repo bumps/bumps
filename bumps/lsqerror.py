@@ -45,14 +45,17 @@ and finite, the current value for the parameter is used as a basis to
 estimate step size.
 
 """
+
 from __future__ import print_function
 
 import numpy as np
+
 
 def gradient(problem, p=None, step=None):
     r = problem.residuals()
     J = jacobian(problem, p=p, step=step)
     return np.dot(J.T, r)
+
 
 # TODO: restructure lsqerror to use mapper for evaluating multiple f
 # doesn't work for jacobian since mapper returns nllf; would need to
@@ -77,53 +80,57 @@ def jacobian(problem, p=None, step=None):
     if p is None:
         p = p_init
     p = np.asarray(p)
-    bounds = getattr(problem, 'bounds', lambda: None)()
+    bounds = getattr(problem, "bounds", lambda: None)()
+
     def f(p):
         problem.setp(p)
         # Return residuals as a vector even if f(x) returns a matrix otherwise
         # we cannot build a stacked Jacobian. We use reshape() rather than
         # flatten since this will avoid an unnecessary copy.
         return np.reshape(problem.residuals(), -1)
+
     J = _jacobian_forward(f, p, bounds, eps=step)
     problem.setp(p_init)
     return J
+
 
 def _jacobian_forward(f, p, bounds, eps=None):
     n = len(p)
     # TODO: default to double precision epsilon
     step = 1e-4 if eps is None else np.sqrt(eps)
 
-    #print("p",p,"step",step)
-    h = abs(p)*step
+    # print("p",p,"step",step)
+    h = abs(p) * step
     h[h == 0] = step
     if bounds is not None:
-        h[h+p > bounds[1]] *= -1.0  # step backward if forward step is out of bounds
+        h[h + p > bounds[1]] *= -1.0  # step backward if forward step is out of bounds
     ee = np.diag(h)
 
-    fx = f(p) # Maybe fx.copy() to protect against reuse
+    fx = f(p)  # Maybe fx.copy() to protect against reuse
     J = []
     for i in range(n):
         fx_plus = f(p + ee[i, :])
-        J.append((fx_plus - fx)/h[i])
+        J.append((fx_plus - fx) / h[i])
     return np.vstack(J).T
+
 
 def _jacobian_central(f, p, bounds, eps=None):
     n = len(p)
     # TODO: default to double precision epsilon
     step = 1e-4 if eps is None else np.sqrt(eps)
 
-    #print("p",p,"step",step)
-    h = abs(p)*step
+    # print("p",p,"step",step)
+    h = abs(p) * step
     h[h == 0] = step
-    #if bounds is not None:
+    # if bounds is not None:
     #    h[h+p>bounds[1]] *= -1.0  # step backward if forward step is out of bounds
     ee = np.diag(h)
 
     J = []
     for i in range(n):
-        fx_minus = f(p - ee[i, :]) # Maybe fx.copy() to protect against reuse
+        fx_minus = f(p - ee[i, :])  # Maybe fx.copy() to protect against reuse
         fx_plus = f(p + ee[i, :])
-        J.append((fx_plus - fx_minus) / (2.0*h[i]))
+        J.append((fx_plus - fx_minus) / (2.0 * h[i]))
     return np.vstack(J).T
 
 
@@ -137,10 +144,11 @@ def hessian(problem, p=None, step=None):
     if p is None:
         p = p_init
     p = np.asarray(p)
-    bounds = getattr(problem, 'bounds', lambda: None)()
+    bounds = getattr(problem, "bounds", lambda: None)()
     H = _hessian_forward(problem.nllf, p, bounds=bounds, eps=step)
     problem.setp(p_init)
     return H
+
 
 def _hessian_forward(f, p, bounds, eps=None):
     # type: (Callable[[np.ndarray], float], np.ndarray, Optional[np.ndarray]) -> np.ndarray
@@ -152,27 +160,28 @@ def _hessian_forward(f, p, bounds, eps=None):
     step = 1e-4 if eps is None else np.sqrt(eps)
     fx = f(p)
 
-    #print("p",p,"step",step)
-    h = abs(p)*step
+    # print("p",p,"step",step)
+    h = abs(p) * step
     h[h == 0] = step
     if bounds is not None:
-        h[h+p > bounds[1]] *= -1.0  # step backward if forward step is out of bounds
+        h[h + p > bounds[1]] *= -1.0  # step backward if forward step is out of bounds
     ee = np.diag(h)
 
-    g = np.empty(n, 'd')
+    g = np.empty(n, "d")
     for i in range(n):
         g[i] = f(p + ee[i, :])
-    #print("fx",fx)
-    #print("h",h, h[0])
-    #print("g",g)
-    H = np.empty((n, n), 'd')
+    # print("fx",fx)
+    # print("h",h, h[0])
+    # print("g",g)
+    H = np.empty((n, n), "d")
     for i in range(n):
         for j in range(i, n):
             fx_ij = f(p + ee[i, :] + ee[j, :])
-            #print("fx_%d%d=%g"%(i,j,fx_ij))
-            H[i, j] = (fx_ij - g[i] - g[j] + fx) / (h[i]*h[j])
+            # print("fx_%d%d=%g"%(i,j,fx_ij))
+            H[i, j] = (fx_ij - g[i] - g[j] + fx) / (h[i] * h[j])
             H[j, i] = H[i, j]
     return H
+
 
 def _hessian_central(f, p, bounds, eps=None):
     # type: (Callable[[np.ndarray], float], np.ndarray, Optional[np.ndarray]) -> np.ndarray
@@ -182,29 +191,29 @@ def _hessian_central(f, p, bounds, eps=None):
     n = len(p)
     # TODO: default to double precision epsilon
     step = 1e-4 if eps is None else np.sqrt(eps)
-    #step = np.sqrt(step)
+    # step = np.sqrt(step)
     fx = f(p)
 
-    h = abs(p)*step
+    h = abs(p) * step
     h[h == 0] = step
     # TODO: handle bounds on central difference formula
-    #if bounds is not None:
+    # if bounds is not None:
     #    h[h+p>bounds[1]] *= -1.0  # step backward if forward step is out of bounds
     ee = np.diag(h)
 
-    gp = np.empty(n, 'd')
-    gm = np.empty(n, 'd')
+    gp = np.empty(n, "d")
+    gm = np.empty(n, "d")
     for i in range(n):
         gp[i] = f(p + ee[i, :])
         gm[i] = f(p - ee[i, :])
-    H = np.empty((n, n), 'd')
+    H = np.empty((n, n), "d")
     for i in range(n):
         for j in range(i, n):
             fp_ij = f(p + ee[i, :] + ee[j, :])
             fm_ij = f(p - ee[i, :] - ee[j, :])
-            #print("fx_%d%d=%g"%(i,j,fx_ij))
-            H[i, j] = (fp_ij - gp[i] - gp[j] + fm_ij - gm[i] - gm[j] + 2.0*fx) / (2.0*h[i]*h[j])
-            H[j, i] = H[i,j]
+            # print("fx_%d%d=%g"%(i,j,fx_ij))
+            H[i, j] = (fp_ij - gp[i] - gp[j] + fm_ij - gm[i] - gm[j] + 2.0 * fx) / (2.0 * h[i] * h[j])
+            H[j, i] = H[i, j]
     return H
 
 
@@ -219,10 +228,11 @@ def perturbed_hessian(H, scale=None):
     Returns the adjusted Hessian and its Cholesky decomposition.
     """
     from .quasinewton import modelhess
+
     n = H.shape[0]
     if scale is None:
         scale = np.ones(n)
-    macheps = np.finfo('d').eps
+    macheps = np.finfo("d").eps
     return modelhess(n, scale, macheps, H)
 
 
@@ -273,8 +283,9 @@ def jacobian_cov(J, tol=1e-8):
     #              = V inv (S S) V'
     u, s, vh = np.linalg.svd(J, 0)
     s[s <= tol] = tol
-    JTJinv = np.dot(vh.T.conj() / s ** 2, vh)
+    JTJinv = np.dot(vh.T.conj() / s**2, vh)
     return JTJinv
+
 
 def hessian_cov(H, tol=1e-15):
     """
@@ -307,7 +318,7 @@ def corr(C):
     Uses $R = D^{-1} C D^{-1}$ where $D$ is the square root of the diagonal
     of the covariance matrix, or the standard error of each variable.
     """
-    Dinv = 1. / stderr(C)
+    Dinv = 1.0 / stderr(C)
     return np.dot(Dinv, np.dot(C, Dinv))
 
 
@@ -341,37 +352,44 @@ def stderr(C):
 
 
 def demo_hessian():
-    rosen = lambda x: (1.-x[0])**2 + 105*(x[1]-x[0]**2)**2
-    p = np.array([1., 1.])
+    rosen = lambda x: (1.0 - x[0]) ** 2 + 105 * (x[1] - x[0] ** 2) ** 2
+    p = np.array([1.0, 1.0])
     H = _hessian_forward(rosen, p, bounds=None, eps=1e-16)
     print("forward difference H", H)
     H = _hessian_central(rosen, p, bounds=None, eps=1e-16)
     print("central difference H", H)
 
+
 def demo_jacobian():
-    y = np.array([1., 2., 3.])
-    f = lambda x: x[0]*y + x[1]
-    p = np.array([2., 3.])
+    y = np.array([1.0, 2.0, 3.0])
+    f = lambda x: x[0] * y + x[1]
+    p = np.array([2.0, 3.0])
     J = _jacobian_forward(f, p, bounds=None, eps=1e-16)
     print("forward difference J", J)
     J = _jacobian_central(f, p, bounds=None, eps=1e-16)
     print("central difference J", J)
 
+
 # https://en.wikipedia.org/wiki/Hilbert_matrix
 # Note: 1-origin indices translated to 0-origin
 def hilbert(n):
     """Generate ill-conditioned Hilbert matrix of size n x n"""
-    return 1/(np.arange(n)[:, None]+np.arange(n)[None, :]+1)
+    return 1 / (np.arange(n)[:, None] + np.arange(n)[None, :] + 1)
+
 
 # https://en.wikipedia.org/wiki/Hilbert_matrix#Properties
 # Note: 1-origin indices translated to 0-origin
 def hilbertinv(n):
     """Analytical inverse for ill-conditioned Hilbert matrix of size n x n"""
     Hinv = [
-        [(-1)**(i+j+2)*(i+j+1)*comb(n+i, n-j-1)*comb(n+j, n-i-1)*comb(i+j, i)**2
-         for i in range(n)] for j in range(n)
+        [
+            (-1) ** (i + j + 2) * (i + j + 1) * comb(n + i, n - j - 1) * comb(n + j, n - i - 1) * comb(i + j, i) ** 2
+            for i in range(n)
+        ]
+        for j in range(n)
     ]
-    return np.asarray(Hinv, dtype='d')
+    return np.asarray(Hinv, dtype="d")
+
 
 # From dheerosaur
 # https://stackoverflow.com/questions/4941753/is-there-a-math-ncr-function-in-python/4941932#4941932
@@ -379,10 +397,12 @@ def comb(n, r):
     """n choose r combination function"""
     import operator as op
     from functools import reduce
-    r = min(r, n-r)
-    numer = reduce(op.mul, range(n, n-r, -1), 1)
-    denom = reduce(op.mul, range(1, r+1), 1)
+
+    r = min(r, n - r)
+    numer = reduce(op.mul, range(n, n - r, -1), 1)
+    denom = reduce(op.mul, range(1, r + 1), 1)
     return numer // denom
+
 
 def demo_stderr_hilbert(n=5):
     H = hilbert(n)
@@ -399,10 +419,11 @@ def demo_stderr_hilbert(n=5):
         print("sd", sdirect)
         print("R", corr(C))
 
+
 def demo_stderr_perturbed():
     n = 5
     D = [1, 2, 3, 4, 5]
-    #D = np.exp(10*np.random.rand(n)**2)
+    # D = np.exp(10*np.random.rand(n)**2)
     D = [1e-3, 1e-2, 1e-1, 1, 10]
 
     D = np.asarray(D)
@@ -414,6 +435,7 @@ def demo_stderr_perturbed():
     s = chol_stderr(Lp)
 
     from scipy.linalg import inv
+
     Ldirect = np.linalg.cholesky(H)
     Cdirect = inv(H)
     Cp = inv(Hp)
@@ -426,32 +448,33 @@ def demo_stderr_perturbed():
         L_original=L,
         L_direct=Ldirect,
         L_perturbed=Lp,
-        #H=H,
-        #H_perturbed=Hp,
-        #C_direct=Cdirect,
-        #C_from_Hp=Cp,
-        #C_from_Lp=C,
+        # H=H,
+        # H_perturbed=Hp,
+        # C_direct=Cdirect,
+        # C_from_Hp=Cp,
+        # C_from_Lp=C,
     )
     with np.printoptions(precision=3):
-        print("%20s"%('perturbation'), hp[0, 0] - h[0, 0])
+        print("%20s" % ("perturbation"), hp[0, 0] - h[0, 0])
         for k, v in parts.items():
-            print("%20s"%(k + ' diag'), np.diag(v))
-        #print("eigc", list(sorted(np.linalg.eigvals(c))))
-        #print("eigcp", list(sorted(np.linalg.eigvals(cp))))
-        #print("eigh", list(sorted(1/np.linalg.eigvals(h))))
-        #print("eighp", list(sorted(1/np.linalg.eigvals(hp))))
+            print("%20s" % (k + " diag"), np.diag(v))
+        # print("eigc", list(sorted(np.linalg.eigvals(c))))
+        # print("eigcp", list(sorted(np.linalg.eigvals(cp))))
+        # print("eigh", list(sorted(1/np.linalg.eigvals(h))))
+        # print("eighp", list(sorted(1/np.linalg.eigvals(hp))))
         print("h cond     ", np.linalg.cond(h))
-        print("rel err dc ", abs((c - cdirect)/cdirect).max())
+        print("rel err dc ", abs((c - cdirect) / cdirect).max())
         print("de         ", sp - s)
         print("s direct   ", sdirect)
         print("s chol     ", sdirect_chol)
         print("s perturbed", sp)
         print("s          ", s)
-        print("rel err ds ", abs((s - sdirect)/sdirect).max())
-        print("unperturbed ds", abs((sdirect_chol - sdirect)/sdirect).max())
+        print("rel err ds ", abs((s - sdirect) / sdirect).max())
+        print("unperturbed ds", abs((sdirect_chol - sdirect) / sdirect).max())
+
 
 if __name__ == "__main__":
-    #demo_hessian()
-    #demo_jacobian()
-    #demo_stderr_perturbed()
+    # demo_hessian()
+    # demo_jacobian()
+    # demo_stderr_perturbed()
     demo_stderr_hilbert(10)

@@ -13,6 +13,7 @@ References::
     (Same title as above, but as a technical report.)
     http://www.icsi.berkeley.edu/~storn/deshort1.ps
 """
+
 from functools import reduce
 
 from numpy import sum as numpysum
@@ -20,6 +21,7 @@ from numpy import asarray
 from math import floor
 import random
 from math import pow
+
 
 def rosenbrock(x):
     """
@@ -29,10 +31,11 @@ def rosenbrock(x):
 
     minimum is f(x)=0.0 at xi=1.0
     """
-    #ensure that there are 2 coefficients
+    # ensure that there are 2 coefficients
     assert len(x) >= 2
     x = asarray(x)
-    return numpysum(100.0*(x[1:]-x[:-1]**2.0)**2.0 + (1-x[:-1])**2.0)
+    return numpysum(100.0 * (x[1:] - x[:-1] ** 2.0) ** 2.0 + (1 - x[:-1]) ** 2.0)
+
 
 def step(x):
     """
@@ -42,7 +45,7 @@ def step(x):
 
     minimum is f(x)=0.0 at xi=-5-n where n=[0.0,0.12]
     """
-    f = 30.
+    f = 30.0
     for c in x:
         if abs(c) <= 5.12:
             f += floor(c)
@@ -52,6 +55,7 @@ def step(x):
             f += 30 * (5.12 - c)
     return f
 
+
 def quartic(x):
     """
     De Jong's quartic function:
@@ -59,9 +63,9 @@ def quartic(x):
 
     minimum is f(x)=random, but statistically at xi=0
     """
-    f = 0.
+    f = 0.0
     for j, c in enumerate(x):
-        f += pow(c,4) * (j+1.0) + random.random()
+        f += pow(c, 4) * (j + 1.0) + random.random()
     return f
 
 
@@ -72,12 +76,12 @@ def shekel(x):
     minimum is f(x)=0.0 at x(-32,-32)
     """
 
-    A = [-32., -16., 0., 16., 32.]
+    A = [-32.0, -16.0, 0.0, 16.0, 32.0]
     a1 = A * 5
-    a2 = reduce(lambda x1,x2: x1+x2, [[c] * 5 for c in A])
+    a2 = reduce(lambda x1, x2: x1 + x2, [[c] * 5 for c in A])
 
-    x1,x2 = x
+    x1, x2 = x
     r = 0.0
     for i in range(25):
-        r += 1.0/ (1.0*i + pow(x1-a1[i],6) + pow(x2-a2[i],6) + 1e-15)
-    return 1.0/(0.002 + r)
+        r += 1.0 / (1.0 * i + pow(x1 - a1[i], 6) + pow(x2 - a2[i], 6) + 1e-15)
+    return 1.0 / (0.002 + r)
