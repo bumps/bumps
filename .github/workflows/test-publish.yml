@@ -11,6 +11,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Checkout Random123
+        uses: actions/checkout@v4
+        with:
+          repository: "DEShawResearch/random123"
+          ref: v1.14.0
+          path: bumps/dream/random123
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -97,11 +104,11 @@ jobs:
       - name: Run tests
         run: pytest -v
 
-      - name: Run tests
-        run: pytest -v
-
       - name: Check examples
         run: python check_examples.py --chisq
+
+      - name: Check fitters
+        run: python check_fitters.py
 
       - name: Check that the docs build (linux only)
         if: matrix.cfg.doc == 1
