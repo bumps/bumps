@@ -31,7 +31,7 @@ async function fetch_and_draw(latest_timestamp: string) {
   }
   plotdata.width = Math.round(plot_div.value?.clientWidth ?? 640) - 16;
   plotdata.height = Math.round(plot_div.value?.clientHeight ?? 480) - 16;
-  mpld3.drawFigure(plot_div_id.value, plotdata, false, true);
+  mpld3.draw_figure(plot_div_id.value, plotdata, false, true);
 }
 </script>
 

@@ -62,7 +62,7 @@ async function fetch_and_draw() {
     let mpld3_data = plotdata as { width: number; height: number };
     mpld3_data.width = Math.round(plot_div.value?.clientWidth ?? 640) - 16;
     mpld3_data.height = Math.round(plot_div.value?.clientHeight ?? 480) - 16;
-    mpld3.drawFigure(plot_div_id.value, mpld3_data, false, true);
+    mpld3.draw_figure(plot_div_id.value, mpld3_data, false, true);
   } else if (fig_type === "table") {
     await nextTick();
     tableData.value = plotdata as TableData;
