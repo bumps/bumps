@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import * as Plotly from "plotly.js/lib/core";
+// @ts-ignore - plotly.js does not export Heatmap as type
 import Heatmap from "plotly.js/lib/heatmap";
 import type { AsyncSocket } from "../asyncSocket.ts";
 import { SVGDownloadButton } from "../plotly_extras";
@@ -20,8 +21,7 @@ const n_bins = ref(50);
 const callback_registered = ref(false);
 const stored_timestamp = ref("");
 const vars = ref<number[]>([]);
-// don't use the one from setupDrawLoop because we are calling
-// fetch_and_draw locally:
+// don't use the one from setupDrawLoop because we are calling fetch_and_draw locally:
 const drawing_busy = ref(false);
 
 const props = defineProps<{

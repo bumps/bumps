@@ -8,10 +8,10 @@ const props = defineProps<{
 const expanded = ref(false);
 const dropdown = ref<HTMLElement>();
 
-function check_for_click_outside(ev) {
+function check_for_click_outside(ev: MouseEvent) {
   // Check if the target of the mousedown is inside the dropdown
   // menu. If not, then hide the menu on mouseup.
-  if (!(dropdown.value?.contains?.(ev.target) ?? false)) {
+  if (!(dropdown.value?.contains?.(ev.target as Node) ?? false)) {
     document.addEventListener("mouseup", hide, { once: true });
     document.removeEventListener("mousedown", check_for_click_outside);
   }

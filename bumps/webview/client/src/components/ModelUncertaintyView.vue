@@ -24,14 +24,15 @@ type MplD3PlotData = {
 async function fetch_and_draw(latest_timestamp: string) {
   let { timestamp, plotdata } = (cache[title] as { timestamp: string; plotdata: MplD3PlotData }) ?? {};
   if (timestamp !== latest_timestamp) {
-    console.log("fetching new model uncertainty plot", timestamp, latest_timestamp);
+    console.log("Fetching new model uncertainty plot", timestamp, latest_timestamp);
     const payload = (await props.socket.asyncEmit("get_model_uncertainty_plot")) as MplD3PlotData;
     plotdata = { ...payload };
-    cache[title] = { timestamp: latest_timestamp, plotdata };
+    cache[title] = { timestamp: latest_timestamp, plotdata: plotdata };
   }
-  plotdata.width = Math.round(plot_div.value?.clientWidth ?? 640) - 16;
-  plotdata.height = Math.round(plot_div.value?.clientHeight ?? 480) - 16;
-  mpld3.draw_figure(plot_div_id.value, plotdata, false, true);
+  let mpld3_data = plotdata as { width: number; height: number };
+  mpld3_data.width = Math.round(plot_div.value?.clientWidth ?? 640) - 16;
+  mpld3_data.height = Math.round(plot_div.value?.clientHeight ?? 480) - 16;
+  mpld3.draw_figure(plot_div_id.value, mpld3_data, false, true);
 }
 </script>
 

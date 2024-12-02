@@ -29,9 +29,10 @@ async function fetch_and_draw(latest_timestamp: string) {
     plotdata = { ...payload };
     cache[title] = { timestamp: latest_timestamp, plotdata };
   }
-  plotdata.width = Math.round(plot_div.value?.clientWidth ?? 640) - 16;
-  plotdata.height = Math.round(plot_div.value?.clientHeight ?? 480) - 16;
-  mpld3.draw_figure(plot_div_id.value, plotdata, false, true);
+  let mpld3_data = plotdata as { width: number; height: number };
+  mpld3_data.width = Math.round(plot_div.value?.clientWidth ?? 640) - 16;
+  mpld3_data.height = Math.round(plot_div.value?.clientHeight ?? 480) - 16;
+  mpld3.draw_figure(plot_div_id.value, mpld3_data, false, true);
 }
 </script>
 
