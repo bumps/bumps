@@ -9,12 +9,12 @@ export type TableData = {
 
 const hidden_download = ref<HTMLAnchorElement>();
 
-const props = defineProps<{ table_data: TableData }>();
+const props = defineProps<{ tableData: TableData }>();
 
 async function download_csv() {
-  if (props.table_data.raw) {
+  if (props.tableData.raw) {
     const a = hidden_download.value as HTMLAnchorElement;
-    a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(props.table_data.raw);
+    a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(props.tableData.raw);
     a.click();
   }
 }
@@ -29,12 +29,14 @@ async function download_csv() {
     <table class="table">
       <thead class="border-bottom py-1 sticky-top text-white bg-secondary">
         <tr>
-          <th v-for="header_item in table_data.header" scope="col">{{ header_item }}</th>
+          <th v-for="header_item in tableData.header" :key="`header-${header_item}`" scope="col">{{ header_item }}</th>
         </tr>
       </thead>
       <tbody>
-        <tr v-for="table_row in table_data.rows" class="py-1">
-          <td v-for="table_item in table_row" scope="col">{{ table_item }}</td>
+        <tr v-for="(table_row, table_row_index) in tableData.rows" :key="`row-${table_row_index}`" class="py-1">
+          <td v-for="(table_item, table_item_index) in table_row" :key="`item-${table_item_index}`" scope="col">
+            {{ table_item }}
+          </td>
         </tr>
       </tbody>
     </table>

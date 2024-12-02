@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { ref } from "vue";
 import TagFilter from "./ParameterTagFilter.vue";
 import type { AsyncSocket } from "../asyncSocket.ts";
 import { setupDrawLoop } from "../setupDrawLoop";
@@ -26,7 +26,7 @@ type parameter_info = {
 const parameters = ref<parameter_info[]>([]);
 const parameters_local01 = ref<number[]>([]);
 const parameters_localstr = ref<string[]>([]);
-const show_tags = ref(false);
+// const show_tags = ref(false);
 const tag_filter = ref<typeof TagFilter>();
 
 async function fetch_and_draw() {
@@ -96,17 +96,21 @@ async function onInactive(param) {
       <tr v-for="{ parameter, index } in tag_filter?.filtered_parameters" :key="parameter.id" class="py-1">
         <td>
           {{ parameter.name }}
-          <span
-            v-for="tag in parameter.tags"
-            v-if="tag_filter?.show_tags"
-            class="badge rounded-pill me-1"
-            :style="{ color: 'white', 'background-color': tag_filter.tag_colors[tag] }"
-          >
-            {{ tag }}
-          </span>
+          <div v-if="tag_filter?.show_tags">
+            <span
+              v-for="tag in parameter.tags"
+              :key="`tag-${tag}`"
+              class="badge rounded-pill me-1"
+              :style="{ color: 'white', 'background-color': tag_filter.tag_colors[tag] }"
+            >
+              {{ tag }}
+            </span>
+          </div>
         </td>
         <td>
+          <label class="visually-hidden" :for="'parameter' + index">Value</label>
           <input
+            id="'parameter' + index"
             v-model.number="parameters_local01[index]"
             type="range"
             class="form-range"

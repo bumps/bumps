@@ -1,24 +1,24 @@
 /**
- * @see https://prettier.io/docs/en/configuration.html
  * @type {import("prettier").Config}
+ * @see https://prettier.io/docs/en/configuration.html
  */
 
 const config = {
-  "plugins": [ 
+  plugins: [
     "@ianvs/prettier-plugin-sort-imports",
     "./node_modules/prettier-plugin-jsdoc/dist/index.js",
-    "prettier-plugin-css-order"
+    "prettier-plugin-css-order",
   ],
-  "importOrder": ["^vue", "^[a-zA-Z]", "^@[a-zA-Z]", "^@/", "^./", "^../"],
-  "cssDeclarationSorterOrder": "smacss",
-  "jsdocCapitalizeDescription": false,
-  "overrides": [
+  importOrder: ["^vue", "^[a-zA-Z]", "^@[a-zA-Z]", "^@/", "^./", "^../"],
+  cssDeclarationSorterOrder: "smacss",
+  jsdocCapitalizeDescription: false,
+  overrides: [
     {
-      "files": "*.svg",
-      "options": {
-        "parser": "html"
-      }
-    }
+      files: "*.svg",
+      options: {
+        parser: "html",
+      },
+    },
   ],
   experimentalTernaries: true,
   printWidth: 120,

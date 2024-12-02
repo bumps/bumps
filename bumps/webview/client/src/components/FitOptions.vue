@@ -195,22 +195,24 @@ defineExpose({
                   >
                 </div>
                 <div v-for="(value, sname, index) in active_settings" :key="sname" class="row p-1">
-                  <label class="col-sm-4 col-form-label" :for="'fitter_setting_' + index">{{
+                  <label class="col-sm-4 col-form-label" :for="'fitter_setting_' + sname">{{
                     FIT_FIELDS[sname][0]
                   }}</label>
                   <div class="col-sm-8">
                     <select
                       v-if="Array.isArray(FIT_FIELDS[sname][1])"
-                      :id="'fitter_setting_' + index"
+                      :id="'fitter_setting_' + sname"
                       v-model="active_settings[sname]"
                       class="form-select"
                       :name="sname"
                     >
-                      <option v-for="opt in FIT_FIELDS[sname][1]">{{ opt }}</option>
+                      <option v-for="opt in FIT_FIELDS[sname][1]" :key="opt">
+                        {{ opt }}
+                      </option>
                     </select>
                     <input
                       v-else-if="FIT_FIELDS[sname][1] === 'boolean'"
-                      :id="'fitter_setting_' + index"
+                      :id="'fitter_setting_' + sname"
                       v-model="active_settings[sname]"
                       class="form-check-input m-2"
                       type="checkbox"
@@ -218,7 +220,7 @@ defineExpose({
                     />
                     <input
                       v-else
-                      :id="'fitter_setting_' + index"
+                      :id="'fitter_setting_' + sname"
                       v-model="active_settings[sname]"
                       :class="{ 'form-control': true, 'is-invalid': !validate(active_settings[sname], sname) }"
                       type="text"

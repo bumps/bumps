@@ -1,12 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, shallowRef } from "vue";
+import { computed, ref } from "vue";
 import { io } from "socket.io-client";
-import type { AsyncSocket } from "./asyncSocket.ts";
-import "./asyncSocket.ts"; // patch Socket with asyncEmit
 import {
   active_fit,
   active_layout,
-  active_panel,
+  activePanel,
   addNotification,
   cancelNotification,
   connected,
@@ -23,6 +21,9 @@ import {
   selected_fitter,
   socket as socket_ref,
 } from "./app_state.ts";
+import Gear from "./assets/gear.svg?component";
+import "./asyncSocket.ts"; // patch Socket with asyncEmit
+import type { AsyncSocket } from "./asyncSocket.ts";
 import DropDown from "./components/DropDown.vue";
 import FileBrowser from "./components/FileBrowser.vue";
 import FitOptions from "./components/FitOptions.vue";
@@ -51,7 +52,7 @@ if (single_panel !== null) {
   active_layout.value = "full";
   const panel_index = props.panels.findIndex(({ title }) => title.toLowerCase() == single_panel.toLowerCase());
   if (panel_index > -1) {
-    active_panel.value[0] = panel_index;
+    activePanel.value[0] = panel_index;
   } else {
     console.error(`Panel ${single_panel} not found`);
   }
@@ -100,10 +101,10 @@ socket.on("active_fit", ({ fitter_id, options, num_steps, step, chisq }) => {
 socket.on("add_notification", addNotification);
 socket.on("cancel_notification", cancelNotification);
 
-function disconnect() {
-  socket.disconnect();
-  connected.value = false;
-}
+// function disconnect() {
+//   socket.disconnect();
+//   connected.value = false;
+// }
 
 function selectOpenFile() {
   if (fileBrowser.value) {
@@ -361,21 +362,7 @@ file_menu_items.value = [
                 </div>
                 <button class="btn btn-light btn-sm me-2" @click="openFitOptions">
                   {{ selected_fitter ?? default_fitter }}
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    fill="currentColor"
-                    class="bi bi-gear"
-                    viewBox="0 0 16 16"
-                  >
-                    <path
-                      d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"
-                    />
-                    <path
-                      d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z"
-                    />
-                  </svg>
+                  <Gear />
                 </button>
                 <button class="btn btn-success btn-sm" @click="startFit">Start</button>
               </div>
@@ -397,10 +384,10 @@ file_menu_items.value = [
         <PanelTabContainer
           :panels="panels"
           :socket="socket"
-          :active_panel="active_panel[0]"
+          :active-panel="activePanel[0]"
           @panel_changed="
             (n: number) => {
-              active_panel[0] = n;
+              activePanel[0] = n;
             }
           "
         />
@@ -409,10 +396,10 @@ file_menu_items.value = [
         <PanelTabContainer
           :panels="panels"
           :socket="socket"
-          :active_panel="active_panel[1]"
+          :active-panel="activePanel[1]"
           @panel_changed="
             (n: number) => {
-              active_panel[1] = n;
+              activePanel[1] = n;
             }
           "
         />
@@ -423,10 +410,10 @@ file_menu_items.value = [
         <PanelTabContainer
           :panels="panels"
           :socket="socket"
-          :active_panel="active_panel[0]"
+          :active-panel="activePanel[0]"
           @panel_changed="
             (n: number) => {
-              active_panel[0] = n;
+              activePanel[0] = n;
             }
           "
         />
@@ -435,10 +422,10 @@ file_menu_items.value = [
         <PanelTabContainer
           :panels="panels"
           :socket="socket"
-          :active_panel="active_panel[1]"
+          :active-panel="activePanel[1]"
           @panel_changed="
             (n: number) => {
-              active_panel[1] = n;
+              activePanel[1] = n;
             }
           "
         />
@@ -449,11 +436,11 @@ file_menu_items.value = [
         <PanelTabContainer
           :panels="panels"
           :socket="socket"
-          :active_panel="active_panel[0]"
-          :hide_tabs="single_panel !== null"
+          :active-panel="activePanel[0]"
+          :hide-tabs="single_panel !== null"
           @panel_changed="
             (n: number) => {
-              active_panel[0] = n;
+              activePanel[0] = n;
             }
           "
         />

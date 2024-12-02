@@ -9,12 +9,12 @@ const tabTriggers = ref<HTMLAnchorElement[]>([]);
 const props = defineProps<{
   socket: AsyncSocket;
   panels: { title: string; component: unknown }[];
-  active_panel: number;
-  hide_tabs?: boolean;
+  activePanel: number;
+  hideTabs?: boolean;
 }>();
 
 const emit = defineEmits<{
-  (e: "panel_changed", active_panel: number): void;
+  (e: "panel_changed", activePanel: number): void;
 }>();
 
 function setActive(index: number) {
@@ -23,11 +23,11 @@ function setActive(index: number) {
 </script>
 
 <template>
-  <ul v-if="!hide_tabs" class="nav nav-tabs">
+  <ul v-if="!hideTabs" class="nav nav-tabs">
     <li v-for="(panel, index) in props.panels" :key="index" class="nav-item">
       <a
         ref="tabTriggers"
-        :class="{ 'nav-link': true, active: index == active_panel }"
+        :class="{ 'nav-link': true, active: index == activePanel }"
         href="#"
         @click.prevent="setActive(index)"
         >{{ panels[index]?.title }}</a
@@ -36,7 +36,7 @@ function setActive(index: number) {
   </ul>
   <div class="tab-content d-flex flex-column flex-grow-1 overflow-auto">
     <KeepAlive>
-      <component :is="panels[active_panel].component" :socket="props.socket"></component>
+      <component :is="panels[activePanel].component" :socket="props.socket"></component>
     </KeepAlive>
   </div>
 </template>

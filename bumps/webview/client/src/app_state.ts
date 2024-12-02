@@ -8,6 +8,8 @@ interface ModalDialog {
   close: () => void;
 }
 
+type FileBrowserCallback = (...args: any) => Promise<void>;
+
 export class FileBrowserSettings {
   chosenfile_in?: string;
   pathlist_in?: string[];
@@ -30,10 +32,10 @@ export const fileBrowser = ref<ModalDialog>();
 export const model_file = shallowRef<{ filename: string; pathlist: string[] }>();
 export const model_loaded = ref<string>();
 export const active_layout = ref<(typeof LAYOUTS)[number]>("left-right");
-export const active_panel = ref([0, 1]);
+export const activePanel = ref([0, 1]);
 export const active_fit = ref<{
   fitter_id?: string;
-  options?: {};
+  options?: object;
   num_steps?: number;
   chisq?: string;
   step?: number;
@@ -45,7 +47,7 @@ export const selected_fitter = ref<string>();
 export const default_fitter = "amoeba";
 export const notifications = ref<{ title: string; content: string; id: string; spinner: boolean }[]>([]);
 export const file_menu_items = shallowRef<
-  { disabled?: Ref<boolean>; text: string; action?: Function; help?: string }[]
+  { disabled?: Ref<boolean>; text: string; action?: FileBrowserCallback; help?: string }[]
 >([]);
 export const autosave_history = ref(false);
 export const autosave_history_length = ref(10);

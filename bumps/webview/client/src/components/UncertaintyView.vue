@@ -1,5 +1,4 @@
 <script setup lang="ts">
-/// <reference types="@types/uuid"/>
 import { ref } from "vue";
 import Bar from "plotly.js/lib/bar";
 import * as Plotly from "plotly.js/lib/core";
@@ -24,16 +23,16 @@ const props = defineProps<{
 const show_labels = ref(true);
 
 async function on_change_show_labels() {
-  let { timestamp, plotdata } = (cache[title] as { timestamp: string; plotdata: Plotly.PlotlyDataLayoutConfig }) ?? {};
+  let { plotdata } = (cache[title] as { timestamp: string; plotdata: Plotly.PlotlyDataLayoutConfig }) ?? {};
   if (plotdata) {
-    apply_label_visibility(plotdata.layout, show_labels.value);
+    apply_label_visibility(plotdata.layout as Plotly.Layout, show_labels.value);
     await Plotly.react(plot_div_id.value, [...plotdata.data], plotdata.layout);
   }
 }
 
 const { drawing_busy } = setupDrawLoop("updated_uncertainty", props.socket, fetch_and_draw, title);
 
-async function fetch_and_draw(latest_timestamp: string) {
+async function fetch_and_draw(latest_timestamp: string): Promise<void> {
   let { timestamp, plotdata } = (cache[title] as { timestamp: string; plotdata: Plotly.PlotlyDataLayoutConfig }) ?? {};
   if (timestamp !== latest_timestamp) {
     console.log("fetching new uncertainty plot", timestamp, latest_timestamp);

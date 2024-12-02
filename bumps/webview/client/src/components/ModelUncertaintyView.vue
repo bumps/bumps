@@ -1,5 +1,4 @@
 <script setup lang="ts">
-/// <reference types="@types/uuid"/>
 import { ref } from "vue";
 import * as mpld3 from "mpld3";
 import { v4 as uuidv4 } from "uuid";
@@ -32,7 +31,7 @@ async function fetch_and_draw(latest_timestamp: string) {
   }
   plotdata.width = Math.round(plot_div.value?.clientWidth ?? 640) - 16;
   plotdata.height = Math.round(plot_div.value?.clientHeight ?? 480) - 16;
-  mpld3.draw_figure(plot_div_id.value, plotdata, false, true);
+  mpld3.drawFigure(plot_div_id.value, plotdata, false, true);
 }
 </script>
 

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-/// <reference types="@types/uuid"/>
 import { onMounted, ref, shallowRef } from "vue";
 import * as Plotly from "plotly.js/lib/core";
 import { Socket } from "socket.io-client";
@@ -64,7 +63,7 @@ async function draw_plot() {
   const opacity = trace_opacity.value;
 
   let data = plot_data.value;
-  data.forEach((line) => (line.opacity = opacity));
+  data.forEach((line) => ((line as Plotly.ScatterData).opacity = opacity));
 
   await Plotly.react(plot_div.value as HTMLDivElement, [...data], plot_layout.value, plot_config.value);
 }
@@ -72,14 +71,15 @@ async function draw_plot() {
 
 <template>
   <div class="container d-flex flex-grow-1 flex-column">
-    <select v-model="current_index" @change="draw_requested = true">
+    <label for="parameter_select" class="col-form-label">Trace Parameter: </label>
+    <select id="parameter_select" v-model="current_index" @change="draw_requested = true">
       <option v-for="(parameter, index) in parameters_local" :key="index" :value="index">
         {{ parameter ?? "" }}
       </option>
     </select>
     <div class="row px-2 align-items-center">
       <div class="col-auto">
-        <label for="opacity_control" class="col-form-label">Trace opacity</label>
+        <label for="opacity_control" class="col-form-label">Trace opacity:</label>
       </div>
       <div class="col">
         <input

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref } from "vue";
+import { ref } from "vue";
 
 const props = defineProps<{
   title: string;
@@ -38,7 +38,7 @@ function toggle_show() {
 
 <template>
   <li ref="dropdown" class="nav-item dropdown">
-    <button class="btn btn-link nav-link dropdown-toggle" role="button" :aria-expanded="expanded" @click="toggle_show">
+    <button class="btn btn-link nav-link dropdown-toggle" type="button" :aria-expanded="expanded" @click="toggle_show">
       {{ props.title }}
     </button>
     <ul :class="{ show: expanded, 'dropdown-menu': true }">

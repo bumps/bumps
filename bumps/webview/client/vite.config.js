@@ -1,20 +1,18 @@
-import { fileURLToPath, URL } from 'node:url'
-import { join } from 'node:path'
-
-import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
+import { join } from "node:path";
+import { fileURLToPath, URL } from "node:url";
+import { defineConfig } from "vite";
+import svgLoader from "vite-svg-loader";
+import vue from "@vitejs/plugin-vue";
 
 // https://vitejs.dev/config/
-export default ({mode}) => {
+export default ({ mode }) => {
   return defineConfig({
-    plugins: [
-      vue(),
-    ],
-    base: '',
+    plugins: [vue(), svgLoader()],
+    base: "",
     resolve: {
       alias: {
-        '@': fileURLToPath(new URL('./src', import.meta.url)),
-      }
+        "@": fileURLToPath(new URL("./src", import.meta.url)),
+      },
     },
     define: {
       // By default, Vite doesn't include shims for NodeJS/
@@ -22,7 +20,7 @@ export default ({mode}) => {
       global: {},
     },
     worker: {
-      format: 'es',
+      format: "es",
       rollupOptions: {
         external: ["node-fetch"],
       },
@@ -31,13 +29,13 @@ export default ({mode}) => {
       rollupOptions: {
         output: {
           // Default
-          dir: join('dist', process.env.npm_package_version),
-          entryFileNames: (mode == 'production') ? 'assets/[name].js' : 'assets/[name].[hash].js',
-          assetFileNames: (mode == 'production') ? 'assets/[name][extname]' : undefined,
+          dir: join("dist", process.env.npm_package_version),
+          entryFileNames: mode == "production" ? "assets/[name].js" : "assets/[name].[hash].js",
+          assetFileNames: mode == "production" ? "assets/[name][extname]" : undefined,
           // chunkFileNames: "chunk-[name].js",
           // manualChunks: undefined,
-        }
-      }
-    }
-  })
-}
+        },
+      },
+    },
+  });
+};

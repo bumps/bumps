@@ -1,5 +1,4 @@
 <script setup lang="ts">
-/// <reference types="@types/plotly.js" />
 import { nextTick, onMounted, ref, shallowRef } from "vue";
 import * as mpld3 from "mpld3";
 import * as Plotly from "plotly.js/lib/core";
@@ -19,20 +18,7 @@ const plot_infos = ref<PlotInfo[]>([]);
 //const current_plot_name = ref<PlotNameInfo>({"name": "", "change_with": "parameters", "model_index": 0});
 const current_plot_index = ref<number>(0);
 const error_text = ref<string>("");
-const table_data = ref<TableData>({ raw: "", header: [], rows: [[]] });
-
-// add types to mpld3
-declare global {
-  interface mpld3 {
-    draw_figure: (
-      div_id: string,
-      data: { width: number; height: number },
-      process: boolean | Function,
-      clearElem: boolean
-    ) => void;
-  }
-  var mpld3: mpld3;
-}
+const tableData = ref<TableData>({ raw: "", header: [], rows: [[]] });
 
 const props = defineProps<{
   socket: AsyncSocket;
@@ -76,10 +62,10 @@ async function fetch_and_draw() {
     let mpld3_data = plotdata as { width: number; height: number };
     mpld3_data.width = Math.round(plot_div.value?.clientWidth ?? 640) - 16;
     mpld3_data.height = Math.round(plot_div.value?.clientHeight ?? 480) - 16;
-    mpld3.draw_figure(plot_div_id.value, mpld3_data, false, true);
+    mpld3.drawFigure(plot_div_id.value, mpld3_data, false, true);
   } else if (fig_type === "table") {
     await nextTick();
-    table_data.value = plotdata as TableData;
+    tableData.value = plotdata as TableData;
   } else if (fig_type === "error") {
     error_text.value = String(plotdata).replace(/[\n]+/g, "<br>");
   } else {
@@ -91,7 +77,8 @@ async function fetch_and_draw() {
 
 <template>
   <div class="container d-flex flex-column flex-grow-1">
-    <select v-model="current_plot_index" @change="draw_requested = true">
+    <label for="plot_select">Select plot:</label>
+    <select id="plot_select" v-model="current_plot_index" @change="draw_requested = true">
       <option v-for="(plot_info, index) in plot_infos" :key="index" :value="index">
         {{ plot_info.model_index }}: {{ plot_info.title ?? "" }}
       </option>
@@ -101,7 +88,7 @@ async function fetch_and_draw() {
       <div v-html="error_text"></div>
     </div>
     <div v-else-if="figtype === 'table'" class="flex-grow-0">
-      <CSVTable :table_data="table_data"></CSVTable>
+      <CSVTable :table-data="tableData"></CSVTable>
     </div>
     <div v-else :id="plot_div_id" ref="plot_div" class="flex-grow-1"></div>
   </div>

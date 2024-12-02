@@ -2,6 +2,7 @@
 import { computed, ref } from "vue";
 
 type parameter_info = {
+  name: string;
   tags: string[];
 };
 
@@ -22,23 +23,32 @@ function toggle(tag: string, listname: "show" | "hide") {
 }
 
 const tag_colors = computed(() => {
-  const tag_names = Array.from(new Set(props.parameters.map((p) => p.tags ?? []).flat()));
+  // const tag_names = Array.from(new Set(props.parameters.map((p) => p.tags ?? []).flat()));
+  // const tag_names = ["tag1", "tag2", "tag3", "tag4", "tag5", "tag6", "tag7", "tag8", "tag9", "tag10"];
+  const tag_names = Array.from(new Set(props.parameters.map((p) => p.name).flat()));
   return Object.fromEntries(tag_names.map((t, i) => [t, COLORS[i % COLORS.length]]));
 });
 
 const COLORS = [
-  "blue",
-  "red",
-  "green",
-  "goldenrod",
-  "grey",
-  "orange",
-  "purple",
-  "teal",
-  "lightgreen",
-  "brown",
-  "black",
+  "#af0e2b" /* red */,
+  "#be460f" /* orange */,
+  "#be9500" /* yellow */,
+  "#136d01" /* green */,
+  "#0b6e6e" /* teal */,
+  "#0b3e6e" /* blue */,
+  "#6A07B6" /* purple */,
+  "#a70a9d" /* pink */,
 ];
+
+const getBackgroundColor = (tag: string, color: string, toHide) => {
+  let bgColor: string;
+  if (toHide) {
+    bgColor = tags_to_show.value.includes(tag as string) ? `${color}FF` : `${color}66`;
+  } else {
+    bgColor = tags_to_hide.value.includes(tag as string) ? `${color}FF` : `${color}66`;
+  }
+  return bgColor;
+};
 
 function should_show(tags: string[]) {
   if (tags_to_hide.value.length > 0 && tags.some((t) => tags_to_hide.value.includes(t))) {
@@ -83,40 +93,48 @@ defineExpose({
 
 <template>
   <details ref="tag_filters" class="filters">
-    <summary>tags</summary>
+    <summary>Tags</summary>
     <div class="form-check">
       <label class="form-check-label ps-1">
         <input v-model="show_tags" type="checkbox" class="form-check-input" />
-        display tags
+        Display tags
       </label>
     </div>
     <h6>Filters:</h6>
     <div class="row pb-1 ps-1">
-      <div class="col-1 text-end">include</div>
+      <div class="col-1 text-end">Include</div>
       <div class="col">
-        <span
+        <button
           v-for="(tag_color, tag) in tag_colors"
+          :key="`include-tag-${tag}`"
           class="badge rounded-pill me-1"
-          :class="{ checked: tags_to_show.includes(tag as string) }"
-          :style="{ color: 'white', 'background-color': tag_color }"
+          :style="{
+            color: 'white',
+            'background-color': `${getBackgroundColor(tag, tag_color, true)}`,
+          }"
           @click="toggle(tag as string, 'show')"
+          @keydown.enter="toggle(tag as string, 'show')"
         >
           {{ tag }}
-        </span>
+        </button>
       </div>
     </div>
     <div class="row pb-1 ps-1">
-      <div class="col-1 text-end">exclude</div>
+      <div class="col-1 text-end">Exclude</div>
       <div class="col">
-        <span
-          v-for="(tag_color, tag, tag_index) in tag_colors"
+        <button
+          v-for="(tag_color, tag) in tag_colors"
+          :key="`exclude-tag-${tag}`"
           class="badge rounded-pill me-1"
-          :class="{ checked: tags_to_hide.includes(tag as string) }"
-          :style="{ color: 'white', 'background-color': tag_color }"
+          :style="{
+            color: 'white',
+            'background-color': `${getBackgroundColor(tag, tag_color, false)}`,
+          }"
           @click="toggle(tag as string, 'hide')"
+          @keydown.enter="toggle(tag as string, 'hide')"
         >
           {{ tag }}
-        </span>
+        </button>
       </div>
     </div>
   </details>
@@ -127,12 +145,17 @@ defineExpose({
   display: inline-block;
   user-select: none;
 }
-span.badge.checked {
+
+.badge {
+  border: 0;
+}
+
+/* span.badge.checked {
   opacity: 1;
 }
 
 span.badge {
   cursor: pointer;
-  opacity: 0.3;
-}
+  opacity: 0.4;
+} */
 </style>

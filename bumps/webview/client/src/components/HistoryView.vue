@@ -3,7 +3,7 @@ import { onMounted, ref } from "vue";
 import { addNotification, autosave_history, autosave_history_length } from "../app_state";
 import type { AsyncSocket } from "../asyncSocket";
 
-const title = "History";
+// const title = "History";
 
 const props = defineProps<{
   socket: AsyncSocket;
@@ -145,7 +145,7 @@ onMounted(async () => {
         </thead>
         <tbody>
           <tr
-            v-for="({ timestamp, label, chisq_str, keep, has_population, has_uncertainty }, index) of history"
+            v-for="{ timestamp, label, chisq_str, keep, has_population, has_uncertainty } of history"
             :key="timestamp"
             class="py-1 align-middle"
           >
@@ -176,7 +176,13 @@ onMounted(async () => {
               <span v-show="has_uncertainty" class="badge bg-warning" title="has uncertainty">U</span>
             </td>
             <td class="text-center">
-              <input class="form-check-input" type="checkbox" :checked="keep" @click="toggle_keep(timestamp, keep)" />
+              <input
+                :id="`keep-${label}`"
+                class="form-check-input"
+                type="checkbox"
+                :checked="keep"
+                @click="toggle_keep(timestamp, keep)"
+              />
             </td>
           </tr>
         </tbody>

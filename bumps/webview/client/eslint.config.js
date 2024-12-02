@@ -1,10 +1,10 @@
+import url from "url";
+import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended";
+import pluginVue from "eslint-plugin-vue";
 import { FlatCompat } from "@eslint/eslintrc";
 import js from "@eslint/js";
 import prettierConfig from "@vue/eslint-config-prettier";
 import vueTsEslintConfig from "@vue/eslint-config-typescript";
-import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended";
-import pluginVue from "eslint-plugin-vue";
-import url from "url";
 
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 const compat = new FlatCompat({
@@ -31,10 +31,11 @@ export default [
     files: ["src/**/*.js", "src/**/*.mjs", "src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"],
     /** Override rules */
     rules: {
-      "max-len": ["error", { code: 120 }],
+      // "max-len": ["error", { code: 120 }],
       "prefer-const": 0,
       "@typescript-eslint/ban-ts-comment": ["error", { "ts-ignore": "allow-with-description" }],
       "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unsafe-function-type": "off",
       "@typescript-eslint/no-unused-vars": "warn",
       "prettier/prettier": [
         "warn",
@@ -44,6 +45,7 @@ export default [
         },
       ],
       "vue/no-html": "off",
+      "vue/no-unused-vars": "warn",
       "vuejs-accessibility/label-has-for": [
         "error",
         {

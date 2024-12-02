@@ -1,5 +1,4 @@
 <script setup lang="ts">
-/// <reference types="@types/uuid"/>
 import { ref } from "vue";
 import * as Plotly from "plotly.js/lib/core";
 import Heatmap from "plotly.js/lib/heatmap";

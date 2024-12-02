@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { ref } from "vue";
 import type { AsyncSocket } from "../asyncSocket.ts";
 
-const title = "Log";
+// const title = "Log";
 
 const props = defineProps<{
   socket: AsyncSocket;

@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
-import { is } from "date-fns/locale";
+import { ref } from "vue";
 import type { AsyncSocket } from "../asyncSocket.ts";
 
 const props = defineProps<{ socket: AsyncSocket }>();

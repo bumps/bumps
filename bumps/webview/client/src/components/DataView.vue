@@ -1,11 +1,10 @@
 <script setup lang="ts">
-/// <reference types="@types/plotly.js" />
-import { computed, onMounted, onUpdated, ref, shallowRef, ssrContextKey, watch } from "vue";
+import { onMounted, ref } from "vue";
 import * as mpld3 from "mpld3";
 import * as Plotly from "plotly.js/lib/core";
 import { v4 as uuidv4 } from "uuid";
-import type { AsyncSocket } from "../asyncSocket.ts";
-import { setupDrawLoop } from "../setupDrawLoop";
+import type { AsyncSocket } from "@/asyncSocket";
+import { setupDrawLoop } from "@/setupDrawLoop";
 
 type ModelNameInfo = { name: string; model_index: number };
 const title = "Data";
@@ -14,19 +13,6 @@ const plot_div_id = ref(`div-${uuidv4()}`);
 const show_multiple = ref(false);
 const model_names = ref<string[]>([]);
 const current_models = ref<number[][]>([[0]]);
-
-// add types to mpld3
-declare global {
-  interface mpld3 {
-    draw_figure: (
-      div_id: string,
-      data: { width: number; height: number },
-      process: boolean | Function,
-      clearElem: boolean
-    ) => void;
-  }
-  var mpld3: mpld3;
-}
 
 const props = defineProps<{
   socket: AsyncSocket;
@@ -59,11 +45,11 @@ async function fetch_and_draw() {
     let mpld3_data = plotdata as { width: number; height: number };
     mpld3_data.width = Math.round(plot_div.value?.clientWidth ?? 640) - 16;
     mpld3_data.height = Math.round(plot_div.value?.clientHeight ?? 480) - 16;
-    mpld3.draw_figure(plot_div_id.value, mpld3_data, false, true);
+    mpld3.drawFigure(plot_div_id.value, mpld3_data, false, true);
   }
 }
 
-function toggle_multiple(value) {
+function toggle_multiple() {
   if (!show_multiple.value) {
     // then we're toggling from multiple to single...
     current_models.value.splice(0, current_models.value.length - 1);
@@ -81,14 +67,15 @@ function toggle_multiple(value) {
       <label class="form-check-label pe-2" for="multiple">Show multiple</label>
       <input id="multiple" v-model="show_multiple" class="form-check-input" type="checkbox" @change="toggle_multiple" />
     </div>
-    <select v-if="show_multiple" v-model="current_models" multiple @change="draw_requested = true">
-      <option v-for="(name, model_index) in model_names" :key="model_index" :value="[model_index]">
-        {{ model_index }}: {{ name ?? "" }}
-      </option>
-    </select>
-    <select v-else v-model="current_models[0]" @change="draw_requested = true">
-      <option v-for="(name, model_index) in model_names" :key="model_index" :value="[model_index]">
-        {{ model_index }}: {{ name ?? "" }}
+    <label for="model-select">Models:</label>
+    <select
+      id="model-select"
+      :v-model="show_multiple ? current_models : current_models[0]"
+      :multiple="show_multiple"
+      @change="draw_requested = true"
+    >
+      <option v-for="(model, model_index) in model_names" :key="model_index" :value="[model_index]">
+        Model {{ model_index + 1 }}: {{ model }}
       </option>
     </select>
     <div :id="plot_div_id" ref="plot_div" class="flex-grow-1"></div>

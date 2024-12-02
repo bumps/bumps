@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { onMounted, ref, shallowRef } from "vue";
 import DropDown from "./DropDown.vue";
 import {
   active_fit,
@@ -11,7 +10,7 @@ import {
 import type { FileBrowserSettings } from "../app_state";
 import type { AsyncSocket } from "../asyncSocket";
 
-const title = "Session";
+// const title = "Session";
 const props = defineProps<{
   socket: AsyncSocket;
 }>();
