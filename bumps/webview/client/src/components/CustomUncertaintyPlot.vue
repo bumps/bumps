@@ -46,7 +46,7 @@ const { draw_requested, drawing_busy } = setupDrawLoop(
 );
 
 async function fetch_and_draw(latest_timestamp?: string) {
-  const { model_index, title } = plot_infos.value[current_plot_index.value];
+  const { model_index, title } = plot_infos.value[current_plot_index.value] ?? { model_index: 0, title: "" };
   const cache_key = `${panel_title}:${model_index}:${title}:${n_samples.value}`;
   const read_cache = (cache[cache_key] as { timestamp: string; plotdata: object }) ?? {};
   const timestamp = read_cache.timestamp;
@@ -85,7 +85,7 @@ async function fetch_and_draw(latest_timestamp?: string) {
     error_text.value = String(plotdata).replace(/[\n]+/g, "<br>");
   } else {
     figtype.value = "error";
-    error_text.value = "Unknown figure type " + fig_type;
+    error_text.value = `Unknown figure type: ${fig_type}`;
   }
 }
 </script>
@@ -94,7 +94,7 @@ async function fetch_and_draw(latest_timestamp?: string) {
   <div class="container d-flex flex-column flex-grow-1">
     <div class="row g-3">
       <div class="col-md-8">
-        <label for="plot_select">Select plot:</label>
+        <label for="plot_select">Select plot: </label>
         <select id="plot_select" v-model="current_plot_index" @change="draw_requested = true">
           <option v-for="(plot_info, index) in plot_infos" :key="index" :value="index">
             {{ plot_info.model_index }}: {{ plot_info.title ?? "" }}

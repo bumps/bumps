@@ -41,7 +41,7 @@ onMounted(async () => {
 const { draw_requested } = setupDrawLoop("updated_parameters", props.socket, fetch_and_draw);
 
 async function fetch_and_draw() {
-  const { model_index, title } = plot_infos.value[current_plot_index.value];
+  const { model_index, title } = plot_infos.value[current_plot_index.value] ?? { model_index: 0, title: "" };
   const payload = await props.socket.asyncEmit("get_custom_plot", model_index, title);
   const { fig_type, plotdata } = payload as { fig_type: "plotly" | "matplotlib" | "table" | "error"; plotdata: object };
   figtype.value = fig_type;
@@ -70,7 +70,7 @@ async function fetch_and_draw() {
     error_text.value = String(plotdata).replace(/[\n]+/g, "<br>");
   } else {
     figtype.value = "error";
-    error_text.value = "Unknown figure type " + fig_type;
+    error_text.value = `Unknown figure type: ${fig_type}`;
   }
 }
 </script>
