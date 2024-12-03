@@ -3,8 +3,8 @@ import { onMounted, ref } from "vue";
 import * as mpld3 from "mpld3";
 import * as Plotly from "plotly.js/lib/core";
 import { v4 as uuidv4 } from "uuid";
-import type { AsyncSocket } from "@/asyncSocket";
-import { setupDrawLoop } from "@/setupDrawLoop";
+import type { AsyncSocket } from "../asyncSocket";
+import { setupDrawLoop } from "../setupDrawLoop";
 
 type ModelNameInfo = { name: string; model_index: number };
 const title = "Data";

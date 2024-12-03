@@ -12,7 +12,7 @@ import ParameterView from "./components/ParameterView.vue";
 import SummaryView from "./components/SummaryView.vue";
 import UncertaintyView from "./components/UncertaintyView.vue";
 
-type Panel = { title: string; component: any };
+export type Panel = { title: string; component: any };
 
 export const panels: Panel[] = [
   { title: "Data", component: DataView },

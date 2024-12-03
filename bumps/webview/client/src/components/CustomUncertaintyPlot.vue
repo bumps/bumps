@@ -3,11 +3,12 @@ import { nextTick, onMounted, ref } from "vue";
 import * as mpld3 from "mpld3";
 import * as Plotly from "plotly.js/lib/core";
 import { v4 as uuidv4 } from "uuid";
-import type { AsyncSocket } from "@/asyncSocket";
-import CSVTable, { type TableData } from "@/components/CSVTable.vue";
-import { cache } from "@/plot_cache";
-import { configWithSVGDownloadButton } from "@/plotly_extras";
-import { setupDrawLoop } from "@/setupDrawLoop";
+import type { TableData } from "./CSVTable.vue";
+import CSVTable from "./CSVTable.vue";
+import type { AsyncSocket } from "../asyncSocket";
+import { cache } from "../plot_cache";
+import { configWithSVGDownloadButton } from "../plotly_extras";
+import { setupDrawLoop } from "../setupDrawLoop";
 
 type PlotInfo = { title: string; change_with: string; model_index: number };
 const panel_title = "Custom Uncertainty";

@@ -20,10 +20,10 @@ import {
   notifications,
   selected_fitter,
   socket as socket_ref,
-} from "./app_state.ts";
+} from "./app_state";
 import Gear from "./assets/gear.svg?component";
-import "./asyncSocket.ts"; // patch Socket with asyncEmit
-import type { AsyncSocket } from "./asyncSocket.ts";
+import "./asyncSocket"; // patch Socket with asyncEmit
+import type { AsyncSocket } from "./asyncSocket";
 import DropDown from "./components/DropDown.vue";
 import FileBrowser from "./components/FileBrowser.vue";
 import FitOptions from "./components/FitOptions.vue";
@@ -31,9 +31,10 @@ import PanelTabContainer from "./components/PanelTabContainer.vue";
 import ServerShutdown from "./components/ServerShutdown.vue";
 import ServerStartup from "./components/ServerStartup.vue";
 import SessionMenu from "./components/SessionMenu.vue";
+import type { Panel } from "./panels";
 
 const props = defineProps<{
-  panels: { title: string; component: any }[];
+  panels: Panel[];
   name?: string;
 }>();
 
@@ -86,7 +87,7 @@ socket.on("connect", async () => {
 });
 
 socket.on("disconnect", (payload) => {
-  console.log("disconnected!", payload);
+  console.log("Disconnected!", payload);
   connected.value = false;
 });
 
@@ -106,7 +107,7 @@ socket.on("cancel_notification", cancelNotification);
 //   connected.value = false;
 // }
 
-function selectOpenFile() {
+async function selectOpenFile() {
   if (fileBrowser.value) {
     const settings: FileBrowserSettings = {
       title: "Load Model File",
@@ -123,7 +124,7 @@ function selectOpenFile() {
   }
 }
 
-function exportResults() {
+async function exportResults() {
   if (fileBrowser.value) {
     const settings: FileBrowserSettings = {
       title: "Export Results",
