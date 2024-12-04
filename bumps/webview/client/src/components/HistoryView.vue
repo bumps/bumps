@@ -54,7 +54,7 @@ async function remove_history_item(timestamp: string, keep: boolean) {
     addNotification({
       title: "Forbidden",
       content: "Cannot remove history item marked to keep",
-      timeout: 4000,
+      timeout: 5000,
     });
     return;
   } else {

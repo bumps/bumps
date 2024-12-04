@@ -100,7 +100,7 @@ props.socket.on("base_path", (pathlist_in: string[]) => {
 async function setPath(new_pathlist?: string[]) {
   let result = (await props.socket.asyncEmit("get_dirlisting", new_pathlist)) as DirListing | DirListingError;
   if ("error" in result) {
-    addNotification({ title: result.error, content: "reverting to base path", timeout: 3000 });
+    addNotification({ title: result.error, content: "reverting to base path", timeout: 5000 });
     result = (await props.socket.asyncEmit("get_dirlisting", null)) as DirListing;
   }
   const { drives: drives_in, pathlist: abs_pathlist, files, subfolders } = result;
