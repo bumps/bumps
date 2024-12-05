@@ -749,6 +749,8 @@ def load_problem(filename, options=None) -> FitProblem:
     old_argv = sys.argv
     sys.argv = [filename] + options if options else [filename]
     source = open(filename).read()
+    if _check_chained_comparison(source):
+        warnings.warn(f"Warning: chained comparisons in {filename} may not behave as expected")
     code = compile(source, filename, 'exec')
     exec(code, ctx)
     sys.argv = old_argv
@@ -757,6 +759,23 @@ def load_problem(filename, options=None) -> FitProblem:
         raise ValueError(filename + " requires 'problem = FitProblem(...)'")
 
     return problem
+
+def _check_chained_comparison(source: str) -> bool:
+    """
+    Check if the source code contains a chained comparison.
+
+    This is a simple check for a valid python construct in the model
+    definition of the form `a < b < c`, which will give unexpected
+    results if any of the values being compared are Parameter objects,
+    as Python will return `bool(a < b) and bool(b < c)` rather than a
+    single Constraint object with both constraints applied
+    """
+    import ast
+    tree = ast.parse(source)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Compare) and len(node.ops) > 1:
+            return True
+    return False
 
 def MultiFitProblem(*args, **kwargs) -> FitProblem:
     warnings.warn(DeprecationWarning("use FitProblem directly instead of MultiFitProblem"))
