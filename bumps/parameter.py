@@ -1529,7 +1529,7 @@ class Constraint:
     # useful in some circumstances, like doing max(List[Parameter]), which
     # currently fails.
     def __bool__(self):
-        raise TypeError("failed bool")
+        return self.satisfied
     __nonzero__ = __bool__
     def __float__(self):
         """return a float value that can be differentiated"""
