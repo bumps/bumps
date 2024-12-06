@@ -20,6 +20,12 @@ def compile_dll(nthreads=None, use_openmp=True, dry_run=False):
         print(f"Would compile: {compile_command}")
         return False
 
+    if not (Path(__file__).parent / "random123" / "include" / "Random123").exists():
+        print("""\
+        Random123 not found in the expected location: clone it with the following command:
+        git clone --branch v1.14.0 https://github.com/DEShawResearch/random123 bumps/dream/random123
+        """)
+
     print(f"Compiling: {compile_command}")
     os.system(compile_command)
 
