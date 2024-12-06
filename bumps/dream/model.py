@@ -237,7 +237,7 @@ class Mixture(MCMCModel):
                 or not all(hasattr(M, 'nllf') for M in models)
                 or not all(np.isscalar(w) for w in weights)):
             raise TypeError("Expected MixtureModel(M1, w1, M2, w2, ...)")
-        self.pairs = zip(models, weights)
+        self.pairs = tuple(zip(models, weights))
         self.weight = np.sum(w for w in weights)
 
     def nllf(self, x):
