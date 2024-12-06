@@ -1,21 +1,19 @@
-import * as Plotly from 'plotly.js/lib/core';
+import * as Plotly from "plotly.js/lib/core";
 
 export const SVGDownloadButton = {
-  name: 'Download as SVG',
-  title: 'Download as SVG',
+  name: "Download as SVG",
+  title: "Download as SVG",
   icon: Plotly.Icons.camera,
-  click: function(gd: Plotly.RootOrData) {
+  click: function (gd: Plotly.RootOrData) {
     Plotly.downloadImage(gd, {
-      format: 'svg',
+      format: "svg",
       width: null,
       height: null,
-      filename: ''
-    })
-  }
-}
+      filename: "",
+    });
+  },
+};
 
 export const configWithSVGDownloadButton = {
-    modeBarButtonsToAdd: [
-      SVGDownloadButton      
-    ]
-}
+  modeBarButtonsToAdd: [SVGDownloadButton],
+};
