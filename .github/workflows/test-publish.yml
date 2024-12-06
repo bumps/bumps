@@ -46,7 +46,7 @@ jobs:
     - name: Upload the wheel and source distribution artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: wheel
+        name: artifacts
         path: |
           dist/bumps-*-py3-none-any.whl
           dist/bumps-*.tar.gz
@@ -79,7 +79,7 @@ jobs:
     - name: Download the wheel
       uses: actions/download-artifact@v4
       with:
-        name: wheel
+        name: artifacts
         path: dist
 
     - name: Install the wheel for Windows configuration
