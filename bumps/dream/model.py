@@ -242,4 +242,5 @@ class Mixture(MCMCModel):
 
     def nllf(self, x):
         p = [w*exp(-M.nllf(x)) for M, w in self.pairs]
-        return -log(np.sum(p)/self.weight)
+        total = np.sum(p)/self.weight
+        return -log(total) if total > 0 else 1e100
