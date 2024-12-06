@@ -42,7 +42,7 @@ Differential evolution MCMC stepper.
 //   doi: 10.1145/2063384.2063405
 //   https://www.deshawresearch.com/resources_random123.html  v1.09
 // may want to swap it for a different generator, and update the following
-#include <random123/threefry.h>
+#include <Random123/threefry.h>
 typedef threefry4x64_ctr_t r123_ctr_t;
 typedef threefry4x64_key_t r123_key_t;
 typedef threefry4x64_ukey_t r123_ukey_t;
