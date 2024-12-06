@@ -204,6 +204,7 @@ def plot_logp(state, portion=None):
 
     # Plot long likelihood histogram
     data = logp[start:].flatten()
+    data = data[np.isfinite(data)]
     hist = axes([margin+width+delta, 0.1, 1-2*margin-width-delta, height])
     hist.hist(data, bins=40, orientation='horizontal', density=True)
     hist.set_ylim(trace.get_ylim())

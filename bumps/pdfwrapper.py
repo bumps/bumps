@@ -12,8 +12,6 @@ of the function in whatever way is meaningful.
 The note regarding user defined functions in :mod:`bumps.curve` apply
 here as well.
 """
-from __future__ import print_function
-
 import inspect
 
 import numpy as np
@@ -23,7 +21,7 @@ from .fitproblem import Fitness
 from .bounds import init_bounds
 
 
-class PDF(object):
+class PDF:
     """
     Build a model from a function.
 
@@ -85,8 +83,11 @@ class PDF(object):
         self._function = fn
         self._labels = labels
         self._plot = plot
+        self.name = name if name else "PDF"
 
     def parameters(self):
+        # Note: need to refetch the pars from self in case the user assigned
+        # model.par = new_parameter after creating the model.
         return dict((p, getattr(self, p)) for p in self._labels)
     parameters.__doc__ = Fitness.parameters.__doc__
 
@@ -116,7 +117,7 @@ class PDF(object):
     numpoints.__doc__ = Fitness.numpoints.__doc__
 
 
-class VectorPDF(object):
+class VectorPDF:
     """
     Build a model from a function.
 
@@ -168,8 +169,11 @@ class VectorPDF(object):
         self._function = fn
         self._labels = labels
         self._plot = plot
+        self.name = name if name else "VectorPDF"
 
     def parameters(self):
+        # Note: need to refetch the pars from self in case the user assigned
+        # model.par = new_parameter after creating the model.
         return dict((k, getattr(self, k)) for k in self._labels)
     parameters.__doc__ = Fitness.parameters.__doc__
 

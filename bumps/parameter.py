@@ -219,7 +219,7 @@ class SupportsPrior:
                 prior = mbounds.Bounded(lo, hi)
         else:
             raise ValueError("no distribution found matching %s" % (str(distribution)))
-        
+
         self.prior = prior
 
 
@@ -314,7 +314,7 @@ class Parameter(ValueProtocol, SupportsPrior):
     distribution: DistributionType = field(default_factory=Uniform)
     discrete: bool = False
     tags: List[str] = field(default_factory=list)
-    
+
     _fixed: bool
 
     def parameters(self):
