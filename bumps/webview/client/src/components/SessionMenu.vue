@@ -79,7 +79,7 @@ async function readSession(readOnly: boolean) {
   if (fileBrowser.value) {
     const settings: FileBrowserSettings = {
       title: "Read Session",
-      callback: (pathlist, filename) => {
+      callback: async (pathlist, filename) => {
         props.socket.asyncEmit("load_session", pathlist, filename, readOnly);
       },
       show_name_input: true,

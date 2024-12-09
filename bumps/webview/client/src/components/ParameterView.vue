@@ -4,8 +4,8 @@ import TagFilter from "./ParameterTagFilter.vue";
 import type { AsyncSocket } from "../asyncSocket.ts";
 import { setupDrawLoop } from "../setupDrawLoop";
 
-const title = "Parameters";
-const active_parameter = ref("");
+// const title = "Parameters";
+// const active_parameter = ref("");
 
 const props = defineProps<{
   socket: AsyncSocket;
@@ -28,7 +28,7 @@ type parameter_info = {
   active?: boolean;
 };
 
-const parameters = ref<parameter_info[]>([]);
+// const parameters = ref<parameter_info[]>([]);
 const parameters_local = ref<parameter_info[]>([]);
 const tag_filter = ref<typeof TagFilter>();
 
@@ -43,8 +43,8 @@ async function fetch_and_draw() {
   pl.splice(payload.length);
 }
 
-async function editItem(ev, item_name: "min" | "max" | "value", index: number) {
-  const new_value = ev.target.innerText;
+async function editItem(event: FocusEvent, item_name: "min" | "max" | "value", index: number) {
+  const new_value = (event.target as HTMLElement).innerText;
   if (validate_numeric(new_value)) {
     props.socket.asyncEmit("set_parameter", parameters_local.value[index].id, item_name, new_value);
   }
@@ -57,13 +57,13 @@ function validate_numeric(value: string, allow_inf: boolean = false) {
   return !Number.isNaN(Number(value));
 }
 
-async function onInactive(param) {
-  param.active = false;
-  fetch_and_draw();
-}
+// async function onInactive(param) {
+//   param.active = false;
+//   fetch_and_draw();
+// }
 
-async function setFittable(ev, index) {
-  console.log(ev, ev.target, index, parameters_local.value[index].fixed);
+async function setFittable(event: MouseEvent, index: number) {
+  console.log(event, event.target, index, parameters_local.value[index].fixed);
   const parameter = parameters_local.value[index];
   props.socket.asyncEmit("set_parameter", parameter.id, "fixed", !parameter.fixed);
 }
@@ -109,8 +109,8 @@ async function setFittable(ev, index) {
         <td
           :contenteditable="param.writable"
           spellcheck="false"
-          @blur="editItem($event, 'value', index)"
-          @keydown.enter="$event?.target?.blur()"
+          @blur="(e) => editItem(e, 'value', index)"
+          @keydown.enter="(e) => (e.target as HTMLElement).blur()"
         >
           {{ param.value_str }}
         </td>

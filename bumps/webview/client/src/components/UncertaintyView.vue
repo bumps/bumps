@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
+// @ts-ignore - plotly.js does not define Bar as type
 import Bar from "plotly.js/lib/bar";
 import * as Plotly from "plotly.js/lib/core";
 import { v4 as uuidv4 } from "uuid";
@@ -47,7 +48,7 @@ async function fetch_and_draw(latest_timestamp: string): Promise<void> {
   delete layout?.width;
   delete layout?.height;
   const config = { responsive: true, scrollZoom: true, modeBarButtonsToAdd: [SVGDownloadButton] };
-  apply_label_visibility(layout, show_labels.value);
+  apply_label_visibility(layout as Plotly.Layout, show_labels.value);
   await Plotly.react(plot_div_id.value, [...data], layout, config);
 }
 
@@ -55,11 +56,11 @@ function apply_label_visibility(layout: Plotly.Layout, visible: boolean) {
   layout.showlegend = visible;
   for (let item_name in layout) {
     if (item_name.startsWith("xaxis")) {
-      layout[item_name].showticklabels = visible;
+      (layout as any)[item_name].showticklabels = visible;
     }
   }
   for (let annotation of layout?.annotations ?? []) {
-    if (annotation?.name === "label") {
+    if (annotation?.text === "label") {
       annotation.visible = visible;
     }
   }

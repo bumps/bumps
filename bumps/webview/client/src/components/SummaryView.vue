@@ -44,18 +44,13 @@ async function fetch_and_draw() {
   parameters_localstr.value.splice(payload.length);
 }
 
-async function onMove(param_index) {
-  // props.socket.volatile.emit('set_parameter01', parameters.value[param_index].name, parameters_local01.value[param_index]);
-  props.socket.asyncEmit(
-    "set_parameter",
-    parameters.value[param_index].id,
-    "value01",
-    parameters_local01.value[param_index]
-  );
+async function onMove(index: number) {
+  // props.socket.volatile.emit('set_parameter01', parameters.value[index].name, parameters_local01.value[index]);
+  props.socket.asyncEmit("set_parameter", parameters.value[index].id, "value01", parameters_local01.value[index]);
 }
 
-async function editItem(ev, item_name: "min" | "max" | "value", index: number) {
-  const new_value = ev.target.innerText;
+async function editItem(event: FocusEvent, item_name: "min" | "max" | "value", index: number) {
+  const new_value = (event.target as HTMLElement).innerText;
   if (validate_numeric(new_value)) {
     props.socket.asyncEmit("set_parameter", parameters.value[index].id, item_name, new_value);
   }
@@ -68,13 +63,13 @@ function validate_numeric(value: string, allow_inf: boolean = false) {
   return !Number.isNaN(Number(value));
 }
 
-async function scrollParam(ev, index) {
-  const sign = Math.sign(ev.deltaY);
+async function scrollParam(event: WheelEvent, index: number) {
+  const sign = Math.sign(event.deltaY);
   parameters_local01.value[index] -= 0.01 * sign;
   props.socket.asyncEmit("set_parameter", parameters.value[index].id, "value01", parameters_local01.value[index]);
 }
 
-async function onInactive(param) {
+async function onInactive(param: parameter_info) {
   param.active = false;
   fetch_and_draw();
 }
@@ -128,7 +123,7 @@ async function onInactive(param) {
           contenteditable="true"
           spellcheck="false"
           @blur="editItem($event, 'value', index)"
-          @keydown.enter="$event?.target?.blur()"
+          @keydown.enter="(e) => (e.target as HTMLElement).blur()"
         >
           {{ parameters_localstr[index] }}
         </td>
@@ -137,7 +132,7 @@ async function onInactive(param) {
           contenteditable="true"
           spellcheck="false"
           @blur="editItem($event, 'min', index)"
-          @keydown.enter="$event?.target?.blur()"
+          @keydown.enter="(e) => (e.target as HTMLElement).blur()"
         >
           {{ parameter.min_str }}
         </td>
@@ -146,7 +141,7 @@ async function onInactive(param) {
           contenteditable="true"
           spellcheck="false"
           @blur="editItem($event, 'max', index)"
-          @keydown.enter="$event?.target?.blur()"
+          @keydown.enter="(e) => (e.target as HTMLElement).blur()"
         >
           {{ parameter.max_str }}
         </td>
