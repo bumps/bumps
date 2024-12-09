@@ -10,17 +10,17 @@ repos:
     hooks:
       - id: check-added-large-files
         args: [--maxkb=8192]
-        exclude: bumps/dream/Random123
+        exclude: bumps/dream/random123
       - id: check-merge-conflict
       - id: check-yaml
         args: [--allow-multiple-documents]
       - id: end-of-file-fixer
         exclude: |
-          bumps/dream/Random123
+          bumps/dream/random123
           bumps/webview/client/src
       - id: trailing-whitespace
         exclude: |
-          bumps/dream/Random123
+          bumps/dream/random123
           bumps/webview/client/src
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.6.1
@@ -30,7 +30,7 @@ repos:
       - id: ruff-format
         args: [--config=pyproject.toml]
         exclude: |
-          bumps/dream/Random123
+          bumps/dream/random123
           bumps/webview/client/src
 
 ci:
