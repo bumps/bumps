@@ -14,11 +14,17 @@ def compile_dll(nthreads=None, use_openmp=True, dry_run=False):
 
     os.chdir(Path(__file__).parent)
     openmp_flag = "-fopenmp" if use_openmp else ""
-    flags = f"-I ./Random123/include/ -O2 {openmp_flag} -shared -lm -o _compiled.so -fPIC -DMAX_THREADS={nthreads}"
+    flags = f"-I ./random123/include/ -O2 {openmp_flag} -shared -lm -o _compiled.so -fPIC -DMAX_THREADS={nthreads}"
     compile_command = f"{CC} compiled.c {flags}"
     if dry_run:
         print(f"Would compile: {compile_command}")
         return False
+
+    if not (Path(__file__).parent / "random123" / "include" / "Random123").exists():
+        print("""\
+        Random123 not found in the expected location: clone it with the following command:
+        git clone --branch v1.14.0 https://github.com/DEShawResearch/random123 bumps/dream/random123
+        """)
 
     print(f"Compiling: {compile_command}")
     os.system(compile_command)
@@ -44,10 +50,16 @@ def main():
         help="Number of threads to compile for, use 0 for all available cores, default is 64",
     )
     parser.add_argument(
-        "--no-openmp", action="store_true", help="Disable OpenMP (e.g. for clang, where it is not supported)"
+        "--no-openmp",
+        action="store_true",
+        help="Disable OpenMP (e.g. for clang, where it is not supported)",
     )
     parser.add_argument("--remove", action="store_true", help="Remove the compiled dll")
-    parser.add_argument("--dry-run", action="store_true", help="Print the compile command without running it")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print the compile command without running it",
+    )
     args = parser.parse_args()
     if args.remove:
         remove_dll()

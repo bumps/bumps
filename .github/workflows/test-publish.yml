@@ -41,11 +41,13 @@ jobs:
       - name: Create the wheel
         run: python -m build
 
-      - name: Upload the wheel artifact
+      - name: Upload the wheel and source distribution artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: wheel
-          path: dist/bumps-*-py3-none-any.whl
+          name: artifacts
+          path: |
+            dist/bumps-*-py3-none-any.whl
+            dist/bumps-*.tar.gz
 
   # Test the wheel on different platforms, test webview, and check docs build
   test:
@@ -75,7 +77,7 @@ jobs:
       - name: Download the wheel
         uses: actions/download-artifact@v4
         with:
-          name: wheel
+          name: artifacts
           path: dist
 
       - name: Install the wheel for Windows configuration
@@ -123,11 +125,10 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - name: Download wheel
+      - name: Retrieve all artifacts
         uses: actions/download-artifact@v4
-        with:
-          name: wheel
-          path: dist
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: artifacts/dist/

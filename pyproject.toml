@@ -63,7 +63,10 @@ build-backend = "setuptools.build_meta"
 
 [tool.ruff]
 line-length = 120
-extend-exclude = ["bumps/webview/client", "doc/pylit.py"]
+extend-exclude = [
+    "bumps/webview/client/*",
+    "doc/pylit.py",
+]
 
 [tool.ruff.lint.per-file-ignores]
 "bumps/names.py" = ["F401"] # Unused import

@@ -27,7 +27,7 @@ jobs:
       with:
         python-version: ${{ matrix.config.py }}
 
-    - uses: conda-incubator/setup-miniconda@v2
+    - uses: conda-incubator/setup-miniconda@v3
       with:
         auto-update-conda: true
         python-version: ${{ matrix.config.py }}
@@ -44,7 +44,7 @@ jobs:
     # See the following for how to upload to a release
     #  https://eugene-babichenko.github.io/blog/2020/05/09/github-actions-cross-platform-auto-releases/
     - name: Archive artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: artifacts
         path: |
@@ -73,7 +73,7 @@ jobs:
         cd self_extracting && 7z a -mhe=on -mx=1 -sfx7z.sfx "../Bumps-$branch_name-self-extracting.exe" bumps*/
 
     - name: Update release assets and text
-      uses: actions/github-script@v6
+      uses: actions/github-script@v7
       with:
         github-token: ${{secrets.GITHUB_TOKEN}}
         script: |
