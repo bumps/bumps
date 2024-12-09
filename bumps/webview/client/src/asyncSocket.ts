@@ -4,7 +4,6 @@ declare module "socket.io-client" {
   //
   interface Socket {
     asyncEmit(ev: string, ...args: any[]): Promise<any>;
-    syncFS(): Promise<void>;
     // public emit(event: string, ...args: any[]): void;
   }
 }

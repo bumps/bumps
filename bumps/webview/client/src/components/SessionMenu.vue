@@ -100,7 +100,6 @@ async function saveSessionCopy() {
       title: "Save Session (Copy)",
       callback: async (pathlist, filename) => {
         await props.socket.asyncEmit("save_session_copy", pathlist, filename);
-        await props.socket.syncFS();
       },
       show_name_input: true,
       name_input_label: "Filename",
@@ -133,7 +132,6 @@ async function setOutputFile(enable_autosave = true, immediate_save = false) {
         }
         if (immediate_save) {
           await props.socket.asyncEmit("save_session");
-          await props.socket.syncFS();
         }
       },
       show_name_input: true,
