@@ -33,6 +33,7 @@ using::
     resources.get_path('reload.png')
 
 """
+
 import sys
 import os
 import glob
@@ -61,6 +62,7 @@ class Resources(object):
         directory.  The environment variable overrides other methods of
         accessing the resources except running directly from the source tree.
     """
+
     def __init__(self, package, patterns, datadir, check_file, env=None):
         self.package = package
         self.patterns = patterns
@@ -80,7 +82,7 @@ class Resources(object):
                   package_data=package_data(),
                   ...)
         """
-        return { self.package: list(self.patterns) }
+        return {self.package: list(self.patterns)}
 
     def data_files(self):
         """
@@ -103,7 +105,7 @@ class Resources(object):
         path = self.resource_dir()
         files = []
         for p in patterns:
-            files += glob.glob(os.path.join(path,p))
+            files += glob.glob(os.path.join(path, p))
         return files
 
     def resource_dir(self):
@@ -128,30 +130,29 @@ class Resources(object):
         # is specified, then the resources have to be there, or the program fails.
         if self.env and self.env in os.environ:
             if not self._cache_resource_path(os.environ[self.env]):
-                raise RuntimeError('Environment %s not a directory'%self.env)
+                raise RuntimeError("Environment %s not a directory" % self.env)
             return self._cached_path
 
         # Check for data next to exe/zip file.
         exepath = os.path.dirname(sys.executable)
-        path = os.path.join(exepath,self.datadir)
+        path = os.path.join(exepath, self.datadir)
         if self._cache_resource_path(path):
             return self._cached_path
 
         # py2app puts the data in Contents/Resources, but the executable
         # is in Contents/MacOS.
-        path = os.path.join(exepath,'..','Resources',self.datadir)
+        path = os.path.join(exepath, "..", "Resources", self.datadir)
         if self._cache_resource_path(path):
             return self._cached_path
 
-        raise RuntimeError('Could not find the GUI data files')
+        raise RuntimeError("Could not find the GUI data files")
 
     def _cache_resource_path(self, path):
-        if os.path.exists(os.path.join(path,self.check_file)):
+        if os.path.exists(os.path.join(path, self.check_file)):
             self._cached_path = path
             return True
         else:
             return False
 
     def get_path(self, filename):
-        return os.path.join(self.resource_dir(),filename)
-
+        return os.path.join(self.resource_dir(), filename)

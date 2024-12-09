@@ -43,6 +43,8 @@ appear. For example, for the normal distribution, x ~ N(3, 0.8), use:
 
     bumps --fit=dream --entropy  --store=/tmp/T1 check_entropy.py norm 3 0.2
 """
+
+
 def _mu_sigma(mu, sigma):
     sigma = np.asarray(sigma)
     if len(sigma.shape) == 1:
@@ -51,9 +53,11 @@ def _mu_sigma(mu, sigma):
         mu = np.zeros(sigma.shape[0])
     return mu, sigma
 
+
 def mvn(sigma, mu=None):
     mu, sigma = _mu_sigma(mu, sigma)
     return multivariate_normal(mean=mu, cov=sigma)
+
 
 def mvskewn(alpha, sigma, mu=None):
     sigma = np.asarray(sigma)
@@ -63,20 +67,23 @@ def mvskewn(alpha, sigma, mu=None):
     Dk = [distributions.skewnorm(alpha, m, s) for m, s in zip(mu, sigma)]
     return Joint(Dk)
 
+
 def mvt(df, sigma, mu=None):
     mu, sigma = _mu_sigma(mu, sigma)
     return MultivariateT(mu=mu, sigma=sigma, df=df)
+
 
 def mvcauchy(sigma, mu=None):
     mu, sigma = _mu_sigma(mu, sigma)
     return MultivariateT(mu=mu, sigma=sigma, df=1)
 
+
 DISTS = {
-    'mvn': mvn,
-    'mvt': mvt,
-    'mvskewn': mvskewn,
-    'mvcauchy': mvcauchy,
-    'mvu': Box,
+    "mvn": mvn,
+    "mvt": mvt,
+    "mvskewn": mvskewn,
+    "mvcauchy": mvcauchy,
+    "mvu": Box,
 }
 if len(sys.argv) > 1:
     dist_name = sys.argv[1]
@@ -86,10 +93,14 @@ if len(sys.argv) > 1:
     if D_class is None:
         print("unknown distribution " + dist_name)
         sys.exit()
-    args = [[[float(vjk) for vjk in vj.split(',')] for vj in v.split(',')] if ';' in v
-            else [float(vj) for vj in v.split(',')] if ',' in v
-            else float(v)
-            for v in sys.argv[2:]]
+    args = [
+        [[float(vjk) for vjk in vj.split(",")] for vj in v.split(",")]
+        if ";" in v
+        else [float(vj) for vj in v.split(",")]
+        if "," in v
+        else float(v)
+        for v in sys.argv[2:]
+    ]
     D = D_class(*args)
 else:
     print(USAGE)
@@ -102,27 +113,30 @@ else:
 # fitting parameter.  This model file will not work for multivariate
 # distributions.
 
+
 def D_nllf(x):
     return -D.logpdf(x)
-dim = getattr(D, 'dim', 1)
+
+
+dim = getattr(D, "dim", 1)
 if dim == 1:
     M = PDF(D_nllf, x=0.9)
     M.x.range(-inf, inf)
 else:
     M = VectorPDF(D_nllf, np.ones(dim))
     for k in range(dim):
-        getattr(M, 'p'+str(k)).range(-inf, inf)
+        getattr(M, "p" + str(k)).range(-inf, inf)
 
 if dist_name == "mvskewn":
     for k in range(dim):
-        getattr(M, 'p'+str(k)).value = D.distributions[k].mean()
+        getattr(M, "p" + str(k)).value = D.distributions[k].mean()
 
 problem = FitProblem(M)
 
 # Before fitting, print the expected entropy from the fit.
 
 entropy = D.entropy()
-print("*** Expected entropy: %.4f bits %.4f nats"%(entropy/log(2), entropy))
+print("*** Expected entropy: %.4f bits %.4f nats" % (entropy / log(2), entropy))
 
 # To exercise the entropy calculator, try fitting some non-normal
 # distributions:

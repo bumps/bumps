@@ -81,8 +81,8 @@ Based on http://code.activestate.com/recipes/66012/
 import sys, os, time, errno
 from signal import SIGTERM
 
-UMASK = 0     # Default to completely private files
-WORKDIR = "/" # Default to running in '/'
+UMASK = 0  # Default to completely private files
+WORKDIR = "/"  # Default to running in '/'
 MAXFD = 1024  # Maximum number of file descriptors
 
 if hasattr(os, "devnull"):
@@ -98,6 +98,7 @@ else:
 # removed.  It's therefore recommended that child branches of a fork()
 # and the parent branch(es) of a daemon use _exit().
 exit = os._exit
+
 
 def _close_all():
     """
@@ -129,19 +130,21 @@ def _close_all():
     # that can be opened by this process.  If there is not limit on the
     # resource, use the default value.
 
-    import resource              # Resource usage information.
+    import resource  # Resource usage information.
+
     maxfd = resource.getrlimit(resource.RLIMIT_NOFILE)[1]
     if maxfd == resource.RLIM_INFINITY:
         maxfd = MAXFD
 
     # Iterate through and close all the file descriptors
     for fd in range(0, maxfd):
-        try: os.close(fd)
-        except OSError: pass # (ignored) fd wasn't open to begin with
+        try:
+            os.close(fd)
+        except OSError:
+            pass  # (ignored) fd wasn't open to begin with
 
 
-def daemonize(stdout=REDIRECT_TO, stderr=None, stdin=REDIRECT_TO,
-              pidfile=None, startmsg='started with pid %s'):
+def daemonize(stdout=REDIRECT_TO, stderr=None, stdin=REDIRECT_TO, pidfile=None, startmsg="started with pid %s"):
     """
     This forks the current process into a daemon.
 
@@ -162,14 +165,14 @@ def daemonize(stdout=REDIRECT_TO, stderr=None, stdin=REDIRECT_TO,
     try:
         pid = os.fork()
         if pid > 0:
-            exit(0) # Exit first parent.
+            exit(0)  # Exit first parent.
     except OSError as e:
         raise Exception("[%d] %s" % (e.errno, e.strerror))
 
     # Decouple from parent environment.
     os.chdir(WORKDIR)  # Make sure we are not holding a directory open
-    os.umask(UMASK)    # Clear the inherited mask
-    os.setsid()        # Make this the session leader
+    os.umask(UMASK)  # Clear the inherited mask
+    os.setsid()  # Make this the session leader
 
     # Fork a second child and exit immediately to prevent zombies.  This
     # causes the second child process to be orphaned, making the init
@@ -181,14 +184,15 @@ def daemonize(stdout=REDIRECT_TO, stderr=None, stdin=REDIRECT_TO,
     # a controlling terminal.
     try:
         pid = os.fork()
-        if pid > 0: exit(0) # Exit second parent.
+        if pid > 0:
+            exit(0)  # Exit second parent.
     except OSError as e:
         raise Exception("[%d] %s" % (e.errno, e.strerror))
 
     # Save pid
     pid = str(os.getpid())
     if pidfile:  # Make sure pidfile is written cleanly before close_all
-        with open(pidfile, 'w+') as fd:
+        with open(pidfile, "w+") as fd:
             fd.write("%s\n" % pid)
             fd.flush()
 
@@ -199,7 +203,7 @@ def daemonize(stdout=REDIRECT_TO, stderr=None, stdin=REDIRECT_TO,
     sys.stderr.flush()
 
     # Close all but the standard file descriptors.
-    #_close_all()  # hmmm...interferes with file output selection
+    # _close_all()  # hmmm...interferes with file output selection
 
     # Redirect standard file descriptors.
     if not stderr:
@@ -211,14 +215,16 @@ def daemonize(stdout=REDIRECT_TO, stderr=None, stdin=REDIRECT_TO,
     os.dup2(fout.fileno(), 1)
     os.dup2(ferr.fileno(), 2)
 
+
 def readpid(pidfile):
     try:
-        pf  = file(pidfile,'r')
+        pf = file(pidfile, "r")
         pid = int(pf.read().strip())
         pf.close()
     except IOError:
         pid = None
     return pid
+
 
 def process_is_running(pid):
     """
@@ -236,8 +242,8 @@ def process_is_running(pid):
     except OSError as err:
         return err.errno == errno.EPERM
 
-def startstop(stdout=REDIRECT_TO, stderr=None, stdin=REDIRECT_TO,
-              pidfile='pid.txt', startmsg = 'started with pid %s' ):
+
+def startstop(stdout=REDIRECT_TO, stderr=None, stdin=REDIRECT_TO, pidfile="pid.txt", startmsg="started with pid %s"):
     """
     Process start/stop/restart/status/run commands.
 
@@ -247,10 +253,10 @@ def startstop(stdout=REDIRECT_TO, stderr=None, stdin=REDIRECT_TO,
     if len(sys.argv) > 1:
         action = sys.argv[1]
         pid = readpid(pidfile)
-        if action == 'stop' or (action == 'restart' and pid):
+        if action == "stop" or (action == "restart" and pid):
             if not pid:
-                msg = "Could not stop, pid file '%s' missing."%pidfile
-                sys.stderr.write('%s\n'%msg)
+                msg = "Could not stop, pid file '%s' missing." % pidfile
+                sys.stderr.write("%s\n" % msg)
                 sys.exit(1)
 
             try:
@@ -261,52 +267,53 @@ def startstop(stdout=REDIRECT_TO, stderr=None, stdin=REDIRECT_TO,
                 err = str(err)
                 if err.find("No such process") > 0:
                     os.remove(pidfile)
-                    if 'stop' == action:
+                    if "stop" == action:
                         sys.exit(0)
                     # Fall through to the start action
                     pid = None
                 else:
                     raise  # Reraise if it is not a "No such process" error
 
-        if action in ['start', 'restart', 'run']:
+        if action in ["start", "restart", "run"]:
             if pid:
-                msg = "Start aborted since pid file '%s' exists."%pidfile
-                sys.stderr.write('%s\n'%msg)
+                msg = "Start aborted since pid file '%s' exists." % pidfile
+                sys.stderr.write("%s\n" % msg)
                 sys.exit(1)
             # Only return when we are ready to run the main program
             # Otherwise use sys.exit to end.
-            if action != 'run':
-                daemonize(stdout=stdout,stderr=stderr,stdin=stdin,
-                          pidfile=pidfile,startmsg=startmsg)
+            if action != "run":
+                daemonize(stdout=stdout, stderr=stderr, stdin=stdin, pidfile=pidfile, startmsg=startmsg)
             return
 
-        if action  == 'status':
+        if action == "status":
             if not pid:
-                status='stopped'
+                status = "stopped"
             elif not process_is_running(pid):
-                status="failed, but pid file '%s' still exists."%pidfile
+                status = "failed, but pid file '%s' still exists." % pidfile
             else:
-                status='running with pid %d'%pid
-            sys.stderr.write('Status: %s\n'%status)
+                status = "running with pid %d" % pid
+            sys.stderr.write("Status: %s\n" % status)
             sys.exit(0)
 
     print("usage: %s start|stop|restart|status|run" % sys.argv[0])
     sys.exit(2)
+
 
 def test():
     """
     This is an example main function run by the daemon.
     This prints a count and timestamp once per second.
     """
-    sys.stdout.write ('Message to stdout...\n')
-    sys.stderr.write ('Message to stderr...\n')
+    sys.stdout.write("Message to stdout...\n")
+    sys.stderr.write("Message to stderr...\n")
     c = 0
     while 1:
-        sys.stdout.write ('%d: %s\n' % (c, time.ctime(time.time())) )
+        sys.stdout.write("%d: %s\n" % (c, time.ctime(time.time())))
         sys.stdout.flush()
         c = c + 1
         time.sleep(1)
 
+
 if __name__ == "__main__":
-    startstop(stdout='/tmp/daemon.log', pidfile='/tmp/daemon.pid')
+    startstop(stdout="/tmp/daemon.log", pidfile="/tmp/daemon.pid")
     test()

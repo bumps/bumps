@@ -4,6 +4,7 @@ Signals changes to the model that need to be reflected in the views.
 In practice, the main window is the only listener, and it forwards the
 messages to the appropriate views.
 """
+
 import wx
 import wx.py.dispatcher
 from wx.py.dispatcher import send
@@ -17,7 +18,7 @@ def model_new(model):
     """
     Inform all views that a new model is available.
     """
-    wx.CallAfter(send, 'model.new', model=model)
+    wx.CallAfter(send, "model.new", model=model)
 
 
 def update_model(model, dirty=True):
@@ -28,10 +29,12 @@ def update_model(model, dirty=True):
     model.model_reset()  #
     if dirty:
         model.model_update()
-    wx.CallAfter(send, 'model.update_structure', model=model)
+    wx.CallAfter(send, "model.update_structure", model=model)
 
 
 _DELAYED_SIGNAL = {}
+
+
 def update_parameters(model, delay=100):
     """
     Inform all views that the model has changed.  Note that if the model
@@ -51,11 +54,12 @@ def update_parameters(model, delay=100):
     else:
         # activate a new signal, and call when back at GUI loop
         def _send_signal():
-            #print "sending update parameters",model
+            # print "sending update parameters",model
             del _DELAYED_SIGNAL[model]
-            wx.CallAfter(send, 'model.update_parameters', model=model)
+            wx.CallAfter(send, "model.update_parameters", model=model)
+
         _DELAYED_SIGNAL[model] = wx.CallLater(delay, _send_signal)
 
 
 def log_message(message):
-    wx.CallAfter(send, 'log', message=message)
+    wx.CallAfter(send, "log", message=message)

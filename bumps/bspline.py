@@ -4,9 +4,10 @@ BSpline calculator.
 
 Given a set of knots, compute the cubic B-spline interpolation.
 """
+
 from __future__ import division, print_function
 
-__all__ = ['bspline', 'pbs']
+__all__ = ["bspline", "pbs"]
 
 import numpy as np
 from numpy import maximum as max, minimum as min
@@ -32,16 +33,11 @@ def pbs(x, y, t, clamp=True, parametric=True):
     """
     x = list(sorted(x))
     knot = np.hstack((0, 0, np.linspace(0, 1, len(y)), 1, 1))
-    cx = np.hstack((x[0], x[0], x[0], (2 * x[0] + x[1]) / 3,
-                    x[1:-1], (2 * x[-1] + x[-2]) / 3, x[-1]))
+    cx = np.hstack((x[0], x[0], x[0], (2 * x[0] + x[1]) / 3, x[1:-1], (2 * x[-1] + x[-2]) / 3, x[-1]))
     if clamp:
         cy = np.hstack((y[0], y[0], y[0], y, y[-1]))
     else:
-        cy = np.hstack((y[0], y[0], y[0],
-                        y[0] + (y[1] - y[0]) / 3,
-                        y[1:-1],
-                        y[-1] + (y[-2] - y[-1]) / 3,
-                        y[-1]))
+        cy = np.hstack((y[0], y[0], y[0], y[0] + (y[1] - y[0]) / 3, y[1:-1], y[-1] + (y[-2] - y[-1]) / 3, y[-1]))
 
     if parametric:
         return _bspline3(knot, cx, t), _bspline3(knot, cy, t)
@@ -49,7 +45,7 @@ def pbs(x, y, t, clamp=True, parametric=True):
     # Find parametric t values corresponding to given z values
     # First try a few newton steps
     xt = np.interp(t, x, np.linspace(0, 1, len(x)))
-    with np.errstate(all='ignore'):
+    with np.errstate(all="ignore"):
         for _ in range(6):
             pt, dpt = _bspline3(knot, cx, xt, nderiv=1)
             xt -= (pt - t) / dpt
@@ -88,10 +84,7 @@ def bspline(y, xt, clamp=True):
     if clamp:
         cy = np.hstack(([y[0]] * 3, y, y[-1]))
     else:
-        cy = np.hstack((y[0], y[0], y[0],
-                        y[0] + (y[1] - y[0]) / 3,
-                        y[1:-1],
-                        y[-1] + (y[-2] - y[-1]) / 3, y[-1]))
+        cy = np.hstack((y[0], y[0], y[0], y[0] + (y[1] - y[0]) / 3, y[1:-1], y[-1] + (y[-2] - y[-1]) / 3, y[-1]))
     return _bspline3(knot, cy, xt)
 
 
@@ -167,7 +160,7 @@ def _bspline3(knot, control, t, nderiv=0):
         return f, df, d2f, d3f
 
 
-'''
+"""
 def bspline_control(y, clamp=True):
     return _find_control(y, clamp=clamp)
 
@@ -193,16 +186,18 @@ def _find_control(v, clamp=True):
     b = np.hstack([v[0], bl, v[1:n - 1], br, v[-1]])
     x = solve_banded((1, 1), A, b)
     return x  # x[1:-1]
-'''
+"""
 
 # ===========================================================================
 # test code
+
 
 def speed_check():
     """
     Print the time to evaluate 400 points on a 7 knot spline.
     """
     import time
+
     x = np.linspace(0, 1, 7)
     x[1], x[-2] = x[2], x[-3]
     y = [9, 11, 2, 3, 8, 0, 2]
@@ -219,17 +214,16 @@ def _check(expected, got, tol):
 
     If *expected* is never zero, use relative error for tolerance.
     """
-    relative = (np.isscalar(expected) and expected != 0) \
-        or (not np.isscalar(expected) and all(expected != 0))
+    relative = (np.isscalar(expected) and expected != 0) or (not np.isscalar(expected) and all(expected != 0))
     if relative:
         norm = np.linalg.norm((expected - got) / expected)
     else:
         norm = np.linalg.norm(expected - got)
     if norm >= tol:
         msg = [
-            "expected %s"%str(expected),
-            "got %s"%str(got),
-            "tol %s norm %s"%(tol, norm),
+            "expected %s" % str(expected),
+            "got %s" % str(got),
+            "tol %s norm %s" % (tol, norm),
         ]
         raise ValueError("\n".join(msg))
 
@@ -241,8 +235,8 @@ def _derivs(x, y):
     # difference formula
     return (y[1] - y[0]) / (x[1] - x[0]), (y[-1] - y[-2]) / (x[-1] - x[-2])
     # 5-point difference formula
-    #left = (y[0]-8*y[1]+8*y[3]-y[4]) / 12 / (x[1]-x[0])
-    #right = (y[-5]-8*y[-4]+8*y[-2]-y[-1]) / 12 / (x[-1]-x[-2])
+    # left = (y[0]-8*y[1]+8*y[3]-y[4]) / 12 / (x[1]-x[0])
+    # right = (y[-5]-8*y[-4]+8*y[-2]-y[-1]) / 12 / (x[-1]-x[-2])
     # return left, right
 
 
@@ -250,15 +244,26 @@ def test():
     """bspline tests"""
     h = 1e-10
     t = np.linspace(0, 1, 100)
-    dt = np.array([0, h, 2*h, 3*h, 4*h,
-                   1-4*h, 1-3*h, 1-2*h, 1-h, 1])
+    dt = np.array([0, h, 2 * h, 3 * h, 4 * h, 1 - 4 * h, 1 - 3 * h, 1 - 2 * h, 1 - h, 1])
     y = [9, 11, 2, 3, 8, 0, 2]
     n = len(y)
     xeq = np.linspace(0, 1, n)
     x = xeq + 0
     x[0], x[-1] = (x[0] + x[1]) / 2, (x[-2] + x[-1]) / 2
-    dx = np.array([x[0], x[0] + h, x[0] + 2*h, x[0] + 3*h, x[0] + 4*h,
-                   x[-1]-4*h, x[-1]-3*h, x[-1]-2*h, x[-1]-h, x[-1]])
+    dx = np.array(
+        [
+            x[0],
+            x[0] + h,
+            x[0] + 2 * h,
+            x[0] + 3 * h,
+            x[0] + 4 * h,
+            x[-1] - 4 * h,
+            x[-1] - 3 * h,
+            x[-1] - 2 * h,
+            x[-1] - h,
+            x[-1],
+        ]
+    )
 
     # ==== Check that bspline mat:w
     # ches pbs with equally spaced x
@@ -347,7 +352,7 @@ def test():
     _check((y[-1] - y[-2]) / (x[-1] - x[-2]), right, 5e-4)
 
     # ==== Check interpolator
-    #yc = bspline_control(y)
+    # yc = bspline_control(y)
     # print("y",y)
     # print("p(yc)",bspline(yc,xeq))
 
@@ -355,36 +360,36 @@ def test():
 def demo():
     """Show bsline curve for a set of control points."""
     from pylab import linspace, subplot, plot, legend, show
-    #y = [9 ,6, 1, 3, 8, 4, 2]
-    #y = [9, 11, 13, 3, -2, 0, 2]
+
+    # y = [9 ,6, 1, 3, 8, 4, 2]
+    # y = [9, 11, 13, 3, -2, 0, 2]
     y = [9, 11, 2, 3, 8, 0]
-    #y = [9, 9, 1, 3, 8, 2, 2]
+    # y = [9, 9, 1, 3, 8, 2, 2]
     x = linspace(0, 1, len(y))
     t = linspace(x[0], x[-1], 400)
     subplot(211)
-    plot(t, bspline(y, t, clamp=False), '-.y',
-         label="unclamped bspline")  # bspline
+    plot(t, bspline(y, t, clamp=False), "-.y", label="unclamped bspline")  # bspline
     # bspline
-    plot(t, bspline(y, t, clamp=True), '-y', label="clamped bspline")
-    plot(sorted(x), y, ':oy', label="control points")
+    plot(t, bspline(y, t, clamp=True), "-y", label="clamped bspline")
+    plot(sorted(x), y, ":oy", label="control points")
     legend()
-    #left, right = _derivs(t, bspline(y, t, clamp=False))
-    #print(left, (y[1] - y[0]) / (x[1] - x[0]))
+    # left, right = _derivs(t, bspline(y, t, clamp=False))
+    # print(left, (y[1] - y[0]) / (x[1] - x[0]))
 
     subplot(212)
     xt, yt = pbs(x, y, t, clamp=False)
-    plot(xt, yt, '-.b', label="unclamped pbs")  # pbs
+    plot(xt, yt, "-.b", label="unclamped pbs")  # pbs
     xt, yt = pbs(x, y, t, clamp=True)
-    plot(xt, yt, '-b', label="clamped pbs")  # pbs
-    #xt,yt = pbs(x,y,t,clamp=True, parametric=True)
+    plot(xt, yt, "-b", label="clamped pbs")  # pbs
+    # xt,yt = pbs(x,y,t,clamp=True, parametric=True)
     # plot(xt,yt,'-g') # pbs
-    plot(sorted(x), y, ':ob', label="control points")
+    plot(sorted(x), y, ":ob", label="control points")
     legend()
     show()
 
 
 # B-Spline control point inverse function is not yet implemented
-'''
+"""
 def demo_interp():
     from pylab import linspace, plot, show
     x = linspace(0, 1, 7)
@@ -398,7 +403,7 @@ def demo_interp():
     fy = bspline(yc, t, clamp=True)
     plot(t, fy, '-.y')
     show()
-'''
+"""
 
 if __name__ == "__main__":
     # test()

@@ -28,6 +28,7 @@ so *S* < 1e-4 cannot be modeled reliably.
 Population size *h* is set to 20 per mode.  A good choice for number of
 sequences *k* is not yet determined.
 """
+
 from __future__ import print_function
 
 import numpy as np
@@ -35,45 +36,49 @@ from bumps.dream.model import MVNormal, Mixture
 from bumps.names import *
 from bumps.util import push_seed
 
+
 def make_model():
-    if 1: # Fixed layout of 5 minima
+    if 1:  # Fixed layout of 5 minima
         num_modes = 5
-        S = [0.1]*5
+        S = [0.1] * 5
         x = [-4, -2, 0, 2, 4]
         y = [2, -2, -4, 0, 4]
         I = [5, 2.5, 1, 4, 1]
-    else: # Semirandom layout of n minima
+    else:  # Semirandom layout of n minima
         num_modes = 40
-        S = [0.1]*num_modes
+        S = [0.1] * num_modes
         x = np.linspace(-10, 10, num_modes)
         y = np.random.permutation(x)
-        I = 2*np.linspace(-1, 1, num_modes)**2 + 1
+        I = 2 * np.linspace(-1, 1, num_modes) ** 2 + 1
 
     ## Take only the first two modes
     k = 2
     S, x, y, I = S[:k], x[:k], y[:k], I[:k]
-    #S[1] = 1; I[1] = 1; I[0] = 1
+    # S[1] = 1; I[1] = 1; I[0] = 1
     dims = 10
     centers = [x, y] + [np.random.permutation(x) for _ in range(2, dims)]
     centers = np.asarray(centers).T
-    args = [] # Sequence of density, weight, density, weight, ...
+    args = []  # Sequence of density, weight, density, weight, ...
     for mu_i, Si, Ii in zip(centers, S, I):
-        args.extend((MVNormal(mu_i, Si*np.eye(dims)), Ii))
+        args.extend((MVNormal(mu_i, Si * np.eye(dims)), Ii))
     model = Mixture(*args)
 
     if 1:
         from bumps.dream.entropy import GaussianMixture
+
         pairs = zip(args[0::2], args[1::2])
         triples = ((M.mu, M.sigma, I) for M, I in pairs)
         mu, sigma, weight = zip(*triples)
         D = GaussianMixture(weight, mu=mu, sigma=sigma)
-        print("*** Expected entropy: %s bits"%(D.entropy(N=100000)/np.log(2),))
+        print("*** Expected entropy: %s bits" % (D.entropy(N=100000) / np.log(2),))
 
     return model
+
 
 # Need reproducible models if we want to be able to resume a fit
 with push_seed(1):
     model = make_model()
+
 
 def plot2d(fn, args=None, range=(-10, 10)):
     """
@@ -87,32 +92,35 @@ def plot2d(fn, args=None, range=(-10, 10)):
     """
     if args is None:
         args = [0, 1]
+
     def plotter(p, view=None):
         import pylab
+
         if len(p) == 1:
             x = p[0]
             r = np.linspace(range[0], range[1], 400)
-            pylab.plot(x+r, [fn(v) for v in x+r])
+            pylab.plot(x + r, [fn(v) for v in x + r])
             pylab.xlabel(args[0])
-            pylab.ylabel("-log P(%s)"%args[0])
+            pylab.ylabel("-log P(%s)" % args[0])
         else:
             r = np.linspace(range[0], range[1], 20)
             x, y = p[args[0]], p[args[1]]
-            data = np.empty((len(r), len(r)), 'd')
-            for j, xj in enumerate(x+r):
-                for k, yk in enumerate(y+r):
+            data = np.empty((len(r), len(r)), "d")
+            for j, xj in enumerate(x + r):
+                for k, yk in enumerate(y + r):
                     p[args[0]], p[args[1]] = xj, yk
                     data[j, k] = fn(p)
-            pylab.pcolormesh(x+r, y+r, data)
-            pylab.plot(x, y, 'o', markersize=6,
-                       markerfacecolor='red', markeredgecolor='black',
-                       markeredgewidth=1, alpha=0.7)
+            pylab.pcolormesh(x + r, y + r, data)
+            pylab.plot(
+                x, y, "o", markersize=6, markerfacecolor="red", markeredgecolor="black", markeredgewidth=1, alpha=0.7
+            )
             pylab.xlabel(args[0])
             pylab.ylabel(args[1])
+
     return plotter
 
 
-M = VectorPDF(model.nllf, p=[0.]*dims, plot=plot2d(model.nllf))
+M = VectorPDF(model.nllf, p=[0.0] * dims, plot=plot2d(model.nllf))
 for _, p in M.parameters().items():
     p.range(-10, 10)
 problem = FitProblem(M)

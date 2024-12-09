@@ -26,6 +26,7 @@ This module implements InputListPanel, InputListDialog, and InputListValidator
 classes to provide general purpose mechanisms for obtaining and validating user
 input from a structured list of input fields.
 """
+
 from __future__ import print_function
 
 import wx
@@ -62,17 +63,15 @@ class ItemListValidator(Validator):
     - flag to indicate whether user input is required (True) or optional (False)
     """
 
-    def __init__(self, datatype='str', required=False):
+    def __init__(self, datatype="str", required=False):
         Validator.__init__(self)
         self.datatype = datatype
         self.required = required
-
 
     def Clone(self):
         # Every validator must implement the Clone() method that returns a
         # instance of the class as follows:
         return ItemListValidator(self.datatype, self.required)
-
 
     def Validate(self, win):
         """
@@ -105,9 +104,9 @@ class ItemListValidator(Validator):
                     self.value_alt = None
                 else:
                     self.value = self.value_alt = float(text)
-            elif self.datatype == 'str_alpha':
+            elif self.datatype == "str_alpha":
                 if len(text) == 0:
-                    self.value = ''
+                    self.value = ""
                     self.value_alt = None
                     if self.required:
                         raise RuntimeError("input required")
@@ -116,28 +115,28 @@ class ItemListValidator(Validator):
                         self.value = self.value_alt = str(text)
                     else:
                         raise ValueError("input must be alphabetic")
-            elif self.datatype == 'str_alnum':
+            elif self.datatype == "str_alnum":
                 if len(text) == 0:
-                    self.value = ''
+                    self.value = ""
                     self.value_alt = None
                 else:
                     if text.isalnum():
                         self.value = self.value_alt = str(text)
                     else:
                         raise ValueError("input must be alphanumeric")
-            elif self.datatype == 'str_id':
+            elif self.datatype == "str_id":
                 if len(text) == 0:
-                    self.value = ''
+                    self.value = ""
                     self.value_alt = None
                 else:
-                    temp = text.replace('_', 'a').replace('-','a')
+                    temp = text.replace("_", "a").replace("-", "a")
                     if temp.isalnum():
                         self.value = self.value_alt = str(text)
                     else:
                         raise ValueError("input must be alphanumeric, _, or -")
             else:  # For self.datatype of "str", "", or any unrecognized type.
                 if len(text) == 0:
-                    self.value = ''
+                    self.value = ""
                     self.value_alt = None
                 else:
                     self.value = self.value_alt = str(text)
@@ -146,26 +145,28 @@ class ItemListValidator(Validator):
                 raise RuntimeError("input required")
 
         except RuntimeError:
-            from traceback import print_exc; print_exc()
+            from traceback import print_exc
+
+            print_exc()
             text_ctrl.SetBackgroundColour(PALE_YELLOW)
             text_ctrl.SetFocus()
             text_ctrl.Refresh()
             return False
 
         except Exception:
-            from traceback import print_exc; print_exc()
+            from traceback import print_exc
+
+            print_exc()
             text_ctrl.SetBackgroundColour("PINK")
             text_ctrl.SetFocus()
             text_ctrl.Refresh()
             return False
 
         else:
-            text_ctrl.SetBackgroundColour(
-                wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW))
+            text_ctrl.SetBackgroundColour(wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW))
             text_ctrl.Refresh()
             self.TransferFromWindow()
             return True
-
 
     def TransferToWindow(self):
         # The parent of this class is responsible for setting the default value
@@ -173,23 +174,22 @@ class ItemListValidator(Validator):
         # instance.SetValue(), etc.).
         return True  # Default is False for failure
 
-
     def TransferFromWindow(self):
         # Data has already been transferred from the window and validated
         # in Validate(), so there is nothing useful to do here.
         return True  # Default is False for failure
 
-
     def GetValidatedInput(self):
         # Return the validated value or zero or blank for a null input.
         return self.value
-
 
     def GetValidatedInputAlt(self):
         # Return the validated value or None for a null input.
         return self.value_alt
 
-#==============================================================================
+
+# ==============================================================================
+
 
 class InputListPanel(ScrolledPanel):
     """
@@ -260,20 +260,21 @@ class InputListPanel(ScrolledPanel):
     See the AppTestFrame class for a comprehensive example.
     """
 
-    def __init__(self,
-                 parent,
-                 id       = wx.ID_ANY,
-                 pos      = wx.DefaultPosition,
-                 size     = wx.DefaultSize,
-                 style    = wx.TAB_TRAVERSAL,
-                 name     = "",
-                 itemlist = [],
-                 align    = False,
-                 fontsize = None
-                ):
+    def __init__(
+        self,
+        parent,
+        id=wx.ID_ANY,
+        pos=wx.DefaultPosition,
+        size=wx.DefaultSize,
+        style=wx.TAB_TRAVERSAL,
+        name="",
+        itemlist=[],
+        align=False,
+        fontsize=None,
+    ):
         ScrolledPanel.__init__(self, parent, id, pos, size, style, name)
 
-        #self.SetBackgroundColour(WINDOW_BKGD_COLOUR)
+        # self.SetBackgroundColour(WINDOW_BKGD_COLOUR)
         self.align = align
         self.itemlist = itemlist
         self.item_cnt = len(self.itemlist)
@@ -286,7 +287,7 @@ class InputListPanel(ScrolledPanel):
             font = self.GetFont()
             font.SetPointSize(fontsize)
             self.SetFont(font)
-        #print "Input List Panel font ptsize =", self.GetFont().GetPointSize()
+        # print "Input List Panel font ptsize =", self.GetFont().GetPointSize()
 
         # Specify the widget layout using sizers.
         main_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -306,16 +307,15 @@ class InputListPanel(ScrolledPanel):
         sect.append(self.item_cnt)
 
         # Place the items for each section in its own flex grid sizer.
-        for i in range(len(sect)-1):
-            j = sect[i]; k = sect[i+1] - 1
+        for i in range(len(sect) - 1):
+            j = sect[i]
+            k = sect[i + 1] - 1
             fg_sizer = self.add_items_to_sizer(j, k)
 
             # Add the flex grid sizer to the main sizer.
             if self.headers[j] is not None:  # self.headers[0] could be None
-                main_sizer.Add(self.headers[j], 0, border=10,
-                               flag=wx.EXPAND|wx.TOP|wx.LEFT|wx.RIGHT)
-            main_sizer.Add(fg_sizer, 0, border=10,
-                           flag=wx.EXPAND|wx.TOP|wx.LEFT|wx.RIGHT)
+                main_sizer.Add(self.headers[j], 0, border=10, flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT)
+            main_sizer.Add(fg_sizer, 0, border=10, flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT)
 
         # Finalize the sizer and establish the dimensions of the input box.
         self.SetSizer(main_sizer)
@@ -326,7 +326,6 @@ class InputListPanel(ScrolledPanel):
         self.SetupScrolling(scroll_x=True, scroll_y=True)
         self.InitDialog()
 
-
     def add_items_to_panel(self):
         """
         For each input item, create a header (optional), label, and input box
@@ -335,7 +334,9 @@ class InputListPanel(ScrolledPanel):
         same as the number of input boxes.
         """
 
-        self.headers = []; self.labels = []; self.inputs = []
+        self.headers = []
+        self.labels = []
+        self.inputs = []
         self.widest = 0
 
         for x in range(self.item_cnt):
@@ -345,28 +346,39 @@ class InputListPanel(ScrolledPanel):
             elif params == 5:
                 text, default, datatype, flags, plist = self.itemlist[x]
                 header = None
-            if default is None: default = ""  # display None as a null string
+            if default is None:
+                default = ""  # display None as a null string
 
             # Process the flags parameter.
             required = False
-            if 'R' in flags: required = True
+            if "R" in flags:
+                required = True
             editable = False
-            if 'E' in flags: editable = True
+            if "E" in flags:
+                editable = True
             combo = False
-            if 'C' in flags: combo = True
+            if "C" in flags:
+                combo = True
             line = False
-            if 'L' in flags: line = True
+            if "L" in flags:
+                line = True
             hdr = False
-            if 'H' in flags and header is not None: hdr = True
+            if "H" in flags and header is not None:
+                hdr = True
             if hdr:
                 delta_pts = 0
-                if '1' in flags: delta_pts = 1  # large
-                if '2' in flags: delta_pts = 2  # X-large
-                if '3' in flags: delta_pts = 3  # 2X-large
+                if "1" in flags:
+                    delta_pts = 1  # large
+                if "2" in flags:
+                    delta_pts = 2  # X-large
+                if "3" in flags:
+                    delta_pts = 3  # 2X-large
                 weight = wx.NORMAL
-                if 'B' in flags: weight = wx.BOLD
+                if "B" in flags:
+                    weight = wx.BOLD
                 underlined = False
-                if 'U' in flags: underlined = True
+                if "U" in flags:
+                    underlined = True
 
             # Optionally, create a header widget to display above the input box.
             # A dividing line is treated as a special case header.
@@ -374,8 +386,7 @@ class InputListPanel(ScrolledPanel):
                 lin = wx.StaticLine(self, wx.ID_ANY, style=wx.LI_HORIZONTAL)
                 self.headers.append(lin)
             elif hdr:
-                hdr = wx.StaticText(self, wx.ID_ANY, label=header,
-                                    style=wx.ALIGN_CENTER)
+                hdr = wx.StaticText(self, wx.ID_ANY, label=header, style=wx.ALIGN_CENTER)
                 font = hdr.GetFont()
                 ptsize = font.GetPointSize() + delta_pts
                 font.SetPointSize(ptsize)
@@ -388,23 +399,28 @@ class InputListPanel(ScrolledPanel):
                 self.headers.append(None)
 
             # Create the text label widget.
-            self.labels.append(wx.StaticText(self, wx.ID_ANY, label=text,
-                               style=wx.ALIGN_LEFT))
+            self.labels.append(wx.StaticText(self, wx.ID_ANY, label=text, style=wx.ALIGN_LEFT))
             w, h = self.labels[x].GetSize()
-            if w > self.widest: self.widest = w
+            if w > self.widest:
+                self.widest = w
 
             # Create the input box widget (combo box or simple data entry box)
-            if combo:              # it is a drop down combo box list
-                self.inputs.append(wx.ComboBox(self, wx.ID_ANY,
-                                   value=str(default),
-                                   validator=ItemListValidator(datatype, required),
-                                   choices=plist,
-                                   style=wx.CB_DROPDOWN|wx.CB_READONLY))
+            if combo:  # it is a drop down combo box list
+                self.inputs.append(
+                    wx.ComboBox(
+                        self,
+                        wx.ID_ANY,
+                        value=str(default),
+                        validator=ItemListValidator(datatype, required),
+                        choices=plist,
+                        style=wx.CB_DROPDOWN | wx.CB_READONLY,
+                    )
+                )
                 self.Bind(wx.EVT_COMBOBOX, self.OnComboBoxSelect, self.inputs[x])
-            else:                  # it is a simple data entry field
-                self.inputs.append(wx.TextCtrl(self, wx.ID_ANY,
-                                   value=str(default),
-                                   validator=ItemListValidator(datatype, required)))
+            else:  # it is a simple data entry field
+                self.inputs.append(
+                    wx.TextCtrl(self, wx.ID_ANY, value=str(default), validator=ItemListValidator(datatype, required))
+                )
                 self.Bind(wx.EVT_TEXT, self.OnText, self.inputs[x])
 
             # Verfiy that field is editable, otherwise don't allow user to edit
@@ -420,21 +436,18 @@ class InputListPanel(ScrolledPanel):
             for x in range(self.item_cnt):
                 self.labels[x].SetMinSize((self.widest, -1))
 
-
     def add_items_to_sizer(self, start, end):
         sizer = wx.FlexGridSizer(cols=2, hgap=5, vgap=10)
-        for x in range(start, end+1):
-            sizer.Add(self.labels[x], 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
+        for x in range(start, end + 1):
+            sizer.Add(self.labels[x], 0, wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL)
             sizer.Add(self.inputs[x], 0, wx.EXPAND)
         sizer.AddGrowableCol(1)
         return sizer
-
 
     def update_items_in_panel(self, new_values):
         for x in range(len(self.inputs)):
             if new_values[x] is not None:
                 self.inputs[x].SetValue(str(new_values[x]))
-
 
     def GetResults(self):
         """
@@ -453,7 +466,6 @@ class InputListPanel(ScrolledPanel):
             ret.append(self.inputs[x].GetValidator().GetValidatedInput())
         return ret
 
-
     def GetResultsAltFormat(self):
         """
         Returns a list of values, one for each input field.  The value for
@@ -470,7 +482,6 @@ class InputListPanel(ScrolledPanel):
             ret.append(self.inputs[x].GetValidator().GetValidatedInputAlt())
         return ret
 
-
     def GetResultsRawInput(self):
         """
         Returns a list of strings corresponding to each input field.  These
@@ -484,7 +495,6 @@ class InputListPanel(ScrolledPanel):
         for x in range(self.item_cnt):
             ret.append(str(self.inputs[x].GetValue()))
         return ret
-
 
     def OnText(self, event):
         """
@@ -510,7 +520,6 @@ class InputListPanel(ScrolledPanel):
         text_ctrl = event.GetEventObject()
         text_ctrl.GetValidator().Validate(text_ctrl)
         event.Skip()
-
 
     def OnComboBoxSelect(self, event):
         """
@@ -539,7 +548,9 @@ class InputListPanel(ScrolledPanel):
         combo_box.GetValidator().Validate(combo_box)
         event.Skip()
 
-#==============================================================================
+
+# ==============================================================================
+
 
 class InputListDialog(wx.Dialog):
     """
@@ -612,18 +623,19 @@ class InputListDialog(wx.Dialog):
     See the AppTestFrame class for a comprehensive example.
     """
 
-    def __init__(self,
-                 parent   = None,
-                 id       = wx.ID_ANY,
-                 title    = "Enter Data",
-                 pos      = wx.DefaultPosition,
-                 size     = (300, -1),  # x is min_width; y will be calculated
-                 style    = wx.DEFAULT_DIALOG_STYLE,
-                 name     = "",
-                 itemlist = [],
-                 align    = False,
-                 fontsize = None
-                ):
+    def __init__(
+        self,
+        parent=None,
+        id=wx.ID_ANY,
+        title="Enter Data",
+        pos=wx.DefaultPosition,
+        size=(300, -1),  # x is min_width; y will be calculated
+        style=wx.DEFAULT_DIALOG_STYLE,
+        name="",
+        itemlist=[],
+        align=False,
+        fontsize=None,
+    ):
         wx.Dialog.__init__(self, parent, id, title, pos, size, style, name)
 
         self.align = align
@@ -645,7 +657,7 @@ class InputListDialog(wx.Dialog):
             font = self.GetFont()
             font.SetPointSize(fontsize)
             self.SetFont(font)
-        #print "Input Dialog box font ptsize =", self.GetFont().GetPointSize()
+        # print "Input Dialog box font ptsize =", self.GetFont().GetPointSize()
 
         # Create the button controls (OK and Cancel) and bind their events.
         ok_button = wx.Button(self, wx.ID_OK, "OK")
@@ -670,39 +682,36 @@ class InputListDialog(wx.Dialog):
             if i > 0 and self.headers[i] is not None:
                 sect.append(i)
         sect.append(self.item_cnt)
-        #print "Section index list:", sect
+        # print "Section index list:", sect
 
         # Place the items for each section in its own flex grid sizer.
-        for i in range(len(sect)-1):
-            j = sect[i]; k = sect[i+1] - 1
-            #print "Items per section:", j, "to", k
+        for i in range(len(sect) - 1):
+            j = sect[i]
+            k = sect[i + 1] - 1
+            # print "Items per section:", j, "to", k
             fg_sizer = self.add_items_to_sizer(j, k)
 
             # Add the flex grid sizer to the main sizer.
             if self.headers[j] is not None:  # self.headers[0] could be None
-                main_sizer.Add(self.headers[j], 0, border=10,
-                               flag=wx.EXPAND|wx.TOP|wx.LEFT|wx.RIGHT)
-            main_sizer.Add(fg_sizer, 0, border=10,
-                           flag=wx.EXPAND|wx.TOP|wx.LEFT|wx.RIGHT)
+                main_sizer.Add(self.headers[j], 0, border=10, flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT)
+            main_sizer.Add(fg_sizer, 0, border=10, flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT)
 
         # Create the button sizer that will put the buttons in a row, right
         # justified, and with a fixed amount of space between them.  This
         # emulates the Windows convention for placing a set of buttons at the
         # bottom right of the window.
         button_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        button_sizer.Add((10,20), 1)  # stretchable whitespace
+        button_sizer.Add((10, 20), 1)  # stretchable whitespace
         button_sizer.Add(ok_button, 0)
-        button_sizer.Add((10,20), 0)  # non-stretchable whitespace
+        button_sizer.Add((10, 20), 0)  # non-stretchable whitespace
         button_sizer.Add(cancel_button, 0)
 
         # Add a separator line before the buttons.
         separator = wx.StaticLine(self, wx.ID_ANY, style=wx.LI_HORIZONTAL)
-        main_sizer.Add(separator, 0 , border=10,
-                       flag=wx.EXPAND|wx.TOP|wx.LEFT|wx.RIGHT)
+        main_sizer.Add(separator, 0, border=10, flag=wx.EXPAND | wx.TOP | wx.LEFT | wx.RIGHT)
 
         # Add the button sizer to the main sizer.
-        main_sizer.Add(button_sizer, 0, border=10,
-                       flag=wx.EXPAND|wx.TOP|wx.BOTTOM|wx.RIGHT)
+        main_sizer.Add(button_sizer, 0, border=10, flag=wx.EXPAND | wx.TOP | wx.BOTTOM | wx.RIGHT)
 
         # Finalize the sizer and establish the dimensions of the dialog box.
         # The minimum width is explicitly set because the sizer is not able to
@@ -710,7 +719,6 @@ class InputListDialog(wx.Dialog):
         self.SetSizer(main_sizer)
         main_sizer.SetMinSize((size[0], -1))
         main_sizer.Fit(self)
-
 
     def add_items_to_dialog_box(self):
         """
@@ -720,7 +728,9 @@ class InputListDialog(wx.Dialog):
         same as the number of input boxes.
         """
 
-        self.headers = []; self.labels = []; self.inputs = []
+        self.headers = []
+        self.labels = []
+        self.inputs = []
         self.widest = 0
         first_error_idx = None
 
@@ -731,28 +741,39 @@ class InputListDialog(wx.Dialog):
             elif params == 5:
                 text, default, datatype, flags, plist = self.itemlist[x]
                 header = None
-            if default is None: default = ""  # display None as a null string
+            if default is None:
+                default = ""  # display None as a null string
 
             # Process the flags parameter.
             required = False
-            if flags.find('R') >= 0: required = True
+            if flags.find("R") >= 0:
+                required = True
             editable = False
-            if flags.find('E') >= 0: editable = True
+            if flags.find("E") >= 0:
+                editable = True
             combo = False
-            if flags.find('C') >= 0: combo = True
+            if flags.find("C") >= 0:
+                combo = True
             line = False
-            if flags.find('L') >= 0: line = True
+            if flags.find("L") >= 0:
+                line = True
             hdr = False
-            if flags.find('H') >= 0 and header is not None: hdr = True
+            if flags.find("H") >= 0 and header is not None:
+                hdr = True
             if hdr:
                 delta_pts = 0
-                if flags.find('1') >= 0: delta_pts = 1  # large
-                if flags.find('2') >= 0: delta_pts = 2  # X-large
-                if flags.find('3') >= 0: delta_pts = 3  # 2X-large
+                if flags.find("1") >= 0:
+                    delta_pts = 1  # large
+                if flags.find("2") >= 0:
+                    delta_pts = 2  # X-large
+                if flags.find("3") >= 0:
+                    delta_pts = 3  # 2X-large
                 weight = wx.NORMAL
-                if flags.find('B') >= 0: weight = wx.BOLD
+                if flags.find("B") >= 0:
+                    weight = wx.BOLD
                 underlined = False
-                if flags.find('U') >= 0: underlined = True
+                if flags.find("U") >= 0:
+                    underlined = True
 
             # Optionally, create a header widget to display above the input box.
             # A dividing line is treated as a special case header.
@@ -760,8 +781,7 @@ class InputListDialog(wx.Dialog):
                 lin = wx.StaticLine(self, wx.ID_ANY, style=wx.LI_HORIZONTAL)
                 self.headers.append(lin)
             elif hdr:
-                hdr = wx.StaticText(self, wx.ID_ANY, label=header,
-                                    style=wx.ALIGN_CENTER)
+                hdr = wx.StaticText(self, wx.ID_ANY, label=header, style=wx.ALIGN_CENTER)
                 font = hdr.GetFont()
                 ptsize = font.GetPointSize() + delta_pts
                 font.SetPointSize(ptsize)
@@ -774,23 +794,28 @@ class InputListDialog(wx.Dialog):
                 self.headers.append(None)
 
             # Create the text label widget.
-            self.labels.append(wx.StaticText(self, wx.ID_ANY, label=text,
-                               style=wx.ALIGN_LEFT))
+            self.labels.append(wx.StaticText(self, wx.ID_ANY, label=text, style=wx.ALIGN_LEFT))
             w, h = self.labels[x].GetSize()
-            if w > self.widest: self.widest = w
+            if w > self.widest:
+                self.widest = w
 
             # Create the input box widget (combo box or simple data entry box)
-            if combo:              # it is a drop down combo box list
-                self.inputs.append(wx.ComboBox(self, wx.ID_ANY,
-                                   value=str(default),
-                                   validator=ItemListValidator(datatype, required),
-                                   choices=plist,
-                                   style=wx.CB_DROPDOWN|wx.CB_READONLY))
+            if combo:  # it is a drop down combo box list
+                self.inputs.append(
+                    wx.ComboBox(
+                        self,
+                        wx.ID_ANY,
+                        value=str(default),
+                        validator=ItemListValidator(datatype, required),
+                        choices=plist,
+                        style=wx.CB_DROPDOWN | wx.CB_READONLY,
+                    )
+                )
                 self.Bind(wx.EVT_COMBOBOX, self.OnComboBoxSelect, self.inputs[x])
-            else:                  # it is a simple data entry field
-                self.inputs.append(wx.TextCtrl(self, wx.ID_ANY,
-                                   value=str(default),
-                                   validator=ItemListValidator(datatype, required)))
+            else:  # it is a simple data entry field
+                self.inputs.append(
+                    wx.TextCtrl(self, wx.ID_ANY, value=str(default), validator=ItemListValidator(datatype, required))
+                )
                 self.Bind(wx.EVT_TEXT, self.OnText, self.inputs[x])
 
             # Verfiy that field is editable, otherwise don't allow user to edit
@@ -801,31 +826,30 @@ class InputListDialog(wx.Dialog):
             # in error or if input is required and the value is a null string.
             # Also, save index of the first field to fail validation, if any.
             ret = self.inputs[x].GetValidator().Validate(self.inputs[x])
-            if not ret and first_error_idx is None: first_error_idx = x
+            if not ret and first_error_idx is None:
+                first_error_idx = x
 
         # If any fields failed validation, set focus to the first failed one.
-        if first_error_idx is not None: self.inputs[first_error_idx].SetFocus()
+        if first_error_idx is not None:
+            self.inputs[first_error_idx].SetFocus()
 
         # Determine if all input boxes should be aligned across sections.
         if self.align:
             for x in range(self.item_cnt):
                 self.labels[x].SetMinSize((self.widest, -1))
 
-
     def add_items_to_sizer(self, start, end):
         sizer = wx.FlexGridSizer(cols=2, hgap=5, vgap=10)
-        for x in range(start, end+1):
-            sizer.Add(self.labels[x], 0, wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL)
+        for x in range(start, end + 1):
+            sizer.Add(self.labels[x], 0, wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL)
             sizer.Add(self.inputs[x], 0, wx.EXPAND)
         sizer.AddGrowableCol(1)
         return sizer
-
 
     def update_items_in_dialog_box(self, new_values):
         for x in range(len(self.inputs)):
             if new_values[x] is not None:
                 self.inputs[x].SetValue(str(new_values[x]))
-
 
     def GetResults(self):
         """
@@ -844,7 +868,6 @@ class InputListDialog(wx.Dialog):
             ret.append(self.inputs[x].GetValidator().GetValidatedInput())
         return ret
 
-
     def GetResultsAltFormat(self):
         """
         Returns a list of values, one for each input field.  The value for
@@ -861,7 +884,6 @@ class InputListDialog(wx.Dialog):
             ret.append(self.inputs[x].GetValidator().GetValidatedInputAlt())
         return ret
 
-
     def GetResultsRawInput(self):
         """
         Returns a list of strings corresponding to each input field.  These
@@ -876,7 +898,6 @@ class InputListDialog(wx.Dialog):
             ret.append(str(self.inputs[x].GetValue()))
         return ret
 
-
     def OnOk(self, event):
         """
         This method gets called when the user presses the OK button.
@@ -889,9 +910,7 @@ class InputListDialog(wx.Dialog):
         # the corrections, so we'll do a full validation pass now.  The only
         # purpose is to display an explicit error if any input fails validation.
         if not self.Validate():
-            wx.MessageBox(caption="Data Entry Error",
-                          message=DATA_ENTRY_ERRMSG,
-                          style=wx.ICON_ERROR|wx.OK)
+            wx.MessageBox(caption="Data Entry Error", message=DATA_ENTRY_ERRMSG, style=wx.ICON_ERROR | wx.OK)
             return  # keep the dialog box open
 
         # When the wx.ID_OK event is skipped (to allow handlers up the chain to
@@ -901,7 +920,6 @@ class InputListDialog(wx.Dialog):
         # this process will stop and the dialog box will remain open allowing
         # the user to either correct the problem(s) or cancel the dialog.
         event.Skip()
-
 
     def OnText(self, event):
         """
@@ -927,7 +945,6 @@ class InputListDialog(wx.Dialog):
         text_ctrl = event.GetEventObject()
         text_ctrl.GetValidator().Validate(text_ctrl)
         event.Skip()
-
 
     def OnComboBoxSelect(self, event):
         """
@@ -956,7 +973,9 @@ class InputListDialog(wx.Dialog):
         combo_box.GetValidator().Validate(combo_box)
         event.Skip()
 
-#==============================================================================
+
+# ==============================================================================
+
 
 class AppTestFrame(wx.Frame):
     """
@@ -979,8 +998,7 @@ class AppTestFrame(wx.Frame):
         FONTSIZE = 10
 
     def __init__(self):
-        wx.Frame.__init__(self, parent=None, id=wx.ID_ANY,
-                          title="InputListPanel Test", size=(300, 600))
+        wx.Frame.__init__(self, parent=None, id=wx.ID_ANY, title="InputListPanel Test", size=(300, 600))
         panel = wx.Panel(self, wx.ID_ANY, style=wx.RAISED_BORDER)
         panel.SetBackgroundColour("PALE GREEN")
 
@@ -988,33 +1006,29 @@ class AppTestFrame(wx.Frame):
 
         # Define fields for both InputListPanel and InputListDialog to display.
         self.fields = [
-            ["Integer (int, optional):", 12345, int, 'EH3', None,
-                "Test Header (2X-large)"],
+            ["Integer (int, optional):", 12345, int, "EH3", None, "Test Header (2X-large)"],
             # Test specification of integer default value as a string
-            ["Integer (int, optional):", "-60", int, 'E', None],
+            ["Integer (int, optional):", "-60", int, "E", None],
             # Default value is null, so the required field should be highlighted
-            ["Integer (int, required):", "", int, 'RE', None],
-            ["Floating Point (float, optional):", 2.34567e-5, float, 'EHB1', None,
-                "Test Header (large, bold)"],
-            ["Floating Point (float, optional):", "", float, 'E', None],
-            ["Floating Point (float, required):", 1.0, float, 'RE', None],
+            ["Integer (int, required):", "", int, "RE", None],
+            ["Floating Point (float, optional):", 2.34567e-5, float, "EHB1", None, "Test Header (large, bold)"],
+            ["Floating Point (float, optional):", "", float, "E", None],
+            ["Floating Point (float, required):", 1.0, float, "RE", None],
             # Test unknown datatype which should be treated as 'str'
-            ["String (str, optional):", "DANSE", "foo", 'EHU', None,
-                "Test Header (%dpt font, underlined)"%pt_size],
-            ["String (str, reqiured):", "delete me", str, 'RE', None],
-            ["Non-editable field:", "Cannot be changed!", str, '', None],
-            ["ComboBox String:", "Two", str, 'CREL', ("One", "Two", "Three")],
+            ["String (str, optional):", "DANSE", "foo", "EHU", None, "Test Header (%dpt font, underlined)" % pt_size],
+            ["String (str, reqiured):", "delete me", str, "RE", None],
+            ["Non-editable field:", "Cannot be changed!", str, "", None],
+            ["ComboBox String:", "Two", str, "CREL", ("One", "Two", "Three")],
             # ComboBox items must be specified as strings
-            ["ComboBox Integer:", "", int, 'CE', ("100", "200", "300")],
-            ["String (alphabetic):", "Aa", "str_alpha", 'E', None],
-            ["String (alphanumeric):", "Aa1", "str_alnum", 'E', None],
-            ["String (A-Z, a-z, 0-9, _, -):", "A-1_a", "str_id", 'E', None],
-                      ]
+            ["ComboBox Integer:", "", int, "CE", ("100", "200", "300")],
+            ["String (alphabetic):", "Aa", "str_alpha", "E", None],
+            ["String (alphanumeric):", "Aa1", "str_alnum", "E", None],
+            ["String (A-Z, a-z, 0-9, _, -):", "A-1_a", "str_id", "E", None],
+        ]
 
         # Create the scrolled window with input boxes.  Due to the intentionally
         # small size of the parent panel, both scroll bars should be displayed.
-        self.scrolled = InputListPanel(parent=panel, itemlist=self.fields,
-                                       align=True)
+        self.scrolled = InputListPanel(parent=panel, itemlist=self.fields, align=True)
 
         # Create a button to request the popup dialog box.
         show_button = wx.Button(panel, wx.ID_ANY, "Show Pop-up Dialog Box")
@@ -1028,41 +1042,36 @@ class AppTestFrame(wx.Frame):
 
         # Create a horizontal sizer for the buttons.
         button_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        button_sizer.Add((10,20), 1)  # stretchable whitespace
+        button_sizer.Add((10, 20), 1)  # stretchable whitespace
         button_sizer.Add(submit_button, 0)
-        button_sizer.Add((10,20), 0)  # non-stretchable whitespace
+        button_sizer.Add((10, 20), 0)  # non-stretchable whitespace
         button_sizer.Add(exit_button, 0)
 
         # Create a vertical box sizer for the panel and layout widgets in it.
         box_sizer = wx.BoxSizer(wx.VERTICAL)
-        box_sizer.Add(show_button, 0, wx.ALIGN_CENTER|wx.ALL, border=10)
-        box_sizer.Add(self.scrolled, 1, wx.EXPAND|wx.ALL, border=10)
-        box_sizer.Add(button_sizer, 0, wx.EXPAND|wx.BOTTOM|wx.ALL, border=10)
+        box_sizer.Add(show_button, 0, wx.ALIGN_CENTER | wx.ALL, border=10)
+        box_sizer.Add(self.scrolled, 1, wx.EXPAND | wx.ALL, border=10)
+        box_sizer.Add(button_sizer, 0, wx.EXPAND | wx.BOTTOM | wx.ALL, border=10)
 
         # Associate the sizer with its container.
         panel.SetSizer(box_sizer)
         box_sizer.Fit(panel)
 
-
     def OnShow(self, event):
         # Display the same fields shown in the frame in a pop-up dialog box.
         pt_size = self.FONTSIZE
-        self.fields[6][5] = "Test Header (%dpt font, underlined)"%pt_size
-        dlg = InputListDialog(parent=self,
-                              title="InputListDialog Test",
-                              itemlist=self.fields,
-                              align=True,
-                              fontsize=self.FONTSIZE)
+        self.fields[6][5] = "Test Header (%dpt font, underlined)" % pt_size
+        dlg = InputListDialog(
+            parent=self, title="InputListDialog Test", itemlist=self.fields, align=True, fontsize=self.FONTSIZE
+        )
         if dlg.ShowModal() == wx.ID_OK:
             print("****** Dialog Box results from validated input fields:")
             print("  ", dlg.GetResults())
-            print("****** Dialog Box results from validated input fields" +\
-                  " (None if no input):")
+            print("****** Dialog Box results from validated input fields" + " (None if no input):")
             print("  ", dlg.GetResultsAltFormat())
             print("****** Dialog Box results from raw input fields:")
             print("  ", dlg.GetResultsRawInput())
         dlg.Destroy()
-
 
     def OnSubmit(self, event):
         # Explicitly validate all input parameters before proceeding.  Even
@@ -1070,26 +1079,27 @@ class AppTestFrame(wx.Frame):
         # invalid entries, the user could have pressed the Done button without
         # making the corrections, so a full validation pass is necessary.
         if not self.scrolled.Validate():
-            wx.MessageBox(caption="Data Entry Error",
+            wx.MessageBox(
+                caption="Data Entry Error",
                 message="Please correct the highlighted fields in error.",
-                style=wx.ICON_ERROR|wx.OK)
+                style=wx.ICON_ERROR | wx.OK,
+            )
             return  # keep the dialog box open
         print("****** Scrolled Panel results from validated input fields:")
         print("  ", self.scrolled.GetResults())
-        print("****** Scrolled Panel results from validated input fields" +\
-              " (None if no input):")
+        print("****** Scrolled Panel results from validated input fields" + " (None if no input):")
         print("  ", self.scrolled.GetResultsAltFormat())
         print("****** Scrolled Panel results from raw input fields:")
         print("  ", self.scrolled.GetResultsRawInput())
-
 
     def OnExit(self, event):
         # Terminate the program.
         self.Close()
 
-#==============================================================================
 
-if __name__ == '__main__':
+# ==============================================================================
+
+if __name__ == "__main__":
     # Interactively test both the InputListPanel and the InputListDialog classes.
     app = wx.PySimpleApp()
     frame = AppTestFrame()

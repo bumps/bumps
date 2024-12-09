@@ -19,7 +19,8 @@ def wavy1(x):
     minimum is f(x)=0.0 at xi=0.0
     """
     x = asarray(x)
-    return abs(x+3.*sin(x+pi)+pi)
+    return abs(x + 3.0 * sin(x + pi) + pi)
+
 
 def wavy2(x):
     """
@@ -29,4 +30,4 @@ def wavy2(x):
     """
 
     x = asarray(x)
-    return 4 *sin(x)+sin(4*x) + sin(8*x)+sin(16*x)+sin(32*x)+sin(64*x)
+    return 4 * sin(x) + sin(4 * x) + sin(8 * x) + sin(16 * x) + sin(32 * x) + sin(64 * x)

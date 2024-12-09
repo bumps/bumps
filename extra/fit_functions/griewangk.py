@@ -12,9 +12,11 @@ References::
     (Same title as above, but as a technical report.)
     http://www.icsi.berkeley.edu/~storn/deshort1.ps
 """
+
 from functools import reduce
 
 from math import cos, sqrt
+
 
 def griewangk(coeffs):
     """
@@ -24,11 +26,12 @@ def griewangk(coeffs):
     """
 
     # ensure that there are 10 coefficients
-    x = [0]*10
-    x[:len(coeffs)]=coeffs
+    x = [0] * 10
+    x[: len(coeffs)] = coeffs
 
-    term1 = sum([xi*xi for xi in x])/4000
-    term2 = prod([cos(xi/sqrt(i+1.)) for i,xi in enumerate(x)])
+    term1 = sum([xi * xi for xi in x]) / 4000
+    term2 = prod([cos(xi / sqrt(i + 1.0)) for i, xi in enumerate(x)])
     return term1 - term2 + 1
 
-prod = lambda x: reduce(lambda a,b: a*b, x, 1.)
+
+prod = lambda x: reduce(lambda a, b: a * b, x, 1.0)

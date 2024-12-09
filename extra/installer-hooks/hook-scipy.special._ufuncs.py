@@ -1,1 +1,1 @@
-hiddenimports = ['_ufuncs_cxx']
+hiddenimports = ["_ufuncs_cxx"]

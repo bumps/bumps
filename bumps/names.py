@@ -25,7 +25,7 @@ The following symbols are defined:
 - :class:`FitProblem <bumps.fitproblem.FitProblem>` for defining the fit.
 """
 
-#__all__ = [ 'sys', 'np', 'inf', 'pmath',
+# __all__ = [ 'sys', 'np', 'inf', 'pmath',
 #    'Parameter', 'FreeVariables', 'Distribution', 'PDF', 'Curve', 'PoissonCurve',
 #        'FitProblem' ]
 

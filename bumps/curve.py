@@ -39,6 +39,7 @@ The model function can then be imported from the external module as usual::
 
     from sin_model import sin_model
 """
+
 __all__ = ["Curve", "PoissonCurve", "plot_err"]
 
 import inspect
@@ -50,6 +51,7 @@ import numpy as np
 from numpy import log, pi, sqrt
 
 from .parameter import Parameter
+
 
 def _parse_pars(fn, init=None, skip=0, name=""):
     """
@@ -79,7 +81,7 @@ def _parse_pars(fn, init=None, skip=0, name=""):
     sig = inspect.signature(fn)
     params = sig.parameters.values()
     pnames = [p.name for p in params]
-    
+
     valid = [p.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD) for p in params]
     if not all(valid):
         raise TypeError(f"Only positional and keyword arguments allowed for {fn.__name__}")
@@ -103,20 +105,19 @@ def _parse_pars(fn, init=None, skip=0, name=""):
     # check that they exist as function parameters.
     invalid = set(init.keys()) - set(pnames)
     if invalid:
-        raise TypeError("Invalid initializers: %s" %
-                        ", ".join(sorted(invalid)))
+        raise TypeError("Invalid initializers: %s" % ", ".join(sorted(invalid)))
     defaults.update(init)
 
     # Build parameters out of ranges and initial values
     # maybe:  name=(p+name if name.startswith('_') else name+p)
-    pars = dict((p, Parameter.default(defaults[p], name=name + p))
-                for p in pnames if p not in state_vars)
+    pars = dict((p, Parameter.default(defaults[p], name=name + p)) for p in pnames if p not in state_vars)
 
     state = dict((p, v) for p, v in defaults.items() if p in state_vars)
 
-    #print("pars", pars)
-    #print("state", state)
+    # print("pars", pars)
+    # print("state", state)
     return pars, state
+
 
 def _assign_pars(obj, pars):
     # Make parameters accessible as model attributes
@@ -179,8 +180,8 @@ class Curve(object):
     subclass Curve and replace nllf with the correct probability given the
     residuals.  See the implementation of :class:`PoissonCurve` for an example.
     """
-    def __init__(self, fn, x, y, dy=None, name="", labels=None,
-                 plot=None, plot_x=None, **kwargs):
+
+    def __init__(self, fn, x, y, dy=None, name="", labels=None, plot=None, plot_x=None, **kwargs):
         self.x, self.y = np.asarray(x), np.asarray(y)
         if dy is None:
             self.dy = 1
@@ -197,17 +198,17 @@ class Curve(object):
 
         # interpret labels parameter
         if labels is None:
-            labels = ['x', 'y']
-        elif len(labels) < 2 or len(labels) != num_curves+2:
+            labels = ["x", "y"]
+        elif len(labels) < 2 or len(labels) != num_curves + 2:
             if num_curves > 1:
-                lines = "line1, ..., line%d"%num_curves
+                lines = "line1, ..., line%d" % num_curves
             else:
                 lines = "line"
-            raise TypeError("labels should be [x, y, %s]"%lines)
+            raise TypeError("labels should be [x, y, %s]" % lines)
 
         if len(labels) == 2:
             if num_curves > 1:
-                line_labels = ['y%d'%k for k in range(num_curves)]
+                line_labels = ["y%d" % k for k in range(num_curves)]
             else:
                 line_labels = [labels[1]]
             labels = list(labels) + line_labels
@@ -215,14 +216,14 @@ class Curve(object):
 
         # TODO: self.fn is a duplicate of self._function below. Deprecated?
         self.fn = fn
-        self.name = name # if name else fn.__name__ + " "
+        self.name = name  # if name else fn.__name__ + " "
         self.plot_x = plot_x
 
         pars, state = _parse_pars(fn, init=kwargs, skip=1, name=name)
 
         # Make parameters accessible as model attributes
         _assign_pars(self, pars)
-        #_assign_pars(state, self)  # ... and state variables as well
+        # _assign_pars(state, self)  # ... and state variables as well
 
         # Remember the function, parameters, and number of parameters
         # Note: we are remembering the parameter names and not the
@@ -267,20 +268,20 @@ class Curve(object):
     def simulate_data(self, noise=None):
         theory = self.theory()
         if noise is not None:
-            if noise == 'data':
+            if noise == "data":
                 pass
             elif noise < 0:
-                self.dy = -0.01*noise*theory
+                self.dy = -0.01 * noise * theory
             else:
                 self.dy = noise
-        self.y = theory + np.random.randn(*theory.shape)*self.dy
+        self.y = theory + np.random.randn(*theory.shape) * self.dy
 
     def residuals(self):
         return (self.theory() - self.y) / self.dy
 
     def nllf(self):
         r = self.residuals()
-        return 0.5 * np.sum(r ** 2)
+        return 0.5 * np.sum(r**2)
 
     def save(self, basename):
         # TODO: need header line with state vars as json
@@ -296,13 +297,13 @@ class Curve(object):
             headers = ["x"]
             for k, (y, dy, fx) in enumerate(zip(self.y, self.dy, theory)):
                 columns.extend((y, dy, fx))
-                headers.extend(("y[%d]"%(k+1), "dy[%d]"%(k+1), "fx[%d]"%(k+1)))
+                headers.extend(("y[%d]" % (k + 1), "dy[%d]" % (k + 1), "fx[%d]" % (k + 1)))
         else:
             # Single-valued y, dy for single valued x.
             headers = ["x", "y", "dy", "fy"]
             columns = [self.x, self.y, self.dy, theory]
         data = np.vstack(columns)
-        outfile = basename + '.dat'
+        outfile = basename + ".dat"
         with open(outfile, "w") as fd:
             fd.write("# " + "\t ".join(headers) + "\n")
             np.savetxt(fd, data.T)
@@ -326,97 +327,99 @@ class Curve(object):
         if self._num_curves > 1:
             y, dy, theory_y, resid = self.y.T, self.dy.T, theory_y.T, resid.T
         else:
-            y, dy, theory_y, resid = (v[:, None]
-                                      for v in (self.y, self.dy, theory_y, resid))
+            y, dy, theory_y, resid = (v[:, None] for v in (self.y, self.dy, theory_y, resid))
 
         colors = tuple(coordinated_colors() for _ in range(self._num_curves))
         labels = self.labels
 
-        #print "kw_plot",kw
-        if view == 'residual':
+        # print "kw_plot",kw
+        if view == "residual":
             _plot_resids(x, resid, colors, labels=labels, view=view)
         else:
             plot_ratio = 4
-            h = pylab.subplot2grid((plot_ratio, 1), (0, 0), rowspan=plot_ratio-1)
+            h = pylab.subplot2grid((plot_ratio, 1), (0, 0), rowspan=plot_ratio - 1)
             for tick_label in h.get_xticklabels():
                 tick_label.set_visible(False)
-            _plot_fits(data=(x, y, dy), theory=(theory_x, theory_y),
-                       colors=colors, labels=labels, view=view)
-            #pylab.gca().xaxis.set_visible(False)
-            #pylab.gca().spines['bottom'].set_visible(False)
-            #pylab.gca().set_xticks([])
+            _plot_fits(data=(x, y, dy), theory=(theory_x, theory_y), colors=colors, labels=labels, view=view)
+            # pylab.gca().xaxis.set_visible(False)
+            # pylab.gca().spines['bottom'].set_visible(False)
+            # pylab.gca().set_xticks([])
 
-            pylab.subplot2grid((plot_ratio, 1), (plot_ratio-1, 0), sharex=h)
+            pylab.subplot2grid((plot_ratio, 1), (plot_ratio - 1, 0), sharex=h)
             _plot_resids(x, resid, colors=colors, labels=labels, view=view)
 
-    def register_webview_plot(self,
-                              plot_title: str,
-                              plot_function: Callable,
-                              change_with: Literal['parameter', 'uncertainty']):
+    def register_webview_plot(
+        self, plot_title: str, plot_function: Callable, change_with: Literal["parameter", "uncertainty"]
+    ):
         # Plot function syntax: f(model, problem, state)
         # change_with = 'parameter' or 'uncertainty'
-        
-        self._webview_plots[plot_title] = dict(func=plot_function,
-                                                 change_with=change_with)
+
+        self._webview_plots[plot_title] = dict(func=plot_function, change_with=change_with)
+
     @property
     def webview_plots(self):
         return self._webview_plots
 
+
 def _plot_resids(x, resid, colors, labels, view):
     import pylab
-    pylab.axhline(y=1, ls='dotted', color='k')
-    pylab.axhline(y=0, ls='solid', color='k')
-    pylab.axhline(y=-1, ls='dotted', color='k')
+
+    pylab.axhline(y=1, ls="dotted", color="k")
+    pylab.axhline(y=0, ls="solid", color="k")
+    pylab.axhline(y=-1, ls="dotted", color="k")
     for k, color in enumerate(colors):
-        pylab.plot(x, resid[:, k], '.', color=color['base'])
-    pylab.gca().locator_params(axis='y', tight=True, nbins=4)
+        pylab.plot(x, resid[:, k], ".", color=color["base"])
+    pylab.gca().locator_params(axis="y", tight=True, nbins=4)
     pylab.xlabel(labels[0])
     pylab.ylabel("(f(x)-y)/dy")
-    if view == 'logx':
-        pylab.xscale('log')
-    elif view == 'loglog':
-        pylab.xscale('log')
+    if view == "logx":
+        pylab.xscale("log")
+    elif view == "loglog":
+        pylab.xscale("log")
+
 
 def _plot_fits(data, theory, colors, labels, view):
     import pylab
+
     x, y, dy = data
     theory_x, theory_y = theory
     for k, color in enumerate(colors):
-        pylab.errorbar(x, y[:, k], yerr=dy[:, k], fmt='.',
-                       color=color['base'], label='_')
-        pylab.plot(theory_x, theory_y[:, k], '-',
-                   color=color['dark'], label=labels[k+2])
+        pylab.errorbar(x, y[:, k], yerr=dy[:, k], fmt=".", color=color["base"], label="_")
+        pylab.plot(theory_x, theory_y[:, k], "-", color=color["dark"], label=labels[k + 2])
     # Note: no xlabel since it is supplied by the residual plot below this plot
     pylab.ylabel(labels[1])
     if len(colors) > 1:
         pylab.legend()
-    if view == 'log':
-        pylab.xscale('linear')
-        pylab.yscale('log')
-    elif view == 'logx':
-        pylab.xscale('log')
-        pylab.yscale('linear')
-    elif view == 'logy':
-        pylab.xscale('linear')
-        pylab.yscale('log')
-    elif view == 'loglog':
-        pylab.xscale('log')
-        pylab.yscale('log')
-    else: # view == 'linear'
-        pylab.xscale('linear')
-        pylab.yscale('linear')
+    if view == "log":
+        pylab.xscale("linear")
+        pylab.yscale("log")
+    elif view == "logx":
+        pylab.xscale("log")
+        pylab.yscale("linear")
+    elif view == "logy":
+        pylab.xscale("linear")
+        pylab.yscale("log")
+    elif view == "loglog":
+        pylab.xscale("log")
+        pylab.yscale("log")
+    else:  # view == 'linear'
+        pylab.xscale("linear")
+        pylab.yscale("linear")
+
 
 def plot_resid(x, resid):
     """
     **DEPRECATED**
     """
     import pylab
-    pylab.axhline(y=1, ls='dotted', color='k')
-    pylab.axhline(y=0, ls='solid', color='k')
-    pylab.axhline(y=-1, ls='dotted', color='k')
-    pylab.plot(x, resid, '.')
-    pylab.gca().locator_params(axis='y', tight=True, nbins=4)
+
+    pylab.axhline(y=1, ls="dotted", color="k")
+    pylab.axhline(y=0, ls="solid", color="k")
+    pylab.axhline(y=-1, ls="dotted", color="k")
+    pylab.plot(x, resid, ".")
+    pylab.gca().locator_params(axis="y", tight=True, nbins=4)
     pylab.ylabel("Residuals")
+
 
 def plot_err(x, y, dy, fy, view=None, **kw):
     """
@@ -427,34 +430,33 @@ def plot_err(x, y, dy, fy, view=None, **kw):
     *view* is one of linear, log, logx or loglog.
     """
     import pylab
-    pylab.errorbar(x, y, yerr=dy, fmt='.')
-    pylab.plot(x, fy, '-')
-    if view == 'log':
-        pylab.xscale('linear')
-        pylab.yscale('log')
-    elif view == 'logx':
-        pylab.xscale('log')
-        pylab.yscale('linear')
-    elif view == 'loglog':
-        pylab.xscale('log')
-        pylab.yscale('log')
-    else: # view == 'linear'
-        pylab.xscale('linear')
-        pylab.yscale('linear')
+
+    pylab.errorbar(x, y, yerr=dy, fmt=".")
+    pylab.plot(x, fy, "-")
+    if view == "log":
+        pylab.xscale("linear")
+        pylab.yscale("log")
+    elif view == "logx":
+        pylab.xscale("log")
+        pylab.yscale("linear")
+    elif view == "loglog":
+        pylab.xscale("log")
+        pylab.yscale("log")
+    else:  # view == 'linear'
+        pylab.xscale("linear")
+        pylab.yscale("linear")
 
 
-_LOGFACTORIAL = np.array([log(np.prod(np.arange(1., k + 1)))
-                          for k in range(21)])
+_LOGFACTORIAL = np.array([log(np.prod(np.arange(1.0, k + 1))) for k in range(21)])
 
 
 def logfactorial(n):
     """Compute the log factorial for each element of an array"""
-    result = np.empty(n.shape, dtype='double')
-    idx = (n <= 20)
-    result[idx] = _LOGFACTORIAL[np.asarray(n[idx], 'int32')]
+    result = np.empty(n.shape, dtype="double")
+    idx = n <= 20
+    result[idx] = _LOGFACTORIAL[np.asarray(n[idx], "int32")]
     n = n[~idx]
-    result[~idx] = n * \
-        log(n) - n + log(n * (1 + 4 * n * (1 + 2 * n))) / 6 + log(pi) / 2
+    result[~idx] = n * log(n) - n + log(n * (1 + 4 * n * (1 + 2 * n))) / 6 + log(pi) / 2
     return result
 
 
@@ -467,6 +469,7 @@ class PoissonCurve(Curve):
 
     See :class:`Curve` for details.
     """
+
     def __init__(self, fn, x, y, name="", **fnkw):
         dy = sqrt(y) + (y == 0) if y is not None else None
         Curve.__init__(self, fn, x, y, dy, name=name, **fnkw)
@@ -474,7 +477,7 @@ class PoissonCurve(Curve):
         self._logfactysum = np.sum(self._logfacty)
 
     ## Assume gaussian residuals for now
-    #def residuals(self):
+    # def residuals(self):
     #    # TODO: provide individual probabilities as residuals
     #    # or perhaps the square roots --- whatever gives a better feel for
     #    # which points are driving the fit
