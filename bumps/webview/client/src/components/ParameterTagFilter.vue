@@ -54,19 +54,13 @@ function shouldShow(tags: string[]): boolean {
   // if we're specifically hiding it, then don't show it
   if (tags_to_hide.value.length > 0 && tags.some((t) => tags_to_hide.value.includes(t))) {
     return false;
-  } else if (tags_to_show.value.length > 0) {
-    // if we're specifically showing it, then show it
-    if (tags.some((t) => tags_to_show.value.includes(t))) {
-      return true;
-    } else {
-      // if we're not specifically showing it, then don't show it
-      return false;
-    }
   }
-  // otherwise, show
-  else {
-    return true;
+  if (tags_to_show.value.length > 0) {
+    // true if tag is in tags_to_show, false otherwise
+    return tags.some((t) => tags_to_show.value.includes(t));
   }
+  // show by default
+  return true;
 }
 
 const filtered_parameters = computed(() => {
