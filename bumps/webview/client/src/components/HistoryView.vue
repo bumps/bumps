@@ -80,6 +80,7 @@ async function toggle_keep(timestamp: string, current_keep: boolean) {
 }
 
 async function update_label(timestamp: string, new_label: string) {
+  console.log(`update_label(${timestamp}, ${new_label})`);
   await props.socket.asyncEmit("update_history_label", timestamp, new_label);
 }
 
@@ -127,7 +128,7 @@ onMounted(async () => {
           :value="autosave_history_length"
           min="1"
           step="1"
-          @change="set_autosave_history_length($event.target.value)"
+          @change="set_autosave_history_length(($event.target as HTMLInputElement).value)"
         />
         <label class="col-form-label" for="auto_save_length">history length</label>
       </div>
@@ -163,7 +164,7 @@ onMounted(async () => {
               spellcheck="false"
               plaintext-only
               :title="timestamp"
-              @blur="update_label(timestamp, $event.target.innerText)"
+              @blur="update_label(timestamp, ($event.target as HTMLTextAreaElement).innerText)"
             >
               {{ label }}
             </td>

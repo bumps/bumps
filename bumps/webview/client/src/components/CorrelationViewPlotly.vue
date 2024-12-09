@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import * as Plotly from "plotly.js/lib/core";
-// @ts-ignore - plotly.js does not export Heatmap as type
+// @ts-ignore - plotly.js does not define Heatmap as type
 import Heatmap from "plotly.js/lib/heatmap";
 import type { AsyncSocket } from "../asyncSocket.ts";
 import { SVGDownloadButton } from "../plotly_extras";

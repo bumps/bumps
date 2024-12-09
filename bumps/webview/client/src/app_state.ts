@@ -19,7 +19,7 @@ export class FileBrowserSettings {
   name_input_label?: string;
   show_files!: boolean;
   search_patterns!: string[];
-  callback!: (pathlist: string[], filename: string) => Promise<void>;
+  callback!: (pathlist: string[], filename: string) => Promise<any>;
 }
 
 export const LAYOUTS = ["left-right", "top-bottom", "full"];
