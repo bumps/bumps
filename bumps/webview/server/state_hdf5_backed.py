@@ -10,7 +10,8 @@ import os
 import tempfile
 from pathlib import Path
 from threading import Event
-from bumps.serialize import serialize, deserialize, migrate
+from bumps.serialize import serialize, deserialize
+from bumps.util import get_libraries
 import h5py
 import numpy as np
 
@@ -61,8 +62,7 @@ def serialize_problem(problem: 'bumps.fitproblem.FitProblem', method: SERIALIZER
 def deserialize_problem(serialized: bytes, method: SERIALIZERS):
     if method == 'dataclass':
         serialized_dict = json.loads(serialized)
-        final_version, migrated = migrate(serialized_dict)
-        return deserialize(migrated)
+        return deserialize(serialized_dict, migration=True)
     elif method == 'pickle':
         import pickle
         return pickle.loads(serialized)
@@ -158,6 +158,7 @@ class ProblemState:
         group = parent.require_group('problem')
         write_fitproblem(group, 'fitProblem', self.fitProblem, self.serializer)
         write_string(group, 'serializer', self.serializer)
+        write_json(group, 'libraries', get_libraries(self.fitProblem))
         # write_json(group, 'pathlist', self.pathlist)
         # write_string(group, 'filename', self.filename)
 
