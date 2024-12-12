@@ -6,7 +6,8 @@ import numpy as np
 from dataclasses import is_dataclass, fields, dataclass
 import graphlib
 import json
-from importlib import import_module
+from importlib import import_module, metadata
+import sys
 from typing import Any, Dict, List, Literal, Optional, Tuple, TypedDict, Union
 from types import GeneratorType
 import traceback
@@ -14,7 +15,8 @@ import warnings
 import asyncio
 from collections import defaultdict
 
-from .util import SCHEMA_ATTRIBUTE_NAME, NumpyArray
+from . import plugin
+from .util import SCHEMA_ATTRIBUTE_NAME, NumpyArray, get_libraries
 
 DEBUG = False
 
@@ -42,11 +44,18 @@ class SerializedObject(TypedDict, total=True):
     object: JSON
     references: Dict[str, JSON]
 
-def deserialize(serialized: SerializedObject):
+def deserialize(serialized: SerializedObject, migration: bool = True):
     """ rehydrate all items in serialzed['references'] then 
      - reydrate all objects in serialized['object']
      - replacing `Reference` types with python objects from `references`
     """
+
+    if migration:
+        # first apply built-in migrations:
+        _, serialized = migrate(serialized)
+        # then apply plugin migrations:
+        serialized = plugin.migrate_serialized(serialized)
+
 
     serialized_references = serialized[REFERENCES_KEY]
     references = {}
@@ -132,7 +141,7 @@ def _find_ref_dependencies(obj, dependencies: set):
 
 #### end deserializer helpers
 
-def serialize(obj, use_refs=True):
+def serialize(obj, use_refs=True, add_libraries=True):
     references = {}
 
     def make_ref(obj_id: str):
@@ -190,6 +199,10 @@ def serialize(obj, use_refs=True):
         "object": obj_to_dict(obj),
         REFERENCES_KEY: references
     }
+
+    if add_libraries:
+        serialized["libraries"] = get_libraries(obj)
+
     return serialized
 
 
