@@ -79,7 +79,7 @@ async function readSession(readOnly: boolean) {
   if (fileBrowser.value) {
     const settings: FileBrowserSettings = {
       title: "Read Session",
-      callback: (pathlist, filename) => {
+      callback: async (pathlist, filename) => {
         props.socket.asyncEmit("load_session", pathlist, filename, readOnly);
       },
       show_name_input: true,
@@ -100,7 +100,6 @@ async function saveSessionCopy() {
       title: "Save Session (Copy)",
       callback: async (pathlist, filename) => {
         await props.socket.asyncEmit("save_session_copy", pathlist, filename);
-        await props.socket.syncFS();
       },
       show_name_input: true,
       name_input_label: "Filename",
@@ -133,7 +132,6 @@ async function setOutputFile(enable_autosave = true, immediate_save = false) {
         }
         if (immediate_save) {
           await props.socket.asyncEmit("save_session");
-          await props.socket.syncFS();
         }
       },
       show_name_input: true,

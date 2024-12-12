@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
+// @ts-ignore - plotly.js does not define Bar as type
 import Bar from "plotly.js/lib/bar";
 import * as Plotly from "plotly.js/lib/core";
 import { v4 as uuidv4 } from "uuid";
@@ -11,6 +12,9 @@ import { setupDrawLoop } from "../setupDrawLoop";
 // workaround to PlotlyModule not being exported as type!
 type RegisterTypes = Parameters<typeof Plotly.register>[0];
 type PlotlyModule = Exclude<RegisterTypes, any[]>;
+
+// server sends annotations with name field
+type CustomAnnotations = Plotly.Annotations & { name: string };
 
 Plotly.register([Bar as PlotlyModule]);
 
@@ -35,7 +39,8 @@ const { drawing_busy } = setupDrawLoop("updated_uncertainty", props.socket, fetc
 async function fetch_and_draw(latest_timestamp: string): Promise<void> {
   let { timestamp, plotdata } = (cache[title] as { timestamp: string; plotdata: Plotly.PlotlyDataLayoutConfig }) ?? {};
   if (timestamp !== latest_timestamp) {
-    console.log("fetching new uncertainty plot", timestamp, latest_timestamp);
+    console.log(`Fetching new model uncertainty plot: timestamp: ${timestamp}, latest: ${latest_timestamp}`);
+
     const payload = (await props.socket.asyncEmit(
       "get_uncertainty_plot",
       latest_timestamp
@@ -47,7 +52,7 @@ async function fetch_and_draw(latest_timestamp: string): Promise<void> {
   delete layout?.width;
   delete layout?.height;
   const config = { responsive: true, scrollZoom: true, modeBarButtonsToAdd: [SVGDownloadButton] };
-  apply_label_visibility(layout, show_labels.value);
+  apply_label_visibility(layout as Plotly.Layout, show_labels.value);
   await Plotly.react(plot_div_id.value, [...data], layout, config);
 }
 
@@ -55,11 +60,11 @@ function apply_label_visibility(layout: Plotly.Layout, visible: boolean) {
   layout.showlegend = visible;
   for (let item_name in layout) {
     if (item_name.startsWith("xaxis")) {
-      layout[item_name].showticklabels = visible;
+      (layout as any)[item_name].showticklabels = visible;
     }
   }
   for (let annotation of layout?.annotations ?? []) {
-    if (annotation?.name === "label") {
+    if ((annotation as CustomAnnotations)?.name === "label") {
       annotation.visible = visible;
     }
   }

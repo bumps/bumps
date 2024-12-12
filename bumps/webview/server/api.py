@@ -72,7 +72,10 @@ FITTERS = (DreamFit, LevenbergMarquardtFit, SimplexFit, DEFit, MPFit, BFGSFit)
 FITTERS_BY_ID = dict([(fitter.id, fitter) for fitter in FITTERS])
 FITTER_DEFAULTS = {}
 for fitter in FITTERS:
-    FITTER_DEFAULTS[fitter.id] = {"name": fitter.name, "settings": dict(fitter.settings)}
+    FITTER_DEFAULTS[fitter.id] = {
+        "name": fitter.name,
+        "settings": dict(fitter.settings),
+    }
 
 state = State()
 
@@ -132,8 +135,8 @@ TopicNameType = Literal[
 @register
 async def load_problem_file(pathlist: List[str], filename: str, autosave_previous: bool = True):
     path = Path(*pathlist, filename)
-    logger.info(f"model loading: {path}")
-    await log(f"model_loading: {path}")
+    logger.info(f"Loading model: {path}")
+    await log(f"Loading model: {path}")
     if filename.endswith(".json"):
         with open(path, "rt") as input_file:
             serialized = input_file.read()
@@ -188,7 +191,7 @@ async def set_problem(
     if new_model:
         pathlist = list(path.parts) if path is not None else []
         path_string = "(no path)" if path is None else str(path / filename)
-        await log(f"model loaded: {path_string}")
+        await log(f"Model loaded: {path_string}")
         state.shared.model_file = dict(filename=filename, pathlist=pathlist)
         state.shared.model_loaded = now_string()
         if state.shared.autosave_history and state.problem is not None and state.problem.fitProblem is not None:
@@ -210,10 +213,16 @@ async def remove_history_item(timestamp: str):
 
 @register
 async def save_to_history(
-    label: str, include_population: bool = False, include_uncertainty: bool = False, keep: bool = False
+    label: str,
+    include_population: bool = False,
+    include_uncertainty: bool = False,
+    keep: bool = False,
 ):
     state.save_to_history(
-        label, include_population=include_population, include_uncertainty=include_uncertainty, keep=keep
+        label,
+        include_population=include_population,
+        include_uncertainty=include_uncertainty,
+        keep=keep,
     )
 
 
@@ -236,7 +245,9 @@ async def update_history_label(timestamp: str, label: str):
 
 @register
 async def save_problem_file(
-    pathlist: Optional[List[str]] = None, filename: Optional[str] = None, overwrite: bool = False
+    pathlist: Optional[List[str]] = None,
+    filename: Optional[str] = None,
+    overwrite: bool = False,
 ):
     problem_state = state.problem
     if problem_state is None:
@@ -332,7 +343,9 @@ async def export_results(export_path: Union[str, List[str]] = ""):
 
 
 def _export_results(
-    path: Path, problem: bumps.fitproblem.FitProblem, uncertainty_state: Optional[bumps.dream.state.MCMCDraw]
+    path: Path,
+    problem: bumps.fitproblem.FitProblem,
+    uncertainty_state: Optional[bumps.dream.state.MCMCDraw],
 ):
     from bumps.util import redirect_console
 
@@ -399,12 +412,18 @@ async def apply_parameters(pathlist: List[str], filename: str):
     try:
         bumps.cli.load_best(state.problem.fitProblem, fullpath)
         state.shared.updated_parameters = now_string()
-        await log(f"applied parameters from {fullpath}")
-        await add_notification(f"applied parameters from {fullpath}", title="Parameters applied", timeout=2000)
-    except Exception:
-        await log(f"unable to apply parameters from {fullpath}")
+        await log(f"Applied parameters from {fullpath}")
         await add_notification(
-            f"unable to apply parameters from {fullpath}", title="Error applying parameters", timeout=2000
+            f"Applied parameters from {fullpath}",
+            title="Parameters applied",
+            timeout=2000,
+        )
+    except Exception:
+        await log(f"Unable to apply parameters from {fullpath}")
+        await add_notification(
+            f"Unable to apply parameters from {fullpath}",
+            title="Error applying parameters",
+            timeout=2000,
         )
 
 
@@ -419,7 +438,13 @@ async def start_fit(fitter_id: str = "", kwargs=None):
         mapper = MPMapper.start_mapper(fitProblem, None, cpus=state.parallel)
         monitors = []
         fitclass = FITTERS_BY_ID[fitter_id]
-        driver = FitDriver(fitclass=fitclass, mapper=mapper, problem=fitProblem, monitors=monitors, **kwargs)
+        driver = FitDriver(
+            fitclass=fitclass,
+            mapper=mapper,
+            problem=fitProblem,
+            monitors=monitors,
+            **kwargs,
+        )
         x, fx = driver.fit()
         driver.show()
 
@@ -508,9 +533,19 @@ async def start_fit_thread(fitter_id: str = "", options=None, terminate_on_finis
             terminate_on_finish=terminate_on_finish,
         )
         state.shared.active_fit = to_json_compatible_dict(
-            dict(fitter_id=fitter_id, options=options, num_steps=num_steps, step=0, chisq="", value=0)
+            dict(
+                fitter_id=fitter_id,
+                options=options,
+                num_steps=num_steps,
+                step=0,
+                chisq="",
+                value=0,
+            )
         )
-        await log(json.dumps(to_json_compatible_dict(options), indent=2), title=f"starting fitter {fitter_id}")
+        await log(
+            json.dumps(to_json_compatible_dict(options), indent=2),
+            title=f"Starting fitter {fitter_id}",
+        )
         state.autosave()
         fit_thread.start()
         state.fit_thread = fit_thread
@@ -563,12 +598,15 @@ async def _fit_complete_handler(event):
         terminate = fit_thread.terminate_on_finish
         fit_thread.join(1)  # 1 second timeout on join
         if fit_thread.is_alive():
-            await log("fit thread failed to complete")
+            await log("Fit thread failed to complete")
     state.fit_thread = None
     state.shared.active_fit = {}
     if message == "error":
-        await log(event["traceback"], title=f"fit failed with error: {event.get('error_string')}")
-        logger.warning(f"fit failed with error: {event.get('error_string')}\n{event['traceback']}")
+        await log(
+            event["traceback"],
+            title=f"Fit failed with error: {event.get('error_string')}",
+        )
+        logger.warning(f"Fit failed with error: {event.get('error_string')}\n{event['traceback']}")
     else:
         problem: bumps.fitproblem.FitProblem = event["problem"]
         chisq = nice(2 * event["value"] / problem.dof)
@@ -577,11 +615,13 @@ async def _fit_complete_handler(event):
         state.problem.fitProblem = problem
         if state.shared.autosave_history:
             await save_to_history(
-                f"fit complete: {event['fitter_id']}", include_population=True, include_uncertainty=True
+                f"Fit complete: {event['fitter_id']}",
+                include_population=True,
+                include_uncertainty=True,
             )
         state.shared.updated_parameters = now_string()
-        await log(event["info"], title=f"done with chisq {chisq}")
-        logger.info(f"fit done with chisq {chisq}")
+        await log(event["info"], title=f"Done with chisq {chisq}")
+        logger.info(f"Fit done with chisq {chisq}")
 
     state.fit_complete_event.set()
 
@@ -609,7 +649,10 @@ EVT_FIT_COMPLETE.connect(fit_complete_handler, weak=True)
 
 async def log(message: str, title: Optional[str] = None):
     topic = "log"
-    contents = {"message": {"message": message, "title": title}, "timestamp": now_string()}
+    contents = {
+        "message": {"message": message, "title": title},
+        "timestamp": now_string(),
+    }
     # session = get_session(session_id)
     state.topics[topic].append(contents)
     # if session_id == app["active_session"]:
@@ -683,7 +726,13 @@ async def get_custom_plot_info():
     for model_index, model in enumerate(fitProblem.models):
         model_webview_plots = getattr(model, "webview_plots", {})
         for title, plotinfo in model_webview_plots.items():
-            output.append({"model_index": model_index, "change_with": plotinfo["change_with"], "title": title})
+            output.append(
+                {
+                    "model_index": model_index,
+                    "change_with": plotinfo["change_with"],
+                    "title": title,
+                }
+            )
 
     return output
 
@@ -800,10 +849,24 @@ async def get_convergence_plot():
                 mode="lines",
             )
         )
-        fig["layout"].update(dict(template="simple_white", legend=dict(x=1, y=1, xanchor="right", yanchor="top")))
+        fig["layout"].update(
+            dict(
+                template="simple_white",
+                legend=dict(x=1, y=1, xanchor="right", yanchor="top"),
+            )
+        )
         fig["layout"].update(dict(title=dict(text="Convergence", xanchor="center", x=0.5)))
         fig["layout"].update(dict(uirevision=1))
-        fig["layout"].update(dict(xaxis=dict(title="iteration number", showline=True, showgrid=False, zeroline=False)))
+        fig["layout"].update(
+            dict(
+                xaxis=dict(
+                    title="iteration number",
+                    showline=True,
+                    showgrid=False,
+                    zeroline=False,
+                )
+            )
+        )
         fig["layout"].update(dict(yaxis=dict(title="chisq", showline=True, showgrid=False, zeroline=False)))
         return to_json_compatible_dict(fig)
     else:
@@ -811,7 +874,13 @@ async def get_convergence_plot():
 
 
 @lru_cache(maxsize=30)
-def _get_correlation_plot(sort: bool = True, max_rows: int = 8, nbins: int = 50, vars=None, timestamp: str = ""):
+def _get_correlation_plot(
+    sort: bool = True,
+    max_rows: int = 8,
+    nbins: int = 50,
+    vars=None,
+    timestamp: str = "",
+):
     from .corrplot import Corr2d
 
     uncertainty_state = state.fitting.uncertainty_state
@@ -834,11 +903,22 @@ def _get_correlation_plot(sort: bool = True, max_rows: int = 8, nbins: int = 50,
 
 
 @register
-async def get_correlation_plot(sort: bool = True, max_rows: int = 8, nbins: int = 50, vars=None, timestamp: str = ""):
+async def get_correlation_plot(
+    sort: bool = True,
+    max_rows: int = 8,
+    nbins: int = 50,
+    vars=None,
+    timestamp: str = "",
+):
     # need vars to be immutable (hashable) for caching based on arguments:
     vars = tuple(vars) if vars is not None else None
     result = await asyncio.to_thread(
-        _get_correlation_plot, sort=sort, max_rows=max_rows, nbins=nbins, vars=vars, timestamp=timestamp
+        _get_correlation_plot,
+        sort=sort,
+        max_rows=max_rows,
+        nbins=nbins,
+        vars=vars,
+        timestamp=timestamp,
     )
     return result
 
@@ -926,7 +1006,13 @@ async def get_parameter_trace_plot(var: int):
         draw, points, _ = uncertainty_state.chains()
         label = uncertainty_state.labels[var]
         start = int((1 - portion) * len(draw)) if portion else 0
-        genid = np.arange(uncertainty_state.generation - len(draw) + start, uncertainty_state.generation) + 1
+        genid = (
+            np.arange(
+                uncertainty_state.generation - len(draw) + start,
+                uncertainty_state.generation,
+            )
+            + 1
+        )
         fig = plot_trace(
             genid * uncertainty_state.thinning,
             np.squeeze(points[start:, uncertainty_state._good_chains, var]).T,
@@ -962,7 +1048,9 @@ async def get_parameters(only_fittable: bool = False):
 
 @register
 async def set_parameter(
-    parameter_id: str, property: Literal["value01", "value", "min", "max"], value: Union[float, str, bool]
+    parameter_id: str,
+    property: Literal["value01", "value", "min", "max"],
+    value: Union[float, str, bool],
 ):
     if state.problem is None or state.problem.fitProblem is None:
         return None
@@ -1068,7 +1156,9 @@ async def get_dirlisting(pathlist: Optional[List[str]] = None):
     path = Path(state.base_path) if (pathlist is None or len(pathlist) == 0) else Path(*pathlist)
     if not path.exists():
         await add_notification(
-            f"Path does not exist: {path}, falling back to current working directory", title="Error", timeout=2000
+            f"Path does not exist: {path}, falling back to current working directory",
+            title="Error",
+            timeout=2000,
         )
         path = Path.cwd()
 

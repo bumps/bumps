@@ -16,7 +16,7 @@ setupDrawLoop("updated_convergence", props.socket, fetch_and_draw, title);
 async function fetch_and_draw() {
   const payload = (await props.socket.asyncEmit("get_convergence_plot")) as Plotly.PlotlyDataLayoutConfig;
   let plotdata = { ...payload };
-  // console.log({plotdata});
+  // console.debug({plotdata});
   const { data, layout } = plotdata;
   const config = { responsive: true, scrollZoom: true, modeBarButtonsToAdd: [SVGDownloadButton] };
   await Plotly.react(plot_div.value as HTMLDivElement, [...data], layout, config);

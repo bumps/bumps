@@ -10,5 +10,5 @@ export default defineConfig({
     // By default, Vite doesn't include shims for NodeJS.
     // Plotly fails to load without this shim.
     global: {},
-  }
+  },
 });

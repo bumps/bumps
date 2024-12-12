@@ -85,12 +85,12 @@ async def connect(sid: str, environ, data=None):
         message = contents[-1] if len(contents) > 0 else None
         if message is not None:
             await sio.emit(topic, message, to=sid)
-    logger.info(f"connect {sid}")
+    logger.info(f"Connected: session ID {sid}")
 
 
 @sio.event
 def disconnect(sid):
-    logger.info(f"disconnect {sid}")
+    logger.info(f"Disconnected: session ID {sid}")
 
 
 @sio.event
@@ -150,9 +150,18 @@ OPTIONS_CLASS = BumpsOptions
 
 def get_commandline_options(arg_defaults: Optional[Dict] = None):
     parser = argparse.ArgumentParser()
-    parser.add_argument("filename", nargs="?", help="problem file to load, .py or .json (serialized) fitproblem")
+    parser.add_argument(
+        "filename",
+        nargs="?",
+        help="problem file to load, .py or .json (serialized) fitproblem",
+    )
     # parser.add_argument('-d', '--debug', action='store_true', help='autoload modules on change')
-    parser.add_argument("-x", "--headless", action="store_true", help="do not automatically load client in browser")
+    parser.add_argument(
+        "-x",
+        "--headless",
+        action="store_true",
+        help="do not automatically load client in browser",
+    )
     parser.add_argument(
         "--external",
         action="store_true",
@@ -160,7 +169,10 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     )
     parser.add_argument("-p", "--port", default=0, type=int, help="port on which to start the server")
     parser.add_argument(
-        "--hub", default=None, type=str, help="api address of parent hub (only used when called as subprocess)"
+        "--hub",
+        default=None,
+        type=str,
+        help="api address of parent hub (only used when called as subprocess)",
     )
     parser.add_argument(
         "--fit",
@@ -170,12 +182,23 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         help="fitting engine to use; see manual for details",
     )
     parser.add_argument("--start", action="store_true", help="start fit when problem loaded")
-    parser.add_argument("--store", default=None, type=str, help="set read_store and write_store to same file")
     parser.add_argument(
-        "--read_store", default=None, type=str, help="read initial session state from file (overrides --store)"
+        "--store",
+        default=None,
+        type=str,
+        help="set read_store and write_store to same file",
     )
     parser.add_argument(
-        "--write_store", default=None, type=str, help="output file for session state (overrides --store)"
+        "--read_store",
+        default=None,
+        type=str,
+        help="read initial session state from file (overrides --store)",
+    )
+    parser.add_argument(
+        "--write_store",
+        default=None,
+        type=str,
+        help="output file for session state (overrides --store)",
     )
     parser.add_argument(
         "--exit",
@@ -190,7 +213,9 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         help="strategy for serializing problem, will use value from store if it has already been defined",
     )
     parser.add_argument(
-        "--trace", action="store_true", help="enable memory tracing (prints after every uncertainty update in dream)"
+        "--trace",
+        action="store_true",
+        help="enable memory tracing (prints after every uncertainty update in dream)",
     )
     parser.add_argument(
         "--parallel",
@@ -198,7 +223,12 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         type=int,
         help="run fit using multiprocessing for parallelism; use --parallel=0 for all cpus",
     )
-    parser.add_argument("--path", default=None, type=str, help="set initial path for save and load dialogs")
+    parser.add_argument(
+        "--path",
+        default=None,
+        type=str,
+        help="set initial path for save and load dialogs",
+    )
     parser.add_argument(
         "--no_auto_history",
         action="store_true",
@@ -284,7 +314,8 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
         api.state.read_session_file(str(read_store_path))
         if write_store is None:
             api.state.shared.session_output_file = dict(
-                pathlist=list(read_store_path.parent.parts), filename=read_store_path.name
+                pathlist=list(read_store_path.parent.parts),
+                filename=read_store_path.name,
             )
     if write_store is not None:
         write_store_path = Path(write_store).absolute()
@@ -462,7 +493,15 @@ def display_inline_jupyter(width: Union[str, int] = "100%", height: Union[str, i
 
     url = get_server_url()
     kwargs = dict(single_panel=single_panel) if single_panel is not None else {}
-    display(IFrame(src=url, width=width, height=height, extras=['style="resize: both;"'], **kwargs))
+    display(
+        IFrame(
+            src=url,
+            width=width,
+            height=height,
+            extras=['style="resize: both;"'],
+            **kwargs,
+        )
+    )
 
 
 def open_tab_link(single_panel=None) -> None:

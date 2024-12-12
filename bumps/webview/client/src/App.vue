@@ -65,7 +65,7 @@ const socket = io(sio_server, {
 socket_ref.value = socket;
 
 socket.on("connect", async () => {
-  console.log(socket.id);
+  console.log(`Connected: Session ID ${socket.id}`);
   connected.value = true;
   const file_info = (await socket.asyncEmit("get_shared_setting", "model_file")) as
     | { pathlist: string[]; filename: string }
@@ -172,7 +172,7 @@ async function saveFile(ev: Event, override?: { pathlist: string[]; filename: st
     return;
   }
   const { filename, pathlist } = override ?? model_file.value;
-  console.log("saving:", { pathlist, filename });
+  console.debug(`Saving: ${pathlist.join("/")}/${filename}`);
   await socket.asyncEmit(
     "save_problem_file",
     pathlist,
