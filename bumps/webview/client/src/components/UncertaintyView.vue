@@ -36,7 +36,8 @@ const { drawing_busy } = setupDrawLoop("updated_uncertainty", props.socket, fetc
 async function fetch_and_draw(latest_timestamp: string): Promise<void> {
   let { timestamp, plotdata } = (cache[title] as { timestamp: string; plotdata: Plotly.PlotlyDataLayoutConfig }) ?? {};
   if (timestamp !== latest_timestamp) {
-    console.log("fetching new uncertainty plot", timestamp, latest_timestamp);
+    console.log(`Fetching new model uncertainty plot: timestamp: ${timestamp}, latest: ${latest_timestamp}`);
+
     const payload = (await props.socket.asyncEmit(
       "get_uncertainty_plot",
       latest_timestamp

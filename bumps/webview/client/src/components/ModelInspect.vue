@@ -37,7 +37,7 @@ async function fetch_and_draw(reset: boolean = false) {
     const diff = getDiff(old_model, new_model);
     for (let [path, oldval, newval] of diff.edited) {
       const { target, parent, key } = resolve_diffpath(old_model, path);
-      console.log({ path, oldval, newval, target, parent, key });
+      console.debug({ path, oldval, newval, target, parent, key });
       // trigger reactive update;
       if (typeof key === "number" && Array.isArray(parent)) {
         parent.splice(key, 1, newval);

@@ -9,9 +9,7 @@ const props = defineProps<{
 }>();
 
 type TopicMessages = {
-  message: string;
-  title?: string;
-  timestamp: string;
+  message: { message: string; title?: string; timestamp: string };
 }[];
 
 const log_info = ref<{ message: string; title?: string }[]>([]);
@@ -21,15 +19,14 @@ props.socket.on("log", ({ message: { message, title } }) => {
 });
 
 props.socket.asyncEmit("get_topic_messages", "log", (messages: TopicMessages) => {
-  console.log({ messages });
-  log_info.value = [...log_info.value, ...messages.map((m) => ({ message: m.message, title: m.title }))];
+  log_info.value = [...log_info.value, ...messages.map((m) => m.message)];
 });
 </script>
 
 <template>
   <div class="log">
     <div v-for="({ message, title }, index) of log_info" :key="index" class="message">
-      <details v-if="title != null">
+      <details v-if="title">
         <summary>{{ title }}</summary>
         <pre>{{ message }}</pre>
       </details>

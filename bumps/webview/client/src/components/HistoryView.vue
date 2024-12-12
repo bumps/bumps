@@ -49,7 +49,7 @@ props.socket.on("autosave_history_length", (length: number) => {
 });
 
 async function remove_history_item(timestamp: string, keep: boolean) {
-  console.log("remove_history_item", timestamp);
+  console.log(`remove_history_item: ${timestamp}`);
   if (keep) {
     addNotification({
       title: "Forbidden",

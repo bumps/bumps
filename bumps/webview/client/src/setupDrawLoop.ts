@@ -20,7 +20,7 @@ export function setupDrawLoop(topic: string, socket: AsyncSocket, draw: DrawFunc
       return;
     }
     if (drawing_busy.value) {
-      console.log(`drawing ${name} busy!`);
+      console.log(`Drawing: ${name}. Busy!`);
     } else if (draw_requested.value) {
       drawing_busy.value = true;
       draw_requested.value = false;

@@ -31,6 +31,21 @@ test: ## Run pytest and doc tests
 	python check_examples.py --chisq
 	python check_fitters.py
 
+
+#######################
+### Dev environment ###
+#######################
+
+.PHONY: dev-backend
+dev-backend: ## Start the backend server in headless mode
+	bumps-webview --port 8080 --headless
+
+.PHONY: dev-frontend
+dev-frontend: ## Start the frontend server in development mode
+	cd bumps/webview/client && \
+		$(FE_CMD) run dev
+
+
 ##############################
 ### Linting and formatting ###
 ##############################

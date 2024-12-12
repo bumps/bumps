@@ -434,16 +434,16 @@ async def apply_parameters(pathlist: List[str], filename: str):
     try:
         bumps.cli.load_best(state.problem.fitProblem, fullpath)
         state.shared.updated_parameters = now_string()
-        await log(f"applied parameters from {fullpath}")
+        await log(f"Applied parameters from {fullpath}")
         await add_notification(
-            f"applied parameters from {fullpath}",
+            f"Applied parameters from {fullpath}",
             title="Parameters applied",
             timeout=2000,
         )
     except Exception:
-        await log(f"unable to apply parameters from {fullpath}")
+        await log(f"Unable to apply parameters from {fullpath}")
         await add_notification(
-            f"unable to apply parameters from {fullpath}",
+            f"Unable to apply parameters from {fullpath}",
             title="Error applying parameters",
             timeout=2000,
         )
@@ -570,7 +570,7 @@ async def start_fit_thread(
         )
         await log(
             json.dumps(to_json_compatible_dict(options), indent=2),
-            title=f"starting fitter {fitter_id}",
+            title=f"Starting fitter {fitter_id}",
         )
         state.autosave()
         fit_thread.start()
@@ -628,16 +628,16 @@ async def _fit_complete_handler(event):
         terminate = fit_thread.terminate_on_finish
         fit_thread.join(1)  # 1 second timeout on join
         if fit_thread.is_alive():
-            await log("fit thread failed to complete")
+            await log("Fit thread failed to complete")
     state.fit_thread = None
     state.shared.active_fit = {}
     if message == "error":
         await log(
             event["traceback"],
-            title=f"fit failed with error: {event.get('error_string')}",
+            title=f"Fit failed with error: {event.get('error_string')}",
         )
         logger.warning(
-            f"fit failed with error: {event.get('error_string')}\n{event['traceback']}"
+            f"Fit failed with error: {event.get('error_string')}\n{event['traceback']}"
         )
     else:
         problem: bumps.fitproblem.FitProblem = event["problem"]
@@ -647,13 +647,13 @@ async def _fit_complete_handler(event):
         state.problem.fitProblem = problem
         if state.shared.autosave_history:
             await save_to_history(
-                f"fit complete: {event['fitter_id']}",
+                f"Fit complete: {event['fitter_id']}",
                 include_population=True,
                 include_uncertainty=True,
             )
         state.shared.updated_parameters = now_string()
-        await log(event["info"], title=f"done with chisq {chisq}")
-        logger.info(f"fit done with chisq {chisq}")
+        await log(event["info"], title=f"Done with chisq {chisq}")
+        logger.info(f"Fit done with chisq {chisq}")
 
     state.fit_complete_event.set()
 

@@ -75,7 +75,6 @@ const filtered_parameters = computed(() => {
       };
     })
     .filter(({ show }) => show);
-  console.debug({ filtered });
 
   return filtered;
 });
