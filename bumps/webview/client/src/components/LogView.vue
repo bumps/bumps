@@ -8,17 +8,22 @@ const props = defineProps<{
   socket: AsyncSocket;
 }>();
 
+type LogInfo = { message: string; title?: string };
+
 type TopicMessages = {
-  message: { message: string; title?: string; timestamp: string };
+  message: LogInfo;
+  timestamp: string;
 }[];
 
-const log_info = ref<{ message: string; title?: string }[]>([]);
+const log_info = ref<LogInfo[]>([]);
 
 props.socket.on("log", ({ message: { message, title } }) => {
   log_info.value.push({ message, title });
 });
 
 props.socket.asyncEmit("get_topic_messages", "log", (messages: TopicMessages) => {
+  console.debug({ messages });
+
   log_info.value = [...log_info.value, ...messages.map((m) => m.message)];
 });
 </script>
