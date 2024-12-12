@@ -13,6 +13,9 @@ import { setupDrawLoop } from "../setupDrawLoop";
 type RegisterTypes = Parameters<typeof Plotly.register>[0];
 type PlotlyModule = Exclude<RegisterTypes, any[]>;
 
+// server sends annotations with name field
+type CustomAnnotations = Plotly.Annotations & { name: string };
+
 Plotly.register([Bar as PlotlyModule]);
 
 const title = "Uncertainty";
@@ -61,7 +64,7 @@ function apply_label_visibility(layout: Plotly.Layout, visible: boolean) {
     }
   }
   for (let annotation of layout?.annotations ?? []) {
-    if (annotation?.text === "label") {
+    if ((annotation as CustomAnnotations)?.name === "label") {
       annotation.visible = visible;
     }
   }
