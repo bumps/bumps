@@ -10,7 +10,7 @@ declare module "socket.io-client" {
 
 Socket.prototype.asyncEmit = async function asyncEmit(ev: string, ...args: any[]) {
   const callback = args[args.length - 1] instanceof Function ? args.pop() : null;
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     // get result of plain emit:
     this.emit(ev, ...args, resolve);
   }).then(async (result) => {

@@ -23,63 +23,60 @@ function toggle(tag: string, listname: "show" | "hide") {
 }
 
 const tag_colors = computed(() => {
-  // const tag_names = Array.from(new Set(props.parameters.map((p) => p.tags ?? []).flat()));
-  // const tag_names = ["tag1", "tag2", "tag3", "tag4", "tag5", "tag6", "tag7", "tag8", "tag9", "tag10"];
-  const tag_names = Array.from(new Set(props.parameters.map((p) => p.name).flat()));
-  return Object.fromEntries(tag_names.map((t, i) => [t, COLORS[i % COLORS.length]]));
+  // const tag_names = Array.from(new Set(props.parameters.map((p) => p.name).flat())); // test with all parameters
+  const tag_names = Array.from(new Set(props.parameters.map((p) => p.tags ?? []).flat()));
+  let tagColors = Object.fromEntries(tag_names.map((t, i) => [t, COLORS[i % COLORS.length]]));
+  return tagColors;
 });
 
-const COLORS = [
-  "#af0e2b" /* red */,
-  "#be460f" /* orange */,
-  "#be9500" /* yellow */,
-  "#136d01" /* green */,
-  "#0b6e6e" /* teal */,
-  "#0b3e6e" /* blue */,
-  "#6A07B6" /* purple */,
-  "#a70a9d" /* pink */,
+const COLORS: string[] = [
+  "#af0e2b" /** red */,
+  "#be460f" /** orange */,
+  "#be9500" /** yellow */,
+  "#136d01" /** green */,
+  "#0b6e6e" /** teal */,
+  "#0b3e6e" /** blue */,
+  "#6A07B6" /** purple */,
+  "#a70a9d" /** pink */,
 ];
 
-const getBackgroundColor = (tag: string, color: string, toHide) => {
+const getBackgroundColor = (tag: string, color: string, toHide: boolean) => {
   let bgColor: string;
   if (toHide) {
-    bgColor = tags_to_show.value.includes(tag as string) ? `${color}FF` : `${color}66`;
+    bgColor = tags_to_show.value.includes(tag) ? `${color}FF` : `${color}66`;
   } else {
-    bgColor = tags_to_hide.value.includes(tag as string) ? `${color}FF` : `${color}66`;
+    bgColor = tags_to_hide.value.includes(tag) ? `${color}FF` : `${color}66`;
   }
   return bgColor;
 };
 
-function should_show(tags: string[]) {
+function shouldShow(tags: string[]): boolean {
+  // if we're specifically hiding it, then don't show it
   if (tags_to_hide.value.length > 0 && tags.some((t) => tags_to_hide.value.includes(t))) {
     return false;
   }
-  // then we're not specifically hiding it...
-  else if (tags_to_show.value.length > 0) {
-    if (tags.some((t) => tags_to_show.value.includes(t))) {
-      return true;
-    } else {
-      return false;
-    }
+  if (tags_to_show.value.length > 0) {
+    // true if tag is in tags_to_show, false otherwise
+    return tags.some((t) => tags_to_show.value.includes(t));
   }
-  // then we're not specifying to_show, show by default:
-  else {
-    return true;
-  }
+  // show by default
+  return true;
 }
 
 const filtered_parameters = computed(() => {
   // return list of { parameter, index } objects
   // that should be shown based on tag filters
-  return props.parameters
+  let filtered = props.parameters
     .map((parameter, index) => {
       return {
         parameter,
         index,
-        show: should_show(parameter.tags),
+        show: shouldShow(parameter.tags),
       };
     })
     .filter(({ show }) => show);
+
+  return filtered;
 });
 
 defineExpose({
@@ -106,11 +103,12 @@ defineExpose({
       <div class="col">
         <button
           v-for="(tag_color, tag) in tag_colors"
+          :id="`include-tag-${tag}`"
           :key="`include-tag-${tag}`"
           class="badge rounded-pill me-1"
           :style="{
             color: 'white',
-            'background-color': `${getBackgroundColor(tag, tag_color, true)}`,
+            'background-color': `${getBackgroundColor(tag as string, tag_color, true)}`,
           }"
           @click="toggle(tag as string, 'show')"
           @keydown.enter="toggle(tag as string, 'show')"
@@ -128,7 +126,7 @@ defineExpose({
           class="badge rounded-pill me-1"
           :style="{
             color: 'white',
-            'background-color': `${getBackgroundColor(tag, tag_color, false)}`,
+            'background-color': `${getBackgroundColor(tag as string, tag_color, false)}`,
           }"
           @click="toggle(tag as string, 'hide')"
           @keydown.enter="toggle(tag as string, 'hide')"

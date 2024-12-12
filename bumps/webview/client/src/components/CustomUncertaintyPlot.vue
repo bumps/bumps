@@ -52,13 +52,13 @@ async function fetch_and_draw(latest_timestamp?: string) {
   const read_cache = (cache[cache_key] as { timestamp: string; plotdata: object }) ?? {};
   const timestamp = read_cache.timestamp;
   let payload = read_cache.plotdata;
-  //console.log([timestamp, latest_timestamp])
+  //console.debug([timestamp, latest_timestamp])
   if (latest_timestamp === undefined || timestamp !== latest_timestamp) {
-    console.log("fetching new model uncertainty plot", timestamp, latest_timestamp);
+    console.log(`Fetching new model uncertainty plot: timestamp: ${timestamp}, latest: ${latest_timestamp}`);
     payload = await props.socket.asyncEmit("get_custom_plot", model_index, title, n_samples.value);
     cache[cache_key] = { timestamp: latest_timestamp, plotdata: payload };
   }
-  //console.log(payload)
+  //console.debug(payload)
   const { fig_type, plotdata } = payload as { fig_type: "plotly" | "matplotlib" | "table" | "error"; plotdata: object };
   figtype.value = fig_type;
   if (fig_type === "plotly") {

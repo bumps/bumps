@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import { default_fitter, default_fitter_settings, fitter_settings, selected_fitter } from "../app_state.ts";
-import type { AsyncSocket } from "../asyncSocket.ts";
+import {
+  default_fitter,
+  default_fitter_settings,
+  fitter_settings,
+  selected_fitter,
+  type FitSetting,
+} from "../app_state";
+import type { AsyncSocket } from "../asyncSocket";
 
 const props = defineProps<{ socket: AsyncSocket }>();
 
@@ -9,7 +15,7 @@ const dialog = ref<HTMLDialogElement>();
 const isOpen = ref(false);
 const selected_fitter_local = ref("amoeba");
 
-const FIT_FIELDS = {
+const FIT_FIELDS: { [key: string]: [string, string | string[]] } = {
   starts: ["Starts", "integer"],
   steps: ["Steps", "integer"],
   samples: ["Samples", "integer"],
@@ -31,7 +37,7 @@ const FIT_FIELDS = {
   outliers: ["Outliers", ["none", "iqr", "grubbs", "mahal"]],
 };
 
-const OPTIONS_HELP = {
+const OPTIONS_HELP: { [key: string]: string } = {
   dream: "if Steps=0, Steps will be calculated as (Burn-in steps) + (Samples / (Population * Num. Fit Params))",
 };
 
@@ -39,7 +45,7 @@ const OPTIONS_HELP = {
 // const active_settings = ref<{ name: string, settings: object}>({name: "", settings: {}});
 const active_settings = ref({});
 
-props.socket.asyncEmit("get_fitter_defaults", (new_fitter_defaults) => {
+props.socket.asyncEmit("get_fitter_defaults", (new_fitter_defaults: { [fit_name: string]: FitSetting }) => {
   default_fitter_settings.value = new_fitter_defaults;
 });
 
@@ -110,7 +116,7 @@ function reset() {
   active_settings.value = structuredClone(default_fitter_settings.value[selected_fitter_local.value].settings) ?? {};
 }
 
-function validate(value, field_name) {
+function validate(value: any, field_name: string) {
   const field_type = FIT_FIELDS[field_name][1];
   if (Array.isArray(field_type) || field_type === "boolean") {
     // there's no way to get an incorrect option.
@@ -194,8 +200,8 @@ defineExpose({
                     ><em>{{ OPTIONS_HELP[selected_fitter_local] }}</em></span
                   >
                 </div>
-                <div v-for="(value, sname, index) in active_settings" :key="sname" class="row p-1">
-                  <label class="col-sm-4 col-form-label" :for="'fitter_setting_' + sname">{{
+                <div v-for="(value, sname) in active_settings" :key="sname" class="row p-1">
+                  <label class="col-sm-4 col-form-label" :for="`fitter_setting_${sname}`">{{
                     FIT_FIELDS[sname][0]
                   }}</label>
                   <div class="col-sm-8">
@@ -225,7 +231,7 @@ defineExpose({
                       :class="{ 'form-control': true, 'is-invalid': !validate(active_settings[sname], sname) }"
                       type="text"
                       :name="sname"
-                      @keydown.enter="save"
+                      @keydown.enter="() => save()"
                     />
                   </div>
                 </div>

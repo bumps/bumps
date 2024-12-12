@@ -1,18 +1,14 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import { connected } from "../app_state.ts";
 import type { AsyncSocket } from "../asyncSocket.ts";
 
 const props = defineProps<{ socket: AsyncSocket }>();
 
 const loading_dialog = ref<HTMLDivElement>();
-const connected = ref(false);
+// const connected = ref(false);
 const status_string = ref<string>();
 const percent = ref<number>();
-
-props.socket.on("connect", () => {
-  connected.value = true;
-  console.log("connected!");
-});
 
 interface ServerStartupStatus {
   status: string;
@@ -24,7 +20,7 @@ props.socket.on("server_startup_status", (status: ServerStartupStatus) => {
   percent.value = status.percent;
 });
 
-console.log("connected handler registered.");
+console.log("Connected handler registered.");
 </script>
 
 <template>
