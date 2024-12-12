@@ -17,6 +17,8 @@ try:
 except ImportError:
     __version__ = "unknown"
 
+__schema_version__ = "1"
+
 def data_files():
     """
     Return the data files associated with the package for setup_py2exe.py.
