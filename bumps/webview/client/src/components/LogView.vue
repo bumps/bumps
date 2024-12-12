@@ -65,7 +65,7 @@ function timestampToDate(timestamp: string) {
 <style scoped>
 .container {
   align-self: center;
-  width: 75%;
+  width: 90%;
   padding: 1rem;
 }
 
@@ -83,6 +83,11 @@ table {
   border-collapse: collapse;
   font-size: 0.9rem;
   table-layout: auto;
+  /* table-layout: fixed; */
+}
+
+th:nth-child(1) {
+  width: 15%;
 }
 
 th,
