@@ -2,6 +2,8 @@
 Miscellaneous utility functions.
 """
 from __future__ import division
+from dataclasses import fields
+from importlib import metadata
 import warnings
 
 __all__ = ["kbhit", "profile", "pushdir", "push_seed", "redirect_console"]
@@ -50,6 +52,7 @@ def schema_config(
     """
     def add_schema_config(cls: Type[T]) -> Type[T]:
         if include is not None and exclude is not None:
+            fqn = f"{cls.__module__}.{cls.__qualname__}"
             raise ValueError(f"{fqn} schema: include array and exclude array are mutually exclusive - only define one")
 
         setattr(cls, SCHEMA_ATTRIBUTE_NAME, dict(include=include, exclude=exclude))
@@ -384,3 +387,35 @@ class push_seed(object):
 
     def __exit__(self, *args):
         np.random.set_state(self._state)
+
+
+def get_libraries(obj, libraries=None, packages_distributions=None):
+    if libraries is None:
+        libraries = {}
+    if packages_distributions is None:
+        packages_distributions = metadata.packages_distributions()
+
+    if is_dataclass(obj):
+        _add_to_libraries(obj, libraries, packages_distributions)
+        for f in fields(obj):
+            subobj = getattr(obj, f.name)
+            get_libraries(subobj, libraries, packages_distributions=packages_distributions)
+    elif isinstance(obj, (list, tuple, types.GeneratorType)):
+        for v in obj:
+            get_libraries(v, libraries, packages_distributions=packages_distributions)
+    elif isinstance(obj, dict):
+        for v in obj.values():
+            if is_dataclass(v):
+                get_libraries(v, libraries, packages_distributions=packages_distributions)
+
+    return libraries
+
+def _add_to_libraries(obj, libraries: dict, packages_distributions: dict):
+    module = obj.__module__.split('.')[0]
+    dist_name = packages_distributions.get(module,[None])[0]
+    if dist_name is not None and dist_name not in libraries:
+        # module is already in sys.modules for obj
+        # get __version__ attribute from module directly, fall back to version of distribution object
+        version = getattr(sys.modules[module], '__version__', metadata.distribution(dist_name).version)
+        schema_version = getattr(sys.modules[module], '__schema_version__', None)
+        libraries[dist_name] = dict(version=version, schema_version=schema_version)
