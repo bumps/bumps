@@ -359,6 +359,7 @@ class FitProblem:
         Returns True if the value is valid and the parameters were set,
         otherwise returns False.
         """
+        # print("Calling setp with", pvec, self._parameters)
         # TODO: do we have to leave the model in an invalid state?
         # WARNING: don't try to conditionally update the model
         # depending on whether any model parameters have changed.
@@ -437,7 +438,7 @@ class FitProblem:
 
         pparameter, pconstraints, pmodel, failing_constraints = self._nllf_components()
         cost = pparameter + pconstraints + pmodel
-        # print(pvec, "cost=",pparameter,"+",pconstraints,"+",pmodel,"=",cost)
+        # print("cost=",pparameter,"+",pconstraints,"+",pmodel,"=",cost, pvec)
         if isnan(cost):
             # TODO: make sure errors get back to the user
             # print "point evaluates to nan"
@@ -545,7 +546,7 @@ class FitProblem:
         If the set of fit parameters changes, then model_reset must
         be called.
         """
-        # print self.model_parameters()
+        # print("In model reset with", self.model_parameters())
         all_parameters = parameter.unique(self.model_parameters())
         # print "all_parameters",all_parameters
         # for p in all_parameters:

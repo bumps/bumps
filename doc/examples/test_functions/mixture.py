@@ -29,34 +29,46 @@ Population size *h* is set to 20 per mode.  A good choice for number of
 sequences *k* is not yet determined.
 """
 
-from __future__ import print_function
-
 import numpy as np
 from bumps.dream.model import MVNormal, Mixture
 from bumps.names import *
 from bumps.util import push_seed
 
 
-def make_model():
-    if 1:  # Fixed layout of 5 minima
+def make_model(dims=10):
+    """
+    Adjust S (sigma^2) to change the diameter of the peak
+
+    Small values of sigma lead to stuck fits.
+
+    Adjust relative intensity of peaks with I.
+
+    Choose peak spacing with x. Keep it between -10 and 20
+
+    The peaks are located in a hypercube of dimension d, with coordinates in
+    each dimension a random permutation of x. That means the resulting histogram
+    which is a projection along that dimension will contain a random permutation
+    of peak heights, with centers at the x positions. The 2D histograms will be
+    be similar random permutations.
+    """
+    if 1:  # Uneven spacing of 5 peaks
+        num_modes = 5
+        S = [0.1] * 5
+        x = [1, 3, 7, 14, 18]
+        I = [2.5, 1, 5, 4, 1]
+        # S[2] = 0.05; I[2] = 60
+    elif 1:  # Even spacing of 5 peaks
         num_modes = 5
         S = [0.1] * 5
         x = [-4, -2, 0, 2, 4]
-        y = [2, -2, -4, 0, 4]
-        I = [5, 2.5, 1, 4, 1]
-    else:  # Semirandom layout of n minima
+        I = [15, 2.5, 1, 4, 1]
+    else:  # Lots of evenly spaced peaks
         num_modes = 40
         S = [0.1] * num_modes
-        x = np.linspace(-10, 10, num_modes)
-        y = np.random.permutation(x)
+        x = np.linspace(-9, 9, num_modes)
         I = 2 * np.linspace(-1, 1, num_modes) ** 2 + 1
 
-    ## Take only the first two modes
-    k = 2
-    S, x, y, I = S[:k], x[:k], y[:k], I[:k]
-    # S[1] = 1; I[1] = 1; I[0] = 1
-    dims = 10
-    centers = [x, y] + [np.random.permutation(x) for _ in range(2, dims)]
+    centers = [x] + [np.random.permutation(x) for _ in range(1, dims)]
     centers = np.asarray(centers).T
     args = []  # Sequence of density, weight, density, weight, ...
     for mu_i, Si, Ii in zip(centers, S, I):
@@ -76,8 +88,9 @@ def make_model():
 
 
 # Need reproducible models if we want to be able to resume a fit
+dims = 6
 with push_seed(1):
-    model = make_model()
+    model = make_model(dims=dims)
 
 
 def plot2d(fn, args=None, range=(-10, 10)):
@@ -120,7 +133,7 @@ def plot2d(fn, args=None, range=(-10, 10)):
     return plotter
 
 
-M = VectorPDF(model.nllf, p=[0.0] * dims, plot=plot2d(model.nllf))
+M = VectorPDF(model.nllf, p=[1.0] * dims, plot=plot2d(model.nllf))
 for _, p in M.parameters().items():
-    p.range(-10, 10)
+    p.range(-10, 20)
 problem = FitProblem(M)

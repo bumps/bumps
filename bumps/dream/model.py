@@ -244,9 +244,10 @@ class Mixture(MCMCModel):
             or not all(np.isscalar(w) for w in weights)
         ):
             raise TypeError("Expected MixtureModel(M1, w1, M2, w2, ...)")
-        self.pairs = zip(models, weights)
+        self.pairs = tuple(zip(models, weights))
         self.weight = np.sum(w for w in weights)
 
     def nllf(self, x):
         p = [w * exp(-M.nllf(x)) for M, w in self.pairs]
-        return -log(np.sum(p) / self.weight)
+        total = np.sum(p) / self.weight
+        return -log(total) if total > 0 else 1e100
