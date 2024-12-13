@@ -398,8 +398,9 @@ def get_libraries(obj, libraries=None, packages_distributions=None):
     if is_dataclass(obj):
         _add_to_libraries(obj, libraries, packages_distributions)
         for f in fields(obj):
-            subobj = getattr(obj, f.name)
-            get_libraries(subobj, libraries, packages_distributions=packages_distributions)
+            subobj = getattr(obj, f.name, None)
+            if subobj is not None:
+                get_libraries(subobj, libraries, packages_distributions=packages_distributions)
     elif isinstance(obj, (list, tuple, types.GeneratorType)):
         for v in obj:
             get_libraries(v, libraries, packages_distributions=packages_distributions)
