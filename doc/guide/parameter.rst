@@ -175,4 +175,3 @@ set as above, or individually using, e.g.,
 
     fv.solvent[0].range(-1,0)
     fv.solvent[1].range(6,7)
-

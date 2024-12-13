@@ -24,7 +24,7 @@
 This module implements the Parameter View panel.
 """
 
-#==============================================================================
+# ==============================================================================
 
 import wx
 import wx.dataview as dv
@@ -35,11 +35,13 @@ from ..parameter import Parameter
 from .util import nice
 from . import signal
 
-IS_MAC = (wx.Platform == '__WXMAC__')
+IS_MAC = wx.Platform == "__WXMAC__"
+
 
 class ParameterCategory(object):
     def __init__(self, name):
         self.name = name
+
 
 class ParametersModel(dv.PyDataViewModel):
     _columns = [
@@ -63,14 +65,14 @@ class ParametersModel(dv.PyDataViewModel):
         # so any Python object can be used as data nodes. If the data nodes
         # are weak-referencable then the objmapper can use a
         # WeakValueDictionary instead.
-        #self.UseWeakRefs(True)
+        # self.UseWeakRefs(True)
 
     def SetParameters(self, model):
         self.model = model
         self.data = params_to_list(model.model_parameters()) if model is not None else []
         self.Cleared()
-        #self.log.write("data is %s"%str(self.data))
-        #for obj in self.data:
+        # self.log.write("data is %s"%str(self.data))
+        # for obj in self.data:
         #    self.ItemAdded(self.ObjectToItem(obj["parent"]), self.ObjectToItem(obj))
 
     def UpdateParameters(self):
@@ -78,7 +80,7 @@ class ParametersModel(dv.PyDataViewModel):
             self.ItemChanged(self.ObjectToItem(obj))
 
     def GetColumnCount(self):
-        """ 5 data columns plus (name + 4) """
+        """5 data columns plus (name + 4)"""
         return len(self._columns)
 
     def GetColumnType(self, col):
@@ -106,7 +108,6 @@ class ParametersModel(dv.PyDataViewModel):
         for child in child_list:
             children.append(self.ObjectToItem(child))
         return len(child_list)
-
 
     def IsContainer(self, item):
         # The hidden root is a container
@@ -138,7 +139,7 @@ class ParametersModel(dv.PyDataViewModel):
         ##self.log.write('GetAttr')
         node = self.ItemToObject(item)
         if isinstance(node, ParameterCategory):
-            attr.SetColour('blue')
+            attr.SetColour("blue")
             attr.SetBold(True)
             return True
         return False
@@ -160,34 +161,33 @@ class ParametersModel(dv.PyDataViewModel):
             mapper[0] = str(par.name)
             return mapper[col]
 
-
         elif isinstance(par, Parameter):
             if par.fittable:
                 if par.fixed:
                     fitted = False
-                    low, high = '', ''
+                    low, high = "", ""
                 else:
                     fitted = True
                     low, high = (str(v) for v in par.prior.limits)
             else:
                 fitted = False
-                low, high = '', ''
-            mapper = { 
-                0 : fitted,
-                1 : str(par.name),
-                2 : str(nice(par.value)),
-                3 : low,
-                4 : high,
-                5 : str(node["path"]),
-                6 : str(node["link"]),
-                }
+                low, high = "", ""
+            mapper = {
+                0: fitted,
+                1: str(par.name),
+                2: str(nice(par.value)),
+                3: low,
+                4: high,
+                5: str(node["path"]),
+                6: str(node["link"]),
+            }
             return mapper[col]
 
         else:
             raise RuntimeError("unknown node type")
 
     def SetValue(self, value, item, col):
-        #self.log.write("SetValue: col %d,  %s\n" % (col, value))
+        # self.log.write("SetValue: col %d,  %s\n" % (col, value))
 
         # We're not allowing edits in column zero (see below) so we just need
         # to deal with Song objects and cols 1 - 5
@@ -201,13 +201,15 @@ class ParametersModel(dv.PyDataViewModel):
             elif col == 2:
                 par.clip_set(float(value))
             elif col == 3:
-                if value == '': return
+                if value == "":
+                    return
                 low = float(value)
                 high = par.prior.limits[1]
                 if low != par.prior.limits[0]:
                     par.range(low, high)
             elif col == 4:
-                if value == '': return
+                if value == "":
+                    return
                 high = float(value)
                 low = par.prior.limits[0]
                 if high != par.prior.limits[1]:
@@ -222,26 +224,29 @@ class ParametersModel(dv.PyDataViewModel):
         signal.update_parameters(model=self.model, delay=1)
         return True
 
+
 class ParameterView(wx.Panel):
-    title = 'Parameters'
-    default_size = (640,500)
+    title = "Parameters"
+    default_size = (640, 500)
+
     def __init__(self, *args, **kw):
         wx.Panel.__init__(self, *args, **kw)
 
-        #sizers
+        # sizers
         vbox = wx.BoxSizer(wx.VERTICAL)
         text_hbox = wx.BoxSizer(wx.HORIZONTAL)
 
-        self.tree = dv.DataViewCtrl(self,
-                                   style=wx.BORDER_THEME
-                                   | dv.DV_ROW_LINES # nice alternating bg colors
-                                   | dv.DV_HORIZ_RULES
-                                   | dv.DV_VERT_RULES
-                                   | dv.DV_MULTIPLE
-                                   )
+        self.tree = dv.DataViewCtrl(
+            self,
+            style=wx.BORDER_THEME
+            | dv.DV_ROW_LINES  # nice alternating bg colors
+            | dv.DV_HORIZ_RULES
+            | dv.DV_VERT_RULES
+            | dv.DV_MULTIPLE,
+        )
         self.dvModel = ParametersModel(sys.stdout)
         self.tree.AssociateModel(self.dvModel)
-        #self.dvModel.DecRef()  # avoid memory leak !!
+        # self.dvModel.DecRef()  # avoid memory leak !!
 
         self.tree.AppendToggleColumn("Fit?", 0, width=40, mode=dv.DATAVIEW_CELL_ACTIVATABLE)
         self.tree.AppendTextColumn("Parameter", 1, width=170)
@@ -251,7 +256,6 @@ class ParameterView(wx.Panel):
         self.tree.AppendTextColumn("Path", 5, width=300)
         self.tree.AppendTextColumn("Link", 6, width=300)
 
-
         vbox.Add(self.tree, 1, wx.EXPAND)
         self.SetSizer(vbox)
         self.SetAutoLayout(True)
@@ -260,9 +264,9 @@ class ParameterView(wx.Panel):
 
     # ============= Signal bindings =========================
 
-
     def OnShow(self, event):
-        if not event.Show: return
+        if not event.Show:
+            return
         event.Skip()
 
     # ============ Operations on the model  ===============
@@ -277,21 +281,23 @@ class ParameterView(wx.Panel):
         self.update_model(model)
 
     def update_model(self, model):
-        if self.model != model: return
+        if self.model != model:
+            return
         self.dvModel.SetParameters(self.model)
         if not IS_MAC:
             # Required for Linux; Windows doesn't care; causes mac to crash
             self.tree.AssociateModel(self.dvModel)
-        #self.dvModel.DecRef()  # avoid memory leak !!
+        # self.dvModel.DecRef()  # avoid memory leak !!
         self.expandAll()
 
     def update_parameters(self, model):
-        if self.model != model: return
-        #self.dvModel.Cleared()
+        if self.model != model:
+            return
+        # self.dvModel.Cleared()
         self.dvModel.UpdateParameters()
 
     def expandAll(self, max_depth=20):
-        #print("calling expandAll")
+        # print("calling expandAll")
         num_selected = -1
         depth = 0
         while True and depth < max_depth:
@@ -308,7 +314,7 @@ class ParameterView(wx.Panel):
 
 
 def params_to_dict(params):
-    if isinstance(params,dict):
+    if isinstance(params, dict):
         ref = {}
         for k in sorted(params.keys()):
             ref[k] = params_to_dict(params[k])
@@ -317,35 +323,36 @@ def params_to_dict(params):
     elif isinstance(params, Parameter):
         if params.fittable:
             if params.fixed:
-                fitted = 'No'
-                low, high = '', ''
+                fitted = "No"
+                low, high = "", ""
             else:
-                fitted = 'Yes'
+                fitted = "Yes"
                 low, high = (str(v) for v in params.prior.limits)
         else:
-            fitted = ''
-            low, high = '', ''
+            fitted = ""
+            low, high = "", ""
 
         ref = [str(params.name), str(nice(params.value)), low, high, fitted]
     return ref
 
-def params_to_list(params, parent_uuid=None, output=None, path='M', links=None):
+
+def params_to_list(params, parent_uuid=None, output=None, path="M", links=None):
     output = [] if output is None else output
     links = {} if links is None else links
-    if isinstance(params,dict):
+    if isinstance(params, dict):
         for k in sorted(params.keys()):
-            #new_id = uuid_generate()
-            #new_item = {"parent": parent_uuid, "id": new_id, "value": ParameterCategory(k)}
-            #output.append(new_item)
+            # new_id = uuid_generate()
+            # new_item = {"parent": parent_uuid, "id": new_id, "value": ParameterCategory(k)}
+            # output.append(new_item)
             new_id = None
-            params_to_list(params[k], parent_uuid=new_id, output=output, path=path+"."+k, links=links)
+            params_to_list(params[k], parent_uuid=new_id, output=output, path=path + "." + k, links=links)
     elif isinstance(params, tuple) or isinstance(params, list):
         for i, v in enumerate(params):
-            #new_id = uuid_generate()
-            #new_item = {"parent": parent_uuid, "id": new_id, "value": ParameterCategory('[%d]' % (i,))}
-            #output.append(new_item)
+            # new_id = uuid_generate()
+            # new_item = {"parent": parent_uuid, "id": new_id, "value": ParameterCategory('[%d]' % (i,))}
+            # output.append(new_item)
             new_id = None
-            params_to_list(v, parent_uuid=new_id, output=output, path=path+"[%d]" % (i,), links=links)
+            params_to_list(v, parent_uuid=new_id, output=output, path=path + "[%d]" % (i,), links=links)
     elif isinstance(params, Parameter):
         link_path = links.get(id(params), "")
         if link_path == "":
@@ -355,4 +362,3 @@ def params_to_list(params, parent_uuid=None, output=None, path='M', links=None):
         output.append(new_item)
 
     return output
-

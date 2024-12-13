@@ -25,14 +25,13 @@ This module implements the AppFrame class which creates the main frame of the
 GUI for the Bumps application including a basic menu, tool bar, and status bar.
 """
 
-#==============================================================================
+# ==============================================================================
 
 import sys
 
 import wx
 
-from .about import (AboutDialog, APP_TITLE, APP_DESCRIPTION, APP_LICENSE,
-                    APP_CREDITS, APP_TUTORIAL)
+from .about import AboutDialog, APP_TITLE, APP_DESCRIPTION, APP_LICENSE, APP_CREDITS, APP_TUTORIAL
 from .app_panel import AppPanel
 from .console import NumpyConsole
 from .utilities import resource, choose_fontsize, display_fontsize
@@ -40,12 +39,15 @@ from .utilities import resource, choose_fontsize, display_fontsize
 # Resource files.
 PROG_ICON = "bumps.ico"
 
-#==============================================================================
+
+# ==============================================================================
 class ModelConsole(NumpyConsole):
     def OnChanged(self, added=(), changed=(), removed=()):
         pass
+
     def OnClose(self, event):
         self.Show(False)
+
 
 class AppFrame(wx.Frame):
     """
@@ -53,8 +55,9 @@ class AppFrame(wx.Frame):
     with application specific panels and widgets.
     """
 
-    def __init__(self, parent=None, id=wx.ID_ANY, title=APP_TITLE,
-                 pos=wx.DefaultPosition, size=wx.DefaultSize, name="AppFrame"):
+    def __init__(
+        self, parent=None, id=wx.ID_ANY, title=APP_TITLE, pos=wx.DefaultPosition, size=wx.DefaultSize, name="AppFrame"
+    ):
         wx.Frame.__init__(self, parent, id, title, pos, size, name=name)
 
         # Display the application's icon in the title bar.
@@ -76,7 +79,7 @@ class AppFrame(wx.Frame):
         # Build the application panels for the GUI on the frame.
         self.panel = AppPanel(self)
         self.panel.console = ModelConsole(self)
-        self.panel.console['app'] = self
+        self.panel.console["app"] = self
 
         # Note: Do not call self.Fit() as this will reduce the frame to its
         # bare minimum size; we want it to keep its default size.
@@ -97,21 +100,31 @@ class AppFrame(wx.Frame):
         # - Verdana tends to be wider and shorter than Tahoma.
         fontname = default_fontname
         if len(sys.argv) > 1:
-            if '--tahoma' in sys.argv[1:]: fontname = "Tahoma"
-            if '--arial' in sys.argv[1:]: fontname = "Arial"
-            if '--verdana' in sys.argv[1:]: fontname = "Verdana"
+            if "--tahoma" in sys.argv[1:]:
+                fontname = "Tahoma"
+            if "--arial" in sys.argv[1:]:
+                fontname = "Arial"
+            if "--verdana" in sys.argv[1:]:
+                fontname = "Verdana"
 
         fontsize = choose_fontsize(fontname=fontname)
 
         # If requested, override the font point size to use.
         if len(sys.argv) > 1:
-            if '--12pt' in sys.argv[1:]: fontsize = 12
-            if '--11pt' in sys.argv[1:]: fontsize = 11
-            if '--10pt' in sys.argv[1:]: fontsize = 10
-            if '--9pt' in sys.argv[1:]: fontsize = 9
-            if '--8pt' in sys.argv[1:]: fontsize = 8
-            if '--7pt' in sys.argv[1:]: fontsize = 7
-            if '--6pt' in sys.argv[1:]: fontsize = 6
+            if "--12pt" in sys.argv[1:]:
+                fontsize = 12
+            if "--11pt" in sys.argv[1:]:
+                fontsize = 11
+            if "--10pt" in sys.argv[1:]:
+                fontsize = 10
+            if "--9pt" in sys.argv[1:]:
+                fontsize = 9
+            if "--8pt" in sys.argv[1:]:
+                fontsize = 8
+            if "--7pt" in sys.argv[1:]:
+                fontsize = 7
+            if "--6pt" in sys.argv[1:]:
+                fontsize = 6
 
         # Set the default font for this and all child windows.  The font of the
         # frame's title bar is not affected (which is a good thing).  However,
@@ -119,25 +132,24 @@ class AppFrame(wx.Frame):
         # menu bar or menu items (which is not such a good thing because the
         # menu text size be different than the size used by the application's
         # other widgets).  The menu font cannot be changed by wxPython.
-        self.SetFont(wx.Font(fontsize, wx.SWISS, wx.NORMAL, wx.NORMAL, False,
-                             fontname))
+        self.SetFont(wx.Font(fontsize, wx.SWISS, wx.NORMAL, wx.NORMAL, False, fontname))
 
         # If requested, display font and miscellaneous platform information.
-        if len(sys.argv) > 1 and '--platform' in sys.argv[1:]:
+        if len(sys.argv) > 1 and "--platform" in sys.argv[1:]:
             print("*** Platform =", wx.PlatformInfo)
-            print("*** Default font is %s  Chosen font is %s"\
-                  %(default_fontname, self.GetFont().GetFaceName()))
-            print("*** Default point size = %d  Chosen point size = %d"\
-                  %(default_fontsize, self.GetFont().GetPointSize()))
+            print("*** Default font is %s  Chosen font is %s" % (default_fontname, self.GetFont().GetFaceName()))
+            print(
+                "*** Default point size = %d  Chosen point size = %d"
+                % (default_fontsize, self.GetFont().GetPointSize())
+            )
             display_fontsize(fontname=fontname)
-
 
     def add_menubar(self):
         """Creates a default menu bar, menus, and menu options."""
 
         # Create the menu bar.
         mb = wx.MenuBar()
-        #wx.MenuBar.SetAutoWindowMenu(False)
+        # wx.MenuBar.SetAutoWindowMenu(False)
 
         # Add a 'File' menu to the menu bar and define its options.
         file_menu = wx.Menu()
@@ -150,22 +162,17 @@ class AppFrame(wx.Frame):
         # Add a 'Help' menu to the menu bar and define its options.
         help_menu = wx.Menu()
 
-        _item = help_menu.Append(wx.ID_ANY, "&About",
-                                            "Get description of application")
+        _item = help_menu.Append(wx.ID_ANY, "&About", "Get description of application")
         self.Bind(wx.EVT_MENU, self.OnAbout, _item)
-        _item = help_menu.Append(wx.ID_ANY, "&Documentation",
-                                            "Get User's Guide and Reference Manual")
+        _item = help_menu.Append(wx.ID_ANY, "&Documentation", "Get User's Guide and Reference Manual")
         self.Bind(wx.EVT_MENU, self.OnTutorial, _item)
-        _item = help_menu.Append(wx.ID_ANY, "License",
-                                            "Read license and copyright notice")
+        _item = help_menu.Append(wx.ID_ANY, "License", "Read license and copyright notice")
         self.Bind(wx.EVT_MENU, self.OnLicense, _item)
-        _item = help_menu.Append(wx.ID_ANY, "Credits",
-                                            "Get list of authors and sponsors")
+        _item = help_menu.Append(wx.ID_ANY, "Credits", "Get list of authors and sponsors")
         self.Bind(wx.EVT_MENU, self.OnCredits, _item)
 
         help_menu.AppendSeparator()
-        _item = help_menu.Append(wx.ID_ANY, "&Console",
-                                            "Interactive Python shell")
+        _item = help_menu.Append(wx.ID_ANY, "&Console", "Interactive Python shell")
         self.Bind(wx.EVT_MENU, self.OnConsole, _item)
 
         mb.Append(help_menu, "&Help")
@@ -173,15 +180,13 @@ class AppFrame(wx.Frame):
         # Attach the menu bar to the frame.
         self.SetMenuBar(mb)
 
-
     def add_toolbar(self):
         """Creates a default tool bar."""
 
-        #tb = self.CreateToolBar()
-        tb = wx.ToolBar(parent=self, style=wx.TB_HORIZONTAL|wx.NO_BORDER)
+        # tb = self.CreateToolBar()
+        tb = wx.ToolBar(parent=self, style=wx.TB_HORIZONTAL | wx.NO_BORDER)
         tb.Realize()
         self.SetToolBar(tb)
-
 
     def add_statusbar(self):
         """Creates a default status bar."""
@@ -189,48 +194,67 @@ class AppFrame(wx.Frame):
         sb = self.statusbar = self.CreateStatusBar()
         sb.SetFieldsCount(1)
 
-
     def OnAbout(self, evt):
         """Shows the About dialog box."""
 
-        dlg = AboutDialog(parent=self, title="About", info=APP_DESCRIPTION,
-                          show_name=True, show_notice=True, show_link=True,
-                          show_link_docs=True)
+        dlg = AboutDialog(
+            parent=self,
+            title="About",
+            info=APP_DESCRIPTION,
+            show_name=True,
+            show_notice=True,
+            show_link=True,
+            show_link_docs=True,
+        )
         dlg.ShowModal()
         dlg.Destroy()
-
 
     def OnCredits(self, evt):
         """Shows the Credits dialog box."""
 
-        dlg = AboutDialog(parent=self, title="Credits", info=APP_CREDITS,
-                          show_name=True, show_notice=True, show_link=False,
-                          show_link_docs=False)
+        dlg = AboutDialog(
+            parent=self,
+            title="Credits",
+            info=APP_CREDITS,
+            show_name=True,
+            show_notice=True,
+            show_link=False,
+            show_link_docs=False,
+        )
         dlg.ShowModal()
         dlg.Destroy()
-
 
     def OnExit(self, event):
         """Terminates the program."""
         self.Close()
 
-
     def OnLicense(self, evt):
         """Shows the License dialog box."""
 
-        dlg = AboutDialog(parent=self, title="License", info=APP_LICENSE,
-                          show_name=True, show_notice=True, show_link=False,
-                          show_link_docs=False)
+        dlg = AboutDialog(
+            parent=self,
+            title="License",
+            info=APP_LICENSE,
+            show_name=True,
+            show_notice=True,
+            show_link=False,
+            show_link_docs=False,
+        )
         dlg.ShowModal()
         dlg.Destroy()
-
 
     def OnTutorial(self, event):
         """Shows the Tutorial dialog box."""
 
-        dlg = AboutDialog(parent=self, title="Tutorial", info=APP_TUTORIAL,
-                          show_name=False, show_notice=False, show_link=False,
-                          show_link_docs=True)
+        dlg = AboutDialog(
+            parent=self,
+            title="Tutorial",
+            info=APP_TUTORIAL,
+            show_name=False,
+            show_notice=False,
+            show_link=False,
+            show_link_docs=True,
+        )
         dlg.ShowModal()
         dlg.Destroy()
 

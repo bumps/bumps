@@ -2,7 +2,8 @@ import time
 import json
 from . import rest
 
-json_content = 'application/json'
+json_content = "application/json"
+
 
 class Connection(object):
     def __init__(self, url):
@@ -13,19 +14,17 @@ class Connection(object):
         List jobs on the server according to status.
         """
         if status is None:
-            response = self.rest.get('/jobs.json')
+            response = self.rest.get("/jobs.json")
         else:
-            response = self.rest.get('/jobs/%s.json'%status.lower())
-        return _process_response(response)['jobs']
+            response = self.rest.get("/jobs/%s.json" % status.lower())
+        return _process_response(response)["jobs"]
 
     def submit(self, job):
         """
         Submit a job to the server.
         """
         body = json.dumps(job)
-        response = self.rest.post('/jobs.json',
-                                  mimetype=json_content,
-                                  body=body)
+        response = self.rest.post("/jobs.json", mimetype=json_content, body=body)
         return _process_response(response)
 
     def info(self, id):
@@ -35,7 +34,7 @@ class Connection(object):
         Raises ValueError if job not found.
         Raises IOError if communication error.
         """
-        response = self.rest.get('/jobs/%s.json'%id)
+        response = self.rest.get("/jobs/%s.json" % id)
         return _process_response(response)
 
     def status(self, id):
@@ -45,7 +44,7 @@ class Connection(object):
         Raises ValueError if job not found.
         Raises IOError if communication error.
         """
-        response = self.rest.get('/jobs/%s/status.json'%id)
+        response = self.rest.get("/jobs/%s/status.json" % id)
         return _process_response(response)
 
     def output(self, id):
@@ -57,10 +56,10 @@ class Connection(object):
 
         Check response['status'] for 'COMPLETE','CANCEL','ERROR', etc.
         """
-        response = self.rest.get('/jobs/%s/results.json'%id)
+        response = self.rest.get("/jobs/%s/results.json" % id)
         return _process_response(response)
 
-    def wait(self, id, pollrate=300, timeout=60*60*24):
+    def wait(self, id, pollrate=300, timeout=60 * 60 * 24):
         """
         Wait for job to complete, returning output.
 
@@ -74,14 +73,14 @@ class Connection(object):
         start = time.clock()
         while True:
             results = self.output(id)
-            #print "waiting: result is",results
-            if results['status'] in ('PENDING', 'ACTIVE'):
-                #print "waiting for job %s"%id
+            # print "waiting: result is",results
+            if results["status"] in ("PENDING", "ACTIVE"):
+                # print "waiting for job %s"%id
                 if time.clock() - start > timeout:
-                    raise IOError('job %s is still pending'%id)
+                    raise IOError("job %s is still pending" % id)
                 time.sleep(pollrate)
             else:
-                #print "status for %s is"%id,results['status'],'- wait complete'
+                # print "status for %s is"%id,results['status'],'- wait complete'
                 return results
 
     def stop(self, id):
@@ -91,7 +90,7 @@ class Connection(object):
         Raises ValueError if job not found.
         Raises IOError if communication error.
         """
-        response = self.rest.post('/jobs/%s?action=stop'%id)
+        response = self.rest.post("/jobs/%s?action=stop" % id)
         return _process_response(response)
 
     def delete(self, id):
@@ -101,7 +100,7 @@ class Connection(object):
         Raises ValueError if job not found.
         Raises IOError if communication error.
         """
-        response = self.rest.delete('/jobs/%s.json'%id)
+        response = self.rest.delete("/jobs/%s.json" % id)
         return _process_response(response)
 
     def nextjob(self, queue):
@@ -110,10 +109,8 @@ class Connection(object):
         """
         # TODO: combine status check and prefetch to reduce traffic
         # TODO: worker sends active and pending jobs so we can load balance
-        body = json.dumps({'queue': queue})
-        response = self.rest.post('/jobs/nextjob.json',
-                                  mimetype=json_content,
-                                  body=body)
+        body = json.dumps({"queue": queue})
+        response = self.rest.post("/jobs/nextjob.json", mimetype=json_content, body=body)
         return _process_response(response)
 
     def postjob(self, queue, id, results, files):
@@ -121,27 +118,26 @@ class Connection(object):
         Return results from a processed job.
         """
         # TODO: sign request
-        fields = {'queue': queue, 'results': json.dumps(results)}
-        response = self.rest.postfiles('/jobs/%s/postjob'%id,
-                                       files=files,
-                                       fields=fields)
+        fields = {"queue": queue, "results": json.dumps(results)}
+        response = self.rest.postfiles("/jobs/%s/postjob" % id, files=files, fields=fields)
         return _process_response(response)
 
     def putfiles(self, id, files):
         # TODO: sign request
-        response = self.rest.putfiles('/jobs/%s/data/'%id,
-                                      files=files)
+        response = self.rest.putfiles("/jobs/%s/data/" % id, files=files)
         return _process_response(response)
+
 
 def _process_response(response):
     headers, body = response
-    #print "response",response[body]
-    if headers['status'] == '200':
+    # print "response",response[body]
+    if headers["status"] == "200":
         return json.loads(body)
     else:
-        err = headers['status']
-        msg = rest.RESPONSE.get(err,("Unknown","Unknown code"))[1]
-        raise IOError("server response %s %s"%(err,msg))
+        err = headers["status"]
+        msg = rest.RESPONSE.get(err, ("Unknown", "Unknown code"))[1]
+        raise IOError("server response %s %s" % (err, msg))
+
 
 def connect(url):
     return Connection(url)

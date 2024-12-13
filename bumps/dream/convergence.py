@@ -6,6 +6,7 @@ The function :func:`burn_point` returns the point within the MCMC
 chain at which the chain can be said to have converged, or -1 if
 the log probabilities are still improving throughout the chain.
 """
+
 from __future__ import division, print_function
 from typing import TYPE_CHECKING
 
@@ -26,6 +27,7 @@ ALPHA = 0.01
 SAMPLES = 1000
 TRIALS = 5
 MIN_WINDOW = 100
+
 
 def ks_converged(state, trials=TRIALS, density=DENSITY, alpha=ALPHA, samples=SAMPLES):
     # type: ("MCMCDraw", int, float, float, int) -> bool
@@ -69,7 +71,7 @@ def ks_converged(state, trials=TRIALS, density=DENSITY, alpha=ALPHA, samples=SAM
     to avoid spurious accept/reject decisions.
     """
     # Make sure we are testing for convergence
-    if alpha == 0.:
+    if alpha == 0.0:
         return False
 
     # Make sure we have the desired number of draws
@@ -78,18 +80,18 @@ def ks_converged(state, trials=TRIALS, density=DENSITY, alpha=ALPHA, samples=SAM
 
     # Quick fail if best occurred within draw
     if not state.stable_best():
-        #print(state.generation, "best gen", state._best_gen, "start", state.generation - state.Ngen)
+        # print(state.generation, "best gen", state._best_gen, "start", state.generation - state.Ngen)
         return False
 
     # Grab a window at the start and the end
-    window_size = min(max(samples//state.Npop + 1, MIN_WINDOW), state.Ngen//2)
+    window_size = min(max(samples // state.Npop + 1, MIN_WINDOW), state.Ngen // 2)
 
     head = state.logp_slice(window_size).flatten()
     tail = state.logp_slice(-window_size).flatten()
 
     # Quick fail if logp head is worse than logp tail
-    if np.min(head) < state.min_slice(-state.Ngen//2):
-        #print(state.generation, "improving worst", np.min(head), state.min_slice(-state.Ngen//2))
+    if np.min(head) < state.min_slice(-state.Ngen // 2):
+        # print(state.generation, "improving worst", np.min(head), state.min_slice(-state.Ngen//2))
         return False
 
     n_draw = int(density * samples)
@@ -98,6 +100,7 @@ def ks_converged(state, trials=TRIALS, density=DENSITY, alpha=ALPHA, samples=SAM
         return False
 
     return True
+
 
 def check_nllf_distribution(state):
     """
@@ -112,10 +115,9 @@ def check_nllf_distribution(state):
 
     # Check that likelihood distribution looks like chi2
     # Note: cheating, and looking at the stored logp without unrolling
-    reject = _check_nllf_distribution(data=-state._gen_logp.flatten(),
-                                      df=state.Nvar,
-                                      n_draw=10, trials=5, alpha=0.01)
+    reject = _check_nllf_distribution(data=-state._gen_logp.flatten(), df=state.Nvar, n_draw=10, trials=5, alpha=0.01)
     return not reject
+
 
 def _check_nllf_distribution(data, df, n_draw, trials, alpha):
     # fit the best chisq to the data given df
@@ -134,7 +136,8 @@ def _check_nllf_distribution(data, df, n_draw, trials, alpha):
     print("llf dist", p_vals, df, loc, scale)
     return alpha > np.mean(p_vals)
 
-def burn_point(state, method='window', trials=TRIALS, **kwargs):
+
+def burn_point(state, method="window", trials=TRIALS, **kwargs):
     # type: ("MCMCDraw", str, int, **dict) -> int
 
     r"""
@@ -155,7 +158,7 @@ def burn_point(state, method='window', trials=TRIALS, **kwargs):
     values in a section at the end of the chain using a Kolmogorov-Smirnov
     test.  See :func:`ks_converged` for a description of the parameters.
     """
-    if method == 'window':
+    if method == "window":
         index = _ks_sliding_window(state, trials=trials, **kwargs)
     else:
         raise ValueError("Unknown convergence test " + method)
@@ -163,13 +166,13 @@ def burn_point(state, method='window', trials=TRIALS, **kwargs):
         print("Did not converge!")
     return index
 
-def _ks_sliding_window(state, trials=TRIALS, density=DENSITY,
-                       alpha=ALPHA*0.01, samples=SAMPLES):
+
+def _ks_sliding_window(state, trials=TRIALS, density=DENSITY, alpha=ALPHA * 0.01, samples=SAMPLES):
     _, logp = state.logp()
 
-    window_size = min(max(samples//state.Npop + 1, MIN_WINDOW), state.Ngen//2)
-    tiny_window = window_size//11 + 1
-    half = state.Ngen//2
+    window_size = min(max(samples // state.Npop + 1, MIN_WINDOW), state.Ngen // 2)
+    tiny_window = window_size // 11 + 1
+    half = state.Ngen // 2
     max_index = len(logp) - half - window_size
 
     if max_index < 0:
@@ -179,7 +182,7 @@ def _ks_sliding_window(state, trials=TRIALS, density=DENSITY,
 
     # Check in large bunches
     n_draw = int(density * samples)
-    for index in range(0, max_index+1, window_size):
+    for index in range(0, max_index + 1, window_size):
         # [PAK] make sure the worst point is not in the first window.
         # Stastically this will introduce some bias (by chance the max could
         # happen to occur in the first window) but it will be small when the
@@ -187,9 +190,9 @@ def _ks_sliding_window(state, trials=TRIALS, density=DENSITY,
         # count the number of samples worse than the all the tail, compute
         # the probability, and reject according to a comparison with a uniform
         # number in [0,1].  To much work for so little bias.
-        window = logp[index:index+window_size].flatten()
+        window = logp[index : index + window_size].flatten()
         if np.min(window) < min_tail:
-            #print("step llf", index, window_size, len(window), np.min(window), min_tail)
+            # print("step llf", index, window_size, len(window), np.min(window), min_tail)
             continue
 
         # if head and tail are different, slide to the next window
@@ -206,19 +209,20 @@ def _ks_sliding_window(state, trials=TRIALS, density=DENSITY,
         return -1
 
     # check in smaller steps for fine tuned stopping
-    for index in range(index, index+window_size, tiny_window):
-        window = logp[index:index+tiny_window].flatten()
+    for index in range(index, index + window_size, tiny_window):
+        window = logp[index : index + tiny_window].flatten()
         if np.min(window) < min_tail:
-            #print("tiny llf", index, tiny_window, len(window), np.min(window), min_tail)
+            # print("tiny llf", index, tiny_window, len(window), np.min(window), min_tail)
             continue
 
         p_val = _robust_ks_2samp(window, tail, n_draw, trials, alpha)
-        #print("tiny ks", index, tiny_window, len(window), p_val, alpha)
+        # print("tiny ks", index, tiny_window, len(window), p_val, alpha)
         if p_val > alpha:
             # head and tail are not significantly different, so break
             break
 
     return index
+
 
 def _robust_ks_2samp(f_data, r_data, n_draw, trials, alpha):
     """
@@ -235,4 +239,4 @@ def _robust_ks_2samp(f_data, r_data, n_draw, trials, alpha):
         r_samp = choice(r_data, n_draw, replace=True)
         p_vals.append(ks_2samp(f_samp, r_samp)[1])
     return alpha > np.mean(p_vals)
-    #return any(alpha > p for p in p_vals)
+    # return any(alpha > p for p in p_vals)

@@ -10,7 +10,8 @@ fitting engine does not need to be aware of the structure of the model.
 Users can also perform calculations with parameters, tying together different
 parts of the model, or different models.
 """
-#__all__ = [ 'Parameter']
+
+# __all__ = [ 'Parameter']
 import operator
 import sys
 import builtins
@@ -22,9 +23,7 @@ import uuid
 from functools import wraps
 from enum import Enum
 
-from typing import (
-    Type, TypeVar, Optional, Any, Union, Dict, Callable,
-    Tuple, List, Sequence)
+from typing import Type, TypeVar, Optional, Any, Union, Dict, Callable, Tuple, List, Sequence
 from .util import Literal
 
 import numpy as np
@@ -36,7 +35,7 @@ from .util import field_desc, schema_config
 
 BoundsType = mbounds.BoundsType
 
-ValueType = Union['Expression', 'Parameter', 'Calculation', float]
+ValueType = Union["Expression", "Parameter", "Calculation", float]
 
 # TODO: avoid evaluation of subexpressions if parameters do not change.
 # This is especially important if the subexpression invokes an expensive
@@ -51,9 +50,10 @@ ValueType = Union['Expression', 'Parameter', 'Calculation', float]
 # when the parameter is changed, the model will be updated and will need
 # to be re-evaluated.
 
+
 # TODO: maybe move this to util?
 def to_dict(p):
-    if hasattr(p, 'to_dict'):
+    if hasattr(p, "to_dict"):
         return p.to_dict()
     elif isinstance(p, (tuple, list)):
         return [to_dict(v) for v in p]
@@ -68,40 +68,46 @@ def to_dict(p):
         # TODO: consider including functions and arbitrary values
         import base64
         import dill
-        encoding = base64.encodebytes(dill.dumps(p)).decode('ascii')
-        return {'type': 'dill', 'value': str(p), 'encoding': encoding}
+
+        encoding = base64.encodebytes(dill.dumps(p)).decode("ascii")
+        return {"type": "dill", "value": str(p), "encoding": encoding}
         ## To recovert the function
         # if allow_unsafe_code:
         #     encoding = item['encoding']
         #     p = dill.loads(base64.decodebytes(encoding).encode('ascii'))
     else:
-        #print(f"converting type {type(p)} to str")
+        # print(f"converting type {type(p)} to str")
         return str(p)
 
 
 @dataclass(init=False)
 class Uniform:
-    """ Uniform distribution with hard boundaries """
+    """Uniform distribution with hard boundaries"""
 
 
 @dataclass(init=False)
 class Normal:
-    """ Normal distribution (Gaussian) """
+    """Normal distribution (Gaussian)"""
+
     std: float = field_desc("standard deviation (1-sigma)")
     mean: float = field_desc("center of the distribution")
+
     def __init__(self, std: float, mean: float):
         self.std = std
         self.mean = mean
 
+
 # Leave out of schema for now.
 # TODO: determine if this is used by anyone
-#@dataclass(init=False)
+# @dataclass(init=False)
 class UniformSoftBounded:
-    """ Uniform distribution with error-function PDF on boundaries """
+    """Uniform distribution with error-function PDF on boundaries"""
+
     std: float = field_desc("width of the edge distribution")
 
 
-DistributionType = Union[Uniform, Normal] #, UniformSoftBounded]
+DistributionType = Union[Uniform, Normal]  # , UniformSoftBounded]
+
 
 class OperatorMixin:
     """
@@ -114,54 +120,67 @@ class OperatorMixin:
 
     Much like abs(obj) => obj.__abs__(), np.sin(obj) => obj.sin()
     """
+
     # float(value) is special: it returns the current value rather than
     # becoming part of the parameter expression.
     value: float
+
     def __float__(self):
         return float(self.value)
+
     def __int__(self):
         return int(self.value)
+
     def __bool__(self):
         # Note: __bool__ must return true or false, so we can't handle
         # lazy constraint expressions like not a, a or b, a and b.
         raise TypeError("use (p != 0) to test against zero")
+
     ...  # operators and functions will be filled in later
+
 
 class ValueProtocol(OperatorMixin):
     """
     Values can be combined to form expressions
     Provide a suite of operators for creating parameter expressions.
     """
+
     fittable: bool = False
     fixed: bool = True
     value: float
+
     # TODO: Do values have names? Or do the names belong to the model parameter?
-    #name: str
+    # name: str
     # TODO: are priors on the parameter or on the value?
-    #bounds: Optional[BoundsType] = None
+    # bounds: Optional[BoundsType] = None
     def parameters(self) -> List["Parameter"]:
         # default implementation:
         return []
 
 
 @dataclass(init=False)
-class Calculation(ValueProtocol): # the name Function is taken (though deprecated)
+class Calculation(ValueProtocol):  # the name Function is taken (though deprecated)
     """
     A Parameter with a model-specific, calculated value.
-    The function used to calculate this value should be well-documented in the 
+    The function used to calculate this value should be well-documented in the
     description field, e.g.
     Stack.thickness: description = "a sum of the thicknesses of all layers in the stack"
 
     """
+
     description: str
     _function: Callable[[], float]  # added by the model; not serialized
-    def __init__(self, description: str=""):
+
+    def __init__(self, description: str = ""):
         self.description = description
+
     @property
     def value(self):
         return self._function()
+
     def __float__(self):
         return self.value
+
     def set_function(self, function):
         self._function = function
 
@@ -179,9 +198,15 @@ class SupportsPrior:
         return (
             self.prior is not None
             and not isinstance(self.prior, mbounds.Unbounded)
-            and self.prior.limits != (-np.inf, np.inf))
-    
-    def add_prior(self, distribution: Optional[DistributionType]=None, bounds: Optional[BoundsType]=None, limits: Optional[Tuple[float, float]]=None):
+            and self.prior.limits != (-np.inf, np.inf)
+        )
+
+    def add_prior(
+        self,
+        distribution: Optional[DistributionType] = None,
+        bounds: Optional[BoundsType] = None,
+        limits: Optional[Tuple[float, float]] = None,
+    ):
         # use self values if they are found:
         if distribution is None and self.distribution is not None:
             distribution = self.distribution
@@ -195,10 +220,7 @@ class SupportsPrior:
 
         if bounds is not None:
             # get the intersection of the limits here.
-            limits = (
-                np.clip(limits[0], *bounds),
-                np.clip(limits[1], *bounds)
-            )
+            limits = (np.clip(limits[0], *bounds), np.clip(limits[1], *bounds))
         if isinstance(distribution, Normal):
             if limits == (-inf, inf):
                 prior = mbounds.BoundedNormal(mean=distribution.mean, std=distribution.std, limits=limits)
@@ -302,13 +324,14 @@ class Parameter(ValueProtocol, SupportsPrior):
          p = Parameter(10, name="width", units="cm", tip="Width of sample")
 
     """
+
     # Parameters may be dependent on other parameters, and the
     # fit engine will need to access them.
-    #prior: Optional[BoundsType]
+    # prior: Optional[BoundsType]
     id: str = field(metadata={"format": "uuid"})
     name: Optional[str] = field(default=None, init=False)
     fixed: bool = True
-    slot: Union['Variable', ValueType]
+    slot: Union["Variable", ValueType]
     limits: Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]] = (-inf, inf)
     bounds: Optional[Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]] = None
     distribution: DistributionType = field(default_factory=Uniform)
@@ -319,7 +342,7 @@ class Parameter(ValueProtocol, SupportsPrior):
 
     def parameters(self):
         pars = [self]
-        if hasattr(self.slot, 'parameters'):
+        if hasattr(self.slot, "parameters"):
             pars += self.slot.parameters()
         return pars
 
@@ -426,15 +449,19 @@ class Parameter(ValueProtocol, SupportsPrior):
     @property
     def value(self):
         return int(self.slot) if self.discrete else float(self.slot)
+
     @value.setter
     def value(self, update):
         self.slot.value = round(update) if self.discrete else update
+
     @property
     def fittable(self):
         return isinstance(self.slot, Variable)
+
     @property
     def fixed(self):
         return not self.fittable or self._fixed
+
     @fixed.setter
     def fixed(self, state):
         # Can't set fixed to false if the parameter is not fittable
@@ -444,11 +471,11 @@ class Parameter(ValueProtocol, SupportsPrior):
             raise TypeError(f"value in {self.name} is not fittable")
 
     ## Use the following if bounds are on the value rather than the parameter
-    #@property
-    #def bounds(self):
+    # @property
+    # def bounds(self):
     #    return getattr(self.slot, 'bounds', None)
-    #@bounds.setter
-    #def bounds(self, b):
+    # @bounds.setter
+    # def bounds(self, b):
     #    if not hasattr(self.slot, 'bounds'):
     #        raise TypeError(f"{self.name} is not fittable so bounds can't be set")
     #    if self.slot.fittable:
@@ -472,7 +499,7 @@ class Parameter(ValueProtocol, SupportsPrior):
             return np.inf
         else:
             logp = self.prior.nllf(value)
-            if hasattr(self.slot, 'nllf'):
+            if hasattr(self.slot, "nllf"):
                 logp += self.slot.nllf()
             return logp
 
@@ -503,7 +530,7 @@ class Parameter(ValueProtocol, SupportsPrior):
         return "%s=%g in %s" % (self, self.value, self.prior)
 
     def __str__(self):
-        name = self.name if self.name is not None else '?'
+        name = self.name if self.name is not None else "?"
         return name
 
     def __repr__(self):
@@ -511,10 +538,7 @@ class Parameter(ValueProtocol, SupportsPrior):
 
     # TODO: deprecate
     @classmethod
-    def default(
-            cls: type,
-            value: Union[float, Tuple[float, float], ValueType],
-            **kw) -> "Parameter":
+    def default(cls: type, value: Union[float, Tuple[float, float], ValueType], **kw) -> "Parameter":
         """
         Create a new parameter with the *value* and *kw* attributes. If value
         is already a parameter or expression, set it to that value.
@@ -540,19 +564,20 @@ class Parameter(ValueProtocol, SupportsPrior):
         self.slot.value = builtins.min(builtins.max(value, low), high)
 
     def __init__(
-            self,
-            value: Optional[Union[float, Tuple[float, float]]] = None,
-            slot: Optional[Union['Variable', ValueType]] = None,
-            #bounds: Optional[Union[BoundsType, Tuple[float, float]]]=None,
-            fixed: Optional[bool]=None,
-            name: Optional[str]=None,
-            id: Optional[str]=None,
-            limits: Optional[Tuple[Union[float, Literal[None, "-inf"]], Union[float, Literal[None, "inf"]]]]=None,
-            bounds: Optional[Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]]=None,
-            distribution: DistributionType = Uniform(),
-            discrete: bool = False,
-            tags: Optional[List[str]] = None,
-            **kw):
+        self,
+        value: Optional[Union[float, Tuple[float, float]]] = None,
+        slot: Optional[Union["Variable", ValueType]] = None,
+        # bounds: Optional[Union[BoundsType, Tuple[float, float]]]=None,
+        fixed: Optional[bool] = None,
+        name: Optional[str] = None,
+        id: Optional[str] = None,
+        limits: Optional[Tuple[Union[float, Literal[None, "-inf"]], Union[float, Literal[None, "inf"]]]] = None,
+        bounds: Optional[Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]] = None,
+        distribution: DistributionType = Uniform(),
+        discrete: bool = False,
+        tags: Optional[List[str]] = None,
+        **kw,
+    ):
         # Check if we are started with value=range or bounds=range; if we
         # are given bounds, then assume this is a fitted parameter, otherwise
         # the parameter defaults to fixed; if value is not set, use the
@@ -569,10 +594,10 @@ class Parameter(ValueProtocol, SupportsPrior):
             except TypeError:
                 pass
         if fixed is None:
-            fixed = (bounds is None)
+            fixed = bounds is None
         if slot is None:
             if value is None:
-                value = float(bounds[0]) if bounds is not None else 0 # ? what else to do here?
+                value = float(bounds[0]) if bounds is not None else 0  # ? what else to do here?
             if isinstance(value, (float, int)):
                 value = round(value) if discrete else value
                 slot = Variable(value)
@@ -588,12 +613,15 @@ class Parameter(ValueProtocol, SupportsPrior):
         self.tags = tags if tags is not None else []
         if limits is None:
             limits = (-np.inf, np.inf)
-        self.limits  = (
+        self.limits = (
             (-np.inf if limits[0] is None else float(limits[0])),
-            (np.inf if limits[1] is None else float(limits[1])))
+            (np.inf if limits[1] is None else float(limits[1])),
+        )
         if bounds is not None:
-            bounds = ((-np.inf if bounds[0] is None else float(bounds[0])),
-                      (np.inf if bounds[1] is None else float(bounds[1])))
+            bounds = (
+                (-np.inf if bounds[0] is None else float(bounds[0])),
+                (np.inf if bounds[1] is None else float(bounds[1])),
+            )
         self.bounds = bounds
         self.distribution = distribution
         # Note: fixed is True unless fixed=False or bounds=bounds were given
@@ -607,7 +635,7 @@ class Parameter(ValueProtocol, SupportsPrior):
         # has something to work with.
         for k, v in kw.items():
             setattr(self, k, v)
-        self.prior = None # to be filled by model_reset
+        self.prior = None  # to be filled by model_reset
 
     def randomize(self, rng=None):
         """
@@ -637,7 +665,7 @@ class Parameter(ValueProtocol, SupportsPrior):
             pass
         else:
             self.slot = expression
-    
+
     def unlink(self):
         if isinstance(self.slot, Calculation):
             raise TypeError("parameter is calculated by the model and cannot be changed")
@@ -655,36 +683,40 @@ class Parameter(ValueProtocol, SupportsPrior):
             self.tags = [t for t in self.tags if not t == tag]
 
     def __copy__(self):
-        """ copy will only be called when a new instance is desired, with a different id """
+        """copy will only be called when a new instance is desired, with a different id"""
         obj = type(self).__new__(self.__class__)
         obj.__dict__.update(self.__dict__)
         obj.id = str(uuid.uuid4())
         return obj
 
+
 def tag_all(parameter_tree, tag, remove=False):
     if isinstance(parameter_tree, dict):
         tag_all([item for item in parameter_tree.values()], tag, remove=remove)
-    elif hasattr(parameter_tree, 'add_tag'):
+    elif hasattr(parameter_tree, "add_tag"):
         if remove:
             parameter_tree.remove_tag(tag)
         else:
             parameter_tree.add_tag(tag)
-    elif hasattr(parameter_tree, 'parameters'):
+    elif hasattr(parameter_tree, "parameters"):
         tag_all(parameter_tree.parameters(), tag, remove=remove)
-    elif hasattr(parameter_tree, '__iter__'):
+    elif hasattr(parameter_tree, "__iter__"):
         for item in parameter_tree:
             tag_all(item, tag, remove=remove)
     else:
         warnings.warn(f"parameter tree should have only list, object and Parameter items: {parameter_tree}")
 
-def untag_all(parameter_tree, tag: Optional[str]=None):
+
+def untag_all(parameter_tree, tag: Optional[str] = None):
     tag_all(parameter_tree, tag, remove=True)
+
 
 @dataclass
 class Variable(ValueProtocol):
     """
     Saved state for a random variable in the model.
     """
+
     value: float
 
     def parameters(self):
@@ -693,7 +725,7 @@ class Variable(ValueProtocol):
 
 @schema_config()
 @dataclass(init=True, frozen=True, eq=False)
-class Constant(ValueProtocol): # type: ignore
+class Constant(ValueProtocol):  # type: ignore
     """
     Saved state for an unmodifiable value.
 
@@ -706,7 +738,7 @@ class Constant(ValueProtocol): # type: ignore
     id: str = field(metadata={"format": "uuid"}, default_factory=lambda: str(uuid.uuid4()))
 
     fittable = False  # class property fixed across all objects
-    fixed = True # class property fixed across all objects
+    fixed = True  # class property fixed across all objects
 
     def parameters(self):
         return [self]
@@ -714,9 +746,10 @@ class Constant(ValueProtocol): # type: ignore
     def __str__(self):
         return self.name
 
+
 # ==== Arithmetic operators ===
 class Operators(str, Enum):
-    """ Operators that can be used to construct Expressions """
+    """Operators that can be used to construct Expressions"""
 
     # operators including abs() are defined in _build_operator_mixin()
     # functions are defined in numpy or in UserFunction (for min/max)
@@ -732,8 +765,8 @@ class Operators(str, Enum):
     div = "intdiv"
     pow = "pow"
     # unary functional
-    #float = "float"  => float makes values concrete
-    #int = "int"  => values must be float; use floor, trunc, ceil, round
+    # float = "float"  => float makes values concrete
+    # int = "int"  => values must be float; use floor, trunc, ceil, round
     abs = "abs"
 
     # unary functions
@@ -769,6 +802,7 @@ class Operators(str, Enum):
     min = "min"  # from builtins
     max = "max"  # from builtins
     # TODO: support sum(seq) and prod(seq) for tuple and list
+
 
 # Precedence for the python operators as given in manual. Numbers start
 # from one at the bottom of the table. The value itself is "highest" precedence
@@ -818,15 +852,16 @@ def _lookup_operator(op_name):
     fn = None
     # Check plugins first so we can override lookups in operator and numpy.
     # This is needed for min/max.
-    if fn is None: # plugin functions from UserFunctionRegistry
+    if fn is None:  # plugin functions from UserFunctionRegistry
         fn = UserFunctionRegistry.get(op_name, None)
     if fn is None:
-        fn = getattr(operator, op_name, None) # operators from operators
-    if fn is None: # math functions from numpy
+        fn = getattr(operator, op_name, None)  # operators from operators
+    if fn is None:  # math functions from numpy
         fn = getattr(np, op_name, None)
     if fn is None:
         raise RuntimeError(f"should not be here: {op_name} not found")
     return fn
+
 
 def _precedence(obj: Any) -> int:
     """
@@ -839,29 +874,29 @@ def _precedence(obj: Any) -> int:
         return OPERATOR_PRECEDENCE.get(obj.op.name, CALL_PRECEDENCE)
     return VALUE_PRECEDENCE
 
+
 @dataclass(init=False)
 class Expression(ValueProtocol):
     """
     Parameter expression
     """
+
     fittable = False
     fixed = True
 
-    op: Union[Operators, 'UserFunction'] # Enumerated str type {function_name: display_name}
+    op: Union[Operators, "UserFunction"]  # Enumerated str type {function_name: display_name}
     args: Sequence[ValueType]
-    _fn: Callable[..., float] # _fn(float, float, ...) -> float
+    _fn: Callable[..., float]  # _fn(float, float, ...) -> float
 
-    def __init__(self, op: Union[str, Operators, 'UserFunction'], args):
+    def __init__(self, op: Union[str, Operators, "UserFunction"], args):
         op = op if (isinstance(op, Operators) or isinstance(op, UserFunction)) else getattr(Operators, op)
-        object.__setattr__(self, 'op', op)
-        object.__setattr__(self, '_fn', _lookup_operator(op.name))
-        object.__setattr__(self, 'args', args)
+        object.__setattr__(self, "op", op)
+        object.__setattr__(self, "_fn", _lookup_operator(op.name))
+        object.__setattr__(self, "args", args)
 
     def parameters(self):
         # Walk expression tree combining parameters from each subexpression
-        return sum(
-            (v.parameters() for v in self.args if hasattr(v, 'parameters')),
-            [])
+        return sum((v.parameters() for v in self.args if hasattr(v, "parameters")), [])
 
     @property
     def value(self):
@@ -887,30 +922,39 @@ class Expression(ValueProtocol):
             # f(a, b, ...) with no parens needed
             return f"{self.op.name}({', '.join(v for v in vals)})"
 
+
 def _make_unary_op(op_name: str):
     op = getattr(Operators, op_name)
     # Note: self is Parameter or Expression
     fn = lambda self: Expression(op, (self,))
-    setattr(OperatorMixin, f'__{op_name}__', fn)
+    setattr(OperatorMixin, f"__{op_name}__", fn)
+
 
 def _make_binary_op(op_name: str):
     op = getattr(Operators, op_name)
+
     def fn(self, other):
         return Expression(op, (self, other))
-    setattr(OperatorMixin, f'__{op_name}__', fn)
+
+    setattr(OperatorMixin, f"__{op_name}__", fn)
+
     def rfn(self, other):
         return Expression(op, (other, self))
-    setattr(OperatorMixin, f'__r{op_name}__', rfn)
+
+    setattr(OperatorMixin, f"__r{op_name}__", rfn)
+
 
 def _make_math_fn(fn_name: str):
     op = getattr(Operators, fn_name)
-    def fn(*args): # first of args is self
+
+    def fn(*args):  # first of args is self
         if any([isinstance(arg, ValueProtocol) for arg in args]):
             return Expression(op, args)
         else:
             # then all the args are floats: just return a float!
             realized_fn = _lookup_operator(op.name)
             return realized_fn(*args)
+
     # define sin, etc., in the parameter and expression so that np.sin(a)
     # will resolve to Expression('sin', tuple(a)), etc.
     setattr(OperatorMixin, fn_name, fn)
@@ -918,6 +962,7 @@ def _make_math_fn(fn_name: str):
     # defined by numpy itself. For arbitrary user defined functions
     # we add them to the bumps.pmath namespace so the user can find them.
     setattr(pmath, fn_name, fn)
+
 
 def _build_operator_mixin():
     unary_op = set(("pos", "neg", "abs"))
@@ -931,9 +976,12 @@ def _build_operator_mixin():
     # np.sin(expression) will return the generated expression for the object.
     for fn_name in math_fn:
         _make_math_fn(fn_name)
+
+
 _build_operator_mixin()
 
 UserFunctionRegistry: Dict[str, Callable[..., float]] = {}
+
 
 # TODO: allow schema validation on user-defined functions
 @dataclass(init=False)
@@ -949,7 +997,9 @@ class UserFunction:
     these functions as possible values even if registered, so a schema
     validator may fail on one of these functions.
     """
+
     name: str
+
     # A function registry to remember the code associated with the name.
     # This is a class attribute, so it is initialized with an empty dict().
     # Ignore complaints from lint.
@@ -961,6 +1011,7 @@ class UserFunction:
         UserFunctionRegistry[name] = fn
         self.name = name
 
+
 def function(fn: Callable):
     """
     Convert a function into a delayed evaluator.
@@ -971,8 +1022,10 @@ def function(fn: Callable):
     """
     name = fn.__name__
     op = UserFunction(fn)
-    def wrapped(*args: 'ValueType'):
+
+    def wrapped(*args: "ValueType"):
         return Expression(op, args)
+
     wrapped.__name__ = fn.__name__
     wrapped.__doc__ = fn.__doc__ if fn.__name__.endswith("d") else f"{fn.__name__}(Parameter)"
     # Add the symbol to pmath
@@ -980,9 +1033,11 @@ def function(fn: Callable):
     pmath.__all__.append(name)
     return wrapped
 
+
 # min/max
 min = function(builtins.min)
 max = function(builtins.max)
+
 
 # Trig functions defined in degrees rather than radians.
 @function
@@ -990,36 +1045,43 @@ def cosd(v):
     """Return the cosine of x (measured in in degrees)."""
     return np.cos(np.radians(v))
 
+
 @function
 def sind(v):
     """Return the sine of x (measured in in degrees)."""
     return np.sin(np.radians(v))
+
 
 @function
 def tand(v):
     """Return the tangent of x (measured in in degrees)."""
     return np.tan(np.radians(v))
 
+
 @function
 def arccosd(v):
     """Return the arc cosine (measured in in degrees) of x."""
     return np.degrees(np.arccos(v))
+
 
 @function
 def arcsind(v):
     """Return the arc sine (measured in in degrees) of x."""
     return np.degrees(np.arcsin(v))
 
+
 @function
 def arctand(v):
     """Return the arc tangent (measured in in degrees) of x."""
     return np.degrees(np.arctan(v))
+
 
 @function
 def arctan2d(dy, dx):
     """Return the arc tangent (measured in in degrees) of y/x.
     Unlike atan(y/x), the signs of both x and y are considered."""
     return np.degrees(np.arctan2(dy, dx))
+
 
 # Aliases for arcsin, etc., both here in bumps.parameters and in bumps.pmath.
 pmath.asin = asin = pmath.arcsin
@@ -1036,29 +1098,39 @@ pmath.asinh = asinh = pmath.arcsinh
 pmath.acosh = acosh = pmath.arccosh
 pmath.atanh = atanh = pmath.arctanh
 
-pmath.__all__.extend((
-    'asin', 'acos', 'atan', 'atan2',
-    'asind', 'acosd', 'atand', 'atan2d',
-    'asinh', 'acosh', 'atanh',
-    ))
+pmath.__all__.extend(
+    (
+        "asin",
+        "acos",
+        "atan",
+        "atan2",
+        "asind",
+        "acosd",
+        "atand",
+        "atan2d",
+        "asinh",
+        "acosh",
+        "atanh",
+    )
+)
 
-#restate these for export, now that they're all defined:
+# restate these for export, now that they're all defined:
 ValueType = Union[Parameter, Expression, Calculation, float]
+
 
 @dataclass(init=False)
 class ParameterSet:
     """
     A parameter that depends on the model.
     """
+
     names: Optional[List[str]]
     reference: Parameter
     parameterlist: Optional[List[Parameter]]
 
-    def __init__(self,
-            reference: Parameter,
-            names: Optional[List[str]] = None,
-            parameterlist: Optional[List[Parameter]] = None
-        ):
+    def __init__(
+        self, reference: Parameter, names: Optional[List[str]] = None, parameterlist: Optional[List[Parameter]] = None
+    ):
         """
         Create a parameter set, with one parameter for each model name.
 
@@ -1086,7 +1158,7 @@ class ParameterSet:
 
         # N.B. if the reference parameter is not referenced anywhere in the models,
         # it will no longer show up in FitProblem.parameters
-        #self.__class__.parameterlist = property(self._get_parameterlist) #lambda self: self.parameters.tolist())
+        # self.__class__.parameterlist = property(self._get_parameterlist) #lambda self: self.parameters.tolist())
 
     @property
     def parameterlist(self) -> List[Parameter]:
@@ -1204,7 +1276,7 @@ class Reference(Parameter):
     def __init__(self, obj, attr, **kw):
         self.obj = obj
         self.attr = attr
-        kw.setdefault('name', ".".join([obj.__class__.__name__, attr]))
+        kw.setdefault("name", ".".join([obj.__class__.__name__, attr]))
         Parameter.__init__(self, **kw)
 
     @property
@@ -1238,6 +1310,7 @@ class FreeVariables(object):
     new parameters for each model for the free parameters.  Setting up
     these copies was inconvenient.
     """
+
     names: List[str]
     parametersets: Dict[str, ParameterSet]
 
@@ -1252,8 +1325,7 @@ class FreeVariables(object):
         else:
             # we are initializing with kw = Dict[key, (list of Parameters)]
             # Create slots to hold the free variables
-            self.parametersets = dict((k, ParameterSet(v, names=names))
-                                   for k, v in kw.items())
+            self.parametersets = dict((k, ParameterSet(v, names=names)) for k, v in kw.items())
 
     # Shouldn't need explicit __getstate__/__setstate__ but mpi4py pickle
     # chokes without it.
@@ -1270,7 +1342,7 @@ class FreeVariables(object):
         try:
             return self.parametersets[k]
         except KeyError:
-            raise AttributeError('FreeVariables has no attribute %r' % k)
+            raise AttributeError("FreeVariables has no attribute %r" % k)
 
     def parameters(self):
         """
@@ -1279,11 +1351,7 @@ class FreeVariables(object):
         return dict((k, v.parameters) for k, v in self.parametersets.items())
 
     def to_dict(self):
-        return {
-            'type': type(self).__name__,
-            'names': self.names,
-            'parameters': to_dict(self.parametersets)
-        }
+        return {"type": type(self).__name__, "names": self.names, "parameters": to_dict(self.parametersets)}
 
     def set_model(self, i):
         """
@@ -1326,16 +1394,16 @@ def format(p, indent=0, freevars=None, field=None):
     if isinstance(p, dict) and p != {}:
         res = []
         for k in sorted(p.keys()):
-            if k.startswith('_'):
+            if k.startswith("_"):
                 continue
             s = format(p[k], indent + 2, field=k, freevars=freevars)
             label = " " * indent + "." + k
-            if s.endswith('\n'):
+            if s.endswith("\n"):
                 res.append(label + "\n" + s)
             else:
-                res.append(label + " = " + s + '\n')
-        if '_index' in p:
-            res .append(format(p['_index'], indent, freevars=freevars))
+                res.append(label + " = " + s + "\n")
+        if "_index" in p:
+            res.append(format(p["_index"], indent, freevars=freevars))
         return "".join(res)
 
     elif isinstance(p, (list, tuple, np.ndarray)) and len(p):
@@ -1343,10 +1411,10 @@ def format(p, indent=0, freevars=None, field=None):
         for k, v in enumerate(p):
             s = format(v, indent + 2, freevars=freevars)
             label = " " * indent + "[%d]" % k
-            if s.endswith('\n'):
-                res.append(label + '\n' + s)
+            if s.endswith("\n"):
+                res.append(label + "\n" + s)
             else:
-                res.append(label + ' = ' + s + '\n')
+                res.append(label + " = " + s + "\n")
         return "".join(res)
 
     elif isinstance(p, Parameter):
@@ -1361,7 +1429,7 @@ def format(p, indent=0, freevars=None, field=None):
                 bounds = p.bounds
             else:
                 bounds = p.limits
-            s += " in [%g,%g]" %  tuple(bounds)
+            s += " in [%g,%g]" % tuple(bounds)
         return s
 
     elif isinstance(p, Parameter):
@@ -1386,15 +1454,14 @@ def summarize(pars, sorted=False):
             bar = ["*invalid* "]
         else:
             position = int(p.prior.get01(p.value) * 9.999999999)
-            bar = ['.'] * 10
+            bar = ["."] * 10
             if position < 0:
-                bar[0] = '<'
+                bar[0] = "<"
             elif position > 9:
-                bar[9] = '>'
+                bar[9] = ">"
             else:
-                bar[position] = '|'
-        output.append("%40s %s %10g in %s" %
-                      (p.name, "".join(bar), p.value, p.bounds))
+                bar[position] = "|"
+        output.append("%40s %s %10g in %s" % (p.name, "".join(bar), p.value, p.bounds))
     return "\n".join(output)
 
 
@@ -1444,13 +1511,12 @@ def varying(s: List[Parameter]) -> List[Parameter]:
     """
     return [p for p in unique(s) if not p.fixed]
 
+
 def _has_prior(p: Parameter) -> bool:
-    prior = getattr(p, 'prior', None)
-    limits = getattr(prior, 'limits', (-np.inf, np.inf))
-    return (
-        prior is not None
-        and not isinstance(prior, mbounds.Unbounded)
-        and limits != (-np.inf, np.inf))
+    prior = getattr(p, "prior", None)
+    limits = getattr(prior, "limits", (-np.inf, np.inf))
+    return prior is not None and not isinstance(prior, mbounds.Unbounded) and limits != (-np.inf, np.inf)
+
 
 def priors(s: List[Parameter]) -> List[Parameter]:
     """
@@ -1460,6 +1526,7 @@ def priors(s: List[Parameter]) -> List[Parameter]:
     fixed parameters whose probabilities won't change the fits.
     """
     return [p for p in unique(s) if _has_prior(p)]
+
 
 def randomize(s: List[Parameter]):
     """
@@ -1473,7 +1540,9 @@ def randomize(s: List[Parameter]):
 def current(s: List[Parameter]):
     return [p.value for p in s]
 
+
 # ========= trash ===================
+
 
 def copy_linked(has_parameters, free_names=None):
     """
@@ -1481,8 +1550,9 @@ def copy_linked(has_parameters, free_names=None):
      - then link all the parameters, except
      - those with names matching "free_names"
     """
-    assert callable(getattr(has_parameters, 'parameters', None)) == True
+    assert callable(getattr(has_parameters, "parameters", None)) == True
     from copy import deepcopy
+
     copied = deepcopy(has_parameters)
     free_names = [] if free_names is None else free_names
     original_pars = unique(has_parameters.parameters())
@@ -1494,35 +1564,37 @@ def copy_linked(has_parameters, free_names=None):
             cp.id = str(uuid.uuid4())
     return copied
 
+
 # ==== Comparison operators ===
 class Comparisons(Enum):
     """comparison operators"""
 
-    gt = '>'
-    ge = '>='
-    le = '<='
-    lt = '<'
-    #eq = '=='
-    #ne = '!='
+    gt = ">"
+    ge = ">="
+    le = "<="
+    lt = "<"
+    # eq = '=='
+    # ne = '!='
 
 
 @dataclass(init=False)
 class Constraint:
-    """ Express inequality constraints between model elements """
+    """Express inequality constraints between model elements"""
 
     fixed = True
-    
+
     op: Comparisons
     a: ValueType
     b: ValueType
 
     def __init__(self, a, b, op):
         import operator
-        object.__setattr__(self, 'a', a)
-        object.__setattr__(self, 'b', b)
+
+        object.__setattr__(self, "a", a)
+        object.__setattr__(self, "b", b)
         op_name = str(Comparisons(op).name)
-        object.__setattr__(self, 'compare', getattr(operator, op_name.lower()))
-        object.__setattr__(self, 'op', op)
+        object.__setattr__(self, "compare", getattr(operator, op_name.lower()))
+        object.__setattr__(self, "op", op)
 
     # TODO: is this really necessary?  What is the reason for this trap?
     # It seems like being able to cast with bool(Constraint) would be
@@ -1530,12 +1602,16 @@ class Constraint:
     # currently fails.
     def __bool__(self):
         raise TypeError("failed bool")
+
     __nonzero__ = __bool__
+
     def __float__(self):
         """return a float value that can be differentiated"""
-        return 0. if self.satisfied else abs(float(self.a) - float(self.b))
+        return 0.0 if self.satisfied else abs(float(self.a) - float(self.b))
+
     def __str__(self):
-        return "(%s %s %s)" %(self.a, self.op, self.b)
+        return "(%s %s %s)" % (self.a, self.op, self.b)
+
     @property
     def satisfied(self):
         return self.compare(float(self.a), float(self.b))
@@ -1544,13 +1620,16 @@ class Constraint:
 def _make_constraint(op_str: str) -> Callable[..., Constraint]:
     return lambda self, other: Constraint(self, other, op_str)
 
+
 def _build_constraints_mixin():
     for comp_item in Comparisons:
         op_name = comp_item.name
         op_str = comp_item.value
-        setattr(OperatorMixin, f'__{op_name}__', _make_constraint(op_str))
+        setattr(OperatorMixin, f"__{op_name}__", _make_constraint(op_str))
+
 
 _build_constraints_mixin()
+
 
 class Alias(object):
     """
@@ -1578,12 +1657,13 @@ class Alias(object):
 
     def to_dict(self):
         return {
-            'type': type(self).__name__,
-            'p': to_dict(self.p),
+            "type": type(self).__name__,
+            "p": to_dict(self.p),
             # TODO: can't json pickle arbitrary objects
-            'obj': to_dict(self.obj),
-            'attr': self.attr,
+            "obj": to_dict(self.obj),
+            "attr": self.attr,
         }
+
 
 def substitute(a):
     """
@@ -1616,23 +1696,23 @@ class Function(ValueProtocol):
     parameter arguments at the time f.value is referenced rather
     than when the function was invoked.
     """
-    __slots__ = ['op', 'args', 'kw']
+
+    __slots__ = ["op", "args", "kw"]
     op: Callable[..., float]
     args: Optional[Any]
     kw: Dict[Any, Any]
 
     def __init__(self, op, *args, **kw):
         warnings.warn("Function no longer supported", DeprecationWarning, stacklevel=1)
-        self.name = kw.pop('name', None)
+        self.name = kw.pop("name", None)
         self.op, self.args, self.kw = op, args, kw
         self._parameters = self._find_parameters()
 
     def _find_parameters(self):
         # Figure out which arguments to the function are parameters
-        #deps = [p for p in self.args if isinstance(p, ValueProtocol)]
+        # deps = [p for p in self.args if isinstance(p, ValueProtocol)]
         args = [arg for arg in self.args if isinstance(arg, ValueProtocol)]
-        kw = dict((name, arg) for name, arg in self.kw.items()
-                  if isinstance(arg, ValueProtocol))
+        kw = dict((name, arg) for name, arg in self.kw.items() if isinstance(arg, ValueProtocol))
         deps = flatten((args, kw))
         # Find out which other parameters these parameters depend on.
         res = []
@@ -1647,6 +1727,7 @@ class Function(ValueProtocol):
         # Expand args and kw, replacing instances of parameters
         # with their values
         return self.op(*substitute(self.args), **substitute(self.kw))
+
     value = property(_value)
 
     def to_dict(self):
@@ -1674,54 +1755,56 @@ class Function(ValueProtocol):
             kw = [str(k) + "=" + str(v) for k, v in self.kw.items()]
             name = self.op.__name__ + "(" + ", ".join(args + kw) + ")"
         return name
-        #return "%s:%g" % (name, self.value)
+        # return "%s:%g" % (name, self.value)
 
 
 # ===== Tests ====
 
+
 def test_operator():
-    a = Parameter(1, name='a')
-    b = Parameter(2, name='b')
-    c = Parameter(3, name='c')
-    C = Constant(5, name='C')
+    a = Parameter(1, name="a")
+    b = Parameter(2, name="b")
+    c = Parameter(3, name="c")
+    C = Constant(5, name="C")
 
     assert a.fixed
 
     # Check strings
-    assert str(a + b) == 'a + b'
-    assert (a+b).name == 'a + b'
-    assert str(-a) == '-a'
+    assert str(a + b) == "a + b"
+    assert (a + b).name == "a + b"
+    assert str(-a) == "-a"
     assert (-a).value == -a.value
-    assert str(a+b*c) == 'a + b * c'
-    assert str((a+b)*c) == '(a + b) * c'
-    assert str(np.sin(a+b)*c) == 'sin(a + b) * c'
-    assert str(a+C) == 'a + C'
-    assert str(a+C+3) == 'a + C + 3'
-    assert str(3 + a+C) == '3 + a + C'
-    assert str(a.sin()) == 'sin(a)'
-    assert str(atan2(a, b)) == 'arctan2(a, b)'
+    assert str(a + b * c) == "a + b * c"
+    assert str((a + b) * c) == "(a + b) * c"
+    assert str(np.sin(a + b) * c) == "sin(a + b) * c"
+    assert str(a + C) == "a + C"
+    assert str(a + C + 3) == "a + C + 3"
+    assert str(3 + a + C) == "3 + a + C"
+    assert str(a.sin()) == "sin(a)"
+    assert str(atan2(a, b)) == "arctan2(a, b)"
     # float(expr) evaluates the expression; it doesn't build an expr with float.
 
     # Check parameters
-    assert (a+b).parameters() == [a, b]
-    assert (np.sin(a+b)*c).parameters() == [a, b, c]
+    assert (a + b).parameters() == [a, b]
+    assert (np.sin(a + b) * c).parameters() == [a, b, c]
 
     # Check values
     a.value = 3
-    assert (a+b).value == 5.
-    assert float(a+b) == a.value + b.value
+    assert (a + b).value == 5.0
+    assert float(a + b) == a.value + b.value
     assert a.sin().value == np.sin(a.value)
-    assert (3 + a+C).value == 3+3+5
-    assert np.sin(a+b).value == np.sin(a.value+b.value)
+    assert (3 + a + C).value == 3 + 3 + 5
+    assert np.sin(a + b).value == np.sin(a.value + b.value)
     assert atan2(a, b).value == atan2(a.value, b.value)
 
     # Make sure that evaluation is lazy. Capture the expression with one
     # set of values for the parameters, update them with a new set of values,
     # then check if the result is what you get when you call the function
     # directly on those new values.
-    scope = locals() # record the currently available parameter handles
+    scope = locals()  # record the currently available parameter handles
+
     def capture_test(expr, result, **kw):
-        #print("checking", expr, "for", kw, "yields", result)
+        # print("checking", expr, "for", kw, "yields", result)
         saved = {k: scope[k].value for k in kw}
         for k, v in kw.items():
             scope[k].value = float(v)
@@ -1730,7 +1813,8 @@ def test_operator():
         finally:
             for k, v in saved.items():
                 scope[k].value = v
-    capture_test(np.sin(a+b), np.sin(0.5 + 3), a=0.5, b=3)
+
+    capture_test(np.sin(a + b), np.sin(0.5 + 3), a=0.5, b=3)
     capture_test(np.arctan2(a, b), atan2(0.5, 3), a=0.5, b=3)
     capture_test(np.round(a), np.round(-0.6), a=-0.6)
     capture_test(min(a, b), builtins.min(-0.6, 3), a=-0.6, b=3)
@@ -1739,12 +1823,12 @@ def test_operator():
 
     # Check that symbols are defined in pmath
     capture_test(pmath.sind(a), np.sin(np.radians(25)), a=25)
-    assert 'sind' in pmath.__all__
+    assert "sind" in pmath.__all__
 
     # TODO: can we evaluate an expression for an entire population at once?
 
     # Check slots
-    limited = Parameter(3, name='limited', limits=[0.5, 1.5], bounds=[0, 1])
+    limited = Parameter(3, name="limited", limits=[0.5, 1.5], bounds=[0, 1])
     limited.add_prior()
     assert np.isinf(limited.nllf())
     assert np.isinf(limited.nllf())
@@ -1753,8 +1837,8 @@ def test_operator():
     limited.value = 0.2
     assert np.isinf(limited.nllf())
 
-    limited.equals(a+b)
-    assert limited.value == (a+b).value
+    limited.equals(a + b)
+    assert limited.value == (a + b).value
 
     assert np.isinf(limited.nllf())
     a.value = b.value = 0.1
@@ -1786,10 +1870,10 @@ def test_operator():
     b.dev(sigma, mean=mu)
     b.value = 4
     b.add_prior()
-    nllf_target = 0.5*((b.value-mu)/sigma)**2 + np.log(2*np.pi*sigma**2)/2
-    assert abs(b.nllf() - nllf_target)/nllf_target < 1e-12
+    nllf_target = 0.5 * ((b.value - mu) / sigma) ** 2 + np.log(2 * np.pi * sigma**2) / 2
+    assert abs(b.nllf() - nllf_target) / nllf_target < 1e-12
 
- # Check conditions
+    # Check conditions
     a.value, b.value = 3, 4
     capture = a < b
     assert isinstance(capture, Constraint)
@@ -1798,6 +1882,7 @@ def test_operator():
     assert not capture.satisfied
 
     scope = locals()
+
     def raises(condition_str, exception):
         try:
             eval(condition_str, locals=scope)
@@ -1805,6 +1890,7 @@ def test_operator():
             pass
         else:
             raise AssertionError(f"{condition_str} does not raise {exception}")
+
     raises("a < b < c", TypeError)
     raises("a < b and b < c", TypeError)
     raises("a < b or b < c", TypeError)
@@ -1812,6 +1898,7 @@ def test_operator():
     raises("not a", TypeError)
     raises("a and b", TypeError)
     raises("a or b", TypeError)
+
 
 if __name__ == "__main__":
     test_operator()

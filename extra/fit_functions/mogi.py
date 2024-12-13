@@ -12,6 +12,7 @@ References::
 
 from numpy import array, pi
 
+
 def mogi(data, x0, y0, z0, dV):
     """
     Computes surface displacements Ux, Uy, Uz in meters from a point spherical
@@ -20,13 +21,12 @@ def mogi(data, x0, y0, z0, dV):
     evaluate a single Mogi peak over a 2D (2 by N) numpy array of evalpts,
     where coeffs = (x0,y0,z0,dV)
     """
-    dx = data[0,:] - x0
-    dy = data[1,:] - y0
+    dx = data[0, :] - x0
+    dy = data[1, :] - y0
     dz = 0 - z0
-    c = dV * 3. / 4. * pi
+    c = dV * 3.0 / 4.0 * pi
     # or equivalently c= (3/4) a^3 dP / rigidity
     # where a = sphere radius, dP = delta Pressure
-    r2 = dx*dx + dy*dy + dz*dz
+    r2 = dx * dx + dy * dy + dz * dz
     C = c / pow(r2, 1.5)
-    return array((C*dx,C*dy,C*dz))
-
+    return array((C * dx, C * dy, C * dz))

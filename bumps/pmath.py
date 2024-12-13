@@ -1,6 +1,7 @@
 """
 Standard math functions for parameter expressions.
 """
+
 __all__ = []
 
 # Note: the symbols in this module are defined dynamically by parameter.py

@@ -4,6 +4,5 @@ Debug server for the bumps fit infrastructure.
 """
 
 from jobqueue.serve import serve
+
 serve()
-
-

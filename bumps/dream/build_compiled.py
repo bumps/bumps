@@ -64,9 +64,7 @@ def main():
     if args.remove:
         remove_dll()
     else:
-        compile_dll(
-            nthreads=args.nthreads, use_openmp=not args.no_openmp, dry_run=args.dry_run
-        )
+        compile_dll(nthreads=args.nthreads, use_openmp=not args.no_openmp, dry_run=args.dry_run)
 
 
 if __name__ == "__main__":

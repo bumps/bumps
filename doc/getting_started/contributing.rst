@@ -6,7 +6,7 @@ Contributing Changes
 
 .. contents:: :local:
 
-The best way to contribute to the Bumps package is to work from a copy of 
+The best way to contribute to the Bumps package is to work from a copy of
 the source tree in the revision control system.
 
 The bumps project is hosted on github at:
@@ -27,10 +27,10 @@ Track updates to the original package using::
 
     git pull
 
-If you find you need to modify the package, please update the documentation 
-and add tests for your changes.  We use doctests on all of our examples to 
-help keep the documentation synchronized with the code.  More thorough tests 
-are found in the test directory.  Using the the nose test package, you can 
+If you find you need to modify the package, please update the documentation
+and add tests for your changes.  We use doctests on all of our examples to
+help keep the documentation synchronized with the code.  More thorough tests
+are found in the test directory.  Using the the nose test package, you can
 run both sets of tests::
 
     pip install nose
@@ -41,7 +41,7 @@ When all the tests run, generate a patch and send it to pkienzle@nist.gov::
 
     git diff > patch
 
-Windows user can use `TortoiseGit <http://code.google.com/p/tortoisegit/>`_ 
+Windows user can use `TortoiseGit <http://code.google.com/p/tortoisegit/>`_
 package which provides similar operations.
 
 Instead of sending patches, you can set up a github account and create
