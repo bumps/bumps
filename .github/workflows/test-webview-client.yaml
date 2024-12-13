@@ -40,20 +40,20 @@ jobs:
         run: bun run test:lint
 
   # test that app has no typescript errors
-#   test-types:
-#     runs-on: ubuntu-latest
-#     steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v4
+  test-types:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-#       - name: Set up Bun
-#         uses: oven-sh/setup-bun@v2
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
 
-#       - name: Install packages
-#         run: bun install
+      - name: Install packages
+        run: bun install
 
-#       - name: Run test
-#         run: bun run test:types
+      - name: Run test
+        run: bun run test:types
 
   # run unit tests
 #   test-unit:
