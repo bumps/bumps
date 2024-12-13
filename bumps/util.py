@@ -389,34 +389,51 @@ class push_seed(object):
         np.random.set_state(self._state)
 
 
-def get_libraries(obj, libraries=None, packages_distributions=None):
+def make_packages_lookup():
+    """
+    Return a function that takes a package name and returns the distribution
+    """
+    if hasattr(metadata, 'packages_distributions'):
+        packages_distributions = metadata.packages_distributions()
+        def lookup(top_level_package):
+            return packages_distributions.get(top_level_package, [None])[0]
+    else:
+        # for python < 3.10, just return the package name
+        # this is correct much of the time (esp. for bumps applications)
+        # TODO: remove this when we drop support for python < 3.10, 
+        # and just define lookup at the top level
+        def lookup(top_level_package):
+            return top_level_package
+    return lookup
+
+packages_lookup = make_packages_lookup()
+
+def get_libraries(obj, libraries=None):
     if libraries is None:
         libraries = {}
-    if packages_distributions is None:
-        packages_distributions = metadata.packages_distributions()
 
     if is_dataclass(obj):
-        _add_to_libraries(obj, libraries, packages_distributions)
+        _add_to_libraries(obj, libraries)
         for f in fields(obj):
             subobj = getattr(obj, f.name, None)
             if subobj is not None:
-                get_libraries(subobj, libraries, packages_distributions=packages_distributions)
+                get_libraries(subobj, libraries)
     elif isinstance(obj, (list, tuple, types.GeneratorType)):
         for v in obj:
-            get_libraries(v, libraries, packages_distributions=packages_distributions)
+            get_libraries(v, libraries)
     elif isinstance(obj, dict):
         for v in obj.values():
             if is_dataclass(v):
-                get_libraries(v, libraries, packages_distributions=packages_distributions)
+                get_libraries(v, libraries)
 
     return libraries
 
-def _add_to_libraries(obj, libraries: dict, packages_distributions: dict):
-    module = obj.__module__.split('.')[0]
-    dist_name = packages_distributions.get(module,[None])[0]
+def _add_to_libraries(obj, libraries: dict):
+    top_level_package = obj.__module__.split('.')[0]
+    dist_name = packages_lookup(top_level_package)
     if dist_name is not None and dist_name not in libraries:
         # module is already in sys.modules for obj
         # get __version__ attribute from module directly, fall back to version of distribution object
-        version = getattr(sys.modules[module], '__version__', metadata.distribution(dist_name).version)
-        schema_version = getattr(sys.modules[module], '__schema_version__', None)
+        version = getattr(sys.modules[top_level_package], '__version__', metadata.distribution(dist_name).version)
+        schema_version = getattr(sys.modules[top_level_package], '__schema_version__', None)
         libraries[dist_name] = dict(version=version, schema_version=schema_version)
