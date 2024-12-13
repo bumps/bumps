@@ -14,14 +14,14 @@ repos:
       - id: check-merge-conflict
       - id: check-yaml
         args: [--allow-multiple-documents]
-      - id: end-of-file-fixer
-        exclude: |
-          bumps/dream/random123
-          bumps/webview/client/src
-      - id: trailing-whitespace
-        exclude: |
-          bumps/dream/random123
-          bumps/webview/client/src
+      # - id: end-of-file-fixer
+      #   exclude: |
+      #     bumps/dream/random123
+      #     bumps/webview/client/src
+      # - id: trailing-whitespace
+      #   exclude: |
+      #     bumps/dream/random123
+      #     bumps/webview/client/src
   # - repo: https://github.com/astral-sh/ruff-pre-commit
   #   rev: v0.6.1
   #   hooks:
