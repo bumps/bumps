@@ -6,43 +6,44 @@ Installing the application
 
 .. contents:: :local:
 
-Bumps |version| is provided as a Windows installer or as source:
+Bumps |version| is provided in a self-contained Python environment:
 
     - Windows installer: :slink:`%(winexe)s`
     - Apple installer: :slink:`%(macapp)s`
     - Source: :slink:`%(srczip)s`
 
-The Windows installer walks through the steps of setting the program up
-to run on your machine and provides the sample data to be used in the
-tutorial.
+The Windows installer is a self-extracting executable that unpacks 
+to the location of your choosing, and
+once unpacked you can double-click on the "bumps_webview.bat" file to
+start the webview server and client.
+
+The Apple .pkg installer unpacks to the Applications directory.  You can
+start the application by double-clicking on the "bumps_webview.app".
 
 Building from source
 ====================
 
 Before building bumps, you will need to set up your python environment.
-We depend on many external packages.  The versions listed below are a
-snapshot of a configuration that we are using.  The program may work with
+We depend on many external packages.  The program may work with
 older versions of the package, and we will try to keep it compatible with
 the latest versions.
 
 Our base scientific python environment contains:
 
-    - python 2.7 (also tested on 2.6 and 3.5)
-    - matplotlib 1.4.3
-    - numpy 1.9.2
-    - scipy 0.14.0
-    - wxPython 3.0.0.0
-    - setuptools 20.1.1
+    - python >= 3.8
+    - matplotlib
+    - numpy
+    - scipy
 
 To run tests we use:
 
-    - nose 1.3.0
+    - pytest
 
 To build the HTML documentation we use:
 
-    - sphinx 1.3.1
-    - docutils 0.12
-    - jinja2 2.8
+    - sphinx
+    - docutils
+    - jinja2
 
 The PDF documentation requires a working LaTeX installation.
 
@@ -54,106 +55,22 @@ If this fails, then follow the instructions to install from the source
 archive directly. Platform specific details for setting up your environment
 are given below.
 
-Windows
--------
+Installing Python
+-----------------
 
-There are a number of python environments for windows, including:
+You will need to install a python environment.  We recommend using
+miniforge, which will install a conda system for you, using the 
+"conda-forge" channel for packages (free).
 
-* `Anaconda <https://store.continuum.io/cshop/anaconda/>`_
-* `Canopy <https://www.enthought.com/products/canopy/>`_
-* `Python(X,Y) <http://code.google.com/p/pythonxy/>`_
-* `WinPython <http://winpython.sourceforge.net/>`_
+* `miniforge <https://github.com/conda-forge/miniforge/releases/latest>`_
 
-You can also build your environment from the individually distributed
-python packages.
+You can also install a python interpreter directly from the python website:
 
-You may want a C compiler to speed up parts of bumps. Microsoft Visual C++
-for Python 2.7 is one option.  Once it is installed, you will need to
-enable the compiler using vcvarsall 64.
-
-Alternatively, your python environment may supply the MinGW C/C++ compiler,
-but fail to set it as the default compiler.  To do so you will need to create
-distutils configuration file in the python lib directory (usually
-*C:\Python27\Lib\distutils\distutils.cfg*) with the following content::
-
-    [build]
-    compiler=mingw32
-
-Next start a Windows command prompt in the directory containing the source.
-This will be a command like the following::
-
-    cd "C:\Documents and Settings\<username>\My Documents\bumps-src"
-
-Now type the command to build and install::
-
-    python setup.py install
-    python test.py
-
-Now change to your data directory::
-
-    cd "C:\Documents and Settings\<username>\My Documents\data"
+* `Python.org <https://www.python.org/downloads/>`_
 
 To run the program use::
 
     python -m bumps.cli -h
-
-
-Linux
------
-
-Many linux distributions will provide the base required packages.  You
-will need to refer to your distribution documentation for details.
-
-On Ubuntu you can use:
-
-    sudo apt-get install python-matplotlib python-scipy python-nose python-sphinx
-    sudo apt-get install python-wxgtk3.0
-
-From a terminal, change to the directory containing the bumps source and type::
-
-    python setup.py build
-    python test.py
-    sudo python setup.py install
-
-This should install the application somewhere on your path.
-
-To run the program use::
-
-    bumps -h
-
-OS/X
-----
-
-Building a useful python environment on OS/X is somewhat involved, and
-frequently evolving so this document will likely be out of date.
-We've had success using the `Anaconda <https://store.continuum.io/cshop/anaconda/>`_
-64-bit python 2.7 environment from Continuum Analytics, which provides
-the required packages, but other distributions should work as well.
-
-You will need to install XCode from the app store, and set the preferences
-to install the command line tools so that a C compiler is available (look
-in the Downloads tab of the preferences window).  If any of your models
-require fortran, you can download
-`gfortran binaries <http://r.research.att.com/tools/>`_ from
-r.research.att.com/tools (scroll down to the  Apple Xcode gcc-42 add-ons).
-This sets up the basic development environment.
-
-From a terminal, change to the directory containing the source and type::
-
-    conda create -n bumps numpy scipy matplotlib nose sphinx wxpython
-    source activate bumps
-    python setup.py install
-    python test.py
-    cd ..
-
-    # Optional: allow bumps to run from outside the bumps environment
-	mkdir ~/bin # create user terminal app directory if it doesn't already exist
-    ln -s `python -c "import sys;print sys.prefix"`/bin/bumps ~/bin
-
-
-To run the program, start a new Terminal shell and type::
-
-    bumps -h
 
 
 Fast Stepper for DREAM on MPI
@@ -165,6 +82,20 @@ time speedup is limited by the slowest serial portion of the code.  In our
 case, the DE stepper and the bounds check.  Compiling this in C with OpenMP
 allows us to scale to hundreds of nodes until the stepper again becomes a
 bottleneck.
+
+Automated build
+---------------
+
+To use the compiled DE stepper and bounds checks, use::
+
+    python -m bumps.dream.build_compiled
+
+This will compile the DLL in-place in the dream folder.
+
+Manual build
+------------
+
+You can also directly build the compiled module:
 
 To use the compiled DE stepper and bounds checks use::
 
@@ -236,63 +167,19 @@ In addition to macros for units, we also define cdot, angstrom and degrees
 unicode characters here.  The corresponding latex symbols are defined in
 doc/sphinx/conf.py.
 
-There is a bug in older sphinx versions (1.0.7 as of this writing) in which
-latex tables cannot be created.  You can fix this by changing::
 
-    self.body.append(self.table.colspec)
+Building an installer (all platforms)
+=====================================
 
-to::
+To build a packed distribution for Windows, you will need to install
+conda-pack in your base conda environment.  If you don't already have
+a base interpreter, install that as well (e.g. on Windows) from
+conda-forge::
 
-    self.body.append(self.table.colspec.lower())
+    conda install -c conda-forge conda-pack bash
 
-in site-packages/sphinx/writers/latex.py.  This may have been fixed in
-newer versions.
+Then you can build the packed distribution using::
 
-Windows Installer
-=================
+    bash extra/build_conda_packed.sh
 
-To build a windows standalone executable with py2exe you may first need
-to create an empty file named
-*C:\\Python27\\Lib\\numpy\\distutils\\tests\\__init__.py*.
-Without this file, py2exe raises an error when it is searching for
-the parts of the numpy package.  This may be fixed on recent versions
-of numpy. Next, update the __version__ tag in bumps/__init__.py to mark
-it as your own.
-
-Now you can build the standalone executable using::
-
-    python setup_py2exe
-
-This creates a dist subdirectory in the source tree containing
-everything needed to run the application including python and
-all required packages.
-
-To build the Windows installer, you will need two more downloads:
-
-    - Visual C++ 2008 Redistributable Package (x86) 11/29/2007
-    - `Inno Setup <http://www.jrsoftware.org/isdl.php>`_ 5.3.10 QuickStart Pack
-
-The C++ redistributable package is needed for programs compiled with the
-Microsoft Visual C++ compiler, including the standard build of the Python
-interpreter for Windows.  It is available as vcredist_x86.exe from the
-`Microsoft Download Center <http://www.microsoft.com/downloads/>`_.
-Be careful to select the version that corresponds to the one used
-to build the Python interpreter --- different versions can have the
-same name.  For the Python 2.7 standard build, the file is 1.7 Mb
-and is dated 11/29/2007.  We have a copy (:slink:`%(vcredist)s`) on
-our website for your convenience.  Save it to the *C:\\Python27*
-directory so the installer script can find it.
-
-Inno Setup creates the installer executable.  When installing Inno Setup,
-be sure to choose the 'Install Inno Setup Preprocessor' option.
-
-With all the pieces in place, you can run through all steps of the
-build and install by changing to the top level python directory and
-typing::
-
-    python master_builder.py
-
-This creates the redistributable installer bumps-<version>-win32.exe for
-Windows one level up in the directory tree.  In addition, source archives
-in zip and tar.gz format are produced as well as text files listing the
-contents of the installer and the archives.
+This will create a packed distribution in the dist directory.
