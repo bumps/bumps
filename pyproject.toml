@@ -80,7 +80,7 @@ method = "smallest"
 file = "bumps/_version.py"
 
 [project.scripts]
-bumps = "bumps.main:main"
+bumps = "bumps.cli:main"
 bumps-webview = "bumps.webview.server.webserver:main"
 
 [tool.pytest.ini_options]
