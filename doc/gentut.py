@@ -22,16 +22,8 @@ from glob import glob
 from shutil import copyfile
 import pylit
 
-# CRUFT: python 2.x needs to convert unicode to bytes when writing to file
-try:
-    # python 2.x
-    unicode
-    def write(fid, s):
-        fid.write(s)
-except NameError:
-    # python 3.x
-    def write(fid, s):
-        fid.write(s.encode('utf-8') if isinstance(s, str) else s)
+def write(fid, s):
+    fid.write(s.encode('utf-8') if isinstance(s, str) else s)
 
 def make():
     if not exists(TARGET_PATH):
