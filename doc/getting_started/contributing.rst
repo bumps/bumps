@@ -64,7 +64,25 @@ main repository (see `Larger changes <#Larger-changes>`_ below).
 Once you have the code, you will need to install Refl1D, including its dependencies.
 You can do this by following the instructions in the `Installation guide <install.html>`_.
 
-.. simple-patches:
+Making Changes
+==============
+
+Pre-commit hooks
+----------------
+
+Once you have installed the code with ``pip install -e .[dev]``, you can make changes to the code. Note that refl1d uses `pre-commit <https://pre-commit.com/>`_ to run automated checks and linting/formatting on the code before it is committed.
+
+First, activate the Python environment in which you installed refl1d. Then, install the pre-commit hooks by running::
+
+    pre-commit install
+
+This will install the pre-commit hooks in your git repository. The pre-commit hooks will run every time you commit changes to the repository. If the checks fail, the commit will be aborted. 
+
+You can run the checks manually by running::
+
+    pre-commit run
+
+To see what actions are being run, inspect the `.pre-commit-config.yaml` file in the root of the repository.
 
 Simple patches
 --------------
