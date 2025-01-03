@@ -3,7 +3,6 @@ Miscellaneous utility functions.
 """
 from __future__ import division
 from dataclasses import fields
-from importlib import metadata
 import warnings
 
 __all__ = ["kbhit", "profile", "pushdir", "push_seed", "redirect_console"]
@@ -389,34 +388,31 @@ class push_seed(object):
         np.random.set_state(self._state)
 
 
-def get_libraries(obj, libraries=None, packages_distributions=None):
+def get_libraries(obj, libraries=None):
     if libraries is None:
         libraries = {}
-    if packages_distributions is None:
-        packages_distributions = metadata.packages_distributions()
 
     if is_dataclass(obj):
-        _add_to_libraries(obj, libraries, packages_distributions)
+        _add_to_libraries(obj, libraries)
         for f in fields(obj):
             subobj = getattr(obj, f.name, None)
             if subobj is not None:
-                get_libraries(subobj, libraries, packages_distributions=packages_distributions)
+                get_libraries(subobj, libraries)
     elif isinstance(obj, (list, tuple, types.GeneratorType)):
         for v in obj:
-            get_libraries(v, libraries, packages_distributions=packages_distributions)
+            get_libraries(v, libraries)
     elif isinstance(obj, dict):
         for v in obj.values():
             if is_dataclass(v):
-                get_libraries(v, libraries, packages_distributions=packages_distributions)
+                get_libraries(v, libraries)
 
     return libraries
 
-def _add_to_libraries(obj, libraries: dict, packages_distributions: dict):
-    module = obj.__module__.split('.')[0]
-    dist_name = packages_distributions.get(module,[None])[0]
-    if dist_name is not None and dist_name not in libraries:
+def _add_to_libraries(obj, libraries: dict):
+    top_level_package = obj.__module__.split('.')[0]
+    if top_level_package is not None and top_level_package not in libraries:
         # module is already in sys.modules for obj
-        # get __version__ attribute from module directly, fall back to version of distribution object
-        version = getattr(sys.modules[module], '__version__', metadata.distribution(dist_name).version)
-        schema_version = getattr(sys.modules[module], '__schema_version__', None)
-        libraries[dist_name] = dict(version=version, schema_version=schema_version)
+        # get __version__ attribute from module directly
+        version = getattr(sys.modules[top_level_package], '__version__', None)
+        schema_version = getattr(sys.modules[top_level_package], '__schema_version__', None)
+        libraries[top_level_package] = dict(version=version, schema_version=schema_version)
