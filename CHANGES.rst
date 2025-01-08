@@ -18,6 +18,7 @@ v1.0.0 2025-01-XX
   (can be used in `Parameter` slots, and in a model)
 * `Calculation` is a new class to represent a calculable property of a class, which can be used in `Expression` instances
   (e.g. the total thickness of a stack of layers)
+* new `Constraint` class that can be created with e.g. `constraints = [par1 < par2, par2 < par3]` and passed directly to FitProblem
 * the `DE` stepper (also used by `dream`) is now fully accelerated with numba when numba is present (C DLL is still faster)
 * `setup.py` removed and the package is now defined in `pyproject.toml`
 
