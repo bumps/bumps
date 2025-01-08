@@ -2,6 +2,25 @@
 Change History
 **************
 
+v1.0.0 2025-01-XX
+-----------------
+* a new web-based GUI (webview) has been added as the default GUI
+* a dataclass-based JSON serialization is available for bumps classes
+  (and the serializer can be used for model classes as well, falling back to `dill`)
+* `FitProblem` class was refactored to support simultaneous fitting of multiple models, and
+  `MultiFitProblem` is deprecated (currently an alias to `FitProblem`)
+* `Fitness` is a Protocol class defining the interface for models
+* `FitProblem.models` is now a generator that returns Fitness-compatible objects
+* `Parameter` was refactored and has an indirection attribute `slot`:
+  * `Parameter.value` now returns `float(Parameter.slot)`
+  * this allows `Parameter` to be a wrapper of other `Parameter` or `Expression` or `Calculation` or `Constant` objects
+* `Expression` is a new class that replaces `Operation` for combining `Parameter` objects in expressions
+  (can be used in `Parameter` slots, and in a model)
+* `Calculation` is a new class to represent a calculable property of a class, which can be used in `Expression` instances
+  (e.g. the total thickness of a stack of layers)
+* the `DE` stepper (also used by `dream`) is now fully accelerated with numba when numba is present (C DLL is still faster)
+* `setup.py` removed and the package is now defined in `pyproject.toml`
+
 v0.9.3 2024-07-09
 -----------------
 * fixed issues with numpy > = 2.0
