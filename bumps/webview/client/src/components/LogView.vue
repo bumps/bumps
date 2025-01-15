@@ -44,20 +44,25 @@ function timestampToDate(timestamp: string) {
     <button class="btn btn-danger btn-sm me-2" @click="() => (log_info = [])">Clear</button>
 
     <table class="table">
-      <tr>
-        <th>Timestamp</th>
-        <th>Message</th>
-      </tr>
-      <tr v-for="({ message: entry, timestamp }, index) of log_info" :key="index">
-        <td>{{ timestampToDate(timestamp) }}</td>
-        <td class="log_entry">
-          <details v-if="entry.title !== null">
-            <summary>{{ entry.title }}</summary>
-            <pre>{{ entry.message }}</pre>
-          </details>
-          <p v-else>{{ entry.message }}</p>
-        </td>
-      </tr>
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Message</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr v-for="({ message: entry, timestamp }, index) of log_info" :key="index">
+          <td>{{ timestampToDate(timestamp) }}</td>
+          <td class="log_entry">
+            <details v-if="entry.title !== null">
+              <summary>{{ entry.title }}</summary>
+              <pre>{{ entry.message }}</pre>
+            </details>
+            <p v-else>{{ entry.message }}</p>
+          </td>
+        </tr>
+      </tbody>
     </table>
   </div>
 </template>
