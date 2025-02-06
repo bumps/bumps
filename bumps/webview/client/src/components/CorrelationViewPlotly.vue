@@ -11,7 +11,7 @@ import { setupDrawLoop } from "../setupDrawLoop";
 type RegisterTypes = Parameters<typeof Plotly.register>[0];
 type PlotlyModule = Exclude<RegisterTypes, any[]>;
 
-Plotly.register([Heatmap as PlotlyModule]);
+Plotly.register([Heatmap as unknown as PlotlyModule]);
 
 const title = "Correlations";
 const plot_div = ref<Plotly.PlotlyHTMLElement | HTMLDivElement>();
@@ -53,6 +53,9 @@ async function fetch_and_draw(latest_timestamp?: string) {
   )) as Plotly.PlotlyDataLayoutConfig;
   const plotdata = { ...payload };
   const { data, layout } = plotdata;
+  if (plot_div.value == null || data == null) {
+    return;
+  }
   const config: Partial<Plotly.Config> = {
     responsive: true,
     scrollZoom: true,

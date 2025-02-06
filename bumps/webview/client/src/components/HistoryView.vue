@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
-import { addNotification, autosave_history, autosave_history_length } from "../app_state";
+import { ref } from "vue";
+import { addNotification, shared_state } from "../app_state";
 import type { AsyncSocket } from "../asyncSocket";
 
 // const title = "History";
@@ -8,6 +8,8 @@ import type { AsyncSocket } from "../asyncSocket";
 const props = defineProps<{
   socket: AsyncSocket;
 }>();
+
+const { autosave_history, autosave_history_length } = shared_state;
 
 type HistoryItem = {
   timestamp: string;
@@ -38,14 +40,6 @@ props.socket.on("updated_parameters", () => {
 });
 props.socket.asyncEmit("get_chisq", (chisq_str: string) => {
   current_chisq_str.value = `chisq: ${chisq_str}`;
-});
-
-props.socket.on("autosave_history", (autosave: boolean) => {
-  autosave_history.value = autosave;
-});
-
-props.socket.on("autosave_history_length", (length: number) => {
-  autosave_history_length.value = length;
 });
 
 async function remove_history_item(timestamp: string, keep: boolean) {
@@ -85,7 +79,7 @@ async function update_label(timestamp: string, new_label: string) {
 }
 
 async function toggle_autosave_history() {
-  await props.socket.asyncEmit("set_shared_setting", "autosave_history", !autosave_history.value);
+  await props.socket.asyncEmit("set_shared_setting", "autosave_history", !autosave_history);
 }
 
 async function set_autosave_history_length(value_str: string) {
@@ -94,11 +88,6 @@ async function set_autosave_history_length(value_str: string) {
     await props.socket.asyncEmit("set_shared_setting", "autosave_history_length", new_value);
   }
 }
-
-onMounted(async () => {
-  autosave_history.value = await props.socket.asyncEmit("get_shared_setting", "autosave_history");
-  autosave_history_length.value = await props.socket.asyncEmit("get_shared_setting", "autosave_history_length");
-});
 </script>
 
 <template>

@@ -2,10 +2,10 @@
 import { computed, ref } from "vue";
 import { io } from "socket.io-client";
 import {
-  active_fit,
   active_layout,
   activePanel,
   addNotification,
+  autoupdate_state,
   cancelNotification,
   connected,
   default_fitter,
@@ -14,12 +14,11 @@ import {
   fileBrowser,
   FileBrowserSettings,
   fitOptions,
-  fitter_settings,
   LAYOUTS,
-  model_file,
   notifications,
-  selected_fitter,
+  shared_state,
   socket as socket_ref,
+  type FitSetting,
 } from "./app_state";
 import Gear from "./assets/gear.svg?component";
 import "./asyncSocket"; // patch Socket with asyncEmit
@@ -39,6 +38,7 @@ const props = defineProps<{
 }>();
 
 const show_menu = ref(false);
+const { active_fit, fitter_settings, model_file, selected_fitter } = shared_state;
 // const nativefs = ref(false);
 
 // Create a SocketIO connection, to be passed to child components
@@ -67,36 +67,15 @@ socket_ref.value = socket;
 socket.on("connect", async () => {
   console.log(`Connected: Session ID ${socket.id}`);
   connected.value = true;
-  const file_info = (await socket.asyncEmit("get_shared_setting", "model_file")) as
-    | { pathlist: string[]; filename: string }
-    | undefined;
-  model_file.value = file_info;
-  const current_active_fit = (await socket.asyncEmit("get_shared_setting", "active_fit")) as
-    | {
-        fitter_id?: string;
-        options?: any;
-        num_steps?: number;
-        chisq?: string;
-        step?: number;
-        value?: number;
-      }
-    | undefined;
-  if (current_active_fit) {
-    active_fit.value = current_active_fit;
-  }
+  autoupdate_state.init(socket);
+  socket.asyncEmit("get_fitter_defaults", (new_fitter_defaults: { [fit_name: string]: FitSetting }) => {
+    default_fitter_settings.value = new_fitter_defaults;
+  });
 });
 
 socket.on("disconnect", (payload) => {
   console.log("Disconnected!", payload);
   connected.value = false;
-});
-
-socket.on("model_file", (file_info: { filename: string; pathlist: string[] }) => {
-  model_file.value = file_info;
-});
-
-socket.on("active_fit", ({ fitter_id, options, num_steps, step, chisq }) => {
-  active_fit.value = { fitter_id, options, num_steps, step, chisq };
 });
 
 socket.on("add_notification", addNotification);
@@ -114,7 +93,7 @@ async function selectOpenFile() {
       callback: async (pathlist, filename) => {
         await socket.asyncEmit("load_problem_file", pathlist, filename);
       },
-      chosenfile_in: model_file.value?.filename ?? "",
+      chosenfile_in: model_file?.filename ?? "",
       show_name_input: false,
       require_name: true,
       show_files: true,
@@ -148,7 +127,7 @@ async function exportResults() {
 async function saveFileAs(ev: Event) {
   if (fileBrowser.value) {
     const { extension } = (await socket.asyncEmit("get_serializer")) as { extension: string };
-    const filename_in = model_file.value?.filename ?? "";
+    const filename_in = model_file?.filename ?? "";
     const new_filename = `${filename_in.replace(/(\.[^\.]+)$/, "")}.${extension}`;
     const settings: FileBrowserSettings = {
       title: "Save Problem",
@@ -167,11 +146,11 @@ async function saveFileAs(ev: Event) {
 }
 
 async function saveFile(ev: Event, override?: { pathlist: string[]; filename: string }) {
-  if (model_file.value === undefined) {
+  if (model_file === undefined) {
     alert("no file to save");
     return;
   }
-  const { filename, pathlist } = override ?? model_file.value;
+  const { filename, pathlist } = override ?? model_file;
   console.debug(`Saving: ${pathlist.join("/")}/${filename}`);
   await socket.asyncEmit(
     "save_problem_file",
@@ -190,8 +169,8 @@ async function saveFile(ev: Event, override?: { pathlist: string[]; filename: st
 }
 
 async function reloadModel() {
-  if (model_file.value) {
-    const { filename, pathlist } = model_file.value;
+  if (model_file) {
+    const { filename, pathlist } = model_file;
     await socket.asyncEmit("load_problem_file", pathlist, filename);
   }
 }
@@ -250,8 +229,8 @@ function openFitOptions() {
 }
 
 async function startFit() {
-  const active = selected_fitter.value ?? default_fitter;
-  const settings = fitter_settings.value ?? default_fitter_settings.value;
+  const active = selected_fitter ?? default_fitter;
+  const settings = fitter_settings ?? default_fitter_settings.value;
   if (active && settings) {
     const fit_args = settings[active];
     await socket.asyncEmit("start_fit_thread", active, fit_args.settings);
@@ -266,7 +245,7 @@ async function quit() {
   await socket.asyncEmit("shutdown");
 }
 
-const model_not_loaded = computed(() => model_file.value == null);
+const model_not_loaded = computed(() => model_file == null);
 
 file_menu_items.value = [
   { text: "Load Problem", action: selectOpenFile },
@@ -336,11 +315,11 @@ file_menu_items.value = [
           <div class="flex-grow-1 px-4 m-0">
             <h4 class="m-0">
               <!-- <div class="rounded p-2 bg-primary">Fitting: </div> -->
-              <div v-if="active_fit.fitter_id !== undefined" class="badge bg-secondary p-2 align-middle">
+              <div v-if="active_fit?.fitter_id !== undefined" class="badge bg-secondary p-2 align-middle">
                 <div class="align-middle pt-2 pb-1 px-1 d-inline-block">
                   <span
-                    >Fitting: {{ active_fit.fitter_id }} step {{ active_fit?.step }} of {{ active_fit?.num_steps }},
-                    chisq={{ active_fit.chisq }}</span
+                    >Fitting: {{ active_fit?.fitter_id }} step {{ active_fit?.step }} of {{ active_fit?.num_steps }},
+                    chisq={{ active_fit?.chisq }}</span
                   >
                   <div class="progress mt-1" style="height: 3px">
                     <div
@@ -350,7 +329,7 @@ file_menu_items.value = [
                       aria-valuemin="0"
                       :aria-valuemax="active_fit?.num_steps ?? 100"
                       :style="{
-                        width: (((active_fit.step ?? 0) * 100) / (active_fit.num_steps ?? 1)).toFixed(1) + '%',
+                        width: (((active_fit?.step ?? 0) * 100) / (active_fit?.num_steps ?? 1)).toFixed(1) + '%',
                       }"
                     ></div>
                   </div>
