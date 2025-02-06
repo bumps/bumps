@@ -17,18 +17,21 @@ from bumps.names import *
 
 # Anticorrelated function
 
-def fn(x, a, b): return (a+b)*x
+
+def fn(x, a, b):
+    return (a + b) * x
+
 
 # Fake data
 
 sigma = 1
-x = np.linspace(-1., 1, 40)
-dy = sigma*np.ones_like(x)
-y = fn(x,5,5) + np.random.randn(*x.shape)*dy
+x = np.linspace(-1.0, 1, 40)
+dy = sigma * np.ones_like(x)
+y = fn(x, 5, 5) + np.random.randn(*x.shape) * dy
 
 # Wrap it in a curve fitter
 
-M = Curve(fn, x, y, dy, a=(-20,20), b=(-20,20))
+M = Curve(fn, x, y, dy, a=(-20, 20), b=(-20, 20))
 
 # Alternative representation, fitting a and S=a+b, and setting b=S-a.
 #

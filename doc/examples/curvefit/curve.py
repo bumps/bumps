@@ -37,8 +37,10 @@ dy = [0.05, 0.05, 0.2, 0.05, 0.2, 0.2]
 # value for each parameter.  Our function defines a straight like of
 # slope $m$ with intercept $b$ defaulting to 0.
 
+
 def line(x, m, b=0):
-    return m*x + b
+    return m * x + b
+
 
 # We can build a curve fitting object from our function and our data.
 # This assumes that the measurement uncertainty is normally

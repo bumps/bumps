@@ -34,17 +34,19 @@ import os
 
 # === Configure virtual environment ===
 import site
-PYROOT=os.path.abspath(os.path.expanduser('~/bumps'))
-sitepackages = "lib/python%d.%d/site-packages"%sys.version_info[0:2]
-site.addsitedir(PYROOT+sitepackages))
+
+PYROOT = os.path.abspath(os.path.expanduser("~/bumps"))
+sitepackages = "lib/python%d.%d/site-packages" % sys.version_info[0:2]
+site.addsitedir(PYROOT + sitepackages)
 
 # === Configure resource locations ===
 import jobqueue.server
+
 jobqueue.server.configure(
-    jobstore='~/.bumps/server/%s',
-    jobkey='~/.bumps/key',
-    jobdb='sqlite://'+os.path.abspath(os.path.expanduser('~/.bumps/db')),
-    scheduler='dispatch',
-    )
+    jobstore="~/.bumps/server/%s",
+    jobkey="~/.bumps/key",
+    jobdb="sqlite://" + os.path.abspath(os.path.expanduser("~/.bumps/db")),
+    scheduler="dispatch",
+)
 
 application = jobqueue.server.app

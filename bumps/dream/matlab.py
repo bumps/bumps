@@ -85,9 +85,8 @@ This can be run from the command prompt::
     $ python example.py
 
 """
-from __future__ import print_function
 
-__all__ = ['struct', 'dream', 'setup', 'convert_output']
+__all__ = ["struct", "dream", "setup", "convert_output"]
 
 import numpy as np
 
@@ -101,6 +100,7 @@ class struct(object):
     """
     Matlab compatible structure creation.
     """
+
     def __init__(self, *pairs, **kw):
         for k, v in zip(pairs[::2], pairs[1::2]):
             setattr(self, k, v)
@@ -129,7 +129,7 @@ def setup(MCMCPar, ParRange, Measurement, ModelName, Extra, option):
     # Problem specification
     bounds = ParRange.minn, ParRange.maxn
     dreamer.bounds_style = Extra.BoundHandling
-    if ModelName == 'Banshp':
+    if ModelName == "Banshp":
         # specific properties of the banana function
         # Extra.imat is computed from cmat
         # MCMCPar.n is implicit in Extra.cmat
@@ -139,7 +139,7 @@ def setup(MCMCPar, ParRange, Measurement, ModelName, Extra, option):
         try:
             f = None  # keep lint happy
             # Try matlab style of having the function in the same named file.
-            exec("from "+ModelName+" import "+ModelName+" as f")
+            exec("from " + ModelName + " import " + ModelName + " as f")
         except ImportError:
             # The import failed; hope the caller supplied a function instead.
             f = ModelName
@@ -150,16 +150,15 @@ def setup(MCMCPar, ParRange, Measurement, ModelName, Extra, option):
         model = LogDensity(f, bounds=bounds)
     elif option in [2, 3, 5]:
         # Measurement.N is implicit in Measurement.MeasData
-        model = Simulation(f, data=Measurement.MeasData, bounds=bounds,
-                           sigma=Measurement.Sigma, gamma=MCMCPar.Gamma)
+        model = Simulation(f, data=Measurement.MeasData, bounds=bounds, sigma=Measurement.Sigma, gamma=MCMCPar.Gamma)
     else:
         raise ValueError("option should be in 1 to 5")
     dreamer.model = model
 
     # Sampling parameters
-    if Extra.save_in_memory == 'Yes':
+    if Extra.save_in_memory == "Yes":
         thinning = 1
-    elif Extra.reduced_sample_collection == 'Yes':
+    elif Extra.reduced_sample_collection == "Yes":
         thinning = Extra.T
     else:
         thinning = 1
@@ -168,7 +167,7 @@ def setup(MCMCPar, ParRange, Measurement, ModelName, Extra, option):
 
     # Outlier detection
     T = MCMCPar.outlierTest
-    if T.endswith('_test'):
+    if T.endswith("_test"):
         T = T[:-5]
     dreamer.outlier_test = T
 
@@ -178,23 +177,23 @@ def setup(MCMCPar, ParRange, Measurement, ModelName, Extra, option):
     dreamer.DE_eps = MCMCPar.eps
 
     # Initial population
-    if Extra.InitPopulation == 'COV_BASED':
+    if Extra.InitPopulation == "COV_BASED":
         pop = cov_init(N=MCMCPar.seq, x=Extra.muX.flatten(), cov=Extra.qcov)
-    elif Extra.InitPopulation == 'LHS_BASED':
+    elif Extra.InitPopulation == "LHS_BASED":
         pop = lhs_init(N=MCMCPar.seq, bounds=(ParRange.minn, ParRange.maxn))
     else:
         raise ValueError("Extra.InitPopulation must be COV_BASED or LHS_BASED")
     dreamer.population = pop
 
     # Crossover parameters
-    if Extra.pCR == 'Update':
+    if Extra.pCR == "Update":
         CR = AdaptiveCrossover(MCMCPar.nCR)
     else:
-        CR = Crossover(1./MCMCPar.nCR)
+        CR = Crossover(1.0 / MCMCPar.nCR)
     dreamer.CR = CR
 
     # Delayed rejection parameters
-    dreamer.use_delayed_rejection = (Extra.DR == 'Yes')
+    dreamer.use_delayed_rejection = Extra.DR == "Yes"
     dreamer.DR_scale = Extra.DRscale
 
     return dreamer
@@ -225,7 +224,7 @@ def convert_state(state):
     out.CR = np.concatenate((draws[:, None], w), axis=1)
     out.outlier = state.outliers()[:, :2]
     Nupdate, Nvar = len(draws), points.shape[2]
-    R = np.zeros((Nupdate, Nvar), 'd')  # R is no longer calculated
+    R = np.zeros((Nupdate, Nvar), "d")  # R is no longer calculated
     out.R_stat = np.concatenate((draws[:, None], R), axis=1)
 
     # save the dreamer state data structure  as well
@@ -235,7 +234,7 @@ def convert_state(state):
 
 
 def run_script(filename):
-    exec(compile(open(filename).read(), filename, 'exec'))
+    exec(compile(open(filename).read(), filename, "exec"))
 
 
 class Banana(object):
@@ -246,27 +245,32 @@ class Banana(object):
     documented on wikipedia as it only operates "banana-like" in
     the x0-x1 plane.
     """
+
     def __init__(self, mu, bpar, cmat):
         self.mu, self.bpar, self.cmat = mu, bpar, cmat
         self.imat = np.linalg.inv(cmat)
 
     def __call__(self, x):
-        x = x+0 # make a copy
-        x[1] += self.bpar*(x[0]**2 - 100)
-        ret = -0.5*np.dot(np.dot(x[None, :], self.imat), x[:, None])
+        x = x + 0  # make a copy
+        x[1] += self.bpar * (x[0] ** 2 - 100)
+        ret = -0.5 * np.dot(np.dot(x[None, :], self.imat), x[:, None])
         return ret[0, 0]
 
 
 def main():
     import sys
+
     if len(sys.argv) == 2:
         import pylab
+
         run_script(sys.argv[1])
         user_ns = pylab.__dict__.copy().update(locals())
         import IPython
+
         IPython.Shell.IPShell(user_ns=user_ns).mainloop()
     else:
         print("usage: python -m dream.matlab model.m")
+
 
 if __name__ == "__main__":
     main()

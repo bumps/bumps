@@ -9,7 +9,6 @@ T-walk self adjusting MCMC.
 # * typo fixups
 # * move pylab import to the particular functions
 # * remove scipy dependence
-from __future__ import print_function
 
 __all__ = ["pytwalk"]
 
@@ -24,11 +23,11 @@ from numpy import floor, exp, log, sum, pi, arange
 def SqrNorm(x):
     return sum(x * x)
 
+
 log2pi = log(2 * pi)
 
 
 class pytwalk:
-
     """This is the t-walk class.
 
     Initiates defining the dimension= n and -log of the objective function= U,
@@ -42,9 +41,16 @@ class pytwalk:
     ww= the prob. of choosing each kernel, aw, at, n1phi (see inside twalk.py)
     with default values as in the paper, normally NOT needed to be changed."""
 
-    def __init__(self, n, U=(lambda x: sum(0.5 * x ** 2)), Supp=(lambda x: True),
-                 ww=(0.0000, 0.4918, 0.4918, 0.0082, 0.0082), aw=1.5, at=6.0, n1phi=4.0):
-
+    def __init__(
+        self,
+        n,
+        U=(lambda x: sum(0.5 * x**2)),
+        Supp=(lambda x: True),
+        ww=(0.0000, 0.4918, 0.4918, 0.0082, 0.0082),
+        aw=1.5,
+        at=6.0,
+        n1phi=4.0,
+    ):
         self.n = n
         self.U = U
         self.Supp = Supp
@@ -66,25 +72,23 @@ class pytwalk:
     def Run(self, T, x0, xp0):
         """Run the twalk.
 
-           Run( T, x0, xp0),
-           T = Number of iterations.
-           x0, xp0, two initial points within the support,
-           ***each entry of x0 and xp0 most be different***.
+        Run( T, x0, xp0),
+        T = Number of iterations.
+        x0, xp0, two initial points within the support,
+        ***each entry of x0 and xp0 most be different***.
         """
 
         print("twalk: Running the twalk with %d iterations." % T)
         # Check x0 and xp0 in the support
         x = x0  # Reference, so we can retrieve the last values used
-        if not(self.Supp(x)):
-            print(
-                "twalk: ERROR, initial point x0 = %12.4g out of support." % x0)
+        if not (self.Supp(x)):
+            print("twalk: ERROR, initial point x0 = %12.4g out of support." % x0)
             return 0
         u = self.U(x)
 
         xp = xp0
-        if not(self.Supp(xp)):
-            print(
-                "twalk: ERROR, initial point xp0 = %12.4g out of support." % xp0)
+        if not (self.Supp(xp)):
+            print("twalk: ERROR, initial point xp0 = %12.4g out of support." % xp0)
             return 0
         up = self.U(xp)
 
@@ -109,12 +113,11 @@ class pytwalk:
 
         # Sampling
         for it in range(T):
-
             y, yp, ke, A, u_prop, up_prop = self.onemove(x, u, xp, up)
 
             kercall[ke] += 1
             kercall[5] += 1
-            if (uniform() < A):
+            if uniform() < A:
                 x = y.copy()  # Accept the proposal y
                 u = u_prop
                 xp = yp.copy()  # Accept the proposal yp
@@ -132,7 +135,7 @@ class pytwalk:
             Output[it + 1, 0:n] = x.copy()
             Output[it + 1, n] = u
 
-        if (Acc[5] == 0):
+        if Acc[5] == 0:
             print("twalk: WARNING,  all propolsals were rejected!")
             return 0
 
@@ -143,18 +146,18 @@ class pytwalk:
 
     def onemove(self, x, u, xp, up):
         """One move of the twalk.  This is basically the raw twalk kernel.
-           It is usefull if the twalk is needed inside a more complex MCMC.
+        It is usefull if the twalk is needed inside a more complex MCMC.
 
-           onemove(x, u, xp, up),
-           x, xp, two points WITHIN the support ***each entry of x0 and xp0 must be different***.
-           and the value of the objective at x, and xp
-           u=U(x), up=U(xp).
+        onemove(x, u, xp, up),
+        x, xp, two points WITHIN the support ***each entry of x0 and xp0 must be different***.
+        and the value of the objective at x, and xp
+        u=U(x), up=U(xp).
 
-           It returns: [y, yp, ke, A, u_prop, up_prop]
-           y, yp: the proposed jump
-           ke: The kernel used, 0=nothing, 1=Walk, 2=Traverse, 3=Blow, 4=Hop
-           A: the M-H ratio
-           u_prop, up_prop: The values for the objective func. at the proposed jumps
+        It returns: [y, yp, ke, A, u_prop, up_prop]
+        y, yp: the proposed jump
+        ke: The kernel used, 0=nothing, 1=Walk, 2=Traverse, 3=Blow, 4=Hop
+        A: the M-H ratio
+        u_prop, up_prop: The values for the objective func. at the proposed jumps
         """
 
         # Make local references for less writing
@@ -167,7 +170,7 @@ class pytwalk:
         A = 0
 
         # Kernel nothing exchange x with xp
-        if ((0.0 <= ker) & (ker < Fw[0])):
+        if (0.0 <= ker) & (ker < Fw[0]):
             ke = 0
             y = xp.copy()
             up_prop = u
@@ -178,20 +181,18 @@ class pytwalk:
             # always accepted
 
         # The Walk move
-        if ((Fw[0] <= ker) & (ker < Fw[1])):
-
+        if (Fw[0] <= ker) & (ker < Fw[1]):
             ke = 1
 
             dir = uniform()
 
-            if ((0 <= dir) & (dir < 0.5)):  # x as pivot
-
+            if (0 <= dir) & (dir < 0.5):  # x as pivot
                 yp = self.SimWalk(xp, x)
 
                 y = x.copy()
                 u_prop = u
 
-                if ((Supp(yp)) & (all(abs(yp - y) > 0))):
+                if (Supp(yp)) & (all(abs(yp - y) > 0)):
                     up_prop = U(yp)
                     A = exp(up - up_prop)
                 else:
@@ -200,13 +201,12 @@ class pytwalk:
                     # out of support, not accepted
 
             else:  # xp as pivot
-
                 y = self.SimWalk(x, xp)
 
                 yp = xp.copy()
                 up_prop = up
 
-                if ((Supp(y)) & (all(abs(yp - y) > 0))):
+                if (Supp(y)) & (all(abs(yp - y) > 0)):
                     u_prop = U(y)
                     A = exp(u - u_prop)
                 else:
@@ -215,13 +215,11 @@ class pytwalk:
                     # out of support, not accepted
 
         # The Traverse move
-        if ((Fw[1] <= ker) & (ker < Fw[2])):
-
+        if (Fw[1] <= ker) & (ker < Fw[2]):
             ke = 2
             dir = uniform()
 
-            if ((0 <= dir) & (dir < 0.5)):  # x as pivot
-
+            if (0 <= dir) & (dir < 0.5):  # x as pivot
                 beta = self.Simbeta()
                 yp = self.SimTraverse(xp, x, beta)
 
@@ -230,7 +228,7 @@ class pytwalk:
 
                 if Supp(yp):
                     up_prop = U(yp)
-                    if (self.nphi == 0):
+                    if self.nphi == 0:
                         A = 1  # Nothing moved
                     else:
                         A = exp((up - up_prop) + (self.nphi - 2) * log(beta))
@@ -238,7 +236,6 @@ class pytwalk:
                     up_prop = None
                     A = 0  # out of support, not accepted
             else:  # xp as pivot
-
                 beta = self.Simbeta()
                 y = self.SimTraverse(x, xp, beta)
 
@@ -247,7 +244,7 @@ class pytwalk:
 
                 if Supp(y):
                     u_prop = U(y)
-                    if (self.nphi == 0):
+                    if self.nphi == 0:
                         A = 1  # Nothing moved
                     else:
                         A = exp((u - u_prop) + (self.nphi - 2) * log(beta))
@@ -256,20 +253,19 @@ class pytwalk:
                     A = 0  # out of support, not accepted
 
         # The Blow move
-        if ((Fw[2] <= ker) & (ker < Fw[3])):
-
+        if (Fw[2] <= ker) & (ker < Fw[3]):
             ke = 3
             dir = uniform()
 
-            if ((0 <= dir) & (dir < 0.5)):  # x as pivot
+            if (0 <= dir) & (dir < 0.5):  # x as pivot
                 yp = self.SimBlow(xp, x)
 
                 y = x.copy()
                 u_prop = u
-                if ((Supp(yp)) & all(yp != x)):
+                if (Supp(yp)) & all(yp != x):
                     up_prop = U(yp)
-                    W1 = self.GBlowU(yp, xp,  x)
-                    W2 = self.GBlowU(xp, yp,  x)
+                    W1 = self.GBlowU(yp, xp, x)
+                    W2 = self.GBlowU(xp, yp, x)
                     A = exp((up - up_prop) + (W1 - W2))
                 else:
                     up_prop = None
@@ -279,30 +275,29 @@ class pytwalk:
 
                 yp = xp.copy()
                 up_prop = up
-                if ((Supp(y)) & all(y != xp)):
+                if (Supp(y)) & all(y != xp):
                     u_prop = U(y)
-                    W1 = self.GBlowU(y,  x, xp)
-                    W2 = self.GBlowU(x,  y, xp)
+                    W1 = self.GBlowU(y, x, xp)
+                    W2 = self.GBlowU(x, y, xp)
                     A = exp((u - u_prop) + (W1 - W2))
                 else:
                     u_prop = None
                     A = 0  # out of support, not accepted
 
         # The Hop move
-        if ((Fw[3] <= ker) & (ker < Fw[4])):
-
+        if (Fw[3] <= ker) & (ker < Fw[4]):
             ke = 4
             dir = uniform()
 
-            if ((0 <= dir) & (dir < 0.5)):  # x as pivot
+            if (0 <= dir) & (dir < 0.5):  # x as pivot
                 yp = self.SimHop(xp, x)
 
                 y = x.copy()
                 u_prop = u
-                if ((Supp(yp)) & all(yp != x)):
+                if (Supp(yp)) & all(yp != x):
                     up_prop = U(yp)
-                    W1 = self.GHopU(yp, xp,  x)
-                    W2 = self.GHopU(xp, yp,  x)
+                    W1 = self.GHopU(yp, xp, x)
+                    W2 = self.GHopU(xp, yp, x)
                     A = exp((up - up_prop) + (W1 - W2))
                 else:
                     up_prop = None
@@ -312,10 +307,10 @@ class pytwalk:
 
                 yp = xp.copy()
                 up_prop = up
-                if ((Supp(y)) & all(y != xp)):
+                if (Supp(y)) & all(y != xp):
                     u_prop = U(y)
-                    W1 = self.GHopU(y,  x, xp)
-                    W2 = self.GHopU(x,  y, xp)
+                    W1 = self.GHopU(y, x, xp)
+                    W2 = self.GHopU(x, y, xp)
                     A = exp((u - u_prop) + (W1 - W2))
                 else:
                     u_prop = None
@@ -323,43 +318,42 @@ class pytwalk:
 
         return [y, yp, ke, A, u_prop, up_prop]
 
-
-##########################################################################
-# Auxiliaries for the kernels
+    ##########################################################################
+    # Auxiliaries for the kernels
 
     # Used by the Walk kernel
     def SimWalk(self, x, xp):
         aw = self.aw
         n = self.n
 
-        phi = (uniform(size=n) < self.pphi)  # parameters to move
+        phi = uniform(size=n) < self.pphi  # parameters to move
         self.nphi = sum(phi)
         z = zeros(n)
 
         for i in range(n):
             if phi[i]:
                 u = uniform()
-                z[i] = (aw / (1 + aw)) * (aw * u ** 2.0 + 2.0 * u - 1.0)
+                z[i] = (aw / (1 + aw)) * (aw * u**2.0 + 2.0 * u - 1.0)
 
         return x + (x - xp) * z
 
     # Used by the Traverse kernel
     def Simbeta(self):
         at = self.at
-        if (uniform() < (at - 1.0) / (2.0 * at)):
+        if uniform() < (at - 1.0) / (2.0 * at):
             return exp(1.0 / (at + 1.0) * log(uniform()))
         else:
             return exp(1.0 / (1.0 - at) * log(uniform()))
 
-    def SimTraverse(self,  x, xp, beta):
+    def SimTraverse(self, x, xp, beta):
         n = self.n
 
-        phi = (uniform(size=n) < self.pphi)
+        phi = uniform(size=n) < self.pphi
         self.nphi = sum(phi)
 
         rt = x.copy()
         for i in range(n):
-            if (phi[i]):
+            if phi[i]:
                 rt[i] = xp[i] + beta * (xp[i] - x[i])
 
         return rt
@@ -368,14 +362,14 @@ class pytwalk:
     def SimBlow(self, x, xp):
         n = self.n
 
-        phi = (uniform(size=n) < self.pphi)
+        phi = uniform(size=n) < self.pphi
         self.nphi = sum(phi)
 
         self.sigma = max(phi * abs(xp - x))
 
         rt = x.copy()
         for i in range(n):
-            if (phi[i]):
+            if phi[i]:
                 rt[i] = x[i] + self.sigma * normal()
 
         return rt
@@ -383,8 +377,8 @@ class pytwalk:
     def GBlowU(self, h, x, xp):
         nphi = self.nphi
 
-        if (nphi > 0):
-            return (nphi / 2.0) * log2pi + nphi * log(self.sigma) + 0.5 * SqrNorm(h - xp) / (self.sigma ** 2)
+        if nphi > 0:
+            return (nphi / 2.0) * log2pi + nphi * log(self.sigma) + 0.5 * SqrNorm(h - xp) / (self.sigma**2)
         else:
             return 0
 
@@ -392,14 +386,14 @@ class pytwalk:
     def SimHop(self, x, xp):
         n = self.n
 
-        phi = (uniform(size=n) < self.pphi)
+        phi = uniform(size=n) < self.pphi
         self.nphi = sum(phi)
 
         self.sigma = max(phi * abs(xp - x)) / 3.0
 
         rt = x.copy()
         for i in range(n):
-            if (phi[i]):
+            if phi[i]:
                 rt[i] = xp[i] + self.sigma * normal()
 
         return rt
@@ -407,25 +401,23 @@ class pytwalk:
     def GHopU(self, h, x, xp):  # It is actually equal to GBlowU!
         nphi = self.nphi
 
-        if (nphi > 0):
-            return (nphi / 2.0) * log2pi + nphi * log(self.sigma) + 0.5 * SqrNorm(h - xp) / (self.sigma ** 2)
+        if nphi > 0:
+            return (nphi / 2.0) * log2pi + nphi * log(self.sigma) + 0.5 * SqrNorm(h - xp) / (self.sigma**2)
         else:
             return 0
 
-
-##########################################################################
-# Output analysis auxiliary methods
+    ##########################################################################
+    # Output analysis auxiliary methods
 
     def IAT(self, par=-1, start=0, end=0, maxlag=0):
         """Calculate the Integrated Autocorrelation Times of parameters par
-           the default value par=-1 is for the IAT of the U's"""
-        if (end == 0):
+        the default value par=-1 is for the IAT of the U's"""
+        if end == 0:
             end = self.T
 
-        if (self.Acc[5] == 0):
+        if self.Acc[5] == 0:
             print("twalk: IAT: WARNING,  all proposals were rejected!")
-            print(
-                "twalk: IAT: Cannot calculate IAT, fixing it to the sample size.")
+            print("twalk: IAT: Cannot calculate IAT, fixing it to the sample size.")
             return self.T
 
         iat = IAT(self.Output, cols=par, maxlag=maxlag, start=start, end=end)
@@ -439,10 +431,10 @@ class pytwalk:
         if par == -1:
             par = self.n
 
-        if (end == 0):
+        if end == 0:
             end = self.T
 
-        if (par == self.n):
+        if par == self.n:
             plot(arange(start, end), -1 * self.Output[start:end, par])
             ylabel("Log of Objective")
         else:
@@ -455,30 +447,28 @@ class pytwalk:
         if par == -1:
             par = self.n
 
-        if (end == 0):
+        if end == 0:
             end = self.T
 
-        print(
-            "Acceptance rates for the Walk, Traverse, Blow and Hop kernels:" + str(self.Acc[1:5]))
+        print("Acceptance rates for the Walk, Traverse, Blow and Hop kernels:" + str(self.Acc[1:5]))
         print("Global acceptance rate: %7.5f" % self.Acc[5])
 
         iat = self.IAT(par=par, start=start, end=end)
-        print("Integrated Autocorrelation Time: %7.1f, IAT/n: %7.1f" %
-              (iat, iat / self.n))
+        print("Integrated Autocorrelation Time: %7.1f, IAT/n: %7.1f" % (iat, iat / self.n))
 
         self.TS(par=par, start=start, end=end)
 
     def Hist(self, par=-1, start=0, end=0, g=(lambda x: x[0]), xlab="g", bins=20):
         """Basic histograms and output analysis.  If par=-1, use g.
-           The function g provides a transformation to be applied to the data,
-           eg g=(lambda x: abs(x[0]-x[1]) would plot a histogram of the distance
-           between parameters 0 and 1, etc."""
+        The function g provides a transformation to be applied to the data,
+        eg g=(lambda x: abs(x[0]-x[1]) would plot a histogram of the distance
+        between parameters 0 and 1, etc."""
         from pylab import hist, xlabel
 
-        if (end == 0):
+        if end == 0:
             end = self.T
 
-        if (par == -1):
+        if par == -1:
             ser = zeros(end - start)
             for it in range(end - start):
                 ser[it] = g(self.Output[it + start, :])
@@ -498,18 +488,16 @@ class pytwalk:
 
         from numpy import savetxt
 
-        savetxt(fnam, self.Output[start:, ])
+        savetxt(fnam, self.Output[start:,])
 
-
-# A simple Random Walk M-H
+    # A simple Random Walk M-H
     def RunRWMH(self, T, x0, sigma):
         """Run a simple Random Walk M-H"""
 
-        print(
-            "twalk: This is the Random Walk M-H running with %d iterations." % T)
+        print("twalk: This is the Random Walk M-H running with %d iterations." % T)
         # Local variables
         x = x0.copy()
-        if not(self.Supp(x)):
+        if not (self.Supp(x)):
             print("twalk: ERROR, initial point x0 out of support.")
             return 0
 
@@ -534,7 +522,7 @@ class pytwalk:
             y = x + normal(size=n) * sigma  # each entry with sigma[i] variance
             if Supp(y):  # If it is within the support of the objective
                 uprop = U(y)  # Evaluate the objective
-                if (uniform() < exp(u - uprop)):
+                if uniform() < exp(u - uprop):
                     x = y.copy()  # Accept the propolsal y
                     u = uprop
                     Acc[5] += 1
@@ -542,7 +530,7 @@ class pytwalk:
             Output[it + 1, 0:n] = x
             Output[it + 1, n] = u
 
-        if (Acc[5] == 0):
+        if Acc[5] == 0:
             print("twalk: WARNING,  all propolsals were rejected!")
             return 0
 
@@ -559,10 +547,10 @@ class pytwalk:
 # The variances of each series are in the diagonal and the
 # (auto)covariance in the off diag.
 def AutoCov(Ser, c, la, T=0):
-    if (T == 0):
+    if T == 0:
         T = shape(Ser)[0]  # Number of rows in the matrix (sample size)
 
-    return cov(Ser[0:(T - 1 - la), c], Ser[la:(T - 1), c], bias=1)
+    return cov(Ser[0 : (T - 1 - la), c], Ser[la : (T - 1), c], bias=1)
 
 
 # Calculates the autocorrelation from lag 0 to lag la of columns cols (list)
@@ -607,14 +595,14 @@ def Cutts(Gamma):
     Out = mat(zeros([1, cols], dtype=int))
     Stop = mat(zeros([1, cols], dtype=bool))
 
-    if (rows == 1):
+    if rows == 1:
         return Out
 
     i = 0
     # while (not(all(Stop)) & (i < (rows-1))):
     for i in range(rows - 1):
         for j in range(cols):  # while Gamma stays positive and decreasing
-            if (((Gamma[i + 1, j] > 0.0) & (Gamma[i + 1, j] < Gamma[i, j])) & (not Stop[0, j])):
+            if ((Gamma[i + 1, j] > 0.0) & (Gamma[i + 1, j] < Gamma[i, j])) & (not Stop[0, j]):
                 Out[0, j] = i + 1  # the cutting time for colomn j is i+i
             else:
                 Stop[0, j] = True
@@ -641,7 +629,7 @@ def AutoMaxlag(Ser, c, rholimit=0.05, maxmaxlag=20000):
 
     T = shape(Ser)[0]  # Number of rows in the matrix (sample size)
 
-    while ((abs(rho) > rholimit) & (maxlag < min(T / 2, maxmaxlag))):
+    while (abs(rho) > rholimit) & (maxlag < min(T / 2, maxmaxlag)):
         Co = AutoCov(Ser, c, la=maxlag)
         rho = Co[0, 1] / Co[0, 0]
         maxlag = maxlag + jmp
@@ -650,16 +638,16 @@ def AutoMaxlag(Ser, c, rholimit=0.05, maxmaxlag=20000):
     maxlag = int(floor(1.3 * maxlag))
     # 30% more
 
-    if (maxlag >= min(T / 2, maxmaxlag)):  # not enough data
+    if maxlag >= min(T / 2, maxmaxlag):  # not enough data
         fixmaxlag = min(min(T / 2, maxlag), maxmaxlag)
-        print("AutoMaxlag: Warning: maxlag= %d > min(T/2,maxmaxlag=%d), fixing it to %d" %
-              (maxlag, maxmaxlag, fixmaxlag))
+        print(
+            "AutoMaxlag: Warning: maxlag= %d > min(T/2,maxmaxlag=%d), fixing it to %d" % (maxlag, maxmaxlag, fixmaxlag)
+        )
         return fixmaxlag
 
-    if (maxlag <= 1):
+    if maxlag <= 1:
         fixmaxlag = 10
-        print("AutoMaxlag: Warning: maxlag= %d ?!, fixing it to %d" %
-              (maxlag, fixmaxlag))
+        print("AutoMaxlag: Warning: maxlag= %d ?!, fixing it to %d" % (maxlag, fixmaxlag))
         return fixmaxlag
 
     print("AutoMaxlag: maxlag= %d." % maxlag)
@@ -667,24 +655,23 @@ def AutoMaxlag(Ser, c, rholimit=0.05, maxmaxlag=20000):
 
 
 # Find the IAT
-def IAT(Ser, cols=-1,  maxlag=0, start=0, end=0):
-
+def IAT(Ser, cols=-1, maxlag=0, start=0, end=0):
     ncols = shape(mat(cols))[1]  # Number of columns to analyse (parameters)
     if ncols == 1:
-        if (cols == -1):
+        if cols == -1:
             cols = shape(Ser)[1] - 1  # default = last column
         cols = [cols]
 
-    if (end == 0):
+    if end == 0:
         end = shape(Ser)[0]
 
-    if (maxlag == 0):
+    if maxlag == 0:
         for c in cols:
             maxlag = max(maxlag, AutoMaxlag(Ser[start:end, :], c))
 
-    #print("IAT: Maxlag=", maxlag)
+    # print("IAT: Maxlag=", maxlag)
 
-    #Ga = MakeSumMat(maxlag) * AutoCorr( Ser[start:end,:], cols=cols, la=maxlag)
+    # Ga = MakeSumMat(maxlag) * AutoCorr( Ser[start:end,:], cols=cols, la=maxlag)
 
     Ga = mat(zeros((maxlag / 2, ncols)))
     auto = AutoCorr(Ser[start:end, :], cols=cols, la=maxlag)

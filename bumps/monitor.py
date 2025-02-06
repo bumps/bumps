@@ -6,7 +6,7 @@ Process monitors accept a :class:`bumps.history.History` object each cycle
 and perform some sort of work.
 
 Monitors have a :meth:`Monitor.config_history` method which calls
-*history.requires()* to set the amount of history it needs and a 
+*history.requires()* to set the amount of history it needs and a
 *Monitor.__call__* method which takes the updated history and
 generates the monitor output.
 
@@ -17,9 +17,8 @@ and :meth:`TimedUpdate.show_improvement` to control the output form. History
 must be updated with time, value, point and step. The
 bumps.fitters.MonitorRunner class manages history and updates.
 """
-from __future__ import print_function
 
-__all__ = ['Monitor', 'Logger', 'TimedUpdate']
+__all__ = ["Monitor", "Logger", "TimedUpdate"]
 
 from numpy import inf
 
@@ -28,6 +27,7 @@ class Monitor(object):
     """
     Base class for monitors.
     """
+
     def config_history(self, history):
         """
         Indicate which fields are needed by the monitor and for what duration.
@@ -65,6 +65,7 @@ class Logger(Monitor):
     Call :meth:`config_history` with the :class:`bumps.history.History`
     object before starting so that the correct fields are stored.
     """
+
     def __init__(self, fields=(), table=None):
         self.fields = fields
         self.table = table
@@ -104,6 +105,7 @@ class TimedUpdate(Monitor):
     :meth:`show_improvement` to trigger GUI updates or show parameter
     values.
     """
+
     def __init__(self, progress=60, improvement=5):
         self.progress_delta = progress
         self.improvement_delta = improvement

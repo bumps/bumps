@@ -1,7 +1,7 @@
 @import url("haiku.css");
 
-div.contents { 
-    float: right; 
+div.contents {
+    float: right;
     background: Cornsilk;
     margin: 0.5em 0.5em;
 }
