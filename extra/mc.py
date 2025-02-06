@@ -1,17 +1,16 @@
-from __future__ import division, print_function
-
-import sys
 import argparse
+
+# import sys
 import time
 
+import emcee
+import matplotlib.pyplot as plt
 import numpy as np
 from numpy import inf
-import emcee
 
-from bumps.cli import load_model, load_best
 from bumps import initpop
+from bumps.cli import load_best, load_model
 from bumps.dream import stats, views
-import matplotlib.pyplot as plt
 
 
 class Draw(object):

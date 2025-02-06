@@ -45,8 +45,6 @@ For *Extra.pCR != 'Update'* in the matlab interface use::
 
 """
 
-from __future__ import division, print_function
-
 __all__ = [
     "Crossover",
     "BaseAdaptiveCrossover",

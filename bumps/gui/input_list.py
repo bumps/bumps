@@ -27,8 +27,6 @@ classes to provide general purpose mechanisms for obtaining and validating user
 input from a structured list of input fields.
 """
 
-from __future__ import print_function
-
 import wx
 from wx.lib.scrolledpanel import ScrolledPanel
 

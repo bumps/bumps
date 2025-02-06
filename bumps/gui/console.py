@@ -7,8 +7,6 @@ TODO: Fix cut/paste for multiline commands
 TODO: Trigger change notification when numpy array has changed
 """
 
-from __future__ import print_function
-
 import wx, wx.py
 
 

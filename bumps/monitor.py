@@ -18,8 +18,6 @@ must be updated with time, value, point and step. The
 bumps.fitters.MonitorRunner class manages history and updates.
 """
 
-from __future__ import print_function
-
 __all__ = ["Monitor", "Logger", "TimedUpdate"]
 
 from numpy import inf

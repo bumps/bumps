@@ -20,8 +20,6 @@ parameter uncertainty when fitting simulated data from a range of experimental
 systems.
 """
 
-from __future__ import with_statement, print_function
-
 __all__ = [
     "main",
     "install_plugin",
@@ -245,9 +243,7 @@ def make_store(problem, opts, exists_handler):
     if opts.store:
         problem.store = opts.store
     if getattr(problem, "store", None) is None:
-        raise RuntimeError(
-            "Need to specify '--store=path' on command line" " or problem.store='path' in definition file."
-        )
+        raise RuntimeError("Need to specify '--store=path' on command line or problem.store='path' in definition file.")
     problem.output_path = os.path.join(problem.store, problem.name)
 
     # Check if already exists

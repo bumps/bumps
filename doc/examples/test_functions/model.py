@@ -5,12 +5,10 @@ Virtual Library of Simulation Experiments: Test Functions and Datasets.
 Retrieved April 18, 2016, from http://www.sfu.ca/~ssurjano.
 """
 
-from __future__ import print_function
-
-from functools import reduce, wraps
 import inspect
+from functools import reduce, wraps
 
-from numpy import sin, cos, linspace, meshgrid, e, pi, sqrt, exp, log, log1p
+from numpy import cos, e, exp, linspace, log, log1p, meshgrid, pi, sin, sqrt
 from scipy.special import gammaln
 
 from bumps.names import *

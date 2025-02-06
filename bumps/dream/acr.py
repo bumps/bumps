@@ -52,8 +52,6 @@ References:
      Statistical Association, San Francisco, August 1987.
 """
 
-from __future__ import division
-
 __all__ = ["ACR"]
 
 from scipy.stats import f

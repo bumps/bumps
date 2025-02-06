@@ -108,16 +108,14 @@ applied to DREAM output::
 
 """
 
-from __future__ import division, print_function
-
 __all__ = ["entropy", "gmm_entropy", "cov_entropy", "wnn_entropy", "MVNEntropy"]
 
 import numpy as np
-from numpy import mean, std, exp, log, sqrt, log2, pi, e, nan
-from numpy.random import permutation, choice
+from numpy import e, exp, log, log2, mean, nan, pi, sqrt, std
+from numpy.random import choice, permutation
 from scipy import stats
-from scipy.stats import norm, chi2
-from scipy.special import gammaln, digamma
+from scipy.special import digamma, gammaln
+from scipy.stats import chi2, norm
 
 LN2 = log(2)
 

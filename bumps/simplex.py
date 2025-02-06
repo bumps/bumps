@@ -11,8 +11,6 @@
 Downhill simplex optimizer.
 """
 
-from __future__ import print_function
-
 __all__ = ["simplex"]
 __docformat__ = "restructuredtext en"
 __version__ = "0.7"

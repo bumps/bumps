@@ -9,7 +9,6 @@ T-walk self adjusting MCMC.
 # * typo fixups
 # * move pylab import to the particular functions
 # * remove scipy dependence
-from __future__ import print_function
 
 __all__ = ["pytwalk"]
 

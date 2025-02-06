@@ -1,9 +1,7 @@
-from __future__ import print_function
-
 import os
 import time
 
-from jobqueue import dispatcher, db, store, notify
+from jobqueue import db, dispatcher, notify, store
 
 db.DEBUG = False
 DEBUG = False

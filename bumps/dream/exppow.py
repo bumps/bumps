@@ -2,8 +2,6 @@
 Exponential power density parameter calculator.
 """
 
-from __future__ import division
-
 __all__ = ["exppow_pars"]
 
 from math import sqrt

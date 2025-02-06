@@ -2,8 +2,6 @@
 Data handling utilities.
 """
 
-from __future__ import division
-
 import os
 import gzip
 from contextlib import contextmanager

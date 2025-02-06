@@ -1,17 +1,13 @@
-from __future__ import with_statement
-
 import wx
-
-IS_MAC = wx.Platform == "__WXMAC__"
-
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.backends.backend_wxagg import NavigationToolbar2WxAgg as Toolbar
 
 # The Figure object is used to create backend-independent plot representations.
 from matplotlib.figure import Figure
 
-
 from .util import EmbeddedPylab
+
+IS_MAC = wx.Platform == "__WXMAC__"
 
 
 class PlotView(wx.Panel):

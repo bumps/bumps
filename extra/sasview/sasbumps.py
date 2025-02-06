@@ -1,5 +1,3 @@
-from __future__ import division, print_function
-
 __all__ = [
     "Experiment",
     "load_data",
@@ -20,18 +18,20 @@ __all__ = [
 
 # symbols loaded for export
 import sys
+
 import numpy as np
-from bumps.names import Parameter, FitProblem, FreeVariables, pmath, preview, fit
-from bumps.parameter import Parameter
-from bumps.util import push_seed as seed
 import sans
 import sans.models
 
 # symbols needed internally
 from sans.dataloader.data_info import Data1D, Data2D
+from sans.dataloader.loader import Loader as DataLoader
 from sans.fit.AbstractFitEngine import FitData1D, FitData2D
 from sans.perspectives.fitting.pagestate import Reader as FitReader
-from sans.dataloader.loader import Loader as DataLoader
+
+from bumps.names import FitProblem, FreeVariables, Parameter, fit, pmath, preview
+from bumps.parameter import Parameter
+from bumps.util import push_seed as seed
 
 
 def load_data(filename):

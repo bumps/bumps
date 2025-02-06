@@ -109,10 +109,8 @@ Accumulated properties::
 # Want to use surrogate models for the expensive models when far from the
 # minimum, only calculating the real model when near the minimum.
 
-from __future__ import print_function
-
-import time
 import os
+import time
 
 import numpy as np
 

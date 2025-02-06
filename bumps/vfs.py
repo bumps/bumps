@@ -52,8 +52,6 @@ with the libc open function and fail.  Could potentially monkeypatch
 pandas to pre-open the file.
 """
 
-from __future__ import print_function
-
 import sys
 import os
 import os.path

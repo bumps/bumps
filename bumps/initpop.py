@@ -16,8 +16,6 @@ Additional strategies like uniform box in [0,1] or standard norm
 
 # Note: borrowed from DREAM and extended.
 
-from __future__ import division, print_function
-
 __all__ = ["generate", "cov_init", "eps_init", "lhs_init", "random_init"]
 
 import math

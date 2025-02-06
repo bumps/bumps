@@ -2,8 +2,6 @@
 Split a rectangle into n panes.
 """
 
-from __future__ import division
-
 __all__ = ["max_tile_size"]
 
 import math

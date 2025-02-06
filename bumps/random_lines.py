@@ -8,7 +8,6 @@ http://dx.doi.org/10.11121/ijocta.01.2013.00167
 """
 
 # Author : Ismet Sahin
-from __future__ import print_function
 
 __all__ = ["random_lines", "particle_swarm"]
 

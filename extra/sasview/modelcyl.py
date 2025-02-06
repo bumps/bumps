@@ -1,7 +1,6 @@
-from __future__ import print_function
-
 # Look for the peak fitter in the same file as the modeller
-import os, sys
+import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:

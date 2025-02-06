@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 from jobqueue.client import connect
 
 DEBUG = True

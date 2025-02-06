@@ -39,7 +39,6 @@ Example::
     >>> format_uncertainty.compact = True  # restore default
 """
 
-from __future__ import division
 import math
 
 from numpy import isinf, isnan, inf, nan

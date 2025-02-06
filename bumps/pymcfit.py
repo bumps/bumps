@@ -2,8 +2,6 @@ r"""
 Bumps wrapper for PyMC models.
 """
 
-from __future__ import print_function
-
 __all__ = ["PyMCProblem"]
 
 import numpy as np

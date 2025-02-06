@@ -8,8 +8,6 @@ density function using a combination of random and differential evolution
 updates.
 """
 
-from __future__ import division, print_function
-
 __all__ = ["parallel_tempering"]
 
 import numpy as np

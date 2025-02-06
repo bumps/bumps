@@ -2,8 +2,6 @@
 Option parser for bumps command line
 """
 
-from __future__ import print_function
-
 import sys
 
 import numpy as np

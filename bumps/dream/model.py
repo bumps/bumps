@@ -97,8 +97,6 @@ on the 1-sigma uncertainty, so use the style given in option 2 for this case.
 
 """
 
-from __future__ import division
-
 __all__ = ["MCMCModel", "Density", "LogDensity", "Simulation", "MVNormal", "Mixture"]
 
 import numpy as np

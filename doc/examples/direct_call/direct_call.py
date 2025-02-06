@@ -6,7 +6,6 @@
 #
 # Setting up the problem remains the same:
 
-from __future__ import print_function
 from bumps.names import *
 
 x = [1, 2, 3, 4, 5, 6]

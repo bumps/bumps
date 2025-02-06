@@ -1,21 +1,16 @@
-from __future__ import with_statement
-
 import wx
-
-# Can't seem to detect when notebook should be drawn on Mac
-IS_MAC = wx.Platform == "__WXMAC__"
-
-from numpy import inf
-
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.backends.backend_wxagg import NavigationToolbar2WxAgg as Toolbar
 
 # The Figure object is used to create backend-independent plot representations.
 from matplotlib.figure import Figure
+from numpy import inf
 
 from ..fitproblem import FitProblem
-
 from .util import EmbeddedPylab
+
+# Can't seem to detect when notebook should be drawn on Mac
+IS_MAC = wx.Platform == "__WXMAC__"
 
 
 # ------------------------------------------------------------------------

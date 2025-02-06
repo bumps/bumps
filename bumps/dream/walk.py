@@ -7,7 +7,6 @@ Random walk functions.
 """
 
 # This code was developed to test outlier detection
-from __future__ import division
 
 __all__ = ["walk"]
 

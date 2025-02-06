@@ -2,8 +2,6 @@
 Fit job definition for the distributed job queue.
 """
 
-from __future__ import print_function
-
 import os
 import sys
 import json

@@ -2,15 +2,14 @@
 MCMC step acceptance test.
 """
 
-from __future__ import with_statement
-
 __all__ = ["metropolis", "metropolis_dr"]
 
-from numpy import exp, sqrt, minimum, where, cov, eye, array, dot, errstate
-from numpy.linalg import norm, cholesky, inv
-from . import util
-
 import os
+
+from numpy import array, cov, dot, errstate, exp, eye, minimum, sqrt, where
+from numpy.linalg import cholesky, inv, norm
+
+from . import util
 
 BUMPS_TEMPERATURE = float(os.environ.get("BUMPS_TEMPERATURE", "1"))
 

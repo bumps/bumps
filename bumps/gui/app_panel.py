@@ -27,7 +27,6 @@ of the frame of the GUI for the Bumps application.
 
 # ==============================================================================
 
-from __future__ import division
 import os
 import threading
 from copy import deepcopy
@@ -36,20 +35,19 @@ import wx
 import wx.aui
 
 from .. import plugin
-from ..cli import load_model, load_best
-from ..util import redirect_console
+from ..cli import load_best, load_model
 from ..dream import stats as dream_stats
-
+from ..util import redirect_console
+from . import signal
+from .convergence_view import ConvergenceView
+from .fit_dialog import show_fit_config
+from .fit_thread import EVT_FIT_COMPLETE, EVT_FIT_PROGRESS, FitThread
+from .log_view import LogView
+from .parameter_view import ParameterView
 from .plot_view import PlotView
 from .summary_view import SummaryView
-from .parameter_view import ParameterView
-from .log_view import LogView
-from .convergence_view import ConvergenceView
-from .uncertainty_view import CorrelationView, UncertaintyView, TraceView, ModelErrorView
-from .fit_dialog import show_fit_config
-from .fit_thread import FitThread, EVT_FIT_PROGRESS, EVT_FIT_COMPLETE
+from .uncertainty_view import CorrelationView, ModelErrorView, TraceView, UncertaintyView
 from .util import nice
-from . import signal
 from .utilities import get_bitmap, phoenix
 
 # File selection strings.
@@ -523,7 +521,10 @@ class AppPanel(wx.Panel):
         if event.message == "uncertainty_final":
             event.message = "uncertainty_update"  # don't do model uncertainty
             n = 0
-            import psutil, time, gc
+            import gc
+            import time
+
+            import psutil
 
             pid = os.getpid()
             proc = psutil.Process()

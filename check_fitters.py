@@ -4,8 +4,6 @@ Run each fitter on the 3 dimensional Rosenbrock function to make sure they
 all converge.
 """
 
-from __future__ import print_function
-
 import sys
 import os
 from os.path import join as joinpath, realpath, dirname

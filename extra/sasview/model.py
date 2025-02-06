@@ -1,9 +1,8 @@
-from __future__ import print_function
-
 # ======
 # Put current directory and sasview directory on path.
 # This won't be necessary once bumps is in sasview
-import os, sys
+import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:

@@ -2,10 +2,7 @@
 Interfaces to various optimizers.
 """
 
-from __future__ import print_function, division
-
 import sys
-from copy import copy
 import warnings
 
 # CRUFT: time.clock() removed from python 3.8
@@ -1128,7 +1125,7 @@ class FitDriver(object):
         # for nonlinear systems, with the unexplained variance distributed
         # proportionately amongst the measurement uncertainties.
         norm = np.sqrt(self.chisq())
-        print("=== Uncertainty from curvature:     name" " value(unc.)    " " value(unc./chi)) ===")
+        print("=== Uncertainty from curvature:     name value(unc.)     value(unc./chi)) ===")
         for k, v, dv in zip(self.problem.labels(), self.problem.getp(), err):
             print("%40s %-15s %-15s" % (k, format_uncertainty(v, dv), format_uncertainty(v, dv / norm)))
         print("=" * 75)

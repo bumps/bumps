@@ -1,9 +1,6 @@
-from __future__ import print_function
-
-from ..solver import Minimizer
 from ...parameter import Parameter
 from .. import stop
-
+from ..solver import Minimizer
 from .de import DifferentialEvolution, best1
 
 

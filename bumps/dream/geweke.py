@@ -2,8 +2,6 @@
 Convergence test statistic from Gelman and Rubin, 1992.
 """
 
-from __future__ import division
-
 __all__ = ["geweke"]
 
 from numpy import var, mean, ones, sqrt, reshape, log10, abs

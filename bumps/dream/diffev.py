@@ -2,11 +2,9 @@
 Differential evolution MCMC stepper.
 """
 
-from __future__ import division, print_function
-
 __all__ = ["de_step"]
 
-from numpy import zeros, ones, empty, dot, cov, eye, sqrt, sum, all
+from numpy import zeros, ones, empty, sqrt, sum
 from numpy import where, array
 from numpy.linalg import norm
 
@@ -231,7 +229,7 @@ are changed and the rounded value of the change for each point in the
 population.
 """)
     for k, u in enumerate(used):
-        rstr = f"{int(u*100):4d}% " if u else " full "
+        rstr = f"{int(u * 100):4d}% " if u else " full "
         vstr = " ".join(f"{v:.2f}" for v in x_new[k] - pop[k])
         print(rstr + vstr)
 

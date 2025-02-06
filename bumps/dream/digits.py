@@ -27,12 +27,8 @@ the expression of uncertainty in measurement" - Propagation of distributions
 using a Monte Carlo method (No. JCGM 101:2008). Geneva, Switzerland.
 """
 
-from __future__ import division, print_function
-
-# TODO: needs a refactor before going into production
-
 """
-things to do:
+THINGS TO DO:
 - actually useful display of information in output
 - an effective, fast, online version to use as a stoping crit
 - use as a method to guess how many more samples:
@@ -44,6 +40,7 @@ things to do:
 - these don't deal with lists of CIs (as the actual ci functions do)
 - very slow, needs a restructure
 """
+# TODO: needs a refactor before going into production
 
 import numpy as np
 import numpy.ma as ma

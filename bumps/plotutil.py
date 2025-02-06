@@ -2,8 +2,6 @@
 Pylab plotting utilities.
 """
 
-from __future__ import division
-
 __all__ = ["auto_shift", "coordinated_colors", "dhsv", "next_color", "plot_quantiles", "form_quantiles"]
 
 

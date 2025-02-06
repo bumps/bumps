@@ -1,8 +1,8 @@
-from __future__ import division, print_function
-
 import numpy as np
-from bumps.names import Parameter, pmath, FitProblem, cosd, sind
-from .peaks import Peaks, Gaussian, Background, Cauchy
+
+from bumps.names import FitProblem, Parameter, cosd, pmath, sind
+
+from .peaks import Background, Cauchy, Gaussian, Peaks
 
 
 def read_data():

@@ -50,8 +50,6 @@ functions::
         return (lo,hi) limited to 2 significant digits
 """
 
-from __future__ import division
-
 __all__ = [
     "pm",
     "pmp",

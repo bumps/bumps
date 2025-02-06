@@ -25,12 +25,11 @@ This module contains utility functions and classes for the application.
 """
 
 # ==============================================================================
-from __future__ import print_function
 
+import glob
 import os
 import sys
 import time
-import glob
 
 import wx
 from wx.lib import delayedresult

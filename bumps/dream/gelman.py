@@ -7,8 +7,6 @@ Convergence test statistic from Gelman and Rubin, 1992.[1]
     https://doi.org/10.2307/2246093.
 """
 
-from __future__ import division
-
 __all__ = ["gelman"]
 
 from numpy import var, mean, ones, sqrt

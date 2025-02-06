@@ -407,8 +407,6 @@ Perform Levenberg-Marquardt least-squares minimization, based on MINPACK-1.
    August, 2002.  Mark Rivers
 """
 
-from __future__ import print_function
-
 import numpy
 
 #     Original FORTRAN documentation

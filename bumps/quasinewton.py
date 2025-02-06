@@ -49,12 +49,9 @@ example call::
           result['iterations'],result['evals'],result['linesearch_evals'])
 """
 
-from __future__ import print_function
-
 __all__ = ["quasinewton"]
 
-from numpy import inf, sqrt, isnan, isinf, finfo, diag, zeros, ones
-from numpy import array, linalg, inner, outer, dot, amax, maximum
+from numpy import amax, array, diag, dot, finfo, inf, inner, isinf, isnan, linalg, maximum, ones, outer, sqrt, zeros
 
 STATUS = {
     1: "Gradient < tolerance",

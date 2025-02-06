@@ -2,8 +2,6 @@
 Monotonic spline modeling.
 """
 
-from __future__ import division
-
 __all__ = ["monospline", "hermite", "count_inflections", "plot_inflections"]
 
 import numpy as np

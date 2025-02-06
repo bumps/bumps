@@ -68,7 +68,6 @@ generation is the last generation number
 """
 
 # TODO: state should be collected in files as we go
-from __future__ import division, print_function
 
 __all__ = ["MCMCDraw", "load_state", "save_state"]
 

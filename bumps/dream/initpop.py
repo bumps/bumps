@@ -17,11 +17,10 @@ diag(dx) if dx is provided as a parameter, or to I if it is not.
 Additional options are random box: rand(M, N) or random scatter: randn(M, N).
 """
 
-from __future__ import division, print_function
-
 __all__ = ["lhs_init", "cov_init"]
 
-from numpy import eye, diag, asarray, empty
+from numpy import asarray, diag, empty, eye
+
 from . import util
 
 

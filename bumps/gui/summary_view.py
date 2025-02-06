@@ -26,13 +26,11 @@ This module implements the Summary View panel.
 
 # ==============================================================================
 
-from __future__ import division
 import wx
-
 import wx.lib.scrolledpanel as scrolled
 
-from .util import nice
 from . import signal
+from .util import nice
 
 IS_MAC = wx.Platform == "__WXMAC__"
 

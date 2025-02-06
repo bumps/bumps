@@ -86,8 +86,6 @@ This can be run from the command prompt::
 
 """
 
-from __future__ import print_function
-
 __all__ = ["struct", "dream", "setup", "convert_output"]
 
 import numpy as np

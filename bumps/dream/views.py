@@ -2,20 +2,16 @@
 MCMC plotting methods.
 """
 
-from __future__ import division, print_function
-
 __all__ = ["plot_all", "plot_corr", "plot_corrmatrix", "plot_trace", "plot_logp", "format_vars"]
 
 import math
 
 import numpy as np
-from numpy import arange, squeeze, linspace, meshgrid, vstack, inf
+from numpy import arange, linspace, meshgrid, squeeze, vstack
 from scipy.stats import gaussian_kde
 
-from . import corrplot
-from . import varplot
-from .formatnum import format_value
-from .stats import var_stats, format_vars, save_vars
+from . import corrplot, varplot
+from .stats import format_vars, save_vars, var_stats
 
 
 def plot_all(state, portion=1.0, figfile=None):
@@ -24,14 +20,14 @@ def plot_all(state, portion=1.0, figfile=None):
     all_vstats = var_stats(draw)
     print(format_vars(all_vstats))
     print(
-        "\nStatistics and plots based on {nsamp:d} samples " "({psamp:.1%} of total samples drawn)".format(
+        "\nStatistics and plots based on {nsamp:d} samples ({psamp:.1%} of total samples drawn)".format(
             nsamp=len(draw.points), psamp=portion
         )
     )
     if figfile is not None:
         save_vars(all_vstats, figfile + "-err.json")
 
-    from pylab import figure, savefig, suptitle, rcParams
+    from pylab import figure, rcParams, savefig, suptitle
 
     figext = "." + rcParams.get("savefig.format", "png")
 
@@ -115,7 +111,7 @@ class KDE2D(gaussian_kde):
 
 
 def plot_corr(draw, vars=(0, 1)):
-    from pylab import axes, setp, MaxNLocator
+    from pylab import MaxNLocator, axes, setp
 
     _, _ = vars  # Make sure vars is length 2
     labels = [draw.labels[v] for v in vars]
@@ -158,7 +154,7 @@ def plot_corr(draw, vars=(0, 1)):
 
 
 def plot_traces(state, vars=None, portion=None):
-    from pylab import subplot, clf, subplots_adjust
+    from pylab import clf, subplot, subplots_adjust
 
     if vars is None:
         vars = list(range(min(state.Nvar, 6)))
@@ -183,9 +179,9 @@ def plot_trace(state, var=0, portion=None):
 
 
 def plot_logp(state, portion=None):
+    from matplotlib.ticker import NullFormatter
     from pylab import axes, title
     from scipy.stats import chi2, kstest
-    from matplotlib.ticker import NullFormatter
 
     # Plot log likelihoods
     draw, logp = state.logp()
@@ -200,6 +196,7 @@ def plot_logp(state, portion=None):
 
     # Plot log likelihood trend line
     from bumps.wsolve import wpolyfit
+
     from .formatnum import format_uncertainty
 
     x = np.arange(start, logp.shape[0]) + state.generation - state.Ngen + 1

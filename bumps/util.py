@@ -2,18 +2,32 @@
 Miscellaneous utility functions.
 """
 
-from __future__ import division
-from dataclasses import fields
-import warnings
-
 __all__ = ["kbhit", "profile", "pushdir", "push_seed", "redirect_console"]
 
-import sys
 import os
+import sys
 import types
-import inspect
-
+from dataclasses import Field, dataclass, field, fields, is_dataclass
 from io import StringIO
+
+# this can be substituted with pydantic dataclass for schema-building...
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Literal,
+    Optional,
+    Protocol,
+    Sequence,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    runtime_checkable,
+)
 
 import numpy as np
 from numpy import ascontiguousarray as _dense
@@ -22,18 +36,9 @@ from numpy import ascontiguousarray as _dense
 # so there is no longer a need for bumps.util.erf.
 from scipy.special import erf
 
-# this can be substituted with pydantic dataclass for schema-building...
-try:
-    from typing import Literal, Protocol, runtime_checkable
-except ImportError:
-    from typing_extensions import Literal, Protocol, runtime_checkable
-from typing import Iterable, Optional, Type, TypeVar, Any, Union, Dict, Callable, Tuple, List, Sequence, TYPE_CHECKING
-
 USE_PYDANTIC = os.environ.get("BUMPS_USE_PYDANTIC", "False") == "True"
 if TYPE_CHECKING:
     from numpy.typing import NDArray
-
-from dataclasses import dataclass, field, is_dataclass, Field
 
 
 def field_desc(description: str) -> Any:

@@ -5,8 +5,6 @@ BSpline calculator.
 Given a set of knots, compute the cubic B-spline interpolation.
 """
 
-from __future__ import division, print_function
-
 __all__ = ["bspline", "pbs"]
 
 import numpy as np

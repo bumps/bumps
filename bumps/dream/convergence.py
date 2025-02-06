@@ -7,14 +7,13 @@ chain at which the chain can be said to have converged, or -1 if
 the log probabilities are still improving throughout the chain.
 """
 
-from __future__ import division, print_function
-from typing import TYPE_CHECKING
-
 __all__ = ["burn_point", "ks_converged"]
 
+from typing import TYPE_CHECKING
+
 import numpy as np
-from scipy.stats import ks_2samp, kstest, chi2
 from numpy.random import choice
+from scipy.stats import chi2, ks_2samp, kstest
 
 if TYPE_CHECKING:
     from .state import MCMCDraw
