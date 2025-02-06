@@ -379,18 +379,22 @@ class State:
     def reload_history_item(self, timestamp: str):
         for item in self.history.store:
             if item.timestamp == timestamp:
-                print("problem found!", timestamp)
                 problem_state = item.problem
-                print('chisq of found item: ', problem_state.fitProblem.chisq_str())
                 self.problem = deepcopy(problem_state)
                 self.shared.updated_model = now_string()
                 self.shared.updated_parameters = now_string()
-                if item.fitting.population is not None:
-                    self.fitting.population = item.fitting.population
-                    self.shared.updated_convergence = now_string()
-                if item.fitting.uncertainty_state is not None:
-                    self.fitting.uncertainty_state = item.fitting.uncertainty_state
-                    self.shared.updated_uncertainty = now_string()
+                self.shared.custom_plots_available = get_custom_plots_available(self.problem.fitProblem)
+                self.fitting.population = item.fitting.population
+                self.shared.updated_convergence = now_string()
+                self.fitting.uncertainty_state = item.fitting.uncertainty_state
+                has_uncertainty = item.fitting.uncertainty_state is not None
+                uncertainty_available = dict(
+                    available = has_uncertainty,
+                    num_points = item.fitting.uncertainty_state.draws if has_uncertainty else 0,
+                )
+                self.shared.uncertainty_available = uncertainty_available
+                self.shared.updated_uncertainty = now_string()
+
                 return
         raise ValueError(f"Could not find history item with timestamp {timestamp}")
     
@@ -537,8 +541,27 @@ class ActiveFit(TypedDict):
 class FileInfo(TypedDict):
     filename: str
     pathlist: List[str]
+
+class UncertaintyAvailable(TypedDict):
+    available: bool
+    num_points: int
+
+class CustomPlotsAvailable(TypedDict):
+    parameter_based: bool
+    uncertainty_based: bool
     
 Timestamp = NewType('Timestamp', str)
+
+def get_custom_plots_available(problem: 'bumps.fitproblem.FitProblem'):
+    output = {"parameter_based": False, "uncertainty_based": False}
+    for model in problem.models:
+        if hasattr(model, "webview_plots"):
+            for plot_title, plot_info in model.webview_plots.items():
+                if plot_info.get("change_with", None) == "uncertainty":
+                    output["uncertainty_based"] = True
+                else:
+                    output["parameter_based"] = True
+    return output
 
 @dataclass
 class SharedState:
@@ -547,7 +570,7 @@ class SharedState:
     updated_parameters: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
     updated_model: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
     updated_history: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
-    selected_fitter: Union[UNDEFINED_TYPE, str] = UNDEFINED
+    selected_fitter: Union[UNDEFINED_TYPE, str] = "amoeba"
     fitter_settings: Union[UNDEFINED_TYPE, Dict[str, Dict]] = UNDEFINED
     active_fit: Union[UNDEFINED_TYPE, ActiveFit] = UNDEFINED
     model_file: Union[UNDEFINED_TYPE, FileInfo] = UNDEFINED
@@ -557,6 +580,8 @@ class SharedState:
     autosave_session_interval: int = 300
     autosave_history: bool = True
     autosave_history_length: int = 10
+    uncertainty_available: Union[UNDEFINED_TYPE, UncertaintyAvailable] = UNDEFINED
+    custom_plots_available: Union[UNDEFINED_TYPE, CustomPlotsAvailable] = UNDEFINED
 
     _not_reloaded = ["active_fit", "autosave_session", "session_output_file", "_notification_callbacks"]
     _notification_callbacks: Dict[str, Callable[[str, Any], Awaitable[None]]] = field(default_factory=dict)

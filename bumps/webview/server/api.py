@@ -54,6 +54,7 @@ from .state_hdf5_backed import (
     UNDEFINED,
     UNDEFINED_TYPE,
     State,
+    get_custom_plots_available,
     serialize_problem,
     deserialize_problem,
     SERIALIZER_EXTENSIONS,
@@ -166,6 +167,7 @@ async def load_problem_file(
         await save_to_history("autosaved before loading new model")
     state.shared.model_file = dict(filename=filename, pathlist=pathlist)
     state.shared.model_loaded = now_string()
+    state.shared.custom_plots_available = {"parameter_based": False, "uncertainty_based": False}
     await set_problem(problem, Path(*pathlist), filename)
 
 
@@ -208,6 +210,10 @@ async def set_problem(
             await save_to_history(f"Loaded model: {name}", keep=True)
         await add_notification(content=path_string, title="Model loaded", timeout=2000)
     state.autosave()
+    # invalidate the uncertainty state:
+    state.fitting.uncertainty_state = None
+    state.shared.uncertainty_available = dict(available=False, num_points=0)
+    state.shared.custom_plots_available = get_custom_plots_available(problem)
 
 
 @register
@@ -614,6 +620,10 @@ async def _fit_progress_handler(event: Dict):
             bumps.dream.state.MCMCDraw, event["uncertainty_state"]
         )
         state.shared.updated_uncertainty = now_string()
+        state.shared.uncertainty_available = {
+            "available": state.fitting.uncertainty_state is not None,
+            "num_points": state.fitting.uncertainty_state.Nsamples if state.fitting.uncertainty_state is not None else 0
+        }
         state.autosave()
         if message == "uncertainty_final":
             # fit is not complete until uncertainty is saved.
@@ -1155,6 +1165,9 @@ async def set_parameter(
             # logger.info(f"setting parameter: {parameter}.fixed to {value}")
             # model has been changed: setp and getp will return different values!
             state.shared.updated_model = now_string()
+            # Reset the uncertainty state, now not valid
+            state.fitting.uncertainty_state = None
+            state.shared.uncertainty_available = dict(available=False, num_points=0)
     fitProblem.model_update()
     state.shared.updated_parameters = now_string()
     return
