@@ -113,7 +113,6 @@ with embedded documentation.
 #
 # ::
 
-from __future__ import print_function
 
 _version = "0.7.9"
 

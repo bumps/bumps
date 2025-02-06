@@ -1,9 +1,8 @@
-from __future__ import with_statement
-
-from ..dream import views as dream_views
-from ..dream import stats as dream_stats
-from ..dream import varplot as dream_varplot
 from .. import errplot
+
+# from ..dream import stats as dream_stats
+from ..dream import varplot as dream_varplot
+from ..dream import views as dream_views
 from .plot_view import PlotView
 
 
@@ -38,6 +37,7 @@ class CorrelationView(PlotView):
     Change this by setting CorrelationView.MAX_CORR, either in the individual
     view or in the class.
     """
+
     MAX_CORR = 15
     title = "Correlations"
 

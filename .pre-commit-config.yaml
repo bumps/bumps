@@ -3,7 +3,7 @@ repos:
     hooks:
       - id: eslint
         name: eslint
-        entry: bash -c "cd bumps/webview/client && npm run lint"
+        entry: bash -c "cd bumps/webview/client && npm run lint || bun run lint"
         language: system
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
@@ -14,24 +14,25 @@ repos:
       - id: check-merge-conflict
       - id: check-yaml
         args: [--allow-multiple-documents]
-      # - id: end-of-file-fixer
-      #   exclude: |
-      #     bumps/dream/random123
-      #     bumps/webview/client/src
-      # - id: trailing-whitespace
-      #   exclude: |
-      #     bumps/dream/random123
-      #     bumps/webview/client/src
-  # - repo: https://github.com/astral-sh/ruff-pre-commit
-  #   rev: v0.6.1
-  #   hooks:
-  #     # - id: ruff
-  #     #   args: [--fix, --exit-non-zero-on-fix]
-  #     - id: ruff-format
-  #       args: [--config=pyproject.toml]
-  #       exclude: |
-  #         bumps/dream/random123
-  #         bumps/webview/client/src
+      - id: end-of-file-fixer
+        exclude: |
+          bumps/dream/random123
+          bumps/webview/client/src
+      - id: trailing-whitespace
+        exclude: |
+          bumps/dream/random123
+          bumps/webview/client/src
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.1
+    hooks:
+      # - id: ruff
+      #   args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+        args: [--config=pyproject.toml]
+        exclude: |
+          bumps/dream/random123
+          bumps/webview/client/src
+          extra/platform_scripts
 
 ci:
   autoupdate_schedule: monthly

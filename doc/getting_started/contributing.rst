@@ -7,7 +7,7 @@ Contributing Changes
 .. contents:: :local:
 
 
-The bumps package is a community project, and we welcome contributions from anyone.  
+The bumps package is a community project, and we welcome contributions from anyone.
 The package is developed collaboratively on `Github <https://github.com>`_ - if you don't have an account yet, you can sign up for free. For direct write access to the repository, it is required that your accout have `two-factor authentication enabled <https://docs.github.com/en/authentication/securing-your-account-with-two-factor-authentication-2fa>`_.
 You may also want to configure your account to use `SSH keys <https://docs.github.com/en/authentication/connecting-to-github-with-ssh>`_ for authentication.
 
@@ -38,10 +38,10 @@ main repository (see `Larger changes <#Larger-changes>`_ below).
 .. note::
 
     If you are working on a fork, the clone line is slightly different::
-            
+
         git clone https://github.com/YourGithubAccount/bumps
 
-    
+
     You will also need to keep your fork up to date
     with the main repository.  You can do this by adding the main repository
     as a remote, fetching the changes, then merging them into your fork.
@@ -76,7 +76,7 @@ First, activate the Python environment in which you installed refl1d. Then, inst
 
     pre-commit install
 
-This will install the pre-commit hooks in your git repository. The pre-commit hooks will run every time you commit changes to the repository. If the checks fail, the commit will be aborted. 
+This will install the pre-commit hooks in your git repository. The pre-commit hooks will run every time you commit changes to the repository. If the checks fail, the commit will be aborted.
 
 You can run the checks manually by running::
 
@@ -107,10 +107,10 @@ As you make changes to the package, you can see what you have done using git::
 
 Please update the documentation and add tests for your changes.  We use
 doctests on all of our examples so that we know our documentation is correct.
-More thorough tests are found in test directory. You can run these tests via pytest, 
+More thorough tests are found in test directory. You can run these tests via pytest,
 or via the convenience Makefile target::
 
-    pytest 
+    pytest
     # or
     make test
 

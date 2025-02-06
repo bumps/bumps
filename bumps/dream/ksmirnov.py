@@ -20,15 +20,13 @@ def ksmirnov(seq, portion=0.25, filter_order=15):
     the test statistic value.
     """
     chlen, nchains, nvars = seq.shape
-    count = portion*chlen*nchains
+    count = portion * chlen * nchains
     n = filter_order
-    ks, p = apply_along_axis(lambda chain: _ksm(chain, n, count),
-                             0, reshape(seq, (chlen*nchains, nvars)))
+    ks, p = apply_along_axis(lambda chain: _ksm(chain, n, count), 0, reshape(seq, (chlen * nchains, nvars)))
     return ks, p
 
 
 def _ksm(chain, n, count):
-    #return ks_2samp(chain[:count], chain[-count:])
-    ks, p = zip(*[ks_2samp(chain[i:count+i], chain[-count-n+i:-n+i])
-                  for i in range(n)])
-    return sorted(ks)[(n-1)//2], sorted(p)[(n-1)//2]
+    # return ks_2samp(chain[:count], chain[-count:])
+    ks, p = zip(*[ks_2samp(chain[i : count + i], chain[-count - n + i : -n + i]) for i in range(n)])
+    return sorted(ks)[(n - 1) // 2], sorted(p)[(n - 1) // 2]
