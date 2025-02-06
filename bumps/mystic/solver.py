@@ -109,27 +109,28 @@ Accumulated properties::
 # Want to use surrogate models for the expensive models when far from the
 # minimum, only calculating the real model when near the minimum.
 
-from __future__ import print_function
-
-import time
 import os
+import time
 
 import numpy as np
+
 
 def default_mapper(f, x):
     return list(map(f, x))
 
+
 def cpu_time():
     """Current cpu time for this process"""
-    user_time,sys_time,_,_,_ = os.times()
-    return user_time+sys_time
+    user_time, sys_time, _, _, _ = os.times()
+    return user_time + sys_time
+
 
 class Minimizer:
     """
     Perform a minimization.
     """
-    def __init__(self, problem=None, strategy=None, monitors=[],
-                 history=None, success=None, failure=None):
+
+    def __init__(self, problem=None, strategy=None, monitors=[], history=None, success=None, failure=None):
         self.problem = problem
         self.strategy = strategy
         # Ask strategy to fill in the default termination conditions
@@ -153,11 +154,13 @@ class Minimizer:
         try:
             while True:
                 result = mapper(self.problem, population)
-                #print "map result",result
+                # print "map result",result
                 self.update(population, result)
-                #print self.history.step, self.history.value
-                if self.isdone(): break         #STOPHERE combine
-                if abort_test is not None and abort_test(): break
+                # print self.history.step, self.history.value
+                if self.isdone():
+                    break  # STOPHERE combine
+                if abort_test is not None and abort_test():
+                    break
                 population = self.step()
         except KeyboardInterrupt:
             pass
@@ -170,10 +173,10 @@ class Minimizer:
         Clear the solver history.
         """
         self.history.clear()
-        self.history.provides(calls=1, time=1, cpu_time=1, step=1,
-                   point=1, value=1,
-                   population_points=0, population_values=0)
-        for c in self.success.primitives()|self.failure.primitives():
+        self.history.provides(
+            calls=1, time=1, cpu_time=1, step=1, point=1, value=1, population_points=0, population_values=0
+        )
+        for c in self.success.primitives() | self.failure.primitives():
             c.config_history(self.history)
         for m in self.monitors:
             m.config_history(self.history)
@@ -197,28 +200,28 @@ class Minimizer:
         """
         Collect statistics on time and resources
         """
-        if hasattr(values,'__cpu_time__'):
+        if hasattr(values, "__cpu_time__"):
             self.remote_time += values.__cpu_time__
 
         # Locate the best member of the population
         values = np.asarray(values)
-        #print("values",values,file=sys.stderr)
+        # print("values",values,file=sys.stderr)
 
         # Update the history
         self.history.update(
-            time = time.time() - self.time,
-            cpu_time = cpu_time() + self.remote_time,
-            population_points = points,
-            population_values = values,
+            time=time.time() - self.time,
+            cpu_time=cpu_time() + self.remote_time,
+            population_points=points,
+            population_values=values,
         )
-        self.history.accumulate(step=1,calls=len(points))
+        self.history.accumulate(step=1, calls=len(points))
 
         self.strategy.update(self.history)
 
         minidx = np.argmin(values)
         self.history.update(
-            point = points[minidx],
-            value = values[minidx],
+            point=points[minidx],
+            value=values[minidx],
         )
 
         # Tell all the monitors that the history has been updated
@@ -260,10 +263,15 @@ class Minimizer:
 
     def termination_condition(self):
         if self.successful:
-            return "succeeded with "+", ".join(str(c) for c in self.success_cond)
+            return "succeeded with " + ", ".join(str(c) for c in self.success_cond)
         else:
-            return ("failed with "+", ".join(str(c) for c in self.failure_cond)
-                    +" and "+", ".join(str(c) for c in self.success_cond))
+            return (
+                "failed with "
+                + ", ".join(str(c) for c in self.failure_cond)
+                + " and "
+                + ", ".join(str(c) for c in self.success_cond)
+            )
+
 
 class Strategy:
     """
@@ -288,6 +296,7 @@ class Strategy:
     the simple optimizer interface.  Be sure to make them all keyword
     arguments.
     """
+
     def config_history(self, history):
         """
         Specify which information needs to be preserved in history.

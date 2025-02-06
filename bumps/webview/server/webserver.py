@@ -167,9 +167,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         action="store_true",
         help="listen on all interfaces, including external (local connections only if not set)",
     )
-    parser.add_argument(
-        "-p", "--port", default=0, type=int, help="port on which to start the server"
-    )
+    parser.add_argument("-p", "--port", default=0, type=int, help="port on which to start the server")
     parser.add_argument(
         "--hub",
         default=None,
@@ -183,9 +181,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         choices=list(api.FITTERS_BY_ID.keys()),
         help="fitting engine to use; see manual for details",
     )
-    parser.add_argument(
-        "--start", action="store_true", help="start fit when problem loaded"
-    )
+    parser.add_argument("--start", action="store_true", help="start fit when problem loaded")
     parser.add_argument(
         "--store",
         default=None,
@@ -291,9 +287,7 @@ def enable_convergence_kernel_heartbeat():
     api.EMITTERS["convergence_heartbeat"] = send_heartbeat_on_convergence
 
 
-def setup_app(
-    sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPTIONS_CLASS()
-):
+def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPTIONS_CLASS()):
     static_assets_path = CLIENT_PATH / "dist" / "assets"
 
     if static_assets_path.exists():
@@ -309,18 +303,12 @@ def setup_app(
         api.state.base_path = str(Path.cwd().absolute())
 
     if options.read_store is not None and options.store is not None:
-        warnings.warn(
-            "read_store and store are both set; read_store will be used to initialize state"
-        )
+        warnings.warn("read_store and store are both set; read_store will be used to initialize state")
     if options.write_store is not None and options.store is not None:
-        warnings.warn(
-            "write_store and store are both set; write_store will be used to save state"
-        )
+        warnings.warn("write_store and store are both set; write_store will be used to save state")
 
     read_store = options.read_store if options.read_store is not None else options.store
-    write_store = (
-        options.write_store if options.write_store is not None else options.store
-    )
+    write_store = options.write_store if options.write_store is not None else options.store
     if read_store is not None:
         read_store_path = Path(read_store).absolute()
         api.state.read_session_file(str(read_store_path))
@@ -349,9 +337,7 @@ def setup_app(
 
     # app.on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
     if options.fit is not None:
-        app.on_startup.append(
-            lambda App: api.state.shared.set("selected_fitter", options.fit)
-        )
+        app.on_startup.append(lambda App: api.state.shared.set("selected_fitter", options.fit))
 
     fitter_id = options.fit
     if fitter_id is None:
@@ -380,9 +366,7 @@ def setup_app(
 
         async def start_fit(App=None):
             if api.state.problem is not None:
-                await api.start_fit_thread(
-                    fitter_id, fitter_settings["settings"], options.exit
-                )
+                await api.start_fit_thread(fitter_id, fitter_settings["settings"], options.exit)
 
         app.on_startup.append(start_fit)
     else:
@@ -414,9 +398,7 @@ def setup_app(
 
         async def register_instance(application: web.Application):
             async with ClientSession() as client_session:
-                await client_session.post(
-                    options.hub, json={"host": hostname, "port": port}
-                )
+                await client_session.post(options.hub, json={"host": hostname, "port": port})
 
         app.on_startup.append(register_instance)
     if not options.headless:
@@ -424,9 +406,7 @@ def setup_app(
 
         async def open_browser(app: web.Application):
             loop = asyncio.get_event_loop()
-            loop.call_later(
-                0.5, lambda: webbrowser.open_new_tab(f"http://{hostname}:{port}/")
-            )
+            loop.call_later(0.5, lambda: webbrowser.open_new_tab(f"http://{hostname}:{port}/"))
 
         app.on_startup.append(open_browser)
 
@@ -445,11 +425,7 @@ def main(options: Optional[OPTIONS_CLASS] = None, sock: Optional[socket.socket] 
     # this entrypoint will be used to start gui, so set headless = False
     # (other contexts e.g. jupyter notebook will directly call start_app)
     logger.addHandler(console_handler)
-    options = (
-        get_commandline_options(arg_defaults={"headless": False})
-        if options is None
-        else options
-    )
+    options = get_commandline_options(arg_defaults={"headless": False}) if options is None else options
     logger.info(dict(options=options))
     setup_sio_api()
     runsock = setup_app(options=options, sock=None)
@@ -504,9 +480,7 @@ def get_server_url():
     return url
 
 
-def display_inline_jupyter(
-    width: Union[str, int] = "100%", height: Union[str, int] = 600, single_panel=None
-) -> None:
+def display_inline_jupyter(width: Union[str, int] = "100%", height: Union[str, int] = 600, single_panel=None) -> None:
     """
     Display the web server in an iframe.
 

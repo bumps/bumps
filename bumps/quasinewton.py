@@ -48,12 +48,10 @@ example call::
     print("iterations, function calls, linesearch function calls",
           result['iterations'],result['evals'],result['linesearch_evals'])
 """
-from __future__ import print_function
 
 __all__ = ["quasinewton"]
 
-from numpy import inf, sqrt, isnan, isinf, finfo, diag, zeros, ones
-from numpy import array, linalg, inner, outer, dot, amax, maximum
+from numpy import amax, array, diag, dot, finfo, inf, inner, isinf, isnan, linalg, maximum, ones, outer, sqrt, zeros
 
 STATUS = {
     1: "Gradient < tolerance",
@@ -68,9 +66,21 @@ STATUS = {
 }
 
 
-def quasinewton(fn, x0=None, grad=None, Sx=None, typf=1, macheps=None, eta=None,
-                maxstep=100, gradtol=1e-6, steptol=1e-12, itnlimit=2000,
-                abort_test=None, monitor=lambda **kw: True):
+def quasinewton(
+    fn,
+    x0=None,
+    grad=None,
+    Sx=None,
+    typf=1,
+    macheps=None,
+    eta=None,
+    maxstep=100,
+    gradtol=1e-6,
+    steptol=1e-12,
+    itnlimit=2000,
+    abort_test=None,
+    monitor=lambda **kw: True,
+):
     r"""
     Run a quasinewton optimization on the problem.
 
@@ -157,19 +167,19 @@ def quasinewton(fn, x0=None, grad=None, Sx=None, typf=1, macheps=None, eta=None,
 
     if Sx is None:
         Sx = ones(n)
-        #Sx = x0 + (x0==0.)
+        # Sx = x0 + (x0==0.)
     elif len(Sx) != n:
         raise ValueError("sizes of x0 and Sx must be the same")
 
     if macheps is None:
         # PAK: use finfo rather than macheps
-        macheps = finfo('d').eps
+        macheps = finfo("d").eps
 
     if eta is None:
         eta = macheps
 
-    fcount = 0                    # total function count
-    fcount_ls = 0                # funciton count due to line search
+    fcount = 0  # total function count
+    fcount_ls = 0  # funciton count due to line search
 
     # If analytic gradient is available then fn will return both function
     # value and analytic gradient.  Otherwise, use finite difference method
@@ -209,7 +219,7 @@ def quasinewton(fn, x0=None, grad=None, Sx=None, typf=1, macheps=None, eta=None,
         H, L = modelhess(n, Sx, macheps, H)
         # the vector obtained in the middle
         middle_step_v = linalg.solve(L, -gc)
-        sN = linalg.solve(L.transpose(), middle_step_v)   # the last step
+        sN = linalg.solve(L.transpose(), middle_step_v)  # the last step
         if isnan(sN).any():
             # print("H",H)
             # print("L",L)
@@ -222,11 +232,10 @@ def quasinewton(fn, x0=None, grad=None, Sx=None, typf=1, macheps=None, eta=None,
         # Perform line search (Alg.6.3.1). todo. put param order as in the book
         # print("calling linesearch",xc,fc,gc,sN,Sx,H,L,middle_step_v)
         # print("linesearch",xc,fc)
-        retcode, xp, fp, maxtaken, fcnt \
-            = linesearch(fn, n, xc, fc, gc, sN, Sx, maxstep, steptol)
+        retcode, xp, fp, maxtaken, fcnt = linesearch(fn, n, xc, fc, gc, sN, Sx, maxstep, steptol)
         fcount += fcnt
         fcount_ls += fcnt
-        #plot(xp(1), xp(2), 'g.')
+        # plot(xp(1), xp(2), 'g.')
 
         # Evaluate gradient at new point xp
         if analgrad == 1:
@@ -237,8 +246,7 @@ def quasinewton(fn, x0=None, grad=None, Sx=None, typf=1, macheps=None, eta=None,
 
         # Check stopping criteria (alg.7.2.1)
         consecmax = consecmax + 1 if maxtaken else 0
-        termcode = umstop(n, xc, xp, fp, gp, Sx, typf, retcode, gradtol,
-                          steptol, itncount, itnlimit, consecmax)
+        termcode = umstop(n, xc, xp, fp, gp, Sx, typf, retcode, gradtol, steptol, itncount, itnlimit, consecmax)
 
         if abort_test():
             termcode = 6
@@ -248,8 +256,8 @@ def quasinewton(fn, x0=None, grad=None, Sx=None, typf=1, macheps=None, eta=None,
         # of the termination criteria, return from here.  Otherwise evaluate
         # the next Hessian approximation (Alg. 9.4.1).
         if termcode > 0:
-            xf = xp                                        # x final
-            ff = fp                                        # f final
+            xf = xp  # x final
+            ff = fp  # f final
 
         elif not monitor(x=xp, fx=fp, step=itncount):
             termcode = 6
@@ -261,13 +269,13 @@ def quasinewton(fn, x0=None, grad=None, Sx=None, typf=1, macheps=None, eta=None,
             gc = gp
         # STOPHERE
 
-    result = dict(status=termcode, x=xf, fx=ff, H=H, L=L,
-                  iterations=itncount, evals=fcount, linesearch_evals=fcount_ls)
-    #print("result",result, steptol, macheps)
+    result = dict(status=termcode, x=xf, fx=ff, H=H, L=L, iterations=itncount, evals=fcount, linesearch_evals=fcount_ls)
+    # print("result",result, steptol, macheps)
     return result
 
-#------------------------------------------------------------------------------
-#@author: Ismet Sahin
+
+# ------------------------------------------------------------------------------
+# @author: Ismet Sahin
 # Alg. 9.4.1
 
 # NOTE:
@@ -290,7 +298,7 @@ def bfgsunfac(n, xc, xp, gc, gp, macheps, eta, analgrad, H):
         # deal with noise levels in y
         skipupdate = 1
         t = dot(H, s)
-        temp_logicals = (abs(y - t) >= tol * maximum(abs(gc), abs(gp)))
+        temp_logicals = abs(y - t) >= tol * maximum(abs(gc), abs(gp))
         if sum(temp_logicals):
             skipupdate = 0
 
@@ -302,10 +310,10 @@ def bfgsunfac(n, xc, xp, gc, gp, macheps, eta, analgrad, H):
     return H
 
 
-#------------------------------------------------------------------------------
-'''
+# ------------------------------------------------------------------------------
+"""
 @author: Ismet Sahin
-'''
+"""
 
 
 def choldecomp(n, H, maxoffl, macheps):
@@ -324,26 +332,25 @@ def choldecomp(n, H, maxoffl, macheps):
     # 4. form column j of L
     L = zeros((n, n))
     for j in range(1, n + 1):
-        L[j - 1, j - 1] = H[j - 1, j - 1] - sum(L[j - 1, 0:j - 1] ** 2)
+        L[j - 1, j - 1] = H[j - 1, j - 1] - sum(L[j - 1, 0 : j - 1] ** 2)
         minljj = 0
         for i in range(j + 1, n + 1):
-            L[i - 1, j - 1] = H[j - 1, i - 1] - \
-                sum(L[i - 1, 0:j - 1] * L[j - 1, 0:j - 1])
+            L[i - 1, j - 1] = H[j - 1, i - 1] - sum(L[i - 1, 0 : j - 1] * L[j - 1, 0 : j - 1])
             minljj = max(abs(L[i - 1, j - 1]), minljj)
 
         # 4.4
         minljj = max(minljj / maxoffl, minl)
 
         # 4.5
-        if L[j - 1, j - 1] > minljj ** 2:
+        if L[j - 1, j - 1] > minljj**2:
             # normal Cholesky iteration
             L[j - 1, j - 1] = sqrt(L[j - 1, j - 1])
         else:
             # augment H[j-1,j-1]
             if minljj < minl2:
-                minljj = minl2    # occurs only if maxoffl = 0
+                minljj = minl2  # occurs only if maxoffl = 0
 
-            maxadd = max(maxadd, minljj ** 2 - L[j - 1, j - 1])
+            maxadd = max(maxadd, minljj**2 - L[j - 1, j - 1])
             L[j - 1, j - 1] = minljj
 
         # 4.6
@@ -351,7 +358,8 @@ def choldecomp(n, H, maxoffl, macheps):
 
     return L, maxadd
 
-#------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # ALGORITHM 5.6.3
 
 # Ismet Sahin
@@ -383,7 +391,7 @@ def choldecomp(n, H, maxoffl, macheps):
 #    ej : the unit vector, jth column of the identity matrix (Rn)
 
 # COMMENTS:
-#--- FIND STEP SIZE hj
+# --- FIND STEP SIZE hj
 #    1.a : sign(x) does not work for us when x = 0 since this makes the step
 # size hj zero which is not allowed. (Step size = 0 => gj = inf.)
 #    1.b : evaluation of the step size
@@ -391,23 +399,22 @@ def choldecomp(n, H, maxoffl, macheps):
 # xc(j) + hj is equivalent to xc = xc + hj * ej where ej is the jth column
 # of identity matrix.
 #
-#--- EVALUATE APPR. GRADIENT
+# --- EVALUATE APPR. GRADIENT
 # First evaluate function at xc + hj * ej and then estimate jth entry of
 # the gradient.
 
 
 def fdgrad(n, xc, fc, fn, Sx, eta):
-
     # create memory for gradient
     g = zeros(n)
 
     sqrteta = sqrt(eta)
     for j in range(1, n + 1):
-        #--- FIND STEP SIZE hj
+        # --- FIND STEP SIZE hj
         if xc[j - 1] >= 0:
             signxcj = 1
         else:
-            signxcj = -1                # 1.a
+            signxcj = -1  # 1.a
 
         # 1.b
         hj = sqrteta * max(abs(xc[j - 1]), 1 / Sx[j - 1]) * signxcj
@@ -417,7 +424,7 @@ def fdgrad(n, xc, fc, fn, Sx, eta):
         xc[j - 1] = xc[j - 1] + hj
         hj = xc[j - 1] - tempj
 
-        #--- EVALUATE APPR. GRADIENT
+        # --- EVALUATE APPR. GRADIENT
         fj = fn(xc)
         # PAK: hack for infeasible region: point the other way
         if isinf(fj):
@@ -429,69 +436,71 @@ def fdgrad(n, xc, fc, fn, Sx, eta):
         # now reset the current
         xc[j - 1] = tempj
 
-    #print("gradient", g)
+    # print("gradient", g)
     return g
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # @author: Ismet Sahin
 # Example call:
 # H = inithessunfac(2, f, 1, [1 0.1]')
 
+
 def inithessunfac(n, f, typf, Sx):
     temp = max(abs(f), typf)
-    H = diag(temp * Sx ** 2)
+    H = diag(temp * Sx**2)
     return H
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 def linesearch(cost_func, n, xc, fc, g, p, Sx, maxstep, steptol):
     """
-ALGORITHM 6.3.1
+    ALGORITHM 6.3.1
 
-Ismet Sahin
+    Ismet Sahin
 
-THE PURPOSE
+    THE PURPOSE
 
-    is to find a step size which yields the new function value smaller than the
-    current function value, i.e. f(xc + alfa*p) <= f(xc) + alfa * lambda * g'p
+        is to find a step size which yields the new function value smaller than the
+        current function value, i.e. f(xc + alfa*p) <= f(xc) + alfa * lambda * g'p
 
-CONDITIONS
+    CONDITIONS
 
-    g'p < 0
-    alfa < 0.5
+        g'p < 0
+        alfa < 0.5
 
-NOTATION:
-    N : Natural number
-    R : Real number
-    Rn: nx1 real vector
-    Rnxm : nxm real matrix
-    Str: a string
+    NOTATION:
+        N : Natural number
+        R : Real number
+        Rn: nx1 real vector
+        Rnxm : nxm real matrix
+        Str: a string
 
-INPUTS
-    n : dimensionality (N)
-    xc : the current point ( Rn)
-    fc : the function value at xc (R)
-    obj_func : the function handle to evaluate function values (str like :
-       '@costfunction1')
-    g : gradient (Rn)
-    p : the descent direction (Rn)
-    Sx : scale factors (Rn)
-    maxstep : maximum step size allowed (R)
-    steptol : step tolerance in order to break infinite loop in line search (R)
+    INPUTS
+        n : dimensionality (N)
+        xc : the current point ( Rn)
+        fc : the function value at xc (R)
+        obj_func : the function handle to evaluate function values (str like :
+           '@costfunction1')
+        g : gradient (Rn)
+        p : the descent direction (Rn)
+        Sx : scale factors (Rn)
+        maxstep : maximum step size allowed (R)
+        steptol : step tolerance in order to break infinite loop in line search (R)
 
-OUTPUTS
-    retcode : boolean indicating a new point xp found (0) or not (1)    (N).
-    xp : the new point (Rn)
-    fp : function value at xp (R)
-    maxtaken : boolean (N)
+    OUTPUTS
+        retcode : boolean indicating a new point xp found (0) or not (1)    (N).
+        xp : the new point (Rn)
+        fp : function value at xp (R)
+        maxtaken : boolean (N)
 
-NOTES:
-    alfa : is used to prevent function value reductions which are too small.
-       Here we'll use a very small number in order to accept very small
-       reductions but not too small.
-"""
+    NOTES:
+        alfa : is used to prevent function value reductions which are too small.
+           Here we'll use a very small number in order to accept very small
+           reductions but not too small.
+    """
 
     maxtaken = 0
 
@@ -522,22 +531,22 @@ NOTES:
     # xp = xc + lambda * p by finding an optimal lambda based on one
     # dimensional quadratic and cubic models
     fcount = 0
-    while True:                # 10 starts.
+    while True:  # 10 starts.
         # next point candidate
         xp = xc + lambdaM * p
         if isnan(xp).any():
-            #print("nan xp")
+            # print("nan xp")
             retcode = 1
             xp, fp = xc, fc
             break
         if fcount > 20:
-            #print("too many cycles in linesearch",xp)
+            # print("too many cycles in linesearch",xp)
             retcode = 2
             xp, fp = xc, fc
             break
         # function value at xp
         fp = cost_func(xp)
-        #print("linesearch",fcount,xp,xc,lambdaM,p,fp,fc)
+        # print("linesearch",fcount,xp,xc,lambdaM,p,fp,fc)
         if isinf(fp):
             fp = 2 * fc  # PAK: infeasible region hack
         fcount = fcount + 1
@@ -550,39 +559,39 @@ NOTES:
             break
         elif lambdaM < minlambda:
             # step length is too small, so a satisfactory xp cannot be found
-            #print("step",lambdaM,minlambda,steptol,rellength)
+            # print("step",lambdaM,minlambda,steptol,rellength)
             retcode = 3
             xp, fp = xc, fc
             break
-        else:                            # 10.3c starts
+        else:  # 10.3c starts
             # reduce lambda by a factor between 0.1 and 0.5
             if lambdaM == 1.0:
                 # first backtrack with one dimensional quadratic fit
                 lambda_temp = -initslope / (2.0 * (fp - fc - initslope))
-                #print("L1",lambda_temp)
+                # print("L1",lambda_temp)
             else:
                 # perform second and following backtracks with cubic fit
-                Mt = array([[1.0/lambdaM**2, -1.0/lambda_prev**2],
-                            [-lambda_prev/lambdaM**2, lambdaM/lambda_prev**2]])
-                vt = array([[fp - fc - lambdaM * initslope],
-                            [fp_prev - fc - lambda_prev * initslope]])
+                Mt = array(
+                    [[1.0 / lambdaM**2, -1.0 / lambda_prev**2], [-lambda_prev / lambdaM**2, lambdaM / lambda_prev**2]]
+                )
+                vt = array([[fp - fc - lambdaM * initslope], [fp_prev - fc - lambda_prev * initslope]])
                 ab = (1.0 / (lambdaM - lambda_prev)) * dot(Mt, vt)
                 # a = ab(1) and b = ab(2)
                 disc = ab[1, 0] ** 2 - 3.0 * ab[0, 0] * initslope
-                #print("Mt,vt,ab,disc",Mt,vt,ab,disc)
+                # print("Mt,vt,ab,disc",Mt,vt,ab,disc)
                 if ab[0, 0] == 0.0:
                     # cubic model turn out to be a quadratic
                     lambda_temp = -initslope / (2.0 * ab[1, 0])
-                    #print("L2",lambda_temp)
+                    # print("L2",lambda_temp)
                 else:
                     # the model is a legitimate cubic
                     lambda_temp = (-ab[1, 0] + sqrt(disc)) / (3.0 * ab[0, 0])
-                    #print("L3",lambda_temp)
+                    # print("L3",lambda_temp)
 
                 if lambda_temp > 0.5 * lambdaM:
                     # larger than half of previous lambda is not allowed.
                     lambda_temp = 0.5 * lambdaM
-                    #print("L4",lambda_temp)
+                    # print("L4",lambda_temp)
 
             lambda_prev = lambdaM
             fp_prev = fp
@@ -592,13 +601,14 @@ NOTES:
             else:
                 lambdaM = lambda_temp
 
-            #print('lambda = ', lambdaM)
+            # print('lambda = ', lambdaM)
 
     # return xp, fp, retcode
     return retcode, xp, fp, maxtaken, fcount
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 # @author: Ismet Sahin
 # ALGORITHM 1.3.1
@@ -611,45 +621,46 @@ def machineeps():
     return macheps
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 def modelhess(n, Sx, macheps, H):
     """
-@author: Ismet Sahin.
-Thanks to Christopher Meeting for his help in converting this module from
-Matlab to Python
+    @author: Ismet Sahin.
+    Thanks to Christopher Meeting for his help in converting this module from
+    Matlab to Python
 
-ALGORITHM 5.5.1
+    ALGORITHM 5.5.1
 
-NOTES:
-    Currently we are not implementing steps 1, 14, and 15 (TODO)
+    NOTES:
+        Currently we are not implementing steps 1, 14, and 15 (TODO)
 
-This function performs perturbed Cholesky decomposition (CD) as if the input
-Hessian matrix is positive definite.  The code for perturbed CD resides in
-choldecomp.m file which returns the factored lower triangle matrix L and a
-number, maxadd, specifying the largest number added to a diagonal element of
-H during the CD decomposition.  This function checks if the decomposition is
-completed without adding any positive number to the diagonal elements of H,
-i.e. maxadd <= 0.  Otherwise, this function adds the least number to the
-diagonals of H which makes it positive definite based on maxadd and other
-entries in H.
-EXAMPLE CALLS::
+    This function performs perturbed Cholesky decomposition (CD) as if the input
+    Hessian matrix is positive definite.  The code for perturbed CD resides in
+    choldecomp.m file which returns the factored lower triangle matrix L and a
+    number, maxadd, specifying the largest number added to a diagonal element of
+    H during the CD decomposition.  This function checks if the decomposition is
+    completed without adding any positive number to the diagonal elements of H,
+    i.e. maxadd <= 0.  Otherwise, this function adds the least number to the
+    diagonals of H which makes it positive definite based on maxadd and other
+    entries in H.
+    EXAMPLE CALLS::
 
-         A1 =[2     0    2.4
-              0     2     0
-              2.4     0     3]
+             A1 =[2     0    2.4
+                  0     2     0
+                  2.4     0     3]
 
-         A2 =[2     0    2.5
-               0     2     0
-              2.5     0     3]
+             A2 =[2     0    2.5
+                   0     2     0
+                  2.5     0     3]
 
-         A3 =[2     0    10
-               0     2     0
-              10     0     3]
-"""
+             A3 =[2     0    10
+                   0     2     0
+                  10     0     3]
+    """
 
     # SCALING
-    scale_needed = 0                        # ISMET uses this parameter
+    scale_needed = 0  # ISMET uses this parameter
     if sum(Sx - ones(n)) != 0:
         # scaling is requested by the user
         scale_needed = 1
@@ -688,7 +699,7 @@ EXAMPLE CALLS::
         maxdiag = maxoff * (1 + 2 * sqrteps)
 
     # 9.
-    if maxdiag == 0:            # if H == 0
+    if maxdiag == 0:  # if H == 0
         mu = 1
         maxdiag = 1
 
@@ -717,7 +728,7 @@ EXAMPLE CALLS::
         maxev = H[0, 0]
         minev = H[0, 0]
         for i in range(1, n + 1):
-            offrow = sum(abs(H[0:i - 1, i - 1])) + sum(abs(H[i - 1, i:n]))
+            offrow = sum(abs(H[0 : i - 1, i - 1])) + sum(abs(H[i - 1, i:n]))
             maxev = max(maxev, H[i - 1, i - 1] + offrow)
             minev = min(minev, H[i - 1, i - 1] - offrow)
 
@@ -727,42 +738,41 @@ EXAMPLE CALLS::
         H = H + diag(mu * ones(n))
         L, maxadd = choldecomp(n, H, 0, macheps)
 
-    if scale_needed:                # todo. this calculation can be done faster
+    if scale_needed:  # todo. this calculation can be done faster
         H = dot(Dx, dot(H, Dx))
         L = dot(Dx, L)
 
     return H, L
 
 
-#------------------------------------------------------------------------------
-def umstop(n, xc, xp, f, g, Sx, typf, retcode, gradtol, steptol,
-           itncount, itnlimit, consecmax):
+# ------------------------------------------------------------------------------
+def umstop(n, xc, xp, f, g, Sx, typf, retcode, gradtol, steptol, itncount, itnlimit, consecmax):
     """
-#@author: Ismet Sahin
+    #@author: Ismet Sahin
 
-ALGORITHM 7.2.1
+    ALGORITHM 7.2.1
 
-Return codes:
-Note that return codes are nonnegative integers. When it is not zero, there is
-a termination condition which is satisfied.
-   0 : None of the termination conditions is satisfied
-   1 : Magnitude of scaled grad is less than gradtol; this is the primary
-       condition. The new point xp is most likely a local minimizer.  If gradtol
-       is too large, then this condition can be satisfied easier and therefore
-       xp may not be a local minimizer
-   2 : Scaled distance between last two points is less than steptol; xp might be
-       a local minimizer.  This condition may also be satisfied if step is
-       chosen too large or the algorithm is far from the minimizer and making
-       small progress
-   3 : The algorithm cannot find a new point giving smaller function value than
-       the current point.  The current may be a local minimizer, or analytic
-       gradient implementation has some mistakes, or finite difference gradient
-       estimation is not accurate, or steptol is too large.
-   4 : Maximum number of iterations are completed
-   5 : The maximum step length maxstep is taken for last ten consecutive
-       iterations.  This may happen if the function is not bounded from below,
-       or the function has a finite asymptote in some direction, or maxstep is
-       too small.
+    Return codes:
+    Note that return codes are nonnegative integers. When it is not zero, there is
+    a termination condition which is satisfied.
+       0 : None of the termination conditions is satisfied
+       1 : Magnitude of scaled grad is less than gradtol; this is the primary
+           condition. The new point xp is most likely a local minimizer.  If gradtol
+           is too large, then this condition can be satisfied easier and therefore
+           xp may not be a local minimizer
+       2 : Scaled distance between last two points is less than steptol; xp might be
+           a local minimizer.  This condition may also be satisfied if step is
+           chosen too large or the algorithm is far from the minimizer and making
+           small progress
+       3 : The algorithm cannot find a new point giving smaller function value than
+           the current point.  The current may be a local minimizer, or analytic
+           gradient implementation has some mistakes, or finite difference gradient
+           estimation is not accurate, or steptol is too large.
+       4 : Maximum number of iterations are completed
+       5 : The maximum step length maxstep is taken for last ten consecutive
+           iterations.  This may happen if the function is not bounded from below,
+           or the function has a finite asymptote in some direction, or maxstep is
+           too small.
     """
 
     termcode = 0
@@ -792,8 +802,8 @@ a termination condition which is satisfied.
     return termcode
 
 
-#------------------------------------------------------------------------------
-#@author: Ismet Sahin
+# ------------------------------------------------------------------------------
+# @author: Ismet Sahin
 
 # This function checks whether initial conditions are acceptable for
 # continuing unconstrained optimization
@@ -811,31 +821,32 @@ a termination condition which is satisfied.
 # another point which is close to x0.  If x0 is the local minimizer, the
 # algorithm will approach it.
 
+
 def umstop0(n, x0, f, g, Sx, typf, gradtol):
-    #consecmax = 0
-    if max(abs(g) * maximum(abs(x0), 1./Sx)/max(abs(f), typf)) <= 1e-3*gradtol:
+    # consecmax = 0
+    if max(abs(g) * maximum(abs(x0), 1.0 / Sx) / max(abs(f), typf)) <= 1e-3 * gradtol:
         termcode = 1
     else:
         termcode = 0
     return termcode
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 def example_call():
-    print('***********************************')
+    print("***********************************")
 
     # Rosenbrock function
-    fn = lambda p: (1 - p[0])**2 + 100*(p[1] - p[0]**2)**2
-    grad = lambda p: array([-2*(1 - p[0]) - 400*(p[1] - p[0]**2)*p[0],
-                            200*(p[1] - p[0]**2)])
+    fn = lambda p: (1 - p[0]) ** 2 + 100 * (p[1] - p[0] ** 2) ** 2
+    grad = lambda p: array([-2 * (1 - p[0]) - 400 * (p[1] - p[0] ** 2) * p[0], 200 * (p[1] - p[0] ** 2)])
     x0 = array([2.320894, -0.534223])
     # x0 = array([2.0,1.0])
 
     result = quasinewton(fn=fn, x0=x0, grad=grad)
-    #result = quasinewton(fn=fn, x0=x0)
+    # result = quasinewton(fn=fn, x0=x0)
 
-    print('\n\nInitial point x0 = ', x0, ', f(x0) = ', fn(x0))
+    print("\n\nInitial point x0 = ", x0, ", f(x0) = ", fn(x0))
     for k in sorted(result.keys()):
         print(k, "=", result[k])
 

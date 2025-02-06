@@ -48,11 +48,12 @@ Options for controlling the development and testing environment:
     --inspect       Run the wxPython Widget Inspection Tool in a debug window
 """
 
-#==============================================================================
+# ==============================================================================
 
 import sys
 import traceback
 import warnings
+
 try:
     from io import StringIO
 except:
@@ -67,14 +68,17 @@ from bumps import options as bumps_options
 from .about import APP_TITLE
 from .utilities import resource_dir, resource, log_time
 
+
 def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
     """
     Add tracebacks by setting "warnings.showwarning = warn_with_traceback"
     """
-    log = file if hasattr(file,'write') else sys.stderr
+    log = file if hasattr(file, "write") else sys.stderr
     traceback.print_stack(file=log)
     log.write(warnings.formatwarning(message, category, filename, lineno, line))
-#warnings.showwarning = warn_with_traceback
+
+
+# warnings.showwarning = warn_with_traceback
 
 
 # Defer import of AppFrame until after the splash screen has been displayed.
@@ -96,9 +100,10 @@ SPLASH_WIDTH = 720
 SPLASH_HEIGHT = 540
 
 # Diagnostic timing information.
-LOGTIM = True if (len(sys.argv) > 1 and '--time' in sys.argv[1:]) else False
+LOGTIM = True if (len(sys.argv) > 1 and "--time" in sys.argv[1:]) else False
 
-#==============================================================================
+# ==============================================================================
+
 
 class MainApp(wx.App):
     """
@@ -113,6 +118,7 @@ class MainApp(wx.App):
     the wx event loop, can the splash screen terminate (via timeout or a mouse
     click on the splash screen) which causes the frame to be made visible.
     """
+
     def __init__(self, *args, **kw):
         wx.App.__init__(self, *args, **kw)
 
@@ -120,31 +126,32 @@ class MainApp(wx.App):
         # Determine the position and size of the splash screen based on the
         # desired size and screen real estate that we have to work with.
         pos, size = self.window_placement(SPLASH_WIDTH, SPLASH_HEIGHT)
-        #print "splash pos and size =", pos, size
+        # print "splash pos and size =", pos, size
 
         # Display the splash screen.  It will remain visible until the caller
         # executes app.MainLoop() AND either the splash screen timeout expires
         # or the user left clicks over the splash screen.
-        #if LOGTIM: log_time("Starting to display the splash screen")
-        #pic = resource(SPLASH_FILE)
-        #self.display_splash_screen(img_name=pic, pos=pos, size=size)
+        # if LOGTIM: log_time("Starting to display the splash screen")
+        # pic = resource(SPLASH_FILE)
+        # self.display_splash_screen(img_name=pic, pos=pos, size=size)
 
         # Determine the position and size of the application frame based on the
         # desired size and screen real estate that we have to work with.
         pos, size = self.window_placement(FRAME_WIDTH, FRAME_HEIGHT)
-        #print "frame pos and size =", pos, size
+        # print "frame pos and size =", pos, size
 
         # Create the application frame, but it will not be shown until the
         # splash screen terminates.  Note that import of AppFrame is done here
         # while the user is viewing the splash screen.
-        if LOGTIM: log_time("Starting to build the GUI application")
+        if LOGTIM:
+            log_time("Starting to build the GUI application")
 
         # Can't delay matplotlib configuration any longer
-        cli.config_matplotlib('WXAgg')
+        cli.config_matplotlib("WXAgg")
 
         from .app_frame import AppFrame
-        self.frame = AppFrame(parent=None, title=APP_TITLE,
-                              pos=pos, size=size)
+
+        self.frame = AppFrame(parent=None, title=APP_TITLE, pos=pos, size=size)
 
         # Declare the application frame to be the top window.
         self.SetTopWindow(self.frame)
@@ -153,15 +160,14 @@ class MainApp(wx.App):
         self._aui_mgr.SetManagedWindow(self.frame)
 
         # To have the frame visible behind the spash screen, comment out the following
-        #wx.CallAfter(self.after_show)
+        # wx.CallAfter(self.after_show)
         self.after_show()
 
         # To test that the splash screen will not go away until the frame
         # initialization is complete, simulate an increase in startup time
         # by taking a nap.
-        #time.sleep(6)
+        # time.sleep(6)
         return True
-
 
     def window_placement(self, desired_width, desired_height):
         """
@@ -183,18 +189,21 @@ class MainApp(wx.App):
         # screen 'too big'.  If so, we assume a smaller width which means the
         # application will be placed towards the left hand side of the screen.
 
-        x, y, w, h = wx.Display().GetClientArea() # size excludes task bar
-        #print "*** x, y, w, h", x, y, w, h
+        x, y, w, h = wx.Display().GetClientArea()  # size excludes task bar
+        # print "*** x, y, w, h", x, y, w, h
         xpos, ypos = x, y
         h -= 20  # to make room for Mac window decorations
-        if len(sys.argv) > 1 and '--platform' in sys.argv[1:]:
+        if len(sys.argv) > 1 and "--platform" in sys.argv[1:]:
             j, k = wx.DisplaySize()  # size includes task bar area
-            print("*** Reported screen size including taskbar is %d x %d"%(j, k))
-            print("*** Reported screen size excluding taskbar is %d x %d"%(w, h))
+            print("*** Reported screen size including taskbar is %d x %d" % (j, k))
+            print("*** Reported screen size excluding taskbar is %d x %d" % (w, h))
 
-        if w > 1920: w = 1280  # display on left side, not centered on screen
-        if w > desired_width:  xpos = x + (w - desired_width)//2
-        if h > desired_height: ypos = y + (h - desired_height)//2
+        if w > 1920:
+            w = 1280  # display on left side, not centered on screen
+        if w > desired_width:
+            xpos = x + (w - desired_width) // 2
+        if h > desired_height:
+            ypos = y + (h - desired_height) // 2
 
         # Return the suggested position and size for the application frame.
         return (xpos, ypos), (min(w, desired_width), min(h, desired_height))
@@ -212,14 +221,14 @@ class MainApp(wx.App):
         # or the user has left clicked on the screen.  Thus any processing
         # performed by the calling routine (including doing imports) will
         # prevent the splash screen from disappearing.
-        splash = wx.SplashScreen(bitmap=bm,
-                                 splashStyle=(wx.SPLASH_TIMEOUT|
-                                              wx.SPLASH_CENTRE_ON_SCREEN),
-                                 style=(wx.SIMPLE_BORDER|
-                                        wx.FRAME_NO_TASKBAR|
-                                        wx.STAY_ON_TOP),
-                                 milliseconds=SPLASH_TIMEOUT,
-                                 parent=None, id=wx.ID_ANY)
+        splash = wx.SplashScreen(
+            bitmap=bm,
+            splashStyle=(wx.SPLASH_TIMEOUT | wx.SPLASH_CENTRE_ON_SCREEN),
+            style=(wx.SIMPLE_BORDER | wx.FRAME_NO_TASKBAR | wx.STAY_ON_TOP),
+            milliseconds=SPLASH_TIMEOUT,
+            parent=None,
+            id=wx.ID_ANY,
+        )
         splash.Bind(wx.EVT_CLOSE, self.OnCloseSplashScreen)
 
         # Repositon if center of screen placement is overridden by caller.
@@ -233,28 +242,31 @@ class MainApp(wx.App):
         """
 
         # To show the frame earlier, uncomment Show() code in OnInit.
-        if LOGTIM: log_time("Terminating the splash screen and showing the GUI")
-        #self.after_show()
-        #wx.CallAfter(self.after_show)
+        if LOGTIM:
+            log_time("Terminating the splash screen and showing the GUI")
+        # self.after_show()
+        # wx.CallAfter(self.after_show)
         event.Skip()
 
     def after_show(self):
         from . import signal
+
         sys.excepthook = excepthook
 
         # Process options
-        bumps_options.BumpsOpts.FLAGS |= set(('inspect','syspath'))
+        bumps_options.BumpsOpts.FLAGS |= set(("inspect", "syspath"))
         opts = bumps_options.getopts()
 
         # For wx debugging, load the wxPython Widget Inspection Tool if requested.
         # It will cause a separate interactive debugger window to be displayed.
-        if opts.inspect: inspect()
+        if opts.inspect:
+            inspect()
 
         if opts.syspath:
-            print("*** Resource directory:  "+resource_dir())
+            print("*** Resource directory:  " + resource_dir())
             print("*** Python path is:")
             for i, p in enumerate(sys.path):
-                print("%5d  %s" %(i, p))
+                print("%5d  %s" % (i, p))
 
         # Put up the initial model
         model, output = initial_model(opts)
@@ -271,7 +283,8 @@ class MainApp(wx.App):
         self.frame.Show()
 
 
-#==============================================================================
+# ==============================================================================
+
 
 def initial_model(opts):
     # Capture stdout from problem definition
@@ -279,31 +292,33 @@ def initial_model(opts):
     sys.stdout = StringIO()
     try:
         problem = cli.initial_model(opts)
-        error = ''
+        error = ""
     except Exception:
         problem = None
-        limit = len(traceback.extract_stack())-4
-        #sys.stderr.write("limit=%d\n"%limit)
-        #sys.stderr.write(repr(traceback.extract_stack()))
+        limit = len(traceback.extract_stack()) - 4
+        # sys.stderr.write("limit=%d\n"%limit)
+        # sys.stderr.write(repr(traceback.extract_stack()))
         error = traceback.format_exc(limit)
     finally:
         output = sys.stdout.getvalue()
         sys.stdout = saved_stdout
-    return problem, output.strip()+error
+    return problem, output.strip() + error
 
 
 def inspect():
     import wx.lib.inspection
+
     wx.lib.inspection.InspectionTool().Show()
 
 
 def excepthook(type, value, tb):
     from . import signal
+
     error = traceback.format_exception(type, value, tb)
-    indented = "   "+"\n   ".join(error)
+    indented = "   " + "\n   ".join(error)
     try:
-        signal.log_message(message="Error:\n"+indented)
-        wx.GetApp().frame.panel.show_view('log')
+        signal.log_message(message="Error:\n" + indented)
+        wx.GetApp().frame.panel.show_view("log")
     except:
         # If the exception handler fails we can't do anything more
         print("\n".join(error), file=sys.stderr)
@@ -311,14 +326,17 @@ def excepthook(type, value, tb):
 
 
 def _protected_main():
-    if LOGTIM: log_time("Starting Bumps")
+    if LOGTIM:
+        log_time("Starting Bumps")
 
     # Instantiate the application class and give control to wxPython.
     app = MainApp(redirect=0)
 
     # Enter event loop which allows the user to interact with the application.
-    if LOGTIM: log_time("Entering the event loop")
+    if LOGTIM:
+        log_time("Entering the event loop")
     app.MainLoop()
+
 
 def main():
     try:
@@ -326,6 +344,7 @@ def main():
     except:  # make sure traceback is printed
         traceback.print_exc()
         sys.exit()
+
 
 # Allow "python -m bumps.gui.gui_app options..."
 if __name__ == "__main__":
