@@ -66,6 +66,7 @@ line-length = 120
 extend-exclude = [
     "bumps/webview/client/*",
     "doc/pylit.py",
+    "extra/platform_scripts/*",
 ]
 
 [tool.ruff.lint.per-file-ignores]

@@ -32,6 +32,7 @@ repos:
         exclude: |
           bumps/dream/random123
           bumps/webview/client/src
+          extra/platform_scripts
 
 ci:
   autoupdate_schedule: monthly
