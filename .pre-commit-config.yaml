@@ -3,7 +3,7 @@ repos:
     hooks:
       - id: eslint
         name: eslint
-        entry: bash -c "cd bumps/webview/client && npm run lint"
+        entry: bash -c "cd bumps/webview/client && npm run lint || bun run lint"
         language: system
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0

@@ -38,6 +38,7 @@ __all__ = [
     "show_errors",
     "data_view",
     "model_view",
+    "migrate_serialized",
 ]
 
 # TODO: refl1d wants to do the following after cli.getopts()
@@ -111,3 +112,13 @@ def model_view():
     Return None if not present.
     """
     return None
+
+
+def migrate_serialized(model_dict):
+    """
+    Migrate serialized model to the current version.
+
+    This function is called when loading a model from a file.  It is
+    used to update the model to the current version of the plugin.
+    """
+    return model_dict

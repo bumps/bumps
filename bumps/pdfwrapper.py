@@ -54,7 +54,7 @@ class PDF:
         # with the default value if function is defined with keyword
         # initializers; override the initializers with any keyword
         # arguments specified in the fit function constructor.
-        labels, vararg, varkw, values = inspect.getfullargspec(fn)
+        labels, vararg, varkw, values, *_ = inspect.getfullargspec(fn)
         if vararg or varkw:
             raise TypeError("Function cannot have *args or **kwargs in declaration")
         # Parameters default to zero

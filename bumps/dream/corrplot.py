@@ -96,7 +96,7 @@ def _plot(fig, hists, labels, n, show_ticks=None):
     norm = colors.LogNorm(vmin=vmin, vmax=vmax, clip=False)
     # norm = colors.Normalize(vmin=vmin, vmax=vmax)
     mapper = image.FigureImage(fig)
-    mapper.set_array(np.zeros(0))
+    mapper.set_array(np.zeros((1, 1)))
     mapper.set_cmap(cmap=COLORMAP)
     mapper.set_norm(norm)
 

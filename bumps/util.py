@@ -3,6 +3,7 @@ Miscellaneous utility functions.
 """
 
 from __future__ import division
+from dataclasses import fields
 import warnings
 
 __all__ = ["kbhit", "profile", "pushdir", "push_seed", "redirect_console"]
@@ -55,6 +56,7 @@ def schema_config(
 
     def add_schema_config(cls: Type[T]) -> Type[T]:
         if include is not None and exclude is not None:
+            fqn = f"{cls.__module__}.{cls.__qualname__}"
             raise ValueError(f"{fqn} schema: include array and exclude array are mutually exclusive - only define one")
 
         setattr(cls, SCHEMA_ATTRIBUTE_NAME, dict(include=include, exclude=exclude))
@@ -403,3 +405,34 @@ class push_seed(object):
 
     def __exit__(self, *args):
         np.random.set_state(self._state)
+
+
+def get_libraries(obj, libraries=None):
+    if libraries is None:
+        libraries = {}
+
+    if is_dataclass(obj):
+        _add_to_libraries(obj, libraries)
+        for f in fields(obj):
+            subobj = getattr(obj, f.name, None)
+            if subobj is not None:
+                get_libraries(subobj, libraries)
+    elif isinstance(obj, (list, tuple, types.GeneratorType)):
+        for v in obj:
+            get_libraries(v, libraries)
+    elif isinstance(obj, dict):
+        for v in obj.values():
+            if is_dataclass(v):
+                get_libraries(v, libraries)
+
+    return libraries
+
+
+def _add_to_libraries(obj, libraries: dict):
+    top_level_package = obj.__module__.split(".")[0]
+    if top_level_package is not None and top_level_package not in libraries:
+        # module is already in sys.modules for obj
+        # get __version__ attribute from module directly
+        version = getattr(sys.modules[top_level_package], "__version__", None)
+        schema_version = getattr(sys.modules[top_level_package], "__schema_version__", None)
+        libraries[top_level_package] = dict(version=version, schema_version=schema_version)
