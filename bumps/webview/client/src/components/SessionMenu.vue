@@ -67,26 +67,6 @@ async function readSession(readOnly: boolean) {
   }
 }
 
-async function saveSessionCopy() {
-  if (fileBrowser.value) {
-    const settings: FileBrowserSettings = {
-      title: "Save Session (Copy)",
-      callback: async (pathlist, filename) => {
-        await props.socket.asyncEmit("save_session_copy", pathlist, filename);
-      },
-      show_name_input: true,
-      name_input_label: "Filename",
-      require_name: true,
-      show_files: true,
-      search_patterns: [".h5"],
-      chosenfile_in: "",
-      pathlist_in:
-        shared_state.session_output_file?.pathlist ? [...shared_state.session_output_file.pathlist] : undefined,
-    };
-    fileBrowser.value.open(settings);
-  }
-}
-
 async function setOutputFile(enable_autosave = true, immediate_save = false) {
   if (fileBrowser.value) {
     const settings: FileBrowserSettings = {
@@ -121,9 +101,9 @@ async function setOutputFile(enable_autosave = true, immediate_save = false) {
   }
 }
 
-async function unsetOutputFile() {
-  await props.socket.asyncEmit("set_shared_setting", "session_output_file", null);
-}
+// async function unsetOutputFile() {
+//   await props.socket.asyncEmit("set_shared_setting", "session_output_file", null);
+// }
 </script>
 
 <template>

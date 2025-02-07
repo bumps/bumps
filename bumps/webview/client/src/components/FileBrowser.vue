@@ -163,7 +163,7 @@ function selectNotSuffix(ev: Event) {
   }
 }
 
-watch(active_search_pattern, async (newval, oldval) => {
+watch(active_search_pattern, async (newval) => {
   if (newval === null) {
     active_search_regexp.value = null;
   } else {

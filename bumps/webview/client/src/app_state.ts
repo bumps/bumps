@@ -8,7 +8,7 @@ interface ModalDialog {
   close: () => void;
 }
 
-type FileBrowserCallback = (...args: any) => Promise<void>;
+type FileBrowserCallback = (pathlist: string[], filename: string) => Promise<void>;
 
 export class FileBrowserSettings {
   chosenfile_in?: string;
@@ -19,7 +19,7 @@ export class FileBrowserSettings {
   name_input_label?: string;
   show_files!: boolean;
   search_patterns!: string[];
-  callback!: (pathlist: string[], filename: string) => Promise<any>;
+  callback!: FileBrowserCallback;
 }
 
 export const LAYOUTS = ["left-right", "top-bottom", "full"];
@@ -34,8 +34,9 @@ export const startPanel = ref([0, 1]);
 export const default_fitter_settings = shallowRef<{ [fit_name: string]: FitSetting }>({});
 export const default_fitter = "amoeba";
 export const notifications = ref<{ title: string; content: string; id: string; spinner: boolean }[]>([]);
+type FileMenuAction = (...args: any[]) => void;
 export const file_menu_items = shallowRef<
-  { disabled?: Ref<boolean>; text: string; action?: FileBrowserCallback; help?: string }[]
+  { disabled?: Ref<boolean>; text: string; action?: FileMenuAction; help?: string }[]
 >([]);
 
 interface ActiveFit {

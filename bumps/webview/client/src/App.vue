@@ -123,7 +123,7 @@ async function exportResults() {
   }
 }
 
-async function saveFileAs(ev: Event) {
+async function saveFileAs() {
   if (fileBrowser.value) {
     const { extension } = (await socket.asyncEmit("get_serializer")) as { extension: string };
     const filename_in = shared_state.model_file?.filename ?? "";
@@ -131,7 +131,7 @@ async function saveFileAs(ev: Event) {
     const settings: FileBrowserSettings = {
       title: "Save Problem",
       callback: async (pathlist, filename) => {
-        saveFile(ev, { pathlist, filename });
+        saveFile({ pathlist, filename });
       },
       show_name_input: true,
       name_input_label: "Filename",
@@ -144,7 +144,7 @@ async function saveFileAs(ev: Event) {
   }
 }
 
-async function saveFile(ev: Event, override?: { pathlist: string[]; filename: string }) {
+async function saveFile(override?: { pathlist: string[]; filename: string }) {
   if (shared_state.model_file === undefined) {
     alert("no file to save");
     return;
@@ -174,7 +174,7 @@ async function reloadModel() {
   }
 }
 
-async function applyParameters(ev: Event) {
+async function applyParameters() {
   if (fileBrowser.value) {
     const settings: FileBrowserSettings = {
       title: "Apply Parameters",
@@ -192,7 +192,7 @@ async function applyParameters(ev: Event) {
   }
 }
 
-async function saveParameters(ev: Event, override?: { pathlist: string[]; filename: string }) {
+async function saveParameters() {
   if (fileBrowser.value) {
     const settings: FileBrowserSettings = {
       title: "Save Parameters",
