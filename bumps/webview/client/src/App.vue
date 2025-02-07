@@ -18,6 +18,7 @@ import {
   notifications,
   shared_state,
   socket as socket_ref,
+  startPanel,
   type FitSetting,
 } from "./app_state";
 import Gear from "./assets/gear.svg?component";
@@ -53,7 +54,7 @@ if (single_panel !== null) {
   active_layout.value = "full";
   const panel_index = props.panels.findIndex(({ title }) => title.toLowerCase() == single_panel.toLowerCase());
   if (panel_index > -1) {
-    activePanel.value[0] = panel_index;
+    startPanel.value[0] = panel_index;
   } else {
     console.error(`Panel ${single_panel} not found`);
   }
@@ -361,54 +362,18 @@ file_menu_items.value = [
     </nav>
     <div v-if="active_layout === 'left-right'" class="flex-grow-1 row overflow-hidden">
       <div class="col d-flex flex-column mh-100 border-end border-success border-3">
-        <PanelTabContainer
-          :panels="panels"
-          :socket="socket"
-          :active-panel="activePanel[0]"
-          @panel_changed="
-            (n: number) => {
-              activePanel[0] = n;
-            }
-          "
-        />
+        <PanelTabContainer :panels="panels" :socket="socket" :start-panel="startPanel[0]" />
       </div>
       <div class="col d-flex flex-column mh-100">
-        <PanelTabContainer
-          :panels="panels"
-          :socket="socket"
-          :active-panel="activePanel[1]"
-          @panel_changed="
-            (n: number) => {
-              activePanel[1] = n;
-            }
-          "
-        />
+        <PanelTabContainer :panels="panels" :socket="socket" :start-panel="startPanel[1]" />
       </div>
     </div>
     <div v-if="active_layout === 'top-bottom'" class="flex-grow-1 d-flex flex-column">
       <div class="d-flex flex-column flex-grow-1" style="overflow-y: scroll">
-        <PanelTabContainer
-          :panels="panels"
-          :socket="socket"
-          :active-panel="activePanel[0]"
-          @panel_changed="
-            (n: number) => {
-              activePanel[0] = n;
-            }
-          "
-        />
+        <PanelTabContainer :panels="panels" :socket="socket" :start-panel="startPanel[0]" />
       </div>
       <div class="d-flex flex-column flex-grow-1">
-        <PanelTabContainer
-          :panels="panels"
-          :socket="socket"
-          :active-panel="activePanel[1]"
-          @panel_changed="
-            (n: number) => {
-              activePanel[1] = n;
-            }
-          "
-        />
+        <PanelTabContainer :panels="panels" :socket="socket" :start-panel="startPanel[1]" />
       </div>
     </div>
     <div v-if="active_layout === 'full'" class="flex-grow-1 row overflow-hidden">
@@ -416,13 +381,8 @@ file_menu_items.value = [
         <PanelTabContainer
           :panels="panels"
           :socket="socket"
-          :active-panel="activePanel[0]"
+          :start-panel="startPanel[0]"
           :hide-tabs="single_panel !== null"
-          @panel_changed="
-            (n: number) => {
-              activePanel[0] = n;
-            }
-          "
         />
       </div>
     </div>

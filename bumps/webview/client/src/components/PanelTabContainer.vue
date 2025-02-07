@@ -9,16 +9,14 @@ const tabTriggers = ref<HTMLAnchorElement[]>([]);
 const props = defineProps<{
   socket: AsyncSocket;
   panels: { title: string; component: unknown; show?: () => boolean }[];
-  activePanel: number;
+  startPanel: number;
   hideTabs?: boolean;
 }>();
 
-const emit = defineEmits<{
-  (e: "panel_changed", activePanel: number): void;
-}>();
+const activePanel = ref(props.startPanel);
 
 function setActive(index: number) {
-  emit("panel_changed", index);
+  activePanel.value = index;
 }
 </script>
 
