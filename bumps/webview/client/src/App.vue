@@ -3,7 +3,6 @@ import { computed, ref } from "vue";
 import { io } from "socket.io-client";
 import {
   active_layout,
-  activePanel,
   addNotification,
   autoupdate_state,
   cancelNotification,
@@ -39,7 +38,6 @@ const props = defineProps<{
 }>();
 
 const show_menu = ref(false);
-const { active_fit, fitter_settings, model_file, selected_fitter } = shared_state;
 // const nativefs = ref(false);
 
 // Create a SocketIO connection, to be passed to child components
@@ -94,7 +92,7 @@ async function selectOpenFile() {
       callback: async (pathlist, filename) => {
         await socket.asyncEmit("load_problem_file", pathlist, filename);
       },
-      chosenfile_in: model_file?.filename ?? "",
+      chosenfile_in: shared_state.model_file?.filename ?? "",
       show_name_input: false,
       require_name: true,
       show_files: true,
@@ -128,7 +126,7 @@ async function exportResults() {
 async function saveFileAs(ev: Event) {
   if (fileBrowser.value) {
     const { extension } = (await socket.asyncEmit("get_serializer")) as { extension: string };
-    const filename_in = model_file?.filename ?? "";
+    const filename_in = shared_state.model_file?.filename ?? "";
     const new_filename = `${filename_in.replace(/(\.[^\.]+)$/, "")}.${extension}`;
     const settings: FileBrowserSettings = {
       title: "Save Problem",
@@ -147,11 +145,11 @@ async function saveFileAs(ev: Event) {
 }
 
 async function saveFile(ev: Event, override?: { pathlist: string[]; filename: string }) {
-  if (model_file === undefined) {
+  if (shared_state.model_file === undefined) {
     alert("no file to save");
     return;
   }
-  const { filename, pathlist } = override ?? model_file;
+  const { filename, pathlist } = override ?? shared_state.model_file;
   console.debug(`Saving: ${pathlist.join("/")}/${filename}`);
   await socket.asyncEmit(
     "save_problem_file",
@@ -170,8 +168,8 @@ async function saveFile(ev: Event, override?: { pathlist: string[]; filename: st
 }
 
 async function reloadModel() {
-  if (model_file) {
-    const { filename, pathlist } = model_file;
+  if (shared_state.model_file) {
+    const { filename, pathlist } = shared_state.model_file;
     await socket.asyncEmit("load_problem_file", pathlist, filename);
   }
 }
@@ -230,8 +228,8 @@ function openFitOptions() {
 }
 
 async function startFit() {
-  const active = selected_fitter ?? default_fitter;
-  const settings = fitter_settings ?? default_fitter_settings.value;
+  const active = shared_state.selected_fitter ?? default_fitter;
+  const settings = shared_state.fitter_settings ?? default_fitter_settings.value;
   if (active && settings) {
     const fit_args = settings[active];
     await socket.asyncEmit("start_fit_thread", active, fit_args.settings);
@@ -246,7 +244,7 @@ async function quit() {
   await socket.asyncEmit("shutdown");
 }
 
-const model_not_loaded = computed(() => model_file == null);
+const model_not_loaded = computed(() => shared_state.model_file == null);
 
 file_menu_items.value = [
   { text: "Load Problem", action: selectOpenFile },
@@ -316,21 +314,25 @@ file_menu_items.value = [
           <div class="flex-grow-1 px-4 m-0">
             <h4 class="m-0">
               <!-- <div class="rounded p-2 bg-primary">Fitting: </div> -->
-              <div v-if="active_fit?.fitter_id !== undefined" class="badge bg-secondary p-2 align-middle">
+              <div v-if="shared_state.active_fit?.fitter_id !== undefined" class="badge bg-secondary p-2 align-middle">
                 <div class="align-middle pt-2 pb-1 px-1 d-inline-block">
                   <span
-                    >Fitting: {{ active_fit?.fitter_id }} step {{ active_fit?.step }} of {{ active_fit?.num_steps }},
-                    chisq={{ active_fit?.chisq }}</span
+                    >Fitting: {{ shared_state.active_fit?.fitter_id }} step {{ shared_state.active_fit?.step }} of
+                    {{ shared_state.active_fit?.num_steps }}, chisq={{ shared_state.active_fit?.chisq }}</span
                   >
                   <div class="progress mt-1" style="height: 3px">
                     <div
                       class="progress-bar"
                       role="progressbar"
-                      :aria-valuenow="active_fit?.step"
+                      :aria-valuenow="shared_state.active_fit?.step"
                       aria-valuemin="0"
-                      :aria-valuemax="active_fit?.num_steps ?? 100"
+                      :aria-valuemax="shared_state.active_fit?.num_steps ?? 100"
                       :style="{
-                        width: (((active_fit?.step ?? 0) * 100) / (active_fit?.num_steps ?? 1)).toFixed(1) + '%',
+                        width:
+                          (
+                            ((shared_state.active_fit?.step ?? 0) * 100) /
+                            (shared_state.active_fit?.num_steps ?? 1)
+                          ).toFixed(1) + '%',
                       }"
                     ></div>
                   </div>
@@ -342,7 +344,7 @@ file_menu_items.value = [
                   <span>Fitting: </span>
                 </div>
                 <button class="btn btn-light btn-sm me-2" @click="openFitOptions">
-                  {{ selected_fitter ?? default_fitter }}
+                  {{ shared_state.selected_fitter ?? default_fitter }}
                   <Gear />
                 </button>
                 <button class="btn btn-success btn-sm" @click="startFit">Start</button>
