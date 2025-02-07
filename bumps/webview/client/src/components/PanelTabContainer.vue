@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import type { AsyncSocket } from "../asyncSocket.ts";
 
 // type PanelComponent = DefineComponent<{socket: Socket, visible: boolean}, any>;
@@ -18,6 +18,17 @@ const activePanel = ref(props.startPanel);
 function setActive(index: number) {
   activePanel.value = index;
 }
+
+// watch for changes to panel.show() and update the tabs
+watch(
+  () => props.panels.map((p) => p.show?.()),
+  (newValue) => {
+    if (newValue[activePanel.value] === false) {
+      // revert to startPanel if the active panel is hidden
+      activePanel.value = props.startPanel;
+    }
+  }
+);
 </script>
 
 <template>
