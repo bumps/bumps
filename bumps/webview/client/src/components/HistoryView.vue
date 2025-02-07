@@ -9,8 +9,6 @@ const props = defineProps<{
   socket: AsyncSocket;
 }>();
 
-const { autosave_history, autosave_history_length } = shared_state;
-
 type HistoryItem = {
   timestamp: string;
   label: string;
@@ -79,7 +77,7 @@ async function update_label(timestamp: string, new_label: string) {
 }
 
 async function toggle_autosave_history() {
-  await props.socket.asyncEmit("set_shared_setting", "autosave_history", !autosave_history);
+  await props.socket.asyncEmit("set_shared_setting", "autosave_history", !shared_state.autosave_history);
 }
 
 async function set_autosave_history_length(value_str: string) {
@@ -102,7 +100,7 @@ async function set_autosave_history_length(value_str: string) {
           id="auto_save"
           class="form-check-input"
           type="checkbox"
-          :checked="autosave_history"
+          :checked="shared_state.autosave_history"
           @click="toggle_autosave_history"
         />
         <label class="form-check-label" for="auto_save" title="Append problem state to history on load and at fit end"
@@ -114,7 +112,7 @@ async function set_autosave_history_length(value_str: string) {
           id="auto_save_length"
           class="form-control-sm"
           type="number"
-          :value="autosave_history_length"
+          :value="shared_state.autosave_history_length"
           min="1"
           step="1"
           @change="set_autosave_history_length(($event.target as HTMLInputElement).value)"

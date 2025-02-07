@@ -5,8 +5,6 @@ import type { AsyncSocket } from "../asyncSocket";
 
 const props = defineProps<{ socket: AsyncSocket }>();
 
-const { fitter_settings, selected_fitter } = shared_state;
-
 const dialog = ref<HTMLDialogElement>();
 const isOpen = ref(false);
 const selected_fitter_local = ref("amoeba");
@@ -48,7 +46,7 @@ function close() {
 
 function open() {
   // copy the  selected_fitter_local from the server state:
-  selected_fitter_local.value = selected_fitter ?? default_fitter;
+  selected_fitter_local.value = shared_state.selected_fitter ?? default_fitter;
   changeActiveFitter();
   isOpen.value = true;
   dialog.value?.showModal();
@@ -56,7 +54,7 @@ function open() {
 
 const fit_names = computed(() => Object.keys(default_fitter_settings.value));
 const fitter_settings_with_defaults = computed(() => {
-  return fitter_settings ?? default_fitter_settings.value;
+  return shared_state.fitter_settings ?? default_fitter_settings.value;
 });
 
 function changeActiveFitter() {

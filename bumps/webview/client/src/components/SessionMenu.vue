@@ -9,17 +9,15 @@ const props = defineProps<{
   socket: AsyncSocket;
 }>();
 
-const { active_fit, autosave_session, autosave_session_interval, session_output_file } = shared_state;
-
 async function toggle_autosave() {
   // if turning on autosave, but session_file is not set, then prompt for a file
-  if (!autosave_session && !session_output_file) {
+  if (!shared_state.autosave_session && !shared_state.session_output_file) {
     // open the file browser to select output file, and then set autosave
     await setOutputFile(true, false);
     // closeMenu();
     return;
   }
-  await props.socket.asyncEmit("set_shared_setting", "autosave_session", !autosave_session);
+  await props.socket.asyncEmit("set_shared_setting", "autosave_session", !shared_state.autosave_session);
   // setTimeout(closeMenu, 1000);
 }
 
@@ -29,7 +27,7 @@ async function set_interval(new_interval: number) {
 }
 
 async function saveSession() {
-  if (session_output_file) {
+  if (shared_state.session_output_file) {
     await props.socket.asyncEmit("save_session");
   } else {
     await setOutputFile(false, true);
@@ -44,7 +42,7 @@ function closeMenu() {
 }
 
 async function readSession(readOnly: boolean) {
-  if (active_fit?.fitter_id) {
+  if (shared_state.active_fit?.fitter_id) {
     const confirmation = confirm("Loading session will stop current fit. Continue?");
     if (!confirmation) {
       return;
@@ -62,7 +60,8 @@ async function readSession(readOnly: boolean) {
       show_files: true,
       search_patterns: [".h5"],
       chosenfile_in: "",
-      pathlist_in: session_output_file?.pathlist ? [...session_output_file.pathlist] : undefined,
+      pathlist_in:
+        shared_state.session_output_file?.pathlist ? [...shared_state.session_output_file.pathlist] : undefined,
     };
     fileBrowser.value.open(settings);
   }
@@ -81,7 +80,8 @@ async function saveSessionCopy() {
       show_files: true,
       search_patterns: [".h5"],
       chosenfile_in: "",
-      pathlist_in: session_output_file?.pathlist ? [...session_output_file.pathlist] : undefined,
+      pathlist_in:
+        shared_state.session_output_file?.pathlist ? [...shared_state.session_output_file.pathlist] : undefined,
     };
     fileBrowser.value.open(settings);
   }
@@ -113,8 +113,9 @@ async function setOutputFile(enable_autosave = true, immediate_save = false) {
       require_name: true,
       show_files: true,
       search_patterns: [".h5"],
-      chosenfile_in: session_output_file?.filename,
-      pathlist_in: session_output_file?.pathlist ? [...session_output_file.pathlist] : undefined,
+      chosenfile_in: shared_state.session_output_file?.filename,
+      pathlist_in:
+        shared_state.session_output_file?.pathlist ? [...shared_state.session_output_file.pathlist] : undefined,
     };
     fileBrowser.value.open(settings);
   }
@@ -135,14 +136,14 @@ async function unsetOutputFile() {
           class="form-check-input"
           type="checkbox"
           role="switch"
-          :checked="autosave_session"
+          :checked="shared_state.autosave_session"
           @change="toggle_autosave"
         />
       </div>
     </li>
     <li>
-      <span v-if="session_output_file" class="">
-        <span class="dropdown-item-text">{{ session_output_file.filename }}</span>
+      <span v-if="shared_state.session_output_file" class="">
+        <span class="dropdown-item-text">{{ shared_state.session_output_file.filename }}</span>
       </span>
     </li>
     <li class="dropdown-item">
@@ -153,7 +154,7 @@ async function unsetOutputFile() {
             id="autosaveIntervalInput"
             type="number"
             class="form-control form-control"
-            :value="autosave_session_interval"
+            :value="shared_state.autosave_session_interval"
             @change="set_interval(($event.target as HTMLInputElement).valueAsNumber)"
           />
         </div>
@@ -165,7 +166,7 @@ async function unsetOutputFile() {
     <li>
       <button
         class="btn btn-link dropdown-item"
-        :class="{ disabled: active_fit?.fitter_id }"
+        :class="{ disabled: shared_state.active_fit?.fitter_id }"
         @click="
           readSession(false);
           hide();
