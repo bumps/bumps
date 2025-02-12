@@ -189,6 +189,9 @@ async def set_problem(
         name = filename
     state.shared.updated_model = now_string()
     state.shared.updated_parameters = now_string()
+    state.shared.custom_plots_available = get_custom_plots_available(problem)
+    # invalidate the uncertainty state:
+    state.reset_fitstate()
 
     if new_model:
         pathlist = list(path.parts) if path is not None else []
@@ -200,10 +203,6 @@ async def set_problem(
             await save_to_history(f"Loaded model: {name}", keep=True)
         await add_notification(content=path_string, title="Model loaded", timeout=2000)
     state.autosave()
-    # invalidate the uncertainty state:
-    state.fitting.uncertainty_state = None
-    state.shared.uncertainty_available = dict(available=False, num_points=0)
-    state.shared.custom_plots_available = get_custom_plots_available(problem)
 
 
 @register
@@ -220,14 +219,10 @@ async def remove_history_item(timestamp: str):
 @register
 async def save_to_history(
     label: str,
-    include_population: bool = False,
-    include_uncertainty: bool = False,
     keep: bool = False,
-):
-    state.save_to_history(
+) -> str:
+    return state.save_to_history(
         label,
-        include_population=include_population,
-        include_uncertainty=include_uncertainty,
         keep=keep,
     )
 
@@ -548,6 +543,7 @@ async def start_fit_thread(fitter_id: str = "", options=None, terminate_on_finis
                 value=0,
             )
         )
+        state.reset_fitstate()
         await log(
             json.dumps(to_json_compatible_dict(options), indent=2),
             title=f"Starting fitter {fitter_id}",
@@ -583,6 +579,7 @@ async def _fit_progress_handler(event: Dict):
     elif message == "convergence_update":
         state.fitting.population = event["pop"]
         state.shared.updated_convergence = now_string()
+        state.shared.population_available = True
     elif message == "progress":
         active_fit = state.shared.active_fit
         active_fit.update({"step": event["step"], "chisq": event["chisq"]})
@@ -596,10 +593,13 @@ async def _fit_progress_handler(event: Dict):
             if state.fitting.uncertainty_state is not None
             else 0,
         }
-        state.autosave()
+
         if message == "uncertainty_final":
             # fit is not complete until uncertainty is saved.
             state.fit_uncertainty_final.set()
+            # don't save state - the fit_complete handler will do that.
+        else:  # message == "uncertainty_update"
+            state.autosave()
 
 
 async def _fit_complete_handler(event):
@@ -626,11 +626,11 @@ async def _fit_complete_handler(event):
         problem.model_update()
         state.problem.fitProblem = problem
         if state.shared.autosave_history:
-            await save_to_history(
+            item_timestamp = await save_to_history(
                 f"Fit complete: {event['fitter_id']}",
-                include_population=True,
-                include_uncertainty=True,
             )
+            state.shared.active_history = item_timestamp
+        state.autosave()
         state.shared.updated_parameters = now_string()
         await log(event["info"], title=f"Done with chisq {chisq}")
         logger.info(f"Fit done with chisq {chisq}")
@@ -1102,9 +1102,9 @@ async def set_parameter(
             # logger.info(f"setting parameter: {parameter}.fixed to {value}")
             # model has been changed: setp and getp will return different values!
             state.shared.updated_model = now_string()
-            # Reset the uncertainty state, now not valid
-            state.fitting.uncertainty_state = None
-            state.shared.uncertainty_available = dict(available=False, num_points=0)
+            # Reset the fitting state (uncertainty and population), no longer valid
+            state.reset_fitstate()
+
     fitProblem.model_update()
     state.shared.updated_parameters = now_string()
     return
