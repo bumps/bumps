@@ -5,9 +5,9 @@
 
 const config = {
   plugins: [
-    "@ianvs/prettier-plugin-sort-imports",
+    "./node_modules/@ianvs/prettier-plugin-sort-imports/lib/src/index.js",
     "./node_modules/prettier-plugin-jsdoc/dist/index.js",
-    "prettier-plugin-css-order",
+    "./node_modules/prettier-plugin-css-order/src/main.mjs",
   ],
   importOrder: ["^vue", "^[a-zA-Z]", "^@[a-zA-Z]", "^@/", "^./", "^../"],
   cssDeclarationSorterOrder: "smacss",

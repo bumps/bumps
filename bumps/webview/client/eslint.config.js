@@ -10,6 +10,7 @@ const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 const compat = new FlatCompat({
   baseDirectory: __dirname,
   recommendedConfig: js.configs.recommended,
+  resolvePluginsRelativeTo: __dirname,
   // allConfig: js.configs.all,
 });
 
@@ -28,7 +29,8 @@ export default [
         sourceType: "script",
       },
     },
-    files: ["src/**/*.js", "src/**/*.mjs", "src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"],
+    files: ["**/src/**/*.js", "**/src/**/*.mjs", "**/src/***.ts", "**/src/**/*.tsx", "**/src/**/*.vue"],
+    ignores: ["**/node_modules/", "**/.git/", "**/dist/"],
     /** Override rules */
     rules: {
       // "max-len": ["error", { code: 120 }],
