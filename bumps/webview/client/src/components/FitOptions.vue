@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, toRaw } from "vue";
 import { default_fitter, default_fitter_settings, shared_state } from "../app_state";
 import type { AsyncSocket } from "../asyncSocket";
 
@@ -84,7 +84,7 @@ async function save(start: boolean = false) {
   if (anyIsInvalid.value) {
     return;
   }
-  const new_settings = structuredClone({ ...fitter_settings_with_defaults.value });
+  const new_settings = structuredClone({ ...toRaw(fitter_settings_with_defaults.value) });
   const name = selected_fitter_local.value;
   const fitter_settings_local = process_settings();
   new_settings[name] = { name, settings: fitter_settings_local };
