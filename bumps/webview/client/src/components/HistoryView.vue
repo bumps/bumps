@@ -25,19 +25,19 @@ const warning_seen = ref(false);
 
 props.socket.on("updated_history", async () => {
   const new_history = (await props.socket.asyncEmit("get_history")) as { problem_history: HistoryItem[] };
-  history.value = new_history.problem_history;
+  history.value = new_history.problem_history.toReversed();
 });
 props.socket.asyncEmit("get_history", (new_history: { problem_history: HistoryItem[] }) => {
-  history.value = new_history.problem_history;
+  history.value = new_history.problem_history.toReversed();
 });
 
 props.socket.on("updated_parameters", () => {
   props.socket.asyncEmit("get_chisq", (chisq_str: string) => {
-    current_chisq_str.value = `chisq: ${chisq_str}`;
+    current_chisq_str.value = chisq_str;
   });
 });
 props.socket.asyncEmit("get_chisq", (chisq_str: string) => {
-  current_chisq_str.value = `chisq: ${chisq_str}`;
+  current_chisq_str.value = chisq_str;
 });
 
 async function remove_history_item(timestamp: string, keep: boolean) {
@@ -91,10 +91,6 @@ async function set_autosave_history_length(value_str: string) {
 <template>
   <div class="history container d-flex flex-column flex-grow-1">
     <div class="row p-1 align-items-center">
-      <div class="col-auto">
-        <button type="button" class="btn btn-primary" @click="manual_save">Save current state</button>
-        <span>{{ current_chisq_str }}</span>
-      </div>
       <div class="col text-end">
         <input
           id="auto_save"
@@ -128,10 +124,33 @@ async function set_autosave_history_length(value_str: string) {
             <th scope="col">Label</th>
             <th scope="col">Chisq</th>
             <th scope="col"></th>
+            <th scope="col"></th>
             <th scope="col">Keep</th>
           </tr>
         </thead>
         <tbody>
+          <tr class="py-1 align-middle">
+            <td></td>
+            <td>
+              <div class="current-state">Current state</div>
+            </td>
+            <td>
+              <small>{{ current_chisq_str }}</small>
+            </td>
+            <td class="text-nowrap text-end">
+              <button class="btn btn-primary btn-sm mx-1 text-nowrap" @click="manual_save">Save</button>
+            </td>
+            <td class="text-start">
+              <span v-show="shared_state.population_available" class="badge bg-success" title="has population">P</span>
+              <span
+                v-show="shared_state.uncertainty_available?.available"
+                class="badge bg-warning"
+                title="has uncertainty"
+                >U</span
+              >
+            </td>
+            <td></td>
+          </tr>
           <tr
             v-for="{ timestamp, label, chisq_str, keep, has_population, has_uncertainty } of history"
             :key="timestamp"
@@ -145,21 +164,32 @@ async function set_autosave_history_length(value_str: string) {
                 @click="remove_history_item(timestamp, keep)"
               ></button>
             </td>
-            <td
-              class="px-2"
-              contenteditable="true"
-              spellcheck="false"
-              plaintext-only
-              :title="timestamp"
-              @blur="update_label(timestamp, ($event.target as HTMLTextAreaElement).innerText)"
-            >
-              {{ label }}
+            <td class="px-2">
+              <div
+                contenteditable="true"
+                spellcheck="false"
+                plaintext-only
+                @blur="update_label(timestamp, ($event.target as HTMLTextAreaElement).innerText)"
+              >
+                {{ label }}
+              </div>
+              <div class="history-timestamp">{{ timestamp }}</div>
             </td>
             <td>
               <small>{{ chisq_str }}</small>
             </td>
-            <td class="text-nowrap">
-              <button class="btn btn-secondary btn-sm mx-1 text-nowrap" @click="reload_history(timestamp)">Load</button>
+            <td class="text-nowrap text-end">
+              <div
+                v-if="shared_state.active_history == timestamp"
+                class="btn btn-outline-success btn-sm mx-1 text-nowrap disabled"
+              >
+                Loaded
+              </div>
+              <button v-else class="btn btn-secondary btn-sm mx-1 text-nowrap" @click="reload_history(timestamp)">
+                Load
+              </button>
+            </td>
+            <td class="text-start">
               <span v-show="has_population" class="badge bg-success" title="has population">P</span>
               <span v-show="has_uncertainty" class="badge bg-warning" title="has uncertainty">U</span>
             </td>
@@ -186,5 +216,18 @@ input#auto_save_length {
 
 .btn-close {
   cursor: pointer;
+}
+
+/* history timestamp italic with lighter weight */
+.history-timestamp {
+  font-style: italic;
+  font-weight: lighter;
+  font-size: smaller;
+}
+
+.current-state {
+  font-style: italic;
+  font-weight: lighter;
+  text-align: center;
 }
 </style>
