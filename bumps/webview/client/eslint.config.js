@@ -44,7 +44,7 @@ export default [
           usePrettierrc: true,
         },
       ],
-      "vue/no-html": "off",
+      "vue/no-v-html": "warn",
       "vue/no-unused-vars": "warn",
       "vuejs-accessibility/label-has-for": [
         "error",
