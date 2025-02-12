@@ -3,8 +3,12 @@ repos:
     hooks:
       - id: eslint
         name: eslint
-        entry: bash -c "cd bumps/webview/client && npm run lint || bun run lint"
-        language: system
+        entry: eslint
+        files: \.(vue|js|ts|mjs|tsx|jsx)$  # *.js, *.jsx, *.ts and *.tsx
+        types: [file]
+        args: ["-c", "bumps/webview/client/eslint.config.js", "--fix"]
+        additional_dependencies: ["eslint@9.15.0"]
+        language: node
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
