@@ -9,6 +9,16 @@ repos:
         args: ["-c", "bumps/webview/client/eslint.config.js", "--fix"]
         additional_dependencies: ["eslint@9.15.0"]
         language: node
+  - repo: local
+    hooks:
+      - id: prettier
+        name: prettier
+        entry: prettier
+        files: \.(json|yaml|md)
+        types: [file]
+        args: ["--config", "bumps/webview/client/prettier.config.js", "--fix"]
+        additional_dependencies: ["prettier@3.4.1"]
+        language: node
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
