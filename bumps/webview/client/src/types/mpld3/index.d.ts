@@ -6,7 +6,7 @@ declare module "mpld3" {
   export function draw_figure(
     div_id: string,
     data: { width: number; height: number },
-    process: boolean | Function = false,
-    clearElem: boolean = true
+    process?: false | ((fig: any, element: HTMLElement) => void),
+    clearElem?: boolean
   ): void;
 }
