@@ -4,7 +4,7 @@ repos:
       - id: eslint
         name: eslint
         entry: eslint
-        files: \.(vue|js|ts|mjs|tsx|jsx)$  # *.js, *.jsx, *.ts and *.tsx
+        files: \.(vue|js|ts|mjs|tsx|jsx)$ # *.js, *.jsx, *.ts and *.tsx
         types: [file]
         args: ["-c", "bumps/webview/client/eslint.config.js", "--fix"]
         additional_dependencies: ["eslint@9.15.0"]
