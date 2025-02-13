@@ -16,7 +16,7 @@ repos:
         entry: prettier
         files: \.(json|yaml|md)
         types: [file]
-        args: ["--config", "bumps/webview/client/prettier.config.js", "--fix"]
+        args: ["--write", "--config", "bumps/webview/client/prettier.config.js"]
         additional_dependencies: ["prettier@3.4.1"]
         language: node
   - repo: https://github.com/pre-commit/pre-commit-hooks
