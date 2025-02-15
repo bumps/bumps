@@ -10,68 +10,61 @@ Bumps |version| is provided in a self-contained Python environment:
 
     - Windows installer: :slink:`%(winexe)s`
     - Apple installer: :slink:`%(macapp)s`
-    - Source: :slink:`%(srczip)s`
 
 The Windows installer is a self-extracting executable that unpacks 
-to the location of your choosing, and
-once unpacked you can double-click on the "bumps_webview.bat" file to
+to the location of your choosing.
+Once unpacked you can double-click on the "bumps_webview.bat" file to
 start the webview server and client.
 
 The Apple .pkg installer unpacks to the Applications directory.  You can
 start the application by double-clicking on the "bumps_webview.app".
 
-Building from source
-====================
+For linux you will need to install from source.
 
-Before building bumps, you will need to set up your python environment.
-We depend on many external packages.  The program may work with
-older versions of the package, and we will try to keep it compatible with
-the latest versions.
+Install from source
+===================
 
-Our base scientific python environment contains:
+Bumps is available on `PyPI <https://pypi.org/project/bumps/>`_ so you can
+install directly into a python environment with pip. Is is also available
+as a package on Debian/Ubuntu and as source from
+`Github <https://github.com/bumps/bumps>`_.
 
-    - python >= 3.8
-    - matplotlib
-    - numpy
-    - scipy
+To install the Debian/Ubuntu package [pre-1.0 as of this writing]::
 
-To run tests we use:
+    sudo apt install python3-bumps
 
-    - pytest
+Otherwise, create a python environment to get the latest release.
+We recommend using
+`miniforge <https://github.com/conda-forge/miniforge/releases/latest>`_.
+This installs a conda system with the "conda-forge" channel for packages::
 
-To build the HTML documentation we use:
+    conda create -n bumps python matplotlib numpy scipy dill h5py scikit-learn
+    conda activate bumps
+    # optional dependencies when using webview
+    conda install aiohttp blinker plotly mpld3 python-socketio
+    pip install bumps[webview]
 
-    - sphinx
-    - docutils
-    - jinja2
+You can instead use python available on your operating system if it is new
+enough (Python 3.10 as of this writing). Again, recommended practice
+is to use an isolated python environment. Instructions for Debian/Ubuntu are::
 
-The PDF documentation requires a working LaTeX installation.
+    sudo apt install python3 python3-venv
+    python3 -m venv bumps
+    . bumps/bin/activate
+    pip install bumps[webview]
 
-You can install directly from PyPI using pip::
-
-    pip install bumps
-
-If this fails, then follow the instructions to install from the source
-archive directly. Platform specific details for setting up your environment
-are given below.
-
-Installing Python
------------------
-
-You will need to install a python environment.  We recommend using
-miniforge, which will install a conda system for you, using the 
-"conda-forge" channel for packages (free).
-
-* `miniforge <https://github.com/conda-forge/miniforge/releases/latest>`_
-
-You can also install a python interpreter directly from the python website:
-
-* `Python.org <https://www.python.org/downloads/>`_
+Python is also available directly from
+`Python.org <https://www.python.org/downloads/>`_.
 
 To run the program use::
 
-    python -m bumps.cli -h
+    # command line interface
+    bumps -h
+    # graphical user interface
+    # point your browser to the URL printed when you run the command
+    bumps-webview
 
+TODO: instructions for jupyter and slurm
 
 Fast Stepper for DREAM on MPI
 =============================
@@ -83,58 +76,45 @@ case, the DE stepper and the bounds check.  Compiling this in C with OpenMP
 allows us to scale to hundreds of nodes until the stepper again becomes a
 bottleneck.
 
-Automated build
----------------
-
-To use the compiled DE stepper and bounds checks, use::
+The following command should build the fast stepper binary module::
 
     python -m bumps.dream.build_compiled
 
-This will compile the DLL in-place in the dream folder.
+If you have installed from source, you must first check out the random123 library::
 
-Manual build
-------------
+    git clone --branch v1.14.0 https://github.com/DEShawResearch/random123.git bumps/dream/random123
+    python -m bumps.dream.build_compiled
 
-You can also directly build the compiled module:
-
-To use the compiled DE stepper and bounds checks use::
-
-    (cd bumps/dream && cc compiled.c -I ./random123/include/ -O2 -fopenmp -shared -lm -o _compiled.so -fPIC)
-
-Note: clang doesn't support OpenMP, so on OS/X use::
-
-    (cd bumps/dream && cc compiled.c -I ./random123/include/ -O2 -shared -lm -o _compiled.so -fPIC)
-
-This only works when _compiled.so is in the bumps/dream directory.  If running
-from a pip installed version, you will need to fetch the bumps repository::
-
-    $ git clone https://github.com/bumps/bumps.git
-    $ cd bumps
-
-Compile as above, then find the bumps install path using the following::
+If this fails you can try running the compiler directly. First find the path
+to the bumps directory::
 
     $ python -c "import bumps.dream; print(bumps.dream.__file__)"
-    #dream/path/__init__.py
+    #path/to/bumps/dream/__init__.py
 
-Copy the compiled module to the install (substituting #dream/path above)::
+Change into that directory and compile the module::
 
-    $ cp bumps/dream/_compiled.so #dream/path
+    (cd path/to/bumps/dream && cc compiled.c -I ./random123/include/ -O2 -DMAX_THREADS=64 -fopenmp -shared -lm -o _compiled.so -fPIC)
 
-There is no provision for using _compiled.so in a frozen application.
+Note: clang doesn't support OpenMP, so on macOS use::
 
-Run with no more than 64 OMP threads.  If the number of processors is more
-than 64, then use:
+    (cd path/to/bumps/dream && cc compiled.c -I ./random123/include/ -O2 -DMAX_THREADS=64 -shared -lm -o _compiled.so -fPIC)
 
-    OMP_NUM_THREADS=64 ./run.py ...
-
-I don't know how OMP_NUM_THREADS behaves if it is larger than the number
-of processors.
-
+Make sure MAX_THREADS is at least the number of processors on your system
+otherwise you will need to set :code:`OMP_NUM_THREADS=MAX_THREADS` in your
+environment before running bumps.
 
 .. _docbuild:
 
 Building Documentation
 ======================
+
+To build the HTML documentation we use:
+
+    - sphinx
+    - docutils
+    - jinja2
+
+The PDF documentation requires a working LaTeX installation.
 
 Building the package documentation requires a working Sphinx installation and
 a working LaTex installation.  Your latex distribution should include the

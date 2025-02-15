@@ -8,8 +8,13 @@ Contributing Changes
 
 
 The bumps package is a community project, and we welcome contributions from anyone.
-The package is developed collaboratively on `Github <https://github.com>`_ - if you don't have an account yet, you can sign up for free. For direct write access to the repository, it is required that your accout have `two-factor authentication enabled <https://docs.github.com/en/authentication/securing-your-account-with-two-factor-authentication-2fa>`_.
-You may also want to configure your account to use `SSH keys <https://docs.github.com/en/authentication/connecting-to-github-with-ssh>`_ for authentication.
+The package is developed collaboratively on `Github <https://github.com>`_ - if
+you don't have an account yet, you can sign up for free.
+For direct write access to the repository, it is required that your account have
+`two-factor authentication enabled <https://docs.github.com/en/authentication/securing-your-account-with-two-factor-authentication-2fa>`_.
+You may also want to configure your account to use
+`SSH keys <https://docs.github.com/en/authentication/connecting-to-github-with-ssh>`_
+for authentication.
 
 The best way to contribute to the bumps package is to work
 from a copy of the source tree in the revision control system.
@@ -20,7 +25,7 @@ The bumps project is hosted on github at:
 
 You will need the git source control software for your computer.  This can
 be downloaded from the `git page <http://www.git-scm.com/>`_, or you can use
-an integrated development environment (IDE) such as Eclipse and PyCharm, which
+an integrated development environment (IDE) such as PyCharm or VS Code, which
 may have git built in.
 
 
@@ -61,22 +66,24 @@ main repository (see `Larger changes <#Larger-changes>`_ below).
         git push
 
 
-Once you have the code, you will need to install Refl1D, including its dependencies.
-You can do this by following the instructions in the `Installation guide <install.html>`_.
-
 Making Changes
 ==============
 
 Pre-commit hooks
 ----------------
 
-Once you have installed the code with ``pip install -e .[dev]``, you can make changes to the code. Note that refl1d uses `pre-commit <https://pre-commit.com/>`_ to run automated checks and linting/formatting on the code before it is committed.
+Once you have installed the code with ``pip install -e .[dev]``, you can make changes to the code.
+Note that refl1d uses `pre-commit <https://pre-commit.com/>`_ to run
+automated checks and linting/formatting on the code before it is committed.
 
-First, activate the Python environment in which you installed refl1d. Then, install the pre-commit hooks by running::
+First, activate the Python environment in which you installed refl1d.
+Then, install the pre-commit hooks by running::
 
     pre-commit install
 
-This will install the pre-commit hooks in your git repository. The pre-commit hooks will run every time you commit changes to the repository. If the checks fail, the commit will be aborted.
+This will install the pre-commit hooks in your git repository.
+The pre-commit hooks will run every time you commit changes to the repository.
+If the checks fail, the commit will be aborted.
 
 You can run the checks manually by running::
 

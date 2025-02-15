@@ -66,7 +66,7 @@ To run the server inside a Jupyter notebook, use the following code::
     import asyncio
     from bumps.webview.server.webserver import start_app
     from bumps.webview.server import api
-    
+
     # Start the server
     server_task = asyncio.create_task(start_app(jupyter_link=True))
 
@@ -75,7 +75,7 @@ Then later you can define a problem and load it into the server using the `api` 
 
     # Define a problem
     from bumps.fitproblem import FitProblem
-    
+
     model = MyFitnessClass()
     ...
 

@@ -29,6 +29,5 @@ for fitting, complete with a graphical user interface to manage your models.
 
    install.rst
    webview.rst
-   server.rst
    contributing.rst
    license.rst
