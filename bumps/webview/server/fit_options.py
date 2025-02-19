@@ -24,7 +24,7 @@ FIT_FIELDS = {
 }
 
 
-def apply_fit_options(fitter_id: str, fit_options: Optional[List[str]] = None) -> Dict:
+def parse_fit_options(fitter_id: str, fit_options: Optional[List[str]] = None) -> Dict:
     if fitter_id not in api.FITTER_DEFAULTS:
         raise ValueError(f"invalid fitter: {fitter_id}")
     fitter_settings: Dict = api.FITTER_DEFAULTS[fitter_id]["settings"]
@@ -33,9 +33,7 @@ def apply_fit_options(fitter_id: str, fit_options: Optional[List[str]] = None) -
         for option_str in fit_options:
             parts = option_str.split("=")
             if len(parts) != 2:
-                raise ValueError(
-                    f"invalid fit option: {option_str}, must be of form 'key=value'"
-                )
+                raise ValueError(f"invalid fit option: {option_str}, must be of form 'key=value'")
             key, value = parts
             if key not in fitter_settings:
                 raise ValueError(
@@ -49,7 +47,12 @@ def apply_fit_options(fitter_id: str, fit_options: Optional[List[str]] = None) -
             elif parse_type == "string":
                 pass
             elif parse_type == "boolean":
-                value = value.lower() in ["true", "1", "yes"]
+                if value.lower() in ["true", "1", "yes", "on"]:
+                    value = True
+                elif value.lower() in ["false", "0", "no", "off"]:
+                    value = False
+                else:
+                    raise ValueError(f"invalid value for {key}: '{value}'; valid options are yes and no")
             elif isinstance(parse_type, list):
                 if value not in parse_type:
                     raise ValueError(f"invalid value for {key}: '{value}'; valid options are: {parse_type}")

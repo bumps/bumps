@@ -31,7 +31,7 @@ mimetypes.add_type("image/svg+xml", ".svg")
 
 from . import api
 from .fit_thread import EVT_FIT_PROGRESS
-from .fit_options import apply_fit_options
+from .fit_options import parse_fit_options
 from .state_hdf5_backed import SERIALIZERS, UNDEFINED
 from .logger import logger, list_handler, console_handler
 from . import persistent_settings
@@ -147,7 +147,6 @@ class BumpsOptions:
     fit_options: Optional[List[str]] = None
 
 
-
 OPTIONS_CLASS = BumpsOptions
 
 
@@ -159,6 +158,8 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         help="problem file to load, .py or .json (serialized) fitproblem",
     )
     # parser.add_argument('-d', '--debug', action='store_true', help='autoload modules on change')
+
+    # Webserver controls
     parser.add_argument(
         "-x",
         "--headless",
@@ -177,6 +178,8 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         type=str,
         help="api address of parent hub (only used when called as subprocess)",
     )
+
+    # Fitter controls
     parser.add_argument(
         "--fit",
         default=None,
@@ -184,7 +187,20 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         choices=list(api.FITTERS_BY_ID.keys()),
         help="fitting engine to use; see manual for details",
     )
-    parser.add_argument("--start", action="store_true", help="start fit when problem loaded")
+    parser.add_argument(
+        "--fit-options",
+        nargs="*",
+        type=str,
+        help="fit options as key=value pairs",
+    )
+    parser.add_argument(
+        "--parallel",
+        default=0,
+        type=int,
+        help="run fit using multiprocessing for parallelism; use --parallel=0 for all cpus",
+    )
+
+    # Session file controls.
     parser.add_argument(
         "--store",
         default=None,
@@ -192,21 +208,16 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         help="set read_store and write_store to same file",
     )
     parser.add_argument(
-        "--read_store",
+        "--read-store",
         default=None,
         type=str,
         help="read initial session state from file (overrides --store)",
     )
     parser.add_argument(
-        "--write_store",
+        "--write-store",
         default=None,
         type=str,
         help="output file for session state (overrides --store)",
-    )
-    parser.add_argument(
-        "--exit",
-        action="store_true",
-        help="end process when fit complete (fit results lost unless write_store is specified)",
     )
     parser.add_argument(
         "--serializer",
@@ -216,15 +227,9 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         help="strategy for serializing problem, will use value from store if it has already been defined",
     )
     parser.add_argument(
-        "--trace",
+        "--no-auto-history",
         action="store_true",
-        help="enable memory tracing (prints after every uncertainty update in dream)",
-    )
-    parser.add_argument(
-        "--parallel",
-        default=0,
-        type=int,
-        help="run fit using multiprocessing for parallelism; use --parallel=0 for all cpus",
+        help="disable auto-appending problem state to history on load and at fit end",
     )
     parser.add_argument(
         "--path",
@@ -233,25 +238,27 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         help="set initial path for save and load dialogs",
     )
     parser.add_argument(
-        "--no_auto_history",
+        "--use-persistent-path",
         action="store_true",
-        help="disable auto-appending problem state to history on load and at fit end",
+        help="save most recently used path to disk for persistence between sessions",
+    )
+
+    # Program controls.
+    parser.add_argument("--start", action="store_true", help="start fit when problem loaded")
+    parser.add_argument(
+        "--exit",
+        action="store_true",
+        help="end process when fit complete (fit results lost unless write_store is specified)",
     )
     parser.add_argument(
-        "--convergence_heartbeat",
+        "--convergence-heartbeat",
         action="store_true",
         help="enable convergence heartbeat for jupyter kernel (keeps kernel alive during fit)",
     )
     parser.add_argument(
-        "--use_persistent_path",
+        "--trace",
         action="store_true",
-        help="save most recently used path to disk for persistence between sessions",
-    )
-    parser.add_argument(
-        "--fit_options",
-        nargs='*',
-        type=str,
-        help='fit options as key=value pairs',
+        help="enable memory tracing (prints after every uncertainty update in dream)",
     )
 
     # parser.add_argument('-c', '--config-file', type=str, help='path to JSON configuration to load')
@@ -354,12 +361,9 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
         fitter_id = api.state.shared.selected_fitter
     if fitter_id is None or fitter_id is UNDEFINED:
         fitter_id = "amoeba"
-    fitter_settings = apply_fit_options(fitter_id=fitter_id, fit_options=options.fit_options)
+    fitter_settings = parse_fit_options(fitter_id=fitter_id, fit_options=options.fit_options)
 
     api.state.parallel = options.parallel
-
-    # if args.steps is not None:
-    #     fitter_settings["steps"] = args.steps
 
     if options.filename is not None:
         filepath = Path(options.filename).absolute()
@@ -376,7 +380,7 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
 
         async def start_fit(App=None):
             if api.state.problem is not None:
-                await api.start_fit_thread(fitter_id, fitter_settings["settings"], options.exit)
+                await api.start_fit_thread(fitter_id, fitter_settings, options.exit)
 
         app.on_startup.append(start_fit)
     else:
