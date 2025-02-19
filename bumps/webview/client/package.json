@@ -1,6 +1,6 @@
 {
   "name": "bumps-webview-client",
-  "version": "0.1.20",
+  "version": "0.1.21",
   "type": "module",
   "repository": {
     "type": "git",
@@ -11,24 +11,47 @@
     "dev": "vite",
     "build": "vite build --emptyOutDir -m development",
     "build_prod": "vite build --emptyOutDir -m production",
-    "preview": "vite preview --port 4173"
+    "preview": "vite preview --port 4173",
+    "format": "prettier --write \"**/*.{vue,ts,js,css,scss,json,yaml,svg,md}\"",
+    "lint": "eslint src --fix && prettier --write \"**/*.{vue,ts,js,css,scss,json,yaml,svg,md}\"",
+    "test:lint": "eslint src && prettier --check \"**/*.{vue,ts,js,css,scss,json,yaml,svg,md}\"",
+    "test:types": "vue-tsc --noEmit --skipLibCheck -p tsconfig.json --composite false"
   },
   "dependencies": {
-    "bootstrap": "^5.2.1",
-    "date-fns": "^2.30.0",
-    "json-difference": "^1.8.2",
+    "bootstrap": "^5.3.3",
+    "date-fns": "^4.1.0",
+    "json-difference": "^1.16.1",
     "mpld3": "^0.5.10",
-    "plotly.js": "^2.32.0",
-    "socket.io-client": "^4.5.2",
-    "uuid": "^9.0.0",
-    "vue": "^3.4.26",
+    "plotly.js": "^3.0.0",
+    "socket.io-client": "^4.8.1",
+    "uuid": "^11.0.5",
+    "vue": "^3.5.13",
     "vue-json-pretty": "^2.4.0"
   },
   "devDependencies": {
+    "@ianvs/prettier-plugin-sort-imports": "^4.4.1",
+    "@tsconfig/node22": "^22.0.0",
     "@types/bootstrap": "^5.2.10",
-    "@types/plotly.js": "^2.12.5",
-    "@types/uuid": "^8.3.4",
-    "@vitejs/plugin-vue": "^5.0.4",
-    "vite": "^5.4.2"
-  }
+    "@types/plotly.js": "^2.35.2",
+    "@types/uuid": "^10.0.0",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "@vue/eslint-config-prettier": "^10.2.0",
+    "@vue/eslint-config-typescript": "^14.4.0",
+    "@vue/tsconfig": "^0.7.0",
+    "eslint": "^9.20.1",
+    "eslint-config-prettier": "^10.0.1",
+    "eslint-plugin-prettier": "^5.2.3",
+    "eslint-plugin-vue": "^9.32.0",
+    "eslint-plugin-vuejs-accessibility": "^2.4.1",
+    "prettier": "^3.5.1",
+    "prettier-plugin-css-order": "^2.1.2",
+    "prettier-plugin-jsdoc": "^1.3.2",
+    "typescript": "^5.7.3",
+    "vite": "^6.1.0",
+    "vite-svg-loader": "^5.1.0",
+    "vue-tsc": "^2.2.0"
+  },
+  "trustedDependencies": [
+    "es5-ext"
+  ]
 }

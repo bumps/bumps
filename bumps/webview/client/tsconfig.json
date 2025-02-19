@@ -1,0 +1,21 @@
+{
+  "extends": ["@tsconfig/node22/tsconfig.json", "@vue/tsconfig/tsconfig.json"],
+  "include": ["src/**/*", "src/types"],
+  "exclude": ["node_modules/", "src/types"],
+  "compilerOptions": {
+    "noErrorTruncation": true,
+    "composite": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "moduleResolution": "Bundler",
+    "target": "ES6",
+    "types": ["node"],
+    "typeRoots": ["node_modules/@types", "src/types"]
+    // "allowJs": true
+  }
+}

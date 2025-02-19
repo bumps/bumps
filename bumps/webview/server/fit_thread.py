@@ -1,4 +1,3 @@
-
 from copy import deepcopy
 from threading import Thread
 from threading import Event
@@ -13,7 +12,7 @@ from bumps.mapper import MPMapper, SerialMapper, can_pickle
 from bumps.util import redirect_console
 from bumps.history import History
 
-#from .convergence_view import ConvergenceMonitor
+# from .convergence_view import ConvergenceMonitor
 # ==============================================================================
 
 PROGRESS_DELAY = 5
@@ -29,28 +28,27 @@ EVT_FIT_COMPLETE = Signal()
 class GUIProgressMonitor(monitor.TimedUpdate):
     def __init__(self, problem, progress=None, improvement=None):
         monitor.TimedUpdate.__init__(
-            self, progress=progress or PROGRESS_DELAY,
-            improvement=improvement or IMPROVEMENT_DELAY)
+            self, progress=progress or PROGRESS_DELAY, improvement=improvement or IMPROVEMENT_DELAY
+        )
         self.problem = problem
 
     def show_progress(self, history):
         scale, err = nllf_scale(self.problem)
-        chisq = format_uncertainty(scale*history.value[0], err)
+        chisq = format_uncertainty(scale * history.value[0], err)
         evt = dict(
             # problem=self.problem,
             message="progress",
             step=history.step[0],
             value=history.value[0],
             chisq=chisq,
-            point=history.point[0]+0)  # avoid race
+            point=history.point[0] + 0,
+        )  # avoid race
         EVT_FIT_PROGRESS.send(evt)
 
     def show_improvement(self, history):
         evt = dict(
-            message="improvement",
-            step=history.step[0],
-            value=history.value[0],
-            point=history.point[0]+0)  # avoid race
+            message="improvement", step=history.step[0], value=history.value[0], point=history.point[0] + 0
+        )  # avoid race
         EVT_FIT_PROGRESS.send(evt)
 
 
@@ -78,7 +76,6 @@ class ConvergenceMonitor(monitor.Monitor):
         self.message = message
         self.pop = []
 
-
     def config_history(self, history):
         history.requires(population_values=1, value=1)
         history.requires(time=1)
@@ -91,29 +88,29 @@ class ConvergenceMonitor(monitor.Monitor):
             pop = history.population_values[0]
             n = len(pop)
             p = np.sort(pop)
-            QI,Qmid, = int(0.2*n),int(0.5*n)
-            self.pop.append((best, p[0],p[QI],p[Qmid],p[-1-QI],p[-1]))
-        except AttributeError:
-            self.pop.append((best, ))
+            (
+                QI,
+                Qmid,
+            ) = int(0.2 * n), int(0.5 * n)
+            self.pop.append((best, p[0], p[QI], p[Qmid], p[-1 - QI], p[-1]))
+        except (AttributeError, TypeError):
+            self.pop.append((best,))
 
-        if self.rate > 0 and history.time[0] >= self.time+self.rate:
-            evt = dict(
-                message=self.message,
-                pop=self.progress())
+        if self.rate > 0 and history.time[0] >= self.time + self.rate:
+            evt = dict(message=self.message, pop=self.progress())
             EVT_FIT_PROGRESS.send(evt)
             self.time = history.time[0]
 
     def progress(self):
-        return np.empty((0,1),'d') if not self.pop else np.array(self.pop)
+        return np.empty((0, 1), "d") if not self.pop else np.array(self.pop)
 
     def final(self):
         """
         Close out the monitor
         """
-        evt = dict(
-            message=self.message,
-            pop=self.progress())
+        evt = dict(message=self.message, pop=self.progress())
         EVT_FIT_PROGRESS.send(evt)
+
 
 # Horrible hacks:
 # (1) We are grabbing uncertainty_state from the history on monitor update
@@ -141,15 +138,15 @@ class DreamMonitor(monitor.Monitor):
         history.requires(time=1)
 
     def __call__(self, history):
-        self.uncertainty_state = getattr(history, 'uncertainty_state', None)
+        self.uncertainty_state = getattr(history, "uncertainty_state", None)
         self.time = history.time[0]
-        if (self.rate > 0):
+        if self.rate > 0:
             update_counter = history.time[0] // self.rate
             if update_counter > self.update_counter:
                 self.update_counter = update_counter
                 evt = dict(
                     message=self.message,
-                    time = self.time,
+                    time=self.time,
                     uncertainty_state=deepcopy(self.uncertainty_state),
                 )
                 EVT_FIT_PROGRESS.send(evt)
@@ -167,16 +164,25 @@ class DreamMonitor(monitor.Monitor):
         )
         EVT_FIT_PROGRESS.send(evt)
 
+
 # ==============================================================================
 
 
 class FitThread(Thread):
     """Run the fit in a separate thread from the GUI thread."""
 
-    def __init__(self, abort_event: Event, problem=None,
-                 fitclass=None, options=None, mapper=None, parallel=0,
-                 convergence_update=5, uncertainty_update=300,
-                 terminate_on_finish=False):
+    def __init__(
+        self,
+        abort_event: Event,
+        problem=None,
+        fitclass=None,
+        options=None,
+        mapper=None,
+        parallel=0,
+        convergence_update=5,
+        uncertainty_update=300,
+        terminate_on_finish=False,
+    ):
         # base class initialization
         # Process.__init__(self)
 
@@ -204,18 +210,17 @@ class FitThread(Thread):
         # inside the GUI monitor otherwise AppPanel will not be able to
         # recognize that it is the same problem when updating views.
         try:
-            monitors = [GUIProgressMonitor(self.problem),
-                        ConvergenceMonitor(self.problem,
-                                        rate=self.convergence_update),
-                        # GUIMonitor(self.problem,
-                        #            message="convergence_update",
-                        #            monitor=ConvergenceMonitor(),
-                        #            rate=self.convergence_update),
-                        DreamMonitor(self.problem,
-                                    fitter=self.fitclass,
-                                    message="uncertainty_update",
-                                    rate=self.uncertainty_update),
-                        ]
+            monitors = [
+                GUIProgressMonitor(self.problem),
+                ConvergenceMonitor(self.problem, rate=self.convergence_update),
+                # GUIMonitor(self.problem,
+                #            message="convergence_update",
+                #            monitor=ConvergenceMonitor(),
+                #            rate=self.convergence_update),
+                DreamMonitor(
+                    self.problem, fitter=self.fitclass, message="uncertainty_update", rate=self.uncertainty_update
+                ),
+            ]
 
             mapper = self.mapper
             if mapper is None:
@@ -234,23 +239,32 @@ class FitThread(Thread):
             problem = deepcopy(self.problem)
             # print "fitclass id",id(self.fitclass),self.fitclass,threading.current_thread()
             driver = FitDriver(
-                self.fitclass, problem=problem,
-                monitors=monitors, abort_test=self.abort_test,
+                self.fitclass,
+                problem=problem,
+                monitors=monitors,
+                abort_test=self.abort_test,
                 mapper=mapper.start_mapper(problem, [], cpus=self.parallel),
-                **self.options)
+                **self.options,
+            )
 
             x, fx = driver.fit()
             # Give final state message from monitors
             for M in monitors:
-                if hasattr(M, 'final'):
+                if hasattr(M, "final"):
                     M.final()
 
             with redirect_console() as fid:
                 driver.show()
                 captured_output = fid.getvalue()
 
-            evt = dict(message="complete", problem=self.problem,
-                    point=x, value=fx, info=captured_output, fitter_id = self.fitclass.id)
+            evt = dict(
+                message="complete",
+                problem=self.problem,
+                point=x,
+                value=fx,
+                info=captured_output,
+                fitter_id=self.fitclass.id,
+            )
             EVT_FIT_COMPLETE.send(evt)
             self.result = evt
 

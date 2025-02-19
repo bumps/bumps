@@ -28,40 +28,44 @@ so *S* < 1e-4 cannot be modeled reliably.
 Population size *h* is set to 20 per mode.  A good choice for number of
 sequences *k* is not yet determined.
 """
+
 from pylab import *
 from bumps.dream import *
 
-if 1: # Fixed layout of 5 minima
+if 1:  # Fixed layout of 5 minima
     n = 5
-    S = [0.1]*5
+    S = [0.1] * 5
     x = [-4, -2, 0, 2, 4]
     y = [2, -2, -4, 0, 4]
     z = [-2, -1, 0, 1, 3]
     I = [5, 2.5, 1, 4, 1]
-else: # Semirandom layout of n minima
+else:  # Semirandom layout of n minima
     d = 3
     n = 40
-    S = [0.1]*n
-    x = linspace(-n+1,n-1,n)
+    S = [0.1] * n
+    x = linspace(-n + 1, n - 1, n)
     y = permutation(x)
     z = permutation(x)
-    I = 2*linspace(-1,1,n)**2 + 1
+    I = 2 * linspace(-1, 1, n) ** 2 + 1
 
-args = [] # Sequence of density, weight, density, weight, ...
-for xi,yi,zi,Si,Ii in zip(x,y,z,S,I):
-    args.extend( (MVNormal([xi,yi,zi],Si*eye(3)), Ii) )
-    #args.extend( (MVNormal([xi,yi],Si*eye(2)), Ii) )
+args = []  # Sequence of density, weight, density, weight, ...
+for xi, yi, zi, Si, Ii in zip(x, y, z, S, I):
+    args.extend((MVNormal([xi, yi, zi], Si * eye(3)), Ii))
+    # args.extend( (MVNormal([xi,yi],Si*eye(2)), Ii) )
 model = Mixture(*args)
 
-k = 20*n
-h = int(20*n/k)
-sampler = Dream(model=model,
-                population=randn(h,k,2),
-                #use_delayed_rejection=False,
-                DE_snooker_rate=0.5,
-                outlier_test='none',
-                draws=4000*n,burn=500*k,
-                thinning=1)
+k = 20 * n
+h = int(20 * n / k)
+sampler = Dream(
+    model=model,
+    population=randn(h, k, 2),
+    # use_delayed_rejection=False,
+    DE_snooker_rate=0.5,
+    outlier_test="none",
+    draws=4000 * n,
+    burn=500 * k,
+    thinning=1,
+)
 mc = sampler.sample()
 mc.show()
 show()

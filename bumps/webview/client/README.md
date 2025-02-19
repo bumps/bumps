@@ -29,6 +29,7 @@ npm run dev
 ```
 
 ### Compile and Minify
+
 This will create a new folder `./dist/<client version>/` and build the client there,
 with a unique tag in the name (suitable for local testing), e.g. `./dist/<client version>/assets/index.BaQLi6ia.js`
 
@@ -37,6 +38,7 @@ npm run build
 ```
 
 ### Compile for publishing to NPM
+
 This will create a new folder `./dist/<client version>/` and build the client
 with reproducible artifact names, e.g. `./dist/<client version>/assets/index.js`
 (suitable for packaging and publishing to NPM)
@@ -46,13 +48,16 @@ npm run build_prod
 ```
 
 # Publishing new client versions:
+
 (...after checking to make sure there aren't extraneous files in this folder)
+
 ```sh
 npm version patch
 npm publish
 ```
 
 and then
+
 ```sh
 git commit package.json -m "webview client version bump"
 git pull

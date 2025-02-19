@@ -3,18 +3,16 @@ name = "bumps"
 dynamic = ["version"]
 description = "Data fitting with bayesian uncertainty analysis"
 readme = "README.rst"
-authors = [
-    { name = "Paul Kienzle", email = "paul.kienzle@nist.gov" },
-]
+authors = [{ name = "Paul Kienzle", email = "paul.kienzle@nist.gov" }]
 license = { file = "LICENSE.txt" }
 dependencies = [
     'numpy',
     'scikit-learn',
     'scipy',
     'typing_extensions>=3.7.4',
-    'graphlib_backport; python_version < "3.9"'
+    'graphlib_backport; python_version < "3.9"',
 ]
-classifiers=[
+classifiers = [
     'Development Status :: 4 - Beta',
     'Environment :: Console',
     'Intended Audience :: Science/Research',
@@ -31,12 +29,16 @@ requires-python = ">=3.8"
 [project.optional-dependencies]
 dev = [
     'build',
+    'matplotlib',   # for testing
+    'pre-commit',
     'pytest',
     'pytest-cov',
+    'ruff',
     'wheel',
     'setuptools',
     'sphinx',
     'versioningit',
+    'matplotlib',
 ]
 webview = [
     'aiohttp',
@@ -47,7 +49,7 @@ webview = [
     'plotly',
     'mpld3',
     'nodejs',
-    'h5py'
+    'h5py',
 ]
 
 [project.urls]
@@ -56,11 +58,29 @@ homepage = "https://bumps.readthedocs.io"
 repository = "https://github.com/bumps/bumps"
 
 [build-system]
-requires = [
-    "setuptools",
-    "versioningit"
-]
+requires = ["setuptools", "versioningit"]
 build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+line-length = 120
+extend-exclude = [
+    "bumps/webview/client/*",
+    "doc/pylit.py",
+    "extra/platform_scripts/*",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"bumps/names.py" = ["F401"] # Unused import
+
+# [tool.ruff.lint]
+# select = [
+#     "E",   # pycodestyle
+#     "F",   # Pyflakes
+#     "UP",  # pyupgrade
+#     "B",   # flake8-bugbear
+#     "SIM", # flake8-simplify
+#     "I",   # isort
+# ]
 
 [tool.setuptools.dynamic]
 version = { attr = "bumps.__version__" }
@@ -79,11 +99,12 @@ method = "smallest"
 file = "bumps/_version.py"
 
 [project.scripts]
-bumps = "bumps.main:main"
+bumps = "bumps.cli:main"
 bumps-webview = "bumps.webview.server.webserver:main"
 
 [tool.pytest.ini_options]
-addopts = "--doctest-modules --doctest-glob=*.rst --cov=bumps"
+# TODO: remove --assert=plain when https://github.com/scipy/scipy/issues/22236 is resolved
+addopts = "--doctest-modules --doctest-glob=*.rst --cov=bumps --assert=plain"
 doctest_optionflags = ["ELLIPSIS", "NORMALIZE_WHITESPACE"]
 testpaths = ["bumps", "doc/getting_started", "doc/guide"]
 norecursedirs = ["gui", "webview/client"]

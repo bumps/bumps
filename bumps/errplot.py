@@ -39,8 +39,8 @@ given set of points to perform step 3, returning *errs*.  Once *errs* has
 been calculated and returned by one of these methods, call
 :func:`show_errors` to perform step 4.
 """
-__all__ = ["reload_errors", "calc_errors_from_state", "calc_errors",
-           "show_errors"]
+
+__all__ = ["reload_errors", "calc_errors_from_state", "calc_errors", "show_errors"]
 import os
 import traceback
 import logging
@@ -50,6 +50,7 @@ import numpy as np
 from .dream.state import load_state
 from . import plugin
 from .cli import load_model, load_best
+
 
 def reload_errors(model, store, nshown=50, random=True):
     """
@@ -71,15 +72,12 @@ def reload_errors(model, store, nshown=50, random=True):
     load_best(problem, os.path.join(store, problem.name + ".par"))
     state = load_state(os.path.join(store, problem.name))
     state.mark_outliers()
-    return calc_errors_from_state(
-        problem, state, nshown=nshown, random=random)
+    return calc_errors_from_state(problem, state, nshown=nshown, random=random)
 
 
-def calc_errors_from_state(problem, state, nshown=50, random=True, portion=1.0):
+def error_points_from_state(state, nshown=50, random=True, portion=1.0):
     """
-    Compute confidence regions for a problem from the
-    Align the sample profiles and compute the residual difference from
-    the measured data for a set of points returned from DREAM.
+    Return a set of points from the state for calculating errors.
 
     *nshown* is the number of samples to include from the state.
 
@@ -89,8 +87,9 @@ def calc_errors_from_state(problem, state, nshown=50, random=True, portion=1.0):
     to generation), but not random if your burn-in was too short, and
     you want to select from the end.
 
-    Returns *errs* for :func:`show_errors`.
+    Returns *points* for :func:`calc_errors`.
     """
+
     points, _logp = state.sample(portion=portion)
     if points.shape[0] < nshown:
         nshown = points.shape[0]
@@ -98,7 +97,20 @@ def calc_errors_from_state(problem, state, nshown=50, random=True, portion=1.0):
     # the best point at the end.
     if random:
         points = points[np.random.permutation(len(points) - 1)]
-    return calc_errors(problem, points[-nshown:-1])
+    return points[-nshown:-1]
+
+
+def calc_errors_from_state(problem, state, nshown=50, random=True, portion=1.0):
+    """
+    Compute confidence regions for a problem from the
+    Align the sample profiles and compute the residual difference from
+    the measured data for a set of points returned from DREAM.
+
+    Returns *errs* for :func:`show_errors`.
+    """
+
+    points = error_points_from_state(state, nshown=nshown, random=random, portion=portion)
+    return calc_errors(problem, points)
 
 
 def calc_errors(problem, points):
@@ -114,8 +126,7 @@ def calc_errors(problem, points):
     try:
         ret = plugin.calc_errors(problem, points)
     except Exception:
-        info = ["error calculating distribution on model",
-                traceback.format_exc()]
+        info = ["error calculating distribution on model", traceback.format_exc()]
         logging.error("\n".join(info))
         ret = None
     finally:

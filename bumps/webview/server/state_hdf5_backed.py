@@ -1,7 +1,22 @@
 import asyncio
 from copy import deepcopy
 from datetime import datetime
-from typing import TYPE_CHECKING, Awaitable, Callable, Optional, Dict, List, NewType, Tuple, TypedDict, Any, Literal, Union, cast, IO
+from typing import (
+    TYPE_CHECKING,
+    Awaitable,
+    Callable,
+    Optional,
+    Dict,
+    List,
+    NewType,
+    Tuple,
+    TypedDict,
+    Any,
+    Literal,
+    Union,
+    cast,
+    IO,
+)
 from collections import deque
 from dataclasses import dataclass, field, fields
 import json
@@ -10,7 +25,8 @@ import os
 import tempfile
 from pathlib import Path
 from threading import Event
-from bumps.serialize import serialize, deserialize, migrate
+from bumps.serialize import serialize, deserialize
+from bumps.util import get_libraries
 import h5py
 import numpy as np
 
@@ -25,71 +41,81 @@ if TYPE_CHECKING:
 
 
 SESSION_FILE_NAME = "session.h5"
-MAX_PROBLEM_SIZE = 100*1024*1024 # 10 MB problem max size
-UNCERTAINTY_DTYPE = 'f'
+MAX_PROBLEM_SIZE = 100 * 1024 * 1024  # 10 MB problem max size
+UNCERTAINTY_DTYPE = "f"
 MAX_LABEL_LENGTH = 1024
 LABEL_DTYPE = f"|S{MAX_LABEL_LENGTH}"
 COMPRESSION = 5
 UNCERTAINTY_COMPRESSION = 5
 
-SERIALIZERS = Literal['dataclass', 'pickle', 'dill']
-SERIALIZER_EXTENSIONS = {
-    'dataclass': 'json',
-    'pickle': 'pickle',
-    'dill': 'pickle'
-}
+SERIALIZERS = Literal["dataclass", "pickle", "dill"]
+SERIALIZER_EXTENSIONS = {"dataclass": "json", "pickle": "pickle", "dill": "pickle"}
 DEFAULT_SERIALIZER: SERIALIZERS = "dill"
 
+
 @dataclass(frozen=True)
-class UNDEFINED_TYPE: pass
+class UNDEFINED_TYPE:
+    pass
+
 
 UNDEFINED = UNDEFINED_TYPE()
+
 
 def now_string():
     return f"{datetime.now().timestamp():.6f}"
 
-def serialize_problem(problem: 'bumps.fitproblem.FitProblem', method: SERIALIZERS):
-    if method == 'dataclass':
+
+def serialize_problem(problem: "bumps.fitproblem.FitProblem", method: SERIALIZERS):
+    if method == "dataclass":
         return json.dumps(serialize(problem)).encode()
-    elif method == 'pickle':
+    elif method == "pickle":
         import pickle
+
         return pickle.dumps(problem)
-    elif method == 'dill':
+    elif method == "dill":
         import dill
+
         return dill.dumps(problem, recurse=True)
 
+
 def deserialize_problem(serialized: bytes, method: SERIALIZERS):
-    if method == 'dataclass':
+    if method == "dataclass":
         serialized_dict = json.loads(serialized)
-        final_version, migrated = migrate(serialized_dict)
-        return deserialize(migrated)
-    elif method == 'pickle':
+        return deserialize(serialized_dict, migration=True)
+    elif method == "pickle":
         import pickle
+
         return pickle.loads(serialized)
-    elif method == 'dill':
+    elif method == "dill":
         import dill
+
         return dill.loads(serialized)
 
 
-def write_bytes_data(group: 'Group', name: str, data: bytes):
+def write_bytes_data(group: "Group", name: str, data: bytes):
     saved_data = [data] if data is not None else []
     return group.create_dataset(name, data=np.void(saved_data), compression=COMPRESSION)
 
-def read_bytes_data(group: 'Group', name: str):
+
+def read_bytes_data(group: "Group", name: str):
     if not name in group:
         return UNDEFINED
     raw_data = group[name][()]
     size = raw_data.size
     if size is not None and size > 0:
-        return raw_data.tobytes().rstrip(b'\x00')
+        return raw_data.tobytes().rstrip(b"\x00")
     else:
         return None
 
-def write_string(group: 'Group', name: str, data: str, encoding='utf-8'):
-    saved_data = np.bytes_([data]) if data is not None else []
-    return group.create_dataset(name, data=saved_data, compression=COMPRESSION, dtype=h5py.string_dtype(encoding=encoding))
 
-def read_string(group: 'Group', name: str):
+def write_string(group: "Group", name: str, data: str, encoding="utf-8"):
+    saved_data = np.bytes_([data]) if data is not None else []
+    return group.create_dataset(
+        name, data=saved_data, compression=COMPRESSION, dtype=h5py.string_dtype(encoding=encoding)
+    )
+
+
+def read_string(group: "Group", name: str):
     if not name in group:
         return UNDEFINED
     raw_data = group[name][()]
@@ -99,24 +125,28 @@ def read_string(group: 'Group', name: str):
     else:
         return None
 
-def write_fitproblem(group: 'Group', name: str, fitProblem: 'bumps.fitproblem.FitProblem', serializer: SERIALIZERS):
+
+def write_fitproblem(group: "Group", name: str, fitProblem: "bumps.fitproblem.FitProblem", serializer: SERIALIZERS):
     serialized = serialize_problem(fitProblem, serializer) if fitProblem is not None else None
     dset = write_bytes_data(group, name, serialized)
     return dset
 
-def read_fitproblem(group: 'Group', name: str, serializer: SERIALIZERS):
+
+def read_fitproblem(group: "Group", name: str, serializer: SERIALIZERS):
     if not name in group:
         return UNDEFINED
     serialized = read_bytes_data(group, name)
     fitProblem = deserialize_problem(serialized, serializer) if serialized is not None else None
     return fitProblem
 
-def write_json(group: 'Group', name: str, data):
+
+def write_json(group: "Group", name: str, data):
     serialized = json.dumps(data) if data is not None else None
     dset = write_string(group, name, serialized.encode())
     return dset
 
-def read_json(group: 'Group', name: str):
+
+def read_json(group: "Group", name: str):
     if not name in group:
         return UNDEFINED
     serialized = read_string(group, name)
@@ -127,11 +157,13 @@ def read_json(group: 'Group', name: str):
         result = None
     return result
 
-def write_ndarray(group: 'Group', name: str, data: Optional[np.ndarray], dtype=UNCERTAINTY_DTYPE):
+
+def write_ndarray(group: "Group", name: str, data: Optional[np.ndarray], dtype=UNCERTAINTY_DTYPE):
     saved_data = data if data is not None else []
     return group.create_dataset(name, data=saved_data, dtype=dtype, compression=UNCERTAINTY_COMPRESSION)
 
-def read_ndarray(group: 'Group', name: str):
+
+def read_ndarray(group: "Group", name: str):
     if not name in group:
         return UNDEFINED
     raw_data = group[name][()]
@@ -140,6 +172,7 @@ def read_ndarray(group: 'Group', name: str):
         return raw_data
     else:
         return None
+
 
 class StringAttribute:
     @classmethod
@@ -150,27 +183,30 @@ class StringAttribute:
     def deserialize(value, obj=None):
         return json.loads(value) if value else None
 
+
 class ProblemState:
-    fitProblem: Optional['bumps.fitproblem.FitProblem'] = None
+    fitProblem: Optional["bumps.fitproblem.FitProblem"] = None
     serializer: Optional[SERIALIZERS] = None
 
-    def write(self, parent: 'Group'):
-        group = parent.require_group('problem')
-        write_fitproblem(group, 'fitProblem', self.fitProblem, self.serializer)
-        write_string(group, 'serializer', self.serializer)
+    def write(self, parent: "Group"):
+        group = parent.require_group("problem")
+        write_fitproblem(group, "fitProblem", self.fitProblem, self.serializer)
+        write_string(group, "serializer", self.serializer)
+        write_json(group, "libraries", get_libraries(self.fitProblem))
         # write_json(group, 'pathlist', self.pathlist)
         # write_string(group, 'filename', self.filename)
 
-    def read(self, parent: 'Group'):
-        group = parent.require_group('problem')
-        self.serializer = read_string(group, 'serializer')
-        self.fitProblem = read_fitproblem(group, 'fitProblem', self.serializer)
+    def read(self, parent: "Group"):
+        group = parent.require_group("problem")
+        self.serializer = read_string(group, "serializer")
+        self.fitProblem = read_fitproblem(group, "fitProblem", self.serializer)
         # self.pathlist = read_json(group, 'pathlist')
         # self.filename = read_string(group, 'filename')
-               
+
+
 class HistoryItem:
     problem: ProblemState
-    fitting: Optional['FittingState']
+    fitting: Optional["FittingState"]
     timestamp: str
     label: str
     chisq_str: str
@@ -183,8 +219,8 @@ class History:
     def __init__(self):
         self.store = []
 
-    def write(self, parent: 'Group', include_uncertainty_state=True):
-        group = parent.require_group('problem_history')
+    def write(self, parent: "Group", include_uncertainty_state=True):
+        group = parent.require_group("problem_history")
         for item in self.store:
             problem = item.problem
             fitting = item.fitting
@@ -192,12 +228,12 @@ class History:
             item_group = group.require_group(name)
             problem.write(item_group)
             fitting.write(item_group, include_uncertainty_state=include_uncertainty_state)
-            item_group.attrs['chisq'] = item.chisq_str
-            item_group.attrs['label'] = item.label
-            item_group.attrs['keep'] = item.keep
+            item_group.attrs["chisq"] = item.chisq_str
+            item_group.attrs["label"] = item.label
+            item_group.attrs["keep"] = item.keep
 
-    def read(self, parent: 'Group'):
-        group = parent.get('problem_history', [])
+    def read(self, parent: "Group"):
+        group = parent.get("problem_history", [])
         self.store = []
         for name in group:
             item = HistoryItem()
@@ -206,10 +242,10 @@ class History:
             item.fitting = FittingState()
             item.problem.read(item_group)
             item.fitting.read(item_group)
-            item.label = item_group.attrs['label']
-            item.chisq_str = item_group.attrs['chisq']
+            item.label = item_group.attrs["label"]
+            item.chisq_str = item_group.attrs["chisq"]
             # keep is a boolean, but h5py returns np.bool_ which is not JSON serializable
-            item.keep = bool(item_group.attrs['keep'])
+            item.keep = bool(item_group.attrs["keep"])
             item.timestamp = name
             self.store.append(item)
 
@@ -236,13 +272,17 @@ class History:
         self.store.append(item)
 
     def list(self):
-        return [dict(timestamp=item.timestamp,
-                     label=item.label,
-                     chisq_str=item.chisq_str,
-                     keep=item.keep,
-                     has_population=(item.fitting.population is not None),
-                     has_uncertainty=(item.fitting.uncertainty_state is not None),
-                    ) for item in self.store]
+        return [
+            dict(
+                timestamp=item.timestamp,
+                label=item.label,
+                chisq_str=item.chisq_str,
+                keep=item.keep,
+                has_population=(item.fitting.population is not None),
+                has_uncertainty=(item.fitting.uncertainty_state is not None),
+            )
+            for item in self.store
+        ]
 
     def set_keep(self, timestamp: str, keep: bool):
         for item in self.store:
@@ -256,47 +296,70 @@ class History:
                 item.label = label
                 return
 
+
 class UncertaintyStateStorage:
-    AR: Optional['np.ndarray'] = None
-    gen_draws: Optional['np.ndarray'] = None
-    labels: Optional['np.ndarray'] = None
-    thin_draws: Optional['np.ndarray'] = None
-    gen_logp: Optional['np.ndarray'] = None
-    thin_logp: Optional['np.ndarray'] = None
-    thin_point: Optional['np.ndarray'] = None
-    update_CR_weight: Optional['np.ndarray'] = None
-    update_draws: Optional['np.ndarray'] = None
-    good_chains: Optional['np.ndarray'] = None
+    AR: Optional["np.ndarray"] = None
+    gen_draws: Optional["np.ndarray"] = None
+    labels: Optional["np.ndarray"] = None
+    thin_draws: Optional["np.ndarray"] = None
+    gen_logp: Optional["np.ndarray"] = None
+    thin_logp: Optional["np.ndarray"] = None
+    thin_point: Optional["np.ndarray"] = None
+    update_CR_weight: Optional["np.ndarray"] = None
+    update_draws: Optional["np.ndarray"] = None
+    good_chains: Optional["np.ndarray"] = None
 
-    def write(self, parent: 'Group'):
-        group = parent.require_group('uncertainty_state')
-        for attrname in ['AR', 'gen_draws', 'thin_draws', 'gen_logp', 'thin_logp', 'thin_point', 'update_CR_weight', 'update_draws', 'good_chains']:
+    def write(self, parent: "Group"):
+        group = parent.require_group("uncertainty_state")
+        for attrname in [
+            "AR",
+            "gen_draws",
+            "thin_draws",
+            "gen_logp",
+            "thin_logp",
+            "thin_point",
+            "update_CR_weight",
+            "update_draws",
+            "good_chains",
+        ]:
             write_ndarray(group, attrname, getattr(self, attrname), dtype=UNCERTAINTY_DTYPE)
-        write_ndarray(group, 'labels', self.labels, dtype=LABEL_DTYPE)
+        write_ndarray(group, "labels", self.labels, dtype=LABEL_DTYPE)
 
-    def read(self, parent: 'Group'):
-        group = parent['uncertainty_state']
-        for attrname in ['AR', 'gen_draws', 'labels', 'thin_draws', 'gen_logp', 'thin_logp', 'thin_point', 'update_CR_weight', 'update_draws', 'good_chains']:
+    def read(self, parent: "Group"):
+        group = parent["uncertainty_state"]
+        for attrname in [
+            "AR",
+            "gen_draws",
+            "labels",
+            "thin_draws",
+            "gen_logp",
+            "thin_logp",
+            "thin_point",
+            "update_CR_weight",
+            "update_draws",
+            "good_chains",
+        ]:
             setattr(self, attrname, read_ndarray(group, attrname))
+
 
 class FittingState:
     population: Optional[List] = None
-    uncertainty_state: Optional['bumps.dream.state.MCMCDraw'] = None
+    uncertainty_state: Optional["bumps.dream.state.MCMCDraw"] = None
 
-    def write(self, parent: 'Group', include_uncertainty_state=True):
-        group = parent.require_group('fitting')
-        write_ndarray(group, 'population', self.population)
+    def write(self, parent: "Group", include_uncertainty_state=True):
+        group = parent.require_group("fitting")
+        write_ndarray(group, "population", self.population)
         uncertainty_state_storage = UncertaintyStateStorage()
         uncertainty_state = self.uncertainty_state
         if uncertainty_state is not None and include_uncertainty_state:
             write_uncertainty_state(uncertainty_state, uncertainty_state_storage)
             uncertainty_state_storage.write(group)
 
-    def read(self, parent: 'Group'):
-        group = parent['fitting']
-        population = read_ndarray(group, 'population')
+    def read(self, parent: "Group"):
+        group = parent["fitting"]
+        population = read_ndarray(group, "population")
         self.population = population
-        if 'uncertainty_state' in group:
+        if "uncertainty_state" in group:
             uncertainty_state_storage = UncertaintyStateStorage()
             uncertainty_state_storage.read(group)
             self.uncertainty_state = read_uncertainty_state(uncertainty_state_storage)
@@ -306,22 +369,22 @@ class State:
     # These attributes are ephemeral, not to be serialized/stored:
     hostname: str
     port: int
-    parallel: int
-    fit_thread: Optional['FitThread'] = None
+    parallel: int = 0
+    fit_thread: Optional["FitThread"] = None
     fit_abort: Optional[Event] = None
     fit_abort_event: Event
     fit_complete_event: Event
     fit_uncertainty_final: Event
     fit_enabled: Event
     calling_loop: Optional[asyncio.AbstractEventLoop] = None
-    base_path: str = ''
+    base_path: str = ""
 
     # State to be stored:
     problem: ProblemState
     fitting: FittingState
     history: History
-    topics: Dict['TopicNameType', 'deque[Dict]']
-    shared: 'SharedState'
+    topics: Dict["TopicNameType", "deque[Dict]"]
+    shared: "SharedState"
 
     def __init__(self):
         self.problem = ProblemState()
@@ -338,7 +401,7 @@ class State:
     def __enter__(self):
         return self
 
-    def setup_backing(self, session_file_name: str, session_pathlist: List[str], read_only: bool = False ):
+    def setup_backing(self, session_file_name: str, session_pathlist: List[str], read_only: bool = False):
         if not read_only:
             self.shared.session_output_file = dict(filename=session_file_name, pathlist=session_pathlist)
         if session_file_name is not None:
@@ -348,7 +411,9 @@ class State:
             else:
                 self.save()
 
-    def save_to_history(self, label: str, include_population: bool = False, include_uncertainty: bool = False, keep: bool = False):
+    def save_to_history(
+        self, label: str, include_population: bool = False, include_uncertainty: bool = False, keep: bool = False
+    ):
         if self.problem.fitProblem is None:
             return
         item = HistoryItem()
@@ -368,7 +433,6 @@ class State:
         self.history.add_item(item, self.shared.autosave_history_length - 1)
         self.shared.updated_history = now_string()
 
-
     def get_history(self):
         return dict(problem_history=self.history.list())
 
@@ -380,7 +444,7 @@ class State:
             if item.timestamp == timestamp:
                 print("problem found!", timestamp)
                 problem_state = item.problem
-                print('chisq of found item: ', problem_state.fitProblem.chisq_str())
+                print("chisq of found item: ", problem_state.fitProblem.chisq_str())
                 self.problem = deepcopy(problem_state)
                 self.shared.updated_model = now_string()
                 self.shared.updated_parameters = now_string()
@@ -392,23 +456,25 @@ class State:
                     self.shared.updated_uncertainty = now_string()
                 return
         raise ValueError(f"Could not find history item with timestamp {timestamp}")
-    
+
     def autosave(self):
         if self.shared.autosave_session:
             self.save()
 
     def save(self):
         if self.shared.session_output_file not in [None, UNDEFINED]:
-            pathlist = self.shared.session_output_file['pathlist']
-            filename = self.shared.session_output_file['filename']
+            pathlist = self.shared.session_output_file["pathlist"]
+            filename = self.shared.session_output_file["filename"]
             full_path = Path(*pathlist) / filename
             self.write_session_file(full_path)
 
     def write_session_file(self, session_fullpath: str):
         # Session filename is assumed to be a full path
-        tmp_fd, tmp_name = tempfile.mkstemp(dir=Path(session_fullpath).parent, prefix=Path(session_fullpath).name, suffix='.tmp')
-        with os.fdopen(tmp_fd, 'w+b') as output_file:
-            with h5py.File(output_file, 'w') as root_group:
+        tmp_fd, tmp_name = tempfile.mkstemp(
+            dir=Path(session_fullpath).parent, prefix=Path(session_fullpath).name, suffix=".tmp"
+        )
+        with os.fdopen(tmp_fd, "w+b") as output_file:
+            with h5py.File(output_file, "w") as root_group:
                 self.problem.write(root_group)
                 self.fitting.write(root_group)
                 self.history.write(root_group)
@@ -419,7 +485,7 @@ class State:
 
     def read_session_file(self, session_fullpath: str, read_problem: bool = True, read_fitstate: bool = True):
         try:
-            with h5py.File(session_fullpath, 'r') as root_group:
+            with h5py.File(session_fullpath, "r") as root_group:
                 if read_problem:
                     self.problem.read(root_group)
                 if read_fitstate:
@@ -432,32 +498,32 @@ class State:
 
     def read_problem_from_session(self, session_fullpath: str):
         try:
-            with h5py.File(session_fullpath, 'r') as root_group:
+            with h5py.File(session_fullpath, "r") as root_group:
                 self.problem.read(root_group)
         except Exception as e:
             logger.warning(f"could not load fitProblem from {session_fullpath} because of {e}")
 
     def read_fitstate_from_session(self, session_fullpath: str):
         try:
-            with h5py.File(session_fullpath, 'r') as root_group:
+            with h5py.File(session_fullpath, "r") as root_group:
                 self.fitting.read(root_group)
         except Exception as e:
             logger.warning(f"could not load fit state from {session_fullpath} because of {e}")
 
-    def write_topics(self, parent: 'Group'):
-        group = parent.require_group('topics')
+    def write_topics(self, parent: "Group"):
+        group = parent.require_group("topics")
         for topic, messages in self.topics.items():
             write_json(group, topic, list(messages))
 
-    def read_topics(self, parent: 'Group'):
-        group = parent.require_group('topics')
+    def read_topics(self, parent: "Group"):
+        group = parent.require_group("topics")
         for topic in group:
             topic_data = read_json(group, topic)
             topic_data = np.array([topic_data]).flatten()
             if topic_data is not None and topic in self.topics:
                 self.topics[topic].extend(topic_data)
 
-    def get_last_message(self, topic: 'TopicNameType'):
+    def get_last_message(self, topic: "TopicNameType"):
         return self.topics[topic][-1] if len(self.topics[topic]) > 0 else None
 
     def cleanup(self):
@@ -473,19 +539,19 @@ class State:
         self.cleanup()
 
 
-def write_uncertainty_state(state: 'MCMCDraw', storage: UncertaintyStateStorage):
-        # Build 2-D data structures
-        storage.gen_draws, storage.gen_logp = state.logp(full=True)
-        _, storage.AR = state.acceptance_rate()
+def write_uncertainty_state(state: "MCMCDraw", storage: UncertaintyStateStorage):
+    # Build 2-D data structures
+    storage.gen_draws, storage.gen_logp = state.logp(full=True)
+    _, storage.AR = state.acceptance_rate()
 
-        storage.thin_draws, storage.thin_point, storage.thin_logp = state.chains()
-        storage.update_draws, storage.update_CR_weight = state.CR_weight()
-        storage.labels = np.array(state.labels, dtype=LABEL_DTYPE)
-        good_chains = state._good_chains
-        storage.good_chains = None if isinstance(good_chains, slice) else good_chains
+    storage.thin_draws, storage.thin_point, storage.thin_logp = state.chains()
+    storage.update_draws, storage.update_CR_weight = state.CR_weight()
+    storage.labels = np.array(state.labels, dtype=LABEL_DTYPE)
+    good_chains = state._good_chains
+    storage.good_chains = None if isinstance(good_chains, slice) else good_chains
+
 
 def read_uncertainty_state(loaded: UncertaintyStateStorage, skip=0, report=0, derived_vars=0):
-
     # Guess dimensions
     Ngen = loaded.gen_draws.shape[0]
     thinning = 1
@@ -504,7 +570,7 @@ def read_uncertainty_state(loaded: UncertaintyStateStorage, skip=0, report=0, de
     state._gen_acceptance_rate = loaded.AR
     state._gen_logp = loaded.gen_logp
     state.thinning = thinning
-    state._thin_count = Ngen//thinning
+    state._thin_count = Ngen // thinning
     state._thin_index = 0
     state._thin_draws = loaded.thin_draws
     state._thin_logp = loaded.thin_logp
@@ -521,9 +587,12 @@ def read_uncertainty_state(loaded: UncertaintyStateStorage, skip=0, report=0, de
     state._best_x = loaded.thin_point[bestidx]
     state._best_gen = 0
 
-    state._good_chains = slice(None, None) if (good_chains is None or good_chains is UNDEFINED) else good_chains.astype(int)
+    state._good_chains = (
+        slice(None, None) if (good_chains is None or good_chains is UNDEFINED) else good_chains.astype(int)
+    )
 
     return state
+
 
 class ActiveFit(TypedDict):
     fitter_id: str
@@ -533,11 +602,14 @@ class ActiveFit(TypedDict):
     chisq: str
     value: float
 
+
 class FileInfo(TypedDict):
     filename: str
     pathlist: List[str]
-    
-Timestamp = NewType('Timestamp', str)
+
+
+Timestamp = NewType("Timestamp", str)
+
 
 @dataclass
 class SharedState:
@@ -562,8 +634,12 @@ class SharedState:
 
     def __setattr__(self, name: str, value):
         super().__setattr__(name, value)
-        loop = asyncio.get_event_loop()
-        if loop.is_running() and hasattr(self, '_notification_callbacks'):
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            # no event loop running, so no need to notify
+            return
+        if loop.is_running() and hasattr(self, "_notification_callbacks"):
             for callback in self._notification_callbacks.values():
                 loop.create_task(callback(name, value))
 
@@ -575,16 +651,16 @@ class SharedState:
     async def get(self, name):
         return getattr(self, name, UNDEFINED)
 
-    def write(self, parent: 'Group'):
-        group = parent.require_group('shared')
+    def write(self, parent: "Group"):
+        group = parent.require_group("shared")
         for field in fields(self):
             if not field.name in self._not_reloaded:
                 value = getattr(self, field.name)
                 if value is not UNDEFINED:
                     write_json(group, field.name, value)
 
-    def read(self, parent: 'Group'):
-        group = parent.get('shared')
+    def read(self, parent: "Group"):
+        group = parent.get("shared")
         if group is None:
             return
         for field in fields(self):

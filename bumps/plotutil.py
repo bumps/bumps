@@ -1,11 +1,8 @@
 """
 Pylab plotting utilities.
 """
-from __future__ import division
 
-__all__ = ["auto_shift",
-           "coordinated_colors", "dhsv", "next_color",
-           "plot_quantiles", "form_quantiles"]
+__all__ = ["auto_shift", "coordinated_colors", "dhsv", "next_color", "plot_quantiles", "form_quantiles"]
 
 
 def auto_shift(offset):
@@ -24,19 +21,20 @@ def auto_shift(offset):
     """
     from matplotlib.transforms import ScaledTranslation
     import pylab
+
     ax = pylab.gca()
-    if ax.lines and hasattr(ax, '_auto_shift'):
+    if ax.lines and hasattr(ax, "_auto_shift"):
         ax._auto_shift += offset
     else:
         ax._auto_shift = 0
     trans = pylab.gca().transData
     if ax._auto_shift:
-        trans += ScaledTranslation(0, ax._auto_shift/72.,
-                                   pylab.gcf().dpi_scale_trans)
+        trans += ScaledTranslation(0, ax._auto_shift / 72.0, pylab.gcf().dpi_scale_trans)
     return trans
 
 
 # ======== Color functions ========
+
 
 def next_color(axes=None):
     """
@@ -52,16 +50,17 @@ def next_color(axes=None):
         plt.plot(x, y, '-', color=dhsv(color, dv=-0.2))
     """
     import pylab
+
     if axes is None:
         axes = pylab.gca()
     lines = axes._get_lines
     try:
         base = lines.get_next_color()
     except Exception:
-        try: # Cruft 1.7 - 3.7?
-            base = next(lines.prop_cycler)['color']
+        try:  # Cruft 1.7 - 3.7?
+            base = next(lines.prop_cycler)["color"]
         except Exception:
-            try: # Cruft 1.4-1.6?
+            try:  # Cruft 1.4-1.6?
                 base = next(lines.color_cycle)
             except Exception:  # Cruft 1.3 and earlier
                 base = lines._get_next_cycle_color()
@@ -77,13 +76,14 @@ def coordinated_colors(base=None):
     """
     if base is None:
         base = next_color()
-    return dict(base=base,
-                light=dhsv(base, dv=+0.3, ds=-0.2),
-                dark=dhsv(base, dv=-0.25, ds=+0.35),
-               )
+    return dict(
+        base=base,
+        light=dhsv(base, dv=+0.3, ds=-0.2),
+        dark=dhsv(base, dv=-0.25, ds=+0.35),
+    )
 
 
-def dhsv(color, dh=0., ds=0., dv=0., da=0.):
+def dhsv(color, dh=0.0, ds=0.0, dv=0.0, da=0.0):
     """
     Modify color on hsv scale.
 
@@ -108,17 +108,19 @@ def dhsv(color, dh=0., ds=0., dv=0., da=0.):
     from matplotlib.colors import colorConverter
     from colorsys import rgb_to_hsv, hsv_to_rgb
     from numpy import clip, array, fmod
+
     r, g, b, a = colorConverter.to_rgba(color)
     # print "from color",r,g,b,a
     h, s, v = rgb_to_hsv(r, g, b)
-    s, v, a = [clip(val, 0., 1.) for val in (s + ds, v + dv, a + da)]
-    h = fmod(h + dh, 1.)
+    s, v, a = [clip(val, 0.0, 1.0) for val in (s + ds, v + dv, a + da)]
+    h = fmod(h + dh, 1.0)
     r, g, b = hsv_to_rgb(h, s, v)
     # print "to color",r,g,b,a
     return array((r, g, b, a))
 
 
 # ==== Specialized plotters =====
+
 
 def plot_quantiles(x, y, contours, color, alpha=None, axes=None):
     """
@@ -141,20 +143,21 @@ def plot_quantiles(x, y, contours, color, alpha=None, axes=None):
     _, q = form_quantiles(y, contours)
     _plot_quantiles(x, q, color, alpha, axes=axes)
 
+
 def _plot_quantiles(x, q, color, alpha, axes=None):
     import pylab
+
     # print "p",p
     # print "q",q[:,:,0]
     # print "y",y[:,0]
     if axes is None:
         axes = pylab.gca()
     if alpha is None:
-        alpha = 2. / (len(q) + 1)
+        alpha = 2.0 / (len(q) + 1)
     edgecolor = dhsv(color, ds=-(1 - alpha), dv=(1 - alpha))
     for lo, hi in q:
-        axes.fill_between(x, lo, hi,
-                           facecolor=color, edgecolor=edgecolor,
-                           alpha=alpha)
+        axes.fill_between(x, lo, hi, facecolor=color, edgecolor=edgecolor, alpha=alpha)
+
 
 def form_quantiles(y, contours):
     """
@@ -173,11 +176,13 @@ def form_quantiles(y, contours):
     """
     from numpy import reshape
     from scipy.stats.mstats import mquantiles
+
     p = _convert_contours_to_probabilities(reversed(sorted(contours)))
     q = mquantiles(y, prob=p, axis=0)
     p = reshape(p, (2, -1))
     q = reshape(q, (-1, 2, len(y[0])))
     return p, q
+
 
 def _convert_contours_to_probabilities(contours):
     """
@@ -185,6 +190,7 @@ def _convert_contours_to_probabilities(contours):
     in [0,1] for each interval as [a_low, a_high, b_low, b_high, ...].
     """
     from numpy import hstack
+
     # lower quantile for ci in percent = (100 - ci)/2
     # upper quantile = 100 - lower quantile = 100 - (100-ci)/2 = (100 + ci)/2
     # divide by an additional 100 to get proportion from 0 to 1
