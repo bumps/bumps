@@ -11,60 +11,116 @@ Bumps |version| is provided in a self-contained Python environment:
     - Windows installer: :slink:`%(winexe)s`
     - Apple installer: :slink:`%(macapp)s`
 
-The Windows installer is a self-extracting executable that unpacks 
+The Windows installer is a self-extracting executable that unpacks
 to the location of your choosing.
-Once unpacked you can double-click on the "bumps_webview.bat" file to
+Once unpacked you can double-click on the `bumps_webview.bat`` file to
 start the webview server and client.
 
 The Apple .pkg installer unpacks to the Applications directory.  You can
-start the application by double-clicking on the "bumps_webview.app".
+start the application by double-clicking on the `bumps_webview.app`.
 
-For linux you will need to install from source.
-
-Install from source
-===================
-
-Bumps is available on `PyPI <https://pypi.org/project/bumps/>`_ so you can
-install directly into a python environment with pip. Is is also available
-as a package on Debian/Ubuntu and as source from
-`Github <https://github.com/bumps/bumps>`_.
-
-To install the Debian/Ubuntu package [pre-1.0 as of this writing]::
+For Debian/Ubuntu Linux, bumps is provided as a package [pre-1.0 as of this writing]::
 
     sudo apt install python3-bumps
 
-Otherwise, create a python environment to get the latest release.
+For other linux or for the latest version you will need to install bumps
+as a python package.
+
+Python install
+==============
+
+Bumps is available on `PyPI <https://pypi.org/project/bumps/>`_ so you can
+install directly into a python environment with pip.
+To avoid conflicts between python applications it is good practice to create
+a separate python environment for each one.
+
 We recommend using
 `miniforge <https://github.com/conda-forge/miniforge/releases/latest>`_.
-This installs a conda system with the "conda-forge" channel for packages::
+This installs a conda system with the "conda-forge" channel for packages.
+Versions are available for Windows, MacOS and Linux.
 
-    conda create -n bumps python matplotlib numpy scipy dill h5py scikit-learn
+To create your environment and install bumps use::
+
+    conda create --name bumps python
     conda activate bumps
-    # optional dependencies when using webview
-    conda install aiohttp blinker plotly mpld3 python-socketio
     pip install bumps[webview]
 
-You can instead use python available on your operating system if it is new
-enough (Python 3.10 as of this writing). Again, recommended practice
-is to use an isolated python environment. Instructions for Debian/Ubuntu are::
+You could instead download Python directly from
+`Python.org <https://www.python.org/downloads/>`_.
+Again, recommended practice is to use an isolated python environment::
 
-    sudo apt install python3 python3-venv
-    python3 -m venv bumps
+    python -m venv bumps
     . bumps/bin/activate
     pip install bumps[webview]
 
-Python is also available directly from
-`Python.org <https://www.python.org/downloads/>`_.
+Running bumps
+=============
 
-To run the program use::
+To run the command-line interface use::
 
-    # command line interface
     bumps -h
-    # graphical user interface
-    # point your browser to the URL printed when you run the command
+
+The webview interface allows users to interact with bumps through a web browser,
+providing a more user-friendly experience compared to the command-line interface.
+To run webview use::
+
     bumps-webview
 
-TODO: instructions for jupyter and slurm
+This starts the server and connects to it through a browser window.
+For a complete list of options, run::
+
+    bumps-webview --help
+
+A typical invocation might be::
+
+    bumps-webview my_problem_file.py
+
+This will start the server with the fit problem `my_problem_file.py` already
+loaded.
+
+To start the server without opening a browser window, use the `--headless` option.
+
+Jupyter notebooks
+=================
+
+The webview interface can be run inside a Jupyter notebook. This allows you to interact with the server
+from within the notebook, providing a more integrated experience for users who are already working in a Jupyter environment.
+
+You will need to set up Jupyter. You can install jupyter into your bumps
+environment with pip and run the Jupyter server from there. If you are using
+jupyterhub, you can install and run ipykernel in your bumps environment to make
+it available::
+
+    pip install ipykernel
+    python -m ipykernel install --user --name bumps --display-name "bumps"
+
+If running on colab or similar, then you can install bumps from within a
+notebook cell using pip:
+
+    %pip install bumps[webview]
+
+To start webview, use the following code cell::
+
+    import asyncio
+    from bumps.webview.server.webserver import start_app
+    from bumps.webview.server import api
+
+    # Start the server
+    server_task = asyncio.create_task(start_app(jupyter_link=True))
+
+A link to the server will be printed in the notebook output. You can open this link in a browser to access the server.
+
+In a different cell you can define a problem and load it into the server using the `api` module::
+
+    # Define a problem
+    from bumps.fitproblem import FitProblem
+
+    model = MyFitnessClass()
+    ...
+
+    problem = FitProblem([model])
+    await api.set_problem(problem)
+
 
 Fast Stepper for DREAM on MPI
 =============================
@@ -102,64 +158,3 @@ Note: clang doesn't support OpenMP, so on macOS use::
 Make sure MAX_THREADS is at least the number of processors on your system
 otherwise you will need to set :code:`OMP_NUM_THREADS=MAX_THREADS` in your
 environment before running bumps.
-
-.. _docbuild:
-
-Building Documentation
-======================
-
-To build the HTML documentation we use:
-
-    - sphinx
-    - docutils
-    - jinja2
-
-The PDF documentation requires a working LaTeX installation.
-
-Building the package documentation requires a working Sphinx installation and
-a working LaTex installation.  Your latex distribution should include the
-following packages:
-
-    multirow, titlesec, framed, threeparttable, wrapfig,
-    collection-fontsrecommended
-
-You can then build the documentation as follows::
-
-    (cd doc && make clean html pdf)
-
-Windows users please note that this only works with a unix-like environment
-such as *gitbash*, *msys* or *cygwin*.  There is a skeleton *make.bat* in
-the directory that will work using the *cmd* console, but it doesn't yet
-build PDF files.
-
-You can see the result of the doc build by pointing your browser to::
-
-    bumps/doc/_build/html/index.html
-    bumps/doc/_build/latex/Bumps.pdf
-
-ReStructured text format does not have a nice syntax for superscripts and
-subscripts.  Units such as |g/cm^3| are entered using macros such as
-\|g/cm^3| to hide the details.  The complete list of macros is available in
-
-        doc/sphinx/rst_prolog
-
-In addition to macros for units, we also define cdot, angstrom and degrees
-unicode characters here.  The corresponding latex symbols are defined in
-doc/sphinx/conf.py.
-
-
-Building an installer (all platforms)
-=====================================
-
-To build a packed distribution for Windows, you will need to install
-conda-pack in your base conda environment.  If you don't already have
-a base interpreter, install that as well (e.g. on Windows) from
-conda-forge::
-
-    conda install -c conda-forge conda-pack bash
-
-Then you can build the packed distribution using::
-
-    bash extra/build_conda_packed.sh
-
-This will create a packed distribution in the dist directory.

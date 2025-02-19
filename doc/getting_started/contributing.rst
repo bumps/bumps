@@ -65,31 +65,84 @@ main repository (see `Larger changes <#Larger-changes>`_ below).
         # Push the changes to your fork
         git push
 
+Run from source
+===============
+
+When working from the source tree it is helpful to install bumps in developer mode.
+This allows you to change the files in place and see the changes the next time
+you run the program. It also includes all the additional packages needed for
+building documentation and testing.
+
+To set up and install the developer version use::
+
+    cd bumps
+    conda create --name bumps-dev python
+    conda activate bumps-dev
+    pip install -e .[dev]
+
+This puts bumps and bumps-webview on your path while leaving the files in place.
+Any changes you do to the files will appear when you next run the program.
+
+The webview client uses modern web technologies such as TypeScript, Vue.js, and Plotly.
+These are pre-compiled and included with the python wheel for pip installs and also in the
+binary installers, but when running from source you will need to build the client package
+before starting the server.
+
+To install `nodejs` and build the client use::
+
+    conda install nodejs
+    python -m bumps.webview.build_client
+
+This will download the necessary dependencies to build the client package and
+save it to the `bumps/webview/client/dist` directory.
+You need to run the `build_client` command whenever you change the javascript for the webview interface.
+
+If you already have a python environment with the necessary dependencies and
+you don't want to install the package into your environment (for example,
+because you are testing out a fork in another source tree), then you can
+change to the bumps directory and run the package in place::
+
+    python -m bumps.cli ... # for the command line interface
+    python -m bumps.webview.server ... # for the webview interface
+
+.. _docbuild:
+
+Building Documentation
+======================
+
+The HTML documentation requires the sphinx, docutils, and jinja2 packages in python.
+
+The PDF documentation requires a working LaTex installation, including the following packages:
+
+    multirow, titlesec, framed, threeparttable, wrapfig,
+    collection-fontsrecommended
+
+To build the documentation use::
+
+    (cd doc && make clean html pdf)
+
+Windows users please note that this only works with a unix-like environment
+such as *gitbash*, *msys* or *cygwin*.  There is a skeleton *make.bat* in
+the directory that will work using the *cmd* console, but it doesn't yet
+build PDF files.
+
+You can see the result of the doc build by pointing your browser to::
+
+    bumps/doc/_build/html/index.html
+    bumps/doc/_build/latex/Bumps.pdf
+
+ReStructured text format does not have a nice syntax for superscripts and
+subscripts.  Units such as |g/cm^3| are entered using macros such as
+\|g/cm^3| to hide the details.  The complete list of macros is available in
+
+        doc/sphinx/rst_prolog
+
+In addition to macros for units, we also define cdot, angstrom and degrees
+unicode characters here.  The corresponding latex symbols are defined in
+doc/sphinx/conf.py.
 
 Making Changes
 ==============
-
-Pre-commit hooks
-----------------
-
-Once you have installed the code with ``pip install -e .[dev]``, you can make changes to the code.
-Note that refl1d uses `pre-commit <https://pre-commit.com/>`_ to run
-automated checks and linting/formatting on the code before it is committed.
-
-First, activate the Python environment in which you installed refl1d.
-Then, install the pre-commit hooks by running::
-
-    pre-commit install
-
-This will install the pre-commit hooks in your git repository.
-The pre-commit hooks will run every time you commit changes to the repository.
-If the checks fail, the commit will be aborted.
-
-You can run the checks manually by running::
-
-    pre-commit run
-
-To see what actions are being run, inspect the `.pre-commit-config.yaml` file in the root of the repository.
 
 Simple patches
 --------------
@@ -97,15 +150,6 @@ Simple patches
 If you want to make one or two tiny changes, it is easiest to clone the
 repository, make the changes, then send a patch.  This is the simplest way
 to contribute to the project.
-
-To run the package from the source tree use the following::
-
-    cd bumps
-    python run.py
-
-This will first build the package into the build directory then run it.
-Any changes you make in the source directory will automatically be used in
-the new version.
 
 As you make changes to the package, you can see what you have done using git::
 
@@ -124,6 +168,29 @@ or via the convenience Makefile target::
 When all the tests run, create a patch and send it to paul.kienzle@nist.gov::
 
     git diff > patch
+
+
+Pre-commit hooks
+----------------
+
+Bumps uses `pre-commit <https://pre-commit.com/>`_ to run
+automated checks and linting/formatting on the code before it is committed.
+
+First, activate the Python environment in which you installed bumps.
+Then, install the pre-commit hooks by running::
+
+    pre-commit install
+
+This will install the pre-commit hooks in your git repository.
+The pre-commit hooks will run every time you commit changes to the repository.
+If the checks fail, the commit will be aborted.
+
+You can run the checks manually by running::
+
+    pre-commit run
+
+To see what actions are being run, inspect the `.pre-commit-config.yaml` file in the root of the repository.
+
 
 Larger changes
 --------------
@@ -156,13 +223,29 @@ environments. You can create a new environment for testing with, for example::
     conda create -n py312 python=3.12
     conda activate py312
     pip install -e .[dev]
-    pip install pytest pytest-cov
     pytest
 
 When all the tests pass, issue a pull request from your github account.
 
 Please make sure that the documentation is up to date, and can be properly
 processed by the sphinx documentation system.  See `_docbuild` for details.
+
+
+Building an installer (all platforms)
+=====================================
+
+To build a packed distribution for Windows, you will need to install
+conda-pack in your base conda environment.  If you don't already have
+a base interpreter, install that as well (e.g. on Windows) from
+conda-forge::
+
+    conda install -c conda-forge conda-pack bash
+
+Then you can build the packed distribution using::
+
+    bash extra/build_conda_packed.sh
+
+This will create a packed distribution in the dist directory.
 
 Creating a New Release
 ======================
