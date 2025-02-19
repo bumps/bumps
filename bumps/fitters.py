@@ -3,6 +3,7 @@ Interfaces to various optimizers.
 """
 
 import sys
+from typing import Union
 import warnings
 
 # CRUFT: time.clock() removed from python 3.8
@@ -21,7 +22,7 @@ from .history import History
 from .formatnum import format_uncertainty
 from .fitproblem import nllf_scale
 
-from .dream import MCMCModel
+from .dream import MCMCModel, MCMCDraw
 
 
 class ConsoleMonitor(monitor.TimedUpdate):
@@ -963,7 +964,8 @@ class FitDriver(object):
         self.fitter = None
         self.result = None
 
-    def fit(self, resume=None):
+    def fit(self, resume=None, resume_state=None):
+        # resume and resume_state are exclusive - if resume is given, resume_state is ignored
         if hasattr(self, "_cov"):
             del self._cov
         if hasattr(self, "_stderr"):
@@ -971,6 +973,8 @@ class FitDriver(object):
         fitter = self.fitclass(self.problem)
         if resume:
             fitter.load(resume)
+        elif resume_state and hasattr(fitter, "state"):
+            fitter.state = resume_state
         starts = self.options.get("starts", 1)
         if starts > 1:
             fitter = MultiStart(fitter)

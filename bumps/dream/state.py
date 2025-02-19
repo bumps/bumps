@@ -74,6 +74,7 @@ __all__ = ["MCMCDraw", "load_state", "save_state"]
 import os.path
 import re
 import gzip
+from typing import List
 
 import numpy as np
 from numpy import empty, sum, asarray, inf, argmax, hstack, dstack
@@ -113,7 +114,7 @@ class NoTrace:
         pass
 
 
-def save_state(state, filename):
+def save_state(state: "MCMCDraw", filename: str):
     trace = NoTrace()
     # trace = open(filename+"-trace.mc", "w")
 
@@ -384,6 +385,10 @@ class MCMCDraw(object):
         # For now, only handle the case where the we have one complete
         # frame of data, such as on reloading the state vector
         assert self._gen_index == 0 and self._update_index == 0 and self._thin_index == 0
+        print("resize")
+        print(self.generation, self.Ngen, Ngen)
+        print(self._update_count, self.Nupdate, Nupdate)
+        print(self._thin_count, self.Nthin, Nthin)
         assert self.generation == self.Ngen and self._update_count == self.Nupdate and self._thin_count == self.Nthin
 
         self.thinning = thinning
@@ -1054,7 +1059,7 @@ class MCMCDraw(object):
 
 
 class Draw(object):
-    def __init__(self, state, vars=None, portion=None, selection=None, thin=1):
+    def __init__(self, state: "MCMCDraw", vars=None, portion=None, selection=None, thin=1):
         self.state = state
         self.vars = vars
         self.portion = portion
@@ -1077,7 +1082,7 @@ class Draw(object):
         return self._argsort_indices[var]
 
 
-def _sample(state, portion, vars, selection, thin):
+def _sample(state, portion: float, vars: List[int], selection, thin):
     """
     Return a sample from a set of chains.
     """

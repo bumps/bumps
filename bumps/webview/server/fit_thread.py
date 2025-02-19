@@ -119,18 +119,18 @@ class ConvergenceMonitor(monitor.Monitor):
 
 
 class DreamMonitor(monitor.Monitor):
-    def __init__(self, problem, message, fitter, rate=0):
+    def __init__(self, problem, message, fitter, rate=0, uncertainty_state=None):
         self.time = 0
         self.rate = rate  # rate=0 for no progress update, only final
         self.update_counter = 0
         self.problem = problem
         self.fitter = fitter
         self.message = message
-        self.uncertainty_state = None
+        self.uncertainty_state = uncertainty_state
         # emit None uncertainty state to start with
         evt = dict(
             message=message,
-            uncertainty_state=None,
+            uncertainty_state=uncertainty_state,
         )
         EVT_FIT_PROGRESS.send(evt)
 
@@ -182,6 +182,7 @@ class FitThread(Thread):
         convergence_update=5,
         uncertainty_update=300,
         terminate_on_finish=False,
+        initial_uncertainty_state=None,
     ):
         # base class initialization
         # Process.__init__(self)
@@ -196,6 +197,7 @@ class FitThread(Thread):
         self.convergence_update = convergence_update
         self.uncertainty_update = uncertainty_update
         self.terminate_on_finish = terminate_on_finish
+        self.initial_uncertainty_state = initial_uncertainty_state
 
     def abort_test(self):
         return self.abort_event.is_set()
@@ -218,7 +220,11 @@ class FitThread(Thread):
                 #            monitor=ConvergenceMonitor(),
                 #            rate=self.convergence_update),
                 DreamMonitor(
-                    self.problem, fitter=self.fitclass, message="uncertainty_update", rate=self.uncertainty_update
+                    self.problem,
+                    fitter=self.fitclass,
+                    message="uncertainty_update",
+                    rate=self.uncertainty_update,
+                    uncertainty_state=self.initial_uncertainty_state,
                 ),
             ]
 
@@ -247,7 +253,9 @@ class FitThread(Thread):
                 **self.options,
             )
 
-            x, fx = driver.fit()
+            resume_state = self.initial_uncertainty_state if (self.fitclass.id == "dream") else None
+
+            x, fx = driver.fit(resume_state=resume_state)
             # Give final state message from monitors
             for M in monitors:
                 if hasattr(M, "final"):

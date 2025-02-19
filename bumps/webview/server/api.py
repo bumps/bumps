@@ -492,7 +492,7 @@ def get_running_loop():
 
 
 @register
-async def start_fit_thread(fitter_id: str = "", options=None, terminate_on_finish=False):
+async def start_fit_thread(fitter_id: str = "", options=None, terminate_on_finish: bool = False, resume: bool = False):
     options = {} if options is None else options  # session_id: str = app["active_session"]
     fitProblem = state.problem.fitProblem if state.problem is not None else None
     if fitProblem is None:
@@ -532,6 +532,7 @@ async def start_fit_thread(fitter_id: str = "", options=None, terminate_on_finis
             convergence_update=5,
             uncertainty_update=state.shared.autosave_session_interval,
             terminate_on_finish=terminate_on_finish,
+            initial_uncertainty_state=state.fitting.uncertainty_state if resume else None,
         )
         state.shared.active_fit = to_json_compatible_dict(
             dict(
@@ -543,7 +544,7 @@ async def start_fit_thread(fitter_id: str = "", options=None, terminate_on_finis
                 value=0,
             )
         )
-        state.reset_fitstate()
+        state.reset_fitstate(copy=resume)
         await log(
             json.dumps(to_json_compatible_dict(options), indent=2),
             title=f"Starting fitter {fitter_id}",

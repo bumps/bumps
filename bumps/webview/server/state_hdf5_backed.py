@@ -461,19 +461,24 @@ class State:
             self.shared.uncertainty_available = uncertainty_available
             self.shared.population_available = item.fitting.population is not None
 
-    def reset_fitstate(self):
+    def reset_fitstate(self, copy: bool = False):
         """
         Unlink the fitting state from a history item:
         (this action to be taken when fitProblem object is modified so that
          it is no longer compatible with fit results)
         """
-        self.fitting.uncertainty_state = None
-        self.fitting.population = None
+        self.fitting.uncertainty_state = deepcopy(self.fitting.uncertainty_state) if copy else None
+        self.fitting.population = deepcopy(self.fitting.population) if copy else None
         self.shared.active_history = None
         self.shared.updated_convergence = now_string()
         self.shared.updated_uncertainty = now_string()
-        self.shared.uncertainty_available = dict(available=False, num_points=0)
-        self.shared.population_available = False
+        has_uncertainty = self.fitting.uncertainty_state is not None
+        uncertainty_available = dict(
+            available=has_uncertainty,
+            num_points=self.fitting.uncertainty_state.draws if has_uncertainty else 0,
+        )
+        self.shared.uncertainty_available = uncertainty_available
+        self.shared.population_available = self.fitting.population is not None
 
     def autosave(self):
         if self.shared.autosave_session:
@@ -585,7 +590,7 @@ def read_uncertainty_state(loaded: UncertaintyStateStorage, skip=0, report=0, de
     thinning = 1
     Nthin, Npop, Nvar = loaded.thin_point.shape
     Nupdate, Ncr = loaded.update_CR_weight.shape
-    Nthin -= skip
+    # Nthin -= skip
     good_chains = loaded.good_chains
 
     # Create empty draw and fill it with loaded data
@@ -600,7 +605,7 @@ def read_uncertainty_state(loaded: UncertaintyStateStorage, skip=0, report=0, de
     state.thinning = thinning
     state._thin_count = Ngen // thinning
     state._thin_index = 0
-    state._thin_draws = loaded.thin_draws
+    state._thin_draws = state._gen_draws
     state._thin_logp = loaded.thin_logp
     state._thin_point = loaded.thin_point
     state._gen_current = state._thin_point[-1].copy()

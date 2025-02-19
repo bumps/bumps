@@ -207,7 +207,7 @@ class Dream(object):
     goalseek_optimizer = None
     goalseek_interval = 1e100  # close enough to never
     goalseek_minburn = 1000
-    state = None  # type: MCMCDraw
+    state: MCMCDraw = None  # type: MCMCDraw
 
     def __init__(self, **kw):
         self.monitor = console_monitor
@@ -233,7 +233,7 @@ class Dream(object):
         return self.state
 
 
-def _run_dream(dream, abort_test=lambda: False):
+def _run_dream(dream: Dream, abort_test=lambda: False):
     """
     Collect posterior distribution samples using DREAM sampler.
     """
@@ -489,9 +489,10 @@ def allocate_state(dream):
     n_cr = len(dream.CR.CR)
     draws = dream.draws
 
-    n_update = int(draws / (steps * n_chain)) + 1
+    n_update = int(np.ceil(draws / (steps * n_chain)))
     n_gen = n_update * steps
-    n_thin = int(n_gen / thinning) + 1
+    n_thin = int(np.ceil(n_gen / thinning))
+    # TODO: check that everything isn't broken now
 
     # print("new state", n_var, n_chain, n_cr, n_gen, n_thin, n_update, draws, steps)
     if dream.state is not None:
