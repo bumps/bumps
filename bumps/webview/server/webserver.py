@@ -160,19 +160,20 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     # parser.add_argument('-d', '--debug', action='store_true', help='autoload modules on change')
 
     # Webserver controls
-    parser.add_argument(
+    server = parser.add_argument_group("Server controls")
+    server.add_argument(
         "-x",
         "--headless",
         action="store_true",
         help="do not automatically load client in browser",
     )
-    parser.add_argument(
+    server.add_argument(
         "--external",
         action="store_true",
         help="listen on all interfaces, including external (local connections only if not set)",
     )
-    parser.add_argument("-p", "--port", default=0, type=int, help="port on which to start the server")
-    parser.add_argument(
+    server.add_argument("-p", "--port", default=0, type=int, help="port on which to start the server")
+    server.add_argument(
         "--hub",
         default=None,
         type=str,
@@ -180,20 +181,21 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     )
 
     # Fitter controls
-    parser.add_argument(
+    fitter = parser.add_argument_group("Fitting controls")
+    fitter.add_argument(
         "--fit",
         default=None,
         type=str,
         choices=list(api.FITTERS_BY_ID.keys()),
         help="fitting engine to use; see manual for details",
     )
-    parser.add_argument(
+    fitter.add_argument(
         "--fit-options",
         nargs="*",
         type=str,
         help="fit options as key=value pairs",
     )
-    parser.add_argument(
+    fitter.add_argument(
         "--parallel",
         default=0,
         type=int,
@@ -201,61 +203,63 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     )
 
     # Session file controls.
-    parser.add_argument(
+    session = parser.add_argument_group("Session file management")
+    session.add_argument(
         "--store",
         default=None,
         type=str,
         help="set read_store and write_store to same file",
     )
-    parser.add_argument(
+    session.add_argument(
         "--read-store",
         default=None,
         type=str,
         help="read initial session state from file (overrides --store)",
     )
-    parser.add_argument(
+    session.add_argument(
         "--write-store",
         default=None,
         type=str,
         help="output file for session state (overrides --store)",
     )
-    parser.add_argument(
+    session.add_argument(
         "--serializer",
         default=OPTIONS_CLASS.serializer,
         type=str,
         choices=["pickle", "dill", "dataclass"],
         help="strategy for serializing problem, will use value from store if it has already been defined",
     )
-    parser.add_argument(
+    session.add_argument(
         "--no-auto-history",
         action="store_true",
         help="disable auto-appending problem state to history on load and at fit end",
     )
-    parser.add_argument(
+    session.add_argument(
         "--path",
         default=None,
         type=str,
         help="set initial path for save and load dialogs",
     )
-    parser.add_argument(
+    session.add_argument(
         "--use-persistent-path",
         action="store_true",
         help="save most recently used path to disk for persistence between sessions",
     )
 
     # Program controls.
-    parser.add_argument("--start", action="store_true", help="start fit when problem loaded")
-    parser.add_argument(
+    misc = parser.add_argument_group("Miscellaneous")
+    misc.add_argument("--start", action="store_true", help="start fit when problem loaded")
+    misc.add_argument(
         "--exit",
         action="store_true",
         help="end process when fit complete (fit results lost unless write_store is specified)",
     )
-    parser.add_argument(
+    misc.add_argument(
         "--convergence-heartbeat",
         action="store_true",
         help="enable convergence heartbeat for jupyter kernel (keeps kernel alive during fit)",
     )
-    parser.add_argument(
+    misc.add_argument(
         "--trace",
         action="store_true",
         help="enable memory tracing (prints after every uncertainty update in dream)",
