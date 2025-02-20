@@ -234,14 +234,14 @@ class FitProblem(Generic[FitnessType]):
     """
 
     name: util.Optional[str]
-    models: util.List["FitnessType"]
+    models: util.List[FitnessType]
     freevars: util.Optional[parameter.FreeVariables]
     weights: util.Union[util.List[float], util.Literal[None]]
     constraints: util.Optional[util.Sequence[parameter.Constraint]]
     penalty_nllf: util.Union[float, util.Literal["inf"]]
 
     _constraints_function: util.Callable[..., float]
-    _models: util.List["FitnessType"]
+    _models: util.List[FitnessType]
     _parameters: util.List[Parameter]
     _parameters_by_id: util.Dict[str, Parameter]
     _dof: float = np.nan  # not a schema field, and is not used in __init__
