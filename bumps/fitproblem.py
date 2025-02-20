@@ -51,6 +51,7 @@ import logging
 import os
 import sys
 import traceback
+from typing import Generic, TypeVar
 import warnings
 
 import numpy as np
@@ -186,8 +187,11 @@ def show_parameters(fitness: Fitness, subs: util.Optional[util.Dict[util.Any, Pa
     print("[chisq=%s, nllf=%g]" % (chisq_str(fitness), fitness.nllf()))
 
 
+FitnessType = TypeVar("FitnessType", bound=Fitness)
+
+
 @dataclass(init=False, eq=False)
-class FitProblem:
+class FitProblem(Generic[FitnessType]):
     r"""
 
         *models* is a sequence of :class:`Fitness` instances.
@@ -230,14 +234,14 @@ class FitProblem:
     """
 
     name: util.Optional[str]
-    models: util.List[Fitness]
+    models: util.List["FitnessType"]
     freevars: util.Optional[parameter.FreeVariables]
     weights: util.Union[util.List[float], util.Literal[None]]
     constraints: util.Optional[util.Sequence[parameter.Constraint]]
     penalty_nllf: util.Union[float, util.Literal["inf"]]
 
     _constraints_function: util.Callable[..., float]
-    _models: util.List[Fitness]
+    _models: util.List["FitnessType"]
     _parameters: util.List[Parameter]
     _parameters_by_id: util.Dict[str, Parameter]
     _dof: float = np.nan  # not a schema field, and is not used in __init__
@@ -246,7 +250,7 @@ class FitProblem:
 
     def __init__(
         self,
-        models: util.Union[Fitness, util.List[Fitness]],
+        models: util.Union[FitnessType, util.List[FitnessType]],
         weights=None,
         name=None,
         constraints=None,
