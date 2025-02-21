@@ -762,7 +762,7 @@ class Operators(str, Enum):
     sub = "sub"
     mul = "mul"
     truediv = "truediv"
-    div = "intdiv"
+    floordiv = "floordiv"
     pow = "pow"
     # unary functional
     # float = "float"  => float makes values concrete
@@ -815,9 +815,8 @@ OPERATOR_PRECEDENCE = {
     "pos": 5,
     "neg": 5,
     "mul": 6,
-    "div": 6,
     "truediv": 6,
-    "intdiv": 6,
+    "floordiv": 6,
     "add": 7,
     "sub": 7,
     "gt": 12,
@@ -832,9 +831,8 @@ OPERATOR_STRING = {
     "pos": "+",
     "neg": "-",
     "mul": "*",
-    "div": "/",
     "truediv": "/",
-    "intdiv": "//",
+    "floordiv": "//",
     "add": "+",
     "sub": "-",
     "gt": ">",
@@ -966,7 +964,7 @@ def _make_math_fn(fn_name: str):
 
 def _build_operator_mixin():
     unary_op = set(("pos", "neg", "abs"))
-    binary_op = set(("add", "sub", "mul", "div", "truediv", "pow"))
+    binary_op = set(("add", "sub", "mul", "floordiv", "truediv", "pow"))
     math_fn = set(v.name for v in Operators) - unary_op - binary_op
     for op_name in unary_op:
         _make_unary_op(op_name)

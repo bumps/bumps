@@ -11,7 +11,7 @@ import { setupDrawLoop } from "../setupDrawLoop";
 type RegisterTypes = Parameters<typeof Plotly.register>[0];
 type PlotlyModule = Exclude<RegisterTypes, any[]>;
 
-Plotly.register([Heatmap as PlotlyModule]);
+Plotly.register([Heatmap as unknown as PlotlyModule]);
 
 const title = "Correlations";
 const plot_div = ref<Plotly.PlotlyHTMLElement | HTMLDivElement>();

@@ -71,6 +71,8 @@ nitpick_ignore = [
     ("py:class", "np.ndarray"),
     ("py:class", "Real"),
     ("py:class", "Integral"),
+    ("py:class", "bumps.fitproblem.FitnessType"),
+    ("py:obj", "bumps.fitproblem.FitnessType"),
 ]
 
 # Add any paths that contain templates here, relative to this directory.
