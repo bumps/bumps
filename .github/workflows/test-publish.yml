@@ -3,53 +3,51 @@ name: Test and Publish to PyPI
 on: [push, pull_request, workflow_dispatch]
 
 jobs:
-
   # Build a pure Python wheel and upload as an artifact
   build-wheel:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout Random123
+        uses: actions/checkout@v4
+        with:
+          repository: "DEShawResearch/random123"
+          ref: v1.14.0
+          path: bumps/dream/random123
 
-    - name: Checkout Random123
-      uses: actions/checkout@v4
-      with:
-        repository: 'DEShawResearch/random123'
-        ref: v1.14.0
-        path: bumps/dream/random123
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-    - uses: actions/setup-node@v4
-      with:
-        node-version: 20
+      - name: build webview
+        run: |
+          cd bumps/webview/client
+          npm install
+          npm run build_prod
 
-    - name: build webview
-      run: |
-        cd bumps/webview/client
-        npm install
-        npm run build_prod
+      - name: Install dependencies for building the wheel
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev]
 
-    - name: Install dependencies for building the wheel
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install -e .[dev]
+      - name: Create the wheel
+        run: python -m build
 
-    - name: Create the wheel
-      run: python -m build
-
-    - name: Upload the wheel and source distribution artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: artifacts
-        path: |
-          dist/bumps-*-py3-none-any.whl
-          dist/bumps-*.tar.gz
+      - name: Upload the wheel and source distribution artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts
+          path: |
+            dist/bumps-*-py3-none-any.whl
+            dist/bumps-*.tar.gz
 
   # Test the wheel on different platforms, test webview, and check docs build
   test:
@@ -69,48 +67,48 @@ jobs:
       fail-fast: false
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.cfg.py }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.cfg.py }}
+      - name: Set up Python ${{ matrix.cfg.py }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.cfg.py }}
 
-    - name: Download the wheel
-      uses: actions/download-artifact@v4
-      with:
-        name: artifacts
-        path: dist
+      - name: Download the wheel
+        uses: actions/download-artifact@v4
+        with:
+          name: artifacts
+          path: dist
 
-    - name: Install the wheel
-      shell: bash
-      run: python -m pip install dist/bumps-*-py3-none-any.whl
+      - name: Install the wheel
+        shell: bash
+        run: python -m pip install dist/bumps-*-py3-none-any.whl
 
-    - name: Install dependencies for testing
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install .[dev]
+      - name: Install dependencies for testing
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .[dev]
 
-    - name: Run tests, except for webview
-      run: pytest -v --ignore=bumps/webview
+      - name: Run tests, except for webview
+        run: pytest -v --ignore=bumps/webview
 
-    - name: Install dependencies for webview testing
-      run: |
-        python -m pip install .[webview]
+      - name: Install dependencies for webview testing
+        run: |
+          python -m pip install .[webview]
 
-    - name: Run tests
-      run: pytest -v
+      - name: Run tests
+        run: pytest -v
 
-    - name: Check examples
-      run: python check_examples.py --chisq
+      - name: Check examples
+        run: python check_examples.py --chisq
 
-    - name: Check fitters
-      run: python check_fitters.py
+      - name: Check fitters
+        run: python check_fitters.py
 
-    - name: Check that the docs build (linux only)
-      if: matrix.cfg.doc == 1
-      run: |
-        make -j 4 -C doc SPHINXOPTS="-W --keep-going -n" html
+      - name: Check that the docs build (linux only)
+        if: matrix.cfg.doc == 1
+        run: |
+          make -j 4 -C doc SPHINXOPTS="-W --keep-going -n" html
 
   # Upload wheel to PyPI only when a tag is pushed, and its name begins with 'v'
   upload-to-pypi:
@@ -120,10 +118,10 @@ jobs:
     permissions:
       id-token: write
     steps:
-    - name: Retrieve all artifacts
-      uses: actions/download-artifact@v4
+      - name: Retrieve all artifacts
+        uses: actions/download-artifact@v4
 
-    - name: Publish package distributions to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        packages-dir: artifacts/
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: artifacts/

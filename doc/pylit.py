@@ -9,7 +9,7 @@
 # :Date:      $Date$
 # :Revision:  $Revision$
 # :URL:       $URL$
-# :Copyright: © 2005, 2007 Günter Milde.
+# :Copyright: ï¿½ 2005, 2007 Gï¿½nter Milde.
 #             Released without warranty under the terms of the
 #             GNU General Public License (v. 2 or later)
 #
@@ -113,7 +113,6 @@ with embedded documentation.
 #
 # ::
 
-from __future__ import print_function
 
 _version = "0.7.9"
 

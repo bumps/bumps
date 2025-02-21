@@ -12,6 +12,7 @@ of the function in whatever way is meaningful.
 The note regarding user defined functions in :mod:`bumps.curve` apply
 here as well.
 """
+
 import inspect
 
 import numpy as np
@@ -44,6 +45,7 @@ class PDF:
     par=value to define the parameter) or is set to zero if no default is
     given in the function.
     """
+
     has_residuals = False  # Don't have true residuals
 
     def __init__(self, fn, name="", plot=None, dof=1, **kw):
@@ -54,24 +56,21 @@ class PDF:
         # arguments specified in the fit function constructor.
         labels, vararg, varkw, values, *_ = inspect.getfullargspec(fn)
         if vararg or varkw:
-            raise TypeError(
-                "Function cannot have *args or **kwargs in declaration")
+            raise TypeError("Function cannot have *args or **kwargs in declaration")
         # Parameters default to zero
-        init = dict((p, 0.) for p in labels)
+        init = dict((p, 0.0) for p in labels)
         # If the function provides default values, use those
         if values:
-            init.update(zip(labels[-len(values):], values))
+            init.update(zip(labels[-len(values) :], values))
         # Regardless, use any values specified in the constructor, but first
         # check that they exist as function parameters.
         invalid = set(kw.keys()) - set(labels)
         if invalid:
-            raise TypeError("Invalid initializers: %s" %
-                            ", ".join(sorted(invalid)))
+            raise TypeError("Invalid initializers: %s" % ", ".join(sorted(invalid)))
         init.update(kw)
 
         # Build parameters out of ranges and initial values
-        pars = dict((p, Parameter.default(init[p], name=name + p))
-                    for p in labels)
+        pars = dict((p, Parameter.default(init[p], name=name + p)) for p in labels)
 
         # Make parameters accessible as model attributes
         for k, v in pars.items():
@@ -89,20 +88,24 @@ class PDF:
         # Note: need to refetch the pars from self in case the user assigned
         # model.par = new_parameter after creating the model.
         return dict((p, getattr(self, p)) for p in self._labels)
+
     parameters.__doc__ = Fitness.parameters.__doc__
 
     def nllf(self):
         kw = dict((p, getattr(self, p).value) for p in self._labels)
         return self._function(**kw)
+
     nllf.__doc__ = Fitness.__call__.__doc__
 
     def chisq(self):
-        return self.nllf()/self.dof
-    #chisq.__doc__ = Fitness.chisq.__doc__
+        return self.nllf() / self.dof
+
+    # chisq.__doc__ = Fitness.chisq.__doc__
 
     def chisq_str(self):
         return "%g" % self.chisq()
-    #chisq_str.__doc__ = Fitness.chisq_str.__doc__
+
+    # chisq_str.__doc__ = Fitness.chisq_str.__doc__
 
     __call__ = chisq
 
@@ -110,10 +113,12 @@ class PDF:
         if self._plot:
             kw = dict((p, getattr(self, p).value) for p in self._labels)
             self._plot(view=view, **kw)
+
     plot.__doc__ = Fitness.plot.__doc__
 
     def numpoints(self):
         return len(self._labels) + 1
+
     numpoints.__doc__ = Fitness.numpoints.__doc__
 
 
@@ -146,18 +151,18 @@ class VectorPDF:
     par=value to define the parameter) or is set to zero if no default is
     given in the function.
     """
+
     has_residuals = False  # Don't have true residuals
 
     def __init__(self, fn, p, name="", plot=None, dof=1, labels=None, **kw):
         self.dof = dof
         if labels is None:
-            labels = ["p"+str(k) for k, _ in enumerate(p)]
+            labels = ["p" + str(k) for k, _ in enumerate(p)]
         init = dict(zip(labels, p))
         init.update(kw)
 
         # Build parameters out of ranges and initial values
-        pars = dict((k, Parameter.default(init[k], name=name + k))
-                    for k in labels)
+        pars = dict((k, Parameter.default(init[k], name=name + k)) for k in labels)
 
         # Make parameters accessible as model attributes
         for k, v in pars.items():
@@ -175,20 +180,24 @@ class VectorPDF:
         # Note: need to refetch the pars from self in case the user assigned
         # model.par = new_parameter after creating the model.
         return dict((k, getattr(self, k)) for k in self._labels)
+
     parameters.__doc__ = Fitness.parameters.__doc__
 
     def nllf(self):
         pvec = np.array([getattr(self, k).value for k in self._labels])
         return self._function(pvec)
+
     nllf.__doc__ = Fitness.__call__.__doc__
 
     def chisq(self):
-        return self.nllf()/self.dof
-    #chisq.__doc__ = Fitness.chisq.__doc__
+        return self.nllf() / self.dof
+
+    # chisq.__doc__ = Fitness.chisq.__doc__
 
     def chisq_str(self):
         return "%g" % self.chisq()
-    #chisq_str.__doc__ = Fitness.chisq_str.__doc__
+
+    # chisq_str.__doc__ = Fitness.chisq_str.__doc__
 
     __call__ = chisq
 
@@ -196,16 +205,18 @@ class VectorPDF:
         if self._plot:
             values = np.array([getattr(self, k).value for k in self._labels])
             self._plot(values, view=view)
+
     plot.__doc__ = Fitness.plot.__doc__
 
     def numpoints(self):
         return len(self._labels) + 1
+
     numpoints.__doc__ = Fitness.numpoints.__doc__
 
     def residuals(self):
         return np.array([self.chisq()])
-    residuals.__doc__ = Fitness.residuals.__doc__
 
+    residuals.__doc__ = Fitness.residuals.__doc__
 
 
 class DirectProblem(object):
@@ -221,15 +232,16 @@ class DirectProblem(object):
     Unlike :class:`PDF`, no parameter objects are defined for the elements
     of *p*, so all are fitting parameters.
     """
+
     has_residuals = False  # Don't have true residuals
 
     def __init__(self, f, p0, bounds=None, dof=1, labels=None, plot=None):
         self.f = f
         self.n = len(p0)
-        self.p = np.asarray(p0, 'd')
+        self.p = np.asarray(p0, "d")
         self.dof = dof
         if bounds is not None:
-            self._bounds = np.asarray(bounds, 'd')
+            self._bounds = np.asarray(bounds, "d")
         else:
             self._bounds = np.tile((-np.inf, np.inf), (self.n, 1)).T
 
@@ -244,10 +256,9 @@ class DirectProblem(object):
         return self.f(pvec) if pvec is not None else self.f(self.p)
 
     def model_reset(self):
-        self._parameters = [Parameter(value=self.p[k],
-                                      bounds=self._bounds[:, k],
-                                      labels=self._labels[k])
-                            for k in range(len(self.p))]
+        self._parameters = [
+            Parameter(value=self.p[k], bounds=self._bounds[:, k], labels=self._labels[k]) for k in range(len(self.p))
+        ]
 
     def model_update(self):
         self.p = np.array([p.value for p in self._parameters])
@@ -256,10 +267,11 @@ class DirectProblem(object):
         return self._parameters
 
     def chisq(self):
-        return self.nllf()/self.dof
+        return self.nllf() / self.dof
 
     def chisq_str(self):
         return "%g" % self.chisq()
+
     __call__ = chisq
 
     def setp(self, p):
@@ -276,8 +288,7 @@ class DirectProblem(object):
         print(self.summarize())
 
     def summarize(self):
-        return "\n".join("%40s %g"%(name, value)
-                         for name, value in zip(self._labels, self.getp()))
+        return "\n".join("%40s %g" % (name, value) for name, value in zip(self._labels, self.getp()))
 
     def labels(self):
         return self._labels
@@ -299,5 +310,5 @@ class DirectProblem(object):
         if self._plot:
             values = np.array([getattr(self, p).value for p in self._labels])
             self._plot(values, view=view)
-    plot.__doc__ = Fitness.plot.__doc__
 
+    plot.__doc__ = Fitness.plot.__doc__

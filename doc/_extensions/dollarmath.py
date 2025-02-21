@@ -10,38 +10,44 @@ semicolon).
 """
 
 import re
+
 _dollar = re.compile(r"(?:^|(?<=\s))[$]([^\n]*?)(?<![\\])[$](?:$|(?=\s|[.,;:?\\()]))")
 _notdollar = re.compile(r"\\[$]")
 
+
 def replace_dollar(content):
-    content = _dollar.sub(r":math:`\1`",content)
+    content = _dollar.sub(r":math:`\1`", content)
     content = _notdollar.sub("$", content)
     return content
+
 
 def rewrite_rst(app, docname, source):
     source[0] = replace_dollar(source[0])
 
+
 def rewrite_autodoc(app, what, name, obj, options, lines):
     lines[:] = [replace_dollar(L) for L in lines]
 
+
 def setup(app):
-    app.connect('source-read', rewrite_rst)
-    app.connect('autodoc-process-docstring', rewrite_autodoc)
+    app.connect("source-read", rewrite_rst)
+    app.connect("autodoc-process-docstring", rewrite_autodoc)
 
 
 def test_dollar():
-    assert replace_dollar(u"no dollar")==u"no dollar"
-    assert replace_dollar(u"$only$")==u":math:`only`"
-    assert replace_dollar(u"$first$ is good")==u":math:`first` is good"
-    assert replace_dollar(u"so is $last$")==u"so is :math:`last`"
-    assert replace_dollar(u"and $mid$ too")==u"and :math:`mid` too"
-    assert replace_dollar(u"$first$, $mid$, $last$")==u":math:`first`, :math:`mid`, :math:`last`"
-    assert replace_dollar(u"dollar\$ escape")==u"dollar$ escape"
-    assert replace_dollar(u"dollar \$escape\$ too")==u"dollar $escape$ too"
-    assert replace_dollar(u"emb\ $ed$\ ed")==u"emb\ :math:`ed`\ ed"
-    assert replace_dollar(u"$first$a")==u"$first$a"
-    assert replace_dollar(u"a$last$")==u"a$last$"
-    assert replace_dollar(u"a $mid$dle a")==u"a $mid$dle a"
+    assert replace_dollar("no dollar") == "no dollar"
+    assert replace_dollar("$only$") == ":math:`only`"
+    assert replace_dollar("$first$ is good") == ":math:`first` is good"
+    assert replace_dollar("so is $last$") == "so is :math:`last`"
+    assert replace_dollar("and $mid$ too") == "and :math:`mid` too"
+    assert replace_dollar("$first$, $mid$, $last$") == ":math:`first`, :math:`mid`, :math:`last`"
+    assert replace_dollar("dollar\$ escape") == "dollar$ escape"
+    assert replace_dollar("dollar \$escape\$ too") == "dollar $escape$ too"
+    assert replace_dollar("emb\ $ed$\ ed") == "emb\ :math:`ed`\ ed"
+    assert replace_dollar("$first$a") == "$first$a"
+    assert replace_dollar("a$last$") == "a$last$"
+    assert replace_dollar("a $mid$dle a") == "a $mid$dle a"
+
 
 if __name__ == "__main__":
     test_dollar()

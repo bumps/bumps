@@ -6,9 +6,11 @@ the fOsc3D Mathematica function
 References::
     [4] Mathematica guidebook
 """
+
 from math import sin, exp
 
-def fOsc3D(x,y):
+
+def fOsc3D(x, y):
     """
     fOsc3D Mathematica function:
 
@@ -17,6 +19,6 @@ def fOsc3D(x,y):
     minimum?
     """
 
-    func =  -4. * exp( -x*x - y*y ) + sin(6. * x) * sin(5. *y)
-    penalty = 100.*y*y if y<0 else 0
+    func = -4.0 * exp(-x * x - y * y) + sin(6.0 * x) * sin(5.0 * y)
+    penalty = 100.0 * y * y if y < 0 else 0
     return func + penalty

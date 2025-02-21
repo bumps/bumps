@@ -3,8 +3,22 @@ repos:
     hooks:
       - id: eslint
         name: eslint
-        entry: bash -c "cd bumps/webview/client && npm run lint"
-        language: system
+        entry: eslint
+        files: \.(vue|js|ts|mjs|tsx|jsx)$ # *.js, *.jsx, *.ts and *.tsx
+        types: [file]
+        args: ["-c", "bumps/webview/client/eslint.config.js", "--fix"]
+        additional_dependencies: ["eslint@9.15.0"]
+        language: node
+  - repo: local
+    hooks:
+      - id: prettier
+        name: prettier
+        entry: prettier
+        files: \.(json|yaml|md|vue|js|ts|mjs|tsx|jsx)$
+        types: [file]
+        args: ["--write", "--config", "bumps/webview/client/prettier.config.js"]
+        additional_dependencies: ["prettier@3.4.1"]
+        language: node
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
@@ -14,24 +28,25 @@ repos:
       - id: check-merge-conflict
       - id: check-yaml
         args: [--allow-multiple-documents]
-      # - id: end-of-file-fixer
-      #   exclude: |
-      #     bumps/dream/random123
-      #     bumps/webview/client/src
-      # - id: trailing-whitespace
-      #   exclude: |
-      #     bumps/dream/random123
-      #     bumps/webview/client/src
-  # - repo: https://github.com/astral-sh/ruff-pre-commit
-  #   rev: v0.6.1
-  #   hooks:
-  #     # - id: ruff
-  #     #   args: [--fix, --exit-non-zero-on-fix]
-  #     - id: ruff-format
-  #       args: [--config=pyproject.toml]
-  #       exclude: |
-  #         bumps/dream/random123
-  #         bumps/webview/client/src
+      - id: end-of-file-fixer
+        exclude: |
+          bumps/dream/random123
+          bumps/webview/client/src
+      - id: trailing-whitespace
+        exclude: |
+          bumps/dream/random123
+          bumps/webview/client/src
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.1
+    hooks:
+      # - id: ruff
+      #   args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+        args: [--config=pyproject.toml]
+        exclude: |
+          bumps/dream/random123
+          bumps/webview/client/src
+          extra/platform_scripts
 
 ci:
   autoupdate_schedule: monthly

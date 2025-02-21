@@ -32,13 +32,13 @@ only one plugin at a time is supported.
 """
 
 __all__ = [
-    'new_model',
-    'load_model',
-    'calc_errors',
-    'show_errors',
-    'data_view',
-    'model_view',
-    'migrate_serialized',
+    "new_model",
+    "load_model",
+    "calc_errors",
+    "show_errors",
+    "data_view",
+    "model_view",
+    "migrate_serialized",
 ]
 
 # TODO: refl1d wants to do the following after cli.getopts()
@@ -101,6 +101,7 @@ def data_view():
     necessary.
     """
     from .gui.data_view import DataView
+
     return DataView
 
 
