@@ -269,9 +269,10 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
         async def start_fit(App=None):
             if api.state.problem is not None:
                 await api.start_fit_thread(fitter_id, fitter_settings, options.exit)
-                import time
-
-                time.sleep(30)
+            while api.state.fit_thread.is_alive():
+                print(">>> waiting for fit")
+                await asyncio.sleep(1)
+                # import time; time.sleep(5)
 
         on_startup.append(start_fit)
     else:
@@ -280,6 +281,14 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
         on_startup.append(lambda App: api.state.shared.set("active_fit", {}))
 
     return on_startup
+
+
+def wait_for_fit():
+    import time
+
+    while api.state.fit_thread.is_alive():
+        print("waiting for fit")
+        time.sleep(5)
 
 
 async def _run_operations(on_start):
@@ -301,6 +310,7 @@ def main(options: Optional[OPTIONS_CLASS] = None):
     on_start = interpret_fit_options(options)
     asyncio.run(_run_operations(on_start))
     print("completed run")
+    # wait_for_fit()
 
 
 if __name__ == "__main__":
