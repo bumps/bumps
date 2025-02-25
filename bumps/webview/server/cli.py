@@ -293,6 +293,11 @@ def main(options: Optional[OPTIONS_CLASS] = None):
     logger.addHandler(console_handler)
     options = get_commandline_options(arg_defaults={"headless": False}) if options is None else options
     logger.info(options)
+
+    async def emit(*args, **kw):
+        print("emit", args, kw)
+
+    api.EMITTERS["cli"] = emit
     on_start = interpret_fit_options(options)
     asyncio.run(_run_operations(on_start))
     print("completed run")

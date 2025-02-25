@@ -568,7 +568,7 @@ async def _fit_progress_handler(event: Dict):
     if fitProblem is None:
         raise ValueError("should never happen: fit progress reported for session in which fitProblem is undefined")
     message = event.get("message", None)
-    print("progress", message)
+    print("inside _fit_progress_handler", message)
     if message == "complete" or message == "improvement":
         fitProblem.setp(event["point"])
         fitProblem.model_update()
@@ -593,7 +593,7 @@ async def _fit_progress_handler(event: Dict):
 
 async def _fit_complete_handler(event):
     message = event.get("message", None)
-    print("complete", message)
+    print("_fit_complete_handler", message)
     fit_thread = state.fit_thread
     terminate = False
     if fit_thread is not None:
@@ -633,16 +633,22 @@ async def _fit_complete_handler(event):
 
 def fit_progress_handler(event: Dict):
     loop = getattr(state, "calling_loop", None)
+    print("fit progress handler", loop is not None)
     if loop is not None:
+        print("calling fit_progress_handler", loop)
         asyncio.run_coroutine_threadsafe(_fit_progress_handler(event), loop)
+    print("progress done")
 
 
 def fit_complete_handler(event: Dict):
     loop = getattr(state, "calling_loop", None)
+    print("fit complete handler", loop is not None)
     if event["message"] != "error":
         state.fit_uncertainty_final.wait()
     if loop is not None:
+        print("running _fit_complete_handler")
         asyncio.run_coroutine_threadsafe(_fit_complete_handler(event), loop)
+    print("fit done", event)
 
 
 EVT_FIT_PROGRESS.connect(fit_progress_handler, weak=True)
