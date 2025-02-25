@@ -568,6 +568,7 @@ async def _fit_progress_handler(event: Dict):
     if fitProblem is None:
         raise ValueError("should never happen: fit progress reported for session in which fitProblem is undefined")
     message = event.get("message", None)
+    print("progress", message)
     if message == "complete" or message == "improvement":
         fitProblem.setp(event["point"])
         fitProblem.model_update()
@@ -592,6 +593,7 @@ async def _fit_progress_handler(event: Dict):
 
 async def _fit_complete_handler(event):
     message = event.get("message", None)
+    print("complete", message)
     fit_thread = state.fit_thread
     terminate = False
     if fit_thread is not None:
