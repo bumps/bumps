@@ -451,12 +451,11 @@ async def start_fit(fitter_id: str = "", kwargs=None):
 
 @register
 async def stop_fit():
-    if state.fit_thread is not None:
-        if state.fit_thread.is_alive():
-            state.fit_abort_event.set()
-            loop = getattr(state, "calling_loop", None)
-            if loop is not None:
-                await loop.run_in_executor(None, state.fit_complete_event.wait)
+    if state.fit_thread is not None and state.fit_thread.is_alive():
+        state.fit_abort_event.set()
+        # state.fit_complete_future should always exist if fit thread is started...
+        if state.fit_complete_future is not None:
+            await state.fit_complete_future
     else:
         state.shared.active_fit = {}
 
