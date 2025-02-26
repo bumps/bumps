@@ -518,6 +518,8 @@ async def start_fit_thread(fitter_id: str = "", options=None, terminate_on_finis
         num_steps = get_num_steps(fitter_id, num_params, options)
         state.fit_abort_event.clear()
         state.fit_complete_event.clear()
+        fit_complete_future = asyncio.Future()
+        state.fit_complete_future = fit_complete_future
         state.fit_uncertainty_final.clear()
 
         fit_thread = FitThread(
@@ -549,6 +551,7 @@ async def start_fit_thread(fitter_id: str = "", options=None, terminate_on_finis
         state.autosave()
         fit_thread.start()
         state.fit_thread = fit_thread
+        return fit_complete_future
 
 
 async def _fit_progress_handler(event: Dict):
@@ -626,6 +629,7 @@ async def _fit_complete_handler(event):
         logger.info(f"Fit done with chisq {chisq}")
 
     state.fit_complete_event.set()
+    state.fit_complete_future.set_result(True)
 
     if terminate:
         await shutdown()
