@@ -280,6 +280,14 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
     return on_startup
 
 
+def wait_for_fit():
+    import time
+
+    while api.state.fit_thread.is_alive():
+        print("waiting for fit")
+        time.sleep(5)
+
+
 async def _run_operations(on_start):
     for step in on_start:
         await step(None)
@@ -291,9 +299,15 @@ def main(options: Optional[OPTIONS_CLASS] = None):
     logger.addHandler(console_handler)
     options = get_commandline_options(arg_defaults={"headless": False}) if options is None else options
     logger.info(options)
+
+    async def emit(*args, **kw):
+        print("emit", args, kw)
+
+    api.EMITTERS["cli"] = emit
     on_start = interpret_fit_options(options)
     asyncio.run(_run_operations(on_start))
     print("completed run")
+    # wait_for_fit()
 
 
 if __name__ == "__main__":

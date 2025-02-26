@@ -555,6 +555,7 @@ async def start_fit_thread(fitter_id: str = "", options=None, terminate_on_finis
 
 
 async def _fit_progress_handler(event: Dict):
+    print("inside _fit_progress_handler", event)
     # session_id = event["session_id"]
     if TRACE_MEMORY:
         import tracemalloc
@@ -571,7 +572,6 @@ async def _fit_progress_handler(event: Dict):
     if fitProblem is None:
         raise ValueError("should never happen: fit progress reported for session in which fitProblem is undefined")
     message = event.get("message", None)
-    print("progress", message)
     if message == "complete" or message == "improvement":
         fitProblem.setp(event["point"])
         fitProblem.model_update()
@@ -596,7 +596,7 @@ async def _fit_progress_handler(event: Dict):
 
 async def _fit_complete_handler(event):
     message = event.get("message", None)
-    print("complete", message)
+    print("inside _fit_complete_handler", message)
     fit_thread = state.fit_thread
     terminate = False
     if fit_thread is not None:
@@ -637,16 +637,24 @@ async def _fit_complete_handler(event):
 
 def fit_progress_handler(event: Dict):
     loop = getattr(state, "calling_loop", None)
+    # print("fit progress handler", loop is not None)
     if loop is not None:
-        asyncio.run_coroutine_threadsafe(_fit_progress_handler(event), loop)
+        print("running _fit_progress_handler", loop)
+        f = asyncio.run_coroutine_threadsafe(_fit_progress_handler(event), loop)
+        # f.result(120)
+    print("progress done")
 
 
 def fit_complete_handler(event: Dict):
     loop = getattr(state, "calling_loop", None)
+    # print("fit complete handler", loop is not None)
     if event["message"] != "error":
         state.fit_uncertainty_final.wait()
     if loop is not None:
-        asyncio.run_coroutine_threadsafe(_fit_complete_handler(event), loop)
+        print("running _fit_complete_handler")
+        f = asyncio.run_coroutine_threadsafe(_fit_complete_handler(event), loop)
+        # f.result(120)
+    print("fit done", event)
 
 
 EVT_FIT_PROGRESS.connect(fit_progress_handler, weak=True)
