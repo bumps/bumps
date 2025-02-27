@@ -43,12 +43,14 @@ class GUIProgressMonitor(monitor.TimedUpdate):
             chisq=chisq,
             point=history.point[0] + 0,
         )  # avoid race
+        print("show progress", evt)
         EVT_FIT_PROGRESS.send(evt)
 
     def show_improvement(self, history):
         evt = dict(
             message="improvement", step=history.step[0], value=history.value[0], point=history.point[0] + 0
         )  # avoid race
+        print("show improvement", evt)
         EVT_FIT_PROGRESS.send(evt)
 
 
@@ -98,6 +100,7 @@ class ConvergenceMonitor(monitor.Monitor):
 
         if self.rate > 0 and history.time[0] >= self.time + self.rate:
             evt = dict(message=self.message, pop=self.progress())
+            print("convergence progress")
             EVT_FIT_PROGRESS.send(evt)
             self.time = history.time[0]
 
@@ -109,6 +112,7 @@ class ConvergenceMonitor(monitor.Monitor):
         Close out the monitor
         """
         evt = dict(message=self.message, pop=self.progress())
+        print("convergence final")
         EVT_FIT_PROGRESS.send(evt)
 
 
@@ -132,6 +136,7 @@ class DreamMonitor(monitor.Monitor):
             message=message,
             uncertainty_state=None,
         )
+        print("Dream init", evt)
         EVT_FIT_PROGRESS.send(evt)
 
     def config_history(self, history):
@@ -149,6 +154,7 @@ class DreamMonitor(monitor.Monitor):
                     time=self.time,
                     uncertainty_state=deepcopy(self.uncertainty_state),
                 )
+                print("Dream update", evt)
                 EVT_FIT_PROGRESS.send(evt)
 
     def final(self):
@@ -162,6 +168,7 @@ class DreamMonitor(monitor.Monitor):
             time=self.time,
             uncertainty_state=deepcopy(self.uncertainty_state),
         )
+        print("Dream final", evt)
         EVT_FIT_PROGRESS.send(evt)
 
 
@@ -210,6 +217,7 @@ class FitThread(Thread):
         # inside the GUI monitor otherwise AppPanel will not be able to
         # recognize that it is the same problem when updating views.
         try:
+            print("Starting fit")
             monitors = [
                 GUIProgressMonitor(self.problem),
                 ConvergenceMonitor(self.problem, rate=self.convergence_update),
@@ -248,6 +256,7 @@ class FitThread(Thread):
             )
 
             x, fx = driver.fit()
+            print("fit complete with", x, fx)
             # Give final state message from monitors
             for M in monitors:
                 if hasattr(M, "final"):
@@ -272,3 +281,5 @@ class FitThread(Thread):
             tb = "".join(traceback.TracebackException.from_exception(exc).format())
             evt = dict(message="error", error_string=str(exc), traceback=tb)
             EVT_FIT_COMPLETE.send(evt)
+
+        print("exiting thread")

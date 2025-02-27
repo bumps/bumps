@@ -451,12 +451,11 @@ async def start_fit(fitter_id: str = "", kwargs=None):
 
 @register
 async def stop_fit():
-    if state.fit_thread is not None:
-        if state.fit_thread.is_alive():
-            state.fit_abort_event.set()
-            loop = getattr(state, "calling_loop", None)
-            if loop is not None:
-                await loop.run_in_executor(None, state.fit_complete_event.wait)
+    if state.fit_thread is not None and state.fit_thread.is_alive():
+        state.fit_abort_event.set()
+        # state.fit_complete_future should always exist if fit thread is started...
+        if state.fit_complete_future is not None:
+            await state.fit_complete_future
     else:
         state.shared.active_fit = {}
 
@@ -491,7 +490,7 @@ def get_running_loop():
 
 
 @register
-async def start_fit_thread(fitter_id: str = "", options=None, terminate_on_finish=False):
+async def start_fit_thread(fitter_id: str = "", options=None, terminate_on_finish=False, await_complete=False):
     options = {} if options is None else options  # session_id: str = app["active_session"]
     fitProblem = state.problem.fitProblem if state.problem is not None else None
     if fitProblem is None:
@@ -518,6 +517,8 @@ async def start_fit_thread(fitter_id: str = "", options=None, terminate_on_finis
         num_steps = get_num_steps(fitter_id, num_params, options)
         state.fit_abort_event.clear()
         state.fit_complete_event.clear()
+        fit_complete_future = asyncio.Future()
+        state.fit_complete_future = fit_complete_future
         state.fit_uncertainty_final.clear()
 
         fit_thread = FitThread(
@@ -549,9 +550,12 @@ async def start_fit_thread(fitter_id: str = "", options=None, terminate_on_finis
         state.autosave()
         fit_thread.start()
         state.fit_thread = fit_thread
+        if await_complete:
+            await fit_complete_future
 
 
 async def _fit_progress_handler(event: Dict):
+    print("inside _fit_progress_handler", event)
     # session_id = event["session_id"]
     if TRACE_MEMORY:
         import tracemalloc
@@ -592,6 +596,7 @@ async def _fit_progress_handler(event: Dict):
 
 async def _fit_complete_handler(event):
     message = event.get("message", None)
+    print("inside _fit_complete_handler", message)
     fit_thread = state.fit_thread
     terminate = False
     if fit_thread is not None:
@@ -624,6 +629,7 @@ async def _fit_complete_handler(event):
         logger.info(f"Fit done with chisq {chisq}")
 
     state.fit_complete_event.set()
+    state.fit_complete_future.set_result(True)
 
     if terminate:
         await shutdown()
@@ -631,16 +637,24 @@ async def _fit_complete_handler(event):
 
 def fit_progress_handler(event: Dict):
     loop = getattr(state, "calling_loop", None)
+    # print("fit progress handler", loop is not None)
     if loop is not None:
-        asyncio.run_coroutine_threadsafe(_fit_progress_handler(event), loop)
+        print("running _fit_progress_handler", loop)
+        f = asyncio.run_coroutine_threadsafe(_fit_progress_handler(event), loop)
+        # f.result(120)
+    print("progress done")
 
 
 def fit_complete_handler(event: Dict):
     loop = getattr(state, "calling_loop", None)
+    # print("fit complete handler", loop is not None)
     if event["message"] != "error":
         state.fit_uncertainty_final.wait()
     if loop is not None:
-        asyncio.run_coroutine_threadsafe(_fit_complete_handler(event), loop)
+        print("running _fit_complete_handler")
+        f = asyncio.run_coroutine_threadsafe(_fit_complete_handler(event), loop)
+        # f.result(120)
+    print("fit done", event)
 
 
 EVT_FIT_PROGRESS.connect(fit_progress_handler, weak=True)
