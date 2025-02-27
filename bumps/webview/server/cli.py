@@ -3,6 +3,7 @@ import asyncio
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Dict, Optional, Union, List
+import warnings
 
 from . import api
 from . import persistent_settings
@@ -40,6 +41,7 @@ class BumpsOptions:
 
 
 OPTIONS_CLASS = BumpsOptions
+APPLICATION_NAME = "bumps"
 
 
 def get_commandline_options(arg_defaults: Optional[Dict] = None):
