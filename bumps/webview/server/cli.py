@@ -180,7 +180,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     return args
 
 
-def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
+def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS(), await_complete=True):
     # ordered list of actions to do on startup
     on_startup: List[Callable] = []
 
@@ -270,7 +270,7 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
 
         async def start_fit(App=None):
             if api.state.problem is not None:
-                await api.start_fit_thread(fitter_id, fitter_settings, options.exit, await_complete=True)
+                await api.start_fit_thread(fitter_id, fitter_settings, options.exit, await_complete=await_complete)
 
         on_startup.append(start_fit)
     else:

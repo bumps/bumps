@@ -156,7 +156,7 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
     async def notice(message: str):
         logger.info(message)
 
-    app.on_startup.extend(interpret_fit_options(options))
+    app.on_startup.extend(interpret_fit_options(options, await_complete=False))
     app.on_cleanup.append(lambda App: notice("cleanup task"))
     app.on_shutdown.append(lambda App: notice("shutdown task"))
     # not sure why, but have to call shutdown twice to get it to work:
