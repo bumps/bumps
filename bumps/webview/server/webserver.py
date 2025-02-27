@@ -147,6 +147,8 @@ def enable_convergence_kernel_heartbeat():
 
 
 def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPTIONS_CLASS()):
+    from aiohttp import web, ClientSession
+
     static_assets_path = CLIENT_PATH / "dist" / "assets"
     if static_assets_path.exists():
         app.router.add_static("/assets", static_assets_path)
@@ -205,6 +207,8 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
 def main(options: Optional[OPTIONS_CLASS] = None, sock: Optional[socket.socket] = None):
     # this entrypoint will be used to start gui, so set headless = False
     # (other contexts e.g. jupyter notebook will directly call start_app)
+    from aiohttp import web
+
     logger.addHandler(console_handler)
     options = get_commandline_options(arg_defaults={"headless": False}) if options is None else options
     logger.info(dict(options=options))
@@ -230,6 +234,8 @@ async def start_app(
     jupyter_link: bool = False,
     jupyter_heartbeat: bool = False,
 ):
+    from aiohttp import web
+
     init_web_app()
 
     # this function is called from jupyter notebook, so set headless = True
