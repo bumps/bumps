@@ -490,7 +490,7 @@ def get_running_loop():
 
 
 @register
-async def start_fit_thread(fitter_id: str = "", options=None, terminate_on_finish=False):
+async def start_fit_thread(fitter_id: str = "", options=None, terminate_on_finish=False, await_complete=False):
     options = {} if options is None else options  # session_id: str = app["active_session"]
     fitProblem = state.problem.fitProblem if state.problem is not None else None
     if fitProblem is None:
@@ -550,7 +550,8 @@ async def start_fit_thread(fitter_id: str = "", options=None, terminate_on_finis
         state.autosave()
         fit_thread.start()
         state.fit_thread = fit_thread
-        return fit_complete_future
+        if await_complete:
+            await fit_complete_future
 
 
 async def _fit_progress_handler(event: Dict):

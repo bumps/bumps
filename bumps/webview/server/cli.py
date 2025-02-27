@@ -270,8 +270,7 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
 
         async def start_fit(App=None):
             if api.state.problem is not None:
-                fit_complete_future = await api.start_fit_thread(fitter_id, fitter_settings, options.exit)
-                await fit_complete_future
+                await api.start_fit_thread(fitter_id, fitter_settings, options.exit, await_complete=True)
 
         on_startup.append(start_fit)
     else:
