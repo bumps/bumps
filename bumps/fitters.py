@@ -795,7 +795,7 @@ class DreamFit(FitBase):
             steps = (draws + pop_size - 1) // pop_size
         # TODO: need a better way to announce number of steps
         # maybe somehow print iteration # of # iters in the monitor?
-        print("# steps: %d, # draws: %d" % (steps, pop_size * steps))
+        print(f"# burn: {options['burn']} # steps: {steps}, # draws: {pop_size * steps}")
         population = population[None, :, :]
         sampler = Dream(
             model=self.dream_model,

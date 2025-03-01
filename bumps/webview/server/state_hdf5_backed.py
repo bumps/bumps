@@ -374,6 +374,7 @@ class State:
     fit_abort: Optional[Event] = None
     fit_abort_event: Event
     fit_complete_event: Event
+    fit_complete_future: asyncio.Future
     fit_uncertainty_final: Event
     fit_enabled: Event
     calling_loop: Optional[asyncio.AbstractEventLoop] = None
