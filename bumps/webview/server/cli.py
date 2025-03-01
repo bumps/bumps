@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Dict, Optional, Union, List
 import warnings
+import signal
 
 from . import api
 from . import persistent_settings
@@ -13,6 +14,7 @@ from .fit_options import parse_fit_options
 from .state_hdf5_backed import SERIALIZERS, UNDEFINED
 
 
+# TODO: try datargs to build a parser from the typed dataclass
 @dataclass
 class BumpsOptions:
     """provide type hints for arguments"""
@@ -38,6 +40,13 @@ class BumpsOptions:
     fit_options: Optional[List[str]] = None
     chisq: bool = False
     version: bool = False
+
+    # Simulate
+    simulate: bool = False
+    simrandom: bool = False
+    shake: bool = False
+    noise: float = 5
+    seed: int = 0  # want seed for simulation and reproducible stochastic fits
 
 
 OPTIONS_CLASS = BumpsOptions
@@ -140,6 +149,36 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         help="save most recently used path to disk for persistence between sessions",
     )
 
+    # Simulation controls.
+    sim = parser.add_argument_group("Simulation")
+    sim.add_argument(
+        "--simulate",
+        action="store_true",
+        help="simulate a dataset using the initial problem parameters",
+    )
+    sim.add_argument(
+        "--simrandom",
+        action="store_true",
+        help="simulate a dataset using the randome problem parameters",
+    )
+    sim.add_argument(
+        "--shake",
+        action="store_true",
+        help="set random parameters before fitting",
+    )
+    sim.add_argument(
+        "--noise",
+        type=float,
+        default=5.0,
+        help="percent noise to add to the simulated data",
+    )
+    sim.add_argument(
+        "--seed",
+        type=int,
+        default=0,
+        help="random number seed, or 0 for none",
+    )
+
     # Program controls.
     misc = parser.add_argument_group("Miscellaneous")
     misc.add_argument("--start", action="store_true", help="start fit when problem loaded")
@@ -177,6 +216,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         for k, v in arg_defaults.items():
             setattr(namespace, k, v)
     args = parser.parse_args(namespace=namespace)
+    print(f"{type(args)=} {args=}")
     return args
 
 
@@ -205,6 +245,8 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS(), await_comple
 
     read_store = options.read_store if options.read_store is not None else options.store
     write_store = options.write_store if options.write_store is not None else options.store
+
+    # TODO: why is session file read immediately but model.py delayed?
     if read_store is not None:
         read_store_path = Path(read_store).absolute()
         api.state.read_session_file(str(read_store_path))
@@ -255,6 +297,32 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS(), await_comple
 
         on_startup.append(load_problem)
 
+    # TODO: reproducibility requires using the same seed -- where is it printed?
+    # TODO: store the seed with the fit results
+    if options.seed:
+        np.random.seed(options.seed)
+
+    # TODO: logic for showing parameter values (defaults, simulated, initial)
+    if options.simulate or options.simrandom:
+        noise = None if options.noise <= 0.0 else options.noise
+
+        async def simulate(App=None):
+            problem = api.state.problem.fitProblem
+            if options.simrandom:
+                problem.randomize()
+            problem.simulate_data(noise=noise)
+            print("simulation parameters")
+            print(problem.summarize())
+            print("chisq at simulation", problem.chisq_str())
+
+        on_startup.append(simulate)
+
+    if options.shake:
+
+        async def shake(App=None):
+            problem = api.state.problem.fitProblem
+            problem.randomize()
+
     if options.chisq:
 
         async def show_chisq(App=None):
@@ -269,6 +337,7 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS(), await_comple
     elif options.start:
 
         async def start_fit(App=None):
+            print(f"{fitter_settings=}")
             if api.state.problem is not None:
                 await api.start_fit_thread(fitter_id, fitter_settings, options.exit, await_complete=await_complete)
 
@@ -286,6 +355,26 @@ async def _run_operations(on_start):
         await step(None)
 
 
+SIGINT_TIMESTAMP = 0
+SIGINT_TIMEOUT = 2
+
+
+def sigint_handler(sig, frame):
+    global SIGINT_TIMESTAMP
+
+    print("\nSignal handler caught KeyboardInterrupt")
+
+    timestamp = time.time()
+    if timestamp - SIGINT_TIMESTAMP < SIGINT_TIMEOUT:
+        print("second KeyboardInterrupt, exiting")
+        sys.exit(0)
+    SIGINT_TIMESTAMP = timestamp
+
+    state = api.state
+    if state.fit_thread is not None and state.fit_thread.is_alive():
+        state.fit_abort_event.set()
+
+
 def main(options: Optional[OPTIONS_CLASS] = None):
     # this entrypoint will be used to start gui, so set headless = False
     # (other contexts e.g. jupyter notebook will directly call start_app)
@@ -296,6 +385,7 @@ def main(options: Optional[OPTIONS_CLASS] = None):
     async def emit(*args, **kw):
         print("emit", args, kw)
 
+    signal.signal(signal.SIGINT, sigint_handler)
     api.EMITTERS["cli"] = emit
     on_start = interpret_fit_options(options)
     asyncio.run(_run_operations(on_start))

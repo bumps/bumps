@@ -197,6 +197,7 @@ class FitThread(Thread):
         self.abort_event = abort_event
         self.problem = problem
         self.fitclass = fitclass
+        print(f"   *** FitThread {options}")
         self.options = options if isinstance(options, dict) else dict()
         self.mapper = mapper
         self.parallel = parallel
@@ -217,7 +218,7 @@ class FitThread(Thread):
         # inside the GUI monitor otherwise AppPanel will not be able to
         # recognize that it is the same problem when updating views.
         try:
-            print("Starting fit")
+            # print("Starting fit")
             monitors = [
                 GUIProgressMonitor(self.problem),
                 ConvergenceMonitor(self.problem, rate=self.convergence_update),
@@ -246,6 +247,7 @@ class FitThread(Thread):
             # print "fitclass",self.fitclass
             problem = deepcopy(self.problem)
             # print "fitclass id",id(self.fitclass),self.fitclass,threading.current_thread()
+            print(f"   *** FitDriver {self.options}")
             driver = FitDriver(
                 self.fitclass,
                 problem=problem,

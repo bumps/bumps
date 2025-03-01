@@ -521,6 +521,7 @@ async def start_fit_thread(fitter_id: str = "", options=None, terminate_on_finis
         state.fit_complete_future = fit_complete_future
         state.fit_uncertainty_final.clear()
 
+        print(f"*** start_fit_thread {options=}")
         fit_thread = FitThread(
             abort_event=state.fit_abort_event,
             problem=fitProblem,
