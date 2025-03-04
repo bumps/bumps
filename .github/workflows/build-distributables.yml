@@ -63,7 +63,7 @@ jobs:
         security find-identity -p codesigning
 
         echo "Creating MacOS App"
-        APP=`find artifacts -name "bumps-*\.app" -print -quit`
+        APP=`find app_build -name "bumps-*\.app" -print -quit`
         #  Do signing...
         find $APP -name "*\.so" -print0 | xargs -0 -I {} codesign --force --timestamp --options=runtime --verify --verbose=4 --sign 'Developer ID Application: The International Scattering Alliance (8CX8K63BQM)' {}
         find $APP -name "*\.dylib" -print0 | xargs -0 -I {} codesign --force --timestamp --options=runtime --verify --verbose=4 --sign 'Developer ID Application: The International Scattering Alliance (8CX8K63BQM)' {}
@@ -83,6 +83,8 @@ jobs:
 
         # Staple
         xcrun stapler staple $DMG
+
+        cp $DMG artifacts/
 
         # Overwrite the distributables
         {
