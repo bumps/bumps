@@ -39,9 +39,57 @@ jobs:
         ls artifacts/*
         {
           echo 'DISTRIBUTABLES<<EOF'
-          ls artifacts/*
+          ls artifacts
           echo EOF
         } >> "$GITHUB_ENV"
+
+    - name: Create MacOS App
+      if: startsWith(matrix.config.os, 'macos')
+      shell: bash -el {0}
+      env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE_ISA }}
+          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_ISA_PWD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+          NOTARIZATION_USERNAME: ${{ secrets.MACOS_NOTARIZATION_USERNAME }}
+          NOTARIZATION_PASSWORD: ${{ secrets.MACOS_NOTARIZATION_PASSWORD }}
+      run: |
+        echo $MACOS_CERTIFICATE | base64 --decode > certificate.p12
+        security create-keychain -p $KEYCHAIN_PASSWORD build.keychain
+        security default-keychain -s build.keychain
+        security unlock-keychain -p $KEYCHAIN_PASSWORD build.keychain
+        security import certificate.p12 -k build.keychain -P $MACOS_CERTIFICATE_PWD -T /usr/bin/codesign
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $KEYCHAIN_PASSWORD build.keychain
+        security find-identity -p codesigning
+
+        echo "Creating MacOS App"
+        APP=`find artifacts -name "bumps-*\.app" -print -quit`
+        #  Do signing...
+        find $APP -name "*\.so" -print0 | xargs -0 -I {} codesign --force --timestamp --options=runtime --verify --verbose=4 --sign 'Developer ID Application: The International Scattering Alliance (8CX8K63BQM)' {}
+        find $APP -name "*\.dylib" -print0 | xargs -0 -I {} codesign --force --timestamp --options=runtime --verify --verbose=4 --sign 'Developer ID Application: The International Scattering Alliance (8CX8K63BQM)' {}
+        find "$APP/Contents/Resources/bin" -type f -perm +111 -print0 | xargs -0 -I {} codesign --force --timestamp --options=runtime --verify --verbose=4 --sign 'Developer ID Application: The International Scattering Alliance (8CX8K63BQM)' {}
+
+        codesign --verify --options=runtime --entitlements $APP/Contents/Entitlements.plist --timestamp --deep --verbose=4 --force --sign "Developer ID Application: The International Scattering Alliance (8CX8K63BQM)" $APP
+        DMG="${APP%.app}.dmg"
+        hdiutil create $DMG -srcfolder $APP -ov -format UDZO
+        codesign -s "Developer ID Application: The International Scattering Alliance (8CX8K63BQM)" $DMG
+        
+        # Clean up signing keys
+        security delete-keychain build.keychain
+        rm certificate.p12
+
+        # Notarize
+        xcrun notarytool submit --wait --apple-id $NOTARIZATION_USERNAME --password $NOTARIZATION_PASSWORD --team-id 8CX8K63BQM $DMG
+
+        # Staple
+        xcrun stapler staple $DMG
+
+        # Overwrite the distributables
+        {
+          echo 'DISTRIBUTABLES<<EOF'
+          ls artifacts
+          echo EOF
+        } >> "$GITHUB_ENV"
+
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
