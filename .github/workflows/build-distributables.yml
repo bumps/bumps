@@ -40,7 +40,7 @@ jobs:
         ls artifacts/*
         {
           echo 'DISTRIBUTABLES<<EOF'
-          ls artifacts
+          ls artifacts/*
           echo EOF
         } >> "$GITHUB_ENV"
 
@@ -89,7 +89,7 @@ jobs:
         # Overwrite the distributables
         {
           echo 'DISTRIBUTABLES<<EOF'
-          ls artifacts
+          ls artifacts/*
           echo EOF
         } >> "$GITHUB_ENV"
 
