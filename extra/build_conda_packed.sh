@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ENV_NAME="isolated-base"
-PYTHON_VERSION="3.10"
+PYTHON_VERSION="3.12"
 PKGNAME="bumps"
 SUBNAME="packed"
 OUTPUT="artifacts"
@@ -62,7 +62,10 @@ mv "$tmpdir/$PKGNAME" "$tmpdir/$PKGNAME-$version"
 
 case $OSTYPE in
   # darwin*) cd $tmpdir && hdiutil create -srcfolder  "$PKGNAME-$version" -volname "Refl1D_Jupyter" "$SRC_DIR/Refl1D_Jupyter.dmg" ;;
-  darwin*) pkgbuild --root $tmpdir --identifier org.reflectometry.$PKGNAME-$SUBNAME --version $version --ownership preserve --install-location /Applications "$SRC_DIR/$OUTPUT/$PKGNAME-$SUBNAME-$version-$platform-$(uname -m).pkg" ;;
+  darwin*) echo pkgbuild --root $tmpdir --identifier org.reflectometry.$PKGNAME-$SUBNAME --version $version --ownership preserve --install-location /Applications "$SRC_DIR/$OUTPUT/$PKGNAME-$SUBNAME-$version-$platform-$(uname -m).pkg" ;
+           cp -r "$SRC_DIR/extra/BumpsWebviewTemplate.app" "$SRC_DIR/$OUTPUT/$PKGNAME-$SUBNAME-$version-$platform-$(uname -m).app" ;
+           cp -R -P "$tmpdir/$PKGNAME-$version/env" "$SRC_DIR/$OUTPUT/$PKGNAME-$SUBNAME-$version-$platform-$(uname -m).app/Contents/Resources" ;
+           plutil -replace CFBundleVersion -string "$version" "$SRC_DIR/$OUTPUT/$PKGNAME-$SUBNAME-$version-$platform-$(uname -m).app/Contents/Info.plist" ;;
   msys*) conda install -y 7zip ;
          curl -L https://www.7-zip.org/a/7z2106-x64.exe --output 7z_exe ;
          7z e 7z_exe -aoa 7z.sfx ;
