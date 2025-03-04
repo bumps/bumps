@@ -30,6 +30,7 @@ jobs:
       with:
         auto-update-conda: true
         python-version: ${{ matrix.config.py }}
+        miniforge-version: latest
 
     - name: Build conda-packed (all platforms)
       shell: bash -el {0}
