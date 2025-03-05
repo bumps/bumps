@@ -75,7 +75,13 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         action="store_true",
         help="listen on all interfaces, including external (local connections only if not set)",
     )
-    server.add_argument("-p", "--port", default=0, type=int, help="port on which to start the server")
+    server.add_argument(
+        "-p",
+        "--port",
+        default=0,
+        type=int,
+        help="port on which to start the server",
+    )
     server.add_argument(
         "--hub",
         default=None,
@@ -181,7 +187,11 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
 
     # Program controls.
     misc = parser.add_argument_group("Miscellaneous")
-    misc.add_argument("--start", action="store_true", help="start fit when problem loaded")
+    misc.add_argument(
+        "--start",
+        action="store_true",
+        help="start fit when problem loaded",
+    )
     misc.add_argument(
         "--exit",
         action="store_true",
@@ -216,7 +226,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         for k, v in arg_defaults.items():
             setattr(namespace, k, v)
     args = parser.parse_args(namespace=namespace)
-    print(f"{type(args)=} {args=}")
+    # print(f"{type(args)=} {args=}")
     return args
 
 
@@ -299,10 +309,10 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS(), await_comple
 
     # TODO: reproducibility requires using the same seed -- where is it printed?
     # TODO: store the seed with the fit results
+    # TODO: make sure seed works with async and threading and mpi
     if options.seed:
         np.random.seed(options.seed)
 
-    # TODO: logic for showing parameter values (defaults, simulated, initial)
     if options.simulate or options.simrandom:
         noise = None if options.noise <= 0.0 else options.noise
 
@@ -311,9 +321,13 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS(), await_comple
             if options.simrandom:
                 problem.randomize()
             problem.simulate_data(noise=noise)
-            print("simulation parameters")
-            print(problem.summarize())
-            print("chisq at simulation", problem.chisq_str())
+            if options.shake:
+                # Show the parameters for the simulated model, but only if
+                # we are going to shake the model later.
+                # TODO: how do these make it to the GUI?
+                print("simulation parameters")
+                print(problem.summarize())
+                print("chisq", problem.chisq_str())
 
         on_startup.append(simulate)
 
@@ -323,6 +337,8 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS(), await_comple
             problem = api.state.problem.fitProblem
             problem.randomize()
 
+        on_startup.append(shake)
+
     if options.chisq:
 
         async def show_chisq(App=None):
@@ -330,18 +346,21 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS(), await_comple
                 # show_cov won't work yet because I don't have driver
                 # defined and because I don't have a --cov option.
                 # if opts.cov: fitdriver.show_cov()
-                chisq = api.state.problem.fitProblem.chisq_str()
-                print("chisq", chisq)
+                problem = api.state.problem.fitProblem
+                print("chisq", problem.chisq_str())
 
         on_startup.append(show_chisq)
+
     elif options.start:
 
         async def start_fit(App=None):
-            print(f"{fitter_settings=}")
+            # print(f"{fitter_settings=}")
             if api.state.problem is not None:
+                problem = api.state.problem.fitProblem
                 await api.start_fit_thread(fitter_id, fitter_settings, options.exit, await_complete=await_complete)
 
         on_startup.append(start_fit)
+
     else:
         # signal that no fit is running at startup, even if a fit was
         # interrupted and the state was saved:
@@ -360,6 +379,9 @@ SIGINT_TIMEOUT = 2
 
 
 def sigint_handler(sig, frame):
+    import sys
+    import time
+
     global SIGINT_TIMESTAMP
 
     print("\nSignal handler caught KeyboardInterrupt")
@@ -383,7 +405,8 @@ def main(options: Optional[OPTIONS_CLASS] = None):
     logger.info(options)
 
     async def emit(*args, **kw):
-        print("emit", args, kw)
+        ...
+        # print("emit", args, kw)
 
     signal.signal(signal.SIGINT, sigint_handler)
     api.EMITTERS["cli"] = emit

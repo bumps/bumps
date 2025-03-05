@@ -7,7 +7,7 @@ from blinker import Signal
 
 import numpy as np
 from bumps import monitor
-from bumps.fitters import FitDriver, nllf_scale, format_uncertainty
+from bumps.fitters import FitDriver, nllf_scale, format_uncertainty, ConsoleMonitor
 from bumps.mapper import MPMapper, SerialMapper, can_pickle
 from bumps.util import redirect_console
 from bumps.history import History
@@ -43,14 +43,14 @@ class GUIProgressMonitor(monitor.TimedUpdate):
             chisq=chisq,
             point=history.point[0] + 0,
         )  # avoid race
-        print("show progress", evt)
+        # print("show progress", evt)
         EVT_FIT_PROGRESS.send(evt)
 
     def show_improvement(self, history):
         evt = dict(
             message="improvement", step=history.step[0], value=history.value[0], point=history.point[0] + 0
         )  # avoid race
-        print("show improvement", evt)
+        # print("show improvement", evt)
         EVT_FIT_PROGRESS.send(evt)
 
 
@@ -100,7 +100,7 @@ class ConvergenceMonitor(monitor.Monitor):
 
         if self.rate > 0 and history.time[0] >= self.time + self.rate:
             evt = dict(message=self.message, pop=self.progress())
-            print("convergence progress")
+            # print("convergence progress")
             EVT_FIT_PROGRESS.send(evt)
             self.time = history.time[0]
 
@@ -112,7 +112,7 @@ class ConvergenceMonitor(monitor.Monitor):
         Close out the monitor
         """
         evt = dict(message=self.message, pop=self.progress())
-        print("convergence final")
+        # print("convergence final")
         EVT_FIT_PROGRESS.send(evt)
 
 
@@ -136,7 +136,7 @@ class DreamMonitor(monitor.Monitor):
             message=message,
             uncertainty_state=None,
         )
-        print("Dream init", evt)
+        # print("Dream init", evt)
         EVT_FIT_PROGRESS.send(evt)
 
     def config_history(self, history):
@@ -154,7 +154,7 @@ class DreamMonitor(monitor.Monitor):
                     time=self.time,
                     uncertainty_state=deepcopy(self.uncertainty_state),
                 )
-                print("Dream update", evt)
+                # print("Dream update", evt)
                 EVT_FIT_PROGRESS.send(evt)
 
     def final(self):
@@ -168,7 +168,7 @@ class DreamMonitor(monitor.Monitor):
             time=self.time,
             uncertainty_state=deepcopy(self.uncertainty_state),
         )
-        print("Dream final", evt)
+        # print("Dream final", evt)
         EVT_FIT_PROGRESS.send(evt)
 
 
@@ -197,7 +197,7 @@ class FitThread(Thread):
         self.abort_event = abort_event
         self.problem = problem
         self.fitclass = fitclass
-        print(f"   *** FitThread {options}")
+        # print(f"   *** FitThread {options}")
         self.options = options if isinstance(options, dict) else dict()
         self.mapper = mapper
         self.parallel = parallel
@@ -229,6 +229,7 @@ class FitThread(Thread):
                 DreamMonitor(
                     self.problem, fitter=self.fitclass, message="uncertainty_update", rate=self.uncertainty_update
                 ),
+                ConsoleMonitor(self.problem),
             ]
 
             mapper = self.mapper
@@ -247,7 +248,7 @@ class FitThread(Thread):
             # print "fitclass",self.fitclass
             problem = deepcopy(self.problem)
             # print "fitclass id",id(self.fitclass),self.fitclass,threading.current_thread()
-            print(f"   *** FitDriver {self.options}")
+            # print(f"   *** FitDriver {self.options}")
             driver = FitDriver(
                 self.fitclass,
                 problem=problem,
@@ -258,7 +259,6 @@ class FitThread(Thread):
             )
 
             x, fx = driver.fit()
-            print("fit complete with", x, fx)
             # Give final state message from monitors
             for M in monitors:
                 if hasattr(M, "final"):
@@ -268,6 +268,7 @@ class FitThread(Thread):
                 driver.show()
                 captured_output = fid.getvalue()
 
+            print("fit complete with", x, fx)
             evt = dict(
                 message="complete",
                 problem=self.problem,
@@ -284,4 +285,4 @@ class FitThread(Thread):
             evt = dict(message="error", error_string=str(exc), traceback=tb)
             EVT_FIT_COMPLETE.send(evt)
 
-        print("exiting thread")
+        # print("exiting thread")
