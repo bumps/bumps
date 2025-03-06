@@ -87,6 +87,7 @@ version = { attr = "bumps.__version__" }
 
 [tool.setuptools.packages.find]
 include = ["bumps*"]
+exclude = ["**/node_modules*"]
 
 [tool.versioningit.vcs]
 method = "git"
