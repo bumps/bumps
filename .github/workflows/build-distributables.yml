@@ -7,6 +7,7 @@ on:
 
 env:
   branch_name: master
+  PACKAGE_NAME: bumps
 
 jobs:
   build_and_publish:
@@ -36,13 +37,8 @@ jobs:
       shell: bash -el {0}
       run: |
         conda activate base
+        conda install -y versioningit nodejs
         ./extra/build_conda_packed.sh
-        ls artifacts/*
-        {
-          echo 'DISTRIBUTABLES<<EOF'
-          ls artifacts/*
-          echo EOF
-        } >> "$GITHUB_ENV"
 
     - name: Create MacOS App
       if: startsWith(matrix.config.os, 'macos')
@@ -63,17 +59,27 @@ jobs:
         security find-identity -p codesigning
 
         echo "Creating MacOS App"
-        APP=`find app_build -name "bumps-*\.app" -print -quit`
+        # This assumes that conda-packed enviroment exists at "conda_packed/env"
+
+        VERSION=$(versioningit)
+        FULL_PACKAGE_NAME="$PACKAGE_NAME-$VERSION-$(uname -s)-$(uname -m)"
+        APP="app_build/$FULL_PACKAGE_NAME.app"
+        mkdir -p app_build
+        ln -s /Applications app_build/Applications
+        cp -r "extra/BumpsWebviewTemplate.app" "$APP"
+        cp -R -P "conda_packed/env" "$APP/Contents/Resources"
+        plutil -replace CFBundleVersion -string "$VERSION" "$APP/Contents/Info.plist"
+
         #  Do signing...
         find $APP -name "*\.so" -print0 | xargs -0 -I {} codesign --force --timestamp --options=runtime --verify --verbose=4 --sign 'Developer ID Application: The International Scattering Alliance (8CX8K63BQM)' {}
         find $APP -name "*\.dylib" -print0 | xargs -0 -I {} codesign --force --timestamp --options=runtime --verify --verbose=4 --sign 'Developer ID Application: The International Scattering Alliance (8CX8K63BQM)' {}
         find "$APP/Contents/Resources/bin" -type f -perm +111 -print0 | xargs -0 -I {} codesign --force --timestamp --options=runtime --verify --verbose=4 --sign 'Developer ID Application: The International Scattering Alliance (8CX8K63BQM)' {}
 
         codesign --verify --options=runtime --entitlements $APP/Contents/Entitlements.plist --timestamp --deep --verbose=4 --force --sign "Developer ID Application: The International Scattering Alliance (8CX8K63BQM)" $APP
-        DMG="${APP%.app}.dmg"
-        hdiutil create $DMG -srcfolder $APP -ov -format UDZO
+        DMG="artifacts/$FULL_PACKAGE_NAME.dmg"
+        hdiutil create $DMG -srcfolder app_build -ov -format UDZO
         codesign -s "Developer ID Application: The International Scattering Alliance (8CX8K63BQM)" $DMG
-        
+
         # Clean up signing keys
         security delete-keychain build.keychain
         rm certificate.p12
@@ -84,21 +90,51 @@ jobs:
         # Staple
         xcrun stapler staple $DMG
 
-        cp $DMG artifacts/
+    - name: Create Windows Installer
+      if: startsWith(matrix.config.os, 'windows')
+      shell: bash -el {0}
+      run: |
+        echo "Creating Windows Installer"
+        # This assumes that conda-packed enviroment exists at "conda_packed/env"
+        VERSION=$(versioningit)
 
-        # Overwrite the distributables
-        {
-          echo 'DISTRIBUTABLES<<EOF'
-          ls artifacts/*
-          echo EOF
-        } >> "$GITHUB_ENV"
+        FULL_PACKAGE_NAME="$PACKAGE_NAME-$VERSION-Windows-$(uname -m)"
 
+        cp extra/platform_scripts/windows/* conda_packed/
+        conda install -y nsis
+
+        # create the installer:
+        $CONDA_PREFIX/NSIS/makensis.exe extra/installer.nsi
+
+        mv extra/BumpsWebviewSetup.exe "artifacts/$FULL_PACKAGE_NAME-installer.exe"
+
+    - name: Create Linux Installer
+      if: startsWith(matrix.config.os, 'ubuntu')
+      run: |
+        echo "Creating Linux Installer"
+        VERSION=$(versioningit)
+        FULL_PACKAGE_NAME="$PACKAGE_NAME-$VERSION-$(uname -s)-$(uname -m)"
+
+        cp extra/platform_scripts/linux/* conda_packed/
+
+        mv conda_packed/ "$PACKAGE_NAME-$VERSION"
+        tar -czf "artifacts/$FULL_PACKAGE_NAME.tar.gz" "$PACKAGE_NAME-$VERSION"
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: artifacts-${{ matrix.config.os }}-${{ matrix.config.py }}
         path: artifacts/*
+
+    - name: Enumerate artifacts
+      shell: bash -el {0}
+      run: |
+        # Collect the distributables
+        {
+          echo 'DISTRIBUTABLES<<EOF'
+          ls artifacts/*
+          echo EOF
+        } >> "$GITHUB_ENV"
 
     - name: Update current release
       if: startsWith(github.ref, 'refs/tags')
