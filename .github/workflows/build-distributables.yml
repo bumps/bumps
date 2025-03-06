@@ -77,6 +77,7 @@ jobs:
 
         codesign --verify --options=runtime --entitlements $APP/Contents/Entitlements.plist --timestamp --deep --verbose=4 --force --sign "Developer ID Application: The International Scattering Alliance (8CX8K63BQM)" $APP
         DMG="artifacts/$FULL_PACKAGE_NAME.dmg"
+        mkdir -p artifacts
         hdiutil create $DMG -srcfolder app_build -ov -format UDZO
         codesign -s "Developer ID Application: The International Scattering Alliance (8CX8K63BQM)" $DMG
 
