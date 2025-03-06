@@ -17,4 +17,4 @@ on run argv
          activate
       end tell
    end if
-end run 
+end run
