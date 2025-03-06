@@ -8,10 +8,7 @@ SCRIPT_DIR=$(realpath $(dirname "${BASH_SOURCE[0]}"))
 SRC_DIR=$(dirname "$SCRIPT_DIR")
 pkgdir="$SRC_DIR/$OUTPUT"
 
-eval "$(conda shell.bash hook)"
-conda activate base || { echo 'failed: conda not installed'; exit 1; }
-
-conda install -y conda-pack nodejs
+conda install -y conda-pack
 if ! test -f "$ENV_NAME.tar.gz"; then
   echo "creating isolated environment"
   conda remove -n "$ENV_NAME" -y --all
