@@ -32,11 +32,11 @@ jobs:
         auto-update-conda: true
         python-version: ${{ matrix.config.py }}
         miniforge-version: latest
+        activate-environment: builder
 
     - name: Build conda-packed (all platforms)
       shell: bash -el {0}
       run: |
-        conda activate base
         conda install -y versioningit nodejs
         ./extra/build_conda_packed.sh
 
