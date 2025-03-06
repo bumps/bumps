@@ -12,6 +12,9 @@ env:
 jobs:
   build_and_publish:
     runs-on: ${{ matrix.config.os }}
+    defaults:
+      run:
+        shell: bash -l {0}
     strategy:
       matrix:
         config:
@@ -35,14 +38,12 @@ jobs:
         activate-environment: builder
 
     - name: Build conda-packed (all platforms)
-      shell: bash -el {0}
       run: |
         conda install -y versioningit nodejs
         ./extra/build_conda_packed.sh
 
     - name: Create MacOS App
       if: startsWith(matrix.config.os, 'macos')
-      shell: bash -el {0}
       env:
           MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE_ISA }}
           MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_ISA_PWD }}
@@ -93,7 +94,6 @@ jobs:
 
     - name: Create Windows Installer
       if: startsWith(matrix.config.os, 'windows')
-      shell: bash -el {0}
       run: |
         echo "Creating Windows Installer"
         # This assumes that conda-packed enviroment exists at "conda_packed/env"
@@ -136,7 +136,6 @@ jobs:
         path: artifacts/*
 
     - name: Enumerate artifacts
-      shell: bash -el {0}
       run: |
         # Collect the distributables
         {
