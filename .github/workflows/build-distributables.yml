@@ -119,6 +119,7 @@ jobs:
         cp extra/platform_scripts/linux/* conda_packed/
 
         mv conda_packed/ "$PACKAGE_NAME-$VERSION"
+        mkdir -p artifacts
         tar -czf "artifacts/$FULL_PACKAGE_NAME.tar.gz" "$PACKAGE_NAME-$VERSION"
 
     - name: Upload artifacts
