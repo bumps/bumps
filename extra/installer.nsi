@@ -7,7 +7,9 @@
 
 ;-------------------------------------------------------------------------------
 ; Constants
-!define PRODUCT_NAME "BumpsWebview"
+!ifndef PRODUCT_NAME
+    !define PRODUCT_NAME "Bumps"
+!endif
 !define PRODUCT_DESCRIPTION "Bayesian Uncertainty Modeling for the Physical Sciences"
 !define COPYRIGHT "Copyright © 2018 The bumps developers"
 !define PRODUCT_VERSION 1.0.0.1013
@@ -18,10 +20,10 @@
 
 ;-------------------------------------------------------------------------------
 ; Attributes
-Name "Bumps-Webview"
+Name "${PRODUCT_NAME}"
 OutFile "BumpsWebviewSetup.exe"
 InstallDir "$LocalAppData\${PRODUCT_NAME}"
-InstallDirRegKey HKCU "Software\Reflectometry-Org\Bumps-Webview" ""
+InstallDirRegKey HKCU "Software\Reflectometry-Org\${PRODUCT_NAME}" ""
 RequestExecutionLevel user ; user|highest|admin
 
 ;-------------------------------------------------------------------------------
