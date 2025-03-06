@@ -1,79 +1,42 @@
 #!/bin/bash
 
+# Definitions
 ENV_NAME="isolated-base"
 PYTHON_VERSION="3.12"
-PKGNAME="bumps"
-SUBNAME="packed"
-OUTPUT="artifacts"
-APP_BUILD_DIR="app_build"
+OUTPUT="conda_packed"
 SCRIPT_DIR=$(realpath $(dirname "${BASH_SOURCE[0]}"))
 SRC_DIR=$(dirname "$SCRIPT_DIR")
-
-mkdir -p $OUTPUT
+pkgdir="$SRC_DIR/$OUTPUT"
 
 eval "$(conda shell.bash hook)"
 conda activate base || { echo 'failed: conda not installed'; exit 1; }
 
-conda install -y conda-pack
+conda install -y conda-pack nodejs
 if ! test -f "$ENV_NAME.tar.gz"; then
   echo "creating isolated environment"
   conda remove -n "$ENV_NAME" -y --all
-  conda create -n "$ENV_NAME" -q --force -y "python=$PYTHON_VERSION" "nodejs"
+  conda create -n "$ENV_NAME" -q --force -y "python=$PYTHON_VERSION" "nodejs" "micromamba"
   conda-pack -n "$ENV_NAME" -f -o "$ENV_NAME.tar.gz"
 fi
 
 # unpack the new environment, that contains only python + pip
-tmpdir=$(mktemp -d)
-pkgdir="$tmpdir/$PKGNAME"
-envdir="$pkgdir/env"
+rm -rf "$pkgdir"
+envdir="$pkgdir/${PKGNAME:+$PKGNAME-}env"
 mkdir -p "$envdir"
 tar -xzf "$ENV_NAME.tar.gz" -C "$envdir"
 
-# activate the unpacked environment and install pip packages
-# add our batch script:
-case $OSTYPE in
-  darwin*) cp -r ./extra/platform_scripts/bumps_webview.app "$pkgdir" ;
-           cp -r ./extra/platform_scripts/bumps_shell.app "$pkgdir" ;;
-  msys*) cp ./extra/platform_scripts/bumps_webview.bat "$pkgdir" ;
-         cp ./extra/platform_scripts/bumps_shell.bat "$pkgdir" ;;
-  linux*) cp -r ./extra/platform_scripts/make_linux_desktop_shortcut.sh "$pkgdir" ;
-          cp -r ./extra/platform_scripts/bumps-webview "$pkgdir" ;;
-esac
-
-case "$OSTYPE" in
- "msys") bindir=$envdir ;
-         platform="Windows";;
- *) bindir=$envdir/bin ;
-    platform="$(uname -s)";;
-esac
-
+# add any icons
 mkdir -p $pkgdir/share/icons
-cp $SCRIPT_DIR/*.svg $pkgdir/share/icons
-cp $SCRIPT_DIR/*.png $pkgdir/share/icons
+cp $SCRIPT_DIR/*.svg $OUTPUT/share/icons
+cp $SCRIPT_DIR/*.png $OUTPUT/share/icons
+cp $SCRIPT_DIR/*.ico $OUTPUT/share/icons
 
 # base path to source is in parent of SCRIPT_DIR
-$bindir/python -m pip install --no-input --no-compile .[webview]
+conda activate $envdir
+pip install --no-input --no-compile "$SRC_DIR[webview]"
 
-cd $tmpdir
 # build the client
-$bindir/python -m bumps.webview.build_client --cleanup
+python -m bumps.webview.build_client --cleanup
 
-version=$($bindir/python -c "import bumps; print(bumps.__version__)")
-mv "$tmpdir/$PKGNAME" "$tmpdir/$PKGNAME-$version"
-
-case $OSTYPE in
-  # darwin*) cd $tmpdir && hdiutil create -srcfolder  "$PKGNAME-$version" -volname "Refl1D_Jupyter" "$SRC_DIR/Refl1D_Jupyter.dmg" ;;
-  darwin*) echo pkgbuild --root $tmpdir --identifier org.reflectometry.$PKGNAME-$SUBNAME --version $version --ownership preserve --install-location /Applications "$SRC_DIR/$OUTPUT/$PKGNAME-$SUBNAME-$version-$platform-$(uname -m).pkg" ;
-           mkdir -p "$SRC_DIR/$APP_BUILD_DIR" ;
-           cp -r "$SRC_DIR/extra/BumpsWebviewTemplate.app" "$SRC_DIR/$APP_BUILD_DIR/$PKGNAME-$SUBNAME-$version-$platform-$(uname -m).app" ;
-           cp -R -P "$tmpdir/$PKGNAME-$version/env" "$SRC_DIR/$APP_BUILD_DIR/$PKGNAME-$SUBNAME-$version-$platform-$(uname -m).app/Contents/Resources" ;
-           plutil -replace CFBundleVersion -string "$version" "$SRC_DIR/$APP_BUILD_DIR/$PKGNAME-$SUBNAME-$version-$platform-$(uname -m).app/Contents/Info.plist" ;;
-  msys*) conda install -y 7zip ;
-         curl -L https://www.7-zip.org/a/7z2106-x64.exe --output 7z_exe ;
-         7z e 7z_exe -aoa 7z.sfx ;
-         7z a -mhe=on -mx=1 -sfx".\7z.sfx" "$SRC_DIR/$OUTPUT/$PKGNAME-$SUBNAME-$version-$platform-$(uname -m)-self-extracting.exe" "$PKGNAME-$version" ;;
-esac
-
-cd $tmpdir && tar -czf "$SRC_DIR/$OUTPUT/$PKGNAME-$SUBNAME-$version-$platform-$(uname -m).tar.gz" "$PKGNAME-$version"
-cd $SRC_DIR
-rm -rf $tmpdir
+conda deactivate
+# done
