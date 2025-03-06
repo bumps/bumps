@@ -1,4 +1,5 @@
 import asyncio
+import threading
 from copy import deepcopy
 from datetime import datetime
 from typing import (
@@ -24,7 +25,6 @@ import shutil
 import os
 import tempfile
 from pathlib import Path
-from threading import Event
 from bumps.serialize import serialize, deserialize
 from bumps.util import get_libraries
 import h5py
@@ -371,11 +371,14 @@ class State:
     port: int
     parallel: int = 0
     fit_thread: Optional["FitThread"] = None
-    fit_abort: Optional[Event] = None
-    fit_abort_event: Event
-    fit_complete_event: Event
-    fit_complete_future: asyncio.Future
-    fit_enabled: Event
+    fit_abort_event: threading.Event
+    """Cleared before the fit and set on Stop button or Ctrl-C to end the fit."""
+    fit_complete_event: asyncio.Event
+    """Cleared before the fit starts and set when the fit is complete and saved."""
+    # fit_complete_future: asyncio.Future
+    shutdown_on_fit_complete: bool = False
+    """Used to implement the --exit option to halt server on completion."""
+    # fit_enabled: Event
     calling_loop: Optional[asyncio.AbstractEventLoop] = None
     base_path: str = ""
 
@@ -390,9 +393,9 @@ class State:
         self.problem = ProblemState()
         self.fitting = FittingState()
         self.history = History()
-        self.fit_abort_event = Event()
-        self.fit_complete_event = Event()
-        self.fit_uncertainty_final = Event()
+        self.fit_abort_event = threading.Event()
+        self.fit_complete_event = asyncio.Event()
+        self.fit_complete_event.set()  # The program starts out not waiting for a fit
         self.topics = {
             "log": deque([]),
         }

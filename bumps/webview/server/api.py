@@ -490,7 +490,7 @@ def get_running_loop():
 
 
 @register
-async def start_fit_thread(fitter_id: str = "", options=None, terminate_on_finish=False, await_complete=False):
+async def start_fit_thread(fitter_id: str = "", options=None):
     options = {} if options is None else options  # session_id: str = app["active_session"]
     fitProblem = state.problem.fitProblem if state.problem is not None else None
     if fitProblem is None:
@@ -517,9 +517,6 @@ async def start_fit_thread(fitter_id: str = "", options=None, terminate_on_finis
         num_steps = get_num_steps(fitter_id, num_params, options)
         state.fit_abort_event.clear()
         state.fit_complete_event.clear()
-        fit_complete_future = asyncio.Future()
-        state.fit_complete_future = fit_complete_future
-        state.fit_uncertainty_final.clear()
 
         # print(f"*** start_fit_thread {options=}")
         fit_thread = FitThread(
@@ -532,7 +529,6 @@ async def start_fit_thread(fitter_id: str = "", options=None, terminate_on_finis
             # Number of seconds between updates to the GUI, or 0 for no updates
             convergence_update=5,
             uncertainty_update=state.shared.autosave_session_interval,
-            terminate_on_finish=terminate_on_finish,
         )
         state.shared.active_fit = to_json_compatible_dict(
             dict(
@@ -551,8 +547,11 @@ async def start_fit_thread(fitter_id: str = "", options=None, terminate_on_finis
         state.autosave()
         fit_thread.start()
         state.fit_thread = fit_thread
-        if await_complete:
-            await fit_complete_future
+
+
+async def wait_for_fit_complete():
+    if state.fit_thread is not None:
+        await state.fit_complete_event.wait()
 
 
 async def _fit_progress_handler(event: Dict):
@@ -572,7 +571,7 @@ async def _fit_progress_handler(event: Dict):
     if fitProblem is None:
         raise ValueError("should never happen: fit progress reported for session in which fitProblem is undefined")
     message = event.get("message", None)
-    print("_fit_progress_handler", message)
+    # print("_fit_progress_handler", message)
     if message == "complete" or message == "improvement":
         fitProblem.setp(event["point"])
         fitProblem.model_update()
@@ -592,35 +591,35 @@ async def _fit_progress_handler(event: Dict):
         state.autosave()
 
 
-async def _fit_complete_handler(event):
+async def _fit_complete_handler(event: Dict[str, Any]):
     message = event.get("message", None)
-    print("inside _fit_complete_handler", message)
-    fit_thread = state.fit_thread
-    terminate = False
-    if fit_thread is not None:
-        print("joining fit thread")
-        terminate = fit_thread.terminate_on_finish
-        fit_thread.join(1)  # 1 second timeout on join
-        if fit_thread.is_alive():
-            await log("Fit thread failed to complete")
-        print("...joined")
-    state.fit_thread = None
-    state.shared.active_fit = {}
-    if message == "error":
-        await log(
-            event["traceback"],
-            title=f"Fit failed with error: {event.get('error_string')}",
-        )
-        logger.warning(f"Fit failed with error: {event.get('error_string')}\n{event['traceback']}")
-    else:
-        print("capturing results")
+    # print("inside _fit_complete_handler", message)
+    try:
+        if state.fit_thread is not None:
+            # print("joining fit thread")
+            state.fit_thread.join(1)  # 1 second timeout on join
+            if state.fit_thread.is_alive():
+                # TODO: what can we do to force quit the thread?
+                await log("Fit thread failed to complete")
+                # return ?
+            # print("...joined")
+        if message == "error":
+            await log(
+                event["traceback"],
+                title=f"Fit failed with error: {event['error_string']}",
+            )
+            logger.warning(f"Fit failed with error: {event['error_string']}\n{event['traceback']}")
+            return
+
+        # print("capturing results")
         problem: bumps.fitproblem.FitProblem = event["problem"]
         chisq = nice(2 * event["value"] / problem.dof)
         problem.setp(event["point"])
         problem.model_update()
         state.problem.fitProblem = problem
+        state.fitting.uncertainty_state = cast(bumps.dream.state.MCMCDraw, event["uncertainty_state"])
         if state.shared.autosave_history:
-            print("saving")
+            # print("saving")
             await save_to_history(
                 f"Fit complete: {event['fitter_id']}",
                 include_population=True,
@@ -630,50 +629,39 @@ async def _fit_complete_handler(event):
         await log(event["info"], title=f"Done with chisq {chisq}")
         logger.info(f"Fit done with chisq {chisq}")
 
-    print("done")
-    state.fit_complete_event.set()
-    state.fit_complete_future.set_result(True)
+    finally:
+        # Signal that the fit is complete and all results are saved.
+        # Be sure to clear the fit thread and active fit before so that those
+        # awaiting the fit complete event can resume and start a new fit.
+        state.fit_thread = None
+        state.shared.active_fit = {}
+        state.fit_complete_event.set()
 
-    if terminate:
-        print("await shutdown")
-        await shutdown()
-        print("really done")
-
-
-# TODO: does _PROGRESS_TASKS list need to be thread safe?
-# TODO: how do we clear the tasks when we start a new fit?
-_PROGRESS_TASKS = []
+        if state.shutdown_on_fit_complete:
+            # print("await shutdown")
+            await shutdown()
+            # print("really done")
 
 
 def fit_progress_handler(event: Dict):
     loop = getattr(state, "calling_loop", None)
     # print("fit progress handler", loop is not None)
     if loop is not None:
-        print("running _fit_progress_handler coroutine", loop, event["message"])
         task = asyncio.run_coroutine_threadsafe(_fit_progress_handler(event), loop)
-        _PROGRESS_TASKS.append(task)
-        # f.result(120)
-    print("... fit progress handler done", event["message"])
+        # task.result(120)
 
 
 def fit_complete_handler(event: Dict):
     loop = getattr(state, "calling_loop", None)
-    print("fit complete handler", loop is not None)
-    # if event["message"] != "error":
-    #    print("waiting for fit_uncertainty_final")
-    #    state.fit_uncertainty_final.wait()
+    # print("fit complete handler", loop is not None)
     if loop is not None:
-        # TODO: make sure state is written before anything else
-        print("waiting for progress updates to complete")
-        for task in _PROGRESS_TASKS:
-            task.result(60)  # Give tasks at most a minute to write output
-        _PROGRESS_TASKS[:] = []
-        # print("running _fit_complete_handler")
-        f = asyncio.run_coroutine_threadsafe(_fit_complete_handler(event), loop)
-        # f.result(120)
-    print("fit done", event)
+        task = asyncio.run_coroutine_threadsafe(_fit_complete_handler(event), loop)
+        # task.result(120)
 
 
+# Run from the fit thread by blink. The handlers echo the message to asyncio
+# handlers for communication with the GUI and in the case of FIT_COMPLETE, for
+# saving the results.
 EVT_FIT_PROGRESS.connect(fit_progress_handler, weak=True)
 EVT_FIT_COMPLETE.connect(fit_complete_handler, weak=True)
 

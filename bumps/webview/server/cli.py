@@ -357,9 +357,12 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS(), await_comple
             # print(f"{fitter_settings=}")
             if api.state.problem is not None:
                 problem = api.state.problem.fitProblem
-                await api.start_fit_thread(fitter_id, fitter_settings, options.exit, await_complete=await_complete)
+                await api.start_fit_thread(fitter_id, fitter_settings)
+                # await api.state.fit_complete_future
 
         on_startup.append(start_fit)
+        if options.exit:
+            api.state.shutdown_on_fit_complete = True
 
     else:
         # signal that no fit is running at startup, even if a fit was
@@ -372,34 +375,24 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS(), await_comple
 async def _run_operations(on_start):
     for step in on_start:
         await step(None)
-
-
-SIGINT_TIMESTAMP = 0
-SIGINT_TIMEOUT = 2
+    await api.wait_for_fit_complete()
 
 
 def sigint_handler(sig, frame):
     import sys
     import time
 
-    global SIGINT_TIMESTAMP
-
-    print("\nSignal handler caught KeyboardInterrupt")
-
-    timestamp = time.time()
-    if timestamp - SIGINT_TIMESTAMP < SIGINT_TIMEOUT:
-        print("second KeyboardInterrupt, exiting")
+    if api.state.fit_abort_event.is_set():
+        print("Second KeyboardInterrupt, exiting immediately")
         sys.exit(0)
-    SIGINT_TIMESTAMP = timestamp
-
-    state = api.state
-    if state.fit_thread is not None and state.fit_thread.is_alive():
-        state.fit_abort_event.set()
+    print("\nCaught KeyboardInterrupt, stopping fit")
+    api.state.fit_abort_event.set()
 
 
 def main(options: Optional[OPTIONS_CLASS] = None):
     # this entrypoint will be used to start gui, so set headless = False
     # (other contexts e.g. jupyter notebook will directly call start_app)
+    signal.signal(signal.SIGINT, sigint_handler)
     logger.addHandler(console_handler)
     options = get_commandline_options(arg_defaults={"headless": False}) if options is None else options
     logger.info(options)
@@ -408,7 +401,6 @@ def main(options: Optional[OPTIONS_CLASS] = None):
         ...
         # print("emit", args, kw)
 
-    signal.signal(signal.SIGINT, sigint_handler)
     api.EMITTERS["cli"] = emit
     on_start = interpret_fit_options(options)
     asyncio.run(_run_operations(on_start))

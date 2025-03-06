@@ -810,7 +810,7 @@ class DreamFit(FitBase):
         )
 
         self.state = sampler.sample(state=self.state, abort_test=abort_test)
-        print("<<< Dream is done sampling >>>")
+        # print("<<< Dream is done sampling >>>")
 
         self._trimmed = self.state.trim_portion() if options["trim"] else 1.0
         # print("trimming", options['trim'], self._trimmed)

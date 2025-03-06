@@ -71,12 +71,14 @@ class ConvergenceMonitor(monitor.Monitor):
     in the app to determine which progress panel should receive the event.
     """
 
-    def __init__(self, problem, message="convergence_update", rate=0):
+    message: str = "convergence_update"
+
+    def __init__(self, problem, rate=0):
         self.time = 0
         self.rate = rate  # rate=0 for no progress update, only final
         self.problem = problem
-        self.message = message
         self.pop = []
+        self._dirty = False
 
     def config_history(self, history):
         history.requires(population_values=1, value=1)
@@ -85,34 +87,39 @@ class ConvergenceMonitor(monitor.Monitor):
 
     def __call__(self, history):
         # from old ConvergenceMonitor:
+        # TODO: include iteration number and time in the convergence history
         best = history.value[0]
         try:
             pop = history.population_values[0]
             n = len(pop)
+            # 68% interval goes from 16 to 84; QI = erfc(1/sqrt(2))/2 ~ 0.158655
+            # QI, Qmid = int(0.158655 * n), int(0.5 * n)
+            QI, Qmid = int(0.2 * n), int(0.5 * n)  # Use 20-80% range
             p = np.sort(pop)
-            (
-                QI,
-                Qmid,
-            ) = int(0.2 * n), int(0.5 * n)
-            self.pop.append((best, p[0], p[QI], p[Qmid], p[-1 - QI], p[-1]))
+            self.pop.append((best, p[0], p[QI], p[Qmid], p[-(QI + 1)], p[-1]))
         except (AttributeError, TypeError):
+            # TODO: if no population then 0% = QI = Qmid = -QI = 100%
             self.pop.append((best,))
 
         if self.rate > 0 and history.time[0] >= self.time + self.rate:
-            evt = dict(message=self.message, pop=self.progress())
             # print("convergence progress")
-            EVT_FIT_PROGRESS.send(evt)
+            self._send_update()
             self.time = history.time[0]
-
-    def progress(self):
-        return np.empty((0, 1), "d") if not self.pop else np.array(self.pop)
+            self._dirty = False
+        else:
+            self._dirty = True
 
     def final(self):
         """
-        Close out the monitor
+        Close out the monitor but sending any tailing convergence information
         """
-        evt = dict(message=self.message, pop=self.progress())
-        # print("convergence final")
+        if self._dirty:
+            # print("convergence final")
+            self._send_update()
+
+    def _send_update(self):
+        pop = np.empty((0, 1), "d") if not self.pop else np.array(self.pop)
+        evt = dict(message=self.message, pop=pop)
         EVT_FIT_PROGRESS.send(evt)
 
 
@@ -123,21 +130,23 @@ class ConvergenceMonitor(monitor.Monitor):
 
 
 class DreamMonitor(monitor.Monitor):
-    def __init__(self, problem, message, fitter, rate=0):
+    message: str = "uncertainty_update"
+
+    def __init__(self, problem, fitter, rate=0):
         self.time = 0
         self.rate = rate  # rate=0 for no progress update, only final
         self.update_counter = 0
         self.problem = problem
         self.fitter = fitter
-        self.message = message
         self.uncertainty_state = None
         # emit None uncertainty state to start with
         evt = dict(
-            message=message,
+            message=self.message,
             uncertainty_state=None,
         )
         # print("Dream init", evt)
         EVT_FIT_PROGRESS.send(evt)
+        self._dirty = False
 
     def config_history(self, history):
         history.requires(time=1)
@@ -156,20 +165,22 @@ class DreamMonitor(monitor.Monitor):
                 )
                 # print("Dream update", evt)
                 EVT_FIT_PROGRESS.send(evt)
+            self._dirty = False
+        else:
+            self._dirty = True
 
     def final(self):
         """
         Close out the monitor
         """
-        # Note: win.uncertainty_state protected by win.fit_lock
-        # self.win.uncertainty_state = self.uncertainty_state
-        evt = dict(
-            message="uncertainty_final",
-            time=self.time,
-            uncertainty_state=deepcopy(self.uncertainty_state),
-        )
-        # print("Dream final", evt)
-        EVT_FIT_PROGRESS.send(evt)
+        if self._dirty:
+            evt = dict(
+                message="uncertainty_final",
+                time=self.time,
+                uncertainty_state=deepcopy(self.uncertainty_state),
+            )
+            # print("Dream final", evt)
+            EVT_FIT_PROGRESS.send(evt)
 
 
 # ==============================================================================
@@ -188,7 +199,6 @@ class FitThread(Thread):
         parallel=0,
         convergence_update=5,
         uncertainty_update=300,
-        terminate_on_finish=False,
     ):
         # base class initialization
         # Process.__init__(self)
@@ -203,7 +213,10 @@ class FitThread(Thread):
         self.parallel = parallel
         self.convergence_update = convergence_update
         self.uncertainty_update = uncertainty_update
-        self.terminate_on_finish = terminate_on_finish
+
+        # Setting daemon to true causes sys.exit() to kill the thread immediately
+        # rather than waiting for it to complete.
+        self.daemon = True
 
     def abort_test(self):
         return self.abort_event.is_set()
@@ -226,11 +239,10 @@ class FitThread(Thread):
                 #            message="convergence_update",
                 #            monitor=ConvergenceMonitor(),
                 #            rate=self.convergence_update),
-                DreamMonitor(
-                    self.problem, fitter=self.fitclass, message="uncertainty_update", rate=self.uncertainty_update
-                ),
-                ConsoleMonitor(self.problem),
+                DreamMonitor(self.problem, fitter=self.fitclass, rate=self.uncertainty_update),
             ]
+            monitors.append(ConsoleMonitor(self.problem))
+            # monitors = [ConsoleMonitor(self.problem)]
 
             mapper = self.mapper
             if mapper is None:
@@ -245,6 +257,7 @@ class FitThread(Thread):
                 mapper = MPMapper if mp_available and self.parallel != 1 and can_pickle(self.problem) else SerialMapper
 
             # Be safe and send a private copy of the problem to the fitting engine
+            # TODO: Check that parameters and constraints are independent of the original.
             # print "fitclass",self.fitclass
             problem = deepcopy(self.problem)
             # print "fitclass id",id(self.fitclass),self.fitclass,threading.current_thread()
@@ -268,17 +281,18 @@ class FitThread(Thread):
                 driver.show()
                 captured_output = fid.getvalue()
 
-            print("fit complete with", x, fx)
+            # print("fit complete with", x, fx)
             evt = dict(
                 message="complete",
                 problem=self.problem,
                 point=x,
                 value=fx,
+                uncertainty_state=getattr(driver.fitter, "state", None),
                 info=captured_output,
                 fitter_id=self.fitclass.id,
             )
-            EVT_FIT_COMPLETE.send(evt)
             self.result = evt
+            EVT_FIT_COMPLETE.send(evt)
 
         except Exception as exc:
             tb = "".join(traceback.TracebackException.from_exception(exc).format())
