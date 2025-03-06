@@ -15,7 +15,7 @@
 !define PRODUCT_VERSION 1.0.0.1013
 !define SETUP_VERSION 1.0.0.0
 !ifndef SRC
-    !define SRC "..\app_build"
+    !define SRC "..\conda_packed"
 !endif
 
 ;-------------------------------------------------------------------------------
