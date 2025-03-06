@@ -33,10 +33,13 @@ cp $SCRIPT_DIR/*.ico $OUTPUT/share/icons
 
 # base path to source is in parent of SCRIPT_DIR
 conda activate $envdir
-pip install --no-input --no-compile "$SRC_DIR[webview]"
+pushd $SRC_DIR
+pip install --no-input --no-compile .[webview]
 
 # build the client
+cd $OUTPUT
 python -m bumps.webview.build_client --cleanup
 
 conda deactivate
+popd
 # done
