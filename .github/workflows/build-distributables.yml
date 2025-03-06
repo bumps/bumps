@@ -20,8 +20,8 @@ jobs:
         config:
           - { os: ubuntu-latest, py: "3.11" }
           - { os: windows-latest, py: "3.11" }
-          - { os: macos-latest, py: "3.11" }
-          - { os: macos-13, py: "3.11" }
+          # - { os: macos-latest, py: "3.11" }
+          # - { os: macos-13, py: "3.11" }
           # all using to stable abi
 
     steps:
@@ -40,6 +40,7 @@ jobs:
     - name: Build conda-packed (all platforms)
       run: |
         conda install -y versioningit nodejs
+        conda activate base
         ./extra/build_conda_packed.sh
 
     - name: Create MacOS App
