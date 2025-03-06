@@ -8,6 +8,8 @@ SCRIPT_DIR=$(realpath $(dirname "${BASH_SOURCE[0]}"))
 SRC_DIR=$(dirname "$SCRIPT_DIR")
 pkgdir="$SRC_DIR/$OUTPUT"
 
+eval "$(conda shell.bash hook)"
+
 conda install -y conda-pack
 if ! test -f "$ENV_NAME.tar.gz"; then
   echo "creating isolated environment"
@@ -29,14 +31,17 @@ cp $SCRIPT_DIR/*.png $OUTPUT/share/icons
 cp $SCRIPT_DIR/*.ico $OUTPUT/share/icons
 
 # base path to source is in parent of SCRIPT_DIR
-conda activate $envdir
+case "$OSTYPE" in
+ "msys") bindir=$envdir ;;
+ *) bindir=$envdir/bin ;;
+esac
+
 pushd $SRC_DIR
-pip install --no-input --no-compile .[webview]
+$bindir/python -m pip install --no-input --no-compile .[webview]
 
 # build the client
 cd $OUTPUT
-python -m bumps.webview.build_client --cleanup
+$bindir/python -m bumps.webview.build_client --cleanup
 
-conda deactivate
 popd
 # done
