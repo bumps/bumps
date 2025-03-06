@@ -118,6 +118,8 @@ jobs:
       if: startsWith(matrix.config.os, 'ubuntu')
       run: |
         echo "Creating Linux Installer"
+        conda info
+
         VERSION=$(versioningit)
         FULL_PACKAGE_NAME="$PACKAGE_NAME-$VERSION-$(uname -s)-$(uname -m)"
 
