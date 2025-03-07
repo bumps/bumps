@@ -29,6 +29,7 @@ mkdir -p $pkgdir/share/icons
 cp $SCRIPT_DIR/*.svg $pkgdir/share/icons
 cp $SCRIPT_DIR/*.png $pkgdir/share/icons
 cp $SCRIPT_DIR/*.ico $pkgdir/share/icons
+cp $SCRIPT_DIR/*.icns $pkgdir/share/icons
 
 cd $SRC_DIR
 conda activate $pkgdir
