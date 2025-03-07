@@ -84,8 +84,15 @@ SectionEnd
 
 Section "Start Menu Shortcuts" SEC02
     CreateDirectory "$SMPROGRAMS\${PRODUCT_NAME}"
-    CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\BumpsWebview.lnk" "$INSTDIR\bumps_webview.bat" "" "$INSTDIR\share\icons\bumps.ico"
-    CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\BumpsShell.lnk" "$INSTDIR\bumps_shell.bat" "" "%SYSTEMROOT%\system32\cmd.exe" 0
+    CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\BumpsWebview.lnk" \
+        "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" \
+        '-Command ""$INSTDIR\python.exe -m bumps.webview.server""' \
+        "$INSTDIR\share\icons\bumps.ico"
+    SetOutPath "%USERPROFILE%"
+    CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\BumpsPowershell.lnk" \
+        "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" \
+        '-NoExit -NoProfile -Command ""$INSTDIR\Library\bin\micromamba.exe shell hook -s powershell | Out-String | Invoke-Expression ; micromamba activate $INSTDIR""' \
+        ""
 
 SectionEnd
 
