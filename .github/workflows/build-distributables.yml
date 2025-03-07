@@ -64,8 +64,9 @@ jobs:
         # This assumes that conda-packed enviroment exists at "conda_packed"
 
         VERSION=$(versioningit)
-        FULL_PACKAGE_NAME="$PACKAGE_NAME-$VERSION-$(uname -s)-$(uname -m)"
-        APP="app_build/$FULL_PACKAGE_NAME.app"
+        PRODUCT_NAME="$PACKAGE_NAME-$VERSION"
+        FULL_PACKAGE_NAME="$PRODUCT_NAME-$(uname -s)-$(uname -m)"
+        APP="app_build/$PRODUCT_NAME.app"
         mkdir -p app_build
         ln -s /Applications app_build/Applications
         cp -r "extra/BumpsWebviewTemplate.app" "$APP"
