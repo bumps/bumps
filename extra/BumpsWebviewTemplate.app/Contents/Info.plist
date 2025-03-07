@@ -9,7 +9,7 @@
     <key>CFBundleExecutable</key>
     <string>bumps_webview</string>
     <key>CFBundleIconFile</key>
-    <string>/Contents/Resources/share/icons/refl1d-icon.svg</string>
+    <string>share/icons/bumps</string>
     <key>CFBundleIdentifier</key>
     <string>org.reflectometry.bumps-webview</string>
     <key>CFBundleInfoDictionaryVersion</key>
