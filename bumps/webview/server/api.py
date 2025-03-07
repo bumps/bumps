@@ -133,7 +133,12 @@ TopicNameType = Literal[
 
 
 @register
-async def load_problem_file(pathlist: List[str], filename: str, autosave_previous: bool = True):
+async def load_problem_file(
+    pathlist: List[str],
+    filename: str,
+    autosave_previous: bool = True,
+    args: List[str] = None,
+):
     path = Path(*pathlist, filename)
     logger.info(f"Loading model: {path}")
     await log(f"Loading model: {path}")
@@ -144,7 +149,8 @@ async def load_problem_file(pathlist: List[str], filename: str, autosave_previou
     else:
         from bumps.cli import load_model
 
-        problem = load_model(str(path))
+        print("model", str(path), args)
+        problem = load_model(str(path), args)
     assert isinstance(problem, bumps.fitproblem.FitProblem)
     # problem_state = ProblemState(problem, pathlist, filename)
     try:

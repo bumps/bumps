@@ -105,6 +105,13 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         help="fit options as key=value pairs",
     )
     fitter.add_argument(
+        "--model-args",
+        nargs="*",
+        type=str,
+        help="arguments to send to the model loader",
+    )
+
+    fitter.add_argument(
         "--parallel",
         default=0,
         type=int,
@@ -303,7 +310,7 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS(), await_comple
         logger.debug(f"fitter for filename {filename} is {fitter_id}")
 
         async def load_problem(App=None):
-            await api.load_problem_file(pathlist, filename)
+            await api.load_problem_file(pathlist, filename, args=options.model_args)
 
         on_startup.append(load_problem)
 
