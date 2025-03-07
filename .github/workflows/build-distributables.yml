@@ -61,7 +61,7 @@ jobs:
         security find-identity -p codesigning
 
         echo "Creating MacOS App"
-        # This assumes that conda-packed enviroment exists at "conda_packed/env"
+        # This assumes that conda-packed enviroment exists at "conda_packed"
 
         VERSION=$(versioningit)
         FULL_PACKAGE_NAME="$PACKAGE_NAME-$VERSION-$(uname -s)-$(uname -m)"
@@ -69,7 +69,7 @@ jobs:
         mkdir -p app_build
         ln -s /Applications app_build/Applications
         cp -r "extra/BumpsWebviewTemplate.app" "$APP"
-        cp -R -P "conda_packed/env" "$APP/Contents/Resources"
+        cp -R -P "conda_packed" "$APP/Contents/Resources"
         plutil -replace CFBundleVersion -string "$VERSION" "$APP/Contents/Info.plist"
 
         #  Do signing...
@@ -97,7 +97,7 @@ jobs:
       if: startsWith(matrix.config.os, 'windows')
       run: |
         echo "Creating Windows Installer"
-        # This assumes that conda-packed enviroment exists at "conda_packed/env"
+        # This assumes that conda-packed enviroment exists at "conda_packed"
         VERSION=$(versioningit)
 
         FULL_PACKAGE_NAME="$PACKAGE_NAME-$VERSION-Windows-$(uname -m)"
@@ -105,7 +105,6 @@ jobs:
         # clean up junk from conda-pack operation:
         find conda_packed -name "*.conda_trash" -delete
 
-        cp extra/platform_scripts/windows/* conda_packed/
         conda install -y nsis
 
         # create the installer:
