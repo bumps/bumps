@@ -174,9 +174,10 @@ class Background(object):
 
 
 class Peaks(object):
-    def __init__(self, parts, X, Y, data, err):
+    def __init__(self, parts, X, Y, data, err, name=None):
         self.X, self.Y, self.data, self.err = X, Y, data, err
         self.parts = parts
+        self.name = name
 
     def numpoints(self):
         return np.prod(self.data.shape)
