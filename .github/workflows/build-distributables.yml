@@ -51,6 +51,7 @@ jobs:
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
           NOTARIZATION_USERNAME: ${{ secrets.MACOS_NOTARIZATION_USERNAME }}
           NOTARIZATION_PASSWORD: ${{ secrets.MACOS_NOTARIZATION_PASSWORD }}
+          DEVELOPER_IDENTITY: "Developer ID Application: The International Scattering Alliance (8CX8K63BQM)"
       run: |
         echo $MACOS_CERTIFICATE | base64 --decode > certificate.p12
         security create-keychain -p $KEYCHAIN_PASSWORD build.keychain
@@ -66,23 +67,29 @@ jobs:
         VERSION=$(versioningit)
         PRODUCT_NAME="$PACKAGE_NAME-$VERSION"
         FULL_PACKAGE_NAME="$PRODUCT_NAME-$(uname -s)-$(uname -m)"
-        APP="app_build/$PRODUCT_NAME.app"
-        mkdir -p app_build
-        ln -s /Applications app_build/Applications
-        cp -r "extra/BumpsWebviewTemplate.app" "$APP"
+        BUILD_DIR="app_build"
+        APP_FOLDER="$BUILD_DIR/$VERSIONED_PACKAGE_NAME"
+        mkdir -p "$APP_FOLDER"
+        APP="$APP_FOLDER/${PACKAGE_NAME}.app"
+        ln -s /Applications "$BUILD_DIR/Applications"
+        cp -r "extra/platform_resources/macos/app_folder_template" "$APP_FOLDER"
         cp -R -P "conda_packed" "$APP/Contents/Resources"
         plutil -replace CFBundleVersion -string "$VERSION" "$APP/Contents/Info.plist"
 
-        #  Do signing...
-        find $APP -name "*\.so" -print0 | xargs -0 -I {} codesign --force --timestamp --options=runtime --verify --verbose=4 --sign 'Developer ID Application: The International Scattering Alliance (8CX8K63BQM)' {}
-        find $APP -name "*\.dylib" -print0 | xargs -0 -I {} codesign --force --timestamp --options=runtime --verify --verbose=4 --sign 'Developer ID Application: The International Scattering Alliance (8CX8K63BQM)' {}
-        find "$APP/Contents/Resources/bin" -type f -perm +111 -print0 | xargs -0 -I {} codesign --force --timestamp --options=runtime --verify --verbose=4 --sign 'Developer ID Application: The International Scattering Alliance (8CX8K63BQM)' {}
+        sign_file() {
+            codesign --force --timestamp --options=runtime --verify --verbose=4 --sign "${DEVELOPER_IDENTITY}" "$1"
+        }
 
-        codesign --verify --options=runtime --entitlements $APP/Contents/Entitlements.plist --timestamp --deep --verbose=4 --force --sign "Developer ID Application: The International Scattering Alliance (8CX8K63BQM)" $APP
+        #  Do signing...
+        find $APP -name "*\.so" -print0 | while IFS= read -r -d '' file; do sign_file "$file"; done;
+        find $APP -name "*\.dylib" -print0 | while IFS= read -r -d '' file; do sign_file "$file"; done;
+        find "$APP/Contents/Resources/bin" -type f -perm +111 -print0 | while IFS= read -r -d '' file; do sign_file "$file"; done;
+
+        codesign --verify --options=runtime --entitlements $APP/Contents/Entitlements.plist --timestamp --deep --verbose=4 --force --sign "${DEVELOPER_IDENTITY}" $APP
         DMG="artifacts/$FULL_PACKAGE_NAME.dmg"
         mkdir -p artifacts
         hdiutil create $DMG -srcfolder app_build -ov -format UDZO
-        codesign -s "Developer ID Application: The International Scattering Alliance (8CX8K63BQM)" $DMG
+        codesign -s "${DEVELOPER_IDENTITY}" $DMG
 
         # Clean up signing keys
         security delete-keychain build.keychain
@@ -126,7 +133,7 @@ jobs:
         PRODUCT_NAME="$PACKAGE_NAME-$VERSION"
 
         mkdir -p "$PRODUCT_NAME"
-        cp extra/platform_scripts/linux/* "$PRODUCT_NAME"
+        cp extra/platform_resources/linux/* "$PRODUCT_NAME"
 
         mv conda_packed/ "$PRODUCT_NAME/env"
         mkdir -p artifacts
