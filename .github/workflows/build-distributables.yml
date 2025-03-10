@@ -123,12 +123,14 @@ jobs:
 
         VERSION=$(versioningit)
         FULL_PACKAGE_NAME="$PACKAGE_NAME-$VERSION-$(uname -s)-$(uname -m)"
+        PRODUCT_NAME="$PACKAGE_NAME-$VERSION"
 
-        cp extra/platform_scripts/linux/* conda_packed/
+        mkdir -p "$PRODUCT_NAME"
+        cp extra/platform_scripts/linux/* "$PRODUCT_NAME"
 
-        mv conda_packed/ "$PACKAGE_NAME-$VERSION"
+        mv conda_packed/ "$PRODUCT_NAME/env"
         mkdir -p artifacts
-        tar -czf "artifacts/$FULL_PACKAGE_NAME.tar.gz" "$PACKAGE_NAME-$VERSION"
+        tar -czf "artifacts/$FULL_PACKAGE_NAME.tar.gz" "$PRODUCT_NAME"
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
