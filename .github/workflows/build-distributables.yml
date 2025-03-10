@@ -86,6 +86,8 @@ jobs:
         find "$APP/Contents/Resources/bin" -type f -perm +111 -print0 | while IFS= read -r -d '' file; do sign_file "$file"; done;
 
         codesign --verify --options=runtime --entitlements $APP/Contents/Entitlements.plist --timestamp --deep --verbose=4 --force --sign "${DEVELOPER_IDENTITY}" $APP
+        codesign --verify --options=runtime --timestamp --deep --verbose=4 --force --sign "${DEVELOPER_IDENTITY}" "$APP_FOLDER/bumps_shell.app"
+
         DMG="artifacts/$FULL_PACKAGE_NAME.dmg"
         mkdir -p artifacts
         hdiutil create $DMG -srcfolder app_build -ov -format UDZO
