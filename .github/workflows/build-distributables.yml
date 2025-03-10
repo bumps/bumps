@@ -7,10 +7,14 @@ on:
 
 env:
   branch_name: master
+  PACKAGE_NAME: bumps
 
 jobs:
   build_and_publish:
     runs-on: ${{ matrix.config.os }}
+    defaults:
+      run:
+        shell: bash -el {0}
     strategy:
       matrix:
         config:
@@ -31,22 +35,16 @@ jobs:
         auto-update-conda: true
         python-version: ${{ matrix.config.py }}
         miniforge-version: latest
+        activate-environment: builder
 
     - name: Build conda-packed (all platforms)
-      shell: bash -el {0}
       run: |
+        conda install -y versioningit nodejs
         conda activate base
         ./extra/build_conda_packed.sh
-        ls artifacts/*
-        {
-          echo 'DISTRIBUTABLES<<EOF'
-          ls artifacts/*
-          echo EOF
-        } >> "$GITHUB_ENV"
 
     - name: Create MacOS App
       if: startsWith(matrix.config.os, 'macos')
-      shell: bash -el {0}
       env:
           MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE_ISA }}
           MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_ISA_PWD }}
@@ -63,17 +61,29 @@ jobs:
         security find-identity -p codesigning
 
         echo "Creating MacOS App"
-        APP=`find app_build -name "bumps-*\.app" -print -quit`
+        # This assumes that conda-packed enviroment exists at "conda_packed"
+
+        VERSION=$(versioningit)
+        PRODUCT_NAME="$PACKAGE_NAME-$VERSION"
+        FULL_PACKAGE_NAME="$PRODUCT_NAME-$(uname -s)-$(uname -m)"
+        APP="app_build/$PRODUCT_NAME.app"
+        mkdir -p app_build
+        ln -s /Applications app_build/Applications
+        cp -r "extra/BumpsWebviewTemplate.app" "$APP"
+        cp -R -P "conda_packed" "$APP/Contents/Resources"
+        plutil -replace CFBundleVersion -string "$VERSION" "$APP/Contents/Info.plist"
+
         #  Do signing...
         find $APP -name "*\.so" -print0 | xargs -0 -I {} codesign --force --timestamp --options=runtime --verify --verbose=4 --sign 'Developer ID Application: The International Scattering Alliance (8CX8K63BQM)' {}
         find $APP -name "*\.dylib" -print0 | xargs -0 -I {} codesign --force --timestamp --options=runtime --verify --verbose=4 --sign 'Developer ID Application: The International Scattering Alliance (8CX8K63BQM)' {}
         find "$APP/Contents/Resources/bin" -type f -perm +111 -print0 | xargs -0 -I {} codesign --force --timestamp --options=runtime --verify --verbose=4 --sign 'Developer ID Application: The International Scattering Alliance (8CX8K63BQM)' {}
 
         codesign --verify --options=runtime --entitlements $APP/Contents/Entitlements.plist --timestamp --deep --verbose=4 --force --sign "Developer ID Application: The International Scattering Alliance (8CX8K63BQM)" $APP
-        DMG="${APP%.app}.dmg"
-        hdiutil create $DMG -srcfolder $APP -ov -format UDZO
+        DMG="artifacts/$FULL_PACKAGE_NAME.dmg"
+        mkdir -p artifacts
+        hdiutil create $DMG -srcfolder app_build -ov -format UDZO
         codesign -s "Developer ID Application: The International Scattering Alliance (8CX8K63BQM)" $DMG
-        
+
         # Clean up signing keys
         security delete-keychain build.keychain
         rm certificate.p12
@@ -84,21 +94,58 @@ jobs:
         # Staple
         xcrun stapler staple $DMG
 
-        cp $DMG artifacts/
+    - name: Create Windows Installer
+      if: startsWith(matrix.config.os, 'windows')
+      run: |
+        echo "Creating Windows Installer"
+        # This assumes that conda-packed enviroment exists at "conda_packed"
+        VERSION=$(versioningit)
 
-        # Overwrite the distributables
-        {
-          echo 'DISTRIBUTABLES<<EOF'
-          ls artifacts/*
-          echo EOF
-        } >> "$GITHUB_ENV"
+        FULL_PACKAGE_NAME="$PACKAGE_NAME-$VERSION-Windows-$(uname -m)"
 
+        # clean up junk from conda-pack operation:
+        find conda_packed -name "*.conda_trash" -delete
+
+        conda install -y nsis
+
+        # create the installer:
+        PRODUCT_NAME="$PACKAGE_NAME-$VERSION"
+        $CONDA_PREFIX/NSIS/makensis.exe -DPRODUCT_NAME="$PRODUCT_NAME" extra/installer.nsi
+
+        mkdir -p artifacts
+        mv extra/BumpsWebviewSetup.exe "artifacts/$FULL_PACKAGE_NAME-installer.exe"
+
+    - name: Create Linux Installer
+      if: startsWith(matrix.config.os, 'ubuntu')
+      run: |
+        echo "Creating Linux Installer"
+        conda info
+
+        VERSION=$(versioningit)
+        FULL_PACKAGE_NAME="$PACKAGE_NAME-$VERSION-$(uname -s)-$(uname -m)"
+        PRODUCT_NAME="$PACKAGE_NAME-$VERSION"
+
+        mkdir -p "$PRODUCT_NAME"
+        cp extra/platform_scripts/linux/* "$PRODUCT_NAME"
+
+        mv conda_packed/ "$PRODUCT_NAME/env"
+        mkdir -p artifacts
+        tar -czf "artifacts/$FULL_PACKAGE_NAME.tar.gz" "$PRODUCT_NAME"
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: artifacts-${{ matrix.config.os }}-${{ matrix.config.py }}
         path: artifacts/*
+
+    - name: Enumerate artifacts
+      run: |
+        # Collect the distributables
+        {
+          echo 'DISTRIBUTABLES<<EOF'
+          ls artifacts/*
+          echo EOF
+        } >> "$GITHUB_ENV"
 
     - name: Update current release
       if: startsWith(github.ref, 'refs/tags')
