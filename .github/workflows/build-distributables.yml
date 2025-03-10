@@ -68,8 +68,8 @@ jobs:
         PRODUCT_NAME="$PACKAGE_NAME-$VERSION"
         FULL_PACKAGE_NAME="$PRODUCT_NAME-$(uname -s)-$(uname -m)"
         BUILD_DIR="app_build"
+        mkdir -p $BUILD_DIR
         APP_FOLDER="$BUILD_DIR/$PRODUCT_NAME"
-        mkdir -p "$APP_FOLDER"
         APP="$APP_FOLDER/${PACKAGE_NAME}.app"
         ln -s /Applications "$BUILD_DIR/Applications"
         cp -r "extra/platform_resources/macos/app_folder_template" "$APP_FOLDER"
