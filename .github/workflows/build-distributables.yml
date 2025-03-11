@@ -81,12 +81,15 @@ jobs:
         }
 
         #  Do signing...
+        find "$APP/Contents/Resources/bin" -type f -perm +111 -print0 | while IFS= read -r -d '' file; do sign_file "$file"; done;
         find $APP -name "*\.so" -print0 | while IFS= read -r -d '' file; do sign_file "$file"; done;
         find $APP -name "*\.dylib" -print0 | while IFS= read -r -d '' file; do sign_file "$file"; done;
-        find "$APP/Contents/Resources/bin" -type f -perm +111 -print0 | while IFS= read -r -d '' file; do sign_file "$file"; done;
 
-        codesign --verify --options=runtime --entitlements $APP/Contents/Entitlements.plist --timestamp --deep --verbose=4 --force --sign "${DEVELOPER_IDENTITY}" $APP
-        codesign --verify --options=runtime --timestamp --deep --verbose=4 --force --sign "${DEVELOPER_IDENTITY}" "$APP_FOLDER/bumps_shell.app"
+        # use the entitlement from the original location:
+        SRC_ENTITLEMENTS="extra/platform_resources/macos/app_folder_template/${PACKAGE_NAME}.app/Contents/Entitlements.plist"
+        codesign --verify --options=runtime --entitlements "${SRC_ENTITLEMENTS}" --timestamp --verbose=4 --force --sign "${DEVELOPER_IDENTITY}" "$APP/Contents/Entitlements.plist"
+        codesign --verify --options=runtime --entitlements "${SRC_ENTITLEMENTS}" --timestamp --verbose=4 --force --sign "${DEVELOPER_IDENTITY}" $APP
+        codesign --verify --options=runtime --timestamp --verbose=4 --force --sign "${DEVELOPER_IDENTITY}" "$APP_FOLDER/bumps_shell.app"
 
         DMG="artifacts/$FULL_PACKAGE_NAME.dmg"
         mkdir -p artifacts
