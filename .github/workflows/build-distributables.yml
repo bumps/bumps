@@ -53,12 +53,12 @@ jobs:
           NOTARIZATION_PASSWORD: ${{ secrets.MACOS_NOTARIZATION_PASSWORD }}
           DEVELOPER_IDENTITY: "Developer ID Application: The International Scattering Alliance (8CX8K63BQM)"
       run: |
-        echo $MACOS_CERTIFICATE | base64 --decode > certificate.p12
-        security create-keychain -p $KEYCHAIN_PASSWORD build.keychain
+        echo "$MACOS_CERTIFICATE" | base64 --decode > certificate.p12
+        security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
         security default-keychain -s build.keychain
-        security unlock-keychain -p $KEYCHAIN_PASSWORD build.keychain
-        security import certificate.p12 -k build.keychain -P $MACOS_CERTIFICATE_PWD -T /usr/bin/codesign
-        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $KEYCHAIN_PASSWORD build.keychain
+        security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+        security import certificate.p12 -k build.keychain -P "$MACOS_CERTIFICATE_PWD" -T /usr/bin/codesign
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
         security find-identity -p codesigning
 
         echo "Creating MacOS App"
@@ -114,7 +114,7 @@ jobs:
         rm certificate.p12
 
         # Notarize
-        xcrun notarytool submit --wait --apple-id $NOTARIZATION_USERNAME --password $NOTARIZATION_PASSWORD --team-id 8CX8K63BQM $DMG
+        xcrun notarytool submit --wait --apple-id "$NOTARIZATION_USERNAME" --password "$NOTARIZATION_PASSWORD" --team-id 8CX8K63BQM $DMG
 
         # Staple
         xcrun stapler staple $DMG
