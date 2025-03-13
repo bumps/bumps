@@ -4,7 +4,7 @@ on run argv
    tell application "Finder"
       set base_path to container of (container of (path to me)) as alias
    end tell
-   set env_activate to "source " & quoted form of ((POSIX path of base_path) & "Resources/bin/activate") & ";"
+   set env_activate to "source " & quoted form of ((POSIX path of base_path) & "Frameworks/python.framework/Resources/env/bin/activate") & ";"
    set run_server_and_terminate to ( " python" & " -m" & " bumps.webview.server --use_persistent_path;" & " exit;")
    if application "Terminal" is not running then
       tell application "Terminal"
