@@ -10,9 +10,9 @@
 !ifndef PRODUCT_NAME
     !define PRODUCT_NAME "Bumps"
 !endif
-!define PRODUCT_DESCRIPTION "Bayesian Uncertainty Modeling for the Physical Sciences"
-!define COPYRIGHT "Copyright © 2018 The bumps developers"
-!define PRODUCT_VERSION 1.0.0.1013
+!define PRODUCT_DESCRIPTION "Bayesian uncertainty modeling for the physical sciences"
+!define COPYRIGHT "Copyright © 2024 The Bumps developers"
+!define PRODUCT_VERSION 1.0.0.0
 !define SETUP_VERSION 1.0.0.0
 !ifndef SRC
     !define SRC "..\conda_packed"
