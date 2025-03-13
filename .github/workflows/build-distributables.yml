@@ -71,25 +71,38 @@ jobs:
         mkdir -p $BUILD_DIR
         APP_FOLDER="$BUILD_DIR/$PRODUCT_NAME"
         APP="$APP_FOLDER/${PACKAGE_NAME}.app"
+        PYTHON_FRAMEWORK="$APP/Contents/Frameworks/python.framework"
+        PYTHON_ENV="$PYTHON_FRAMEWORK/Resources/env"
         ln -s /Applications "$BUILD_DIR/Applications"
-        cp -r "extra/platform_resources/macos/app_folder_template" "$APP_FOLDER"
-        cp -R -P "conda_packed" "$APP/Contents/Resources"
+        cp -R -P "extra/platform_resources/macos/app_folder_template" "$APP_FOLDER"
+        cp -R -P "conda_packed" "$PYTHON_ENV"
         plutil -replace CFBundleVersion -string "$VERSION" "$APP/Contents/Info.plist"
 
         sign_file() {
             codesign --force --timestamp --options=runtime --verify --verbose=4 --sign "${DEVELOPER_IDENTITY}" "$1"
         }
 
-        #  Do signing...
-        find "$APP/Contents/Resources/bin" -type f -perm +111 -print0 | while IFS= read -r -d '' file; do sign_file "$file"; done;
-        find $APP -name "*\.so" -print0 | while IFS= read -r -d '' file; do sign_file "$file"; done;
-        find $APP -name "*\.dylib" -print0 | while IFS= read -r -d '' file; do sign_file "$file"; done;
+        SRC_ENTITLEMENTS="extra/platform_resources/macos/app_folder_template/${PACKAGE_NAME}.app/Contents/Frameworks/python.framework/Resources/Entitlements.plist"
 
-        # use the entitlement from the original location:
-        SRC_ENTITLEMENTS="extra/platform_resources/macos/app_folder_template/${PACKAGE_NAME}.app/Contents/Entitlements.plist"
-        codesign --verify --options=runtime --entitlements "${SRC_ENTITLEMENTS}" --timestamp --verbose=4 --force --sign "${DEVELOPER_IDENTITY}" "$APP/Contents/Entitlements.plist"
-        codesign --verify --options=runtime --entitlements "${SRC_ENTITLEMENTS}" --timestamp --verbose=4 --force --sign "${DEVELOPER_IDENTITY}" $APP
-        codesign --verify --options=runtime --timestamp --verbose=4 --force --sign "${DEVELOPER_IDENTITY}" "$APP_FOLDER/bumps_shell.app"
+        sign_with_entitlements() {
+          codesign --verify --options=runtime --entitlements "${SRC_ENTITLEMENTS}" --timestamp --verbose=4 --force --sign "${DEVELOPER_IDENTITY}" "$1"
+        }
+
+        # Sign shared libraries
+        find "$PYTHON_ENV" -name "*\.so" -print0 | while IFS= read -r -d '' file; do sign_file "$file"; done;
+        find "$PYTHON_ENV" -name "*\.dylib" -print0 | while IFS= read -r -d '' file; do sign_file "$file"; done;
+        find "$PYTHON_ENV/bin" -type f -perm +111 -print0 | while IFS= read -r -d '' file; do sign_file "$file"; done;
+
+        # Sign python framework with entitlements
+        sign_with_entitlements "$PYTHON_FRAMEWORK/Versions/A/Resources/Entitlements.plist"
+        PYTHON_EXECUTABLE="$(realpath $PYTHON_ENV/bin/python)"
+        sign_with_entitlements "$PYTHON_EXECUTABLE"
+        sign_with_entitlements "$PYTHON_FRAMEWORK"
+
+        # Sign apps
+        codesign --verify --options=runtime --timestamp --verbose=4 --force --sign "${DEVELOPER_IDENTITY}" "$APP/Contents/MacOS/${PACKAGE_NAME}_webview"
+        codesign --verify --options=runtime --timestamp --verbose=4 --force --sign "${DEVELOPER_IDENTITY}" "$APP"
+        codesign --verify --options=runtime --timestamp --verbose=4 --force --sign "${DEVELOPER_IDENTITY}" "$APP_FOLDER/${PACKAGE_NAME}_shell.app"
 
         DMG="artifacts/$FULL_PACKAGE_NAME.dmg"
         mkdir -p artifacts
