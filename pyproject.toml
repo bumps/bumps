@@ -89,6 +89,9 @@ version = { attr = "bumps.__version__" }
 include = ["bumps*"]
 exclude = ["**/node_modules*"]
 
+[tool.setuptools.data-files]
+"share/icons" = ["extra/*.png", "extra/*.svg", "extra/*.ico", "extra/*.icns"]
+
 [tool.versioningit.vcs]
 method = "git"
 default-tag = "0.0.1"
