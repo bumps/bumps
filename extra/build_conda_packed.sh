@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Definitions
-PYTHON_VERSION="3.12"
 OUTPUT="conda_packed"
 SCRIPT_DIR=$(realpath $(dirname "${BASH_SOURCE[0]}"))
 SRC_DIR=$(dirname "$SCRIPT_DIR")
@@ -13,10 +12,9 @@ if ! command -v conda-pack &> /dev/null; then
 fi
 
 ISOLATED_ENV="$(mktemp -d)/env"
-conda create -y -p "$ISOLATED_ENV" "python=$PYTHON_VERSION" "nodejs" "micromamba" "pip"
+conda create -y -p "$ISOLATED_ENV" "python=${PYTHON_VERSION:-3.12}" "nodejs" "micromamba" "pip"
 
 cd $SCRIPT_DIR
-echo "Installing package in isolated environment, $(pwd)"
 conda activate "$ISOLATED_ENV"
 
 python -m pip install --no-input --no-compile "..[webview]"
