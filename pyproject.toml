@@ -48,7 +48,6 @@ webview = [
     'python-socketio',
     'plotly',
     'mpld3',
-    'nodejs',
     'h5py',
 ]
 
