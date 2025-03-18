@@ -35,7 +35,7 @@ jobs:
         auto-update-conda: true
         python-version: ${{ matrix.config.py }}
         miniforge-version: latest
-        activate-environment: builder
+        auto-activate-base: true
 
     - name: Build conda-packed (all platforms)
       run: |
