@@ -8,6 +8,7 @@ on:
 env:
   branch_name: master
   PACKAGE_NAME: bumps
+  PYTHON_VERSION: 3.11
 
 jobs:
   build_and_publish:
@@ -18,10 +19,10 @@ jobs:
     strategy:
       matrix:
         config:
-          - { os: ubuntu-latest, py: "3.11" }
-          - { os: windows-latest, py: "3.11" }
-          - { os: macos-latest, py: "3.11" }
-          - { os: macos-13, py: "3.11" }
+          - { os: ubuntu-latest }
+          - { os: windows-latest }
+          - { os: macos-latest }
+          - { os: macos-13 }
           # all using to stable abi
 
     steps:
@@ -33,13 +34,13 @@ jobs:
     - uses: conda-incubator/setup-miniconda@v3
       with:
         auto-update-conda: true
-        python-version: ${{ matrix.config.py }}
+        python-version: ${{ env.PYTHON_VERSION }}
         miniforge-version: latest
         activate-environment: builder
 
     - name: Build conda-packed (all platforms)
       run: |
-        conda install -y versioningit nodejs conda-pack
+        conda install -y versioningit nodejs
         ./extra/build_conda_packed.sh
 
     - name: Create MacOS App
