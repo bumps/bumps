@@ -67,7 +67,7 @@ jobs:
         VERSION=$(versioningit)
         PRODUCT_NAME="$PACKAGE_NAME-$VERSION"
         FULL_PACKAGE_NAME="$PRODUCT_NAME-$(uname -s)-$(uname -m)"
-        BUILD_DIR="app_build"
+        BUILD_DIR="${PACKAGE_NAME}_installer"
         mkdir -p $BUILD_DIR
         APP_FOLDER="$BUILD_DIR/$PRODUCT_NAME"
         APP="$APP_FOLDER/${PACKAGE_NAME}.app"
@@ -106,7 +106,7 @@ jobs:
 
         DMG="artifacts/$FULL_PACKAGE_NAME.dmg"
         mkdir -p artifacts
-        hdiutil create $DMG -srcfolder app_build -ov -format UDZO
+        hdiutil create $DMG -srcfolder "$BUILD_DIR" -ov -format UDZO
         codesign -s "${DEVELOPER_IDENTITY}" $DMG
 
         # Clean up signing keys
