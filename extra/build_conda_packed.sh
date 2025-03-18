@@ -9,8 +9,7 @@ SRC_DIR=$(dirname "$SCRIPT_DIR")
 eval "$(conda shell.bash hook)"
 
 if ! command -v conda-pack &> /dev/null; then
-  echo "conda-pack is not installed. Please install it with 'conda install -y conda-pack'"
-  exit 1
+  conda install -y conda-pack
 fi
 
 ISOLATED_ENV="$(mktemp -d)/env"
