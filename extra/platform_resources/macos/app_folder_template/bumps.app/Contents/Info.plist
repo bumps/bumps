@@ -9,7 +9,7 @@
     <key>CFBundleExecutable</key>
     <string>bumps_webview</string>
     <key>CFBundleIconFile</key>
-    <string>/Contents/Resources/share/icons/refl1d-icon.svg</string>
+    <string>bumps</string>
     <key>CFBundleIdentifier</key>
     <string>org.reflectometry.bumps-webview</string>
     <key>CFBundleInfoDictionaryVersion</key>
@@ -27,7 +27,7 @@
     <key>LSMinimumSystemVersion</key>
     <string>10.7.0</string>
     <key>LSUIElement</key>
-    <false/>
+    <true/>
     <key>NSAppTransportSecurity</key>
     <dict>
         <key>NSAllowsArbitraryLoads</key>

@@ -48,7 +48,6 @@ webview = [
     'python-socketio',
     'plotly',
     'mpld3',
-    'nodejs',
     'h5py',
 ]
 
@@ -88,6 +87,9 @@ version = { attr = "bumps.__version__" }
 [tool.setuptools.packages.find]
 include = ["bumps*"]
 exclude = ["**/node_modules*"]
+
+[tool.setuptools.data-files]
+"share/icons" = ["extra/*.png", "extra/*.svg", "extra/*.ico", "extra/*.icns"]
 
 [tool.versioningit.vcs]
 method = "git"
