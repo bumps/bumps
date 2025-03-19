@@ -96,6 +96,11 @@ Section "Start Menu Shortcuts" SEC02
 
 SectionEnd
 
+Section "CLI Commands"
+    SetOutPath $INSTDIR
+    ExecWait '"$INSTDIR\Scripts\conda-unpack.exe"'
+SectionEnd
+
 ;-------------------------------------------------------------------------------
 ; Uninstaller Sections
 Section "Uninstall"
