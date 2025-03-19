@@ -8,7 +8,7 @@ on:
 env:
   branch_name: master
   PACKAGE_NAME: bumps
-  PYTHON_VERSION: 3.11
+  PYTHON_VERSION: 3.12
 
 jobs:
   build_and_publish:
