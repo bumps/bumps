@@ -19,15 +19,14 @@ from typing import (
     Optional,
     Sequence,
     Type,
-    TypeAlias,
     TypeVar,
     runtime_checkable,
     # imported by other modules
-    Protocol,
-    Dict,
-    Tuple,
-    Union,
-    Literal,
+    Protocol,  # noqa
+    Dict,  # noqa
+    Tuple,  # noqa
+    Union,  # noqa
+    Literal,  # noqa
 )
 
 import numpy as np
@@ -93,9 +92,12 @@ class NumpyArray:
 # then we use the serialization type definition instead.
 USE_PYDANTIC = os.environ.get("BUMPS_USE_PYDANTIC", "False") == "True"
 if USE_PYDANTIC:
+    # CRUFT: TypeAlias not available before python 3.10 so don't import at the top
+    from typing import TypeAlias
+
     NDArray: TypeAlias = NumpyArray
 else:
-    from numpy.typing import NDArray
+    from numpy.typing import NDArray  # noqa
 
 
 def parse_errfile(errfile):
