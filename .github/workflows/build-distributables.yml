@@ -140,7 +140,7 @@ jobs:
 
         # create the installer:
         PRODUCT_NAME="$PACKAGE_NAME-$VERSION"
-        $CONDA_PREFIX/NSIS/makensis.exe -DPRODUCT_NAME="$PRODUCT_NAME" -DPRODUCT_VERSION="$MAJOR_MINOR_PATCH" extra/installer.nsi
+        $CONDA_PREFIX/NSIS/makensis.exe -DPRODUCT_NAME="$PRODUCT_NAME" -DPRODUCT_VERSION="$MAJOR_MINOR_PATCH.0" extra/installer.nsi
 
         mkdir -p artifacts
         mv extra/BumpsWebviewSetup.exe "artifacts/$FULL_PACKAGE_NAME-installer.exe"
