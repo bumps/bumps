@@ -89,7 +89,7 @@ Section "Start Menu Shortcuts" SEC02
     CreateDirectory "$SMPROGRAMS\${PRODUCT_NAME}"
     CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\BumpsWebview.lnk" \
         "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" \
-        '-Command ""$INSTDIR\python.exe -m bumps.webview.server""' \
+        '-NoProfile -Command ""$INSTDIR\python.exe -m bumps.webview.server""' \
         "$INSTDIR\share\icons\bumps.ico"
     SetOutPath "%USERPROFILE%"
     CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\BumpsPowershell.lnk" \
