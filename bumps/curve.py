@@ -44,7 +44,7 @@ __all__ = ["Curve", "PoissonCurve", "plot_err"]
 
 import inspect
 import warnings
-from typing import Callable, Literal, Union, Optional, Any
+from typing import Callable, Literal, Union, Optional, Any, Dict, List
 from dataclasses import dataclass
 
 import numpy as np
@@ -194,11 +194,11 @@ class Curve:
     """Data uncertainty"""
     name: str
     """Name of the model"""
-    pars: dict[str, Parameter] = None  # Needs to be None initially for getattr/setattr to work
+    pars: Dict[str, Parameter] = None  # Needs to be None initially for getattr/setattr to work
     """Fittable parameters to the model"""
-    state: dict[str, Any]
+    state: Dict[str, Any]
     """Nonfittable parameters set during initialization. Values should be serializable."""
-    labels: list[str]
+    labels: List[str]
     plot_x: Optional[NDArray]
     plotter: Optional[UserFunction]
 

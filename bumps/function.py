@@ -1,6 +1,6 @@
 # play with function closure
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Dict
 from itertools import chain
 import inspect
 from copy import deepcopy
@@ -113,7 +113,7 @@ def safe(obj):
 class UserFunction:
     name: str
     source: str
-    context: dict[str, Any]
+    context: Dict[str, Any]
 
     def __init__(self, name, source, context):
         # print("restoring", name)
