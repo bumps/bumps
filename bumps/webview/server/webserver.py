@@ -3,14 +3,10 @@ import functools
 import json
 import mimetypes
 import os
-import re
-import signal
 import socket
-import sys
-import warnings
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict, Optional, Union, List
+from typing import Callable, Optional, Union, List
 
 import matplotlib
 
@@ -156,7 +152,7 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
     async def notice(message: str):
         logger.info(message)
 
-    app.on_startup.extend(interpret_fit_options(options, await_complete=False))
+    app.on_startup.extend(interpret_fit_options(options))
     app.on_cleanup.append(lambda App: notice("cleanup task"))
     app.on_shutdown.append(lambda App: notice("shutdown task"))
     # not sure why, but have to call shutdown twice to get it to work:
@@ -213,6 +209,14 @@ def main(options: Optional[OPTIONS_CLASS] = None, sock: Optional[socket.socket] 
     options = get_commandline_options(arg_defaults={"headless": False}) if options is None else options
     logger.info(dict(options=options))
     init_web_app()  # defines app, routes and sio
+    runsock = setup_app(options=options, sock=None)
+    web.run_app(app, sock=runsock)
+
+
+def start_from_cli(options: Optional[OPTIONS_CLASS] = None):
+    from aiohttp import web
+
+    init_web_app()
     runsock = setup_app(options=options, sock=None)
     web.run_app(app, sock=runsock)
 

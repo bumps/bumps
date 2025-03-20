@@ -195,6 +195,11 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     # Program controls.
     misc = parser.add_argument_group("Miscellaneous")
     misc.add_argument(
+        "--edit",
+        action="store_true",
+        help="start web interface to view and edit the problem",
+    )
+    misc.add_argument(
         "--start",
         action="store_true",
         help="start fit when problem loaded",
@@ -237,7 +242,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     return args
 
 
-def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS(), await_complete=True):
+def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
     # ordered list of actions to do on startup
     on_startup: List[Callable] = []
 
@@ -396,22 +401,31 @@ def sigint_handler(sig, frame):
     api.state.fit_abort_event.set()
 
 
-def main(options: Optional[OPTIONS_CLASS] = None):
-    # this entrypoint will be used to start gui, so set headless = False
-    # (other contexts e.g. jupyter notebook will directly call start_app)
-    signal.signal(signal.SIGINT, sigint_handler)
-    logger.addHandler(console_handler)
-    options = get_commandline_options(arg_defaults={"headless": False}) if options is None else options
-    logger.info(options)
-
+def start_batch(options: Optional[OPTIONS_CLASS] = None):
     async def emit(*args, **kw):
         ...
         # print("emit", args, kw)
 
     api.EMITTERS["cli"] = emit
+    signal.signal(signal.SIGINT, sigint_handler)
     on_start = interpret_fit_options(options)
     asyncio.run(_run_operations(on_start))
     print("completed run")
+
+
+def main(options: Optional[OPTIONS_CLASS] = None):
+    # this entrypoint can be used to start gui, so set headless = False
+    # (other contexts e.g. jupyter notebook will directly call start_app)
+    logger.addHandler(console_handler)
+    options = get_commandline_options(arg_defaults={"headless": False}) if options is None else options
+    logger.info(options)
+
+    if options.edit:
+        from .webserver import start_from_cli
+
+        start_from_cli(options)
+    else:
+        start_batch(options)
 
 
 if __name__ == "__main__":
