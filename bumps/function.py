@@ -111,6 +111,10 @@ def safe(obj):
 
 @dataclass
 class UserFunction:
+    """
+    Serializable function with source or dill fallback.
+    """
+
     name: str
     source: str
     context: Dict[str, Any]

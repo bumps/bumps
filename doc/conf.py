@@ -69,6 +69,8 @@ nitpick_ignore = [
     ("py:class", "object"),
     ("py:class", "numpy.ndarray"),
     ("py:class", "np.ndarray"),
+    ("py:class", "numpy._typing._array_like._ScalarType_co"),
+    ("py:class", "numpy.dtype"),
     ("py:class", "Real"),
     ("py:class", "Integral"),
 ]
