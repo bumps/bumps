@@ -14,7 +14,7 @@
 !define PRODUCT_DESCRIPTION "Bayesian uncertainty modeling for the physical sciences"
 !define COPYRIGHT "Copyright ${CurrentYear} The Bumps developers"
 !ifndef PRODUCT_VERSION
-    !define PRODUCT_VERSION "1.0"
+    !define PRODUCT_VERSION "1.0.0.0"
 !endif
 !define SETUP_VERSION 1.0.0.0
 !ifndef SRC
