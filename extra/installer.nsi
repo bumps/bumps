@@ -96,8 +96,16 @@ Section "Start Menu Shortcuts" SEC02
 
 SectionEnd
 
-Section "CLI Commands"
-    DetailPrint "Setting up console commands..."    
+Section "Desktop Shortcut" SEC03
+    SetShellVarContext current
+    CreateShortCut "$DESKTOP\${PRODUCT_NAME}.lnk" \
+        "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" \
+        '-NoProfile -Command ""$INSTDIR\python.exe -m bumps.webview.server""' \
+        "$INSTDIR\share\icons\bumps.ico"
+SectionEnd
+
+Section "CLI Commands" SEC04
+    DetailPrint "Setting up console commands..."
     nsExec::Exec '"$INSTDIR\Scripts\conda-unpack.exe"'
     Pop $0
     DetailPrint "Return code: $0"
