@@ -22,9 +22,10 @@ DEBUG = False
 class SCHEMA_VERSIONS(str, Enum):
     BUMPS_DRAFT_O1 = "bumps-draft-01"
     BUMPS_DRAFT_02 = "bumps-draft-02"
+    BUMPS_DRAFT_03 = "bumps-draft-03"
 
 
-SCHEMA = SCHEMA_VERSIONS.BUMPS_DRAFT_02
+SCHEMA = SCHEMA_VERSIONS.BUMPS_DRAFT_03
 REFERENCES_KEY = "references"
 REFERENCE_IDENTIFIER = "$ref"
 MISSING = object()
@@ -269,6 +270,7 @@ def _migrate_draft_01_to_draft_02(serialized: dict):
     def rename_type(obj):
         if isinstance(obj, dict):
             t: str = obj.pop("type", obj.pop(TYPE_KEY, MISSING))
+            # print(f"moving type to __class__ for id {obj.get('id', 'no id')}")
             if t is not MISSING:
                 obj[TYPE_KEY] = t
             for v in obj.values():
@@ -281,6 +283,8 @@ def _migrate_draft_01_to_draft_02(serialized: dict):
         if isinstance(obj, dict):
             t: str = obj.get(TYPE_KEY, MISSING)
             obj_id: str = obj.get("id", MISSING)
+            # if obj_id is not MISSING:
+            #     print(f"building reference for id {obj_id}")
             if obj_id is not MISSING and not t in [MISSING, REFERENCE_TYPE_NAME]:
                 if not obj_id in references:
                     references[obj_id] = deepcopy(obj)
@@ -304,4 +308,28 @@ def _migrate_draft_01_to_draft_02(serialized: dict):
     return SCHEMA_VERSIONS.BUMPS_DRAFT_02, migrated
 
 
-MIGRATIONS = {SCHEMA_VERSIONS.BUMPS_DRAFT_O1: _migrate_draft_01_to_draft_02}
+def _migrate_draft_02_to_draft_03(serialized: dict):
+    # add migration code here
+    def div_to_truediv(obj):
+        # remove all 'div' operators and replace with 'truediv'
+        if isinstance(obj, dict) and obj.get(TYPE_KEY, MISSING) == "bumps.parameter.Expression":
+            if obj.get("op", MISSING) == "div":
+                obj["op"] = "truediv"
+            for v in obj.get("args", []):
+                div_to_truediv(v)
+        elif isinstance(obj, dict):
+            for k, v in obj.items():
+                div_to_truediv(v)
+        elif isinstance(obj, list):
+            for v in obj:
+                div_to_truediv(v)
+
+    migrated = deepcopy(serialized)
+    div_to_truediv(migrated)
+    return SCHEMA_VERSIONS.BUMPS_DRAFT_03, migrated
+
+
+MIGRATIONS = {
+    SCHEMA_VERSIONS.BUMPS_DRAFT_O1: _migrate_draft_01_to_draft_02,
+    SCHEMA_VERSIONS.BUMPS_DRAFT_02: _migrate_draft_02_to_draft_03,
+}
