@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Definitions
-OUTPUT="conda_packed"
-SCRIPT_DIR="$(realpath $(dirname '${BASH_SOURCE[0]}'))"
-SRC_DIR="$(dirname '$SCRIPT_DIR')"
+OUTPUT="conda_packed.tar"
+SCRIPT_DIR="$(readlink -f "$(dirname "${BASH_SOURCE[0]}")")"
+SRC_DIR="$(dirname "$SCRIPT_DIR")"
 
 eval "$(conda shell.bash hook)"
 
