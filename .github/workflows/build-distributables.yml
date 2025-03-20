@@ -80,7 +80,7 @@ jobs:
         cp -R -P "conda_packed" "$PYTHON_ENV"
         plutil -replace CFBundleVersion -string "$VERSION" "$APP/Contents/Info.plist"
         plutil -replace CFBundleShortVersionString -string "$MAJOR_MINOR_PATCH" "$APP/Contents/Info.plist"
-        plutil -replace NSHumanReadableCopyright -string "Copyright $(date +'%Y') the $PACKAGE_NAME developers"
+        plutil -replace NSHumanReadableCopyright -string "Copyright $(date +'%Y') the $PACKAGE_NAME developers" "$APP/Contents/Info.plist"
 
         sign_file() {
             codesign --force --timestamp --options=runtime --verify --verbose=4 --sign "${DEVELOPER_IDENTITY}" "$1"
