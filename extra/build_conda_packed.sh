@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Definitions
-OUTPUT="conda_packed.tar"
+OUTPUT="conda_packed"
 SCRIPT_DIR="$(readlink -f "$(dirname "${BASH_SOURCE[0]}")")"
 SRC_DIR="$(dirname "$SCRIPT_DIR")"
 
