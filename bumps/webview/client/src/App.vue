@@ -39,6 +39,7 @@ const props = defineProps<{
 }>();
 
 const show_menu = ref(false);
+const dark_mode = ref(false);
 // const nativefs = ref(false);
 
 // Create a SocketIO connection, to be passed to child components
@@ -106,6 +107,11 @@ socket.on("cancel_notification", cancelNotification);
 //   socket.disconnect();
 //   connected.value = false;
 // }
+
+function setMode() {
+  const theme = dark_mode.value ? "dark" : "light";
+  document.documentElement.setAttribute("data-bs-theme", theme);
+}
 
 async function selectOpenFile() {
   if (fileBrowser.value) {
@@ -283,7 +289,7 @@ file_menu_items.value = [
 
 <template>
   <div class="h-100 w-100 m-0 d-flex flex-column">
-    <nav v-if="single_panel === null" class="navbar navbar-expand-sm navbar-dark bg-dark">
+    <nav v-if="single_panel === null" class="navbar navbar-expand-sm bg-dark" data-bs-theme="dark">
       <div class="container-fluid">
         <div class="navbar-brand">
           <img src="./assets/bumps-icon_256x256x32.png" alt="" height="24" class="d-inline-block align-text-middle" />
@@ -369,9 +375,21 @@ file_menu_items.value = [
               </div>
             </h4>
           </div>
-          <div class="d-flex">
+          <div class="d-flex navbar-nav mb-2 mb-lg-0">
+            <div class="form-check form-switch nav-item m-0 p-2">
+              <input
+                id="darkModeSwitch"
+                v-model="dark_mode"
+                class="form-check-input"
+                type="checkbox"
+                role="switch"
+                @change="setMode()"
+              />
+              <label class="form-check-label text-secondary" for="darkModeSwitch">dark mode</label>
+            </div>
             <div
               id="connection_status"
+              class="nav-item"
               :class="{ btn: true, 'btn-outline-success': connected, 'btn-outline-danger': !connected }"
             >
               {{ connected ? "connected" : "disconnected" }}
