@@ -7,7 +7,7 @@ __all__ = ["kbhit", "profile", "pushdir", "push_seed", "redirect_console"]
 import os
 import sys
 import types
-from dataclasses import Field, dataclass, field, fields, is_dataclass
+from dataclasses import dataclass, field, fields, is_dataclass
 from io import StringIO
 
 # this can be substituted with pydantic dataclass for schema-building...
@@ -15,18 +15,18 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
-    Iterable,
     List,
-    Literal,
     Optional,
-    Protocol,
     Sequence,
-    Tuple,
     Type,
     TypeVar,
-    Union,
     runtime_checkable,
+    # imported by other modules
+    Protocol,  # noqa
+    Dict,  # noqa
+    Tuple,  # noqa
+    Union,  # noqa
+    Literal,  # noqa
 )
 
 import numpy as np
@@ -35,10 +35,6 @@ from numpy import ascontiguousarray as _dense
 # **DEPRECATED** we can import erf directly from scipy.special.erf
 # so there is no longer a need for bumps.util.erf.
 from scipy.special import erf
-
-USE_PYDANTIC = os.environ.get("BUMPS_USE_PYDANTIC", "False") == "True"
-if TYPE_CHECKING:
-    from numpy.typing import NDArray
 
 
 def field_desc(description: str) -> Any:
@@ -90,10 +86,18 @@ class NumpyArray:
     values: Sequence = field(default_factory=list)
 
 
+# Define a common value for NDArray type. This is usually the type
+# defined by numpy, but when we are defining the dataclass scheme
+# with pydantic (BUMPS_USE_PYDANTIC=True in the system environment)
+# then we use the serialization type definition instead.
+USE_PYDANTIC = os.environ.get("BUMPS_USE_PYDANTIC", "False") == "True"
 if USE_PYDANTIC:
+    # CRUFT: TypeAlias not available before python 3.10 so don't import at the top
     from typing import TypeAlias
 
     NDArray: TypeAlias = NumpyArray
+else:
+    from numpy.typing import NDArray  # noqa
 
 
 def parse_errfile(errfile):

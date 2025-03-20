@@ -9,6 +9,10 @@ dependencies = [
     'numpy',
     'scikit-learn',
     'scipy',
+    'matplotlib',
+    'h5py',
+    'blinker',
+    'dill',
     'typing_extensions>=3.7.4',
     'graphlib_backport; python_version < "3.9"',
 ]
@@ -42,14 +46,10 @@ dev = [
 ]
 webview = [
     'aiohttp',
-    'blinker',
-    'dill',
-    'matplotlib',
     'python-socketio',
     'plotly',
     'mpld3',
     'nodejs',
-    'h5py',
 ]
 
 [project.urls]

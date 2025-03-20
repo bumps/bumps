@@ -22,8 +22,9 @@ The :func:`entropy` function computes the entropy directly from a set
 of MCMC samples, normalized by a scale factor computed from the kernel density
 estimate at a subset of the points.\ [#Kramer]_
 
-There are many other entropy calculations implemented within this file, as
-well as a number of sampling distributions for which the true entropy is known.
+There are many other entropy calculations implemented within this
+file\ [#Turjillo-Ortiz]_,\ [#Mardia1970]_,\ [#Mardia1974]_,\ [#Stevens]_
+as well as a number of sampling distributions for which the true entropy is known.
 Furthermore, entropy was computed against dream output and checked for
 consistency. None of the methods is truly excellent in terms of minimum
 sample size, maximum dimensions and speed, but many of them are pretty

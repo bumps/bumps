@@ -9,6 +9,8 @@
 *.bak
 
 # build/test
+.pytest_cache
+.ruff_cache
 .settings
 .coverage
 /build/

@@ -169,6 +169,7 @@ BUMPS_MODULES = [
     ("fitservice", "Remote job plugin for fit jobs"),
     ("fitters", "Wrappers for various optimization algorithms"),
     ("formatnum", "Format numbers and uncertainties"),
+    ("function", "Serializable function definition"),
     ("history", "Optimizer evaluation trace"),
     ("initpop", "Population initialization strategies"),
     ("lsqerror", "Least squares eorror analysis"),
