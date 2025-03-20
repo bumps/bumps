@@ -2,8 +2,8 @@
 
 # Definitions
 OUTPUT="conda_packed"
-SCRIPT_DIR=$(realpath $(dirname "${BASH_SOURCE[0]}"))
-SRC_DIR=$(dirname "$SCRIPT_DIR")
+SCRIPT_DIR="$(realpath $(dirname '${BASH_SOURCE[0]}'))"
+SRC_DIR="$(dirname '$SCRIPT_DIR')"
 
 eval "$(conda shell.bash hook)"
 
@@ -14,7 +14,7 @@ fi
 ISOLATED_ENV="$(mktemp -d)/env"
 conda create -y -p "$ISOLATED_ENV" "python=${PYTHON_VERSION:-3.12}" "nodejs" "micromamba" "pip"
 
-cd $SCRIPT_DIR
+cd "$SCRIPT_DIR"
 conda activate "$ISOLATED_ENV"
 
 python -m pip install --no-input --no-compile "..[webview]"
