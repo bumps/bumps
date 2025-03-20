@@ -120,6 +120,12 @@ def build_problem():
 
 problem = build_problem()
 
+if 1:
+    import sys
+    from bumps.mapper import can_pickle
+
+    print("Pickleable?", can_pickle(problem))
+    print(sys.modules["model.peaks"])
 
 # Note: if you want to run the model file as a script without invoking bumps
 # (which can be handy for debugging data loaders, etc.) then add the script

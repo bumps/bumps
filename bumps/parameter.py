@@ -13,9 +13,8 @@ parts of the model, or different models.
 
 # __all__ = [ 'Parameter']
 import operator
-import sys
 import builtins
-from dataclasses import dataclass, field, InitVar
+from dataclasses import dataclass, field
 from functools import reduce
 import warnings
 from copy import copy
@@ -23,8 +22,7 @@ import uuid
 from functools import wraps
 from enum import Enum
 
-from typing import Type, TypeVar, Optional, Any, Union, Dict, Callable, Tuple, List, Sequence
-from .util import Literal
+from typing import Optional, Any, Union, Dict, Callable, Tuple, List, Sequence, Literal
 
 import numpy as np
 from numpy import inf, isinf, isfinite
@@ -860,6 +858,7 @@ def _lookup_operator(op_name):
         fn = getattr(np, op_name, None)
     if fn is None:
         raise RuntimeError(f"should not be here: {op_name} not found")
+    # print(f"locating {op_name} as {fn}")
     return fn
 
 
@@ -1797,13 +1796,15 @@ def test_operator():
     assert np.sin(a + b).value == np.sin(a.value + b.value)
     assert atan2(a, b).value == atan2(a.value, b.value)
 
-    # Make sure that evaluation is lazy. Capture the expression with one
-    # set of values for the parameters, update them with a new set of values,
-    # then check if the result is what you get when you call the function
-    # directly on those new values.
     scope = locals()  # record the currently available parameter handles
 
     def capture_test(expr, result, **kw):
+        """
+        Make sure that evaluation is lazy. Capture the expression with one
+        set of values for the parameters, update them with a new set of values,
+        then check if the result is what you get when you call the function
+        directly on those new values.
+        """
         # print("checking", expr, "for", kw, "yields", result)
         saved = {k: scope[k].value for k in kw}
         for k, v in kw.items():
@@ -1823,6 +1824,7 @@ def test_operator():
 
     # Check that symbols are defined in pmath
     capture_test(pmath.sind(a), np.sin(np.radians(25)), a=25)
+    capture_test(pmath.asin(b), np.arcsin(0.3), b=0.3)
     assert "sind" in pmath.__all__
 
     # TODO: can we evaluate an expression for an entire population at once?

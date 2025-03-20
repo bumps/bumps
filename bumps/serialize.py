@@ -108,6 +108,7 @@ def _rehydrate(obj, references: Dict[str, object]):
                     hydrated = _instantiate(klass, t, obj)
                     return hydrated
                 except Exception as e:
+                    # raise  # uncomment this to get the traceback from the failure point
                     # there is a type, but it is not found...
                     raise ValueError("type %s not found!, error: %s" % (t, e), obj)
     elif isinstance(obj, list):
@@ -151,6 +152,7 @@ def _find_ref_dependencies(obj, dependencies: set):
 
 
 def serialize(obj, use_refs=True, add_libraries=True):
+    # print(f"serizalize {obj} dataclass={is_dataclass(obj)} schema={hasattr(obj, SCHEMA_ATTRIBUTE_NAME)}")
     references = {}
 
     def make_ref(obj_id: str):
@@ -166,6 +168,7 @@ def serialize(obj, use_refs=True, add_libraries=True):
             all_fields = [f for f in all_fields if not f.name.startswith("_")]
         cls = dclass.__class__
         fqn = f"{cls.__module__}.{cls.__qualname__}"
+        # print("serializing dataclass", all_fields)
         output = dict([(f.name, obj_to_dict(getattr(dclass, f.name))) for f in all_fields])
         output[TYPE_KEY] = fqn
         return output

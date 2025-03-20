@@ -6,6 +6,8 @@ from typing import Callable, Dict, Optional, Union, List
 import warnings
 import signal
 
+import numpy as np
+
 from . import api
 from . import persistent_settings
 from .logger import logger, list_handler, console_handler
@@ -126,6 +128,13 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         type=str,
         help="set read_store and write_store to same file",
     )
+    # TODO: do we want overwrite
+    # session.add_argument(
+    #    "--overwrite",
+    #    default=None,
+    #    type=str,
+    #    help="replace the session rather than appending.",
+    # )
     session.add_argument(
         "--read-store",
         default=None,
@@ -261,11 +270,14 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS(), await_comple
         warnings.warn("write_store and store are both set; write_store will be used to save state")
 
     read_store = options.read_store if options.read_store is not None else options.store
+    # Note: --read-store path must exist, but --store path need not.
+    read_store_path = Path(read_store).expanduser().absolute()
+    if not read_store_path.exists() and options.read_store:
+        warnings.warn(f"{read_store_path} does not exist")
     write_store = options.write_store if options.write_store is not None else options.store
 
     # TODO: why is session file read immediately but model.py delayed?
-    if read_store is not None:
-        read_store_path = Path(read_store).absolute()
+    if read_store_path.exists():
         api.state.read_session_file(str(read_store_path))
         if write_store is None:
             api.state.shared.session_output_file = dict(
@@ -273,7 +285,7 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS(), await_comple
                 filename=read_store_path.name,
             )
     if write_store is not None:
-        write_store_path = Path(write_store).absolute()
+        write_store_path = Path(write_store).expanduser().absolute()
         api.state.shared.session_output_file = dict(
             pathlist=list(write_store_path.parent.parts), filename=write_store_path.name
         )

@@ -67,6 +67,7 @@ def now_string():
 
 def serialize_problem(problem: "bumps.fitproblem.FitProblem", method: SERIALIZERS):
     if method == "dataclass":
+        # print("serialization:", serialize(problem))
         return json.dumps(serialize(problem)).encode()
     elif method == "pickle":
         import pickle
@@ -498,6 +499,7 @@ class State:
                 self.shared.read(root_group)
         except Exception as e:
             logger.warning(f"could not load session file {session_fullpath} because of {e}")
+            # raise  # Uncomment this to turn warnings into errors.
 
     def read_problem_from_session(self, session_fullpath: str):
         try:
