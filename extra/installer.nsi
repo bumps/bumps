@@ -10,9 +10,12 @@
 !ifndef PRODUCT_NAME
     !define PRODUCT_NAME "Bumps"
 !endif
+!define /date CurrentYear "%Y"
 !define PRODUCT_DESCRIPTION "Bayesian uncertainty modeling for the physical sciences"
-!define COPYRIGHT "Copyright © 2024 The Bumps developers"
-!define PRODUCT_VERSION 1.0.0.0
+!define COPYRIGHT "Copyright ${CurrentYear} The Bumps developers"
+!ifndef PRODUCT_VERSION
+    !define PRODUCT_VERSION "1.0"
+!endif
 !define SETUP_VERSION 1.0.0.0
 !ifndef SRC
     !define SRC "..\conda_packed"

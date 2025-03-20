@@ -66,6 +66,7 @@ jobs:
         # This assumes that conda-packed enviroment exists at "conda_packed"
 
         VERSION=$(versioningit)
+        MAJOR_MINOR_PATCH=$(sed -E 's/(^[0-9]+\.[0-9]+\.[0-9]+).*$/\1/' <<< "$VERSION")
         PRODUCT_NAME="$PACKAGE_NAME-$VERSION"
         FULL_PACKAGE_NAME="$PRODUCT_NAME-$(uname -s)-$(uname -m)"
         BUILD_DIR="${PACKAGE_NAME}_installer"
@@ -78,6 +79,8 @@ jobs:
         cp -R -P "extra/platform_resources/macos/app_folder_template" "$APP_FOLDER"
         cp -R -P "conda_packed" "$PYTHON_ENV"
         plutil -replace CFBundleVersion -string "$VERSION" "$APP/Contents/Info.plist"
+        plutil -replace CFBundleShortVersionString -string "$MAJOR_MINOR_PATCH" "$APP/Contents/Info.plist"
+        plutil -replace NSHumanReadableCopyright -string "Copyright $(date +'%Y') the $PACKAGE_NAME developers"
 
         sign_file() {
             codesign --force --timestamp --options=runtime --verify --verbose=4 --sign "${DEVELOPER_IDENTITY}" "$1"
@@ -126,6 +129,7 @@ jobs:
         echo "Creating Windows Installer"
         # This assumes that conda-packed enviroment exists at "conda_packed"
         VERSION=$(versioningit)
+        MAJOR_MINOR_PATCH=$(sed -E 's/(^[0-9]+\.[0-9]+\.[0-9]+).*$/\1/' <<< "$VERSION")
 
         FULL_PACKAGE_NAME="$PACKAGE_NAME-$VERSION-Windows-$(uname -m)"
 
@@ -136,7 +140,7 @@ jobs:
 
         # create the installer:
         PRODUCT_NAME="$PACKAGE_NAME-$VERSION"
-        $CONDA_PREFIX/NSIS/makensis.exe -DPRODUCT_NAME="$PRODUCT_NAME" extra/installer.nsi
+        $CONDA_PREFIX/NSIS/makensis.exe -DPRODUCT_NAME="$PRODUCT_NAME" -DPRODUCT_VERSION="$MAJOR_MINOR_PATCH" extra/installer.nsi
 
         mkdir -p artifacts
         mv extra/BumpsWebviewSetup.exe "artifacts/$FULL_PACKAGE_NAME-installer.exe"
