@@ -49,6 +49,10 @@ async function fetch_and_draw(latest_timestamp: string): Promise<void> {
     cache[title] = { timestamp: latest_timestamp, plotdata };
   }
   const { data, layout } = plotdata;
+  if (layout == null || data == null) {
+    await Plotly.purge(plot_div_id.value);
+    return;
+  }
   delete layout?.width;
   delete layout?.height;
   const config = { responsive: true, scrollZoom: true, modeBarButtonsToAdd: [SVGDownloadButton] };
