@@ -199,6 +199,7 @@ class FitThread(Thread):
         parallel=0,
         convergence_update=5,
         uncertainty_update=300,
+        console_update=0,
     ):
         # base class initialization
         # Process.__init__(self)
@@ -213,6 +214,7 @@ class FitThread(Thread):
         self.parallel = parallel
         self.convergence_update = convergence_update
         self.uncertainty_update = uncertainty_update
+        self.console_update = console_update
 
         # Setting daemon to true causes sys.exit() to kill the thread immediately
         # rather than waiting for it to complete.
@@ -241,7 +243,14 @@ class FitThread(Thread):
                 #            rate=self.convergence_update),
                 DreamMonitor(self.problem, fitter=self.fitclass, rate=self.uncertainty_update),
             ]
-            monitors.append(ConsoleMonitor(self.problem))
+            if self.console_update > 0:
+                monitors.append(
+                    ConsoleMonitor(
+                        self.problem,
+                        progress=self.console_update,
+                        improvement=max(self.console_update, 30),
+                    )
+                )
             # monitors = [ConsoleMonitor(self.problem)]
 
             mapper = self.mapper

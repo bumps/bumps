@@ -381,6 +381,7 @@ class State:
     # fit_enabled: Event
     calling_loop: Optional[asyncio.AbstractEventLoop] = None
     base_path: str = ""
+    console_update_interval: int = 0  # seconds (float would work too, but unnecessary)
 
     # State to be stored:
     problem: ProblemState

@@ -420,11 +420,12 @@ def main(options: Optional[OPTIONS_CLASS] = None):
     options = get_commandline_options(arg_defaults={"headless": False}) if options is None else options
     logger.info(options)
 
-    if options.edit:
+    if options.edit:  # gui mode
         from .webserver import start_from_cli
 
         start_from_cli(options)
-    else:
+    else:  # console mode
+        api.state.console_update_interval = 1
         start_batch(options)
 
 

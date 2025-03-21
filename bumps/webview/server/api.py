@@ -535,6 +535,7 @@ async def start_fit_thread(fitter_id: str = "", options=None):
             # Number of seconds between updates to the GUI, or 0 for no updates
             convergence_update=5,
             uncertainty_update=state.shared.autosave_session_interval,
+            console_update=state.console_update_interval,
         )
         state.shared.active_fit = to_json_compatible_dict(
             dict(
