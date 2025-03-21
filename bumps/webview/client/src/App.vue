@@ -39,10 +39,15 @@ const props = defineProps<{
 }>();
 
 const show_menu = ref(false);
-const dark_mode = window.matchMedia("(prefers-color-scheme: dark)");
-if (dark_mode.matches) {
-  document.documentElement.setAttribute("data-bs-theme", "dark");
+
+// Control Dark Mode from system media query
+const prefersDarkMediaQueryList = window.matchMedia("(prefers-color-scheme: dark)");
+function setDarkTheme(prefersDark: boolean) {
+  const theme = prefersDark ? "dark" : "light";
+  document.documentElement.setAttribute("data-bs-theme", theme);
 }
+prefersDarkMediaQueryList.addEventListener("change", (e) => setDarkTheme(e.matches));
+setDarkTheme(prefersDarkMediaQueryList.matches);
 
 // const nativefs = ref(false);
 
