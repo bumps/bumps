@@ -271,9 +271,9 @@ class Curve(object):
             if noise == "data":
                 pass
             elif noise < 0:
-                self.dy = -0.01 * noise * theory
+                self.dy = np.full_like(theory, -noise)
             else:
-                self.dy = noise
+                self.dy = 0.01 * noise * abs(theory)
         self.y = theory + np.random.randn(*theory.shape) * self.dy
 
     def residuals(self):
