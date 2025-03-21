@@ -39,7 +39,11 @@ const props = defineProps<{
 }>();
 
 const show_menu = ref(false);
-const dark_mode = ref(false);
+const dark_mode = window.matchMedia("(prefers-color-scheme: dark)");
+if (dark_mode.matches) {
+  document.documentElement.setAttribute("data-bs-theme", "dark");
+}
+
 // const nativefs = ref(false);
 
 // Create a SocketIO connection, to be passed to child components
@@ -107,11 +111,6 @@ socket.on("cancel_notification", cancelNotification);
 //   socket.disconnect();
 //   connected.value = false;
 // }
-
-function setMode() {
-  const theme = dark_mode.value ? "dark" : "light";
-  document.documentElement.setAttribute("data-bs-theme", theme);
-}
 
 async function selectOpenFile() {
   if (fileBrowser.value) {
@@ -376,17 +375,6 @@ file_menu_items.value = [
             </h4>
           </div>
           <div class="d-flex navbar-nav mb-2 mb-lg-0">
-            <div class="form-check form-switch nav-item m-0 p-2">
-              <input
-                id="darkModeSwitch"
-                v-model="dark_mode"
-                class="form-check-input"
-                type="checkbox"
-                role="switch"
-                @change="setMode()"
-              />
-              <label class="form-check-label text-secondary" for="darkModeSwitch">dark mode</label>
-            </div>
             <div
               id="connection_status"
               class="nav-item"
