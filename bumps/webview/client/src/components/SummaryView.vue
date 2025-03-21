@@ -63,12 +63,6 @@ function validate_numeric(value: string, allow_inf: boolean = false) {
   return !Number.isNaN(Number(value));
 }
 
-async function scrollParam(event: WheelEvent, index: number) {
-  const sign = Math.sign(event.deltaY);
-  parameters_local01.value[index] -= 0.01 * sign;
-  props.socket.asyncEmit("set_parameter", parameters.value[index].id, "value01", parameters_local01.value[index]);
-}
-
 async function onInactive(param: parameter_info) {
   param.active = false;
   fetch_and_draw();
@@ -115,7 +109,8 @@ async function onInactive(param: parameter_info) {
             @mousedown="parameter.active = true"
             @input="onMove(index)"
             @change="onInactive(parameter)"
-            @wheel="scrollParam($event, index)"
+            @wheel.prevent
+            @touchmove.prevent
           />
         </td>
         <td
