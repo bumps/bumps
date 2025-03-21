@@ -23,7 +23,6 @@ jobs:
           - { os: windows-latest }
           - { os: macos-latest }
           - { os: macos-13 }
-          # all using to stable abi
 
     steps:
     - uses: actions/checkout@v4
