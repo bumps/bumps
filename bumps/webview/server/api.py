@@ -340,7 +340,7 @@ async def export_results(export_path: Union[str, List[str]] = ""):
 
     if not isinstance(export_path, list):
         export_path = [export_path]
-    path = Path(*export_path)
+    path = Path(*export_path).expanduser().absolute()
     notification_id = await add_notification(content=f"<span>{str(path)}</span>", title="Export started", timeout=None)
     try:
         await asyncio.to_thread(_export_results, path, problem, uncertainty_state)

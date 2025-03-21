@@ -225,6 +225,11 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         help="print χ²",
     )
     misc.add_argument(
+        "--export",
+        type=str,
+        help="Directory path for data and figure export.",
+    )
+    misc.add_argument(
         "-V",
         "--version",
         action="store_true",
@@ -381,6 +386,14 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
         # interrupted and the state was saved:
         on_startup.append(lambda App: api.state.shared.set("active_fit", {}))
 
+    if options.export:
+
+        async def delayed_export(App=None):
+            await api.wait_for_fit_complete()
+            await api.export_results(options.export)
+
+        on_startup.append(delayed_export)
+
     return on_startup
 
 
@@ -414,6 +427,13 @@ def start_batch(options: Optional[OPTIONS_CLASS] = None):
 
 
 def main(options: Optional[OPTIONS_CLASS] = None):
+    # TODO: where do we configure matplotlib?
+    # Need to set matplotlib to a non-interactive backend because it is being used in the
+    # the export thread. The next_color method calls gca() which needs to produce a blank
+    # graph even when there is none (we ask for next color before making the plot).
+    import matplotlib as mpl
+
+    mpl.use("agg")
     # this entrypoint can be used to start gui, so set headless = False
     # (other contexts e.g. jupyter notebook will directly call start_app)
     logger.addHandler(console_handler)
