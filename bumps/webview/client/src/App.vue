@@ -39,6 +39,16 @@ const props = defineProps<{
 }>();
 
 const show_menu = ref(false);
+
+// Control Dark Mode from system media query
+const prefersDarkMediaQueryList = window.matchMedia("(prefers-color-scheme: dark)");
+function setDarkTheme(prefersDark: boolean) {
+  const theme = prefersDark ? "dark" : "light";
+  document.documentElement.setAttribute("data-bs-theme", theme);
+}
+prefersDarkMediaQueryList.addEventListener("change", (e) => setDarkTheme(e.matches));
+setDarkTheme(prefersDarkMediaQueryList.matches);
+
 // const nativefs = ref(false);
 
 // Create a SocketIO connection, to be passed to child components
@@ -283,7 +293,7 @@ file_menu_items.value = [
 
 <template>
   <div class="h-100 w-100 m-0 d-flex flex-column">
-    <nav v-if="single_panel === null" class="navbar navbar-expand-sm navbar-dark bg-dark">
+    <nav v-if="single_panel === null" class="navbar navbar-expand-sm bg-dark" data-bs-theme="dark">
       <div class="container-fluid">
         <div class="navbar-brand">
           <img src="./assets/bumps-icon_256x256x32.png" alt="" height="24" class="d-inline-block align-text-middle" />
@@ -369,9 +379,10 @@ file_menu_items.value = [
               </div>
             </h4>
           </div>
-          <div class="d-flex">
+          <div class="d-flex navbar-nav mb-2 mb-lg-0">
             <div
               id="connection_status"
+              class="nav-item"
               :class="{ btn: true, 'btn-outline-success': connected, 'btn-outline-danger': !connected }"
             >
               {{ connected ? "connected" : "disconnected" }}
