@@ -1,3 +1,33 @@
+# Note: the following text appears at the end of the bumps -h command line help.
+"""
+Basic command line usage::
+
+    # Run a model from show its χ² value. This is useful for debugging the model file.
+    bumps model.py --chisq
+
+    # Run a simple batch fit, appending results to a store file.
+    bumps model.py --store=T1.hdf
+
+    # Run a DREAM fit to explore parameter uncertainties
+    bumps model.py --store=T1.hdf --fit=dream
+
+    # Load and fit the last model in a session file.
+    bumps --store=T1.hdf
+
+Basic interactive usage::
+
+    # Open a web browser to the bumps application
+    bumps --edit
+
+    # Start a fit and watch its progress
+    bumps model.py --start ...
+
+There are many more options available to control the fit, particularly for
+batch mode fitting, and to control the viewer. To see them type::
+
+    bumps --help
+"""
+
 import argparse
 import asyncio
 from dataclasses import dataclass
@@ -20,34 +50,52 @@ from .state_hdf5_backed import SERIALIZERS, UNDEFINED
 class BumpsOptions:
     """provide type hints for arguments"""
 
+    # TODO: verify that attributes correspond to command line options
+    # Note: order of attributes should match order of arguments in
+    # the options processor while we are relying on manual verification.
+
+    # Positional arguments.
     filename: Optional[str] = None
-    headless: bool = True
-    external: bool = False
-    port: int = 0
-    hub: Optional[str] = None
+
+    # Fitter controls.
     fit: Optional[str] = None
-    start: bool = False
+    fit_options: Optional[List[str]] = None
+    model_args: Optional[List[str]] = None
+    parallel: int = 0
+
+    # Session file controls.
+    store: Optional[str] = None
     read_store: Optional[str] = None
     write_store: Optional[str] = None
-    store: Optional[str] = None
-    exit: bool = False
     serializer: SERIALIZERS = "dill"
-    trace: bool = False
-    parallel: int = 0
-    path: Optional[str] = None
     no_auto_history: bool = False
-    convergence_heartbeat: bool = False
+    path: Optional[str] = None
     use_persistent_path: bool = False
-    fit_options: Optional[List[str]] = None
-    chisq: bool = False
-    version: bool = False
 
-    # Simulate
+    # Simulation controls.
     simulate: bool = False
     simrandom: bool = False
     shake: bool = False
     noise: float = 5
-    seed: int = 0  # want seed for simulation and reproducible stochastic fits
+    seed: int = 0
+
+    # Program controls.
+    chisq: bool = False
+    export: Optional[str] = None
+    version: bool = False
+    trace: bool = False
+
+    # Webserver controls.
+    edit: bool = False
+    start: bool = False
+    watch: bool = False
+    headless: bool = False
+    external: bool = False
+    port: int = 0
+    hub: Optional[str] = None
+    convergence_heartbeat: bool = False
+
+    # Simulate
 
 
 OPTIONS_CLASS = BumpsOptions
@@ -55,40 +103,16 @@ APPLICATION_NAME = "bumps"
 
 
 def get_commandline_options(arg_defaults: Optional[Dict] = None):
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawTextHelpFormatter,
+        epilog=__doc__.replace("::", ":"),
+    )
     parser.add_argument(
         "filename",
         nargs="?",
         help="problem file to load, .py or .json (serialized) fitproblem",
     )
     # parser.add_argument('-d', '--debug', action='store_true', help='autoload modules on change')
-
-    # Webserver controls
-    server = parser.add_argument_group("Server controls")
-    server.add_argument(
-        "-x",
-        "--headless",
-        action="store_true",
-        help="do not automatically load client in browser",
-    )
-    server.add_argument(
-        "--external",
-        action="store_true",
-        help="listen on all interfaces, including external (local connections only if not set)",
-    )
-    server.add_argument(
-        "-p",
-        "--port",
-        default=0,
-        type=int,
-        help="port on which to start the server",
-    )
-    server.add_argument(
-        "--hub",
-        default=None,
-        type=str,
-        help="api address of parent hub (only used when called as subprocess)",
-    )
 
     # Fitter controls
     fitter = parser.add_argument_group("Fitting controls")
@@ -109,15 +133,20 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         "--model-args",
         nargs="*",
         type=str,
-        help="arguments to send to the model loader",
+        help="arguments to send to the model loader [batch only]",
     )
-
     fitter.add_argument(
         "--parallel",
         default=0,
         type=int,
         help="run fit using multiprocessing for parallelism; use --parallel=0 for all cpus",
     )
+    # fitter.add_argument(
+    #    "--pars",
+    #    default=None,
+    #    type=str,
+    #    help="Start a fit from a previously saved result."
+    # )
 
     # Session file controls.
     session = parser.add_argument_group("Session file management")
@@ -155,12 +184,12 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         "--path",
         default=None,
         type=str,
-        help="set initial path for save and load dialogs",
+        help="set initial path for save and load dialogs [webview only]",
     )
     session.add_argument(
         "--use-persistent-path",
         action="store_true",
-        help="save most recently used path to disk for persistence between sessions",
+        help="save most recently used path to disk for persistence between sessions [webview only]",
     )
 
     # Simulation controls.
@@ -173,7 +202,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     sim.add_argument(
         "--simrandom",
         action="store_true",
-        help="simulate a dataset using the randome problem parameters",
+        help="simulate a dataset using the random problem parameters",
     )
     sim.add_argument(
         "--shake",
@@ -196,34 +225,9 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     # Program controls.
     misc = parser.add_argument_group("Miscellaneous")
     misc.add_argument(
-        "--edit",
-        action="store_true",
-        help="start web interface to view and edit the problem",
-    )
-    misc.add_argument(
-        "--start",
-        action="store_true",
-        help="start fit immediately [webview only]",
-    )
-    misc.add_argument(
-        "--exit",
-        action="store_true",
-        help="exit when fit is complete [webview only]",
-    )
-    misc.add_argument(
-        "--convergence-heartbeat",
-        action="store_true",
-        help="enable convergence heartbeat for jupyter kernel (keeps kernel alive during fit)",
-    )
-    misc.add_argument(
-        "--trace",
-        action="store_true",
-        help="enable memory tracing (prints after every uncertainty update in dream)",
-    )
-    misc.add_argument(
         "--chisq",
         action="store_true",
-        help="print χ²",
+        help="print χ² and exit",
     )
     misc.add_argument(
         "--export",
@@ -235,6 +239,59 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         "--version",
         action="store_true",
         help="print version number",
+    )
+    misc.add_argument(
+        "--trace",
+        action="store_true",
+        help="enable memory tracing (prints after every uncertainty update in dream)",
+    )
+
+    # Webserver controls
+    server = parser.add_argument_group("Webview server controls")
+    server.add_argument(
+        "--edit",
+        action="store_true",
+        help="start web interface to view and edit the problem",
+    )
+    server.add_argument(
+        "--start",
+        action="store_true",
+        help="start fit immediately",
+    )
+    server.add_argument(
+        "-w",
+        "--watch",
+        action="store_true",
+        help="run the server during the fit, exiting when it is done",
+    )
+    server.add_argument(
+        "-x",
+        "--headless",
+        action="store_true",
+        help="do not automatically load client in browser",
+    )
+    server.add_argument(
+        "--external",
+        action="store_true",
+        help="listen on all interfaces, including external (local connections only if not set)",
+    )
+    server.add_argument(
+        "-p",
+        "--port",
+        default=0,
+        type=int,
+        help="port on which to start the server",
+    )
+    server.add_argument(
+        "--hub",
+        default=None,
+        type=str,
+        help="api address of parent hub (only used when called as subprocess)",
+    )
+    misc.add_argument(
+        "--convergence-heartbeat",
+        action="store_true",
+        help="enable convergence heartbeat for jupyter kernel (keeps kernel alive during fit)",
     )
 
     # parser.add_argument('-c', '--config-file', type=str, help='path to JSON configuration to load')
@@ -361,6 +418,9 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
     if options.shake:
         on_startup.append(lambda App=None: api.shake_parameters())
 
+    webview = options.edit or options.start or options.watch
+    autostart = not webview or options.start or options.watch
+    autostop = not webview or options.watch
     if options.chisq:
 
         async def show_chisq(App=None):
@@ -373,7 +433,7 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
 
         on_startup.append(show_chisq)
 
-    elif options.start or not options.edit:  # if batch mode then start the fit
+    elif autostart:  # if batch mode then start the fit
 
         async def start_fit(App=None):
             # print(f"{fitter_settings=}")
@@ -383,24 +443,25 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
                 # await api.state.fit_complete_future
 
         on_startup.append(start_fit)
+        api.state.console_update_interval = 0 if webview else 1
 
-        isbatch = not options.edit or (options.edit and options.exit)
-        if write_store is None and isbatch:
+        if write_store is None and autostop:
             # TODO: can we specify problem.path in the model file?
             # TODO: can we default the session file name to model.hdf?
             raise RuntimeError("Need to add '--store=path' to the command line.")
         # Export use cases:
         # (1) --start: batch fit then export (default start is true)
         # (2) --edit --start: webview fit with export after fit (suppressed)
-        # (3) --edit --start --exit: webview fit with export before exit
+        # (3) --watch: webview fit with export before exit
         # (4) export from existing session file and do nothing else (not supported)
         # (5) webview fit with export after every fit (not supported)
         # TODO: maybe warn when --export option is ignored
-        if options.export and isbatch:
+        if options.export and autostop:
             # print("adding completion lambda")
             on_complete.append(lambda App=None: api.export_results(options.export))
 
-        if options.edit and isbatch:  # trigger --exit shutdown [webview only]
+        # TODO: cleaner handling of autostop
+        if webview and autostop:  # trigger shutdown on fit complete [webview only]
             # print("setting shutdown True")
             api.state.shutdown_on_fit_complete = True
 
@@ -473,19 +534,17 @@ def main(options: Optional[OPTIONS_CLASS] = None):
     import matplotlib as mpl
 
     mpl.use("agg")
-    # this entrypoint can be used to start gui, so set headless = False
-    # (other contexts e.g. jupyter notebook will directly call start_app)
     logger.addHandler(console_handler)
-    options = get_commandline_options(arg_defaults={"headless": False}) if options is None else options
+    if options is None:
+        options = get_commandline_options()
     logger.info(options)
 
-    if options.edit:  # gui mode
+    webview = options.edit or options.start or options.watch
+    if webview:  # gui mode
         from .webserver import start_from_cli
 
-        api.state.console_update_interval = 1
         start_from_cli(options)
     else:  # console mode
-        api.state.console_update_interval = 1
         run_batch_fit(options)
 
 
