@@ -102,9 +102,25 @@ OPTIONS_CLASS = BumpsOptions
 APPLICATION_NAME = "bumps"
 
 
+class HelpFormatter(argparse.RawTextHelpFormatter, argparse.ArgumentDefaultsHelpFormatter):
+    """
+    Help formatter customization:
+    * Don't reflow text
+    * Show non-trivial default values
+    """
+
+    def _get_help_string(self, action):
+        help_text = action.help
+        if action.default is not argparse.SUPPRESS:
+            # Only show default if it's not None or False
+            if action.default is not None and action.default is not False:
+                help_text += f" [default: {action.default}]"
+        return help_text
+
+
 def get_commandline_options(arg_defaults: Optional[Dict] = None):
     parser = argparse.ArgumentParser(
-        formatter_class=argparse.RawTextHelpFormatter,
+        formatter_class=HelpFormatter,
         epilog=__doc__.replace("::", ":"),
     )
     parser.add_argument(
