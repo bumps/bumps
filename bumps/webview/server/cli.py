@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Callable, Dict, Optional, Union, List
 import warnings
 import signal
+import sys
 
 from . import api
 from . import persistent_settings
@@ -250,6 +251,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
 def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
     # ordered list of actions to do on startup
     on_startup: List[Callable] = []
+    on_complete: List[Callable] = []
 
     if options.version:
         from bumps import __version__
@@ -324,10 +326,17 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
 
         on_startup.append(load_problem)
 
-    # TODO: reproducibility requires using the same seed -- where is it printed?
-    # TODO: store the seed with the fit results
+    # TODO: make sure --seed on command line produces the same result each time
+    # TODO: store the seed with the fit results and print on console monitor
+    # TODO: need separate seed for simulate and for fit
     # TODO: make sure seed works with async and threading and mpi
+    # Reproducibility requires a known seed and a guaranteed order of execution.
+    # So long as the startup items loop over awaits rather than using asyncio gather
+    # this should be guaranteed.
     if options.seed:
+        # raise NotImplementedError("--seed not yet supported")
+        import numpy as np
+
         np.random.seed(options.seed)
 
     if options.simulate or options.simrandom:
@@ -349,12 +358,7 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
         on_startup.append(simulate)
 
     if options.shake:
-
-        async def shake(App=None):
-            problem = api.state.problem.fitProblem
-            problem.randomize()
-
-        on_startup.append(shake)
+        on_startup.append(lambda App=None: api.shake_parameters())
 
     if options.chisq:
 
@@ -368,7 +372,7 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
 
         on_startup.append(show_chisq)
 
-    elif options.start:
+    elif options.start or not options.edit:  # if batch mode then start the fit
 
         async def start_fit(App=None):
             # print(f"{fitter_settings=}")
@@ -378,52 +382,81 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
                 # await api.state.fit_complete_future
 
         on_startup.append(start_fit)
-        if options.exit:
+
+        # Export use cases:
+        # (1) --start: batch fit then export (default start is true)
+        # (2) --edit --start: webview fit with export after fit (suppressed)
+        # (3) --edit --start --exit: webview fit with export before exit
+        # (4) export from existing session file and do nothing else (not supported)
+        # (5) webview fit with export after every fit (not supported)
+        # TODO: maybe warn when --export option is ignored
+        if options.export and ((options.edit and options.exit) or not options.edit):
+            # print("adding completion lambda")
+            on_complete.append(lambda App=None: api.export_results(options.export))
+
+        if options.exit and options.edit:  # only trigger shutdown in webview
+            # print("setting shutdown True")
             api.state.shutdown_on_fit_complete = True
 
     else:
         # signal that no fit is running at startup, even if a fit was
         # interrupted and the state was saved:
-        on_startup.append(lambda App: api.state.shared.set("active_fit", {}))
+        on_startup.append(lambda App=None: api.state.shared.set("active_fit", {}))
 
-    if options.export:
-
-        async def delayed_export(App=None):
-            await api.wait_for_fit_complete()
-            await api.export_results(options.export)
-
-        on_startup.append(delayed_export)
-
-    return on_startup
+    return on_startup, on_complete
 
 
-async def _run_operations(on_start):
-    for step in on_start:
+async def _run_operations(on_startup, on_complete):
+    for step in on_startup:
         await step(None)
     await api.wait_for_fit_complete()
+    for step in on_complete:
+        await step(None)
+    # await api.shutdown()
 
 
 def sigint_handler(sig, frame):
-    import sys
-    import time
+    """
+    Support user interrupt of the fit in batch mode.
 
+    The first Ctrl-C triggers a graceful shutdown. The second Ctrl-C should abort
+    immediately.
+    """
+    # The first Ctrl-C will set fit_abort_event, and the second Ctrl-C will see that
+    # the event is set and abort immediately.
+    # Scenarios:
+    # 1) Ctrl-C before the fit starts. The abort flag starts clear, so we set it.
+    # If another Ctrl-C is received before the start_fit_thread is called then it
+    # will still be set and we will abort. Otherwise, start_fit_thread will clear
+    # the flag before starting the fit and the first Ctrl-C is ignored.
+    # 2) Ctrl-C during fit. start_fit_thread clears the abort flag before starting
+    # so we set it. If another Ctrl-C is received, either during the fit or after
+    # the fit during save and cleanup, the flag will be set and we will abort.
+    # 3) Ctrl-C after fit.  The abort flag will still be clear so we set it. The
+    # subsequent Ctrl-C will abort.
+    # Note: the same behaviour should work if we attach this signal handler
+    # when starting webview. If stop fit is triggered by the GUI, then like the
+    # first Ctrl-S it will set the abort event. Futher stop requests do nothing,
+    # but Ctrl-C in the terminal will exit the program.
     if api.state.fit_abort_event.is_set():
-        print("Second KeyboardInterrupt, exiting immediately")
+        print("Program is not stopping. Aborting.")
         sys.exit(0)
-    print("\nCaught KeyboardInterrupt, stopping fit")
+    # print("\nCaught KeyboardInterrupt, stopping fit")
     api.state.fit_abort_event.set()
 
 
-def start_batch(options: Optional[OPTIONS_CLASS] = None):
-    async def emit(*args, **kw):
-        ...
-        # print("emit", args, kw)
+def run_batch_fit(options: Optional[OPTIONS_CLASS] = None):
+    # TODO: use GUI notifications instead of console monitor for console output
+    # TODO: provide info such as steps k of n and chisq with emit notifications
+    # async def emit_to_console(*args, **kw):
+    #    ...
+    #    print("console", args, kw)
+    # api.EMITTERS["console"] = emit_to_console
 
-    api.EMITTERS["cli"] = emit
     signal.signal(signal.SIGINT, sigint_handler)
-    on_start = interpret_fit_options(options)
-    asyncio.run(_run_operations(on_start))
-    print("completed run")
+    on_startup, on_complete = interpret_fit_options(options)
+    asyncio.run(_run_operations(on_startup, on_complete))
+    # print("completed run")
 
 
 def main(options: Optional[OPTIONS_CLASS] = None):
@@ -443,10 +476,11 @@ def main(options: Optional[OPTIONS_CLASS] = None):
     if options.edit:  # gui mode
         from .webserver import start_from_cli
 
+        api.state.console_update_interval = 1
         start_from_cli(options)
     else:  # console mode
         api.state.console_update_interval = 1
-        start_batch(options)
+        run_batch_fit(options)
 
 
 if __name__ == "__main__":

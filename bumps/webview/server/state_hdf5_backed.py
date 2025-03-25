@@ -394,7 +394,7 @@ class State:
         self.problem = ProblemState()
         self.fitting = FittingState()
         self.history = History()
-        self.fit_abort_event = threading.Event()
+        self.fit_abort_event = threading.Event()  # initially unset
         self.fit_complete_event = asyncio.Event()
         self.fit_complete_event.set()  # The program starts out not waiting for a fit
         self.topics = {

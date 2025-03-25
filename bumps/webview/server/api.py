@@ -61,7 +61,7 @@ from .state_hdf5_backed import (
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
 from .varplot import plot_vars
 from .traceplot import plot_trace
-from .logger import logger, console_handler
+from .logger import logger
 from .custom_plot import process_custom_plot, CustomWebviewPlot
 
 REGISTRY: Dict[str, Callable] = {}
@@ -324,7 +324,8 @@ async def get_serializer():
 
 @register
 async def export_results(export_path: Union[str, List[str]] = ""):
-    from concurrent.futures import ThreadPoolExecutor
+    # print("export nap"); await asyncio.sleep(0.1)
+    # from concurrent.futures import ThreadPoolExecutor
 
     problem_state = state.problem
     if problem_state is None:
@@ -353,6 +354,7 @@ def _export_results(
     problem: bumps.fitproblem.FitProblem,
     uncertainty_state: Optional[bumps.dream.state.MCMCDraw],
 ):
+    # print("running export thread")
     from bumps.util import redirect_console
 
     basename = problem.name if problem.name is not None else "problem"
@@ -369,8 +371,8 @@ def _export_results(
     save_filename = f"{output_pathstr}.{extension}"
     try:
         serialized = serialize_problem(problem, serializer)
-        with open(save_filename, "wb") as output_file:
-            output_file.write(serialized)
+        with open(save_filename, "wb") as fd:
+            fd.write(serialized)
     except Exception as exc:
         logger.error(f"Error exporting model: {exc}")
 
@@ -378,9 +380,8 @@ def _export_results(
     with redirect_console(str(path / f"{basename}.out")):
         problem.show()
 
-    pardata = "".join("%s %.15g\n" % (name, value) for name, value in zip(problem.labels(), problem.getp()))
-
-    open(path / f"{basename}.par", "wt").write(pardata)
+    # Write the pars file.
+    _write_pars(problem, path, f"{basename}.par")
 
     # Produce model plots
     problem.plot(figfile=output_pathstr)
@@ -390,6 +391,7 @@ def _export_results(
         with redirect_console(str(path / f"{basename}.err")):
             uncertainty_state.show(figfile=output_pathstr)
         uncertainty_state.save(output_pathstr)
+    # print("export complete")
 
 
 @register
@@ -400,15 +402,17 @@ async def save_parameters(pathlist: List[str], filename: str, overwrite: bool = 
         return
     problem = problem_state.fitProblem
     path = Path(*pathlist)
-    if not overwrite and Path.exists(path / filename):
+    if not overwrite and (path / filename).exists():
         # confirmation needed:
         return {"filename": filename, "check_overwrite": True}
-
-    pardata = "".join("%s %.15g\n" % (name, value) for name, value in zip(problem.labels(), problem.getp()))
-
-    with open(path / filename, "wt") as pars_file:
-        pars_file.write(pardata)
+    _write_pars(problem, path, filename)
     return {"filename": filename, "check_overwrite": False}
+
+
+def _write_pars(problem, path: Path, filename: str):
+    pardata = "".join(f"{name} {value:.15g}\n" for name, value in zip(problem.labels(), problem.getp()))
+    with open(path / filename, "wt") as fd:
+        fd.write(pardata)
 
 
 @register
@@ -459,9 +463,10 @@ async def start_fit(fitter_id: str = "", kwargs=None):
 async def stop_fit():
     if state.fit_thread is not None and state.fit_thread.is_alive():
         state.fit_abort_event.set()
-        # state.fit_complete_future should always exist if fit thread is started...
-        if state.fit_complete_future is not None:
-            await state.fit_complete_future
+        # # state.fit_complete_future should always exist if fit thread is started...
+        # if state.fit_complete_future is not None:
+        #     await state.fit_complete_future
+        #     state.fit_complete_future = None
     else:
         state.shared.active_fit = {}
 
@@ -493,6 +498,21 @@ def get_running_loop():
         return asyncio.get_running_loop()
     except RuntimeError:
         return None
+
+
+@register
+async def shake_parameters():
+    fitProblem = state.problem.fitProblem if state.problem is not None else None
+    if fitProblem is not None:
+        # TODO: capture and report seed?
+        fitProblem.randomize()
+        state.shared.updated_parameters = now_string()
+        await log(f"Randomize parameters")
+        await add_notification(
+            f"Randomize parameters",
+            title="Parameters applied",
+            timeout=2000,
+        )
 
 
 @register
@@ -644,10 +664,10 @@ async def _fit_complete_handler(event: Dict[str, Any]):
         state.shared.active_fit = {}
         state.fit_complete_event.set()
 
+        # print("shutdown", state.shutdown_on_fit_complete)
         if state.shutdown_on_fit_complete:
-            # print("await shutdown")
             await shutdown()
-            # print("really done")
+            # print("shutdown complete")
 
 
 def fit_progress_handler(event: Dict):
@@ -1218,7 +1238,9 @@ async def shutdown():
     await stop_fit()
     state.autosave()
     await emit("server_shutting_down")
-    shutdown_result = asyncio.gather(_shutdown(), return_exceptions=True)
+    # print("gather _shutdown()")
+    # TODO: why gather here rather than await?
+    asyncio.gather(_shutdown(), return_exceptions=True)
 
 
 async def add_notification(content: str, title: str = "Notification", timeout: Optional[int] = None):
@@ -1232,6 +1254,7 @@ async def add_notification(content: str, title: str = "Notification", timeout: O
 
 
 async def _shutdown():
+    # print("raising SystemExit")
     raise SystemExit(0)
 
 

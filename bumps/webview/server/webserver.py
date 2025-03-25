@@ -152,8 +152,10 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
     async def notice(message: str):
         logger.info(message)
 
-    app.on_startup.extend(interpret_fit_options(options))
+    on_startup, on_complete = interpret_fit_options(options)
+    app.on_startup.extend(on_startup)
     app.on_cleanup.append(lambda App: notice("cleanup task"))
+    app.on_shutdown.extend(on_complete)
     app.on_shutdown.append(lambda App: notice("shutdown task"))
     # not sure why, but have to call shutdown twice to get it to work:
     app.on_shutdown.append(lambda App: api.shutdown())
@@ -207,6 +209,7 @@ def main(options: Optional[OPTIONS_CLASS] = None, sock: Optional[socket.socket] 
 
     logger.addHandler(console_handler)
     options = get_commandline_options(arg_defaults={"headless": False}) if options is None else options
+    options.edit = True  # when called as webserver.main force into webview mode
     logger.info(dict(options=options))
     init_web_app()  # defines app, routes and sio
     runsock = setup_app(options=options, sock=None)
