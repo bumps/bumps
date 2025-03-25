@@ -203,12 +203,12 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     misc.add_argument(
         "--start",
         action="store_true",
-        help="start fit when problem loaded",
+        help="start fit immediately [webview only]",
     )
     misc.add_argument(
         "--exit",
         action="store_true",
-        help="end process when fit complete (fit results lost unless write_store is specified)",
+        help="exit when fit is complete [webview only]",
     )
     misc.add_argument(
         "--convergence-heartbeat",
@@ -286,6 +286,7 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
             )
     if write_store is not None:
         write_store_path = Path(write_store).absolute()
+        # TODO: Why are we splitting path into parts?
         api.state.shared.session_output_file = dict(
             pathlist=list(write_store_path.parent.parts), filename=write_store_path.name
         )
@@ -383,6 +384,11 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
 
         on_startup.append(start_fit)
 
+        isbatch = not options.edit or (options.edit and options.exit)
+        if write_store is None and isbatch:
+            # TODO: can we specify problem.path in the model file?
+            # TODO: can we default the session file name to model.hdf?
+            raise RuntimeError("Need to add '--store=path' to the command line.")
         # Export use cases:
         # (1) --start: batch fit then export (default start is true)
         # (2) --edit --start: webview fit with export after fit (suppressed)
@@ -390,11 +396,11 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
         # (4) export from existing session file and do nothing else (not supported)
         # (5) webview fit with export after every fit (not supported)
         # TODO: maybe warn when --export option is ignored
-        if options.export and ((options.edit and options.exit) or not options.edit):
+        if options.export and isbatch:
             # print("adding completion lambda")
             on_complete.append(lambda App=None: api.export_results(options.export))
 
-        if options.exit and options.edit:  # only trigger shutdown in webview
+        if options.edit and isbatch:  # trigger --exit shutdown [webview only]
             # print("setting shutdown True")
             api.state.shutdown_on_fit_complete = True
 
