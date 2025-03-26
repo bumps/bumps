@@ -62,6 +62,7 @@ class BumpsOptions:
     fit_options: Optional[List[str]] = None
     model_args: Optional[List[str]] = None
     parallel: int = 0
+    mpi: bool = False
 
     # Session file controls.
     store: Optional[str] = None
@@ -157,6 +158,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         type=int,
         help="run fit using multiprocessing for parallelism; use --parallel=0 for all cpus",
     )
+    fitter.add_argument("--mpi", action="store_true", help="Use MPI to distribute work across a cluster")
     # fitter.add_argument(
     #    "--pars",
     #    default=None,
@@ -326,11 +328,6 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
     on_startup: List[Callable] = []
     on_complete: List[Callable] = []
 
-    if options.version:
-        from bumps import __version__
-
-        print(__version__)
-
     if options.use_persistent_path:
         api.state.base_path = persistent_settings.get_value(
             "base_path", str(Path().absolute()), application=APPLICATION_NAME
@@ -417,22 +414,47 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
         noise = None if options.noise <= 0.0 else options.noise
 
         async def simulate(App=None):
+            if api.state.problem is None or api.state.problem.fitProblem is None:
+                return
             problem = api.state.problem.fitProblem
             if options.simrandom:
                 problem.randomize()
             problem.simulate_data(noise=noise)
-            if options.shake:
-                # Show the parameters for the simulated model, but only if
-                # we are going to shake the model later.
-                # TODO: how do these make it to the GUI?
-                print("simulation parameters")
-                print(problem.summarize())
-                print("chisq", problem.chisq_str())
+            # TODO: How do these make it to the GUI?
+            print("simulation parameters")
+            print(problem.summarize())
+            print("chisq", problem.chisq_str())
 
         on_startup.append(simulate)
 
     if options.shake:
         on_startup.append(lambda App=None: api.shake_parameters())
+
+    need_mapper = not options.chisq
+    if need_mapper:
+        from bumps.mapper import MPIMapper, MPMapper, SerialMapper, using_mpi
+
+        async def start_mapper(App=None):
+            # TODO: When running Only load problem from root on MPI?
+            # MPI is assumed
+            # You can still run non-picklable problems on MPI using batch mode
+            # since each work loads its own copy of the problem.
+            if api.state.problem is not None:
+                problem = api.state.problem.fitProblem
+            else:
+                problem = None
+            if using_mpi() or options.mpi:
+                # print("Starting with MPI mapper")
+                mapper = MPIMapper
+            elif options.parallel == 1:
+                mapper = SerialMapper
+            else:
+                mapper = MPMapper
+            mapper.start_worker(problem)
+            # if mapper == MPIMapper: print(f"{MPIMapper.rank}: got beyond start worker.")
+            api.state.mapper = mapper
+
+        on_startup.append(start_mapper)
 
     webview = options.edit or options.start or options.watch
     autostart = not webview or options.start or options.watch
@@ -492,10 +514,17 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
 async def _run_operations(on_startup, on_complete):
     for step in on_startup:
         await step(None)
+    # print("waiting for fit complete")
     await api.wait_for_fit_complete()
+    # print("running complete actions")
     for step in on_complete:
         await step(None)
-    # await api.shutdown()
+    # if api.state.mapper is not None:
+    #    api.mapper.stop_mapper()
+    #    api.mapper = None
+    # print("shutting down")
+    await api.shutdown()
+    # print("exiting")
 
 
 def sigint_handler(sig, frame):
@@ -548,6 +577,8 @@ def main(options: Optional[OPTIONS_CLASS] = None):
     # the export thread. The next_color method calls gca() which needs to produce a blank
     # graph even when there is none (we ask for next color before making the plot).
     import matplotlib as mpl
+    from bumps.mapper import using_mpi
+    from bumps import __version__
 
     mpl.use("agg")
     logger.addHandler(console_handler)
@@ -555,8 +586,30 @@ def main(options: Optional[OPTIONS_CLASS] = None):
         options = get_commandline_options()
     logger.info(options)
 
+    if options.version:
+        print(__version__)
+        return
+
+    # TODO: cleaner way to isolate MPI?
+    # TODO: cleaner handling of worker exit.
+    # TODO: allow mpi fits from a jupyter slurm allocation spanning multiple nodes.
+    # Only want one aiohttp server running so we need to know up front whether
+    # the process we are running is the controller or one of the workers.
+    # In order to support unpickleable problems in MPI we need to load the model
+    # independently for each worker. Unfortunately the problem loader is in an
+    # asynchronous function so we need the full async processing loop to load
+    # the problem before we start the worker loop. The current hack is to call
+    # sys.exit() after the worker loop finishes so that the remaining on startup
+    # and on complete actions are skipped. We could instead pass an is_worker flag
+    # into the options processor so that there are no tasks to skip.
+    if options.mpi or using_mpi():
+        from mpi4py import MPI
+
+        is_server_process = MPI.COMM_WORLD.rank == 0
+    else:
+        is_server_process = True
     webview = options.edit or options.start or options.watch
-    if webview:  # gui mode
+    if webview and is_server_process:  # gui mode
         from .webserver import start_from_cli
 
         start_from_cli(options)

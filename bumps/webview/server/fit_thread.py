@@ -255,15 +255,16 @@ class FitThread(Thread):
 
             mapper = self.mapper
             if mapper is None:
-                # fallback options if no mapper is specified
-                mp_available = True
-                try:
-                    import _multiprocessing
-                except ImportError:
-                    mp_available = False
-                # Only use MPMapper if the problem can be pickled
-                # and multiprocessing is available, and parallel != 1
-                mapper = MPMapper if mp_available and self.parallel != 1 and can_pickle(self.problem) else SerialMapper
+                mapper = MPMapper if self.parallel != 1 else SerialMapper
+            # If you can't pickle the problem fall back to SerialMapper
+            # Unless this is the first instance of MPIMapper, in which case
+            # the worker starts out with the problem in the mapper and we
+            # don't need to send it via pickle.
+            if not can_pickle(self.problem) and not mapper.has_problem:
+                # TODO: turn this into a log message and/or a notification
+                print("Can't pickle; Falling back to single mapper")
+                mapper = SerialMapper
+            # print(f"*** mapper {mapper.__name__} ***")
 
             # Be safe and send a private copy of the problem to the fitting engine
             # TODO: Check that parameters and constraints are independent of the original.

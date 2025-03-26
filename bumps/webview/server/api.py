@@ -549,6 +549,8 @@ async def start_fit_thread(fitter_id: str = "", options=None):
             abort_event=state.fit_abort_event,
             problem=fitProblem,
             fitclass=fitclass,
+            mapper=state.mapper,
+            # mapper=None,
             options=options,
             parallel=state.parallel,
             # session_id=session_id,
@@ -1237,6 +1239,9 @@ async def shutdown():
     logger.info("killing...")
     await stop_fit()
     state.autosave()
+    if state.mapper is not None:
+        state.mapper.stop_mapper()
+        state.mapper = None
     await emit("server_shutting_down")
     # print("gather _shutdown()")
     # TODO: why gather here rather than await?

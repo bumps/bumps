@@ -45,7 +45,7 @@ import numpy as np
 
 from . import fitters
 from .fitters import FitDriver, StepMonitor, ConsoleMonitor, CheckpointMonitor, nllf_scale
-from .mapper import MPMapper, AMQPMapper, MPIMapper, SerialMapper
+from .mapper import MPMapper, MPIMapper, SerialMapper
 from .formatnum import format_uncertainty
 from . import util
 from . import initpop
@@ -595,20 +595,12 @@ def main():
         print("\n!!! Model file missing from command line --- abort !!!.", file=sys.stderr)
         sys.exit(1)
 
-    # TODO: AMQP mapper as implemented requires workers started up with
-    # the particular problem; need to be able to transport the problem
-    # to the worker instead.  Until that happens, the GUI shouldn't use
-    # the AMQP mapper.
     if opts.mpi:
         MPIMapper.start_worker(problem)
         mapper = MPIMapper
     elif opts.parallel != "" or opts.worker:
-        if opts.transport == "amqp":
-            mapper = AMQPMapper
-        elif opts.transport == "mp":
+        if opts.transport == "mp":
             mapper = MPMapper
-        elif opts.transport == "celery":
-            mapper = CeleryMapper
         else:
             raise ValueError("unknown mapper")
     else:

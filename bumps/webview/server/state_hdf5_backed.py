@@ -38,6 +38,7 @@ if TYPE_CHECKING:
     from .webserver import TopicNameType
     from .fit_thread import FitThread
     from h5py import Group, Dataset
+from bumps.mapper import BaseMapper
 
 
 SESSION_FILE_NAME = "session.h5"
@@ -389,6 +390,7 @@ class State:
     history: History
     topics: Dict["TopicNameType", "deque[Dict]"]
     shared: "SharedState"
+    mapper: BaseMapper
 
     def __init__(self):
         self.problem = ProblemState()

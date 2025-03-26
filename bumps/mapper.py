@@ -12,7 +12,7 @@ Usage::
     ...
     mapper = Mapper.start_mapper(problem, None, cpus)
     result = mapper(points)
-    Mapper.stop_mapper(mapper)
+    Mapper.stop_mapper()
 """
 
 import sys
@@ -90,7 +90,26 @@ def nice():
         os.nice(5)
 
 
-class SerialMapper(object):
+# Noise so that the type checker is happy
+class BaseMapper(object):
+    has_problem = False
+
+    @staticmethod
+    def start_worker(problem):
+        """Called with the problem to initialize the worker"""
+        raise NotImplementedError()
+
+    @staticmethod
+    def start_mapper(problem, modelargs=None, cpus=0):
+        """Called with the problem on a new fit."""
+        raise NotImplementedError()
+
+    @staticmethod
+    def stop_mapper():
+        raise NotImplementedError()
+
+
+class SerialMapper(BaseMapper):
     @staticmethod
     def start_worker(problem):
         pass
@@ -101,7 +120,7 @@ class SerialMapper(object):
         return lambda points: list(map(problem.nllf, points))
 
     @staticmethod
-    def stop_mapper(mapper):
+    def stop_mapper():
         pass
 
 
@@ -135,7 +154,7 @@ def _MP_run_problem(problem_point_pair):
     return MPMapper.problem.nllf(point)
 
 
-class MPMapper(object):
+class MPMapper(BaseMapper):
     # Note: suprocesses are using the same variables
     pool = None
     manager = None
@@ -180,12 +199,12 @@ class MPMapper(object):
             try:
                 return MPMapper.pool.map(_MP_run_problem, ((MPMapper.problem_id, p) for p in points))
             except KeyboardInterrupt:
-                MPMapper.stop_mapper(None)
+                MPMapper.stop_mapper()
 
         return mapper
 
     @staticmethod
-    def stop_mapper(mapper):
+    def stop_mapper():
         # reset pool and manager
         MPMapper.pool.terminate()
         MPMapper.manager.shutdown()
@@ -235,8 +254,41 @@ def _MPI_map(problem, points, comm, root=0):
     return result
 
 
-class MPIMapper(object):
-    _first_fit = True  # The first problem is set when the worker starts
+def using_mpi():
+    # TODO: can look for environment variables defined by mpirun
+    # mpich: PMI_HOST, PMI_RANK, PMI_SIZE, MPI_LOCALRANKID
+    # openmp: PMIX_HOSTNAME, OMPI_COMM_WORLD_RANK, ...
+    # impi_rt (intel):
+    # msmpi (microsoft):
+    # Wikipedia says only mpich and openmp ABIs, though that doesn't necessarily
+    # mean they use the same environment variables.
+    # Need to make sure that Slurm isn't setting MPI variables in the batch script.
+    # I seem to recall some messiness with pmix variants on our local openmpi cluster
+    # so I would rather look at OMP_COMM_WORLD_RANK
+    import os
+
+    mpienv = [
+        "OMPI_COMM_WORLD_RANK",  # OpenMPI
+        "PMI_RANK",  # MPICH
+    ]
+    return any(v in os.environ for v in mpienv)
+
+    # The robust solution is as follows, but it requires opening the MPI ports.
+    # This triggers a security box on the Mac asking to give the python interpreter
+    # access to these ports. Given that there is no reason to run the MPI mapper
+    # on a mac or windows box, I don't want to trigger this warning.
+    from mpi4py import MPI
+
+    try:
+        comm = MPI.COMM_WORLD
+        return comm.size > 1
+    finally:
+        return False
+
+
+class MPIMapper(BaseMapper):
+    has_problem = True
+    """For MPIMapper only the worker is initialized with the fit problem."""
 
     @staticmethod
     def start_worker(problem):
@@ -253,36 +305,45 @@ class MPIMapper(object):
         from mpi4py import MPI
 
         comm, root = MPI.COMM_WORLD, 0
+        MPIMapper.rank = comm.rank
+        rank = comm.rank
+        # print(f"MPI {rank} of {comm.size} initializing")
 
         # If worker, sit in a loop waiting for the next point.
         # If the point is empty, then wait for a new problem.
         # If the problem is None then we are done, otherwise wait for next point.
-        if comm.rank != root:
-            # print(f"{comm.rank}: looping")
+        if rank != root:
+            # print(f"{rank}: looping")
             while True:
                 result = _MPI_map(problem, None, comm, root)
                 if not result:
                     problem = _MPI_set_problem(None, comm, root)
                     if problem is None:
                         break
-                    # print(f"{comm.rank}: changing problem")
+                    # print(f"{rank}: changing problem")
 
-            # print(f"{comm.rank}: finalizing")
+            # print(f"{rank}: finalizing")
             MPI.Finalize()
 
             # Exit the program after the worker is done. Don't return
             # to the caller since that is continuing on with the main
             # thread, and in particular, attempting to rerun the fit on
             # each worker.
+            # print(f"{rank}: Worker exiting")
             sys.exit(0)
+            # print(f"{rank}: Worker exited")
+        else:
+            # Root initialization:
+            MPIMapper.has_problem = problem is not None
+            # print("mapper has problem", MPIMapper.has_problem)
 
     @staticmethod
     def start_mapper(problem, modelargs=None, cpus=0):
         # Only root can get here---worker is stuck in start_worker
         from mpi4py import MPI
+        import numpy as np
 
         comm, root = MPI.COMM_WORLD, 0
-        import numpy as np
 
         # Signal new problem then send it, but not on the first fit. We do this
         # so that we can still run MPI fits even if the problem itself cannot
@@ -291,72 +352,19 @@ class MPIMapper(object):
         # MPI job separately for each fit.)
         # Note: setting problem to None stops the program, so call finalize().
         mapper = lambda points: _MPI_map(problem, points, comm, root)
-        if not MPIMapper._first_fit:
-            # print(f"{comm.rank}: replacing problem")
+        if not MPIMapper.has_problem:  # Only true on the first fit
+            # print(f"*** {comm.rank}: replacing problem")
             # Send an empty set of points to signal a new problem is coming.
             mapper(np.empty((0, 0), "d"))
             _MPI_set_problem(problem, comm, root)
             if problem is None:
                 # print(f"{comm.rank}: finalizing root")
                 MPI.Finalize()
-        MPIMapper._first_fit = False
+        MPIMapper.has_problem = False
         return mapper
 
     @staticmethod
-    def stop_mapper(mapper):
+    def stop_mapper():
+        # print("stopping mapper")
         # Set problem=None to stop the program.
         MPIMapper.start_mapper(None, None)
-
-
-class AMQPMapper(object):
-    @staticmethod
-    def start_worker(problem):
-        # sys.stderr = open("bumps-%d.log"%os.getpid(),"w")
-        # print >>sys.stderr,"worker is starting"; sys.stdout.flush()
-        from amqp_map.config import SERVICE_HOST
-        from amqp_map.core import connect, start_worker as serve
-
-        server = connect(SERVICE_HOST)
-        # os.system("echo 'serving' > /tmp/map.%d"%(os.getpid()))
-        # print "worker is serving"; sys.stdout.flush()
-        serve(server, "bumps", problem.nllf)
-        # print >>sys.stderr,"worker ended"; sys.stdout.flush()
-
-    @staticmethod
-    def start_mapper(problem, modelargs=None, cpus=0):
-        import sys
-        import multiprocessing
-        import subprocess
-        from amqp_map.config import SERVICE_HOST
-        from amqp_map.core import connect, Mapper
-
-        server = connect(SERVICE_HOST)
-        mapper = Mapper(server, "bumps")
-        cpus = multiprocessing.cpu_count()
-        pipes = []
-        for _ in range(cpus):
-            cmd = [sys.argv[0], "--worker"] + modelargs
-            # print "starting",sys.argv[0],"in",os.getcwd(),"with",cmd
-            pipe = subprocess.Popen(cmd, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            pipes.append(pipe)
-        for pipe in pipes:
-            if pipe.poll() > 0:
-                raise RuntimeError(
-                    "subprocess returned %d\nout: %s\nerr: %s" % (pipe.returncode, pipe.stdout, pipe.stderr)
-                )
-        # os.system(" ".join(cmd+["&"]))
-        import atexit
-
-        def exit_fun():
-            for p in pipes:
-                p.terminate()
-
-        atexit.register(exit_fun)
-
-        # print "returning mapper",mapper
-        return mapper
-
-    @staticmethod
-    def stop_mapper(mapper):
-        for pipe in mapper.pipes:
-            pipe.terminate()
