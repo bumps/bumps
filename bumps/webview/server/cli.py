@@ -32,15 +32,14 @@ import argparse
 import asyncio
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict, Optional, Union, List
+from typing import Callable, Dict, Optional, List
 import warnings
 import signal
 import sys
 
 from . import api
 from . import persistent_settings
-from .logger import logger, list_handler, console_handler
-from .fit_thread import EVT_FIT_PROGRESS
+from .logger import logger, console_handler
 from .fit_options import parse_fit_options
 from .state_hdf5_backed import SERIALIZERS, UNDEFINED
 
@@ -476,9 +475,7 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
         async def start_fit(App=None):
             # print(f"{fitter_settings=}")
             if api.state.problem is not None:
-                problem = api.state.problem.fitProblem
                 await api.start_fit_thread(fitter_id, fitter_settings)
-                # await api.state.fit_complete_future
 
         on_startup.append(start_fit)
         api.state.console_update_interval = 0 if webview else 1
