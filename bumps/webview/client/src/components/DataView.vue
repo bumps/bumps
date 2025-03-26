@@ -98,3 +98,11 @@ function changeModel() {
     <div :id="plot_div_id" ref="plot_div" class="flex-grow-1"></div>
   </div>
 </template>
+
+<style>
+@media (prefers-color-scheme: dark) {
+  .mpld3-figure {
+    background-color: lightgray;
+  }
+}
+</style>

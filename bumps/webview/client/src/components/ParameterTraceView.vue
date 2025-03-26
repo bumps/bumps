@@ -45,6 +45,10 @@ async function fetch_and_draw() {
 
   let plotdata = { ...payload };
   const { data, layout } = plotdata;
+  if (data == null || layout == null) {
+    await Plotly.purge(plot_div_id.value);
+    return;
+  }
   plot_data.value = data;
   plot_layout.value = layout;
   const config: Partial<Plotly.Config> = {

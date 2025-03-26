@@ -53,7 +53,10 @@ async function fetch_and_draw(latest_timestamp?: string) {
   )) as Plotly.PlotlyDataLayoutConfig;
   const plotdata = { ...payload };
   const { data, layout } = plotdata;
-  if (plot_div.value == null || data == null) {
+  if (layout == null || data == null) {
+    await Plotly.purge(plot_div.value as HTMLDivElement);
+    drawing_busy.value = false;
+    clearTimeout(show_loader);
     return;
   }
   const config: Partial<Plotly.Config> = {
