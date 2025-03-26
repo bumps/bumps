@@ -202,6 +202,7 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
     return sock
 
 
+# TODO: This isn't usable as main() anymore since it doens't handle the --mpi option.
 def main(options: Optional[OPTIONS_CLASS] = None, sock: Optional[socket.socket] = None):
     # this entrypoint will be used to start gui, so set headless = False
     # (other contexts e.g. jupyter notebook will directly call start_app)

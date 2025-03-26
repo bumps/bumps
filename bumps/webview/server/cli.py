@@ -568,7 +568,7 @@ def run_batch_fit(options: Optional[OPTIONS_CLASS] = None):
     # print("completed run")
 
 
-def main(options: Optional[OPTIONS_CLASS] = None):
+def main(options: Optional[OPTIONS_CLASS] = None, webview: bool = False):
     # TODO: where do we configure matplotlib?
     # Need to set matplotlib to a non-interactive backend because it is being used in the
     # the export thread. The next_color method calls gca() which needs to produce a blank
@@ -581,6 +581,8 @@ def main(options: Optional[OPTIONS_CLASS] = None):
     logger.addHandler(console_handler)
     if options is None:
         options = get_commandline_options()
+    if webview:
+        options.edit = True
     logger.info(options)
 
     if options.version:
@@ -600,6 +602,8 @@ def main(options: Optional[OPTIONS_CLASS] = None):
     # and on complete actions are skipped. We could instead pass an is_worker flag
     # into the options processor so that there are no tasks to skip.
     if options.mpi or using_mpi():
+        # Warning: importing MPI from mpi4py calls MPI_Init() which triggers
+        # network traffic. Only import it if you know you are using MPI calls.
         from mpi4py import MPI
 
         is_server_process = MPI.COMM_WORLD.rank == 0

@@ -44,6 +44,7 @@ repos:
       - id: ruff-format
         args: [--config=pyproject.toml]
         exclude: |
+          bin/*.bat
           bumps/dream/random123
           bumps/webview/client/src
           extra/platform_scripts

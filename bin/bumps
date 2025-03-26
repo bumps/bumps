@@ -17,6 +17,6 @@ if __name__ == "__main__":
 
     multiprocessing.freeze_support()
 
-    import bumps.cli
+    from bumps.webview.server.cli import main
 
-    bumps.cli.main()
+    main()
