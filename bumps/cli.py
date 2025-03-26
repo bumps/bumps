@@ -720,7 +720,7 @@ def main():
             fitdriver.show_cov()
         if opts.entropy:
             fitdriver.show_entropy(opts.entropy)
-        mapper.stop_mapper(fitdriver.mapper)
+        mapper.stop_mapper()
 
         # If in batch mode then explicitly close the monitor file on completion
         if opts.batch:

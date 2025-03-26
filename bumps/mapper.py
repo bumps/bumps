@@ -104,8 +104,9 @@ class BaseMapper(object):
         """Called with the problem on a new fit."""
         raise NotImplementedError()
 
+    # TODO: deprecate mapper parameter
     @staticmethod
-    def stop_mapper():
+    def stop_mapper(mapper=None):
         raise NotImplementedError()
 
 
@@ -120,7 +121,7 @@ class SerialMapper(BaseMapper):
         return lambda points: list(map(problem.nllf, points))
 
     @staticmethod
-    def stop_mapper():
+    def stop_mapper(mapper=None):
         pass
 
 
@@ -204,7 +205,7 @@ class MPMapper(BaseMapper):
         return mapper
 
     @staticmethod
-    def stop_mapper():
+    def stop_mapper(mapper=None):
         # reset pool and manager
         MPMapper.pool.terminate()
         MPMapper.manager.shutdown()
@@ -364,7 +365,7 @@ class MPIMapper(BaseMapper):
         return mapper
 
     @staticmethod
-    def stop_mapper():
+    def stop_mapper(mapper=None):
         # print("stopping mapper")
         # Set problem=None to stop the program.
         MPIMapper.start_mapper(None, None)
