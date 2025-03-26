@@ -63,7 +63,7 @@ function validate_numeric(value: string, allow_inf: boolean = false) {
 // }
 
 async function setFittable(event: MouseEvent, index: number) {
-  console.log(event, event.target, index, parameters_local.value[index].fixed);
+  console.debug(event, event.target, index, parameters_local.value[index].fixed);
   const parameter = parameters_local.value[index];
   props.socket.asyncEmit("set_parameter", parameter.id, "fixed", !parameter.fixed);
 }

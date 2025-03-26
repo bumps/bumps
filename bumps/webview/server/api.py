@@ -54,6 +54,7 @@ from .state_hdf5_backed import (
     UNDEFINED,
     UNDEFINED_TYPE,
     State,
+    get_custom_plots_available,
     serialize_problem,
     deserialize_problem,
     SERIALIZER_EXTENSIONS,
@@ -162,6 +163,7 @@ async def load_problem_file(pathlist: List[str], filename: str, autosave_previou
         await save_to_history("autosaved before loading new model")
     state.shared.model_file = dict(filename=filename, pathlist=pathlist)
     state.shared.model_loaded = now_string()
+    state.shared.custom_plots_available = {"parameter_based": False, "uncertainty_based": False}
     await set_problem(problem, Path(*pathlist), filename)
 
 
@@ -187,6 +189,9 @@ async def set_problem(
         name = filename
     state.shared.updated_model = now_string()
     state.shared.updated_parameters = now_string()
+    state.shared.custom_plots_available = get_custom_plots_available(problem)
+    # invalidate the uncertainty state:
+    state.reset_fitstate()
 
     if new_model:
         pathlist = list(path.parts) if path is not None else []
@@ -214,14 +219,10 @@ async def remove_history_item(timestamp: str):
 @register
 async def save_to_history(
     label: str,
-    include_population: bool = False,
-    include_uncertainty: bool = False,
     keep: bool = False,
-):
-    state.save_to_history(
+) -> str:
+    return state.save_to_history(
         label,
-        include_population=include_population,
-        include_uncertainty=include_uncertainty,
         keep=keep,
     )
 
@@ -542,6 +543,7 @@ async def start_fit_thread(fitter_id: str = "", options=None, terminate_on_finis
                 value=0,
             )
         )
+        state.reset_fitstate()
         await log(
             json.dumps(to_json_compatible_dict(options), indent=2),
             title=f"Starting fitter {fitter_id}",
@@ -577,6 +579,7 @@ async def _fit_progress_handler(event: Dict):
     elif message == "convergence_update":
         state.fitting.population = event["pop"]
         state.shared.updated_convergence = now_string()
+        state.shared.population_available = True
     elif message == "progress":
         active_fit = state.shared.active_fit
         active_fit.update({"step": event["step"], "chisq": event["chisq"]})
@@ -584,10 +587,19 @@ async def _fit_progress_handler(event: Dict):
     elif message == "uncertainty_update" or message == "uncertainty_final":
         state.fitting.uncertainty_state = cast(bumps.dream.state.MCMCDraw, event["uncertainty_state"])
         state.shared.updated_uncertainty = now_string()
-        state.autosave()
+        state.shared.uncertainty_available = {
+            "available": state.fitting.uncertainty_state is not None,
+            "num_points": state.fitting.uncertainty_state.Nsamples
+            if state.fitting.uncertainty_state is not None
+            else 0,
+        }
+
         if message == "uncertainty_final":
             # fit is not complete until uncertainty is saved.
             state.fit_uncertainty_final.set()
+            # don't save state - the fit_complete handler will do that.
+        else:  # message == "uncertainty_update"
+            state.autosave()
 
 
 async def _fit_complete_handler(event):
@@ -614,11 +626,11 @@ async def _fit_complete_handler(event):
         problem.model_update()
         state.problem.fitProblem = problem
         if state.shared.autosave_history:
-            await save_to_history(
+            item_timestamp = await save_to_history(
                 f"Fit complete: {event['fitter_id']}",
-                include_population=True,
-                include_uncertainty=True,
             )
+            state.shared.active_history = item_timestamp
+        state.autosave()
         state.shared.updated_parameters = now_string()
         await log(event["info"], title=f"Done with chisq {chisq}")
         logger.info(f"Fit done with chisq {chisq}")
@@ -1090,6 +1102,9 @@ async def set_parameter(
             # logger.info(f"setting parameter: {parameter}.fixed to {value}")
             # model has been changed: setp and getp will return different values!
             state.shared.updated_model = now_string()
+            # Reset the fitting state (uncertainty and population), no longer valid
+            state.reset_fitstate()
+
     fitProblem.model_update()
     state.shared.updated_parameters = now_string()
     return

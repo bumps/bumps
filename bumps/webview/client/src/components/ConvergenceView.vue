@@ -16,10 +16,16 @@ setupDrawLoop("updated_convergence", props.socket, fetch_and_draw, title);
 async function fetch_and_draw() {
   const payload = (await props.socket.asyncEmit("get_convergence_plot")) as Plotly.PlotlyDataLayoutConfig;
   let plotdata = { ...payload };
-  // console.debug({plotdata});
   const { data, layout } = plotdata;
   const config = { responsive: true, scrollZoom: true, modeBarButtonsToAdd: [SVGDownloadButton] };
-  await Plotly.react(plot_div.value as HTMLDivElement, [...data], layout, config);
+  if (plot_div.value == null) {
+    return;
+  }
+  if (data == null) {
+    Plotly.purge(plot_div.value);
+  } else {
+    await Plotly.react(plot_div.value, [...data], layout, config);
+  }
 }
 </script>
 
