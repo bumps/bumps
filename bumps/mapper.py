@@ -255,16 +255,13 @@ def _MPI_map(problem, points, comm, root=0):
 
 
 def using_mpi():
-    # TODO: can look for environment variables defined by mpirun
     # mpich: PMI_HOST, PMI_RANK, PMI_SIZE, MPI_LOCALRANKID
     # openmp: PMIX_HOSTNAME, OMPI_COMM_WORLD_RANK, ...
     # impi_rt (intel):
     # msmpi (microsoft):
     # Wikipedia says only mpich and openmp ABIs, though that doesn't necessarily
     # mean they use the same environment variables.
-    # Need to make sure that Slurm isn't setting MPI variables in the batch script.
-    # I seem to recall some messiness with pmix variants on our local openmpi cluster
-    # so I would rather look at OMP_COMM_WORLD_RANK
+    # slurm uses SLURM_* variables such as SLURM_CPUS_ON_NODE or SLURM_TASKS_PER_NODE
     import os
 
     mpienv = [

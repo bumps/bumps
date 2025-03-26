@@ -78,7 +78,6 @@ class ConvergenceMonitor(monitor.Monitor):
         self.rate = rate  # rate=0 for no progress update, only final
         self.problem = problem
         self.pop = []
-        self._dirty = False
 
     def config_history(self, history):
         history.requires(population_values=1, value=1)
@@ -105,17 +104,13 @@ class ConvergenceMonitor(monitor.Monitor):
             # print("convergence progress")
             self._send_update()
             self.time = history.time[0]
-            self._dirty = False
-        else:
-            self._dirty = True
 
     def final(self):
         """
         Close out the monitor but sending any tailing convergence information
         """
-        if self._dirty:
-            # print("convergence final")
-            self._send_update()
+        # print("convergence final")
+        self._send_update()
 
     def _send_update(self):
         pop = np.empty((0, 1), "d") if not self.pop else np.array(self.pop)
@@ -146,7 +141,6 @@ class DreamMonitor(monitor.Monitor):
         )
         # print("Dream init", evt)
         EVT_FIT_PROGRESS.send(evt)
-        self._dirty = False
 
     def config_history(self, history):
         history.requires(time=1)
@@ -154,33 +148,30 @@ class DreamMonitor(monitor.Monitor):
     def __call__(self, history):
         self.uncertainty_state = getattr(history, "uncertainty_state", None)
         self.time = history.time[0]
-        if self.rate > 0:
-            update_counter = history.time[0] // self.rate
-            if update_counter > self.update_counter:
-                self.update_counter = update_counter
-                evt = dict(
-                    message=self.message,
-                    time=self.time,
-                    uncertainty_state=deepcopy(self.uncertainty_state),
-                )
-                # print("Dream update", evt)
-                EVT_FIT_PROGRESS.send(evt)
-            self._dirty = False
-        else:
-            self._dirty = True
+        if self.rate <= 0:
+            return
+        update_counter = history.time[0] // self.rate
+        if update_counter > self.update_counter:
+            self.update_counter = update_counter
+            evt = dict(
+                message=self.message,
+                time=self.time,
+                uncertainty_state=deepcopy(self.uncertainty_state),
+            )
+            # print("Dream update", evt)
+            EVT_FIT_PROGRESS.send(evt)
 
     def final(self):
         """
         Close out the monitor
         """
-        if self._dirty:
-            evt = dict(
-                message="uncertainty_final",
-                time=self.time,
-                uncertainty_state=deepcopy(self.uncertainty_state),
-            )
-            # print("Dream final", evt)
-            EVT_FIT_PROGRESS.send(evt)
+        evt = dict(
+            message="uncertainty_final",
+            time=self.time,
+            uncertainty_state=deepcopy(self.uncertainty_state),
+        )
+        # print("Dream final", evt)
+        EVT_FIT_PROGRESS.send(evt)
 
 
 # ==============================================================================

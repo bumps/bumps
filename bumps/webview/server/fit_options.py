@@ -27,7 +27,7 @@ FIT_FIELDS = {
 def parse_fit_options(fitter_id: str, fit_options: Optional[List[str]] = None) -> Dict:
     if fitter_id not in api.FITTER_DEFAULTS:
         raise ValueError(f"invalid fitter: {fitter_id}")
-    fitter_settings: Dict = api.FITTER_DEFAULTS[fitter_id]["settings"]
+    fitter_settings: Dict = api.FITTER_DEFAULTS[fitter_id]["settings"].copy()
     if fit_options is not None:
         # fit options is a list of strings of the form "key=value"
         for option_str in fit_options:

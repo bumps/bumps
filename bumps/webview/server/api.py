@@ -149,7 +149,7 @@ async def load_problem_file(
     else:
         from bumps.cli import load_model
 
-        print("model", str(path), args)
+        # print("model", str(path), args)
         problem = load_model(str(path), args)
     assert isinstance(problem, bumps.fitproblem.FitProblem)
     # problem_state = ProblemState(problem, pathlist, filename)
@@ -463,10 +463,8 @@ async def start_fit(fitter_id: str = "", kwargs=None):
 async def stop_fit():
     if state.fit_thread is not None and state.fit_thread.is_alive():
         state.fit_abort_event.set()
-        # # state.fit_complete_future should always exist if fit thread is started...
-        # if state.fit_complete_future is not None:
-        #     await state.fit_complete_future
-        #     state.fit_complete_future = None
+        # TODO: Should we wait for the fit to complete before returning?
+        # await wait_for_fit_complete()
     else:
         state.shared.active_fit = {}
 
@@ -550,7 +548,6 @@ async def start_fit_thread(fitter_id: str = "", options=None):
             problem=fitProblem,
             fitclass=fitclass,
             mapper=state.mapper,
-            # mapper=None,
             options=options,
             parallel=state.parallel,
             # session_id=session_id,
