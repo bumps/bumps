@@ -104,8 +104,9 @@ class BaseMapper(object):
         """Called with the problem on a new fit."""
         raise NotImplementedError()
 
+    # TODO: deprecate mapper parameter
     @staticmethod
-    def stop_mapper():
+    def stop_mapper(mapper=None):
         raise NotImplementedError()
 
 
@@ -120,7 +121,7 @@ class SerialMapper(BaseMapper):
         return lambda points: list(map(problem.nllf, points))
 
     @staticmethod
-    def stop_mapper():
+    def stop_mapper(mapper=None):
         pass
 
 
@@ -204,13 +205,14 @@ class MPMapper(BaseMapper):
         return mapper
 
     @staticmethod
-    def stop_mapper():
+    def stop_mapper(mapper=None):
         # reset pool and manager
-        MPMapper.pool.terminate()
-        MPMapper.manager.shutdown()
-        MPMapper.pool = None
-        MPMapper.manager = None
-        MPMapper.namespace = None
+        if MPMapper.pool is not None:
+            MPMapper.pool.terminate()
+            MPMapper.pool = None
+            MPMapper.manager.shutdown()
+            MPMapper.manager = None
+            MPMapper.namespace = None
         # Don't reset problem id; it keeps count even when mapper is restarted.
         ##MPMapper.problem_id = 0
 
@@ -224,9 +226,10 @@ def _MPI_set_problem(problem, comm, root=0):
 
 
 def _MPI_map(problem, points, comm, root=0):
-    # print(f"{comm.rank}: mapping points")
     import numpy as np
     from mpi4py import MPI
+
+    # print(f"{comm.rank}: mapping points")
 
     # Send number of points and number of variables per point.
     # root: return result if there are points otherwise return False
@@ -255,32 +258,30 @@ def _MPI_map(problem, points, comm, root=0):
 
 
 def using_mpi():
-    # mpich: PMI_HOST, PMI_RANK, PMI_SIZE, MPI_LOCALRANKID
-    # openmp: PMIX_HOSTNAME, OMPI_COMM_WORLD_RANK, ...
-    # impi_rt (intel):
-    # msmpi (microsoft):
-    # Wikipedia says only mpich and openmp ABIs, though that doesn't necessarily
-    # mean they use the same environment variables.
-    # slurm uses SLURM_* variables such as SLURM_CPUS_ON_NODE or SLURM_TASKS_PER_NODE
-    import os
-
+    # Can look for environment variables defined by mpirun
+    #   mpich: PMI_RANK, PMI_*, MPI_*
+    #   openmp: OMPI_COMM_WORLD_RANK, OMPI_* PMIX_*
+    #   impi_rt (intel): PMI_RANK I_MPI_* HYDRA_*
+    #   msmpi (microsoft): PMI_RANK PMI_* MSMPI_*
+    # TODO: Make sure that Slurm isn't setting MPI variables in the batch script.
+    # I seem to recall some messiness with pmix variants on our local openmpi cluster
+    # so I would rather look at OMP_COMM_WORLD_RANK
     mpienv = [
         "OMPI_COMM_WORLD_RANK",  # OpenMPI
-        "PMI_RANK",  # MPICH
+        "PMI_RANK",  # MPICH, MSMPI [Microsoft], IMPI_RT [Intel]
     ]
     return any(v in os.environ for v in mpienv)
 
     # The robust solution is as follows, but it requires opening the MPI ports.
     # This triggers a security box on the Mac asking to give the python interpreter
-    # access to these ports. Given that there is no reason to run the MPI mapper
-    # on a mac or windows box, I don't want to trigger this warning.
-    from mpi4py import MPI
-
-    try:
-        comm = MPI.COMM_WORLD
-        return comm.size > 1
-    finally:
-        return False
+    # access to these ports. Since MPI use on Mac will be rare (only for problems
+    # that can't be pickled) we should avoid the confusing security box.
+    # from mpi4py import MPI
+    # try:
+    #     comm = MPI.COMM_WORLD
+    #     return comm.size > 1
+    # finally:
+    #     return False
 
 
 class MPIMapper(BaseMapper):
@@ -348,7 +349,9 @@ class MPIMapper(BaseMapper):
         # if the problem can't be pickled, but you will need to restart the
         # MPI job separately for each fit.)
         # Note: setting problem to None stops the program, so call finalize().
-        mapper = lambda points: _MPI_map(problem, points, comm, root)
+        def mapper(points):
+            _MPI_map(problem, points, comm, root)
+
         if not MPIMapper.has_problem:  # Only true on the first fit
             # print(f"*** {comm.rank}: replacing problem")
             # Send an empty set of points to signal a new problem is coming.
@@ -361,7 +364,7 @@ class MPIMapper(BaseMapper):
         return mapper
 
     @staticmethod
-    def stop_mapper():
+    def stop_mapper(mapper=None):
         # print("stopping mapper")
         # Set problem=None to stop the program.
         MPIMapper.start_mapper(None, None)

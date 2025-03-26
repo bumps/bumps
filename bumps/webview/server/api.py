@@ -460,11 +460,14 @@ async def start_fit(fitter_id: str = "", kwargs=None):
 
 
 @register
-async def stop_fit():
+async def stop_fit(wait=True):
+    """
+    Trigger the abort fit signal to the optimizer and wait for complete (or not).
+    """
     if state.fit_thread is not None and state.fit_thread.is_alive():
         state.fit_abort_event.set()
-        # TODO: Should we wait for the fit to complete before returning?
-        # await wait_for_fit_complete()
+        if wait:
+            await wait_for_fit_complete()
     else:
         state.shared.active_fit = {}
 
