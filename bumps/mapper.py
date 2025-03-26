@@ -207,11 +207,12 @@ class MPMapper(BaseMapper):
     @staticmethod
     def stop_mapper(mapper=None):
         # reset pool and manager
-        MPMapper.pool.terminate()
-        MPMapper.manager.shutdown()
-        MPMapper.pool = None
-        MPMapper.manager = None
-        MPMapper.namespace = None
+        if MPMapper.pool is not None:
+            MPMapper.pool.terminate()
+            MPMapper.pool = None
+            MPMapper.manager.shutdown()
+            MPMapper.manager = None
+            MPMapper.namespace = None
         # Don't reset problem id; it keeps count even when mapper is restarted.
         ##MPMapper.problem_id = 0
 
@@ -225,9 +226,10 @@ def _MPI_set_problem(problem, comm, root=0):
 
 
 def _MPI_map(problem, points, comm, root=0):
-    # print(f"{comm.rank}: mapping points")
     import numpy as np
     from mpi4py import MPI
+
+    # print(f"{comm.rank}: mapping points")
 
     # Send number of points and number of variables per point.
     # root: return result if there are points otherwise return False
@@ -256,21 +258,19 @@ def _MPI_map(problem, points, comm, root=0):
 
 
 def using_mpi():
-    # TODO: can look for environment variables defined by mpirun
-    # mpich: PMI_HOST, PMI_RANK, PMI_SIZE, MPI_LOCALRANKID
-    # openmp: PMIX_HOSTNAME, OMPI_COMM_WORLD_RANK, ...
-    # impi_rt (intel):
-    # msmpi (microsoft):
-    # Wikipedia says only mpich and openmp ABIs, though that doesn't necessarily
-    # mean they use the same environment variables.
-    # Need to make sure that Slurm isn't setting MPI variables in the batch script.
+    # Can look for environment variables defined by mpirun
+    #   mpich: PMI_RANK, PMI_*, MPI_*
+    #   openmp: OMPI_COMM_WORLD_RANK, OMPI_* PMIX_*
+    #   impi_rt (intel): PMI_RANK I_MPI_* HYDRA_*
+    #   msmpi (microsoft): PMI_RANK PMI_* MSMPI_*
+    # TODO: Make sure that Slurm isn't setting MPI variables in the batch script.
     # I seem to recall some messiness with pmix variants on our local openmpi cluster
     # so I would rather look at OMP_COMM_WORLD_RANK
     import os
 
     mpienv = [
         "OMPI_COMM_WORLD_RANK",  # OpenMPI
-        "PMI_RANK",  # MPICH
+        "PMI_RANK",  # MPICH, MSMPI [Microsoft], IMPI_RT [Intel]
     ]
     return any(v in os.environ for v in mpienv)
 
