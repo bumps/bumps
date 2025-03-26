@@ -484,13 +484,8 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
             # TODO: can we specify problem.path in the model file?
             # TODO: can we default the session file name to model.hdf?
             raise RuntimeError("Need to add '--store=path' to the command line.")
-        # Export use cases:
-        # (1) --start: batch fit then export (default start is true)
-        # (2) --edit --start: webview fit with export after fit (suppressed)
-        # (3) --watch: webview fit with export before exit
-        # (4) export from existing session file and do nothing else (not supported)
-        # (5) webview fit with export after every fit (not supported)
-        # TODO: maybe warn when --export option is ignored
+
+        # TODO: if not autostop maybe --export after fit only or after every fit
         if options.export and autostop:
             # print("adding completion lambda")
             on_complete.append(lambda App=None: api.export_results(options.export))
@@ -504,6 +499,10 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
         # signal that no fit is running at startup, even if a fit was
         # interrupted and the state was saved:
         on_startup.append(lambda App=None: api.state.shared.set("active_fit", {}))
+
+    # TODO: maybe warn when --export option is ignored
+    # if options.export and not autostop:
+    #     ...
 
     return on_startup, on_complete
 
