@@ -568,6 +568,11 @@ def run_batch_fit(options: Optional[OPTIONS_CLASS] = None):
     # print("completed run")
 
 
+def main_webview():
+    """Entry point for the interactive interface"""
+    return main(webview=True)
+
+
 def main(options: Optional[OPTIONS_CLASS] = None, webview: bool = False):
     # TODO: where do we configure matplotlib?
     # Need to set matplotlib to a non-interactive backend because it is being used in the

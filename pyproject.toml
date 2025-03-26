@@ -102,8 +102,8 @@ method = "smallest"
 file = "bumps/_version.py"
 
 [project.scripts]
-bumps = "bumps.cli:main"
-bumps-webview = "bumps.webview.server.webserver:main"
+bumps = "bumps.webview.server.cli:main"
+bumps-webview = "bumps.webview.server.cli:main_webview"
 
 [tool.pytest.ini_options]
 # TODO: remove --assert=plain when https://github.com/scipy/scipy/issues/22236 is resolved
