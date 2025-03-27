@@ -7,8 +7,12 @@ authors = [{ name = "Paul Kienzle", email = "paul.kienzle@nist.gov" }]
 license = { file = "LICENSE.txt" }
 dependencies = [
     'numpy',
-    'scikit-learn',
     'scipy',
+    'h5py',
+    'dill',
+    'matplotlib',
+    'blinker',
+    'scikit-learn',
     'typing_extensions>=3.7.4',
     'graphlib_backport; python_version < "3.9"',
 ]
@@ -29,7 +33,6 @@ requires-python = ">=3.8"
 [project.optional-dependencies]
 dev = [
     'build',
-    'matplotlib',   # for testing
     'pre-commit',
     'pytest',
     'pytest-cov',
@@ -38,17 +41,12 @@ dev = [
     'setuptools',
     'sphinx',
     'versioningit',
-    'matplotlib',
 ]
 webview = [
     'aiohttp',
-    'blinker',
-    'dill',
-    'matplotlib',
     'python-socketio',
     'plotly',
     'mpld3',
-    'h5py',
 ]
 
 [project.urls]
