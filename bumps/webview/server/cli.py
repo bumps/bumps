@@ -39,10 +39,11 @@ from typing import Callable, Dict, Optional, List
 import warnings
 import signal
 import sys
+import logging
 
 from . import api
 from . import persistent_settings
-from .logger import logger, console_handler
+from .logger import logger, setup_console_logging
 from .fit_options import parse_fit_options
 from .state_hdf5_backed import SERIALIZERS, UNDEFINED
 
@@ -265,6 +266,18 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         action="store_true",
         help="enable memory tracing (prints after every uncertainty update in dream)",
     )
+    misc.add_argument(
+        "--loglevel",
+        type=str,
+        choices=["debug", "info", "warn", "error", "critical"],
+    )
+    misc.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="verbose output (-v for info, -vv for debug)",
+    )
 
     # Webserver controls
     server = parser.add_argument_group("Webview server controls")
@@ -308,7 +321,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         type=str,
         help="api address of parent hub (only used when called as subprocess)",
     )
-    misc.add_argument(
+    server.add_argument(
         "--convergence-heartbeat",
         action="store_true",
         help="enable convergence heartbeat for jupyter kernel (keeps kernel alive during fit)",
@@ -585,13 +598,10 @@ def main(options: Optional[OPTIONS_CLASS] = None, webview: bool = False):
     from bumps import __version__
 
     mpl.use("agg")
-    logger.addHandler(console_handler)
     if options is None:
         options = get_commandline_options()
     if webview:
         options.edit = True
-    logger.info(options)
-
     if options.version:
         print(__version__)
         return
@@ -616,7 +626,14 @@ def main(options: Optional[OPTIONS_CLASS] = None, webview: bool = False):
         is_server_process = MPI.COMM_WORLD.rank == 0
     else:
         is_server_process = True
-    webview = options.edit or options.start or options.watch
+
+    levels = [logging.WARNING, logging.INFO, logging.DEBUG]
+    setup_console_logging(levels[min(options.verbose, len(levels) - 1)])
+    # from .logger import capture_warnings
+    # capture_warnings(monkeypatch=True)
+    logger.info(options)
+
+    webview = not options.chisq and (options.edit or options.start or options.watch)
     if webview and is_server_process:  # gui mode
         from .webserver import start_from_cli
 

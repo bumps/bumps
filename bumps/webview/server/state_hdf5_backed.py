@@ -389,7 +389,7 @@ class State:
     history: History
     topics: Dict["TopicNameType", "deque[Dict]"]
     shared: "SharedState"
-    mapper: BaseMapper
+    mapper: Optional[BaseMapper] = None
 
     def __init__(self):
         self.problem = ProblemState()
