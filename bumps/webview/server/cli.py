@@ -22,6 +22,9 @@ Basic interactive usage::
     # Start a fit and watch its progress
     bumps model.py --start ...
 
+    # Watch fit progress and exit when complete
+    bumps model.py --watch ...
+
 There are many more options available to control the fit, particularly for
 batch mode fitting, and to control the viewer. To see them type::
 
