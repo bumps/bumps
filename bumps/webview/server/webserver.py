@@ -186,7 +186,7 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
         import webbrowser
 
         async def open_browser(app: web.Application):
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             loop.call_later(0.5, lambda: webbrowser.open_new_tab(f"http://{hostname}:{port}/"))
 
         app.on_startup.append(open_browser)
