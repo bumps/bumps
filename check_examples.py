@@ -6,6 +6,7 @@ sys.dont_write_bytecode = True
 
 ROOT = os.path.abspath(os.path.dirname(__file__))
 CLI = "%s %s/bin/bumps %%s %%s" % (sys.executable, ROOT)
+BUMPS = f'"{sys.executable}" -m bumps'
 EXAMPLEDIR = os.path.join(ROOT, "doc", "examples")
 
 # Add the build dir to the system path
@@ -17,22 +18,18 @@ os.environ["PYTHONPATH"] = os.pathsep.join(packages)
 
 class Commands(object):
     @staticmethod
-    def preview(f):
-        return os.system(CLI % (f, "--preview --seed=1"))
-
-    @staticmethod
     def edit(f):
-        return os.system(CLI % (f, "--edit --seed=1"))
+        return os.system(f'{BUMPS} "{f}" --seed=1 --edit')
 
     @staticmethod
     def chisq(f):
-        return os.system(CLI % (f, "--chisq --seed=1"))
+        return os.system(f'{BUMPS} "{f}" --seed=1 --chisq')
 
     @staticmethod
     def time(f):
-        ## Note: use --parallel to check serialization for MPMapper
-        # return os.system(CLI%(f, '--time_model --seed=1 --steps=24 --parallel'))
-        return os.system(CLI % (f, "--time_model --seed=1 --steps=20"))
+        raise NotImplementedError("model timer no longer available")
+        # Note: use --parallel=0 to check parallel execution time
+        return os.system(f'{BUMPS} "{f}" --seed=1 --chisq --parallel=1 --time-model --steps=20')
 
 
 examples = [
@@ -44,16 +41,18 @@ examples = [
 
 
 def main():
-    if len(sys.argv) == 1 or not hasattr(Commands, sys.argv[1][2:]):
-        print("usage: check_examples.py [--preview|--edit|--chisq|--time]")
-    else:
-        command = getattr(Commands, sys.argv[1][2:])
-        for f in examples:
-            print("\n" + f)
-            if command(os.path.join(EXAMPLEDIR, f)) != 0:
-                # break
-                sys.exit(1)  # example failed
-                pass
+    opt = sys.argv[1][2:] if len(sys.argv) == 2 else "help"
+    command = getattr(Commands, opt, None)
+    if command is None:
+        print("usage: check_examples.py [--edit|--chisq|--time]")
+        return
+
+    for f in examples:
+        print("\n" + f)
+        if command(os.path.join(EXAMPLEDIR, f)) != 0:
+            # break
+            sys.exit(1)  # example failed
+            pass
 
 
 if __name__ == "__main__":
