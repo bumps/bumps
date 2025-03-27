@@ -7,4 +7,5 @@ bumps isn't on your path.
 
 from bumps.webview.server.cli import main
 
-main()
+if __name__ == "__main__":
+    main()
