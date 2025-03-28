@@ -14,23 +14,29 @@ packages = [str(ROOT)]
 if "PYTHONPATH" in os.environ:
     packages.append(os.environ["PYTHONPATH"])
 os.environ["PYTHONPATH"] = os.pathsep.join(packages)
-print("Environment:", os.environ["PYTHONPATH"])
+# print("Environment:", os.environ["PYTHONPATH"])
+
+
+command = [sys.executable, "-m", "bumps"]
 
 
 class Commands(object):
     @staticmethod
     def edit(f):
-        return subprocess.run([sys.executable, "-m", "bumps", f, "--seed=1", "--edit"]).returncode
+        args = "--seed=1 --edit".spit()
+        return subprocess.run([*command, f, *args]).returncode
 
     @staticmethod
     def chisq(f):
-        return subprocess.run([sys.executable, "-m", "bumps", f, "--seed=1", "--chisq"]).returncode
+        args = "--seed=1 --chisq".split()
+        return subprocess.run([*command, f, *args]).returncode
 
     @staticmethod
     def time(f):
         raise NotImplementedError("model timer no longer available")
         # Note: use --parallel=0 to check parallel execution time
-        return os.system(f'{BUMPS} "{f}" --seed=1 --chisq --parallel=1 --time-model --steps=20')
+        args = "--seed=1 --chisq --parallel=1 --time-model --steps=20".split()
+        return subprocess.run([*command, f, *args]).returncode
 
 
 examples = [
