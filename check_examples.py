@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True
 
-BUMPS = f'"{sys.executable}" -m bumps'
+BUMPS = f'"{Path(sys.executable)}" -m bumps'
 ROOT = Path(__file__).absolute().parent
 EXAMPLEDIR = ROOT / "doc" / "examples"
 
@@ -14,6 +14,7 @@ packages = [str(ROOT)]
 if "PYTHONPATH" in os.environ:
     packages.append(os.environ["PYTHONPATH"])
 os.environ["PYTHONPATH"] = os.pathsep.join(packages)
+print("Environment:", os.environ["PYTHONPATH"])
 
 
 class Commands(object):
@@ -23,7 +24,7 @@ class Commands(object):
 
     @staticmethod
     def chisq(f):
-        # print("Running the following:", f'{BUMPS} "{f}" --seed=1 --chisq')
+        print("Running the following:", f'{BUMPS} "{f}" --seed=1 --chisq')
         return os.system(f'{BUMPS} "{f}" --seed=1 --chisq')
 
     @staticmethod
