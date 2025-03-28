@@ -7,9 +7,7 @@ authors = [{ name = "Paul Kienzle", email = "paul.kienzle@nist.gov" }]
 license = { file = "LICENSE.txt" }
 dependencies = [
     'numpy',
-    'scikit-learn',
     'scipy',
-    'typing_extensions>=3.7.4',
     'graphlib_backport; python_version < "3.9"',
 ]
 classifiers = [
