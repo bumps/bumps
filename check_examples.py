@@ -2,10 +2,10 @@
 import sys
 import os
 from pathlib import Path
+import subprocess
 
 sys.dont_write_bytecode = True
 
-BUMPS = f'"{Path(sys.executable)}" -m bumps'
 ROOT = Path(__file__).absolute().parent
 EXAMPLEDIR = ROOT / "doc" / "examples"
 
@@ -20,12 +20,11 @@ print("Environment:", os.environ["PYTHONPATH"])
 class Commands(object):
     @staticmethod
     def edit(f):
-        return os.system(f'{BUMPS} "{f}" --seed=1 --edit')
+        return subprocess.run([sys.executable, "-m", "bumps", f, "--seed=1", "--edit"]).returncode
 
     @staticmethod
     def chisq(f):
-        print("Running the following:", f'{BUMPS} "{f}" --seed=1 --chisq')
-        return os.system(f'{BUMPS} "{f}" --seed=1 --chisq')
+        return subprocess.run([sys.executable, "-m", "bumps", f, "--seed=1", "--chisq"]).returncode
 
     @staticmethod
     def time(f):
