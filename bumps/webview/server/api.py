@@ -61,7 +61,7 @@ from .state_hdf5_backed import (
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
 from .varplot import plot_vars
 from .traceplot import plot_trace
-from .logger import logger, console_handler
+from .logger import logger
 from .custom_plot import process_custom_plot, CustomWebviewPlot
 
 REGISTRY: Dict[str, Callable] = {}
@@ -133,7 +133,12 @@ TopicNameType = Literal[
 
 
 @register
-async def load_problem_file(pathlist: List[str], filename: str, autosave_previous: bool = True):
+async def load_problem_file(
+    pathlist: List[str],
+    filename: str,
+    autosave_previous: bool = True,
+    args: List[str] = None,
+):
     path = Path(*pathlist, filename)
     logger.info(f"Loading model: {path}")
     await log(f"Loading model: {path}")
@@ -144,7 +149,8 @@ async def load_problem_file(pathlist: List[str], filename: str, autosave_previou
     else:
         from bumps.cli import load_model
 
-        problem = load_model(str(path))
+        # print("model", str(path), args)
+        problem = load_model(str(path), args)
     assert isinstance(problem, bumps.fitproblem.FitProblem)
     # problem_state = ProblemState(problem, pathlist, filename)
     try:
@@ -318,7 +324,8 @@ async def get_serializer():
 
 @register
 async def export_results(export_path: Union[str, List[str]] = ""):
-    from concurrent.futures import ThreadPoolExecutor
+    # print("export nap"); await asyncio.sleep(0.1)
+    # from concurrent.futures import ThreadPoolExecutor
 
     problem_state = state.problem
     if problem_state is None:
@@ -334,7 +341,7 @@ async def export_results(export_path: Union[str, List[str]] = ""):
 
     if not isinstance(export_path, list):
         export_path = [export_path]
-    path = Path(*export_path)
+    path = Path(*export_path).expanduser().absolute()
     notification_id = await add_notification(content=f"<span>{str(path)}</span>", title="Export started", timeout=None)
     try:
         await asyncio.to_thread(_export_results, path, problem, uncertainty_state)
@@ -347,6 +354,7 @@ def _export_results(
     problem: bumps.fitproblem.FitProblem,
     uncertainty_state: Optional[bumps.dream.state.MCMCDraw],
 ):
+    # print("running export thread")
     from bumps.util import redirect_console
 
     basename = problem.name if problem.name is not None else "problem"
@@ -363,8 +371,8 @@ def _export_results(
     save_filename = f"{output_pathstr}.{extension}"
     try:
         serialized = serialize_problem(problem, serializer)
-        with open(save_filename, "wb") as output_file:
-            output_file.write(serialized)
+        with open(save_filename, "wb") as fd:
+            fd.write(serialized)
     except Exception as exc:
         logger.error(f"Error exporting model: {exc}")
 
@@ -372,9 +380,8 @@ def _export_results(
     with redirect_console(str(path / f"{basename}.out")):
         problem.show()
 
-    pardata = "".join("%s %.15g\n" % (name, value) for name, value in zip(problem.labels(), problem.getp()))
-
-    open(path / f"{basename}.par", "wt").write(pardata)
+    # Write the pars file.
+    _write_pars(problem, path, f"{basename}.par")
 
     # Produce model plots
     problem.plot(figfile=output_pathstr)
@@ -384,6 +391,7 @@ def _export_results(
         with redirect_console(str(path / f"{basename}.err")):
             uncertainty_state.show(figfile=output_pathstr)
         uncertainty_state.save(output_pathstr)
+    # print("export complete")
 
 
 @register
@@ -394,15 +402,17 @@ async def save_parameters(pathlist: List[str], filename: str, overwrite: bool = 
         return
     problem = problem_state.fitProblem
     path = Path(*pathlist)
-    if not overwrite and Path.exists(path / filename):
+    if not overwrite and (path / filename).exists():
         # confirmation needed:
         return {"filename": filename, "check_overwrite": True}
-
-    pardata = "".join("%s %.15g\n" % (name, value) for name, value in zip(problem.labels(), problem.getp()))
-
-    with open(path / filename, "wt") as pars_file:
-        pars_file.write(pardata)
+    _write_pars(problem, path, filename)
     return {"filename": filename, "check_overwrite": False}
+
+
+def _write_pars(problem, path: Path, filename: str):
+    pardata = "".join(f"{name} {value:.15g}\n" for name, value in zip(problem.labels(), problem.getp()))
+    with open(path / filename, "wt") as fd:
+        fd.write(pardata)
 
 
 @register
@@ -450,13 +460,14 @@ async def start_fit(fitter_id: str = "", kwargs=None):
 
 
 @register
-async def stop_fit():
-    if state.fit_thread is not None:
-        if state.fit_thread.is_alive():
-            state.fit_abort_event.set()
-            loop = getattr(state, "calling_loop", None)
-            if loop is not None:
-                await loop.run_in_executor(None, state.fit_complete_event.wait)
+async def stop_fit(wait=True):
+    """
+    Trigger the abort fit signal to the optimizer and wait for complete (or not).
+    """
+    if state.fit_thread is not None and state.fit_thread.is_alive():
+        state.fit_abort_event.set()
+        if wait:
+            await wait_for_fit_complete()
     else:
         state.shared.active_fit = {}
 
@@ -491,7 +502,22 @@ def get_running_loop():
 
 
 @register
-async def start_fit_thread(fitter_id: str = "", options=None, terminate_on_finish=False):
+async def shake_parameters():
+    fitProblem = state.problem.fitProblem if state.problem is not None else None
+    if fitProblem is not None:
+        # TODO: capture and report seed?
+        fitProblem.randomize()
+        state.shared.updated_parameters = now_string()
+        await log(f"Randomize parameters")
+        await add_notification(
+            f"Randomize parameters",
+            title="Parameters applied",
+            timeout=2000,
+        )
+
+
+@register
+async def start_fit_thread(fitter_id: str = "", options=None):
     options = {} if options is None else options  # session_id: str = app["active_session"]
     fitProblem = state.problem.fitProblem if state.problem is not None else None
     if fitProblem is None:
@@ -518,19 +544,20 @@ async def start_fit_thread(fitter_id: str = "", options=None, terminate_on_finis
         num_steps = get_num_steps(fitter_id, num_params, options)
         state.fit_abort_event.clear()
         state.fit_complete_event.clear()
-        state.fit_uncertainty_final.clear()
 
+        # print(f"*** start_fit_thread {options=}")
         fit_thread = FitThread(
             abort_event=state.fit_abort_event,
             problem=fitProblem,
             fitclass=fitclass,
+            mapper=state.mapper,
             options=options,
             parallel=state.parallel,
             # session_id=session_id,
             # Number of seconds between updates to the GUI, or 0 for no updates
             convergence_update=5,
             uncertainty_update=state.shared.autosave_session_interval,
-            terminate_on_finish=terminate_on_finish,
+            console_update=state.console_update_interval,
         )
         state.shared.active_fit = to_json_compatible_dict(
             dict(
@@ -551,7 +578,13 @@ async def start_fit_thread(fitter_id: str = "", options=None, terminate_on_finis
         state.fit_thread = fit_thread
 
 
+async def wait_for_fit_complete():
+    if state.fit_thread is not None:
+        await state.fit_complete_event.wait()
+
+
 async def _fit_progress_handler(event: Dict):
+    # print("inside _fit_progress_handler", event)
     # session_id = event["session_id"]
     if TRACE_MEMORY:
         import tracemalloc
@@ -562,12 +595,12 @@ async def _fit_progress_handler(event: Dict):
             print("memory use:")
             for stat in top_stats[:15]:
                 print(stat)
-
     problem_state = state.problem
     fitProblem = problem_state.fitProblem if problem_state is not None else None
     if fitProblem is None:
         raise ValueError("should never happen: fit progress reported for session in which fitProblem is undefined")
     message = event.get("message", None)
+    # print("_fit_progress_handler", message)
     if message == "complete" or message == "improvement":
         fitProblem.setp(event["point"])
         fitProblem.model_update()
@@ -585,35 +618,37 @@ async def _fit_progress_handler(event: Dict):
         state.fitting.uncertainty_state = cast(bumps.dream.state.MCMCDraw, event["uncertainty_state"])
         state.shared.updated_uncertainty = now_string()
         state.autosave()
-        if message == "uncertainty_final":
-            # fit is not complete until uncertainty is saved.
-            state.fit_uncertainty_final.set()
 
 
-async def _fit_complete_handler(event):
+async def _fit_complete_handler(event: Dict[str, Any]):
     message = event.get("message", None)
-    fit_thread = state.fit_thread
-    terminate = False
-    if fit_thread is not None:
-        terminate = fit_thread.terminate_on_finish
-        fit_thread.join(1)  # 1 second timeout on join
-        if fit_thread.is_alive():
-            await log("Fit thread failed to complete")
-    state.fit_thread = None
-    state.shared.active_fit = {}
-    if message == "error":
-        await log(
-            event["traceback"],
-            title=f"Fit failed with error: {event.get('error_string')}",
-        )
-        logger.warning(f"Fit failed with error: {event.get('error_string')}\n{event['traceback']}")
-    else:
+    # print("inside _fit_complete_handler", message)
+    try:
+        if state.fit_thread is not None:
+            # print("joining fit thread")
+            state.fit_thread.join(1)  # 1 second timeout on join
+            if state.fit_thread.is_alive():
+                # TODO: what can we do to force quit the thread?
+                await log("Fit thread failed to complete")
+                # return ?
+            # print("...joined")
+        if message == "error":
+            await log(
+                event["traceback"],
+                title=f"Fit failed with error: {event['error_string']}",
+            )
+            logger.warning(f"Fit failed with error: {event['error_string']}\n{event['traceback']}")
+            return
+
+        # print("capturing results")
         problem: bumps.fitproblem.FitProblem = event["problem"]
         chisq = nice(2 * event["value"] / problem.dof)
         problem.setp(event["point"])
         problem.model_update()
         state.problem.fitProblem = problem
+        state.fitting.uncertainty_state = cast(bumps.dream.state.MCMCDraw, event["uncertainty_state"])
         if state.shared.autosave_history:
+            # print("saving")
             await save_to_history(
                 f"Fit complete: {event['fitter_id']}",
                 include_population=True,
@@ -623,26 +658,39 @@ async def _fit_complete_handler(event):
         await log(event["info"], title=f"Done with chisq {chisq}")
         logger.info(f"Fit done with chisq {chisq}")
 
-    state.fit_complete_event.set()
+    finally:
+        # Signal that the fit is complete and all results are saved.
+        # Be sure to clear the fit thread and active fit before so that those
+        # awaiting the fit complete event can resume and start a new fit.
+        state.fit_thread = None
+        state.shared.active_fit = {}
+        state.fit_complete_event.set()
 
-    if terminate:
-        await shutdown()
+        # print("shutdown", state.shutdown_on_fit_complete)
+        if state.shutdown_on_fit_complete:
+            await shutdown()
+            # print("shutdown complete")
 
 
 def fit_progress_handler(event: Dict):
     loop = getattr(state, "calling_loop", None)
+    # print("fit progress handler", loop is not None)
     if loop is not None:
-        asyncio.run_coroutine_threadsafe(_fit_progress_handler(event), loop)
+        task = asyncio.run_coroutine_threadsafe(_fit_progress_handler(event), loop)
+        # task.result(120)
 
 
 def fit_complete_handler(event: Dict):
     loop = getattr(state, "calling_loop", None)
-    if event["message"] != "error":
-        state.fit_uncertainty_final.wait()
+    # print("fit complete handler", loop is not None)
     if loop is not None:
-        asyncio.run_coroutine_threadsafe(_fit_complete_handler(event), loop)
+        task = asyncio.run_coroutine_threadsafe(_fit_complete_handler(event), loop)
+        # task.result(120)
 
 
+# Run from the fit thread by blink. The handlers echo the message to asyncio
+# handlers for communication with the GUI and in the case of FIT_COMPLETE, for
+# saving the results.
 EVT_FIT_PROGRESS.connect(fit_progress_handler, weak=True)
 EVT_FIT_COMPLETE.connect(fit_complete_handler, weak=True)
 
@@ -1191,8 +1239,13 @@ async def shutdown():
     logger.info("killing...")
     await stop_fit()
     state.autosave()
+    if state.mapper is not None:
+        state.mapper.stop_mapper()
+        state.mapper = None
     await emit("server_shutting_down")
-    shutdown_result = asyncio.gather(_shutdown(), return_exceptions=True)
+    # print("gather _shutdown()")
+    # TODO: why gather here rather than await?
+    asyncio.gather(_shutdown(), return_exceptions=True)
 
 
 async def add_notification(content: str, title: str = "Notification", timeout: Optional[int] = None):
@@ -1206,6 +1259,7 @@ async def add_notification(content: str, title: str = "Notification", timeout: O
 
 
 async def _shutdown():
+    # print("raising SystemExit")
     raise SystemExit(0)
 
 
