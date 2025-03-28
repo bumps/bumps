@@ -1,14 +1,18 @@
 import asyncio
 import functools
-import json
 import mimetypes
 import os
 import socket
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional, Union, List
 
 import matplotlib
+
+# from .main import setup_bumps
+from .cli import get_commandline_options, interpret_fit_options, OPTIONS_CLASS
+from . import api
+from .logger import logger
+from . import persistent_settings
 
 matplotlib.use("agg")
 
@@ -19,12 +23,6 @@ mimetypes.add_type("text/javascript", ".js")
 mimetypes.add_type("text/javascript", ".mjs")
 mimetypes.add_type("image/png", ".png")
 mimetypes.add_type("image/svg+xml", ".svg")
-
-# from .main import setup_bumps
-from .cli import get_commandline_options, interpret_fit_options, OPTIONS_CLASS
-from . import api
-from .logger import logger, list_handler, console_handler
-from . import persistent_settings
 
 TRACE_MEMORY = False
 CLIENT_PATH = Path(__file__).parent.parent / "client"
@@ -53,7 +51,7 @@ routes = app = sio = None
 
 def init_web_app():
     import socketio
-    from aiohttp import web, ClientSession
+    from aiohttp import web
 
     global routes, app, sio
 
@@ -207,8 +205,9 @@ def main(options: Optional[OPTIONS_CLASS] = None, sock: Optional[socket.socket] 
     # this entrypoint will be used to start gui, so set headless = False
     # (other contexts e.g. jupyter notebook will directly call start_app)
     from aiohttp import web
+    from .logger import setup_console_logging
 
-    logger.addHandler(console_handler)
+    setup_console_logging(level=logger.WARNING)
     options = get_commandline_options(arg_defaults={"headless": False}) if options is None else options
     options.edit = True  # when called as webserver.main force into webview mode
     logger.info(dict(options=options))
@@ -248,8 +247,9 @@ async def start_app(
 
     # this function is called from jupyter notebook, so set headless = True
     options.headless = True
-    # redirect logging to a list
-    logger.addHandler(list_handler)
+    # TODO: redirect logging somewhere perhaps
+    # from .logger import setup_client_handler
+    # setup_client_handler(logging.INFO, action=lambda msg: msg)
     runsock = setup_app(options=options, sock=sock)
     runner = web.AppRunner(app, handle_signals=False)
     await runner.setup()
@@ -313,7 +313,7 @@ def open_tab_link(single_panel=None) -> None:
     """
     Open the web server in a new tab in the default web browser.
     """
-    from IPython.display import Javascript, display, HTML
+    from IPython.display import display, HTML
 
     url = get_server_url()
     if single_panel is not None:
