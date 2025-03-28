@@ -23,6 +23,7 @@ class Commands(object):
 
     @staticmethod
     def chisq(f):
+        print("Running the following:", f'{BUMPS} "{f}" --seed=1 --chisq')
         return os.system(f'{BUMPS} "{f}" --seed=1 --chisq')
 
     @staticmethod
