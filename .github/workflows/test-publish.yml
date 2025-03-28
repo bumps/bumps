@@ -1,6 +1,10 @@
 name: Test and Publish to PyPI
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
 
 jobs:
   # Build a pure Python wheel and upload as an artifact
