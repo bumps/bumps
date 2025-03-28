@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 import sys
 import os
+from pathlib import Path
 
 sys.dont_write_bytecode = True
 
-ROOT = os.path.abspath(os.path.dirname(__file__))
-CLI = "%s %s/bin/bumps %%s %%s" % (sys.executable, ROOT)
 BUMPS = f'"{sys.executable}" -m bumps'
-EXAMPLEDIR = os.path.join(ROOT, "doc", "examples")
+ROOT = Path(__file__).absolute().parent
+EXAMPLEDIR = ROOT / "doc" / "examples"
 
 # Add the build dir to the system path
-packages = [ROOT]
+packages = [str(ROOT)]
 if "PYTHONPATH" in os.environ:
     packages.append(os.environ["PYTHONPATH"])
 os.environ["PYTHONPATH"] = os.pathsep.join(packages)
@@ -23,7 +23,7 @@ class Commands(object):
 
     @staticmethod
     def chisq(f):
-        print("Running the following:", f'{BUMPS} "{f}" --seed=1 --chisq')
+        # print("Running the following:", f'{BUMPS} "{f}" --seed=1 --chisq')
         return os.system(f'{BUMPS} "{f}" --seed=1 --chisq')
 
     @staticmethod
@@ -34,10 +34,10 @@ class Commands(object):
 
 
 examples = [
-    "peaks/model.py",
-    "curvefit/curve.py",
-    "constraints/inequality.py",
-    "test_functions/anticor.py",
+    EXAMPLEDIR / "peaks" / "model.py",
+    EXAMPLEDIR / "curvefit" / "curve.py",
+    EXAMPLEDIR / "constraints" / "inequality.py",
+    EXAMPLEDIR / "test_functions" / "anticor.py",
 ]
 
 
@@ -49,8 +49,8 @@ def main():
         return
 
     for f in examples:
-        print("\n" + f)
-        if command(os.path.join(EXAMPLEDIR, f)) != 0:
+        print(f"\n{f}")
+        if command(f) != 0:
             # break
             sys.exit(1)  # example failed
             pass
