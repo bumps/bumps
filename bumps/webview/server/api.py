@@ -30,16 +30,10 @@ from copy import deepcopy
 import os
 import uuid
 import traceback
+import math
 
 from bumps.fitters import (
-    DreamFit,
-    LevenbergMarquardtFit,
-    SimplexFit,
-    DEFit,
-    MPFit,
-    BFGSFit,
     FitDriver,
-    fit,
     nllf_scale,
     format_uncertainty,
 )
@@ -47,9 +41,13 @@ from bumps.mapper import MPMapper
 from bumps.parameter import Parameter, Constant, Variable, unique
 import bumps.cli
 import bumps.fitproblem
-import bumps.dream.views, bumps.dream.varplot, bumps.dream.stats, bumps.dream.state
+import bumps.dream.views
+import bumps.dream.varplot
+import bumps.dream.stats
+import bumps.dream.state
 import bumps.errplot
 
+from . import fit_options
 from .state_hdf5_backed import (
     UNDEFINED,
     UNDEFINED_TYPE,
@@ -68,14 +66,6 @@ REGISTRY: Dict[str, Callable] = {}
 MODEL_EXT = ".json"
 TRACE_MEMORY = False
 
-FITTERS = (DreamFit, LevenbergMarquardtFit, SimplexFit, DEFit, MPFit, BFGSFit)
-FITTERS_BY_ID = dict([(fitter.id, fitter) for fitter in FITTERS])
-FITTER_DEFAULTS = {}
-for fitter in FITTERS:
-    FITTER_DEFAULTS[fitter.id] = {
-        "name": fitter.name,
-        "settings": dict(fitter.settings),
-    }
 
 state = State()
 
@@ -185,8 +175,8 @@ async def set_problem(
     new_model: bool = True,
     name: Optional[str] = None,
 ):
-    if state.problem is None or state.problem.fitProblem is None:
-        update = False
+    # if state.problem is None or state.problem.fitProblem is None:
+    #     update = False
     state.problem.fitProblem = problem
     name = name if name is not None else problem.name
     if name is None:
@@ -438,8 +428,7 @@ async def apply_parameters(pathlist: List[str], filename: str):
 
 
 @register
-async def start_fit(fitter_id: str = "", kwargs=None):
-    kwargs = {} if kwargs is None else kwargs
+async def start_fit(options):
     problem_state = state.problem
     if problem_state is None:
         await log("Error: Can't start fit if no problem loaded")
@@ -447,13 +436,14 @@ async def start_fit(fitter_id: str = "", kwargs=None):
         fitProblem = problem_state.fitProblem
         mapper = MPMapper.start_mapper(fitProblem, None, cpus=state.parallel)
         monitors = []
-        fitclass = FITTERS_BY_ID[fitter_id]
+        # TODO: let FitDriver find the fitter using options["fit"]
+        fitclass = fit_options.lookup_fitter(options["fit"])
         driver = FitDriver(
             fitclass=fitclass,
             mapper=mapper,
             problem=fitProblem,
             monitors=monitors,
-            **kwargs,
+            **options,
         )
         x, fx = driver.fit()
         driver.show()
@@ -483,15 +473,22 @@ async def get_chisq(problem: Optional[bumps.fitproblem.FitProblem] = None, nllf=
     return chisq
 
 
-def get_num_steps(fitter_id: str, num_fitparams: int, options: Optional[Dict] = None):
-    options = FITTER_DEFAULTS[fitter_id] if options is None else options
-    steps = options["steps"]
-    if fitter_id == "dream":
-        if steps == 0:
-            total_pop = options["pop"] * num_fitparams
-            steps = int(options["samples"] / total_pop)
+# TODO: Ask the fitter for the number of steps instead of guessing
+# This is difficult because dream doesn't know it until DreamFit.solve() is called.
+def get_max_steps(num_fitparams: int, options: Dict[str, Any]):
+    """Returns the maximum number of iterations allowed for the fit."""
+    fitter_id = options["fit"]
+    fitter = fit_options.lookup_fitter(options["fit"])
+    options = {**dict(fitter.settings), **options}
+    steps = options["steps"]  # all fitters have "steps"
+    starts = options.get("starts", 1)  # Multistart fitter
+    if fitter_id == "dream":  # Dream has steps + burn
+        if steps == 0:  # Steps not specified; using samples instead
+            pop, draws = options["pop"], options["samples"]
+            pop_size = int(math.ceil(pop * num_fitparams)) if pop > 0 else int(-pop)
+            steps = (draws + pop_size - 1) // pop_size
         steps += options["burn"]
-    return steps
+    return steps * starts
 
 
 def get_running_loop():
@@ -517,15 +514,12 @@ async def shake_parameters():
 
 
 @register
-async def start_fit_thread(fitter_id: str = "", options=None):
-    options = {} if options is None else options  # session_id: str = app["active_session"]
+async def start_fit_thread(options):
     fitProblem = state.problem.fitProblem if state.problem is not None else None
     if fitProblem is None:
         await log("Error: Can't start fit if no problem loaded")
     else:
         state.calling_loop = get_running_loop()
-        fit_state = state.fitting
-        fitclass = FITTERS_BY_ID[fitter_id]
         if state.fit_thread is not None:
             # warn that fit is alread running...
             logger.warning("fit already running...")
@@ -541,15 +535,16 @@ async def start_fit_thread(fitter_id: str = "", options=None):
         # Clear abort and uncertainty state
         # state.abort = False
         # state.fitting.uncertainty_state = None
-        num_steps = get_num_steps(fitter_id, num_params, options)
+        max_steps = get_max_steps(num_params, options)
         state.fit_abort_event.clear()
         state.fit_complete_event.clear()
 
         # print(f"*** start_fit_thread {options=}")
+        fitclass = fit_options.lookup_fitter(options["fit"])
         fit_thread = FitThread(
             abort_event=state.fit_abort_event,
-            problem=fitProblem,
             fitclass=fitclass,
+            problem=fitProblem,
             mapper=state.mapper,
             options=options,
             parallel=state.parallel,
@@ -561,9 +556,10 @@ async def start_fit_thread(fitter_id: str = "", options=None):
         )
         state.shared.active_fit = to_json_compatible_dict(
             dict(
-                fitter_id=fitter_id,
+                # TODO: don't need fitter_id as a separate option
+                fitter_id=options["fit"],
                 options=options,
-                num_steps=num_steps,
+                num_steps=max_steps,
                 step=0,
                 chisq="",
                 value=0,
@@ -571,7 +567,7 @@ async def start_fit_thread(fitter_id: str = "", options=None):
         )
         await log(
             json.dumps(to_json_compatible_dict(options), indent=2),
-            title=f"Starting fitter {fitter_id}",
+            title=f"Starting fitter {options['fit']}",
         )
         state.autosave()
         fit_thread.start()
@@ -1231,7 +1227,7 @@ async def get_dirlisting(pathlist: Optional[List[str]] = None):
 
 @register
 async def get_fitter_defaults(*args):
-    return FITTER_DEFAULTS
+    return {fitter.name: fitter.settings for fitter in fit_options.FITTERS}
 
 
 @register

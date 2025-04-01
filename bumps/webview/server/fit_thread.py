@@ -200,7 +200,7 @@ class FitThread(Thread):
         self.problem = problem
         self.fitclass = fitclass
         # print(f"   *** FitThread {options}")
-        self.options = options if isinstance(options, dict) else dict()
+        self.options = options if isinstance(options, dict) else {}
         self.mapper = mapper
         self.parallel = parallel
         self.convergence_update = convergence_update

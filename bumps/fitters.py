@@ -4,6 +4,7 @@ Interfaces to various optimizers.
 
 import sys
 import warnings
+from typing import List, Tuple, Any
 
 # CRUFT: time.clock() removed from python 3.8
 try:
@@ -185,6 +186,10 @@ class FitBase(object):
     derivatives at the minimum in the FitDriver method.
     """
 
+    name: str
+    id: str
+    settings: List[Tuple[str, any]]
+
     def __init__(self, problem):
         """Fit the models and show the results"""
         self.problem = problem
@@ -204,7 +209,7 @@ class MultiStart(FitBase):
     """
 
     name = "Multistart Monte Carlo"
-    settings = [("starts", 100)]
+    settings = [("starts", 100), ("keep_best", True)]
 
     def __init__(self, fitter):
         FitBase.__init__(self, fitter.problem)
@@ -362,7 +367,7 @@ class BFGSFit(FitBase):
 
     name = "Quasi-Newton BFGS"
     id = "newton"
-    settings = [("steps", 3000), ("starts", 1), ("ftol", 1e-6), ("xtol", 1e-12)]
+    settings = [("steps", 3000), ("ftol", 1e-6), ("xtol", 1e-12), ("starts", 1), ("keep_best", False)]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         if abort_test is None:
@@ -433,7 +438,7 @@ class RLFit(FitBase):
 
     name = "Random Lines"
     id = "rl"
-    settings = [("steps", 3000), ("starts", 20), ("pop", 0.5), ("CR", 0.9)]
+    settings = [("steps", 3000), ("pop", 0.5), ("CR", 0.9), ("starts", 20), ("keep_best", False)]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         if abort_test is None:
@@ -502,7 +507,7 @@ class SimplexFit(FitBase):
 
     name = "Nelder-Mead Simplex"
     id = "amoeba"
-    settings = [("steps", 1000), ("starts", 1), ("radius", 0.15), ("xtol", 1e-6), ("ftol", 1e-8)]
+    settings = [("steps", 1000), ("radius", 0.15), ("xtol", 1e-6), ("ftol", 1e-8), ("starts", 1), ("keep_best", False)]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         from .simplex import simplex

@@ -135,7 +135,6 @@ def parse_int(value):
 
 
 FIT_FIELDS = dict(
-    starts=("Starts", parse_int),
     steps=("Steps", parse_int),
     samples=("Samples", parse_int),
     xtol=("x tolerance", float),
@@ -155,6 +154,8 @@ FIT_FIELDS = dict(
     # TODO: convert --trim into a boolean flag and update docs
     trim=("Burn-in trim", yesno),
     outliers=("Outliers", ChoiceList("none", "iqr", "grubbs", "mahal")),
+    starts=("Starts", parse_int),
+    keep_best=("Restart from best", yesno),
 )
 
 # Make sure all settings are parseable
@@ -349,6 +350,7 @@ class BumpsOpts(ParseOpts):
     resynth = "0"
     noise = "5"
     starts = "1"
+    keep_best = "true"
     seed = ""
     time = "inf"
     checkpoint = "0"

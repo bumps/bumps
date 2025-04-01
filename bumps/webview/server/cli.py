@@ -6,24 +6,24 @@ Basic command line usage::
     bumps model.py --chisq
 
     # Run a simple batch fit, appending results to a store file.
-    bumps model.py --store=T1.hdf
+    bumps -b --store=T1.hdf model.py
 
     # Run a DREAM fit to explore parameter uncertainties
-    bumps model.py --store=T1.hdf --fit=dream
+    bumps -b --store=T1.hdf model.py --fit=dream
 
     # Load and fit the last model in a session file.
-    bumps --store=T1.hdf
+    bumps -b --store=T1.hdf
 
 Basic interactive usage::
 
-    # Open a web browser to the bumps application
-    bumps --edit
+    # Open a web browser to the bumps application. Show the initial model if any.
+    bumps [model.py]
 
-    # Start a fit and watch its progress
-    bumps model.py --start ...
+    # Open a web browser and start a fit
+    bumps model.py --start
 
     # Watch fit progress and exit when complete
-    bumps model.py --watch ...
+    bumps model.py --run --store=T1.hdf
 
 There are many more options available to control the fit, particularly for
 batch mode fitting, and to control the viewer. To see them type::
@@ -35,17 +35,19 @@ import argparse
 import asyncio
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict, Optional, List
+from typing import Callable, Dict, Optional, List, Any
 import warnings
 import signal
 import sys
 import logging
+from dataclasses import field
 
+from bumps import __version__
 from . import api
 from . import persistent_settings
+from . import fit_options
 from .logger import logger, setup_console_logging
-from .fit_options import parse_fit_options
-from .state_hdf5_backed import SERIALIZERS, UNDEFINED
+from .state_hdf5_backed import SERIALIZERS
 
 
 # TODO: try datargs to build a parser from the typed dataclass
@@ -59,13 +61,10 @@ class BumpsOptions:
 
     # Positional arguments.
     filename: Optional[str] = None
+    args: Optional[List[str]] = None
 
     # Fitter controls.
-    fit: Optional[str] = None
-    fit_options: Optional[List[str]] = None
-    model_args: Optional[List[str]] = None
-    parallel: int = 0
-    mpi: bool = False
+    fit_options: Dict[str, Any] = field(default_factory=dict)
 
     # Session file controls.
     store: Optional[str] = None
@@ -86,24 +85,39 @@ class BumpsOptions:
     # Program controls.
     chisq: bool = False
     export: Optional[str] = None
-    version: bool = False
     trace: bool = False
+    parallel: int = 0
+    mpi: bool = False
 
     # Webserver controls.
-    edit: bool = False
+    webview: bool = True
     start: bool = False
-    watch: bool = False
+    run: bool = False
     headless: bool = False
     external: bool = False
     port: int = 0
     hub: Optional[str] = None
     convergence_heartbeat: bool = False
 
-    # Simulate
-
 
 OPTIONS_CLASS = BumpsOptions
 APPLICATION_NAME = "bumps"
+
+
+class DictAction(argparse.Action):
+    # Note: implicit __init__ inherited from argparse.Action
+    def __call__(self, parser, namespace, values, option_string=None):
+        if self.type is bool:
+            values = True
+        # Find target dict name and key.
+        key, subkey = self.dest.split(".")
+        # Grab the target dict, if present.
+        store = getattr(namespace, key, None)
+        if store is None:
+            store = {}
+        store[subkey] = values
+        # Store the target back in the namespace in case it was missing or None.
+        setattr(namespace, key, store)
 
 
 class HelpFormatter(argparse.RawTextHelpFormatter, argparse.ArgumentDefaultsHelpFormatter):
@@ -123,7 +137,9 @@ class HelpFormatter(argparse.RawTextHelpFormatter, argparse.ArgumentDefaultsHelp
 
 
 def get_commandline_options(arg_defaults: Optional[Dict] = None):
+    # TODO: if running as a refl1d we should show refl1d instead of bumps
     parser = argparse.ArgumentParser(
+        prog="bumps",
         formatter_class=HelpFormatter,
         epilog=__doc__.replace("::", ":"),
     )
@@ -132,42 +148,36 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         nargs="?",
         help="problem file to load, .py or .json (serialized) fitproblem",
     )
+    parser.add_argument(
+        "--args",
+        nargs="*",
+        type=str,
+        help="arguments to send to the model loader on load",
+    )
     # parser.add_argument('-d', '--debug', action='store_true', help='autoload modules on change')
 
     # Fitter controls
+    fit_options.form_fit_options_associations()  # sets fitter list for each option
     fitter = parser.add_argument_group("Fitting controls")
-    fitter.add_argument(
-        "--fit",
-        default=None,
-        type=str,
-        choices=list(api.FITTERS_BY_ID.keys()),
-        help="fitting engine to use; see manual for details",
-    )
-    fitter.add_argument(
-        "--fit-options",
-        nargs="*",
-        type=str,
-        help="fit options as key=value pairs",
-    )
-    fitter.add_argument(
-        "--model-args",
-        nargs="*",
-        type=str,
-        help="arguments to send to the model loader [batch only]",
-    )
-    fitter.add_argument(
-        "--parallel",
-        default=0,
-        type=int,
-        help="run fit using multiprocessing for parallelism; use --parallel=0 for all cpus",
-    )
-    fitter.add_argument("--mpi", action="store_true", help="Use MPI to distribute work across a cluster")
-    # fitter.add_argument(
-    #    "--pars",
-    #    default=None,
-    #    type=str,
-    #    help="Start a fit from a previously saved result."
-    # )
+    for name, option in fit_options.FIT_OPTIONS.items():
+        # Check if the option is used by any of the active fitters. For example,
+        # if parallel tempering is not available in fit_options.FITTERS then the
+        # option --nT will not be available.
+        if not option.fitters:
+            continue
+        stype = option.stype
+        metavar = " " if stype is bool else name.replace("_", "-").upper()
+        choices = stype if isinstance(stype, list) else None
+        help = f"{option.label}  [{', '.join(option.fitters)}]\n{option.description}"
+        fitter.add_argument(
+            f"--{name.replace('_', '-')}",
+            metavar=metavar,
+            type=str if choices else stype,
+            choices=choices,
+            action=DictAction,
+            dest=f"fit_options.{name}",
+            help=help,
+        )
 
     # Session file controls.
     session = parser.add_argument_group("Session file management")
@@ -179,12 +189,14 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     )
     session.add_argument(
         "--read-store",
+        metavar="STORE",
         default=None,
         type=str,
         help="read initial session state from file (overrides --store)",
     )
     session.add_argument(
         "--write-store",
+        metavar="STORE",
         default=None,
         type=str,
         help="output file for session state (overrides --store)",
@@ -255,11 +267,22 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         type=str,
         help="Directory path for data and figure export.",
     )
+    # fitter.add_argument(
+    #    "--pars",
+    #    default=None,
+    #    type=str,
+    #    help="Start a fit from a previously saved result."
+    # )
     misc.add_argument(
-        "-V",
-        "--version",
+        "--parallel",
+        default=0,
+        type=int,
+        help="run fit using multiprocessing for parallelism; use --parallel=0 for all cpus",
+    )
+    misc.add_argument(
+        "--mpi",
         action="store_true",
-        help="print version number",
+        help="Use MPI to distribute work across a cluster",
     )
     misc.add_argument(
         "--trace",
@@ -278,24 +301,40 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         default=0,
         help="verbose output (-v for info, -vv for debug)",
     )
+    # TODO: show version numbers for both refl1d and bumps?
+    misc.add_argument(
+        "-V",
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
 
     # Webserver controls
     server = parser.add_argument_group("Webview server controls")
     server.add_argument(
-        "--edit",
+        "--webview",
         action="store_true",
-        help="start web interface to view and edit the problem",
+        dest="webview",
+        help="run bumps fit with the webview server (this is the default)",
     )
     server.add_argument(
+        "-b",
+        "--no-webview",
+        action="store_false",
+        dest="webview",
+        help="run bumps fit in batch mode without the webview server",
+    )
+    server.add_argument(
+        "-s",
         "--start",
         action="store_true",
-        help="start fit immediately",
+        help="start fit immediately, leaving it open when done",
     )
     server.add_argument(
-        "-w",
-        "--watch",
+        "-r",
+        "--run",
         action="store_true",
-        help="run the server during the fit, exiting when it is done",
+        help="run the fit to completion",
     )
     server.add_argument(
         "-x",
@@ -388,16 +427,14 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
         TRACE_MEMORY = True
         api.TRACE_MEMORY = True
 
-    # on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
-    if options.fit is not None:
-        on_startup.append(lambda App: api.state.shared.set("selected_fitter", options.fit))
+    fitopts, errors = fit_options.update_options(options.fit_options)
+    if errors:
+        warnings.warn("\n".join(errors))
 
-    fitter_id = options.fit
-    if fitter_id is None:
-        fitter_id = api.state.shared.selected_fitter
-    if fitter_id is None or fitter_id is UNDEFINED:
-        fitter_id = "amoeba"
-    fitter_settings = parse_fit_options(fitter_id=fitter_id, fit_options=options.fit_options)
+    # on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
+    fitter_id = fitopts["fit"]
+    on_startup.append(lambda App: api.state.shared.set("selected_fitter", fitter_id))
+    # TODO: send commandline options to the webview interface
 
     api.state.parallel = options.parallel
 
@@ -408,7 +445,7 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
         logger.debug(f"fitter for filename {filename} is {fitter_id}")
 
         async def load_problem(App=None):
-            await api.load_problem_file(pathlist, filename, args=options.model_args)
+            await api.load_problem_file(pathlist, filename, args=options.args)
 
         on_startup.append(load_problem)
 
@@ -471,9 +508,10 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
 
         on_startup.append(start_mapper)
 
-    webview = options.edit or options.start or options.watch
-    autostart = not webview or options.start or options.watch
-    autostop = not webview or options.watch
+    webview = options.webview
+    autostart = not webview or options.start or options.run
+    autostop = not webview or options.run
+
     if options.chisq:
 
         async def show_chisq(App=None):
@@ -491,7 +529,7 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
         async def start_fit(App=None):
             # print(f"{fitter_settings=}")
             if api.state.problem is not None:
-                await api.start_fit_thread(fitter_id, fitter_settings)
+                await api.start_fit_thread(fitopts)
 
         on_startup.append(start_fit)
         api.state.console_update_interval = 0 if webview else 1
@@ -595,16 +633,11 @@ def main(options: Optional[OPTIONS_CLASS] = None, webview: bool = False):
     # graph even when there is none (we ask for next color before making the plot).
     import matplotlib as mpl
     from bumps.mapper import using_mpi
-    from bumps import __version__
+    from .webserver import start_from_cli
 
     mpl.use("agg")
     if options is None:
         options = get_commandline_options()
-    if webview:
-        options.edit = True
-    if options.version:
-        print(__version__)
-        return
 
     # TODO: cleaner way to isolate MPI?
     # TODO: cleaner handling of worker exit.
@@ -619,13 +652,13 @@ def main(options: Optional[OPTIONS_CLASS] = None, webview: bool = False):
     # and on complete actions are skipped. We could instead pass an is_worker flag
     # into the options processor so that there are no tasks to skip.
     if options.mpi or using_mpi():
-        # Warning: importing MPI from mpi4py calls MPI_Init() which triggers
-        # network traffic. Only import it if you know you are using MPI calls.
+        # ** Warning **: importing MPI from mpi4py calls MPI_Init() which triggers
+        # network traffic. Only import it when you know you are using MPI calls.
         from mpi4py import MPI
 
-        is_server_process = MPI.COMM_WORLD.rank == 0
+        is_controller = MPI.COMM_WORLD.rank == 0
     else:
-        is_server_process = True
+        is_controller = True
 
     levels = [logging.WARNING, logging.INFO, logging.DEBUG]
     setup_console_logging(levels[min(options.verbose, len(levels) - 1)])
@@ -633,10 +666,9 @@ def main(options: Optional[OPTIONS_CLASS] = None, webview: bool = False):
     # capture_warnings(monkeypatch=True)
     logger.info(options)
 
-    webview = not options.chisq and (options.edit or options.start or options.watch)
-    if webview and is_server_process:  # gui mode
-        from .webserver import start_from_cli
-
+    no_view = options.chisq
+    webview = options.webview and not no_view
+    if webview and is_controller:  # gui mode
         start_from_cli(options)
     else:  # console mode
         run_batch_fit(options)
