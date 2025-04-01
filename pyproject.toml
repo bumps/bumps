@@ -12,8 +12,6 @@ dependencies = [
     'dill',
     'matplotlib',
     'blinker',
-    'scikit-learn',
-    'typing_extensions>=3.7.4',
     'graphlib_backport; python_version < "3.9"',
 ]
 classifiers = [
