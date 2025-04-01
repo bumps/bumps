@@ -1242,7 +1242,6 @@ async def shutdown():
     if state.mapper is not None:
         state.mapper.stop_mapper()
         state.mapper = None
-    await emit("server_shutting_down")
     # print("gather _shutdown()")
     # TODO: why gather here rather than await?
     asyncio.gather(_shutdown(), return_exceptions=True)
