@@ -475,11 +475,11 @@ async def get_chisq(problem: Optional[bumps.fitproblem.FitProblem] = None, nllf=
 
 # TODO: Ask the fitter for the number of steps instead of guessing
 # This is difficult because dream doesn't know it until DreamFit.solve() is called.
-def get_max_steps(num_fitparams: int, options: Dict[str, Any]):
+def get_max_steps(num_fitparams: int, fitter_id: str, options: Dict[str, Any]):
     """Returns the maximum number of iterations allowed for the fit."""
-    fitter_id = options["fit"]
-    fitter = fit_options.lookup_fitter(options["fit"])
-    options = {**dict(fitter.settings), **options}
+    # fitter_id = options["fit"]
+    fitter = fit_options.lookup_fitter(fitter_id)
+    options = {**dict(fitter.settings), **dict(options)}
     steps = options["steps"]  # all fitters have "steps"
     starts = options.get("starts", 1)  # Multistart fitter
     if fitter_id == "dream":  # Dream has steps + burn
@@ -514,7 +514,7 @@ async def shake_parameters():
 
 
 @register
-async def start_fit_thread(options):
+async def start_fit_thread(fitter_id, options):
     fitProblem = state.problem.fitProblem if state.problem is not None else None
     if fitProblem is None:
         await log("Error: Can't start fit if no problem loaded")
@@ -535,18 +535,18 @@ async def start_fit_thread(options):
         # Clear abort and uncertainty state
         # state.abort = False
         # state.fitting.uncertainty_state = None
-        max_steps = get_max_steps(num_params, options)
+        max_steps = get_max_steps(num_params, fitter_id, options)
         state.fit_abort_event.clear()
         state.fit_complete_event.clear()
 
         # print(f"*** start_fit_thread {options=}")
-        fitclass = fit_options.lookup_fitter(options["fit"])
+        fitclass = fit_options.lookup_fitter(fitter_id)
         fit_thread = FitThread(
             abort_event=state.fit_abort_event,
             fitclass=fitclass,
             problem=fitProblem,
             mapper=state.mapper,
-            options=options,
+            options=dict(options),
             parallel=state.parallel,
             # session_id=session_id,
             # Number of seconds between updates to the GUI, or 0 for no updates
@@ -557,7 +557,7 @@ async def start_fit_thread(options):
         state.shared.active_fit = to_json_compatible_dict(
             dict(
                 # TODO: don't need fitter_id as a separate option
-                fitter_id=options["fit"],
+                fitter_id=fitter_id,
                 options=options,
                 num_steps=max_steps,
                 step=0,
@@ -567,7 +567,7 @@ async def start_fit_thread(options):
         )
         await log(
             json.dumps(to_json_compatible_dict(options), indent=2),
-            title=f"Starting fitter {options['fit']}",
+            title=f"Starting fitter {fitter_id}",
         )
         state.autosave()
         fit_thread.start()
@@ -1227,7 +1227,7 @@ async def get_dirlisting(pathlist: Optional[List[str]] = None):
 
 @register
 async def get_fitter_defaults(*args):
-    return {fitter.name: fitter.settings for fitter in fit_options.FITTERS}
+    return {fitter.id: dict(name=fitter.name, settings=dict(fitter.settings)) for fitter in fit_options.FITTERS}
 
 
 @register

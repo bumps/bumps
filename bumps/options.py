@@ -155,7 +155,7 @@ FIT_FIELDS = dict(
     trim=("Burn-in trim", yesno),
     outliers=("Outliers", ChoiceList("none", "iqr", "grubbs", "mahal")),
     starts=("Starts", parse_int),
-    keep_best=("Restart from best", yesno),
+    near_best=("Restart from best", yesno),
 )
 
 # Make sure all settings are parseable
@@ -300,7 +300,7 @@ class BumpsOpts(ParseOpts):
             "cov",
             "edit",
             "mpi",
-            "keep_best",
+            "near_best",
             "staj",
             # passed when not running bumps, but instead using a
             # bundled application as a python distribution with domain
@@ -350,7 +350,7 @@ class BumpsOpts(ParseOpts):
     resynth = "0"
     noise = "5"
     starts = "1"
-    keep_best = "true"
+    near_best = "true"
     seed = ""
     time = "inf"
     checkpoint = "0"
@@ -457,7 +457,7 @@ Options:
         crossover ratio for population mixing
     --starts=1      [newton, rl, amoeba]
         number of times to run the fit from random starting points.
-    --keep_best
+    --near_best
         when running with multiple starts, restart from a point near the
         last minimum rather than using a completely random starting point.
     --init=eps      [dream]

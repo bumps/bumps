@@ -430,9 +430,12 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
     fitopts, errors = fit_options.update_options(options.fit_options)
     if errors:
         warnings.warn("\n".join(errors))
+    # TODO: leave fitter_id in fitopts
+    # TODO: use dict rather than list of pairs for fitopts
+    fitter_id = fitopts.pop("fit")
+    fitopts = list(fitopts.items())
 
     # on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
-    fitter_id = fitopts["fit"]
     on_startup.append(lambda App: api.state.shared.set("selected_fitter", fitter_id))
     # TODO: send commandline options to the webview interface
 
@@ -529,7 +532,7 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
         async def start_fit(App=None):
             # print(f"{fitter_settings=}")
             if api.state.problem is not None:
-                await api.start_fit_thread(fitopts)
+                await api.start_fit_thread(fitter_id, fitopts)
 
         on_startup.append(start_fit)
         api.state.console_update_interval = 0 if webview else 1

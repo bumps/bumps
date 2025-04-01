@@ -10,7 +10,6 @@ from bumps import monitor
 from bumps.fitters import FitDriver, nllf_scale, format_uncertainty, ConsoleMonitor
 from bumps.mapper import MPMapper, SerialMapper, can_pickle
 from bumps.util import redirect_console
-from bumps.history import History
 
 # from .convergence_view import ConvergenceMonitor
 # ==============================================================================

@@ -1,6 +1,7 @@
-from typing import Dict, List, Tuple, Optional, Any
+from typing import Dict, List, Tuple, Optional, Any, Callable
 from textwrap import dedent
 from argparse import ArgumentTypeError
+from dataclasses import dataclass
 
 from bumps import fitters
 
@@ -24,10 +25,11 @@ def lookup_fitter(fitter_id: str):
 FIT_OPTIONS: Dict[str, "Setting"] = {}
 
 
+@dataclass(init=False)
 class Setting:
     name: str
     description: str
-    stype: type
+    stype: Callable
     fitters: List[str]
     defaults: List[Any]
 
@@ -41,13 +43,16 @@ class Setting:
         FIT_OPTIONS[name] = self
 
 
+@dataclass(frozen=True)
 class Range:
     """
     A floating point range which is used as an argparse type converter and validator.
     """
 
-    def __init__(self, min, max):
-        self.min, self.max = min, max
+    min: float
+    max: float
+
+    # def __init__(self, min, max): self.min, self.max = min, max
 
     def __call__(self, v):
         v = float(v)
@@ -144,12 +149,12 @@ Setting(
 # Stochastic global minimization
 Setting("starts", "Auto restarts", int, "Number of times to restart the amoeba fit.")
 Setting(
-    "keep_best",
-    "Auto restarts",
+    "near_best",
+    "Near best",
     bool,
     """\
-    When running with multiple starts, restart from a point near the
-    last minimum rather than using a completely random starting point.""",
+    When running with multiple starts, restart from a random point near the
+    best minimum rather than using a completely random starting point.""",
 )
 
 
