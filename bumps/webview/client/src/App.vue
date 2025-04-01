@@ -7,9 +7,10 @@ import {
   activePanel,
   addNotification,
   cancelNotification,
-  connected,
+  connecting,
   default_fitter,
   default_fitter_settings,
+  disconnected,
   file_menu_items,
   fileBrowser,
   FileBrowserSettings,
@@ -69,6 +70,10 @@ if (single_panel !== null) {
   }
 }
 
+// Connect!
+connecting.value = true;
+disconnected.value = false;
+
 const socket = io(sio_server, {
   path: `${sio_base_path}socket.io`,
 }) as AsyncSocket;
@@ -76,7 +81,8 @@ socket_ref.value = socket;
 
 socket.on("connect", async () => {
   console.log(`Connected: Session ID ${socket.id}`);
-  connected.value = true;
+  connecting.value = false;
+  disconnected.value = false;
   const file_info = (await socket.asyncEmit("get_shared_setting", "model_file")) as
     | { pathlist: string[]; filename: string }
     | undefined;
@@ -98,7 +104,10 @@ socket.on("connect", async () => {
 
 socket.on("disconnect", (payload) => {
   console.log("Disconnected!", payload);
-  connected.value = false;
+  disconnected.value = true;
+  setTimeout(() => {
+    socket.connect();
+  }, 1000);
 });
 
 socket.on("model_file", (file_info: { filename: string; pathlist: string[] }) => {
@@ -206,7 +215,7 @@ async function reloadModel() {
   }
 }
 
-async function applyParameters(ev: Event) {
+async function applyParameters() {
   if (fileBrowser.value) {
     const settings: FileBrowserSettings = {
       title: "Apply Parameters",
@@ -224,7 +233,7 @@ async function applyParameters(ev: Event) {
   }
 }
 
-async function saveParameters(ev: Event, override?: { pathlist: string[]; filename: string }) {
+async function saveParameters() {
   if (fileBrowser.value) {
     const settings: FileBrowserSettings = {
       title: "Save Parameters",
@@ -378,15 +387,6 @@ file_menu_items.value = [
                 <button class="btn btn-success btn-sm" @click="startFit">Start</button>
               </div>
             </h4>
-          </div>
-          <div class="d-flex navbar-nav mb-2 mb-lg-0">
-            <div
-              id="connection_status"
-              class="nav-item"
-              :class="{ btn: true, 'btn-outline-success': connected, 'btn-outline-danger': !connected }"
-            >
-              {{ connected ? "connected" : "disconnected" }}
-            </div>
           </div>
         </div>
       </div>

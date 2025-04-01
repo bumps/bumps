@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { connected } from "../app_state.ts";
+import { connecting } from "../app_state.ts";
 import type { AsyncSocket } from "../asyncSocket.ts";
 
 const props = defineProps<{ socket: AsyncSocket }>();
@@ -24,7 +24,7 @@ console.log("Connected handler registered.");
 </script>
 
 <template>
-  <dialog ref="loading_dialog" :open="!connected">
+  <dialog ref="loading_dialog" :open="connecting">
     <div
       id="serverStartupModal"
       class="modal show"
@@ -36,10 +36,7 @@ console.log("Connected handler registered.");
         <div class="modal-content">
           <div class="modal-header">
             <h5 id="serverStartupLabel" class="modal-title">
-              Server Connecting...
-              <div v-if="percent === undefined" class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Connecting...</span>
-              </div>
+              {{ reconnecting ? "Disconnected" : "Server Connecting..." }}
             </h5>
           </div>
           <div v-if="status_string !== undefined" class="modal-body">
@@ -64,5 +61,9 @@ console.log("Connected handler registered.");
 <style scoped>
 div.modal {
   display: block;
+}
+
+dialog::backdrop {
+  background-color: rgba(0, 0, 0, 0.5);
 }
 </style>

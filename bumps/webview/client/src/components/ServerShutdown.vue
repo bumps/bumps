@@ -1,27 +1,38 @@
 <script setup lang="ts">
-import { ref } from "vue";
-import type { AsyncSocket } from "../asyncSocket.ts";
-
-const props = defineProps<{ socket: AsyncSocket }>();
+import { ref, watch } from "vue";
+import { disconnected } from "../app_state.ts";
 
 const dialog = ref<HTMLDialogElement>();
-const isOpen = ref(false);
 const closeCancelled = ref(false);
-const shutdownTimer = ref<ReturnType<typeof setTimeout>>();
-const CLOSE_DELAY = 2000; // try to auto-close window after 2 seconds.
+const attemptingAutoClose = ref(false);
+const shutdownTimer = ref<ReturnType<typeof setInterval>>();
+const CLOSE_DELAY = 3; // try to auto-close window after 2 seconds.
+const timeRemaining = ref(CLOSE_DELAY);
 
-props.socket.on("server_shutting_down", () => {
-  isOpen.value = true;
-  dialog.value?.showModal();
-  shutdownTimer.value = setTimeout(() => {
-    window.close();
-  }, CLOSE_DELAY);
+watch(disconnected, () => {
+  if (disconnected.value) {
+    dialog.value?.showModal();
+    closeCancelled.value = false;
+    attemptingAutoClose.value = true;
+    timeRemaining.value = CLOSE_DELAY;
+    shutdownTimer.value = setInterval(() => {
+      timeRemaining.value -= 1;
+      if (timeRemaining.value <= 0) {
+        timeRemaining.value = 0;
+        window.close();
+        attemptingAutoClose.value = false;
+      }
+    }, 1000);
+  } else {
+    dialog.value?.close();
+    clearInterval(shutdownTimer.value);
+    attemptingAutoClose.value = false;
+  }
 });
 
 function cancelClose() {
-  clearTimeout(shutdownTimer.value);
-  isOpen.value = false;
-  dialog.value?.close();
+  clearInterval(shutdownTimer.value);
+  attemptingAutoClose.value = false;
 }
 </script>
 
@@ -32,19 +43,31 @@ function cancelClose() {
       class="modal"
       tabindex="-1"
       aria-labelledby="serverShutdownLabel"
-      :aria-hidden="!isOpen"
+      :open="connecting"
+      :aria-hidden="!disconnected"
     >
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 id="serverShutdownLabel" class="modal-title">Server Disconnected</h5>
-            <button type="button" class="btn-close" aria-label="dismiss dialog" @click="cancelClose"></button>
+            <h5 id="serverShutdownLabel" class="modal-title">Disconnected</h5>
           </div>
-          <div class="modal-body">
-            <h3>This client window can be closed</h3>
+          <div v-if="attemptingAutoClose" class="modal-body">
+            <h3>Will attempt to auto-close client window...</h3>
+            <div class="progress">
+              <div
+                class="progress-bar"
+                role="progressbar"
+                :style="{ width: (100 * timeRemaining) / CLOSE_DELAY + '%' }"
+                aria-valuemin="0"
+                :aria-valuenow="timeRemaining"
+                :aria-valuemax="CLOSE_DELAY"
+              >
+                {{ timeRemaining }}
+              </div>
+            </div>
           </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-primary" @click="cancelClose">Dismiss</button>
+          <div v-if="attemptingAutoClose" class="modal-footer">
+            <button type="button" class="btn btn-primary" @click="cancelClose">Cancel</button>
           </div>
         </div>
       </div>
@@ -55,5 +78,9 @@ function cancelClose() {
 <style scoped>
 div.modal {
   display: block;
+}
+
+dialog::backdrop {
+  background-color: rgba(0, 0, 0, 0.5);
 }
 </style>
