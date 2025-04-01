@@ -21,6 +21,7 @@ watch(disconnected, () => {
         timeRemaining.value = 0;
         window.close();
         attemptingAutoClose.value = false;
+        clearInterval(shutdownTimer.value);
       }
     }, 1000);
   } else {
