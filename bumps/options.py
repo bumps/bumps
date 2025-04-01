@@ -350,7 +350,6 @@ class BumpsOpts(ParseOpts):
     resynth = "0"
     noise = "5"
     starts = "1"
-    near_best = "true"
     seed = ""
     time = "inf"
     checkpoint = "0"

@@ -43,6 +43,7 @@ import logging
 from dataclasses import field
 
 from bumps import __version__
+from bumps.fitters import FIT_AVAILABLE_IDS
 from . import api
 from . import persistent_settings
 from . import fit_options
@@ -139,6 +140,7 @@ class HelpFormatter(argparse.RawTextHelpFormatter, argparse.ArgumentDefaultsHelp
 def get_commandline_options(arg_defaults: Optional[Dict] = None):
     """Parse bumps command line options."""
     # TODO: if running as a refl1d we should show prog=refl1d instead of prog=bumps
+    # TODO: allow --pars from session file
     # TODO: missing options from pre-1.0
     """
     # required
@@ -218,14 +220,11 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     fit_options.form_fit_options_associations()  # sets fitter list for each option
     fitter = parser.add_argument_group("Fitting controls")
     for name, option in fit_options.FIT_OPTIONS.items():
-        # Check if the option is used by any of the active fitters. For example,
-        # if parallel tempering is not available in fit_options.FITTERS then the
-        # option --nT will not be available.
-        if not option.fitters:
-            continue
         stype = option.stype
         metavar = " " if stype is bool else name.replace("_", "-").upper()
         choices = stype if isinstance(stype, list) else None
+        if name == "fit":
+            choices = FIT_AVAILABLE_IDS
         help = f"{option.label}  [{', '.join(option.fitters)}]\n{option.description}"
         fitter.add_argument(
             f"--{name.replace('_', '-')}",
@@ -234,7 +233,8 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
             choices=choices,
             action=DictAction,
             dest=f"fit_options.{name}",
-            help=help,
+            # Allow hidden parameters for hidden optimizers. E.g., pt has --nT
+            help=help if option.fitters else argparse.SUPPRESS,
         )
 
     # Session file controls.
@@ -367,6 +367,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     # Webserver controls
     server = parser.add_argument_group("Webview server controls")
     server.add_argument(
+        "--edit",
         "--webview",
         action="store_const",
         const="edit",
@@ -375,7 +376,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     )
     server.add_argument(
         "-b",
-        "--no-webview",
+        "--batch",
         action="store_const",
         const="batch",
         dest="mode",

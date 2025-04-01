@@ -4,6 +4,7 @@ from argparse import ArgumentTypeError
 from dataclasses import dataclass
 
 from bumps import fitters
+from bumps.fitters import FIT_AVAILABLE_IDS
 
 FITTERS = (
     fitters.SimplexFit,
@@ -16,7 +17,8 @@ DEFAULT_FITTER_ID = fitters.SimplexFit.id
 
 
 def lookup_fitter(fitter_id: str):
-    for fitter in FITTERS:
+    # Checking the complete list of fitters, not the restricted list for webview
+    for fitter in fitters.FITTERS:
         if fitter.id == fitter_id:
             return fitter
     raise ValueError(f"Unknown fitter '{fitter_id}'")
@@ -196,7 +198,8 @@ def update_options(options: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str]]:
     errors = []
     unknown = []
     fitter_id = options.get("fit", DEFAULT_FITTER_ID)
-    available = set(fitter.id for fitter in FITTERS)
+    # available = set(fitter.id for fitter in FITTERS)
+    available = FIT_AVAILABLE_IDS
     if fitter_id not in available:
         errors.append(f"Fitter {fitter_id} not in {', '.join(available)}. Using {DEFAULT_FITTER_ID} instead.")
         fitter_id = DEFAULT_FITTER_ID

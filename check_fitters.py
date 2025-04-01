@@ -6,34 +6,37 @@ all converge.
 
 import sys
 import os
-from os.path import join as joinpath, realpath, dirname
+from os.path import join as joinpath
 import tempfile
 import shutil
 import glob
 import subprocess
+from pathlib import Path
 
 import numpy as np
 
 sys.dont_write_bytecode = True
 
-try:
-    bytes
-
-    def decode(b):
-        return b.decode("utf-8")
-except Exception:
-
-    def decode(b):
-        return b
-
-
 # Ask bumps for a list of available fitters
-ROOT = realpath(dirname(__file__))
-sys.path.insert(0, ROOT)
+ROOT = Path(__file__).absolute().parent
+EXAMPLEDIR = ROOT / "doc" / "examples"
+
+# Add the build dir to the system path
+packages = [str(ROOT)]
+if "PYTHONPATH" in os.environ:
+    packages.append(os.environ["PYTHONPATH"])
+os.environ["PYTHONPATH"] = os.pathsep.join(packages)
+
+# Need bumps on the path to pull in the available fitters
+sys.path.insert(0, str(ROOT))
 from bumps.fitters import FIT_AVAILABLE_IDS
 
-RUNPY = joinpath(ROOT, "run.py")
-EXAMPLEDIR = joinpath(ROOT, "doc", "examples")
+
+command = [sys.executable, "-m", "bumps"]
+
+
+def decode(b):
+    return b.decode("utf-8")
 
 
 def clear_directory(path, recursive=False):
@@ -55,9 +58,7 @@ def clear_directory(path, recursive=False):
 
 
 def run_fit(fit_args, model_args, store, seed=1):
-    command_parts = (
-        [sys.executable, RUNPY] + fit_args + model_args + ["--store=" + store, "--seed=%d" % seed, "--batch"]
-    )
+    command_parts = [*command, *fit_args, *model_args, f"--store={store}", f"--seed={seed}", "--batch"]
     try:
         output = subprocess.check_output(command_parts, stderr=subprocess.STDOUT)
         output = decode(output.strip())
