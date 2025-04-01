@@ -198,11 +198,10 @@ def update_options(options: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str]]:
     fitter = lookup_fitter(fitter_id)
     defaults = dict(fitter.settings)
     # print(f"defaults for {fitter_id}: {defaults}")
-    new_options = {}
+    new_options = {"fit": fitter_id}
     for key, value in options.items():
         if key == "fit":
-            # Add "fit" to new options
-            new_options[key] = fitter_id
+            # Already added.
             continue
         if key not in defaults:
             # Skip unrecognized options
