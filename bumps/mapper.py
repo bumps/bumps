@@ -236,7 +236,7 @@ def _MPI_map(problem, points, comm, root=0):
     # worker: return True if there are points otherwise return False
     npoints, nvars = comm.bcast(points.shape if comm.rank == root else None, root=root)
     if npoints == 0:
-        return False
+        return None
 
     # Divvy points equally across all processes
     whole = points if comm.rank == root else None
@@ -314,7 +314,7 @@ class MPIMapper(BaseMapper):
             # print(f"{rank}: looping")
             while True:
                 result = _MPI_map(problem, None, comm, root)
-                if not result:
+                if result is None:
                     problem = _MPI_set_problem(None, comm, root)
                     if problem is None:
                         break
@@ -350,7 +350,7 @@ class MPIMapper(BaseMapper):
         # MPI job separately for each fit.)
         # Note: setting problem to None stops the program, so call finalize().
         def mapper(points):
-            _MPI_map(problem, points, comm, root)
+            return _MPI_map(problem, points, comm, root)
 
         if not MPIMapper.has_problem:  # Only true on the first fit
             # print(f"*** {comm.rank}: replacing problem")

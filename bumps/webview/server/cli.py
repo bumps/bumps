@@ -74,6 +74,7 @@ class BumpsOptions:
     no_auto_history: bool = False
     path: Optional[str] = None
     use_persistent_path: bool = False
+    pars: Optional[str] = None
 
     # Simulation controls.
     simulate: bool = False
@@ -90,9 +91,8 @@ class BumpsOptions:
     mpi: bool = False
 
     # Webserver controls.
-    webview: bool = True
-    start: bool = False
-    run: bool = False
+    mode: str = "edit"
+    """One of "batch", "edit", "start" or "run" depending on -b, -s and -r options"""
     headless: bool = False
     external: bool = False
     port: int = 0
@@ -137,7 +137,65 @@ class HelpFormatter(argparse.RawTextHelpFormatter, argparse.ArgumentDefaultsHelp
 
 
 def get_commandline_options(arg_defaults: Optional[Dict] = None):
-    # TODO: if running as a refl1d we should show refl1d instead of bumps
+    """Parse bumps command line options."""
+    # TODO: if running as a refl1d we should show prog=refl1d instead of prog=bumps
+    # TODO: missing options from pre-1.0
+    """
+    # required
+    --resume=path    [dream]
+        resume a fit from previous stored state; if path is '-' then use the
+        path given by --store, if it exists
+    --time=inf
+        run for a maximum number of hours
+
+    # Wait for someone to ask for the following
+    --err
+        show uncertainty estimate from curvature at the minimum
+    --cov
+        show the covariance matrix for the model when done
+    --entropy=gmm|mvn|wnn|llf
+        compute entropy on posterior distribution [dream only]
+    --overwrite                    [new version extends session file]
+        if store already exists, replace it
+    --checkpoint=0                 [verify we have checkpointing in batch mode]
+        save fit state every n hours, or 0 for no checkpoints
+    --resynth=0
+        run resynthesis error analysis for n generations
+    --time_model
+        run the model --steps times in order to estimate total run time.
+    --profile
+        run the python profiler on the model; use --steps to run multiple
+        models for better statistics
+    --stepmon
+        show details for each step in .log file
+    --batch                        [current version doesn't save .mon]
+        batch mode; save output in .mon file and don't show plots after fit
+
+    # Won't implement
+    --plot=linear|log|residuals    [plugin specific]
+        type of plot to display
+    --view=linear|log              [plugin specific]
+        one of the predefined problem views; reflectometry also has fresnel,
+        logfresnel, q4 and residuals
+    --staj                         [plugin specific. Can plugins extend argparse?]
+        output staj file when done [Refl1D only]
+
+    # Superceded
+    -m/-c/-p command               [we are shipping a python evironment]
+        run the python interpreter with bumps on the path:
+            m: command is a module such as bumps.cli, run as __main__
+            c: command is a python one-line command
+            p: command is the name of a python script
+    -i                             [our python environment supports pip]
+        start the interactive interpreter
+    --noshow                       [use --export to produce plots]
+        semi-batch; send output to console but don't show plots after fit
+    --preview                      [use gui instead]
+        display model but do not perform a fitting operation
+    --edit                         [default]
+        start the gui
+    """
+
     parser = argparse.ArgumentParser(
         prog="bumps",
         formatter_class=HelpFormatter,
@@ -267,12 +325,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         type=str,
         help="Directory path for data and figure export.",
     )
-    # fitter.add_argument(
-    #    "--pars",
-    #    default=None,
-    #    type=str,
-    #    help="Start a fit from a previously saved result."
-    # )
+    fitter.add_argument("--pars", default=None, type=str, help="Start a fit from a previously saved result.")
     misc.add_argument(
         "--parallel",
         default=0,
@@ -309,31 +362,39 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         version=f"%(prog)s {__version__}",
     )
 
+    # TODO: restructure so that -b -s -r --webview override each other
+    # Maybe a runmode enum: 0=batch 1=edit 2=start 3=run
     # Webserver controls
     server = parser.add_argument_group("Webview server controls")
     server.add_argument(
         "--webview",
-        action="store_true",
-        dest="webview",
+        action="store_const",
+        const="edit",
+        dest="mode",
         help="run bumps fit with the webview server (this is the default)",
     )
     server.add_argument(
         "-b",
         "--no-webview",
-        action="store_false",
-        dest="webview",
+        action="store_const",
+        const="batch",
+        dest="mode",
         help="run bumps fit in batch mode without the webview server",
     )
     server.add_argument(
         "-s",
         "--start",
-        action="store_true",
+        action="store_const",
+        const="start",
+        dest="mode",
         help="start fit immediately, leaving it open when done",
     )
     server.add_argument(
         "-r",
         "--run",
-        action="store_true",
+        action="store_const",
+        const="run",
+        dest="mode",
         help="run the fit to completion",
     )
     server.add_argument(
@@ -402,12 +463,13 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
     # TODO: why is session file read immediately but model.py delayed?
     if read_store is not None:
         read_store_path = Path(read_store).absolute()
-        api.state.read_session_file(str(read_store_path))
-        if write_store is None:
-            api.state.shared.session_output_file = dict(
-                pathlist=list(read_store_path.parent.parts),
-                filename=read_store_path.name,
-            )
+        if read_store_path.exists():
+            api.state.read_session_file(str(read_store_path))
+            if write_store is None:
+                api.state.shared.session_output_file = dict(
+                    pathlist=list(read_store_path.parent.parts),
+                    filename=read_store_path.name,
+                )
     if write_store is not None:
         write_store_path = Path(write_store).absolute()
         # TODO: Why are we splitting path into parts?
@@ -443,14 +505,16 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
 
     if options.filename is not None:
         filepath = Path(options.filename).absolute()
-        pathlist = list(filepath.parent.parts)
-        filename = filepath.name
-        logger.debug(f"fitter for filename {filename} is {fitter_id}")
+        model_pathlist = list(filepath.parent.parts)
+        model_filename = filepath.name
+        logger.debug(f"fitter for filename {model_filename} is {fitter_id}")
+        on_startup.append(lambda App: api.load_problem_file(model_pathlist, model_filename, args=options.args))
 
-        async def load_problem(App=None):
-            await api.load_problem_file(pathlist, filename, args=options.args)
-
-        on_startup.append(load_problem)
+    if options.pars is not None:
+        filepath = Path(options.pars).absolute()
+        pars_pathlist = list(filepath.parent.parts)
+        pars_filename = filepath.name
+        on_startup.append(lambda App: api.apply_parameters(pars_pathlist, pars_filename))
 
     # TODO: make sure --seed on command line produces the same result each time
     # TODO: store the seed with the fit results and print on console monitor
@@ -490,6 +554,7 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
         from bumps.mapper import MPIMapper, MPMapper, SerialMapper, using_mpi
 
         async def start_mapper(App=None):
+            # print(f"{api.state.rank}start mapper")
             # TODO: When running Only load problem from root on MPI?
             # MPI is assumed
             # You can still run non-picklable problems on MPI using batch mode
@@ -511,9 +576,10 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
 
         on_startup.append(start_mapper)
 
-    webview = options.webview
-    autostart = not webview or options.start or options.run
-    autostop = not webview or options.run
+    webview = options.mode != "batch"
+    autostart = not webview or options.mode in ("start", "run")
+    autostop = not webview or options.mode == "run"
+    # print(f"{options.mode=} {webview=} {autostart=} {autostop=}")
 
     if options.chisq:
 
@@ -523,6 +589,7 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
                 # defined and because I don't have a --cov option.
                 # if opts.cov: fitdriver.show_cov()
                 problem = api.state.problem.fitProblem
+                # print("pars=", problem.getp())
                 print("chisq", problem.chisq_str())
 
         on_startup.append(show_chisq)
@@ -530,6 +597,7 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
     elif autostart:  # if batch mode then start the fit
 
         async def start_fit(App=None):
+            # print(f"{api.state.rank}start fit")
             # print(f"{fitter_settings=}")
             if api.state.problem is not None:
                 await api.start_fit_thread(fitter_id, fitopts)
@@ -562,6 +630,9 @@ def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
     #     ...
 
     return on_startup, on_complete
+
+
+async def _shutdown_cli(): ...
 
 
 async def _run_operations(on_startup, on_complete):
@@ -618,18 +689,15 @@ def run_batch_fit(options: Optional[OPTIONS_CLASS] = None):
     #    print("console", args, kw)
     # api.EMITTERS["console"] = emit_to_console
 
+    # Monkeypatch shutdown so it doesn't raise system exit
+    api._shutdown = _shutdown_cli
     signal.signal(signal.SIGINT, sigint_handler)
     on_startup, on_complete = interpret_fit_options(options)
     asyncio.run(_run_operations(on_startup, on_complete))
     # print("completed run")
 
 
-def main_webview():
-    """Entry point for the interactive interface"""
-    return main(webview=True)
-
-
-def main(options: Optional[OPTIONS_CLASS] = None, webview: bool = False):
+def main(options: Optional[OPTIONS_CLASS] = None):
     # TODO: where do we configure matplotlib?
     # Need to set matplotlib to a non-interactive backend because it is being used in the
     # the export thread. The next_color method calls gca() which needs to produce a blank
@@ -660,8 +728,10 @@ def main(options: Optional[OPTIONS_CLASS] = None, webview: bool = False):
         from mpi4py import MPI
 
         is_controller = MPI.COMM_WORLD.rank == 0
+        # api.state.rank = f"{MPI.COMM_WORLD.rank:3d}: "
     else:
         is_controller = True
+        # api.state.rank = ""
 
     levels = [logging.WARNING, logging.INFO, logging.DEBUG]
     setup_console_logging(levels[min(options.verbose, len(levels) - 1)])
@@ -670,7 +740,7 @@ def main(options: Optional[OPTIONS_CLASS] = None, webview: bool = False):
     logger.info(options)
 
     no_view = options.chisq
-    webview = options.webview and not no_view
+    webview = options.mode != "batch" and not no_view
     if webview and is_controller:  # gui mode
         start_from_cli(options)
     else:  # console mode

@@ -337,6 +337,7 @@ async def export_results(export_path: Union[str, List[str]] = ""):
         await asyncio.to_thread(_export_results, path, problem, uncertainty_state)
     finally:
         await emit("cancel_notification", notification_id)
+    # print("done export thread")
 
 
 def _export_results(
@@ -410,6 +411,7 @@ async def apply_parameters(pathlist: List[str], filename: str):
     path = Path(*pathlist)
     fullpath = path / filename
     try:
+        # print(f"loading parameters from {fullpath}")
         bumps.cli.load_best(state.problem.fitProblem, fullpath)
         state.shared.updated_parameters = now_string()
         await log(f"Applied parameters from {fullpath}")
@@ -802,7 +804,7 @@ async def create_custom_plot(model_index: int, plot_title: str, n_samples: int =
                 )
             else:
                 plot_item: CustomWebviewPlot = await asyncio.to_thread(plot_function, model, fitProblem)
-        except:
+        except Exception:
             plot_item = CustomWebviewPlot(fig_type="error", plotdata=traceback.format_exc())
 
         return process_custom_plot(plot_item)
