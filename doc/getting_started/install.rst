@@ -56,29 +56,26 @@ Again, recommended practice is to use an isolated python environment::
 Running bumps
 =============
 
-To run the command-line interface use::
+Fitting problems in bumps are defined in python files or jupyter notebooks. You
+can retrieve the example *curve.py* model
+`here <https://github.com/bumps/bumps/blob/master/doc/examples/curvefit/curve.py>`_
+
+To run the webview interface with your problem showing in a browser window use::
+
+    bumps curve.py
+
+To run in batch mode with no interactive interface use::
+
+    bumps -b curve.py --store=session.hdf
+
+This runs a complete fit, appending the results to the session file T1.hdf. To later
+view the fit results use::
+
+    bumps --store=session.hdf
+
+There are many command line options for controlling the fit. For a complete list use::
 
     bumps -h
-
-The webview interface allows users to interact with bumps through a web browser,
-providing a more user-friendly experience compared to the command-line interface.
-To run webview use::
-
-    bumps-webview
-
-This starts the server and connects to it through a browser window.
-For a complete list of options, run::
-
-    bumps-webview --help
-
-A typical invocation might be::
-
-    bumps-webview my_problem_file.py
-
-This will start the server with the fit problem `my_problem_file.py` already
-loaded.
-
-To start the server without opening a browser window, use the `--headless` option.
 
 Jupyter notebooks
 =================
