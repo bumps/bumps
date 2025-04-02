@@ -174,7 +174,7 @@ async function set_autosave_history_length(value_str: string) {
               >
                 {{ label }}
               </div>
-              <div class="history-timestamp">{{ timestamp }}</div>
+              <div class="history-name">{{ name }}</div>
             </td>
             <td>
               <small>{{ chisq_str }}</small>
@@ -220,7 +220,7 @@ input#auto_save_length {
 }
 
 /* history timestamp italic with lighter weight */
-.history-timestamp {
+.history-name {
   font-style: italic;
   font-weight: lighter;
   font-size: smaller;
