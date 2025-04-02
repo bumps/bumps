@@ -7,9 +7,11 @@ authors = [{ name = "Paul Kienzle", email = "paul.kienzle@nist.gov" }]
 license = { file = "LICENSE.txt" }
 dependencies = [
     'numpy',
-    'scikit-learn',
     'scipy',
-    'typing_extensions>=3.7.4',
+    'h5py',
+    'dill',
+    'matplotlib',
+    'blinker',
     'graphlib_backport; python_version < "3.9"',
 ]
 classifiers = [
@@ -29,7 +31,6 @@ requires-python = ">=3.8"
 [project.optional-dependencies]
 dev = [
     'build',
-    'matplotlib',   # for testing
     'pre-commit',
     'pytest',
     'pytest-cov',
@@ -38,17 +39,12 @@ dev = [
     'setuptools',
     'sphinx',
     'versioningit',
-    'matplotlib',
 ]
 webview = [
     'aiohttp',
-    'blinker',
-    'dill',
-    'matplotlib',
     'python-socketio',
     'plotly',
     'mpld3',
-    'h5py',
 ]
 
 [project.urls]
@@ -102,8 +98,8 @@ method = "smallest"
 file = "bumps/_version.py"
 
 [project.scripts]
-bumps = "bumps.cli:main"
-bumps-webview = "bumps.webview.server.webserver:main"
+bumps = "bumps.webview.server.cli:main"
+bumps-webview = "bumps.webview.server.cli:main_webview"
 
 [tool.pytest.ini_options]
 # TODO: remove --assert=plain when https://github.com/scipy/scipy/issues/22236 is resolved

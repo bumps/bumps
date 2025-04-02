@@ -1,4 +1,5 @@
 import asyncio
+import threading
 from copy import deepcopy
 from datetime import datetime
 from typing import (
@@ -9,13 +10,10 @@ from typing import (
     Dict,
     List,
     NewType,
-    Tuple,
     TypedDict,
     Any,
     Literal,
     Union,
-    cast,
-    IO,
 )
 from collections import deque
 from dataclasses import dataclass, field, fields
@@ -24,7 +22,6 @@ import shutil
 import os
 import tempfile
 from pathlib import Path
-from threading import Event
 from bumps.serialize import serialize, deserialize
 from bumps.util import get_libraries
 import h5py
@@ -34,10 +31,13 @@ from bumps.dream.state import MCMCDraw
 from .logger import logger
 
 if TYPE_CHECKING:
-    import bumps, bumps.fitproblem, bumps.dream.state
+    import bumps
+    import bumps.fitproblem
+    import bumps.dream.state
     from .webserver import TopicNameType
     from .fit_thread import FitThread
-    from h5py import Group, Dataset
+    from h5py import Group
+from bumps.mapper import BaseMapper
 
 
 SESSION_FILE_NAME = "session.h5"
@@ -98,7 +98,7 @@ def write_bytes_data(group: "Group", name: str, data: bytes):
 
 
 def read_bytes_data(group: "Group", name: str):
-    if not name in group:
+    if name not in group:
         return UNDEFINED
     raw_data = group[name][()]
     size = raw_data.size
@@ -116,7 +116,7 @@ def write_string(group: "Group", name: str, data: str, encoding="utf-8"):
 
 
 def read_string(group: "Group", name: str):
-    if not name in group:
+    if name not in group:
         return UNDEFINED
     raw_data = group[name][()]
     size = raw_data.size
@@ -133,7 +133,7 @@ def write_fitproblem(group: "Group", name: str, fitProblem: "bumps.fitproblem.Fi
 
 
 def read_fitproblem(group: "Group", name: str, serializer: SERIALIZERS):
-    if not name in group:
+    if name not in group:
         return UNDEFINED
     serialized = read_bytes_data(group, name)
     fitProblem = deserialize_problem(serialized, serializer) if serialized is not None else None
@@ -147,7 +147,7 @@ def write_json(group: "Group", name: str, data):
 
 
 def read_json(group: "Group", name: str):
-    if not name in group:
+    if name not in group:
         return UNDEFINED
     serialized = read_string(group, name)
     try:
@@ -164,7 +164,7 @@ def write_ndarray(group: "Group", name: str, data: Optional[np.ndarray], dtype=U
 
 
 def read_ndarray(group: "Group", name: str):
-    if not name in group:
+    if name not in group:
         return UNDEFINED
     raw_data = group[name][()]
     size = raw_data.size
@@ -378,13 +378,17 @@ class State:
     port: int
     parallel: int = 0
     fit_thread: Optional["FitThread"] = None
-    fit_abort: Optional[Event] = None
-    fit_abort_event: Event
-    fit_complete_event: Event
-    fit_uncertainty_final: Event
-    fit_enabled: Event
+    fit_abort_event: threading.Event
+    """Cleared before the fit and set on Stop button or Ctrl-C to end the fit."""
+    fit_complete_event: asyncio.Event
+    """Cleared before the fit starts and set when the fit is complete and saved."""
+    # fit_complete_future: asyncio.Future
+    shutdown_on_fit_complete: bool = False
+    """Used to implement the --exit option to halt server on completion."""
+    # fit_enabled: Event
     calling_loop: Optional[asyncio.AbstractEventLoop] = None
     base_path: str = ""
+    console_update_interval: int = 0  # seconds (float would work too, but unnecessary)
 
     # State to be stored:
     problem: ProblemState
@@ -392,14 +396,15 @@ class State:
     history: History
     topics: Dict["TopicNameType", "deque[Dict]"]
     shared: "SharedState"
+    mapper: Optional[BaseMapper] = None
 
     def __init__(self):
         self.problem = ProblemState()
         self.fitting = FittingState()
         self.history = History()
-        self.fit_abort_event = Event()
-        self.fit_complete_event = Event()
-        self.fit_uncertainty_final = Event()
+        self.fit_abort_event = threading.Event()  # initially unset
+        self.fit_complete_event = asyncio.Event()
+        self.fit_complete_event.set()  # The program starts out not waiting for a fit
         self.topics = {
             "log": deque([]),
         }
@@ -689,11 +694,11 @@ class SharedState:
     def __setattr__(self, name: str, value):
         super().__setattr__(name, value)
         try:
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
         except RuntimeError:
             # no event loop running, so no need to notify
             return
-        if loop.is_running() and hasattr(self, "_notification_callbacks"):
+        if hasattr(self, "_notification_callbacks"):
             for callback in self._notification_callbacks.values():
                 loop.create_task(callback(name, value))
 
@@ -707,16 +712,16 @@ class SharedState:
 
     def write(self, parent: "Group"):
         group = parent.require_group("shared")
-        for field in fields(self):
-            if not field.name in self._not_reloaded:
-                value = getattr(self, field.name)
+        for f in fields(self):
+            if f.name not in self._not_reloaded:
+                value = getattr(self, f.name)
                 if value is not UNDEFINED:
-                    write_json(group, field.name, value)
+                    write_json(group, f.name, value)
 
     def read(self, parent: "Group"):
         group = parent.get("shared")
         if group is None:
             return
-        for field in fields(self):
-            if not field.name in self._not_reloaded:
-                setattr(self, field.name, read_json(group, field.name))
+        for f in fields(self):
+            if f.name not in self._not_reloaded:
+                setattr(self, f.name, read_json(group, f.name))
