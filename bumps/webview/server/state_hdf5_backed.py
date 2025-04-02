@@ -374,6 +374,8 @@ class FittingState:
 
 class State:
     # These attributes are ephemeral, not to be serialized/stored:
+    app_name: str = "bumps"
+    client_path: Path = Path(__file__).parent.parent / "client"
     hostname: str
     port: int
     parallel: int = 0

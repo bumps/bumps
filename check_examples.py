@@ -48,7 +48,7 @@ examples = [
 
 
 def main():
-    opt = sys.argv[1][2:] if len(sys.argv) == 2 else "help"
+    opt = sys.argv[1][2:] if len(sys.argv) == 2 else "chisq"
     command = getattr(Commands, opt, None)
     if command is None:
         print("usage: check_examples.py [--edit|--chisq|--time]")
