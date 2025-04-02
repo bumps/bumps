@@ -30,14 +30,12 @@ console.log("Connected handler registered.");
       class="modal show"
       tabindex="-1"
       aria-labelledby="serverStartupLabel"
-      :aria-hidden="connected"
+      :aria-hidden="!connecting"
     >
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 id="serverStartupLabel" class="modal-title">
-              {{ reconnecting ? "Disconnected" : "Server Connecting..." }}
-            </h5>
+            <h5 id="serverStartupLabel" class="modal-title">"Server Connecting..."</h5>
           </div>
           <div v-if="status_string !== undefined" class="modal-body">
             <div class="progress">
