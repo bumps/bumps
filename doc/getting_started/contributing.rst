@@ -255,24 +255,26 @@ Package Index (PyPI) <https://pypi.org/project/bumps/>`_. Bumps uses
 `versioningit <https://versioningit.readthedocs.io/>`_ to generate the version number
 from the latest tag in the git repository.
 
-1. Update the local copy of the master branch::
+#. Make sure all tests are passing on the master branch
+#. On GitHub, go to `Releases <https://github.com/bumps/bumps/releases>`_ page and click on
+   `Draft a new release <https://github.com/bumps/bumps/releases/new>`_
+#. Click on `Choose Tag` and type in a new version number
 
-    $ # update information from all remotes
-    $ git fetch -p -P -t --all
-    $ # update local copy of master
-    $ git checkout master
-    $ git rebase origin/master
-    $ # check the current version number (latest tag v0.9.3 + 656 commits)
-    $ versioningit
-    0.9.4.dev656
+   * For a new alpha pre-release, choose an alpha tag like "1.2.3a1"
+   * For a beta pre-release type a version number like "1.2.3b1"
+   * For a full release use a tag like "1.2.3" (following semver guidelines)
 
-2. Add release notes and commit to master.
+#. Click on `Generate release notes` button
+#. Edit the generated notes as desired
+#. Check the `Set as pre-release` box below the release notes for alpha- or beta-releases
 
-3. Create the new tag and push it to the remote. Pushing a tag starts the GitHub workflow job to
-publish to PyPI (defined in `.github/workflows/test-publish.yml
-<https://github.com/bumps/bumps/blob/master/.github/workflows/test-publish.yml>`_)::
+   * (leave `Set as the latest release` box checked for full releases)
 
-    $ git tag v1.0.0
-    $ versioningit
-    1.0.0
-    $ git push origin --tags master
+#. Click `Publish Release`
+
+At this point, some workflow jobs will publish the new version:
+
+#. the job defined in `.github/workflows/test-publish.yml <https://github.com/bumps/bumps/blob/master/.github/workflows/test-publish.yml>`_
+   will run the tests one more time, then publish the new version to `PyPi <https://pypi.org/project/bumps/>`_
+#. the job defined in `.github/workflows/build-distributables.yml <https://github.com/bumps/bumps/blob/master/.github/workflows/build-distributables.yml>`_
+   will create installers for `MacOS`, `Windows` and `Linux` and attach them to the release page.
