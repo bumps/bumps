@@ -164,7 +164,7 @@ def _bind_random_port(hostname: str, preferred_port: int = PREFERRED_PORT):
     return sock
 
 
-def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPTIONS_CLASS()):
+def setup_app(options: BumpsOptions, sock: Optional[socket.socket] = None):
     from aiohttp import web, ClientSession
 
     static_assets_path = api.state.client_path / "dist" / "assets"
