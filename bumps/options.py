@@ -300,7 +300,6 @@ class BumpsOpts(ParseOpts):
             "cov",
             "edit",
             "mpi",
-            "near_best",
             "staj",
             # passed when not running bumps, but instead using a
             # bundled application as a python distribution with domain
@@ -327,6 +326,7 @@ class BumpsOpts(ParseOpts):
             "parallel",
             "view",
             "trim",
+            "near_best",
             "alpha",
             "outliers",
             # The following options are for remote fitting via the
