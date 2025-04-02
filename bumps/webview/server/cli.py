@@ -101,10 +101,6 @@ class BumpsOptions:
     convergence_heartbeat: bool = False
 
 
-OPTIONS_CLASS = BumpsOptions
-APPLICATION_NAME = "bumps"
-
-
 class DictAction(argparse.Action):
     # Note: implicit __init__ inherited from argparse.Action
     def __call__(self, parser, namespace, values, option_string=None):
@@ -197,11 +193,11 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     --edit                         [default]
         start the gui
     """
-
+    prog = api.state.app_name
     parser = argparse.ArgumentParser(
-        prog="bumps",
+        prog=prog,
         formatter_class=HelpFormatter,
-        epilog=__doc__.replace("::", ":"),
+        epilog=__doc__.replace("::", ":").replace("bumps", prog),
     )
     parser.add_argument(
         "filename",
@@ -261,7 +257,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     )
     session.add_argument(
         "--serializer",
-        default=OPTIONS_CLASS.serializer,
+        default=BumpsOptions.serializer,
         type=str,
         choices=["pickle", "dill", "dataclass"],
         help="strategy for serializing problem, will use value from store if it has already been defined",
@@ -429,7 +425,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     )
 
     # parser.add_argument('-c', '--config-file', type=str, help='path to JSON configuration to load')
-    namespace = OPTIONS_CLASS()
+    namespace = BumpsOptions()
     if arg_defaults is not None:
         logger.debug(f"arg_defaults: {arg_defaults}")
         for k, v in arg_defaults.items():
@@ -439,14 +435,14 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     return args
 
 
-def interpret_fit_options(options: OPTIONS_CLASS = OPTIONS_CLASS()):
+def interpret_fit_options(options: BumpsOptions):
     # ordered list of actions to do on startup
     on_startup: List[Callable] = []
     on_complete: List[Callable] = []
 
     if options.use_persistent_path:
         api.state.base_path = persistent_settings.get_value(
-            "base_path", str(Path().absolute()), application=APPLICATION_NAME
+            "base_path", str(Path().absolute()), application=api.state.app_name
         )
     elif options.path is not None and Path(options.path).exists():
         api.state.base_path = options.path
@@ -682,7 +678,7 @@ def sigint_handler(sig, frame):
     api.state.fit_abort_event.set()
 
 
-def run_batch_fit(options: Optional[OPTIONS_CLASS] = None):
+def run_batch_fit(options: BumpsOptions):
     # TODO: use GUI notifications instead of console monitor for console output
     # TODO: provide info such as steps k of n and chisq with emit notifications
     # async def emit_to_console(*args, **kw):
@@ -698,7 +694,13 @@ def run_batch_fit(options: Optional[OPTIONS_CLASS] = None):
     # print("completed run")
 
 
-def main(options: Optional[OPTIONS_CLASS] = None):
+def plugin_main(name: str, client: Path):
+    api.state.app_name = name
+    api.state.client_path = client
+    main()
+
+
+def main(options: Optional[BumpsOptions] = None):
     # TODO: where do we configure matplotlib?
     # Need to set matplotlib to a non-interactive backend because it is being used in the
     # the export thread. The next_color method calls gca() which needs to produce a blank

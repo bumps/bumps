@@ -9,10 +9,11 @@ from typing import Callable, Optional, Union, List
 import matplotlib
 
 # from .main import setup_bumps
-from .cli import get_commandline_options, interpret_fit_options, OPTIONS_CLASS
+from . import cli
 from . import api
-from .logger import logger
 from . import persistent_settings
+from .logger import logger
+from .cli import BumpsOptions
 
 matplotlib.use("agg")
 
@@ -25,25 +26,24 @@ mimetypes.add_type("image/png", ".png")
 mimetypes.add_type("image/svg+xml", ".svg")
 
 TRACE_MEMORY = False
-CLIENT_PATH = Path(__file__).parent.parent / "client"
-APPLICATION_NAME = "bumps"
 
 # can get by name and not just by id
 
 
 async def index(request):
+    """Serve the client-side application."""
     from aiohttp import web
 
-    """Serve the client-side application."""
-    index_path = CLIENT_PATH / "dist" / "index.html"
+    client = api.state.client_path
+    index_path = client / "dist" / "index.html"
     if not index_path.exists():
         return web.Response(
             body=f"<h2>Client not built</h2>\
-                <div>Please run <pre>python -m {APPLICATION_NAME}.webview.build_client</pre></div>",
+                <div>Please run <pre>python -m {cli.APPLICATION_NAME}.webview.build_client</pre></div>",
             content_type="text/html",
             status=404,
         )
-    return web.FileResponse(CLIENT_PATH / "dist" / "index.html")
+    return web.FileResponse(client / "dist" / "index.html")
 
 
 routes = app = sio = None
@@ -108,7 +108,7 @@ def init_web_app():
     @sio.event
     async def set_base_path(sid: str, pathlist: List[str]):
         path = str(Path(*pathlist))
-        persistent_settings.set_value("base_path", path, application=APPLICATION_NAME)
+        persistent_settings.set_value("base_path", path, application=cli.APPLICATION_NAME)
 
     async def disconnect_all_clients():
         # disconnect all clients:
@@ -140,17 +140,17 @@ def enable_convergence_kernel_heartbeat():
     api.EMITTERS["convergence_heartbeat"] = send_heartbeat_on_convergence
 
 
-def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPTIONS_CLASS()):
+def setup_app(options: BumpsOptions, sock: Optional[socket.socket] = None):
     from aiohttp import web, ClientSession
 
-    static_assets_path = CLIENT_PATH / "dist" / "assets"
+    static_assets_path = api.state.client_path / "dist" / "assets"
     if static_assets_path.exists():
         app.router.add_static("/assets", static_assets_path)
 
     async def notice(message: str):
         logger.info(message)
 
-    on_startup, on_complete = interpret_fit_options(options)
+    on_startup, on_complete = cli.interpret_fit_options(options)
     app.on_startup.extend(on_startup)
     app.on_cleanup.append(lambda App: notice("cleanup task"))
     app.on_shutdown.extend(on_complete)
@@ -200,23 +200,7 @@ def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPT
     return sock
 
 
-# TODO: This isn't usable as main() anymore since it doens't handle the --mpi option.
-def main(options: Optional[OPTIONS_CLASS] = None, sock: Optional[socket.socket] = None):
-    # this entrypoint will be used to start gui, so set headless = False
-    # (other contexts e.g. jupyter notebook will directly call start_app)
-    from aiohttp import web
-    from .logger import setup_console_logging
-
-    setup_console_logging(level=logger.WARNING)
-    options = get_commandline_options(arg_defaults={"headless": False}) if options is None else options
-    options.edit = True  # when called as webserver.main force into webview mode
-    logger.info(dict(options=options))
-    init_web_app()  # defines app, routes and sio
-    runsock = setup_app(options=options, sock=None)
-    web.run_app(app, sock=runsock)
-
-
-def start_from_cli(options: Optional[OPTIONS_CLASS] = None):
+def start_from_cli(options: BumpsOptions):
     from aiohttp import web
 
     init_web_app()
@@ -236,7 +220,7 @@ def bumps_server():
 
 
 async def start_app(
-    options: OPTIONS_CLASS = OPTIONS_CLASS(),
+    options: BumpsOptions,
     sock: socket.socket = None,
     jupyter_link: bool = False,
     jupyter_heartbeat: bool = False,
@@ -320,7 +304,3 @@ def open_tab_link(single_panel=None) -> None:
         url += f"?single_panel={single_panel}"
     src = f'<h3><a href="{url}" target="_blank">Open Webview in Tab</a></h3>'
     display(HTML(src))
-
-
-if __name__ == "__main__":
-    main()
