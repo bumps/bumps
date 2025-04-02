@@ -44,7 +44,6 @@ function cancelClose() {
       class="modal"
       tabindex="-1"
       aria-labelledby="serverShutdownLabel"
-      :open="connecting"
       :aria-hidden="!disconnected"
     >
       <div class="modal-dialog modal-dialog-centered">
