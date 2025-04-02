@@ -64,6 +64,7 @@ extensions = [
 # plot_formats = [('png', 120), ('pdf', 50)] # Only make 80 dpi plots
 
 nitpick_ignore = [
+    ("py:class", "any"),
     ("py:class", "type"),
     ("py:class", "enum.Enum"),
     ("py:class", "object"),
