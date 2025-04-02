@@ -141,7 +141,7 @@ def read_fitproblem(group: "Group", name: str, serializer: SERIALIZERS):
 
 
 def write_json(group: "Group", name: str, data):
-    serialized = json.dumps(data) if data is not None else None
+    serialized = json.dumps(data)
     dset = write_string(group, name, serialized.encode())
     return dset
 
@@ -218,6 +218,12 @@ class History:
 
     def __init__(self):
         self.store = {}
+
+    def get_item(self, timestamp: Union[str, UNDEFINED_TYPE, None], default=None):
+        for item in self.store:
+            if item.timestamp == timestamp:
+                return item
+        return default
 
     def write(self, parent: "Group", include_uncertainty_state=True):
         group = parent.require_group("problem_history")
@@ -346,6 +352,7 @@ class UncertaintyStateStorage:
             setattr(self, attrname, read_ndarray(group, attrname))
 
 
+@dataclass
 class FittingState:
     population: Optional[List] = None
     uncertainty_state: Optional["bumps.dream.state.MCMCDraw"] = None
@@ -420,27 +427,21 @@ class State:
             else:
                 self.save()
 
-    def save_to_history(
-        self, label: str, include_population: bool = False, include_uncertainty: bool = False, keep: bool = False
-    ):
+    def save_to_history(self, label: str, keep: bool = False) -> str:
         if self.problem.fitProblem is None:
             return
         item = HistoryItem()
         item.problem = deepcopy(self.problem)
-        item.fitting = FittingState()
-        if include_population:
-            item.fitting.population = self.fitting.population
-        if include_uncertainty:
-            # uncertainty_state is not mutated, so we can safely use it here
-            # rather than making a memory-hogging copy on first use.
-            item.fitting.uncertainty_state = self.fitting.uncertainty_state
-
+        item.fitting = FittingState(
+            uncertainty_state=self.fitting.uncertainty_state, population=self.fitting.population
+        )
         item.timestamp = str(datetime.now())
         item.label = label
         item.chisq_str = item.problem.fitProblem.chisq_str()
         item.keep = keep
         self.history.add_item(item, self.shared.autosave_history_length - 1)
         self.shared.updated_history = now_string()
+        return item.timestamp
 
     def get_history(self):
         return dict(problem_history=self.history.list())
@@ -449,22 +450,39 @@ class State:
         self.history.remove_item(timestamp)
 
     def reload_history_item(self, timestamp: str):
-        for item in self.history.store:
-            if item.timestamp == timestamp:
-                print("problem found!", timestamp)
-                problem_state = item.problem
-                print("chisq of found item: ", problem_state.fitProblem.chisq_str())
-                self.problem = deepcopy(problem_state)
-                self.shared.updated_model = now_string()
-                self.shared.updated_parameters = now_string()
-                if item.fitting.population is not None:
-                    self.fitting.population = item.fitting.population
-                    self.shared.updated_convergence = now_string()
-                if item.fitting.uncertainty_state is not None:
-                    self.fitting.uncertainty_state = item.fitting.uncertainty_state
-                    self.shared.updated_uncertainty = now_string()
-                return
-        raise ValueError(f"Could not find history item with timestamp {timestamp}")
+        item = self.history.get_item(timestamp, None)
+        if item is not None:
+            self.problem = deepcopy(item.problem)
+            self.fitting.uncertainty_state = item.fitting.uncertainty_state
+            self.fitting.population = item.fitting.population
+            self.shared.active_history = timestamp
+            self.shared.updated_model = now_string()
+            self.shared.updated_parameters = now_string()
+            self.shared.custom_plots_available = get_custom_plots_available(self.problem.fitProblem)
+            self.shared.updated_convergence = now_string()
+            self.shared.updated_uncertainty = now_string()
+
+            has_uncertainty = item.fitting.uncertainty_state is not None
+            uncertainty_available = dict(
+                available=has_uncertainty,
+                num_points=item.fitting.uncertainty_state.draws if has_uncertainty else 0,
+            )
+            self.shared.uncertainty_available = uncertainty_available
+            self.shared.population_available = item.fitting.population is not None
+
+    def reset_fitstate(self):
+        """
+        Unlink the fitting state from a history item:
+        (this action to be taken when fitProblem object is modified so that
+         it is no longer compatible with fit results)
+        """
+        self.fitting.uncertainty_state = None
+        self.fitting.population = None
+        self.shared.active_history = None
+        self.shared.updated_convergence = now_string()
+        self.shared.updated_uncertainty = now_string()
+        self.shared.uncertainty_available = dict(available=False, num_points=0)
+        self.shared.population_available = False
 
     def autosave(self):
         if self.shared.autosave_session:
@@ -485,7 +503,13 @@ class State:
         with os.fdopen(tmp_fd, "w+b") as output_file:
             with h5py.File(output_file, "w") as root_group:
                 self.problem.write(root_group)
-                self.fitting.write(root_group)
+                if self.shared.active_history in (None, UNDEFINED):
+                    # write the live fitting state
+                    self.fitting.write(root_group)
+                else:
+                    # a history item is active, so write an empty FittingState
+                    # TODO: can we just omit the write completely in this case?
+                    FittingState().write(root_group)
                 self.history.write(root_group)
                 self.write_topics(root_group)
                 self.shared.write(root_group)
@@ -497,11 +521,15 @@ class State:
             with h5py.File(session_fullpath, "r") as root_group:
                 if read_problem:
                     self.problem.read(root_group)
-                if read_fitstate:
-                    self.fitting.read(root_group)
                 self.history.read(root_group)
-                self.read_topics(root_group)
                 self.shared.read(root_group)
+                if read_fitstate:
+                    active_item = self.history.get_item(self.shared.active_history, None)
+                    if active_item is not None:
+                        self.fitting = active_item.fitting
+                    else:
+                        self.fitting.read(root_group)
+                self.read_topics(root_group)
         except Exception as e:
             logger.warning(f"could not load session file {session_fullpath} because of {e}")
 
@@ -617,7 +645,29 @@ class FileInfo(TypedDict):
     pathlist: List[str]
 
 
+class UncertaintyAvailable(TypedDict):
+    available: bool
+    num_points: int
+
+
+class CustomPlotsAvailable(TypedDict):
+    parameter_based: bool
+    uncertainty_based: bool
+
+
 Timestamp = NewType("Timestamp", str)
+
+
+def get_custom_plots_available(problem: "bumps.fitproblem.FitProblem"):
+    output = {"parameter_based": False, "uncertainty_based": False}
+    for model in problem.models:
+        if hasattr(model, "webview_plots"):
+            for plot_title, plot_info in model.webview_plots.items():
+                if plot_info.get("change_with", None) == "uncertainty":
+                    output["uncertainty_based"] = True
+                else:
+                    output["parameter_based"] = True
+    return output
 
 
 @dataclass
@@ -627,7 +677,7 @@ class SharedState:
     updated_parameters: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
     updated_model: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
     updated_history: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
-    selected_fitter: Union[UNDEFINED_TYPE, str] = UNDEFINED
+    selected_fitter: Union[UNDEFINED_TYPE, str] = "amoeba"
     fitter_settings: Union[UNDEFINED_TYPE, Dict[str, Dict]] = UNDEFINED
     active_fit: Union[UNDEFINED_TYPE, ActiveFit] = UNDEFINED
     model_file: Union[UNDEFINED_TYPE, FileInfo] = UNDEFINED
@@ -637,6 +687,10 @@ class SharedState:
     autosave_session_interval: int = 300  # seconds
     autosave_history: bool = True
     autosave_history_length: int = 10
+    uncertainty_available: Union[UNDEFINED_TYPE, UncertaintyAvailable] = UNDEFINED
+    population_available: Union[UNDEFINED_TYPE, bool] = UNDEFINED
+    custom_plots_available: Union[UNDEFINED_TYPE, CustomPlotsAvailable] = UNDEFINED
+    active_history: Union[UNDEFINED_TYPE, Timestamp, None] = UNDEFINED  # timestamp of the active history item
 
     _not_reloaded = ["active_fit", "autosave_session", "session_output_file", "_notification_callbacks"]
     _notification_callbacks: Dict[str, Callable[[str, Any], Awaitable[None]]] = field(default_factory=dict)

@@ -6,7 +6,6 @@ const props = defineProps<{ socket: AsyncSocket }>();
 
 const dialog = ref<HTMLDialogElement>();
 const isOpen = ref(false);
-const closeCancelled = ref(false);
 const shutdownTimer = ref<ReturnType<typeof setTimeout>>();
 const CLOSE_DELAY = 2000; // try to auto-close window after 2 seconds.
 
