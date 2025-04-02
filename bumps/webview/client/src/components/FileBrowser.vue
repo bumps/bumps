@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, onUpdated, ref, shallowRef, watch } from "vue";
-import { format, formatDistance, formatRelative, subDays } from "date-fns";
+import { ref, shallowRef, watch } from "vue";
+import { formatRelative } from "date-fns";
 import { addNotification } from "../app_state";
 import type { FileBrowserSettings } from "../app_state";
 import type { AsyncSocket } from "../asyncSocket.ts";
@@ -9,7 +9,7 @@ const props = defineProps<{
   socket: AsyncSocket;
 }>();
 
-const emit = defineEmits<{
+defineEmits<{
   (e: "selected", pathlist: string[], filename: string): void;
 }>();
 
@@ -33,7 +33,6 @@ const drives = ref<string[]>([]);
 const filtered_filelist = shallowRef<FileInfo[]>([]);
 const chosenFile = ref("");
 const sortby = ref<sortOrder>("name");
-const reversed = ref(false);
 const step = ref(1);
 const active_search_pattern = ref<string | null>(null);
 const active_search_regexp = ref<RegExp | null>(null);
@@ -164,7 +163,7 @@ function selectNotSuffix(ev: Event) {
   }
 }
 
-watch(active_search_pattern, async (newval, oldval) => {
+watch(active_search_pattern, async (newval) => {
   if (newval === null) {
     active_search_regexp.value = null;
   } else {

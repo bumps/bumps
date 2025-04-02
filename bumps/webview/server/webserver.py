@@ -26,6 +26,7 @@ mimetypes.add_type("image/png", ".png")
 mimetypes.add_type("image/svg+xml", ".svg")
 
 TRACE_MEMORY = False
+PREFERRED_PORT = 5148  # "SLAB"
 
 # can get by name and not just by id
 
@@ -140,7 +141,30 @@ def enable_convergence_kernel_heartbeat():
     api.EMITTERS["convergence_heartbeat"] = send_heartbeat_on_convergence
 
 
-def setup_app(options: BumpsOptions, sock: Optional[socket.socket] = None):
+def _create_socket():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    return sock
+
+
+def _bind_random_port(hostname: str, preferred_port: int = PREFERRED_PORT):
+    """
+    Bind a random port to the given hostname.
+    First tries the preferred port, then falls back to a random port.
+    Returns the socket.
+    """
+    try:
+        sock = _create_socket()
+        sock.bind((hostname, preferred_port))
+    except socket.error:
+        sock.close()  # cleanup socket that didn't bind
+        # create a new socket:
+        sock = _create_socket()
+        sock.bind((hostname, 0))
+    return sock
+
+
+def setup_app(sock: Optional[socket.socket] = None, options: OPTIONS_CLASS = OPTIONS_CLASS()):
     from aiohttp import web, ClientSession
 
     static_assets_path = api.state.client_path / "dist" / "assets"
@@ -164,9 +188,11 @@ def setup_app(options: BumpsOptions, sock: Optional[socket.socket] = None):
     hostname = "localhost" if not options.external else "0.0.0.0"
 
     if sock is None:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind((hostname, options.port))
+        if options.port == 0:
+            sock = _bind_random_port(hostname)
+        else:
+            sock = _create_socket()
+            sock.bind((hostname, options.port))
 
     host, port = sock.getsockname()
     api.state.hostname = host

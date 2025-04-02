@@ -6,8 +6,8 @@ import { v4 as uuidv4 } from "uuid";
 import type { AsyncSocket } from "../asyncSocket";
 import { setupDrawLoop } from "../setupDrawLoop";
 
-type ModelNameInfo = { name: string; model_index: number };
-const title = "Data";
+// type ModelNameInfo = { name: string; model_index: number };
+// const title = "Data";
 const plot_div = ref<HTMLDivElement | null>(null);
 const plot_div_id = ref(`div-${uuidv4()}`);
 const show_multiple = ref(false);

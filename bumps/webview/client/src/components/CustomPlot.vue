@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onMounted, ref, shallowRef } from "vue";
+import { nextTick, onMounted, ref } from "vue";
 import * as mpld3 from "mpld3";
 import * as Plotly from "plotly.js/lib/core";
 import { v4 as uuidv4 } from "uuid";
@@ -10,7 +10,7 @@ import { configWithSVGDownloadButton } from "../plotly_extras";
 import { setupDrawLoop } from "../setupDrawLoop";
 
 type PlotInfo = { title: string; change_with: string; model_index: number };
-const title = "Custom";
+// const title = "Custom";
 const figtype = ref<string>("");
 const plot_div = ref<HTMLDivElement | null>(null);
 const plot_div_id = ref(`div-${uuidv4()}`);
@@ -85,6 +85,7 @@ async function fetch_and_draw() {
     </select>
     <div v-if="figtype === 'error'" ref="error_div" class="flex-grow-0">
       <div style="color: red; font-size: larger; font-weight: bold">Plotting error:</div>
+      // eslint-disable-next-line vue/no-v-html
       <div v-html="error_text"></div>
     </div>
     <div v-else-if="figtype === 'table'" class="flex-grow-0">
