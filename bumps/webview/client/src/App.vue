@@ -6,9 +6,10 @@ import {
   addNotification,
   autoupdate_state,
   cancelNotification,
-  connected,
+  connecting,
   default_fitter,
   default_fitter_settings,
+  disconnected,
   file_menu_items,
   fileBrowser,
   FileBrowserSettings,
@@ -68,6 +69,10 @@ if (single_panel !== null) {
   }
 }
 
+// Connect!
+connecting.value = true;
+disconnected.value = false;
+
 const socket = io(sio_server, {
   path: `${sio_base_path}socket.io`,
 }) as AsyncSocket;
@@ -75,7 +80,8 @@ socket_ref.value = socket;
 
 socket.on("connect", async () => {
   console.log(`Connected: Session ID ${socket.id}`);
-  connected.value = true;
+  connecting.value = false;
+  disconnected.value = false;
   autoupdate_state.init(socket);
   socket.asyncEmit("get_fitter_defaults", (new_fitter_defaults: { [fit_name: string]: FitSetting }) => {
     default_fitter_settings.value = new_fitter_defaults;
@@ -84,7 +90,10 @@ socket.on("connect", async () => {
 
 socket.on("disconnect", (payload) => {
   console.log("Disconnected!", payload);
-  connected.value = false;
+  disconnected.value = true;
+  setTimeout(() => {
+    socket.connect();
+  }, 1000);
 });
 
 socket.on("add_notification", addNotification);
@@ -360,15 +369,6 @@ file_menu_items.value = [
                 <button class="btn btn-success btn-sm" @click="startFit">Start</button>
               </div>
             </h4>
-          </div>
-          <div class="d-flex navbar-nav mb-2 mb-lg-0">
-            <div
-              id="connection_status"
-              class="nav-item"
-              :class="{ btn: true, 'btn-outline-success': connected, 'btn-outline-danger': !connected }"
-            >
-              {{ connected ? "connected" : "disconnected" }}
-            </div>
           </div>
         </div>
       </div>
