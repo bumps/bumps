@@ -207,8 +207,8 @@ async def get_history():
 
 
 @register
-async def remove_history_item(timestamp: str):
-    state.remove_history_item(timestamp)
+async def remove_history_item(name: str):
+    state.remove_history_item(name)
     state.shared.updated_history = now_string()
 
 
@@ -224,19 +224,19 @@ async def save_to_history(
 
 
 @register
-async def reload_history_item(timestamp: str):
-    state.reload_history_item(timestamp)
+async def reload_history_item(name: str):
+    state.reload_history_item(name)
 
 
 @register
-async def set_keep_history(timestamp: str, keep: bool):
-    state.history.set_keep(timestamp, keep)
+async def set_keep_history(name: str, keep: bool):
+    state.history.set_keep(name, keep)
     state.shared.updated_history = now_string()
 
 
 @register
-async def update_history_label(timestamp: str, label: str):
-    state.history.update_label(timestamp, label)
+async def update_history_label(name: str, label: str):
+    state.history.update_label(name, label)
     state.shared.updated_history = now_string()
 
 
