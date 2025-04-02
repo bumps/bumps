@@ -539,6 +539,8 @@ async def start_fit_thread(fitter_id, options):
         # state.fitting.uncertainty_state = None
         max_steps = get_max_steps(num_params, fitter_id, options)
         state.fit_abort_event.clear()
+        # TODO: remove this re-creation of the Event object when minimum python is >= 3.10
+        state.fit_complete_event = asyncio.Event()
         state.fit_complete_event.clear()
 
         # print(f"*** start_fit_thread {options=}")
