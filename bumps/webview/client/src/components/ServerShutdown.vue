@@ -6,7 +6,7 @@ const dialog = ref<HTMLDialogElement>();
 const closeCancelled = ref(false);
 const attemptingAutoClose = ref(false);
 const shutdownTimer = ref<ReturnType<typeof setInterval>>();
-const CLOSE_DELAY = 3; // try to auto-close window after 2 seconds.
+const CLOSE_DELAY = 3; // try to auto-close window after n seconds.
 const timeRemaining = ref(CLOSE_DELAY);
 
 watch(disconnected, () => {
