@@ -49,7 +49,7 @@ function cancelClose() {
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 id="serverShutdownLabel" class="modal-title">Disconnected</h5>
+            <h5 id="serverShutdownLabel" class="modal-title">Server disconnected</h5>
           </div>
           <div v-if="attemptingAutoClose" class="modal-body">
             <h3>Will attempt to auto-close client window...</h3>
