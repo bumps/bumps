@@ -10,6 +10,7 @@ const props = defineProps<{
 }>();
 
 type HistoryItem = {
+  name: string;
   timestamp: string;
   label: string;
   chisq_str: string;
@@ -48,8 +49,8 @@ props.socket.on("autosave_history_length", (length: number) => {
   autosave_history_length.value = length;
 });
 
-async function remove_history_item(timestamp: string, keep: boolean) {
-  console.log(`remove_history_item: ${timestamp}`);
+async function remove_history_item(name: string, keep: boolean) {
+  console.log(`remove_history_item: ${name}`);
   if (keep) {
     addNotification({
       title: "Forbidden",
@@ -58,7 +59,7 @@ async function remove_history_item(timestamp: string, keep: boolean) {
     });
     return;
   } else {
-    await props.socket.asyncEmit("remove_history_item", timestamp);
+    await props.socket.asyncEmit("remove_history_item", name);
   }
 }
 
@@ -67,21 +68,21 @@ async function manual_save() {
   history_label.value = "";
 }
 
-async function reload_history(timestamp: string) {
+async function reload_history(name: string) {
   const confirmation = warning_seen.value || confirm("Reloading overwrites current state: continue?");
   if (confirmation) {
-    await props.socket.asyncEmit("reload_history_item", timestamp);
+    await props.socket.asyncEmit("reload_history_item", name);
     warning_seen.value = true;
   }
 }
 
-async function toggle_keep(timestamp: string, current_keep: boolean) {
-  await props.socket.asyncEmit("set_keep_history", timestamp, !current_keep);
+async function toggle_keep(name: string, current_keep: boolean) {
+  await props.socket.asyncEmit("set_keep_history", name, !current_keep);
 }
 
-async function update_label(timestamp: string, new_label: string) {
-  console.log(`update_label(${timestamp}, ${new_label})`);
-  await props.socket.asyncEmit("update_history_label", timestamp, new_label);
+async function update_label(name: string, new_label: string) {
+  console.log(`update_label(${name}, ${new_label})`);
+  await props.socket.asyncEmit("update_history_label", name, new_label);
 }
 
 async function toggle_autosave_history() {
@@ -146,8 +147,8 @@ onMounted(async () => {
         </thead>
         <tbody>
           <tr
-            v-for="{ timestamp, label, chisq_str, keep, has_population, has_uncertainty } of history"
-            :key="timestamp"
+            v-for="{ name, timestamp, label, chisq_str, keep, has_population, has_uncertainty } of history"
+            :key="name"
             class="py-1 align-middle"
           >
             <td class="align-items-center">
@@ -155,7 +156,7 @@ onMounted(async () => {
                 type="button"
                 class="btn-close"
                 aria-label="Close"
-                @click="remove_history_item(timestamp, keep)"
+                @click="remove_history_item(name, keep)"
               ></button>
             </td>
             <td
@@ -164,7 +165,7 @@ onMounted(async () => {
               spellcheck="false"
               plaintext-only
               :title="timestamp"
-              @blur="update_label(timestamp, ($event.target as HTMLTextAreaElement).innerText)"
+              @blur="update_label(name, ($event.target as HTMLTextAreaElement).innerText)"
             >
               {{ label }}
             </td>
@@ -172,7 +173,7 @@ onMounted(async () => {
               <small>{{ chisq_str }}</small>
             </td>
             <td class="text-nowrap">
-              <button class="btn btn-secondary btn-sm mx-1 text-nowrap" @click="reload_history(timestamp)">Load</button>
+              <button class="btn btn-secondary btn-sm mx-1 text-nowrap" @click="reload_history(name)">Load</button>
               <span v-show="has_population" class="badge bg-success" title="has population">P</span>
               <span v-show="has_uncertainty" class="badge bg-warning" title="has uncertainty">U</span>
             </td>
@@ -182,7 +183,7 @@ onMounted(async () => {
                 class="form-check-input"
                 type="checkbox"
                 :checked="keep"
-                @click="toggle_keep(timestamp, keep)"
+                @click="toggle_keep(name, keep)"
               />
             </td>
           </tr>

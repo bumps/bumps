@@ -214,14 +214,14 @@ class HistoryItem:
 
 
 class History:
-    store: List[HistoryItem]
+    store: Dict[str, HistoryItem]
 
     def __init__(self):
-        self.store = []
+        self.store = {}
 
     def write(self, parent: "Group", include_uncertainty_state=True):
         group = parent.require_group("problem_history")
-        for item in self.store:
+        for name, item in self.store.items():
             problem = item.problem
             fitting = item.fitting
             name = item.timestamp
@@ -233,8 +233,8 @@ class History:
             item_group.attrs["keep"] = item.keep
 
     def read(self, parent: "Group"):
-        group = parent.get("problem_history", [])
-        self.store = []
+        group = parent.get("problem_history", {})
+        self.store = {}
         for name in group:
             item = HistoryItem()
             item_group = group[name]
@@ -247,29 +247,38 @@ class History:
             # keep is a boolean, but h5py returns np.bool_ which is not JSON serializable
             item.keep = bool(item_group.attrs["keep"])
             item.timestamp = name
-            self.store.append(item)
+            self.store[name] = item
 
-    def remove_item(self, timestamp: str):
-        self.store = [item for item in self.store if item.timestamp != timestamp]
+    def remove_item(self, name: str):
+        self.store.pop(name)
 
     def prune(self, target_length: int):
         # remove oldest items with keep=False until the length is target_length
         num_to_remove = len(self.store) - target_length
         if num_to_remove <= 0:
             return
-        indices_to_remove = []
-        for index, item in enumerate(self.store):
+        names_to_remove = []
+        for name, item in self.store.items():
             if not item.keep:
-                indices_to_remove.append(index)
+                names_to_remove.append(name)
                 num_to_remove -= 1
                 if num_to_remove == 0:
                     break
-        for index in reversed(indices_to_remove):
-            self.store.pop(index)
+        for name in reversed(names_to_remove):
+            self.store.pop(name)
+
+    def _get_unique_name(self, timestamp: str):
+        name = timestamp
+        counter = 1
+        while name in self.store:
+            name = f"{timestamp}-{counter}"
+            counter += 1
+        return name
 
     def add_item(self, item: HistoryItem, target_length: int):
         self.prune(target_length)
-        self.store.append(item)
+        stored_name = self._get_unique_name(item.timestamp)
+        self.store[stored_name] = item
 
     def list(self):
         return [
@@ -280,21 +289,16 @@ class History:
                 keep=item.keep,
                 has_population=(item.fitting.population is not None),
                 has_uncertainty=(item.fitting.uncertainty_state is not None),
+                name=name,
             )
-            for item in self.store
+            for name, item in self.store.items()
         ]
 
-    def set_keep(self, timestamp: str, keep: bool):
-        for item in self.store:
-            if item.timestamp == timestamp:
-                item.keep = keep
-                return
+    def set_keep(self, name: str, keep: bool):
+        self.store[name].keep = keep
 
-    def update_label(self, timestamp: str, label: str):
-        for item in self.store:
-            if item.timestamp == timestamp:
-                item.label = label
-                return
+    def update_label(self, name: str, label: str):
+        self.store[name].label = label
 
 
 class UncertaintyStateStorage:
@@ -630,7 +634,7 @@ class SharedState:
     model_loaded: Union[UNDEFINED_TYPE, bool] = UNDEFINED
     session_output_file: Union[UNDEFINED_TYPE, FileInfo] = UNDEFINED
     autosave_session: bool = False
-    autosave_session_interval: int = 300
+    autosave_session_interval: int = 300  # seconds
     autosave_history: bool = True
     autosave_history_length: int = 10
 
