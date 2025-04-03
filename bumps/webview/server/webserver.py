@@ -40,7 +40,7 @@ async def index(request):
     if not index_path.exists():
         return web.Response(
             body=f"<h2>Client not built</h2>\
-                <div>Please run <pre>python -m {cli.APPLICATION_NAME}.webview.build_client</pre></div>",
+                <div>Please run <pre>python -m {api.state.app_name}.webview.build_client</pre></div>",
             content_type="text/html",
             status=404,
         )
@@ -109,7 +109,7 @@ def init_web_app():
     @sio.event
     async def set_base_path(sid: str, pathlist: List[str]):
         path = str(Path(*pathlist))
-        persistent_settings.set_value("base_path", path, application=cli.APPLICATION_NAME)
+        persistent_settings.set_value("base_path", path, application=api.state.app_name)
 
     async def disconnect_all_clients():
         # disconnect all clients:
