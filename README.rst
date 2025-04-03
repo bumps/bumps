@@ -35,9 +35,9 @@ If you have installed from source, you must first check out the random123 librar
 
 |CI| |RTD| |DOI|
 
-.. |CI| image:: https://github.com/bumps/bumps/workflows/Test/badge.svg
+.. |CI| image:: https://github.com/bumps/bumps/actions/workflows/test-publish.yml/badge.svg
    :alt: Build status
-   :target: https://github.com/bumps/bumps/actions
+   :target: https://github.com/bumps/bumps/actions/workflows/test-publish.yml
 
 .. |DOI| image:: https://zenodo.org/badge/18489/bumps/bumps.svg
    :alt: DOI tag
