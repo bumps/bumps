@@ -451,8 +451,7 @@ class State:
         item = self.history.get_item(timestamp, None)
         if item is not None:
             self.problem = deepcopy(item.problem)
-            self.fitting.uncertainty_state = item.fitting.uncertainty_state
-            self.fitting.population = item.fitting.population
+            self.fitting = item.fitting
             self.shared.active_history = timestamp
             self.shared.updated_model = now_string()
             self.shared.updated_parameters = now_string()
