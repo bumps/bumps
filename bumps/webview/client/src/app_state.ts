@@ -26,7 +26,8 @@ export const LAYOUTS = ["left-right", "top-bottom", "full"];
 export type FitSetting = { name: string; settings: object };
 
 export const socket = ref<AsyncSocket>();
-export const connected = ref(false);
+export const connecting = ref(false);
+export const disconnected = ref(false);
 export const fitOptions = ref<ModalDialog>();
 export const fileBrowser = ref<ModalDialog>();
 export const active_layout = ref<(typeof LAYOUTS)[number]>("left-right");
