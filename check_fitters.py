@@ -6,58 +6,40 @@ all converge.
 
 import sys
 import os
-from os.path import join as joinpath, realpath, dirname
+from os.path import join as joinpath
 import tempfile
-import shutil
 import glob
 import subprocess
-
+from pathlib import Path
+import h5py
 import numpy as np
 
 sys.dont_write_bytecode = True
 
-try:
-    bytes
-
-    def decode(b):
-        return b.decode("utf-8")
-except Exception:
-
-    def decode(b):
-        return b
-
-
 # Ask bumps for a list of available fitters
-ROOT = realpath(dirname(__file__))
-sys.path.insert(0, ROOT)
+ROOT = Path(__file__).absolute().parent
+EXAMPLEDIR = ROOT / "doc" / "examples"
+
+# Add the build dir to the system path
+packages = [str(ROOT)]
+if "PYTHONPATH" in os.environ:
+    packages.append(os.environ["PYTHONPATH"])
+os.environ["PYTHONPATH"] = os.pathsep.join(packages)
+
+# Need bumps on the path to pull in the available fitters
+sys.path.insert(0, str(ROOT))
 from bumps.fitters import FIT_AVAILABLE_IDS
 
-RUNPY = joinpath(ROOT, "run.py")
-EXAMPLEDIR = joinpath(ROOT, "doc", "examples")
+
+command = [sys.executable, "-m", "bumps"]
 
 
-def clear_directory(path, recursive=False):
-    """
-    Remove all regular files in a directory.
-
-    If *recursive* is True, removes subdirectories as well.
-
-    This does not remove the directory itself.  Use *shutil.rmtree* if
-    you want to delete the entire tree.
-    """
-    for f in os.listdir(path):
-        target = joinpath(path, f)
-        if not os.path.isdir(target):
-            os.unlink(target)
-        elif recursive:
-            clear_directory(target, recursive)
-            os.rmdir(target)
+def decode(b):
+    return b.decode("utf-8")
 
 
 def run_fit(fit_args, model_args, store, seed=1):
-    command_parts = (
-        [sys.executable, RUNPY] + fit_args + model_args + ["--store=" + store, "--seed=%d" % seed, "--batch"]
-    )
+    command_parts = [*command, *fit_args, *model_args, f"--store={store}", f"--seed={seed}", "--batch"]
     try:
         output = subprocess.check_output(command_parts, stderr=subprocess.STDOUT)
         output = decode(output.strip())
@@ -73,55 +55,43 @@ def run_fit(fit_args, model_args, store, seed=1):
             raise RuntimeError("fit failed:\n" + " ".join(command_parts))
 
 
-def check_fit(fitter, store, targets):
-    errfiles = glob.glob(joinpath(store, "*.err"))
-    if not errfiles:
-        raise ValueError("error in %s: no err file created" % fitter)
-    elif len(errfiles) > 1:
-        raise ValueError("error in %s: too many err files created" % fitter)
-    model_index = 0
-    with open(errfiles[0]) as fid:
-        for line in fid:
-            if line.startswith("[overall chisq="):
-                if line[15:10].lower() == "inf":
-                    value = np.inf
-                else:
-                    value = float(line[15:].split("(")[0])
-                assert abs(value - targets[model_index]) < 1e-2, "error in %s: expected %.3f but got %.3f" % (
-                    fitter,
-                    targets[model_index],
-                    value,
-                )
-                model_index += 1
-    assert model_index == len(targets), "error in %s: not enough models found" % fitter
+def check_fit(fitter, store, target):
+    """
+    Verify overall chisq value matches target within 1% for all fitters.
+    """
+    with h5py.File(store) as fd:
+        group = fd["problem_history"]
+        last_item = list(group.keys())[-1]
+        chisq_str = group[last_item].attrs["chisq"]
+        value = float(chisq_str.split("(")[0])
+        assert abs(value - target) / target < 1e-2, f"error in {fitter}: expected {target} but got {value}"
 
 
-def run_fits(model_args, store, fitters=FIT_AVAILABLE_IDS, seed=1, target=0):
+def run_fits(model_args, path, fitters=FIT_AVAILABLE_IDS, seed=1, target=0):
     failed = []
     for f in fitters:
-        print("====== fitter: %s" % f)
+        print(f"====== fitter: {f}")
         try:
-            run_fit(["--fit=" + f], model_args, store, seed=seed)
-            check_fit(f, store, [target])
+            store = Path(path) / f"{f}.hdf"
+            run_fit([f"--fit={f}"], model_args, str(store), seed=seed)
+            check_fit(f, store, target)
         except Exception as exc:
             # import traceback; traceback.print_exc()
             print(str(exc))
             failed.append(f)
-        clear_directory(store)
     return failed
 
 
 def main():
     fitters = sys.argv[1:] if len(sys.argv) > 1 else FIT_AVAILABLE_IDS
-    store = tempfile.mkdtemp(prefix="bumps-test-")
     # TODO: use a test function that defines residuals
-    test_functions = joinpath(EXAMPLEDIR, "test_functions", "model.py")
+    test_functions = EXAMPLEDIR / "test_functions" / "model.py"
     # model_args = [test_functions, '"fk(rosenbrock, 3)"']
     model_args, target = [test_functions, "gauss", "3"], 0
-    model_args, target = [joinpath(EXAMPLEDIR, "curvefit", "curve.py")], 1.760
+    model_args, target = [EXAMPLEDIR / "curvefit" / "curve.py"], 1.760
     seed = 1
-    failed = run_fits(model_args, store, fitters=fitters, seed=seed, target=target)
-    shutil.rmtree(store)
+    with tempfile.TemporaryDirectory() as path:
+        failed = run_fits(model_args, path, fitters=fitters, seed=seed, target=target)
     if failed:
         print("======")
         print("Fits failed for: %s" % (", ".join(failed),))
