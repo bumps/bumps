@@ -131,26 +131,27 @@ class SerialMapper(BaseMapper):
 #    _MP_set_problem(load_problem(*modelargs))
 
 
-def _MP_setup(namespace):
+def _MP_setup():
     # Using MPMapper class variables to store worker globals.
     # It doesn't matter if they conflict with the controller values since
     # they are in a different process.
     signal.signal(signal.SIGINT, signal.SIG_IGN)
-    MPMapper.namespace = namespace
     nice()
 
 
-def _MP_run_problem(problem_point_pair):
-    problem_id, point = problem_point_pair
+def _MP_run_problem(problem_point_tuple):
+    problem_id, point, shared_pickled_problem = problem_point_tuple
     if problem_id != MPMapper.problem_id:
         # print(f"Fetching problem {problem_id} from namespace")
         # Problem is pickled using dill when it is available
         try:
             import dill
 
-            MPMapper.problem = dill.loads(MPMapper.namespace.pickled_problem)
+            MPMapper.problem = dill.loads(shared_pickled_problem[:].tobytes())
         except ImportError:
-            MPMapper.problem = MPMapper.namespace.problem
+            import pickle
+
+            MPMapper.problem = pickle.loads(shared_pickled_problem[:].tobytes())
         MPMapper.problem_id = problem_id
     return MPMapper.problem.nllf(point)
 
@@ -159,8 +160,9 @@ class MPMapper(BaseMapper):
     # Note: suprocesses are using the same variables
     pool = None
     manager = None
-    namespace = None
     problem_id = 0
+    shared_pickled_problem = None
+    problem = None
 
     @staticmethod
     def start_worker(problem):
@@ -174,11 +176,10 @@ class MPMapper(BaseMapper):
         if MPMapper.pool is None:
             # Create a sync namespace to distribute the problem description.
             MPMapper.manager = multiprocessing.Manager()
-            MPMapper.namespace = MPMapper.manager.Namespace()
             # Start the process pool, sending the namespace handle
             if cpus == 0:
                 cpus = multiprocessing.cpu_count()
-            MPMapper.pool = multiprocessing.Pool(cpus, _MP_setup, (MPMapper.namespace,))
+            MPMapper.pool = multiprocessing.Pool(cpus, _MP_setup)
 
         # Increment the problem number and store the problem in the namespace.
         # The store action uses pickle to transfer python objects to the
@@ -189,16 +190,19 @@ class MPMapper(BaseMapper):
         try:
             import dill
 
-            MPMapper.namespace.pickled_problem = dill.dumps(problem, recurse=True)
+            MPMapper.pickled_problem = dill.dumps(problem, recurse=True)
         except ImportError:
-            MPMapper.namespace.problem = problem
-        ## Store the modelargs and the problem name if pickling doesn't work
-        # MPMapper.namespace.modelargs = modelargs
+            import pickle
 
-        # Set the mapper to send problem_id/point value pairs
+            MPMapper.pickled_problem = pickle.dumps(problem)
+        MPMapper.shared_pickled_problem = MPMapper.manager.Array("B", MPMapper.pickled_problem)
+
+        # Set the mapper to send problem_id/point/shared_pickled_problem value triples
         def mapper(points):
             try:
-                return MPMapper.pool.map(_MP_run_problem, ((MPMapper.problem_id, p) for p in points))
+                return MPMapper.pool.map(
+                    _MP_run_problem, ((MPMapper.problem_id, p, MPMapper.shared_pickled_problem) for p in points)
+                )
             except KeyboardInterrupt:
                 MPMapper.stop_mapper()
 
@@ -212,7 +216,6 @@ class MPMapper(BaseMapper):
             MPMapper.pool = None
             MPMapper.manager.shutdown()
             MPMapper.manager = None
-            MPMapper.namespace = None
         # Don't reset problem id; it keeps count even when mapper is restarted.
         ##MPMapper.problem_id = 0
 
