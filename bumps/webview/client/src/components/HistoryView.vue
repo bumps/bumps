@@ -10,6 +10,7 @@ const props = defineProps<{
 }>();
 
 type HistoryItem = {
+  name: string;
   timestamp: string;
   label: string;
   chisq_str: string;
@@ -40,8 +41,8 @@ props.socket.asyncEmit("get_chisq", (chisq_str: string) => {
   current_chisq_str.value = chisq_str;
 });
 
-async function remove_history_item(timestamp: string, keep: boolean) {
-  console.log(`remove_history_item: ${timestamp}`);
+async function remove_history_item(name: string, keep: boolean) {
+  console.log(`remove_history_item: ${name}`);
   if (keep) {
     addNotification({
       title: "Forbidden",
@@ -50,7 +51,7 @@ async function remove_history_item(timestamp: string, keep: boolean) {
     });
     return;
   } else {
-    await props.socket.asyncEmit("remove_history_item", timestamp);
+    await props.socket.asyncEmit("remove_history_item", name);
   }
 }
 
@@ -59,21 +60,21 @@ async function manual_save() {
   history_label.value = "";
 }
 
-async function reload_history(timestamp: string) {
+async function reload_history(name: string) {
   const confirmation = warning_seen.value || confirm("Reloading overwrites current state: continue?");
   if (confirmation) {
-    await props.socket.asyncEmit("reload_history_item", timestamp);
+    await props.socket.asyncEmit("reload_history_item", name);
     warning_seen.value = true;
   }
 }
 
-async function toggle_keep(timestamp: string, current_keep: boolean) {
-  await props.socket.asyncEmit("set_keep_history", timestamp, !current_keep);
+async function toggle_keep(name: string, current_keep: boolean) {
+  await props.socket.asyncEmit("set_keep_history", name, !current_keep);
 }
 
-async function update_label(timestamp: string, new_label: string) {
-  console.log(`update_label(${timestamp}, ${new_label})`);
-  await props.socket.asyncEmit("update_history_label", timestamp, new_label);
+async function update_label(name: string, new_label: string) {
+  console.log(`update_label(${name}, ${new_label})`);
+  await props.socket.asyncEmit("update_history_label", name, new_label);
 }
 
 async function toggle_autosave_history() {
@@ -152,8 +153,8 @@ async function set_autosave_history_length(value_str: string) {
             <td></td>
           </tr>
           <tr
-            v-for="{ timestamp, label, chisq_str, keep, has_population, has_uncertainty } of history"
-            :key="timestamp"
+            v-for="{ name, timestamp, label, chisq_str, keep, has_population, has_uncertainty } of history"
+            :key="name"
             class="py-1 align-middle"
           >
             <td class="align-items-center">
@@ -161,7 +162,7 @@ async function set_autosave_history_length(value_str: string) {
                 type="button"
                 class="btn-close"
                 aria-label="Close"
-                @click="remove_history_item(timestamp, keep)"
+                @click="remove_history_item(name, keep)"
               ></button>
             </td>
             <td class="px-2">
@@ -169,23 +170,23 @@ async function set_autosave_history_length(value_str: string) {
                 contenteditable="true"
                 spellcheck="false"
                 plaintext-only
-                @blur="update_label(timestamp, ($event.target as HTMLTextAreaElement).innerText)"
+                @blur="update_label(name, ($event.target as HTMLTextAreaElement).innerText)"
               >
                 {{ label }}
               </div>
-              <div class="history-timestamp">{{ timestamp }}</div>
+              <div class="history-name">{{ name }}</div>
             </td>
             <td>
               <small>{{ chisq_str }}</small>
             </td>
             <td class="text-nowrap text-end">
               <div
-                v-if="shared_state.active_history == timestamp"
+                v-if="shared_state.active_history == name"
                 class="btn btn-outline-success btn-sm mx-1 text-nowrap disabled"
               >
                 Loaded
               </div>
-              <button v-else class="btn btn-secondary btn-sm mx-1 text-nowrap" @click="reload_history(timestamp)">
+              <button v-else class="btn btn-secondary btn-sm mx-1 text-nowrap" @click="reload_history(name)">
                 Load
               </button>
             </td>
@@ -199,7 +200,7 @@ async function set_autosave_history_length(value_str: string) {
                 class="form-check-input"
                 type="checkbox"
                 :checked="keep"
-                @click="toggle_keep(timestamp, keep)"
+                @click="toggle_keep(name, keep)"
               />
             </td>
           </tr>
@@ -219,7 +220,7 @@ input#auto_save_length {
 }
 
 /* history timestamp italic with lighter weight */
-.history-timestamp {
+.history-name {
   font-style: italic;
   font-weight: lighter;
   font-size: smaller;
