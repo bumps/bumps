@@ -70,7 +70,15 @@ class Range:
 Setting("fit", "Optimizer", [], "Fitting engine to use.")
 
 # Stopping conditions
-Setting("steps", "Steps", int, "Stop when iteration = steps.")
+Setting(
+    "steps",
+    "Steps",
+    int,
+    """\
+    Stop when iteration = steps.
+    In Dream, the number of steps is inferred from --samples as samples / (pop * pars)
+    if --steps is zero, otherwise it uses the value of --steps.""",
+)
 Setting("xtol", "x tolerance", Range(0, 1), "Stop when population diameter < xtol relative to range.")
 Setting("ftol", "f(x) tolerance", float, "Stop when variation in log likelihood < ftol.")
 Setting("alpha", "Convergence", Range(0, 0.1), "Stop when probability that population is varying < alpha.")
