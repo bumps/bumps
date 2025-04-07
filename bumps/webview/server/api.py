@@ -1247,7 +1247,11 @@ async def get_dirlisting(pathlist: Optional[List[str]] = None):
 
 
 @register
-async def get_fitter_defaults(*args):
+async def get_fitter_defaults():
+    return _get_fitter_defaults()
+
+
+def _get_fitter_defaults():
     return {fitter.id: dict(name=fitter.name, settings=dict(fitter.settings)) for fitter in fit_options.FITTERS}
 
 
