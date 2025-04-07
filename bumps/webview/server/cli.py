@@ -498,7 +498,8 @@ def interpret_fit_options(options: BumpsOptions):
     on_startup.append(lambda App: api.state.shared.set("selected_fitter", fitter_id))
     # TODO: send commandline options to the webview interface
     all_fit_options = api._get_fitter_defaults()
-    all_fit_options[fitter_id]["settings"].update(dict(fitopts))
+    if fitter_id in all_fit_options:
+        all_fit_options[fitter_id]["settings"].update(dict(fitopts))
     api.state.shared.fitter_settings = all_fit_options
 
     api.state.parallel = options.parallel
