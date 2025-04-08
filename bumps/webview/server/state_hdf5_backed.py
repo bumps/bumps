@@ -711,6 +711,11 @@ class SharedState:
         for callback in self._notification_callbacks.values():
             await callback(name, value)
 
+    async def notify(self, name, value=None):
+        value = await self.get(name)
+        for callback in self._notification_callbacks.values():
+            await callback(name, value)
+
     async def get(self, name):
         return getattr(self, name, UNDEFINED)
 

@@ -68,7 +68,12 @@ MODEL_EXT = ".json"
 TRACE_MEMORY = False
 
 
+# TODO: any other state that needs to be initialized?
+# TODO: can initialization be moved to the SharedState constructor?
+# Initialize state
 state = State()
+state.shared.fitter_id = fit_options.DEFAULT_FITTER_ID
+state.shared.fitter_settings = deepcopy(fit_options.FITTER_DEFAULTS)
 
 
 def register(fn: Callable):
@@ -517,7 +522,7 @@ async def shake_parameters():
 
 
 @register
-async def start_fit_thread(fitter_id, options):
+async def start_fit_thread(fitter_id: str, options: Optional[Dict[str, Any]] = None):
     fitProblem = state.problem.fitProblem if state.problem is not None else None
     if fitProblem is None:
         await log("Error: Can't start fit if no problem loaded")
@@ -544,14 +549,18 @@ async def start_fit_thread(fitter_id, options):
         state.fit_complete_event = asyncio.Event()
         state.fit_complete_event.clear()
 
-        # print(f"*** start_fit_thread {options=}")
+        # Use shared settings by default, update from any provided options
+        shared_settings = state.shared.fitter_settings
+        full_options = shared_settings[fitter_id]["settings"].copy()
+        if options:
+            full_options.update(options)
         fitclass = fit_options.lookup_fitter(fitter_id)
         fit_thread = FitThread(
             abort_event=state.fit_abort_event,
             fitclass=fitclass,
             problem=fitProblem,
             mapper=state.mapper,
-            options=dict(options),
+            options=full_options,
             parallel=state.parallel,
             # session_id=session_id,
             # Number of seconds between updates to the GUI, or 0 for no updates
@@ -578,6 +587,14 @@ async def start_fit_thread(fitter_id, options):
         state.autosave()
         fit_thread.start()
         state.fit_thread = fit_thread
+
+
+@register
+async def set_fit_options(fitter_id: str, options: Dict[str, Any]):
+    current_options = state.shared.fitter_settings[fitter_id]["settings"]
+    current_options.update(options)
+    # items in state.shared are not deeply reactive, so we have to explicitly notify:
+    state.shared.notify("fitter_settings")
 
 
 async def wait_for_fit_complete():
@@ -1247,8 +1264,8 @@ async def get_dirlisting(pathlist: Optional[List[str]] = None):
 
 
 @register
-async def get_fitter_defaults(*args):
-    return {fitter.id: dict(name=fitter.name, settings=dict(fitter.settings)) for fitter in fit_options.FITTERS}
+async def get_fitter_defaults():
+    return fit_options.FITTER_DEFAULTS
 
 
 @register

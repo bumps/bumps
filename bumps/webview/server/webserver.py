@@ -174,6 +174,7 @@ def setup_app(options: BumpsOptions, sock: Optional[socket.socket] = None):
     async def notice(message: str):
         logger.info(message)
 
+    # run setup tasks:
     on_startup, on_complete = cli.interpret_fit_options(options)
     app.on_startup.extend(on_startup)
     app.on_cleanup.append(lambda App: notice("cleanup task"))

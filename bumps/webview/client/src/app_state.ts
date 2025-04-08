@@ -82,6 +82,7 @@ export class AutoupdateState {
     const shared_state_keys = Object.keys(this.shared_state) as (keyof SharedState)[];
     for (const key of shared_state_keys) {
       const initial_value = await socket.asyncEmit(`get_shared_setting`, key);
+      console.debug(`Received initial value for ${key}: ${JSON.stringify(initial_value, null, 2)}`);
       this.shared_state[key].value = initial_value;
     }
 

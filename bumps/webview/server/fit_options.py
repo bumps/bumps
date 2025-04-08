@@ -14,6 +14,10 @@ FITTERS = (
     fitters.BFGSFit,
 )
 DEFAULT_FITTER_ID = fitters.SimplexFit.id
+# Note: there are fitters that are not available in the default list but they
+# can still be specified on the command line. If one of these is used then it
+# needs to be advertised to webview via state.shared.fitter_settings
+FITTER_DEFAULTS = {fitter.id: dict(name=fitter.name, settings=dict(fitter.settings)) for fitter in FITTERS}
 
 
 def lookup_fitter(fitter_id: str):
@@ -195,7 +199,7 @@ def form_fit_options_associations():
             setting.defaults.append(value)
 
 
-def update_options(options: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str]]:
+def check_options(options: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str]]:
     """
     Check if the set of options is consistent for the fitter.
 
@@ -207,6 +211,7 @@ def update_options(options: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str]]:
     unknown = []
     fitter_id = options.get("fit", DEFAULT_FITTER_ID)
     # available = set(fitter.id for fitter in FITTERS)
+    # Check against all available fitters, not just the ones visibile in the interface
     available = FIT_AVAILABLE_IDS
     if fitter_id not in available:
         errors.append(f"Fitter {fitter_id} not in {', '.join(available)}. Using {DEFAULT_FITTER_ID} instead.")
@@ -214,7 +219,7 @@ def update_options(options: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str]]:
     fitter = lookup_fitter(fitter_id)
     defaults = dict(fitter.settings)
     # print(f"defaults for {fitter_id}: {defaults}")
-    new_options = {"fit": fitter_id}
+    new_options = {"fit": fitter_id, **defaults}
     for key, value in options.items():
         if key == "fit":
             # Already added.
@@ -247,57 +252,3 @@ def update_options(options: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str]]:
         # Format the skipped options nicely and add to the error list
         errors = [f"Unused fit options in {fitter_id}: {' '.join(unknown)}", *errors]
     return new_options, errors
-
-
-# TODO: remove unused parse_fit_options
-# *** Deprecated ***
-def parse_fit_options(fitter_id: str, fit_options: Optional[List[str]] = None) -> Dict:
-    FITTER_DEFAULTS = {}
-    for fitter in FITTERS:
-        FITTER_DEFAULTS[fitter.id] = {
-            "name": fitter.name,
-            "settings": dict(fitter.settings),
-        }
-    if fitter_id not in FITTER_DEFAULTS:
-        raise ValueError(f"invalid fitter: {fitter_id}")
-    fitter_settings: Dict = FITTER_DEFAULTS[fitter_id]["settings"]
-    if fit_options is not None:
-        # fit options is a list of strings of the form "key=value"
-        for option_str in fit_options:
-            parts = option_str.split("=")
-            if len(parts) != 2:
-                raise ValueError(f"invalid fit option: {option_str}, must be of form 'key=value'")
-            key, value = parts
-            if key not in fitter_settings:
-                raise ValueError(
-                    f"invalid fit option: '{key}' for fitter '{fitter_id}'; valid options are: {list(fitter_settings.keys())}"
-                )
-
-            setting = FIT_OPTIONS[key]
-            stype = setting.stype
-            if stype is int:
-                value = int(value)
-            elif stype is float:
-                value = float(value)
-            elif isinstance(stype, Range):
-                value = float(value)
-                if not stype.min <= value <= stype.max:
-                    raise ValueError(f"invalid value for {key}: {value} not in [{stype.min:g}, {stype.max:g}]")
-            elif stype is str:
-                pass
-            elif stype is bool:
-                if value.lower() in ["true", "1", "yes", "on"]:
-                    value = True
-                elif value.lower() in ["false", "0", "no", "off"]:
-                    value = False
-                else:
-                    raise ValueError(f"invalid value for {key}: '{value}'; valid options are yes and no")
-            elif isinstance(stype, list):
-                if value not in stype:
-                    raise ValueError(f"invalid value for {key}: '{value}'; valid options are: {stype}")
-            else:
-                raise ValueError(f"invalid type: {stype}")
-
-            fitter_settings[key] = value
-
-    return fitter_settings
