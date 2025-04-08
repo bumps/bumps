@@ -548,9 +548,11 @@ async def start_fit_thread(fitter_id: str, options: Optional[Dict[str, Any]] = N
         shared_settings = state.shared.fitter_settings
         if isinstance(shared_settings, dict) and fitter_id in shared_settings:
             full_options = deepcopy(shared_settings[fitter_id]["settings"])
-        else:
+        elif fitter_id in fit_options.FITTER_DEFAULTS:
             # fall back to default settings if no shared settings are available
             full_options = deepcopy(fit_options.FITTER_DEFAULTS[fitter_id]["settings"])
+        else:
+            full_options = {}
         if options is not None:
             full_options.update(options)
         fitclass = fit_options.lookup_fitter(fitter_id)
