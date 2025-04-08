@@ -517,7 +517,7 @@ async def shake_parameters():
 
 
 @register
-async def start_fit_thread(fitter_id, options):
+async def start_fit_thread(fitter_id: str, options: Optional[Dict[str, Any]] = None):
     fitProblem = state.problem.fitProblem if state.problem is not None else None
     if fitProblem is None:
         await log("Error: Can't start fit if no problem loaded")
@@ -544,14 +544,22 @@ async def start_fit_thread(fitter_id, options):
         state.fit_complete_event = asyncio.Event()
         state.fit_complete_event.clear()
 
-        # print(f"*** start_fit_thread {options=}")
+        # Use shared settings by default, update from any provided options
+        shared_settings = state.shared.fitter_settings
+        if isinstance(shared_settings, dict) and fitter_id in shared_settings:
+            full_options = deepcopy(shared_settings[fitter_id]["settings"])
+        else:
+            # fall back to default settings if no shared settings are available
+            full_options = deepcopy(fit_options.FITTER_DEFAULTS[fitter_id]["settings"])
+        if options is not None:
+            full_options.update(options)
         fitclass = fit_options.lookup_fitter(fitter_id)
         fit_thread = FitThread(
             abort_event=state.fit_abort_event,
             fitclass=fitclass,
             problem=fitProblem,
             mapper=state.mapper,
-            options=dict(options),
+            options=full_options,
             parallel=state.parallel,
             # session_id=session_id,
             # Number of seconds between updates to the GUI, or 0 for no updates
@@ -1248,11 +1256,7 @@ async def get_dirlisting(pathlist: Optional[List[str]] = None):
 
 @register
 async def get_fitter_defaults():
-    return _get_fitter_defaults()
-
-
-def _get_fitter_defaults():
-    return {fitter.id: dict(name=fitter.name, settings=dict(fitter.settings)) for fitter in fit_options.FITTERS}
+    return fit_options.FITTER_DEFAULTS
 
 
 @register
