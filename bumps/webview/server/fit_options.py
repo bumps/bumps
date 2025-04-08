@@ -15,6 +15,8 @@ FITTERS = (
 )
 DEFAULT_FITTER_ID = fitters.SimplexFit.id
 
+FITTER_DEFAULTS = {fitter.id: dict(name=fitter.name, settings=dict(fitter.settings)) for fitter in FITTERS}
+
 
 def lookup_fitter(fitter_id: str):
     # Checking the complete list of fitters, not the restricted list for webview
