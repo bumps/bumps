@@ -486,20 +486,25 @@ def interpret_fit_options(options: BumpsOptions):
         TRACE_MEMORY = True
         api.TRACE_MEMORY = True
 
-    fitopts, errors = fit_options.update_options(options.fit_options)
+    fitopts, errors = fit_options.check_options(options.fit_options)
     if errors:
         warnings.warn("\n".join(errors))
     # TODO: leave fitter_id in fitopts
     # TODO: use dict rather than list of pairs for fitopts
     fitter_id = fitopts.pop("fit")
 
-    # on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
-    api.state.shared.selected_fitter = fitter_id
-    if isinstance(api.state.shared.fitter_settings, dict) and fitter_id in api.state.shared.fitter_settings:
-        api.state.shared.fitter_settings[fitter_id]["settings"].update(fitopts)
+    # Add secret fitter to the GUI (pt and scipy.leastsq as of this writing)
+    # TODO: FitOptions.vue needs to update fit_names on changeActiveFitter
+    if fitter_id not in api.state.shared.fitter_settings:
+        fitter = fit_options.lookup_fitter(fitter_id)
+        api.state.shared.fitter_settings[fitter_id] = {"name": fitter.name, "settings": dict(fitter.settings)}
 
+    # Show selected fit options in the GUI
+    api.state.shared.selected_fitter = fitter_id
+    api.state.shared.fitter_settings[fitter_id]["settings"].update(fitopts)
     api.state.parallel = options.parallel
 
+    # on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
     if options.filename is not None:
         filepath = Path(options.filename).absolute()
         model_pathlist = list(filepath.parent.parts)

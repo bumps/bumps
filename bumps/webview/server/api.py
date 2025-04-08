@@ -68,7 +68,12 @@ MODEL_EXT = ".json"
 TRACE_MEMORY = False
 
 
+# TODO: any other state that needs to be initialized?
+# TODO: can initialization be moved to the SharedState constructor?
+# Initialize state
 state = State()
+state.shared.fitter_id = fit_options.DEFAULT_FITTER_ID
+state.shared.fitter_settings = deepcopy(fit_options.FITTER_DEFAULTS)
 
 
 def register(fn: Callable):
@@ -546,14 +551,8 @@ async def start_fit_thread(fitter_id: str, options: Optional[Dict[str, Any]] = N
 
         # Use shared settings by default, update from any provided options
         shared_settings = state.shared.fitter_settings
-        if isinstance(shared_settings, dict) and fitter_id in shared_settings:
-            full_options = deepcopy(shared_settings[fitter_id]["settings"])
-        elif fitter_id in fit_options.FITTER_DEFAULTS:
-            # fall back to default settings if no shared settings are available
-            full_options = deepcopy(fit_options.FITTER_DEFAULTS[fitter_id]["settings"])
-        else:
-            full_options = {}
-        if options is not None:
+        full_options = shared_settings[fitter_id]["settings"].copy()
+        if options:
             full_options.update(options)
         fitclass = fit_options.lookup_fitter(fitter_id)
         fit_thread = FitThread(
