@@ -1,4 +1,5 @@
 import asyncio
+from copy import deepcopy
 import functools
 import mimetypes
 import os
@@ -14,6 +15,7 @@ from . import api
 from . import persistent_settings
 from .logger import logger
 from .cli import BumpsOptions
+from .fit_options import FITTER_DEFAULTS
 
 matplotlib.use("agg")
 
@@ -174,6 +176,12 @@ def setup_app(options: BumpsOptions, sock: Optional[socket.socket] = None):
     async def notice(message: str):
         logger.info(message)
 
+    # NOTE: it is important that the fitter_settings are populated before
+    # calling interpret_fit_options, since the fitter_settings are updated
+    # with the new fitopts in that function
+    api.state.shared.fitter_settings = deepcopy(FITTER_DEFAULTS)
+
+    # run setup tasks:
     on_startup, on_complete = cli.interpret_fit_options(options)
     app.on_startup.extend(on_startup)
     app.on_cleanup.append(lambda App: notice("cleanup task"))
