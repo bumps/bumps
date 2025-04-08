@@ -589,6 +589,14 @@ async def start_fit_thread(fitter_id: str, options: Optional[Dict[str, Any]] = N
         state.fit_thread = fit_thread
 
 
+@register
+async def set_fit_options(fitter_id: str, options: Dict[str, Any]):
+    current_options = state.shared.fitter_settings[fitter_id]["settings"]
+    current_options.update(options)
+    # items in state.shared are not deeply reactive, so we have to explicitly notify:
+    state.shared.notify("fitter_settings")
+
+
 async def wait_for_fit_complete():
     if state.fit_thread is not None:
         await state.fit_complete_event.wait()
