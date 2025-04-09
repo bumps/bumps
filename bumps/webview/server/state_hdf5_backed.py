@@ -387,6 +387,8 @@ class State:
     """Cleared before the fit and set on Stop button or Ctrl-C to end the fit."""
     fit_complete_event: asyncio.Event
     """Cleared before the fit starts and set when the fit is complete and saved."""
+    fit_timer: asyncio.Task
+    """Started when the fit is started; needs to be cancelled when fit is stopped."""
     # fit_complete_future: asyncio.Future
     shutdown_on_fit_complete: bool = False
     """Used to implement the --exit option to halt server on completion."""
