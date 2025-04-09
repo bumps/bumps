@@ -143,8 +143,6 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     --resume=path    [dream]
         resume a fit from previous stored state; if path is '-' then use the
         path given by --store, if it exists
-    --time=inf
-        run for a maximum number of hours
 
     # Wait for someone to ask for the following
     --err
@@ -166,8 +164,6 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         models for better statistics
     --stepmon
         show details for each step in .log file
-    --batch                        [current version doesn't save .mon]
-        batch mode; save output in .mon file and don't show plots after fit
 
     # Won't implement
     --plot=linear|log|residuals    [plugin specific]
@@ -179,19 +175,21 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         output staj file when done [Refl1D only]
 
     # Superceded
-    -m/-c/-p command               [we are shipping a python evironment]
+    -m/-c/-p command               [we are shipping a python environment]
         run the python interpreter with bumps on the path:
             m: command is a module such as bumps.cli, run as __main__
             c: command is a python one-line command
             p: command is the name of a python script
-    -i                             [our python environment supports pip]
+    -i                             [our python environment can install ipython with pip]
         start the interactive interpreter
     --noshow                       [use --export to produce plots]
         semi-batch; send output to console but don't show plots after fit
-    --preview                      [use gui instead]
+    --preview                      [use webview instead]
         display model but do not perform a fitting operation
     --edit                         [default]
         start the gui
+    --batch                        [current version doesn't save .mon]
+        batch mode; save output in .mon file and don't show plots after fit
     """
     prog = api.state.app_name
     parser = argparse.ArgumentParser(
