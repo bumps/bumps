@@ -37,8 +37,7 @@ from numpy import ascontiguousarray as _dense
 from scipy.special import erf
 
 USE_PYDANTIC = os.environ.get("BUMPS_USE_PYDANTIC", "False") == "True"
-if TYPE_CHECKING:
-    from numpy.typing import NDArray
+from numpy.typing import NDArray
 
 
 def field_desc(description: str) -> Any:

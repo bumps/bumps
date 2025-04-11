@@ -19,6 +19,7 @@ from numpy.random import rand, randn, randint, permutation
 def every_ten(step, x, fx, P, E):
     if step % 10:
         print(step, fx[step], x[step])
+    return True
 
 
 def parallel_tempering(nllf, p, bounds, T=None, steps=1000, CR=0.9, burn=1000, monitor=every_ten, logfile=None):
@@ -135,7 +136,9 @@ def parallel_tempering(nllf, p, bounds, T=None, steps=1000, CR=0.9, burn=1000, m
             # assert nllf(P[0]) == E[0]
 
             # Monitoring
-            monitor(step, history.best_point, history.best, P, E)
+            if not monitor(step, history.best_point, history.best, P, E):
+                break
+
             interval = 100
             if 0 and step % interval == 0:
                 print("max r", max(["%.1f" % norm(p - P[0]) for p in P[1:]]))

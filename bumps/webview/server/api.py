@@ -556,7 +556,7 @@ async def start_fit_thread(fitter_id: str, options: Optional[Dict[str, Any]] = N
             full_options.update(options)
         fitclass = fit_options.lookup_fitter(fitter_id)
         fit_thread = FitThread(
-            abort_event=state.fit_abort_event,
+            fit_abort_event=state.fit_abort_event,
             fitclass=fitclass,
             problem=fitProblem,
             mapper=state.mapper,
@@ -666,7 +666,7 @@ async def _fit_complete_handler(event: Dict[str, Any]):
             logger.warning(f"Fit failed with error: {event['error_string']}\n{event['traceback']}")
             return
 
-        # print("capturing results")
+        # print(event['info'])  # Needed if we are dumping fit outputs to the terminal
         problem: bumps.fitproblem.FitProblem = event["problem"]
         chisq = nice(2 * event["value"] / problem.dof)
         problem.setp(event["point"])
@@ -1293,7 +1293,8 @@ async def add_notification(content: str, title: str = "Notification", timeout: O
 
 async def _shutdown():
     # print("raising SystemExit")
-    raise SystemExit(0)
+    # raise SystemExit(0)
+    ...
 
 
 VALUE_PRECISION = 6

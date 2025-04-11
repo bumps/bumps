@@ -41,6 +41,7 @@ import signal
 import sys
 import logging
 from dataclasses import field
+# from textwrap import dedent
 
 from bumps import __version__
 from bumps.fitters import FIT_AVAILABLE_IDS
@@ -66,6 +67,7 @@ class BumpsOptions:
 
     # Fitter controls.
     fit_options: Dict[str, Any] = field(default_factory=dict)
+    # fit_outputs: Dict[str, Any] = field(default_factory=dict)
 
     # Session file controls.
     store: Optional[str] = None
@@ -147,12 +149,6 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         run for a maximum number of hours
 
     # Wait for someone to ask for the following
-    --err
-        show uncertainty estimate from curvature at the minimum
-    --cov
-        show the covariance matrix for the model when done
-    --entropy=gmm|mvn|wnn|llf
-        compute entropy on posterior distribution [dream only]
     --overwrite                    [new version extends session file]
         if store already exists, replace it
     --checkpoint=0                 [verify we have checkpointing in batch mode]
@@ -204,6 +200,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         nargs="?",
         help="problem file to load, .py or .json (serialized) fitproblem",
     )
+    # TODO: Don't need --args specifier since this is just the extras after model.py
     parser.add_argument(
         "--args",
         nargs="*",
@@ -224,14 +221,51 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         help = f"{option.label}  [{', '.join(option.fitters)}]\n{option.description}"
         fitter.add_argument(
             f"--{name.replace('_', '-')}",
-            metavar=metavar,
-            type=str if choices else stype,
-            choices=choices,
             action=DictAction,
             dest=f"fit_options.{name}",
+            type=str if choices else stype,
+            metavar=metavar,
+            nargs=0 if stype is bool else None,
+            choices=choices,
             # Allow hidden parameters for hidden optimizers. E.g., pt has --nT
             help=help if option.fitters else argparse.SUPPRESS,
         )
+
+    # TODO: show uncertainty at the end of the fit
+    # # Fit outputs
+    # output = parser.add_argument_group("Fitting outputs")
+    # output.add_argument(
+    #     "--err",
+    #     action=DictAction,
+    #     dest="fit_outputs.err",
+    #     type=bool,
+    #     metavar=" ",
+    #     nargs=0,
+    #     help="Show uncertainty from covariance",
+    # )
+    # output.add_argument(
+    #     "--cov",
+    #     action=DictAction,
+    #     dest="fit_outputs.cov",
+    #     type=bool,
+    #     metavar=" ",
+    #     nargs=0,
+    #     help="Show covariance matrix on output",
+    # )
+    # output.add_argument(
+    #     "--entropy",
+    #     action=DictAction,
+    #     dest="fit_outputs.entropy",
+    #     type=str,
+    #     choices=["gmm", "mvn", "wnn", "llf"],
+    #     help=dedent("""\
+    #     Compute entropy from uncertainty distribution [dream only]:
+    #         mvn: Fit to a single multivariate normal
+    #         gmm: Fit to a Gaussian mixture model
+    #         wnn: Weighted Kozeachenko-Leonenko nearest neighbour (Berrettt 2016)
+    #         llf: Use local density to estimate loglikelihood factor (Kramer 2010)
+    #     """),
+    # )
 
     # Session file controls.
     session = parser.add_argument_group("Session file management")
@@ -634,9 +668,6 @@ def interpret_fit_options(options: BumpsOptions):
     return on_startup, on_complete
 
 
-async def _shutdown_cli(): ...
-
-
 async def _run_operations(on_startup, on_complete):
     for step in on_startup:
         await step(None)
@@ -692,7 +723,6 @@ def run_batch_fit(options: BumpsOptions):
     # api.EMITTERS["console"] = emit_to_console
 
     # Monkeypatch shutdown so it doesn't raise system exit
-    api._shutdown = _shutdown_cli
     signal.signal(signal.SIGINT, sigint_handler)
     on_startup, on_complete = interpret_fit_options(options)
     asyncio.run(_run_operations(on_startup, on_complete))
