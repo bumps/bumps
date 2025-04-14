@@ -8,11 +8,9 @@ import sys
 import os
 from os.path import join as joinpath
 import tempfile
-import glob
 import subprocess
 from pathlib import Path
 import h5py
-import numpy as np
 
 sys.dont_write_bytecode = True
 
@@ -83,6 +81,7 @@ def run_fits(model_args, path, fitters=FIT_AVAILABLE_IDS, seed=1, target=0):
 
 
 def main():
+    # Note: bumps.fitters.test_fitters already runs curvefit on the "active" fitters
     fitters = sys.argv[1:] if len(sys.argv) > 1 else FIT_AVAILABLE_IDS
     # TODO: use a test function that defines residuals
     test_functions = EXAMPLEDIR / "test_functions" / "model.py"

@@ -144,6 +144,8 @@ class MonitorRunner(object):
         population_points: Optional[NDArray] = None,
         population_values: Optional[NDArray] = None,
     ):
+        # Note: DEFit doesn't use MonitorRunner for config/update
+        # print(f"updating with {step} {perf_counter() - self._start} {value} {point}")
         self.history.update(
             time=perf_counter() - self._start,
             step=step,
@@ -314,6 +316,7 @@ class DEFit(FitBase):
         minimize = Minimizer(
             strategy=strategy,
             problem=self.problem,
+            # TODO: use MonitorRunner update within DE
             history=monitors.history,
             monitors=monitors.monitors,
             success=success,
@@ -1371,6 +1374,7 @@ def test_fitters():
     expected_error = [5.799e-2, 2.055e-2]
 
     for fitter_name in FIT_ACTIVE_IDS:
+        # print(f"Running {fitter_name}")
         result = fit(problem, method=fitter_name, verbose=False)
         assert np.allclose(result.x, expected_value, rtol=fit_value_tol)
         if fitter_name != "dream":

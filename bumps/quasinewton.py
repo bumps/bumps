@@ -245,6 +245,9 @@ def quasinewton(
         consecmax = consecmax + 1 if maxtaken else 0
         termcode = umstop(n, xc, xp, fp, gp, Sx, typf, retcode, gradtol, steptol, itncount, itnlimit, consecmax)
 
+        # Update the iteration monitor and check for user abort.
+        cancel = not monitor(x=xp, fx=fp, step=itncount)
+
         # STEP 10.6
         # If termcode is larger than zero, we found a point satisfying one
         # of the termination criteria, return from here.  Otherwise evaluate
@@ -253,7 +256,7 @@ def quasinewton(
             xf = xp  # x final
             ff = fp  # f final
 
-        elif not monitor(x=xp, fx=fp, step=itncount):
+        elif cancel:
             termcode = 6
 
         else:
