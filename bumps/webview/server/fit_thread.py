@@ -104,7 +104,7 @@ class ConvergenceMonitor(monitor.Monitor):
             self._send_update()
             self.time = history.time[0]
 
-    def final(self, result, history):
+    def final(self, history, best):
         """
         Close out the monitor but sending any tailing convergence information
         """
@@ -160,7 +160,7 @@ class DreamMonitor(monitor.Monitor):
             # print("Dream update", evt)
             EVT_FIT_PROGRESS.send(evt)
 
-    def final(self, result, history):
+    def final(self, history, best):
         """
         Close out the monitor
         """

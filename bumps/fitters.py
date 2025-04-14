@@ -16,7 +16,7 @@ from . import lsqerror
 from .history import History
 from .formatnum import format_uncertainty
 from .fitproblem import nllf_scale
-from .util import NDArray
+from .util import NDArray, format_duration
 
 from .dream import MCMCModel
 
@@ -30,25 +30,32 @@ class ConsoleMonitor(monitor.TimedUpdate):
         monitor.TimedUpdate.__init__(self, progress=progress, improvement=improvement)
         self.problem = problem
 
-    def show_progress(self, history):
+    def _print_chisq(self, k, fx):
         scale, err = nllf_scale(self.problem)
-        chisq = format_uncertainty(scale * history.value[0], err)
-        print("step", history.step[0], "cost", chisq)
-        sys.stdout.flush()
+        chisq = format_uncertainty(scale * fx, err)
+        print(f"step {k} cost {chisq}")
 
-    def show_improvement(self, history):
-        # print("step",history.step[0],"chisq",history.value[0])
+    def _print_pars(self, x):
         p = self.problem.getp()
         try:
-            self.problem.setp(history.point[0])
+            self.problem.setp(x)
             print(self.problem.summarize())
         finally:
             self.problem.setp(p)
+
+    def show_progress(self, history):
+        self._print_chisq(history.step[0], history.value[0])
         sys.stdout.flush()
 
-    def final(self, result: Dict[str, Any], history: History):
-        self.show_progress(history)
-        self.show_improvement(history)
+    def show_improvement(self, history):
+        self._print_pars(history.point[0])
+        sys.stdout.flush()
+
+    def final(self, history: History, best: Dict[str, Any]):
+        self._print_chisq("final", best["value"])
+        self._print_pars(best["point"])
+        print(f"time {format_duration(history.time[0])}")
+        sys.stdout.flush()
 
     def info(self, message: str):
         print(message)
@@ -104,7 +111,7 @@ class StepMonitor(monitor.Monitor):
     def config_history(self, history):
         history.requires(time=1, value=1, point=1, step=1)
 
-    def __call__(self, history):
+    def update(self, history):
         point = " ".join("%.15g" % v for v in history.point[0])
         time = "%g" % history.time[0]
         step = "%d" % history.step[0]
@@ -113,6 +120,8 @@ class StepMonitor(monitor.Monitor):
         out = self._pattern % dict(point=point, time=time, value=value, step=step)
         self.fid.write(out)
 
+    __call__ = update
+
 
 class MonitorRunner(object):
     """
@@ -120,8 +129,6 @@ class MonitorRunner(object):
     """
 
     def __init__(self, monitors: List[monitor.Monitor], problem, abort_test=None):
-        if monitors is None:
-            monitors = [ConsoleMonitor(problem)]
         self.monitors = monitors
         self.history = History(time=1, step=1, point=1, value=1, population_points=1, population_values=1)
         for M in self.monitors:
@@ -129,7 +136,7 @@ class MonitorRunner(object):
         self._start = perf_counter()
         self.abort_test = abort_test if abort_test is not None else lambda: False
 
-    def __call__(
+    def update(
         self,
         step: int,
         point: NDArray,
@@ -148,6 +155,8 @@ class MonitorRunner(object):
         for M in self.monitors:
             M(self.history)
 
+    __call__ = update
+
     def stopping(self):
         return self.abort_test()
 
@@ -157,11 +166,12 @@ class MonitorRunner(object):
             if monitor_message is not None:
                 monitor_message(message)
 
-    def final(self, **result):
+    def final(self, point: NDArray, value: float):
+        best = dict(point=point, value=value)
         for M in self.monitors:
             monitor_final = getattr(M, "final", None)
             if monitor_final is not None:
-                monitor_final(result, self.history)
+                monitor_final(self.history, best)
 
 
 class FitBase(object):
@@ -245,16 +255,16 @@ class MultiStart(FitBase):
     def solve(self, monitors: MonitorRunner, mapper=None, **options):
         starts = max(options.pop("starts", 1), 1)
         jump = options.pop("jump", 0.0)
-        f_best = np.inf
-        x_best = self.problem.getp()
+        x_best, f_best, chisq_best = None, np.inf, None
         scale, err = nllf_scale(self.problem)
-        chisq_best = format_uncertainty(scale * f_best, err)
         for k in range(starts):
             x, fx = self.fitter.solve(monitors=monitors, mapper=mapper, **options)
             chisq = format_uncertainty(scale * fx, err)
-            monitors.info(f"fit {k+1} of {starts}: {chisq} [best={'this' if fx < f_best else chisq_best}]")
             if fx < f_best:
                 x_best, f_best, chisq_best = x, fx, chisq
+                monitors.info(f"fit {k+1} of {starts}: {chisq} [new best]")
+            else:
+                monitors.info(f"fit {k+1} of {starts}: {chisq} [best={chisq_best}]")
             if k >= starts - 1 or monitors.stopping():
                 break
             if jump == 0.0:
@@ -822,9 +832,7 @@ class DreamFit(FitBase):
         draws, steps = int(options["samples"]), options["steps"]
         if steps == 0:
             steps = (draws + pop_size - 1) // pop_size
-        # TODO: need a better way to announce number of steps
-        # maybe somehow print iteration # of # iters in the monitor?
-        print(f"# burn: {options['burn']} # steps: {steps}, # draws: {pop_size * steps}")
+        monitors.info(f"# burn: {options['burn']} # steps: {steps}, # draws: {pop_size * steps}")
         population = population[None, :, :]
         sampler = Dream(
             model=self.dream_model,
@@ -978,7 +986,7 @@ class FitDriver(object):
         self.fitclass = fitclass
         self.problem = problem
         self.options = options
-        self.monitors = [ConsoleMonitor()] if monitors is None else monitors
+        self.monitors = [ConsoleMonitor(problem)] if monitors is None else monitors
         self.abort_test = abort_test
         self.mapper = mapper if mapper else lambda p: list(map(problem.nllf, p))
         self.fitter = None
@@ -996,7 +1004,6 @@ class FitDriver(object):
         starts = self.options.get("starts", 1)
         if starts > 1:
             fitter = MultiStart(fitter)
-        t0 = perf_counter()
         # TODO: better interface for history management?
         # Keep a handle to the fitter which has state and monitor_runner which has history
         self.fitter = fitter
@@ -1006,9 +1013,9 @@ class FitDriver(object):
         )
         if x is not None:
             self.problem.setp(x)
-        self.time = perf_counter() - t0
+        self.time = self.monitor_runner.history.time[0]
         self.result = x, fx
-        self.monitor_runner.final(x=x, fx=fx, dx=self.stderr(), time=self.time)
+        self.monitor_runner.final(point=x, value=fx)
         return x, fx
 
     def clip(self):

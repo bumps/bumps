@@ -155,7 +155,7 @@ FIT_FIELDS = dict(
     trim=("Burn-in trim", yesno),
     outliers=("Outliers", ChoiceList("none", "iqr", "grubbs", "mahal")),
     starts=("Starts", parse_int),
-    near_best=("Restart from best", yesno),
+    jump=("Jump radius", float),
 )
 
 # Make sure all settings are parseable
