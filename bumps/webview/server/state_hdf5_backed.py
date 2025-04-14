@@ -733,4 +733,6 @@ class SharedState:
             return
         for f in fields(self):
             if f.name not in self._not_reloaded:
-                setattr(self, f.name, read_json(group, f.name))
+                value = read_json(group, f.name)
+                if value is not UNDEFINED:
+                    setattr(self, f.name, value)
