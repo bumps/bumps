@@ -1317,12 +1317,15 @@ def fit(problem, method=FIT_DEFAULT_ID, verbose=False, **options):
     from scipy.optimize import OptimizeResult
 
     # verbose = True
+    # Options parser stores --fit=fitter in fit_options["fit"] rather than fit_options["method"]
+    if "fit" in options:
+        method = options.pop("fit")
     if method not in FIT_AVAILABLE_IDS:
-        raise ValueError("unknown method %r not one of %s" % (method, ", ".join(sorted(FIT_ACTIVE_IDS))))
+        raise ValueError("unknown fit method %r not one of %s" % (method, ", ".join(sorted(FIT_ACTIVE_IDS))))
     for fitclass in FITTERS:
         if fitclass.id == method:
             break
-    monitors = None if verbose else []  # default is step monitor
+    monitors = None if verbose else []  # default is console monitor
     driver = FitDriver(fitclass=fitclass, problem=problem, monitors=monitors, **options)
     driver.clip()  # make sure fit starts within domain
     x, fx = driver.fit()
