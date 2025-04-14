@@ -72,7 +72,7 @@ TRACE_MEMORY = False
 # TODO: can initialization be moved to the SharedState constructor?
 # Initialize state
 state = State()
-state.shared.fitter_id = fit_options.DEFAULT_FITTER_ID
+state.shared.selected_fitter = fit_options.DEFAULT_FITTER_ID
 state.shared.fitter_settings = deepcopy(fit_options.FITTER_DEFAULTS)
 
 
