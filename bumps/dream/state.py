@@ -74,11 +74,13 @@ __all__ = ["MCMCDraw", "load_state", "save_state"]
 import os.path
 import re
 import gzip
-from typing import List
+from typing import List, Dict, Tuple, Literal, Union, Optional, Callable
+from pathlib import Path
 
 import numpy as np
 from numpy import empty, sum, asarray, inf, argmax, hstack, dstack
 from numpy import savetxt, reshape
+from numpy.typing import NDArray
 
 from .convergence import burn_point
 from .outliers import identify_outliers
@@ -101,6 +103,9 @@ except NameError:
     # python 3.x
     def write(fid, s):
         fid.write(s.encode("utf-8") if isinstance(s, str) else s)
+
+
+SelectionType = Optional[Dict[Union[int, Literal["logp"]], Tuple[float, float]]]
 
 
 class NoTrace:
@@ -304,7 +309,7 @@ class MCMCDraw(object):
     _integer_vars = None  # boolean array of integer variables, or None
     title = None
 
-    def __init__(self, Ngen, Nthin, Nupdate, Nvar, Npop, Ncr, thinning):
+    def __init__(self, Ngen: int, Nthin: int, Nupdate: int, Nvar: int, Npop: int, Ncr: int, thinning: int):
         # Total number of draws so far
         self.draws = 0
 
@@ -378,7 +383,7 @@ class MCMCDraw(object):
     def Ncr(self):
         return self._update_CR_weight.shape[1]
 
-    def resize(self, Ngen, Nthin, Nupdate, Nvar, Npop, Ncr, thinning):
+    def resize(self, Ngen: int, Nthin: int, Nupdate: int, Nvar: int, Npop: int, Ncr: int, thinning: int):
         if self.Nvar != Nvar or self.Npop != Npop or self.Ncr != Ncr:
             raise ValueError("Cannot change Nvar, Npop or Ncr on resize")
 
@@ -421,7 +426,7 @@ class MCMCDraw(object):
             self._update_draws = self._update_draws[-Nupdate:].copy()
             self._update_CR_weight = self._update_CR_weight[-Nupdate:, :].copy()
 
-    def save(self, filename):
+    def save(self, filename: Union[Path, str]):
         save_state(self, filename)
 
     def trim_portion(self):
@@ -429,7 +434,7 @@ class MCMCDraw(object):
         portion = 1 - (index / self.Ngen) if index >= 0 else 0.5
         return portion
 
-    def show(self, portion=1.0, figfile=None):
+    def show(self, portion: float = 1.0, figfile: Union[str, Path, None] = None):
         from .views import plot_all
 
         plot_all(self, portion=portion, figfile=figfile)
@@ -443,7 +448,7 @@ class MCMCDraw(object):
         # existing chain), then this returns the last row in the array.
         return (self._thin_point[self._thin_index - 1], self._thin_logp[self._thin_index - 1])
 
-    def _generation(self, new_draws, x, logp, accept, force_keep=False):
+    def _generation(self, new_draws: int, x: NDArray, logp: NDArray, accept: NDArray, force_keep: bool = False):
         """
         Called from dream.py after each generation is completed with
         a set of accepted points and their values.
@@ -490,7 +495,7 @@ class MCMCDraw(object):
         else:
             self._gen_current = x + 0  # force a copy
 
-    def _update(self, CR_weight):
+    def _update(self, CR_weight: NDArray):
         """
         Called from dream.py when a series of DE steps is completed and
         summary statistics/adaptations are ready to be stored.
@@ -513,7 +518,7 @@ class MCMCDraw(object):
             return self._labels
 
     @labels.setter
-    def labels(self, v):
+    def labels(self, v: List[str]):
         self._labels = v
 
     def _draw_pop(self):
@@ -522,7 +527,7 @@ class MCMCDraw(object):
         """
         return self._gen_current
 
-    def _draw_large_pop(self, Npop):
+    def _draw_large_pop(self, Npop: int):
         _, chains, _ = self.chains()
         Ngen, Nchain, Nvar = chains.shape
         points = reshape(chains, (Ngen * Nchain, Nvar))
@@ -588,7 +593,7 @@ class MCMCDraw(object):
             self._update_CR_weight[:] = np.roll(self._update_CR_weight, -self._update_index, axis=0)
             self._update_index = 0
 
-    def remove_outliers(self, x, logp, test="IQR"):
+    def remove_outliers(self, x: NDArray, logp: NDArray, test: str = "IQR"):
         """
         Replace outlier chains with clones of good ones.  This should happen
         early in the sampling processes so the clones have an opportunity
@@ -628,7 +633,7 @@ class MCMCDraw(object):
         # if len(outliers): print("new llf", logp[outliers])
         return outliers
 
-    def _replace_outlier(self, old, new):
+    def _replace_outlier(self, old: int, new: int):
         """
         Called from outliers.py when a chain is replaced by the
         clone of another.
@@ -642,7 +647,7 @@ class MCMCDraw(object):
         self._thin_logp[index, old] = self._thin_logp[index, new]
         self._thin_point[index, old, :] = self._thin_point[index, new, :]
 
-    def mark_outliers(self, test="IQR", portion=1.0):
+    def mark_outliers(self, test: str = "IQR", portion: float = 1.0):
         """
         Mark some chains as outliers but don't remove them.  This can happen
         after drawing is complete, so that chains that did not converge are
@@ -669,7 +674,7 @@ class MCMCDraw(object):
                 self._good_chains = slice(None, None)
             # print(self._good_chains)
 
-    def logp(self, full=False):
+    def logp(self, full: bool = False):
         """
         Return the iteration number and the log likelihood for each point in
         the individual sequences in that iteration.
@@ -703,7 +708,7 @@ class MCMCDraw(object):
         # TODO: just return logp, not logp and draws
         return draws, (logp if full else logp[:, self._good_chains])
 
-    def logp_slice(self, n):
+    def logp_slice(self, n: int):
         """
         Return a slice of the logp chains, either the first n if n > 0
         or the last n if n < 0.  Avoids unrolling the circular buffer if
@@ -724,7 +729,7 @@ class MCMCDraw(object):
             else:
                 return np.vstack((self._gen_logp[self._gen_index :], self._gen_logp[-n + self._gen_index :]))
 
-    def min_slice(self, n):
+    def min_slice(self, n: int):
         """
         Return the minimum logp for n slices, from the head if positive
         or the tail if negative.
@@ -897,7 +902,15 @@ class MCMCDraw(object):
         drawn = self.draw(**kw)
         return drawn.points, drawn.logp
 
-    def entropy(self, vars=None, portion=1.0, selection=None, n_est=10000, thin=None, method=None):
+    def entropy(
+        self,
+        vars: Optional[List[int]] = None,
+        portion: float = 1.0,
+        selection: SelectionType = None,
+        n_est: int = 10000,
+        thin: Optional[int] = None,
+        method: Optional[str] = None,
+    ):
         r"""
         Return entropy estimate and uncertainty from an MCMC draw.
 
@@ -972,7 +985,9 @@ class MCMCDraw(object):
         # Always return entropy estimate from draw, even if it is normal
         return S, Serr
 
-    def draw(self, portion=1.0, vars=None, selection=None, thin=1):
+    def draw(
+        self, portion: float = 1.0, vars: Optional[List[int]] = None, selection: SelectionType = None, thin: int = 1
+    ):
         """
         Return a sample from the posterior distribution.
 
@@ -998,20 +1013,20 @@ class MCMCDraw(object):
         vars = vars if vars is not None else getattr(self, "_shown", None)
         return Draw(self, portion=portion, vars=vars, selection=selection, thin=thin)
 
-    def set_visible_vars(self, labels):
+    def set_visible_vars(self, labels: List[str]):
         self._shown = [self.labels.index(v) for v in labels]
         # print("\n".join(str(pair) for pair in enumerate(self.labels)))
         # print(labels)
         # print(self._shown)
 
-    def set_integer_vars(self, labels):
+    def set_integer_vars(self, labels: List[str]):
         """
         Indicate tha variables should be considered integer variables when
         computing statistics.
         """
         self._integer_vars = np.array([var in labels for var in self.labels])
 
-    def derive_vars(self, fn, labels=None):
+    def derive_vars(self, fn: Callable[[NDArray], NDArray], labels: Optional[List[str]] = None):
         """
         Generate derived variables from the current sample, adding columns
         for the derived variables to each sample of every chain.
@@ -1059,7 +1074,20 @@ class MCMCDraw(object):
 
 
 class Draw(object):
-    def __init__(self, state: "MCMCDraw", vars=None, portion=None, selection=None, thin=1):
+    state: MCMCDraw
+    vars: Optional[List[int]]
+    portion: Optional[float]
+    selection: SelectionType
+    thin: int
+
+    def __init__(
+        self,
+        state: MCMCDraw,
+        vars: Optional[List[int]] = None,
+        portion: Optional[float] = None,
+        selection: SelectionType = None,
+        thin: int = 1,
+    ):
         self.state = state
         self.vars = vars
         self.portion = portion
@@ -1082,7 +1110,7 @@ class Draw(object):
         return self._argsort_indices[var]
 
 
-def _sample(state, portion: float, vars: List[int], selection, thin):
+def _sample(state, portion: float, vars: List[int], selection: SelectionType, thin):
     """
     Return a sample from a set of chains.
     """
