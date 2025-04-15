@@ -728,7 +728,7 @@ class BoundedNormal(Bounds):
             # for backward compatibility:
             lo, hi = limits
         limits = (-inf if lo is None else float(lo), inf if hi is None else float(hi))
-        # TODO: Why not use dot notation? class Bounds doesn't define __setattr__
+        # Note: Using object.__setattr__ because @dataclass(frozen) blocks setattr on BoundedNormal
         object.__setattr__(self, "lo", limits[0])
         object.__setattr__(self, "hi", limits[1])
         object.__setattr__(self, "mean", mean)
