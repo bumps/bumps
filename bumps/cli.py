@@ -43,17 +43,14 @@ import shutil
 import numpy as np
 # np.seterr(all="raise")
 
-from . import fitters
 from .fitters import FitDriver, StepMonitor, ConsoleMonitor, CheckpointMonitor, nllf_scale
-from .mapper import MPMapper, AMQPMapper, MPIMapper, SerialMapper
-from .formatnum import format_uncertainty
+from .mapper import MPMapper, MPIMapper, SerialMapper
 from . import util
 from . import initpop
 from . import __version__
 from . import plugin
-from . import options
 
-from .util import pushdir, push_python_path
+from .util import pushdir
 
 
 def install_plugin(p):
@@ -545,6 +542,8 @@ def main():
 
     Input parameters are taken from sys.argv.
     """
+    from . import options
+
     # add full traceback to warnings
     # warnings.showwarning = warn_with_traceback
 
@@ -595,20 +594,12 @@ def main():
         print("\n!!! Model file missing from command line --- abort !!!.", file=sys.stderr)
         sys.exit(1)
 
-    # TODO: AMQP mapper as implemented requires workers started up with
-    # the particular problem; need to be able to transport the problem
-    # to the worker instead.  Until that happens, the GUI shouldn't use
-    # the AMQP mapper.
     if opts.mpi:
         MPIMapper.start_worker(problem)
         mapper = MPIMapper
     elif opts.parallel != "" or opts.worker:
-        if opts.transport == "amqp":
-            mapper = AMQPMapper
-        elif opts.transport == "mp":
+        if opts.transport == "mp":
             mapper = MPMapper
-        elif opts.transport == "celery":
-            mapper = CeleryMapper
         else:
             raise ValueError("unknown mapper")
     else:
@@ -728,7 +719,7 @@ def main():
             fitdriver.show_cov()
         if opts.entropy:
             fitdriver.show_entropy(opts.entropy)
-        mapper.stop_mapper(fitdriver.mapper)
+        mapper.stop_mapper()
 
         # If in batch mode then explicitly close the monitor file on completion
         if opts.batch:

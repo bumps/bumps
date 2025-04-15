@@ -32,9 +32,9 @@ For now this requires an install from source rather than pip.
 
 |CI| |RTD| |DOI|
 
-.. |CI| image:: https://github.com/bumps/bumps/workflows/Test/badge.svg
+.. |CI| image:: https://github.com/bumps/bumps/actions/workflows/test-publish.yml/badge.svg
    :alt: Build status
-   :target: https://github.com/bumps/bumps/actions
+   :target: https://github.com/bumps/bumps/actions/workflows/test-publish.yml
 
 .. |DOI| image:: https://zenodo.org/badge/18489/bumps/bumps.svg
    :alt: DOI tag

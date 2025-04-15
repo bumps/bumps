@@ -5,6 +5,7 @@ Interfaces to various optimizers.
 import sys
 from typing import Union
 import warnings
+from typing import List, Tuple, Any
 
 # CRUFT: time.clock() removed from python 3.8
 try:
@@ -186,6 +187,10 @@ class FitBase(object):
     derivatives at the minimum in the FitDriver method.
     """
 
+    name: str
+    id: str
+    settings: List[Tuple[str, any]]
+
     def __init__(self, problem):
         """Fit the models and show the results"""
         self.problem = problem
@@ -199,13 +204,13 @@ class MultiStart(FitBase):
     Multi-start monte carlo fitter.
 
     This fitter wraps a local optimizer, restarting it a number of times
-    to give it a chance to find a different local minimum.  If the keep_best
+    to give it a chance to find a different local minimum.  If the near_best
     option is True, then restart near the best fit, otherwise restart at
     random.
     """
 
     name = "Multistart Monte Carlo"
-    settings = [("starts", 100)]
+    settings = [("starts", 100), ("near_best", True)]
 
     def __init__(self, fitter):
         FitBase.__init__(self, fitter.problem)
@@ -216,7 +221,7 @@ class MultiStart(FitBase):
         import logging
 
         starts = options.pop("starts", 1)
-        reset = not options.pop("keep_best", True)
+        reset = not options.pop("near_best", True)
         f_best = np.inf
         x_best = self.problem.getp()
         for _ in range(max(starts, 1)):
@@ -363,7 +368,7 @@ class BFGSFit(FitBase):
 
     name = "Quasi-Newton BFGS"
     id = "newton"
-    settings = [("steps", 3000), ("starts", 1), ("ftol", 1e-6), ("xtol", 1e-12)]
+    settings = [("steps", 3000), ("ftol", 1e-6), ("xtol", 1e-12), ("starts", 1), ("near_best", False)]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         if abort_test is None:
@@ -434,7 +439,7 @@ class RLFit(FitBase):
 
     name = "Random Lines"
     id = "rl"
-    settings = [("steps", 3000), ("starts", 20), ("pop", 0.5), ("CR", 0.9)]
+    settings = [("steps", 3000), ("pop", 0.5), ("CR", 0.9), ("starts", 20), ("near_best", False)]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         if abort_test is None:
@@ -503,7 +508,7 @@ class SimplexFit(FitBase):
 
     name = "Nelder-Mead Simplex"
     id = "amoeba"
-    settings = [("steps", 1000), ("starts", 1), ("radius", 0.15), ("xtol", 1e-6), ("ftol", 1e-8)]
+    settings = [("steps", 1000), ("radius", 0.15), ("xtol", 1e-6), ("ftol", 1e-8), ("starts", 1), ("near_best", True)]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         from .simplex import simplex
@@ -544,7 +549,7 @@ class MPFit(FitBase):
 
     name = "Levenberg-Marquardt"
     id = "lm"
-    settings = [("steps", 200), ("ftol", 1e-10), ("xtol", 1e-10)]
+    settings = [("steps", 200), ("ftol", 1e-10), ("xtol", 1e-10), ("starts", 1), ("near_best", False)]
 
     def solve(self, monitors=None, abort_test=None, mapper=None, **options):
         from .mpfit import mpfit
@@ -796,7 +801,7 @@ class DreamFit(FitBase):
             steps = (draws + pop_size - 1) // pop_size
         # TODO: need a better way to announce number of steps
         # maybe somehow print iteration # of # iters in the monitor?
-        print("# steps: %d, # draws: %d" % (steps, pop_size * steps))
+        print(f"# burn: {options['burn']} # steps: {steps}, # draws: {pop_size * steps}")
         population = population[None, :, :]
         sampler = Dream(
             model=self.dream_model,
@@ -811,6 +816,7 @@ class DreamFit(FitBase):
         )
 
         self.state = sampler.sample(state=self.state, abort_test=abort_test)
+        # print("<<< Dream is done sampling >>>")
 
         self._trimmed = self.state.trim_portion() if options["trim"] else 1.0
         # print("trimming", options['trim'], self._trimmed)

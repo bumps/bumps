@@ -26,7 +26,8 @@ export const LAYOUTS = ["left-right", "top-bottom", "full"];
 export type FitSetting = { name: string; settings: object };
 
 export const socket = ref<AsyncSocket>();
-export const connected = ref(false);
+export const connecting = ref(false);
+export const disconnected = ref(false);
 export const fitOptions = ref<ModalDialog>();
 export const fileBrowser = ref<ModalDialog>();
 export const active_layout = ref<(typeof LAYOUTS)[number]>("left-right");
@@ -81,6 +82,7 @@ export class AutoupdateState {
     const shared_state_keys = Object.keys(this.shared_state) as (keyof SharedState)[];
     for (const key of shared_state_keys) {
       const initial_value = await socket.asyncEmit(`get_shared_setting`, key);
+      console.debug(`Received initial value for ${key}: ${JSON.stringify(initial_value, null, 2)}`);
       this.shared_state[key].value = initial_value;
     }
 

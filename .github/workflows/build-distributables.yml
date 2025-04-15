@@ -7,18 +7,22 @@ on:
 
 env:
   branch_name: master
+  PACKAGE_NAME: bumps
+  PYTHON_VERSION: 3.12
 
 jobs:
   build_and_publish:
     runs-on: ${{ matrix.config.os }}
+    defaults:
+      run:
+        shell: bash -el {0}
     strategy:
       matrix:
         config:
-          - { os: ubuntu-latest, py: "3.11" }
-          - { os: windows-latest, py: "3.11" }
-          - { os: macos-latest, py: "3.11" }
-          - { os: macos-13, py: "3.11" }
-          # all using to stable abi
+          - { os: ubuntu-latest }
+          - { os: windows-latest }
+          - { os: macos-latest }
+          - { os: macos-13 }
 
     steps:
     - uses: actions/checkout@v4
@@ -29,25 +33,148 @@ jobs:
     - uses: conda-incubator/setup-miniconda@v3
       with:
         auto-update-conda: true
-        python-version: ${{ matrix.config.py }}
+        python-version: ${{ env.PYTHON_VERSION }}
+        miniforge-version: latest
+        activate-environment: builder
 
     - name: Build conda-packed (all platforms)
-      shell: bash -el {0}
       run: |
+        conda install -y versioningit nodejs
         conda activate base
         ./extra/build_conda_packed.sh
-        ls artifacts/*
-        {
-          echo 'DISTRIBUTABLES<<EOF'
-          ls artifacts/*
-          echo EOF
-        } >> "$GITHUB_ENV"
+
+    - name: Create MacOS App
+      if: startsWith(matrix.config.os, 'macos')
+      env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE_ISA }}
+          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_ISA_PWD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+          NOTARIZATION_USERNAME: ${{ secrets.MACOS_NOTARIZATION_USERNAME }}
+          NOTARIZATION_PASSWORD: ${{ secrets.MACOS_NOTARIZATION_PASSWORD }}
+          DEVELOPER_IDENTITY: "Developer ID Application: The International Scattering Alliance (8CX8K63BQM)"
+      run: |
+        echo "$MACOS_CERTIFICATE" | base64 --decode > certificate.p12
+        security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+        security default-keychain -s build.keychain
+        security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+        security import certificate.p12 -k build.keychain -P "$MACOS_CERTIFICATE_PWD" -T /usr/bin/codesign
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
+        security find-identity -p codesigning
+
+        echo "Creating MacOS App"
+        # This assumes that conda-packed enviroment exists at "conda_packed"
+
+        VERSION=$(versioningit)
+        MAJOR_MINOR_PATCH=$(sed -E 's/(^[0-9]+\.[0-9]+\.[0-9]+).*$/\1/' <<< "$VERSION")
+        PRODUCT_NAME="$PACKAGE_NAME-$VERSION"
+        FULL_PACKAGE_NAME="$PRODUCT_NAME-$(uname -s)-$(uname -m)"
+        BUILD_DIR="${PACKAGE_NAME}_installer"
+        mkdir -p $BUILD_DIR
+        APP_FOLDER="$BUILD_DIR/$PRODUCT_NAME"
+        APP="$APP_FOLDER/${PACKAGE_NAME}.app"
+        PYTHON_FRAMEWORK="$APP/Contents/Frameworks/python.framework"
+        PYTHON_ENV="$PYTHON_FRAMEWORK/Resources/env"
+        ln -s /Applications "$BUILD_DIR/Applications"
+        cp -R -P "extra/platform_resources/macos/app_folder_template" "$APP_FOLDER"
+        cp -R -P "conda_packed" "$PYTHON_ENV"
+        plutil -replace CFBundleVersion -string "$VERSION" "$APP/Contents/Info.plist"
+        plutil -replace CFBundleShortVersionString -string "$MAJOR_MINOR_PATCH" "$APP/Contents/Info.plist"
+        plutil -replace NSHumanReadableCopyright -string "Copyright $(date +'%Y') the $PACKAGE_NAME developers" "$APP/Contents/Info.plist"
+
+        sign_file() {
+            codesign --force --timestamp --options=runtime --verify --verbose=4 --sign "${DEVELOPER_IDENTITY}" "$1"
+        }
+
+        SRC_ENTITLEMENTS="extra/platform_resources/macos/app_folder_template/${PACKAGE_NAME}.app/Contents/Frameworks/python.framework/Resources/Entitlements.plist"
+
+        sign_with_entitlements() {
+          codesign --verify --options=runtime --entitlements "${SRC_ENTITLEMENTS}" --timestamp --verbose=4 --force --sign "${DEVELOPER_IDENTITY}" "$1"
+        }
+
+        # Sign shared libraries
+        find "$PYTHON_ENV" -name "*\.so" -print0 | while IFS= read -r -d '' file; do sign_file "$file"; done;
+        find "$PYTHON_ENV" -name "*\.dylib" -print0 | while IFS= read -r -d '' file; do sign_file "$file"; done;
+        find "$PYTHON_ENV/bin" -type f -perm +111 -print0 | while IFS= read -r -d '' file; do sign_file "$file"; done;
+
+        # Sign python framework with entitlements
+        sign_with_entitlements "$PYTHON_FRAMEWORK/Versions/A/Resources/Entitlements.plist"
+        PYTHON_EXECUTABLE="$(realpath $PYTHON_ENV/bin/python)"
+        sign_with_entitlements "$PYTHON_EXECUTABLE"
+        sign_with_entitlements "$PYTHON_FRAMEWORK"
+
+        # Sign apps
+        codesign --verify --options=runtime --timestamp --verbose=4 --force --sign "${DEVELOPER_IDENTITY}" "$APP/Contents/MacOS/${PACKAGE_NAME}_webview"
+        codesign --verify --options=runtime --timestamp --verbose=4 --force --sign "${DEVELOPER_IDENTITY}" "$APP"
+        codesign --verify --options=runtime --timestamp --verbose=4 --force --sign "${DEVELOPER_IDENTITY}" "$APP_FOLDER/${PACKAGE_NAME}_shell.app"
+
+        DMG="artifacts/$FULL_PACKAGE_NAME.dmg"
+        mkdir -p artifacts
+        hdiutil create $DMG -srcfolder "$BUILD_DIR" -ov -format UDZO
+        codesign -s "${DEVELOPER_IDENTITY}" $DMG
+
+        # Clean up signing keys
+        security delete-keychain build.keychain
+        rm certificate.p12
+
+        # Notarize
+        xcrun notarytool submit --wait --apple-id "$NOTARIZATION_USERNAME" --password "$NOTARIZATION_PASSWORD" --team-id 8CX8K63BQM $DMG
+
+        # Staple
+        xcrun stapler staple $DMG
+
+    - name: Create Windows Installer
+      if: startsWith(matrix.config.os, 'windows')
+      run: |
+        echo "Creating Windows Installer"
+        # This assumes that conda-packed enviroment exists at "conda_packed"
+        VERSION=$(versioningit)
+        MAJOR_MINOR_PATCH=$(sed -E 's/(^[0-9]+\.[0-9]+\.[0-9]+).*$/\1/' <<< "$VERSION")
+
+        FULL_PACKAGE_NAME="$PACKAGE_NAME-$VERSION-Windows-$(uname -m)"
+
+        # clean up junk from conda-pack operation:
+        find conda_packed -name "*.conda_trash" -delete
+
+        conda install -y nsis
+
+        # create the installer:
+        PRODUCT_NAME="$PACKAGE_NAME-$VERSION"
+        $CONDA_PREFIX/NSIS/makensis.exe -DPRODUCT_NAME="$PRODUCT_NAME" -DPRODUCT_VERSION="$MAJOR_MINOR_PATCH.0" extra/installer.nsi
+
+        mkdir -p artifacts
+        mv extra/BumpsWebviewSetup.exe "artifacts/$FULL_PACKAGE_NAME-installer.exe"
+
+    - name: Create Linux Installer
+      if: startsWith(matrix.config.os, 'ubuntu')
+      run: |
+        echo "Creating Linux Installer"
+        conda info
+
+        VERSION=$(versioningit)
+        FULL_PACKAGE_NAME="$PACKAGE_NAME-$VERSION-$(uname -s)-$(uname -m)"
+        PRODUCT_NAME="$PACKAGE_NAME-$VERSION"
+
+        mkdir -p "$PRODUCT_NAME"
+        cp extra/platform_resources/linux/* "$PRODUCT_NAME"
+
+        mv conda_packed/ "$PRODUCT_NAME/env"
+        mkdir -p artifacts
+        tar -czf "artifacts/$FULL_PACKAGE_NAME.tar.gz" "$PRODUCT_NAME"
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: artifacts-${{ matrix.config.os }}-${{ matrix.config.py }}
         path: artifacts/*
+
+    - name: Enumerate artifacts
+      run: |
+        # Collect the distributables
+        {
+          echo 'DISTRIBUTABLES<<EOF'
+          ls artifacts/*
+          echo EOF
+        } >> "$GITHUB_ENV"
 
     - name: Update current release
       if: startsWith(github.ref, 'refs/tags')

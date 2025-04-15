@@ -6,9 +6,10 @@ import {
   addNotification,
   autoupdate_state,
   cancelNotification,
-  connected,
+  connecting,
   default_fitter,
   default_fitter_settings,
+  disconnected,
   file_menu_items,
   fileBrowser,
   FileBrowserSettings,
@@ -38,6 +39,16 @@ const props = defineProps<{
 }>();
 
 const show_menu = ref(false);
+
+// Control Dark Mode from system media query
+const prefersDarkMediaQueryList = window.matchMedia("(prefers-color-scheme: dark)");
+function setDarkTheme(prefersDark: boolean) {
+  const theme = prefersDark ? "dark" : "light";
+  document.documentElement.setAttribute("data-bs-theme", theme);
+}
+prefersDarkMediaQueryList.addEventListener("change", (e) => setDarkTheme(e.matches));
+setDarkTheme(prefersDarkMediaQueryList.matches);
+
 // const nativefs = ref(false);
 
 // Create a SocketIO connection, to be passed to child components
@@ -58,6 +69,10 @@ if (single_panel !== null) {
   }
 }
 
+// Connect!
+connecting.value = true;
+disconnected.value = false;
+
 const socket = io(sio_server, {
   path: `${sio_base_path}socket.io`,
 }) as AsyncSocket;
@@ -65,7 +80,8 @@ socket_ref.value = socket;
 
 socket.on("connect", async () => {
   console.log(`Connected: Session ID ${socket.id}`);
-  connected.value = true;
+  connecting.value = false;
+  disconnected.value = false;
   autoupdate_state.init(socket);
   socket.asyncEmit("get_fitter_defaults", (new_fitter_defaults: { [fit_name: string]: FitSetting }) => {
     default_fitter_settings.value = new_fitter_defaults;
@@ -74,7 +90,10 @@ socket.on("connect", async () => {
 
 socket.on("disconnect", (payload) => {
   console.log("Disconnected!", payload);
-  connected.value = false;
+  disconnected.value = true;
+  setTimeout(() => {
+    socket.connect();
+  }, 1000);
 });
 
 socket.on("add_notification", addNotification);
@@ -261,7 +280,7 @@ file_menu_items.value = [
 
 <template>
   <div class="h-100 w-100 m-0 d-flex flex-column">
-    <nav v-if="single_panel === null" class="navbar navbar-expand-sm navbar-dark bg-dark">
+    <nav v-if="single_panel === null" class="navbar navbar-expand-sm bg-dark" data-bs-theme="dark">
       <div class="container-fluid">
         <div class="navbar-brand">
           <img src="./assets/bumps-icon_256x256x32.png" alt="" height="24" class="d-inline-block align-text-middle" />
@@ -350,14 +369,6 @@ file_menu_items.value = [
                 <button class="btn btn-success btn-sm" @click="startFit">Start</button>
               </div>
             </h4>
-          </div>
-          <div class="d-flex">
-            <div
-              id="connection_status"
-              :class="{ btn: true, 'btn-outline-success': connected, 'btn-outline-danger': !connected }"
-            >
-              {{ connected ? "connected" : "disconnected" }}
-            </div>
           </div>
         </div>
       </div>

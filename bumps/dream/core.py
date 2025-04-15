@@ -423,6 +423,7 @@ def _run_dream(dream: Dream, abort_test=lambda: False):
         state._update(CR_weight=dream.CR.weight)
 
         if abort_test():
+            # print("<<< DREAM abort >>>")
             break
 
         # if state.draws <= 0.1 * dream.draws:
@@ -442,6 +443,7 @@ def _run_dream(dream: Dream, abort_test=lambda: False):
 
         if state.generation >= next_convergence_test:
             converged = ks_converged(state, alpha=dream.alpha)
+            # print(f"ks convergence for α={dream.alpha} is {converged}")
         else:
             converged = False
 
@@ -459,6 +461,7 @@ def _run_dream(dream: Dream, abort_test=lambda: False):
                 converged = False
 
         if converged:
+            # print("<<< DREAM converged >>>")
             # _show_logp_frame(dream, state, frame+1)
             break
 

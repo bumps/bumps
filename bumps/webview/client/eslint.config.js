@@ -4,20 +4,22 @@ import pluginVue from "eslint-plugin-vue";
 import { FlatCompat } from "@eslint/eslintrc";
 import js from "@eslint/js";
 import prettierConfig from "@vue/eslint-config-prettier";
-import vueTsEslintConfig from "@vue/eslint-config-typescript";
+import { defineConfigWithVueTs, vueTsConfigs } from "@vue/eslint-config-typescript";
 
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
+
 const compat = new FlatCompat({
   baseDirectory: __dirname,
   recommendedConfig: js.configs.recommended,
+  resolvePluginsRelativeTo: __dirname,
   // allConfig: js.configs.all,
 });
 
-export default [
+export default defineConfigWithVueTs(
   /** Extend recommended configs */
   ...compat.extends("plugin:vue/vue3-recommended", "plugin:vuejs-accessibility/recommended", "prettier"),
   ...pluginVue.configs["flat/recommended"],
-  ...vueTsEslintConfig(),
+  vueTsConfigs.recommended,
   // eslintPluginPrettierRecommended,
   prettierConfig,
   /** Configuration */
@@ -28,7 +30,8 @@ export default [
         sourceType: "script",
       },
     },
-    files: ["src/**/*.js", "src/**/*.mjs", "src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"],
+    files: ["**/src/**/*.js", "**/src/**/*.mjs", "**/src/**/*.ts", "**/src/**/*.tsx", "**/src/**/*.vue"],
+    ignores: ["**/node_modules/", "**/.git/", "**/dist/"],
     /** Override rules */
     rules: {
       // "max-len": ["error", { code: 120 }],
@@ -55,5 +58,5 @@ export default [
         },
       ],
     },
-  },
-];
+  }
+);

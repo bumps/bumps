@@ -7,9 +7,11 @@ authors = [{ name = "Paul Kienzle", email = "paul.kienzle@nist.gov" }]
 license = { file = "LICENSE.txt" }
 dependencies = [
     'numpy',
-    'scikit-learn',
     'scipy',
-    'typing_extensions>=3.7.4',
+    'h5py',
+    'dill',
+    'matplotlib',
+    'blinker',
     'graphlib_backport; python_version < "3.9"',
 ]
 classifiers = [
@@ -29,7 +31,6 @@ requires-python = ">=3.8"
 [project.optional-dependencies]
 dev = [
     'build',
-    'matplotlib',   # for testing
     'pre-commit',
     'pytest',
     'pytest-cov',
@@ -38,18 +39,12 @@ dev = [
     'setuptools',
     'sphinx',
     'versioningit',
-    'matplotlib',
 ]
 webview = [
     'aiohttp',
-    'blinker',
-    'dill',
-    'matplotlib',
     'python-socketio',
     'plotly',
     'mpld3',
-    'nodejs',
-    'h5py',
 ]
 
 [project.urls]
@@ -87,6 +82,10 @@ version = { attr = "bumps.__version__" }
 
 [tool.setuptools.packages.find]
 include = ["bumps*"]
+exclude = ["**/node_modules*"]
+
+[tool.setuptools.data-files]
+"share/icons" = ["extra/*.png", "extra/*.svg", "extra/*.ico", "extra/*.icns"]
 
 [tool.versioningit.vcs]
 method = "git"
@@ -99,8 +98,7 @@ method = "smallest"
 file = "bumps/_version.py"
 
 [project.scripts]
-bumps = "bumps.cli:main"
-bumps-webview = "bumps.webview.server.webserver:main"
+bumps = "bumps.webview.server.cli:main"
 
 [tool.pytest.ini_options]
 # TODO: remove --assert=plain when https://github.com/scipy/scipy/issues/22236 is resolved

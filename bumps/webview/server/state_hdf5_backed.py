@@ -1,4 +1,5 @@
 import asyncio
+import threading
 from copy import deepcopy
 from datetime import datetime
 from typing import (
@@ -9,13 +10,10 @@ from typing import (
     Dict,
     List,
     NewType,
-    Tuple,
     TypedDict,
     Any,
     Literal,
     Union,
-    cast,
-    IO,
 )
 from collections import deque
 from dataclasses import dataclass, field, fields
@@ -24,7 +22,6 @@ import shutil
 import os
 import tempfile
 from pathlib import Path
-from threading import Event
 from bumps.serialize import serialize, deserialize
 from bumps.util import get_libraries
 import h5py
@@ -34,10 +31,13 @@ from bumps.dream.state import MCMCDraw
 from .logger import logger
 
 if TYPE_CHECKING:
-    import bumps, bumps.fitproblem, bumps.dream.state
+    import bumps
+    import bumps.fitproblem
+    import bumps.dream.state
     from .webserver import TopicNameType
     from .fit_thread import FitThread
-    from h5py import Group, Dataset
+    from h5py import Group
+from bumps.mapper import BaseMapper
 
 
 SESSION_FILE_NAME = "session.h5"
@@ -98,7 +98,7 @@ def write_bytes_data(group: "Group", name: str, data: bytes):
 
 
 def read_bytes_data(group: "Group", name: str):
-    if not name in group:
+    if name not in group:
         return UNDEFINED
     raw_data = group[name][()]
     size = raw_data.size
@@ -116,7 +116,7 @@ def write_string(group: "Group", name: str, data: str, encoding="utf-8"):
 
 
 def read_string(group: "Group", name: str):
-    if not name in group:
+    if name not in group:
         return UNDEFINED
     raw_data = group[name][()]
     size = raw_data.size
@@ -133,7 +133,7 @@ def write_fitproblem(group: "Group", name: str, fitProblem: "bumps.fitproblem.Fi
 
 
 def read_fitproblem(group: "Group", name: str, serializer: SERIALIZERS):
-    if not name in group:
+    if name not in group:
         return UNDEFINED
     serialized = read_bytes_data(group, name)
     fitProblem = deserialize_problem(serialized, serializer) if serialized is not None else None
@@ -147,7 +147,7 @@ def write_json(group: "Group", name: str, data):
 
 
 def read_json(group: "Group", name: str):
-    if not name in group:
+    if name not in group:
         return UNDEFINED
     serialized = read_string(group, name)
     try:
@@ -164,7 +164,7 @@ def write_ndarray(group: "Group", name: str, data: Optional[np.ndarray], dtype=U
 
 
 def read_ndarray(group: "Group", name: str):
-    if not name in group:
+    if name not in group:
         return UNDEFINED
     raw_data = group[name][()]
     size = raw_data.size
@@ -214,10 +214,13 @@ class HistoryItem:
 
 
 class History:
-    store: List[HistoryItem]
+    store: Dict[str, HistoryItem]
 
     def __init__(self):
-        self.store = []
+        self.store = {}
+
+    def get_item(self, name: Union[str, UNDEFINED_TYPE, None], default=None):
+        return self.store.get(name, default)
 
     def get_item(self, timestamp: Union[str, UNDEFINED_TYPE, None], default=None):
         for item in self.store:
@@ -227,20 +230,20 @@ class History:
 
     def write(self, parent: "Group", include_uncertainty_state=True):
         group = parent.require_group("problem_history")
-        for item in self.store:
+        for name, item in self.store.items():
             problem = item.problem
             fitting = item.fitting
-            name = item.timestamp
             item_group = group.require_group(name)
             problem.write(item_group)
             fitting.write(item_group, include_uncertainty_state=include_uncertainty_state)
             item_group.attrs["chisq"] = item.chisq_str
             item_group.attrs["label"] = item.label
             item_group.attrs["keep"] = item.keep
+            item_group.attrs["timestamp"] = item.timestamp
 
     def read(self, parent: "Group"):
-        group = parent.get("problem_history", [])
-        self.store = []
+        group = parent.get("problem_history", {})
+        self.store = {}
         for name in group:
             item = HistoryItem()
             item_group = group[name]
@@ -252,30 +255,41 @@ class History:
             item.chisq_str = item_group.attrs["chisq"]
             # keep is a boolean, but h5py returns np.bool_ which is not JSON serializable
             item.keep = bool(item_group.attrs["keep"])
-            item.timestamp = name
-            self.store.append(item)
+            # if there is no timestamp attribute, then it was created before we had a separate name
+            item.timestamp = item_group.attrs.get("timestamp", name)
+            self.store[name] = item
 
-    def remove_item(self, timestamp: str):
-        self.store = [item for item in self.store if item.timestamp != timestamp]
+    def remove_item(self, name: str):
+        self.store.pop(name)
 
     def prune(self, target_length: int):
         # remove oldest items with keep=False until the length is target_length
         num_to_remove = len(self.store) - target_length
         if num_to_remove <= 0:
             return
-        indices_to_remove = []
-        for index, item in enumerate(self.store):
+        names_to_remove = []
+        for name, item in self.store.items():
             if not item.keep:
-                indices_to_remove.append(index)
+                names_to_remove.append(name)
                 num_to_remove -= 1
                 if num_to_remove == 0:
                     break
-        for index in reversed(indices_to_remove):
-            self.store.pop(index)
+        for name in reversed(names_to_remove):
+            self.store.pop(name)
+
+    def _get_unique_name(self, timestamp: str):
+        name = timestamp
+        counter = 1
+        while name in self.store:
+            name = f"{timestamp}-{counter}"
+            counter += 1
+        return name
 
     def add_item(self, item: HistoryItem, target_length: int):
         self.prune(target_length)
-        self.store.append(item)
+        stored_name = self._get_unique_name(item.timestamp)
+        self.store[stored_name] = item
+        return stored_name
 
     def list(self):
         return [
@@ -286,21 +300,16 @@ class History:
                 keep=item.keep,
                 has_population=(item.fitting.population is not None),
                 has_uncertainty=(item.fitting.uncertainty_state is not None),
+                name=name,
             )
-            for item in self.store
+            for name, item in self.store.items()
         ]
 
-    def set_keep(self, timestamp: str, keep: bool):
-        for item in self.store:
-            if item.timestamp == timestamp:
-                item.keep = keep
-                return
+    def set_keep(self, name: str, keep: bool):
+        self.store[name].keep = keep
 
-    def update_label(self, timestamp: str, label: str):
-        for item in self.store:
-            if item.timestamp == timestamp:
-                item.label = label
-                return
+    def update_label(self, name: str, label: str):
+        self.store[name].label = label
 
 
 class UncertaintyStateStorage:
@@ -374,17 +383,23 @@ class FittingState:
 
 class State:
     # These attributes are ephemeral, not to be serialized/stored:
+    app_name: str = "bumps"
+    client_path: Path = Path(__file__).parent.parent / "client"
     hostname: str
     port: int
     parallel: int = 0
     fit_thread: Optional["FitThread"] = None
-    fit_abort: Optional[Event] = None
-    fit_abort_event: Event
-    fit_complete_event: Event
-    fit_uncertainty_final: Event
-    fit_enabled: Event
+    fit_abort_event: threading.Event
+    """Cleared before the fit and set on Stop button or Ctrl-C to end the fit."""
+    fit_complete_event: asyncio.Event
+    """Cleared before the fit starts and set when the fit is complete and saved."""
+    # fit_complete_future: asyncio.Future
+    shutdown_on_fit_complete: bool = False
+    """Used to implement the --exit option to halt server on completion."""
+    # fit_enabled: Event
     calling_loop: Optional[asyncio.AbstractEventLoop] = None
     base_path: str = ""
+    console_update_interval: int = 0  # seconds (float would work too, but unnecessary)
 
     # State to be stored:
     problem: ProblemState
@@ -392,14 +407,15 @@ class State:
     history: History
     topics: Dict["TopicNameType", "deque[Dict]"]
     shared: "SharedState"
+    mapper: Optional[BaseMapper] = None
 
     def __init__(self):
         self.problem = ProblemState()
         self.fitting = FittingState()
         self.history = History()
-        self.fit_abort_event = Event()
-        self.fit_complete_event = Event()
-        self.fit_uncertainty_final = Event()
+        self.fit_abort_event = threading.Event()  # initially unset
+        self.fit_complete_event = asyncio.Event()
+        self.fit_complete_event.set()  # The program starts out not waiting for a fit
         self.topics = {
             "log": deque([]),
         }
@@ -430,23 +446,23 @@ class State:
         item.label = label
         item.chisq_str = item.problem.fitProblem.chisq_str()
         item.keep = keep
-        self.history.add_item(item, self.shared.autosave_history_length - 1)
+        stored_name = self.history.add_item(item, self.shared.autosave_history_length - 1)
         self.shared.updated_history = now_string()
-        return item.timestamp
+        return stored_name
 
     def get_history(self):
         return dict(problem_history=self.history.list())
 
-    def remove_history_item(self, timestamp: str):
-        self.history.remove_item(timestamp)
+    def remove_history_item(self, name: str):
+        self.history.remove_item(name)
 
-    def reload_history_item(self, timestamp: str):
-        item = self.history.get_item(timestamp, None)
+    def reload_history_item(self, name: str):
+        item = self.history.get_item(name, None)
         if item is not None:
             self.problem = deepcopy(item.problem)
             self.fitting.uncertainty_state = item.fitting.uncertainty_state
             self.fitting.population = item.fitting.population
-            self.shared.active_history = timestamp
+            self.shared.active_history = name
             self.shared.updated_model = now_string()
             self.shared.updated_parameters = now_string()
             self.shared.custom_plots_available = get_custom_plots_available(self.problem.fitProblem)
@@ -680,13 +696,13 @@ class SharedState:
     model_loaded: Union[UNDEFINED_TYPE, bool] = UNDEFINED
     session_output_file: Union[UNDEFINED_TYPE, FileInfo] = UNDEFINED
     autosave_session: bool = False
-    autosave_session_interval: int = 300
+    autosave_session_interval: int = 300  # seconds
     autosave_history: bool = True
     autosave_history_length: int = 10
     uncertainty_available: Union[UNDEFINED_TYPE, UncertaintyAvailable] = UNDEFINED
     population_available: Union[UNDEFINED_TYPE, bool] = UNDEFINED
     custom_plots_available: Union[UNDEFINED_TYPE, CustomPlotsAvailable] = UNDEFINED
-    active_history: Union[UNDEFINED_TYPE, Timestamp, None] = UNDEFINED  # timestamp of the active history item
+    active_history: Union[UNDEFINED_TYPE, str, None] = UNDEFINED  # name of the active history item
 
     _not_reloaded = ["active_fit", "autosave_session", "session_output_file", "_notification_callbacks"]
     _notification_callbacks: Dict[str, Callable[[str, Any], Awaitable[None]]] = field(default_factory=dict)
@@ -694,11 +710,11 @@ class SharedState:
     def __setattr__(self, name: str, value):
         super().__setattr__(name, value)
         try:
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
         except RuntimeError:
             # no event loop running, so no need to notify
             return
-        if loop.is_running() and hasattr(self, "_notification_callbacks"):
+        if hasattr(self, "_notification_callbacks"):
             for callback in self._notification_callbacks.values():
                 loop.create_task(callback(name, value))
 
@@ -707,21 +723,28 @@ class SharedState:
         for callback in self._notification_callbacks.values():
             await callback(name, value)
 
+    async def notify(self, name, value=None):
+        value = await self.get(name)
+        for callback in self._notification_callbacks.values():
+            await callback(name, value)
+
     async def get(self, name):
         return getattr(self, name, UNDEFINED)
 
     def write(self, parent: "Group"):
         group = parent.require_group("shared")
-        for field in fields(self):
-            if not field.name in self._not_reloaded:
-                value = getattr(self, field.name)
+        for f in fields(self):
+            if f.name not in self._not_reloaded:
+                value = getattr(self, f.name)
                 if value is not UNDEFINED:
-                    write_json(group, field.name, value)
+                    write_json(group, f.name, value)
 
     def read(self, parent: "Group"):
         group = parent.get("shared")
         if group is None:
             return
-        for field in fields(self):
-            if not field.name in self._not_reloaded:
-                setattr(self, field.name, read_json(group, field.name))
+        for f in fields(self):
+            if f.name not in self._not_reloaded:
+                value = read_json(group, f.name)
+                if value is not UNDEFINED:
+                    setattr(self, f.name, value)
