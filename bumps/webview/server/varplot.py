@@ -6,6 +6,7 @@ __all__ = ["var_plot_size", "plot_vars", "plot_var"]
 
 from math import ceil, sqrt
 import numpy as np
+from numpy.typing import NDArray
 
 import typing
 
@@ -83,9 +84,7 @@ def plot_vars(draw: "Draw", all_vstats, cbar_colors=CBAR_COLORS, **kw):
     return fig
 
 
-def plot_var(
-    fig: "go.Figure", draw: "Draw", vstats: "VarStats", var: int, cbar_edges: np.ndarray, nbins=30, subplot=None
-):
+def plot_var(fig: "go.Figure", draw: "Draw", vstats: "VarStats", var: int, cbar_edges: NDArray, nbins=30, subplot=None):
     values = draw.points[:, var].flatten()
     bin_range = vstats.p95_range
     sort_index = draw.get_argsort_indices(var)

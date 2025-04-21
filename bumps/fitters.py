@@ -5,11 +5,8 @@ Interfaces to various optimizers.
 import sys
 import warnings
 from time import perf_counter
-from typing import List, Tuple, Dict, Union, TYPE_CHECKING, Any
-from pathlib import Path
 
 import numpy as np
-from numpy.typing import NDArray
 
 from . import monitor
 from . import initpop
@@ -19,9 +16,11 @@ from .history import History
 from .formatnum import format_uncertainty
 from .fitproblem import nllf_scale
 
-if TYPE_CHECKING:
-    from h5py import Group
-    from bumps.dream.state import MCMCDraw
+# For typing
+from typing import List, Tuple, Dict, Any
+from numpy.typing import NDArray
+from h5py import Group
+from bumps.dream.state import MCMCDraw
 
 
 class ConsoleMonitor(monitor.TimedUpdate):
@@ -192,11 +191,10 @@ class FitBase(object):
     # TODO: Replace list of tuples with an ordered dictionary?
     settings: List[Tuple[str, Any]]
     """Available fitting options and their default values."""
-    state: None
+    state: Any = None
     """
     Internal fit state. If the state object has a draw method this should return
     a set of points from the posterior probability distribution for the fit.
-    See :class:`bumps.dream.state.Draw` for an example.
     """
 
     def __init__(self, problem):
@@ -338,13 +336,13 @@ class DEFit(FitBase):
         _de_save_history(output_path, self.history.snapshot())
 
     @staticmethod
-    def h5load(group: "Group") -> "MCMCDraw":
+    def h5load(group: Group) -> Any:
         from .webview.server.state_hdf5_backed import read_json
 
         return read_json(group, "DE_history")
 
     @staticmethod
-    def h5dump(group: "Group", state: Dict[str, Any]):
+    def h5dump(group: Group, state: Dict[str, Any]):
         from .webview.server.state_hdf5_backed import write_json
 
         write_json(group, "DE_history", state)
@@ -925,13 +923,13 @@ class DreamFit(FitBase):
         self.state.save(output_path)
 
     @staticmethod
-    def h5load(group: "Group") -> "MCMCDraw":
+    def h5load(group: Group) -> MCMCDraw:
         from .dream.state import h5load
 
         return h5load(group)
 
     @staticmethod
-    def h5dump(group: "Group", state: "MCMCDraw"):
+    def h5dump(group: Group, state: MCMCDraw):
         from .dream.state import h5dump
 
         h5dump(state, group)

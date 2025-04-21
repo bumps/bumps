@@ -14,6 +14,7 @@ __all__ = ["make_bounds_handler", "Bounds", "ReflectBounds", "ClipBounds", "Fold
 
 import numpy as np
 from numpy import inf, isinf
+from numpy.typing import NDArray
 from . import util
 from .compiled import dll
 
@@ -72,8 +73,8 @@ class Bounds(object):
     """
 
     c_interface = None  # type: Callable[[int, int, Any, Any, Any], None]
-    low = None  # type: np.ndarray
-    high = None  # type: np.ndarray
+    low: NDArray = None
+    high: NDArray = None
 
     @staticmethod
     def apply(minn, maxn, pop):

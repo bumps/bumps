@@ -156,7 +156,7 @@ def read_json(group: "Group", name: str):
     return result
 
 
-def write_ndarray(group: "Group", name: str, data: Optional[np.ndarray]):
+def write_ndarray(group: "Group", name: str, data: Optional[NDArray]):
     if data is None:
         data = []
         dtype = "d"
