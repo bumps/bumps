@@ -126,17 +126,16 @@ class ConvergenceMonitor(monitor.Monitor):
 class DreamMonitor(monitor.Monitor):
     message: str = "uncertainty_update"
 
-    def __init__(self, problem, fitter, rate=0):
+    def __init__(self, problem, fitter, uncertainty_state=None, rate=0):
         self.time = 0
         self.rate = rate  # rate=0 for no progress update, only final
         self.update_counter = 0
         self.problem = problem
         self.fitter = fitter
-        self.message = message
         self.uncertainty_state = uncertainty_state
         # emit None uncertainty state to start with
         evt = dict(
-            message=message,
+            message=self.message,
             uncertainty_state=uncertainty_state,
         )
         # print("Dream init", evt)
@@ -237,7 +236,6 @@ class FitThread(Thread):
                 DreamMonitor(
                     self.problem,
                     fitter=self.fitclass,
-                    message="uncertainty_update",
                     rate=self.uncertainty_update,
                     uncertainty_state=self.initial_uncertainty_state,
                 ),
