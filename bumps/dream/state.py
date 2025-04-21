@@ -87,90 +87,166 @@ from .outliers import identify_outliers
 from .util import draw, rng
 from .gelman import gelman
 
+# Don't load hdf5 if you don't need it
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from h5py import Group
+else:
+
+    class Group: ...
+
+
 EXT = ".mc.gz"
 CREATE = gzip.open
 # EXT = ".mc"
 # CREATE = open
 
-# CRUFT: python 2 uses bytes rather than unicode for strings
-try:
-    # python 2.x
-    unicode
-
-    def write(fid, s):
-        fid.write(s)
-except NameError:
-    # python 3.x
-    def write(fid, s):
-        fid.write(s.encode("utf-8") if isinstance(s, str) else s)
-
 
 SelectionType = Optional[Dict[Union[int, Literal["logp"]], Tuple[float, float]]]
 
 
-class NoTrace:
-    def write(self, data):
-        pass
+UNCERTAINTY_DTYPE = "d"
+MAX_LABEL_LENGTH = 1024
+LABEL_DTYPE = f"|S{MAX_LABEL_LENGTH}"
+H5_COMPRESSION = 5
 
-    def flush(self):
-        pass
 
-    def close(self):
-        pass
+def _h5_write_field(group: "Group", field: str, data: Union[NDArray, str]):
+    import h5py
+
+    # print(f"h5 writing {field} in {group} with {data}")
+    if isinstance(data, str):
+        dtype = h5py.string_dtype(encoding="utf-8")
+        return group.create_dataset(field, data=data, dtype=dtype)
+    else:
+        return group.create_dataset(field, data=data, dtype=data.dtype, compression=H5_COMPRESSION)
+
+
+def _h5_read_field(group: "Group", field: str):
+    raw_data = group[field][()]
+    size = raw_data.size
+    if size is not None and size > 0:
+        return raw_data
+    else:
+        return None
+
+
+def h5dump(state: "MCMCDraw", group: "Group"):
+    class Fields:
+        gen_draws, gen_logp = state.logp(full=True)
+        _, AR = state.acceptance_rate()
+        thin_draws, thin_point, thin_logp = state.chains()
+        update_draws, update_CR_weight = state.CR_weight()
+        labels = np.array(state.labels, dtype=LABEL_DTYPE)
+        # These are marked outliers. They should still be marked when reloading the
+        # state, but they need to be cleared when updates are given. Make sure the
+        # request for the population from dream includes the outliers.
+        good_chains = None if isinstance(state._good_chains, slice) else state._good_chains
+
+    for field, value in Fields.__dict__.items():
+        if field[0] != "_" and value is not None:
+            _h5_write_field(group, field, value)
+
+
+def h5load(group: "Group"):
+    # print(f"dream.state.h5load {group}")
+    class Fields: ...
+
+    for field in group:
+        setattr(Fields, field, _h5_read_field(group, field))
+    # Guess dimensions
+    Ngen = Fields.gen_draws.shape[0]
+    thinning = 1
+    Nthin, Npop, Nvar = Fields.thin_point.shape
+    Nupdate, Ncr = Fields.update_CR_weight.shape
+    # Nthin -= skip
+    good_chains = getattr(Fields, "good_chains", None)
+
+    # Create empty draw and fill it with loaded data
+    state = MCMCDraw(0, 0, 0, 0, 0, 0, thinning)
+    state.draws = Ngen * Npop
+    state.labels = [label.decode() for label in Fields.labels]
+    state.generation = Ngen
+    state._gen_index = 0
+    state._gen_draws = Fields.gen_draws
+    state._gen_acceptance_rate = Fields.AR
+    state._gen_logp = Fields.gen_logp
+    state.thinning = thinning
+    state._thin_count = Ngen // thinning
+    state._thin_index = 0
+    state._thin_draws = state._gen_draws
+    state._thin_logp = Fields.thin_logp
+    state._thin_point = Fields.thin_point
+    state._gen_current = state._thin_point[-1].copy()
+    state._update_count = Nupdate
+    state._update_index = 0
+    state._update_draws = Fields.update_draws
+    state._update_CR_weight = Fields.update_CR_weight
+    state._outliers = []
+
+    bestidx = np.unravel_index(np.argmax(Fields.thin_logp), Fields.thin_logp.shape)
+    state._best_logp = Fields.thin_logp[bestidx]
+    state._best_x = Fields.thin_point[bestidx]
+    state._best_gen = 0
+
+    state._good_chains = slice(None, None) if good_chains is None else good_chains
+
+    return state
 
 
 def save_state(state: "MCMCDraw", filename: str):
-    trace = NoTrace()
-    # trace = open(filename+"-trace.mc", "w")
+    # import sys; trace = sys.stdout
+    # trace = open(filename+"-trace.mc", "wt")
+    # trace.write("starting trace\n")
 
-    write(trace, "starting trace\n")
     # Build 2-D data structures
-    write(trace, "extracting draws, logp\n")
+    # trace.write("extracting draws, logp\n")
     draws, logp = state.logp(full=True)
-    write(trace, "extracting acceptance rate\n")
+    # trace.write("extracting acceptance rate\n")
     _, AR = state.acceptance_rate()
-    write(trace, "building chain from draws, AR and logp\n")
+    # trace.write("building chain from draws, AR and logp\n")
     chain = hstack((draws[:, None], AR[:, None], logp))
 
-    write(trace, "extracting point, logp\n")
+    # trace.write("extracting point, logp\n")
     _, point, logp = state.chains()
     Nthin, Npop, Nvar = point.shape
-    write(trace, "shape is %d,%d,%d\n" % (Nthin, Npop, Nvar))
-    write(trace, "adding logp to point\n")
+    # trace.write("shape is %d,%d,%d\n" % (Nthin, Npop, Nvar))
+    # trace.write("adding logp to point\n")
     point = dstack((logp[:, :, None], point))
-    write(trace, "collapsing to draws x point\n")
+    # trace.write("collapsing to draws x point\n")
     point = reshape(point, (point.shape[0] * point.shape[1], point.shape[2]))
 
-    write(trace, "extracting CR_weight\n")
+    # trace.write("extracting CR_weight\n")
     draws, CR_weight = state.CR_weight()
     Nupdate, Ncr = CR_weight.shape
-    write(trace, "building stats\n")
+    # trace.write("building stats\n")
     stats = hstack((draws[:, None], CR_weight))
 
     # TODO: missing _outliers from save_state
 
     # Write convergence info
-    write(trace, "writing chain\n")
+    # trace.write("writing chain\n")
     fid = CREATE(filename + "-chain" + EXT, "wb")
-    write(fid, "# draws acceptance_rate %d*logp\n" % Npop)
+    fid.write(f"# draws acceptance_rate {Npop}*logp\n".encode())
     savetxt(fid, chain)
     fid.close()
 
     # Write point info
-    write(trace, "writing point\n")
+    # trace.write("writing point\n")
     fid = CREATE(filename + "-point" + EXT, "wb")
-    write(fid, "# logp point (Nthin x Npop x Nvar = [%d,%d,%d])\n" % (Nthin, Npop, Nvar))
+    fid.write(f"# logp point (Nthin x Npop x Nvar = [{Nthin},{Npop},{Nvar}])\n".encode())
     savetxt(fid, point)
     fid.close()
 
     # Write stats
-    write(trace, "writing stats\n")
+    # trace.write("writing stats\n")
     fid = CREATE(filename + "-stats" + EXT, "wb")
-    write(fid, "# draws %d*CR_weight\n" % Ncr)
+    fid.write(f"# draws {Ncr}*CR_weight\n".encode())
     savetxt(fid, stats)
     fid.close()
-    write(trace, "done state save\n")
-    trace.close()
+    # trace.write("done state save\n")
+    # trace.close()
 
 
 IND_PAT = re.compile("-1#IND")
@@ -237,6 +313,14 @@ def openmc(filename):
 
 
 def load_state(filename, skip=0, report=0, derived_vars=0):
+    """
+    *filename* is the path to the saved MCMC state up to the final -chain.mc, etc.
+
+    *derived_vars* is the number of columns added to each point, derived
+    from other columns in that point. The newer set_derived_vars interface generates
+    the derived variables on demand rather than storing them in the state object and
+    so it will be zero always.
+    """
     # Read chain file
     with openmc(filename + "-chain" + EXT) as fid:
         chain = loadtxt(fid)
@@ -305,6 +389,8 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
 class MCMCDraw(object):
     """ """
 
+    _derived_fn: Callable[[NDArray], NDArray] = None
+    _derived_labels: List[str] = None
     _labels = None
     _integer_vars = None  # boolean array of integer variables, or None
     title = None
@@ -513,9 +599,12 @@ class MCMCDraw(object):
     @property
     def labels(self):
         if self._labels is None:
-            return ["P%d" % i for i in range(self._thin_point.shape[2])]
+            result = ["P%d" % i for i in range(self._thin_point.shape[2])]
         else:
-            return self._labels
+            result = self._labels
+        if self._derived_labels:
+            result = [*result, *self._derived_labels]
+        return result
 
     @labels.setter
     def labels(self, v: List[str]):
@@ -1013,6 +1102,7 @@ class MCMCDraw(object):
         vars = vars if vars is not None else getattr(self, "_shown", None)
         return Draw(self, portion=portion, vars=vars, selection=selection, thin=thin)
 
+    # TODO: Move processing of visible/integer/derived out of state
     def set_visible_vars(self, labels: List[str]):
         self._shown = [self.labels.index(v) for v in labels]
         # print("\n".join(str(pair) for pair in enumerate(self.labels)))
@@ -1026,12 +1116,10 @@ class MCMCDraw(object):
         """
         self._integer_vars = np.array([var in labels for var in self.labels])
 
-    def derive_vars(self, fn: Callable[[NDArray], NDArray], labels: Optional[List[str]] = None):
+    def set_derived_vars(self, fn: Callable[[NDArray], NDArray], labels: List[str]):
         """
-        Generate derived variables from the current sample, adding columns
-        for the derived variables to each sample of every chain.
-
-        The new columns are treated as part of the sample.
+        Define derived variables from the sample. When calling draw() it will add
+        columns for the derived variables to each sample.
 
         *fn* is a function taking points p[:, k] for k in 0 ... samples and
         returning a set of derived variables pj[k] for each sample k.  The
@@ -1045,6 +1133,15 @@ class MCMCDraw(object):
         The following example adds the new variable x+y = P[0] + P[1]::
 
             state.derive_vars(lambda p: p[0]+p[1], labels=["x+y"])
+        """
+        self._derived_fn = fn
+        self._derived_labels = labels
+
+    def derive_vars(self, fn: Callable[[NDArray], NDArray], labels: Optional[List[str]] = None):
+        """
+        *** DEPRECATED ***
+
+        Like set_derived_vars but operating in place, modifying the points in the history.
         """
         # Grab all samples as a set of points
         _, chains, _ = self.chains()
@@ -1073,7 +1170,7 @@ class MCMCDraw(object):
             pass
 
 
-class Draw(object):
+class Draw:
     state: MCMCDraw
     vars: Optional[List[int]]
     portion: Optional[float]
@@ -1092,9 +1189,16 @@ class Draw(object):
         self.vars = vars
         self.portion = portion
         self.selection = selection
-        self.points, self.logp = _sample(state, portion=portion, vars=vars, selection=selection, thin=thin)
+        self.points, self.logp = _sample(state, portion=portion, selection=selection, thin=thin)
+        # Derived variables are created during the draw so that existing data isn't altered.
+        # This allows resume to work without extra effort. The code is also much simpler.
+        if state._derived_fn is not None:
+            newvars = asarray(state._derived_fn(self.points.T)).T
+            self.points = np.vstack((self.points, newvars))
+        if vars is not None:
+            self.points = self.points[:, vars]
         self.labels = state.labels if vars is None else [state.labels[v] for v in vars]
-        self._stats = None
+
         self.weights = None
         self.num_vars = len(self.labels)
         if state._integer_vars is not None:
@@ -1110,7 +1214,7 @@ class Draw(object):
         return self._argsort_indices[var]
 
 
-def _sample(state, portion: float, vars: List[int], selection: SelectionType, thin):
+def _sample(state, portion: float, selection: SelectionType, thin):
     """
     Return a sample from a set of chains.
     """
@@ -1133,8 +1237,6 @@ def _sample(state, portion: float, vars: List[int], selection: SelectionType, th
                 idx = idx & (points[:, v] >= r[0]) & (points[:, v] <= r[1])
         points = points[idx, :]
         logp = logp[idx]
-    if vars is not None:
-        points = points[:, vars]
     return points, logp
 
 

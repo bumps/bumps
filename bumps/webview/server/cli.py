@@ -204,6 +204,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         nargs="?",
         help="problem file to load, .py or .json (serialized) fitproblem",
     )
+    # TODO: don't need separate --args to introduce model args.
     parser.add_argument(
         "--args",
         nargs="*",
@@ -254,6 +255,9 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         default=None,
         type=str,
         help="output file for session state (overrides --store)",
+    )
+    session.add_argument(
+        "--resume", action="store_true", help="Resume the most recent fit from the saved session file. [dream]"
     )
     session.add_argument(
         "--serializer",
@@ -467,6 +471,9 @@ def interpret_fit_options(options: BumpsOptions):
                     pathlist=list(read_store_path.parent.parts),
                     filename=read_store_path.name,
                 )
+    # Loading the problem resets uncertainty state, so keep hold of that in session file
+    # in case we have --resume on the command line
+    initial_fit_state = api.state.fitting.uncertainty_state
     if write_store is not None:
         write_store_path = Path(write_store).absolute()
         # TODO: Why are we splitting path into parts?
@@ -512,6 +519,7 @@ def interpret_fit_options(options: BumpsOptions):
         logger.debug(f"fitter for filename {model_filename} is {fitter_id}")
         on_startup.append(lambda App: api.load_problem_file(model_pathlist, model_filename, args=options.args))
 
+    # TODO: allow pars to be loaded from a session file.
     if options.pars is not None:
         filepath = Path(options.pars).absolute()
         pars_pathlist = list(filepath.parent.parts)
@@ -579,7 +587,7 @@ def interpret_fit_options(options: BumpsOptions):
         on_startup.append(start_mapper)
 
     webview = options.mode != "batch"
-    autostart = not webview or options.mode in ("start", "run")
+    autostart = not webview or options.mode in ("start", "run") or options.resume
     autostop = not webview or options.mode == "run"
     # print(f"{options.mode=} {webview=} {autostart=} {autostop=}")
 
@@ -601,8 +609,10 @@ def interpret_fit_options(options: BumpsOptions):
         async def start_fit(App=None):
             # print(f"{api.state.rank}start fit")
             # print(f"{fitter_settings=}")
+            if options.resume:
+                api.state.fitting.uncertainty_state = initial_fit_state
             if api.state.problem is not None:
-                await api.start_fit_thread(fitter_id, fitopts)
+                await api.start_fit_thread(fitter_id, fitopts, resume=options.resume)
 
         on_startup.append(start_fit)
         api.state.console_update_interval = 0 if webview else 1

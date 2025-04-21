@@ -198,6 +198,7 @@ class History(object):
 
         If the stream is too short, fewer than n items may be returned.
         """
+        # TODO: draws need to be temperature weighted. We have code for this somewhere...
         S = self.buffer[stream]
         n = len(S)
         return [S[i] for i in choose(n, k)] if n > k else S[:]

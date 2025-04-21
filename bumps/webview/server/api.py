@@ -135,6 +135,7 @@ async def load_problem_file(
     autosave_previous: bool = True,
     args: List[str] = None,
 ):
+    # print("load_problem_file", state.fitting.uncertainty_state)
     path = Path(*pathlist, filename)
     logger.info(f"Loading model: {path}")
     await log(f"Loading model: {path}")
@@ -555,6 +556,7 @@ async def start_fit_thread(fitter_id: str, options: Optional[Dict[str, Any]] = N
         if options:
             full_options.update(options)
         fitclass = fit_options.lookup_fitter(fitter_id)
+        # print(f"start fit thread {resume} {state.fitting.uncertainty_state}")
         fit_thread = FitThread(
             abort_event=state.fit_abort_event,
             fitclass=fitclass,
@@ -566,15 +568,16 @@ async def start_fit_thread(fitter_id: str, options: Optional[Dict[str, Any]] = N
             # Number of seconds between updates to the GUI, or 0 for no updates
             convergence_update=5,
             uncertainty_update=state.shared.autosave_session_interval,
-            initial_uncertainty_state=state.fitting.uncertainty_state if resume else None,
             console_update=state.console_update_interval,
+            fit_state=state.fitting.uncertainty_state if resume else None,
         )
         state.shared.active_fit = to_json_compatible_dict(
             dict(
-                # TODO: don't need fitter_id as a separate option
+                # TODO: move fitter_id into options as method: fitter_id
                 fitter_id=fitter_id,
                 options=options,
                 num_steps=max_steps,
+                # TODO: step should be length fitting.population on resume
                 step=0,
                 chisq="",
                 value=0,
