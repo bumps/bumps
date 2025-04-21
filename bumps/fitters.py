@@ -332,10 +332,10 @@ class DEFit(FitBase):
         return x, self.history.value[0]
 
     def load(self, input_path):
-        self.state = load_history(input_path)
+        self.state = _de_load_history(input_path)
 
     def save(self, output_path):
-        save_history(output_path, self.history.snapshot())
+        _de_save_history(output_path, self.history.snapshot())
 
     @staticmethod
     def h5load(group: "Group") -> "MCMCDraw":
@@ -371,21 +371,21 @@ def parse_tolerance(options):
         return stop.Rx(xtol, scaled=False)
 
 
-def _history_file(path):
+def _de_history_file(path):
     return path + "-history.json"
 
 
-def load_history(path):
+def _de_load_history(path):
     """
     Load fitter details from a history file.
     """
     import json
 
-    with open(_history_file(path), "r") as fid:
+    with open(_de_history_file(path), "r") as fid:
         return json.load(fid)
 
 
-def save_history(path, state):
+def _de_save_history(path, state):
     """
     Save fitter details to a history file as JSON.
 
@@ -393,7 +393,7 @@ def save_history(path, state):
     """
     import json
 
-    with open(_history_file(path), "w") as fid:
+    with open(_de_history_file(path), "w") as fid:
         json.dump(state, fid)
 
 
