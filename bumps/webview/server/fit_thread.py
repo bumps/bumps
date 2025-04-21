@@ -288,12 +288,14 @@ class FitThread(Thread):
                 captured_output = fid.getvalue()
 
             # print("fit complete with", x, fx)
+            # TODO: webview assumes state is only available for dream
+            state = driver.fitter.state if self.fitclass.id == "dream" else None
             evt = dict(
                 message="complete",
                 problem=self.problem,
                 point=x,
                 value=fx,
-                uncertainty_state=driver.fitter.state,
+                uncertainty_state=state,
                 info=captured_output,
                 fitter_id=self.fitclass.id,
             )
