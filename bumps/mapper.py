@@ -262,29 +262,14 @@ def _MPI_map(problem, points, comm, root=0):
 
 def using_mpi():
     # Can look for environment variables defined by mpirun
-    #   mpich: PMI_RANK, PMI_*, MPI_*
-    #   openmp: OMPI_COMM_WORLD_RANK, OMPI_* PMIX_*
-    #   impi_rt (intel): PMI_RANK I_MPI_* HYDRA_*
-    #   msmpi (microsoft): PMI_RANK PMI_* MSMPI_*
-    # TODO: Make sure that Slurm isn't setting MPI variables in the batch script.
-    # I seem to recall some messiness with pmix variants on our local openmpi cluster
-    # so I would rather look at OMP_COMM_WORLD_RANK
-    mpienv = [
-        "OMPI_COMM_WORLD_RANK",  # OpenMPI
-        "PMI_RANK",  # MPICH, MSMPI [Microsoft], IMPI_RT [Intel]
-    ]
-    return any(v in os.environ for v in mpienv)
-
-    # The robust solution is as follows, but it requires opening the MPI ports.
-    # This triggers a security box on the Mac asking to give the python interpreter
-    # access to these ports. Since MPI use on Mac will be rare (only for problems
-    # that can't be pickled) we should avoid the confusing security box.
-    # from mpi4py import MPI
-    # try:
-    #     comm = MPI.COMM_WORLD
-    #     return comm.size > 1
-    # finally:
-    #     return False
+    #   mpich: PMI_SIZE, PMI_*, MPI_*
+    #   openmp: OMPI_COMM_WORLD_SIZE, OMPI_* PMIX_*
+    #   impi_rt (intel): PMI_SIZE I_MPI_* HYDRA_*
+    #   msmpi (microsoft): PMI_SIZE PMI_* MSMPI_*
+    size = os.environ.get("PMI_SIZE", None)
+    if size is None:
+        size = os.environ.get("OMPI_COMM_WORLD_SIZE", None)
+    return size is not None and int(size) > 1
 
 
 class MPIMapper(BaseMapper):
