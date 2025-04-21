@@ -522,7 +522,7 @@ async def shake_parameters():
 
 
 @register
-async def start_fit_thread(fitter_id: str, options: Optional[Dict[str, Any]] = None):
+async def start_fit_thread(fitter_id: str, options: Optional[Dict[str, Any]] = None, resume: bool = False):
     fitProblem = state.problem.fitProblem if state.problem is not None else None
     if fitProblem is None:
         await log("Error: Can't start fit if no problem loaded")
@@ -651,6 +651,7 @@ async def _fit_progress_handler(event: Dict):
             # don't save state - the fit_complete handler will do that.
         else:  # message == "uncertainty_update"
             state.autosave()
+
 
 async def _fit_complete_handler(event: Dict[str, Any]):
     message = event.get("message", None)
