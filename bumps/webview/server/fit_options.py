@@ -267,7 +267,7 @@ def check_options(options: Dict[str, Any], fitter_id: Optional[str] = None) -> T
                 value = min(stype.max, max(stype.min, value))
         elif not isinstance(value, stype):
             # Skip values of the wrong type
-            errors.append(f"Expected {key}={value} to have type {stype}. Ignored")
+            errors.append(f"Expected {key}={value} to have type {stype.__name__}. Ignored")
             continue
         new_options[key] = value
     if unknown:
