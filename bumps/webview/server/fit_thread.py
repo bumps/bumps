@@ -105,7 +105,7 @@ class ConvergenceMonitor(monitor.Monitor):
             self._send_update()
             self.time = history.time[0]
 
-    def final(self):
+    def final(self, history, best):
         """
         Close out the monitor but sending any tailing convergence information
         """
@@ -159,7 +159,7 @@ class DreamMonitor(monitor.Monitor):
             # print("Dream update", evt)
             EVT_FIT_PROGRESS.send(evt)
 
-    def final(self):
+    def final(self, history, best):
         """
         Close out the monitor
         """
@@ -180,7 +180,7 @@ class FitThread(Thread):
 
     def __init__(
         self,
-        abort_event: Event,
+        fit_abort_event: Event,
         problem=None,
         fitclass=None,
         options=None,
@@ -190,12 +190,13 @@ class FitThread(Thread):
         uncertainty_update=300,
         console_update=0,
         fit_state=None,
+        # outputs=None,
     ):
         # base class initialization
         # Process.__init__(self)
 
         Thread.__init__(self)
-        self.abort_event = abort_event
+        self.fit_abort_event = fit_abort_event
         self.problem = problem
         self.fitclass = fitclass
         self.fit_state = fit_state
@@ -206,13 +207,14 @@ class FitThread(Thread):
         self.convergence_update = convergence_update
         self.uncertainty_update = uncertainty_update
         self.console_update = console_update
+        # self.outputs = {} if outputs is None else outputs
 
         # Setting daemon to true causes sys.exit() to kill the thread immediately
         # rather than waiting for it to complete.
         self.daemon = True
 
     def abort_test(self):
-        return self.abort_event.is_set()
+        return self.fit_abort_event.is_set()
 
     def run(self):
         # TODO: we have no interlocks on changes in problem state.  What
@@ -277,13 +279,19 @@ class FitThread(Thread):
             )
 
             x, fx = driver.fit(fit_state=self.fit_state)
-            # Give final state message from monitors
-            for M in monitors:
-                if hasattr(M, "final"):
-                    M.final()
 
             with redirect_console() as fid:
                 driver.show()
+                # entropy = self.outputs.get('entropy', None)
+                # err = self.outputs.get('err', False)
+                # cov = self.outputs.get('cov', False)
+                # if cov:
+                #     driver.show_err()
+                #     driver.show_cov()
+                # elif err:
+                #     driver.show_err()
+                # if entropy:
+                #     driver.show_entropy(entropy)
                 captured_output = fid.getvalue()
 
             # print("fit complete with", x, fx)

@@ -138,7 +138,6 @@ def save_best(fitdriver, problem, best, view=None):
     with util.redirect_console(problem.output_path + ".err"):
         fitdriver.show()
         fitdriver.plot(output_path=problem.output_path, view=view)
-    fitdriver.show()
     # print "plotting"
 
 
@@ -713,6 +712,7 @@ def main():
         # print("time=%g"%(time.clock()-t0),file=sys.__stdout__)
         # Note: keep this in sync with the checkpoint function above
         save_best(fitdriver, problem, best, view=opts.view)
+        fitdriver.show()
         if opts.err or opts.cov:
             fitdriver.show_err()
         if opts.cov:

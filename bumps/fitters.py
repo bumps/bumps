@@ -15,9 +15,10 @@ from . import lsqerror
 from .history import History
 from .formatnum import format_uncertainty
 from .fitproblem import nllf_scale
+from .util import NDArray, format_duration
 
 # For typing
-from typing import List, Tuple, Dict, Any
+from typing import List, Tuple, Dict, Any, Optional
 from numpy.typing import NDArray
 from h5py import Group
 from bumps.dream.state import MCMCDraw
@@ -32,20 +33,35 @@ class ConsoleMonitor(monitor.TimedUpdate):
         monitor.TimedUpdate.__init__(self, progress=progress, improvement=improvement)
         self.problem = problem
 
-    def show_progress(self, history):
+    def _print_chisq(self, k, fx):
         scale, err = nllf_scale(self.problem)
-        chisq = format_uncertainty(scale * history.value[0], err)
-        print("step", history.step[0], "cost", chisq)
-        sys.stdout.flush()
+        chisq = format_uncertainty(scale * fx, err)
+        print(f"step {k} cost {chisq}")
 
-    def show_improvement(self, history):
-        # print("step",history.step[0],"chisq",history.value[0])
+    def _print_pars(self, x):
         p = self.problem.getp()
         try:
-            self.problem.setp(history.point[0])
+            self.problem.setp(x)
             print(self.problem.summarize())
         finally:
             self.problem.setp(p)
+
+    def show_progress(self, history):
+        self._print_chisq(history.step[0], history.value[0])
+        sys.stdout.flush()
+
+    def show_improvement(self, history):
+        self._print_pars(history.point[0])
+        sys.stdout.flush()
+
+    def final(self, history: History, best: Dict[str, Any]):
+        self._print_chisq("final", best["value"])
+        self._print_pars(best["point"])
+        print(f"time {format_duration(history.time[0])}")
+        sys.stdout.flush()
+
+    def info(self, message: str):
+        print(message)
         sys.stdout.flush()
 
 
@@ -98,7 +114,7 @@ class StepMonitor(monitor.Monitor):
     def config_history(self, history):
         history.requires(time=1, value=1, point=1, step=1)
 
-    def __call__(self, history):
+    def update(self, history):
         point = " ".join("%.15g" % v for v in history.point[0])
         time = "%g" % history.time[0]
         step = "%d" % history.step[0]
@@ -107,22 +123,32 @@ class StepMonitor(monitor.Monitor):
         out = self._pattern % dict(point=point, time=time, value=value, step=step)
         self.fid.write(out)
 
+    __call__ = update
+
 
 class MonitorRunner(object):
     """
     Adaptor which allows solvers to accept progress monitors.
     """
 
-    def __init__(self, monitors, problem):
-        if monitors is None:
-            monitors = [ConsoleMonitor(problem)]
+    def __init__(self, monitors: List[monitor.Monitor], problem, abort_test=None):
         self.monitors = monitors
         self.history = History(time=1, step=1, point=1, value=1, population_points=1, population_values=1)
         for M in self.monitors:
             M.config_history(self.history)
         self._start = perf_counter()
+        self.abort_test = abort_test if abort_test is not None else lambda: False
 
-    def __call__(self, step, point, value, population_points=None, population_values=None):
+    def update(
+        self,
+        step: int,
+        point: NDArray,
+        value: float,
+        population_points: Optional[NDArray] = None,
+        population_values: Optional[NDArray] = None,
+    ):
+        # Note: DEFit doesn't use MonitorRunner for config/update
+        # print(f"updating with {step} {perf_counter() - self._start} {value} {point}")
         self.history.update(
             time=perf_counter() - self._start,
             step=step,
@@ -133,6 +159,24 @@ class MonitorRunner(object):
         )
         for M in self.monitors:
             M(self.history)
+
+    __call__ = update
+
+    def stopping(self):
+        return self.abort_test()
+
+    def info(self, message: str):
+        for M in self.monitors:
+            monitor_message = getattr(M, "info", None)
+            if monitor_message is not None:
+                monitor_message(message)
+
+    def final(self, point: NDArray, value: float):
+        best = dict(point=point, value=value)
+        for M in self.monitors:
+            monitor_final = getattr(M, "final", None)
+            if monitor_final is not None:
+                monitor_final(self.history, best)
 
 
 class FitBase(object):
@@ -201,7 +245,7 @@ class FitBase(object):
         """Fit the models and show the results"""
         self.problem = problem
 
-    def solve(self, monitors=None, mapper=None, **options):
+    def solve(self, monitors: MonitorRunner, mapper=None, **options):
         raise NotImplementedError()
 
     @staticmethod
@@ -235,39 +279,39 @@ class MultiStart(FitBase):
     Multi-start monte carlo fitter.
 
     This fitter wraps a local optimizer, restarting it a number of times
-    to give it a chance to find a different local minimum.  If the near_best
-    option is True, then restart near the best fit, otherwise restart at
+    to give it a chance to find a different local minimum.  If the jump
+    radius is non-zero, then restart near the best fit, otherwise restart at
     random.
     """
 
     name = "Multistart Monte Carlo"
-    settings = [("starts", 100), ("near_best", True)]
+    settings = [("starts", 100), ("jump", 0.0)]
 
     def __init__(self, fitter):
         FitBase.__init__(self, fitter.problem)
         self.fitter = fitter
 
-    def solve(self, monitors=None, mapper=None, **options):
-        # TODO: need better way of tracking progress
-        import logging
-
-        starts = options.pop("starts", 1)
-        reset = not options.pop("near_best", True)
-        f_best = np.inf
-        x_best = self.problem.getp()
-        for _ in range(max(starts, 1)):
-            logging.info("multistart round %d", _)
+    def solve(self, monitors: MonitorRunner, mapper=None, **options):
+        starts = max(options.pop("starts", 1), 1)
+        jump = options.pop("jump", 0.0)
+        x_best, f_best, chisq_best = None, np.inf, None
+        scale, err = nllf_scale(self.problem)
+        for k in range(starts):
             x, fx = self.fitter.solve(monitors=monitors, mapper=mapper, **options)
+            chisq = format_uncertainty(scale * fx, err)
             if fx < f_best:
-                x_best, f_best = x, fx
-                logging.info("multistart f(x),x: %s %s", str(fx), str(x_best))
-            if reset:
+                x_best, f_best, chisq_best = x, fx, chisq
+                monitors.info(f"fit {k+1} of {starts}: {chisq} [new best]")
+            else:
+                monitors.info(f"fit {k+1} of {starts}: {chisq} [best={chisq_best}]")
+            if k >= starts - 1 or monitors.stopping():
+                break
+            if jump == 0.0:
                 self.problem.randomize()
             else:
-                # Jitter
-                self.problem.setp(x_best)
-                pop = initpop.eps_init(1, self.problem.getp(), self.problem.bounds(), use_point=False, eps=1e-3)
+                pop = initpop.eps_init(1, x_best, self.problem.bounds(), use_point=False, eps=jump)
                 self.problem.setp(pop[0])
+            # print(f"jump={jump} moving from {x} to {self.problem.getp()}")
         return x_best, f_best
 
 
@@ -288,16 +332,12 @@ class DEFit(FitBase):
     ]
     state = None
 
-    def solve(self, monitors=None, abort_test=None, mapper=None, **options):
-        if abort_test is None:
-            abort_test = lambda: False
+    def solve(self, monitors: MonitorRunner, mapper=None, **options):
         options = _fill_defaults(options, self.settings)
         from .mystic.optimizer import de
         from .mystic.solver import Minimizer
         from .mystic import stop
 
-        if monitors is None:
-            monitors = [ConsoleMonitor(self.problem)]
         if mapper is not None:
             _mapper = lambda p, v: mapper(v)
         else:
@@ -314,20 +354,21 @@ class DEFit(FitBase):
         minimize = Minimizer(
             strategy=strategy,
             problem=self.problem,
-            history=self.history,
-            monitors=monitors,
+            # TODO: use MonitorRunner update within DE
+            history=monitors.history,
+            monitors=monitors.monitors,
             success=success,
             failure=failure,
         )
         if self.state is not None:
             self.history.restore(self.state)
-        x = minimize(mapper=_mapper, abort_test=abort_test, resume=resume)
+        x = minimize(mapper=_mapper, abort_test=monitors.stopping, resume=resume)
         self.state = self.history.snapshot()
         # print(minimize.termination_condition())
         # with open("/tmp/evals","a") as fid:
         #   print >>fid,minimize.history.value[0],minimize.history.step[0],\
         #       minimize.history.step[0]*options['pop']*len(self.problem.getp())
-        return x, self.history.value[0]
+        return x, monitors.history.value[0]
 
     def load(self, input_path):
         self.state = _de_load_history(input_path)
@@ -413,20 +454,20 @@ class BFGSFit(FitBase):
 
     name = "Quasi-Newton BFGS"
     id = "newton"
-    settings = [("steps", 3000), ("ftol", 1e-6), ("xtol", 1e-12), ("starts", 1), ("near_best", False)]
+    settings = [("steps", 3000), ("ftol", 1e-6), ("xtol", 1e-12), ("starts", 1), ("jump", 0.0)]
 
-    def solve(self, monitors=None, abort_test=None, mapper=None, **options):
-        if abort_test is None:
-            abort_test = lambda: False
+    def solve(self, monitors: MonitorRunner, mapper=None, **options):
         options = _fill_defaults(options, self.settings)
         from .quasinewton import quasinewton
 
-        self._update = MonitorRunner(problem=self.problem, monitors=monitors)
+        def update(step, x, fx):
+            monitors(step=step, point=x, value=fx, population_points=[x], population_values=[fx])
+            return not monitors.stopping()
+
         result = quasinewton(
             fn=self.problem.nllf,
             x0=self.problem.getp(),
-            monitor=self._monitor,
-            abort_test=abort_test,
+            monitor=update,
             itnlimit=options["steps"],
             gradtol=options["ftol"],
             steptol=1e-12,
@@ -440,10 +481,6 @@ class BFGSFit(FitBase):
         #      % (code, STATUS[code], result['x'], result['fx']))
         return result["x"], result["fx"]
 
-    def _monitor(self, step, x, fx):
-        self._update(step=step, point=x, value=fx, population_points=[x], population_values=[fx])
-        return True
-
 
 class PSFit(FitBase):
     """
@@ -454,16 +491,26 @@ class PSFit(FitBase):
     id = "ps"
     settings = [("steps", 3000), ("pop", 1)]
 
-    def solve(self, monitors=None, mapper=None, **options):
+    def solve(self, monitors: MonitorRunner, mapper=None, **options):
+        from .random_lines import particle_swarm
+
         options = _fill_defaults(options, self.settings)
         if mapper is None:
             mapper = lambda x: list(map(self.problem.nllf, x))
-        from .random_lines import particle_swarm
 
-        self._update = MonitorRunner(problem=self.problem, monitors=monitors)
+        def update(step, x, fx, k):
+            monitors(step=step, point=x[:, k], value=fx[k], population_points=x.T, population_values=fx)
+            return not monitors.stopping()
+
         low, high = self.problem.bounds()
         cfo = dict(
-            parallel_cost=mapper, n=len(low), x0=self.problem.getp(), x1=low, x2=high, f_opt=0, monitor=self._monitor
+            parallel_cost=mapper,
+            n=len(low),
+            x0=self.problem.getp(),
+            x1=low,
+            x2=high,
+            f_opt=0,
+            monitor=update,
         )
         npop = int(cfo["n"] * options["pop"])
 
@@ -471,10 +518,6 @@ class PSFit(FitBase):
         satisfied_sc, n_feval, f_best, x_best = result
 
         return x_best, f_best
-
-    def _monitor(self, step, x, fx, k):
-        self._update(step=step, point=x[:, k], value=fx[k], population_points=x.T, population_values=fx)
-        return True
 
 
 class RLFit(FitBase):
@@ -484,32 +527,35 @@ class RLFit(FitBase):
 
     name = "Random Lines"
     id = "rl"
-    settings = [("steps", 3000), ("pop", 0.5), ("CR", 0.9), ("starts", 20), ("near_best", False)]
+    settings = [("steps", 3000), ("pop", 0.5), ("CR", 0.9), ("starts", 20), ("jump", 0.0)]
 
-    def solve(self, monitors=None, abort_test=None, mapper=None, **options):
-        if abort_test is None:
-            abort_test = lambda: False
+    def solve(self, monitors: MonitorRunner, mapper=None, **options):
+        from .random_lines import random_lines
+
         options = _fill_defaults(options, self.settings)
         if mapper is None:
             mapper = lambda x: list(map(self.problem.nllf, x))
-        from .random_lines import random_lines
 
-        self._update = MonitorRunner(problem=self.problem, monitors=monitors)
+        def update(step, x, fx, k):
+            monitors(step=step, point=x[:, k], value=fx[k], population_points=x.T, population_values=fx)
+            return not monitors.stopping()
+
         low, high = self.problem.bounds()
         cfo = dict(
-            parallel_cost=mapper, n=len(low), x0=self.problem.getp(), x1=low, x2=high, f_opt=0, monitor=self._monitor
+            parallel_cost=mapper,
+            n=len(low),
+            x0=self.problem.getp(),
+            x1=low,
+            x2=high,
+            f_opt=0,
+            monitor=update,
         )
         npop = max(int(cfo["n"] * options["pop"]), 3)
 
-        result = random_lines(cfo, npop, abort_test=abort_test, maxiter=options["steps"], CR=options["CR"])
+        result = random_lines(cfo, npop, maxiter=options["steps"], CR=options["CR"])
         satisfied_sc, n_feval, f_best, x_best = result
 
         return x_best, f_best
-
-    def _monitor(self, step, x, fx, k):
-        # print "rl best",k, x.shape,fx.shape
-        self._update(step=step, point=x[:, k], value=fx[k], population_points=x.T, population_values=fx)
-        return True
 
 
 class PTFit(FitBase):
@@ -521,12 +567,15 @@ class PTFit(FitBase):
     id = "pt"
     settings = [("steps", 400), ("nT", 24), ("CR", 0.9), ("burn", 100), ("Tmin", 0.1), ("Tmax", 10)]
 
-    def solve(self, monitors=None, mapper=None, **options):
+    def solve(self, monitors: MonitorRunner, mapper=None, **options):
         options = _fill_defaults(options, self.settings)
         # TODO: no mapper??
         from .partemp import parallel_tempering
 
-        self._update = MonitorRunner(problem=self.problem, monitors=monitors)
+        def update(step, x, fx, P, E):
+            monitors(step=step, point=x, value=fx, population_points=P, population_values=E)
+            return not monitors.stopping()
+
         t = np.logspace(np.log10(options["Tmin"]), np.log10(options["Tmax"]), options["nT"])
         history = parallel_tempering(
             nllf=self.problem.nllf,
@@ -537,13 +586,9 @@ class PTFit(FitBase):
             CR=options["CR"],
             steps=options["steps"],
             burn=options["burn"],
-            monitor=self._monitor,
+            monitor=update,
         )
         return history.best_point, history.best
-
-    def _monitor(self, step, x, fx, P, E):
-        self._update(step=step, point=x, value=fx, population_points=P, population_values=E)
-        return True
 
 
 class SimplexFit(FitBase):
@@ -553,23 +598,24 @@ class SimplexFit(FitBase):
 
     name = "Nelder-Mead Simplex"
     id = "amoeba"
-    settings = [("steps", 1000), ("radius", 0.15), ("xtol", 1e-6), ("ftol", 1e-8), ("starts", 1), ("near_best", True)]
+    settings = [("steps", 1000), ("radius", 0.15), ("xtol", 1e-6), ("ftol", 1e-8), ("starts", 1), ("jump", 0.01)]
 
-    def solve(self, monitors=None, abort_test=None, mapper=None, **options):
+    def solve(self, monitors: MonitorRunner, mapper=None, **options):
         from .simplex import simplex
 
-        if abort_test is None:
-            abort_test = lambda: False
         options = _fill_defaults(options, self.settings)
+
         # TODO: no mapper??
-        self._update = MonitorRunner(problem=self.problem, monitors=monitors)
         # print("bounds", self.problem.bounds())
+        def update(k, n, x, fx):
+            monitors(step=k, point=x[0], value=fx[0], population_points=x, population_values=fx)
+
         result = simplex(
             f=self.problem.nllf,
             x0=self.problem.getp(),
             bounds=self.problem.bounds(),
-            abort_test=abort_test,
-            update_handler=self._monitor,
+            abort_test=monitors.stopping,
+            update_handler=update,
             maxiter=options["steps"],
             radius=options["radius"],
             xtol=options["xtol"],
@@ -582,10 +628,6 @@ class SimplexFit(FitBase):
         # print("amoeba %s %s"%(result.x,result.fx))
         return result.x, result.fx
 
-    def _monitor(self, k, n, x, fx):
-        self._update(step=k, point=x[0], value=fx[0], population_points=x, population_values=fx)
-        return True
-
 
 class MPFit(FitBase):
     """
@@ -594,17 +636,14 @@ class MPFit(FitBase):
 
     name = "Levenberg-Marquardt"
     id = "lm"
-    settings = [("steps", 200), ("ftol", 1e-10), ("xtol", 1e-10), ("starts", 1), ("near_best", False)]
+    settings = [("steps", 200), ("ftol", 1e-10), ("xtol", 1e-10), ("starts", 1), ("jump", 0.0)]
 
-    def solve(self, monitors=None, abort_test=None, mapper=None, **options):
+    def solve(self, monitors=None, mapper=None, **options):
         from .mpfit import mpfit
 
-        if abort_test is None:
-            abort_test = lambda: False
         options = _fill_defaults(options, self.settings)
         self._low, self._high = self.problem.bounds()
-        self._update = MonitorRunner(problem=self.problem, monitors=monitors)
-        self._abort = abort_test
+        self._stopping = monitors.stopping
         x0 = self.problem.getp()
         parinfo = []
         for low, high in zip(*self.problem.bounds()):
@@ -626,6 +665,9 @@ class MPFit(FitBase):
                 }
             )
 
+        def update(fcn, p, k, fnorm, functkw=None, parinfo=None, quiet=0, dof=None, **extra):
+            monitors(step=k, point=p, value=fnorm)
+
         result = mpfit(
             fcn=self._residuals,
             xall=x0,
@@ -640,7 +682,7 @@ class MPFit(FitBase):
             # gtol=1e-100, # exclude gtol test
             maxiter=options["steps"],
             # Progress monitor
-            iterfunct=self._monitor,
+            iterfunct=update,
             nprint=1,  # call monitor each iteration
             quiet=True,  # leave it to monitor to print any info
             # Returns values
@@ -654,11 +696,8 @@ class MPFit(FitBase):
 
         return x, fx
 
-    def _monitor(self, fcn, p, k, fnorm, functkw=None, parinfo=None, quiet=0, dof=None, **extra):
-        self._update(k, p, fnorm)
-
     def _residuals(self, p, fjac=None):
-        if self._abort():
+        if self._stopping():
             return -1, None
 
         self.problem.setp(p)
@@ -688,16 +727,14 @@ class LevenbergMarquardtFit(FitBase):
     #    factor: initial radius
     #    diag: variable scale factors to bring them near 1
 
-    def solve(self, monitors=None, abort_test=None, mapper=None, **options):
+    def solve(self, monitors: MonitorRunner, mapper=None, **options):
         from scipy import optimize
 
-        if abort_test is None:
-            abort_test = lambda: False
         options = _fill_defaults(options, self.settings)
         self._low, self._high = self.problem.bounds()
-        self._update = MonitorRunner(problem=self.problem, monitors=monitors)
         x0 = self.problem.getp()
         maxfev = options["steps"] * (len(x0) + 1)
+        monitors(step=0, point=x0, value=self.problem.nllf())
         result = optimize.leastsq(
             self._bounded_residuals,
             x0,
@@ -728,6 +765,7 @@ class LevenbergMarquardtFit(FitBase):
             fx = self.problem.nllf()
         else:
             fx = None
+        monitors(step=1, point=x, value=self.problem.nllf())
         return x, fx
 
     def _bounded_residuals(self, p):
@@ -762,18 +800,17 @@ class SnobFit(FitBase):
     id = "snobfit"
     settings = [("steps", 200)]
 
-    def solve(self, monitors=None, mapper=None, **options):
+    def solve(self, monitors: MonitorRunner, mapper=None, **options):
         options = _fill_defaults(options, self.settings)
         # TODO: no mapper??
         from snobfit.snobfit import snobfit
 
-        self._update = MonitorRunner(problem=self.problem, monitors=monitors)
-        x, fx, _ = snobfit(self.problem, self.problem.getp(), self.problem.bounds(), fglob=0, callback=self._monitor)
-        return x, fx
+        def update(k, x, fx, improved):
+            # TODO: snobfit does have a population...
+            monitors(step=k, point=x, value=fx, population_points=[x], population_values=[fx])
 
-    def _monitor(self, k, x, fx, improved):
-        # TODO: snobfit does have a population...
-        self._update(step=k, point=x, value=fx, population_points=[x], population_values=[fx])
+        x, fx, _ = snobfit(self.problem, self.problem.getp(), self.problem.bounds(), fglob=0, callback=update)
+        return x, fx
 
 
 class DreamModel:
@@ -820,23 +857,25 @@ class DreamFit(FitBase):
         FitBase.__init__(self, problem)
         self.state = None
 
-    def solve(self, monitors=None, abort_test=None, mapper=None, **options):
+    def solve(self, monitors: MonitorRunner, mapper=None, **options):
         from .dream import Dream
 
-        if abort_test is None:
-            abort_test = lambda: False
         options = _fill_defaults(options, self.settings)
 
-        self._update = MonitorRunner(problem=self.problem, monitors=monitors)
+        def update(state, pop, logp):
+            # Get an early copy of the state
+            self.state = monitors.history.uncertainty_state = state
+            step = state.generation
+            x, fx = state.best()
+            monitors(step=step, point=x, value=-fx, population_points=pop, population_values=-logp)
+            return True
 
         population = initpop.generate(self.problem, **options)
         pop_size = population.shape[0]
         draws, steps = int(options["samples"]), options["steps"]
         if steps == 0:
             steps = (draws + pop_size - 1) // pop_size
-        # TODO: need a better way to announce number of steps
-        # maybe somehow print iteration # of # iters in the monitor?
-        print(f"# burn: {options['burn']} # steps: {steps}, # draws: {pop_size * steps}")
+        monitors.info(f"# burn: {options['burn']} # steps: {steps}, # draws: {pop_size * steps}")
         population = population[None, :, :]
         sampler = Dream(
             model=DreamModel(self.problem, mapper),
@@ -844,13 +883,13 @@ class DreamFit(FitBase):
             draws=pop_size * steps,
             burn=pop_size * options["burn"],
             thinning=options["thin"],
-            monitor=self._monitor,
+            monitor=update,
             alpha=options["alpha"],
             outlier_test=options["outliers"],
             DE_noise=1e-6,
         )
 
-        self.state = sampler.sample(state=self.state, abort_test=abort_test)
+        self.state = sampler.sample(state=self.state, abort_test=monitors.stopping)
         # print("<<< Dream is done sampling >>>")
 
         self._trimmed = self.state.trim_portion() if options["trim"] else 1.0
@@ -884,14 +923,6 @@ class DreamFit(FitBase):
 
     def entropy(self, **kw):
         return self.state.entropy(portion=self._trimmed, **kw)
-
-    def _monitor(self, state, pop, logp):
-        # Get an early copy of the state
-        self.state = self._update.history.uncertainty_state = state
-        step = state.generation
-        x, fx = state.best()
-        self._update(step=step, point=x, value=-fx, population_points=pop, population_values=-logp)
-        return True
 
     def stderr(self):
         """
@@ -1000,7 +1031,6 @@ def _resampler(fitter, xinit, samples=100, restart=False, **options):
         # Restore the state of the problem
         fitter.problem.restore_data()
         fitter.problem.setp(xinit)
-        # fitter.problem.model_update()  # setp does model update
     return points
 
 
@@ -1009,13 +1039,13 @@ class FitDriver(object):
         self.fitclass = fitclass
         self.problem = problem
         self.options = options
-        self.monitors = monitors
+        self.monitors = [ConsoleMonitor(problem)] if monitors is None else monitors
         self.abort_test = abort_test
         self.mapper = mapper if mapper else lambda p: list(map(problem.nllf, p))
         self.fitter = None
         self.result = None
 
-    def fit(self, fit_state=None, resume=None):
+    def fit(self, resume=None, fit_state=None):
         """
         Providing *fit_state* allows the fit to resume from a previous state. If None
         then the fit will be started from a clean state.
@@ -1051,13 +1081,18 @@ class FitDriver(object):
         starts = self.options.get("starts", 1)
         if starts > 1:
             fitter = MultiStart(fitter)
-        t0 = perf_counter()
+        # TODO: better interface for history management?
+        # Keep a handle to the fitter which has state and monitor_runner which has history
         self.fitter = fitter
-        x, fx = fitter.solve(monitors=self.monitors, abort_test=self.abort_test, mapper=self.mapper, **self.options)
-        self.time = perf_counter() - t0
-        self.result = x, fx
+        self.monitor_runner = MonitorRunner(problem=self.problem, monitors=self.monitors, abort_test=self.abort_test)
+        x, fx = fitter.solve(
+            monitors=self.monitor_runner, abort_test=self.abort_test, mapper=self.mapper, **self.options
+        )
         if x is not None:
             self.problem.setp(x)
+        self.time = self.monitor_runner.history.time[0]
+        self.result = x, fx
+        self.monitor_runner.final(point=x, value=fx)
         return x, fx
 
     def clip(self):
@@ -1312,15 +1347,15 @@ def register(fitter, active=True):
 
 
 # Register the fitters
-register(SimplexFit, active=True)
-register(DEFit, active=True)
-register(DreamFit, active=True)
-register(BFGSFit, active=True)
-register(LevenbergMarquardtFit, active=True)
-register(MPFit, active=True)
-# register(PSFit, active=False)
+register(SimplexFit)
+register(DEFit)
+register(DreamFit)
+register(BFGSFit)
+register(MPFit)
 register(PTFit, active=False)
+# register(PSFit, active=False)
 # register(RLFit, active=False)
+# register(LevenbergMarquardtFit, active=True)
 # register(SnobFit, active=False)
 
 FIT_DEFAULT_ID = SimplexFit.id
@@ -1357,8 +1392,11 @@ def fit(problem, method=FIT_DEFAULT_ID, verbose=False, **options):
     from scipy.optimize import OptimizeResult
 
     # verbose = True
+    # Options parser stores --fit=fitter in fit_options["fit"] rather than fit_options["method"]
+    if "fit" in options:
+        method = options.pop("fit")
     if method not in FIT_AVAILABLE_IDS:
-        raise ValueError("unknown method %r not one of %s" % (method, ", ".join(sorted(FIT_ACTIVE_IDS))))
+        raise ValueError("unknown fit method %r not one of %s" % (method, ", ".join(sorted(FIT_ACTIVE_IDS))))
     for fitclass in FITTERS:
         if fitclass.id == method:
             break
@@ -1417,6 +1455,7 @@ def test_fitters():
     expected_error = [5.799e-2, 2.055e-2]
 
     for fitter_name in FIT_ACTIVE_IDS:
+        # print(f"Running {fitter_name}")
         result = fit(problem, method=fitter_name, verbose=False)
         assert np.allclose(result.x, expected_value, rtol=fit_value_tol)
         if fitter_name != "dream":

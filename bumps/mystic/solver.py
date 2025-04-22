@@ -148,7 +148,7 @@ class Minimizer:
 
         Note: only used stand-alone, not within fit service
         """
-        self.time = time.time()
+        self.time = time.perf_counter()
         self.remote_time = -cpu_time()
         population = self.step() if resume else self.start()
         try:
@@ -209,7 +209,7 @@ class Minimizer:
 
         # Update the history
         self.history.update(
-            time=time.time() - self.time,
+            time=time.perf_counter() - self.time,
             cpu_time=cpu_time() + self.remote_time,
             population_points=points,
             population_values=values,

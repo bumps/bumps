@@ -1,10 +1,25 @@
-from typing import Dict, List, Tuple, Optional, Any, Callable
+from typing import Dict, List, Tuple, Any, Callable, Optional
 from textwrap import dedent
 from argparse import ArgumentTypeError
 from dataclasses import dataclass
 
 from bumps import fitters
 from bumps.fitters import FIT_AVAILABLE_IDS
+
+
+def get_fitter_defaults(fitters):
+    """
+    Determines the default values for each setting of each fitter.
+
+    This comes from the Fitter.settings attribute in the fitters defined by bumps.fitter,
+    with an additional ("time", 0.0) setting implicit to all fitters.
+    """
+    defaults = {f.id: dict(name=f.name, settings=dict(f.settings)) for f in fitters}
+    # Add an implicit time=0 for the max time on each fitter.
+    for k, v in defaults.items():
+        v["settings"]["time"] = 0.0
+    return defaults
+
 
 FITTERS = (
     fitters.SimplexFit,
@@ -13,22 +28,13 @@ FITTERS = (
     fitters.MPFit,
     fitters.BFGSFit,
 )
+"""Fitters visible to the user. This may be a subset of bumps.fitters.FITTERS"""
 DEFAULT_FITTER_ID = fitters.SimplexFit.id
-# Note: there are fitters that are not available in the default list but they
-# can still be specified on the command line. If one of these is used then it
-# needs to be advertised to webview via state.shared.fitter_settings
-FITTER_DEFAULTS = {fitter.id: dict(name=fitter.name, settings=dict(fitter.settings)) for fitter in FITTERS}
-
-
-def lookup_fitter(fitter_id: str):
-    # Checking the complete list of fitters, not the restricted list for webview
-    for fitter in fitters.FITTERS:
-        if fitter.id == fitter_id:
-            return fitter
-    raise ValueError(f"Unknown fitter '{fitter_id}'")
-
-
+"""Default fitter if none specified"""
+FITTER_DEFAULTS = get_fitter_defaults(FITTERS)
+"""Fitter name and default settings for the visible fitters. This list will be amended if a hidden fitter is specified on the command line."""
 FIT_OPTIONS: Dict[str, "Setting"] = {}
+"""Options available to the fitters."""
 
 
 @dataclass(init=False)
@@ -86,6 +92,7 @@ Setting(
 Setting("xtol", "x tolerance", Range(0, 1), "Stop when population diameter < xtol relative to range.")
 Setting("ftol", "f(x) tolerance", float, "Stop when variation in log likelihood < ftol.")
 Setting("alpha", "Convergence", Range(0, 0.1), "Stop when probability that population is varying < alpha.")
+Setting("time", "Max time", float, "Maximum number of hours to run the fit, or zero for no maximum.")
 
 # Initializers
 Setting(
@@ -163,13 +170,23 @@ Setting(
 # Stochastic global minimization
 Setting("starts", "Auto restarts", int, "Number of times to restart the amoeba fit.")
 Setting(
-    "near_best",
-    "Near best",
-    bool,
+    "jump",
+    "Jump radius",
+    Range(0, 0.5),
     """\
-    When running with multiple starts, restart from a random point near the
-    best minimum rather than using a completely random starting point.""",
+    When running with multiple starts, what size of jump to take between restarts.
+    Values are in [0, 0.5], representing the portion of the total range of each parameter.
+    A value of zero uses a random starting point in the range.
+    """,
 )
+
+
+def lookup_fitter(fitter_id: str):
+    # Checking the complete list of fitters, not the restricted list for webview
+    for fitter in fitters.FITTERS:
+        if fitter.id == fitter_id:
+            return fitter
+    raise ValueError(f"Unknown fitter '{fitter_id}'")
 
 
 def form_fit_options_associations():
@@ -199,36 +216,39 @@ def form_fit_options_associations():
             setting.defaults.append(value)
 
 
-def check_options(options: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str]]:
+def check_options(options: Dict[str, Any], fitter_id: Optional[str] = None) -> Tuple[Dict[str, Any], List[str]]:
     """
     Check if the set of options is consistent for the fitter.
 
-    Returns an updated options dictionary and a list of errors covering unknown options and bad types.
+    Returns an updated options dictionary and a list of warnings covering unknown options and bad types.
     """
     # Note: this code is called with options set in a jupyter notebook so make
     # make sure it is robust against bad inputs.
     errors = []
     unknown = []
-    fitter_id = options.get("fit", DEFAULT_FITTER_ID)
+    if not fitter_id:
+        fitter_id = options.get("fit", DEFAULT_FITTER_ID)
     # available = set(fitter.id for fitter in FITTERS)
     # Check against all available fitters, not just the ones visibile in the interface
     available = FIT_AVAILABLE_IDS
     if fitter_id not in available:
         errors.append(f"Fitter {fitter_id} not in {', '.join(available)}. Using {DEFAULT_FITTER_ID} instead.")
         fitter_id = DEFAULT_FITTER_ID
+    # TODO: default from state.share.fitter_settings instead of Fitter.settings?
     fitter = lookup_fitter(fitter_id)
     defaults = dict(fitter.settings)
     # print(f"defaults for {fitter_id}: {defaults}")
-    new_options = {"fit": fitter_id, **defaults}
+    # Note: time is not one of the fit options but it is ever present.
+    new_options = {"fit": fitter_id, "time": 0.0, **defaults}
     for key, value in options.items():
         if key == "fit":
             # Already added.
             continue
-        if key not in defaults:
+        if key not in defaults and key != "time":
             # Skip unrecognized options
             unknown.append(f"{key}={value}")
             continue
-        stype = FIT_OPTIONS[key].stype
+        stype = float if key == "time" else FIT_OPTIONS[key].stype
         if isinstance(stype, list):  # enumeration
             if value not in stype:
                 # Default to first item in an enum if the enum is recognized.

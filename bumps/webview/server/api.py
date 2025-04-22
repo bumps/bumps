@@ -524,80 +524,111 @@ async def shake_parameters():
 
 
 @register
-async def start_fit_thread(fitter_id: str, options: Optional[Dict[str, Any]] = None, resume: bool = False):
+async def start_fit_thread(
+    fitter_id: str, options: Optional[Dict[str, Any]] = None, max_time: float = 0.0, resume: bool = False
+):
     fitProblem = state.problem.fitProblem if state.problem is not None else None
     if fitProblem is None:
         await log("Error: Can't start fit if no problem loaded")
-    else:
-        state.calling_loop = get_running_loop()
-        if state.fit_thread is not None:
-            # warn that fit is alread running...
-            logger.warning("fit already running...")
-            await log("Can't start fit, a fit is already running...")
-            return
+        return
 
-        # TODO: better access to model parameters
-        num_params = len(fitProblem.getp())
-        if num_params == 0:
-            raise ValueError("Problem has no fittable parameters")
+    state.calling_loop = get_running_loop()
+    if state.fit_thread is not None:
+        # warn that fit is alread running...
+        logger.warning("fit already running...")
+        await log("Can't start fit, a fit is already running...")
+        return
 
-        # Start a new thread worker and give fit problem to the worker.
-        # Clear abort and uncertainty state
-        # state.abort = False
-        # state.fitting.fit_state = None
-        max_steps = get_max_steps(num_params, fitter_id, options)
-        state.fit_abort_event.clear()
-        # TODO: remove this re-creation of the Event object when minimum python is >= 3.10
-        state.fit_complete_event = asyncio.Event()
-        state.fit_complete_event.clear()
+    # TODO: better access to model parameters
+    num_params = len(fitProblem.getp())
+    if num_params == 0:
+        raise ValueError("Problem has no fittable parameters")
 
-        if resume and state.fitting.method != fitter_id:
-            state.fitting.fit_state = None
-            # TODO: How do warnings get back to webview?
-            warnings.warn(f"Can't resume {fitter_id} from state saved by {state.fitting.method}")
-        # Use shared settings by default, update from any provided options
-        shared_settings = state.shared.fitter_settings
-        full_options = shared_settings[fitter_id]["settings"].copy()
-        if options:
-            full_options.update(options)
-        state.fitting.method = fitter_id
-        state.fitting.options = full_options
-        fitclass = fit_options.lookup_fitter(fitter_id)
-        # print(f"start fit thread {resume} {state.fitting.fit_state}")
-        fit_thread = FitThread(
-            abort_event=state.fit_abort_event,
-            fitclass=fitclass,
-            problem=fitProblem,
-            mapper=state.mapper,
-            options=full_options,
-            parallel=state.parallel,
-            # session_id=session_id,
-            # Number of seconds between updates to the GUI, or 0 for no updates
-            convergence_update=5,
-            uncertainty_update=state.shared.autosave_session_interval,
-            console_update=state.console_update_interval,
-            fit_state=state.fitting.fit_state if resume else None,
+    # Check the options. Pass the fitter_id so that we know which options are available.
+    options, warnings = fit_options.check_options(options, fitter_id=fitter_id)
+    for msg in warnings:
+        logger.warning(msg)
+        await log(msg)
+
+    # Allow fit=fitter_id and time=max_time in the options dictionary.
+    fitter_option = options.pop("fit")
+    if not fitter_id:
+        fitter_id = fitter_option
+    time_option = options.pop("time")
+    if max_time == 0.0:
+        max_time = time_option
+
+    # Start a new thread worker and give fit problem to the worker.
+    # Clear abort and uncertainty state
+    # state.abort = False
+    # state.fitting.uncertainty_state = None
+    max_steps = get_max_steps(num_params, fitter_id, options)
+    state.fit_abort_event.clear()
+    # TODO: remove this re-creation of the Event object when minimum python is >= 3.10
+    state.fit_complete_event = asyncio.Event()
+    state.fit_complete_event.clear()
+
+    if resume and state.fitting.method != fitter_id:
+        state.fitting.fit_state = None
+        # TODO: How do warnings get back to webview?
+        warnings.warn(f"Can't resume {fitter_id} from state saved by {state.fitting.method}")
+    # Use shared settings by default, update from any provided options
+    shared_settings = state.shared.fitter_settings
+    full_options = shared_settings[fitter_id]["settings"].copy()
+    if options:
+        full_options.update(options)
+    state.fitting.method = fitter_id
+    state.fitting.options = full_options
+    fitclass = fit_options.lookup_fitter(fitter_id)
+    # print(f"start fit thread {resume} {state.fitting.fit_state}")
+    fit_thread = FitThread(
+        fit_abort_event=state.fit_abort_event,
+        fitclass=fitclass,
+        problem=fitProblem,
+        mapper=state.mapper,
+        options=full_options,
+        parallel=state.parallel,
+        # session_id=session_id,
+        # Number of seconds between updates to the GUI, or 0 for no updates
+        convergence_update=5,
+        uncertainty_update=state.shared.autosave_session_interval,
+        console_update=state.console_update_interval,
+        fit_state=state.fitting.fit_state if resume else None,
+    )
+
+    # Note: must follow fit_thread initialization
+    # Note: hiding this function from the public interface. Don't want to set the timer
+    # without controlling the cleanup.
+    async def timeout_task(max_time):
+        if max_time > 0:
+            seconds = max_time * 3600.0
+            await asyncio.sleep(seconds)
+            # Don't stop the fit if already stopped.
+            if state.fit_thread is not None:
+                await stop_fit(wait=False)
+
+    state.fit_timer = asyncio.create_task(timeout_task(max_time))
+
+    state.shared.active_fit = to_json_compatible_dict(
+        dict(
+            # TODO: move fitter_id into options as method: fitter_id
+            fitter_id=fitter_id,
+            options=options,
+            num_steps=max_steps,
+            # TODO: step should be length fitting.convergence on resume
+            step=0,
+            chisq="",
+            value=0,
         )
-        state.shared.active_fit = to_json_compatible_dict(
-            dict(
-                # TODO: move fitter_id into options as method: fitter_id
-                fitter_id=fitter_id,
-                options=options,
-                num_steps=max_steps,
-                # TODO: step should be length fitting.convergence on resume
-                step=0,
-                chisq="",
-                value=0,
-            )
-        )
-        state.reset_fitstate(copy=resume)
-        await log(
-            json.dumps(to_json_compatible_dict(options), indent=2),
-            title=f"Starting fitter {fitter_id}",
-        )
-        state.autosave()
-        fit_thread.start()
-        state.fit_thread = fit_thread
+    )
+    state.reset_fitstate(copy=resume)
+    await log(
+        json.dumps(to_json_compatible_dict(options), indent=2),
+        title=f"Starting fitter {fitter_id}",
+    )
+    state.autosave()
+    fit_thread.start()
+    state.fit_thread = fit_thread
 
 
 @register
@@ -681,7 +712,7 @@ async def _fit_complete_handler(event: Dict[str, Any]):
             logger.warning(f"Fit failed with error: {event['error_string']}\n{event['traceback']}")
             return
 
-        # print("capturing results")
+        # print(event['info'])  # Needed if we are dumping fit outputs to the terminal
         problem: bumps.fitproblem.FitProblem = event["problem"]
         chisq = nice(2 * event["value"] / problem.dof)
         problem.setp(event["point"])
@@ -708,6 +739,10 @@ async def _fit_complete_handler(event: Dict[str, Any]):
         # awaiting the fit complete event can resume and start a new fit.
         state.fit_thread = None
         state.shared.active_fit = {}
+        # Cancel timer if done within time limit
+        if not state.fit_timer.done():
+            state.fit_timer.cancel()
+        # Signal to those waiting that the fit is complete.
         state.fit_complete_event.set()
 
         # print("shutdown", state.shutdown_on_fit_complete)
@@ -1307,7 +1342,8 @@ async def add_notification(content: str, title: str = "Notification", timeout: O
 
 async def _shutdown():
     # print("raising SystemExit")
-    raise SystemExit(0)
+    # raise SystemExit(0)
+    ...
 
 
 VALUE_PRECISION = 6

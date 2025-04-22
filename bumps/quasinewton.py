@@ -78,7 +78,6 @@ def quasinewton(
     gradtol=1e-6,
     steptol=1e-12,
     itnlimit=2000,
-    abort_test=None,
     monitor=lambda **kw: True,
 ):
     r"""
@@ -118,11 +117,9 @@ def quasinewton(
     *itnlimit* is the maximum number of steps to take before stopping.
     Default: 2000
 
-    *abort_test* is a function which tests whether the user has requested
-    abort. Default: None.
-
     *monitor(x,fx,step)* is called every iteration so that a user interface
-    function can monitor the progress of the fit.  Default: lambda \*\*kw: True
+    function can monitor the progress of the fit.  Return False if the user
+    requests stop. Default: lambda \*\*kw: True
 
 
     Returns the fit result as a dictionary:
@@ -248,8 +245,8 @@ def quasinewton(
         consecmax = consecmax + 1 if maxtaken else 0
         termcode = umstop(n, xc, xp, fp, gp, Sx, typf, retcode, gradtol, steptol, itncount, itnlimit, consecmax)
 
-        if abort_test():
-            termcode = 6
+        # Update the iteration monitor and check for user abort.
+        cancel = not monitor(x=xp, fx=fp, step=itncount)
 
         # STEP 10.6
         # If termcode is larger than zero, we found a point satisfying one
@@ -259,7 +256,7 @@ def quasinewton(
             xf = xp  # x final
             ff = fp  # f final
 
-        elif not monitor(x=xp, fx=fp, step=itncount):
+        elif cancel:
             termcode = 6
 
         else:

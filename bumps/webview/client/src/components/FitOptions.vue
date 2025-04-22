@@ -11,12 +11,13 @@ const selected_fitter_local = ref("amoeba");
 
 const FIT_FIELDS: { [key: string]: [string, string | string[]] } = {
   starts: ["Starts", "integer"],
-  near_best: ["Near best", "boolean"],
+  jump: ["Jump radius", "float"],
   steps: ["Steps", "integer"],
   samples: ["Samples", "integer"],
   xtol: ["x tolerance", "float"],
   ftol: ["f(x) tolerance", "float"],
   alpha: ["Convergence", "float"],
+  time: ["Max time (hrs)", "float"],
   stop: ["Stopping criteria", "string"],
   thin: ["Thinning", "integer"],
   burn: ["Burn-in steps", "integer"],

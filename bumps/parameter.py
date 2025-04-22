@@ -1451,15 +1451,17 @@ def summarize(pars, sorted=False):
         if not isfinite(p.value):
             bar = ["*invalid* "]
         else:
-            position = int(p.prior.get01(p.value) * 9.999999999)
             bar = ["."] * 10
-            if position < 0:
+            if p.value < p.bounds[0]:
                 bar[0] = "<"
-            elif position > 9:
+            elif p.value > p.bounds[1]:
                 bar[9] = ">"
             else:
+                position = int(p.prior.get01(p.value) * 9.999999999)
                 bar[position] = "|"
-        output.append("%40s %s %10g in %s" % (p.name, "".join(bar), p.value, p.bounds))
+        left = f"[{p.bounds[0]:g}" if np.isfinite(p.bounds[0]) else "(-inf"
+        right = f"{p.bounds[1]:g}]" if np.isfinite(p.bounds[1]) else "inf)"
+        output.append("%40s %s %10g in %s, %s" % (p.name, "".join(bar), p.value, left, right))
     return "\n".join(output)
 
 

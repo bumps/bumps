@@ -317,7 +317,7 @@ def _run_dream(dream: Dream, abort_test=lambda: False):
     pop = state._draw_pop()
     assert pop.ctypes.data == np.ascontiguousarray(pop).ctypes.data
 
-    frame = 0
+    # frame = 0  # For debugging...
     next_outlier_test = max(state.Ngen, 2 * state.Ngen - 10)
     next_convergence_test = state.Ngen
     final_gen = dream.draws + dream.burn
@@ -487,9 +487,9 @@ def _run_dream(dream: Dream, abort_test=lambda: False):
             break
 
         # Draw the next frame (for debugging...)
-        next_frame = state.generation // state.Ngen
+        # next_frame = state.generation // state.Ngen
         # if frame != next_frame: _show_logp_frame(dream, state, next_frame)
-        frame = next_frame
+        # frame = next_frame
 
 
 def _show_logp_frame(dream, state, frame):
