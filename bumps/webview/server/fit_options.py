@@ -249,6 +249,8 @@ def check_options(options: Dict[str, Any], fitter_id: Optional[str] = None) -> T
             unknown.append(f"{key}={value}")
             continue
         stype = float if key == "time" else FIT_OPTIONS[key].stype
+        if (stype is float) and isinstance(value, int):
+            value = float(value)  # type promotion from int to float
         if isinstance(stype, list):  # enumeration
             if value not in stype:
                 # Default to first item in an enum if the enum is recognized.

@@ -33,10 +33,10 @@ class ConsoleMonitor(monitor.TimedUpdate):
         monitor.TimedUpdate.__init__(self, progress=progress, improvement=improvement)
         self.problem = problem
 
-    def _print_chisq(self, k, fx):
+    def _print_chisq(self, k, fx, final=False):
         scale, err = nllf_scale(self.problem)
         chisq = format_uncertainty(scale * fx, err)
-        print(f"step {k} cost {chisq}")
+        print(f"step {k} cost {chisq}{' [final]' if final else ''}")
 
     def _print_pars(self, x):
         p = self.problem.getp()
@@ -55,7 +55,7 @@ class ConsoleMonitor(monitor.TimedUpdate):
         sys.stdout.flush()
 
     def final(self, history: History, best: Dict[str, Any]):
-        self._print_chisq("final", best["value"])
+        self._print_chisq(history.step[0], best["value"], final=True)
         self._print_pars(best["point"])
         print(f"time {format_duration(history.time[0])}")
         sys.stdout.flush()
@@ -565,7 +565,7 @@ class PTFit(FitBase):
 
     name = "Parallel Tempering"
     id = "pt"
-    settings = [("steps", 400), ("nT", 24), ("CR", 0.9), ("burn", 100), ("Tmin", 0.1), ("Tmax", 10)]
+    settings = [("steps", 400), ("nT", 24), ("CR", 0.9), ("burn", 100), ("Tmin", 0.1), ("Tmax", 10.0)]
 
     def solve(self, monitors: MonitorRunner, mapper=None, **options):
         options = _fill_defaults(options, self.settings)
