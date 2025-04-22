@@ -115,7 +115,7 @@ class ConvergenceMonitor(monitor.Monitor):
     def _send_update(self):
         # TODO: rename pop to quantiles in convergence_update message
         quantiles = np.empty((0, 1), "d") if not self.quantiles else np.array(self.quantiles)
-        evt = dict(message=self.message, pop=quantiles)
+        evt = dict(message=self.message, convergence=quantiles)
         EVT_FIT_PROGRESS.send(evt)
 
 

@@ -234,7 +234,7 @@ defineExpose({
               Save Changes
             </button>
             <button
-              v-if="selected_fitter_local == 'dream' && shared_state.uncertainty_available?.available"
+              v-if="selected_fitter_local == shared_state.selected_fitter && shared_state.resumable"
               type="button"
               class="btn btn-warning"
               @click="save(true, true)"

@@ -491,21 +491,12 @@ class State:
         item = self.history.get_item(name, None)
         if item is not None:
             self.problem = deepcopy(item.problem)
-            self.fitting.fit_state = item.fitting.fit_state
-            self.fitting.convergence = item.fitting.convergence
             self.shared.active_history = name
             self.shared.updated_model = now_string()
             self.shared.updated_parameters = now_string()
             self.shared.custom_plots_available = get_custom_plots_available(self.problem.fitProblem)
-            self.shared.updated_convergence = now_string()
-            self.shared.updated_uncertainty = now_string()
-
-            uncertainty_available = dict(
-                available=hasattr(item.fitting.fit_state, "draw"),
-                num_points=getattr(item.fitting.fit_state, "Nsamples", 0),
-            )
-            self.shared.uncertainty_available = uncertainty_available
-            self.shared.convergence_available = item.fitting.convergence is not None
+            self.set_convergence(item.fitting.convergence)
+            self.set_fit_state(item.fitting.fit_state)
 
     def reset_fitstate(self, copy: bool = False):
         """
@@ -520,16 +511,22 @@ class State:
                 method=self.shared.selected_fitter,
                 settings=self.shared.fitter_settings,
             )
-        # self.fitting.fit_state = deepcopy(self.fitting.fit_state) if copy else None
-        # self.fitting.convergence = deepcopy(self.fitting.convergence) if copy else None
+        self.set_fit_state(deepcopy(self.fitting.fit_state) if copy else None)
+        self.set_convergence(deepcopy(self.fitting.convergence) if copy else None)
         self.shared.active_history = None
+
+    def set_convergence(self, convergence):
+        self.fitting.convergence = convergence
         self.shared.updated_convergence = now_string()
-        self.shared.updated_uncertainty = now_string()
-        uncertainty_available = dict(
-            available=hasattr(self.fitting.fit_state, "draw"), num_points=getattr(self.fitting.fit_state, "Nsamples", 0)
+        self.shared.convergence_available = convergence is not None
+
+    def set_fit_state(self, fit_state):
+        self.fitting.fit_state = fit_state
+        self.shared.uncertainty_available = dict(
+            available=hasattr(fit_state, "draw"),
+            num_points=getattr(fit_state, "Nsamples", 0),
         )
-        self.shared.uncertainty_available = uncertainty_available
-        self.shared.convergence_available = self.fitting.convergence is not None
+        self.shared.resumable = fit_state is not None
 
     def autosave(self):
         if self.shared.autosave_session:
@@ -683,6 +680,7 @@ class SharedState:
     autosave_history_length: int = 10
     uncertainty_available: Union[UNDEFINED_TYPE, UncertaintyAvailable] = UNDEFINED
     convergence_available: Union[UNDEFINED_TYPE, bool] = UNDEFINED
+    resumable: Union[UNDEFINED_TYPE, bool] = UNDEFINED
     custom_plots_available: Union[UNDEFINED_TYPE, CustomPlotsAvailable] = UNDEFINED
     active_history: Union[UNDEFINED_TYPE, str, None] = UNDEFINED  # name of the active history item
 

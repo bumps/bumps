@@ -568,19 +568,33 @@ async def start_fit_thread(
     state.fit_complete_event = asyncio.Event()
     state.fit_complete_event.clear()
 
-    if resume and state.fitting.method != fitter_id:
-        state.fitting.fit_state = None
-        # TODO: How do warnings get back to webview?
-        warnings.warn(f"Can't resume {fitter_id} from state saved by {state.fitting.method}")
     # Use shared settings by default, update from any provided options
     shared_settings = state.shared.fitter_settings
     full_options = shared_settings[fitter_id]["settings"].copy()
     if options:
         full_options.update(options)
+
+    # print(f"start fit thread {resume} {state.fitting.fit_state}")
+    if resume and state.fitting.method != fitter_id:
+        # TODO: How do warnings get back to webview?
+        warnings.warn(f"Can't resume {fitter_id} from state saved by {state.fitting.method}")
+        resume = False
+    state.reset_fitstate(copy=resume)
     state.fitting.method = fitter_id
     state.fitting.options = full_options
+    state.shared.active_fit = to_json_compatible_dict(
+        dict(
+            fitter_id=fitter_id,
+            options=full_options,
+            num_steps=max_steps,
+            # TODO: step should be length fitting.convergence on resume
+            step=0,
+            chisq="",
+            value=0,
+        )
+    )
+
     fitclass = fit_options.lookup_fitter(fitter_id)
-    # print(f"start fit thread {resume} {state.fitting.fit_state}")
     fit_thread = FitThread(
         fit_abort_event=state.fit_abort_event,
         fitclass=fitclass,
@@ -593,7 +607,8 @@ async def start_fit_thread(
         convergence_update=5,
         uncertainty_update=state.shared.autosave_session_interval,
         console_update=state.console_update_interval,
-        fit_state=state.fitting.fit_state if resume else None,
+        fit_state=state.fitting.fit_state,
+        # TODO: on resume should we pass the current convergence vector?
     )
 
     # Note: must follow fit_thread initialization
@@ -609,19 +624,6 @@ async def start_fit_thread(
 
     state.fit_timer = asyncio.create_task(timeout_task(max_time))
 
-    state.shared.active_fit = to_json_compatible_dict(
-        dict(
-            # TODO: move fitter_id into options as method: fitter_id
-            fitter_id=fitter_id,
-            options=options,
-            num_steps=max_steps,
-            # TODO: step should be length fitting.convergence on resume
-            step=0,
-            chisq="",
-            value=0,
-        )
-    )
-    state.reset_fitstate(copy=resume)
     await log(
         json.dumps(to_json_compatible_dict(options), indent=2),
         title=f"Starting fitter {fitter_id}",
@@ -669,20 +671,13 @@ async def _fit_progress_handler(event: Dict):
         if message == "complete":
             state.shared.active_fit = {}
     elif message == "convergence_update":
-        state.fitting.convergence = event["pop"]
-        state.shared.updated_convergence = now_string()
-        state.shared.convergence_available = True
+        state.set_convergence(event["convergence"])
     elif message == "progress":
         active_fit = state.shared.active_fit
         active_fit.update({"step": event["step"], "chisq": event["chisq"]})
         state.shared.active_fit = active_fit
     elif message == "uncertainty_update" or message == "uncertainty_final":
-        state.fitting.fit_state = event["fit_state"]
-        state.shared.uncertainty_available = {
-            "available": hasattr(state.fitting.fit_state, "draw"),
-            # TODO: standard interface for posterior sample size
-            "num_points": getattr(state.fitting.fit_state, "Nsamples", 0),
-        }
+        state.update_fitstate(event["fit_state"])
 
         if message == "uncertainty_final":
             # fit is not complete until uncertainty is saved.
@@ -718,11 +713,7 @@ async def _fit_complete_handler(event: Dict[str, Any]):
         problem.setp(event["point"])
         problem.model_update()
         state.problem.fitProblem = problem
-        state.fitting.fit_state = event["fit_state"]
-        state.shared.uncertainty_available = {
-            "available": hasattr(state.fitting.fit_state, "draw"),
-            "num_points": getattr(state.fitting.fit_state, "Nsamples", 0),
-        }
+        state.set_fit_state(event["fit_state"])
         if state.shared.autosave_history:
             item_timestamp = await save_to_history(
                 f"Fit complete: {event['fitter_id']}",
