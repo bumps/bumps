@@ -66,7 +66,7 @@ class SharedState {
   public autosave_history: Ref<boolean> = ref(true);
   public autosave_history_length: Ref<number> = ref(10);
   public uncertainty_available: Ref<undefined | { available: boolean; num_points: number }> = ref(undefined);
-  public population_available: Ref<undefined | boolean> = ref(undefined);
+  public convergence_available: Ref<undefined | boolean> = ref(undefined);
   public custom_plots_available: Ref<undefined | { parameter_based: boolean; uncertainty_based: boolean }> =
     ref(undefined);
   public active_history: Ref<undefined | null | string> = ref(undefined);

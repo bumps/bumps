@@ -15,7 +15,7 @@ type HistoryItem = {
   label: string;
   chisq_str: string;
   keep: boolean;
-  has_population: boolean;
+  has_convergence: boolean;
   has_uncertainty: boolean;
 };
 
@@ -142,7 +142,9 @@ async function set_autosave_history_length(value_str: string) {
               <button class="btn btn-primary btn-sm mx-1 text-nowrap" @click="manual_save">Save</button>
             </td>
             <td class="text-start">
-              <span v-show="shared_state.population_available" class="badge bg-success" title="has population">P</span>
+              <span v-show="shared_state.convergence_available" class="badge bg-success" title="has convergence"
+                >P</span
+              >
               <span
                 v-show="shared_state.uncertainty_available?.available"
                 class="badge bg-warning"
@@ -153,7 +155,15 @@ async function set_autosave_history_length(value_str: string) {
             <td></td>
           </tr>
           <tr
-            v-for="{ name, timestamp, label, chisq_str, keep, has_population, has_uncertainty } of history"
+            v-for="{
+              name,
+              timestamp,
+              label,
+              chisq_str,
+              keep,
+              has_convergence: has_convergence,
+              has_uncertainty,
+            } of history"
             :key="name"
             class="py-1 align-middle"
           >
@@ -191,7 +201,7 @@ async function set_autosave_history_length(value_str: string) {
               </button>
             </td>
             <td class="text-start">
-              <span v-show="has_population" class="badge bg-success" title="has population">P</span>
+              <span v-show="has_convergence" class="badge bg-success" title="has convergence">P</span>
               <span v-show="has_uncertainty" class="badge bg-warning" title="has uncertainty">U</span>
             </td>
             <td class="text-center">

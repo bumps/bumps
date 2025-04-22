@@ -932,7 +932,7 @@ class DreamFit(FitBase):
     def h5dump(group: Group, state: MCMCDraw):
         from .dream.state import h5dump
 
-        h5dump(state, group)
+        h5dump(group, state)
 
     def plot(self, output_path):
         self.state.show(figfile=output_path, portion=self._trimmed)

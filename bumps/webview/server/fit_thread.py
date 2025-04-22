@@ -119,8 +119,7 @@ class ConvergenceMonitor(monitor.Monitor):
         EVT_FIT_PROGRESS.send(evt)
 
 
-# Horrible hacks:
-# (1) We are grabbing uncertainty_state from the history on monitor update
+# HACK: We are grabbing uncertainty_state from the history on monitor update
 # and holding onto it for the monitor final call. Need to restructure the
 # history/monitor interaction so that object lifetimes are better controlled.
 
@@ -136,7 +135,7 @@ class DreamMonitor(monitor.Monitor):
         self.fit_state = fit_state
         evt = dict(
             message=self.message,
-            uncertainty_state=fit_state,
+            fit_state=fit_state,
         )
         # print("Dream init", evt)
         EVT_FIT_PROGRESS.send(evt)
@@ -145,7 +144,7 @@ class DreamMonitor(monitor.Monitor):
         history.requires(time=1)
 
     def __call__(self, history):
-        self.fit_state = getattr(history, "uncertainty_state", None)
+        self.fit_state = getattr(history, "fit_state", None)
         self.time = history.time[0]
         if self.rate <= 0:
             return
@@ -155,7 +154,7 @@ class DreamMonitor(monitor.Monitor):
             evt = dict(
                 message=self.message,
                 time=self.time,
-                uncertainty_state=deepcopy(self.fit_state),
+                fit_state=deepcopy(self.fit_state),
             )
             # print("Dream update", evt)
             EVT_FIT_PROGRESS.send(evt)
@@ -167,7 +166,7 @@ class DreamMonitor(monitor.Monitor):
         evt = dict(
             message="uncertainty_final",
             time=self.time,
-            uncertainty_state=deepcopy(self.fit_state),
+            fit_state=deepcopy(self.fit_state),
         )
         # print("Dream final", evt)
         EVT_FIT_PROGRESS.send(evt)
@@ -288,14 +287,12 @@ class FitThread(Thread):
                 captured_output = fid.getvalue()
 
             # print("fit complete with", x, fx)
-            # TODO: webview assumes state is only available for dream
-            state = driver.fitter.state if self.fitclass.id == "dream" else None
             evt = dict(
                 message="complete",
                 problem=self.problem,
                 point=x,
                 value=fx,
-                uncertainty_state=state,
+                fit_state=driver.fitter.state,
                 info=captured_output,
                 fitter_id=self.fitclass.id,
             )

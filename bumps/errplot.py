@@ -90,7 +90,7 @@ def error_points_from_state(state, nshown=50, random=True, portion=1.0):
     Returns *points* for :func:`calc_errors`.
     """
 
-    points, _logp = state.sample(portion=portion)
+    points = state.draw(portion=portion).points
     if points.shape[0] < nshown:
         nshown = points.shape[0]
     # randomize the draw; skip the last point since state.keep_best() put

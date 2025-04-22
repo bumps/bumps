@@ -8,6 +8,7 @@ from typing import (
     Callable,
     Optional,
     Dict,
+    Tuple,
     List,
     NewType,
     TypedDict,
@@ -29,8 +30,9 @@ from numpy.typing import NDArray
 
 from bumps.serialize import serialize, deserialize
 from bumps.util import get_libraries
-from bumps.dream.state import MCMCDraw, h5load as dream_load, h5dump as dream_dump
 from .logger import logger
+
+from .fit_options import lookup_fitter, DEFAULT_FITTER_ID
 
 if TYPE_CHECKING:
     import bumps
@@ -178,6 +180,17 @@ def read_ndarray(group: "Group", name: str):
         return None
 
 
+def read_version(group: "Group"):
+    version_string = group.attrs.get("version", "0.0")
+    version = tuple(int(v) for v in version_string.split("."))
+    return version
+
+
+def write_version(group: "Group", version: Tuple[int]):
+    version_string = ".".join(str(v) for v in version)
+    group.attrs["version"] = version_string
+
+
 class StringAttribute:
     @classmethod
     def serialize(value, obj=None):
@@ -232,14 +245,14 @@ class History:
     #             return item
     #     return default
 
-    def write(self, parent: "Group", include_uncertainty_state=True):
+    def write(self, parent: "Group", include_fit_state=True):
         group = parent.require_group("problem_history")
         for name, item in self.store.items():
             problem = item.problem
             fitting = item.fitting
             item_group = group.require_group(name)
             problem.write(item_group)
-            fitting.write(item_group, include_uncertainty_state=include_uncertainty_state)
+            fitting.write(item_group, include_fit_state=include_fit_state)
             item_group.attrs["chisq"] = item.chisq_str
             item_group.attrs["label"] = item.label
             item_group.attrs["keep"] = item.keep
@@ -302,8 +315,8 @@ class History:
                 label=item.label,
                 chisq_str=item.chisq_str,
                 keep=item.keep,
-                has_population=(item.fitting.population is not None),
-                has_uncertainty=(item.fitting.uncertainty_state is not None),
+                has_convergence=(item.fitting.convergence is not None),
+                has_uncertainty=hasattr(item.fitting.fit_state, "draw"),
                 name=name,
             )
             for name, item in self.store.items()
@@ -330,10 +343,10 @@ class FitResult:
     # TODO: Save labels in fit results so we don't need to walk the problem definition?
     # TODO: Save the initial value in the problem so users can reset after a fit?
     # TODO: Add the following to FitResult:
-    # method: str
-    # """Fitting method"""
-    # options: Dict[str, Any]
-    # """Options used to run the fitters"
+    method: str = DEFAULT_FITTER_ID  # => shared.selected_fitter
+    """Fitting method"""
+    settings: Dict[str, Any] = field(default_factory=dict)  # => shared.fitter_settings
+    """Options used to run the fitters"""
     # x0: NDArray
     # """Initial value"""
     # x: NDArray  # Currently resides in problem definition
@@ -354,28 +367,49 @@ class FitResult:
     # TODO: display completion status in history tab
     # status: str
     # """Fit status: active, converged, timeout, maxiter, abort, failed"
-    # TODO: Rename population to convergence here, in convergence monitor and in all messages.
-    population: Optional[List] = None
-    """List of (best, 0%, 16%, median, 84%, 100%) for the population at each step of the fit."""
-    # TODO: Rename uncertainty_state to state or fitter_state here and elsewhere
-    uncertainty_state: Union["bumps.dream.state.MCMCDraw", "bumps.partemp.History"] = None
-    """Fit state for Monte Carlo fitters."""
+    convergence: Optional[List] = None
+    """List of best or (best, min, -1sigma, median, +1sigma, max) for the population at each step of the fit."""
+    fit_state: Any = None
+    """Fit state for resume, and for sampling from Monte Carlo fitters."""
 
-    def write(self, parent: "Group", include_uncertainty_state=True):
-        fitting = parent.require_group("fitting")
-        write_ndarray(fitting, "population", self.population)
-        if self.uncertainty_state is not None and include_uncertainty_state:
-            # TODO: handle parallel tempering, nested sampler and others.
-            state = fitting.require_group("uncertainty_state")
-            # TODO: ask the fitter class for h5load/h5dump
-            dream_dump(self.uncertainty_state, state)
+    def write(self, parent: "Group", include_fit_state=True):
+        fitting_group = parent.require_group("fitting")
+        write_version(fitting_group, (1, 0))
+        write_string(fitting_group, "method", self.method)
+        write_json(fitting_group, "settings", self.settings)
+        write_ndarray(fitting_group, "convergence", self.convergence)
+        if self.fit_state is not None and include_fit_state:
+            fitter = lookup_fitter(self.method)
+            if hasattr(fitter, "h5dump"):
+                state_group = fitting_group.require_group("fit_state")
+                fitter.h5dump(state_group, self.fit_state)
 
     def read(self, parent: "Group"):
-        fitting = parent["fitting"]
-        # TODO: need generic fit state load, which depends on fitting method.
-        self.population = read_ndarray(fitting, "population")
-        if "uncertainty_state" in fitting:
-            self.uncertainty_state = dream_load(fitting["uncertainty_state"])
+        fitting_group = parent["fitting"]
+        version = read_version(fitting_group)
+        # Note: fitter h5load needs to deal with its own versioning
+        if version == (1, 0):
+            self.method = read_string(fitting_group, "method")
+            self.settings = read_json(fitting_group, "settings")
+            self.convergence = read_ndarray(fitting_group, "convergence")
+            if "fit_state" in fitting_group:
+                state_group = fitting_group["fit_state"]
+                fitter = lookup_fitter(self.method)  # shouldn't raise ValueError
+                self.fit_state = fitter.h5load(state_group)
+            else:
+                self.fit_state = None
+        else:
+            # Pre 1.0 fit result
+            self.convergence = read_ndarray(fitting_group, "population")
+            self.settings = {}  # settings needs to be updated in the caller
+            if "uncertainty_state" in fitting_group:
+                self.method = "dream"
+                state_group = fitting_group["uncertainty_state"]
+                fitter = lookup_fitter(self.method)
+                self.fit_state = fitter.h5load(state_group)
+            else:
+                self.method = DEFAULT_FITTER_ID
+                self.fit_state = None
 
 
 class State:
@@ -436,7 +470,7 @@ class State:
             return
         item = HistoryItem()
         item.problem = deepcopy(self.problem)
-        item.fitting = FitResult(uncertainty_state=self.fitting.uncertainty_state, population=self.fitting.population)
+        item.fitting = deepcopy(self.fitting)
         item.timestamp = str(datetime.now())
         item.label = label
         item.chisq_str = item.problem.fitProblem.chisq_str()
@@ -455,8 +489,8 @@ class State:
         item = self.history.get_item(name, None)
         if item is not None:
             self.problem = deepcopy(item.problem)
-            self.fitting.uncertainty_state = item.fitting.uncertainty_state
-            self.fitting.population = item.fitting.population
+            self.fitting.fit_state = item.fitting.fit_state
+            self.fitting.convergence = item.fitting.convergence
             self.shared.active_history = name
             self.shared.updated_model = now_string()
             self.shared.updated_parameters = now_string()
@@ -464,13 +498,12 @@ class State:
             self.shared.updated_convergence = now_string()
             self.shared.updated_uncertainty = now_string()
 
-            has_uncertainty = item.fitting.uncertainty_state is not None
             uncertainty_available = dict(
-                available=has_uncertainty,
-                num_points=item.fitting.uncertainty_state.draws if has_uncertainty else 0,
+                available=hasattr(item.fitting.fit_state, "draw"),
+                num_points=getattr(item.fitting.fit_state, "Nsamples", 0),
             )
             self.shared.uncertainty_available = uncertainty_available
-            self.shared.population_available = item.fitting.population is not None
+            self.shared.convergence_available = item.fitting.convergence is not None
 
     def reset_fitstate(self, copy: bool = False):
         """
@@ -478,18 +511,23 @@ class State:
         (this action to be taken when fitProblem object is modified so that
          it is no longer compatible with fit results)
         """
-        self.fitting.uncertainty_state = deepcopy(self.fitting.uncertainty_state) if copy else None
-        self.fitting.population = deepcopy(self.fitting.population) if copy else None
+        if copy:
+            self.fitting = deepcopy(self.fitting)
+        else:
+            self.fitting = FitResult(
+                method=self.shared.selected_fitter,
+                settings=self.shared.fitter_settings,
+            )
+        # self.fitting.fit_state = deepcopy(self.fitting.fit_state) if copy else None
+        # self.fitting.convergence = deepcopy(self.fitting.convergence) if copy else None
         self.shared.active_history = None
         self.shared.updated_convergence = now_string()
         self.shared.updated_uncertainty = now_string()
-        has_uncertainty = self.fitting.uncertainty_state is not None
         uncertainty_available = dict(
-            available=has_uncertainty,
-            num_points=self.fitting.uncertainty_state.draws if has_uncertainty else 0,
+            available=hasattr(self.fitting.fit_state, "draw"), num_points=getattr(self.fitting.fit_state, "Nsamples", 0)
         )
         self.shared.uncertainty_available = uncertainty_available
-        self.shared.population_available = self.fitting.population is not None
+        self.shared.convergence_available = self.fitting.convergence is not None
 
     def autosave(self):
         if self.shared.autosave_session:
@@ -642,7 +680,7 @@ class SharedState:
     autosave_history: bool = True
     autosave_history_length: int = 10
     uncertainty_available: Union[UNDEFINED_TYPE, UncertaintyAvailable] = UNDEFINED
-    population_available: Union[UNDEFINED_TYPE, bool] = UNDEFINED
+    convergence_available: Union[UNDEFINED_TYPE, bool] = UNDEFINED
     custom_plots_available: Union[UNDEFINED_TYPE, CustomPlotsAvailable] = UNDEFINED
     active_history: Union[UNDEFINED_TYPE, str, None] = UNDEFINED  # name of the active history item
 

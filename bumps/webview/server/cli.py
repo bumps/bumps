@@ -140,9 +140,6 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     # TODO: missing options from pre-1.0
     """
     # required
-    --resume=path    [dream]
-        resume a fit from previous stored state; if path is '-' then use the
-        path given by --store, if it exists
     --time=inf
         run for a maximum number of hours
 
@@ -257,7 +254,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         help="output file for session state (overrides --store)",
     )
     session.add_argument(
-        "--resume", action="store_true", help="Resume the most recent fit from the saved session file. [dream]"
+        "--resume", action="store_true", help="Resume the most recent fit from the saved session file. [dream, de]"
     )
     session.add_argument(
         "--serializer",
@@ -471,9 +468,9 @@ def interpret_fit_options(options: BumpsOptions):
                     pathlist=list(read_store_path.parent.parts),
                     filename=read_store_path.name,
                 )
-    # Loading the problem resets uncertainty state, so keep hold of that in session file
+    # Loading the problem resets fitting state, so keep hold of that in session file
     # in case we have --resume on the command line
-    initial_fit_state = api.state.fitting.uncertainty_state
+    stored_fitting_state = api.state.fitting
     if write_store is not None:
         write_store_path = Path(write_store).absolute()
         # TODO: Why are we splitting path into parts?
@@ -610,7 +607,7 @@ def interpret_fit_options(options: BumpsOptions):
             # print(f"{api.state.rank}start fit")
             # print(f"{fitter_settings=}")
             if options.resume:
-                api.state.fitting.uncertainty_state = initial_fit_state
+                api.state.fitting = stored_fitting_state
             if api.state.problem is not None:
                 await api.start_fit_thread(fitter_id, fitopts, resume=options.resume)
 

@@ -132,7 +132,7 @@ def _h5_read_field(group: "Group", field: str):
         return None
 
 
-def h5dump(state: "MCMCDraw", group: "Group"):
+def h5dump(group: "Group", state: "MCMCDraw"):
     class Fields:
         gen_draws, gen_logp = state.logp(full=True)
         _, AR = state.acceptance_rate()
@@ -476,10 +476,10 @@ class MCMCDraw(object):
         # For now, only handle the case where the we have one complete
         # frame of data, such as on reloading the state vector
         assert self._gen_index == 0 and self._update_index == 0 and self._thin_index == 0
-        print("resize")
-        print(self.generation, self.Ngen, Ngen)
-        print(self._update_count, self.Nupdate, Nupdate)
-        print(self._thin_count, self.Nthin, Nthin)
+        # print("resize")
+        # print(self.generation, self.Ngen, Ngen)
+        # print(self._update_count, self.Nupdate, Nupdate)
+        # print(self._thin_count, self.Nthin, Nthin)
         assert self.generation == self.Ngen and self._update_count == self.Nupdate and self._thin_count == self.Nthin
 
         self.thinning = thinning
