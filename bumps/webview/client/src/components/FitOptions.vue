@@ -11,7 +11,7 @@ const selected_fitter_local = ref("amoeba");
 
 const FIT_FIELDS: { [key: string]: [string, string | string[]] } = {
   starts: ["Starts", "integer"],
-  near_best: ["Near best", "boolean"],
+  jump: ["Jump radius", "float"],
   steps: ["Steps", "integer"],
   samples: ["Samples", "integer"],
   xtol: ["x tolerance", "float"],

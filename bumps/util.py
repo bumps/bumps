@@ -6,6 +6,7 @@ __all__ = ["kbhit", "profile", "pushdir", "push_seed", "redirect_console"]
 
 import os
 import sys
+import math
 import types
 from dataclasses import Field, dataclass, field, fields, is_dataclass
 from io import StringIO
@@ -37,8 +38,7 @@ from numpy import ascontiguousarray as _dense
 from scipy.special import erf
 
 USE_PYDANTIC = os.environ.get("BUMPS_USE_PYDANTIC", "False") == "True"
-if TYPE_CHECKING:
-    from numpy.typing import NDArray
+from numpy.typing import NDArray
 
 
 def field_desc(description: str) -> Any:
@@ -441,3 +441,66 @@ def _add_to_libraries(obj, libraries: dict):
         version = getattr(sys.modules[top_level_package], "__version__", None)
         schema_version = getattr(sys.modules[top_level_package], "__schema_version__", None)
         libraries[top_level_package] = dict(version=version, schema_version=schema_version)
+
+
+def format_duration(seconds):
+    """
+    Convert seconds into a human-readable duration string.
+
+    Args:
+        seconds (float): Duration in seconds
+
+    Returns:
+        str: Formatted duration string
+    """
+    # Handle negative values
+    if seconds < 0:
+        return "-" + format_duration(-seconds)
+    elif seconds == 0:
+        return "0 seconds"
+
+    # Define time units and their conversion factors
+    units = [
+        ("year", 365.25 * 24 * 60 * 60),
+        ("week", 7 * 24 * 60 * 60),
+        ("day", 24 * 60 * 60),
+        ("hour", 60 * 60),
+        ("minute", 60),
+        ("second", 1),
+        ("millisecond", 1e-3),
+        ("microsecond", 1e-6),
+        ("nanosecond", 1e-9),
+    ]
+
+    # Find the most appropriate unit
+    for unit_name, factor in units:
+        value = abs(seconds / factor)
+        integer = int(round(value))
+        if value > 0.95:
+            if abs(value - integer) < 0.05:
+                return f"{integer} {unit_name}{'s' if integer != 1 else ''}"
+            else:
+                return f"{value:.1f} {unit_name}s"
+
+    return f"0.0 {units[-1][0]}"
+
+
+def format_duration_demo():
+    # Test cases
+    test_values = [
+        3661.5,  # Mixed hours/minutes/seconds
+        86400.25,  # Days with fractional seconds
+        24 * 60 * 60 * 1.06,  # a little over a day
+        604800.125,  # Weeks with milliseconds
+        31536061.5,  # Years with extra days
+        0.001,  # Milliseconds
+        0,  # Zero
+        -12345,  # Negative value
+    ]
+
+    for seconds in test_values:
+        print(f"{seconds:>12.3f}s → {format_duration(seconds)}")
+
+
+if __name__ == "__main__":
+    format_duration_demo()

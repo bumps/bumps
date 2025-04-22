@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple, Optional, Any, Callable
+from typing import Dict, List, Tuple, Any, Callable, Optional
 from textwrap import dedent
 from argparse import ArgumentTypeError
 from dataclasses import dataclass
@@ -170,12 +170,14 @@ Setting(
 # Stochastic global minimization
 Setting("starts", "Auto restarts", int, "Number of times to restart the amoeba fit.")
 Setting(
-    "near_best",
-    "Near best",
-    bool,
+    "jump",
+    "Jump radius",
+    Range(0, 0.5),
     """\
-    When running with multiple starts, restart from a random point near the
-    best minimum rather than using a completely random starting point.""",
+    When running with multiple starts, what size of jump to take between restarts.
+    Values are in [0, 0.5], representing the portion of the total range of each parameter.
+    A value of zero uses a random starting point in the range.
+    """,
 )
 
 

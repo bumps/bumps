@@ -22,7 +22,7 @@ def print_every_five(step, x, fx, k):
         print(step, ":", fx[k], x[k])
 
 
-def random_lines(cfo, NP, CR=0.9, epsilon=1e-10, abort_test=None, maxiter=1000):
+def random_lines(cfo, NP, CR=0.9, epsilon=1e-10, maxiter=1000):
     """
     Random lines is a population based optimizer which using quadratic
     fits along randomly oriented directions.
@@ -48,7 +48,7 @@ def random_lines(cfo, NP, CR=0.9, epsilon=1e-10, abort_test=None, maxiter=1000):
 
         *f_opt* is the target value of the optimization
 
-    *NP* is the number of fit parameters
+    *NP* is the population size
 
     *CR* is the cross-over ratio, which is the proportion of dimensions
     that participate in any random orientation vector.
@@ -82,6 +82,7 @@ def random_lines(cfo, NP, CR=0.9, epsilon=1e-10, abort_test=None, maxiter=1000):
 
     n_feval = NP
     f_best, i_best = min(zip(f, count()))
+    satisfied_sc = 0
 
     # CHECK INITIAL STOPPING CRITERIA
     if abs(cfo["f_opt"] - f_best) < epsilon:
@@ -159,14 +160,12 @@ def random_lines(cfo, NP, CR=0.9, epsilon=1e-10, abort_test=None, maxiter=1000):
         f_best, i_best = min(zip(f, count()))
         if abs(cfo["f_opt"] - f_best) < epsilon:
             satisfied_sc = 1
-            x_best = X[:, i_best]
-            return satisfied_sc, n_feval, f_best, x_best
-        if abort_test():
             break
 
-        monitor(L, X, f, i_best)
+        if not monitor(L, X, f, i_best):
+            break
 
-    return 1, n_feval, f_best, X[:, i_best]
+    return satisfied_sc, n_feval, f_best, X[:, i_best]
 
 
 def particle_swarm(cfo, NP, epsilon=1e-10, maxiter=1000):
@@ -187,15 +186,16 @@ def particle_swarm(cfo, NP, epsilon=1e-10, maxiter=1000):
 
         *x1* and *x2* are lower and upper bounds for each parameter
 
-        *monitor* is a callable which is called each iteration using
-        *callback(step, x, fx, k)*, where *step* is the iteration number,
+        *monitor(step, x, fx, k)* is called each iteration using
+        *monitor(step, x, fx, k)*, where *step* is the iteration number,
+
         *x* is the population, *fx* is value of the cost function for each
         member of the population and *k* is the index of the best point in
         the population.
 
         *f_opt* is the target value of the optimization
 
-    *NP* is the number of fit parameters
+    *NP* is the population size
 
     *epsilon* is the convergence criterion.
 
@@ -237,6 +237,7 @@ def particle_swarm(cfo, NP, epsilon=1e-10, maxiter=1000):
     n_feval = NP
     P = X[:]
 
+    satisfied_sc = 0
     f_best, i_best = min(zip(f, count()))
     for L in range(2, maxiter + 1):
         rn2 = rand(n, NP)
@@ -259,11 +260,11 @@ def particle_swarm(cfo, NP, epsilon=1e-10, maxiter=1000):
         f_best, i_best = min(zip(f, count()))
         if abs(cfo["f_opt"] - f_best) < epsilon:
             satisfied_sc = 1
-            return satisfied_sc, n_feval, f_best, X[:, i_best]
+            break
 
-        monitor(L, X, f, i_best)
+        if not monitor(L, X, f, i_best):
+            break
 
-    satisfied_sc = 0
     return satisfied_sc, n_feval, f_best, X[:, i_best]
 
 
