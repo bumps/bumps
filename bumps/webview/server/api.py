@@ -44,7 +44,7 @@ import bumps.fitproblem
 import bumps.dream.views
 import bumps.dream.varplot
 import bumps.dream.stats
-import bumps.dream.state
+from bumps.dream.state import MCMCDraw
 import bumps.errplot
 
 from . import fit_options
@@ -135,6 +135,7 @@ async def load_problem_file(
     autosave_previous: bool = True,
     args: List[str] = None,
 ):
+    # print("load_problem_file", state.fitting.fit_state)
     path = Path(*pathlist, filename)
     logger.info(f"Loading model: {path}")
     await log(f"Loading model: {path}")
@@ -333,14 +334,14 @@ async def export_results(export_path: Union[str, List[str]] = ""):
     # issues, we could try to copy and then fall back to just using the live object,
     # or we could just always use the live object, which is unlikely to be changed before
     # the export completes, anyway.
-    uncertainty_state = deepcopy(state.fitting.uncertainty_state)
+    fit_state = deepcopy(state.fitting.fit_state)
 
     if not isinstance(export_path, list):
         export_path = [export_path]
     path = Path(*export_path).expanduser().absolute()
     notification_id = await add_notification(content=f"<span>{str(path)}</span>", title="Export started", timeout=None)
     try:
-        await asyncio.to_thread(_export_results, path, problem, uncertainty_state)
+        await asyncio.to_thread(_export_results, path, problem, fit_state)
     finally:
         await emit("cancel_notification", notification_id)
     # print("done export thread")
@@ -349,7 +350,7 @@ async def export_results(export_path: Union[str, List[str]] = ""):
 def _export_results(
     path: Path,
     problem: bumps.fitproblem.FitProblem,
-    uncertainty_state: Optional[bumps.dream.state.MCMCDraw],
+    fit_state: Any,
 ):
     # print("running export thread")
     from bumps.util import redirect_console
@@ -384,10 +385,11 @@ def _export_results(
     problem.plot(figfile=output_pathstr)
 
     # Produce uncertainty plots
-    if uncertainty_state is not None:
+    # TODO: Add save/show methods to the fit_state protocol
+    if hasattr(fit_state, "show"):
         with redirect_console(str(path / f"{basename}.err")):
-            uncertainty_state.show(figfile=output_pathstr)
-        uncertainty_state.save(output_pathstr)
+            fit_state.show(figfile=output_pathstr)
+        fit_state.save(output_pathstr)
     # print("export complete")
 
 
@@ -523,7 +525,7 @@ async def shake_parameters():
 
 @register
 async def start_fit_thread(
-    fitter_id: Optional[str] = None, options: Optional[Dict[str, Any]] = None, max_time: float = 0.0
+    fitter_id: str, options: Optional[Dict[str, Any]] = None, max_time: float = 0.0, resume: bool = False
 ):
     fitProblem = state.problem.fitProblem if state.problem is not None else None
     if fitProblem is None:
@@ -543,8 +545,8 @@ async def start_fit_thread(
         raise ValueError("Problem has no fittable parameters")
 
     # Check the options. Pass the fitter_id so that we know which options are available.
-    options, warnings = fit_options.check_options(options, fitter_id=fitter_id)
-    for msg in warnings:
+    options, errors = fit_options.check_options(options, fitter_id=fitter_id)
+    for msg in errors:
         logger.warning(msg)
         await log(msg)
 
@@ -571,6 +573,30 @@ async def start_fit_thread(
     full_options = shared_settings[fitter_id]["settings"].copy()
     if options:
         full_options.update(options)
+
+    # TODO: model.py may have changed; check that the list of parameters is the same
+    # TODO: maybe prefer problem saved in store on resume
+    # print(f"start fit thread {resume} {state.fitting.fit_state}")
+    if resume and state.fitting.method != fitter_id:
+        msg = f"Can't resume {fitter_id} from state saved by {state.fitting.method}"
+        logger.warning(msg)
+        await log(msg)
+        resume = False
+    state.reset_fitstate(copy=resume)
+    state.fitting.method = fitter_id
+    state.fitting.options = full_options
+    state.shared.active_fit = to_json_compatible_dict(
+        dict(
+            fitter_id=fitter_id,
+            options=full_options,
+            num_steps=max_steps,
+            # TODO: step should be length fitting.convergence on resume
+            step=0,
+            chisq="",
+            value=0,
+        )
+    )
+
     fitclass = fit_options.lookup_fitter(fitter_id)
     fit_thread = FitThread(
         fit_abort_event=state.fit_abort_event,
@@ -584,6 +610,8 @@ async def start_fit_thread(
         convergence_update=5,
         uncertainty_update=state.shared.autosave_session_interval,
         console_update=state.console_update_interval,
+        fit_state=state.fitting.fit_state,
+        # TODO: on resume should we pass the current convergence vector?
     )
 
     # Note: must follow fit_thread initialization
@@ -599,18 +627,6 @@ async def start_fit_thread(
 
     state.fit_timer = asyncio.create_task(timeout_task(max_time))
 
-    state.shared.active_fit = to_json_compatible_dict(
-        dict(
-            # TODO: don't need fitter_id as a separate option
-            fitter_id=fitter_id,
-            options=options,
-            num_steps=max_steps,
-            step=0,
-            chisq="",
-            value=0,
-        )
-    )
-    state.reset_fitstate()
     await log(
         json.dumps(to_json_compatible_dict(options), indent=2),
         title=f"Starting fitter {fitter_id}",
@@ -658,23 +674,20 @@ async def _fit_progress_handler(event: Dict):
         if message == "complete":
             state.shared.active_fit = {}
     elif message == "convergence_update":
-        state.fitting.population = event["pop"]
-        state.shared.updated_convergence = now_string()
-        state.shared.population_available = True
+        state.set_convergence(event["convergence"])
     elif message == "progress":
         active_fit = state.shared.active_fit
         active_fit.update({"step": event["step"], "chisq": event["chisq"]})
         state.shared.active_fit = active_fit
     elif message == "uncertainty_update" or message == "uncertainty_final":
-        state.fitting.uncertainty_state = cast(bumps.dream.state.MCMCDraw, event["uncertainty_state"])
-        state.shared.updated_uncertainty = now_string()
-        state.shared.uncertainty_available = {
-            "available": state.fitting.uncertainty_state is not None,
-            "num_points": state.fitting.uncertainty_state.Nsamples
-            if state.fitting.uncertainty_state is not None
-            else 0,
-        }
-        state.autosave()
+        state.update_fitstate(event["fit_state"])
+
+        if message == "uncertainty_final":
+            # fit is not complete until uncertainty is saved.
+            state.fit_uncertainty_final.set()
+            # don't save state - the fit_complete handler will do that.
+        else:  # message == "uncertainty_update"
+            state.autosave()
 
 
 async def _fit_complete_handler(event: Dict[str, Any]):
@@ -703,13 +716,7 @@ async def _fit_complete_handler(event: Dict[str, Any]):
         problem.setp(event["point"])
         problem.model_update()
         state.problem.fitProblem = problem
-        state.fitting.uncertainty_state = cast(bumps.dream.state.MCMCDraw, event["uncertainty_state"])
-        state.shared.uncertainty_available = {
-            "available": state.fitting.uncertainty_state is not None,
-            "num_points": state.fitting.uncertainty_state.Nsamples
-            if state.fitting.uncertainty_state is not None
-            else 0,
-        }
+        state.set_fit_state(event["fit_state"])
         if state.shared.autosave_history:
             item_timestamp = await save_to_history(
                 f"Fit complete: {event['fitter_id']}",
@@ -822,7 +829,7 @@ class WebviewPlotFunction(Protocol):
         self,
         model: bumps.fitproblem.Fitness,
         problem: bumps.fitproblem.FitProblem,
-        state: Optional[bumps.dream.state.MCMCDraw] = None,
+        state: Optional[MCMCDraw] = None,
         n_samples: Optional[int] = None,
     ) -> dict: ...
 
@@ -855,7 +862,7 @@ async def create_custom_plot(model_index: int, plot_title: str, n_samples: int =
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = deepcopy(state.problem.fitProblem)
-    uncertainty_state = state.fitting.uncertainty_state
+    fit_state = state.fitting.fit_state
 
     # update model
     model = list(fitProblem.models)[model_index]
@@ -868,7 +875,7 @@ async def create_custom_plot(model_index: int, plot_title: str, n_samples: int =
             model.nllf()
             if plot_info.get("change_with", None) == "uncertainty":
                 plot_item: CustomWebviewPlot = await asyncio.to_thread(
-                    plot_function, model, fitProblem, uncertainty_state, n_samples
+                    plot_function, model, fitProblem, fit_state, n_samples
                 )
             else:
                 plot_item: CustomWebviewPlot = await asyncio.to_thread(plot_function, model, fitProblem)
@@ -895,9 +902,9 @@ async def get_convergence_plot():
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = state.problem.fitProblem
-    population = state.fitting.population
-    if population is not None:
-        normalized_pop = 2 * population / fitProblem.dof
+    convergence = state.fitting.convergence
+    if convergence is not None:
+        normalized_pop = 2 * convergence / fitProblem.dof
         best, pop = normalized_pop[:, 0], normalized_pop[:, 1:]
 
         ni, npop = pop.shape
@@ -997,14 +1004,14 @@ def _get_correlation_plot(
 ):
     from .corrplot import Corr2d
 
-    uncertainty_state = state.fitting.uncertainty_state
+    fit_state = state.fitting.fit_state
 
-    if isinstance(uncertainty_state, bumps.dream.state.MCMCDraw):
+    if hasattr(fit_state, "draw"):
         import time
 
         start_time = time.time()
         logger.info(f"queueing new correlation plot... {start_time}")
-        draw = uncertainty_state.draw(vars=vars)
+        draw = fit_state.draw(vars=vars)
         c = Corr2d(draw.points.T, bins=nbins, labels=draw.labels)
         fig = c.plot(sort=sort, max_rows=max_rows)
         logger.info(f"time to render but not serialize... {time.time() - start_time}")
@@ -1039,13 +1046,13 @@ async def get_correlation_plot(
 
 @lru_cache(maxsize=30)
 def _get_uncertainty_plot(timestamp: str = "", cbar_colors: int = 8):
-    uncertainty_state = state.fitting.uncertainty_state
-    if uncertainty_state is not None:
+    fit_state = state.fitting.fit_state
+    if hasattr(fit_state, "draw"):
         import time
 
         start_time = time.time()
         logger.info(f"queueing new uncertainty plot... {start_time}")
-        draw = uncertainty_state.draw()
+        draw = fit_state.draw()
         nbins = max(min(draw.points.shape[0] // 20000, 100), 30)
         stats = bumps.dream.stats.var_stats(draw)
         fig = plot_vars(draw, stats, nbins=nbins, cbar_colors=cbar_colors)
@@ -1066,8 +1073,8 @@ async def get_model_uncertainty_plot():
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = state.problem.fitProblem
-    uncertainty_state = state.fitting.uncertainty_state
-    if uncertainty_state is not None:
+    fit_state = state.fitting.fit_state
+    if hasattr(fit_state, "draw"):
         import mpld3
         import matplotlib
 
@@ -1079,7 +1086,7 @@ async def get_model_uncertainty_plot():
         logger.info(f"queueing new model uncertainty plot... {start_time}")
 
         fig = plt.figure()
-        errs = bumps.errplot.calc_errors_from_state(fitProblem, uncertainty_state)
+        errs = bumps.errplot.calc_errors_from_state(fitProblem, fit_state)
         logger.info(f"errors calculated: {time.time() - start_time}")
         bumps.errplot.show_errors(errs, fig=fig)
         logger.info(f"time to render but not serialize... {time.time() - start_time}")
@@ -1108,8 +1115,9 @@ async def get_parameter_labels():
 
 @register
 async def get_parameter_trace_plot(var: int):
-    uncertainty_state = state.fitting.uncertainty_state
-    if uncertainty_state is not None:
+    fit_state = state.fitting.fit_state
+    # TODO: parallel tempering has a different trace plot
+    if isinstance(fit_state, MCMCDraw):
         import time
 
         start_time = time.time()
@@ -1117,19 +1125,19 @@ async def get_parameter_trace_plot(var: int):
 
         # begin plotting:
         portion = None
-        draw, points, _ = uncertainty_state.chains()
-        label = uncertainty_state.labels[var]
+        draw, points, _ = fit_state.chains()
+        label = fit_state.labels[var]
         start = int((1 - portion) * len(draw)) if portion else 0
         genid = (
             np.arange(
-                uncertainty_state.generation - len(draw) + start,
-                uncertainty_state.generation,
+                fit_state.generation - len(draw) + start,
+                fit_state.generation,
             )
             + 1
         )
         fig = plot_trace(
-            genid * uncertainty_state.thinning,
-            np.squeeze(points[start:, uncertainty_state._good_chains, var]).T,
+            genid * fit_state.thinning,
+            np.squeeze(points[start:, fit_state._good_chains, var]).T,
             label=label,
             alpha=0.4,
         )

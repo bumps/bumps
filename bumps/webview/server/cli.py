@@ -141,10 +141,6 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     # TODO: allow --pars from session file
     # TODO: missing options from pre-1.0
     """
-    # required
-    --resume=path    [dream]
-        resume a fit from previous stored state; if path is '-' then use the
-        path given by --store, if it exists
 
     # Wait for someone to ask for the following
     --overwrite                    [new version extends session file]
@@ -286,6 +282,9 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         default=None,
         type=str,
         help="output file for session state (overrides --store)",
+    )
+    session.add_argument(
+        "--resume", action="store_true", help="Resume the most recent fit from the saved session file. [dream, de]"
     )
     session.add_argument(
         "--serializer",
@@ -499,6 +498,9 @@ def interpret_fit_options(options: BumpsOptions):
                     pathlist=list(read_store_path.parent.parts),
                     filename=read_store_path.name,
                 )
+    # Loading the problem resets fitting state, so keep hold of that in session file
+    # in case we have --resume on the command line
+    stored_fitting_state = api.state.fitting
     if write_store is not None:
         write_store_path = Path(write_store).absolute()
         # TODO: Why are we splitting path into parts?
@@ -544,6 +546,7 @@ def interpret_fit_options(options: BumpsOptions):
         logger.debug(f"fitter for filename {model_filename} is {fitter_id}")
         on_startup.append(lambda App: api.load_problem_file(model_pathlist, model_filename, args=options.args))
 
+    # TODO: allow pars to be loaded from a session file.
     if options.pars is not None:
         filepath = Path(options.pars).absolute()
         pars_pathlist = list(filepath.parent.parts)
@@ -611,7 +614,7 @@ def interpret_fit_options(options: BumpsOptions):
         on_startup.append(start_mapper)
 
     webview = options.mode != "batch"
-    autostart = not webview or options.mode in ("start", "run")
+    autostart = not webview or options.mode in ("start", "run") or options.resume
     autostop = not webview or options.mode == "run"
     # print(f"{options.mode=} {webview=} {autostart=} {autostop=}")
 
@@ -633,8 +636,10 @@ def interpret_fit_options(options: BumpsOptions):
         async def start_fit(App=None):
             # print(f"{api.state.rank}start fit")
             # print(f"{fitter_settings=}")
+            if options.resume:
+                api.state.fitting = stored_fitting_state
             if api.state.problem is not None:
-                await api.start_fit_thread(fitter_id, fitopts)
+                await api.start_fit_thread(fitter_id, fitopts, resume=options.resume)
 
         on_startup.append(start_fit)
         api.state.console_update_interval = 0 if webview else 1
@@ -746,6 +751,15 @@ def main(options: Optional[BumpsOptions] = None):
     if options is None:
         options = get_commandline_options()
 
+    levels = [logging.WARNING, logging.INFO, logging.DEBUG]
+    setup_console_logging(levels[min(options.verbose, len(levels) - 1)])
+    # from .logger import capture_warnings
+    # capture_warnings(monkeypatch=True)
+    logger.info(options)
+
+    info_only = options.chisq
+    webview = options.mode != "batch" and not info_only
+
     # TODO: cleaner way to isolate MPI?
     # TODO: cleaner handling of worker exit.
     # TODO: allow mpi fits from a jupyter slurm allocation spanning multiple nodes.
@@ -758,7 +772,7 @@ def main(options: Optional[BumpsOptions] = None):
     # sys.exit() after the worker loop finishes so that the remaining on startup
     # and on complete actions are skipped. We could instead pass an is_worker flag
     # into the options processor so that there are no tasks to skip.
-    if options.mpi or using_mpi():
+    if (options.mpi or using_mpi()) and not info_only:
         # ** Warning **: importing MPI from mpi4py calls MPI_Init() which triggers
         # network traffic. Only import it when you know you are using MPI calls.
         from mpi4py import MPI
@@ -769,14 +783,6 @@ def main(options: Optional[BumpsOptions] = None):
         is_controller = True
         # api.state.rank = ""
 
-    levels = [logging.WARNING, logging.INFO, logging.DEBUG]
-    setup_console_logging(levels[min(options.verbose, len(levels) - 1)])
-    # from .logger import capture_warnings
-    # capture_warnings(monkeypatch=True)
-    logger.info(options)
-
-    no_view = options.chisq
-    webview = options.mode != "batch" and not no_view
     if webview and is_controller:  # gui mode
         start_from_cli(options)
     else:  # console mode

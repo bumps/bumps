@@ -4,7 +4,6 @@ Interfaces to various optimizers.
 
 import sys
 import warnings
-from typing import List, Tuple, Dict, Any, Optional
 from time import perf_counter
 
 import numpy as np
@@ -18,7 +17,11 @@ from .formatnum import format_uncertainty
 from .fitproblem import nllf_scale
 from .util import NDArray, format_duration
 
-from .dream import MCMCModel
+# For typing
+from typing import List, Tuple, Dict, Any, Optional
+from numpy.typing import NDArray
+from h5py import Group
+from bumps.dream.state import MCMCDraw
 
 
 class ConsoleMonitor(monitor.TimedUpdate):
@@ -30,10 +33,10 @@ class ConsoleMonitor(monitor.TimedUpdate):
         monitor.TimedUpdate.__init__(self, progress=progress, improvement=improvement)
         self.problem = problem
 
-    def _print_chisq(self, k, fx):
+    def _print_chisq(self, k, fx, final=False):
         scale, err = nllf_scale(self.problem)
         chisq = format_uncertainty(scale * fx, err)
-        print(f"step {k} cost {chisq}")
+        print(f"step {k} cost {chisq}{' [final]' if final else ''}")
 
     def _print_pars(self, x):
         p = self.problem.getp()
@@ -52,7 +55,7 @@ class ConsoleMonitor(monitor.TimedUpdate):
         sys.stdout.flush()
 
     def final(self, history: History, best: Dict[str, Any]):
-        self._print_chisq("final", best["value"])
+        self._print_chisq(history.step[0], best["value"], final=True)
         self._print_pars(best["point"])
         print(f"time {format_duration(history.time[0])}")
         sys.stdout.flush()
@@ -226,8 +229,17 @@ class FitBase(object):
     """
 
     name: str
+    """Display name for the fit method"""
     id: str
-    settings: List[Tuple[str, any]]
+    """Short name for the fit method, used as --id on the command line."""
+    # TODO: Replace list of tuples with an ordered dictionary?
+    settings: List[Tuple[str, Any]]
+    """Available fitting options and their default values."""
+    state: Any = None
+    """
+    Internal fit state. If the state object has a draw method this should return
+    a set of points from the posterior probability distribution for the fit.
+    """
 
     def __init__(self, problem):
         """Fit the models and show the results"""
@@ -235,6 +247,31 @@ class FitBase(object):
 
     def solve(self, monitors: MonitorRunner, mapper=None, **options):
         raise NotImplementedError()
+
+    @staticmethod
+    def h5dump(group: "Group", state: Any) -> None:
+        """
+        Store fitter.state into the given HDF5 Group.
+
+        This will be restored by the corresponding h5load, then passed
+        to the fitter to resume from its current state. This strategy
+        is particularly useful for MCMC analysis where you may need more
+        iterations for the chains to reach equilibrium.  It is also the
+        basis of checkpoint/restore operations for fitters such as de
+        and amoeba which manage a population, though in those cases the
+        best point seen so far may be good enough.
+        """
+        # Default is nothing to save because resume isn't supported for the fitter
+        ...
+
+    @staticmethod
+    def h5load(group: "Group") -> Any:
+        """
+        Load internal fit state from the group saved by h5dump. Note that
+        this function will be responsible for migrating state from older
+        versions to newer versions of the saved representation.
+        """
+        return None
 
 
 class MultiStart(FitBase):
@@ -293,6 +330,7 @@ class DEFit(FitBase):
         ("ftol", 1e-8),
         ("xtol", 1e-6),  # ('stop', ''),
     ]
+    state = None
 
     def solve(self, monitors: MonitorRunner, mapper=None, **options):
         options = _fill_defaults(options, self.settings)
@@ -304,14 +342,13 @@ class DEFit(FitBase):
             _mapper = lambda p, v: mapper(v)
         else:
             _mapper = lambda p, v: list(map(self.problem.nllf, v))
-        resume = hasattr(self, "state")
+        resume = self.state is not None
         steps = options["steps"] + (self.state["step"][-1] if resume else 0)
         strategy = de.DifferentialEvolution(
             npop=options["pop"], CR=options["CR"], F=options["F"], crossover=de.c_bin, mutate=de.rand1u
         )
         success = parse_tolerance(options)
         failure = stop.Steps(steps)
-        self.history = History()
         # Step adds to current step number if resume
         minimize = Minimizer(
             strategy=strategy,
@@ -322,9 +359,11 @@ class DEFit(FitBase):
             success=success,
             failure=failure,
         )
-        if resume:
-            self.history.restore(self.state)
+        if self.state is not None:
+            monitors.history.restore(self.state)
         x = minimize(mapper=_mapper, abort_test=monitors.stopping, resume=resume)
+        self.state = monitors.history.snapshot()
+        # print("final de state", self.state)
         # print(minimize.termination_condition())
         # with open("/tmp/evals","a") as fid:
         #   print >>fid,minimize.history.value[0],minimize.history.step[0],\
@@ -332,10 +371,22 @@ class DEFit(FitBase):
         return x, monitors.history.value[0]
 
     def load(self, input_path):
-        self.state = load_history(input_path)
+        self.state = _de_load_history(input_path)
 
     def save(self, output_path):
-        save_history(output_path, self.history.snapshot())
+        _de_save_history(output_path, self.state)
+
+    @staticmethod
+    def h5load(group: Group) -> Any:
+        from .webview.server.state_hdf5_backed import read_json
+
+        return read_json(group, "DE_history")
+
+    @staticmethod
+    def h5dump(group: Group, state: Dict[str, Any]):
+        from .webview.server.state_hdf5_backed import write_json
+
+        write_json(group, "DE_history", state)
 
 
 def parse_tolerance(options):
@@ -359,21 +410,21 @@ def parse_tolerance(options):
         return stop.Rx(xtol, scaled=False)
 
 
-def _history_file(path):
+def _de_history_file(path):
     return path + "-history.json"
 
 
-def load_history(path):
+def _de_load_history(path):
     """
     Load fitter details from a history file.
     """
     import json
 
-    with open(_history_file(path), "r") as fid:
+    with open(_de_history_file(path), "r") as fid:
         return json.load(fid)
 
 
-def save_history(path, state):
+def _de_save_history(path, state):
     """
     Save fitter details to a history file as JSON.
 
@@ -381,7 +432,7 @@ def save_history(path, state):
     """
     import json
 
-    with open(_history_file(path), "w") as fid:
+    with open(_de_history_file(path), "w") as fid:
         json.dump(state, fid)
 
 
@@ -514,7 +565,7 @@ class PTFit(FitBase):
 
     name = "Parallel Tempering"
     id = "pt"
-    settings = [("steps", 400), ("nT", 24), ("CR", 0.9), ("burn", 100), ("Tmin", 0.1), ("Tmax", 10)]
+    settings = [("steps", 400), ("nT", 24), ("CR", 0.9), ("burn", 100), ("Tmin", 0.1), ("Tmax", 10.0)]
 
     def solve(self, monitors: MonitorRunner, mapper=None, **options):
         options = _fill_defaults(options, self.settings)
@@ -762,10 +813,13 @@ class SnobFit(FitBase):
         return x, fx
 
 
-class DreamModel(MCMCModel):
+class DreamModel:
     """
-    DREAM wrapper for fit problems.
+    DREAM wrapper for fit problems. Implements dream.core.Model protocol.
     """
+
+    labels: List[str]
+    bounds: NDArray
 
     def __init__(self, problem=None, mapper=None):
         """
@@ -778,16 +832,6 @@ class DreamModel(MCMCModel):
         self.labels = self.problem.labels()
 
         self.mapper = mapper if mapper else lambda p: list(map(self.nllf, p))
-
-    def log_density(self, x):
-        return -self.nllf(x)
-
-    def nllf(self, x):
-        """Negative log likelihood of seeing models given *x*"""
-        # Note: usually we will be going through the provided mapper, and
-        # this function will never be called.
-        # print "eval",x; sys.stdout.flush()
-        return self.problem.nllf(x)
 
     def map(self, pop):
         # print "calling mapper",self.mapper
@@ -811,7 +855,6 @@ class DreamFit(FitBase):
 
     def __init__(self, problem):
         FitBase.__init__(self, problem)
-        self.dream_model = DreamModel(problem)
         self.state = None
 
     def solve(self, monitors: MonitorRunner, mapper=None, **options):
@@ -827,10 +870,7 @@ class DreamFit(FitBase):
             monitors(step=step, point=x, value=-fx, population_points=pop, population_values=-logp)
             return True
 
-        if mapper:
-            self.dream_model.mapper = mapper
-
-        population = initpop.generate(self.dream_model.problem, **options)
+        population = initpop.generate(self.problem, **options)
         pop_size = population.shape[0]
         draws, steps = int(options["samples"]), options["steps"]
         if steps == 0:
@@ -838,7 +878,7 @@ class DreamFit(FitBase):
         monitors.info(f"# burn: {options['burn']} # steps: {steps}, # draws: {pop_size * steps}")
         population = population[None, :, :]
         sampler = Dream(
-            model=self.dream_model,
+            model=DreamModel(self.problem, mapper),
             population=population,
             draws=pop_size * steps,
             burn=pop_size * options["burn"],
@@ -856,17 +896,15 @@ class DreamFit(FitBase):
         # print("trimming", options['trim'], self._trimmed)
         self.state.mark_outliers(portion=self._trimmed)
         self.state.keep_best()
-        self.state.title = self.dream_model.problem.name
+        self.state.title = self.problem.name
 
-        # TODO: Temporary hack to apply a post-mcmc action to the state vector
-        # The problem is that if we manipulate the state vector before saving
-        # it then we will not be able to use the --resume feature.  We can
-        # get around this by just not writing state for the derived variables,
-        # at which point we can remove this notice.
-        # TODO: Add derived/visible variable support to other optimizers
+        # TODO: Add derived/visible/integer variable support to other optimizers.
+        # TODO: Serialize derived/visible/integer variable support with fitproblem.
+        # TODO: Use parameter expressions for derived vars rather than a function.
+        # TODO: Allow fixed parameters as part of the derived variable function.
         fn, labels = getattr(self.problem, "derive_vars", (None, None))
         if fn is not None:
-            self.state.derive_vars(fn, labels=labels)
+            self.state.set_derived_vars(fn, labels=labels)
         visible_vars = getattr(self.problem, "visible_vars", None)
         if visible_vars is not None:
             self.state.set_visible_vars(visible_vars)
@@ -915,6 +953,18 @@ class DreamFit(FitBase):
     def save(self, output_path):
         self.state.save(output_path)
 
+    @staticmethod
+    def h5load(group: Group) -> MCMCDraw:
+        from .dream.state import h5load
+
+        return h5load(group)
+
+    @staticmethod
+    def h5dump(group: Group, state: MCMCDraw):
+        from .dream.state import h5dump
+
+        h5dump(group, state)
+
     def plot(self, output_path):
         self.state.show(figfile=output_path, portion=self._trimmed)
         self.error_plot(figfile=output_path)
@@ -928,7 +978,7 @@ class DreamFit(FitBase):
         from . import errplot
 
         # TODO: shouldn't mix calc and display!
-        res = errplot.calc_errors_from_state(problem=self.dream_model.problem, state=self.state, portion=self._trimmed)
+        res = errplot.calc_errors_from_state(problem=self.problem, state=self.state, portion=self._trimmed)
         if res is not None:
             pylab.figure()
             errplot.show_errors(res)
@@ -995,14 +1045,38 @@ class FitDriver(object):
         self.fitter = None
         self.result = None
 
-    def fit(self, resume=None):
-        # remove cached _cov and _stderr on new fit
+    def fit(self, resume=None, fit_state=None):
+        """
+        Providing *fit_state* allows the fit to resume from a previous state. If None
+        then the fit will be started from a clean state.
+
+        The *fitclass* object should provide static methods for *h5dump/h5load* for
+        saving and loading the internal state of the fitter to a specific group in an
+        hdf5 file. The result of *h5load(group)* can be passed as *fit_state* to resume a
+        fit with whatever new options are provided. It is up to the fitter to decide
+        how to interpret this. The state can be retrieved from state=driver.fitter.state
+        at the end of the fit and saved using *h5dump(group, state)*.
+
+        *resume* (= resume_path / problem.name) is used by the pre-1.0 command line
+        interface to provide the base path for the fit state files. For dream this can
+        be replaced by the following::
+
+            fn, labels = getattr(problem, "derive_vars", (None, []))
+            fit_state = load_state(input_path, report=100, derived_vars=len(labels))
+        """
         if hasattr(self, "_cov"):
             del self._cov
         if hasattr(self, "_stderr"):
             del self._stderr
+        # Awkward interface for dump/load state. The structure of the state depends on
+        # the fit method, so we need to delegate dump/load to the Fitter class. However,
+        # the fitter is not instantiated outside of the fit method, so dump/load must
+        # be static methods on fitclass, with load called before the fit and dump after.
+        # A further complication is checkpointing, which requires that the state be
+        # available and up to date when the checkpoint is requested.
         fitter = self.fitclass(self.problem)
-        if resume:
+        fitter.state = fit_state
+        if resume and hasattr(fitter, "load"):
             fitter.load(resume)
         starts = self.options.get("starts", 1)
         if starts > 1:
@@ -1290,6 +1364,7 @@ assert FIT_DEFAULT_ID in FIT_ACTIVE_IDS
 assert all(f in FIT_AVAILABLE_IDS for f in FIT_ACTIVE_IDS)
 
 
+# TODO: we can allow resume if we send the fit state back to the fit call.
 def fit(problem, method=FIT_DEFAULT_ID, verbose=False, **options):
     """
     Simplified fit interface.
@@ -1325,9 +1400,10 @@ def fit(problem, method=FIT_DEFAULT_ID, verbose=False, **options):
     for fitclass in FITTERS:
         if fitclass.id == method:
             break
-    monitors = None if verbose else []  # default is console monitor
+    monitors = None if verbose else []  # Default is the console monitor
     driver = FitDriver(fitclass=fitclass, problem=problem, monitors=monitors, **options)
     driver.clip()  # make sure fit starts within domain
+    # x0 = problem.getp()
     x, fx = driver.fit()
     problem.setp(x)
     if verbose:
@@ -1345,7 +1421,9 @@ def fit(problem, method=FIT_DEFAULT_ID, verbose=False, **options):
         # njev, nhev # jacobian and hessian evaluations
         # maxcv=0, # max constraint violation
     )
-    if hasattr(driver.fitter, "state"):
+    # TODO: always include state?
+    # TODO: state is not always MCMC state
+    if hasattr(driver.fitter.state, "draw"):
         result.state = driver.fitter.state
     return result
 

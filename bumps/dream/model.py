@@ -99,30 +99,32 @@ on the 1-sigma uncertainty, so use the style given in option 2 for this case.
 
 __all__ = ["MCMCModel", "Density", "LogDensity", "Simulation", "MVNormal", "Mixture"]
 
+from abc import abstractmethod
+from typing import List
+
 import numpy as np
 from numpy import diag, log, exp, pi
 from numpy.linalg import cholesky, inv
+from numpy.typing import NDArray
 
 from . import exppow
 
 
-class MCMCModel(object):
+class MCMCModel:
     """
-    MCMCM model abstract base class.
+    MCMC model abstract base class.
 
     Each model must have a negative log likelihood function which operates
     on a point x, returning the negative log likelihood, or inf if the point
     is outside the domain.
     """
 
-    labels = None
-    bounds = None
+    labels: List[str] = None
+    bounds: NDArray = None
 
+    @abstractmethod
     def nllf(self, x):
-        raise NotImplemented
-
-    def log_density(self, x):
-        return -self.nllf(x)
+        raise NotImplementedError
 
     def plot(self, x):
         pass
@@ -199,10 +201,10 @@ class Simulation(MCMCModel):
         return log_p
 
     def plot(self, x):
-        import pylab
+        import matplotlib.pyplot as plt
 
-        v = pylab.arange(len(self.data))
-        pylab.plot(v, self.data, "x", v, self.f(x), "-")
+        v = np.arange(len(self.data))
+        plt.plot(v, self.data, "x", v, self.f(x), "-")
 
 
 class MVNormal(MCMCModel):

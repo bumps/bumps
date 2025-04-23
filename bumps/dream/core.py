@@ -128,6 +128,7 @@ Version 1.0: October 2008  Adaption updated and generalized CR implementation
 
 2010-04-20 Paul Kienzle
 * Convert to python
+Complete changelog on github.com/bumps/bumps
 """
 
 __all__ = ["Dream"]
@@ -135,12 +136,14 @@ __all__ = ["Dream"]
 import sys
 import time
 from ctypes import c_double
+from typing import Protocol, List, Sequence, Optional
 
 import numpy as np
+from numpy.typing import NDArray
 
 from .state import MCMCDraw
 from .metropolis import metropolis, metropolis_dr, dr_step
-from .crossover import AdaptiveCrossover, LogAdaptiveCrossover
+from .crossover import AdaptiveCrossover, LogAdaptiveCrossover, Crossover
 from .diffev import de_step
 from .bounds import make_bounds_handler
 from .compiled import dll
@@ -148,23 +151,41 @@ from .util import rng
 from .convergence import ks_converged
 
 # Everything should be available in state, but lets be lazy for now
-LAST_TIME = 0
+_LAST_TIME = 0
+"""Used by console_monitor to count time until the next update"""
 
 
 def console_monitor(state, pop, logp):
     """
     Print progress of fit on the console.
+
+    This is the default update monitor when running DREAM standalone. It is not
+    used by the bumps package.
     """
-    global LAST_TIME
+    global _LAST_TIME
     if state.generation == 1:
         print("#gen", "logp(x)", " ".join("<%s>" % par for par in state.labels))
-        LAST_TIME = time.time()
+        _LAST_TIME = time.perf_counter()
 
-    current_time = time.time()
-    if current_time >= LAST_TIME + 1:
-        LAST_TIME = current_time
+    current_time = time.perf_counter()
+    if current_time >= _LAST_TIME + 1:
+        _LAST_TIME = current_time
         print(state.generation, state._best_logp, " ".join("%.15g" % v for v in state._best_x))
         sys.stdout.flush()
+
+
+class Model(Protocol):
+    labels: List[str]
+    """Labels for all the parameters"""
+    bounds: Sequence[Sequence[float]]
+    """Bounds for each parameter as a pair of sequences of the same length as the labels."""
+
+    def map(self, pop: NDArray) -> NDArray:
+        """
+        Function which takes an array of [k x n] and returns an array of n where k is
+        the number of parameters.  TODO: check if
+        """
+        ...
 
 
 class Dream(object):
@@ -172,29 +193,29 @@ class Dream(object):
     Data structure containing the details of the running DREAM analysis code.
     """
 
-    model = None
+    model: Model = None
     # Sampling parameters
-    burn = 0
-    draws = 100000
-    thinning = 1
+    burn: int = 0
+    draws: int = 100000
+    thinning: int = 1
     # TODO: change the default outlier test to IQR and control with options
     outlier_test = "none"
-    population = None
+    population: NDArray = None
     #: convergence criteria
-    alpha = 0.01
+    alpha: float = 0.01
     # DE parameters
-    DE_steps = 10
-    DE_pairs = 3
-    DE_eps = 0.05
-    DE_snooker_rate = 0.1
-    DE_noise = 1e-6
-    bounds_style = "reflect"
+    DE_steps: int = 10
+    DE_pairs: int = 3
+    DE_eps: float = 0.05
+    DE_snooker_rate: float = 0.1
+    DE_noise: float = 1e-6
+    bounds_style: str = "reflect"  # reflect, clip, fold, randomize, none
     # Crossover parameters
-    CR = None
-    CR_spacing = "linear"  # 'log' or 'linear'
+    CR: Crossover = None
+    CR_spacing: str = "linear"  # 'log' or 'linear'
     # Delay rejection parameters
-    use_delayed_rejection = False
-    DR_scale = 1  # 1-sigma step size using cov of population
+    use_delayed_rejection: bool = False
+    DR_scale: float = 1  # 1-sigma step size using cov of population
     # Local optimizer best fit injection  The optimizer has
     # the following interface:
     #    x, fx = goalseek(mapper, bounds_handler, pop, fpop)
@@ -205,9 +226,9 @@ class Dream(object):
     #    mapper is a function which takes pop and returns fpop
     #    bounds_handler takes pop and forces all points into the range
     goalseek_optimizer = None
-    goalseek_interval = 1e100  # close enough to never
-    goalseek_minburn = 1000
-    state = None  # type: MCMCDraw
+    goalseek_interval: int = 2e9  # close enough to never
+    goalseek_minburn: int = 1000
+    state: MCMCDraw = None
 
     def __init__(self, **kw):
         self.monitor = console_monitor
@@ -219,7 +240,7 @@ class Dream(object):
 
         self._initialized = False
 
-    def sample(self, state=None, abort_test=lambda: False):
+    def sample(self, state: Optional[MCMCDraw] = None, abort_test=lambda: False):
         """
         Pull the requisite number of samples from the distribution
         """
@@ -233,7 +254,7 @@ class Dream(object):
         return self.state
 
 
-def _run_dream(dream, abort_test=lambda: False):
+def _run_dream(dream: Dream, abort_test=lambda: False):
     """
     Collect posterior distribution samples using DREAM sampler.
     """
@@ -492,9 +513,9 @@ def allocate_state(dream):
     n_cr = len(dream.CR.CR)
     draws = dream.draws
 
-    n_update = int(draws / (steps * n_chain)) + 1
+    n_update = int(np.ceil(draws / (steps * n_chain)))
     n_gen = n_update * steps
-    n_thin = int(n_gen / thinning) + 1
+    n_thin = int(np.ceil(n_gen / thinning))
 
     # print("new state", n_var, n_chain, n_cr, n_gen, n_thin, n_update, draws, steps)
     if dream.state is not None:

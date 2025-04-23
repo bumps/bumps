@@ -22,14 +22,12 @@ import math
 import numpy as np
 from numpy import diag, empty, isinf, isfinite, clip, inf
 
-try:
-    from typing import Optional
-except ImportError:
-    pass
+from typing import Optional
+from numpy.typing import NDArray
 
 
 def generate(problem, init="eps", pop=10, use_point=True, **options):
-    # type: (Any, str, int, bool, ...) -> np.ndarray
+    # type: (Any, str, int, bool, ...) -> NDArray
     """
     Population initializer.
 
@@ -75,7 +73,7 @@ def generate(problem, init="eps", pop=10, use_point=True, **options):
 
 
 def lhs_init(n, initial, bounds, use_point=False):
-    # type: (int, np.ndarray, np.ndarray, bool, float) -> np.ndarray
+    # type: (int, NDArray, NDArray, bool, float) -> NDArray
     """
     Latin hypercube sampling.
 
@@ -150,7 +148,7 @@ def lhs_init(n, initial, bounds, use_point=False):
 
 
 def cov_init(n, initial, bounds, use_point=False, cov=None, dx=None):
-    # type: (int, np.ndarray, np.ndarray, bool, Optional[np.ndarray], Optional[np.ndarray]) -> np.ndarray
+    # type: (int, NDArray, NDArray, bool, Optional[NDArray], Optional[NDArray]) -> NDArray
     """
     Initialize *n* sets of random variables from a gaussian model.
 
@@ -201,7 +199,7 @@ def random_init(n, initial, bounds, use_point=False, problem=None):
 
 
 def eps_init(n, initial, bounds, use_point=False, eps=1e-6):
-    # type: (int, np.ndarray, np.ndarray, bool, float) -> np.ndarray
+    # type: (int, NDArray, NDArray, bool, float) -> NDArray
     """
     Generate a random population using an epsilon ball around the current
     value.
@@ -243,9 +241,9 @@ def reflect(v, low, high):
 
 
 def _get_scale_factor(scale, bounds, initial):
-    # type: (float, np.ndarray, np.ndarray) -> np.ndarray
+    # type: (float, NDArray, NDArray) -> NDArray
     xmin, xmax = bounds
-    dx = (xmax - xmin) * scale  # type: np.ndarray
+    dx = (xmax - xmin) * scale  # type: NDArray
     dx[isinf(dx)] = abs(initial[isinf(dx)]) * scale
     dx[~isfinite(dx)] = scale
     dx[dx == 0] = scale

@@ -83,7 +83,7 @@ class NumpyArray:
      - str(array.dtype) is stored in 'dtype' attribute
 
      on deserialize,
-      - return new np.ndarray(values, dtype=dtype)
+      - return new NDArray(values, dtype=dtype)
     """
 
     dtype: str

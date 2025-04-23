@@ -54,6 +54,7 @@ __all__ = [
 
 import numpy as np
 from numpy import ones, zeros, arange, isscalar, std, trunc, log10, logspace
+from numpy.typing import NDArray
 
 
 class Crossover(object):
@@ -66,7 +67,10 @@ class Crossover(object):
     *weight* is the relative weighting of each CR, or None for equal weights.
     """
 
-    def __init__(self, CR, weight=None):
+    CR: NDArray
+    weight: NDArray
+
+    def __init__(self, CR: NDArray, weight: NDArray):
         if isscalar(CR):
             CR, weight = [CR], [1]
         CR, weight = [np.asarray(v, "d") for v in (CR, weight)]
@@ -94,11 +98,11 @@ class BaseAdaptiveCrossover(object):
     Adapted weight crossover ratios.
     """
 
-    weight = None  # type: np.ndarray
-    _count = None  # type: np.ndarray
-    _distance = None  # type: np.ndarray
-    _generations = 0  # type: int
-    _Nchains = 0  # type: int
+    weight: NDArray = None
+    _count: NDArray = None
+    _distance: NDArray = None
+    _generations: int = 0
+    _Nchains: int = 0
 
     def _set_CRs(self, CR):
         self.CR = CR
@@ -187,7 +191,7 @@ class LogAdaptiveCrossover(BaseAdaptiveCrossover):
         self._set_CRs(logspace(0, log10(dim), trunc(N * log10(dim) + 1)) / dim)
 
 
-def distance_per_CR(available_CRs, distances, used):
+def distance_per_CR(available_CRs: NDArray, distances: NDArray, used: NDArray):
     """
     Accumulate normalized Euclidean distance for each crossover value
 

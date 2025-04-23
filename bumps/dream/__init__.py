@@ -16,6 +16,7 @@ the rng on the dream class may be a better option.
 
 from .model import MCMCModel
 from .core import Dream
+from .state import MCMCDraw
 # from .core import dream
 # from .initpop import *  # cov_init, lhs_init
 # from .model import *    #

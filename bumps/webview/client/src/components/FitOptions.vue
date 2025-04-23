@@ -82,7 +82,7 @@ function process_settings() {
   );
 }
 
-async function save(start: boolean = false) {
+async function save(start: boolean = false, resume: boolean = false) {
   if (anyIsInvalid.value) {
     return;
   }
@@ -93,7 +93,12 @@ async function save(start: boolean = false) {
   await props.socket.asyncEmit("set_shared_setting", "fitter_settings", new_settings);
   await props.socket.asyncEmit("set_shared_setting", "selected_fitter", selected_fitter_local.value);
   if (start) {
-    await props.socket.asyncEmit("start_fit_thread", selected_fitter_local.value, fitter_settings_local);
+    // start_fit_thread(
+    //   fitter_name: string,
+    //   fitter_settings: object,
+    //   resume: boolean = false
+    // )
+    await props.socket.asyncEmit("start_fit_thread", selected_fitter_local.value, fitter_settings_local, resume);
   }
   close();
 }
@@ -227,6 +232,14 @@ defineExpose({
             </button>
             <button type="button" class="btn btn-primary" :class="{ disabled: anyIsInvalid }" @click="save(false)">
               Save Changes
+            </button>
+            <button
+              v-if="selected_fitter_local == shared_state.selected_fitter && shared_state.resumable"
+              type="button"
+              class="btn btn-warning"
+              @click="save(true, true)"
+            >
+              Save and Resume
             </button>
           </div>
         </div>

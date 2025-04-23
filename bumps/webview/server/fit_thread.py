@@ -76,7 +76,7 @@ class ConvergenceMonitor(monitor.Monitor):
         self.time = 0
         self.rate = rate  # rate=0 for no progress update, only final
         self.problem = problem
-        self.pop = []
+        self.quantiles = []
 
     def config_history(self, history):
         history.requires(population_values=1, value=1)
@@ -94,10 +94,11 @@ class ConvergenceMonitor(monitor.Monitor):
             # QI, Qmid = int(0.158655 * n), int(0.5 * n)
             QI, Qmid = int(0.2 * n), int(0.5 * n)  # Use 20-80% range
             p = np.sort(pop)
-            self.pop.append((best, p[0], p[QI], p[Qmid], p[-(QI + 1)], p[-1]))
+            self.quantiles.append((best, p[0], p[QI], p[Qmid], p[-(QI + 1)], p[-1]))
         except (AttributeError, TypeError):
-            # TODO: if no population then 0% = QI = Qmid = -QI = 100%
-            self.pop.append((best,))
+            # If no population then 0% = Qmid-QI = Qmid = Qmid+QI = 100%
+            # TODO: Use same 6 column convergence history when no population?
+            self.quantiles.append((best,))
 
         if self.rate > 0 and history.time[0] >= self.time + self.rate:
             # print("convergence progress")
@@ -112,13 +113,13 @@ class ConvergenceMonitor(monitor.Monitor):
         self._send_update()
 
     def _send_update(self):
-        pop = np.empty((0, 1), "d") if not self.pop else np.array(self.pop)
-        evt = dict(message=self.message, pop=pop)
+        # TODO: rename pop to quantiles in convergence_update message
+        quantiles = np.empty((0, 1), "d") if not self.quantiles else np.array(self.quantiles)
+        evt = dict(message=self.message, convergence=quantiles)
         EVT_FIT_PROGRESS.send(evt)
 
 
-# Horrible hacks:
-# (1) We are grabbing uncertainty_state from the history on monitor update
+# HACK: We are grabbing uncertainty_state from the history on monitor update
 # and holding onto it for the monitor final call. Need to restructure the
 # history/monitor interaction so that object lifetimes are better controlled.
 
@@ -126,17 +127,15 @@ class ConvergenceMonitor(monitor.Monitor):
 class DreamMonitor(monitor.Monitor):
     message: str = "uncertainty_update"
 
-    def __init__(self, problem, fitter, rate=0):
+    def __init__(self, problem, fit_state=None, rate=0):
         self.time = 0
         self.rate = rate  # rate=0 for no progress update, only final
         self.update_counter = 0
         self.problem = problem
-        self.fitter = fitter
-        self.uncertainty_state = None
-        # emit None uncertainty state to start with
+        self.fit_state = fit_state
         evt = dict(
             message=self.message,
-            uncertainty_state=None,
+            fit_state=fit_state,
         )
         # print("Dream init", evt)
         EVT_FIT_PROGRESS.send(evt)
@@ -145,7 +144,7 @@ class DreamMonitor(monitor.Monitor):
         history.requires(time=1)
 
     def __call__(self, history):
-        self.uncertainty_state = getattr(history, "uncertainty_state", None)
+        self.fit_state = getattr(history, "fit_state", None)
         self.time = history.time[0]
         if self.rate <= 0:
             return
@@ -155,7 +154,7 @@ class DreamMonitor(monitor.Monitor):
             evt = dict(
                 message=self.message,
                 time=self.time,
-                uncertainty_state=deepcopy(self.uncertainty_state),
+                fit_state=deepcopy(self.fit_state),
             )
             # print("Dream update", evt)
             EVT_FIT_PROGRESS.send(evt)
@@ -167,7 +166,7 @@ class DreamMonitor(monitor.Monitor):
         evt = dict(
             message="uncertainty_final",
             time=self.time,
-            uncertainty_state=deepcopy(self.uncertainty_state),
+            fit_state=deepcopy(self.fit_state),
         )
         # print("Dream final", evt)
         EVT_FIT_PROGRESS.send(evt)
@@ -190,6 +189,7 @@ class FitThread(Thread):
         convergence_update=5,
         uncertainty_update=300,
         console_update=0,
+        fit_state=None,
         # outputs=None,
     ):
         # base class initialization
@@ -199,6 +199,7 @@ class FitThread(Thread):
         self.fit_abort_event = fit_abort_event
         self.problem = problem
         self.fitclass = fitclass
+        self.fit_state = fit_state
         # print(f"   *** FitThread {options}")
         self.options = options if isinstance(options, dict) else {}
         self.mapper = mapper
@@ -233,7 +234,11 @@ class FitThread(Thread):
                 #            message="convergence_update",
                 #            monitor=ConvergenceMonitor(),
                 #            rate=self.convergence_update),
-                DreamMonitor(self.problem, fitter=self.fitclass, rate=self.uncertainty_update),
+                DreamMonitor(
+                    self.problem,
+                    rate=self.uncertainty_update,
+                    fit_state=self.fit_state,
+                ),
             ]
             if self.console_update > 0:
                 monitors.append(
@@ -273,7 +278,7 @@ class FitThread(Thread):
                 **self.options,
             )
 
-            x, fx = driver.fit()
+            x, fx = driver.fit(fit_state=self.fit_state)
 
             with redirect_console() as fid:
                 driver.show()
@@ -289,13 +294,13 @@ class FitThread(Thread):
                 #     driver.show_entropy(entropy)
                 captured_output = fid.getvalue()
 
-            # print("fit complete with", x, fx)
+            # print("fit complete with", x, fx, driver.fitter.state)
             evt = dict(
                 message="complete",
                 problem=self.problem,
                 point=x,
                 value=fx,
-                uncertainty_state=getattr(driver.fitter, "state", None),
+                fit_state=driver.fitter.state,
                 info=captured_output,
                 fitter_id=self.fitclass.id,
             )
