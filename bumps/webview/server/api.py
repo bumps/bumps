@@ -545,8 +545,8 @@ async def start_fit_thread(
         raise ValueError("Problem has no fittable parameters")
 
     # Check the options. Pass the fitter_id so that we know which options are available.
-    options, warnings = fit_options.check_options(options, fitter_id=fitter_id)
-    for msg in warnings:
+    options, errors = fit_options.check_options(options, fitter_id=fitter_id)
+    for msg in errors:
         logger.warning(msg)
         await log(msg)
 
@@ -574,10 +574,13 @@ async def start_fit_thread(
     if options:
         full_options.update(options)
 
+    # TODO: model.py may have changed; check that the list of parameters is the same
+    # TODO: maybe prefer problem saved in store on resume
     # print(f"start fit thread {resume} {state.fitting.fit_state}")
     if resume and state.fitting.method != fitter_id:
-        # TODO: How do warnings get back to webview?
-        warnings.warn(f"Can't resume {fitter_id} from state saved by {state.fitting.method}")
+        msg = f"Can't resume {fitter_id} from state saved by {state.fitting.method}"
+        logger.warning(msg)
+        await log(msg)
         resume = False
     state.reset_fitstate(copy=resume)
     state.fitting.method = fitter_id

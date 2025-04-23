@@ -751,6 +751,15 @@ def main(options: Optional[BumpsOptions] = None):
     if options is None:
         options = get_commandline_options()
 
+    levels = [logging.WARNING, logging.INFO, logging.DEBUG]
+    setup_console_logging(levels[min(options.verbose, len(levels) - 1)])
+    # from .logger import capture_warnings
+    # capture_warnings(monkeypatch=True)
+    logger.info(options)
+
+    info_only = options.chisq
+    webview = options.mode != "batch" and not info_only
+
     # TODO: cleaner way to isolate MPI?
     # TODO: cleaner handling of worker exit.
     # TODO: allow mpi fits from a jupyter slurm allocation spanning multiple nodes.
@@ -763,7 +772,7 @@ def main(options: Optional[BumpsOptions] = None):
     # sys.exit() after the worker loop finishes so that the remaining on startup
     # and on complete actions are skipped. We could instead pass an is_worker flag
     # into the options processor so that there are no tasks to skip.
-    if options.mpi or using_mpi():
+    if (options.mpi or using_mpi()) and not info_only:
         # ** Warning **: importing MPI from mpi4py calls MPI_Init() which triggers
         # network traffic. Only import it when you know you are using MPI calls.
         from mpi4py import MPI
@@ -774,14 +783,6 @@ def main(options: Optional[BumpsOptions] = None):
         is_controller = True
         # api.state.rank = ""
 
-    levels = [logging.WARNING, logging.INFO, logging.DEBUG]
-    setup_console_logging(levels[min(options.verbose, len(levels) - 1)])
-    # from .logger import capture_warnings
-    # capture_warnings(monkeypatch=True)
-    logger.info(options)
-
-    no_view = options.chisq
-    webview = options.mode != "batch" and not no_view
     if webview and is_controller:  # gui mode
         start_from_cli(options)
     else:  # console mode

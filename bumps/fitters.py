@@ -349,7 +349,6 @@ class DEFit(FitBase):
         )
         success = parse_tolerance(options)
         failure = stop.Steps(steps)
-        self.history = History()
         # Step adds to current step number if resume
         minimize = Minimizer(
             strategy=strategy,
@@ -361,9 +360,10 @@ class DEFit(FitBase):
             failure=failure,
         )
         if self.state is not None:
-            self.history.restore(self.state)
+            monitors.history.restore(self.state)
         x = minimize(mapper=_mapper, abort_test=monitors.stopping, resume=resume)
-        self.state = self.history.snapshot()
+        self.state = monitors.history.snapshot()
+        # print("final de state", self.state)
         # print(minimize.termination_condition())
         # with open("/tmp/evals","a") as fid:
         #   print >>fid,minimize.history.value[0],minimize.history.step[0],\
@@ -374,7 +374,7 @@ class DEFit(FitBase):
         self.state = _de_load_history(input_path)
 
     def save(self, output_path):
-        _de_save_history(output_path, self.history.snapshot())
+        _de_save_history(output_path, self.state)
 
     @staticmethod
     def h5load(group: Group) -> Any:

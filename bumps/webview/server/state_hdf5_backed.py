@@ -345,7 +345,7 @@ class FitResult:
     # TODO: Add the following to FitResult:
     method: str = DEFAULT_FITTER_ID  # => shared.selected_fitter
     """Fitting method"""
-    settings: Dict[str, Any] = field(default_factory=dict)  # => shared.fitter_settings
+    options: Dict[str, Any] = field(default_factory=dict)  # => shared.fitter_settings
     """Options used to run the fitters"""
     # x0: NDArray
     # """Initial value"""
@@ -376,7 +376,7 @@ class FitResult:
         fitting_group = parent.require_group("fitting")
         write_version(fitting_group, (1, 0))
         write_string(fitting_group, "method", self.method)
-        write_json(fitting_group, "settings", self.settings)
+        write_json(fitting_group, "options", self.options)
         write_ndarray(fitting_group, "convergence", self.convergence)
         if self.fit_state is not None and include_fit_state:
             fitter = lookup_fitter(self.method)
@@ -390,7 +390,7 @@ class FitResult:
         # Note: fitter h5load needs to deal with its own versioning
         if version == (1, 0):
             self.method = read_string(fitting_group, "method")
-            self.settings = read_json(fitting_group, "settings")
+            self.options = read_json(fitting_group, "options")
             self.convergence = read_ndarray(fitting_group, "convergence")
             if "fit_state" in fitting_group:
                 state_group = fitting_group["fit_state"]
@@ -401,7 +401,7 @@ class FitResult:
         else:
             # Pre 1.0 fit result
             self.convergence = read_ndarray(fitting_group, "population")
-            self.settings = {}  # settings needs to be updated in the caller
+            self.options = {}  # options
             if "uncertainty_state" in fitting_group:
                 self.method = "dream"
                 state_group = fitting_group["uncertainty_state"]
@@ -509,7 +509,7 @@ class State:
         else:
             self.fitting = FitResult(
                 method=self.shared.selected_fitter,
-                settings=self.shared.fitter_settings,
+                options=self.shared.fitter_settings[self.shared.selected_fitter]["settings"],
             )
         self.set_fit_state(deepcopy(self.fitting.fit_state) if copy else None)
         self.set_convergence(deepcopy(self.fitting.convergence) if copy else None)

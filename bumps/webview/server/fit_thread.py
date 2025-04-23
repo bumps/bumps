@@ -294,7 +294,7 @@ class FitThread(Thread):
                 #     driver.show_entropy(entropy)
                 captured_output = fid.getvalue()
 
-            # print("fit complete with", x, fx)
+            # print("fit complete with", x, fx, driver.fitter.state)
             evt = dict(
                 message="complete",
                 problem=self.problem,

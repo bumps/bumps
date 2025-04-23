@@ -176,6 +176,7 @@ class History(object):
         """
         Return a dictionary of traces { 'name':  [v[n], v[n-1], ..., v[0]] }
         """
+        # print("history snapshot", self._traces(), self.__dict__)
         return dict((trace.name, trace.snapshot()) for trace in self._traces())
 
     def restore(self, state):
