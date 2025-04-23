@@ -60,8 +60,11 @@ const fitter_settings_with_defaults = computed(() => {
 });
 
 function changeActiveFitter() {
-  active_settings.value =
-    structuredClone({ ...fitter_settings_with_defaults.value[selected_fitter_local.value]?.settings }) ?? {};
+  const fs = toRaw(fitter_settings_with_defaults.value);
+  const cloned = structuredClone({ ...fs[selected_fitter_local.value]?.settings }) ?? {};
+  // reject stored fit options that aren't defined in FIT_FIELDS above
+  const new_settings = Object.fromEntries(Object.entries(cloned).filter(([k]) => k in FIT_FIELDS));
+  active_settings.value = new_settings;
 }
 
 function process_settings() {
