@@ -35,6 +35,7 @@ import argparse
 import asyncio
 from dataclasses import dataclass
 from pathlib import Path
+from textwrap import dedent
 from typing import Callable, Dict, Optional, List, Any
 import warnings
 import signal
@@ -284,7 +285,13 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         help="output file for session state (overrides --store)",
     )
     session.add_argument(
-        "--resume", action="store_true", help="Resume the most recent fit from the saved session file. [dream, de]"
+        "--resume",
+        action="store_true",
+        help=dedent("""\
+            Resume the most recent fit from the saved session file. [dream, de]
+            Note that this loads the model from the session and ignores any model
+            file specified on the command line.
+            """),
     )
     session.add_argument(
         "--serializer",
@@ -498,9 +505,7 @@ def interpret_fit_options(options: BumpsOptions):
                     pathlist=list(read_store_path.parent.parts),
                     filename=read_store_path.name,
                 )
-    # Loading the problem resets fitting state, so keep hold of that in session file
-    # in case we have --resume on the command line
-    stored_fitting_state = api.state.fitting
+
     if write_store is not None:
         write_store_path = Path(write_store).absolute()
         # TODO: Why are we splitting path into parts?
@@ -539,7 +544,9 @@ def interpret_fit_options(options: BumpsOptions):
     api.state.parallel = options.parallel
 
     # on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
-    if options.filename is not None:
+    # resume only works when you have an identical problem, so we don't load from file
+    # if you are resuming the fit.
+    if options.filename is not None and not options.resume:
         filepath = Path(options.filename).absolute()
         model_pathlist = list(filepath.parent.parts)
         model_filename = filepath.name
@@ -636,8 +643,6 @@ def interpret_fit_options(options: BumpsOptions):
         async def start_fit(App=None):
             # print(f"{api.state.rank}start fit")
             # print(f"{fitter_settings=}")
-            if options.resume:
-                api.state.fitting = stored_fitting_state
             if api.state.problem is not None:
                 await api.start_fit_thread(fitter_id, fitopts, resume=options.resume)
 
