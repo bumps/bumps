@@ -680,13 +680,9 @@ async def _fit_progress_handler(event: Dict):
         active_fit.update({"step": event["step"], "chisq": event["chisq"]})
         state.shared.active_fit = active_fit
     elif message == "uncertainty_update" or message == "uncertainty_final":
-        state.update_fitstate(event["fit_state"])
-
-        if message == "uncertainty_final":
-            # fit is not complete until uncertainty is saved.
-            state.fit_uncertainty_final.set()
-            # don't save state - the fit_complete handler will do that.
-        else:  # message == "uncertainty_update"
+        state.set_fit_state(event["fit_state"], event["method"])
+        if message != "uncertainty_final":
+            # don't save state for uncertainty_final- the fit_complete handler will do that.
             state.autosave()
 
 
@@ -716,7 +712,7 @@ async def _fit_complete_handler(event: Dict[str, Any]):
         problem.setp(event["point"])
         problem.model_update()
         state.problem.fitProblem = problem
-        state.set_fit_state(event["fit_state"])
+        state.set_fit_state(event["fit_state"], event["fitter_id"])
         if state.shared.autosave_history:
             item_timestamp = await save_to_history(
                 f"Fit complete: {event['fitter_id']}",
@@ -750,7 +746,7 @@ def fit_progress_handler(event: Dict):
     # print("fit progress handler", loop is not None)
     if loop is not None:
         task = asyncio.run_coroutine_threadsafe(_fit_progress_handler(event), loop)
-        # task.result(120)
+        task.result(120)
 
 
 def fit_complete_handler(event: Dict):
@@ -758,7 +754,7 @@ def fit_complete_handler(event: Dict):
     # print("fit complete handler", loop is not None)
     if loop is not None:
         task = asyncio.run_coroutine_threadsafe(_fit_complete_handler(event), loop)
-        # task.result(120)
+        task.result(120)
 
 
 # Run from the fit thread by blink. The handlers echo the message to asyncio
@@ -791,6 +787,9 @@ async def get_data_plot(model_indices: Optional[List[int]] = None):
     matplotlib.use("agg")
     import matplotlib.pyplot as plt
     import time
+
+    # Suppress all mpld3 warnings
+    # warnings.filterwarnings("ignore", module="mpld3")
 
     start_time = time.time()
     logger.info(f"queueing new data plot... {start_time}")

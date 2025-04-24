@@ -496,7 +496,7 @@ class State:
             self.shared.updated_parameters = now_string()
             self.shared.custom_plots_available = get_custom_plots_available(self.problem.fitProblem)
             self.set_convergence(item.fitting.convergence)
-            self.set_fit_state(item.fitting.fit_state)
+            self.set_fit_state(item.fitting.fit_state, item.fitting.method)
 
     def reset_fitstate(self, copy: bool = False):
         """
@@ -511,8 +511,8 @@ class State:
                 method=self.shared.selected_fitter,
                 options=self.shared.fitter_settings[self.shared.selected_fitter]["settings"],
             )
-        self.set_fit_state(deepcopy(self.fitting.fit_state) if copy else None)
-        self.set_convergence(deepcopy(self.fitting.convergence) if copy else None)
+            self.set_convergence(None)
+            self.set_fit_state(None)
         self.shared.active_history = None
 
     def set_convergence(self, convergence):
@@ -520,13 +520,14 @@ class State:
         self.shared.updated_convergence = now_string()
         self.shared.convergence_available = convergence is not None
 
-    def set_fit_state(self, fit_state):
+    def set_fit_state(self, fit_state, method=None):
         self.fitting.fit_state = fit_state
+        self.shared.updated_uncertainty = now_string()
         self.shared.uncertainty_available = dict(
             available=hasattr(fit_state, "draw"),
             num_points=getattr(fit_state, "Nsamples", 0),
         )
-        self.shared.resumable = fit_state is not None
+        self.shared.resumable = method if fit_state is not None else None
 
     def autosave(self):
         if self.shared.autosave_session:
@@ -680,7 +681,7 @@ class SharedState:
     autosave_history_length: int = 10
     uncertainty_available: Union[UNDEFINED_TYPE, UncertaintyAvailable] = UNDEFINED
     convergence_available: Union[UNDEFINED_TYPE, bool] = UNDEFINED
-    resumable: Union[UNDEFINED_TYPE, bool] = UNDEFINED
+    resumable: Union[UNDEFINED_TYPE, str, None] = None
     custom_plots_available: Union[UNDEFINED_TYPE, CustomPlotsAvailable] = UNDEFINED
     active_history: Union[UNDEFINED_TYPE, str, None] = UNDEFINED  # name of the active history item
 

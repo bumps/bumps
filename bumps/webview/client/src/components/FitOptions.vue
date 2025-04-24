@@ -99,9 +99,10 @@ async function save(start: boolean = false, resume: boolean = false) {
     // start_fit_thread(
     //   fitter_name: string,
     //   fitter_settings: object,
+    //   max_time: float = 0.0,
     //   resume: boolean = false
     // )
-    await props.socket.asyncEmit("start_fit_thread", selected_fitter_local.value, fitter_settings_local, resume);
+    await props.socket.asyncEmit("start_fit_thread", selected_fitter_local.value, fitter_settings_local, 0.0, resume);
   }
   close();
 }
@@ -237,7 +238,7 @@ defineExpose({
               Save Changes
             </button>
             <button
-              v-if="selected_fitter_local == shared_state.selected_fitter && shared_state.resumable"
+              v-if="selected_fitter_local === shared_state.resumable"
               type="button"
               class="btn btn-warning"
               @click="save(true, true)"
