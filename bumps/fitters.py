@@ -1365,7 +1365,17 @@ assert all(f in FIT_AVAILABLE_IDS for f in FIT_ACTIVE_IDS)
 
 
 # TODO: we can allow resume if we send the fit state back to the fit call.
-def fit(problem, method=FIT_DEFAULT_ID, verbose=False, **options):
+def fit(
+    problem,
+    method=FIT_DEFAULT_ID,
+    export=None,
+    resume=None,
+    store=None,
+    name=None,
+    verbose=False,
+    mapper=None,
+    **options,
+):
     """
     Simplified fit interface.
 
@@ -1376,11 +1386,18 @@ def fit(problem, method=FIT_DEFAULT_ID, verbose=False, **options):
     standard error at the end of the fit, otherwise it is completely
     silent.
 
-    Returns an *OptimizeResult* object containing "x" and "dx".  The
-    dream fitter also includes the "state" object, allowing for more
-    detailed uncertainty analysis.  Optimizer information such as the
-    stopping condition and the number of function evaluations are not
-    yet included.
+    Returns a scipy *OptimizeResult* object containing "x" and "dx".  Some
+    fitters also include a "state" object. For dream this can be used in
+    the call *bumps.dream.views.plot_all(result.state)* to generate the
+    uncertainty plots. Note: success=True and status=0 for now since the
+    stopping condition is not yet available from the fitters.
+
+    If *resume=result* is provided, then attempt to resume the fit from the
+    previous result.
+
+    If *export=path* is provided, generate the standard plots and export files
+    to the specified directory. This uses *name* as the basename for the output
+    files, or *problem.name* if name is not provided. Name defaults to "problem".
 
     To run in parallel (with multiprocessing and dream)::
 
@@ -1389,7 +1406,10 @@ def fit(problem, method=FIT_DEFAULT_ID, verbose=False, **options):
         result = fit(problem, method="dream", mapper=mapper)
 
     """
+    from pathlib import Path
     from scipy.optimize import OptimizeResult
+    from .webview.server.fit_thread import ConvergenceMonitor
+    from .webview.server.state_hdf5_backed import State, FitResult, ProblemState
 
     # verbose = True
     # Options parser stores --fit=fitter in fit_options["fit"] rather than fit_options["method"]
@@ -1400,31 +1420,57 @@ def fit(problem, method=FIT_DEFAULT_ID, verbose=False, **options):
     for fitclass in FITTERS:
         if fitclass.id == method:
             break
-    monitors = None if verbose else []  # Default is the console monitor
-    driver = FitDriver(fitclass=fitclass, problem=problem, monitors=monitors, **options)
+
+    convergence = ConvergenceMonitor(problem)
+    monitors = [convergence]
+    if verbose:
+        monitors.append(ConsoleMonitor(problem))
+    driver = FitDriver(fitclass=fitclass, problem=problem, monitors=monitors, mapper=mapper, **options)
     driver.clip()  # make sure fit starts within domain
     # x0 = problem.getp()
-    x, fx = driver.fit()
+    if resume is not None:
+        problem.setp(resume.x)
+    x, fx = driver.fit(fit_state=None if resume is None else resume.state)
     problem.setp(x)
     if verbose:
         print("final chisq", problem.chisq_str())
         driver.show_err()
+
+    # TODO: can we put this in a function in state_hdf5_backed?
+    if store is not None:
+        # TODO: strip non-options such as mapper from fit options
+        store = Path(store)
+        state = State()
+        if store.exists():
+            state.read_session_file(store)
+        fitting = FitResult(
+            method=method, options=options, convergence=np.array(convergence.quantiles), fit_state=driver.fitter.state
+        )
+        state.problem = ProblemState(fitProblem=problem, serializer="dill")
+        state.fitting = fitting
+        state.save_to_history(label="fit")
+        state.write_session_file(store)
+
+    if export is not None:
+        from .webview.server.api import _export_results
+
+        _export_results(Path(export), problem, driver.fitter.state, serializer="dill", name=name)
+
     result = OptimizeResult(
         x=x,
         dx=driver.stderr(),
         fun=fx,
+        # TODO: need better success/status values
         success=True,
         status=0,
         message="successful termination",
-        # nit=0, # number of iterations
+        nit=driver.monitor_runner.history.step[0],  # number of iterations
         # nfev=0, # number of function evaluations
         # njev, nhev # jacobian and hessian evaluations
         # maxcv=0, # max constraint violation
     )
-    # TODO: always include state?
-    # TODO: state is not always MCMC state
-    if hasattr(driver.fitter.state, "draw"):
-        result.state = driver.fitter.state
+    # Non-standard result
+    result.state = driver.fitter.state
     return result
 
 
@@ -1454,10 +1500,17 @@ def test_fitters():
     expected_value = [1.106e-1, 1.970]
     expected_error = [5.799e-2, 2.055e-2]
 
+    store = None
+    export = None
+    verbose = False
+    # TODO: test store and export as normal tests rather than one-off tests
+    # store = "/tmp/testfit.h5"
+    # export = "/tmp/testexp"
     for fitter_name in FIT_ACTIVE_IDS:
         # print(f"Running {fitter_name}")
-        result = fit(problem, method=fitter_name, verbose=False)
+        result = fit(problem, method=fitter_name, verbose=verbose, store=store, export=export, name=fitter_name)
         assert np.allclose(result.x, expected_value, rtol=fit_value_tol)
         if fitter_name != "dream":
             # dream error bars vary too much to test
             assert np.allclose(result.dx, expected_error, rtol=fit_error_tol)
+    raise rabbits

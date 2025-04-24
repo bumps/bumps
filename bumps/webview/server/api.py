@@ -330,6 +330,7 @@ async def export_results(export_path: Union[str, List[str]] = ""):
         return
 
     problem = deepcopy(problem_state.fitProblem)
+    serializer = problem_state.serializer
     # TODO: if making a temporary copy of the uncertainty state is going to cause memory
     # issues, we could try to copy and then fall back to just using the live object,
     # or we could just always use the live object, which is unlikely to be changed before
@@ -341,7 +342,7 @@ async def export_results(export_path: Union[str, List[str]] = ""):
     path = Path(*export_path).expanduser().absolute()
     notification_id = await add_notification(content=f"<span>{str(path)}</span>", title="Export started", timeout=None)
     try:
-        await asyncio.to_thread(_export_results, path, problem, fit_state)
+        await asyncio.to_thread(_export_results, path, problem, fit_state, serializer)
     finally:
         await emit("cancel_notification", notification_id)
     # print("done export thread")
@@ -351,11 +352,13 @@ def _export_results(
     path: Path,
     problem: bumps.fitproblem.FitProblem,
     fit_state: Any,
+    serializer: Optional[str] = None,
+    name: Optional[str] = None,
 ):
     # print("running export thread")
     from bumps.util import redirect_console
 
-    basename = problem.name if problem.name is not None else "problem"
+    basename = name if name else problem.name if problem.name else "problem"
     # Storage directory
     path.mkdir(parents=True, exist_ok=True)
     output_pathstr = str(path / basename)
@@ -364,7 +367,6 @@ def _export_results(
     problem.save(output_pathstr)
 
     # Save a snapshot of the model that can (hopefully) be reloaded
-    serializer = state.problem.serializer
     extension = SERIALIZER_EXTENSIONS[serializer]
     save_filename = f"{output_pathstr}.{extension}"
     try:
