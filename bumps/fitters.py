@@ -864,7 +864,7 @@ class DreamFit(FitBase):
 
         def update(state, pop, logp):
             # Get an early copy of the state
-            self.state = monitors.history.uncertainty_state = state
+            self.state = monitors.history.fit_state = state
             step = state.generation
             x, fx = state.best()
             monitors(step=step, point=x, value=-fx, population_points=pop, population_values=-logp)
