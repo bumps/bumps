@@ -741,20 +741,32 @@ async def _fit_complete_handler(event: Dict[str, Any]):
             # print("shutdown complete")
 
 
-def fit_progress_handler(event: Dict):
+def call_async(async_fn, *args, **kw):
+    """
+    Call an async function inside the active loop, reporting any exceptions
+    on the logger.
+    """
+    # print(f"call async {async_fn}") # (*({args}), **kw({kw}))")
     loop = getattr(state, "calling_loop", None)
-    # print("fit progress handler", loop is not None)
     if loop is not None:
-        task = asyncio.run_coroutine_threadsafe(_fit_progress_handler(event), loop)
-        task.result(120)
+
+        async def trap_exceptions():
+            # print("inside exception trap")
+            try:
+                await async_fn(*args, **kw)
+            except Exception as exc:
+                logger.exception(exc)
+
+        task = asyncio.run_coroutine_threadsafe(trap_exceptions(), loop)
+        # task.result(120)
+
+
+def fit_progress_handler(event: Dict):
+    call_async(_fit_progress_handler, event)
 
 
 def fit_complete_handler(event: Dict):
-    loop = getattr(state, "calling_loop", None)
-    # print("fit complete handler", loop is not None)
-    if loop is not None:
-        task = asyncio.run_coroutine_threadsafe(_fit_complete_handler(event), loop)
-        task.result(120)
+    call_async(_fit_complete_handler, event)
 
 
 # Run from the fit thread by blink. The handlers echo the message to asyncio
