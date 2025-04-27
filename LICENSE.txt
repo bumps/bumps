@@ -44,6 +44,7 @@ confuse it with the version available from LANL.
 
 Additionally, redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
+
 * Redistributions of source code must retain the above copyright notice, this list of
   conditions and the following disclaimer.
 * Redistributions in binary form must reproduce the above copyright notice, this list of
@@ -104,9 +105,11 @@ as part of the MINPACK-1 package by XXX.
 
 Craig Markwardt converted the FORTRAN code to IDL.  The information for the
 IDL version is:
+
      Craig B. Markwardt, NASA/GSFC Code 662, Greenbelt, MD 20770
      craigm@lheamail.gsfc.nasa.gov
      UPDATED VERSIONs can be found on my WEB PAGE:
+
         http://cow.physics.wisc.edu/~craigm/idl/idl.html
 
 Mark Rivers created this Python version from Craig's IDL version.
@@ -119,12 +122,14 @@ Mark Rivers created this Python version from Craig's IDL version.
 bumps.simplex
 -------------
 
-******NOTICE***************
-From optimize.py module by Travis E. Oliphant
+::
 
-You may copy and use this module as you see fit with no
-guarantee implied provided you keep this notice in all copies.
-*****END NOTICE************
+    # ******NOTICE***************
+    # From optimize.py module by Travis E. Oliphant
+    #
+    # You may copy and use this module as you see fit with no
+    # guarantee implied provided you keep this notice in all copies.
+    # *****END NOTICE************
 
 bumps.cli.warn_with_traceback
 -----------------------------
