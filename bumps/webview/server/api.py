@@ -1323,6 +1323,11 @@ async def get_fitter_defaults():
 
 
 @register
+async def get_fit_fields():
+    return fit_options.get_fit_fields()
+
+
+@register
 async def shutdown():
     logger.info("killing...")
     await stop_fit()
