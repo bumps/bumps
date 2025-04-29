@@ -136,6 +136,8 @@ class MonitorRunner(object):
     def __init__(self, monitors: List[monitor.Monitor], problem, abort_test=None, max_time=0.0):
         self.monitors = monitors
         self.history = History(time=1, step=1, point=1, value=1, population_points=1, population_values=1)
+        # Pre-populate history.time so we can call stopping() before the first update.
+        self.history.update(time=0.0)
         for M in self.monitors:
             M.config_history(self.history)
         self._start = perf_counter()
@@ -670,6 +672,8 @@ class MPFit(FitBase):
 
         def update(fcn, p, k, fnorm, functkw=None, parinfo=None, quiet=0, dof=None, **extra):
             monitors(step=k, point=p, value=fnorm)
+            if monitors.stopping():
+                return -1
 
         result = mpfit(
             fcn=self._residuals,
@@ -692,7 +696,8 @@ class MPFit(FitBase):
             nocovar=True,  # use our own covar calculation for consistency
         )
 
-        if result.status > 0:
+        # See mpfit.py:781 for status codes. We are returning -1 for user abort.
+        if result.status > 0 or result.status == -1:
             x, fx = result.params, result.fnorm
         else:
             x, fx = None, None
@@ -700,8 +705,11 @@ class MPFit(FitBase):
         return x, fx
 
     def _residuals(self, p, fjac=None):
-        if self._stopping():
-            return -1, None
+        # # Returning -1 here stops immediately rather than completing the step. This is
+        # # different from the other fitters, which wait for the step to complete.
+        #
+        # if self._stopping():
+        #     return -1, None
 
         self.problem.setp(p)
         # treat prior probabilities on the parameters as additional
