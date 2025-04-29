@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, toRaw } from "vue";
+import { computed, onMounted, ref, shallowRef, toRaw } from "vue";
 import { default_fitter, default_fitter_settings, shared_state } from "../app_state";
 import type { AsyncSocket } from "../asyncSocket";
 
@@ -9,29 +9,16 @@ const dialog = ref<HTMLDialogElement>();
 const isOpen = ref(false);
 const selected_fitter_local = ref("amoeba");
 
-const FIT_FIELDS: { [key: string]: [string, string | string[]] } = {
-  starts: ["Starts", "integer"],
-  jump: ["Jump radius", "float"],
-  steps: ["Steps", "integer"],
-  samples: ["Samples", "integer"],
-  xtol: ["x tolerance", "float"],
-  ftol: ["f(x) tolerance", "float"],
-  alpha: ["Convergence", "float"],
-  time: ["Max time (hrs)", "float"],
-  stop: ["Stopping criteria", "string"],
-  thin: ["Thinning", "integer"],
-  burn: ["Burn-in steps", "integer"],
-  pop: ["Population", "float"],
-  init: ["Initializer", ["eps", "lhs", "cov", "random"]],
-  CR: ["Crossover ratio", "float"],
-  F: ["Scale", "float"],
-  nT: ["# Temperatures", "integer"],
-  Tmin: ["Min temperature", "float"],
-  Tmax: ["Max temperature", "float"],
-  radius: ["Simplex radius", "float"],
-  trim: ["Burn-in trim", "boolean"],
-  outliers: ["Outliers", ["none", "iqr", "grubbs", "mahal"]],
-};
+interface FitField {
+  name: string;
+  label: string;
+  stype: "integer" | "float" | "boolean" | { min: number; max: number } | string[];
+  description: string;
+  fitters: string[];
+  defaults: any[];
+}
+
+const fit_fields = shallowRef<{ [key: string]: FitField }>({});
 
 const OPTIONS_HELP: { [key: string]: string } = {
   dream: "if Steps=0, Steps will be calculated as (Burn-in steps) + (Samples / (Population * Num. Fit Params))",
@@ -63,14 +50,14 @@ function changeActiveFitter() {
   const fs = toRaw(fitter_settings_with_defaults.value);
   const cloned = structuredClone({ ...fs[selected_fitter_local.value]?.settings }) ?? {};
   // reject stored fit options that aren't defined in FIT_FIELDS above
-  const new_settings = Object.fromEntries(Object.entries(cloned).filter(([k]) => k in FIT_FIELDS));
+  const new_settings = Object.fromEntries(Object.entries(cloned).filter(([k]) => k in fit_fields.value));
   active_settings.value = new_settings;
 }
 
 function process_settings() {
   return Object.fromEntries(
     Object.entries(active_settings.value).map(([sname, value]) => {
-      const field_type = FIT_FIELDS[sname][1];
+      const field_type = fit_fields.value[sname].stype;
       let processed_value: any = value;
       if (field_type === "integer") {
         processed_value = Math.round(Number(value));
@@ -113,7 +100,7 @@ function reset() {
 }
 
 function validate(value: any, field_name: string) {
-  const field_type = FIT_FIELDS[field_name][1];
+  const field_type = fit_fields.value[field_name].stype;
   if (Array.isArray(field_type) || field_type === "boolean") {
     // there's no way to get an incorrect option.
     return true;
@@ -130,6 +117,11 @@ function validate(value: any, field_name: string) {
 
 const anyIsInvalid = computed(() => {
   return Object.entries(active_settings.value).some(([sname, value]) => !validate(value, sname));
+});
+
+onMounted(async () => {
+  const server_fit_fields = await props.socket.asyncEmit("get_fit_fields");
+  fit_fields.value = server_fit_fields;
 });
 
 defineExpose({
@@ -192,23 +184,27 @@ defineExpose({
                   >
                 </div>
                 <div v-for="(value, sname) in active_settings" :key="sname" class="row p-1">
-                  <label class="col-sm-4 col-form-label" :for="`fitter_setting_${sname}`">{{
-                    FIT_FIELDS[sname][0]
-                  }}</label>
+                  <label
+                    class="col-sm-4 col-form-label"
+                    :for="`fitter_setting_${sname}`"
+                    :title="fit_fields[sname].description"
+                  >
+                    {{ fit_fields[sname].label }}
+                  </label>
                   <div class="col-sm-8">
                     <select
-                      v-if="Array.isArray(FIT_FIELDS[sname][1])"
+                      v-if="Array.isArray(fit_fields[sname].stype)"
                       :id="'fitter_setting_' + sname"
                       v-model="active_settings[sname]"
                       class="form-select"
                       :name="sname"
                     >
-                      <option v-for="opt in FIT_FIELDS[sname][1]" :key="opt">
+                      <option v-for="opt in fit_fields[sname].stype" :key="opt">
                         {{ opt }}
                       </option>
                     </select>
                     <input
-                      v-else-if="FIT_FIELDS[sname][1] === 'boolean'"
+                      v-else-if="fit_fields[sname].stype === 'boolean'"
                       :id="'fitter_setting_' + sname"
                       v-model="active_settings[sname]"
                       class="form-check-input m-2"
