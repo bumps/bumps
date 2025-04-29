@@ -1,7 +1,7 @@
 from typing import Dict, List, Tuple, Any, Callable, Optional
 from textwrap import dedent
 from argparse import ArgumentTypeError
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 
 from bumps import fitters
 from bumps.fitters import FIT_AVAILABLE_IDS
@@ -40,6 +40,7 @@ FIT_OPTIONS: Dict[str, "Setting"] = {}
 @dataclass(init=False)
 class Setting:
     name: str
+    label: str
     description: str
     stype: Callable
     fitters: List[str]
@@ -274,3 +275,20 @@ def check_options(options: Dict[str, Any], fitter_id: Optional[str] = None) -> T
         # Format the skipped options nicely and add to the error list
         errors = [f"Unused fit options in {fitter_id}: {' '.join(unknown)}", *errors]
     return new_options, errors
+
+
+def _json_compatible_setting(s: Setting):
+    output = asdict(s)
+    stype = output["stype"]
+    if stype is int:
+        output["stype"] = "integer"
+    elif stype is float:
+        output["stype"] = "float"
+    elif stype is bool:
+        output["stype"] = "boolean"
+    return output
+
+
+def get_fit_fields():
+    fit_fields = dict([(k, _json_compatible_setting(v)) for k, v in FIT_OPTIONS.items()])
+    return fit_fields
