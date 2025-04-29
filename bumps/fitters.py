@@ -129,14 +129,19 @@ class StepMonitor(monitor.Monitor):
 class MonitorRunner(object):
     """
     Adaptor which allows solvers to accept progress monitors.
+
+    The stopping() method manages checks for abort and timeout.
     """
 
-    def __init__(self, monitors: List[monitor.Monitor], problem, abort_test=None):
+    def __init__(self, monitors: List[monitor.Monitor], problem, abort_test=None, max_time=0.0):
         self.monitors = monitors
         self.history = History(time=1, step=1, point=1, value=1, population_points=1, population_values=1)
+        # Pre-populate history.time so we can call stopping() before the first update.
+        self.history.update(time=0.0)
         for M in self.monitors:
             M.config_history(self.history)
         self._start = perf_counter()
+        self.max_time = max_time
         self.abort_test = abort_test if abort_test is not None else lambda: False
 
     def update(
@@ -163,7 +168,7 @@ class MonitorRunner(object):
     __call__ = update
 
     def stopping(self):
-        return self.abort_test()
+        return self.abort_test() or (self.history.time[0] >= self.max_time > 0)
 
     def info(self, message: str):
         for M in self.monitors:
@@ -667,6 +672,8 @@ class MPFit(FitBase):
 
         def update(fcn, p, k, fnorm, functkw=None, parinfo=None, quiet=0, dof=None, **extra):
             monitors(step=k, point=p, value=fnorm)
+            if monitors.stopping():
+                return -1
 
         result = mpfit(
             fcn=self._residuals,
@@ -689,7 +696,8 @@ class MPFit(FitBase):
             nocovar=True,  # use our own covar calculation for consistency
         )
 
-        if result.status > 0:
+        # See mpfit.py:781 for status codes. We are returning -1 for user abort.
+        if result.status > 0 or result.status == -1:
             x, fx = result.params, result.fnorm
         else:
             x, fx = None, None
@@ -697,8 +705,11 @@ class MPFit(FitBase):
         return x, fx
 
     def _residuals(self, p, fjac=None):
-        if self._stopping():
-            return -1, None
+        # # Returning -1 here stops immediately rather than completing the step. This is
+        # # different from the other fitters, which wait for the step to complete.
+        #
+        # if self._stopping():
+        #     return -1, None
 
         self.problem.setp(p)
         # treat prior probabilities on the parameters as additional
@@ -1035,11 +1046,12 @@ def _resampler(fitter, xinit, samples=100, restart=False, **options):
 
 
 class FitDriver(object):
-    def __init__(self, fitclass=None, problem=None, monitors=None, abort_test=None, mapper=None, **options):
+    def __init__(self, fitclass=None, problem=None, monitors=None, abort_test=None, mapper=None, time=0.0, **options):
         self.fitclass = fitclass
         self.problem = problem
         self.options = options
         self.monitors = [ConsoleMonitor(problem)] if monitors is None else monitors
+        self.max_time = time * 3600  # Timeout converted from hours to seconds.
         self.abort_test = abort_test
         self.mapper = mapper if mapper else lambda p: list(map(problem.nllf, p))
         self.fitter = None
@@ -1084,13 +1096,15 @@ class FitDriver(object):
         # TODO: better interface for history management?
         # Keep a handle to the fitter which has state and monitor_runner which has history
         self.fitter = fitter
-        self.monitor_runner = MonitorRunner(problem=self.problem, monitors=self.monitors, abort_test=self.abort_test)
+        self.monitor_runner = MonitorRunner(
+            problem=self.problem, monitors=self.monitors, abort_test=self.abort_test, max_time=self.max_time
+        )
         x, fx = fitter.solve(
             monitors=self.monitor_runner, abort_test=self.abort_test, mapper=self.mapper, **self.options
         )
         if x is not None:
             self.problem.setp(x)
-        self.time = self.monitor_runner.history.time[0]
+        self.wall_time = self.monitor_runner.history.time[0]
         self.result = x, fx
         self.monitor_runner.final(point=x, value=fx)
         return x, fx
@@ -1364,7 +1378,6 @@ assert FIT_DEFAULT_ID in FIT_ACTIVE_IDS
 assert all(f in FIT_AVAILABLE_IDS for f in FIT_ACTIVE_IDS)
 
 
-# TODO: we can allow resume if we send the fit state back to the fit call.
 def fit(
     problem,
     method=FIT_DEFAULT_ID,
@@ -1373,7 +1386,7 @@ def fit(
     store=None,
     name=None,
     verbose=False,
-    mapper=None,
+    cpus=1,
     **options,
 ):
     """
@@ -1399,16 +1412,17 @@ def fit(
     to the specified directory. This uses *name* as the basename for the output
     files, or *problem.name* if name is not provided. Name defaults to "problem".
 
-    To run in parallel (with multiprocessing and dream)::
-
-        from bumps.mapper import MPMapper
-        mapper = MPMapper.start_mapper(problem, None, cpu=0) #cpu=0 for all CPUs
-        result = fit(problem, method="dream", mapper=mapper)
-
+    If *cpus=n* is provided, then run on *n* separate cpus. By default *cpus=1*
+    to run on a single cpu. For slow functions set *cpus=0* to run on all
+    processors. For fast functions the overhead of running a parallel is too
+    high. If your function already runs in parallel, either through multiprocessing
+    or by using the GPU, then leave it running in serial. We do not support running
+    in parallel with MPI in the simple fit interface.
     """
     from pathlib import Path
     from scipy.optimize import OptimizeResult
     from .serialize import serialize
+    from .mapper import MPMapper, SerialMapper
     from .webview.server.fit_thread import ConvergenceMonitor
     from .webview.server.state_hdf5_backed import State, FitResult, ProblemState
 
@@ -1422,6 +1436,8 @@ def fit(
         if fitclass.id == method:
             break
 
+    parallel = MPMapper if cpus != 1 else SerialMapper
+    mapper = parallel.start_mapper(problem, [], cpus=cpus)
     convergence = ConvergenceMonitor(problem)
     monitors = [convergence]
     if verbose:
@@ -1470,7 +1486,7 @@ def fit(
         x=x,
         dx=driver.stderr(),
         fun=fx,
-        # TODO: need better success/status values
+        # TODO: need better success/status/message handling
         success=True,
         status=0,
         message="successful termination",
@@ -1513,13 +1529,17 @@ def test_fitters():
     store = None
     export = None
     verbose = False
+    cpus = 1  # Serial fit
     # TODO: test store and export as normal tests rather than one-off tests
     # store = "/tmp/teststore.h5"
     # export = "/tmp/testexport"
-    # verbose = True
+    verbose = True
+    # cpus = 0 # Parallel fit
     for fitter_name in FIT_ACTIVE_IDS:
         # print(f"Running {fitter_name}")
-        result = fit(problem, method=fitter_name, verbose=verbose, store=store, export=export, name=fitter_name)
+        result = fit(
+            problem, method=fitter_name, verbose=verbose, store=store, export=export, cpus=cpus, name=fitter_name
+        )
         assert np.allclose(result.x, expected_value, rtol=fit_value_tol)
         if fitter_name != "dream":
             # dream error bars vary too much to test
