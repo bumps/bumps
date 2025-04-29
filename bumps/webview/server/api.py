@@ -526,9 +526,7 @@ async def shake_parameters():
 
 
 @register
-async def start_fit_thread(
-    fitter_id: str, options: Optional[Dict[str, Any]] = None, max_time: float = 0.0, resume: bool = False
-):
+async def start_fit_thread(fitter_id: str, options: Optional[Dict[str, Any]] = None, resume: bool = False):
     fitProblem = state.problem.fitProblem if state.problem is not None else None
     if fitProblem is None:
         await log("Error: Can't start fit if no problem loaded")
@@ -552,13 +550,10 @@ async def start_fit_thread(
         logger.warning(msg)
         await log(msg)
 
-    # Allow fit=fitter_id and time=max_time in the options dictionary.
+    # Allow fit=fitter_id in the options dictionary.
     fitter_option = options.pop("fit")
     if not fitter_id:
         fitter_id = fitter_option
-    time_option = options.pop("time")
-    if max_time == 0.0:
-        max_time = time_option
 
     # Start a new thread worker and give fit problem to the worker.
     # Clear abort and uncertainty state
@@ -615,19 +610,6 @@ async def start_fit_thread(
         fit_state=state.fitting.fit_state,
         # TODO: on resume should we pass the current convergence vector?
     )
-
-    # Note: must follow fit_thread initialization
-    # Note: hiding this function from the public interface. Don't want to set the timer
-    # without controlling the cleanup.
-    async def timeout_task(max_time):
-        if max_time > 0:
-            seconds = max_time * 3600.0
-            await asyncio.sleep(seconds)
-            # Don't stop the fit if already stopped.
-            if state.fit_thread is not None:
-                await stop_fit(wait=False)
-
-    state.fit_timer = asyncio.create_task(timeout_task(max_time))
 
     await log(
         json.dumps(to_json_compatible_dict(options), indent=2),
@@ -731,9 +713,6 @@ async def _fit_complete_handler(event: Dict[str, Any]):
         # awaiting the fit complete event can resume and start a new fit.
         state.fit_thread = None
         state.shared.active_fit = {}
-        # Cancel timer if done within time limit
-        if not state.fit_timer.done():
-            state.fit_timer.cancel()
         # Signal to those waiting that the fit is complete.
         state.fit_complete_event.set()
 

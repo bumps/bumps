@@ -129,14 +129,17 @@ class StepMonitor(monitor.Monitor):
 class MonitorRunner(object):
     """
     Adaptor which allows solvers to accept progress monitors.
+
+    The stopping() method manages checks for abort and timeout.
     """
 
-    def __init__(self, monitors: List[monitor.Monitor], problem, abort_test=None):
+    def __init__(self, monitors: List[monitor.Monitor], problem, abort_test=None, max_time=0.0):
         self.monitors = monitors
         self.history = History(time=1, step=1, point=1, value=1, population_points=1, population_values=1)
         for M in self.monitors:
             M.config_history(self.history)
         self._start = perf_counter()
+        self.max_time = max_time
         self.abort_test = abort_test if abort_test is not None else lambda: False
 
     def update(
@@ -163,7 +166,7 @@ class MonitorRunner(object):
     __call__ = update
 
     def stopping(self):
-        return self.abort_test()
+        return self.abort_test() or (self.history.time[0] >= self.max_time > 0)
 
     def info(self, message: str):
         for M in self.monitors:
@@ -1035,11 +1038,12 @@ def _resampler(fitter, xinit, samples=100, restart=False, **options):
 
 
 class FitDriver(object):
-    def __init__(self, fitclass=None, problem=None, monitors=None, abort_test=None, mapper=None, **options):
+    def __init__(self, fitclass=None, problem=None, monitors=None, abort_test=None, mapper=None, time=0.0, **options):
         self.fitclass = fitclass
         self.problem = problem
         self.options = options
         self.monitors = [ConsoleMonitor(problem)] if monitors is None else monitors
+        self.max_time = time * 3600  # Timeout converted from hours to seconds.
         self.abort_test = abort_test
         self.mapper = mapper if mapper else lambda p: list(map(problem.nllf, p))
         self.fitter = None
@@ -1084,13 +1088,15 @@ class FitDriver(object):
         # TODO: better interface for history management?
         # Keep a handle to the fitter which has state and monitor_runner which has history
         self.fitter = fitter
-        self.monitor_runner = MonitorRunner(problem=self.problem, monitors=self.monitors, abort_test=self.abort_test)
+        self.monitor_runner = MonitorRunner(
+            problem=self.problem, monitors=self.monitors, abort_test=self.abort_test, max_time=self.max_time
+        )
         x, fx = fitter.solve(
             monitors=self.monitor_runner, abort_test=self.abort_test, mapper=self.mapper, **self.options
         )
         if x is not None:
             self.problem.setp(x)
-        self.time = self.monitor_runner.history.time[0]
+        self.wall_time = self.monitor_runner.history.time[0]
         self.result = x, fx
         self.monitor_runner.final(point=x, value=fx)
         return x, fx
