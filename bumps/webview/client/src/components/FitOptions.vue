@@ -111,6 +111,13 @@ function validate(value: any, field_name: string) {
   }
   if (field_type === "integer" && parseInt(value, 10) != float_value) {
     return false;
+  } else if (typeof field_type === "object") {
+    if ("min" in field_type && float_value < field_type.min) {
+      return false;
+    }
+    if ("max" in field_type && float_value > field_type.max) {
+      return false;
+    }
   }
   return true;
 }
