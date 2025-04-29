@@ -33,9 +33,8 @@ Weighted system::
     >>> dy = [0.2,0.01,0.1]
     >>> y = [ 14.16, 13.01, 6.15]
     >>> s = wsolve.wsolve(A,y,dy)
-    >>> print(", ".join("%0.2f +/- %0.2f"%(a,b) for a,b in zip(s.x,s.std)))
+    >>> print(", ".join(f"{a:0.2f} +/- {b:0.2f}" for a,b in zip(s.x[:, 0],s.std)))
     1.05 +/- 0.17, 2.20 +/- 0.12, 2.91 +/- 0.12
-
 
 Note there is a counter-intuitive result that scaling the estimated
 uncertainty in the data does not affect the computed uncertainty in
