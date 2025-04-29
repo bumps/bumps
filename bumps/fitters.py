@@ -1408,6 +1408,7 @@ def fit(
     """
     from pathlib import Path
     from scipy.optimize import OptimizeResult
+    from .serialize import serialize
     from .webview.server.fit_thread import ConvergenceMonitor
     from .webview.server.state_hdf5_backed import State, FitResult, ProblemState
 
@@ -1446,7 +1447,16 @@ def fit(
         fitting = FitResult(
             method=method, options=options, convergence=np.array(convergence.quantiles), fit_state=driver.fitter.state
         )
-        state.problem = ProblemState(fitProblem=problem, serializer="dill")
+        try:
+            serialize(problem)
+            serializer = "dataclass"
+        except Exception as exc:
+            # import traceback; traceback.print_exc()
+            if verbose:
+                print("Problem stored using dill. It may not load in newer python versions.")
+                print(f"error: {exc}")
+            serializer = "dill"
+        state.problem = ProblemState(fitProblem=problem, serializer=serializer)
         state.fitting = fitting
         state.save_to_history(label="fit")
         state.write_session_file(store)
@@ -1504,8 +1514,9 @@ def test_fitters():
     export = None
     verbose = False
     # TODO: test store and export as normal tests rather than one-off tests
-    # store = "/tmp/testfit.h5"
-    # export = "/tmp/testexp"
+    # store = "/tmp/teststore.h5"
+    # export = "/tmp/testexport"
+    # verbose = True
     for fitter_name in FIT_ACTIVE_IDS:
         # print(f"Running {fitter_name}")
         result = fit(problem, method=fitter_name, verbose=verbose, store=store, export=export, name=fitter_name)

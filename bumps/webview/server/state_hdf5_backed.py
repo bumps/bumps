@@ -201,6 +201,7 @@ class StringAttribute:
         return json.loads(value) if value else None
 
 
+@dataclass
 class ProblemState:
     fitProblem: Optional["bumps.fitproblem.FitProblem"] = None
     serializer: Optional[SERIALIZERS] = None
