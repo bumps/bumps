@@ -129,14 +129,19 @@ class StepMonitor(monitor.Monitor):
 class MonitorRunner(object):
     """
     Adaptor which allows solvers to accept progress monitors.
+
+    The stopping() method manages checks for abort and timeout.
     """
 
-    def __init__(self, monitors: List[monitor.Monitor], problem, abort_test=None):
+    def __init__(self, monitors: List[monitor.Monitor], problem, abort_test=None, max_time=0.0):
         self.monitors = monitors
         self.history = History(time=1, step=1, point=1, value=1, population_points=1, population_values=1)
+        # Pre-populate history.time so we can call stopping() before the first update.
+        self.history.update(time=0.0)
         for M in self.monitors:
             M.config_history(self.history)
         self._start = perf_counter()
+        self.max_time = max_time
         self.abort_test = abort_test if abort_test is not None else lambda: False
 
     def update(
@@ -163,7 +168,7 @@ class MonitorRunner(object):
     __call__ = update
 
     def stopping(self):
-        return self.abort_test()
+        return self.abort_test() or (self.history.time[0] >= self.max_time > 0)
 
     def info(self, message: str):
         for M in self.monitors:
@@ -667,6 +672,8 @@ class MPFit(FitBase):
 
         def update(fcn, p, k, fnorm, functkw=None, parinfo=None, quiet=0, dof=None, **extra):
             monitors(step=k, point=p, value=fnorm)
+            if monitors.stopping():
+                return -1
 
         result = mpfit(
             fcn=self._residuals,
@@ -689,7 +696,8 @@ class MPFit(FitBase):
             nocovar=True,  # use our own covar calculation for consistency
         )
 
-        if result.status > 0:
+        # See mpfit.py:781 for status codes. We are returning -1 for user abort.
+        if result.status > 0 or result.status == -1:
             x, fx = result.params, result.fnorm
         else:
             x, fx = None, None
@@ -697,8 +705,11 @@ class MPFit(FitBase):
         return x, fx
 
     def _residuals(self, p, fjac=None):
-        if self._stopping():
-            return -1, None
+        # # Returning -1 here stops immediately rather than completing the step. This is
+        # # different from the other fitters, which wait for the step to complete.
+        #
+        # if self._stopping():
+        #     return -1, None
 
         self.problem.setp(p)
         # treat prior probabilities on the parameters as additional
@@ -1035,11 +1046,12 @@ def _resampler(fitter, xinit, samples=100, restart=False, **options):
 
 
 class FitDriver(object):
-    def __init__(self, fitclass=None, problem=None, monitors=None, abort_test=None, mapper=None, **options):
+    def __init__(self, fitclass=None, problem=None, monitors=None, abort_test=None, mapper=None, time=0.0, **options):
         self.fitclass = fitclass
         self.problem = problem
         self.options = options
         self.monitors = [ConsoleMonitor(problem)] if monitors is None else monitors
+        self.max_time = time * 3600  # Timeout converted from hours to seconds.
         self.abort_test = abort_test
         self.mapper = mapper if mapper else lambda p: list(map(problem.nllf, p))
         self.fitter = None
@@ -1084,13 +1096,15 @@ class FitDriver(object):
         # TODO: better interface for history management?
         # Keep a handle to the fitter which has state and monitor_runner which has history
         self.fitter = fitter
-        self.monitor_runner = MonitorRunner(problem=self.problem, monitors=self.monitors, abort_test=self.abort_test)
+        self.monitor_runner = MonitorRunner(
+            problem=self.problem, monitors=self.monitors, abort_test=self.abort_test, max_time=self.max_time
+        )
         x, fx = fitter.solve(
             monitors=self.monitor_runner, abort_test=self.abort_test, mapper=self.mapper, **self.options
         )
         if x is not None:
             self.problem.setp(x)
-        self.time = self.monitor_runner.history.time[0]
+        self.wall_time = self.monitor_runner.history.time[0]
         self.result = x, fx
         self.monitor_runner.final(point=x, value=fx)
         return x, fx
@@ -1364,8 +1378,17 @@ assert FIT_DEFAULT_ID in FIT_ACTIVE_IDS
 assert all(f in FIT_AVAILABLE_IDS for f in FIT_ACTIVE_IDS)
 
 
-# TODO: we can allow resume if we send the fit state back to the fit call.
-def fit(problem, method=FIT_DEFAULT_ID, verbose=False, **options):
+def fit(
+    problem,
+    method=FIT_DEFAULT_ID,
+    export=None,
+    resume=None,
+    store=None,
+    name=None,
+    verbose=False,
+    parallel=1,
+    **options,
+):
     """
     Simplified fit interface.
 
@@ -1376,20 +1399,32 @@ def fit(problem, method=FIT_DEFAULT_ID, verbose=False, **options):
     standard error at the end of the fit, otherwise it is completely
     silent.
 
-    Returns an *OptimizeResult* object containing "x" and "dx".  The
-    dream fitter also includes the "state" object, allowing for more
-    detailed uncertainty analysis.  Optimizer information such as the
-    stopping condition and the number of function evaluations are not
-    yet included.
+    Returns a scipy *OptimizeResult* object containing "x" and "dx".  Some
+    fitters also include a "state" object. For dream this can be used in
+    the call *bumps.dream.views.plot_all(result.state)* to generate the
+    uncertainty plots. Note: success=True and status=0 for now since the
+    stopping condition is not yet available from the fitters.
 
-    To run in parallel (with multiprocessing and dream)::
+    If *resume=result* is provided, then attempt to resume the fit from the
+    previous result.
 
-        from bumps.mapper import MPMapper
-        mapper = MPMapper.start_mapper(problem, None, cpu=0) #cpu=0 for all CPUs
-        result = fit(problem, method="dream", mapper=mapper)
+    If *export=path* is provided, generate the standard plots and export files
+    to the specified directory. This uses *name* as the basename for the output
+    files, or *problem.name* if name is not provided. Name defaults to "problem".
 
+    If *parallel=n* is provided, then run on *n* separate cpus. By default
+    *parallel=1* to run on a single cpu. For slow functions set *parallel=0*
+    to run on all cpus. You want to run on a single cpu if your function is
+    already parallel (for example using multiprocessing or using gpu code),
+    or if your function is so fast that the overhead of transfering data is
+    higher than cost of *n* function calls.
     """
+    from pathlib import Path
     from scipy.optimize import OptimizeResult
+    from .serialize import serialize
+    from .mapper import MPMapper, SerialMapper
+    from .webview.server.fit_thread import ConvergenceMonitor
+    from .webview.server.state_hdf5_backed import State, FitResult, ProblemState
 
     # verbose = True
     # Options parser stores --fit=fitter in fit_options["fit"] rather than fit_options["method"]
@@ -1400,31 +1435,68 @@ def fit(problem, method=FIT_DEFAULT_ID, verbose=False, **options):
     for fitclass in FITTERS:
         if fitclass.id == method:
             break
-    monitors = None if verbose else []  # Default is the console monitor
-    driver = FitDriver(fitclass=fitclass, problem=problem, monitors=monitors, **options)
+
+    Mapper = MPMapper if parallel != 1 else SerialMapper
+    mapper = Mapper.start_mapper(problem, [], cpus=parallel)
+    convergence = ConvergenceMonitor(problem)
+    monitors = [convergence]
+    if verbose:
+        monitors.append(ConsoleMonitor(problem))
+    driver = FitDriver(fitclass=fitclass, problem=problem, monitors=monitors, mapper=mapper, **options)
     driver.clip()  # make sure fit starts within domain
     # x0 = problem.getp()
-    x, fx = driver.fit()
+    if resume is not None:
+        problem.setp(resume.x)
+    x, fx = driver.fit(fit_state=None if resume is None else resume.state)
     problem.setp(x)
     if verbose:
         print("final chisq", problem.chisq_str())
         driver.show_err()
+
+    # TODO: can we put this in a function in state_hdf5_backed?
+    if store is not None:
+        # TODO: strip non-options such as mapper from fit options
+        store = Path(store)
+        state = State()
+        if store.exists():
+            state.read_session_file(store)
+        fitting = FitResult(
+            method=method, options=options, convergence=np.array(convergence.quantiles), fit_state=driver.fitter.state
+        )
+        try:
+            serialize(problem)
+            serializer = "dataclass"
+        except Exception as exc:
+            # import traceback; traceback.print_exc()
+            if verbose:
+                print("Problem stored using dill. It may not load in newer python versions.")
+                print(f"error: {exc}")
+            serializer = "dill"
+        state.problem = ProblemState(fitProblem=problem, serializer=serializer)
+        state.fitting = fitting
+        state.save_to_history(label="fit")
+        state.write_session_file(store)
+
+    if export is not None:
+        from .webview.server.api import _export_results
+
+        _export_results(Path(export), problem, driver.fitter.state, serializer="dill", name=name)
+
     result = OptimizeResult(
         x=x,
         dx=driver.stderr(),
         fun=fx,
+        # TODO: need better success/status/message handling
         success=True,
         status=0,
         message="successful termination",
-        # nit=0, # number of iterations
+        nit=driver.monitor_runner.history.step[0],  # number of iterations
         # nfev=0, # number of function evaluations
         # njev, nhev # jacobian and hessian evaluations
         # maxcv=0, # max constraint violation
     )
-    # TODO: always include state?
-    # TODO: state is not always MCMC state
-    if hasattr(driver.fitter.state, "draw"):
-        result.state = driver.fitter.state
+    # Non-standard result
+    result.state = driver.fitter.state
     return result
 
 
@@ -1454,9 +1526,26 @@ def test_fitters():
     expected_value = [1.106e-1, 1.970]
     expected_error = [5.799e-2, 2.055e-2]
 
+    store = None
+    export = None
+    verbose = False
+    parallel = 1  # Serial fit
+    # TODO: test store and export as normal tests rather than one-off tests
+    # store = "/tmp/teststore.h5"
+    # export = "/tmp/testexport"
+    # verbose = True
+    # parallel = 0 # Parallel fit
     for fitter_name in FIT_ACTIVE_IDS:
         # print(f"Running {fitter_name}")
-        result = fit(problem, method=fitter_name, verbose=False)
+        result = fit(
+            problem,
+            method=fitter_name,
+            verbose=verbose,
+            store=store,
+            export=export,
+            parallel=parallel,
+            name=fitter_name,
+        )
         assert np.allclose(result.x, expected_value, rtol=fit_value_tol)
         if fitter_name != "dream":
             # dream error bars vary too much to test
