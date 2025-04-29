@@ -1386,7 +1386,7 @@ def fit(
     store=None,
     name=None,
     verbose=False,
-    cpus=1,
+    parallel=1,
     **options,
 ):
     """
@@ -1412,12 +1412,12 @@ def fit(
     to the specified directory. This uses *name* as the basename for the output
     files, or *problem.name* if name is not provided. Name defaults to "problem".
 
-    If *cpus=n* is provided, then run on *n* separate cpus. By default *cpus=1*
-    to run on a single cpu. For slow functions set *cpus=0* to run on all
-    processors. For fast functions the overhead of running a parallel is too
-    high. If your function already runs in parallel, either through multiprocessing
-    or by using the GPU, then leave it running in serial. We do not support running
-    in parallel with MPI in the simple fit interface.
+    If *parallel=n* is provided, then run on *n* separate cpus. By default
+    *parallel=1* to run on a single cpu. For slow functions set *parallel=0*
+    to run on all cpus. You want to run on a single cpu if your function is
+    already parallel (for example using multiprocessing or using gpu code),
+    or if your function is so fast that the overhead of transfering data is
+    higher than cost of *n* function calls.
     """
     from pathlib import Path
     from scipy.optimize import OptimizeResult
@@ -1436,8 +1436,8 @@ def fit(
         if fitclass.id == method:
             break
 
-    parallel = MPMapper if cpus != 1 else SerialMapper
-    mapper = parallel.start_mapper(problem, [], cpus=cpus)
+    Mapper = MPMapper if parallel != 1 else SerialMapper
+    mapper = Mapper.start_mapper(problem, [], cpus=parallel)
     convergence = ConvergenceMonitor(problem)
     monitors = [convergence]
     if verbose:
@@ -1529,16 +1529,22 @@ def test_fitters():
     store = None
     export = None
     verbose = False
-    cpus = 1  # Serial fit
+    parallel = 1  # Serial fit
     # TODO: test store and export as normal tests rather than one-off tests
     # store = "/tmp/teststore.h5"
     # export = "/tmp/testexport"
-    verbose = True
-    # cpus = 0 # Parallel fit
+    # verbose = True
+    # parallel = 0 # Parallel fit
     for fitter_name in FIT_ACTIVE_IDS:
         # print(f"Running {fitter_name}")
         result = fit(
-            problem, method=fitter_name, verbose=verbose, store=store, export=export, cpus=cpus, name=fitter_name
+            problem,
+            method=fitter_name,
+            verbose=verbose,
+            store=store,
+            export=export,
+            parallel=parallel,
+            name=fitter_name,
         )
         assert np.allclose(result.x, expected_value, rtol=fit_value_tol)
         if fitter_name != "dream":
