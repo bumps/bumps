@@ -1513,4 +1513,3 @@ def test_fitters():
         if fitter_name != "dream":
             # dream error bars vary too much to test
             assert np.allclose(result.dx, expected_error, rtol=fit_error_tol)
-    raise rabbits
