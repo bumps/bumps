@@ -99,31 +99,31 @@ function reset() {
     structuredClone({ ...default_fitter_settings.value[selected_fitter_local.value].settings }) ?? {};
 }
 
-function validate(value: any, field_name: string) {
+function validation_error(value: any, field_name: string) {
   const field_type = fit_fields.value[field_name].stype;
   if (Array.isArray(field_type) || field_type === "boolean") {
     // there's no way to get an incorrect option.
-    return true;
+    return null;
   }
   const float_value = Number(value);
   if (isNaN(float_value)) {
-    return false;
+    return "not a number";
   }
   if (field_type === "integer" && parseInt(value, 10) != float_value) {
-    return false;
+    return "not an integer";
   } else if (typeof field_type === "object") {
     if ("min" in field_type && float_value < field_type.min) {
-      return false;
+      return `must be >= ${field_type.min}`;
     }
     if ("max" in field_type && float_value > field_type.max) {
-      return false;
+      return `must be <= ${field_type.max}`;
     }
   }
-  return true;
+  return null;
 }
 
 const anyIsInvalid = computed(() => {
-  return Object.entries(active_settings.value).some(([sname, value]) => !validate(value, sname));
+  return Object.entries(active_settings.value).some(([sname, value]) => validation_error(value, sname) !== null);
 });
 
 onMounted(async () => {
@@ -222,9 +222,13 @@ defineExpose({
                       v-else
                       :id="'fitter_setting_' + sname"
                       v-model="active_settings[sname]"
-                      :class="{ 'form-control': true, 'is-invalid': !validate(active_settings[sname], sname) }"
+                      :class="{
+                        'form-control': true,
+                        'is-invalid': validation_error(active_settings[sname], sname) !== null,
+                      }"
                       type="text"
                       :name="sname"
+                      :title="validation_error(active_settings[sname], sname) ?? fit_fields[sname].description"
                       @keydown.enter="() => save()"
                     />
                   </div>
