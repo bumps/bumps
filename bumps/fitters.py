@@ -1378,7 +1378,6 @@ assert FIT_DEFAULT_ID in FIT_ACTIVE_IDS
 assert all(f in FIT_AVAILABLE_IDS for f in FIT_ACTIVE_IDS)
 
 
-# TODO: we can allow resume if we send the fit state back to the fit call.
 def fit(
     problem,
     method=FIT_DEFAULT_ID,
@@ -1387,7 +1386,7 @@ def fit(
     store=None,
     name=None,
     verbose=False,
-    mapper=None,
+    cpus=1,
     **options,
 ):
     """
@@ -1413,16 +1412,17 @@ def fit(
     to the specified directory. This uses *name* as the basename for the output
     files, or *problem.name* if name is not provided. Name defaults to "problem".
 
-    To run in parallel (with multiprocessing and dream)::
-
-        from bumps.mapper import MPMapper
-        mapper = MPMapper.start_mapper(problem, None, cpu=0) #cpu=0 for all CPUs
-        result = fit(problem, method="dream", mapper=mapper)
-
+    If *cpus=n* is provided, then run on *n* separate cpus. By default *cpus=1*
+    to run on a single cpu. For slow functions set *cpus=0* to run on all
+    processors. For fast functions the overhead of running a parallel is too
+    high. If your function already runs in parallel, either through multiprocessing
+    or by using the GPU, then leave it running in serial. We do not support running
+    in parallel with MPI in the simple fit interface.
     """
     from pathlib import Path
     from scipy.optimize import OptimizeResult
     from .serialize import serialize
+    from .mapper import MPMapper, SerialMapper
     from .webview.server.fit_thread import ConvergenceMonitor
     from .webview.server.state_hdf5_backed import State, FitResult, ProblemState
 
@@ -1436,6 +1436,8 @@ def fit(
         if fitclass.id == method:
             break
 
+    parallel = MPMapper if cpus != 1 else SerialMapper
+    mapper = parallel.start_mapper(problem, [], cpus=cpus)
     convergence = ConvergenceMonitor(problem)
     monitors = [convergence]
     if verbose:
@@ -1484,7 +1486,7 @@ def fit(
         x=x,
         dx=driver.stderr(),
         fun=fx,
-        # TODO: need better success/status values
+        # TODO: need better success/status/message handling
         success=True,
         status=0,
         message="successful termination",
@@ -1527,13 +1529,17 @@ def test_fitters():
     store = None
     export = None
     verbose = False
+    cpus = 1  # Serial fit
     # TODO: test store and export as normal tests rather than one-off tests
     # store = "/tmp/teststore.h5"
     # export = "/tmp/testexport"
-    # verbose = True
+    verbose = True
+    # cpus = 0 # Parallel fit
     for fitter_name in FIT_ACTIVE_IDS:
         # print(f"Running {fitter_name}")
-        result = fit(problem, method=fitter_name, verbose=verbose, store=store, export=export, name=fitter_name)
+        result = fit(
+            problem, method=fitter_name, verbose=verbose, store=store, export=export, cpus=cpus, name=fitter_name
+        )
         assert np.allclose(result.x, expected_value, rtol=fit_value_tol)
         if fitter_name != "dream":
             # dream error bars vary too much to test
