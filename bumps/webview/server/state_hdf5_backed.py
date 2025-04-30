@@ -128,14 +128,16 @@ def read_string(group: "Group", name: str):
 
 def write_fitproblem(group: "Group", name: str, fitProblem: "bumps.fitproblem.FitProblem", serializer: SERIALIZERS):
     serialized = serialize_problem(fitProblem, serializer) if fitProblem is not None else None
-    dset = write_bytes_data(group, name, serialized)
+    # dset = write_bytes_data(group, name, serialized)
+    dset = write_string(group, name, serialized)
     return dset
 
 
 def read_fitproblem(group: "Group", name: str, serializer: SERIALIZERS):
     if name not in group:
         return UNDEFINED
-    serialized = read_bytes_data(group, name)
+    # serialized = read_bytes_data(group, name)
+    serialized = read_string(group, name)
     fitProblem = deserialize_problem(serialized, serializer) if serialized is not None else None
     return fitProblem
 

@@ -9,6 +9,10 @@ from typing import Dict, List, Literal, Optional, TypedDict, Union
 from types import GeneratorType
 import traceback
 import warnings
+import inspect
+from base64 import b64encode, b64decode
+
+import dill
 
 from . import plugin
 from .util import SCHEMA_ATTRIBUTE_NAME, get_libraries
@@ -91,6 +95,8 @@ def _rehydrate(obj, references: Dict[str, object]):
         elif t == "bumps.util.NumpyArray":
             # skip processing values list in ndarray
             return _to_ndarray(obj)
+        elif t == "Callable":
+            return deserialize_function()
         else:
             for key in obj:
                 obj[key] = _rehydrate(obj[key], references)
@@ -198,6 +204,8 @@ def serialize(obj, use_refs=True, add_libraries=True):
             return str(obj) if np.isinf(obj) else obj
         elif isinstance(obj, int) or isinstance(obj, str) or obj is None:
             return obj
+        elif callable(obj):
+            return serialize_function(obj)
         else:
             raise ValueError("obj %s is not serializable" % str(obj))
 
@@ -205,8 +213,30 @@ def serialize(obj, use_refs=True, add_libraries=True):
 
     if add_libraries:
         serialized["libraries"] = get_libraries(obj)
-
+    # print("serialized as", serialized)
     return serialized
+
+
+def deserialize_function(obj):
+    return dill.loads(b64decode(obj["pickle"]).encode())
+
+
+def serialize_function(fn):
+    name = getattr(fn, "__name__", "unknown")
+    # print("type fn", type(fn))
+    # Note: need dedent to handle decorator syntax. Dedent will fail when there are
+    # triple-quoted strings. Alternative: if first character is a space, then wrap
+    # the code in an "if True:" block
+    # source = dedent(inspect.getsource(fn)) #.strip()
+    try:
+        source = inspect.getsource(fn)
+    except Exception:
+        source = None
+    # print("source =>", source)
+    pickle = b64encode(dill.dumps(fn)).decode()
+    res = {TYPE_KEY: "Callable", "name": name, "source": source, "pickle": pickle}
+    # print(f"serializing {fn} to {res}")
+    return res
 
 
 def save_file(filename, problem):

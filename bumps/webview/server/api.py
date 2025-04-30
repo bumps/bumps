@@ -154,8 +154,9 @@ async def load_problem_file(
         _serialized_problem = serialize_problem(problem, method="dataclass")
         state.problem.serializer = "dataclass"
     except Exception as exc:
-        logger.info(f"Could not serialize problem as JSON (dataclass): {exc}, switching to dill")
+        logger.warning(f"Could not serialize problem as JSON (dataclass): {exc}, switching to dill")
         state.problem.serializer = "dill"
+        raise
     if (
         state.shared.autosave_history
         and autosave_previous
