@@ -96,7 +96,7 @@ def _rehydrate(obj, references: Dict[str, object]):
             # skip processing values list in ndarray
             return _to_ndarray(obj)
         elif t == "Callable":
-            return deserialize_function()
+            return deserialize_function(obj)
         else:
             for key in obj:
                 obj[key] = _rehydrate(obj[key], references)
