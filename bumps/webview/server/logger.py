@@ -13,11 +13,20 @@ warnings_logger = logging.getLogger("py.warnings")
 warnings_logger.setLevel(logging.WARNING)
 
 
+LOGLEVEL = dict(
+    debug=logging.DEBUG,
+    info=logging.INFO,
+    warn=logging.WARNING,
+    warning=logging.WARNING,
+    error=logging.ERROR,
+    critical=logging.CRITICAL,
+)
+
+
 def setup_console_logging(level):
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
-    handler.setLevel(logging.WARNING)
-    handler.setLevel(level)
+    handler.setLevel(LOGLEVEL[level])
     logger.addHandler(handler)
     warnings_logger.addHandler(handler)
     # logger.error("Are errors printed?")

@@ -578,7 +578,6 @@ class State:
                 self.read_topics(root_group)
         except Exception as e:
             # logger.exception(e)
-            # import traceback; traceback.print_exception(e)
             logger.warning(f"could not load session file {session_fullpath} because of {e}")
 
     def read_problem_from_session(self, session_fullpath: str):
@@ -586,6 +585,7 @@ class State:
             with h5py.File(session_fullpath, "r") as root_group:
                 self.problem.read(root_group)
         except Exception as e:
+            # logger.exception(e)
             logger.warning(f"could not load fitProblem from {session_fullpath} because of {e}")
 
     def read_fitstate_from_session(self, session_fullpath: str):
@@ -593,6 +593,7 @@ class State:
             with h5py.File(session_fullpath, "r") as root_group:
                 self.fitting.read(root_group)
         except Exception as e:
+            # logger.exception(e)
             logger.warning(f"could not load fit state from {session_fullpath} because of {e}")
 
     def write_topics(self, parent: "Group"):

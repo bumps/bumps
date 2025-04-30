@@ -750,12 +750,15 @@ def load_problem(filename, options=None) -> FitProblem:
     The user must define ``problem=FitProblem(...)`` within the script.
 
     Raises ValueError if the script does not define problem.
+
+    Namespace for imports is `bumps.user`
     """
     # Allow relative imports from the bumps model
-    module_name = os.path.splitext(os.path.basename(filename))[0]
-    module = util.relative_import(filename, module_name=module_name)
+    namespace = "bumps.user"
+    basename = os.path.splitext(os.path.basename(filename))[0]
+    module = util.relative_import(filename, module_name=namespace)
 
-    ctx = dict(__file__=filename, __package__=module, __name__=module_name)
+    ctx = dict(__file__=filename, __package__=module, __name__=f"{namespace}.{basename}")
     old_argv = sys.argv
     sys.argv = [filename] + options if options else [filename]
     source = open(filename).read()

@@ -129,9 +129,9 @@ def _instantiate(klass: type, typename: str, serialized: dict):
     class_factory = getattr(klass, "from_dict", klass)
     try:
         hydrated = class_factory(**s)
-    except Exception as e:
-        print(class_factory, s, typename)
-        raise e
+    except Exception as exc:
+        warnings.warn(f"Error instantiating {typename}: {exc}")
+        hydrated = None
     return hydrated
 
 
@@ -218,7 +218,12 @@ def serialize(obj, use_refs=True, add_libraries=True):
 
 
 def deserialize_function(obj):
-    return dill.loads(b64decode(obj["pickle"]).encode())
+    try:
+        return dill.loads(b64decode(obj["pickle"]))
+    except Exception as exc:
+        # traceback.print_exc()
+        warnings.warn(f"failed to reload problem from dill pickle: {exc}")
+        return lambda *args, **kw: np.nan
 
 
 def serialize_function(fn):
@@ -233,7 +238,7 @@ def serialize_function(fn):
     except Exception:
         source = None
     # print("source =>", source)
-    pickle = b64encode(dill.dumps(fn)).decode()
+    pickle = b64encode(dill.dumps(fn)).decode("ascii")
     res = {TYPE_KEY: "Callable", "name": name, "source": source, "pickle": pickle}
     # print(f"serializing {fn} to {res}")
     return res
@@ -253,7 +258,7 @@ def load_file(filename):
     with open(filename, "r") as fid:
         serialized: SerializedObject = json.loads(fid.read())
         final_version, migrated = migrate(serialized)
-        print("final version: ", final_version)
+        # print("final version: ", final_version)
         return deserialize(migrated)
 
 
