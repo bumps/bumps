@@ -153,7 +153,6 @@ class MonitorRunner(object):
         population_values: Optional[NDArray] = None,
     ):
         # Note: DEFit doesn't use MonitorRunner for config/update
-        # print(f"updating with {step} {perf_counter() - self._start} {value} {point}")
         self.history.update(
             time=perf_counter() - self._start,
             step=step,
@@ -671,7 +670,12 @@ class MPFit(FitBase):
             )
 
         def update(fcn, p, k, fnorm, functkw=None, parinfo=None, quiet=0, dof=None, **extra):
-            monitors(step=k, point=p, value=fnorm)
+            # Use nllf() value for update instead of residuals hack. Make sure we have
+            # the correct value in setp() before we compute it. It seems to, so this should
+            # use the theory value cached in the fitness object when computing the cost.
+            if not (self.problem.getp() == p).all():
+                self.problem.setp(p)
+            monitors(step=k, point=p, value=self.problem.nllf())
             if monitors.stopping():
                 return -1
 
@@ -707,20 +711,19 @@ class MPFit(FitBase):
     def _residuals(self, p, fjac=None):
         # # Returning -1 here stops immediately rather than completing the step. This is
         # # different from the other fitters, which wait for the step to complete.
-        #
         # if self._stopping():
         #     return -1, None
 
+        # Evaluating with new data point so update
         self.problem.setp(p)
-        # treat prior probabilities on the parameters as additional
-        # measurements
-        residuals = np.hstack((self.problem.residuals().flat, self.problem.parameter_residuals()))
         # Tally costs for broken constraints
         extra_cost, failing_constraints = self.problem.constraints_nllf()
-        # Spread the cost over the residuals.  Since we are smoothly increasing
-        # residuals as we leave the boundary, this should push us back into the
-        # boundary (within tolerance) during the lm fit.
-        residuals += np.sign(residuals) * (extra_cost / len(residuals))
+        # Treat prior probabilities on the parameters and broken constraints as additional measurements
+        residuals = np.hstack((self.problem.residuals().flat, self.problem.parameter_residuals(), np.sqrt(extra_cost)))
+        # # Spread the cost over the residuals.  Since we are smoothly increasing
+        # # residuals as we leave the boundary, this should push us back into the
+        # # boundary (within tolerance) during the lm fit.
+        # residuals += np.sign(residuals) * (extra_cost / len(residuals))
         return 0, residuals
 
 
