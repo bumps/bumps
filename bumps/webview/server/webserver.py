@@ -44,7 +44,14 @@ async def index(request):
             content_type="text/html",
             status=404,
         )
-    return web.FileResponse(client / "dist" / "index.html")
+    return web.FileResponse(
+        client / "dist" / "index.html",
+        headers={
+            "Cache-Control": "max-age=0, no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
 
 
 routes = app = sio = None
