@@ -655,7 +655,7 @@ class Parameter(ValueProtocol, SupportsPrior):
         """
         Set a parameter equal to another parameter or expression.
 
-        Use :method:`unlink` to convert from an expression to a variable.
+        Use :meth:`unlink` to convert from an expression to a variable.
         """
         if isinstance(self.slot, Calculation):
             raise TypeError("parameter is calculated by the model and cannot be changed")
