@@ -178,6 +178,7 @@ def chisq_str(fitness: Fitness) -> str:
 
     chisq = fitness.nllf() * chisq_norm
     text = format_uncertainty(chisq, chisq_err)
+    # return f"{text} {fitness.nllf()=:.15e} {chisq_norm=:.15e} {chisq_err=:.15e} {dof=}"
     return text
 
 
@@ -465,6 +466,7 @@ class FitProblem(Generic[FitnessType]):
         """
         return [p.residual() for p in self._bounded]
 
+    # TODO: Too many versions of chisq about.
     def chisq_str(self):
         """
         Return a string representing the chisq equivalent of the nllf.
@@ -487,6 +489,7 @@ class FitProblem(Generic[FitnessType]):
         if len(failing_constraints) > 0:
             text += " failing_constraints=%s" % str(failing_constraints)
 
+        # return f"{text} p={self.getp()} => {pmodel:.15e}"
         return text
 
     def _nllf_components(self) -> util.Tuple[float, float, float, util.List[str]]:
