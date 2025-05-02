@@ -169,7 +169,7 @@ def h5load(group: "Group"):
     state.labels = [label.decode() for label in Fields.labels]
     state.generation = Ngen
     state._gen_index = 0
-    state._gen_draws = Fields.gen_draws
+    state._gen_draws = Fields.gen_draws.astype(int)
     state._gen_acceptance_rate = Fields.AR
     state._gen_logp = Fields.gen_logp
     state.thinning = thinning
@@ -181,7 +181,7 @@ def h5load(group: "Group"):
     state._gen_current = state._thin_point[-1].copy()
     state._update_count = Nupdate
     state._update_index = 0
-    state._update_draws = Fields.update_draws
+    state._update_draws = Fields.update_draws.astype(int)
     state._update_CR_weight = Fields.update_CR_weight
     state._outliers = []
 
@@ -190,7 +190,7 @@ def h5load(group: "Group"):
     state._best_x = Fields.thin_point[bestidx]
     state._best_gen = 0
 
-    state._good_chains = slice(None, None) if good_chains is None else good_chains
+    state._good_chains = slice(None, None) if good_chains is None else good_chains.astype(int)
 
     return state
 
