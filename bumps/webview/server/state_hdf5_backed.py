@@ -74,6 +74,8 @@ def serialize_problem(problem: "bumps.fitproblem.FitProblem", method: SERIALIZER
         return serialize_bytes(pickle.dumps(problem))
     elif method == "dill":
         return serialize_bytes(dill.dumps(problem, recurse=True))
+    else:
+        raise ValueError(f"Unknown serialization method: {method}")
 
 
 def deserialize_problem(serialized: str, method: SERIALIZERS) -> "bumps.fitproblem.FitProblem":
@@ -84,10 +86,22 @@ def deserialize_problem(serialized: str, method: SERIALIZERS) -> "bumps.fitprobl
         return pickle.loads(deserialize_bytes(serialized))
     elif method == "dill":
         return dill.loads(deserialize_bytes(serialized))
+    else:
+        raise ValueError(f"Unknown serialization method: {method}")
+
+
+def serialize_problem_bytes(problem: "bumps.fitproblem.FitProblem", method: SERIALIZERS) -> bytes:
+    if method == "dataclass":
+        return json.dumps(serialize(problem)).encode()
+    elif method == "pickle":
+        return pickle.dumps(problem)
+    elif method == "dill":
+        return dill.dumps(problem, recurse=True)
+    else:
+        raise ValueError(f"Unknown serialization method: {method}")
 
 
 def deserialize_problem_bytes(serialized: bytes, method: SERIALIZERS) -> "bumps.fitproblem.FitProblem":
-    """Pre-1.0 release used bytes to store pickles. Post-1.0 uses base64 encoded string"""
     if method == "dataclass":
         serialized_dict = json.loads(serialized)
         return deserialize(serialized_dict, migration=True)
@@ -95,6 +109,8 @@ def deserialize_problem_bytes(serialized: bytes, method: SERIALIZERS) -> "bumps.
         return pickle.loads(serialized)
     elif method == "dill":
         return dill.loads(serialized)
+    else:
+        raise ValueError(f"Unknown serialization method: {method}")
 
 
 def write_bytes_data(group: "Group", name: str, data: bytes):
@@ -132,9 +148,15 @@ def read_string(group: "Group", name: str):
 
 
 def write_fitproblem(group: "Group", name: str, fitProblem: "bumps.fitproblem.FitProblem", serializer: SERIALIZERS):
-    serialized = serialize_problem(fitProblem, serializer) if fitProblem is not None else None
-    # dset = write_bytes_data(group, name, serialized)
-    dset = write_string(group, name, serialized)
+    # TODO: consider storing json as utf-8 and (dill) pickle as bytes
+    # encoding = str if serializer == "dataclass" else bytes
+    encoding = bytes
+    if encoding is bytes:
+        serialized = serialize_problem_bytes(fitProblem, serializer) if fitProblem is not None else None
+        dset = write_bytes_data(group, name, serialized)
+    else:
+        serialized = serialize_problem(fitProblem, serializer) if fitProblem is not None else None
+        dset = write_string(group, name, serialized)
     return dset
 
 
