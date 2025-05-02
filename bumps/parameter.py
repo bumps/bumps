@@ -171,8 +171,10 @@ class Calculation(ValueProtocol):  # the name Function is taken (though deprecat
     description: str
     _function: Callable[[], float]  # added by the model; not serialized
 
-    def __init__(self, description: str = ""):
+    def __init__(self, description: str = "", function: Callable = None):
         self.description = description
+        # Default to bad return value during reconstruction
+        self._function = function if function is not None else lambda: np.nan
 
     @property
     def value(self):
@@ -653,9 +655,7 @@ class Parameter(ValueProtocol, SupportsPrior):
         """
         Set a parameter equal to another parameter or expression.
 
-        If *expression=None* then free the parameter by giving it is own
-        slot with value equal to the present value of the expression, and
-        its bounds.
+        Use :method:`unlink` to convert from an expression to a variable.
         """
         if isinstance(self.slot, Calculation):
             raise TypeError("parameter is calculated by the model and cannot be changed")

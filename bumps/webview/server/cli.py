@@ -627,7 +627,7 @@ def interpret_fit_options(options: BumpsOptions):
                 # defined and because I don't have a --cov option.
                 # if opts.cov: fitdriver.show_cov()
                 problem = api.state.problem.fitProblem
-                # print("pars=", problem.getp())
+                # print(problem.summarize())
                 print("chisq", problem.chisq_str())
 
         on_startup.append(show_chisq)

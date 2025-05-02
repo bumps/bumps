@@ -7,7 +7,7 @@ import json
 from importlib import import_module
 from typing import Dict, List, Literal, Optional, TypedDict, Union
 from types import GeneratorType
-import traceback
+import logging
 import warnings
 import inspect
 from base64 import b64encode, b64decode
@@ -78,7 +78,8 @@ def deserialize(serialized: SerializedObject, migration: bool = True):
     # references is now full of deserialized objects,
     # and we're ready to rehydrate the entire tree...
 
-    return _rehydrate(serialized["object"], references)
+    obj = _rehydrate(serialized["object"], references)
+    return obj
 
 
 #### deserializer helpers:
@@ -109,11 +110,13 @@ def _rehydrate(obj, references: Dict[str, object]):
                     module_name, class_name = t.rsplit(".", 1)
                     # print(module_name, class_name)
                     klass = getattr(import_module(module_name), class_name)
-                    hydrated = _instantiate(klass, t, obj)
-                    return hydrated
                 except Exception as e:
                     # there is a type, but it is not found...
-                    raise ValueError("type %s not found!, error: %s" % (t, e), obj)
+                    logging.exception(e)
+                    raise RuntimeError(f"Error importing {t}: {e}")
+                hydrated = _instantiate(klass, t, obj)
+                # print("returning instantiated object", t, hydrated)
+                return hydrated
     elif isinstance(obj, list):
         # rehydrate all the items
         return [_rehydrate(v, references) for v in obj]
@@ -123,14 +126,17 @@ def _rehydrate(obj, references: Dict[str, object]):
 
 
 def _instantiate(klass: type, typename: str, serialized: dict):
-    s = serialized.copy()
+    # TODO: why are we copying the top-level dict?
+    serialized = serialized.copy()
     # if klass provides 'from_dict' method, use it -
     # otherwise use klass.__init__ directly.
     class_factory = getattr(klass, "from_dict", klass)
     try:
-        hydrated = class_factory(**s)
-    except Exception as exc:
-        warnings.warn(f"Error instantiating {typename}: {exc}")
+        hydrated = class_factory(**serialized)
+    except Exception as e:
+        logging.exception(e)
+        warnings.warn(f"Error restoring {typename}: {e}")
+        # Note: users of the failed deserialization may complain that it is None
         hydrated = None
     return hydrated
 
@@ -220,10 +226,10 @@ def serialize(obj, use_refs=True, add_libraries=True):
 def deserialize_function(obj):
     try:
         return dill.loads(b64decode(obj["pickle"]))
-    except Exception as exc:
-        # traceback.print_exc()
-        warnings.warn(f"failed to reload problem from dill pickle: {exc}")
-        return lambda *args, **kw: np.nan
+    except Exception as e:
+        logging.exception(e)
+        warnings.warn(f"Error loading function: {e}")
+        return None
 
 
 def serialize_function(fn):
@@ -249,8 +255,8 @@ def save_file(filename, problem):
         p = serialize(problem)
         with open(filename, "w") as fid:
             json.dump(p, fid)
-    except Exception:
-        traceback.print_exc()
+    except Exception as e:
+        logging.excpetion(e)
         warnings.warn(f"failed to create JSON file {filename} for fit problem")
 
 

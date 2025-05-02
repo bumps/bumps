@@ -283,8 +283,10 @@ class FitProblem(Generic[FitnessType]):
         self.weights = weights
         self.penalty_nllf = float(penalty_nllf)
         self.set_active_model(0)  # Set the active model to model 0
-        self.model_reset()  # sets self._all_constraints
         self.name = name
+
+        # Do this step last so that it has all of the attributes initialized.
+        self.model_reset()  # sets self._all_constraints
 
     @staticmethod
     def _null_constraints_function():
