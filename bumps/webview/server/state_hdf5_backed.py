@@ -23,12 +23,14 @@ import shutil
 import os
 import tempfile
 from pathlib import Path
+import pickle
 
 import h5py
 import numpy as np
 from numpy.typing import NDArray
+import dill
 
-from bumps.serialize import serialize, deserialize
+from bumps.serialize import serialize, deserialize, serialize_bytes, deserialize_bytes
 from bumps.util import get_libraries
 from .logger import logger
 
@@ -65,31 +67,50 @@ def now_string():
     return f"{datetime.now().timestamp():.6f}"
 
 
-def serialize_problem(problem: "bumps.fitproblem.FitProblem", method: SERIALIZERS):
+def serialize_problem(problem: "bumps.fitproblem.FitProblem", method: SERIALIZERS) -> str:
     if method == "dataclass":
-        return json.dumps(serialize(problem)).encode()
+        return json.dumps(serialize(problem))
     elif method == "pickle":
-        import pickle
-
-        return pickle.dumps(problem)
+        return serialize_bytes(pickle.dumps(problem))
     elif method == "dill":
-        import dill
+        return serialize_bytes(dill.dumps(problem, recurse=True))
+    else:
+        raise ValueError(f"Unknown serialization method: {method}")
 
-        return dill.dumps(problem, recurse=True)
 
-
-def deserialize_problem(serialized: bytes, method: SERIALIZERS):
+def deserialize_problem(serialized: str, method: SERIALIZERS) -> "bumps.fitproblem.FitProblem":
     if method == "dataclass":
         serialized_dict = json.loads(serialized)
         return deserialize(serialized_dict, migration=True)
     elif method == "pickle":
-        import pickle
+        return pickle.loads(deserialize_bytes(serialized))
+    elif method == "dill":
+        return dill.loads(deserialize_bytes(serialized))
+    else:
+        raise ValueError(f"Unknown serialization method: {method}")
 
+
+def serialize_problem_bytes(problem: "bumps.fitproblem.FitProblem", method: SERIALIZERS) -> bytes:
+    if method == "dataclass":
+        return json.dumps(serialize(problem)).encode()
+    elif method == "pickle":
+        return pickle.dumps(problem)
+    elif method == "dill":
+        return dill.dumps(problem, recurse=True)
+    else:
+        raise ValueError(f"Unknown serialization method: {method}")
+
+
+def deserialize_problem_bytes(serialized: bytes, method: SERIALIZERS) -> "bumps.fitproblem.FitProblem":
+    if method == "dataclass":
+        serialized_dict = json.loads(serialized)
+        return deserialize(serialized_dict, migration=True)
+    elif method == "pickle":
         return pickle.loads(serialized)
     elif method == "dill":
-        import dill
-
         return dill.loads(serialized)
+    else:
+        raise ValueError(f"Unknown serialization method: {method}")
 
 
 def write_bytes_data(group: "Group", name: str, data: bytes):
@@ -127,16 +148,29 @@ def read_string(group: "Group", name: str):
 
 
 def write_fitproblem(group: "Group", name: str, fitProblem: "bumps.fitproblem.FitProblem", serializer: SERIALIZERS):
-    serialized = serialize_problem(fitProblem, serializer) if fitProblem is not None else None
-    dset = write_bytes_data(group, name, serialized)
+    # TODO: consider storing json as utf-8 and (dill) pickle as bytes
+    # encoding = str if serializer == "dataclass" else bytes
+    encoding = bytes
+    if encoding is bytes:
+        serialized = serialize_problem_bytes(fitProblem, serializer) if fitProblem is not None else None
+        dset = write_bytes_data(group, name, serialized)
+    else:
+        serialized = serialize_problem(fitProblem, serializer) if fitProblem is not None else None
+        dset = write_string(group, name, serialized)
     return dset
 
 
-def read_fitproblem(group: "Group", name: str, serializer: SERIALIZERS):
+def read_fitproblem(group: "Group", name: str, serializer: SERIALIZERS) -> "bumps.fitproblem.FitProblem":
     if name not in group:
         return UNDEFINED
-    serialized = read_bytes_data(group, name)
-    fitProblem = deserialize_problem(serialized, serializer) if serialized is not None else None
+    if group[name].dtype.kind == "V":
+        # Old encoding stored bytes directly
+        serialized = read_bytes_data(group, name)
+        fitProblem = deserialize_problem_bytes(serialized, serializer) if serialized is not None else None
+    else:
+        # New encode uses base64 to encode bytes to string
+        serialized = read_string(group, name)
+        fitProblem = deserialize_problem(serialized, serializer) if serialized is not None else None
     return fitProblem
 
 
@@ -576,7 +610,6 @@ class State:
                 self.read_topics(root_group)
         except Exception as e:
             # logger.exception(e)
-            # import traceback; traceback.print_exception(e)
             logger.warning(f"could not load session file {session_fullpath} because of {e}")
 
     def read_problem_from_session(self, session_fullpath: str):
@@ -584,6 +617,7 @@ class State:
             with h5py.File(session_fullpath, "r") as root_group:
                 self.problem.read(root_group)
         except Exception as e:
+            # logger.exception(e)
             logger.warning(f"could not load fitProblem from {session_fullpath} because of {e}")
 
     def read_fitstate_from_session(self, session_fullpath: str):
@@ -591,6 +625,7 @@ class State:
             with h5py.File(session_fullpath, "r") as root_group:
                 self.fitting.read(root_group)
         except Exception as e:
+            # logger.exception(e)
             logger.warning(f"could not load fit state from {session_fullpath} because of {e}")
 
     def write_topics(self, parent: "Group"):

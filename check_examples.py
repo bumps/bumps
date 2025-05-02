@@ -12,7 +12,7 @@ EXAMPLEDIR = ROOT / "doc" / "examples"
 # Add the build dir to the system path
 packages = [str(ROOT)]
 if "PYTHONPATH" in os.environ:
-    packages.append(os.environ["PYTHONPATH"])
+    packages.extend(os.environ["PYTHONPATH"].split(os.pathsep))
 os.environ["PYTHONPATH"] = os.pathsep.join(packages)
 # print("Environment:", os.environ["PYTHONPATH"])
 
@@ -28,6 +28,9 @@ class Commands(object):
 
     @staticmethod
     def chisq(f):
+        # TODO: fix relative imports from model file
+        # Add model directory to the path
+        os.environ["PYTHONPATH"] = os.pathsep.join([*packages, str(f.parent)])
         args = "--seed=1 --chisq".split()
         return subprocess.run([*command, f, *args]).returncode
 
