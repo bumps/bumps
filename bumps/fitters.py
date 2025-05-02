@@ -247,7 +247,7 @@ class FitBase(object):
 
     def __init__(self, problem):
         """Fit the models and show the results"""
-        self.problem = problem
+        self.problem: "bumps.fitproblem.FitProblem" = problem
 
     def solve(self, monitors: MonitorRunner, mapper=None, **options):
         raise NotImplementedError()
@@ -670,12 +670,8 @@ class MPFit(FitBase):
             )
 
         def update(fcn, p, k, fnorm, functkw=None, parinfo=None, quiet=0, dof=None, **extra):
-            # Use nllf() value for update instead of residuals hack. Make sure we have
-            # the correct value in setp() before we compute it. It seems to, so this should
-            # use the theory value cached in the fitness object when computing the cost.
-            if not (self.problem.getp() == p).all():
-                self.problem.setp(p)
-            monitors(step=k, point=p, value=self.problem.nllf())
+            # The mpfit residuals are set up so that fnorm = sumsq residuals = 2*nllf.
+            monitors(step=k, point=p, value=fnorm / 2)
             if monitors.stopping():
                 return -1
 
@@ -699,10 +695,16 @@ class MPFit(FitBase):
             # Returns values
             nocovar=True,  # use our own covar calculation for consistency
         )
-
+        # Note that result.perror contains dx and result.covar contains cov.
         # See mpfit.py:781 for status codes. We are returning -1 for user abort.
         if result.status > 0 or result.status == -1:
-            x, fx = result.params, result.fnorm
+            x = result.params
+            # TODO: mpfit sometimes returns root chisq and sometimes chisq
+            # Use nllf() as the resulting cost function for consistency with other fitters.
+            # Should be able to use fnorm/2 but it is broken in mpfit.
+            if not (self.problem.getp() == x).all():
+                self.problem.setp(x)
+            fx = self.problem.nllf()
         else:
             x, fx = None, None
 
@@ -716,10 +718,14 @@ class MPFit(FitBase):
 
         # Evaluating with new data point so update
         self.problem.setp(p)
-        # Tally costs for broken constraints
+
+        # Tally costs for residuals and broken constraints. Treat prior probabilities on
+        # the parameters and broken constraints as additional measurements. The result
+        # should be that fnorm = sumsq residuals = 2 * nllf
         extra_cost, failing_constraints = self.problem.constraints_nllf()
-        # Treat prior probabilities on the parameters and broken constraints as additional measurements
         residuals = np.hstack((self.problem.residuals().flat, self.problem.parameter_residuals(), np.sqrt(extra_cost)))
+        # print("sumsq resid", np.sum(residuals**2), "nllf", self.problem.nllf()*2)
+
         # # Spread the cost over the residuals.  Since we are smoothly increasing
         # # residuals as we leave the boundary, this should push us back into the
         # # boundary (within tolerance) during the lm fit.
