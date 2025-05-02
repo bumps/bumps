@@ -225,11 +225,19 @@ def serialize(obj, use_refs=True, add_libraries=True):
 
 def deserialize_function(obj):
     try:
-        return dill.loads(b64decode(obj["pickle"]))
+        return dill.loads(deserialize_bytes(obj["pickle"]))
     except Exception as e:
         logging.exception(e)
         warnings.warn(f"Error loading function: {e}")
         return None
+
+
+def serialize_bytes(b):
+    return b64encode(b).decode("ascii")
+
+
+def deserialize_bytes(s):
+    return b64decode(s)
 
 
 def serialize_function(fn):
@@ -244,7 +252,7 @@ def serialize_function(fn):
     except Exception:
         source = None
     # print("source =>", source)
-    pickle = b64encode(dill.dumps(fn)).decode("ascii")
+    pickle = serialize_bytes(dill.dumps(fn))
     res = {TYPE_KEY: "Callable", "name": name, "source": source, "pickle": pickle}
     # print(f"serializing {fn} to {res}")
     return res

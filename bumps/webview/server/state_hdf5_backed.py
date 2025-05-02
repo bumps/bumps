@@ -23,12 +23,14 @@ import shutil
 import os
 import tempfile
 from pathlib import Path
+import pickle
 
 import h5py
 import numpy as np
 from numpy.typing import NDArray
+import dill
 
-from bumps.serialize import serialize, deserialize
+from bumps.serialize import serialize, deserialize, serialize_bytes, deserialize_bytes
 from bumps.util import get_libraries
 from .logger import logger
 
@@ -65,30 +67,33 @@ def now_string():
     return f"{datetime.now().timestamp():.6f}"
 
 
-def serialize_problem(problem: "bumps.fitproblem.FitProblem", method: SERIALIZERS):
+def serialize_problem(problem: "bumps.fitproblem.FitProblem", method: SERIALIZERS) -> str:
     if method == "dataclass":
-        return json.dumps(serialize(problem)).encode()
+        return json.dumps(serialize(problem))
     elif method == "pickle":
-        import pickle
-
-        return pickle.dumps(problem)
+        return serialize_bytes(pickle.dumps(problem))
     elif method == "dill":
-        import dill
-
-        return dill.dumps(problem, recurse=True)
+        return serialize_bytes(dill.dumps(problem, recurse=True))
 
 
-def deserialize_problem(serialized: bytes, method: SERIALIZERS):
+def deserialize_problem(serialized: str, method: SERIALIZERS) -> "bumps.fitproblem.FitProblem":
     if method == "dataclass":
         serialized_dict = json.loads(serialized)
         return deserialize(serialized_dict, migration=True)
     elif method == "pickle":
-        import pickle
+        return pickle.loads(deserialize_bytes(serialized))
+    elif method == "dill":
+        return dill.loads(deserialize_bytes(serialized))
 
+
+def deserialize_problem_bytes(serialized: bytes, method: SERIALIZERS) -> "bumps.fitproblem.FitProblem":
+    """Pre-1.0 release used bytes to store pickles. Post-1.0 uses base64 encoded string"""
+    if method == "dataclass":
+        serialized_dict = json.loads(serialized)
+        return deserialize(serialized_dict, migration=True)
+    elif method == "pickle":
         return pickle.loads(serialized)
     elif method == "dill":
-        import dill
-
         return dill.loads(serialized)
 
 
@@ -133,12 +138,17 @@ def write_fitproblem(group: "Group", name: str, fitProblem: "bumps.fitproblem.Fi
     return dset
 
 
-def read_fitproblem(group: "Group", name: str, serializer: SERIALIZERS):
+def read_fitproblem(group: "Group", name: str, serializer: SERIALIZERS) -> "bumps.fitproblem.FitProblem":
     if name not in group:
         return UNDEFINED
-    # serialized = read_bytes_data(group, name)
-    serialized = read_string(group, name)
-    fitProblem = deserialize_problem(serialized, serializer) if serialized is not None else None
+    if group[name].dtype.kind == "V":
+        # Old encoding stored bytes directly
+        serialized = read_bytes_data(group, name)
+        fitProblem = deserialize_problem_bytes(serialized, serializer) if serialized is not None else None
+    else:
+        # New encode uses base64 to encode bytes to string
+        serialized = read_string(group, name)
+        fitProblem = deserialize_problem(serialized, serializer) if serialized is not None else None
     return fitProblem
 
 
