@@ -86,10 +86,10 @@ async function save(start: boolean = false, resume: boolean = false) {
     // start_fit_thread(
     //   fitter_name: string,
     //   fitter_settings: object,
-    //   max_time: float = 0.0,
+    //   // max_time: float = 0.0, // removed again from the server
     //   resume: boolean = false
     // )
-    await props.socket.asyncEmit("start_fit_thread", selected_fitter_local.value, fitter_settings_local, 0.0, resume);
+    await props.socket.asyncEmit("start_fit_thread", selected_fitter_local.value, fitter_settings_local, resume);
   }
   close();
 }
