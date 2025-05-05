@@ -66,6 +66,14 @@ function process_settings() {
       } else if (field_type === "boolean") {
         // probably unnecessary if it is bound to a checkbox
         processed_value = Boolean(value);
+      } else if (Array.isArray(field_type)) {
+        // this is a list of options
+        processed_value = value;
+      } else if (typeof field_type === "object") {
+        // this is a range
+        // Check for Array.isArray(field_type) first, because
+        // typeof field_type === "object" will also be true for arrays
+        processed_value = Number(value);
       }
       return [sname, processed_value];
     })
