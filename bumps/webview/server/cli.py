@@ -44,7 +44,6 @@ import logging
 from dataclasses import field
 # from textwrap import dedent
 
-from bumps import __version__
 from bumps.fitters import FIT_AVAILABLE_IDS
 from . import api
 from . import persistent_settings
