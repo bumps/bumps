@@ -28,6 +28,7 @@ import h5py
 import numpy as np
 from numpy.typing import NDArray
 
+from bumps import __version__
 from bumps.serialize import serialize, deserialize
 from bumps.util import get_libraries
 from .logger import logger
@@ -416,6 +417,7 @@ class FitResult:
 class State:
     # These attributes are ephemeral, not to be serialized/stored:
     app_name: str = "bumps"
+    app_version: str = __version__
     client_path: Path = Path(__file__).parent.parent / "client"
     hostname: str
     port: int
