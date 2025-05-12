@@ -530,6 +530,11 @@ class FitProblem(Generic[FitnessType]):
         """Return a table of current parameter values with range bars."""
         return parameter.summarize(self._parameters)
 
+    @property
+    def parameters(self):
+        """Return the list of fitted parameters."""
+        return self._parameters
+
     def labels(self) -> util.List[str]:
         """Return the list of labels, one per fitted parameter."""
         return [p.name for p in self._parameters]
