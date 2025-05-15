@@ -77,8 +77,12 @@ def init_web_app():
 
         @routes.get(f"/{fn.__name__}")
         async def handler(request: web.Request):
-            result = await fn(**request.query)
-            return web.json_response(result)
+            try:
+                result = await fn(**request.query)
+                return web.json_response(result)
+            except Exception as err:
+                logger.exception(err)
+                raise
 
         # pass the function to the next decorator unchanged...
         return fn
@@ -92,7 +96,12 @@ def init_web_app():
 
         @functools.wraps(function)
         async def with_sid(sid: str, *args, **kwargs):
-            return await function(*args, **kwargs)
+            try:
+                # print("RPC:", function.__name__, args, kwargs)
+                return await function(*args, **kwargs)
+            except Exception as err:
+                logger.error(f"Exception for {function.__name__}(*{args}, **{kwargs}): {err}")
+                raise
 
         return with_sid
 
