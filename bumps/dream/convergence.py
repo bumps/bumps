@@ -73,32 +73,32 @@ def ks_converged(state, trials=TRIALS, density=DENSITY, alpha=ALPHA, samples=SAM
     if alpha == 0.0:
         return False
 
-    # Make sure we have the desired number of draws
+    # Make sure we have a full buffer.
     if state.generation < state.Ngen:
+        # print(f"convergence {state.generation}: need {state.Ngen} for a full cycle")
         return False
 
-    # Quick fail if best occurred within draw
+    # Quick fail if best occurred within current buffer. We want to make sure we have
+    # time to explore a new minimum before concluding that it has converged.
     if not state.stable_best():
-        # print(state.generation, "best gen", state._best_gen, "start", state.generation - state.Ngen)
+        # print(f"convergence {state.generation}: best {state._best_gen} still in pop {state.total_generations} - {state.Ngen} = {state.total_generations - state.Ngen}")
         return False
 
     # Grab a window at the start and the end
     window_size = min(max(samples // state.Npop + 1, MIN_WINDOW), state.Ngen // 2)
-
     head = state.logp_slice(window_size).flatten()
     tail = state.logp_slice(-window_size).flatten()
 
-    # Quick fail if logp head is worse than logp tail
-    if np.min(head) < state.min_slice(-state.Ngen // 2):
-        # print(state.generation, "improving worst", np.min(head), state.min_slice(-state.Ngen//2))
-        return False
+    # # Note: best not in buffer should cover this case.
+    # # Quick fail if logp head is worse than logp tail
+    # if np.min(head) > np.min(tail):
+    #     # print(f"convergence {state.generation}: tail {np.min(tail)} better than head {np.min(head)}")
+    #     return False
 
     n_draw = int(density * samples)
-    reject = _robust_ks_2samp(head, tail, n_draw, trials, alpha)
-    if reject:
-        return False
-
-    return True
+    p = _robust_ks_2samp(head, tail, n_draw, trials)
+    # print(f"convergence {state.generation}: pval={p} < {alpha}?")
+    return p < alpha
 
 
 def check_nllf_distribution(state):
@@ -223,7 +223,7 @@ def _ks_sliding_window(state, trials=TRIALS, density=DENSITY, alpha=ALPHA * 0.01
     return index
 
 
-def _robust_ks_2samp(f_data, r_data, n_draw, trials, alpha):
+def _robust_ks_2samp(f_data, r_data, n_draw, trials):
     """
     Repeat ks test n times for a more robust statistic.
 
@@ -237,5 +237,4 @@ def _robust_ks_2samp(f_data, r_data, n_draw, trials, alpha):
         f_samp = choice(f_data, n_draw, replace=True)
         r_samp = choice(r_data, n_draw, replace=True)
         p_vals.append(ks_2samp(f_samp, r_samp)[1])
-    return alpha > np.mean(p_vals)
-    # return any(alpha > p for p in p_vals)
+    return np.median(p_vals)

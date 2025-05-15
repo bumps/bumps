@@ -453,7 +453,7 @@ def _run_dream(dream: Dream, abort_test=lambda: False):
             dream.CR.adapt()
 
         if False:
-            # Suppress scale update until we have a chance to verify that it
+            # TODO: Suppress scale update until we have a chance to verify that it
             # doesn't skew the resulting statistics.
             _, r = state.acceptance_rate()
             ravg = np.mean(r[-dream.DE_steps :])
