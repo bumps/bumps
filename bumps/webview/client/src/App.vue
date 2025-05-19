@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { io } from "socket.io-client";
 import {
   active_layout,
   addNotification,
@@ -35,6 +34,8 @@ import type { Panel } from "./panels";
 
 const props = defineProps<{
   panels: Panel[];
+  socket: AsyncSocket;
+  singlePanel?: string;
   name?: string;
 }>();
 
@@ -49,23 +50,13 @@ function setDarkTheme(prefersDark: boolean) {
 prefersDarkMediaQueryList.addEventListener("change", (e) => setDarkTheme(e.matches));
 setDarkTheme(prefersDarkMediaQueryList.matches);
 
-// const nativefs = ref(false);
-
-// Create a SocketIO connection, to be passed to child components
-// so that they can do their own communications with the host.
-const queryString = window.location.search;
-const urlParams = new URLSearchParams(queryString);
-
-const sio_base_path = urlParams.get("base_path") ?? window.location.pathname;
-const sio_server = urlParams.get("server") ?? "";
-const single_panel = urlParams.get("single_panel");
-if (single_panel !== null) {
+if (props.singlePanel) {
   active_layout.value = "full";
-  const panel_index = props.panels.findIndex(({ title }) => title.toLowerCase() == single_panel.toLowerCase());
+  const panel_index = props.panels.findIndex(({ title }) => title.toLowerCase() == props?.singlePanel?.toLowerCase());
   if (panel_index > -1) {
     startPanel.value[0] = panel_index;
   } else {
-    console.error(`Panel ${single_panel} not found`);
+    console.error(`Panel ${props?.singlePanel} not found`);
   }
 }
 
@@ -73,9 +64,7 @@ if (single_panel !== null) {
 connecting.value = true;
 disconnected.value = false;
 
-const socket = io(sio_server, {
-  path: `${sio_base_path}socket.io`,
-}) as AsyncSocket;
+const socket = props.socket;
 socket_ref.value = socket;
 
 socket.on("connect", async () => {
@@ -280,7 +269,7 @@ file_menu_items.value = [
 
 <template>
   <div class="h-100 w-100 m-0 d-flex flex-column">
-    <nav v-if="single_panel === null" class="navbar navbar-expand-sm bg-dark" data-bs-theme="dark">
+    <nav v-if="singlePanel === null" class="navbar navbar-expand-sm bg-dark" data-bs-theme="dark">
       <div class="container-fluid">
         <div class="navbar-brand">
           <img src="./assets/bumps-icon_256x256x32.png" alt="" height="24" class="d-inline-block align-text-middle" />
@@ -398,7 +387,7 @@ file_menu_items.value = [
           :panels="panels"
           :socket="socket"
           :start-panel="startPanel[0]"
-          :hide-tabs="single_panel !== null"
+          :hide-tabs="singlePanel !== null"
         />
       </div>
     </div>
