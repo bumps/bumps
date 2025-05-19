@@ -897,6 +897,7 @@ class DreamFit(FitBase):
             steps = (draws + pop_size - 1) // pop_size
         monitors.info(f"# burn: {options['burn']} # steps: {steps}, # draws: {pop_size * steps}")
         population = population[None, :, :]
+        # print(f"Running dream with {population.shape=} {pop_size=} {steps=}")
         sampler = Dream(
             model=DreamModel(self.problem, mapper),
             population=population,

@@ -494,6 +494,7 @@ def get_max_steps(num_fitparams: int, fitter_id: str, options: Dict[str, Any]):
     options = {**dict(fitter.settings), **dict(options)}
     steps = options["steps"]  # all fitters have "steps"
     starts = options.get("starts", 1)  # Multistart fitter
+    # TODO: Max steps is wrong for DE with resume. Instead let the fitter tell the step monitor how many steps.
     if fitter_id == "dream":  # Dream has steps + burn
         if steps == 0:  # Steps not specified; using samples instead
             pop, draws = options["pop"], options["samples"]
@@ -608,7 +609,7 @@ async def start_fit_thread(fitter_id: str, options: Optional[Dict[str, Any]] = N
         uncertainty_update=state.shared.autosave_session_interval,
         console_update=state.console_update_interval,
         fit_state=state.fitting.fit_state,
-        # TODO: on resume should we pass the current convergence vector?
+        convergence=state.fitting.convergence,
     )
 
     await log(
