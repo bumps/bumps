@@ -429,6 +429,11 @@ class MCMCDraw(object):
     title = None
 
     def __init__(self, Ngen: int, Nthin: int, Nupdate: int, Nvar: int, Npop: int, Ncr: int, thinning: int):
+        # self.generation and self.draws are used to control the number of iterations in
+        # the dream loop, and must therefore be set to the current size of the state on
+        # resume rather than the cumulative across all runs. To retrieve the totals use
+        # generations=self.total_generations and draws=self.total_generations*self.Npop.
+
         # Total number of draws so far
         self.draws = 0
 
@@ -548,7 +553,12 @@ class MCMCDraw(object):
             return v
 
         self._gen_offset += max(self.generation - Ngen, 0)
+        self.generation = min(self.generation, Ngen, self.Ngen)
+        self.draws = self.generation * self.Npop
+        self._gen_index = 0
+        # Reset sample size to current size on resume.
         self.generation = min(self.generation, self.Ngen, Ngen)
+        self.draws = self.generation * self.Npop
         self._gen_index = self.generation % Ngen
         self._gen_draws = buf_resize(self._gen_draws, Ngen, self.generation)
         self._gen_logp = buf_resize(self._gen_logp, Ngen, self.generation)

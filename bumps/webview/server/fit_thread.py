@@ -2,6 +2,7 @@ from copy import deepcopy
 from threading import Thread
 from threading import Event
 import traceback
+from typing import Optional
 
 from blinker import Signal
 
@@ -9,7 +10,7 @@ import numpy as np
 from bumps import monitor
 from bumps.fitters import FitDriver, nllf_scale, format_uncertainty, ConsoleMonitor
 from bumps.mapper import MPMapper, SerialMapper, can_pickle
-from bumps.util import redirect_console
+from bumps.util import redirect_console, NDArray
 
 # from .convergence_view import ConvergenceMonitor
 # ==============================================================================
@@ -72,11 +73,11 @@ class ConvergenceMonitor(monitor.Monitor):
 
     message: str = "convergence_update"
 
-    def __init__(self, problem, rate=0):
+    def __init__(self, problem, rate=0, quantiles: Optional[NDArray] = None):
         self.time = 0
         self.rate = rate  # rate=0 for no progress update, only final
         self.problem = problem
-        self.quantiles = []
+        self.quantiles = [] if quantiles is None else quantiles.tolist()
 
     def config_history(self, history):
         history.requires(population_values=1, value=1)
@@ -194,6 +195,7 @@ class FitThread(Thread):
         uncertainty_update=300,
         console_update=0,
         fit_state=None,
+        convergence=None,
         # outputs=None,
     ):
         # base class initialization
@@ -204,6 +206,7 @@ class FitThread(Thread):
         self.problem = problem
         self.fitclass = fitclass
         self.fit_state = fit_state
+        self.convergence = convergence
         # print(f"   *** FitThread {options}")
         self.options = options if isinstance(options, dict) else {}
         self.mapper = mapper
@@ -231,9 +234,10 @@ class FitThread(Thread):
         # recognize that it is the same problem when updating views.
         try:
             # print("Starting fit")
+            # print("convergence monitor starts with", self.convergence is not None)
             monitors = [
                 GUIProgressMonitor(self.problem),
-                ConvergenceMonitor(self.problem, rate=self.convergence_update),
+                ConvergenceMonitor(self.problem, rate=self.convergence_update, quantiles=self.convergence),
                 # GUIMonitor(self.problem,
                 #            message="convergence_update",
                 #            monitor=ConvergenceMonitor(),
