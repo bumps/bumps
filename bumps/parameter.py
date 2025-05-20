@@ -324,7 +324,6 @@ class Parameter(ValueProtocol, SupportsPrior):
     # prior: Optional[BoundsType]
     id: str = field(metadata={"format": "uuid"})
     name: Optional[str] = field(default=None, init=False)
-    fixed: bool = True
     slot: Union["Variable", ValueType]
     limits: Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]] = (-inf, inf)
     bounds: Optional[Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]] = None
@@ -719,9 +718,6 @@ class Constant(ValueProtocol):  # type: ignore
     name: Optional[str] = None
     id: str = field(metadata={"format": "uuid"}, default_factory=lambda: str(uuid.uuid4()))
 
-    fittable = False  # class property fixed across all objects
-    fixed = True  # class property fixed across all objects
-
     def parameters(self):
         return [self]
 
@@ -860,9 +856,6 @@ class Expression(ValueProtocol):
     """
     Parameter expression
     """
-
-    fittable = False
-    fixed = True
 
     op: Union[Operators, "UserFunction"]  # Enumerated str type {function_name: display_name}
     args: Sequence[ValueType]
@@ -1562,8 +1555,6 @@ class Comparisons(Enum):
 @dataclass(init=False)
 class Constraint:
     """Express inequality constraints between model elements"""
-
-    fixed = True
 
     op: Comparisons
     a: ValueType
