@@ -518,7 +518,6 @@ class Parameter(ValueProtocol, SupportsPrior):
     def __repr__(self):
         return "Parameter(%s)" % self
 
-    # TODO: deprecate
     @classmethod
     def default(cls: type, value: Union[float, Tuple[float, float], ValueType], **kw) -> "Parameter":
         """
