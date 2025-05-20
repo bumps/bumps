@@ -325,6 +325,7 @@ class Parameter(ValueProtocol, SupportsPrior):
     id: str = field(metadata={"format": "uuid"})
     name: Optional[str] = field(default=None, init=False)
     slot: Union["Variable", ValueType]
+    fixed: bool = True  # Adds "fixed" to __annotations__ so that @dataclass can find it.
     limits: Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]] = (-inf, inf)
     bounds: Optional[Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]] = None
     distribution: DistributionType = field(default_factory=Uniform)
