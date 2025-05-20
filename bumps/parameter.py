@@ -145,14 +145,8 @@ class ValueProtocol(OperatorMixin):
     Provide a suite of operators for creating parameter expressions.
     """
 
-    fittable: bool = False
-    fixed: bool = True
     value: float
 
-    # TODO: Do values have names? Or do the names belong to the model parameter?
-    # name: str
-    # TODO: are priors on the parameter or on the value?
-    # bounds: Optional[BoundsType] = None
     def parameters(self) -> List["Parameter"]:
         # default implementation:
         return []
@@ -469,18 +463,6 @@ class Parameter(ValueProtocol, SupportsPrior):
             self._fixed = state
         elif not state:
             raise TypeError(f"value in {self.name} is not fittable")
-
-    ## Use the following if bounds are on the value rather than the parameter
-    # @property
-    # def bounds(self):
-    #    return getattr(self.slot, 'bounds', None)
-    # @bounds.setter
-    # def bounds(self, b):
-    #    if not hasattr(self.slot, 'bounds'):
-    #        raise TypeError(f"{self.name} is not fittable so bounds can't be set")
-    #    if self.slot.fittable:
-    #        self.slot.fixed = (b is None)
-    #    self.slot.bounds = b
 
     # Functional form of parameter value access
     def __call__(self):
