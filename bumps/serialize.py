@@ -264,7 +264,7 @@ def save_file(filename, problem):
         with open(filename, "w") as fid:
             json.dump(p, fid)
     except Exception as e:
-        logging.excpetion(e)
+        logging.exception(e)
         warnings.warn(f"failed to create JSON file {filename} for fit problem")
 
 
