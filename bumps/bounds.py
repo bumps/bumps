@@ -319,8 +319,7 @@ class Bounds:
         return self.limits[0] <= v <= self.limits[1]
 
     def __str__(self):
-        limits = tuple(num_format(v) for v in self.limits)
-        return "(%s,%s)" % limits
+        return f"({self.limits[0]},{self.limits[1]})"
 
     def satisfied(self, v) -> bool:
         lo, hi = self.limits
@@ -340,21 +339,6 @@ class Bounds:
             type=type(self).__name__,
             limits=self.limits,
         )
-
-
-# CRUFT: python 2.5 doesn't format indefinite numbers properly on windows
-
-
-def num_format(v):
-    """
-    Number formating which supports inf/nan on windows.
-    """
-    if isfinite(v):
-        return "%g" % v
-    elif isinf(v):
-        return "inf" if v > 0 else "-inf"
-    else:
-        return "NaN"
 
 
 @dataclass(init=False)
@@ -809,13 +793,7 @@ class BoundedNormal(Bounds):
         return self.limits[0] <= v <= self.limits[1]
 
     def __str__(self):
-        vals = (
-            self.limits[0],
-            self.limits[1],
-            self.mean,
-            self.std,
-        )
-        return "(%s,%s), norm(%s,%s)" % tuple(num_format(v) for v in vals)
+        return f"({self.limits[0]},{self.limits[1]}), norm({self.mean},{self.std})"
 
 
 @dataclass(init=False, frozen=True)
