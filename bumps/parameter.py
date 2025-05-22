@@ -1541,9 +1541,6 @@ def current(s: List[Parameter]):
     return [p.value for p in s]
 
 
-# ========= trash ===================
-
-
 @runtime_checkable
 class HasParameters(Protocol):
     parameters: Callable[[], Union[List[Parameter], Dict[str, Parameter]]]
