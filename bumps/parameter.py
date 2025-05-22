@@ -1578,7 +1578,6 @@ def make_linked_copies(
     make a list of <num> copies of an object with parameters
      - then link all the parameters, except
      - those in exclude
-     returns: list of copies
     """
     return [copy_linked(has_parameters, exclude=exclude) for _ in range(num)]
 
