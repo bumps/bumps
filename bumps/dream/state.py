@@ -159,6 +159,9 @@ def h5dump(group: "Group", state: "MCMCDraw"):
         good_chains = None if isinstance(state._good_chains, slice) else state._good_chains
         best_x, best_logp = state.best()
         best_gen = state._best_gen
+        # In case the MCMC chains are stored as 32-bit, save the current population
+        # as 64-bit so that resume is consistent.
+        current_population, current_logp = state._last_gen()
 
     Fields.gen_logp = np.asarray(Fields.gen_logp, dtype=UNCERTAINTY_DTYPE)
     Fields.thin_point = np.asarray(Fields.thin_point, dtype=UNCERTAINTY_DTYPE)
@@ -190,6 +193,8 @@ def h5load(group: "Group"):
     best_x = getattr(Fields, "best_x", None)
     best_logp = getattr(Fields, "best_logp", 0.0)
     best_gen = getattr(Fields, "best_gen", 0)
+    current_population = getattr(Fields, "current_population", None)
+    current_logp = getattr(Fields, "current_logp", None)
 
     # Create empty draw and fill it with loaded data
     state = MCMCDraw(0, 0, 0, 0, 0, 0, thinning)
@@ -213,6 +218,9 @@ def h5load(group: "Group"):
     state._update_draws = Fields.update_draws.astype(int)
     state._update_CR_weight = Fields.update_CR_weight
     state._outliers = []
+
+    if current_population is not None:
+        state._restore_last_gen(current_population, current_logp)
 
     if best_x is not None:
         state._best_x = best_x
@@ -600,6 +608,19 @@ class MCMCDraw(object):
         # (the usual case when this function is called to resume an
         # existing chain), then this returns the last row in the array.
         return (self._thin_point[self._thin_index - 1], self._thin_logp[self._thin_index - 1])
+
+    def _restore_last_gen(self, points, logp):
+        """
+        Restores last generation to the data structure.
+
+        This is needed when the MCMC chains are stored using 32-bit precision,
+        but the last generation is stored separately in 64-bit precision.
+        """
+        # Note: if generation number has wrapped and _gen_index is 0
+        # (the usual case when this function is called to resume an
+        # existing chain), then this returns the last row in the array.
+        self._thin_point[self._thin_index - 1] = points
+        self._thin_logp[self._thin_index - 1] = logp
 
     def _generation(self, new_draws: int, x: NDArray, logp: NDArray, accept: NDArray, force_keep: bool = False):
         """
