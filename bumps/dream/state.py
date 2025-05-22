@@ -123,9 +123,9 @@ def _h5_write_field(group: "Group", field: str, data: Union[NDArray, str]):
     if isinstance(data, str):
         dtype = h5py.string_dtype(encoding="utf-8")
         return group.create_dataset(field, data=data, dtype=dtype)
-    elif isinstance(data, int):
+    elif isinstance(data, (int, np.integer)) and not hasattr(data, "__len__"):
         return group.create_dataset(field, data=data, dtype=np.int64)
-    elif isinstance(data, float):
+    elif isinstance(data, (float, np.floating)) and not hasattr(data, "__len__"):
         return group.create_dataset(field, data=data, dtype=np.double)
     else:
         return group.create_dataset(field, data=data, dtype=data.dtype, compression=H5_COMPRESSION)
@@ -134,9 +134,9 @@ def _h5_write_field(group: "Group", field: str, data: Union[NDArray, str]):
 def _h5_read_field(group: "Group", field: str):
     raw_data = group[field][()]
     size = raw_data.size
-    if isinstance(raw_data, np.int64):
+    if isinstance(raw_data, np.integer):
         return int(raw_data)
-    elif isinstance(raw_data, np.double):
+    elif isinstance(raw_data, np.floating):
         return float(raw_data)
     elif size is not None and size > 0:
         return raw_data
