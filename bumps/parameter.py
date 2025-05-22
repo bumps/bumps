@@ -23,7 +23,7 @@ import uuid
 from functools import wraps
 from enum import Enum
 
-from typing import Type, TypeVar, Optional, Any, Union, Dict, Callable, Tuple, List, Sequence
+from typing import runtime_checkable, Optional, Any, Union, Dict, Callable, Tuple, List, Sequence, Protocol
 from .util import Literal
 
 import numpy as np
@@ -1544,25 +1544,43 @@ def current(s: List[Parameter]):
 # ========= trash ===================
 
 
-def copy_linked(has_parameters, free_names=None):
+@runtime_checkable
+class HasParameters(Protocol):
+    parameters: Callable[[], Union[List[Parameter], Dict[str, Parameter]]]
+
+
+def copy_linked(has_parameters: HasParameters, exclude: Optional[List[Parameter]] = None) -> HasParameters:
     """
     make a copy of an object with parameters
      - then link all the parameters, except
-     - those with names matching "free_names"
+     - those in exclude
     """
-    assert callable(getattr(has_parameters, "parameters", None)) == True
+    assert isinstance(has_parameters, HasParameters)
     from copy import deepcopy
 
     copied = deepcopy(has_parameters)
-    free_names = [] if free_names is None else free_names
+    exclude = [] if exclude is None else exclude
     original_pars = unique(has_parameters.parameters())
     copied_pars = unique(copied.parameters())
     for op, cp in zip(original_pars, copied_pars):
-        if not op.name in free_names:
-            cp.slot = op.slot
-        else:
-            cp.id = str(uuid.uuid4())
+        if isinstance(cp, Parameter):
+            if op not in exclude and not isinstance(cp.slot, Calculation):
+                cp.equals(op)
+            else:
+                cp.id = str(uuid.uuid4())
     return copied
+
+
+def make_linked_copies(
+    has_parameters: HasParameters, num: int = 1, exclude: Optional[List[Parameter]] = None
+) -> List[HasParameters]:
+    """
+    make a list of <num> copies of an object with parameters
+     - then link all the parameters, except
+     - those in exclude
+     returns: list of copies
+    """
+    return [copy_linked(has_parameters, exclude=exclude) for _ in range(num)]
 
 
 # ==== Comparison operators ===
