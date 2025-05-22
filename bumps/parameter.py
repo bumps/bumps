@@ -550,6 +550,29 @@ class Parameter(ValueProtocol, SupportsPrior):
         else:
             return cls(value, **kw)
 
+    @staticmethod
+    def calculation(obj: Optional["Parameter"], name: str, function: Callable[[], float]) -> "Parameter":
+        """
+        Create a parameter to hold a value derived from the model. This can be used in
+        parameter expressions, for example to constrain total thickness or to set the
+        value in the next segment equal to the value at the end of a freeform segment.
+
+        Note that this function should be called in the __init__ or __post_init__ methods of
+        the class where the parameter is defined, in order to bind the Calculation function
+        to the newly created (or deserialized) Parameter before it is used.
+
+        If obj is a Parameter, use it - otherwise create a new Parameter obj with the given name.
+
+        Then create a Calculation object and attach the evaluator function to the Calculation,
+        and put the Calculation in obj.slot
+
+        Returns obj: Parameter
+        """
+        if not isinstance(obj, Parameter):
+            obj = Parameter(name=name)
+        obj.slot = Calculation(function=function)
+        return obj
+
     def set(self, value):
         """
         Set a new value for the parameter, ignoring the bounds.
