@@ -128,10 +128,6 @@ def _h5_write_field(group: "Group", field: str, data: Union[NDArray, str]):
     elif isinstance(data, float):
         return group.create_dataset(field, data=data, dtype=np.double)
     else:
-        # Squash 64-bit arrays to 32-bit. This is lossy. The points in
-        # thin_draws may no longer evaluate to the values in thin_logp.
-        if data.dtype == np.float64:
-            data = np.asarray(data, dtype=UNCERTAINTY_DTYPE)
         return group.create_dataset(field, data=data, dtype=data.dtype, compression=H5_COMPRESSION)
 
 
@@ -163,6 +159,10 @@ def h5dump(group: "Group", state: "MCMCDraw"):
         good_chains = None if isinstance(state._good_chains, slice) else state._good_chains
         best_x, best_logp = state.best()
         best_gen = state._best_gen
+
+    Fields.gen_logp = np.asarray(Fields.gen_logp, dtype=UNCERTAINTY_DTYPE)
+    Fields.thin_point = np.asarray(Fields.thin_point, dtype=UNCERTAINTY_DTYPE)
+    Fields.thin_logp = np.asarray(Fields.thin_logp, dtype=UNCERTAINTY_DTYPE)
 
     # print(f"wrote {Fields.total_generations} generations")
     # print(f"{state._gen_offset=} {state.Ngen=}")
@@ -201,12 +201,12 @@ def h5load(group: "Group"):
     state._gen_index = 0
     state._gen_draws = Fields.gen_draws.astype(int)
     state._gen_acceptance_rate = Fields.AR
-    state._gen_logp = Fields.gen_logp
+    state._gen_logp = np.asarray(Fields.gen_logp, dtype="d")
     state._thin_count = Nthin
     state._thin_index = 0
     state._thin_draws = Fields.thin_draws.astype(int)
-    state._thin_logp = Fields.thin_logp
-    state._thin_point = Fields.thin_point
+    state._thin_logp = np.asarray(Fields.thin_logp, dtype="d")
+    state._thin_point = np.asarray(Fields.thin_point, dtype="d")
     state._gen_current = state._thin_point[-1].copy()
     state._update_count = Nupdate
     state._update_index = 0
