@@ -128,6 +128,10 @@ def _h5_write_field(group: "Group", field: str, data: Union[NDArray, str]):
     elif isinstance(data, float):
         return group.create_dataset(field, data=data, dtype=np.double)
     else:
+        # Squash 64-bit arrays to 32-bit. This is lossy. The points in
+        # thin_draws may no longer evaluate to the values in thin_logp.
+        if data.dtype == np.float64:
+            data = np.asarray(data, dtype=UNCERTAINTY_DTYPE)
         return group.create_dataset(field, data=data, dtype=data.dtype, compression=H5_COMPRESSION)
 
 
