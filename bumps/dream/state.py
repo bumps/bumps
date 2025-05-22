@@ -110,7 +110,7 @@ CREATE = gzip.open
 SelectionType = Optional[Dict[Union[int, Literal["logp"]], Tuple[float, float]]]
 
 
-UNCERTAINTY_DTYPE = "d"
+UNCERTAINTY_DTYPE = "f"
 MAX_LABEL_LENGTH = 1024
 LABEL_DTYPE = f"|S{MAX_LABEL_LENGTH}"
 H5_COMPRESSION = 5
