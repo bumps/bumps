@@ -550,6 +550,21 @@ class Parameter(ValueProtocol, SupportsPrior):
         else:
             return cls(value, **kw)
 
+    @staticmethod
+    def initialize_calculation(obj: Optional["Parameter"], name: str, function: Callable[[], float]) -> "Parameter":
+        """
+        If obj is a Parameter, use it - otherwise create a new Parameter obj with the given name.
+
+        Then create a Calculation object and attach the evaluator function to the Calculation,
+        and put the Calculation in obj.slot
+
+        Returns obj: Parameter
+        """
+        if not isinstance(obj, Parameter):
+            obj = Parameter(name=name)
+        obj.slot = Calculation(function=function)
+        return obj
+
     def set(self, value):
         """
         Set a new value for the parameter, ignoring the bounds.
