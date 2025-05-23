@@ -123,9 +123,9 @@ def _h5_write_field(group: "Group", field: str, data: Union[NDArray, str]):
     if isinstance(data, str):
         dtype = h5py.string_dtype(encoding="utf-8")
         return group.create_dataset(field, data=data, dtype=dtype)
-    elif isinstance(data, (int, np.integer)) and not hasattr(data, "__len__"):
+    elif isinstance(data, (int, np.integer)):
         return group.create_dataset(field, data=data, dtype=np.int64)
-    elif isinstance(data, (float, np.floating)) and not hasattr(data, "__len__"):
+    elif isinstance(data, (float, np.floating)):
         return group.create_dataset(field, data=data, dtype=np.double)
     else:
         return group.create_dataset(field, data=data, dtype=data.dtype, compression=H5_COMPRESSION)
