@@ -110,7 +110,7 @@ CREATE = gzip.open
 SelectionType = Optional[Dict[Union[int, Literal["logp"]], Tuple[float, float]]]
 
 
-UNCERTAINTY_DTYPE = "d"
+UNCERTAINTY_DTYPE = "f"
 MAX_LABEL_LENGTH = 1024
 LABEL_DTYPE = f"|S{MAX_LABEL_LENGTH}"
 H5_COMPRESSION = 5
@@ -159,6 +159,13 @@ def h5dump(group: "Group", state: "MCMCDraw"):
         good_chains = None if isinstance(state._good_chains, slice) else state._good_chains
         best_x, best_logp = state.best()
         best_gen = state._best_gen
+        # In case the MCMC chains are stored as 32-bit, save the current population
+        # as 64-bit so that resume is consistent.
+        current_population, current_logp = state._last_gen()
+
+    Fields.gen_logp = np.asarray(Fields.gen_logp, dtype=UNCERTAINTY_DTYPE)
+    Fields.thin_point = np.asarray(Fields.thin_point, dtype=UNCERTAINTY_DTYPE)
+    Fields.thin_logp = np.asarray(Fields.thin_logp, dtype=UNCERTAINTY_DTYPE)
 
     # print(f"wrote {Fields.total_generations} generations")
     # print(f"{state._gen_offset=} {state.Ngen=}")
@@ -186,6 +193,8 @@ def h5load(group: "Group"):
     best_x = getattr(Fields, "best_x", None)
     best_logp = getattr(Fields, "best_logp", 0.0)
     best_gen = getattr(Fields, "best_gen", 0)
+    current_population = getattr(Fields, "current_population", None)
+    current_logp = getattr(Fields, "current_logp", None)
 
     # Create empty draw and fill it with loaded data
     state = MCMCDraw(0, 0, 0, 0, 0, 0, thinning)
@@ -197,18 +206,21 @@ def h5load(group: "Group"):
     state._gen_index = 0
     state._gen_draws = Fields.gen_draws.astype(int)
     state._gen_acceptance_rate = Fields.AR
-    state._gen_logp = Fields.gen_logp
+    state._gen_logp = np.asarray(Fields.gen_logp, dtype="d")
     state._thin_count = Nthin
     state._thin_index = 0
     state._thin_draws = Fields.thin_draws.astype(int)
-    state._thin_logp = Fields.thin_logp
-    state._thin_point = Fields.thin_point
+    state._thin_logp = np.asarray(Fields.thin_logp, dtype="d")
+    state._thin_point = np.asarray(Fields.thin_point, dtype="d")
     state._gen_current = state._thin_point[-1].copy()
     state._update_count = Nupdate
     state._update_index = 0
     state._update_draws = Fields.update_draws.astype(int)
     state._update_CR_weight = Fields.update_CR_weight
     state._outliers = []
+
+    if current_population is not None:
+        state._restore_last_gen(current_population, current_logp)
 
     if best_x is not None:
         state._best_x = best_x
@@ -596,6 +608,19 @@ class MCMCDraw(object):
         # (the usual case when this function is called to resume an
         # existing chain), then this returns the last row in the array.
         return (self._thin_point[self._thin_index - 1], self._thin_logp[self._thin_index - 1])
+
+    def _restore_last_gen(self, points, logp):
+        """
+        Restores last generation to the data structure.
+
+        This is needed when the MCMC chains are stored using 32-bit precision,
+        but the last generation is stored separately in 64-bit precision.
+        """
+        # Note: if generation number has wrapped and _gen_index is 0
+        # (the usual case when this function is called to resume an
+        # existing chain), then this returns the last row in the array.
+        self._thin_point[self._thin_index - 1] = points
+        self._thin_logp[self._thin_index - 1] = logp
 
     def _generation(self, new_draws: int, x: NDArray, logp: NDArray, accept: NDArray, force_keep: bool = False):
         """
