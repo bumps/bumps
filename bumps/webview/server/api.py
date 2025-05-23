@@ -430,13 +430,11 @@ async def apply_parameters(pathlist: List[str], filename: str):
             title="Parameters applied",
             timeout=2000,
         )
-    except Exception:
-        await log(f"Unable to apply parameters from {fullpath}")
-        await add_notification(
-            f"Unable to apply parameters from {fullpath}",
-            title="Error applying parameters",
-            timeout=2000,
-        )
+    except Exception as exc:
+        msg = f"error loading parameters from {fullpath}: {exc}"
+        logger.error(msg)
+        await log(msg)
+        await add_notification(msg, title="Error applying parameters", timeout=2000)
 
 
 @register
