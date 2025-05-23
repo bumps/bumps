@@ -867,7 +867,7 @@ class DreamFit(FitBase):
         ("pop", 10),
         ("init", "eps"),
         ("thin", 1),
-        ("alpha", 0.01),
+        ("alpha", 0.0),
         ("outliers", "none"),
         ("trim", False),
         ("steps", 0),  # deprecated: use --samples instead
