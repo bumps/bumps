@@ -216,7 +216,7 @@ class ProblemState:
         # write_string(group, 'filename', self.filename)
 
     def read(self, parent: "Group"):
-        group = parent.require_group("problem")
+        group = parent["problem"]
         self.serializer = read_string(group, "serializer")
         self.fitProblem = read_fitproblem(group, "fitProblem", self.serializer)
         # self.pathlist = read_json(group, 'pathlist')
