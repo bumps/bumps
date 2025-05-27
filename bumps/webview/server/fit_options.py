@@ -98,7 +98,9 @@ Setting(
     Range(0, 0.1),
     """\
     Stop when probability that population is varying < alpha or use default
-    zero for no convergence test.""",
+    zero for no convergence test.
+    (Note that while p-values vary from 0 to 1, values for alpha > 0.1 result in
+    an unstable check for convergence and are therefore disallowed)""",
 )
 Setting("time", "Max time", float, "Maximum number of hours to run the fit, or zero for no maximum.")
 
