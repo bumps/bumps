@@ -466,6 +466,18 @@ class FitProblem(Generic[FitnessType]):
         """
         return [p.residual() for p in self._bounded]
 
+    def chisq(self, norm=True):
+        """
+        See documentation for :meth:`chisq_str`.
+        """
+        pparameter, pconstraints, pmodel, failing_constraints = self._nllf_components()
+        if norm:
+            chisq_norm, chisq_err = nllf_scale(self)
+            chisq = pmodel * chisq_norm
+        else:
+            chisq = pmodel
+        return chisq
+
     # TODO: Too many versions of chisq about.
     def chisq_str(self):
         """
