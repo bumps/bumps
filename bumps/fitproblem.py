@@ -58,6 +58,7 @@ import numpy as np
 from numpy import inf, isnan, nan
 
 from . import parameter, util
+from . import bounds
 from .parameter import to_dict, Parameter, Variable, tag_all
 from .formatnum import format_uncertainty
 
@@ -554,6 +555,18 @@ class FitProblem(Generic[FitnessType]):
         """
         # print("In model reset with", self.model_parameters())
         all_parameters = parameter.unique(self.model_parameters())
+        for p in all_parameters:
+            # TODO: this is a shim to accomodate Expression, Calculation etc. being
+            # put into attributes that have type "Parameter" (in user scripts)
+            # Do we cause those scripts to break instead?
+            # Or do we autoconvert to .equals()?
+            if hasattr(p, "add_prior"):
+                p.add_prior(p.distribution, bounds=p.bounds, limits=p.limits)
+
+        # add_prior can result in reparameterization of the model (dynamic bounds),
+        # so we need to recompute the parameters.
+        all_parameters = parameter.unique(self.model_parameters())
+
         # print "all_parameters",all_parameters
         # for p in all_parameters:
         #     if hasattr(p, 'reset_prior'):
@@ -562,16 +575,6 @@ class FitProblem(Generic[FitnessType]):
         #         raise ValueError(f"{p} does not have prior")
         broken = []
         for p in all_parameters:
-            # slot = p.slot
-            # value = p.value
-
-            # TODO: this is a shim to accomodate Expression, Calculation etc. being
-            # put into attributes that have type "Parameter" (in user scripts)
-            # Do we cause those scripts to break instead?
-            # Or do we autoconvert to .equals()?
-            if hasattr(p, "add_prior"):
-                p.add_prior(p.distribution, bounds=p.bounds, limits=p.limits)
-
             # TODO: currently this logic for showing breaking constraints to the user
             # is in the chisq_str execution path instead of on model_reset - should it be here instead?
 
@@ -581,7 +584,8 @@ class FitProblem(Generic[FitnessType]):
                 value = p.value
                 if (p.limits[0] > value) or (value > p.limits[1]):
                     broken.append(f"{p}={value} is outside {p.limits}")
-                elif not np.isfinite(p.prior.nllf(value)):
+            elif hasattr(p, "prior") and p.has_prior():
+                if not np.isfinite(p.prior.nllf(value)):
                     broken.append(f"{p}={value} is outside {p.prior}")
 
         broken.extend([f"constraint {c} is unsatisfied" for c in self.constraints if float(c) == inf])

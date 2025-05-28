@@ -107,6 +107,7 @@ def _rehydrate(obj, references: Dict[str, object]):
                     return hydrated
                 except Exception as e:
                     # there is a type, but it is not found...
+                    raise e
                     raise ValueError("type %s not found!, error: %s" % (t, e), obj)
     elif isinstance(obj, list):
         # rehydrate all the items

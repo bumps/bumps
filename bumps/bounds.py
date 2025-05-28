@@ -67,6 +67,7 @@ __all__ = [
     "Normal",
     "BoundedNormal",
     "SoftBounded",
+    "DynamicBounds",
 ]
 
 import sys
@@ -84,7 +85,10 @@ except ImportError:
     # failure if it doesn't exist.
     pass
 
-from typing import Optional, Any, Dict, Union, Literal, Tuple, Protocol
+from typing import Optional, Any, Dict, Union, Literal, Tuple, Protocol, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from bumps.parameter import Parameter, Expression
 
 LimitValue = Union[float, Literal["-inf", "inf"]]
 LimitsType = Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]
@@ -211,8 +215,12 @@ def init_bounds(v) -> "Bounds":
     if hi is None:
         hi = inf
     # TODO: consider issuing a warning instead of correcting reversed bounds
-    if lo >= hi:
+    if float(lo) >= float(hi):
         lo, hi = hi, lo
+
+    if hasattr(lo, "value") or hasattr(hi, "value"):
+        return DynamicBounds(lo, hi)
+
     if isinf(lo) and isinf(hi):
         return Unbounded()
     elif isinf(lo):
@@ -543,16 +551,18 @@ class Bounded(Bounds):
         return (self.lo, self.hi)
 
     def random(self, n=1, target=1.0):
-        # print("= uniform",lo,hi)
-        return RNG.uniform(self.lo, self.hi, size=n)
+        lo, hi = self.limits
+        return RNG.uniform(lo, hi, size=n)
 
     def nllf(self, value):
-        return 0 if self.lo <= value <= self.hi else inf
+        lo, hi = self.limits
+        return 0 if lo <= value <= hi else inf
         # return self._nllf_scale if lo<=value<=hi else inf
 
     def residual(self, value):
         # TODO: penalty of 16 for being outside the bounds is too weak
-        return -4 if self.lo > value else (4 if self.hi < value else 0)
+        lo, hi = self.limits
+        return -4 if lo > value else (4 if hi < value else 0)
 
     def get01(self, x):
         lo, hi = self.limits
@@ -575,6 +585,41 @@ class Bounded(Bounds):
     def putfull(self, v):
         # print(f"Bounded {v} in [{self.lo}, {self.hi}] => {_get01_inf(v)}")
         return self.put01(_get01_inf(v))
+
+
+@dataclass
+class DynamicBounds(Bounded):
+    """
+    Dynamic bounds are bounds that can change during the fit.
+    This is useful for parameters that have a range that changes
+    based on other parameters.
+    """
+
+    lo: Union[float, "Parameter", "Expression"] = field(metadata={"description": "lower end of user bounds"})
+    hi: Union[float, "Parameter", "Expression"] = field(metadata={"description": "upper end of user bounds"})
+    lo_limit: float = field(default=-inf, metadata={"description": "lower physical limit (from model)"})
+    hi_limit: float = field(default=inf, metadata={"description": "upper physical limit (from model)"})
+
+    @property
+    def limits(self):
+        """Return the current values of the bounds objects as a tuple of floats."""
+        # print("DynamicBounds.limits called", self.lo, self.lo_limit, self.hi, self.hi_limit)
+        # print("DynamicBounds as floats", float(self.lo), float(self.hi))
+        # print("calculated lo:", max(float(self.lo), self.lo_limit))
+        # print("calculated hi:", min(float(self.hi), self.hi_limit))
+        return (max(float(self.lo), float(self.lo_limit)), min(float(self.hi), float(self.hi_limit)))
+
+    def parameters(self):
+        """
+        Return a list of parameters used in the bounds.
+        This is useful for updating the bounds when the parameters change.
+        """
+        output = []
+        if hasattr(self.lo, "parameters"):
+            output.extend(self.lo.parameters())
+        if hasattr(self.hi, "parameters"):
+            output.extend(self.hi.parameters())
+        return output
 
 
 class DistProtocol(Protocol):

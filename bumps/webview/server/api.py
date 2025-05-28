@@ -38,7 +38,7 @@ from bumps.fitters import (
     format_uncertainty,
 )
 from bumps.mapper import MPMapper
-from bumps.parameter import Parameter, Constant, Variable, unique
+from bumps.parameter import Parameter, Constant, FixedLimitParameter, Reparameterized, Variable, unique
 import bumps.cli
 import bumps.fitproblem
 import bumps.dream.views
@@ -1440,6 +1440,7 @@ def params_to_list(params, lookup=None, pathlist=None, links=None) -> List[Param
                 new_item["min_str"] = VALUE_FORMAT.format(nice(lo))
                 new_item["max_str"] = VALUE_FORMAT.format(nice(hi))
             lookup[params.id] = new_item
+            params_to_list(params.parameters(), lookup=lookup, pathlist=pathlist + ["subparameters"], links=links)
     elif callable(getattr(params, "parameters", None)):
         # handle Expression, Constant, etc.
         subparams = params.parameters()
