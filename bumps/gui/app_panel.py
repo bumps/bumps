@@ -226,8 +226,8 @@ class AppPanel(wx.Panel):
         self.aui = wx.aui.AuiNotebook(self)
         self.aui.Bind(wx.aui.EVT_AUINOTEBOOK_PAGE_CLOSE, self.OnViewTabClose)
         self.view_constructor = {
-            "data": plugin.DATA_VIEW_PLUGINS.get(plugin.ACTIVE_PLUGIN_NAME, DataView),
-            "model": plugin.MODEL_VIEW_PLUGINS.get(plugin.ACTIVE_PLUGIN_NAME, None),
+            "data": plugin.DATA_VIEW.get(plugin.ACTIVE_PLUGIN_NAME, DataView),
+            "model": plugin.MODEL_VIEW.get(plugin.ACTIVE_PLUGIN_NAME, None),
             "parameter": ParameterView,
             "summary": SummaryView,
             "log": LogView,
@@ -584,7 +584,7 @@ class AppPanel(wx.Panel):
             raise ValueError("Unknown fit progress message " + event.message)
 
     def new_model(self):
-        gen = plugin.NEW_MODEL_PLUGINS.get(plugin.ACTIVE_PLUGIN_NAME, lambda: None)
+        gen = plugin.NEW_MODEL.get(plugin.ACTIVE_PLUGIN_NAME, lambda: None)
 
         self.set_model(gen())
 
@@ -608,7 +608,7 @@ class AppPanel(wx.Panel):
         except ImportError:
             from pickle import dump
         try:
-            plugin_save_json = plugin.SAVE_JSON_PLUGINS.get(plugin.ACTIVE_PLUGIN_NAME, None)
+            plugin_save_json = plugin.SAVE_JSON.get(plugin.ACTIVE_PLUGIN_NAME, None)
             if plugin_save_json is not None:
                 plugin_save_json(self.model, path)
             elif hasattr(self.model, "save_json"):

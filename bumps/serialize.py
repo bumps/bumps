@@ -54,13 +54,12 @@ def deserialize(serialized: SerializedObject, migration: bool = True):
     if migration:
         # delayed import to avoid circular import issues:
         # some plugins may import bumps.serialize
-        from .plugin import MIGRATION_PLUGINS
+        from .plugin import MIGRATION
 
         # first apply built-in migrations:
         _, serialized = migrate(serialized)
         # then apply plugin migrations:
-        for plugin_name in MIGRATION_PLUGINS:
-            migration_fn = MIGRATION_PLUGINS[plugin_name]
+        for plugin_name, migration_fn in MIGRATION.items():
             if DEBUG:
                 print(f"deserialize(): MIGRATING {plugin_name} {serialized.get('schema', 'unknown')}")
             try:
