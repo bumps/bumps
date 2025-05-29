@@ -55,6 +55,8 @@ if TYPE_CHECKING:
 
 ACTIVE_PLUGIN_NAME: Optional[str] = None
 
+ENTRY_POINTS = importlib.metadata.entry_points()
+
 
 def load_plugin_group(group: str):
     """
@@ -62,7 +64,12 @@ def load_plugin_group(group: str):
 
     This function returns a list of loaded plugins for the specified group.
     """
-    eps = importlib.metadata.entry_points().select(group=group)
+    if getattr(ENTRY_POINTS, "select", None) is None:
+        # For importlib.metadata versions < 3.10, use the deprecated method
+        eps = ENTRY_POINTS.get(group, [])
+    else:
+        # For importlib.metadata versions >= 3.10, use the select method
+        eps = ENTRY_POINTS.select(group=group)
     outputs = dict()
     for ep in eps:
         try:
