@@ -122,22 +122,33 @@ def calc_errors(problem, points):
     plugin for the application.
     Returns *errs* for :func:`show_errors`.
     """
-    original = problem.getp()
-    try:
-        ret = plugin.calc_errors(problem, points)
-    except Exception:
-        info = ["error calculating distribution on model", traceback.format_exc()]
-        logging.error("\n".join(info))
-        ret = None
-    finally:
-        problem.setp(original)
-    return ret
+    plugin_calc_errors = plugin.CALC_ERRORS.get(plugin.ACTIVE_PLUGIN_NAME, None)
+    if plugin_calc_errors is not None:
+        original = problem.getp()
+        try:
+            ret = plugin_calc_errors(problem, points)
+        except Exception:
+            info = ["error calculating distribution on model", traceback.format_exc()]
+            logging.error("\n".join(info))
+            ret = None
+        finally:
+            problem.setp(original)
+        return ret
+    return None
 
 
-def show_errors(errs, fig=None):
+def show_errors(errs, axes=None):
     """
     Display the confidence regions returned by :func:`calc_errors`.
 
     The content of *errs* depends on the active plugin.
     """
-    return plugin.show_errors(errs, fig=fig)
+    plugin_show_errors = plugin.SHOW_ERRORS.get(plugin.ACTIVE_PLUGIN_NAME, None)
+    if plugin_show_errors is not None:
+        try:
+            return plugin_show_errors(errs, axes=axes)
+        except Exception:
+            info = ["error displaying model confidence intervals", traceback.format_exc()]
+            logging.error("\n".join(info))
+            return None
+    return None
