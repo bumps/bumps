@@ -10,7 +10,6 @@ from types import GeneratorType
 import traceback
 import warnings
 
-from . import plugin
 from .util import SCHEMA_ATTRIBUTE_NAME, get_libraries
 
 DEBUG = False
@@ -53,10 +52,23 @@ def deserialize(serialized: SerializedObject, migration: bool = True):
     """
 
     if migration:
+        # delayed import to avoid circular import issues:
+        # some plugins may import bumps.serialize
+        from .plugin import MIGRATION_PLUGINS
+
         # first apply built-in migrations:
         _, serialized = migrate(serialized)
         # then apply plugin migrations:
-        serialized = plugin.migrate_serialized(serialized)
+        for plugin_name in MIGRATION_PLUGINS:
+            migration_fn = MIGRATION_PLUGINS[plugin_name]
+            if DEBUG:
+                print(f"deserialize(): MIGRATING {plugin_name} {serialized.get('schema', 'unknown')}")
+            try:
+                # plugin.migrate_serialized should return a serialized object
+                # with the same structure as SerializedObject
+                serialized = migration_fn(serialized)
+            except Exception as e:
+                warnings.warn(f"migration {plugin_name} failed: {str(e)}")
 
     serialized_references = serialized[REFERENCES_KEY]
     references = {}
