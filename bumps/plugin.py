@@ -41,6 +41,98 @@ __all__ = [
     "migrate_serialized",
 ]
 
+import importlib.metadata
+import logging
+import traceback
+
+from typing import Callable, Dict, Generic, List, Optional, Protocol, TypeVar, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from bumps.fitproblem import FitProblem
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import wx
+
+ACTIVE_PLUGIN_NAME: Optional[str] = None
+
+
+def load_plugin_group(group: str):
+    """
+    Load all plugins in the specified group.
+
+    This function returns a list of loaded plugins for the specified group.
+    """
+    eps = importlib.metadata.entry_points().select(group=group)
+    outputs = dict()
+    for ep in eps:
+        try:
+            plugin = ep.load()
+        except Exception as e:
+            # Log the error and continue loading other plugins
+            logging.error(f"Failed to load plugin {ep.name}: {e}")
+            traceback.print_exc()
+        if ep.name in outputs:
+            logging.warning(f"Duplicate plugin name found: {ep.name}. Overwriting previous entry.")
+        outputs[ep.name] = plugin
+    return outputs
+
+
+"""
+Every registered bumps.serialization.migration plugin should be a
+function that takes a bumps-serialized (JSON) dictionary and applies
+transformations to migrate older versions to the current schema required
+for the library, returning the transformed dictionary.
+"""
+MIGRATION_PLUGINS: Dict[str, Callable[[dict], dict]] = load_plugin_group("bumps.serialization.migration")
+
+
+"""
+Every registered bumps.model.load plugin should be a function that takes
+a filename and returns a model object or None if the file does not
+contain a model of the appropriate type.
+"""
+MODEL_LOADER_PLUGINS: Dict[str, Callable[[str], "FitProblem"]] = load_plugin_group("bumps.model.load")
+
+
+"""
+Every registered bumps.model.new plugin should be a function that returns
+a new model object.
+"""
+NEW_MODEL_PLUGINS: Dict[str, Callable[[], "FitProblem"]] = load_plugin_group("bumps.model.new")
+
+
+"""
+Every registered bumps.errplot.matplotlib plugin should be a function that
+takes a FitProblem, sample data, and an optional matplotlib Axes,
+and displays the model with uncertainty on that Axes object (or the current axes if None).
+"""
+ERRPLOT_PLUGINS: Dict[str, Callable[["FitProblem", "np.ndarray", Optional["plt.Axes"]], None]] = load_plugin_group(
+    "bumps.errplot.matplotlib"
+)
+
+
+"""
+Every registered bumps.wx_gui.data_view plugin should be a wx.Panel
+that provides a data view for the FitProblem.
+"""
+DATA_VIEW_PLUGINS: Dict[str, "wx.Panel"] = load_plugin_group("bumps.wx_gui.data_view")
+
+
+"""
+Every registered bumps.wx_gui.model_view plugin should be a wx.Panel
+that provides a model view for the FitProblem.
+"""
+MODEL_VIEW_PLUGINS: Dict[str, "wx.Panel"] = load_plugin_group("bumps.wx_gui.model_view")
+
+
+"""
+Every registered bumps.serialize.save_json plugin should be a function
+that takes a FitProblem and a path string, and saves the FitProblem
+as a JSON file to that path.
+"""
+SAVE_JSON_PLUGINS: Dict[str, Callable[["FitProblem", str], None]] = load_plugin_group("bumps.serialize.save_json")
+
+
 # TODO: refl1d wants to do the following after cli.getopts()
 #
 #    from refl1d.probe import Probe
@@ -48,77 +140,3 @@ __all__ = [
 #
 # It also wants to modify the opts so that more plotters are available,
 # such as Fresnel.
-
-
-def new_model():
-    """
-    Return a new empty model or None.
-
-    Called in response to >File >New from the GUI.  Creates a new empty
-    model.  Also triggered if GUI is started without a model.
-    """
-    return None
-
-
-def load_model(filename):
-    """
-    Return a model stored within a file.
-
-    This routine is for specialized model descriptions not defined by script.
-
-    If the filename does not contain a model of the appropriate type (e.g.,
-    because the extension is incorrect), then return None.
-
-    No need to load pickles or script models.  These will be attempted if
-    load_model returns None.
-    """
-    return None
-
-
-def calc_errors(problem, sample):
-    """
-    Gather data needed to display uncertainty in the model and the data.
-
-    Returns an object to be passed later to :func:`show_errors`.
-    """
-    return None
-
-
-def show_errors(errs, fig=None):
-    """
-    Display the model with uncertainty on the current figure.
-
-    *errs* is the data returned from calc_errs.
-    """
-    pass
-
-
-def data_view():
-    """
-    Panel factory for the data tab in the GUI.
-
-    If your model has an adequate show() function this should not be
-    necessary.
-    """
-    from .gui.data_view import DataView
-
-    return DataView
-
-
-def model_view():
-    """
-    Panel factory for the model tab in the GUI.
-
-    Return None if not present.
-    """
-    return None
-
-
-def migrate_serialized(model_dict):
-    """
-    Migrate serialized model to the current version.
-
-    This function is called when loading a model from a file.  It is
-    used to update the model to the current version of the plugin.
-    """
-    return model_dict
