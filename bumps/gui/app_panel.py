@@ -40,6 +40,7 @@ from ..dream import stats as dream_stats
 from ..util import redirect_console
 from . import signal
 from .convergence_view import ConvergenceView
+from .data_view import DataView
 from .fit_dialog import show_fit_config
 from .fit_thread import EVT_FIT_COMPLETE, EVT_FIT_PROGRESS, FitThread
 from .log_view import LogView
@@ -225,8 +226,8 @@ class AppPanel(wx.Panel):
         self.aui = wx.aui.AuiNotebook(self)
         self.aui.Bind(wx.aui.EVT_AUINOTEBOOK_PAGE_CLOSE, self.OnViewTabClose)
         self.view_constructor = {
-            "data": plugin.data_view(),
-            "model": plugin.model_view(),
+            "data": plugin.DATA_VIEW_PLUGINS.get(plugin.ACTIVE_PLUGIN_NAME, DataView),
+            "model": plugin.MODEL_VIEW_PLUGINS.get(plugin.ACTIVE_PLUGIN_NAME, None),
             "parameter": ParameterView,
             "summary": SummaryView,
             "log": LogView,
@@ -583,7 +584,7 @@ class AppPanel(wx.Panel):
             raise ValueError("Unknown fit progress message " + event.message)
 
     def new_model(self):
-        from ..plugin import new_model as gen
+        gen = plugin.NEW_MODEL_PLUGINS.get(plugin.ACTIVE_PLUGIN_NAME, lambda: None)
 
         self.set_model(gen())
 
@@ -607,8 +608,9 @@ class AppPanel(wx.Panel):
         except ImportError:
             from pickle import dump
         try:
-            if hasattr(plugin, "save_json"):
-                plugin.save_json(self.model, path)
+            plugin_save_json = plugin.SAVE_JSON_PLUGINS.get(plugin.ACTIVE_PLUGIN_NAME, None)
+            if plugin_save_json is not None:
+                plugin_save_json(self.model, path)
             elif hasattr(self.model, "save_json"):
                 self.model.save_json(path)
             with open(path, "wb") as fid:
