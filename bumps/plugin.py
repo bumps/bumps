@@ -39,7 +39,7 @@ from typing import Any, Callable, Dict, Generic, List, Optional, Protocol, TypeV
 
 if TYPE_CHECKING:
     from bumps.fitproblem import FitProblem
-    import numpy as np
+    import numpy
     import matplotlib.pyplot as plt
     import wx
 
@@ -104,7 +104,7 @@ that takes a FitProblem and a set of points in parameter space,
 and returns an object representing errors for the model at those points.
 (that object will be plotted by the show_errors plugin).
 """
-CALC_ERRORS: Dict[str, Callable[["FitProblem", "np.ndarray"], Any]] = load_plugin_group("bumps.calc_errors")
+CALC_ERRORS: Dict[str, Callable[["FitProblem", "numpy.ndarray"], Any]] = load_plugin_group("bumps.calc_errors")
 
 
 """

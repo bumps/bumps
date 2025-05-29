@@ -79,6 +79,8 @@ nitpick_ignore = [
     ("py:class", "bumps.fitproblem.FitnessType"),
     ("py:obj", "bumps.fitproblem.FitnessType"),
     ("py:class", "bumps.dream.core.Model"),
+    ("py:class", "wx.Panel"),
+    ("py:class", "plt.Axes"),
 ]
 
 # Add any paths that contain templates here, relative to this directory.
