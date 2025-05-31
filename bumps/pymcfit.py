@@ -49,12 +49,10 @@ class PyMCProblem(object):
         pass
 
     def chisq(self):
-        return self.nllf()  # /self.dof
+        return self.nllf() / self.dof
 
     def chisq_str(self):
         return "%g" % self.chisq()
-
-    __call__ = chisq
 
     def nllf(self, pvec=None):
         if pvec is not None:
@@ -63,6 +61,8 @@ class PyMCProblem(object):
             return -sum(c.logp for c in self.costs)
         except self.ZeroProbability:
             return inf
+
+    __call__ = nllf
 
     def setp(self, values):
         for par, shape, size, offset in self.pars:

@@ -245,6 +245,10 @@ class Bounds:
     def limits(self):
         return (-inf, inf)
 
+    @property
+    def dof(self):
+        return 0
+
     def get01(self, x):
         """
         Convert value into [0,1] for optimizers which are bounds constrained.
@@ -607,10 +611,16 @@ class Distribution(Bounds):
     def __init__(self, dist):
         object.__setattr__(self, "dist", dist)
 
+    @property
+    def dof(self):
+        return 1
+
     def random(self, n=1, target=1.0):
         return self.dist.rvs(n)
 
     def nllf(self, value):
+        # TODO: This is inconsistent with normal below, which does not include normalizer
+        # What is the chisq/2 equivalent for an arbitrary distribution?
         return -log(self.dist.pdf(value))
 
     def residual(self, value):
@@ -678,7 +688,7 @@ class Normal(Distribution):
         # -log(P(v)) = -(-0.5*(v-mean)**2/std**2 - log( (2*pi*std**2) ** 0.5))
         #            = 0.5*(v-mean)**2/std**2 + log(2*pi*std**2)/2
         mean, std = self.dist.args
-        return 0.5 * ((value - mean) / std) ** 2 + self._nllf_scale
+        return 0.5 * ((value - mean) / std) ** 2  # + self._nllf_scale
 
     def residual(self, value):
         mean, std = self.dist.args
@@ -726,6 +736,10 @@ class BoundedNormal(Bounds):
     def limits(self):
         return (self.lo, self.hi)
 
+    @property
+    def dof(self):
+        return 1
+
     def get01(self, x):
         """
         Convert value into [0,1] for optimizers which are bounds constrained.
@@ -767,7 +781,7 @@ class BoundedNormal(Bounds):
         likelihood scaled so that the maximum probability is one.
         """
         if value in self:
-            return 0.5 * ((value - self.mean) / self.std) ** 2 + self._nllf_scale
+            return 0.5 * ((value - self.mean) / self.std) ** 2  # + self._nllf_scale
         else:
             return inf
 
@@ -825,6 +839,12 @@ class SoftBounded(Bounds):
     def limits(self):
         return (self.lo, self.hi)
 
+    @property
+    def dof(self):
+        # Treat as a uniform distribution, with no additional dof
+        # associated with the parameter.
+        return 0
+
     def random(self, n=1, target=1.0):
         return RNG.uniform(self.lo, self.hi, size=n)
 
@@ -838,7 +858,7 @@ class SoftBounded(Bounds):
             z = value - self.hi
         else:
             z = 0
-        return (z / self.std) ** 2 / 2 + self._nllf_scale
+        return (z / self.std) ** 2 / 2  # + self._nllf_scale
 
     def residual(self, value):
         if value < self.lo:
@@ -934,7 +954,8 @@ def test_normal():
     """
     epsilon = 1e-10
     n = Normal(mean=0.5, std=1.0)
-    assert abs(n.nllf(0.5) - 0.9189385332046727) < epsilon
+    # assert abs(n.nllf(0.5) - 0.9189385332046727) < epsilon  # root 2 pi sigma^2 norm
+    assert abs(n.nllf(0.5) - 0.0) < epsilon
     assert abs(n.nllf(1.0) - n.nllf(0.0)) < epsilon
     assert abs(n.residual(0.5) - 0.0) < epsilon
     assert abs(n.residual(1.0) - 0.5) < epsilon

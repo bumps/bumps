@@ -475,7 +475,7 @@ async def stop_fit(wait=True):
 
 
 @register
-async def get_chisq(problem: Optional[bumps.fitproblem.FitProblem] = None, nllf=None):
+async def get_chisq(problem: Optional[bumps.fitproblem.FitProblem] = None, nllf=None) -> str:
     problem = state.problem.fitProblem if problem is None else problem
     if problem is None:
         return ""
