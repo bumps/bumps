@@ -31,10 +31,10 @@ class GUIProgressMonitor(monitor.TimedUpdate):
             self, progress=progress or PROGRESS_DELAY, improvement=improvement or IMPROVEMENT_DELAY
         )
         self.problem = problem
+        self._scale, self._err = nllf_scale(self.problem)
 
     def show_progress(self, history):
-        scale, err = nllf_scale(self.problem)
-        chisq = format_uncertainty(scale * history.value[0], err)
+        chisq = format_uncertainty(self._scale * history.value[0], self._err)
         evt = dict(
             # problem=self.problem,
             message="progress",

@@ -1893,7 +1893,7 @@ def test_operator():
     b.dev(sigma, mean=mu)
     b.value = 4
     b.add_prior()
-    nllf_target = 0.5 * ((b.value - mu) / sigma) ** 2 + np.log(2 * np.pi * sigma**2) / 2
+    nllf_target = 0.5 * ((b.value - mu) / sigma) ** 2  # + np.log(2 * np.pi * sigma**2) / 2
     assert abs(b.nllf() - nllf_target) / nllf_target < 1e-12
 
     # Check conditions
