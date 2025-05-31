@@ -32,11 +32,7 @@ import uuid
 import traceback
 import math
 
-from bumps.fitters import (
-    FitDriver,
-    nllf_scale,
-    format_uncertainty,
-)
+from bumps.fitters import FitDriver
 from bumps.mapper import MPMapper
 from bumps.parameter import Parameter, Constant, Variable, unique
 import bumps.cli
@@ -474,13 +470,11 @@ async def stop_fit(wait=True):
 
 @register
 async def get_chisq(problem: Optional[bumps.fitproblem.FitProblem] = None, nllf=None) -> str:
-    problem = state.problem.fitProblem if problem is None else problem
+    if problem is None:
+        problem = state.problem.fitProblem
     if problem is None:
         return ""
-    nllf = problem.nllf() if nllf is None else nllf
-    scale, err = nllf_scale(problem)
-    chisq = format_uncertainty(scale * nllf, err)
-    return chisq
+    return problem.chisq_str(norm=True, compact=True)
 
 
 # TODO: Ask the fitter for the number of steps instead of guessing

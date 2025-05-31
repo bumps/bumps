@@ -386,7 +386,7 @@ def resynth(fitdriver, problem, mapper, opts):
     for i in range(opts.resynth):
         problem.resynth_data()
         best, fbest = fitdriver.fit()
-        scale, err = nllf_scale(problem)
+        scale, err = nllf_scale(problem, norm=True)
         print("step %d chisq %g" % (i, scale * fbest))
         fid.write("%.15g " % (scale * fbest))
         fid.write(" ".join("%.15g" % v for v in best))
