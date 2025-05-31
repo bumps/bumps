@@ -43,7 +43,7 @@ import shutil
 import numpy as np
 # np.seterr(all="raise")
 
-from .fitters import FitDriver, StepMonitor, ConsoleMonitor, CheckpointMonitor, nllf_scale
+from .fitters import FitDriver, StepMonitor, ConsoleMonitor, CheckpointMonitor
 from .mapper import MPMapper, MPIMapper, SerialMapper
 from . import util
 from . import initpop
@@ -386,9 +386,9 @@ def resynth(fitdriver, problem, mapper, opts):
     for i in range(opts.resynth):
         problem.resynth_data()
         best, fbest = fitdriver.fit()
-        scale, err = nllf_scale(problem, norm=True)
-        print("step %d chisq %g" % (i, scale * fbest))
-        fid.write("%.15g " % (scale * fbest))
+        chisq = problem.chisq(nllf=fbest)
+        print(f"step {i} chisq={chisq:.2f}")
+        fid.write("%.15g " % chisq)
         fid.write(" ".join("%.15g" % v for v in best))
         fid.write("\n")
     problem.restore_data()
