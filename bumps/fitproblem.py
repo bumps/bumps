@@ -51,7 +51,7 @@ import logging
 import os
 import sys
 import traceback
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, Union, Optional
 import warnings
 
 import numpy as np
@@ -464,19 +464,22 @@ class FitProblem(Generic[FitnessType]):
         """
         return [p.residual() for p in self._bounded]
 
-    def chisq(self, norm=True, compact=True):
+    def chisq(self, nllf: Union[float, util.NDArray, None] = None, norm: bool = True, compact: bool = True):
         """
         Returns chisq as a floating point value.
 
         See documentation for :meth:`chisq_str`.
         """
-        pparameter, pconstraints, pmodel, failing_constraints = self._nllf_components()
         chisq_norm, chisq_err = nllf_scale(self, norm=norm)
-        nllf = pparameter + pparameter + pconstraints if compact else pmodel + pparameter
+        if nllf is None:
+            pparameter, pconstraints, pmodel, failing_constraints = self._nllf_components()
+            nllf = pparameter + pparameter + pconstraints if compact else pmodel + pparameter
+        else:
+            assert compact is True
         return nllf * chisq_norm
 
     # TODO: Too many versions of chisq about.
-    def chisq_str(self, norm=True, compact=True):
+    def chisq_str(self, nllf: Optional[float] = None, norm: bool = True, compact: bool = True):
         """
         Return a string representing the chisq equivalent of the nllf.
 
@@ -486,6 +489,9 @@ class FitProblem(Generic[FitnessType]):
         If *compact* is True (default) then add the constraints penalty
         to chisq before normalizing, otherwise show the constraints
         penalty separately, along with the list of any failing constraints.
+
+        If *nllf* is provided then use that instead of calling the model
+        evaluator. Fail if *compact* is False.
 
         If the model has strictly gaussian independent uncertainties then the
         negative log likelihood function will return 0.5*sum(residuals**2),
@@ -497,15 +503,16 @@ class FitProblem(Generic[FitnessType]):
         Parameter priors, if any, are treated as independent models
         in the total nllf.  The constraint value is displayed separately.
         """
-        pparameter, pconstraints, pmodel, failing_constraints = self._nllf_components()
         chisq_norm, chisq_err = nllf_scale(self, norm=norm)
 
-        if compact:
-            nllf = pmodel + pparameter + pconstraints
-            text = format_uncertainty(nllf * chisq_norm, chisq_err)
+        if nllf is None:
+            pparameter, pconstraints, pmodel, failing_constraints = self._nllf_components()
+            nllf = pmodel + pparameter + pconstraints if compact else pmodel + pparameter
         else:
-            nllf = pmodel + pparameter
-            text = format_uncertainty(nllf * chisq_norm, chisq_err)
+            assert compact is True
+        # print(f"{pmodel=} {pparameter=} {pconstraints=} {nllf=} {chisq_norm=} {chisq_err=}")
+        text = format_uncertainty(nllf * chisq_norm, chisq_err)
+        if not compact:
             if pconstraints > 0.0:
                 text += f" constraints={pconstraints}"
             if len(failing_constraints) > 0:

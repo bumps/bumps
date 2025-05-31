@@ -94,7 +94,7 @@ def walk(problem, burn=100, steps=400, ntemps=30, maxtemp=None, dtemp=3.0, npop=
         ):
             t = time.time()
             if t >= next_t:
-                print("burn", iteration, "of", burn, -np.max(lnlike) / problem.dof)
+                print("burn", iteration, "of", burn, problem.chisq_str(nllf=-np.max(lnlike)))
                 next_t = t + interval
             iteration += 1
     elif steps:
@@ -113,7 +113,7 @@ def walk(problem, burn=100, steps=400, ntemps=30, maxtemp=None, dtemp=3.0, npop=
             t = time.time()
             if t >= next_t:
                 k = (iteration - burn) / nthin if nthin > 1 else (iteration - burn)
-                print("step", k, "of", steps, -np.max(lnlike) / problem.dof)
+                print("step", k, "of", steps, problem.chisq_str(nllf=-np.max(lnlike)))
                 next_t = t + interval
             iteration += 1
 
