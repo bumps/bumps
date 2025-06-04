@@ -1064,6 +1064,16 @@ class FitDriver(object):
         self.mapper = mapper if mapper else lambda p: list(map(problem.nllf, p))
         self.fitter = None
         self.result = None
+        self._reset_cache()
+
+    def _reset_cache(self):
+        """
+        Cached values. Deleted by fit() to force recomputation when the new fit is complete.
+        """
+        self._cov = None
+        self._stderr = None
+        self._stderr_from_cov = None
+        self._chisq = None
 
     def fit(self, resume=None, fit_state=None):
         """
@@ -1084,10 +1094,8 @@ class FitDriver(object):
             fn, labels = getattr(problem, "derive_vars", (None, []))
             fit_state = load_state(input_path, report=100, derived_vars=len(labels))
         """
-        if hasattr(self, "_cov"):
-            del self._cov
-        if hasattr(self, "_stderr"):
-            del self._stderr
+        self._reset_cache()
+
         # Awkward interface for dump/load state. The structure of the state depends on
         # the fit method, so we need to delegate dump/load to the Fitter class. However,
         # the fitter is not instantiated outside of the fit method, so dump/load must
@@ -1142,7 +1150,7 @@ class FitDriver(object):
             return entropy.cov_entropy(self.cov()), 0
 
     def chisq(self):
-        if not hasattr(self, "_chisq"):
+        if self._chisq is None:
             self._chisq = self.problem.chisq()
         return self._chisq
 
@@ -1173,11 +1181,9 @@ class FitDriver(object):
         # this case, the code will fall through to computing the covariance
         # matrix directly from the problem.  It will use the initial value
         # stored in the problem parameters because results will also be None.
-        if not hasattr(self, "_cov"):
-            self._cov = None
-            if hasattr(self.fitter, "cov"):
-                self._cov = self.fitter.cov()
-                # print("fitter cov", self._cov)
+        if self._cov is None and hasattr(self.fitter, "cov"):
+            self._cov = self.fitter.cov()
+            # print("fitter cov", self._cov)
         if self._cov is None:
             # Use Jacobian if residuals are available because it is faster
             # to compute.  Otherwise punt and use Hessian.  The has_residuals
@@ -1211,10 +1217,8 @@ class FitDriver(object):
         # Note: if fit() has not been run then self.fitter is None and in
         # particular, self.fitter will not have a stderr method defined so
         # it will compute stderr from covariance.
-        if not hasattr(self, "_stderr"):
-            self._stderr = None
-            if hasattr(self.fitter, "stderr"):
-                self._stderr = self.fitter.stderr()
+        if self._stderr is None and hasattr(self.fitter, "stderr"):
+            self._stderr = self.fitter.stderr()
         if self._stderr is None:
             # If no stderr from the fitter then compute it from the covariance
             self._stderr = self.stderr_from_cov()
@@ -1230,7 +1234,7 @@ class FitDriver(object):
         Here, the covariance matrix may have been estimated by the fitter
         instead of the Hessian.
         """
-        if not hasattr(self, "_stderr_from_cov"):
+        if self._stderr_from_cov is None:
             self._stderr_from_cov = lsqerror.stderr(self.cov())
         return self._stderr_from_cov
 
