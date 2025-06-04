@@ -30,6 +30,7 @@ import numpy as np
 from numpy.typing import NDArray
 import dill
 
+from bumps import __version__
 from bumps.serialize import serialize, deserialize, serialize_bytes, deserialize_bytes
 from bumps.util import get_libraries
 from .logger import logger
