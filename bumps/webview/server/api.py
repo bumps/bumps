@@ -32,11 +32,7 @@ import uuid
 import traceback
 import math
 
-from bumps.fitters import (
-    FitDriver,
-    nllf_scale,
-    format_uncertainty,
-)
+from bumps.fitters import FitDriver
 from bumps.mapper import MPMapper
 from bumps.parameter import Parameter, Constant, Variable, unique
 import bumps.cli
@@ -473,14 +469,12 @@ async def stop_fit(wait=True):
 
 
 @register
-async def get_chisq(problem: Optional[bumps.fitproblem.FitProblem] = None, nllf=None):
-    problem = state.problem.fitProblem if problem is None else problem
+async def get_chisq(problem: Optional[bumps.fitproblem.FitProblem] = None, nllf=None) -> str:
+    if problem is None:
+        problem = state.problem.fitProblem
     if problem is None:
         return ""
-    nllf = problem.nllf() if nllf is None else nllf
-    scale, err = nllf_scale(problem)
-    chisq = format_uncertainty(scale * nllf, err)
-    return chisq
+    return problem.chisq_str(nllf=nllf)  # Default is norm=True and compact=True
 
 
 # TODO: Ask the fitter for the number of steps instead of guessing
@@ -691,7 +685,7 @@ async def _fit_complete_handler(event: Dict[str, Any]):
 
         # print(event['info'])  # Needed if we are dumping fit outputs to the terminal
         problem: bumps.fitproblem.FitProblem = event["problem"]
-        chisq = nice(2 * event["value"] / problem.dof)
+        chisq = nice(problem.chisq(nllf=event["value"]))
         problem.setp(event["point"])
         problem.model_update()
         state.problem.fitProblem = problem
@@ -895,7 +889,7 @@ async def get_convergence_plot():
     fitProblem = state.problem.fitProblem
     convergence = state.fitting.convergence
     if convergence is not None:
-        normalized_pop = 2 * convergence / fitProblem.dof
+        normalized_pop = fitProblem.chisq(nllf=convergence)
         best, pop = normalized_pop[:, 0], normalized_pop[:, 1:]
 
         ni, npop = pop.shape

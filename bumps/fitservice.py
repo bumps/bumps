@@ -73,14 +73,13 @@ class ServiceMonitor(monitor.TimedUpdate):
         p = self.problem.getp()
         try:
             self.problem.setp(history.point[0])
-            dof = self.problem.dof
             summary = self.problem.summarize()
         finally:
             self.problem.setp(p)
 
         status = {
             "step": history.step[0],
-            "cost": history.value[0] / dof,
+            "cost": self.problem.chisq(nllf=history.value[0]),
             "pars": history.point[0],
         }
         json_status = json.dumps(status)

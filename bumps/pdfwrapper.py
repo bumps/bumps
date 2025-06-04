@@ -98,7 +98,7 @@ class PDF:
     nllf.__doc__ = Fitness.__call__.__doc__
 
     def chisq(self):
-        return self.nllf() / self.dof
+        return 2 * self.nllf() / self.dof
 
     # chisq.__doc__ = Fitness.chisq.__doc__
 
@@ -190,7 +190,7 @@ class VectorPDF:
     nllf.__doc__ = Fitness.__call__.__doc__
 
     def chisq(self):
-        return self.nllf() / self.dof
+        return 2 * self.nllf() / self.dof
 
     # chisq.__doc__ = Fitness.chisq.__doc__
 
@@ -267,7 +267,7 @@ class DirectProblem(object):
         return self._parameters
 
     def chisq(self):
-        return self.nllf() / self.dof
+        return 2 * self.nllf() / self.dof
 
     def chisq_str(self):
         return "%g" % self.chisq()
