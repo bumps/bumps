@@ -47,7 +47,7 @@ from bumps.mapper import BaseMapper
 
 
 SESSION_FILE_NAME = "session.h5"
-ARRAY_COMPRESSION = COMPRESSION = 5
+ARRAY_COMPRESSION = COMPRESSION = 9
 # MAX_PROBLEM_SIZE = 100 * 1024 * 1024  # 100 MBi problem max size [unused]
 
 SERIALIZERS = Literal["dataclass", "pickle", "dill"]
@@ -67,7 +67,7 @@ def now_string():
     return f"{datetime.now().timestamp():.6f}"
 
 
-def serialize_problem(problem: "bumps.fitproblem.FitProblem", method: SERIALIZERS) -> str:
+def serialize_problem(problem: "bumps.fitproblem.FitProblem", method: SERIALIZERS) -> Union[str, bytes]:
     if method == "dataclass":
         return json.dumps(serialize(problem))
     elif method == "pickle":
@@ -103,7 +103,7 @@ def serialize_problem_bytes(problem: "bumps.fitproblem.FitProblem", method: SERI
 
 def deserialize_problem_bytes(serialized: bytes, method: SERIALIZERS) -> "bumps.fitproblem.FitProblem":
     if method == "dataclass":
-        serialized_dict = json.loads(serialized)
+        serialized_dict = json.loads(serialized.decode())
         return deserialize(serialized_dict, migration=True)
     elif method == "pickle":
         return pickle.loads(serialized)
@@ -113,27 +113,30 @@ def deserialize_problem_bytes(serialized: bytes, method: SERIALIZERS) -> "bumps.
         raise ValueError(f"Unknown serialization method: {method}")
 
 
-def write_bytes_data(group: "Group", name: str, data: bytes):
+def write_bytes(group: "Group", name: str, data: bytes):
     saved_data = [data] if data is not None else []
     return group.create_dataset(name, data=np.void(saved_data), compression=COMPRESSION)
 
 
-def read_bytes_data(group: "Group", name: str):
+def read_bytes(group: "Group", name: str):
     if name not in group:
         return UNDEFINED
     raw_data = group[name][()]
     size = raw_data.size
     if size is not None and size > 0:
-        return raw_data.tobytes().rstrip(b"\x00")
+        return raw_data[0].tobytes().rstrip(b"\x00")
     else:
         return None
 
 
 def write_string(group: "Group", name: str, data: str, encoding="utf-8"):
-    saved_data = np.bytes_([data]) if data is not None else []
-    return group.create_dataset(
-        name, data=saved_data, compression=COMPRESSION, dtype=h5py.string_dtype(encoding=encoding)
-    )
+    if data is None:
+        return group.create_dataset(name, data="")
+    # saved_data = np.bytes_([data]) if data is not None else []
+    dtype = h5py.string_dtype(encoding=encoding, length=len(data))
+    saved_data = np.array([data], dtype=dtype) if data is not None else []
+    # print(f"write_string {dtype=}")
+    return group.create_dataset(name, data=saved_data, compression=COMPRESSION, dtype=dtype)
 
 
 def read_string(group: "Group", name: str):
@@ -147,36 +150,33 @@ def read_string(group: "Group", name: str):
         return None
 
 
-def write_fitproblem(group: "Group", name: str, fitProblem: "bumps.fitproblem.FitProblem", serializer: SERIALIZERS):
-    # TODO: consider storing json as utf-8 and (dill) pickle as bytes
-    # encoding = str if serializer == "dataclass" else bytes
-    encoding = bytes
+def write_fitproblem(group: "Group", name: str, fitProblem: "bumps.fitproblem.FitProblem", method: SERIALIZERS):
+    encoding = str if method == "dataclass" else bytes
     if encoding is bytes:
-        serialized = serialize_problem_bytes(fitProblem, serializer) if fitProblem is not None else None
-        dset = write_bytes_data(group, name, serialized)
+        serialized = serialize_problem_bytes(fitProblem, method) if fitProblem is not None else None
+        dset = write_bytes(group, name, serialized)
     else:
-        serialized = serialize_problem(fitProblem, serializer) if fitProblem is not None else None
+        serialized = serialize_problem(fitProblem, method) if fitProblem is not None else None
         dset = write_string(group, name, serialized)
     return dset
 
 
-def read_fitproblem(group: "Group", name: str, serializer: SERIALIZERS) -> "bumps.fitproblem.FitProblem":
+def read_fitproblem(group: "Group", name: str, method: SERIALIZERS) -> "bumps.fitproblem.FitProblem":
     if name not in group:
         return UNDEFINED
     if group[name].dtype.kind == "V":
         # Old encoding stored bytes directly
-        serialized = read_bytes_data(group, name)
-        fitProblem = deserialize_problem_bytes(serialized, serializer) if serialized is not None else None
+        serialized = read_bytes(group, name)
+        fitProblem = deserialize_problem_bytes(serialized, method) if serialized is not None else None
     else:
         # New encode uses base64 to encode bytes to string
         serialized = read_string(group, name)
-        fitProblem = deserialize_problem(serialized, serializer) if serialized is not None else None
+        fitProblem = deserialize_problem(serialized, method) if serialized is not None else None
     return fitProblem
 
 
 def write_json(group: "Group", name: str, data):
-    serialized = json.dumps(data)
-    dset = write_string(group, name, serialized.encode())
+    dset = write_string(group, name, json.dumps(data))
     return dset
 
 
@@ -242,7 +242,7 @@ class ProblemState:
 
     def write(self, parent: "Group"):
         group = parent.require_group("problem")
-        write_fitproblem(group, "fitProblem", self.fitProblem, self.serializer)
+        write_fitproblem(group, "fitProblem", self.fitProblem, method=self.serializer)
         write_string(group, "serializer", self.serializer)
         write_json(group, "libraries", get_libraries(self.fitProblem))
         # write_json(group, 'pathlist', self.pathlist)
@@ -251,7 +251,7 @@ class ProblemState:
     def read(self, parent: "Group"):
         group = parent.require_group("problem")
         self.serializer = read_string(group, "serializer")
-        self.fitProblem = read_fitproblem(group, "fitProblem", self.serializer)
+        self.fitProblem = read_fitproblem(group, "fitProblem", method=self.serializer)
         # self.pathlist = read_json(group, 'pathlist')
         # self.filename = read_string(group, 'filename')
 
