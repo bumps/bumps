@@ -476,7 +476,7 @@ async def get_chisq(problem: Optional[bumps.fitproblem.FitProblem] = None, nllf=
         problem = state.problem.fitProblem
     if problem is None:
         return ""
-    return problem.chisq_str(norm=True, compact=True)
+    return problem.chisq_str(nllf=nllf)  # Default is norm=True and compact=True
 
 
 # TODO: Ask the fitter for the number of steps instead of guessing
@@ -687,7 +687,7 @@ async def _fit_complete_handler(event: Dict[str, Any]):
 
         # print(event['info'])  # Needed if we are dumping fit outputs to the terminal
         problem: bumps.fitproblem.FitProblem = event["problem"]
-        chisq = nice(2 * event["value"] / problem.dof)
+        chisq = nice(problem.chisq(nllf=event["value"]))
         problem.setp(event["point"])
         problem.model_update()
         state.problem.fitProblem = problem
@@ -891,7 +891,7 @@ async def get_convergence_plot():
     fitProblem = state.problem.fitProblem
     convergence = state.fitting.convergence
     if convergence is not None:
-        normalized_pop = 2 * convergence / fitProblem.dof
+        normalized_pop = fitProblem.chisq(nllf=convergence)
         best, pop = normalized_pop[:, 0], normalized_pop[:, 1:]
 
         ni, npop = pop.shape

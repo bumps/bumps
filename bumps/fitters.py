@@ -14,7 +14,6 @@ from . import lsqerror
 
 from .history import History
 from .formatnum import format_uncertainty
-from .fitproblem import nllf_scale
 from .util import NDArray, format_duration
 
 # For typing
@@ -32,14 +31,9 @@ class ConsoleMonitor(monitor.TimedUpdate):
     def __init__(self, problem, progress=1, improvement=30):
         monitor.TimedUpdate.__init__(self, progress=progress, improvement=improvement)
         self.problem = problem
-        self._scale, self._err = nllf_scale(self.problem, norm=True)
 
     def _print_chisq(self, k, fx, final=False):
-        # This is equivalent to problem.chisq_str(norm=True, compact=True)
-        # We are not using that interface because we have already calculated
-        # nllf and saved it in the history.
-        chisq = format_uncertainty(self._scale * fx, self._err)
-        print(f"step {k} cost {chisq}{' [final]' if final else ''}")
+        print(f"step {k} cost {self.problem.chisq_str(nllf=fx)}{' [final]' if final else ''}")
 
     def _print_pars(self, x):
         p = self.problem.getp()
@@ -113,7 +107,6 @@ class StepMonitor(monitor.Monitor):
         self.problem = problem
         self._pattern = "%%(%s)s\n" % (")s %(".join(fields))
         fid.write("# " + " ".join(fields) + "\n")
-        self._scale, _ = nllf_scale(self.problem, norm=True)
 
     def config_history(self, history):
         history.requires(time=1, value=1, point=1, step=1)
@@ -122,7 +115,7 @@ class StepMonitor(monitor.Monitor):
         point = " ".join("%.15g" % v for v in history.point[0])
         time = "%g" % history.time[0]
         step = "%d" % history.step[0]
-        value = "%.15g" % (self._scale * history.value[0])
+        value = "%.15g" % (self.problem.chisq(nllf=history.value[0]))
         out = self._pattern % dict(point=point, time=time, value=value, step=step)
         self.fid.write(out)
 
@@ -302,10 +295,9 @@ class MultiStart(FitBase):
         starts = max(options.pop("starts", 1), 1)
         jump = options.pop("jump", 0.0)
         x_best, f_best, chisq_best = None, np.inf, None
-        scale, err = nllf_scale(self.problem, norm=True)
         for k in range(starts):
             x, fx = self.fitter.solve(monitors=monitors, mapper=mapper, **options)
-            chisq = format_uncertainty(scale * fx, err)
+            chisq = self.problem.chisq_str(nllf=fx)
             if fx < f_best:
                 x_best, f_best, chisq_best = x, fx, chisq
                 monitors.info(f"fit {k+1} of {starts}: {chisq} [new best]")
@@ -1046,7 +1038,7 @@ def _resampler(fitter, xinit, samples=100, restart=False, **options):
             x, fx = fitter.solve(**options)
             points.append(np.hstack((fx, x)))
             # print self.problem.summarize()
-            # print "[chisq=%g]" % (nllf*2/self.problem.dof)
+            # print "[chisq=%.2f]" % self.problem.chisq(nllf=fx))
     except KeyboardInterrupt:
         # On keyboard interrupt we can declare that we are finished sampling
         # without it being an error condition, so let this exception pass.

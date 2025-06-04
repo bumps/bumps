@@ -18,6 +18,8 @@ from numpy import inf, array, asarray
 # - all_objects
 # - status: Not useful for the Model base class, but may be used by subclasses.
 
+# TODO: Turn this into a fitness object with a StochasticParameter adapter
+
 
 class PyMCProblem(object):
     def __init__(self, input):
@@ -49,7 +51,7 @@ class PyMCProblem(object):
         pass
 
     def chisq(self):
-        return self.nllf() / self.dof
+        return 2 * self.nllf() / self.dof
 
     def chisq_str(self):
         return "%g" % self.chisq()
