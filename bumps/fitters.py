@@ -869,7 +869,7 @@ class DreamFit(FitBase):
         ("thin", 1),
         ("alpha", 0.0),
         ("outliers", "none"),
-        ("trim", False),
+        # ("trim", False),
         ("steps", 0),  # deprecated: use --samples instead
     ]
 
@@ -913,7 +913,7 @@ class DreamFit(FitBase):
         self.state = sampler.sample(state=self.state, abort_test=monitors.stopping)
         # print("<<< Dream is done sampling >>>")
 
-        self._trimmed = self.state.trim_portion() if options["trim"] else 1.0
+        self._trimmed = self.state.trim_portion() if options.get("trim", False) else 1.0
         # print("trimming", options['trim'], self._trimmed)
         self.state.mark_outliers(portion=self._trimmed)
         self.state.keep_best()
