@@ -10,6 +10,7 @@ the log probabilities are still improving throughout the chain.
 __all__ = ["burn_point", "ks_converged"]
 
 from typing import TYPE_CHECKING
+import warnings
 
 import numpy as np
 from numpy.random import choice
@@ -161,8 +162,9 @@ def burn_point(state, method="window", trials=TRIALS, **kwargs):
         index = _ks_sliding_window(state, trials=trials, **kwargs)
     else:
         raise ValueError("Unknown convergence test " + method)
+    # TODO: need a better way to report convergence failure
     if index < 0:
-        print("Did not converge!")
+        warnings.warn("Did not converge!")
     return index
 
 
