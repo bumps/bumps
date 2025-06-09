@@ -119,14 +119,16 @@ def convergence_plot(convergence: np.ndarray, dof: float, cutoff: float = 0.25, 
     layout.update(
         dict(
             xaxis=dict(
-                title="iteration number",
+                title={"text": "Steps"},
                 showline=True,
                 showgrid=False,
                 zeroline=False,
             )
         )
     )
-    layout.update(dict(yaxis=dict(title="chisq", showline=True, showgrid=False, zeroline=False)))
+    layout.update(
+        dict(yaxis=dict(title={"text": "<i>\u03c7</i><sup>2</sup>"}, showline=True, showgrid=False, zeroline=False))
+    )
     return {
         "data": traces,
         "layout": layout,
