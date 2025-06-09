@@ -18,7 +18,6 @@ def convergence_plot(convergence: np.ndarray, dof: float, cutoff: float = 0.25, 
     # Normalize the population data
     normalized_pop = 2 * convergence / dof
     best, pop = normalized_pop[:, 0], normalized_pop[:, 1:]
-    print("burn_index", burn_index)
 
     ni, npop = pop.shape
     x = np.arange(1, ni + 1)
@@ -28,18 +27,30 @@ def convergence_plot(convergence: np.ndarray, dof: float, cutoff: float = 0.25, 
     hovertemplate = "(%{{x}}, %{{y}})<br>{label}<extra></extra>"
     if npop == 5:
         # fig['data'].append(dict(type="scattergl", x=x, y=pop[tail:,4].tolist(), name="95%", mode="lines", line=dict(color="lightblue", width=1), showlegend=True, hovertemplate=hovertemplate.format(label="95%")))
-        if burn_index is not None:
+        if burn_index is not None and burn_index > tail:
             layout["shapes"] = [
                 {
-                    "line": {"color": "red", "dash": "dash", "width": 2},
+                    "line": {"color": "orange", "dash": "dash", "width": 2},
                     "type": "line",
-                    "x0": 1,
-                    "x1": 1,
+                    "x0": burn_index,
+                    "x1": burn_index,
                     "xref": "x",
                     "y0": 0,
                     "y1": 1,
                     "yref": "y domain",
-                }
+                },
+            ]
+            layout["annotations"] = [
+                {
+                    "text": "burn",
+                    "x": burn_index,
+                    "y": 0.95,
+                    "xref": "x",
+                    "xanchor": "left",
+                    "yref": "y domain",
+                    "showarrow": False,
+                    "font": {"color": "orange", "size": 12},
+                },
             ]
 
         traces.append(
