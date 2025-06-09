@@ -1115,10 +1115,9 @@ async def get_parameter_trace_plot(var: int):
         logger.info(f"queueing new parameter_trace plot... {start_time}")
 
         # begin plotting:
-        portion = None
         draw, points, _ = fit_state.chains()
         label = fit_state.labels[var]
-        start = int((1 - portion) * len(draw)) if portion else 0
+        start = int((1 - fit_state.portion) * len(draw))
         genid = (
             np.arange(
                 fit_state.generation - len(draw) + start,

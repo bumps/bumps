@@ -596,8 +596,6 @@ class MCMCDraw(object):
     def show(self, portion: Optional[float] = None, figfile: Union[str, Path, None] = None):
         from .views import plot_all
 
-        # use the stored portion if not specified
-        portion = self.portion if portion is None else portion
         plot_all(self, portion=portion, figfile=figfile)
 
     def _last_gen(self):
@@ -824,11 +822,11 @@ class MCMCDraw(object):
         """
         _, chains, logp = self.chains()
 
-        portion = self.portion if portion is None else portion
         if test == "none":
             self._good_chains = slice(None, None)
         else:
             Ngen = chains.shape[0]
+            portion = self.portion if portion is None else portion
             start = int(Ngen * (1 - portion))
             outliers = identify_outliers(test, logp[start:], chains[-1])
             # print("outliers", outliers)
@@ -960,15 +958,15 @@ class MCMCDraw(object):
             retval = [v[: self._thin_count] for v in retval]
         return retval
 
-    def gelman(self):
+    def gelman(self, portion: Optional[float] = None):
         """
-        Compute the R-statistic for the current frame
+        Compute the Gelman and Rubin R-statistic for the Markov chains.
         """
-        # Calculate Gelman and Rubin convergence diagnostic
+        portion = self.portion if portion is None else portion
         if self.generation < self.Ngen:
-            return gelman(self._thin_point[: self.generation], portion=1.0)
+            return gelman(self._thin_point[: self.generation], portion=portion)
         else:
-            return gelman(self._thin_point, portion=1.0)
+            return gelman(self._thin_point, portion=portion)
 
     def CR_weight(self):
         """
@@ -1116,7 +1114,6 @@ class MCMCDraw(object):
         """
         from . import entropy
 
-        portion = self.portion if portion is None else portion
         # Get the sample from the state.
         # set default thinning to max((steps * samples/step) // n_est, 1)
         if thin is None:

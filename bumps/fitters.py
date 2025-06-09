@@ -913,7 +913,8 @@ class DreamFit(FitBase):
         self.state = sampler.sample(state=self.state, abort_test=monitors.stopping)
         # print("<<< Dream is done sampling >>>")
 
-        # if "trim" option is enabled, automatically set the portion
+        # If "trim" option is enabled, automatically set the portion, otherwise use
+        # the default 100% that was set at the start of sampler.sample.
         if options.get("trim", False):
             self.state.portion = self.state.trim_portion()
         # print("trimming", options['trim'], self._trimmed)

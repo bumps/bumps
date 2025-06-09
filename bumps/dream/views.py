@@ -22,9 +22,7 @@ def plot_all(state: MCMCDraw, portion: Optional[float] = None, figfile=None):
     all_vstats = var_stats(draw)
     print(format_vars(all_vstats))
     print(
-        "\nStatistics and plots based on {nsamp:d} samples ({psamp:.1%} of total samples drawn)".format(
-            nsamp=len(draw.points), psamp=draw.portion
-        )
+        f"\nStatistics and plots based on {len(draw.points)} samples ({int(100*draw.portion)}% of total samples drawn)"
     )
     if figfile is not None:
         save_vars(all_vstats, figfile + "-err.json")
@@ -188,13 +186,14 @@ def plot_trace(state: MCMCDraw, var: int = 0, portion: Optional[float] = None, a
     axes.set_ylabel(label)
 
 
-def plot_logp(state: MCMCDraw, portion: float = 1.0):
+def plot_logp(state: MCMCDraw, portion: Optional[float] = None):
     from matplotlib.ticker import NullFormatter
     from pylab import axes, title
     from scipy.stats import chi2, kstest
 
     # Plot log likelihoods
     draw, logp = state.logp()
+    portion = state.portion if portion is None else portion
     start = int((1 - portion) * len(draw))
     genid = arange(state.generation - len(draw) + start, state.generation) + 1
     width, height, margin, delta = 0.7, 0.75, 0.1, 0.01
@@ -277,8 +276,8 @@ def tile_axes(n, size=None, fig=None):
 def plot_acceptance_rate(state: MCMCDraw, portion: Optional[float] = None):
     from matplotlib import pyplot as plt
 
-    portion = state.portion if portion is None else portion
     gen, AR = state.acceptance_rate()
+    portion = state.portion if portion is None else portion
     if portion != 1.0:
         index = int(portion * len(AR))
         gen, AR = gen[-index:], AR[-index:]
