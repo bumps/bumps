@@ -39,7 +39,7 @@ function draw_plot() {
     <div class="row px-2 align-items-center">
       <div class="col-auto">
         <label for="cutoff_control" class="col-form-label">Cutoff: </label>
-        <span class="pl-1">{{ cutoff.toFixed(2) }}</span>
+        <span class="ps-1">{{ cutoff.toFixed(2) }}</span>
       </div>
       <div class="col">
         <input
