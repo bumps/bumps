@@ -896,16 +896,11 @@ async def get_convergence_plot(cutoff: float = 0.25):
     dof = state.problem.fitProblem.dof
     convergence = state.fitting.convergence
     burn_index = None
-    if state.fitting.fit_state is not None and hasattr(state.fitting.fit_state, "Ngen"):
-        # if the fit state has a population length, we can compare it to the
-        # convergence history length to determine which points are saved and
-        # which are "burned"
-        Ngen = state.fitting.fit_state.Ngen
-        print(f"convergence length: {len(convergence)}, Ngen: {Ngen}")
-        if convergence is not None and len(convergence) > Ngen:
-            burn_index = len(convergence) - Ngen
 
     if convergence is not None:
+        if state.fitting.fit_state is not None and hasattr(state.fitting.fit_state, "burn_index"):
+            # If the burn_index is available, we can show it on the plot:
+            burn_index = state.fitting.fit_state.burn_index(generation=len(convergence), portion=1.0)
         output = convergence_plot(convergence, dof, cutoff=cutoff, burn_index=burn_index)
         return to_json_compatible_dict(output)
     else:
