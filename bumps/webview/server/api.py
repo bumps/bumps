@@ -895,15 +895,15 @@ async def get_convergence_plot(cutoff: float = 0.25):
         return None
     dof = state.problem.fitProblem.dof
     convergence = state.fitting.convergence
+    burn_index = None
     if state.fitting.fit_state is not None and hasattr(state.fitting.fit_state, "Ngen"):
         # if the fit state has a population length, we can compare it to the
         # convergence history length to determine which points are saved and
         # which are "burned"
         Ngen = state.fitting.fit_state.Ngen
+        print(f"convergence length: {len(convergence)}, Ngen: {Ngen}")
         if convergence is not None and len(convergence) > Ngen:
             burn_index = len(convergence) - Ngen
-    else:
-        burn_index = None
 
     if convergence is not None:
         output = convergence_plot(convergence, dof, cutoff=cutoff, burn_index=burn_index)

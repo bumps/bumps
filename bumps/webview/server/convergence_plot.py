@@ -18,46 +18,35 @@ def convergence_plot(convergence: np.ndarray, dof: float, cutoff: float = 0.25, 
     # Normalize the population data
     normalized_pop = 2 * convergence / dof
     best, pop = normalized_pop[:, 0], normalized_pop[:, 1:]
+    print("burn_index", burn_index)
 
     ni, npop = pop.shape
     x = np.arange(1, ni + 1)
     tail = int(cutoff * ni)
-    sample_start = tail if burn_index is None else max(tail, burn_index)
     traces = []
     layout = {}
     hovertemplate = "(%{{x}}, %{{y}})<br>{label}<extra></extra>"
     if npop == 5:
         # fig['data'].append(dict(type="scattergl", x=x, y=pop[tail:,4].tolist(), name="95%", mode="lines", line=dict(color="lightblue", width=1), showlegend=True, hovertemplate=hovertemplate.format(label="95%")))
         if burn_index is not None:
-            traces.append(
-                dict(
-                    type="scattergl",
-                    x=x[tail:burn_index],
-                    y=pop[tail:burn_index, 3],
-                    mode="lines",
-                    line=dict(color="lightorange", width=0),
-                    showlegend=False,
-                    hovertemplate=hovertemplate.format(label="80%"),
-                )
-            )
-            traces.append(
-                dict(
-                    type="scattergl",
-                    x=x[tail:burn_index],
-                    y=pop[tail:burn_index, 1],
-                    name="burned",
-                    fill="tonexty",
-                    mode="lines",
-                    line=dict(color="lightorange", width=0),
-                    hovertemplate=hovertemplate.format(label="20%"),
-                )
-            )
+            layout["shapes"] = [
+                {
+                    "line": {"color": "red", "dash": "dash", "width": 2},
+                    "type": "line",
+                    "x0": 1,
+                    "x1": 1,
+                    "xref": "x",
+                    "y0": 0,
+                    "y1": 1,
+                    "yref": "y domain",
+                }
+            ]
 
         traces.append(
             dict(
                 type="scattergl",
-                x=x[sample_start:],
-                y=pop[sample_start:, 3],
+                x=x[tail:],
+                y=pop[tail:, 3],
                 mode="lines",
                 line=dict(color="lightgreen", width=0),
                 showlegend=False,
@@ -67,8 +56,8 @@ def convergence_plot(convergence: np.ndarray, dof: float, cutoff: float = 0.25, 
         traces.append(
             dict(
                 type="scattergl",
-                x=x[sample_start:],
-                y=pop[sample_start:, 1],
+                x=x[tail:],
+                y=pop[tail:, 1],
                 name="20% to 80% range",
                 fill="tonexty",
                 mode="lines",
