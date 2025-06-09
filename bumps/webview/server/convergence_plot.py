@@ -127,7 +127,11 @@ def convergence_plot(convergence: np.ndarray, dof: float, cutoff: float = 0.25, 
         )
     )
     layout.update(
-        dict(yaxis=dict(title={"text": "<i>\u03c7</i><sup>2</sup>"}, showline=True, showgrid=False, zeroline=False))
+        dict(
+            yaxis=dict(
+                title={"text": "Normalized <i>\u03c7</i><sup>2</sup>"}, showline=True, showgrid=False, zeroline=False
+            )
+        )
     )
     return {
         "data": traces,
