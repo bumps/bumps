@@ -513,6 +513,12 @@ class MCMCDraw(object):
     def Ncr(self):
         return self._update_CR_weight.shape[1]
 
+    def burn_index(self, generation: Optional[int] = None, portion: Optional[float] = None):
+        portion = self.portion if portion is None else portion
+        generation = self.total_generations if generation is None else generation
+        active = min(self.Ngen * portion, generation - self._gen_offset)
+        return generation - active
+
     def resize(self, Ngen: int, Nthin: int, Nupdate: int, Nvar: int, Npop: int, Ncr: int, thinning: int):
         if self.Nvar != Nvar or self.Npop != Npop or self.Ncr != Ncr:
             raise ValueError("Cannot change Nvar, Npop or Ncr on resize")
