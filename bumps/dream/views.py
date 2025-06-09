@@ -5,6 +5,7 @@ MCMC plotting methods.
 __all__ = ["plot_all", "plot_corr", "plot_corrmatrix", "plot_trace", "plot_logp", "format_vars"]
 
 import math
+from typing import Optional, List
 
 import numpy as np
 from numpy import arange, linspace, meshgrid, squeeze, vstack
@@ -12,16 +13,17 @@ from scipy.stats import gaussian_kde
 
 from . import corrplot, varplot
 from .stats import format_vars, save_vars, var_stats
+from .state import MCMCDraw
 
 
-def plot_all(state, portion=1.0, figfile=None):
+def plot_all(state: MCMCDraw, portion: Optional[float] = None, figfile=None):
     # Print/save uncertainty report before loading pylab or creating plots
     draw = state.draw(portion=portion)
     all_vstats = var_stats(draw)
     print(format_vars(all_vstats))
     print(
         "\nStatistics and plots based on {nsamp:d} samples ({psamp:.1%} of total samples drawn)".format(
-            nsamp=len(draw.points), psamp=portion
+            nsamp=len(draw.points), psamp=draw.portion
         )
     )
     if figfile is not None:
@@ -153,7 +155,7 @@ def plot_corr(draw, vars=(0, 1)):
     setp(ax_hist_y.get_yticklabels(), visible=False)
 
 
-def plot_traces(state, vars=None, portion=None, fig=None):
+def plot_traces(state: MCMCDraw, vars: Optional[List[int]] = None, portion: Optional[float] = None, fig=None):
     from pylab import clf, gcf
 
     if fig is None:
@@ -168,16 +170,17 @@ def plot_traces(state, vars=None, portion=None, fig=None):
         plot_trace(state, var=var, portion=portion, axes=axes)
 
 
-def plot_trace(state, var=0, portion=None, axes=None, fig=None):
+def plot_trace(state: MCMCDraw, var: int = 0, portion: Optional[float] = None, axes=None, fig=None):
     from pylab import gcf
 
+    portion = state.portion if portion is None else portion
     if axes is None:
         if fig is None:
             fig = gcf()
         axes = fig.add_subplot(111)
     draw, points, _ = state.chains()
     label = state.labels[var]
-    start = int((1 - portion) * len(draw)) if portion else 0
+    start = int((1 - portion) * len(draw))
     genid = arange(state.generation - len(draw) + start, state.generation) + 1
     axes.clear()
     axes.plot(genid * state.thinning, squeeze(points[start:, state._good_chains, var]))
@@ -185,14 +188,14 @@ def plot_trace(state, var=0, portion=None, axes=None, fig=None):
     axes.set_ylabel(label)
 
 
-def plot_logp(state, portion=None):
+def plot_logp(state: MCMCDraw, portion: float = 1.0):
     from matplotlib.ticker import NullFormatter
     from pylab import axes, title
     from scipy.stats import chi2, kstest
 
     # Plot log likelihoods
     draw, logp = state.logp()
-    start = int((1 - portion) * len(draw)) if portion else 0
+    start = int((1 - portion) * len(draw))
     genid = arange(state.generation - len(draw) + start, state.generation) + 1
     width, height, margin, delta = 0.7, 0.75, 0.1, 0.01
     trace = axes([margin, 0.1, width, height])
@@ -271,9 +274,10 @@ def tile_axes(n, size=None, fig=None):
     return nw, nh
 
 
-def plot_acceptance_rate(state, portion=1.0):
+def plot_acceptance_rate(state: MCMCDraw, portion: Optional[float] = None):
     from matplotlib import pyplot as plt
 
+    portion = state.portion if portion is None else portion
     gen, AR = state.acceptance_rate()
     if portion != 1.0:
         index = int(portion * len(AR))

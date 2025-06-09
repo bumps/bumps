@@ -913,9 +913,11 @@ class DreamFit(FitBase):
         self.state = sampler.sample(state=self.state, abort_test=monitors.stopping)
         # print("<<< Dream is done sampling >>>")
 
-        self._trimmed = self.state.trim_portion() if options["trim"] else 1.0
+        # if "trim" option is enabled, automatically set the portion
+        if options.get("trim", False):
+            self.state.portion = self.state.trim_portion()
         # print("trimming", options['trim'], self._trimmed)
-        self.state.mark_outliers(portion=self._trimmed)
+        self.state.mark_outliers()
         self.state.keep_best()
         self.state.title = self.problem.name
 
@@ -943,7 +945,7 @@ class DreamFit(FitBase):
         return x, -fx
 
     def entropy(self, **kw):
-        return self.state.entropy(portion=self._trimmed, **kw)
+        return self.state.entropy(**kw)
 
     def stderr(self):
         """
@@ -953,7 +955,7 @@ class DreamFit(FitBase):
         """
         from .dream.stats import var_stats
 
-        vstats = var_stats(self.state.draw(portion=self._trimmed))
+        vstats = var_stats(self.state.draw())
         return np.array([(v.p68[1] - v.p68[0]) / 2 for v in vstats], "d")
 
     # def cov(self):
@@ -987,7 +989,7 @@ class DreamFit(FitBase):
         h5dump(group, state)
 
     def plot(self, output_path):
-        self.state.show(figfile=output_path, portion=self._trimmed)
+        self.state.show(figfile=output_path)
         self.error_plot(figfile=output_path)
 
     def show(self):
@@ -999,7 +1001,7 @@ class DreamFit(FitBase):
         from . import errplot
 
         # TODO: shouldn't mix calc and display!
-        res = errplot.calc_errors_from_state(problem=self.problem, state=self.state, portion=self._trimmed)
+        res = errplot.calc_errors_from_state(problem=self.problem, state=self.state)
         if res is not None:
             pylab.figure()
             errplot.show_errors(res)
