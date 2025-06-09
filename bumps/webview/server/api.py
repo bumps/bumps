@@ -32,11 +32,7 @@ import uuid
 import traceback
 import math
 
-from bumps.fitters import (
-    FitDriver,
-    nllf_scale,
-    format_uncertainty,
-)
+from bumps.fitters import FitDriver
 from bumps.mapper import MPMapper
 from bumps.parameter import Parameter, Constant, Variable, unique
 import bumps.cli
@@ -474,14 +470,12 @@ async def stop_fit(wait=True):
 
 
 @register
-async def get_chisq(problem: Optional[bumps.fitproblem.FitProblem] = None, nllf=None):
-    problem = state.problem.fitProblem if problem is None else problem
+async def get_chisq(problem: Optional[bumps.fitproblem.FitProblem] = None, nllf=None) -> str:
+    if problem is None:
+        problem = state.problem.fitProblem
     if problem is None:
         return ""
-    nllf = problem.nllf() if nllf is None else nllf
-    scale, err = nllf_scale(problem)
-    chisq = format_uncertainty(scale * nllf, err)
-    return chisq
+    return problem.chisq_str(nllf=nllf)  # Default is norm=True and compact=True
 
 
 # TODO: Ask the fitter for the number of steps instead of guessing
@@ -692,7 +686,7 @@ async def _fit_complete_handler(event: Dict[str, Any]):
 
         # print(event['info'])  # Needed if we are dumping fit outputs to the terminal
         problem: bumps.fitproblem.FitProblem = event["problem"]
-        chisq = nice(2 * event["value"] / problem.dof)
+        chisq = nice(problem.chisq(nllf=event["value"]))
         problem.setp(event["point"])
         problem.model_update()
         state.problem.fitProblem = problem
@@ -1037,10 +1031,9 @@ async def get_parameter_trace_plot(var: int):
         logger.info(f"queueing new parameter_trace plot... {start_time}")
 
         # begin plotting:
-        portion = None
         draw, points, _ = fit_state.chains()
         label = fit_state.labels[var]
-        start = int((1 - portion) * len(draw)) if portion else 0
+        start = int((1 - fit_state.portion) * len(draw))
         genid = (
             np.arange(
                 fit_state.generation - len(draw) + start,
