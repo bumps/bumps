@@ -600,18 +600,29 @@ class MCMCDraw(object):
         portion = 1 - (index / saved_gens) if index >= 0 else 0.5
         return portion
 
-    def trim_index(self, portion: Optional[float] = None):
+    def trim_index(self, portion: Optional[float] = None, generation: Optional[int] = None):
         """
         Returns the generation index corresponding to the trim portion. The returned
         generation is relative to the start of the sampling, even if resume has been
         called multiple times to extend the burn or the sample size.
+
+        The optional *generation* parameter is needed in case we have a state object
+        that is out of date with respect to the number of generations seen so far.
+        This can happen when the state is transferred to the user interface thread
+        much less frequently than the step monitor.
         """
-        # Note: self.generation is relative to the start of this run, whereas
-        # total_generations is accumulated across calls to resume.
-        generation = self.total_generations
+        # Note: self.total_generations = self.generation + self._gen_offset
+        # If generation is provided, it represents self.total_generations, so
+        # we can reconstruct the number of saved generations we would see if the
+        # state object were up to date.
+        if generation is None:
+            total_gens = self.total_generations
+            saved_gens = min(self.Ngen, self.generation)
+        else:
+            total_gens = generation
+            saved_gens = min(self.Ngen, generation - self._gen_offset)
         portion = self.portion if portion is None else portion
-        saved_gens = min(self.Ngen, self.generation)
-        return generation - int(portion * saved_gens)
+        return total_gens - int(portion * saved_gens)
 
     def show(self, portion: Optional[float] = None, figfile: Union[str, Path, None] = None):
         from .views import plot_all

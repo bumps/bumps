@@ -894,7 +894,7 @@ async def get_convergence_plot(cutoff: float = 0.25):
     if convergence is not None:
         if state.fitting.fit_state is not None and hasattr(state.fitting.fit_state, "trim_index"):
             # If the trim index is available, we can show it on the plot:
-            trim_index = state.fitting.fit_state.trim_index()
+            trim_index = state.fitting.fit_state.trim_index(generation=len(convergence))
         output = convergence_plot(convergence, dof, cutoff=cutoff, trim_index=trim_index)
         return to_json_compatible_dict(output)
     else:
