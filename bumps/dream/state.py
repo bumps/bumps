@@ -523,12 +523,6 @@ class MCMCDraw(object):
     def Ncr(self):
         return self._update_CR_weight.shape[1]
 
-    def burn_index(self, generation: Optional[int] = None, portion: Optional[float] = None):
-        portion = self.portion if portion is None else portion
-        generation = self.total_generations if generation is None else generation
-        active = min(self.Ngen * portion, generation - self._gen_offset)
-        return generation - active
-
     def resize(self, Ngen: int, Nthin: int, Nupdate: int, Nvar: int, Npop: int, Ncr: int, thinning: int):
         if self.Nvar != Nvar or self.Npop != Npop or self.Ncr != Ncr:
             raise ValueError("Cannot change Nvar, Npop or Ncr on resize")
@@ -595,18 +589,40 @@ class MCMCDraw(object):
         save_state(self, filename)
 
     def trim_portion(self):
+        """
+        Estimate the point at which the Markov chains have reached equilibrium,
+        returning it as a portion of the currently stored length.
+
+        If not converged, then trim the first half of the samples.
+        """
         index = burn_point(self)
-        portion = 1 - (index / self.Ngen) if index >= 0 else 0.5
+        saved_gens = min(self.Ngen, self.generation)
+        portion = 1 - (index / saved_gens) if index >= 0 else 0.5
         return portion
+
+    def trim_index(self, portion: Optional[float] = None):
+        """
+        Returns the generation index corresponding to the trim portion. The returned
+        generation is relative to the start of the sampling, even if resume has been
+        called multiple times to extend the burn or the sample size.
+        """
+        # Note: self.generation is relative to the start of this run, whereas
+        # total_generations is accumulated across calls to resume.
+        generation = self.total_generations
+        portion = self.portion if portion is None else portion
+        saved_gens = min(self.Ngen, self.generation)
+        return generation - int(portion * saved_gens)
 
     def show(self, portion: Optional[float] = None, figfile: Union[str, Path, None] = None):
         from .views import plot_all
 
         plot_all(self, portion=portion, figfile=figfile)
 
+    # TODO: _last_gen and _draw_pop do similar things. Can they be merged?
     def _last_gen(self):
         """
-        Returns x, logp for most recent generation to dream.py.
+        Returns x, logp for most recently saved generation. This may be several
+        generations ago if thinning is enabled.
         """
         # Note: if generation number has wrapped and _gen_index is 0
         # (the usual case when this function is called to resume an
@@ -695,6 +711,7 @@ class MCMCDraw(object):
         """
         return self._gen_current
 
+    # TODO: Delete unused _draw_large_pop function
     def _draw_large_pop(self, Npop: int):
         _, chains, _ = self.chains()
         Ngen, Nchain, Nvar = chains.shape
@@ -831,9 +848,9 @@ class MCMCDraw(object):
         if test == "none":
             self._good_chains = slice(None, None)
         else:
-            Ngen = chains.shape[0]
+            thin_saved_gens = chains.shape[0]
             portion = self.portion if portion is None else portion
-            start = int(Ngen * (1 - portion))
+            start = int(thin_saved_gens * (1 - portion))
             outliers = identify_outliers(test, logp[start:], chains[-1])
             # print("outliers", outliers)
             # print(logp.shape, chains.shape)
@@ -964,15 +981,18 @@ class MCMCDraw(object):
             retval = [v[: self._thin_count] for v in retval]
         return retval
 
-    def gelman(self, portion: Optional[float] = None):
+    def gelman(self):
         """
         Compute the Gelman and Rubin R-statistic for the Markov chains.
         """
-        portion = self.portion if portion is None else portion
+        # Note: Not allowing a portion parameter here because that would
+        # require unrolling the chains or otherwise making the logic in
+        # gelman() too complicated. Keep it simple so that we can show
+        # a simple R statistic over time without thrashing memory.
         if self.generation < self.Ngen:
-            return gelman(self._thin_point[: self.generation], portion=portion)
+            return gelman(self._thin_point[: self.generation], portion=1.0)
         else:
-            return gelman(self._thin_point, portion=portion)
+            return gelman(self._thin_point, portion=1.0)
 
     def CR_weight(self):
         """

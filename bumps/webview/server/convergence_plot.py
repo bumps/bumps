@@ -2,7 +2,7 @@ from typing import Optional
 import numpy as np
 
 
-def convergence_plot(convergence: np.ndarray, dof: float, cutoff: float = 0.25, burn_index: Optional[int] = None):
+def convergence_plot(convergence: np.ndarray, dof: float, cutoff: float = 0.25, trim_index: Optional[int] = None):
     """
     Generate a convergence plot from the convergence data.
 
@@ -27,13 +27,13 @@ def convergence_plot(convergence: np.ndarray, dof: float, cutoff: float = 0.25, 
     hovertemplate = "(%{{x}}, %{{y}})<br>{label}<extra></extra>"
     if npop == 5:
         # fig['data'].append(dict(type="scattergl", x=x, y=pop[tail:,4].tolist(), name="95%", mode="lines", line=dict(color="lightblue", width=1), showlegend=True, hovertemplate=hovertemplate.format(label="95%")))
-        if burn_index is not None and burn_index > tail:
+        if trim_index is not None and trim_index > tail:
             layout["shapes"] = [
                 {
                     "line": {"color": "orange", "dash": "dash", "width": 2},
                     "type": "line",
-                    "x0": burn_index,
-                    "x1": burn_index,
+                    "x0": trim_index,
+                    "x1": trim_index,
                     "xref": "x",
                     "y0": 0,
                     "y1": 1,
@@ -43,7 +43,7 @@ def convergence_plot(convergence: np.ndarray, dof: float, cutoff: float = 0.25, 
             layout["annotations"] = [
                 {
                     "text": "burn",
-                    "x": burn_index,
+                    "x": trim_index,
                     "y": 0.95,
                     "xref": "x",
                     "xanchor": "left",
