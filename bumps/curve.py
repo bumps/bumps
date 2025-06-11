@@ -49,6 +49,7 @@ from dataclasses import dataclass
 
 import numpy as np
 from numpy import log, pi, sqrt
+from numpy.typing import ArrayLike
 
 from .util import NDArray
 from .parameter import Parameter, ValueProtocol
@@ -203,17 +204,17 @@ class Curve:
 
     def __init__(
         self,
-        fn,
-        x=None,
-        y=None,
-        dy=None,
-        name="",
-        labels=None,
-        plotter=None,
-        plot_x=None,
-        plot=None,
-        pars=None,
-        state=None,
+        fn: Callable,
+        x: ArrayLike,
+        y: ArrayLike,
+        dy: Optional[ArrayLike] = None,
+        name: Optional[str] = "",
+        labels: Optional[List[str]] = None,
+        plotter: Optional[Callable[..., None]] = None,
+        plot_x: Optional[NDArray] = None,
+        plot: Optional[Callable] = None,
+        pars: Optional[Dict[str, Parameter]] = None,
+        state: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
         self.x, self.y = np.asarray(x), np.asarray(y)
