@@ -251,7 +251,7 @@ class ProblemState:
         # write_string(group, 'filename', self.filename)
 
     def read(self, parent: "Group"):
-        group = parent.require_group("problem")
+        group = parent["problem"]
         self.serializer = read_string(group, "serializer")
         self.fitProblem = read_fitproblem(group, "fitProblem", method=self.serializer)
         # self.pathlist = read_json(group, 'pathlist')
@@ -452,6 +452,7 @@ class FitResult:
 class State:
     # These attributes are ephemeral, not to be serialized/stored:
     app_name: str = "bumps"
+    app_version: str = __version__
     client_path: Path = Path(__file__).parent.parent / "client"
     hostname: str
     port: int
@@ -541,7 +542,9 @@ class State:
         """
         if copy:
             self.fitting = deepcopy(self.fitting)
+            # print(f"reset_fitstate {copy}: keeping {self.fitting.method} with {self.fitting.fit_state} and convergence={self.fitting.convergence is not None}")
         else:
+            # print(f"reset_fitstate {copy}: keeping {self.fitting.method}")
             self.fitting = FitResult(
                 method=self.shared.selected_fitter,
                 options=self.shared.fitter_settings[self.shared.selected_fitter]["settings"],
@@ -551,6 +554,7 @@ class State:
         self.shared.active_history = None
 
     def set_convergence(self, convergence):
+        # print("setting convergence", convergence is not None)
         self.fitting.convergence = convergence
         self.shared.updated_convergence = now_string()
         self.shared.convergence_available = convergence is not None

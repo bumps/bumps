@@ -44,7 +44,6 @@ import logging
 from dataclasses import field
 # from textwrap import dedent
 
-from bumps import __version__
 from bumps.fitters import FIT_AVAILABLE_IDS
 from . import api
 from . import persistent_settings
@@ -387,7 +386,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         "-V",
         "--version",
         action="version",
-        version=f"%(prog)s {__version__}",
+        version=f"%(prog)s {api.state.app_version}",
     )
 
     # TODO: restructure so that -b -s -r --webview override each other
@@ -731,8 +730,9 @@ def run_batch_fit(options: BumpsOptions):
     # print("completed run")
 
 
-def plugin_main(name: str, client: Path):
+def plugin_main(name: str, client: Path, version: str = ""):
     api.state.app_name = name
+    api.state.app_version = version
     api.state.client_path = client
     main()
 

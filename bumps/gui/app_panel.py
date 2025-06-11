@@ -485,10 +485,10 @@ class AppPanel(wx.Panel):
             if self.fit_thread.is_alive():
                 signal.log_message(message="fit thread failed to complete")
         self.fit_thread = None
-        chisq = nice(2 * event.value / event.problem.dof)
+        chisq = event.problem.chisq_str(nllf=event.value)
         event.problem.setp(event.point)
         signal.update_parameters(model=event.problem)
-        signal.log_message(message="done with chisq %g" % chisq)
+        signal.log_message(message="done with chisq %s" % chisq)
         signal.log_message(message=event.info)
         self.sb.SetStatusText("Fit status: Complete", 3)
         beep()
@@ -546,8 +546,8 @@ class AppPanel(wx.Panel):
 
     def _fit_progress(self, event):
         if event.message == "progress":
-            chisq = nice(2 * event.value / event.problem.dof)
-            message = "step %5d chisq %g" % (event.step, chisq)
+            chisq = event.problem.chisq_str(nllf=event.value)
+            message = "step %5d chisq %s" % (event.step, chisq)
             signal.log_message(message=message)
         elif event.message == "improvement":
             event.problem.setp(event.point)

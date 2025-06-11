@@ -51,11 +51,12 @@ import logging
 import os
 import sys
 import traceback
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, Union, Optional
 import warnings
 
 import numpy as np
 from numpy import inf, isnan, nan
+from scipy.stats import chi2
 
 from . import parameter, util
 from .parameter import to_dict, Parameter, Variable, tag_all
@@ -145,7 +146,11 @@ def no_constraints() -> float:
     return 0
 
 
-def fit_parameters(fitness: Fitness) -> util.List[Parameter]:
+# The functions below would be methods of Fitness if it were a
+# base class rather than a protocol.
+
+
+def fitness_parameters(fitness: Fitness) -> util.List[Parameter]:
     """
     Return a list of fittable (non-fixed) parameters in the model
     """
@@ -153,38 +158,32 @@ def fit_parameters(fitness: Fitness) -> util.List[Parameter]:
     return [p for p in parameters if isinstance(getattr(p, "slot", None), parameter.Variable) and not p.fixed]
 
 
-def chisq_str(fitness: Fitness) -> str:
+def fitness_chisq_str(fitness: Fitness) -> str:
     """
-    Return a string representing the chisq equivalent of the nllf.
-    If the model has strictly gaussian independent uncertainties then the
-    negative log likelihood function will return 0.5*sum(residuals**2),
-    which is 1/2*chisq.  Since we are printing normalized chisq, we
-    multiply the model nllf by 2/DOF before displaying the value.  This
-    is different from the problem nllf function, which includes the
-    cost of the prior parameters and the cost of the penalty constraints
-    in the total nllf.  The constraint value is displayed separately.
+    Return a string representing the chisq equivalent of the nllf for
+    a single dataset. Unlike FitProblem.chisq_str, this does not
+    include parameter uncertainty or constraint penalty.
     """
 
-    pars = fit_parameters(fitness)
+    pars = fitness_parameters(fitness)
     dof = fitness.numpoints() - len(pars)
+    # Duplicated in nllf_scale function below
     if dof <= 0 or np.isnan(dof) or np.isinf(dof):
         chisq_norm, chisq_err = 1.0, 0.0
     else:
-        # return 2./dof, 1./dof
-        from scipy.stats import chi2
-
         npars = max(len(pars), 1)
         chisq_norm, chisq_err = 2.0 / dof, chi2.ppf(ONE_SIGMA, npars) / dof
 
     chisq = fitness.nllf() * chisq_norm
     text = format_uncertainty(chisq, chisq_err)
+    # return f"{text} {fitness.nllf()=:.15e} {chisq_norm=:.15e} {chisq_err=:.15e} {dof=}"
     return text
 
 
-def show_parameters(fitness: Fitness, subs: util.Optional[util.Dict[util.Any, Parameter]] = None):
+def fitness_show_parameters(fitness: Fitness, subs: util.Optional[util.Dict[util.Any, Parameter]] = None):
     """Print the available parameters to the console as a tree."""
     print(parameter.format(fitness.parameters(), freevars=subs))
-    print("[chisq=%s, nllf=%g]" % (chisq_str(fitness), fitness.nllf()))
+    print("[chisq=%s, nllf=%g]" % (fitness_chisq_str(fitness), fitness.nllf()))
 
 
 FitnessType = TypeVar("FitnessType", bound=Fitness)
@@ -467,28 +466,61 @@ class FitProblem(Generic[FitnessType]):
         """
         return [p.residual() for p in self._bounded]
 
-    def chisq_str(self):
+    def chisq(self, nllf: Union[float, util.NDArray, None] = None, norm: bool = True, compact: bool = True):
+        """
+        Returns chisq as a floating point value.
+
+        See documentation for :meth:`chisq_str`.
+        """
+        chisq_norm, chisq_err = nllf_scale(self, norm=norm)
+        if nllf is None:
+            pparameter, pconstraints, pmodel, failing_constraints = self._nllf_components()
+            nllf = pparameter + pparameter + pconstraints if compact else pmodel + pparameter
+        else:
+            assert compact is True
+        return nllf * chisq_norm
+
+    # TODO: Too many versions of chisq about.
+    def chisq_str(self, nllf: Optional[float] = None, norm: bool = True, compact: bool = True):
         """
         Return a string representing the chisq equivalent of the nllf.
+
+        If *norm* is True (default) the output is normalized by the number
+        of degrees of freedom, with a target value of 1.0 for a good fit.
+
+        If *compact* is True (default) then add the constraints penalty
+        to chisq before normalizing, otherwise show the constraints
+        penalty separately, along with the list of any failing constraints.
+
+        If *nllf* is provided then use that instead of calling the model
+        evaluator. Fail if *compact* is False.
 
         If the model has strictly gaussian independent uncertainties then the
         negative log likelihood function will return 0.5*sum(residuals**2),
         which is 1/2*chisq.  Since we are printing normalized chisq, we
         multiply the model nllf by 2/DOF before displaying the value.  This
         is different from the problem nllf function, which includes the
-        cost of the prior parameters and the cost of the penalty constraints
+        cost of the cost of the penalty constraints in the total nllf.
+
+        Parameter priors, if any, are treated as independent models
         in the total nllf.  The constraint value is displayed separately.
         """
-        pparameter, pconstraints, pmodel, failing_constraints = self._nllf_components()
-        chisq_norm, chisq_err = nllf_scale(self)
-        chisq = pmodel * chisq_norm
-        text = format_uncertainty(chisq, chisq_err)
-        constraints = pparameter + pconstraints
-        if constraints > 0.0:
-            text += " constraints=%g" % constraints
-        if len(failing_constraints) > 0:
-            text += " failing_constraints=%s" % str(failing_constraints)
+        chisq_norm, chisq_err = nllf_scale(self, norm=norm)
 
+        if nllf is None:
+            pparameter, pconstraints, pmodel, failing_constraints = self._nllf_components()
+            nllf = pmodel + pparameter + pconstraints if compact else pmodel + pparameter
+        else:
+            assert compact is True
+        # print(f"{pmodel=} {pparameter=} {pconstraints=} {nllf=} {chisq_norm=} {chisq_err=}")
+        text = format_uncertainty(nllf * chisq_norm, chisq_err)
+        if not compact:
+            if pconstraints > 0.0:
+                text += f" constraints={pconstraints}"
+            if len(failing_constraints) > 0:
+                text += " failing_constraints=%s" % str(failing_constraints)
+
+        # return f"{text} p={self.getp()} => {pmodel:.15e}"
         return text
 
     def _nllf_components(self) -> util.Tuple[float, float, float, util.List[str]]:
@@ -528,6 +560,11 @@ class FitProblem(Generic[FitnessType]):
     def summarize(self):
         """Return a table of current parameter values with range bars."""
         return parameter.summarize(self._parameters)
+
+    @property
+    def parameters(self):
+        """Return the list of fitted parameters."""
+        return self._parameters
 
     def labels(self) -> util.List[str]:
         """Return the list of labels, one per fitted parameter."""
@@ -598,8 +635,13 @@ class FitProblem(Generic[FitnessType]):
         self._parameters_by_id = pars_by_id
         # TODO: shimmed to allow non-Parameter in Parameter attribute spots.
         self._bounded = [p for p in all_parameters if hasattr(p, "has_prior") and p.has_prior()]
-        self._dof = self.model_points()
-        self._dof -= len(self._parameters)
+        # The degrees of freedom is the number of data points minus the number of fit
+        # parameters. Gaussian priors on the parameters are treated as a simultaneous
+        # fit to the data plus a fit of the parameter to its previously measured value.
+        # That is, each prior adds a single data point to the fit without changing the
+        # number of free parameters, thus increasing DOF by 1. Again, the target value
+        # for a fit with no systematic error should be the number of degrees of freedom.
+        self._dof = self.model_points() + sum(p.prior.dof for p in self._bounded) - len(self._parameters)
         if self.dof <= 0:
             warnings.warn(
                 f"Need more data points (currently: {self.model_points()}) than fitting parameters ({len(self._parameters)})"
@@ -682,7 +724,7 @@ class FitProblem(Generic[FitnessType]):
         for i, f in enumerate(self.models):
             print("-- Model %d %s" % (i, getattr(f, "name", "")))
             subs = self.freevars.get_model(i) if self.freevars else {}
-            show_parameters(f, subs=subs)
+            fitness_show_parameters(f, subs=subs)
         print("[overall chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
 
     def plot(self, p=None, fignum=1, figfile=None, view=None, model_indices=None):
@@ -699,7 +741,7 @@ class FitProblem(Generic[FitnessType]):
             pylab.figure(i + fignum)
             f.plot(view=view)
             pylab.suptitle("Model %d - %s" % (i, f.name))
-            pylab.text(0.01, 0.01, "chisq=%s" % chisq_str(f), transform=pylab.gca().transAxes)
+            pylab.text(0.01, 0.01, "chisq=%s" % fitness_chisq_str(f), transform=pylab.gca().transAxes)
             if figfile is not None:
                 pylab.savefig(figfile + "-model%d.png" % i, format="png")
 
@@ -716,7 +758,7 @@ class FitProblem(Generic[FitnessType]):
 ONE_SIGMA = 0.68268949213708585
 
 
-def nllf_scale(problem: FitProblem):
+def nllf_scale(problem: FitProblem, norm: bool = True):
     r"""
     Return the scale factor for reporting the problem nllf as an approximate
     normalized chisq, along with an associated "uncertainty".  The uncertainty
@@ -727,18 +769,18 @@ def nllf_scale(problem: FitProblem):
     Parameters*, the $1-\sigma$ contour in parameter space corresponds
     to $\Delta\chi^2 = \text{invCDF}(1-\sigma,k)$ where
     $1-\sigma \approx 0.6827$ and $k$ is the number of fitting parameters.
-    Since we are reporting the normalized $\chi^2$, this needs to be scaled
-    by the problem degrees of freedom, $n-k$, where $n$ is the number of
-    measurements.  To first approximation, the uncertainty in $\chi^2_N$
-    is $k/(n-k)$
+
+    If *norm* is True (default), then we need to normalize chisq by
+    the degrees of freedom. This allows us to assess fit quality as the
+    average squared error in each data point, which should be around 1.0
+    if the model and measurement uncertainties are correct.
     """
-    dof = problem.dof
+    # Duplicated in fitness_chisq_str function above
+    dof = problem.dof if norm else 1
     if dof <= 0 or np.isnan(dof) or np.isinf(dof):
         return 1.0, 0.0
     else:
-        # return 2./dof, 1./dof
-        from scipy.stats import chi2
-
+        # return 2.0 / dof, 1.0 / dof
         npars = max(len(problem.getp()), 1)
         return 2.0 / dof, chi2.ppf(ONE_SIGMA, npars) / dof
 

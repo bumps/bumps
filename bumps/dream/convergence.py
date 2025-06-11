@@ -10,6 +10,7 @@ the log probabilities are still improving throughout the chain.
 __all__ = ["burn_point", "ks_converged"]
 
 from typing import TYPE_CHECKING
+import warnings
 
 import numpy as np
 from numpy.random import choice
@@ -73,32 +74,32 @@ def ks_converged(state, trials=TRIALS, density=DENSITY, alpha=ALPHA, samples=SAM
     if alpha == 0.0:
         return False
 
-    # Make sure we have the desired number of draws
+    # Make sure we have a full buffer.
     if state.generation < state.Ngen:
+        # print(f"convergence {state.generation}: need {state.Ngen} for a full cycle")
         return False
 
-    # Quick fail if best occurred within draw
+    # Quick fail if best occurred within current buffer. We want to make sure we have
+    # time to explore a new minimum before concluding that it has converged.
     if not state.stable_best():
-        # print(state.generation, "best gen", state._best_gen, "start", state.generation - state.Ngen)
+        # print(f"convergence {state.generation}: best {state._best_gen} still in pop {state.total_generations} - {state.Ngen} = {state.total_generations - state.Ngen}")
         return False
 
     # Grab a window at the start and the end
     window_size = min(max(samples // state.Npop + 1, MIN_WINDOW), state.Ngen // 2)
-
     head = state.logp_slice(window_size).flatten()
     tail = state.logp_slice(-window_size).flatten()
 
-    # Quick fail if logp head is worse than logp tail
-    if np.min(head) < state.min_slice(-state.Ngen // 2):
-        # print(state.generation, "improving worst", np.min(head), state.min_slice(-state.Ngen//2))
-        return False
+    # # Note: best not in buffer should cover this case.
+    # # Quick fail if logp head is worse than logp tail
+    # if np.min(head) > np.min(tail):
+    #     # print(f"convergence {state.generation}: tail {np.min(tail)} better than head {np.min(head)}")
+    #     return False
 
     n_draw = int(density * samples)
-    reject = _robust_ks_2samp(head, tail, n_draw, trials, alpha)
-    if reject:
-        return False
-
-    return True
+    p = _robust_ks_2samp(head, tail, n_draw, trials)
+    # print(f"convergence {state.generation}: pval={p} < {alpha}?")
+    return p < alpha
 
 
 def check_nllf_distribution(state):
@@ -161,18 +162,20 @@ def burn_point(state, method="window", trials=TRIALS, **kwargs):
         index = _ks_sliding_window(state, trials=trials, **kwargs)
     else:
         raise ValueError("Unknown convergence test " + method)
+    # TODO: need a better way to report convergence failure
     if index < 0:
-        print("Did not converge!")
+        warnings.warn("Did not converge!")
     return index
 
 
-def _ks_sliding_window(state, trials=TRIALS, density=DENSITY, alpha=ALPHA * 0.01, samples=SAMPLES):
+def _ks_sliding_window(state, trials=TRIALS, density=DENSITY, alpha=ALPHA, samples=SAMPLES):
     _, logp = state.logp()
 
     window_size = min(max(samples // state.Npop + 1, MIN_WINDOW), state.Ngen // 2)
     tiny_window = window_size // 11 + 1
     half = state.Ngen // 2
     max_index = len(logp) - half - window_size
+    # print("max index", max_index, "window size", window_size, "half", half, "Ngen", state.Ngen, "len(logp)", len(logp))
 
     if max_index < 0:
         return -1
@@ -195,14 +198,12 @@ def _ks_sliding_window(state, trials=TRIALS, density=DENSITY, alpha=ALPHA * 0.01
             continue
 
         # if head and tail are different, slide to the next window
-        reject = _robust_ks_2samp(window, tail, n_draw, trials, alpha)
-        if reject:
-            continue
-
-        # Head and tail are not significantly different, so break.
-        # Index is not yet updated, so the tiny step loop will start with
-        # the first rejected window.
-        break
+        # p_val represents the probability that the two samples are from the same distribution.
+        p_val = _robust_ks_2samp(window, tail, n_draw, trials)
+        # print("ks", index, window_size, len(window), p_val, alpha)
+        if p_val >= alpha:
+            # two samples look the same, so we do not reject the null hypothesis.
+            break
 
     if index >= max_index:
         return -1
@@ -214,16 +215,16 @@ def _ks_sliding_window(state, trials=TRIALS, density=DENSITY, alpha=ALPHA * 0.01
             # print("tiny llf", index, tiny_window, len(window), np.min(window), min_tail)
             continue
 
-        p_val = _robust_ks_2samp(window, tail, n_draw, trials, alpha)
+        p_val = _robust_ks_2samp(window, tail, n_draw, trials)
         # print("tiny ks", index, tiny_window, len(window), p_val, alpha)
-        if p_val > alpha:
-            # head and tail are not significantly different, so break
+        if p_val >= alpha:
+            # head and tail are not significantly different, so stop
             break
 
     return index
 
 
-def _robust_ks_2samp(f_data, r_data, n_draw, trials, alpha):
+def _robust_ks_2samp(f_data, r_data, n_draw, trials):
     """
     Repeat ks test n times for a more robust statistic.
 
@@ -237,5 +238,4 @@ def _robust_ks_2samp(f_data, r_data, n_draw, trials, alpha):
         f_samp = choice(f_data, n_draw, replace=True)
         r_samp = choice(r_data, n_draw, replace=True)
         p_vals.append(ks_2samp(f_samp, r_samp)[1])
-    return alpha > np.mean(p_vals)
-    # return any(alpha > p for p in p_vals)
+    return np.median(p_vals)

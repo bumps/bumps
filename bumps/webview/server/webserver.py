@@ -44,7 +44,14 @@ async def index(request):
             content_type="text/html",
             status=404,
         )
-    return web.FileResponse(client / "dist" / "index.html")
+    return web.FileResponse(
+        client / "dist" / "index.html",
+        headers={
+            "Cache-Control": "max-age=0, no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
 
 
 routes = app = sio = None
@@ -70,8 +77,12 @@ def init_web_app():
 
         @routes.get(f"/{fn.__name__}")
         async def handler(request: web.Request):
-            result = await fn(**request.query)
-            return web.json_response(result)
+            try:
+                result = await fn(**request.query)
+                return web.json_response(result)
+            except Exception as err:
+                logger.exception(err)
+                raise
 
         # pass the function to the next decorator unchanged...
         return fn
@@ -85,7 +96,12 @@ def init_web_app():
 
         @functools.wraps(function)
         async def with_sid(sid: str, *args, **kwargs):
-            return await function(*args, **kwargs)
+            try:
+                # print("RPC:", function.__name__, args, kwargs)
+                return await function(*args, **kwargs)
+            except Exception as err:
+                logger.error(f"Exception for {function.__name__}(*{args}, **{kwargs}): {err}")
+                raise
 
         return with_sid
 
@@ -143,7 +159,12 @@ def enable_convergence_kernel_heartbeat():
 
 def _create_socket():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+        # Windows
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+    else:
+        # Unix and MacOS
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     return sock
 
 

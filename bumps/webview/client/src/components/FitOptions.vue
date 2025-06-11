@@ -66,6 +66,14 @@ function process_settings() {
       } else if (field_type === "boolean") {
         // probably unnecessary if it is bound to a checkbox
         processed_value = Boolean(value);
+      } else if (Array.isArray(field_type)) {
+        // this is a list of options
+        processed_value = value;
+      } else if (typeof field_type === "object") {
+        // this is a range
+        // Check for Array.isArray(field_type) first, because
+        // typeof field_type === "object" will also be true for arrays
+        processed_value = Number(value);
       }
       return [sname, processed_value];
     })
@@ -86,10 +94,10 @@ async function save(start: boolean = false, resume: boolean = false) {
     // start_fit_thread(
     //   fitter_name: string,
     //   fitter_settings: object,
-    //   max_time: float = 0.0,
+    //   // max_time: float = 0.0, // removed again from the server
     //   resume: boolean = false
     // )
-    await props.socket.asyncEmit("start_fit_thread", selected_fitter_local.value, fitter_settings_local, 0.0, resume);
+    await props.socket.asyncEmit("start_fit_thread", selected_fitter_local.value, fitter_settings_local, resume);
   }
   close();
 }
