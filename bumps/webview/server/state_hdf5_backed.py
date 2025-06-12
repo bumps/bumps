@@ -49,7 +49,8 @@ from bumps.mapper import BaseMapper
 
 
 SESSION_FILE_NAME = "session.h5"
-ARRAY_COMPRESSION = COMPRESSION = 9
+ARRAY_COMPRESSION = 5
+COMPRESSION = 9
 # MAX_PROBLEM_SIZE = 100 * 1024 * 1024  # 100 MBi problem max size [unused]
 
 SERIALIZERS = Literal["dataclass", "pickle", "dill"]
