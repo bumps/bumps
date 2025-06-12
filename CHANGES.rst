@@ -23,6 +23,8 @@ v1.0.0 2025-01-XX
 * new `Constraint` class that can be created with e.g. `constraints = [par1 < par2, par2 < par3]` and passed directly to FitProblem
 * the `DE` stepper (also used by `dream`) is now fully accelerated with numba when numba is present (C DLL is still faster)
 * `setup.py` removed and the package is now defined in `pyproject.toml`
+* when using `trim` option in `dream`, the calculated stable portion is stored in the Dream state (`MCMCDraw.portion`),
+  * this portion is used by default in `MCMCDraw.draw()` and plotting methods
 
 v0.9.3 2024-07-09
 -----------------
