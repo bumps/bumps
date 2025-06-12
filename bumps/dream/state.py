@@ -121,7 +121,7 @@ def _h5_write_field(group: "Group", field: str, data: Union[NDArray, str]):
 
     # print(f"h5 writing {field} in {group} with {data}")
     if isinstance(data, str):
-        dtype = h5py.string_dtype(encoding="utf-8")
+        dtype = h5py.string_dtype(encoding="utf-8", length=len(data))
         return group.create_dataset(field, data=data, dtype=dtype)
     elif isinstance(data, (int, np.integer)):
         return group.create_dataset(field, data=data, dtype=np.int64)

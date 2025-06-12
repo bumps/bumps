@@ -70,6 +70,8 @@ nitpick_ignore = [
     # ("py:class", "object"),
     ("py:class", "numpy.dtype"),
     ("py:class", "numpy._typing._array_like._ScalarType_co"),
+    ("py:class", "numpy._typing._array_like._SupportsArray"),
+    ("py:class", "numpy._typing._nested_sequence._NestedSequence"),
     ("py:class", "numpy.ndarray"),
     ("py:class", "NDArray"),
     ("py:class", "h5py._hl.group.Group"),
@@ -79,6 +81,7 @@ nitpick_ignore = [
     ("py:class", "bumps.fitproblem.FitnessType"),
     ("py:obj", "bumps.fitproblem.FitnessType"),
     ("py:class", "bumps.dream.core.Model"),
+    ("py:class", "collections.abc.Buffer"),
 ]
 
 # Add any paths that contain templates here, relative to this directory.
