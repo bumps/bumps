@@ -64,15 +64,21 @@ extensions = [
 # plot_formats = [('png', 120), ('pdf', 50)] # Only make 80 dpi plots
 
 nitpick_ignore = [
-    ("py:class", "type"),
+    # ("py:class", "any"),
+    # ("py:class", "type"),
     ("py:class", "enum.Enum"),
-    ("py:class", "object"),
+    # ("py:class", "object"),
+    ("py:class", "numpy.dtype"),
+    ("py:class", "numpy._typing._array_like._ScalarType_co"),
     ("py:class", "numpy.ndarray"),
-    ("py:class", "np.ndarray"),
-    ("py:class", "Real"),
-    ("py:class", "Integral"),
+    ("py:class", "NDArray"),
+    ("py:class", "h5py._hl.group.Group"),
+    ("py:class", "pathlib.Path"),
+    # ("py:class", "Real"),
+    # ("py:class", "Integral"),
     ("py:class", "bumps.fitproblem.FitnessType"),
     ("py:obj", "bumps.fitproblem.FitnessType"),
+    ("py:class", "bumps.dream.core.Model"),
 ]
 
 # Add any paths that contain templates here, relative to this directory.

@@ -1,6 +1,16 @@
 name: Test and Publish to PyPI
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    branches: [master]
+  pull_request:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
   # Build a pure Python wheel and upload as an artifact
@@ -18,6 +28,9 @@ jobs:
           ref: v1.14.0
           path: bumps/dream/random123
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -31,15 +44,9 @@ jobs:
         run: |
           cd bumps/webview/client
           npm install
-          npm run build_prod
-
-      - name: Install dependencies for building the wheel
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e .[dev]
-
+          npm run build
       - name: Create the wheel
-        run: python -m build
+        run: uv build
 
       - name: Upload the wheel and source distribution artifacts
         uses: actions/upload-artifact@v4
@@ -48,7 +55,6 @@ jobs:
           path: |
             dist/bumps-*-py3-none-any.whl
             dist/bumps-*.tar.gz
-
   # Test the wheel on different platforms, test webview, and check docs build
   test:
     runs-on: ${{ matrix.cfg.os }}
@@ -62,12 +68,16 @@ jobs:
           - { os: ubuntu-latest, py: "3.10" }
           - { os: ubuntu-latest, py: 3.11 }
           - { os: ubuntu-latest, py: 3.12 }
+          - { os: ubuntu-latest, py: 3.13 }
           - { os: windows-latest, py: "3.10" }
           - { os: macos-latest, py: "3.10" }
       fail-fast: false
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
 
       - name: Set up Python ${{ matrix.cfg.py }}
         uses: actions/setup-python@v5
@@ -81,35 +91,29 @@ jobs:
           path: dist
 
       - name: Install the wheel
-        shell: bash
-        run: python -m pip install dist/bumps-*-py3-none-any.whl
-
-      - name: Install dependencies for testing
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install .[dev]
-
+          uv venv
+          find dist -name "bumps-*-py3-none-any.whl" -exec uv pip install {}[dev] \;
       - name: Run tests, except for webview
-        run: pytest -v --ignore=bumps/webview
+        run: uv run python -m pytest -v --ignore=bumps/webview
 
       - name: Install dependencies for webview testing
-        run: |
-          python -m pip install .[webview]
+        run: find dist -name "bumps-*-py3-none-any.whl" -exec uv pip install {}[webview] \;
 
       - name: Run tests
-        run: pytest -v
+        run: uv run python -m pytest -v
 
       - name: Check examples
-        run: python check_examples.py --chisq
+        run: uv run python check_examples.py --chisq
 
       - name: Check fitters
-        run: python check_fitters.py
+        run: uv run python check_fitters.py
 
       - name: Check that the docs build (linux only)
         if: matrix.cfg.doc == 1
         run: |
+          source .venv/bin/activate
           make -j 4 -C doc SPHINXOPTS="-W --keep-going -n" html
-
   # Upload wheel to PyPI only when a tag is pushed, and its name begins with 'v'
   upload-to-pypi:
     runs-on: ubuntu-latest

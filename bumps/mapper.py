@@ -12,7 +12,7 @@ Usage::
     ...
     mapper = Mapper.start_mapper(problem, None, cpus)
     result = mapper(points)
-    Mapper.stop_mapper(mapper)
+    Mapper.stop_mapper()
 """
 
 import sys
@@ -90,7 +90,27 @@ def nice():
         os.nice(5)
 
 
-class SerialMapper(object):
+# Noise so that the type checker is happy
+class BaseMapper(object):
+    has_problem = False
+
+    @staticmethod
+    def start_worker(problem):
+        """Called with the problem to initialize the worker"""
+        raise NotImplementedError()
+
+    @staticmethod
+    def start_mapper(problem, modelargs=None, cpus=0):
+        """Called with the problem on a new fit."""
+        raise NotImplementedError()
+
+    # TODO: deprecate mapper parameter
+    @staticmethod
+    def stop_mapper(mapper=None):
+        raise NotImplementedError()
+
+
+class SerialMapper(BaseMapper):
     @staticmethod
     def start_worker(problem):
         pass
@@ -101,7 +121,7 @@ class SerialMapper(object):
         return lambda points: list(map(problem.nllf, points))
 
     @staticmethod
-    def stop_mapper(mapper):
+    def stop_mapper(mapper=None):
         pass
 
 
@@ -111,36 +131,38 @@ class SerialMapper(object):
 #    _MP_set_problem(load_problem(*modelargs))
 
 
-def _MP_setup(namespace):
+def _MP_setup():
     # Using MPMapper class variables to store worker globals.
     # It doesn't matter if they conflict with the controller values since
     # they are in a different process.
     signal.signal(signal.SIGINT, signal.SIG_IGN)
-    MPMapper.namespace = namespace
     nice()
 
 
-def _MP_run_problem(problem_point_pair):
-    problem_id, point = problem_point_pair
+def _MP_run_problem(problem_point_tuple):
+    problem_id, point, shared_pickled_problem = problem_point_tuple
     if problem_id != MPMapper.problem_id:
         # print(f"Fetching problem {problem_id} from namespace")
         # Problem is pickled using dill when it is available
         try:
             import dill
 
-            MPMapper.problem = dill.loads(MPMapper.namespace.pickled_problem)
+            MPMapper.problem = dill.loads(shared_pickled_problem[:].tobytes())
         except ImportError:
-            MPMapper.problem = MPMapper.namespace.problem
+            import pickle
+
+            MPMapper.problem = pickle.loads(shared_pickled_problem[:].tobytes())
         MPMapper.problem_id = problem_id
     return MPMapper.problem.nllf(point)
 
 
-class MPMapper(object):
+class MPMapper(BaseMapper):
     # Note: suprocesses are using the same variables
     pool = None
     manager = None
-    namespace = None
     problem_id = 0
+    shared_pickled_problem = None
+    problem = None
 
     @staticmethod
     def start_worker(problem):
@@ -154,11 +176,10 @@ class MPMapper(object):
         if MPMapper.pool is None:
             # Create a sync namespace to distribute the problem description.
             MPMapper.manager = multiprocessing.Manager()
-            MPMapper.namespace = MPMapper.manager.Namespace()
             # Start the process pool, sending the namespace handle
             if cpus == 0:
                 cpus = multiprocessing.cpu_count()
-            MPMapper.pool = multiprocessing.Pool(cpus, _MP_setup, (MPMapper.namespace,))
+            MPMapper.pool = multiprocessing.Pool(cpus, _MP_setup)
 
         # Increment the problem number and store the problem in the namespace.
         # The store action uses pickle to transfer python objects to the
@@ -169,29 +190,32 @@ class MPMapper(object):
         try:
             import dill
 
-            MPMapper.namespace.pickled_problem = dill.dumps(problem, recurse=True)
+            MPMapper.pickled_problem = dill.dumps(problem, recurse=True)
         except ImportError:
-            MPMapper.namespace.problem = problem
-        ## Store the modelargs and the problem name if pickling doesn't work
-        # MPMapper.namespace.modelargs = modelargs
+            import pickle
 
-        # Set the mapper to send problem_id/point value pairs
+            MPMapper.pickled_problem = pickle.dumps(problem)
+        MPMapper.shared_pickled_problem = MPMapper.manager.Array("B", MPMapper.pickled_problem)
+
+        # Set the mapper to send problem_id/point/shared_pickled_problem value triples
         def mapper(points):
             try:
-                return MPMapper.pool.map(_MP_run_problem, ((MPMapper.problem_id, p) for p in points))
+                return MPMapper.pool.map(
+                    _MP_run_problem, ((MPMapper.problem_id, p, MPMapper.shared_pickled_problem) for p in points)
+                )
             except KeyboardInterrupt:
-                MPMapper.stop_mapper(None)
+                MPMapper.stop_mapper()
 
         return mapper
 
     @staticmethod
-    def stop_mapper(mapper):
+    def stop_mapper(mapper=None):
         # reset pool and manager
-        MPMapper.pool.terminate()
-        MPMapper.manager.shutdown()
-        MPMapper.pool = None
-        MPMapper.manager = None
-        MPMapper.namespace = None
+        if MPMapper.pool is not None:
+            MPMapper.pool.terminate()
+            MPMapper.pool = None
+            MPMapper.manager.shutdown()
+            MPMapper.manager = None
         # Don't reset problem id; it keeps count even when mapper is restarted.
         ##MPMapper.problem_id = 0
 
@@ -205,16 +229,17 @@ def _MPI_set_problem(problem, comm, root=0):
 
 
 def _MPI_map(problem, points, comm, root=0):
-    # print(f"{comm.rank}: mapping points")
     import numpy as np
     from mpi4py import MPI
+
+    # print(f"{comm.rank}: mapping points")
 
     # Send number of points and number of variables per point.
     # root: return result if there are points otherwise return False
     # worker: return True if there are points otherwise return False
     npoints, nvars = comm.bcast(points.shape if comm.rank == root else None, root=root)
     if npoints == 0:
-        return False
+        return None
 
     # Divvy points equally across all processes
     whole = points if comm.rank == root else None
@@ -235,8 +260,21 @@ def _MPI_map(problem, points, comm, root=0):
     return result
 
 
-class MPIMapper(object):
-    _first_fit = True  # The first problem is set when the worker starts
+def using_mpi():
+    # Can look for environment variables defined by mpirun
+    #   mpich: PMI_SIZE, PMI_*, MPI_*
+    #   openmp: OMPI_COMM_WORLD_SIZE, OMPI_* PMIX_*
+    #   impi_rt (intel): PMI_SIZE I_MPI_* HYDRA_*
+    #   msmpi (microsoft): PMI_SIZE PMI_* MSMPI_*
+    size = os.environ.get("PMI_SIZE", None)
+    if size is None:
+        size = os.environ.get("OMPI_COMM_WORLD_SIZE", None)
+    return size is not None and int(size) > 1
+
+
+class MPIMapper(BaseMapper):
+    has_problem = True
+    """For MPIMapper only the worker is initialized with the fit problem."""
 
     @staticmethod
     def start_worker(problem):
@@ -253,36 +291,45 @@ class MPIMapper(object):
         from mpi4py import MPI
 
         comm, root = MPI.COMM_WORLD, 0
+        MPIMapper.rank = comm.rank
+        rank = comm.rank
+        # print(f"MPI {rank} of {comm.size} initializing")
 
         # If worker, sit in a loop waiting for the next point.
         # If the point is empty, then wait for a new problem.
         # If the problem is None then we are done, otherwise wait for next point.
-        if comm.rank != root:
-            # print(f"{comm.rank}: looping")
+        if rank != root:
+            # print(f"{rank}: looping")
             while True:
                 result = _MPI_map(problem, None, comm, root)
-                if not result:
+                if result is None:
                     problem = _MPI_set_problem(None, comm, root)
                     if problem is None:
                         break
-                    # print(f"{comm.rank}: changing problem")
+                    # print(f"{rank}: changing problem")
 
-            # print(f"{comm.rank}: finalizing")
+            # print(f"{rank}: finalizing")
             MPI.Finalize()
 
             # Exit the program after the worker is done. Don't return
             # to the caller since that is continuing on with the main
             # thread, and in particular, attempting to rerun the fit on
             # each worker.
+            # print(f"{rank}: Worker exiting")
             sys.exit(0)
+            # print(f"{rank}: Worker exited")
+        else:
+            # Root initialization:
+            MPIMapper.has_problem = problem is not None
+            # print("mapper has problem", MPIMapper.has_problem)
 
     @staticmethod
     def start_mapper(problem, modelargs=None, cpus=0):
         # Only root can get here---worker is stuck in start_worker
         from mpi4py import MPI
+        import numpy as np
 
         comm, root = MPI.COMM_WORLD, 0
-        import numpy as np
 
         # Signal new problem then send it, but not on the first fit. We do this
         # so that we can still run MPI fits even if the problem itself cannot
@@ -290,73 +337,22 @@ class MPIMapper(object):
         # if the problem can't be pickled, but you will need to restart the
         # MPI job separately for each fit.)
         # Note: setting problem to None stops the program, so call finalize().
-        mapper = lambda points: _MPI_map(problem, points, comm, root)
-        if not MPIMapper._first_fit:
-            # print(f"{comm.rank}: replacing problem")
+        def mapper(points):
+            return _MPI_map(problem, points, comm, root)
+
+        if not MPIMapper.has_problem:  # Only true on the first fit
+            # print(f"*** {comm.rank}: replacing problem")
             # Send an empty set of points to signal a new problem is coming.
             mapper(np.empty((0, 0), "d"))
             _MPI_set_problem(problem, comm, root)
             if problem is None:
                 # print(f"{comm.rank}: finalizing root")
                 MPI.Finalize()
-        MPIMapper._first_fit = False
+        MPIMapper.has_problem = False
         return mapper
 
     @staticmethod
-    def stop_mapper(mapper):
+    def stop_mapper(mapper=None):
+        # print("stopping mapper")
         # Set problem=None to stop the program.
         MPIMapper.start_mapper(None, None)
-
-
-class AMQPMapper(object):
-    @staticmethod
-    def start_worker(problem):
-        # sys.stderr = open("bumps-%d.log"%os.getpid(),"w")
-        # print >>sys.stderr,"worker is starting"; sys.stdout.flush()
-        from amqp_map.config import SERVICE_HOST
-        from amqp_map.core import connect, start_worker as serve
-
-        server = connect(SERVICE_HOST)
-        # os.system("echo 'serving' > /tmp/map.%d"%(os.getpid()))
-        # print "worker is serving"; sys.stdout.flush()
-        serve(server, "bumps", problem.nllf)
-        # print >>sys.stderr,"worker ended"; sys.stdout.flush()
-
-    @staticmethod
-    def start_mapper(problem, modelargs=None, cpus=0):
-        import sys
-        import multiprocessing
-        import subprocess
-        from amqp_map.config import SERVICE_HOST
-        from amqp_map.core import connect, Mapper
-
-        server = connect(SERVICE_HOST)
-        mapper = Mapper(server, "bumps")
-        cpus = multiprocessing.cpu_count()
-        pipes = []
-        for _ in range(cpus):
-            cmd = [sys.argv[0], "--worker"] + modelargs
-            # print "starting",sys.argv[0],"in",os.getcwd(),"with",cmd
-            pipe = subprocess.Popen(cmd, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            pipes.append(pipe)
-        for pipe in pipes:
-            if pipe.poll() > 0:
-                raise RuntimeError(
-                    "subprocess returned %d\nout: %s\nerr: %s" % (pipe.returncode, pipe.stdout, pipe.stderr)
-                )
-        # os.system(" ".join(cmd+["&"]))
-        import atexit
-
-        def exit_fun():
-            for p in pipes:
-                p.terminate()
-
-        atexit.register(exit_fun)
-
-        # print "returning mapper",mapper
-        return mapper
-
-    @staticmethod
-    def stop_mapper(mapper):
-        for pipe in mapper.pipes:
-            pipe.terminate()

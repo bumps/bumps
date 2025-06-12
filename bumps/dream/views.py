@@ -5,6 +5,7 @@ MCMC plotting methods.
 __all__ = ["plot_all", "plot_corr", "plot_corrmatrix", "plot_trace", "plot_logp", "format_vars"]
 
 import math
+from typing import Optional, List
 
 import numpy as np
 from numpy import arange, linspace, meshgrid, squeeze, vstack
@@ -12,17 +13,16 @@ from scipy.stats import gaussian_kde
 
 from . import corrplot, varplot
 from .stats import format_vars, save_vars, var_stats
+from .state import MCMCDraw
 
 
-def plot_all(state, portion=1.0, figfile=None):
+def plot_all(state: MCMCDraw, portion: Optional[float] = None, figfile=None):
     # Print/save uncertainty report before loading pylab or creating plots
     draw = state.draw(portion=portion)
     all_vstats = var_stats(draw)
     print(format_vars(all_vstats))
     print(
-        "\nStatistics and plots based on {nsamp:d} samples ({psamp:.1%} of total samples drawn)".format(
-            nsamp=len(draw.points), psamp=portion
-        )
+        f"\nStatistics and plots based on {len(draw.points)} samples ({int(100*draw.portion)}% of total samples drawn)"
     )
     if figfile is not None:
         save_vars(all_vstats, figfile + "-err.json")
@@ -153,39 +153,48 @@ def plot_corr(draw, vars=(0, 1)):
     setp(ax_hist_y.get_yticklabels(), visible=False)
 
 
-def plot_traces(state, vars=None, portion=None):
-    from pylab import clf, subplot, subplots_adjust
+def plot_traces(state: MCMCDraw, vars: Optional[List[int]] = None, portion: Optional[float] = None, fig=None):
+    from pylab import clf, gcf
 
+    if fig is None:
+        fig = gcf()
     if vars is None:
         vars = list(range(min(state.Nvar, 6)))
     clf()
-    nw, nh = tile_axes(len(vars))
-    subplots_adjust(hspace=0.0)
+    nw, nh = tile_axes(len(vars), fig=fig)
+    fig.subplots_adjust(hspace=0.0)
     for k, var in enumerate(vars):
-        subplot(nw, nh, k + 1)
-        plot_trace(state, var, portion)
+        axes = fig.add_subplot(nw, nh, k + 1)
+        plot_trace(state, var=var, portion=portion, axes=axes)
 
 
-def plot_trace(state, var=0, portion=None):
-    from pylab import plot, title, xlabel, ylabel
+def plot_trace(state: MCMCDraw, var: int = 0, portion: Optional[float] = None, axes=None, fig=None):
+    from pylab import gcf
 
+    portion = state.portion if portion is None else portion
+    if axes is None:
+        if fig is None:
+            fig = gcf()
+        axes = fig.add_subplot(111)
     draw, points, _ = state.chains()
     label = state.labels[var]
-    start = int((1 - portion) * len(draw)) if portion else 0
+    start = int((1 - portion) * len(draw))
     genid = arange(state.generation - len(draw) + start, state.generation) + 1
-    plot(genid * state.thinning, squeeze(points[start:, state._good_chains, var]))
-    xlabel("Generation number")
-    ylabel(label)
+    axes.clear()
+    axes.plot(genid * state.thinning, squeeze(points[start:, state._good_chains, var]))
+    axes.set_xlabel("Generation number")
+    axes.set_ylabel(label)
 
 
-def plot_logp(state, portion=None):
+def plot_logp(state: MCMCDraw, portion: Optional[float] = None):
     from matplotlib.ticker import NullFormatter
     from pylab import axes, title
     from scipy.stats import chi2, kstest
 
     # Plot log likelihoods
     draw, logp = state.logp()
-    start = int((1 - portion) * len(draw)) if portion else 0
+    portion = state.portion if portion is None else portion
+    start = int((1 - portion) * len(draw))
     genid = arange(state.generation - len(draw) + start, state.generation) + 1
     width, height, margin, delta = 0.7, 0.75, 0.1, 0.01
     trace = axes([margin, 0.1, width, height])
@@ -228,7 +237,7 @@ def plot_logp(state, portion=None):
     hist.plot(chi2.pdf(-x, df, loc, scale), x, "r")
 
 
-def tile_axes(n, size=None):
+def tile_axes(n, size=None, fig=None):
     """
     Creates a tile for the axes which covers as much area of the graph as
     possible while keeping the plot shape near the golden ratio.
@@ -236,7 +245,9 @@ def tile_axes(n, size=None):
     from pylab import gcf
 
     if size is None:
-        size = gcf().get_size_inches()
+        if fig is None:
+            fig = gcf()
+        size = fig.get_size_inches()
     figwidth, figheight = size
     # Golden ratio phi is the preferred dimension
     #    phi = sqrt(5)/2
@@ -262,10 +273,11 @@ def tile_axes(n, size=None):
     return nw, nh
 
 
-def plot_acceptance_rate(state, portion=1.0):
+def plot_acceptance_rate(state: MCMCDraw, portion: Optional[float] = None):
     from matplotlib import pyplot as plt
 
     gen, AR = state.acceptance_rate()
+    portion = state.portion if portion is None else portion
     if portion != 1.0:
         index = int(portion * len(AR))
         gen, AR = gen[-index:], AR[-index:]

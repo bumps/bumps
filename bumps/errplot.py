@@ -44,6 +44,7 @@ __all__ = ["reload_errors", "calc_errors_from_state", "calc_errors", "show_error
 import os
 import traceback
 import logging
+from typing import Optional
 
 import numpy as np
 
@@ -75,7 +76,7 @@ def reload_errors(model, store, nshown=50, random=True):
     return calc_errors_from_state(problem, state, nshown=nshown, random=random)
 
 
-def error_points_from_state(state, nshown=50, random=True, portion=1.0):
+def error_points_from_state(state, nshown=50, random=True, portion: Optional[float] = None):
     """
     Return a set of points from the state for calculating errors.
 
@@ -90,7 +91,7 @@ def error_points_from_state(state, nshown=50, random=True, portion=1.0):
     Returns *points* for :func:`calc_errors`.
     """
 
-    points, _logp = state.sample(portion=portion)
+    points = state.draw(portion=portion).points
     if points.shape[0] < nshown:
         nshown = points.shape[0]
     # randomize the draw; skip the last point since state.keep_best() put
@@ -100,7 +101,7 @@ def error_points_from_state(state, nshown=50, random=True, portion=1.0):
     return points[-nshown:-1]
 
 
-def calc_errors_from_state(problem, state, nshown=50, random=True, portion=1.0):
+def calc_errors_from_state(problem, state, nshown=50, random=True, portion: Optional[float] = None):
     """
     Compute confidence regions for a problem from the
     Align the sample profiles and compute the residual difference from

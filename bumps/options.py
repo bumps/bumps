@@ -135,7 +135,6 @@ def parse_int(value):
 
 
 FIT_FIELDS = dict(
-    starts=("Starts", parse_int),
     steps=("Steps", parse_int),
     samples=("Samples", parse_int),
     xtol=("x tolerance", float),
@@ -155,6 +154,8 @@ FIT_FIELDS = dict(
     # TODO: convert --trim into a boolean flag and update docs
     trim=("Burn-in trim", yesno),
     outliers=("Outliers", ChoiceList("none", "iqr", "grubbs", "mahal")),
+    starts=("Starts", parse_int),
+    jump=("Jump radius", float),
 )
 
 # Make sure all settings are parseable
@@ -299,7 +300,6 @@ class BumpsOpts(ParseOpts):
             "cov",
             "edit",
             "mpi",
-            "keep_best",
             "staj",
             # passed when not running bumps, but instead using a
             # bundled application as a python distribution with domain
@@ -326,6 +326,7 @@ class BumpsOpts(ParseOpts):
             "parallel",
             "view",
             "trim",
+            "near_best",
             "alpha",
             "outliers",
             # The following options are for remote fitting via the
@@ -455,7 +456,7 @@ Options:
         crossover ratio for population mixing
     --starts=1      [newton, rl, amoeba]
         number of times to run the fit from random starting points.
-    --keep_best
+    --near_best
         when running with multiple starts, restart from a point near the
         last minimum rather than using a completely random starting point.
     --init=eps      [dream]

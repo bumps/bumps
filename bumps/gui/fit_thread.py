@@ -94,7 +94,7 @@ class GUIMonitor(monitor.Monitor):
             wx.PostEvent(self.win, evt)
             self.time = history.time[0]
 
-    def final(self):
+    def final(self, history, best):
         """
         Close out the monitor
         """
@@ -138,7 +138,7 @@ class DreamMonitor(monitor.Monitor):
             )
             wx.PostEvent(self.win, evt)
 
-    def final(self):
+    def final(self, history, best):
         """
         Close out the monitor
         """
@@ -222,11 +222,6 @@ class FitThread(Thread):
         )
 
         x, fx = driver.fit()
-        # Give final state message from monitors
-        for M in monitors:
-            if hasattr(M, "final"):
-                M.final()
-
         with redirect_console() as fid:
             driver.show()
             captured_output = fid.getvalue()

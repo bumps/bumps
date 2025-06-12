@@ -47,6 +47,7 @@ estimate step size.
 """
 
 import numpy as np
+from numpy.typing import NDArray
 
 
 def gradient(problem, p=None, step=None):
@@ -149,7 +150,7 @@ def hessian(problem, p=None, step=None):
 
 
 def _hessian_forward(f, p, bounds, eps=None):
-    # type: (Callable[[np.ndarray], float], np.ndarray, Optional[np.ndarray]) -> np.ndarray
+    # type: (Callable[[NDArray], float], NDArray, Optional[NDArray]) -> NDArray
     """
     Forward difference Hessian.
     """
@@ -182,7 +183,7 @@ def _hessian_forward(f, p, bounds, eps=None):
 
 
 def _hessian_central(f, p, bounds, eps=None):
-    # type: (Callable[[np.ndarray], float], np.ndarray, Optional[np.ndarray]) -> np.ndarray
+    # type: (Callable[[NDArray], float], NDArray, Optional[NDArray]) -> NDArray
     """
     Central difference Hessian.
     """

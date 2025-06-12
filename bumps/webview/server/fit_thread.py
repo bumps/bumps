@@ -2,15 +2,15 @@ from copy import deepcopy
 from threading import Thread
 from threading import Event
 import traceback
+from typing import Optional
 
 from blinker import Signal
 
 import numpy as np
 from bumps import monitor
-from bumps.fitters import FitDriver, nllf_scale, format_uncertainty
+from bumps.fitters import FitDriver, format_uncertainty, ConsoleMonitor
 from bumps.mapper import MPMapper, SerialMapper, can_pickle
-from bumps.util import redirect_console
-from bumps.history import History
+from bumps.util import redirect_console, NDArray
 
 # from .convergence_view import ConvergenceMonitor
 # ==============================================================================
@@ -33,8 +33,7 @@ class GUIProgressMonitor(monitor.TimedUpdate):
         self.problem = problem
 
     def show_progress(self, history):
-        scale, err = nllf_scale(self.problem)
-        chisq = format_uncertainty(scale * history.value[0], err)
+        chisq = self.problem.chisq_str(nllf=history.value[0])
         evt = dict(
             # problem=self.problem,
             message="progress",
@@ -43,12 +42,14 @@ class GUIProgressMonitor(monitor.TimedUpdate):
             chisq=chisq,
             point=history.point[0] + 0,
         )  # avoid race
+        # print("show progress", evt)
         EVT_FIT_PROGRESS.send(evt)
 
     def show_improvement(self, history):
         evt = dict(
             message="improvement", step=history.step[0], value=history.value[0], point=history.point[0] + 0
         )  # avoid race
+        # print("show improvement", evt)
         EVT_FIT_PROGRESS.send(evt)
 
 
@@ -69,12 +70,13 @@ class ConvergenceMonitor(monitor.Monitor):
     in the app to determine which progress panel should receive the event.
     """
 
-    def __init__(self, problem, message="convergence_update", rate=0):
+    message: str = "convergence_update"
+
+    def __init__(self, problem, rate=0, quantiles: Optional[NDArray] = None):
         self.time = 0
         self.rate = rate  # rate=0 for no progress update, only final
         self.problem = problem
-        self.message = message
-        self.pop = []
+        self.quantiles = [] if quantiles is None else quantiles.tolist()
 
     def config_history(self, history):
         history.requires(population_values=1, value=1)
@@ -83,85 +85,94 @@ class ConvergenceMonitor(monitor.Monitor):
 
     def __call__(self, history):
         # from old ConvergenceMonitor:
+        # TODO: include iteration number and time in the convergence history
         best = history.value[0]
         try:
             pop = history.population_values[0]
             n = len(pop)
+            # 68% interval goes from 16 to 84; QI = erfc(1/sqrt(2))/2 ~ 0.158655
+            # QI, Qmid = int(0.158655 * n), int(0.5 * n)
+            QI, Qmid = int(0.2 * n), int(0.5 * n)  # Use 20-80% range
             p = np.sort(pop)
-            (
-                QI,
-                Qmid,
-            ) = int(0.2 * n), int(0.5 * n)
-            self.pop.append((best, p[0], p[QI], p[Qmid], p[-1 - QI], p[-1]))
+            self.quantiles.append((best, p[0], p[QI], p[Qmid], p[-(QI + 1)], p[-1]))
         except (AttributeError, TypeError):
-            self.pop.append((best,))
+            # If no population then 0% = Qmid-QI = Qmid = Qmid+QI = 100%
+            # TODO: Use same 6 column convergence history when no population?
+            self.quantiles.append((best,))
 
         if self.rate > 0 and history.time[0] >= self.time + self.rate:
-            evt = dict(message=self.message, pop=self.progress())
-            EVT_FIT_PROGRESS.send(evt)
+            # print("convergence progress")
+            self._send_update()
             self.time = history.time[0]
 
-    def progress(self):
-        return np.empty((0, 1), "d") if not self.pop else np.array(self.pop)
+    def final(self, history, best):
+        """
+        Close out the monitor but sending any tailing convergence information
+        """
+        # print("convergence final")
+        self._send_update()
 
-    def final(self):
-        """
-        Close out the monitor
-        """
-        evt = dict(message=self.message, pop=self.progress())
+    def _send_update(self):
+        # TODO: rename pop to quantiles in convergence_update message
+        quantiles = np.empty((0, 1), "d") if not self.quantiles else np.array(self.quantiles)
+        evt = dict(message=self.message, convergence=quantiles)
         EVT_FIT_PROGRESS.send(evt)
 
 
-# Horrible hacks:
-# (1) We are grabbing uncertainty_state from the history on monitor update
+# HACK: We are grabbing uncertainty_state from the history on monitor update
 # and holding onto it for the monitor final call. Need to restructure the
 # history/monitor interaction so that object lifetimes are better controlled.
 
 
 class DreamMonitor(monitor.Monitor):
-    def __init__(self, problem, message, fitter, rate=0):
+    message: str = "uncertainty_update"
+
+    def __init__(self, problem, fit_state=None, method=None, rate=0):
         self.time = 0
         self.rate = rate  # rate=0 for no progress update, only final
         self.update_counter = 0
         self.problem = problem
-        self.fitter = fitter
-        self.message = message
-        self.uncertainty_state = None
-        # emit None uncertainty state to start with
+        self.fit_state = fit_state
+        self.method = method
         evt = dict(
-            message=message,
-            uncertainty_state=None,
+            message=self.message,
+            fit_state=fit_state,
+            method=method,
         )
+        # print("Dream init", evt)
         EVT_FIT_PROGRESS.send(evt)
 
     def config_history(self, history):
         history.requires(time=1)
 
     def __call__(self, history):
-        self.uncertainty_state = getattr(history, "uncertainty_state", None)
+        self.fit_state = getattr(history, "fit_state", None)
         self.time = history.time[0]
-        if self.rate > 0:
-            update_counter = history.time[0] // self.rate
-            if update_counter > self.update_counter:
-                self.update_counter = update_counter
-                evt = dict(
-                    message=self.message,
-                    time=self.time,
-                    uncertainty_state=deepcopy(self.uncertainty_state),
-                )
-                EVT_FIT_PROGRESS.send(evt)
+        if self.rate <= 0:
+            return
+        update_counter = history.time[0] // self.rate
+        if update_counter > self.update_counter:
+            self.update_counter = update_counter
+            evt = dict(
+                message=self.message,
+                time=self.time,
+                fit_state=deepcopy(self.fit_state),
+                method=self.method,
+            )
+            # print("Dream update", evt)
+            EVT_FIT_PROGRESS.send(evt)
 
-    def final(self):
+    def final(self, history, best):
         """
         Close out the monitor
         """
-        # Note: win.uncertainty_state protected by win.fit_lock
-        # self.win.uncertainty_state = self.uncertainty_state
         evt = dict(
             message="uncertainty_final",
             time=self.time,
-            uncertainty_state=deepcopy(self.uncertainty_state),
+            fit_state=deepcopy(self.fit_state),
+            method=self.method,
         )
+        # print("Dream final", evt)
         EVT_FIT_PROGRESS.send(evt)
 
 
@@ -173,7 +184,7 @@ class FitThread(Thread):
 
     def __init__(
         self,
-        abort_event: Event,
+        fit_abort_event: Event,
         problem=None,
         fitclass=None,
         options=None,
@@ -181,24 +192,35 @@ class FitThread(Thread):
         parallel=0,
         convergence_update=5,
         uncertainty_update=300,
-        terminate_on_finish=False,
+        console_update=0,
+        fit_state=None,
+        convergence=None,
+        # outputs=None,
     ):
         # base class initialization
         # Process.__init__(self)
 
         Thread.__init__(self)
-        self.abort_event = abort_event
+        self.fit_abort_event = fit_abort_event
         self.problem = problem
         self.fitclass = fitclass
-        self.options = options if isinstance(options, dict) else dict()
+        self.fit_state = fit_state
+        self.convergence = convergence
+        # print(f"   *** FitThread {options}")
+        self.options = options if isinstance(options, dict) else {}
         self.mapper = mapper
         self.parallel = parallel
         self.convergence_update = convergence_update
         self.uncertainty_update = uncertainty_update
-        self.terminate_on_finish = terminate_on_finish
+        self.console_update = console_update
+        # self.outputs = {} if outputs is None else outputs
+
+        # Setting daemon to true causes sys.exit() to kill the thread immediately
+        # rather than waiting for it to complete.
+        self.daemon = True
 
     def abort_test(self):
-        return self.abort_event.is_set()
+        return self.fit_abort_event.is_set()
 
     def run(self):
         # TODO: we have no interlocks on changes in problem state.  What
@@ -210,34 +232,51 @@ class FitThread(Thread):
         # inside the GUI monitor otherwise AppPanel will not be able to
         # recognize that it is the same problem when updating views.
         try:
+            # print("Starting fit")
+            # print("convergence monitor starts with", self.convergence is not None)
             monitors = [
                 GUIProgressMonitor(self.problem),
-                ConvergenceMonitor(self.problem, rate=self.convergence_update),
+                ConvergenceMonitor(self.problem, rate=self.convergence_update, quantiles=self.convergence),
                 # GUIMonitor(self.problem,
                 #            message="convergence_update",
                 #            monitor=ConvergenceMonitor(),
                 #            rate=self.convergence_update),
                 DreamMonitor(
-                    self.problem, fitter=self.fitclass, message="uncertainty_update", rate=self.uncertainty_update
+                    self.problem,
+                    rate=self.uncertainty_update,
+                    fit_state=self.fit_state,
+                    method=self.fitclass.id,
                 ),
             ]
+            if self.console_update > 0:
+                monitors.append(
+                    ConsoleMonitor(
+                        self.problem,
+                        progress=self.console_update,
+                        improvement=max(self.console_update, 30),
+                    )
+                )
+            # monitors = [ConsoleMonitor(self.problem)]
 
             mapper = self.mapper
             if mapper is None:
-                # fallback options if no mapper is specified
-                mp_available = True
-                try:
-                    import _multiprocessing
-                except ImportError:
-                    mp_available = False
-                # Only use MPMapper if the problem can be pickled
-                # and multiprocessing is available, and parallel != 1
-                mapper = MPMapper if mp_available and self.parallel != 1 and can_pickle(self.problem) else SerialMapper
+                mapper = MPMapper if self.parallel != 1 else SerialMapper
+            # If you can't pickle the problem fall back to SerialMapper
+            # Unless this is the first instance of MPIMapper, in which case
+            # the worker starts out with the problem in the mapper and we
+            # don't need to send it via pickle.
+            if not can_pickle(self.problem) and not mapper.has_problem:
+                # TODO: turn this into a log message and/or a notification
+                print("Can't pickle; Falling back to single mapper")
+                mapper = SerialMapper
+            # print(f"*** mapper {mapper.__name__} ***")
 
             # Be safe and send a private copy of the problem to the fitting engine
+            # TODO: Check that parameters and constraints are independent of the original.
             # print "fitclass",self.fitclass
             problem = deepcopy(self.problem)
             # print "fitclass id",id(self.fitclass),self.fitclass,threading.current_thread()
+            # print(f"   *** FitDriver {self.options}")
             driver = FitDriver(
                 self.fitclass,
                 problem=problem,
@@ -247,28 +286,38 @@ class FitThread(Thread):
                 **self.options,
             )
 
-            x, fx = driver.fit()
-            # Give final state message from monitors
-            for M in monitors:
-                if hasattr(M, "final"):
-                    M.final()
+            x, fx = driver.fit(fit_state=self.fit_state)
 
             with redirect_console() as fid:
                 driver.show()
+                # entropy = self.outputs.get('entropy', None)
+                # err = self.outputs.get('err', False)
+                # cov = self.outputs.get('cov', False)
+                # if cov:
+                #     driver.show_err()
+                #     driver.show_cov()
+                # elif err:
+                #     driver.show_err()
+                # if entropy:
+                #     driver.show_entropy(entropy)
                 captured_output = fid.getvalue()
 
+            # print("fit complete with", x, fx, driver.fitter.state)
             evt = dict(
                 message="complete",
                 problem=self.problem,
                 point=x,
                 value=fx,
+                fit_state=driver.fitter.state,
                 info=captured_output,
                 fitter_id=self.fitclass.id,
             )
-            EVT_FIT_COMPLETE.send(evt)
             self.result = evt
+            EVT_FIT_COMPLETE.send(evt)
 
         except Exception as exc:
             tb = "".join(traceback.TracebackException.from_exception(exc).format())
             evt = dict(message="error", error_string=str(exc), traceback=tb)
             EVT_FIT_COMPLETE.send(evt)
+
+        # print("exiting thread")

@@ -148,8 +148,9 @@ class Minimizer:
 
         Note: only used stand-alone, not within fit service
         """
-        self.time = time.time()
+        self.time = time.perf_counter()
         self.remote_time = -cpu_time()
+        # if resume: print("start pop", self.history.population_points[0])
         population = self.step() if resume else self.start()
         try:
             while True:
@@ -164,6 +165,7 @@ class Minimizer:
                 population = self.step()
         except KeyboardInterrupt:
             pass
+        # print("final pop", population)
         return self.history.point[0]
 
     __call__ = minimize
@@ -209,7 +211,7 @@ class Minimizer:
 
         # Update the history
         self.history.update(
-            time=time.time() - self.time,
+            time=time.perf_counter() - self.time,
             cpu_time=cpu_time() + self.remote_time,
             population_points=points,
             population_values=values,

@@ -550,6 +550,29 @@ class Parameter(ValueProtocol, SupportsPrior):
         else:
             return cls(value, **kw)
 
+    @staticmethod
+    def calculation(obj: Optional["Parameter"], name: str, function: Callable[[], float]) -> "Parameter":
+        """
+        Create a parameter to hold a value derived from the model. This can be used in
+        parameter expressions, for example to constrain total thickness or to set the
+        value in the next segment equal to the value at the end of a freeform segment.
+
+        Note that this function should be called in the __init__ or __post_init__ methods of
+        the class where the parameter is defined, in order to bind the Calculation function
+        to the newly created (or deserialized) Parameter before it is used.
+
+        If obj is a Parameter, use it - otherwise create a new Parameter obj with the given name.
+
+        Then create a Calculation object and attach the evaluator function to the Calculation,
+        and put the Calculation in obj.slot
+
+        Returns obj: Parameter
+        """
+        if not isinstance(obj, Parameter):
+            obj = Parameter(name=name)
+        obj.slot = Calculation(function=function)
+        return obj
+
     def set(self, value):
         """
         Set a new value for the parameter, ignoring the bounds.
@@ -1451,15 +1474,17 @@ def summarize(pars, sorted=False):
         if not isfinite(p.value):
             bar = ["*invalid* "]
         else:
-            position = int(p.prior.get01(p.value) * 9.999999999)
             bar = ["."] * 10
-            if position < 0:
+            if p.value < p.bounds[0]:
                 bar[0] = "<"
-            elif position > 9:
+            elif p.value > p.bounds[1]:
                 bar[9] = ">"
             else:
+                position = int(p.prior.get01(p.value) * 9.999999999)
                 bar[position] = "|"
-        output.append("%40s %s %10g in %s" % (p.name, "".join(bar), p.value, p.bounds))
+        left = f"[{p.bounds[0]:g}" if np.isfinite(p.bounds[0]) else "(-inf"
+        right = f"{p.bounds[1]:g}]" if np.isfinite(p.bounds[1]) else "inf)"
+        output.append("%40s %s %10g in %s, %s" % (p.name, "".join(bar), p.value, left, right))
     return "\n".join(output)
 
 
@@ -1868,7 +1893,7 @@ def test_operator():
     b.dev(sigma, mean=mu)
     b.value = 4
     b.add_prior()
-    nllf_target = 0.5 * ((b.value - mu) / sigma) ** 2 + np.log(2 * np.pi * sigma**2) / 2
+    nllf_target = 0.5 * ((b.value - mu) / sigma) ** 2  # + np.log(2 * np.pi * sigma**2) / 2
     assert abs(b.nllf() - nllf_target) / nllf_target < 1e-12
 
     # Check conditions

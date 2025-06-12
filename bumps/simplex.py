@@ -43,7 +43,7 @@ class Result(object):
     """
     Results from the fit.
 
-    x : ndarray
+    x : NDArray
         Best parameter set
     fx : float
         Best value
@@ -91,9 +91,9 @@ def simplex(
 
         f : callable f(x,*args)
             The objective function to be minimized.
-        x0 : ndarray
+        x0 : NDArray
             Initial guess.
-        bounds : (ndarray,ndarray) or None
+        bounds : (NDArray,NDArray) or None
             Bounds on the parameter values for the function.
         radius: float
             Size of the initial simplex.  For bounded parameters (those
@@ -103,7 +103,7 @@ def simplex(
 
     *Returns*: Result (`park.simplex.Result`)
 
-        x : ndarray
+        x : NDArray
             Parameter that minimizes function.
         fx : float
             Value of function at minimum: ``fopt = func(xopt)``.
