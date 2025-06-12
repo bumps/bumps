@@ -271,7 +271,9 @@ class MainApp(wx.App):
         # Put up the initial model
         model, output = initial_model(opts)
         if not model:
-            model = plugin.new_model()
+            plugin_new_model_fn = plugin.NEW_MODEL.get(plugin.ACTIVE_PLUGIN_NAME, None)
+            if plugin_new_model_fn is not None:
+                model = plugin_new_model_fn()
         signal.log_message(message=output)
         self.frame.panel.set_model(model=model)
         self.frame.panel.set_fit_config(opts.fit_config)
