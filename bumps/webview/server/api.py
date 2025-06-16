@@ -299,8 +299,8 @@ async def load_session(pathlist: List[str], filename: str, read_only: bool = Fal
 @register
 async def set_session_output_file(filepath: Optional[Union[str, Path]] = None):
     """
-    Set the session output file to be used for saving results.
-    If `filepath` is None, the session output file is cleared.
+    Set the session output file to be used for saving results, and enable autosave.
+    If `filepath` is None, the session output file is cleared and autosave is disabled.
     """
     if filepath is None:
         await state.shared.set("session_output_file", None)
