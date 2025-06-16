@@ -22,7 +22,6 @@ systems.
 
 __all__ = [
     "main",
-    "install_plugin",
     "set_mplconfig",
     "config_matplotlib",
     "load_model",
@@ -53,16 +52,6 @@ from . import plugin
 from .util import pushdir
 
 
-def install_plugin(p):
-    """
-    Replace symbols in :mod:`bumps.plugin` with application specific
-    methods.
-    """
-    for symbol in plugin.__all__:
-        if hasattr(p, symbol):
-            setattr(plugin, symbol, getattr(p, symbol))
-
-
 def load_model(path, model_options=None):
     """
     Load a model file.
@@ -79,8 +68,22 @@ def load_model(path, model_options=None):
     # to the python path (at the end) so that imports work as expected.
     directory, filename = os.path.split(path)
     with pushdir(directory):
+        problem = None
         # Try a specialized model loader
-        problem = plugin.load_model(filename)
+        if plugin.ACTIVE_PLUGIN_NAME is None:
+            # Then loop through all loader plugins...
+            for name, plugin_load_model in plugin.MODEL_LOADER.items():
+                # print("Trying plugin",name,"for",filename)
+                problem = plugin_load_model(filename)
+                if problem is not None:
+                    # print("Loaded model with plugin",name)
+                    break
+        else:
+            # Use the active plugin to load the model.
+            plugin_load_model = plugin.MODEL_LOADER.get(plugin.ACTIVE_PLUGIN_NAME, None)
+            if plugin_load_model is not None:
+                problem = plugin_load_model(filename)
+
         if problem is None:
             # print "loading",filename,"from",directory
             # TODO: eliminate pickle!!
