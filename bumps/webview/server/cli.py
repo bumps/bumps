@@ -67,6 +67,7 @@ class BumpsOptions:
 
     # Fitter controls.
     fit_options: Dict[str, Any] = field(default_factory=dict)
+    resume: bool = False
     # fit_outputs: Dict[str, Any] = field(default_factory=dict)
 
     # Session file controls.
