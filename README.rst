@@ -18,7 +18,7 @@ Once the system is installed, you can verify that it is working with::
 
 To start the GUI use::
 
-    bumps-webview
+    bumps
 
 Documentation is available at `readthedocs <http://bumps.readthedocs.org>`_. See
 `CHANGES.rst <https://github.com/bumps/bumps/blob/master/CHANGES.rst>`_
