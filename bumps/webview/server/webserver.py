@@ -259,7 +259,7 @@ def start_from_cli(options: BumpsOptions):
 server_task = None
 
 
-def bumps_server():
+def start_bumps_server():
     global server_task
 
     # Start the server
@@ -298,10 +298,6 @@ async def start_app(
     else:
         url = get_server_url()
         print(f"webserver started: {url}")
-
-
-def create_server_task():
-    return asyncio.create_task(start_app())
 
 
 def get_server_url():
