@@ -291,10 +291,10 @@ slink_vars = dict(
     version=release,
     htmlroot=htmlroot,
     srczip=download("bumps-{version}.zip"),
-    winexe=download("bumps-packed-{version}-Windows-x86_64-self-extracting.exe"),
-    macapp=download("bumps-packed-{version}-Darwin-arm64.pkg"),
-    vcredist=download("vcredist_x86.exe"),
-    wx4osx=download("osx64/wx-2.9.5.0-py27_0.tar.bz2"),
+    winexe=download("bumps-{version}-Windows-x86_64-installer.exe"),
+    macapp=download("bumps-{version}-Darwin-arm64.dmg"),
+    imacapp=download("bumps-{version}-Darwin-x86_64.dmg"),
+    linuxapp=download("bumps-{version}-Linux-x86_64.tar.gz"),
 )
 
 # -- Options for manual page output --------------------------------------------
