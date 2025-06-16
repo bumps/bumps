@@ -279,22 +279,22 @@ if os.path.exists("rst_prolog"):
     with open("rst_prolog") as fid:
         rst_prolog = fid.read()
 
-htmlroot = "http://www.reflectometry.org/danse"
+htmlroot = "https://github.com/bumps/bumps/releases/download"
 
 
-def download(name):
-    subs = dict(file=name % dict(version=version), path=htmlroot)
-    return "%(file)s <%(path)s/download.php?file=%(file)s>" % subs
+def download(name: str):
+    filename = name.format(version=version)
+    return f"{filename} <{htmlroot}/{version}/{filename}>"
 
 
 slink_vars = dict(
     version=release,
     htmlroot=htmlroot,
-    srczip=download("bumps-%(version)s.zip"),
-    winexe=download("bumps-%(version)s-win32.exe"),
-    macapp=download("Bumps %(version)s.dmg"),
-    vcredist=download("vcredist_x86.exe"),
-    wx4osx=download("osx64/wx-2.9.5.0-py27_0.tar.bz2"),
+    srczip=download("bumps-{version}.zip"),
+    winexe=download("bumps-{version}-Windows-x86_64-installer.exe"),
+    macapp=download("bumps-{version}-Darwin-arm64.dmg"),
+    imacapp=download("bumps-{version}-Darwin-x86_64.dmg"),
+    linuxapp=download("bumps-{version}-Linux-x86_64.tar.gz"),
 )
 
 # -- Options for manual page output --------------------------------------------

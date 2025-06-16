@@ -9,11 +9,16 @@ the uncertainty around the minimum.
 
 Installation is with the usual python installation command::
 
-    pip install bumps
+    pip install bumps[webview]
 
 Once the system is installed, you can verify that it is working with::
 
     bumps doc/examples/peaks/model.py --chisq
+    bumps -h
+
+To start the GUI use::
+
+    bumps
 
 Documentation is available at `readthedocs <http://bumps.readthedocs.org>`_. See
 `CHANGES.rst <https://github.com/bumps/bumps/blob/master/CHANGES.rst>`_
@@ -23,12 +28,10 @@ If a compiler is available, then significant speedup is possible for DREAM using
 
     python -m bumps.dream.build_compiled
 
-(If you have installed from source, you must first check out the random123 library)::
+If you have installed from source, you must first check out the random123 library::
 
     git clone --branch v1.14.0 https://github.com/DEShawResearch/random123.git bumps/dream/random123
     python -m bumps.dream.build_compiled
-
-For now this requires an install from source rather than pip.
 
 |CI| |RTD| |DOI|
 

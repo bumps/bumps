@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-
 
 # pylit.py
 # ********
@@ -9,7 +9,7 @@
 # :Date:      $Date$
 # :Revision:  $Revision$
 # :URL:       $URL$
-# :Copyright: � 2005, 2007 G�nter Milde.
+# :Copyright: © 2005, 2009 Günter Milde.
 #             Released without warranty under the terms of the
 #             GNU General Public License (v. 2 or later)
 #
@@ -475,7 +475,7 @@ class TextCodeConverter(object):
             self.marker_regexp = re.compile('^( *(?!\\.\\.).*)(::)([ \n]*)$')
         else:
             # marker must be on a separate line
-            self.marker_regexp = re.compile('^( *)(%s)(.*\n?)$' % marker)
+            self.marker_regexp = re.compile(r'^( *)(%s)(.*\n?)$' % marker)
 
 # .. _TextCodeConverter.__iter__:
 #
