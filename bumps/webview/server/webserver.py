@@ -259,17 +259,16 @@ def start_from_cli(options: BumpsOptions):
 server_task = None
 
 
-def start_jupyter_server():
+def bumps_server():
     global server_task
 
     # Start the server
-    options = BumpsOptions()
-    server_task = asyncio.create_task(start_app(options, jupyter_link=True))
+    server_task = asyncio.create_task(start_app(jupyter_link=True))
     return server_task
 
 
 async def start_app(
-    options: BumpsOptions,
+    options: BumpsOptions = None,
     sock: socket.socket = None,
     jupyter_link: bool = False,
     jupyter_heartbeat: bool = False,
@@ -277,6 +276,8 @@ async def start_app(
     from aiohttp import web
 
     init_web_app()
+    if options is None:
+        options = BumpsOptions()
 
     # this function is called from jupyter notebook, so set headless = True
     options.headless = True
