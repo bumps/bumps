@@ -472,7 +472,7 @@ class TextCodeConverter(object):
         marker = self.code_block_marker
         if marker == '::':
             # the default marker may occur at the end of a text line
-            self.marker_regexp = re.compile(r'^( *(?!\.\.).*)(::)([ \n]*)$')
+            self.marker_regexp = re.compile('^( *(?!\\.\\.).*)(::)([ \n]*)$')
         else:
             # marker must be on a separate line
             self.marker_regexp = re.compile(r'^( *)(%s)(.*\n?)$' % marker)
@@ -1584,7 +1584,7 @@ def run_doctest(infile="-", txt2code=True,
 # ::
 
     firstlines = ' '.join(docstring.splitlines()[:2])
-    match = re.search(r'coding[=:]\s*([-\w.]+)', firstlines)
+    match = re.search('coding[=:]\\s*([-\\w.]+)', firstlines)
     if match:
         docencoding = match.group(1)
         docstring = docstring.decode(docencoding)

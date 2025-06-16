@@ -44,13 +44,17 @@ __all__ = ["Curve", "PoissonCurve", "plot_err"]
 
 import inspect
 import warnings
-from typing import Callable, Literal
-from copy import deepcopy
+from typing import Callable, Literal, Union, Optional, Any, Dict, List, Callable
+from dataclasses import dataclass
 
 import numpy as np
 from numpy import log, pi, sqrt
+from numpy.typing import ArrayLike
 
-from .parameter import Parameter
+from .util import NDArray
+from .parameter import Parameter, ValueProtocol
+
+# import sys; sys.setrecursionlimit(60)  # For debugging getattr/setattr
 
 
 def _parse_pars(fn, init=None, skip=0, name=""):
@@ -119,15 +123,14 @@ def _parse_pars(fn, init=None, skip=0, name=""):
     return pars, state
 
 
-def _assign_pars(obj, pars):
-    # Make parameters accessible as model attributes
-    for k, v in pars.items():
-        if hasattr(obj, k):
-            raise TypeError("Parameter cannot be named %s" % k)
-        setattr(obj, k, v)
-
-
-class Curve(object):
+# TODO: separate the dataclass from the builder function
+# As currently implemented we need artificial parameters
+# "pars" and "state" to allow deserialization of the dataclass
+# but these are parameters that the user should never touch.
+# Instead, define a cleaner Curve object which can be dumped
+# and loaded independent of the calling parameters.
+@dataclass(init=False, eq=False)
+class Curve:
     r"""
     Model a measurement with a user defined function.
 
@@ -158,9 +161,9 @@ class Curve(object):
       defined as *plot(x,y,dy,fy,\*\*kw)*. The keyword arguments will be
       filled with the values of the parameters used to compute *fy*.  It
       will be easiest to list the parameters you need to make your plot
-      as positional arguments after *x,y,dy,fy* in the plot function
-      declaration.  For example, *plot(x,y,dy,fy,p3,\*\*kw)* will make the
-      value of parameter *p3* available as a variable in your function.  The
+      as arguments after *x,y,dy,fy* in the plot function declaration.
+      For example, *plot(x,y,dy,fy,p3,\*\*kw)* will make the value of
+      parameter *p3* available as a variable in your function.  The
       special keyword *view* will be a string containing *linear*, *log*,
       *logx*, or *loglog*.  If only showing the residuals, the string
       will be *residual*.
@@ -181,10 +184,42 @@ class Curve(object):
     residuals.  See the implementation of :class:`PoissonCurve` for an example.
     """
 
-    def __init__(self, fn, x, y, dy=None, name="", labels=None, plot=None, plot_x=None, **kwargs):
+    # TODO: Add resolution and uncertainty in x. Resolution will require oversampling.
+    # TODO: Move data into its own class (pre 1.0?)
+    # The data class can deal with x, y, dy, resolution, jitter, plotter, plot_x, labels
+    fn: Callable
+    x: NDArray
+    y: NDArray
+    dy: NDArray
+    """Data uncertainty"""
+    name: str
+    """Name of the model"""
+    pars: Dict[str, Parameter] = None  # Needs to be None initially for getattr/setattr to work
+    """Fittable parameters to the model"""
+    state: Dict[str, Any]
+    """Nonfittable parameters set during initialization. Values should be serializable."""
+    labels: List[str]
+    plot_x: Optional[NDArray]
+    plotter: Optional[Callable]
+
+    def __init__(
+        self,
+        fn: Callable,
+        x: ArrayLike,
+        y: ArrayLike,
+        dy: Optional[ArrayLike] = None,
+        name: Optional[str] = "",
+        labels: Optional[List[str]] = None,
+        plotter: Optional[Callable[..., None]] = None,
+        plot_x: Optional[NDArray] = None,
+        plot: Optional[Callable] = None,
+        pars: Optional[Dict[str, Parameter]] = None,
+        state: Optional[Dict[str, Any]] = None,
+        **kwargs,
+    ):
         self.x, self.y = np.asarray(x), np.asarray(y)
         if dy is None:
-            self.dy = 1
+            self.dy = np.ones_like(y)
         else:
             self.dy = np.asarray(dy)
             if (self.dy <= 0).any():
@@ -214,16 +249,22 @@ class Curve(object):
             labels = list(labels) + line_labels
         self.labels = labels
 
-        # TODO: self.fn is a duplicate of self._function below. Deprecated?
+        self.plot_x = plot_x
+        # TODO: drop plot= option; likely nobody is using it, and this is a 1.0 release
+        if plot is not None:
+            warnings.warn("***DEPRECATED*** use Curve(..., plotter=...) instead of plot=...")
+        self.plotter = plotter
+
+        # _assign_pars(state, self)  # ... and state variables as well
+        self._cached_theory = None
+        self._webview_plots = {}
+
         self.fn = fn
         self.name = name  # if name else fn.__name__ + " "
-        self.plot_x = plot_x
-
-        pars, state = _parse_pars(fn, init=kwargs, skip=1, name=name)
-
-        # Make parameters accessible as model attributes
-        _assign_pars(self, pars)
-        # _assign_pars(state, self)  # ... and state variables as well
+        if pars is None:
+            pars, state = _parse_pars(self.fn, init=kwargs, skip=1, name=name)
+        # else: print("restoring", {k: float(v) for k, v in pars.items()}, state)
+        # print("parsed", self.fn, pars, state)
 
         # Remember the function, parameters, and number of parameters
         # Note: we are remembering the parameter names and not the
@@ -232,18 +273,38 @@ class Curve(object):
         # need to override __setattr__ to intercept assignment to the
         # parameter attributes and redirect them to the a _pars dictionary.
         # ... and similarly for state if we decide to make them attributes.
-        self._function = fn
-        self._pnames = list(sorted(pars.keys()))
-        self._state = state
-        self._plot = plot
-        self._cached_theory = None
-        self._webview_plots = {}
+        self.state = state
+
+        # Need to do collision test before making parameters available as attributes
+        # otherwise every parameter is a collision. Need to assign the pars object
+        # last so that we know all the variables that could collide.
+        collisions = [key for key in pars.keys() if hasattr(self, key)]
+        if collisions:
+            raise ValueError(f"parameter names shadowed by Curve object: {', '.join(collisions)}")
+        self.pars = pars
+
+    # Allow dot access to members of the parameter dictionary. Existing attributes
+    # of the object take precedence.
+    def __setattr__(self, key, value):
+        # print(f"setting {key}")
+        if self.pars and key in self.pars and key not in self.__dict__:
+            if not isinstance(value, ValueProtocol):
+                raise TypeError("Can only assign parameter or expression to a parameter slot")
+            self.__dict__["pars"][key] = value
+        else:
+            super().__setattr__(key, value)
+
+    def __getattr__(self, key):
+        # print(f"getting {key}")
+        if self.pars and key in self.pars:
+            return self.pars[key]
+        raise AttributeError(f"{type(self)!r} has no attribute {key!r}")
 
     def update(self):
         self._cached_theory = None
 
     def parameters(self):
-        return dict((p, getattr(self, p)) for p in self._pnames)
+        return self.pars
 
     def numpoints(self):
         return np.prod(self.y.shape)
@@ -258,11 +319,11 @@ class Curve(object):
 
     def _compute_theory(self, x):
         kw = self._fetch_pars()
-        return self._function(x, **kw)
+        return self.fn(x, **kw)
 
     def _fetch_pars(self):
-        kw = dict((p, getattr(self, p).value) for p in self._pnames)
-        kw.update(self._state)
+        kw = {k: float(v) for k, v in self.pars.items()}
+        kw.update(**self.state)
         return kw
 
     def simulate_data(self, noise=None):
@@ -309,9 +370,9 @@ class Curve(object):
             np.savetxt(fd, data.T)
 
     def plot(self, view=None):
-        if self._plot is not None:
+        if self.plotter is not None:
             kw = self._fetch_pars()
-            self._plot(self.x, self.y, self.dy, self.theory(), view=view, **kw)
+            self.plotter(self.x, self.y, self.dy, self.theory(), view=view, **kw)
             return
 
         import pylab
