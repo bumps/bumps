@@ -102,8 +102,8 @@ you don't want to install the package into your environment (for example,
 because you are testing out a fork in another source tree), then you can
 change to the bumps directory and run the package in place::
 
-    python -m bumps.cli ... # for the command line interface
-    python -m bumps.webview.server ... # for the webview interface
+    python -m bumps --batch ... # for the command line interface
+    python -m bumps ... # for the webview interface
 
 .. _docbuild:
 
