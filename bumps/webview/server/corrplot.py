@@ -139,7 +139,9 @@ def _plot(hists, labels, indices, show_ticks=None):
             trace = go.Heatmap(
                 z=np.log10(data), coloraxis="coloraxis", hovertemplate=hovertemplate, customdata=[ii, jj]
             )
-            fig.add_traces([trace], rows=n - i - 1, cols=j)
+            fig.add_trace(trace, row=n - i - 1, col=j)
+            fig.update_xaxes(scaleanchor="y", scaleratio=1, row=n - i - 1, col=j)
+            fig.update_yaxes(scaleanchor="x", scaleratio=1, row=n - i - 1, col=j)
 
     # Add annotation for last parameter:
     fig.add_annotation(
