@@ -10,14 +10,23 @@ Bumps |version| is provided in a self-contained Python environment:
 
     - Windows installer: :slink:`%(winexe)s`
     - Apple installer: :slink:`%(macapp)s`
+    - Apple (Intel) installer: :slink:`%(imacapp)s`
+    - Linux self-contained package: :slink:`%(linuxapp)s`
 
-The Windows installer is a self-extracting executable that unpacks
-to the location of your choosing.
-Once unpacked you can double-click on the `bumps_webview.bat`` file to
-start the webview server and client.
+The Windows installer installs to the `AppData/Local` directory by default,
+and adds a shortcut to the Start menu, optionally adding a desktop shortcut.
+It also provides an uninstaller through the Control Panel (add/remove programs)
 
 The Apple .dmg installer unpacks to the Applications directory.  You can
 start the application by double-clicking on the `bumps_webview.app`.
+To uninstall just drag the entire app to the trash from your finder.
+
+For Linux (HPC), you can download the self-contained package and unpack it
+to a directory of your choice.  The package contains a python environment
+with all the required dependencies, including the webview interface.
+To run the application, change into the unpacked directory and run::
+
+    ./bin/python -m bumps
 
 For Debian/Ubuntu Linux, bumps is provided as a package [pre-1.0 as of this writing]::
 
