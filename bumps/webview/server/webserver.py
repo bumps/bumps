@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Callable, Optional, Union, List
 
 import matplotlib
-import msgpack
 
 # from .main import setup_bumps
 from . import cli
@@ -62,6 +61,7 @@ routes = app = sio = None
 def init_web_app():
     import socketio
     from aiohttp import web
+    import msgpack
 
     global routes, app, sio
 
