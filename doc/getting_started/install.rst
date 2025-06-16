@@ -16,7 +16,7 @@ to the location of your choosing.
 Once unpacked you can double-click on the `bumps_webview.bat`` file to
 start the webview server and client.
 
-The Apple .pkg installer unpacks to the Applications directory.  You can
+The Apple .dmg installer unpacks to the Applications directory.  You can
 start the application by double-clicking on the `bumps_webview.app`.
 
 For Debian/Ubuntu Linux, bumps is provided as a package [pre-1.0 as of this writing]::
@@ -99,11 +99,10 @@ notebook cell using pip:
 To start webview, use the following code cell::
 
     import asyncio
-    from bumps.webview.server.webserver import start_app
-    from bumps.webview.server import api
+    from bumps.webview.server import start_bumps_server, api
 
     # Start the server
-    server_task = asyncio.create_task(start_app(jupyter_link=True))
+    await start_bumps_server()
 
 A link to the server will be printed in the notebook output. You can open this link in a browser to access the server.
 
