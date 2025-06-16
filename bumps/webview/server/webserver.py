@@ -256,15 +256,14 @@ def start_from_cli(options: BumpsOptions):
     web.run_app(app, sock=runsock)
 
 
-server_task = None
-
-
 def start_bumps_server():
-    global server_task
-
-    # Start the server
-    server_task = asyncio.create_task(start_app(jupyter_link=True))
-    return server_task
+    """
+    Start the webview server in a background asyncio.Task,
+    and show the link to the webview in a Jupyter notebook.
+    Note that the returned Task should be awaited in order
+    to handle any exceptions that may occur during startup.
+    """
+    return asyncio.create_task(start_app(jupyter_link=True))
 
 
 async def start_app(
