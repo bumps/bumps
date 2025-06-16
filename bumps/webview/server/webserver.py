@@ -259,11 +259,12 @@ def start_from_cli(options: BumpsOptions):
 server_task = None
 
 
-def bumps_server():
+def start_jupyter_server():
     global server_task
 
     # Start the server
-    server_task = asyncio.create_task(start_app(jupyter_link=True))
+    options = BumpsOptions()
+    server_task = asyncio.create_task(start_app(options, jupyter_link=True))
     return server_task
 
 
