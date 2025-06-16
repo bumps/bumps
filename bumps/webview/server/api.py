@@ -957,7 +957,7 @@ async def get_convergence_plot():
         )
         fig["layout"].update(
             dict(
-                template="simple_white",
+                template={"name": "simple_white"},
                 legend=dict(x=1, y=1, xanchor="right", yanchor="top"),
             )
         )
