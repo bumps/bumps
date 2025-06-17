@@ -23,3 +23,8 @@ Categories=Development;
 
 # Make the desktop shortcut executable
 chmod +x $desktop_dir/BumpsWebviewServer.desktop
+
+# refresh the desktop environment to recognize the new shortcut
+if command -v xdg-desktop-menu &> /dev/null; then
+    xdg-desktop-menu forceupdate
+fi
