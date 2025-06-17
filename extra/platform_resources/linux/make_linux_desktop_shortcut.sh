@@ -14,7 +14,7 @@ script_dir=$(realpath $(dirname $0))
 echo "[Desktop Entry]
 Name=Bumps-Webview
 Comment=Start the bumps webview server
-Exec='$script_dir/env/bin/python' -m bumps.webview.server --use_persistent_path
+Exec='$script_dir/env/bin/python' -m bumps.webview.server --use-persistent-path
 Icon=$script_dir/env/share/icons/bumps.ico
 Terminal=true
 Type=Application
