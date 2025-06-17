@@ -89,7 +89,7 @@ Section "Start Menu Shortcuts" SEC02
     CreateDirectory "$SMPROGRAMS\${PRODUCT_NAME}"
     CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\BumpsWebview.lnk" \
         "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" \
-        '-NoProfile -Command ""$INSTDIR\python.exe -m bumps.webview.server --use-persistent-path""' \
+        '-NoProfile -Command ""$INSTDIR\python.exe -m bumps --use-persistent-path""' \
         "$INSTDIR\share\icons\bumps.ico"
     SetOutPath "%USERPROFILE%"
     CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\BumpsPowershell.lnk" \
@@ -103,7 +103,7 @@ Section "Desktop Shortcut" SEC03
     SetShellVarContext current
     CreateShortCut "$DESKTOP\${PRODUCT_NAME}.lnk" \
         "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" \
-        '-NoProfile -Command ""$INSTDIR\python.exe -m bumps.webview.server""' \
+        '-NoProfile -Command ""$INSTDIR\python.exe -m bumps --use-persistent-path""' \
         "$INSTDIR\share\icons\bumps.ico"
 SectionEnd
 
