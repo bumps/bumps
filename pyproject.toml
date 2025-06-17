@@ -45,6 +45,7 @@ webview = [
     'python-socketio',
     'plotly',
     'mpld3',
+    'msgpack',
 ]
 
 [project.urls]

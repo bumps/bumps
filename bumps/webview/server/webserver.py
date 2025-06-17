@@ -27,6 +27,7 @@ mimetypes.add_type("image/svg+xml", ".svg")
 
 TRACE_MEMORY = False
 PREFERRED_PORT = 5148  # "SLAB"
+USE_MSGPACK = True  # use msgpack for serialization, faster than JSON
 
 # can get by name and not just by id
 
@@ -60,6 +61,7 @@ routes = app = sio = None
 def init_web_app():
     import socketio
     from aiohttp import web
+    import msgpack
 
     global routes, app, sio
 
@@ -98,7 +100,11 @@ def init_web_app():
         async def with_sid(sid: str, *args, **kwargs):
             try:
                 # print("RPC:", function.__name__, args, kwargs)
-                return await function(*args, **kwargs)
+                raw_result = await function(*args, **kwargs)
+                if USE_MSGPACK:
+                    return msgpack.packb(raw_result)
+                else:
+                    return raw_result
             except Exception as err:
                 logger.error(f"Exception for {function.__name__}(*{args}, **{kwargs}): {err}")
                 raise
