@@ -93,6 +93,7 @@ class BumpsOptions:
     trace: bool = False
     parallel: int = 0
     mpi: bool = False
+    ray: bool = False
 
     # Webserver controls.
     mode: str = "edit"
@@ -372,6 +373,11 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         help="Use MPI to distribute work across a cluster",
     )
     misc.add_argument(
+        "--ray",
+        action="store_true",
+        help="Use Ray to distribute work across a cluster (must have ray installed)",
+    )
+    misc.add_argument(
         "--trace",
         action="store_true",
         help="enable memory tracing (prints after every uncertainty update in dream)",
@@ -589,7 +595,7 @@ def interpret_fit_options(options: BumpsOptions):
 
     need_mapper = not options.chisq
     if need_mapper:
-        from bumps.mapper import MPIMapper, MPMapper, SerialMapper, using_mpi
+        from bumps.mapper import MPIMapper, MPMapper, SerialMapper, using_mpi, RayMapper
 
         async def start_mapper(App=None):
             # print(f"{api.state.rank}start mapper")
@@ -606,6 +612,8 @@ def interpret_fit_options(options: BumpsOptions):
                 mapper = MPIMapper
             elif options.parallel == 1:
                 mapper = SerialMapper
+            elif options.ray:
+                mapper = RayMapper
             else:
                 mapper = MPMapper
             mapper.start_worker(problem)

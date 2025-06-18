@@ -44,7 +44,7 @@ import numpy as np
 # np.seterr(all="raise")
 
 from .fitters import FitDriver, StepMonitor, ConsoleMonitor, CheckpointMonitor
-from .mapper import MPMapper, MPIMapper, SerialMapper
+from .mapper import MPMapper, MPIMapper, SerialMapper, RayMapper
 from . import util
 from . import initpop
 from . import __version__
@@ -598,7 +598,8 @@ def main():
         mapper = MPIMapper
     elif opts.parallel != "" or opts.worker:
         if opts.transport == "mp":
-            mapper = MPMapper
+            mapper = RayMapper
+            # mapper = MPMapper
         else:
             raise ValueError("unknown mapper")
     else:

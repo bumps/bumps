@@ -220,6 +220,43 @@ class MPMapper(BaseMapper):
         ##MPMapper.problem_id = 0
 
 
+class RayMapper(BaseMapper):
+    """
+    RayMapper uses the Ray library to parallelize the fit.
+    It is not compatible with MPIMapper or SerialMapper.
+    """
+
+    pool = None
+
+    @staticmethod
+    def start_worker(problem):
+        import ray
+
+        ray.init()
+
+    @staticmethod
+    def start_mapper(problem, modelargs=None, cpus=0):
+        import ray
+
+        @ray.remote
+        def nllf(point):
+            return problem.nllf(point)
+
+        print("Using RayMapper for parallel processing with Ray.\n")
+
+        def mapper(points):
+            # print(len(points), "points to evaluate with RayMapper")
+            return ray.get([nllf.remote(p) for p in points])
+
+        return mapper
+
+    @staticmethod
+    def stop_mapper(mapper=None):
+        import ray
+
+        ray.shutdown()
+
+
 def _MPI_set_problem(problem, comm, root=0):
     import dill
 
