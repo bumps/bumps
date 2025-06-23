@@ -52,7 +52,7 @@ To create your environment and install bumps use::
 
     conda create --name bumps python
     conda activate bumps
-    pip install bumps[webview]
+    pip install bumps
 
 You could instead download Python directly from
 `Python.org <https://www.python.org/downloads/>`_.
@@ -60,7 +60,7 @@ Again, recommended practice is to use an isolated python environment::
 
     python -m venv bumps
     . bumps/bin/activate
-    pip install bumps[webview]
+    pip install bumps
 
 Running bumps
 =============
@@ -103,7 +103,7 @@ it available::
 If running on colab or similar, then you can install bumps from within a
 notebook cell using pip:
 
-    %pip install bumps[webview]
+    %pip install bumps
 
 To start webview, use the following code cell::
 
