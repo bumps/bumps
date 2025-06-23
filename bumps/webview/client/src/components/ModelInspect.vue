@@ -6,6 +6,7 @@ import type { AsyncSocket } from "../asyncSocket.ts";
 import { setupDrawLoop } from "../setupDrawLoop";
 import "vue-json-pretty/lib/styles.css";
 
+
 // const title = "Model";
 
 // from https://github.com/microsoft/TypeScript/issues/1897#issuecomment-1228063688
@@ -25,20 +26,8 @@ props.socket.on("model_loaded", () => {
 });
 
 async function fetch_and_draw(reset: boolean = false) {
-  const payload = (await props.socket.asyncEmit("get_model")) as ArrayBuffer | string;
-  let json_string: string;
-  if (typeof payload === "string") {
-    json_string = payload;
-  } else if (payload instanceof ArrayBuffer) {
-    // convert ArrayBuffer to string
-    const bytes = new Uint8Array(payload);
-    json_string = decoder.decode(bytes);
-  } else {
-    console.error("Unexpected payload type:", typeof payload);
-    return;
-  }
-
-  const json_value: json = JSON.parse(json_string);
+  const payload = (await props.socket.asyncEmit("get_model")) as string;
+  const json_value: json = JSON.parse(payload);
   if (reset) {
     modelJson.value = json_value;
   } else {
