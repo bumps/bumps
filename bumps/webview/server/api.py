@@ -386,7 +386,7 @@ def _export_results(
     try:
         serialized = serialize_problem(problem, serializer)
         with open(save_filename, "wb") as fd:
-            fd.write(serialized)
+            fd.write(serialized.encode("utf-8"))
     except Exception as exc:
         logger.error(f"Error exporting model: {exc}")
 
