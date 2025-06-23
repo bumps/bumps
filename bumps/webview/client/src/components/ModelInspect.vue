@@ -6,7 +6,6 @@ import type { AsyncSocket } from "../asyncSocket.ts";
 import { setupDrawLoop } from "../setupDrawLoop";
 import "vue-json-pretty/lib/styles.css";
 
-
 // const title = "Model";
 
 // from https://github.com/microsoft/TypeScript/issues/1897#issuecomment-1228063688
@@ -47,8 +46,6 @@ async function fetch_and_draw(reset: boolean = false) {
     }
   }
 }
-
-const decoder = new TextDecoder("utf-8");
 
 onMounted(() => {
   fetch_and_draw(true);
