@@ -25,9 +25,20 @@ props.socket.on("model_loaded", () => {
 });
 
 async function fetch_and_draw(reset: boolean = false) {
-  const payload = (await props.socket.asyncEmit("get_model")) as ArrayBuffer;
-  const json_bytes = new Uint8Array(payload);
-  const json_value: json = JSON.parse(decoder.decode(json_bytes));
+  const payload = (await props.socket.asyncEmit("get_model")) as ArrayBuffer | string;
+  let json_string: string;
+  if (typeof payload === "string") {
+    json_string = payload;
+  } else if (payload instanceof ArrayBuffer) {
+    // convert ArrayBuffer to string
+    const bytes = new Uint8Array(payload);
+    json_string = decoder.decode(bytes);
+  } else {
+    console.error("Unexpected payload type:", typeof payload);
+    return;
+  }
+
+  const json_value: json = JSON.parse(json_string);
   if (reset) {
     modelJson.value = json_value;
   } else {
