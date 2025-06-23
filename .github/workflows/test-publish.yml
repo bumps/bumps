@@ -94,12 +94,6 @@ jobs:
         run: |
           uv venv
           find dist -name "bumps-*-py3-none-any.whl" -exec uv pip install {}[dev] \;
-      - name: Run tests, except for webview
-        run: uv run python -m pytest -v --ignore=bumps/webview
-
-      - name: Install dependencies for webview testing
-        run: find dist -name "bumps-*-py3-none-any.whl" -exec uv pip install {} \;
-
       - name: Run tests
         run: uv run python -m pytest -v
 
