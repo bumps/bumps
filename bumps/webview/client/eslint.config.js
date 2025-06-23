@@ -17,7 +17,7 @@ const compat = new FlatCompat({
 
 export default defineConfigWithVueTs(
   /** Extend recommended configs */
-  ...compat.extends("plugin:vue/vue3-recommended", "plugin:vuejs-accessibility/recommended", "prettier"),
+  ...compat.extends("plugin:vuejs-accessibility/recommended", "prettier"),
   ...pluginVue.configs["flat/recommended"],
   vueTsConfigs.recommended,
   // eslintPluginPrettierRecommended,
