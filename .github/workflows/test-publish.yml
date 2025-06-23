@@ -94,6 +94,7 @@ jobs:
         run: |
           uv venv
           find dist -name "bumps-*-py3-none-any.whl" -exec uv pip install {}[dev] \;
+
       - name: Run tests
         run: uv run python -m pytest -v
 
