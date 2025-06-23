@@ -12,9 +12,9 @@
     "build": "vite build --emptyOutDir -m development",
     "build_prod": "vite build --emptyOutDir -m production",
     "preview": "vite preview --port 4173",
-    "format": "prettier --write \"src/**/*.{vue,ts,js,css,scss,json,yaml,svg,md}\"",
-    "lint": "eslint src --fix && prettier --write \"src/**/*.{vue,ts,js,css,scss,json,yaml,svg,md}\"",
-    "test:lint": "eslint src && prettier --check \"src/**/*.{vue,ts,js,css,scss,json,yaml,svg,md}\"",
+    "format": "prettier --write \"src/**/*.{vue,ts,js,css,scss,json,yaml,svg,md}\" \"*.json\"",
+    "lint": "eslint src --fix && prettier --write \"src/**/*.{vue,ts,js,css,scss,json,yaml,svg,md}\" \"*.json\"",
+    "test:lint": "eslint src && prettier --check \"src/**/*.{vue,ts,js,css,scss,json,yaml,svg,md}\" \"*.json\"",
     "test:types": "vue-tsc --noEmit --skipLibCheck -p tsconfig.json --composite false"
   },
   "dependencies": {
