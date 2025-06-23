@@ -295,6 +295,7 @@ class History:
             item_group.attrs["label"] = item.label
             item_group.attrs["keep"] = item.keep
             item_group.attrs["timestamp"] = item.timestamp
+        return group
 
     def read(self, parent: "Group"):
         group = parent.get("problem_history", {})
@@ -588,14 +589,14 @@ class State:
         with os.fdopen(tmp_fd, "w+b") as output_file:
             with h5py.File(output_file, "w") as root_group:
                 self.problem.write(root_group)
-                if self.shared.active_history in (None, UNDEFINED):
-                    # write the live fitting state
-                    self.fitting.write(root_group)
+                history_group = self.history.write(root_group)
+                if self.shared.active_history is not None:
+                    active_history_group = history_group.get(self.shared.active_history)
+                    # make a hard link instead of writing the fitting state
+                    root_group["fitting"] = active_history_group["fitting"]
                 else:
-                    # a history item is active, so write an empty FittingState
-                    # TODO: can we just omit the write completely in this case?
-                    FitResult().write(root_group)
-                self.history.write(root_group)
+                    # no active history item, so write the fitting state
+                    self.fitting.write(root_group)
                 self.write_topics(root_group)
                 self.shared.write(root_group)
         shutil.move(tmp_name, session_fullpath)
