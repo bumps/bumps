@@ -272,7 +272,7 @@ async def save_problem_file(
 
     serialized = serialize_problem(problem_state.fitProblem, method=serializer)
     with open(Path(path, save_filename), "wb") as output_file:
-        output_file.write(serialized)
+        output_file.write(serialized.encode("utf-8"))
 
     await log(f"Saved: {save_filename} at path: {path}")
     return {"filename": save_filename, "check_overwrite": False}
