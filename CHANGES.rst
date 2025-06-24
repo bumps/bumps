@@ -2,7 +2,7 @@
 Change History
 **************
 
-v1.0.0 2025-01-XX
+v1.0.0 2025-06-24
 -----------------
 * a new web-based GUI (webview) has been added as the default GUI
 * a dataclass-based JSON serialization is available for bumps classes
