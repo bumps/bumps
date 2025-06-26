@@ -42,8 +42,8 @@ class ModelFunction(object):
             calculator = wrapper(lambda x, y: self.f((x, y), **kw))
         else:
             args = ",".join("x%d" % j for j in range(1, k + 1))
-            context = {"self": self, "kw": kw}
-            calculator = wrapper(eval("lambda %s: self.f((%s), **kw)" % (args, args), context))
+            context = {"f": self.f, "kw": kw}
+            calculator = wrapper(eval(f"lambda {args}: f(({args}), **kw)", context))
         return calculator
 
     def fv(self, k, **kw):
@@ -236,8 +236,7 @@ def plot2d(fn, args=None, range=(-10, 10)):
     """
     import matplotlib.pyplot as plt
 
-    # fnargs, _, _, _ = inspect.getargspec(fn)
-    fnargs = list(inspect.signature(fn).parameters.keys())
+    fnargs, *_ = inspect.getfullargspec(fn)
     if len(fnargs) < 2:
         args = fnargs[:1]
 

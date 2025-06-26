@@ -35,7 +35,7 @@ except Exception as exc:
 
 plotter = plot2d(nllf, range=(-10, 10))
 
-M = PDF(nllf, plot=plotter)
+M = PDF(nllf, plotter=plotter)
 
 for p in M.parameters().values():
     # TODO: really should pull value and range out of the bounds for the
