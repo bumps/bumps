@@ -14,7 +14,10 @@ Credits
 Bumps package was developed under DANSE project and is maintained by
 its user community.
 
-Please cite:
+It can by referenced by DOI: `10.5281/zenodo.15730428 <https://doi.org/10.5281/zenodo.15730428>`_.
+(citation text available at that link)
+
+Or cited as:
 
         Kienzle, P.A., Krycka, J., Patel, N., & Sahin, I. (2011).
         Bumps (Version |release|) [Computer Software].

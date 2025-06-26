@@ -12,6 +12,10 @@ dependencies = [
     'dill',
     'matplotlib',
     'blinker',
+    'aiohttp',
+    'python-socketio',
+    'plotly',
+    'mpld3',
     'graphlib_backport; python_version < "3.9"',
 ]
 classifiers = [
@@ -39,12 +43,6 @@ dev = [
     'setuptools',
     'sphinx',
     'versioningit',
-]
-webview = [
-    'aiohttp',
-    'python-socketio',
-    'plotly',
-    'mpld3',
 ]
 
 [project.urls]

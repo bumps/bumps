@@ -9,7 +9,7 @@ the uncertainty around the minimum.
 
 Installation is with the usual python installation command::
 
-    pip install bumps[webview]
+    pip install bumps
 
 Once the system is installed, you can verify that it is working with::
 
