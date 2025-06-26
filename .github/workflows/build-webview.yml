@@ -13,7 +13,7 @@ jobs:
       matrix:
         config:
           #- { os: ubuntu-latest, py: 3.8, doc: 1 }
-          - { os: windows-latest, py: "3.10", exe: 1, whl: 1 }
+          - { os: windows-latest, py: "3.11", exe: 1, whl: 1 }
           #- { os: macos-latest, py: 3.8, whl: 1 }
           # all using to stable abi
 

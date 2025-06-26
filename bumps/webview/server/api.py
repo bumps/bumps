@@ -59,6 +59,17 @@ from .traceplot import plot_trace
 from .logger import logger
 from .custom_plot import process_custom_plot, CustomWebviewPlot
 
+# CRUFT: python 3.8 does not have asyncio.to_thread
+try:
+    from asyncio import to_thread
+except ImportError:
+
+    async def to_thread(func, *args, **kwargs):
+        """Run a synchronous function in a separate thread."""
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, func, *args, **kwargs)
+
+
 REGISTRY: Dict[str, Callable] = {}
 MODEL_EXT = ".json"
 TRACE_MEMORY = False
@@ -356,7 +367,7 @@ async def export_results(export_path: Union[str, List[str]] = ""):
     path = Path(*export_path).expanduser().absolute()
     notification_id = await add_notification(content=f"<span>{str(path)}</span>", title="Export started", timeout=None)
     try:
-        await asyncio.to_thread(_export_results, path, problem, fit_state, serializer)
+        await to_thread(_export_results, path, problem, fit_state, serializer)
     finally:
         await emit("cancel_notification", notification_id)
     # print("done export thread")
@@ -879,11 +890,9 @@ async def create_custom_plot(model_index: int, plot_title: str, n_samples: int =
             model.update()
             model.nllf()
             if plot_info.get("change_with", None) == "uncertainty":
-                plot_item: CustomWebviewPlot = await asyncio.to_thread(
-                    plot_function, model, fitProblem, fit_state, n_samples
-                )
+                plot_item: CustomWebviewPlot = await to_thread(plot_function, model, fitProblem, fit_state, n_samples)
             else:
-                plot_item: CustomWebviewPlot = await asyncio.to_thread(plot_function, model, fitProblem)
+                plot_item: CustomWebviewPlot = await to_thread(plot_function, model, fitProblem)
         except Exception:
             plot_item = CustomWebviewPlot(fig_type="error", plotdata=traceback.format_exc())
 
@@ -1038,7 +1047,7 @@ async def get_correlation_plot(
 ):
     # need vars to be immutable (hashable) for caching based on arguments:
     vars = tuple(vars) if vars is not None else None
-    result = await asyncio.to_thread(
+    result = await to_thread(
         _get_correlation_plot,
         sort=sort,
         max_rows=max_rows,
@@ -1069,7 +1078,7 @@ def _get_uncertainty_plot(timestamp: str = "", cbar_colors: int = 8):
 
 @register
 async def get_uncertainty_plot(timestamp: str = ""):
-    result = await asyncio.to_thread(_get_uncertainty_plot, timestamp=timestamp, cbar_colors=8)
+    result = await to_thread(_get_uncertainty_plot, timestamp=timestamp, cbar_colors=8)
     return result
 
 
