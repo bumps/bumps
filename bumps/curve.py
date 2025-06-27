@@ -521,6 +521,7 @@ def logfactorial(n):
     return result
 
 
+@dataclass(init=False, eq=False)
 class PoissonCurve(Curve):
     r"""
     Model a measurement with Poisson uncertainty.
@@ -528,10 +529,14 @@ class PoissonCurve(Curve):
     The nllf is calculated using Poisson probabilities, but the curve itself
     is displayed using the approximation that $\sigma_y \approx \sqrt(y)$.
 
+    Note that the *dy* argument is ignored. It is only present for deserialization
+    of the Curve base class.
+
     See :class:`Curve` for details.
     """
 
-    def __init__(self, fn, x, y, name="", **fnkw):
+    def __init__(self, fn, x, y, dy=None, name="", **fnkw):
+        # dy ignored. It is needed for dataclass deserialization
         dy = sqrt(y) + (y == 0) if y is not None else None
         Curve.__init__(self, fn, x, y, dy, name=name, **fnkw)
         self._logfacty = logfactorial(y) if y is not None else None
