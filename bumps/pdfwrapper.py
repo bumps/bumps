@@ -15,7 +15,7 @@ here as well.
 
 import inspect
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Dict
 
 import numpy as np
 
@@ -53,7 +53,7 @@ class PDF:
     name: str
     plotter: Callable
     dof: int
-    pars: dict[str, Parameter] = None  # Needs to be None initially for getattr/setattr to work
+    pars: Dict[str, Parameter] = None  # Needs to be None initially for getattr/setattr to work
 
     has_residuals = False  # Don't have true residuals
 
