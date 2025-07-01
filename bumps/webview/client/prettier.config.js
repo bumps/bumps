@@ -6,12 +6,12 @@
 const config = {
   plugins: [
     "./node_modules/@ianvs/prettier-plugin-sort-imports/lib/src/index.js",
-    "./node_modules/prettier-plugin-jsdoc/dist/index.js",
+    // "./node_modules/prettier-plugin-jsdoc/dist/index.js",
     "./node_modules/prettier-plugin-css-order/src/main.mjs",
   ],
   importOrder: ["^vue", "^[a-zA-Z]", "^@[a-zA-Z]", "^@/", "^./", "^../"],
   cssDeclarationSorterOrder: "smacss",
-  jsdocCapitalizeDescription: false,
+  // jsdocCapitalizeDescription: false,
   overrides: [
     {
       files: "*.svg",

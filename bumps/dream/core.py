@@ -284,6 +284,9 @@ def _run_dream(dream: Dream, abort_test=lambda: False):
     # Record initial state
     allocate_state(dream)
     state = dream.state
+    # Reset plot portion to 100% during fitting so that the intermediate plots show the
+    # full set of samples.
+    state.portion = 1.0
     state.labels = dream.model.labels
     previous_draws = state.draws
     if previous_draws:
@@ -296,6 +299,7 @@ def _run_dream(dream: Dream, abort_test=lambda: False):
             logp = dream.model.map(x)
             state._generation(new_draws=n_chain, x=x, logp=logp, accept=n_chain, force_keep=True)
             dream.monitor(state, x, logp)
+        # print(f"Initial pop has draws={state.draws} gen={state.generation} pop={dream.population.shape}")
 
     state._update(CR_weight=dream.CR.weight)
 
@@ -321,6 +325,7 @@ def _run_dream(dream: Dream, abort_test=lambda: False):
     next_outlier_test = max(state.Ngen, 2 * state.Ngen - 10)
     next_convergence_test = state.Ngen
     final_gen = dream.draws + dream.burn
+    # print(f"running dream with {dream.draws} draws and {dream.burn} burn; final gen={final_gen} draws={state.draws} gen={state.generation}")
     while state.draws < final_gen:
         # Age the population using differential evolution
         dream.CR.reset()
@@ -453,7 +458,7 @@ def _run_dream(dream: Dream, abort_test=lambda: False):
             dream.CR.adapt()
 
         if False:
-            # Suppress scale update until we have a chance to verify that it
+            # TODO: Suppress scale update until we have a chance to verify that it
             # doesn't skew the resulting statistics.
             _, r = state.acceptance_rate()
             ravg = np.mean(r[-dream.DE_steps :])

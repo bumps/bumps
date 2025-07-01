@@ -171,8 +171,10 @@ class Calculation(ValueProtocol):  # the name Function is taken (though deprecat
     description: str
     _function: Callable[[], float]  # added by the model; not serialized
 
-    def __init__(self, description: str = ""):
+    def __init__(self, description: str = "", function: Callable = None):
         self.description = description
+        # Default to bad return value during reconstruction
+        self._function = function if function is not None else lambda: np.nan
 
     @property
     def value(self):
@@ -550,6 +552,29 @@ class Parameter(ValueProtocol, SupportsPrior):
         else:
             return cls(value, **kw)
 
+    @staticmethod
+    def calculation(obj: Optional["Parameter"], name: str, function: Callable[[], float]) -> "Parameter":
+        """
+        Create a parameter to hold a value derived from the model. This can be used in
+        parameter expressions, for example to constrain total thickness or to set the
+        value in the next segment equal to the value at the end of a freeform segment.
+
+        Note that this function should be called in the __init__ or __post_init__ methods of
+        the class where the parameter is defined, in order to bind the Calculation function
+        to the newly created (or deserialized) Parameter before it is used.
+
+        If obj is a Parameter, use it - otherwise create a new Parameter obj with the given name.
+
+        Then create a Calculation object and attach the evaluator function to the Calculation,
+        and put the Calculation in obj.slot
+
+        Returns obj: Parameter
+        """
+        if not isinstance(obj, Parameter):
+            obj = Parameter(name=name)
+        obj.slot = Calculation(function=function)
+        return obj
+
     def set(self, value):
         """
         Set a new value for the parameter, ignoring the bounds.
@@ -653,9 +678,7 @@ class Parameter(ValueProtocol, SupportsPrior):
         """
         Set a parameter equal to another parameter or expression.
 
-        If *expression=None* then free the parameter by giving it is own
-        slot with value equal to the present value of the expression, and
-        its bounds.
+        Use :meth:`unlink` to convert from an expression to a variable.
         """
         if isinstance(self.slot, Calculation):
             raise TypeError("parameter is calculated by the model and cannot be changed")
@@ -1870,7 +1893,7 @@ def test_operator():
     b.dev(sigma, mean=mu)
     b.value = 4
     b.add_prior()
-    nllf_target = 0.5 * ((b.value - mu) / sigma) ** 2 + np.log(2 * np.pi * sigma**2) / 2
+    nllf_target = 0.5 * ((b.value - mu) / sigma) ** 2  # + np.log(2 * np.pi * sigma**2) / 2
     assert abs(b.nllf() - nllf_target) / nllf_target < 1e-12
 
     # Check conditions

@@ -68,6 +68,7 @@ jobs:
           - { os: ubuntu-latest, py: "3.10" }
           - { os: ubuntu-latest, py: 3.11 }
           - { os: ubuntu-latest, py: 3.12 }
+          - { os: ubuntu-latest, py: 3.13 }
           - { os: windows-latest, py: "3.10" }
           - { os: macos-latest, py: "3.10" }
       fail-fast: false
@@ -93,11 +94,6 @@ jobs:
         run: |
           uv venv
           find dist -name "bumps-*-py3-none-any.whl" -exec uv pip install {}[dev] \;
-      - name: Run tests, except for webview
-        run: uv run python -m pytest -v --ignore=bumps/webview
-
-      - name: Install dependencies for webview testing
-        run: find dist -name "bumps-*-py3-none-any.whl" -exec uv pip install {}[webview] \;
 
       - name: Run tests
         run: uv run python -m pytest -v

@@ -77,8 +77,12 @@ def init_web_app():
 
         @routes.get(f"/{fn.__name__}")
         async def handler(request: web.Request):
-            result = await fn(**request.query)
-            return web.json_response(result)
+            try:
+                result = await fn(**request.query)
+                return web.json_response(result)
+            except Exception as err:
+                logger.exception(err)
+                raise
 
         # pass the function to the next decorator unchanged...
         return fn
@@ -92,7 +96,12 @@ def init_web_app():
 
         @functools.wraps(function)
         async def with_sid(sid: str, *args, **kwargs):
-            return await function(*args, **kwargs)
+            try:
+                # print("RPC:", function.__name__, args, kwargs)
+                return await function(*args, **kwargs)
+            except Exception as err:
+                logger.error(f"Exception for {function.__name__}(*{args}, **{kwargs}): {err}")
+                raise
 
         return with_sid
 
@@ -247,19 +256,18 @@ def start_from_cli(options: BumpsOptions):
     web.run_app(app, sock=runsock)
 
 
-server_task = None
-
-
-def bumps_server():
-    global server_task
-
-    # Start the server
-    server_task = asyncio.create_task(start_app(jupyter_link=True))
-    return server_task
+def start_bumps_server():
+    """
+    Start the webview server in a background asyncio.Task,
+    and show the link to the webview in a Jupyter notebook.
+    Note that the returned Task should be awaited in order
+    to handle any exceptions that may occur during startup.
+    """
+    return asyncio.create_task(start_app(jupyter_link=True))
 
 
 async def start_app(
-    options: BumpsOptions,
+    options: BumpsOptions = None,
     sock: socket.socket = None,
     jupyter_link: bool = False,
     jupyter_heartbeat: bool = False,
@@ -267,6 +275,8 @@ async def start_app(
     from aiohttp import web
 
     init_web_app()
+    if options is None:
+        options = BumpsOptions()
 
     # this function is called from jupyter notebook, so set headless = True
     options.headless = True
@@ -287,10 +297,6 @@ async def start_app(
     else:
         url = get_server_url()
         print(f"webserver started: {url}")
-
-
-def create_server_task():
-    return asyncio.create_task(start_app())
 
 
 def get_server_url():

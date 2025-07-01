@@ -32,11 +32,7 @@ import uuid
 import traceback
 import math
 
-from bumps.fitters import (
-    FitDriver,
-    nllf_scale,
-    format_uncertainty,
-)
+from bumps.fitters import FitDriver
 from bumps.mapper import MPMapper
 from bumps.parameter import Parameter, Constant, Variable, unique
 import bumps.cli
@@ -154,8 +150,9 @@ async def load_problem_file(
         _serialized_problem = serialize_problem(problem, method="dataclass")
         state.problem.serializer = "dataclass"
     except Exception as exc:
-        logger.info(f"Could not serialize problem as JSON (dataclass): {exc}, switching to dill")
+        logger.warning(f"Could not serialize problem as JSON (dataclass): {exc}, switching to dill")
         state.problem.serializer = "dill"
+        # raise
     if (
         state.shared.autosave_history
         and autosave_previous
@@ -275,7 +272,7 @@ async def save_problem_file(
 
     serialized = serialize_problem(problem_state.fitProblem, method=serializer)
     with open(Path(path, save_filename), "wb") as output_file:
-        output_file.write(serialized)
+        output_file.write(serialized.encode("utf-8"))
 
     await log(f"Saved: {save_filename} at path: {path}")
     return {"filename": save_filename, "check_overwrite": False}
@@ -301,11 +298,28 @@ async def load_session(pathlist: List[str], filename: str, read_only: bool = Fal
 
 
 @register
-async def set_session_output_file(pathlist: Optional[List[str]] = None, filename: Optional[str] = None):
-    if filename is None or pathlist is None:
+async def set_session_output_file(filepath: Optional[Union[str, Path]] = None):
+    """
+    Set the session output file to be used for saving results, and enable autosave.
+    If `filepath` is None, the session output file is cleared and autosave is disabled.
+    """
+    if filepath is None:
         await state.shared.set("session_output_file", None)
+        await state.shared.set("autosave_session", False)
     else:
-        await state.shared.set("session_output_file", dict(filename=filename, pathlist=pathlist))
+        if isinstance(filepath, str):
+            filepath = Path(filepath)
+
+        parent_dir = filepath.parent
+        filename = filepath.name
+        if not parent_dir.exists():
+            raise ValueError(f"Parent directory {parent_dir} does not exist.")
+        if not parent_dir.is_dir():
+            raise ValueError(f"Path {parent_dir} is not a directory.")
+        if filepath.is_dir():
+            raise ValueError(f"Path {filepath} is a directory, not a file.")
+        await state.shared.set("session_output_file", dict(filename=filename, pathlist=parent_dir.parts))
+        await state.shared.set("autosave_session", True)
 
 
 @register
@@ -372,7 +386,7 @@ def _export_results(
     try:
         serialized = serialize_problem(problem, serializer)
         with open(save_filename, "wb") as fd:
-            fd.write(serialized)
+            fd.write(serialized.encode("utf-8"))
     except Exception as exc:
         logger.error(f"Error exporting model: {exc}")
 
@@ -430,13 +444,11 @@ async def apply_parameters(pathlist: List[str], filename: str):
             title="Parameters applied",
             timeout=2000,
         )
-    except Exception:
-        await log(f"Unable to apply parameters from {fullpath}")
-        await add_notification(
-            f"Unable to apply parameters from {fullpath}",
-            title="Error applying parameters",
-            timeout=2000,
-        )
+    except Exception as exc:
+        msg = f"error loading parameters from {fullpath}: {exc}"
+        logger.error(msg)
+        await log(msg)
+        await add_notification(msg, title="Error applying parameters", timeout=2000)
 
 
 @register
@@ -475,14 +487,12 @@ async def stop_fit(wait=True):
 
 
 @register
-async def get_chisq(problem: Optional[bumps.fitproblem.FitProblem] = None, nllf=None):
-    problem = state.problem.fitProblem if problem is None else problem
+async def get_chisq(problem: Optional[bumps.fitproblem.FitProblem] = None, nllf=None) -> str:
+    if problem is None:
+        problem = state.problem.fitProblem
     if problem is None:
         return ""
-    nllf = problem.nllf() if nllf is None else nllf
-    scale, err = nllf_scale(problem)
-    chisq = format_uncertainty(scale * nllf, err)
-    return chisq
+    return problem.chisq_str(nllf=nllf)  # Default is norm=True and compact=True
 
 
 # TODO: Ask the fitter for the number of steps instead of guessing
@@ -494,6 +504,7 @@ def get_max_steps(num_fitparams: int, fitter_id: str, options: Dict[str, Any]):
     options = {**dict(fitter.settings), **dict(options)}
     steps = options["steps"]  # all fitters have "steps"
     starts = options.get("starts", 1)  # Multistart fitter
+    # TODO: Max steps is wrong for DE with resume. Instead let the fitter tell the step monitor how many steps.
     if fitter_id == "dream":  # Dream has steps + burn
         if steps == 0:  # Steps not specified; using samples instead
             pop, draws = options["pop"], options["samples"]
@@ -545,6 +556,8 @@ async def start_fit_thread(fitter_id: str, options: Optional[Dict[str, Any]] = N
         raise ValueError("Problem has no fittable parameters")
 
     # Check the options. Pass the fitter_id so that we know which options are available.
+    if options is None:
+        options = {}
     options, errors = fit_options.check_options(options, fitter_id=fitter_id)
     for msg in errors:
         logger.warning(msg)
@@ -608,7 +621,7 @@ async def start_fit_thread(fitter_id: str, options: Optional[Dict[str, Any]] = N
         uncertainty_update=state.shared.autosave_session_interval,
         console_update=state.console_update_interval,
         fit_state=state.fitting.fit_state,
-        # TODO: on resume should we pass the current convergence vector?
+        convergence=state.fitting.convergence,
     )
 
     await log(
@@ -692,7 +705,7 @@ async def _fit_complete_handler(event: Dict[str, Any]):
 
         # print(event['info'])  # Needed if we are dumping fit outputs to the terminal
         problem: bumps.fitproblem.FitProblem = event["problem"]
-        chisq = nice(2 * event["value"] / problem.dof)
+        chisq = nice(problem.chisq(nllf=event["value"]))
         problem.setp(event["point"])
         problem.model_update()
         state.problem.fitProblem = problem
@@ -896,7 +909,7 @@ async def get_convergence_plot():
     fitProblem = state.problem.fitProblem
     convergence = state.fitting.convergence
     if convergence is not None:
-        normalized_pop = 2 * convergence / fitProblem.dof
+        normalized_pop = fitProblem.chisq(nllf=convergence)
         best, pop = normalized_pop[:, 0], normalized_pop[:, 1:]
 
         ni, npop = pop.shape
@@ -964,7 +977,7 @@ async def get_convergence_plot():
         )
         fig["layout"].update(
             dict(
-                template="simple_white",
+                template={"name": "simple_white"},
                 legend=dict(x=1, y=1, xanchor="right", yanchor="top"),
             )
         )
@@ -1116,10 +1129,9 @@ async def get_parameter_trace_plot(var: int):
         logger.info(f"queueing new parameter_trace plot... {start_time}")
 
         # begin plotting:
-        portion = None
         draw, points, _ = fit_state.chains()
         label = fit_state.labels[var]
-        start = int((1 - portion) * len(draw)) if portion else 0
+        start = int((1 - fit_state.portion) * len(draw))
         genid = (
             np.arange(
                 fit_state.generation - len(draw) + start,
