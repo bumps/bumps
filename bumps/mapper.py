@@ -231,14 +231,15 @@ class RayMapper(BaseMapper):
     @staticmethod
     def start_worker(problem):
         import ray
+        import logging
 
-        ray.init()
+        ray.init(include_dashboard=False, logging_level=logging.ERROR)
 
     @staticmethod
     def start_mapper(problem, modelargs=None, cpus=0):
         import ray
 
-        @ray.remote
+        @ray.remote(num_cpus=1, num_gpus=0)
         def nllf(point):
             return problem.nllf(point)
 
