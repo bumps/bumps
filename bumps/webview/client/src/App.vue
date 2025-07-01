@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, toRaw } from "vue";
 import {
   active_layout,
   addNotification,
@@ -240,7 +240,7 @@ async function startFit() {
   const settings = shared_state.fitter_settings ?? default_fitter_settings.value;
   if (active && settings) {
     const fit_args = settings[active];
-    await socket.asyncEmit("start_fit_thread", active, fit_args.settings);
+    await socket.asyncEmit("start_fit_thread", active, toRaw(fit_args.settings));
   }
 }
 
