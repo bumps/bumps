@@ -391,6 +391,8 @@ class Curve:
             y, dy, theory_y, resid = (v[:, None] for v in (self.y, self.dy, theory_y, resid))
 
         colors = tuple(coordinated_colors() for _ in range(self._num_curves))
+        # clear figure after calling coordinated_colors, which can create an axis object
+        pylab.clf()
         labels = self.labels
 
         # print "kw_plot",kw
