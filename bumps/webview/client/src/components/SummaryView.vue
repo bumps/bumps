@@ -72,7 +72,7 @@ function invalidLimit(limit: string) {
   return ["", "inf", "-inf"].includes(limit) || Number.isNaN(Number(limit));
 }
 
-function selectContents(ev: MouseEvent) {
+function selectContents(ev: FocusEvent) {
   const target = ev.target as HTMLElement;
   const range = document.createRange();
   range.selectNodeContents(target);
