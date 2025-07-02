@@ -1425,10 +1425,7 @@ def params_to_list(params, lookup=None, pathlist=None, links=None) -> List[Param
             existing["paths"].append(".".join(pathlist))
         else:
             value_str = VALUE_FORMAT.format(nice(params.value))
-            if hasattr(params, "has_prior"):
-                has_prior = params.has_prior()
-            else:
-                has_prior = False
+            has_prior = getattr(params, "prior", None) is not None
 
             if hasattr(params, "slot"):
                 writable = type(params.slot) in [Variable, Parameter]
@@ -1445,7 +1442,6 @@ def params_to_list(params, lookup=None, pathlist=None, links=None) -> List[Param
                 "fixed": params.fixed,
             }
             if has_prior:
-                assert params.prior is not None
                 lo, hi = params.prior.limits
                 new_item["value01"] = params.prior.get01(float(params.value))
                 new_item["min_str"] = VALUE_FORMAT.format(nice(lo))
