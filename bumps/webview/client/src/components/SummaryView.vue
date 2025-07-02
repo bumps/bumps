@@ -50,17 +50,35 @@ async function onMove(index: number) {
 }
 
 async function editItem(event: FocusEvent, item_name: "min" | "max" | "value", index: number) {
-  const new_value = (event.target as HTMLElement).innerText;
-  if (validate_numeric(new_value)) {
+  const new_value = (event.target as HTMLElement).textContent?.trim();
+  if (validate_numeric(new_value, true)) {
     props.socket.asyncEmit("set_parameter", parameters.value[index].id, item_name, new_value);
+  } else {
+    (event.target as HTMLElement).innerText = parameters.value[index][`${item_name}_str`];
   }
 }
 
-function validate_numeric(value: string, allow_inf: boolean = false) {
+function validate_numeric(value: string | undefined, allow_inf: boolean = false) {
   if (allow_inf && (value === "inf" || value === "-inf")) {
     return true;
   }
+  if (value === "" || value === "NaN" || value === undefined) {
+    return false;
+  }
   return !Number.isNaN(Number(value));
+}
+
+function invalidLimit(limit: string) {
+  return ["", "inf", "-inf"].includes(limit) || Number.isNaN(Number(limit));
+}
+
+function selectContents(ev: MouseEvent) {
+  const target = ev.target as HTMLElement;
+  const range = document.createRange();
+  range.selectNodeContents(target);
+  const sel = window.getSelection();
+  sel?.removeAllRanges();
+  sel?.addRange(range);
 }
 
 async function onInactive(param: parameter_info) {
@@ -106,6 +124,7 @@ async function onInactive(param: parameter_info) {
             min="0"
             max="1.0"
             step="0.005"
+            :disabled="invalidLimit(parameter.min_str) || invalidLimit(parameter.max_str)"
             @mousedown="parameter.active = true"
             @input="onMove(index)"
             @change="onInactive(parameter)"
@@ -117,8 +136,10 @@ async function onInactive(param: parameter_info) {
           class="editable"
           contenteditable="true"
           spellcheck="false"
-          @blur="editItem($event, 'value', index)"
+          @focus="selectContents"
+          @blur="(ev) => editItem(ev, 'value', index)"
           @keydown.enter="(e) => (e.target as HTMLElement).blur()"
+          @keydown.esc="(e) => ((e.target as HTMLElement).innerText = parameters_localstr[index])"
         >
           {{ parameters_localstr[index] }}
         </td>
@@ -126,8 +147,10 @@ async function onInactive(param: parameter_info) {
           class="editable"
           contenteditable="true"
           spellcheck="false"
-          @blur="editItem($event, 'min', index)"
+          @focus="selectContents"
+          @blur="(ev) => editItem(ev, 'min', index)"
           @keydown.enter="(e) => (e.target as HTMLElement).blur()"
+          @keydown.esc="(e) => ((e.target as HTMLElement).innerText = parameter.min_str)"
         >
           {{ parameter.min_str }}
         </td>
@@ -135,8 +158,10 @@ async function onInactive(param: parameter_info) {
           class="editable"
           contenteditable="true"
           spellcheck="false"
-          @blur="editItem($event, 'max', index)"
+          @focus="selectContents"
+          @blur="(ev) => editItem(ev, 'max', index)"
           @keydown.enter="(e) => (e.target as HTMLElement).blur()"
+          @keydown.esc="(e) => ((e.target as HTMLElement).innerText = parameter.max_str)"
         >
           {{ parameter.max_str }}
         </td>
