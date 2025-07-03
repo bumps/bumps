@@ -210,10 +210,12 @@ def serialize(obj, use_refs=True, add_libraries=True):
             return str(obj) if np.isinf(obj) else obj
         elif isinstance(obj, int) or isinstance(obj, str) or obj is None:
             return obj
+        elif isinstance(obj, np.integer):
+            return int(obj)
         elif callable(obj):
             return serialize_function(obj)
         else:
-            raise ValueError("obj %s is not serializable" % str(obj))
+            raise ValueError(f"obj {str(obj)} of type {type(obj)} is not serializable")
 
     serialized = {"$schema": SCHEMA, "object": obj_to_dict(obj), REFERENCES_KEY: references}
 

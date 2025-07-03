@@ -36,9 +36,22 @@ def decode(b):
     return b.decode("utf-8")
 
 
-def run_fit(fit_args, model_args, store, seed=1):
-    command_parts = [*command, *fit_args, *model_args, f"--store={store}", f"--seed={seed}", "--batch"]
+def run_fit(fitter, model_args, store, seed=1):
+    path = model_args[0]
+    command_parts = [
+        *command,
+        f"--fit={fitter}",
+        f"--store={store}",
+        f"--seed={seed}",
+        "--batch",
+        str(path),
+    ]
+    if model_args[1:]:
+        command_parts = [*command_parts, "--args", *model_args[1:]]
+    # print(command_parts)
     try:
+        saved_path = os.environ["PYTHONPATH"]
+        os.environ["PYTHONPATH"] = os.pathsep.join(packages + [str(path.parent)])
         output = subprocess.check_output(command_parts, stderr=subprocess.STDOUT)
         output = decode(output.strip())
         if output:
@@ -51,6 +64,8 @@ def run_fit(fit_args, model_args, store, seed=1):
             raise KeyboardInterrupt()
         else:
             raise RuntimeError("fit failed:\n" + " ".join(command_parts))
+    finally:
+        os.environ["PYTHONPATH"] = saved_path
 
 
 def check_fit(fitter, store, target):
@@ -62,7 +77,10 @@ def check_fit(fitter, store, target):
         last_item = list(group.keys())[-1]
         chisq_str = group[last_item].attrs["chisq"]
         value = float(chisq_str.split("(")[0])
-        assert abs(value - target) / target < 1e-2, f"error in {fitter}: expected {target} but got {value}"
+        if target == 0:
+            assert abs(value - target) < 1e-10, f"error in {fitter}: expected {target} but got {value}"
+        else:
+            assert abs(value - target) / target < 1e-2, f"error in {fitter}: expected {target} but got {value}"
 
 
 def run_fits(model_args, path, fitters=FIT_AVAILABLE_IDS, seed=1, target=0):
@@ -71,7 +89,7 @@ def run_fits(model_args, path, fitters=FIT_AVAILABLE_IDS, seed=1, target=0):
         print(f"====== fitter: {f}")
         try:
             store = Path(path) / f"{f}.hdf"
-            run_fit([f"--fit={f}"], model_args, str(store), seed=seed)
+            run_fit(f, model_args, str(store), seed=seed)
             check_fit(f, store, target)
         except Exception as exc:
             # import traceback; traceback.print_exc()

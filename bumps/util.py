@@ -178,33 +178,6 @@ def kbhit():
         return sys.stdin in i
 
 
-class DynamicModule(types.ModuleType):
-    def __init__(self, path, name):
-        self.__path__ = [path]
-        self.__name__ = name
-        # In the bowels of importlib the parent spec attribute is used to
-        # avoid circular imports, but only if spec is not None. This behaviour
-        # was observed on python 3.11, and perhaps earlier.
-        self.__spec__ = None
-
-
-def relative_import(filename, module_name="relative_import"):
-    """
-    Define an empty module allowing relative imports from a script.
-
-    By setting :code:`__package__ = relative_import(__file__)` at the top of
-    your script file you can even run your model as a python script.  So long
-    as the script behaviour is isolated in :code:`if __name__ == "__main__":`
-    code block and :code:`problem = FitProblem(...)` is defined, the same model
-    can be used both within and outside of bumps.
-    """
-    path = os.path.dirname(os.path.abspath(filename))
-    if module_name in sys.modules and not isinstance(sys.modules[module_name], DynamicModule):
-        raise ImportError("relative import would override the existing module %s. Use another name" % module_name)
-    sys.modules[module_name] = DynamicModule(path, module_name)
-    return module_name
-
-
 class redirect_console(object):
     """
     Console output redirection context

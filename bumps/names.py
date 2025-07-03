@@ -46,4 +46,3 @@ from .pdfwrapper import PDF, VectorPDF, DirectProblem
 from .curve import Curve, PoissonCurve
 from .fitproblem import FitProblem, Fitness
 from .fitters import fit
-from .util import relative_import
