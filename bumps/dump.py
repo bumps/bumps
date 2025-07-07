@@ -13,6 +13,8 @@ from pathlib import Path
 
 
 def _str(s):
+    if hasattr(s, "dtype") and s.dtype.kind == "V":
+        return s.tobytes().rstrip(b"\x00").decode("ascii")
     return s.decode("utf-8") if isinstance(s, bytes) else s
 
 
@@ -92,7 +94,7 @@ def _tree_format(node, indent, show_attrs, recursive):
 
         # Format string or numeric value
         # if 'S' in field.attrs['format']:
-        if field.dtype.kind in ("S", "O"):
+        if field.dtype.kind in ("S", "O", "V"):
             if ndim == 0:
                 # raise ValueError("zero dimensions on string?")
                 value = _limited_str(_str(field[()]))

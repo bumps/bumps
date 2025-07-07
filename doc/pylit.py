@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-
 
 # pylit.py
 # ********
@@ -9,7 +9,7 @@
 # :Date:      $Date$
 # :Revision:  $Revision$
 # :URL:       $URL$
-# :Copyright: � 2005, 2007 G�nter Milde.
+# :Copyright: © 2005, 2009 Günter Milde.
 #             Released without warranty under the terms of the
 #             GNU General Public License (v. 2 or later)
 #
@@ -472,10 +472,10 @@ class TextCodeConverter(object):
         marker = self.code_block_marker
         if marker == '::':
             # the default marker may occur at the end of a text line
-            self.marker_regexp = re.compile('^( *(?!\.\.).*)(::)([ \n]*)$')
+            self.marker_regexp = re.compile('^( *(?!\\.\\.).*)(::)([ \n]*)$')
         else:
             # marker must be on a separate line
-            self.marker_regexp = re.compile('^( *)(%s)(.*\n?)$' % marker)
+            self.marker_regexp = re.compile(r'^( *)(%s)(.*\n?)$' % marker)
 
 # .. _TextCodeConverter.__iter__:
 #
@@ -1584,7 +1584,7 @@ def run_doctest(infile="-", txt2code=True,
 # ::
 
     firstlines = ' '.join(docstring.splitlines()[:2])
-    match = re.search('coding[=:]\s*([-\w.]+)', firstlines)
+    match = re.search('coding[=:]\\s*([-\\w.]+)', firstlines)
     if match:
         docencoding = match.group(1)
         docstring = docstring.decode(docencoding)

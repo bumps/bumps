@@ -151,8 +151,9 @@ async def load_problem_file(
         _serialized_problem = serialize_problem(problem, method="dataclass")
         state.problem.serializer = "dataclass"
     except Exception as exc:
-        logger.info(f"Could not serialize problem as JSON (dataclass): {exc}, switching to dill")
+        logger.warning(f"Could not serialize problem as JSON (dataclass): {exc}, switching to dill")
         state.problem.serializer = "dill"
+        # raise
     if (
         state.shared.autosave_history
         and autosave_previous
@@ -272,7 +273,7 @@ async def save_problem_file(
 
     serialized = serialize_problem(problem_state.fitProblem, method=serializer)
     with open(Path(path, save_filename), "wb") as output_file:
-        output_file.write(serialized)
+        output_file.write(serialized.encode("utf-8"))
 
     await log(f"Saved: {save_filename} at path: {path}")
     return {"filename": save_filename, "check_overwrite": False}
@@ -298,11 +299,28 @@ async def load_session(pathlist: List[str], filename: str, read_only: bool = Fal
 
 
 @register
-async def set_session_output_file(pathlist: Optional[List[str]] = None, filename: Optional[str] = None):
-    if filename is None or pathlist is None:
+async def set_session_output_file(filepath: Optional[Union[str, Path]] = None):
+    """
+    Set the session output file to be used for saving results, and enable autosave.
+    If `filepath` is None, the session output file is cleared and autosave is disabled.
+    """
+    if filepath is None:
         await state.shared.set("session_output_file", None)
+        await state.shared.set("autosave_session", False)
     else:
-        await state.shared.set("session_output_file", dict(filename=filename, pathlist=pathlist))
+        if isinstance(filepath, str):
+            filepath = Path(filepath)
+
+        parent_dir = filepath.parent
+        filename = filepath.name
+        if not parent_dir.exists():
+            raise ValueError(f"Parent directory {parent_dir} does not exist.")
+        if not parent_dir.is_dir():
+            raise ValueError(f"Path {parent_dir} is not a directory.")
+        if filepath.is_dir():
+            raise ValueError(f"Path {filepath} is a directory, not a file.")
+        await state.shared.set("session_output_file", dict(filename=filename, pathlist=parent_dir.parts))
+        await state.shared.set("autosave_session", True)
 
 
 @register
@@ -369,7 +387,7 @@ def _export_results(
     try:
         serialized = serialize_problem(problem, serializer)
         with open(save_filename, "wb") as fd:
-            fd.write(serialized)
+            fd.write(serialized.encode("utf-8"))
     except Exception as exc:
         logger.error(f"Error exporting model: {exc}")
 
@@ -539,6 +557,8 @@ async def start_fit_thread(fitter_id: str, options: Optional[Dict[str, Any]] = N
         raise ValueError("Problem has no fittable parameters")
 
     # Check the options. Pass the fitter_id so that we know which options are available.
+    if options is None:
+        options = {}
     options, errors = fit_options.check_options(options, fitter_id=fitter_id)
     for msg in errors:
         logger.warning(msg)
