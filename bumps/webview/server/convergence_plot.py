@@ -2,7 +2,13 @@ from typing import Optional
 import numpy as np
 
 
-def convergence_plot(convergence: np.ndarray, dof: float, cutoff: float = 0.25, trim_index: Optional[int] = None):
+def convergence_plot(
+    convergence: np.ndarray,
+    dof: float,
+    cutoff: float = 0.25,
+    trim_index: Optional[int] = None,
+    max_points: Optional[int] = None,
+) -> dict:
     """
     Generate a convergence plot from the convergence data.
 
@@ -22,6 +28,13 @@ def convergence_plot(convergence: np.ndarray, dof: float, cutoff: float = 0.25, 
     ni, npop = pop.shape
     x = np.arange(1, ni + 1)
     tail = int(cutoff * ni)
+    nout = ni - tail
+
+    step = nout // max_points if (max_points is not None and nout > max_points) else 1
+    x_out = x[tail::step]
+    best_out = best[tail::step]
+    pop_out = pop[tail::step, :]
+
     traces = []
     layout = {}
     hovertemplate = "(%{{x}}, %{{y}})<br>{label}<extra></extra>"
@@ -56,8 +69,8 @@ def convergence_plot(convergence: np.ndarray, dof: float, cutoff: float = 0.25, 
         traces.append(
             dict(
                 type="scattergl",
-                x=x[tail:],
-                y=pop[tail:, 3],
+                x=x_out,
+                y=pop_out[:, 3],
                 mode="lines",
                 line=dict(color="lightgreen", width=0),
                 showlegend=False,
@@ -67,8 +80,8 @@ def convergence_plot(convergence: np.ndarray, dof: float, cutoff: float = 0.25, 
         traces.append(
             dict(
                 type="scattergl",
-                x=x[tail:],
-                y=pop[tail:, 1],
+                x=x_out,
+                y=pop_out[:, 1],
                 name="20% to 80% range",
                 fill="tonexty",
                 mode="lines",
@@ -79,8 +92,8 @@ def convergence_plot(convergence: np.ndarray, dof: float, cutoff: float = 0.25, 
         traces.append(
             dict(
                 type="scattergl",
-                x=x[tail:],
-                y=pop[tail:, 2],
+                x=x_out,
+                y=pop_out[:, 2],
                 name="population median",
                 mode="lines",
                 line=dict(color="green"),
@@ -90,8 +103,8 @@ def convergence_plot(convergence: np.ndarray, dof: float, cutoff: float = 0.25, 
         traces.append(
             dict(
                 type="scattergl",
-                x=x[tail:],
-                y=pop[tail:, 0],
+                x=x_out,
+                y=pop_out[:, 0],
                 name="population best",
                 mode="lines",
                 line=dict(color="green", dash="dot"),
@@ -101,8 +114,8 @@ def convergence_plot(convergence: np.ndarray, dof: float, cutoff: float = 0.25, 
     traces.append(
         dict(
             type="scattergl",
-            x=x[tail:],
-            y=best[tail:],
+            x=x_out,
+            y=best_out,
             name="best",
             line=dict(color="red", width=1),
             mode="lines",

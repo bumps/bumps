@@ -884,7 +884,17 @@ async def get_custom_plot(model_index: int, plot_title: str, n_samples: int = 1)
 
 
 @register
-async def get_convergence_plot(cutoff: float = 0.25):
+async def get_convergence_plot(cutoff: float = 0.25, max_points: int = 50000):
+    """
+    Get the convergence plot for the current fit state.
+    If the fit state is not available, return None.
+    If the convergence is not available, return None.
+
+    :param cutoff: The cutoff value for the convergence plot
+                    (fraction of points below this value are not shown)
+    :param max_points: The maximum number of points to plot
+                        (thinning applied if too many points)
+    :return: A JSON-serializable dictionary containing the convergence plot data."""
     if state.problem is None or state.problem.fitProblem is None:
         return None
     dof = state.problem.fitProblem.dof
@@ -895,7 +905,7 @@ async def get_convergence_plot(cutoff: float = 0.25):
         if state.fitting.fit_state is not None and hasattr(state.fitting.fit_state, "trim_index"):
             # If the trim index is available, we can show it on the plot:
             trim_index = state.fitting.fit_state.trim_index(generation=len(convergence))
-        output = convergence_plot(convergence, dof, cutoff=cutoff, trim_index=trim_index)
+        output = convergence_plot(convergence, dof, cutoff=cutoff, trim_index=trim_index, max_points=max_points)
         return to_json_compatible_dict(output)
     else:
         return None
