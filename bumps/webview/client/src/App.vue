@@ -333,7 +333,7 @@ file_menu_items.value = [
           <div class="flex-grow-1 px-4 m-0">
             <h4 class="m-0">
               <!-- <div class="rounded p-2 bg-primary">Fitting: </div> -->
-              <div v-if="shared_state.active_fit?.fitter_id !== undefined" class="badge bg-secondary p-2 align-middle">
+              <div v-if="shared_state.active_fit?.fitter_id !== undefined" class="badge bg-secondary p-1 align-middle">
                 <div class="align-middle pt-2 pb-1 px-1 d-inline-block">
                   <span
                     >Fitting: {{ shared_state.active_fit?.fitter_id }} step {{ shared_state.active_fit?.step }} of
@@ -359,8 +359,11 @@ file_menu_items.value = [
                 <button class="btn btn-danger btn-sm" @click="stopFit">Stop</button>
               </div>
               <div v-else class="badge bg-secondary p-1">
-                <div class="align-middle p-2 d-inline-block">
-                  <span>Fitting: </span>
+                <div class="align-middle pt-2 pb-1 px-1 d-inline-block">
+                  <span
+                    >Fitting:
+                    <div class="mt-1" style="height: 3px"></div>
+                  </span>
                 </div>
                 <button class="btn btn-light btn-sm me-2" @click="openFitOptions">
                   {{ shared_state.selected_fitter ?? default_fitter }}
