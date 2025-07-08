@@ -1,12 +1,16 @@
 from typing import Optional
 import numpy as np
 
+TRIM_COLOR = "orange"
+BURN_COLOR = "red"
+
 
 def convergence_plot(
     convergence: np.ndarray,
     dof: float,
     cutoff: float = 0.25,
     trim_index: Optional[int] = None,
+    burn_index: Optional[int] = None,
     max_points: Optional[int] = None,
 ) -> dict:
     """
@@ -35,36 +39,65 @@ def convergence_plot(
     best_out = best[tail::step]
     pop_out = pop[tail::step, :]
 
+    # print(f"Convergence plot: {ni} steps, {npop} population, {nout} output, step={step}")
     traces = []
     layout = {}
     hovertemplate = "(%{{x}}, %{{y}})<br>{label}<extra></extra>"
     if npop == 5:
+        if (trim_index is not None and trim_index > tail) or (burn_index is not None and burn_index > tail):
+            layout["shapes"] = []
+            layout["annotations"] = []
         # fig['data'].append(dict(type="scattergl", x=x, y=pop[tail:,4].tolist(), name="95%", mode="lines", line=dict(color="lightblue", width=1), showlegend=True, hovertemplate=hovertemplate.format(label="95%")))
         if trim_index is not None and trim_index > tail:
-            layout["shapes"] = [
+            layout["shapes"].append(
                 {
-                    "line": {"color": "orange", "dash": "dash", "width": 2},
+                    "line": {"color": TRIM_COLOR, "dash": "dash", "width": 2},
                     "type": "line",
                     "x0": trim_index,
                     "x1": trim_index,
                     "xref": "x",
                     "y0": 0,
-                    "y1": 1,
+                    "y1": 0.95,
                     "yref": "y domain",
                 },
-            ]
-            layout["annotations"] = [
+            )
+            layout["annotations"].append(
                 {
-                    "text": "burn",
+                    "text": "trim portion",
                     "x": trim_index,
                     "y": 0.95,
                     "xref": "x",
                     "xanchor": "left",
                     "yref": "y domain",
                     "showarrow": False,
-                    "font": {"color": "orange", "size": 12},
+                    "font": {"color": TRIM_COLOR, "size": 12},
                 },
-            ]
+            )
+        if burn_index is not None and burn_index > tail:
+            layout["shapes"].append(
+                {
+                    "line": {"color": BURN_COLOR, "dash": "dash", "width": 2},
+                    "type": "line",
+                    "x0": burn_index,
+                    "x1": burn_index,
+                    "xref": "x",
+                    "y0": 0,
+                    "y1": 1,
+                    "yref": "y domain",
+                }
+            )
+            layout["annotations"].append(
+                {
+                    "text": "burn",
+                    "x": burn_index,
+                    "y": 1.0,
+                    "xref": "x",
+                    "xanchor": "left",
+                    "yref": "y domain",
+                    "showarrow": False,
+                    "font": {"color": BURN_COLOR, "size": 12},
+                }
+            )
 
         traces.append(
             dict(
