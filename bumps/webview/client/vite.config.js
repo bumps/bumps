@@ -11,4 +11,7 @@ export default defineConfig({
     // Plotly fails to load without this shim.
     global: {},
   },
+  optimizeDeps: {
+    include: ["plotly.js/lib/core", "plotly.js/lib/heatmap", "plotly.js/lib/bar", "json-difference"],
+  },
 });
