@@ -72,6 +72,7 @@ nitpick_ignore = [
     ("py:class", "numpy._typing._array_like._ScalarType_co"),
     ("py:class", "numpy._typing._array_like._SupportsArray"),
     ("py:class", "numpy._typing._array_like._ScalarT"),
+    ("py:class", "numpy._typing._array_like._Buffer"),
     ("py:class", "numpy._typing._nested_sequence._NestedSequence"),
     ("py:class", "numpy.ndarray"),
     ("py:class", "NDArray"),
