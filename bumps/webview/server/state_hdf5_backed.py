@@ -510,7 +510,10 @@ class State:
             return
         item = HistoryItem()
         item.problem = deepcopy(self.problem)
-        item.fitting = deepcopy(self.fitting)
+        # Creates a reference to the current fit_state, not a copy
+        # When a new fit is started, self.fitting is reset to a new FitResult
+        # but the handle to the current fit_state is kept in the history item.
+        item.fitting = self.fitting
         item.timestamp = str(datetime.now())
         item.label = label
         item.chisq_str = item.problem.fitProblem.chisq_str()
