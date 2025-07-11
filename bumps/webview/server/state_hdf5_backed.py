@@ -523,6 +523,8 @@ class State:
         return dict(problem_history=self.history.list())
 
     def remove_history_item(self, name: str):
+        if self.shared.active_history == name:
+            self.shared.active_history = None
         self.history.remove_item(name)
 
     def reload_history_item(self, name: str):
