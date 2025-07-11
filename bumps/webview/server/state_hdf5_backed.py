@@ -529,10 +529,13 @@ class State:
         item = self.history.get_item(name, None)
         if item is not None:
             self.problem = deepcopy(item.problem)
+            self.fitting = item.fitting
             self.shared.active_history = name
             self.shared.updated_model = now_string()
             self.shared.updated_parameters = now_string()
             self.shared.custom_plots_available = get_custom_plots_available(self.problem.fitProblem)
+            # These are called only to trigger the update signals...
+            # the convergence and fit_state will be unchanged by the calls below.
             self.set_convergence(item.fitting.convergence)
             self.set_fit_state(item.fitting.fit_state, item.fitting.method)
 
@@ -551,6 +554,7 @@ class State:
                 method=self.shared.selected_fitter,
                 options=self.shared.fitter_settings[self.shared.selected_fitter]["settings"],
             )
+            # These are called only to trigger the update signals...
             self.set_convergence(None)
             self.set_fit_state(None)
         self.shared.active_history = None
