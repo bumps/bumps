@@ -10,6 +10,7 @@ dependencies = [
     'scipy',
     'h5py',
     'dill',
+    'cloudpickle',
     'matplotlib',
     'blinker',
     'aiohttp',

@@ -19,6 +19,7 @@ import sys
 import os
 import signal
 
+from cloudpickle import dumps, loads
 # {{{ http://code.activestate.com/recipes/496767/ (r1)
 # Converted to use ctypes by Paul Kienzle
 
@@ -40,15 +41,7 @@ def can_pickle(problem, check=False):
     current process, but it will fail when trying to run on a remote machine.
     """
     try:
-        import dill
-    except ImportError:
-        dill = None
-        import pickle
-    try:
-        if dill is not None:
-            dup = dill.loads(dill.dumps(problem, recurse=True))
-        else:
-            dup = pickle.loads(pickle.dumps(problem))
+        dup = loads(dumps(problem))
         if check:
             dup.nllf()
         return True
@@ -143,15 +136,7 @@ def _MP_run_problem(problem_point_tuple):
     problem_id, point, shared_pickled_problem = problem_point_tuple
     if problem_id != MPMapper.problem_id:
         # print(f"Fetching problem {problem_id} from namespace")
-        # Problem is pickled using dill when it is available
-        try:
-            import dill
-
-            MPMapper.problem = dill.loads(shared_pickled_problem[:].tobytes())
-        except ImportError:
-            import pickle
-
-            MPMapper.problem = pickle.loads(shared_pickled_problem[:].tobytes())
+        MPMapper.problem = loads(shared_pickled_problem[:].tobytes())
         MPMapper.problem_id = problem_id
     return MPMapper.problem.nllf(point)
 
@@ -187,14 +172,7 @@ class MPMapper(BaseMapper):
         # defined within the model file, instead use dill (if available)
         # to pickle the problem before storing.
         MPMapper.problem_id += 1
-        try:
-            import dill
-
-            MPMapper.pickled_problem = dill.dumps(problem, recurse=True)
-        except ImportError:
-            import pickle
-
-            MPMapper.pickled_problem = pickle.dumps(problem)
+        MPMapper.pickled_problem = dumps(problem)
         MPMapper.shared_pickled_problem = MPMapper.manager.Array("B", MPMapper.pickled_problem)
 
         # Set the mapper to send problem_id/point/shared_pickled_problem value triples
@@ -221,11 +199,9 @@ class MPMapper(BaseMapper):
 
 
 def _MPI_set_problem(problem, comm, root=0):
-    import dill
-
-    pickled_problem = dill.dumps(problem, recurse=True) if comm.rank == root else None
+    pickled_problem = dumps(problem) if comm.rank == root else None
     pickled_problem = comm.bcast(pickled_problem, root=root)
-    return problem if comm.rank == root else dill.loads(pickled_problem)
+    return problem if comm.rank == root else loads(pickled_problem)
 
 
 def _MPI_map(problem, points, comm, root=0):

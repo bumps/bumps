@@ -161,8 +161,8 @@ async def load_problem_file(
         _serialized_problem = serialize_problem(problem, method="dataclass")
         state.problem.serializer = "dataclass"
     except Exception as exc:
-        logger.warning(f"Could not serialize problem as JSON (dataclass): {exc}, switching to dill")
-        state.problem.serializer = "dill"
+        logger.warning(f"Could not serialize problem as JSON (dataclass): {exc}, switching to cloudpickle")
+        state.problem.serializer = "cloudpickle"
         # raise
     if (
         state.shared.autosave_history
@@ -276,7 +276,8 @@ async def save_problem_file(
     path = Path(*pathlist)
     serializer = state.problem.serializer
     extension = SERIALIZER_EXTENSIONS[serializer]
-    save_filename = f"{Path(filename).stem}.{extension}"
+    # Avoid name collision with saved fit results, which may also be in .json
+    save_filename = f"{Path(filename).stem}-problem.{extension}"
     if not overwrite and Path.exists(path / save_filename):
         # confirmation needed:
         return {"filename": save_filename, "check_overwrite": True}
