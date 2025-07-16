@@ -290,15 +290,11 @@ class FitThread(Thread):
 
             with redirect_console() as fid:
                 driver.show()
-                # entropy = self.outputs.get('entropy', None)
-                # err = self.outputs.get('err', False)
-                # cov = self.outputs.get('cov', False)
-                # if cov:
+                # if self.outputs.get('err', False):
                 #     driver.show_err()
+                # if self.outputs.get('err', False):
                 #     driver.show_cov()
-                # elif err:
-                #     driver.show_err()
-                # if entropy:
+                # if entropy := self.outputs.get('entropy', ''):
                 #     driver.show_entropy(entropy)
                 captured_output = fid.getvalue()
 
