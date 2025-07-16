@@ -236,7 +236,7 @@ def plot2d(fn, args=None, range=(-10, 10)):
     """
     import matplotlib.pyplot as plt
 
-    fnargs, *_ = inspect.getfullargspec(fn)
+    fnargs = inspect.getfullargspec(fn).args
     if len(fnargs) < 2:
         args = fnargs[:1]
 
