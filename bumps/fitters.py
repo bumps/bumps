@@ -863,7 +863,7 @@ class DreamFit(FitBase):
         ("init", "eps"),
         ("thin", 1),
         ("alpha", 0.0),
-        ("outliers", "none"),
+        ("outliers", "iqr"),
         ("trim", False),
         ("steps", 0),  # deprecated: use --samples instead
     ]
