@@ -63,7 +63,7 @@ def convergence_plot(
             )
             layout["annotations"].append(
                 {
-                    "text": "trim portion",
+                    "text": "←trim<br>use→",
                     "x": trim_index,
                     "y": 0.95,
                     "xref": "x",
@@ -88,7 +88,7 @@ def convergence_plot(
             )
             layout["annotations"].append(
                 {
-                    "text": "burn",
+                    "text": "←burn<br>samples→",
                     "x": burn_index,
                     "y": 1.0,
                     "xref": "x",
