@@ -904,7 +904,9 @@ async def get_custom_plot(model_index: int, plot_title: str, n_samples: int = 1)
 
 
 @register
-async def get_convergence_plot(cutoff: float = 0.25, max_points: Optional[int] = 10000):
+async def get_convergence_plot(
+    cutoff: float = 0.25, portion: Optional[float] = None, max_points: Optional[int] = 10000
+):
     """
     Get the convergence plot for the current fit state.
     If the fit state is not available, return None.
@@ -921,20 +923,23 @@ async def get_convergence_plot(cutoff: float = 0.25, max_points: Optional[int] =
     convergence = state.fitting.convergence
     trim_index = None
     burn_index = None
-    portion = None
 
     if convergence is not None:
         fit_state = state.fitting.fit_state
+        generation = len(convergence)
         if fit_state is not None and hasattr(fit_state, "trim_index"):
             # If the trim index is available, we can show it on the plot:
-            trim_index = fit_state.trim_index(generation=len(convergence))
-            burn_index = fit_state.trim_index(generation=len(convergence), portion=1.0)
+            trim_index = fit_state.trim_index(generation=generation, portion=portion)
+            burn_index = fit_state.trim_index(generation=generation, portion=1.0)
             portion = getattr(fit_state, "portion", None)
 
-        output = convergence_plot(
+        plotdata = convergence_plot(
             convergence, dof, cutoff=cutoff, trim_index=trim_index, burn_index=burn_index, max_points=max_points
         )
-        output["portion"] = portion
+        output = {
+            "plotdata": plotdata,
+            "portion": portion,
+        }
         return to_json_compatible_dict(output)
     else:
         return None
