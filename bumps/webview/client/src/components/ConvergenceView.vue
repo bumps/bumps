@@ -77,8 +77,7 @@ function draw_plot() {
   <div class="container d-flex flex-grow-1 flex-column">
     <div class="row px-2 align-items-center">
       <div class="col-auto">
-        <label for="cutoff_control" class="col-form-label">Cutoff: </label>
-        <span class="ps-1">{{ cutoff.toFixed(2) }}</span>
+        <label for="cutoff_control" class="col-form-label">Steps shown</label>
       </div>
       <div class="col">
         <input
@@ -95,8 +94,7 @@ function draw_plot() {
     </div>
     <div v-if="show_trim_controls" class="row px-2 align-items-center">
       <div class="col-auto">
-        <label for="portion_control" class="col-form-label">Trim Portion: </label>
-        <span class="ps-1 fixed-width-span">{{ -negative_trim_portion.toFixed(2) }}</span>
+        <label for="portion_control" class="col-form-label">Trim</label>
       </div>
       <div class="col">
         <input
