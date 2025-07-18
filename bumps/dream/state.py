@@ -815,13 +815,12 @@ class MCMCDraw(object):
         after drawing is complete, so that chains that did not converge are
         not included in the statistics.
 
-        *test* is 'IQR', 'Mahol' or 'none'.
+        *test* is 'IQR', 'mahal', 'grubbs', or 'none'.
 
         *portion* indicates what portion of the samples should be included
         in the outlier test.  If None, then the stored portion is used.
         """
         _, chains, logp = self.chains()
-
         if test == "none":
             self._good_chains = slice(None, None)
         else:
@@ -829,8 +828,7 @@ class MCMCDraw(object):
             portion = self.portion if portion is None else portion
             start = int(Ngen * (1 - portion))
             outliers = identify_outliers(test, logp[start:], chains[-1])
-            # print("outliers", outliers)
-            # print(logp.shape, chains.shape)
+            # print("outliers", outliers, logp.shape, chains.shape)
             if len(outliers) > 0:
                 self._good_chains = np.array([i for i in range(logp.shape[1]) if i not in outliers])
             else:
