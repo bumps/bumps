@@ -17,7 +17,8 @@ const props = defineProps<{
   socket: AsyncSocket;
 }>();
 
-interface ConvergencePlotData extends Plotly.PlotlyDataLayoutConfig {
+interface ConvergencePlotData {
+  plotdata: Plotly.PlotlyDataLayoutConfig;
   portion: number;
 }
 
@@ -27,9 +28,13 @@ async function fetch_and_draw() {
   if (plot_div.value == null) {
     return;
   }
-  const payload = (await props.socket.asyncEmit("get_convergence_plot", cutoff.value)) as ConvergencePlotData;
-  let plotdata = { ...payload };
-  const { data, layout, portion } = plotdata;
+  const payload = (await props.socket.asyncEmit(
+    "get_convergence_plot",
+    cutoff.value,
+    -negative_trim_portion.value
+  )) as ConvergencePlotData;
+  const { plotdata, portion } = { ...payload };
+  const { data, layout } = plotdata;
   if (portion != null) {
     negative_trim_portion.value = -portion;
     trim_is_set.value = true;
@@ -103,6 +108,7 @@ function draw_plot() {
           step="0.01"
           class="form-range"
           @change="setPortion"
+          @input="draw_plot"
         />
       </div>
     </div>
