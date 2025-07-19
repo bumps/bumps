@@ -916,7 +916,9 @@ class DreamFit(FitBase):
         self._trimmed = self.state.trim_portion() if options["trim"] else 1.0
         # print("trimming", options['trim'], self._trimmed)
         self.state.mark_outliers(portion=self._trimmed)
-        self.state.keep_best()
+        # Note that best is now saved within an hdf5 file, so we no longer need
+        # to save it into the sample buffer.
+        # self.state.keep_best()
         self.state.title = self.problem.name
 
         # TODO: Add derived/visible/integer variable support to other optimizers.

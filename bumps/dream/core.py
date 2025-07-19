@@ -457,6 +457,7 @@ def _run_dream(dream: Dream, abort_test=lambda: False):
         if False:
             # TODO: Suppress scale update until we have a chance to verify that it
             # doesn't skew the resulting statistics.
+            # TODO: scale needs to be stored in state in order for resume to work correctly.
             _, r = state.acceptance_rate()
             ravg = np.mean(r[-dream.DE_steps :])
             if ravg > 0.4:

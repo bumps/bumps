@@ -109,7 +109,6 @@ CREATE = gzip.open
 
 SelectionType = Optional[Dict[Union[int, Literal["logp"]], Tuple[float, float]]]
 
-
 UNCERTAINTY_DTYPE = "f"
 MAX_LABEL_LENGTH = 1024
 LABEL_DTYPE = f"|S{MAX_LABEL_LENGTH}"
@@ -127,6 +126,8 @@ def _h5_write_field(group: "Group", field: str, data: Union[NDArray, str]):
         return group.create_dataset(field, data=data, dtype=np.int64)
     elif isinstance(data, float):
         return group.create_dataset(field, data=data, dtype=np.double)
+    elif np.isscalar(data):
+        return group.create_dataset(field, data=data, dtype=data.dtype)
     else:
         return group.create_dataset(field, data=data, dtype=data.dtype, compression=H5_COMPRESSION)
 
@@ -163,16 +164,16 @@ def h5dump(group: "Group", state: "MCMCDraw"):
         # as 64-bit so that resume is consistent.
         current_population, current_logp = state._last_gen()
 
-    Fields.gen_logp = np.asarray(Fields.gen_logp, dtype=UNCERTAINTY_DTYPE)
-    Fields.thin_point = np.asarray(Fields.thin_point, dtype=UNCERTAINTY_DTYPE)
-    Fields.thin_logp = np.asarray(Fields.thin_logp, dtype=UNCERTAINTY_DTYPE)
-
     # print(f"wrote {Fields.total_generations} generations")
     # print(f"{state._gen_offset=} {state.Ngen=}")
     # print("wrote", Fields.__dict__)
     for field, value in Fields.__dict__.items():
         if field[0] != "_" and value is not None:
-            _h5_write_field(group, field, value)
+            try:
+                _h5_write_field(group, field, value)
+            except Exception as exc:
+                exc.args = (f"{exc.args[0]} while writing {field}",) + exc.args[1:]
+                raise
 
 
 def h5load(group: "Group"):
@@ -194,7 +195,11 @@ def h5load(group: "Group"):
     best_logp = getattr(Fields, "best_logp", 0.0)
     best_gen = getattr(Fields, "best_gen", 0)
     current_population = getattr(Fields, "current_population", None)
+    if current_population is None:
+        current_population = Fields.thin_point[-1].astype("d")
     current_logp = getattr(Fields, "current_logp", None)
+    if current_logp is None:
+        current_logp = Fields.thin_logp[-1].astype("d")
 
     # Create empty draw and fill it with loaded data
     state = MCMCDraw(0, 0, 0, 0, 0, 0, thinning)
@@ -204,23 +209,21 @@ def h5load(group: "Group"):
     # print(f"loading {total_generations=} {Ngen=}")
     state._gen_offset = total_generations - Ngen
     state._gen_index = 0
-    state._gen_draws = Fields.gen_draws.astype(int)
+    state._gen_draws = Fields.gen_draws
     state._gen_acceptance_rate = Fields.AR
-    state._gen_logp = np.asarray(Fields.gen_logp, dtype="d")
+    state._gen_logp = Fields.gen_logp
     state._thin_count = Nthin
     state._thin_index = 0
-    state._thin_draws = Fields.thin_draws.astype(int)
-    state._thin_logp = np.asarray(Fields.thin_logp, dtype="d")
-    state._thin_point = np.asarray(Fields.thin_point, dtype="d")
-    state._gen_current = state._thin_point[-1].copy()
+    state._thin_draws = Fields.thin_draws
+    state._thin_logp = Fields.thin_logp
+    state._thin_point = Fields.thin_point
+    state._gen_current = current_population
+    state._gen_current_logp = current_logp
     state._update_count = Nupdate
     state._update_index = 0
-    state._update_draws = Fields.update_draws.astype(int)
+    state._update_draws = Fields.update_draws
     state._update_CR_weight = Fields.update_CR_weight
     state._outliers = []
-
-    if current_population is not None:
-        state._restore_last_gen(current_population, current_logp)
 
     if best_x is not None:
         state._best_x = best_x
@@ -417,6 +420,7 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
     state._thin_logp = point[:, 0].reshape((Nthin, Npop))
     state._thin_point = reshape(point[:, 1 : Nvar + 1 - derived_vars], (Nthin, Npop, -1))
     state._gen_current = state._thin_point[-1].copy()
+    state._gen_current_logp = state._thin_logp[-1].copy()
     state._update_count = Nupdate
     state._update_index = 0
     state._update_draws = stats[:, 0]
@@ -455,20 +459,20 @@ class MCMCDraw(object):
         self._best_logp = -inf
         self._best_gen = 0
 
+        # TODO: Scrap the per-generation data. It takes memory and disk, but doesn't add value.
         # Per generation iteration
         self.generation = 0
         self._gen_offset = 0
         self._gen_index = 0
         self._gen_draws = empty(Ngen, "i")
-        self._gen_logp = empty((Ngen, Npop))
-        self._gen_acceptance_rate = empty(Ngen)
+        self._gen_logp = empty((Ngen, Npop), dtype=UNCERTAINTY_DTYPE)
+        self._gen_acceptance_rate = empty(Ngen, dtype=UNCERTAINTY_DTYPE)
 
-        # If we are thinning, we need to keep the current generation
-        # separately. [Note: don't remember why we need both the _gen_*
-        # and _thin_*]  [Note: the caller x vector is assigned to
-        # _gen_current; this may lead to unexpected behaviour if x is
-        # changed by the caller.
-        self._gen_current = None
+        # TODO: should current generation be single precision if the model is single precision?
+        # The current generation, stored as double precision so that nothing
+        # is lost on resume.
+        self._gen_current = empty((Npop, Nvar), dtype="d")
+        self._gen_current_logp = empty((Npop,), dtype="d")
 
         # Per thinned generation iteration
         self.thinning = thinning
@@ -476,14 +480,14 @@ class MCMCDraw(object):
         self._thin_count = 0
         self._thin_timer = 0
         self._thin_draws = empty(Nthin, "i")
-        self._thin_point = empty((Nthin, Npop, Nvar))
-        self._thin_logp = empty((Nthin, Npop))
+        self._thin_point = empty((Nthin, Npop, Nvar), dtype=UNCERTAINTY_DTYPE)
+        self._thin_logp = empty((Nthin, Npop), dtype=UNCERTAINTY_DTYPE)
 
         # Per update iteration
         self._update_index = 0
         self._update_count = 0
         self._update_draws = empty(Nupdate, "i")
-        self._update_CR_weight = empty((Nupdate, Ncr))
+        self._update_CR_weight = empty((Nupdate, Ncr), dtype=UNCERTAINTY_DTYPE)
 
         self._outliers = []
 
@@ -604,23 +608,7 @@ class MCMCDraw(object):
         """
         Returns x, logp for most recent generation to dream.py.
         """
-        # Note: if generation number has wrapped and _gen_index is 0
-        # (the usual case when this function is called to resume an
-        # existing chain), then this returns the last row in the array.
-        return (self._thin_point[self._thin_index - 1], self._thin_logp[self._thin_index - 1])
-
-    def _restore_last_gen(self, points, logp):
-        """
-        Restores last generation to the data structure.
-
-        This is needed when the MCMC chains are stored using 32-bit precision,
-        but the last generation is stored separately in 64-bit precision.
-        """
-        # Note: if generation number has wrapped and _gen_index is 0
-        # (the usual case when this function is called to resume an
-        # existing chain), then this returns the last row in the array.
-        self._thin_point[self._thin_index - 1] = points
-        self._thin_logp[self._thin_index - 1] = logp
+        return self._gen_current, self._gen_current_logp
 
     def _generation(self, new_draws: int, x: NDArray, logp: NDArray, accept: NDArray, force_keep: bool = False):
         """
@@ -665,9 +653,8 @@ class MCMCDraw(object):
             if i == len(self._thin_draws):
                 i = 0
             self._thin_index = i
-            self._gen_current = x + 0  # force a copy
-        else:
-            self._gen_current = x + 0  # force a copy
+        self._gen_current[:] = x
+        self._gen_current_logp[:] = logp
 
     def _update(self, CR_weight: NDArray):
         """
@@ -703,48 +690,6 @@ class MCMCDraw(object):
         Return the current population.
         """
         return self._gen_current
-
-    def _draw_large_pop(self, Npop: int):
-        _, chains, _ = self.chains()
-        Ngen, Nchain, Nvar = chains.shape
-        points = reshape(chains, (Ngen * Nchain, Nvar))
-
-        # There are two complications with the history buffer:
-        # (1) due to thinning, not every generation is stored
-        # (2) because it is circular, the cursor may be in the middle
-        # If the current generation isn't in the buffer (but is instead
-        # stored separately as _gen_current), then the entire buffer
-        # becomes the history pool.
-        # otherwise we need to exclude the current generation from
-        # the pool.  If (2) happens, we need to increment everything
-        # above the cursor by the number of chains.
-        if self._gen_current is not None:
-            pool_size = Ngen * Nchain
-            cursor = pool_size  # infinite
-        else:
-            pool_size = (Ngen - 1) * Nchain
-            k = len(self._thin_draws)
-            cursor = Nchain * ((k + self._thin_index - 1) % k)
-
-        # Make a return population and fill it with the current generation
-        pop = empty((Npop, Nvar), "d")
-        if self._gen_current is not None:
-            pop[:Nchain] = self._gen_current
-        else:
-            # print(pop.shape, points.shape, chains.shape)
-            pop[:Nchain] = points[cursor : cursor + Nchain]
-
-        if Npop > Nchain:
-            # Find the remainder with unique ancestors.
-            # Again, because this is a circular buffer, their may be random
-            # numbers generated at or above the cursor.  All of these must
-            # be shifted by Nchains to avoid the cursor.
-            perm = draw(Npop - Nchain, pool_size)
-            perm[perm >= cursor] += Nchain
-            # print("perm", perm; raw_input('wait'))
-            pop[Nchain:] = points[perm]
-
-        return pop
 
     def _unroll(self):
         """
@@ -1057,20 +1002,19 @@ class MCMCDraw(object):
             final = self._good_chains[-1] - Npop
 
         # Find the location of the best point if it exists and swap with
-        # the final position
+        # the final position, or overwrite the final position if it does
+        # not exist.
         idx = np.where(logp == self._best_logp)[0]
         if len(idx) == 0:
             logp[final] = self._best_logp
             points[final, :] = self._best_x
         else:
+            # If there are multiple best values, arbitrarily choose one of them.
+            # The chances are very high that it is the same point that was kept
+            # after a proposed step was rejected.
             idx = idx[0]
             logp[final], logp[idx] = logp[idx], logp[final]
             points[final, :], points[idx, :] = points[idx, :], points[final, :]
-        # For multiple minima, arbitrarily choose one of them
-        # TODO: this will lead to possible confusion when the best value
-        # spontaneously changes when the fit is complete.
-        self._best_p = points[final]
-        self._best_logp = logp[final]
 
     def sample(self, **kw):
         """
