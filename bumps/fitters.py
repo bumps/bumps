@@ -915,7 +915,7 @@ class DreamFit(FitBase):
 
         self._trimmed = self.state.trim_portion() if options["trim"] else 1.0
         # print("trimming", options['trim'], self._trimmed)
-        self.state.mark_outliers(portion=self._trimmed)
+        self.state.mark_outliers()
         # Note that best is now saved within an hdf5 file, so we no longer need
         # to save it into the sample buffer.
         # self.state.keep_best()
