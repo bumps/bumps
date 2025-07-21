@@ -1337,7 +1337,8 @@ def _sample(state, portion: float, selection: SelectionType, thin):
     Return a sample from a set of chains.
     """
     draw, chains, logp = state.chains()
-    start = int((1 - portion) * len(draw))
+    # Keep at least two generations, even if portion is 1.0
+    start = min(int((1 - portion) * len(draw)), len(draw) - 2)
 
     # Collect the subset we are interested in
     chains = chains[start::thin, state._good_chains, :]
