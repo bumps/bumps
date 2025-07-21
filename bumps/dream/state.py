@@ -209,19 +209,19 @@ def h5load(group: "Group"):
     # print(f"loading {total_generations=} {Ngen=}")
     state._gen_offset = total_generations - Ngen
     state._gen_index = 0
-    state._gen_draws = Fields.gen_draws
+    state._gen_draws = Fields.gen_draws.astype(np.int64)
     state._gen_acceptance_rate = Fields.AR
     state._gen_logp = Fields.gen_logp
     state._thin_count = Nthin
     state._thin_index = 0
-    state._thin_draws = Fields.thin_draws
+    state._thin_draws = Fields.thin_draws.astype(np.int64)
     state._thin_logp = Fields.thin_logp
     state._thin_point = Fields.thin_point
     state._gen_current = current_population
     state._gen_current_logp = current_logp
     state._update_count = Nupdate
     state._update_index = 0
-    state._update_draws = Fields.update_draws
+    state._update_draws = Fields.update_draws.astype(np.int64)
     state._update_CR_weight = Fields.update_CR_weight
     state._outliers = []
 
@@ -411,7 +411,7 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
     state.generation = Ngen
     state._gen_offset = 0
     state._gen_index = 0
-    state._gen_draws = chain[:, 0]
+    state._gen_draws = chain[:, 0].astype(np.int64)
     state._gen_acceptance_rate = chain[:, 1]
     state._gen_logp = chain[:, 2:]
     state._thin_count = Ngen // thinning
@@ -423,7 +423,7 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
     state._gen_current_logp = state._thin_logp[-1].copy()
     state._update_count = Nupdate
     state._update_index = 0
-    state._update_draws = stats[:, 0]
+    state._update_draws = stats[:, 0].astype(np.int64)
     state._update_CR_weight = stats[:, 1 + num_r :]
     state._outliers = []
 
@@ -464,7 +464,7 @@ class MCMCDraw(object):
         self.generation = 0
         self._gen_offset = 0
         self._gen_index = 0
-        self._gen_draws = empty(Ngen, "i")
+        self._gen_draws = empty(Ngen, np.int64)
         self._gen_logp = empty((Ngen, Npop), dtype=UNCERTAINTY_DTYPE)
         self._gen_acceptance_rate = empty(Ngen, dtype=UNCERTAINTY_DTYPE)
 
@@ -479,14 +479,14 @@ class MCMCDraw(object):
         self._thin_index = 0
         self._thin_count = 0
         self._thin_timer = 0
-        self._thin_draws = empty(Nthin, "i")
+        self._thin_draws = empty(Nthin, np.int64)
         self._thin_point = empty((Nthin, Npop, Nvar), dtype=UNCERTAINTY_DTYPE)
         self._thin_logp = empty((Nthin, Npop), dtype=UNCERTAINTY_DTYPE)
 
         # Per update iteration
         self._update_index = 0
         self._update_count = 0
-        self._update_draws = empty(Nupdate, "i")
+        self._update_draws = empty(Nupdate, np.int64)
         self._update_CR_weight = empty((Nupdate, Ncr), dtype=UNCERTAINTY_DTYPE)
 
         self._outliers = []
@@ -1303,17 +1303,19 @@ def test():
     # Check that it got there
     draws, logp = state.logp()
     assert norm(draws - Npop * arange(1, Ngen + 1)) == 0
-    assert norm(logp - pin) == 0
+    # Data is generated as double but may be stored as single,
+    # so there could be a loss of precision.
+    assert norm(logp - pin.astype(UNCERTAINTY_DTYPE)) == 0
     draws, AR = state.acceptance_rate()
     assert norm(draws - Npop * arange(1, Ngen + 1)) == 0
-    assert norm(AR - 100 * sum(accept, axis=1) / Npop) == 0
+    assert norm(AR - (100 * sum(accept, axis=1) / Npop).astype(UNCERTAINTY_DTYPE)) == 0
     draws, logp = state.sample()
     # assert norm(draws - thinning*Npop*arange(1, Nthin+1)) == 0
     # assert norm(sample - xin[thinning-1::thinning]) == 0
     # assert norm(logp - pin[thinning-1::thinning]) == 0
     draws, CR = state.CR_weight()
     assert norm(draws - Npop * Nstep * arange(Nupdate)) == 0
-    assert norm(CR - CRin) == 0
+    assert norm(CR - CRin.astype(UNCERTAINTY_DTYPE)) == 0
     x, p = state.best()
     bestid = argmax(pin)
     i, j = bestid // Npop, bestid % Npop
