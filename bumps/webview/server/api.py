@@ -931,14 +931,14 @@ async def get_convergence_plot(
             # If the trim index is available, we can show it on the plot:
             trim_index = fit_state.trim_index(generation=generation, portion=portion)
             burn_index = fit_state.trim_index(generation=generation, portion=1.0)
-            portion = getattr(fit_state, "portion", None)
+            stored_portion = getattr(fit_state, "portion", None)
 
         plotdata = convergence_plot(
             convergence, dof, cutoff=cutoff, trim_index=trim_index, burn_index=burn_index, max_points=max_points
         )
         output = {
             "plotdata": plotdata,
-            "portion": portion,
+            "portion": stored_portion,
         }
         return to_json_compatible_dict(output)
     else:

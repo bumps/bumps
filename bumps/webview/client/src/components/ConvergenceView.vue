@@ -12,13 +12,14 @@ const cutoff = ref(0.25);
 const negative_trim_portion = ref(-1.0);
 const trim_is_set = ref(false);
 const show_trim_controls = ref(false);
+const trim_control_active = ref(false);
 
 const props = defineProps<{
   socket: AsyncSocket;
 }>();
 
 interface ConvergencePlotData {
-  plotdata: Plotly.PlotlyDataLayoutConfig;
+  plotdata: Plotly.PlotlyDataLayoutConfig | null;
   portion: number;
 }
 
@@ -28,15 +29,18 @@ async function fetch_and_draw() {
   if (plot_div.value == null) {
     return;
   }
+  const trim_portion_preview_value = trim_control_active.value ? -negative_trim_portion.value : null;
   const payload = (await props.socket.asyncEmit(
     "get_convergence_plot",
     cutoff.value,
-    -negative_trim_portion.value
+    trim_portion_preview_value
   )) as ConvergencePlotData;
   const { plotdata, portion } = { ...payload };
-  const { data, layout } = plotdata;
+  const { data, layout } = plotdata ?? {};
   if (portion != null) {
-    negative_trim_portion.value = -portion;
+    if (!trim_control_active.value) {
+      negative_trim_portion.value = -portion;
+    }
     trim_is_set.value = true;
   } else {
     trim_is_set.value = false;
@@ -53,10 +57,13 @@ async function setPortion() {
   // This function is called when the trim portion slider is changed.
   // The server sends "updated_convergence" after receiving it, so we will get
   // a new convergence plot with the updated trim portion.
+  trim_control_active.value = false; // reset the control active state
   await props.socket.asyncEmit("set_trim_portion", -negative_trim_portion.value);
 }
 
 watchEffect(async () => {
+  // only show trim controls if the fit is not active and the trim portion
+  // is defined
   if (shared_state.active_fit?.fitter_id === undefined && trim_is_set.value) {
     show_trim_controls.value = true;
   } else {
@@ -70,6 +77,12 @@ watchEffect(async () => {
 
 function draw_plot() {
   draw_requested.value = true;
+}
+
+function previewPortion() {
+  // prevent updating negative_trim_portion until the user releases the slider
+  trim_control_active.value = true;
+  draw_plot();
 }
 </script>
 
@@ -106,7 +119,7 @@ function draw_plot() {
           step="0.01"
           class="form-range"
           @change="setPortion"
-          @input="draw_plot"
+          @input="previewPortion"
         />
       </div>
     </div>
