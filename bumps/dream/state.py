@@ -158,11 +158,11 @@ def h5dump(group: "Group", state: "MCMCDraw"):
         # state, but they need to be cleared when updates are given. Make sure the
         # request for the population from dream includes the outliers.
         good_chains = None if isinstance(state._good_chains, slice) else state._good_chains
-        best_x, best_logp = state.best()
-        best_gen = state._best_gen
         # In case the MCMC chains are stored as 32-bit, save the current population
         # as 64-bit so that resume is consistent.
         current_population, current_logp = state._last_gen()
+        best_x, best_logp = state.best()
+        best_gen = state._best_gen
 
     # print(f"wrote {Fields.total_generations} generations")
     # print(f"{state._gen_offset=} {state.Ngen=}")
@@ -191,15 +191,15 @@ def h5load(group: "Group"):
     good_chains = getattr(Fields, "good_chains", None)
     total_generations = getattr(Fields, "total_generations", Ngen)
     thinning = getattr(Fields, "thinning", 1)
-    best_x = getattr(Fields, "best_x", None)
-    best_logp = getattr(Fields, "best_logp", 0.0)
-    best_gen = getattr(Fields, "best_gen", 0)
     current_population = getattr(Fields, "current_population", None)
     if current_population is None:
         current_population = Fields.thin_point[-1].astype("d")
     current_logp = getattr(Fields, "current_logp", None)
     if current_logp is None:
         current_logp = Fields.thin_logp[-1].astype("d")
+    best_x = getattr(Fields, "best_x", None)
+    best_logp = getattr(Fields, "best_logp", 0.0)
+    best_gen = getattr(Fields, "best_gen", 0)
 
     # Create empty draw and fill it with loaded data
     state = MCMCDraw(0, 0, 0, 0, 0, 0, thinning)
