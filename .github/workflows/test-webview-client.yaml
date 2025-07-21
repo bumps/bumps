@@ -7,7 +7,7 @@ defaults:
     working-directory: ./bumps/webview/client
 
 jobs:
-  # test that app can build without issues
+  # Test that app can build without issues
   test-build:
     runs-on: ubuntu-latest
     steps:
@@ -23,7 +23,7 @@ jobs:
       - name: Run test
         run: bun run build
 
-  # test that app is properly formatted and linted
+  # Test that app is properly formatted and linted
   test-lint:
     runs-on: ubuntu-latest
     steps:
@@ -39,7 +39,7 @@ jobs:
       - name: Run test
         run: bun run test:lint
 
-  # test that app has no typescript errors
+  # Test that app has no typescript errors
   test-types:
     runs-on: ubuntu-latest
     steps:
@@ -55,7 +55,7 @@ jobs:
       - name: Run test
         run: bun run test:types
 
-  # run unit tests
+  # Run unit tests
 #   test-unit:
 #     runs-on: ubuntu-latest
 #     steps:
@@ -71,7 +71,7 @@ jobs:
 #       - name: Run test
 #         run: bun run test:unit
 
-  # run end to end integration tests
+  # Run end to end integration tests
 #   test-e2e:
 #     runs-on: ubuntu-latest
 #     steps:

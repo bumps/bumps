@@ -69,5 +69,5 @@ class ConvergenceView(PlotView):
     def OnFitProgress(self, event):
         if event.problem != self.model:
             return
-        pop = 2 * event.pop / self.model.dof
+        pop = event.problem.chisq(nllf=event.pop)
         self.update(pop[:, 0], pop[:, 1:])

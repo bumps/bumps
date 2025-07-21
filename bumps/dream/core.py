@@ -284,6 +284,9 @@ def _run_dream(dream: Dream, abort_test=lambda: False):
     # Record initial state
     allocate_state(dream)
     state = dream.state
+    # Reset plot portion to 100% during fitting so that the intermediate plots show the
+    # full set of samples.
+    state.portion = 1.0
     state.labels = dream.model.labels
     previous_draws = state.draws
     if previous_draws:

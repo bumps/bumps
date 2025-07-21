@@ -120,11 +120,11 @@ def _h5_write_field(group: "Group", field: str, data: Union[NDArray, str]):
 
     # print(f"h5 writing {field} in {group} with {data}")
     if isinstance(data, str):
-        dtype = h5py.string_dtype(encoding="utf-8")
+        dtype = h5py.string_dtype(encoding="utf-8", length=len(data))
         return group.create_dataset(field, data=data, dtype=dtype)
-    elif isinstance(data, int):
+    elif isinstance(data, (int, np.integer)):
         return group.create_dataset(field, data=data, dtype=np.int64)
-    elif isinstance(data, float):
+    elif isinstance(data, (float, np.floating)):
         return group.create_dataset(field, data=data, dtype=np.double)
     elif np.isscalar(data):
         return group.create_dataset(field, data=data, dtype=data.dtype)
@@ -135,9 +135,9 @@ def _h5_write_field(group: "Group", field: str, data: Union[NDArray, str]):
 def _h5_read_field(group: "Group", field: str):
     raw_data = group[field][()]
     size = raw_data.size
-    if isinstance(raw_data, np.int64):
+    if isinstance(raw_data, np.integer):
         return int(raw_data)
-    elif isinstance(raw_data, np.double):
+    elif isinstance(raw_data, np.floating):
         return float(raw_data)
     elif size is not None and size > 0:
         return raw_data
@@ -163,6 +163,7 @@ def h5dump(group: "Group", state: "MCMCDraw"):
         current_population, current_logp = state._last_gen()
         best_x, best_logp = state.best()
         best_gen = state._best_gen
+        portion = state.portion
 
     # print(f"wrote {Fields.total_generations} generations")
     # print(f"{state._gen_offset=} {state.Ngen=}")
@@ -200,9 +201,10 @@ def h5load(group: "Group"):
     best_x = getattr(Fields, "best_x", None)
     best_logp = getattr(Fields, "best_logp", 0.0)
     best_gen = getattr(Fields, "best_gen", 0)
+    portion = getattr(Fields, "portion", 1.0)
 
     # Create empty draw and fill it with loaded data
-    state = MCMCDraw(0, 0, 0, 0, 0, 0, thinning)
+    state = MCMCDraw(0, 0, 0, 0, 0, 0, thinning, portion=portion)
     state.draws = Ngen * Npop
     state.labels = [label.decode() for label in Fields.labels]
     state.generation = Ngen
@@ -444,7 +446,9 @@ class MCMCDraw(object):
     _integer_vars = None  # boolean array of integer variables, or None
     title = None
 
-    def __init__(self, Ngen: int, Nthin: int, Nupdate: int, Nvar: int, Npop: int, Ncr: int, thinning: int):
+    def __init__(
+        self, Ngen: int, Nthin: int, Nupdate: int, Nvar: int, Npop: int, Ncr: int, thinning: int, portion: float = 1.0
+    ):
         # self.generation and self.draws are used to control the number of iterations in
         # the dream loop, and must therefore be set to the current size of the state on
         # resume rather than the cumulative across all runs. To retrieve the totals use
@@ -452,6 +456,12 @@ class MCMCDraw(object):
 
         # Total number of draws so far
         self.draws = 0
+
+        # Portion: a fraction of the chain to use for statistical plots.  A value can be
+        # automatically determined by calling self.trim_portion(), or supplied by the
+        # user interactively.  The value should be between 0.0 and 1.0, where 1.0
+        # means the entire chain is used for statistical plots.
+        self.portion = portion
 
         # Maximum observed likelihood
         # Note: with thinning and burn the best may not be in the set of samples
@@ -599,7 +609,7 @@ class MCMCDraw(object):
         portion = 1 - (index / self.Ngen) if index >= 0 else 0.5
         return portion
 
-    def show(self, portion: float = 1.0, figfile: Union[str, Path, None] = None):
+    def show(self, portion: Optional[float] = None, figfile: Union[str, Path, None] = None):
         from .views import plot_all
 
         plot_all(self, portion=portion, figfile=figfile)
@@ -769,7 +779,7 @@ class MCMCDraw(object):
         self._thin_logp[index, old] = self._thin_logp[index, new]
         self._thin_point[index, old, :] = self._thin_point[index, new, :]
 
-    def mark_outliers(self, test: str = "IQR", portion: float = 1.0):
+    def mark_outliers(self, test: str = "IQR", portion: Optional[float] = None):
         """
         Mark some chains as outliers but don't remove them.  This can happen
         after drawing is complete, so that chains that did not converge are
@@ -778,7 +788,7 @@ class MCMCDraw(object):
         *test* is 'IQR', 'Mahol' or 'none'.
 
         *portion* indicates what portion of the samples should be included
-        in the outlier test.  The default is to include all of them.
+        in the outlier test.  If None, then the stored portion is used.
         """
         _, chains, logp = self.chains()
 
@@ -786,7 +796,8 @@ class MCMCDraw(object):
             self._good_chains = slice(None, None)
         else:
             Ngen = chains.shape[0]
-            start = int(Ngen * (1 - portion)) if portion else 0
+            portion = self.portion if portion is None else portion
+            start = int(Ngen * (1 - portion))
             outliers = identify_outliers(test, logp[start:], chains[-1])
             # print("outliers", outliers)
             # print(logp.shape, chains.shape)
@@ -917,15 +928,15 @@ class MCMCDraw(object):
             retval = [v[: self._thin_count] for v in retval]
         return retval
 
-    def gelman(self):
+    def gelman(self, portion: Optional[float] = None):
         """
-        Compute the R-statistic for the current frame
+        Compute the Gelman and Rubin R-statistic for the Markov chains.
         """
-        # Calculate Gelman and Rubin convergence diagnostic
+        portion = self.portion if portion is None else portion
         if self.generation < self.Ngen:
-            return gelman(self._thin_point[: self.generation], portion=1.0)
+            return gelman(self._thin_point[: self.generation], portion=portion)
         else:
-            return gelman(self._thin_point, portion=1.0)
+            return gelman(self._thin_point, portion=portion)
 
     def CR_weight(self):
         """
@@ -1028,7 +1039,7 @@ class MCMCDraw(object):
     def entropy(
         self,
         vars: Optional[List[int]] = None,
-        portion: float = 1.0,
+        portion: Optional[float] = None,
         selection: SelectionType = None,
         n_est: int = 10000,
         thin: Optional[int] = None,
@@ -1037,7 +1048,7 @@ class MCMCDraw(object):
         r"""
         Return entropy estimate and uncertainty from an MCMC draw.
 
-        *portion* is the portion of each chain to use
+        *portion* is the portion of each chain to use (uses self.portion if None).
 
         *vars* is the set of variables to marginalize over.  It is None for
         the visible variables, or a list of variables.
@@ -1109,7 +1120,11 @@ class MCMCDraw(object):
         return S, Serr
 
     def draw(
-        self, portion: float = 1.0, vars: Optional[List[int]] = None, selection: SelectionType = None, thin: int = 1
+        self,
+        portion: Optional[float] = None,
+        vars: Optional[List[int]] = None,
+        selection: SelectionType = None,
+        thin: int = 1,
     ):
         """
         Return a sample from the posterior distribution.
@@ -1134,6 +1149,7 @@ class MCMCDraw(object):
             plot(draw.points[:, 0], draw.points[:, 1], '.')
         """
         vars = vars if vars is not None else getattr(self, "_shown", None)
+        portion = self.portion if portion is None else portion
         return Draw(self, portion=portion, vars=vars, selection=selection, thin=thin)
 
     # TODO: Move processing of visible/integer/derived out of state
@@ -1207,7 +1223,7 @@ class MCMCDraw(object):
 class Draw:
     state: MCMCDraw
     vars: Optional[List[int]]
-    portion: Optional[float]
+    portion: float
     selection: SelectionType
     thin: int
 
@@ -1215,7 +1231,7 @@ class Draw:
         self,
         state: MCMCDraw,
         vars: Optional[List[int]] = None,
-        portion: Optional[float] = None,
+        portion: float = 1.0,
         selection: SelectionType = None,
         thin: int = 1,
     ):
@@ -1253,7 +1269,7 @@ def _sample(state, portion: float, selection: SelectionType, thin):
     Return a sample from a set of chains.
     """
     draw, chains, logp = state.chains()
-    start = int((1 - portion) * len(draw)) if portion else 0
+    start = int((1 - portion) * len(draw))
 
     # Collect the subset we are interested in
     chains = chains[start::thin, state._good_chains, :]

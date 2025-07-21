@@ -14,7 +14,6 @@ from . import lsqerror
 
 from .history import History
 from .formatnum import format_uncertainty
-from .fitproblem import nllf_scale
 from .util import NDArray, format_duration
 
 # For typing
@@ -34,9 +33,7 @@ class ConsoleMonitor(monitor.TimedUpdate):
         self.problem = problem
 
     def _print_chisq(self, k, fx, final=False):
-        scale, err = nllf_scale(self.problem)
-        chisq = format_uncertainty(scale * fx, err)
-        print(f"step {k} cost {chisq}{' [final]' if final else ''}")
+        print(f"step {k} cost {self.problem.chisq_str(nllf=fx)}{' [final]' if final else ''}")
 
     def _print_pars(self, x):
         p = self.problem.getp()
@@ -118,8 +115,7 @@ class StepMonitor(monitor.Monitor):
         point = " ".join("%.15g" % v for v in history.point[0])
         time = "%g" % history.time[0]
         step = "%d" % history.step[0]
-        scale, _ = nllf_scale(self.problem)
-        value = "%.15g" % (scale * history.value[0])
+        value = "%.15g" % (self.problem.chisq(nllf=history.value[0]))
         out = self._pattern % dict(point=point, time=time, value=value, step=step)
         self.fid.write(out)
 
@@ -299,10 +295,9 @@ class MultiStart(FitBase):
         starts = max(options.pop("starts", 1), 1)
         jump = options.pop("jump", 0.0)
         x_best, f_best, chisq_best = None, np.inf, None
-        scale, err = nllf_scale(self.problem)
         for k in range(starts):
             x, fx = self.fitter.solve(monitors=monitors, mapper=mapper, **options)
-            chisq = format_uncertainty(scale * fx, err)
+            chisq = self.problem.chisq_str(nllf=fx)
             if fx < f_best:
                 x_best, f_best, chisq_best = x, fx, chisq
                 monitors.info(f"fit {k+1} of {starts}: {chisq} [new best]")
@@ -867,7 +862,7 @@ class DreamFit(FitBase):
         ("pop", 10),
         ("init", "eps"),
         ("thin", 1),
-        ("alpha", 0.01),
+        ("alpha", 0.0),
         ("outliers", "none"),
         ("trim", False),
         ("steps", 0),  # deprecated: use --samples instead
@@ -913,7 +908,10 @@ class DreamFit(FitBase):
         self.state = sampler.sample(state=self.state, abort_test=monitors.stopping)
         # print("<<< Dream is done sampling >>>")
 
-        self._trimmed = self.state.trim_portion() if options["trim"] else 1.0
+        # If "trim" option is enabled, automatically set the portion, otherwise use
+        # the default 100% that was set at the start of sampler.sample.
+        if options.get("trim", False):
+            self.state.portion = self.state.trim_portion()
         # print("trimming", options['trim'], self._trimmed)
         self.state.mark_outliers()
         # Note that best is now saved within an hdf5 file, so we no longer need
@@ -945,7 +943,7 @@ class DreamFit(FitBase):
         return x, -fx
 
     def entropy(self, **kw):
-        return self.state.entropy(portion=self._trimmed, **kw)
+        return self.state.entropy(**kw)
 
     def stderr(self):
         """
@@ -955,7 +953,7 @@ class DreamFit(FitBase):
         """
         from .dream.stats import var_stats
 
-        vstats = var_stats(self.state.draw(portion=self._trimmed))
+        vstats = var_stats(self.state.draw())
         return np.array([(v.p68[1] - v.p68[0]) / 2 for v in vstats], "d")
 
     # def cov(self):
@@ -989,7 +987,7 @@ class DreamFit(FitBase):
         h5dump(group, state)
 
     def plot(self, output_path):
-        self.state.show(figfile=output_path, portion=self._trimmed)
+        self.state.show(figfile=output_path)
         self.error_plot(figfile=output_path)
 
     def show(self):
@@ -1001,7 +999,7 @@ class DreamFit(FitBase):
         from . import errplot
 
         # TODO: shouldn't mix calc and display!
-        res = errplot.calc_errors_from_state(problem=self.problem, state=self.state, portion=self._trimmed)
+        res = errplot.calc_errors_from_state(problem=self.problem, state=self.state)
         if res is not None:
             pylab.figure()
             errplot.show_errors(res)
@@ -1045,7 +1043,7 @@ def _resampler(fitter, xinit, samples=100, restart=False, **options):
             x, fx = fitter.solve(**options)
             points.append(np.hstack((fx, x)))
             # print self.problem.summarize()
-            # print "[chisq=%g]" % (nllf*2/self.problem.dof)
+            # print "[chisq=%.2f]" % self.problem.chisq(nllf=fx))
     except KeyboardInterrupt:
         # On keyboard interrupt we can declare that we are finished sampling
         # without it being an error condition, so let this exception pass.
@@ -1068,6 +1066,16 @@ class FitDriver(object):
         self.mapper = mapper if mapper else lambda p: list(map(problem.nllf, p))
         self.fitter = None
         self.result = None
+        self._reset_cache()
+
+    def _reset_cache(self):
+        """
+        Cached values. Deleted by fit() to force recomputation when the new fit is complete.
+        """
+        self._cov = None
+        self._stderr = None
+        self._stderr_from_cov = None
+        self._chisq = None
 
     def fit(self, resume=None, fit_state=None):
         """
@@ -1088,10 +1096,8 @@ class FitDriver(object):
             fn, labels = getattr(problem, "derive_vars", (None, []))
             fit_state = load_state(input_path, report=100, derived_vars=len(labels))
         """
-        if hasattr(self, "_cov"):
-            del self._cov
-        if hasattr(self, "_stderr"):
-            del self._stderr
+        self._reset_cache()
+
         # Awkward interface for dump/load state. The structure of the state depends on
         # the fit method, so we need to delegate dump/load to the Fitter class. However,
         # the fitter is not instantiated outside of the fit method, so dump/load must
@@ -1146,7 +1152,7 @@ class FitDriver(object):
             return entropy.cov_entropy(self.cov()), 0
 
     def chisq(self):
-        if not hasattr(self, "_chisq"):
+        if self._chisq is None:
             self._chisq = self.problem.chisq()
         return self._chisq
 
@@ -1177,11 +1183,9 @@ class FitDriver(object):
         # this case, the code will fall through to computing the covariance
         # matrix directly from the problem.  It will use the initial value
         # stored in the problem parameters because results will also be None.
-        if not hasattr(self, "_cov"):
-            self._cov = None
-            if hasattr(self.fitter, "cov"):
-                self._cov = self.fitter.cov()
-                # print("fitter cov", self._cov)
+        if self._cov is None and hasattr(self.fitter, "cov"):
+            self._cov = self.fitter.cov()
+            # print("fitter cov", self._cov)
         if self._cov is None:
             # Use Jacobian if residuals are available because it is faster
             # to compute.  Otherwise punt and use Hessian.  The has_residuals
@@ -1215,10 +1219,8 @@ class FitDriver(object):
         # Note: if fit() has not been run then self.fitter is None and in
         # particular, self.fitter will not have a stderr method defined so
         # it will compute stderr from covariance.
-        if not hasattr(self, "_stderr"):
-            self._stderr = None
-            if hasattr(self.fitter, "stderr"):
-                self._stderr = self.fitter.stderr()
+        if self._stderr is None and hasattr(self.fitter, "stderr"):
+            self._stderr = self.fitter.stderr()
         if self._stderr is None:
             # If no stderr from the fitter then compute it from the covariance
             self._stderr = self.stderr_from_cov()
@@ -1234,7 +1236,7 @@ class FitDriver(object):
         Here, the covariance matrix may have been estimated by the fitter
         instead of the Hessian.
         """
-        if not hasattr(self, "_stderr_from_cov"):
+        if self._stderr_from_cov is None:
             self._stderr_from_cov = lsqerror.stderr(self.cov())
         return self._stderr_from_cov
 
