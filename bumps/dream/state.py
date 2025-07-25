@@ -80,6 +80,7 @@ import re
 import gzip
 from typing import List, Dict, Tuple, Union, Optional, Callable
 from pathlib import Path
+import warnings
 
 import numpy as np
 from numpy import empty, sum, asarray, inf, argmax, hstack, dstack
@@ -1361,6 +1362,8 @@ class MCMCDraw(object):
 
         Like set_derived_vars but operating in place, modifying the points in the history.
         """
+        warnings.warn("Use state.set_derived_vars() instead of state.derive_vars()", DeprecationWarning, stacklevel=2)
+
         # Grab all samples as a set of points
         _, chains, _ = self.chains()
         Ngen, Npop, Nvar = chains.shape
@@ -1375,10 +1378,9 @@ class MCMCDraw(object):
         Nthin = self._thin_point.shape[0]
         newvars = np.resize(newvars, (Nthin, Npop, Nnew))
 
-        # Add new variables to the points
-        self._thin_point = dstack((self._thin_point, newvars))
-
-        # Add labels for the new variables, if available.
+        # Add labels for the new variables, if available. This must
+        # occur before updating self._thin_point, otherwise a default
+        # label may be generated for the new column.
         if labels is not None:
             self.labels = self.labels + labels
         elif self._labels is not None:
@@ -1386,6 +1388,9 @@ class MCMCDraw(object):
             self.labels = self.labels + labels
         else:  # no labels specified, old or new
             pass
+
+        # Add new variables to the points
+        self._thin_point = dstack((self._thin_point, newvars))
 
 
 class Draw:
@@ -1549,6 +1554,7 @@ def test():
     Ngen = Nupdate * Nstep
     Nvar, Npop, Ncr = 3, 6, 2
     xin = rand(Ngen, Npop, Nvar)
+    xin[..., 2] *= 9  # make one parameter range large enough for integer tests
     pin = rand(Ngen, Npop)
     accept = rand(Ngen, Npop) < 0.8
     CRin = rand(Nupdate, Ncr)
@@ -1598,10 +1604,41 @@ def test():
     # assert norm(logp[:, 1] - pin[thinning-1::thinning, 2]) == 0
     # assert norm(logp[:, 2] - pin[thinning-1::thinning, 2]) == 0
 
+    if 0:  # test of deprecated interface
+        # Test derived variables (inplace update! ick!)
+        state.derive_vars(lambda p: p[0] + p[1], labels=["inplace x+y"])
+        assert state.traces()[1].shape[2] == Nvar + 1
+        draw = state.draw()
+        assert draw.labels[-1] == "inplace x+y"
+        assert (draw.points[:, -1] == draw.points[:, 0] + draw.points[:, 1]).all()
+        assert draw.points.shape[1] == Nvar + 1
+        assert len(draw.labels) == Nvar + 1
+
+    # Test derived variables (ephemeral)
+    state.derive_vars(lambda p: p[0] + p[1], labels=["x+y"])
+    draw = state.draw()
+    assert draw.labels[-1] == "x+y"
+    assert (draw.points[:, -1] == draw.points[:, 0] + draw.points[:, 1]).all()
+    assert draw.points.shape[1] == Nvar + 2
+    assert len(draw.labels) == Nvar + 2
+
     from .stats import var_stats, format_vars
 
     vstats = var_stats(state.draw())
     print(format_vars(vstats))
+
+    # Test integer vars
+    state.set_integer_vars(labels=["P2"])
+    draw = state.draw()
+    vstats_int = var_stats(draw)
+    # print("integers", draw.integers)
+    # print(format_vars(vstats_int))
+    assert vstats_int[2].mean == np.mean(np.floor(draw.points[:, 2]))
+
+    draw = state.draw(selection={"P1": (0.4, 1.0)})
+    # print(format_vars(var_stats(draw)))
+    assert (draw.points[:, 0] >= 0.4).all()
+    assert len(draw.points[:, 0]) == np.sum(xin[..., 1] >= 0.4)
 
 
 if __name__ == "__main__":
