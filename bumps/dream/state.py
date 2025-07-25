@@ -116,42 +116,54 @@ LABEL_DTYPE = f"|S{MAX_LABEL_LENGTH}"
 H5_COMPRESSION = 5
 
 
-def load(store):
+def dream_load(store):
     """
     Load the saved DREAM state.
 
     *store* is the path to the stored state, either as an HDF5 history file
     or as a bumps export directory. If the directory contains multiple exports
-    then use the path to the .par file for the desired state.
+    then use the path to the .par file within the directory.
 
     See also: h5load, load_state
     """
     from pathlib import Path
     import h5py
 
-    store = Path(store)
-    if store.suffix == ".par":
-        modelname = store.stem
-        store = store.parent
-    else:
-        modelname = None
+    store = Path(store).expanduser().resolve()
+    modelname = None
 
+    if not store.exists():
+        raise RuntimeError(f"Path {store} does not exist.")
+
+    # First try the HDF reader since the user can save the session to any file.
     if store.is_file():
+        h5 = None
         try:
-            h5 = h5py.File(store)
-            return h5load(h5["fitting/fit_state"])
+            with h5py.File(store) as h5:
+                if "fitting/fit_state" in h5:
+                    return h5load(h5["fitting/fit_state"])
+                else:
+                    raise RuntimeError(f"fitting/fit_state not found in {store}")
         except Exception:
-            raise RuntimeError("Cannot load state from %s" % store)
-        finally:
-            h5.close()
+            if h5 is not None:
+                raise
+        # Fall through to the non-hdf5 loader
 
-    if modelname is None:
+    if store.is_dir():
+        # It's a directory: look for model name in store/*.par
         pars = list(store.glob("*.par"))
         if not pars:
-            raise RuntimeError("No .par file found in directory %s" % store)
+            raise RuntimeError("No .par file found in %s" % store)
         if len(pars) > 1:
-            raise RuntimeError("Multiple .par files found in directory %s: %s" % (store, ", ".join(pars)))
+            print(pars)
+            raise RuntimeError("Multiple models found in %s: %s" % (store, ", ".join(p.name for p in pars)))
         modelname = pars[0].stem
+    else:
+        # It's a filename: parse store=path/model.par
+        if store.suffix != ".par":
+            raise RuntimeError(f"Expected model.par file, got {store}")
+        modelname = store.stem
+        store = store.parent
 
     # Reload the MCMC data
     basename = str(store / modelname)
