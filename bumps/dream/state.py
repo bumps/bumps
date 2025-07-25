@@ -730,14 +730,15 @@ class MCMCDraw(object):
 
     @property
     def labels(self):
+        """
+        Labels associated with each parameter in a point. This doesn't
+        include the labels for derived quantities. For these you will
+        need to query state.draw().labels.
+        """
         if self._labels is None:
             result = ["P%d" % i for i in range(self._thin_point.shape[2])]
         else:
             result = self._labels
-        # # Note: derived parameters moved to Draw, so it no longer makes sense
-        # # to have include them in the list of parameters for state.
-        # if self._derived_labels:
-        #     result = [*result, *self._derived_labels]
         return result
 
     @labels.setter
@@ -907,6 +908,8 @@ class MCMCDraw(object):
         including those for the samples in logp[i].
 
         If full is True, then return all chains, not just good chains.
+
+        ** Deprecated ** Use state.k_logp() instead.
         """
         # self._unroll()
         # draws, logp = self._gen_draws, self._gen_logp
@@ -1069,7 +1072,7 @@ class MCMCDraw(object):
 
         *outliers* (default False) is True if bad chains should be included in the trace.
 
-        Returns *generation* [Ngen] and *chains* [Ngen, Nchain, Nvar]
+        Returns *generation* [Ngen] and *chains* [Ngen x Nchain x Nvar]
         """
         portion = self.portion if portion is None else portion
 
@@ -1534,20 +1537,6 @@ class Draw:
             return var if isinstance(var, (int, np.integer)) else self.labels.index(var)
         except ValueError:
             raise ValueError(f"Parameter '{var} not in {self.labels}") from None
-
-    def _select(self, selection: SelectionType):
-        """
-        Select points by logp and/or parameter limits.
-        """
-        # TODO: do we want to allow variable name patterns?
-        mask = True
-        for var, limits in selection.items():
-            if var == "logp":
-                mask = mask & (self.chains_logp >= limits[0]) & (self.logp <= limits[1])
-            else:
-                var = self._lookup(var)
-                mask = mask & (self.chains[:, :, var] >= limits[0]) & (self.chains[:, :, var] <= limits[1])
-        self.mask = mask
 
 
 def test():
