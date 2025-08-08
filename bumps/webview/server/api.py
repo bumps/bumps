@@ -921,8 +921,6 @@ async def get_convergence_plot(
         return None
     dof = state.problem.fitProblem.dof
     convergence = state.fitting.convergence
-    trim_index = None
-    burn_index = None
 
     if convergence is not None:
         fit_state = state.fitting.fit_state
@@ -932,6 +930,10 @@ async def get_convergence_plot(
             trim_index = fit_state.trim_index(generation=generation, portion=portion)
             burn_index = fit_state.trim_index(generation=generation, portion=1.0)
             stored_portion = getattr(fit_state, "portion", None)
+        else:
+            trim_index = None
+            burn_index = None
+            stored_portion = None
 
         plotdata = convergence_plot(
             convergence, dof, cutoff=cutoff, trim_index=trim_index, burn_index=burn_index, max_points=max_points

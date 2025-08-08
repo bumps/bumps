@@ -20,7 +20,7 @@ const props = defineProps<{
 
 interface ConvergencePlotData {
   plotdata: Plotly.PlotlyDataLayoutConfig | null;
-  portion: number;
+  portion: number | null;
 }
 
 const { draw_requested } = setupDrawLoop("updated_convergence", props.socket, fetch_and_draw, title);
