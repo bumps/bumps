@@ -420,9 +420,11 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
     state._best_x = point[bestidx, 1 : Nvar + 1 - derived_vars]
     state._best_gen = 0
 
-    # Clean up _thin dimensions
-    if state._thin_draws.shape[0] != state._thin_logp.shape[0]:
-        print("shapes differ", state._gen_draws.shape, state._thin_draws.shape, state._thin_logp.shape)
+    # Clean up _thin dimensions.
+    # It seems that some 0.x versions of bumps are yielding thin draws one shorter
+    # than logp and points, so throw away the first logp and points.
+    if state._thin_draws.shape[0] == state._thin_logp.shape[0] - 1:
+        # print(f"shapes differ {state._gen_draws.shape=}, {state._thin_draws.shape=}, {state._thin_logp.shape=}")
         state._thin_logp = state._thin_logp[1:]
         state._thin_point = state._thin_point[1:]
 
