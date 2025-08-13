@@ -328,6 +328,8 @@ def path_contains_saved_state(filename):
 
 
 def openmc(filename):
+    # If filename ends in .mc.gz, also check for a .mc file.
+    # If filename ends in .mc, also check for a .mc.gz file.
     if filename.endswith(".gz"):
         if os.path.exists(filename):
             # print("opening with gzip")
@@ -417,6 +419,12 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
     state._best_logp = point[bestidx, 0]
     state._best_x = point[bestidx, 1 : Nvar + 1 - derived_vars]
     state._best_gen = 0
+
+    # Clean up _thin dimensions
+    if state._thin_draws.shape[0] != state._thin_logp.shape[0]:
+        print("shapes differ", state._gen_draws.shape, state._thin_draws.shape, state._thin_logp.shape)
+        state._thin_logp = state._thin_logp[1:]
+        state._thin_point = state._thin_point[1:]
 
     return state
 

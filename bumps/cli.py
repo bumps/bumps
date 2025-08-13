@@ -36,9 +36,9 @@ import sys
 import os
 import re
 import warnings
-import traceback
-
 import shutil
+import traceback
+from pathlib import Path
 
 import numpy as np
 # np.seterr(all="raise")
@@ -164,10 +164,11 @@ def load_best(problem, path):
     """
     # WARNING: Labels are not unique! Need to track multiple instances of
     # the same label.
-    if not os.path.isfile(path):
-        path = os.path.join(path, problem.name + ".par")
-    if not os.path.isfile(path):
-        raise ValueError("Parameter file %s does not exist." % path)
+    path = Path(path)
+    if not path.is_file():
+        path = path / (problem.name + ".par")
+    if not path.is_file():
+        raise ValueError("Parameter file {path} does not exist.")
     labels = problem.labels()
     targets = {label: [] for label in labels}
     with open(path, "rt") as fid:
