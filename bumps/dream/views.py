@@ -15,6 +15,8 @@ from . import corrplot, varplot
 from .stats import format_vars, save_vars, var_stats
 from .state import MCMCDraw
 
+CORRPLOT_MAXVAR = 25  # maximum number of variables to plot in correlation matrix
+
 
 def plot_all(state: MCMCDraw, portion: Optional[float] = None, figfile=None):
     # Print/save uncertainty report before loading pylab or creating plots
@@ -66,7 +68,7 @@ def plot_all(state: MCMCDraw, portion: Optional[float] = None, figfile=None):
         savefig(figfile + "-logp" + figext)
 
     # correlation plot
-    if draw.num_vars <= 25:
+    if draw.num_vars <= CORRPLOT_MAXVAR:
         figure()
         plot_corrmatrix(draw, nbins=nbins)
         if state.title:
