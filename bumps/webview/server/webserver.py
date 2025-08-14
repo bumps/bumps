@@ -6,16 +6,12 @@ import socket
 from pathlib import Path
 from typing import Callable, Optional, Union, List
 
-import matplotlib
-
 # from .main import setup_bumps
 from . import cli
 from . import api
 from . import persistent_settings
 from .logger import logger
 from .cli import BumpsOptions
-
-matplotlib.use("agg")
 
 mimetypes.add_type("text/css", ".css")
 mimetypes.add_type("text/html", ".html")

@@ -5,7 +5,6 @@ from typing import (
     Any,
     Awaitable,
     Callable,
-    Coroutine,
     Dict,
     List,
     Literal,
@@ -14,34 +13,31 @@ from typing import (
     Protocol,
     Sequence,
     Union,
-    Tuple,
     TypedDict,
-    cast,
 )
 from datetime import datetime
 import numbers
 import warnings
-from threading import Event
 import numpy as np
 import asyncio
-from pathlib import Path, PurePath
+from pathlib import Path
 import json
 from copy import deepcopy
 import os
 import uuid
 import traceback
 import math
+import time
 
 from bumps.fitters import FitDriver
 from bumps.mapper import MPMapper
 from bumps.parameter import Parameter, Constant, Variable, unique
 import bumps.cli
 import bumps.fitproblem
-import bumps.dream.views
-import bumps.dream.varplot
 import bumps.dream.stats
 from bumps.dream.state import MCMCDraw
 import bumps.errplot
+from bumps.util import push_mpl_backend
 
 from . import fit_options
 from .state_hdf5_backed import (
@@ -408,16 +404,17 @@ def _export_results(
     # Write the pars file.
     _write_pars(problem, path, f"{basename}.par")
 
-    # Produce model plots
-    problem.plot(figfile=output_pathstr)
+    with push_mpl_backend("agg"):
+        # Produce model plots
+        problem.plot(figfile=output_pathstr)
 
-    # Produce uncertainty plots
-    # TODO: Add save/show methods to the fit_state protocol
-    if hasattr(fit_state, "show"):
-        with redirect_console(str(path / f"{basename}.err")):
-            fit_state.show(figfile=output_pathstr)
-        fit_state.save(output_pathstr)
-    # print("export complete")
+        # Produce uncertainty plots
+        # TODO: Add save/show methods to the fit_state protocol
+        if hasattr(fit_state, "show"):
+            with redirect_console(str(path / f"{basename}.err")):
+                fit_state.show(figfile=output_pathstr)
+            fit_state.save(output_pathstr)
+        # print("export complete")
 
 
 @register
@@ -795,29 +792,27 @@ async def log(message: str, title: Optional[str] = None):
 
 @register
 async def get_data_plot(model_indices: Optional[List[int]] = None):
+    import matplotlib.pyplot as plt
+    import mpld3
+
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = deepcopy(state.problem.fitProblem)
-    import mpld3
-    import matplotlib
-
-    matplotlib.use("agg")
-    import matplotlib.pyplot as plt
-    import time
 
     # Suppress all mpld3 warnings
     # warnings.filterwarnings("ignore", module="mpld3")
 
     start_time = time.time()
     logger.info(f"queueing new data plot... {start_time}")
-    fig = plt.figure()
-    for i, model in enumerate(fitProblem.models):
-        if model_indices is not None and i not in model_indices:
-            continue
-        model.plot()
-    plt.text(0.01, 0.01, "chisq=%s" % fitProblem.chisq_str(), transform=plt.gca().transAxes)
-    dfig = mpld3.fig_to_dict(fig)
-    plt.close(fig)
+    with push_mpl_backend("agg"):
+        fig = plt.figure()
+        for i, model in enumerate(fitProblem.models):
+            if model_indices is not None and i not in model_indices:
+                continue
+            model.plot()
+        plt.text(0.01, 0.01, "chisq=%s" % fitProblem.chisq_str(), transform=plt.gca().transAxes)
+        dfig = mpld3.fig_to_dict(fig)
+        plt.close(fig)
     end_time = time.time()
     logger.info(f"time to draw data plot: {end_time - start_time}")
     return {"fig_type": "mpld3", "plotdata": to_json_compatible_dict(dfig)}
@@ -1021,8 +1016,6 @@ def _get_correlation_plot(
     fit_state = state.fitting.fit_state
 
     if hasattr(fit_state, "draw"):
-        import time
-
         start_time = time.time()
         logger.info(f"queueing new correlation plot... {start_time}")
         draw = fit_state.draw(vars=vars)
@@ -1062,8 +1055,6 @@ async def get_correlation_plot(
 def _get_uncertainty_plot(timestamp: str = "", cbar_colors: int = 8):
     fit_state = state.fitting.fit_state
     if hasattr(fit_state, "draw"):
-        import time
-
         start_time = time.time()
         logger.info(f"queueing new uncertainty plot... {start_time}")
         draw = fit_state.draw()
@@ -1084,21 +1075,19 @@ async def get_uncertainty_plot(timestamp: str = ""):
 
 @register
 async def get_model_uncertainty_plot():
+    import mpld3
+    import matplotlib.pyplot as plt
+
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = state.problem.fitProblem
     fit_state = state.fitting.fit_state
-    if hasattr(fit_state, "draw"):
-        import mpld3
-        import matplotlib
+    if not hasattr(fit_state, "draw"):
+        return
 
-        matplotlib.use("agg")
-        import matplotlib.pyplot as plt
-        import time
-
-        start_time = time.time()
-        logger.info(f"queueing new model uncertainty plot... {start_time}")
-
+    start_time = time.time()
+    logger.info(f"queueing new model uncertainty plot... {start_time}")
+    with push_mpl_backend("agg"):
         fig = plt.figure()
         errs = bumps.errplot.calc_errors_from_state(fitProblem, fit_state)
         logger.info(f"errors calculated: {time.time() - start_time}")
@@ -1107,11 +1096,9 @@ async def get_model_uncertainty_plot():
         fig.canvas.draw()
         dfig = mpld3.fig_to_dict(fig)
         plt.close(fig)
-        end_time = time.time()
-        logger.info(f"time to draw model uncertainty plot: {end_time - start_time}")
-        return dfig
-    else:
-        return None
+    end_time = time.time()
+    logger.info(f"time to draw model uncertainty plot: {end_time - start_time}")
+    return dfig
 
 
 @register
