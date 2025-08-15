@@ -78,6 +78,7 @@ class BumpsOptions:
     no_auto_history: bool = False
     path: Optional[str] = None
     use_persistent_path: bool = False
+    reload_export: Optional[str] = None
     pars: Optional[str] = None
 
     # Simulation controls.
