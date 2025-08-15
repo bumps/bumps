@@ -417,6 +417,16 @@ def _export_results(
         with redirect_console(str(path / f"{basename}.err")):
             fit_state.show(figfile=output_pathstr)
         fit_state.save(output_pathstr)
+
+        # TODO: duplicates code in fitters.DreamFit.error_plot
+        # TODO: refactor to separate calculation from display
+        # TODO: share calc_errors result with get_model_uncertainty_plot
+        from bumps import errplot
+
+        points = errplot.error_points_from_state(state=fit_state)
+        res = errplot.calc_errors(problem, points)
+        if res is not None:
+            errplot.show_errors(res, save=output_pathstr)
     # print("export complete")
 
 
@@ -1100,7 +1110,8 @@ async def get_model_uncertainty_plot():
         logger.info(f"queueing new model uncertainty plot... {start_time}")
 
         fig = plt.figure()
-        errs = bumps.errplot.calc_errors_from_state(fitProblem, fit_state)
+        points = bumps.errplot.error_points_from_state(fit_state)
+        errs = bumps.errplot.calc_errors(fitProblem, points)
         logger.info(f"errors calculated: {time.time() - start_time}")
         bumps.errplot.show_errors(errs, fig=fig)
         logger.info(f"time to render but not serialize... {time.time() - start_time}")
