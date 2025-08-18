@@ -765,7 +765,7 @@ def filehash(filename):
 
 def build_convergence_from_fit_state(fit_state):
     """
-    Build a pseudo-convergence plot from a dream state object.
+    Build a pseudo-convergence array from a dream state object.
 
     "pseudo" because it doesn't include burn or thinning.
 
