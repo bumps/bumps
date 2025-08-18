@@ -394,7 +394,7 @@ file_menu_items.value = [
   </div>
   <FitOptions ref="fitOptions" :socket="socket" />
   <FileBrowser ref="fileBrowser" :socket="socket" />
-  <ServerShutdown :socket="socket" />
+  <ServerShutdown :disconnected="disconnected" />
   <ServerStartup :socket="socket" />
   <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 11">
     <div
