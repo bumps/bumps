@@ -42,6 +42,7 @@ import signal
 import sys
 import logging
 from dataclasses import field
+from hashlib import file_digest
 # from textwrap import dedent
 
 from bumps.fitters import FIT_AVAILABLE_IDS
@@ -547,7 +548,7 @@ def interpret_fit_options(options: BumpsOptions):
 
         async def load_export_to_state(App=None):
             problem, fit_state = reload_export(
-                options.reload_export, modelfile=options.filename, model_options=options.args
+                options.reload_export, model_file=options.filename, model_options=options.args
             )
             path = Path(problem.path)
             await api.set_problem(problem, path.parent, path.name)
@@ -692,7 +693,7 @@ def interpret_fit_options(options: BumpsOptions):
     return on_startup, on_complete
 
 
-def reload_export(path, modelfile=None, model_options=None):
+def reload_export(export_path, model_file=None, model_options=None):
     """
     Reload a bumps <= 0.8 export directory.
 
@@ -712,26 +713,36 @@ def reload_export(path, modelfile=None, model_options=None):
     from bumps.dream.state import load_state
 
     # Find the .par file in the export directory
-    path = Path(path)
-    if path.is_file():
-        parfile = path
+    export_path = Path(export_path)
+    if export_path.is_file():
+        parfile = export_path
         if parfile.suffix != ".par":
-            raise ValueError(f"Reload export needs path or path/model.par, not {path}")
-        path = path.parent
+            raise ValueError(f"Reload export needs path or path/model.par, not {export_path}")
+        export_path = export_path.parent
     else:
-        pars_glob = list(path.glob("*.par"))
+        pars_glob = list(export_path.glob("*.par"))
         if len(pars_glob) == 0:
-            raise ValueError(f"Reload export {path}/*.par does not exist")
+            raise ValueError(f"Reload export {export_path}/*.par does not exist")
         if len(pars_glob) > 1:
-            raise ValueError(f"More than one .par file. Use {path}/model.par in reload export.")
+            raise ValueError(f"More than one .par file. Use {export_path}/model.par in reload export.")
         parfile = pars_glob[0]
 
     # If modelfile is not given assume it is model.py in the current directory
-    if modelfile is None:
-        modelfile = parfile.stem + ".py"
+    if model_file is None:
+        model_file = parfile.stem + ".py"
+
+    # Check that the model file hash has not changed
+    model_file = Path(model_file)
+    saved_model = export_path / model_file.name
+    if not saved_model.exists():
+        raise ValueError(f"Model '{model_file.name}' does not exist in '{export_path}'")
+    if not model_file.exists():
+        raise ValueError(f"Model '{model_file}' does not exist.")
+    if filehash(saved_model) != filehash(model_file):
+        raise ValueError(f"Model file has been modified. Copy {saved_model} into {model_file.parent}")
 
     # Load the model file
-    problem = load_model(modelfile, model_options=model_options)
+    problem = load_model(model_file, model_options=model_options)
     load_best(problem, parfile)
 
     try:
@@ -745,6 +756,11 @@ def reload_export(path, modelfile=None, model_options=None):
         fit_state = None
 
     return problem, fit_state
+
+
+def filehash(filename):
+    with open(filename, "rb") as fd:
+        return file_digest(fd, "md5").hexdigest()
 
 
 def build_convergence_from_fit_state(fit_state):
