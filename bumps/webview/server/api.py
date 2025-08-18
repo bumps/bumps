@@ -1087,10 +1087,10 @@ async def get_model_uncertainty_plot():
 
     start_time = time.time()
     logger.info(f"queueing new model uncertainty plot... {start_time}")
+    errs = bumps.errplot.calc_errors_from_state(fitProblem, fit_state)
+    logger.info(f"errors calculated: {time.time() - start_time}")
     with push_mpl_backend("agg"):
         fig = plt.figure()
-        errs = bumps.errplot.calc_errors_from_state(fitProblem, fit_state)
-        logger.info(f"errors calculated: {time.time() - start_time}")
         bumps.errplot.show_errors(errs, fig=fig)
         logger.info(f"time to render but not serialize... {time.time() - start_time}")
         fig.canvas.draw()
