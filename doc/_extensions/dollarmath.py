@@ -35,18 +35,18 @@ def setup(app):
 
 
 def test_dollar():
-    assert replace_dollar("no dollar") == "no dollar"
-    assert replace_dollar("$only$") == ":math:`only`"
-    assert replace_dollar("$first$ is good") == ":math:`first` is good"
-    assert replace_dollar("so is $last$") == "so is :math:`last`"
-    assert replace_dollar("and $mid$ too") == "and :math:`mid` too"
-    assert replace_dollar("$first$, $mid$, $last$") == ":math:`first`, :math:`mid`, :math:`last`"
-    assert replace_dollar("dollar\$ escape") == "dollar$ escape"
-    assert replace_dollar("dollar \$escape\$ too") == "dollar $escape$ too"
-    assert replace_dollar("emb\ $ed$\ ed") == "emb\ :math:`ed`\ ed"
-    assert replace_dollar("$first$a") == "$first$a"
-    assert replace_dollar("a$last$") == "a$last$"
-    assert replace_dollar("a $mid$dle a") == "a $mid$dle a"
+    assert replace_dollar(r"no dollar") == r"no dollar"
+    assert replace_dollar(r"$only$") == r":math:`only`"
+    assert replace_dollar(r"$first$ is good") == r":math:`first` is good"
+    assert replace_dollar(r"so is $last$") == r"so is :math:`last`"
+    assert replace_dollar(r"and $mid$ too") == r"and :math:`mid` too"
+    assert replace_dollar(r"$first$, $mid$, $last$") == r":math:`first`, :math:`mid`, :math:`last`"
+    assert replace_dollar(r"dollar\$ escape") == r"dollar$ escape"
+    assert replace_dollar(r"dollar \$escape\$ too") == r"dollar $escape$ too"
+    assert replace_dollar(r"emb\ $ed$\ ed") == r"emb\ :math:`ed`\ ed"
+    assert replace_dollar(r"$first$a") == r"$first$a"
+    assert replace_dollar(r"a$last$") == r"a$last$"
+    assert replace_dollar(r"a $mid$dle a") == r"a $mid$dle a"
 
 
 if __name__ == "__main__":

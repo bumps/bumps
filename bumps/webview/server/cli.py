@@ -67,6 +67,7 @@ class BumpsOptions:
 
     # Fitter controls.
     fit_options: Dict[str, Any] = field(default_factory=dict)
+    resume: bool = False
     # fit_outputs: Dict[str, Any] = field(default_factory=dict)
 
     # Session file controls.
@@ -379,13 +380,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         "--loglevel",
         type=str,
         choices=["debug", "info", "warn", "error", "critical"],
-    )
-    misc.add_argument(
-        "-v",
-        "--verbose",
-        action="count",
-        default=0,
-        help="verbose output (-v for info, -vv for debug)",
+        default="warn",
     )
     # TODO: show version numbers for both refl1d and bumps?
     misc.add_argument(
@@ -632,7 +627,7 @@ def interpret_fit_options(options: BumpsOptions):
                 # defined and because I don't have a --cov option.
                 # if opts.cov: fitdriver.show_cov()
                 problem = api.state.problem.fitProblem
-                # print("pars=", problem.getp())
+                # print(problem.summarize())
                 print("chisq", problem.chisq_str())
 
         on_startup.append(show_chisq)
@@ -756,8 +751,7 @@ def main(options: Optional[BumpsOptions] = None):
     if options is None:
         options = get_commandline_options()
 
-    levels = [logging.WARNING, logging.INFO, logging.DEBUG]
-    setup_console_logging(levels[min(options.verbose, len(levels) - 1)])
+    setup_console_logging(options.loglevel)
     # from .logger import capture_warnings
     # capture_warnings(monkeypatch=True)
     logger.info(options)

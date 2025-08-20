@@ -177,7 +177,7 @@ def form_quantiles(y, contours):
     from numpy import reshape
     from scipy.stats.mstats import mquantiles
 
-    p = _convert_contours_to_probabilities(reversed(sorted(contours)))
+    p = _convert_contours_to_probabilities(contours)
     q = mquantiles(y, prob=p, axis=0)
     p = reshape(p, (2, -1))
     q = reshape(q, (-1, 2, len(y[0])))
