@@ -18,6 +18,7 @@ dependencies = [
     'mpld3',
     'msgpack',
     'graphlib_backport; python_version < "3.9"',
+    'msgpack',
 ]
 classifiers = [
     'Development Status :: 4 - Beta',
