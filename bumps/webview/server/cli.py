@@ -743,11 +743,9 @@ def main(options: Optional[BumpsOptions] = None):
     # Need to set matplotlib to a non-interactive backend because it is being used in the
     # the export thread. The next_color method calls gca() which needs to produce a blank
     # graph even when there is none (we ask for next color before making the plot).
-    import matplotlib as mpl
     from bumps.mapper import using_mpi
     from .webserver import start_from_cli
 
-    mpl.use("agg")
     if options is None:
         options = get_commandline_options()
 
