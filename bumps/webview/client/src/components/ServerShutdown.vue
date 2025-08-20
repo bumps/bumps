@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
-import { disconnected } from "../app_state.ts";
+
+const props = defineProps<{
+  disconnected: boolean;
+}>();
 
 const dialog = ref<HTMLDialogElement>();
 const closeCancelled = ref(false);
@@ -9,8 +12,8 @@ const shutdownTimer = ref<ReturnType<typeof setInterval>>();
 const CLOSE_DELAY = 3; // try to auto-close window after n seconds.
 const timeRemaining = ref(CLOSE_DELAY);
 
-watch(disconnected, () => {
-  if (disconnected.value) {
+watch(props, () => {
+  if (props.disconnected) {
     dialog.value?.showModal();
     closeCancelled.value = false;
     attemptingAutoClose.value = true;
