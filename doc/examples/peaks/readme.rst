@@ -10,4 +10,4 @@ a special plot method is needed to display the data.
 This uses a library of peak functions to model the peaks. In order for this
 to work peaks.py must be on your python path. For example, on linux or mac:
 
-    PYTHONPATH=. bumps -b --fit=dream model.py --store=peaks.h5
+    PYTHONPATH=. bumps -b --fit=dream model.py --session=peaks.h5

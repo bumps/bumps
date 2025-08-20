@@ -538,9 +538,10 @@ def interpret_fit_options(options: BumpsOptions):
     api.state.shared.fitter_settings[fitter_id]["settings"].update(fitopts)
     api.state.parallel = options.parallel
 
+    # TODO: How do we resume if the model is saved as a pickle and can't be restored?
     # on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
     # resume only works when you have an identical problem, so we don't load from file
-    # if you are resuming the fit.
+    # if we are resuming the fit.
     if options.filename is not None and not options.resume:
         filepath = Path(options.filename).absolute()
         model_pathlist = list(filepath.parent.parts)
