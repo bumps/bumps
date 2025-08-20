@@ -6,13 +6,13 @@ Basic command line usage::
     bumps model.py --chisq
 
     # Run a simple batch fit, appending results to a store file.
-    bumps -b --store=T1.hdf model.py
+    bumps -b --session=T1.hdf model.py
 
     # Run a DREAM fit to explore parameter uncertainties
-    bumps -b --store=T1.hdf model.py --fit=dream
+    bumps -b --session=T1.hdf model.py --fit=dream
 
     # Load and fit the last model in a session file.
-    bumps -b --store=T1.hdf
+    bumps -b --session=T1.hdf
 
 Basic interactive usage::
 
@@ -23,7 +23,7 @@ Basic interactive usage::
     bumps model.py --start
 
     # Watch fit progress and exit when complete
-    bumps model.py --run --store=T1.hdf
+    bumps model.py --run --session=T1.hdf
 
 There are many more options available to control the fit, particularly for
 batch mode fitting, and to control the viewer. To see them type::
@@ -71,9 +71,9 @@ class BumpsOptions:
     # fit_outputs: Dict[str, Any] = field(default_factory=dict)
 
     # Session file controls.
-    store: Optional[str] = None
-    read_store: Optional[str] = None
-    write_store: Optional[str] = None
+    session: Optional[str] = None
+    read_session: Optional[str] = None
+    write_session: Optional[str] = None
     serializer: SERIALIZERS = "dill"
     no_auto_history: bool = False
     path: Optional[str] = None
@@ -265,24 +265,25 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     # Session file controls.
     session = parser.add_argument_group("Session file management")
     session.add_argument(
-        "--store",
+        "--session",
+        metavar="SESSION",
         default=None,
         type=str,
-        help="set read_store and write_store to same file",
+        help="set read/write session to same file",
     )
     session.add_argument(
-        "--read-store",
-        metavar="STORE",
+        "--read-session",
+        metavar="SESSION",
         default=None,
         type=str,
-        help="read initial session state from file (overrides --store)",
+        help="read initial session state from file (overrides --session)",
     )
     session.add_argument(
-        "--write-store",
-        metavar="STORE",
+        "--write-session",
+        metavar="SESSION",
         default=None,
         type=str,
-        help="output file for session state (overrides --store)",
+        help="output file for session state (overrides --session)",
     )
     session.add_argument(
         "--resume",
@@ -298,7 +299,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         default=BumpsOptions.serializer,
         type=str,
         choices=["pickle", "dill", "dataclass"],
-        help="strategy for serializing problem, will use value from store if it has already been defined",
+        help="strategy for serializing problem, will use value from session if it has already been defined",
     )
     session.add_argument(
         "--no-auto-history",
@@ -481,30 +482,30 @@ def interpret_fit_options(options: BumpsOptions):
     else:
         api.state.base_path = str(Path.cwd().absolute())
 
-    if options.read_store is not None and options.store is not None:
-        warnings.warn("read_store and store are both set; read_store will be used to initialize state")
-    if options.write_store is not None and options.store is not None:
-        warnings.warn("write_store and store are both set; write_store will be used to save state")
+    if options.read_session is not None and options.session is not None:
+        warnings.warn("read_session and session are both set; read_session will be used to initialize state")
+    if options.write_session is not None and options.session is not None:
+        warnings.warn("write_session and session are both set; write_session will be used to save state")
 
-    read_store = options.read_store if options.read_store is not None else options.store
-    write_store = options.write_store if options.write_store is not None else options.store
+    read_session = options.read_session if options.read_session is not None else options.session
+    write_session = options.write_session if options.write_session is not None else options.session
 
     # TODO: why is session file read immediately but model.py delayed?
-    if read_store is not None:
-        read_store_path = Path(read_store).absolute()
-        if read_store_path.exists():
-            api.state.read_session_file(str(read_store_path))
-            if write_store is None:
+    if read_session is not None:
+        read_session_path = Path(read_session).absolute()
+        if read_session_path.exists():
+            api.state.read_session_file(str(read_session_path))
+            if write_session is None:
                 api.state.shared.session_output_file = dict(
-                    pathlist=list(read_store_path.parent.parts),
-                    filename=read_store_path.name,
+                    pathlist=list(read_session_path.parent.parts),
+                    filename=read_session_path.name,
                 )
 
-    if write_store is not None:
-        write_store_path = Path(write_store).absolute()
+    if write_session is not None:
+        write_session_path = Path(write_session).absolute()
         # TODO: Why are we splitting path into parts?
         api.state.shared.session_output_file = dict(
-            pathlist=list(write_store_path.parent.parts), filename=write_store_path.name
+            pathlist=list(write_session_path.parent.parts), filename=write_session_path.name
         )
         api.state.shared.autosave_session = True
 
@@ -643,10 +644,10 @@ def interpret_fit_options(options: BumpsOptions):
         on_startup.append(start_fit)
         api.state.console_update_interval = 0 if webview else 1
 
-        if write_store is None and autostop:
+        if write_session is None and autostop:
             # TODO: can we specify problem.path in the model file?
             # TODO: can we default the session file name to model.hdf?
-            raise RuntimeError("Need to add '--store=path' to the command line.")
+            raise RuntimeError("Include '--session=output.h5' on the command line to save the fit.")
 
         # TODO: if not autostop maybe --export after fit only or after every fit
         if options.export and autostop:
