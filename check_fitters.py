@@ -40,7 +40,7 @@ def run_fit(fitter, model_args, store, seed=1):
         *BUMPS_COMMAND,
         str(model_args[0]),
         f"--fit={fitter}",
-        f"--store={store}",
+        f"--session={store}",
         f"--seed={seed}",
         "--batch",
         f"--export={str(Path(store).parent / ('T1-'+fitter))}",
