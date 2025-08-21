@@ -51,8 +51,7 @@ Set initial parameter values from a previous fit.  The par file is a list
 of lines with parameter name followed by parameter value on each line.
 The parameters must appear with the same name and in the same order as
 the fitted parameters in the model. Additional parameters are ignored. Missing
-parameters are filled using LHS. :ref:`option-preview` will show the
-model parameters.
+parameters are filled using LHS.
 
 .. _option-shake:
 
@@ -388,7 +387,7 @@ Execution Controls
 .. _option-export:
 
 ``--export``
------------
+------------
 
 Directory in which to store the results of the fit.  Fits produce multiple
 files and plots.  Rather than cluttering up the current directory, all the
@@ -396,6 +395,7 @@ outputs are written to the store directory along with a copy of the model
 file.
 
 .. _option-session:
+
 ``--session``
 -------------
 
@@ -531,7 +531,7 @@ Special Options
 .. _option-edit:
 
 ``--webview``
-----------
+-------------
 
 If the command contains *webview* then start the Bumps user interface so that
 you can interact with the model, adjusting fitted parameters with a slider
@@ -544,3 +544,21 @@ and seeing how they impact the result.
 
 Use ``-h`` or ``--help`` to show a brief description of each
 command line option.
+
+.. _option-resynth:
+
+``--resynth``
+-------------
+
+Run a resynth uncertainty analysis on the model.  After finding a good
+minimum, you can rerun bumps with:
+
+     bumps --store=T1 --pars=T1/model.par --fit=amoeba --resynth=20 model.py
+
+This will generate 20 data simulated datasets using the initial data
+values as the mean and the data uncertainty as the standard deviation.
+Each of these datasets will be fit with the specified optimizer, and the
+resulting parameters saved in *T1/model.rsy*.  On completion, the parameter
+values can be loaded into python and averaged or histogrammed.
+
+Note: not currently available.
