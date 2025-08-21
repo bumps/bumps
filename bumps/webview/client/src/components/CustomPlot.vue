@@ -9,6 +9,8 @@ import type { AsyncSocket } from "../asyncSocket";
 import { configWithSVGDownloadButton } from "../plotly_extras";
 import { setupDrawLoop } from "../setupDrawLoop";
 
+const hidden_download = ref<HTMLAnchorElement>();
+
 type PlotInfo = { title: string; change_with: string; model_index: number };
 // const title = "Custom";
 const figtype = ref<string>("");
@@ -19,6 +21,7 @@ const plot_infos = ref<PlotInfo[]>([]);
 const current_plot_index = ref<number>(0);
 const error_text = ref<string>("");
 const tableData = ref<TableData>({ raw: "", header: [], rows: [[]] });
+const export_data = ref<string | null>(null);
 
 const props = defineProps<{
   socket: AsyncSocket;
@@ -40,10 +43,19 @@ onMounted(async () => {
 
 const { draw_requested } = setupDrawLoop("updated_parameters", props.socket, fetch_and_draw);
 
+async function export_clicked() {
+  if (export_data.value) {
+    const a = hidden_download.value as HTMLAnchorElement;
+    a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(export_data.value);
+    a.click();
+  }
+};
+
 async function fetch_and_draw() {
   const { model_index, title } = plot_infos.value[current_plot_index.value] ?? { model_index: 0, title: "" };
   const payload = await props.socket.asyncEmit("get_custom_plot", model_index, title);
-  const { fig_type, plotdata } = payload as { fig_type: "plotly" | "matplotlib" | "table" | "error"; plotdata: object };
+  const { fig_type, plotdata, exportdata } = payload as { fig_type: "plotly" | "matplotlib" | "table" | "error"; plotdata: object; exportdata: string | null};
+  export_data.value = exportdata;
   figtype.value = fig_type;
   if (fig_type === "plotly") {
     await nextTick();
@@ -77,12 +89,20 @@ async function fetch_and_draw() {
 
 <template>
   <div class="container d-flex flex-column flex-grow-1">
-    <label for="plot_select">Select plot:</label>
-    <select id="plot_select" v-model="current_plot_index" @change="draw_requested = true">
-      <option v-for="(plot_info, index) in plot_infos" :key="index" :value="index">
-        {{ plot_info.model_index }}: {{ plot_info.title ?? "" }}
-      </option>
-    </select>
+    <div class="row m-2">
+      <div class="col-auto">
+        <label for="plot_select">Select plot: </label>
+        <select id="plot_select" v-model="current_plot_index" @change="draw_requested = true">
+          <option v-for="(plot_info, index) in plot_infos" :key="index" :value="index">
+            {{ plot_info.model_index }}: {{ plot_info.title ?? "" }}
+          </option>
+        </select>
+      </div>
+      <div class="col align-right justify-content-md-right">
+          <button v-if="export_data !== null" class="btn btn-primary btn-sm" @click="export_clicked">Export Data</button>
+          <a ref="hidden_download" class="hidden" download="exported_data.csv" type="text/csv">Export Data</a>
+      </div>
+    </div>
     <div v-if="figtype === 'error'" ref="error_div" class="flex-grow-0">
       <div style="color: red; font-size: larger; font-weight: bold">Plotting error:</div>
       // eslint-disable-next-line vue/no-v-html
@@ -98,5 +118,9 @@ async function fetch_and_draw() {
 <style scoped>
 .plot-mode {
   width: 100%;
+}
+
+.hidden {
+  display: none;
 }
 </style>

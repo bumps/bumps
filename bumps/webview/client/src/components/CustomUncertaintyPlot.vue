@@ -10,6 +10,9 @@ import { cache } from "../plot_cache";
 import { configWithSVGDownloadButton } from "../plotly_extras";
 import { setupDrawLoop } from "../setupDrawLoop";
 
+const hidden_download = ref<HTMLAnchorElement>();
+const export_data = ref<string | null>(null);
+
 type PlotInfo = { title: string; change_with: string; model_index: number };
 const panel_title = "Custom Uncertainty";
 const figtype = ref<string>("");
@@ -46,6 +49,14 @@ const { draw_requested, drawing_busy } = setupDrawLoop(
   panel_title
 );
 
+async function export_clicked() {
+  if (export_data.value) {
+    const a = hidden_download.value as HTMLAnchorElement;
+    a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(export_data.value);
+    a.click();
+  }
+};
+
 async function fetch_and_draw(latest_timestamp?: string) {
   const { model_index, title } = plot_infos.value[current_plot_index.value] ?? { model_index: 0, title: "" };
   const cache_key = `${panel_title}:${model_index}:${title}:${n_samples.value}`;
@@ -59,7 +70,8 @@ async function fetch_and_draw(latest_timestamp?: string) {
     cache[cache_key] = { timestamp: latest_timestamp, plotdata: payload };
   }
   //console.debug(payload)
-  const { fig_type, plotdata } = payload as { fig_type: "plotly" | "matplotlib" | "table" | "error"; plotdata: object };
+  const { fig_type, plotdata, exportdata } = payload as { fig_type: "plotly" | "matplotlib" | "table" | "error"; plotdata: object; exportdata: string | null};
+  export_data.value = exportdata;
   figtype.value = fig_type;
   if (fig_type === "plotly") {
     await nextTick();
@@ -102,13 +114,15 @@ async function fetch_and_draw(latest_timestamp?: string) {
           </option>
         </select>
       </div>
-      <div class="col-md-2 align-right justify-content-md-right">
-        <label class="form-label" for="n_samples" title="Number of samples to draw from the uncertainty population"
+      <div class="col-md-2 align-left">
+        <label for="n_samples" title="Number of samples to draw from the uncertainty population"
           >Num. samples:</label
         >
+        <input id="n_samples" v-model="n_samples" type="number" @change="draw_requested = true" />
       </div>
-      <div class="col-md-2 align-left">
-        <input id="n_samples" v-model="n_samples" class="form-control" type="number" @change="draw_requested = true" />
+      <div class="col-md-2 align-right">
+          <button v-if="export_data !== null" class="btn btn-primary btn-sm" @click="export_clicked">Export Data</button>
+          <a ref="hidden_download" class="hidden" download="exported_uncertainty_data.csv" type="text/csv">Export Data</a>
       </div>
     </div>
     <div v-if="figtype === 'error'" ref="error_div" class="flex-grow-0">
