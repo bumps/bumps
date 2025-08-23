@@ -680,8 +680,8 @@ class Parameter(ValueProtocol, SupportsPrior):
 
         Use :meth:`unlink` to convert from an expression to a variable.
         """
-        if isinstance(self.slot, Calculation):
-            raise TypeError("parameter is calculated by the model and cannot be changed")
+        if isinstance(self.slot, (Calculation, Constant)):
+            raise TypeError("Parameter is set by the model and cannot be changed")
         elif expression is self:
             # don't make a circular reference to self.
             warnings.warn(f"{self} tried to make circular reference to self...")
@@ -691,7 +691,7 @@ class Parameter(ValueProtocol, SupportsPrior):
 
     def unlink(self):
         if isinstance(self.slot, (Calculation, Constant)):
-            raise TypeError("Parameter is fixed by the model and cannot be changed")
+            raise TypeError("Parameter is set by the model and cannot be changed")
         # Replace the slot with a new variable initialized to the only variable value
         self.slot = Variable(self.value)
 
