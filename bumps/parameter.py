@@ -690,8 +690,8 @@ class Parameter(ValueProtocol, SupportsPrior):
             self.slot = expression
 
     def unlink(self):
-        if isinstance(self.slot, Calculation):
-            raise TypeError("parameter is calculated by the model and cannot be changed")
+        if isinstance(self.slot, [Calculation, Constant]):
+            raise TypeError("Parameter is fixed by the model and cannot be changed")
         # Replace the slot with a new variable initialized to the only variable value
         self.slot = Variable(self.value)
 
@@ -706,10 +706,15 @@ class Parameter(ValueProtocol, SupportsPrior):
             self.tags = [t for t in self.tags if not t == tag]
 
     def __copy__(self):
-        """copy will only be called when a new instance is desired, with a different id"""
+        """
+        Copy will only be called when a new instance is desired, with a different id.
+        Make sure the slot is not shared with the original, otherwise the parameters
+        will be tied together after the copy.
+        """
         obj = type(self).__new__(self.__class__)
         obj.__dict__.update(self.__dict__)
         obj.id = str(uuid.uuid4())
+        obj.slot = copy(self.slot)
         return obj
 
 
