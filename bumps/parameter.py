@@ -690,7 +690,7 @@ class Parameter(ValueProtocol, SupportsPrior):
             self.slot = expression
 
     def unlink(self):
-        if isinstance(self.slot, [Calculation, Constant]):
+        if isinstance(self.slot, (Calculation, Constant)):
             raise TypeError("Parameter is fixed by the model and cannot be changed")
         # Replace the slot with a new variable initialized to the only variable value
         self.slot = Variable(self.value)
