@@ -714,7 +714,10 @@ class Parameter(ValueProtocol, SupportsPrior):
         obj = type(self).__new__(self.__class__)
         obj.__dict__.update(self.__dict__)
         obj.id = str(uuid.uuid4())
-        obj.slot = copy(self.slot)
+        # Note: ValueType (Expression, Parameter, float) can be shared
+        # between slots, but each parameter needs its own variable.
+        if isinstance(self.slot, Variable):
+            obj.slot = copy(self.slot)
         return obj
 
 
