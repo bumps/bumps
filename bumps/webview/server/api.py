@@ -57,7 +57,19 @@ from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
 from .varplot import plot_vars
 from .traceplot import plot_trace
 from .logger import logger
+from .convergence_plot import convergence_plot
 from .custom_plot import process_custom_plot, CustomWebviewPlot
+
+# CRUFT: python 3.8 does not have asyncio.to_thread
+try:
+    from asyncio import to_thread
+except ImportError:
+
+    async def to_thread(func, *args, **kwargs):
+        """Run a synchronous function in a separate thread."""
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, func, *args, **kwargs)
+
 
 REGISTRY: Dict[str, Callable] = {}
 MODEL_EXT = ".json"
@@ -356,7 +368,7 @@ async def export_results(export_path: Union[str, List[str]] = ""):
     path = Path(*export_path).expanduser().absolute()
     notification_id = await add_notification(content=f"<span>{str(path)}</span>", title="Export started", timeout=None)
     try:
-        await asyncio.to_thread(_export_results, path, problem, fit_state, serializer)
+        await to_thread(_export_results, path, problem, fit_state, serializer)
     finally:
         await emit("cancel_notification", notification_id)
     # print("done export thread")
@@ -879,11 +891,9 @@ async def create_custom_plot(model_index: int, plot_title: str, n_samples: int =
             model.update()
             model.nllf()
             if plot_info.get("change_with", None) == "uncertainty":
-                plot_item: CustomWebviewPlot = await asyncio.to_thread(
-                    plot_function, model, fitProblem, fit_state, n_samples
-                )
+                plot_item: CustomWebviewPlot = await to_thread(plot_function, model, fitProblem, fit_state, n_samples)
             else:
-                plot_item: CustomWebviewPlot = await asyncio.to_thread(plot_function, model, fitProblem)
+                plot_item: CustomWebviewPlot = await to_thread(plot_function, model, fitProblem)
         except Exception:
             plot_item = CustomWebviewPlot(fig_type="error", plotdata=traceback.format_exc())
 
@@ -903,100 +913,67 @@ async def get_custom_plot(model_index: int, plot_title: str, n_samples: int = 1)
 
 
 @register
-async def get_convergence_plot():
+async def get_convergence_plot(
+    cutoff: float = 0.25, portion: Optional[float] = None, max_points: Optional[int] = 10000
+):
+    """
+    Get the convergence plot for the current fit state.
+    If the fit state is not available, return None.
+    If the convergence is not available, return None.
+
+    :param cutoff: The cutoff value for the convergence plot
+                    (fraction of points below this value are not shown)
+    :param max_points: The maximum number of points to plot
+                        (thinning applied if too many points)
+    :return: A JSON-serializable dictionary containing the convergence plot data."""
     if state.problem is None or state.problem.fitProblem is None:
         return None
-    fitProblem = state.problem.fitProblem
+    dof = state.problem.fitProblem.dof
     convergence = state.fitting.convergence
+
     if convergence is not None:
-        normalized_pop = fitProblem.chisq(nllf=convergence)
-        best, pop = normalized_pop[:, 0], normalized_pop[:, 1:]
+        fit_state = state.fitting.fit_state
+        generation = len(convergence)
+        if fit_state is not None and hasattr(fit_state, "trim_index"):
+            # If the trim index is available, we can show it on the plot:
+            trim_index = fit_state.trim_index(generation=generation, portion=portion)
+            burn_index = fit_state.trim_index(generation=generation, portion=1.0)
+            stored_portion = getattr(fit_state, "portion", None)
+        else:
+            trim_index = None
+            burn_index = None
+            stored_portion = None
 
-        ni, npop = pop.shape
-        iternum = np.arange(1, ni + 1)
-        tail = int(0.25 * ni)
-        fig = {"data": [], "layout": {}}  # go.Figure()
-        hovertemplate = "(%{{x}}, %{{y}})<br>{label}<extra></extra>"
-        x = iternum[tail:].tolist()
-        if npop == 5:
-            # fig['data'].append(dict(type="scattergl", x=x, y=pop[tail:,4].tolist(), name="95%", mode="lines", line=dict(color="lightblue", width=1), showlegend=True, hovertemplate=hovertemplate.format(label="95%")))
-            fig["data"].append(
-                dict(
-                    type="scattergl",
-                    x=x,
-                    y=pop[tail:, 3].tolist(),
-                    mode="lines",
-                    line=dict(color="lightgreen", width=0),
-                    showlegend=False,
-                    hovertemplate=hovertemplate.format(label="80%"),
-                )
-            )
-            fig["data"].append(
-                dict(
-                    type="scattergl",
-                    x=x,
-                    y=pop[tail:, 1].tolist(),
-                    name="20% to 80% range",
-                    fill="tonexty",
-                    mode="lines",
-                    line=dict(color="lightgreen", width=0),
-                    hovertemplate=hovertemplate.format(label="20%"),
-                )
-            )
-            fig["data"].append(
-                dict(
-                    type="scattergl",
-                    x=x,
-                    y=pop[tail:, 2].tolist(),
-                    name="population median",
-                    mode="lines",
-                    line=dict(color="green"),
-                    opacity=0.5,
-                )
-            )
-            fig["data"].append(
-                dict(
-                    type="scattergl",
-                    x=x,
-                    y=pop[tail:, 0].tolist(),
-                    name="population best",
-                    mode="lines",
-                    line=dict(color="green", dash="dot"),
-                )
-            )
-
-        fig["data"].append(
-            dict(
-                type="scattergl",
-                x=x,
-                y=best[tail:].tolist(),
-                name="best",
-                line=dict(color="red", width=1),
-                mode="lines",
-            )
+        plotdata = convergence_plot(
+            convergence, dof, cutoff=cutoff, trim_index=trim_index, burn_index=burn_index, max_points=max_points
         )
-        fig["layout"].update(
-            dict(
-                template={"name": "simple_white"},
-                legend=dict(x=1, y=1, xanchor="right", yanchor="top"),
-            )
-        )
-        fig["layout"].update(dict(title=dict(text="Convergence", xanchor="center", x=0.5)))
-        fig["layout"].update(dict(uirevision=1))
-        fig["layout"].update(
-            dict(
-                xaxis=dict(
-                    title="iteration number",
-                    showline=True,
-                    showgrid=False,
-                    zeroline=False,
-                )
-            )
-        )
-        fig["layout"].update(dict(yaxis=dict(title="chisq", showline=True, showgrid=False, zeroline=False)))
-        return to_json_compatible_dict(fig)
+        output = {
+            "plotdata": plotdata,
+            "portion": stored_portion,
+        }
+        return to_json_compatible_dict(output)
     else:
         return None
+
+
+@register
+async def set_trim_portion(portion: float):
+    """
+    Set the trim portion for the current fit state.
+    This will update the trim index and burn index in the fit state.
+    """
+    fit_state = state.fitting.fit_state
+    if fit_state is not None and hasattr(fit_state, "portion"):
+        if not (0.0 <= portion <= 1.0):
+            raise ValueError("Trim portion must be between 0.0 and 1.0")
+        fit_state.portion = portion
+        state.shared.updated_convergence = now_string()
+        state.shared.updated_uncertainty = now_string()
+        await add_notification(
+            f"Set trim portion to {portion}",
+            title="Trim portion set",
+            timeout=2000,
+        )
 
 
 @lru_cache(maxsize=30)
@@ -1038,7 +1015,7 @@ async def get_correlation_plot(
 ):
     # need vars to be immutable (hashable) for caching based on arguments:
     vars = tuple(vars) if vars is not None else None
-    result = await asyncio.to_thread(
+    result = await to_thread(
         _get_correlation_plot,
         sort=sort,
         max_rows=max_rows,
@@ -1069,7 +1046,7 @@ def _get_uncertainty_plot(timestamp: str = "", cbar_colors: int = 8):
 
 @register
 async def get_uncertainty_plot(timestamp: str = ""):
-    result = await asyncio.to_thread(_get_uncertainty_plot, timestamp=timestamp, cbar_colors=8)
+    result = await to_thread(_get_uncertainty_plot, timestamp=timestamp, cbar_colors=8)
     return result
 
 
@@ -1425,10 +1402,7 @@ def params_to_list(params, lookup=None, pathlist=None, links=None) -> List[Param
             existing["paths"].append(".".join(pathlist))
         else:
             value_str = VALUE_FORMAT.format(nice(params.value))
-            if hasattr(params, "has_prior"):
-                has_prior = params.has_prior()
-            else:
-                has_prior = False
+            has_prior = getattr(params, "prior", None) is not None
 
             if hasattr(params, "slot"):
                 writable = type(params.slot) in [Variable, Parameter]
@@ -1445,7 +1419,6 @@ def params_to_list(params, lookup=None, pathlist=None, links=None) -> List[Param
                 "fixed": params.fixed,
             }
             if has_prior:
-                assert params.prior is not None
                 lo, hi = params.prior.limits
                 new_item["value01"] = params.prior.get01(float(params.value))
                 new_item["min_str"] = VALUE_FORMAT.format(nice(lo))

@@ -16,6 +16,7 @@ dependencies = [
     'python-socketio',
     'plotly',
     'mpld3',
+    'msgpack',
     'graphlib_backport; python_version < "3.9"',
 ]
 classifiers = [

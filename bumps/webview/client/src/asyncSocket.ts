@@ -1,4 +1,5 @@
 import { Socket } from "socket.io-client";
+import { decode } from "@msgpack/msgpack";
 
 declare module "socket.io-client" {
   //
@@ -14,6 +15,12 @@ Socket.prototype.asyncEmit = async function asyncEmit(ev: string, ...args: any[]
     // get result of plain emit:
     this.emit(ev, ...args, resolve);
   }).then(async (result) => {
+    // if the result is a buffer, decode it
+    if (result instanceof ArrayBuffer) {
+      result = decode(new Uint8Array(result));
+    } else if (result instanceof Uint8Array) {
+      result = decode(result);
+    }
     // execute (possibly async) callback and then return promise of result
     if (callback !== null) {
       await callback(result);
