@@ -169,7 +169,7 @@ class MPMapper(BaseMapper):
         # Increment the problem number and store the problem in the namespace.
         # The store action uses pickle to transfer python objects to the
         # manager process. Since this may fail for lambdas and for functions
-        # defined within the model file, instead use dill (if available)
+        # defined within the model file, instead use cloudpickle
         # to pickle the problem before storing.
         MPMapper.problem_id += 1
         MPMapper.pickled_problem = dumps(problem)
