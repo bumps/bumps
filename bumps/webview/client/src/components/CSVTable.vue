@@ -7,25 +7,12 @@ export type TableData = {
   rows: string[][];
 };
 
-const hidden_download = ref<HTMLAnchorElement>();
-
 const props = defineProps<{ tableData: TableData }>();
 
-async function download_csv() {
-  if (props.tableData.raw) {
-    const a = hidden_download.value as HTMLAnchorElement;
-    a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(props.tableData.raw);
-    a.click();
-  }
-}
 </script>
 
 <template>
   <div ref="table_div" class="flex-grow-0">
-    <div>
-      <button class="btn btn-primary btn-sm" @click="download_csv">Download CSV</button>
-      <a ref="hidden_download" class="hidden" download="table.csv" type="text/csv">Download CSV</a>
-    </div>
     <table class="table">
       <thead class="border-bottom py-1 sticky-top text-white bg-secondary">
         <tr>
