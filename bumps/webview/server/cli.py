@@ -42,6 +42,7 @@ import signal
 import sys
 import logging
 from dataclasses import field
+from hashlib import file_digest
 # from textwrap import dedent
 
 from bumps.fitters import FIT_AVAILABLE_IDS
@@ -78,6 +79,7 @@ class BumpsOptions:
     no_auto_history: bool = False
     path: Optional[str] = None
     use_persistent_path: bool = False
+    reload_export: Optional[str] = None
     pars: Optional[str] = None
 
     # Simulation controls.
@@ -316,6 +318,11 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         action="store_true",
         help="save most recently used path to disk for persistence between sessions [webview only]",
     )
+    session.add_argument(
+        "--reload-export",
+        type=str,
+        help="reload a bumps 0.x store directory as if it were a session file",
+    )
 
     # Simulation controls.
     sim = parser.add_argument_group("Simulation")
@@ -537,10 +544,26 @@ def interpret_fit_options(options: BumpsOptions):
     api.state.shared.fitter_settings[fitter_id]["settings"].update(fitopts)
     api.state.parallel = options.parallel
 
+    if options.reload_export:
+
+        async def load_export_to_state(App=None):
+            problem, fit_state = reload_export(
+                options.reload_export, model_file=options.filename, model_options=options.args
+            )
+            path = Path(problem.path)
+            await api.set_problem(problem, path.parent, path.name)
+            if fit_state is not None:
+                quantiles = build_convergence_from_fit_state(fit_state)
+                api.state.set_fit_state(fit_state, "dream")
+                api.state.set_convergence(quantiles)
+            api.state.autosave()
+
+        on_startup.append(load_export_to_state)
+
     # on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
     # resume only works when you have an identical problem, so we don't load from file
     # if you are resuming the fit.
-    if options.filename is not None and not options.resume:
+    elif options.filename is not None and not options.resume:
         filepath = Path(options.filename).absolute()
         model_pathlist = list(filepath.parent.parts)
         model_filename = filepath.name
@@ -668,6 +691,100 @@ def interpret_fit_options(options: BumpsOptions):
     #     ...
 
     return on_startup, on_complete
+
+
+def reload_export(export_path, model_file=None, model_options=None):
+    """
+    Reload a bumps <= 0.8 export directory.
+
+    *path* is the path to the directory, or to a <model>.par file within that
+    directory. Use the <model>.par file if you have multiple models exported to
+    the same path.
+
+    If *modelfile* is provided then use it, otherwise use <model>.py in the
+    current directory. That means you can change to the directory containing
+    your model then run bumps with --reload-export=path without having to list
+    <model>.py on the command line. This is handy if you have several variations
+    saved to different filenames stored along with your data.
+
+    sys.argv is set to *model_options* before loading the model.
+    """
+    from bumps.cli import load_model, load_best
+    from bumps.dream.state import load_state
+
+    # Find the .par file in the export directory
+    export_path = Path(export_path)
+    if export_path.is_file():
+        parfile = export_path
+        if parfile.suffix != ".par":
+            raise ValueError(f"Reload export needs path or path/model.par, not {export_path}")
+        export_path = export_path.parent
+    else:
+        pars_glob = list(export_path.glob("*.par"))
+        if len(pars_glob) == 0:
+            raise ValueError(f"Reload export {export_path}/*.par does not exist")
+        if len(pars_glob) > 1:
+            raise ValueError(f"More than one .par file. Use {export_path}/model.par in reload export.")
+        parfile = pars_glob[0]
+
+    # If modelfile is not given assume it is model.py in the current directory
+    if model_file is None:
+        model_file = parfile.stem + ".py"
+
+    # Check that the model file hash has not changed
+    model_file = Path(model_file)
+    saved_model = export_path / model_file.name
+    if not saved_model.exists():
+        raise ValueError(f"Model '{model_file.name}' does not exist in '{export_path}'")
+    if not model_file.exists():
+        raise ValueError(f"Model '{model_file}' does not exist.")
+    if filehash(saved_model) != filehash(model_file):
+        raise ValueError(f"Model file has been modified. Copy {saved_model} into {model_file.parent}")
+
+    # Load the model file
+    problem = load_model(model_file, model_options=model_options)
+    load_best(problem, parfile)
+
+    try:
+        # Reload the fit state if it exists
+        fit_state = load_state(str(parfile.parent / parfile.stem))
+        fit_state.mark_outliers()
+        fit_state.labels = problem.labels()
+    except Exception as exc:
+        # no fit state, but that's okay
+        logging.warning(f"Could not load DREAM state: {exc}")
+        fit_state = None
+
+    return problem, fit_state
+
+
+def filehash(filename):
+    with open(filename, "rb") as fd:
+        return file_digest(fd, "md5").hexdigest()
+
+
+def build_convergence_from_fit_state(fit_state):
+    """
+    Build a pseudo-convergence array from a dream state object.
+
+    "pseudo" because it doesn't include burn or thinning.
+
+    Also, the best value seen during burn may be lower than the best value seen
+    at the start of the buffer, our estimate of the best so far is an over
+    estimate. It will look like the best is improving even though it is not.
+    This is better than assuming the best occurred before the buffer started.
+    """
+    import numpy as np
+
+    if fit_state is None:
+        return []
+
+    draws, point, logp = fit_state.chains()
+    p = np.sort(abs(logp), axis=1)
+    best = np.minimum.accumulate(p[:, 0])
+    QI, Qmid = int(0.2 * logp.shape[1]), int(0.5 * logp.shape[1])
+    quantiles = np.vstack((best, p[:, 0], p[:, QI], p[:, Qmid], p[:, -(QI + 1)], p[:, -1]))
+    return quantiles.T
 
 
 async def _run_operations(on_startup, on_complete):
