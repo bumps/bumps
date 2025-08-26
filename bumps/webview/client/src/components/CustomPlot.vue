@@ -89,18 +89,18 @@ async function fetch_and_draw() {
 
 <template>
   <div class="container d-flex flex-column flex-grow-1">
-    <div class="row m-2">
-      <div class="col-auto">
-        <label for="plot_select">Select plot: </label>
-        <select id="plot_select" v-model="current_plot_index" @change="draw_requested = true">
+    <div class="row g-3 align-items-center">
+      <div class="col-md-10 d-flex align-items-center">
+        <label for="plot_select" class="me-2 text-nowrap">Select plot: </label>
+        <select id="plot_select" v-model="current_plot_index" @change="draw_requested = true" class="form-select flex-grow-1">
           <option v-for="(plot_info, index) in plot_infos" :key="index" :value="index">
             {{ plot_info.model_index }}: {{ plot_info.title ?? "" }}
           </option>
         </select>
       </div>
-      <div class="col align-right justify-content-md-right">
-          <button v-if="export_data !== null" class="btn btn-primary btn-sm" @click="export_clicked">Export Data</button>
-          <a ref="hidden_download" class="hidden" download="exported_data.csv" type="text/csv">Export Data</a>
+      <div class="col-md-2 d-flex justify-content-end align-items-center">
+        <button v-if="export_data !== null" class="btn btn-primary btn-sm" @click="export_clicked">Export Data</button>
+        <a ref="hidden_download" class="hidden" download="exported_data.csv" type="text/csv">Export Data</a>
       </div>
     </div>
     <div v-if="figtype === 'error'" ref="error_div" class="flex-grow-0">
@@ -111,7 +111,8 @@ async function fetch_and_draw() {
     <div v-else-if="figtype === 'table'" class="flex-grow-0">
       <CSVTable :table-data="tableData"></CSVTable>
     </div>
-    <div v-else :id="plot_div_id" ref="plot_div" class="flex-grow-1"></div>
+    <div v-else :id="plot_div_id" ref="plot_div" class="flex-grow-1 position-relative">
+    </div>
   </div>
 </template>
 

@@ -105,26 +105,27 @@ async function fetch_and_draw(latest_timestamp?: string) {
 
 <template>
   <div class="container d-flex flex-column flex-grow-1">
-    <div class="row g-3">
-      <div class="col-md-8">
-        <label for="plot_select">Select plot: </label>
-        <select id="plot_select" v-model="current_plot_index" @change="draw_requested = true">
+    <div class="row g-3 align-items-center">
+      <div class="col-md-7 d-flex align-items-center">
+        <label for="plot_select" class="me-2 text-nowrap">Select plot: </label>
+        <select id="plot_select" v-model="current_plot_index" @change="draw_requested = true" class="form-select flex-grow-1">
           <option v-for="(plot_info, index) in plot_infos" :key="index" :value="index">
             {{ plot_info.model_index }}: {{ plot_info.title ?? "" }}
           </option>
         </select>
       </div>
-      <div class="col-md-2 align-left">
-        <label for="n_samples" title="Number of samples to draw from the uncertainty population"
+      <div class="col-md-3 d-flex align-items-center">
+        <label for="n_samples" title="Number of samples to draw from the uncertainty population" class="me-2 form-label text-nowrap"
           >Num. samples:</label
         >
-        <input id="n_samples" v-model="n_samples" type="number" @change="draw_requested = true" />
+        <input id="n_samples" v-model="n_samples" type="number" @change="draw_requested = true" class="form-control w-auto flex-grow-1" />
       </div>
-      <div class="col-md-2 align-right">
+      <div class="col-md-2 d-flex justify-content-end align-items-center">
           <button v-if="export_data !== null" class="btn btn-primary btn-sm" @click="export_clicked">Export Data</button>
           <a ref="hidden_download" class="hidden" download="exported_uncertainty_data.csv" type="text/csv">Export Data</a>
       </div>
     </div>
+    <!-- Rest of the template remains the same -->
     <div v-if="figtype === 'error'" ref="error_div" class="flex-grow-0">
       <div style="color: red; font-size: larger; font-weight: bold">Plotting error:</div>
       <div v-html="error_text"></div>
@@ -143,8 +144,12 @@ async function fetch_and_draw(latest_timestamp?: string) {
     </div>
   </div>
 </template>
-
 <style scoped>
+
+#n_samples {
+  min-width: 5em;
+}
+
 svg {
   width: 100%;
 }
