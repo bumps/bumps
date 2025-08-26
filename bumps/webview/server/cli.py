@@ -75,7 +75,7 @@ class BumpsOptions:
     store: Optional[str] = None
     read_store: Optional[str] = None
     write_store: Optional[str] = None
-    serializer: SERIALIZERS = "dill"
+    serializer: SERIALIZERS = "dataclass"
     no_auto_history: bool = False
     path: Optional[str] = None
     use_persistent_path: bool = False
@@ -299,7 +299,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         "--serializer",
         default=BumpsOptions.serializer,
         type=str,
-        choices=["pickle", "dill", "dataclass"],
+        choices=["pickle", "cloudpickle", "dill", "dataclass"],
         help="strategy for serializing problem, will use value from store if it has already been defined",
     )
     session.add_argument(

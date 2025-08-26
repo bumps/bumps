@@ -216,7 +216,7 @@ def plot2d(fn, args=None, range=(-10, 10)):
 
     All arguments except the meshed arguments are held fixed.
     """
-    fnargs, _, _, _ = inspect.getargspec(fn)
+    fnargs = inspect.getfullargspec(fn).args
     if len(fnargs) < 2:
         args = fnargs[:1]
 
@@ -279,7 +279,7 @@ defaults to 2.  Available models are:
 
 try:
     nllf = select_function(sys.argv[1:], vector=False)
-except:
+except Exception:
     print(USAGE, file=sys.stderr)
     sys.exit(1)
 
