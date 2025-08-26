@@ -40,6 +40,8 @@ def process_custom_plot(plot_item: CustomWebviewPlot) -> CustomWebviewPlot:
         figdict = mpld3.fig_to_dict(plot_data)
     elif figtype == "table":
         figdict = csv2dict(plot_data)
+        if exportdata is None:
+            exportdata = figdict["raw"]
     elif figtype == "error":
         figdict = plot_data
     else:
