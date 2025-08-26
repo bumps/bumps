@@ -29,6 +29,7 @@ import h5py
 import numpy as np
 from numpy.typing import NDArray
 import dill
+import cloudpickle
 
 from bumps import __version__
 from bumps.serialize import serialize, deserialize
@@ -53,9 +54,9 @@ ARRAY_COMPRESSION = 5
 COMPRESSION = 9
 # MAX_PROBLEM_SIZE = 100 * 1024 * 1024  # 100 MBi problem max size [unused]
 
-SERIALIZERS = Literal["dataclass", "pickle", "dill"]
-SERIALIZER_EXTENSIONS = {"dataclass": "json", "pickle": "pickle", "dill": "pickle"}
-DEFAULT_SERIALIZER: SERIALIZERS = "dill"
+SERIALIZERS = Literal["dataclass", "pickle", "cloudpickle", "dill"]
+SERIALIZER_EXTENSIONS = {"dataclass": "json", "cloudpickle": "cloudpickle", "pickle": "pickle", "dill": "dill"}
+DEFAULT_SERIALIZER: SERIALIZERS = "dataclass"
 
 
 @dataclass(frozen=True)
@@ -76,7 +77,9 @@ def serialize_problem(problem: "bumps.fitproblem.FitProblem", method: SERIALIZER
     elif method == "pickle":
         return serialize_bytes(pickle.dumps(problem))
     elif method == "dill":
-        return serialize_bytes(dill.dumps(problem, recurse=True))
+        return serialize_bytes(dill.dumps(problem))
+    elif method == "cloudpickle":
+        return serialize_bytes(cloudpickle.dumps(problem))
     else:
         raise ValueError(f"Unknown serialization method: {method}")
 
@@ -89,6 +92,8 @@ def deserialize_problem(serialized: str, method: SERIALIZERS) -> "bumps.fitprobl
         return pickle.loads(deserialize_bytes(serialized))
     elif method == "dill":
         return dill.loads(deserialize_bytes(serialized))
+    elif method == "cloudpickle":
+        return cloudpickle.loads(deserialize_bytes(serialized))
     else:
         raise ValueError(f"Unknown serialization method: {method}")
 
@@ -99,7 +104,9 @@ def serialize_problem_bytes(problem: "bumps.fitproblem.FitProblem", method: SERI
     elif method == "pickle":
         return pickle.dumps(problem)
     elif method == "dill":
-        return dill.dumps(problem, recurse=True)
+        return dill.dumps(problem)
+    elif method == "cloudpickle":
+        return cloudpickle.dumps(problem)
     else:
         raise ValueError(f"Unknown serialization method: {method}")
 
@@ -112,6 +119,8 @@ def deserialize_problem_bytes(serialized: bytes, method: SERIALIZERS) -> "bumps.
         return pickle.loads(serialized)
     elif method == "dill":
         return dill.loads(serialized)
+    elif method == "cloudpickle":
+        return cloudpickle.loads(serialized)
     else:
         raise ValueError(f"Unknown serialization method: {method}")
 
@@ -510,7 +519,10 @@ class State:
             return
         item = HistoryItem()
         item.problem = deepcopy(self.problem)
-        item.fitting = deepcopy(self.fitting)
+        # Creates a reference to the current fit_state, not a copy
+        # When a new fit is started, self.fitting is reset to a new FitResult
+        # but the handle to the current fit_state is kept in the history item.
+        item.fitting = self.fitting
         item.timestamp = str(datetime.now())
         item.label = label
         item.chisq_str = item.problem.fitProblem.chisq_str()
