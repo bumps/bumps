@@ -36,9 +36,9 @@ import sys
 import os
 import re
 import warnings
-import traceback
-
 import shutil
+import traceback
+from pathlib import Path
 
 import numpy as np
 # np.seterr(all="raise")
@@ -83,17 +83,14 @@ def load_model(path, model_options=None):
         problem = plugin.load_model(filename)
         if problem is None:
             # print "loading",filename,"from",directory
-            # TODO: eliminate pickle!!
+            # Note: old .pickle files were stored with dill. Very little chance
+            # they will reload in the newer version of python, but we can try.
             if filename.endswith("pickle"):
-                try:
-                    import dill as pickle
-                except ImportError:
-                    import pickle
-                # First see if it is a pickle
+                import dill
+
                 with open(filename, "rb") as fd:
-                    problem = pickle.load(fd)
+                    problem = dill.load(fd)
             else:
-                # Then see if it is a python model script
                 problem = load_problem(filename, options=model_options)
 
     # Guard against the user changing parameters after defining the problem.
@@ -164,10 +161,11 @@ def load_best(problem, path):
     """
     # WARNING: Labels are not unique! Need to track multiple instances of
     # the same label.
-    if not os.path.isfile(path):
-        path = os.path.join(path, problem.name + ".par")
-    if not os.path.isfile(path):
-        raise ValueError("Parameter file %s does not exist." % path)
+    path = Path(path)
+    if not path.is_file():
+        path = path / (problem.name + ".par")
+    if not path.is_file():
+        raise ValueError("Parameter file {path} does not exist.")
     labels = problem.labels()
     targets = {label: [] for label in labels}
     with open(path, "rt") as fid:
@@ -304,13 +302,7 @@ def start_remote_fit(problem, options, queue, notify):
     Queue remote fit.
     """
     from jobqueue.client import connect
-
-    try:
-        from dill import dumps as dill_dumps
-
-        dumps = lambda obj: dill_dumps(obj, recurse=True)
-    except ImportError:
-        from pickle import dumps
+    from cloudpickle import dumps
 
     data = dict(package="bumps", version=__version__, problem=dumps(problem), options=dumps(options))
     request = dict(

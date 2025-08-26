@@ -328,6 +328,8 @@ def path_contains_saved_state(filename):
 
 
 def openmc(filename):
+    # If filename ends in .mc.gz, also check for a .mc file.
+    # If filename ends in .mc, also check for a .mc.gz file.
     if filename.endswith(".gz"):
         if os.path.exists(filename):
             # print("opening with gzip")
@@ -417,6 +419,14 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
     state._best_logp = point[bestidx, 0]
     state._best_x = point[bestidx, 1 : Nvar + 1 - derived_vars]
     state._best_gen = 0
+
+    # Clean up _thin dimensions.
+    # It seems that some 0.x versions of bumps are yielding thin draws one shorter
+    # than logp and points, so throw away the first logp and points.
+    if state._thin_draws.shape[0] == state._thin_logp.shape[0] - 1:
+        # print(f"shapes differ {state._gen_draws.shape=}, {state._thin_draws.shape=}, {state._thin_logp.shape=}")
+        state._thin_logp = state._thin_logp[1:]
+        state._thin_point = state._thin_point[1:]
 
     return state
 
@@ -849,13 +859,12 @@ class MCMCDraw(object):
         after drawing is complete, so that chains that did not converge are
         not included in the statistics.
 
-        *test* is 'IQR', 'Mahol' or 'none'.
+        *test* is 'IQR', 'mahal', 'grubbs', or 'none'.
 
         *portion* indicates what portion of the samples should be included
         in the outlier test.  If None, then the stored portion is used.
         """
         _, chains, logp = self.chains()
-
         if test == "none":
             self._good_chains = slice(None, None)
         else:
@@ -863,8 +872,7 @@ class MCMCDraw(object):
             portion = self.portion if portion is None else portion
             start = int(thin_saved_gens * (1 - portion))
             outliers = identify_outliers(test, logp[start:], chains[-1])
-            # print("outliers", outliers)
-            # print(logp.shape, chains.shape)
+            # print("outliers", outliers, logp.shape, chains.shape)
             if len(outliers) > 0:
                 self._good_chains = np.array([i for i in range(logp.shape[1]) if i not in outliers])
             else:

@@ -259,6 +259,14 @@ def start_from_cli(options: BumpsOptions):
 
     init_web_app()
     runsock = setup_app(options=options, sock=None)
+    if "JUPYTERHUB_SERVICE_PREFIX" in os.environ:
+        print(f"""
+\033[91mYou appear to be running bumps webview from within a jupyterhub terminal.
+Open the following in a new tab after replacing <HOST> with the hostname in the browser:
+
+    https://<HOST>{get_server_url()}
+
+\033[0m""")
     web.run_app(app, sock=runsock)
 
 

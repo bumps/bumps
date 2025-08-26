@@ -600,12 +600,9 @@ class AppPanel(wx.Panel):
         signal.update_parameters(model=self.model)
 
     def save_model(self, path):
-        try:
-            import dill
+        # Let old GUI and command line continue to use dill for the pickler
+        from dill import dump
 
-            dump = lambda obj, fid: dill.dump(obj, fid, recurse=True)
-        except ImportError:
-            from pickle import dump
         try:
             if hasattr(plugin, "save_json"):
                 plugin.save_json(self.model, path)
