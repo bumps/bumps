@@ -75,12 +75,12 @@ To run the webview interface with your problem showing in a browser window use::
 
 To run in batch mode with no interactive interface use::
 
-    bumps -b curve.py --store=session.hdf
+    bumps -b curve.py --session=fit.h5
 
 This runs a complete fit, appending the results to the session file T1.hdf. To later
 view the fit results use::
 
-    bumps --store=session.hdf
+    bumps --session=fit.h5
 
 There are many command line options for controlling the fit. For a complete list use::
 

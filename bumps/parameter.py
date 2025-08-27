@@ -64,17 +64,6 @@ def to_dict(p):
     elif isinstance(p, np.ndarray):
         # TODO: what about inf, nan and object arrays?
         return p.tolist()
-    elif False and callable(p):
-        # TODO: consider including functions and arbitrary values
-        import base64
-        import dill
-
-        encoding = base64.encodebytes(dill.dumps(p)).decode("ascii")
-        return {"type": "dill", "value": str(p), "encoding": encoding}
-        ## To recovert the function
-        # if allow_unsafe_code:
-        #     encoding = item['encoding']
-        #     p = dill.loads(base64.decodebytes(encoding).encode('ascii'))
     else:
         # print(f"converting type {type(p)} to str")
         return str(p)

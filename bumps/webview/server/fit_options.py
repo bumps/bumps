@@ -141,10 +141,12 @@ Setting(
     list("none iqr grubbs mahal".split()),
     """\
     Remove outlier Markov chains every n steps using the selected algorithm.
-        none:   no outlier removal
+        none:   no outlier removal during fit
         iqr:    use interquartile range on likelihood
         grubbs: use t-test on likelihood
-        mahal:  use distance from parameter values on the best chain""",
+        mahal:  use distance from parameter values on the best chain
+    At the end of the fit the iqr algorithm is used to remove any remaining
+    outlier chains from the statistical results and plots.""",
 )
 
 # Post processing
