@@ -177,6 +177,12 @@ class Calculation(ValueProtocol):  # the name Function is taken (though deprecat
 
 
 class SupportsPrior:
+    """
+    Parameter mixin allowing the value to be restricted to a prior probability.
+
+    Every prior has hard limits and bounds.
+    """
+
     prior: Optional[BoundsType]
     limits: Tuple[float, float]
     distribution: DistributionType
@@ -198,6 +204,10 @@ class SupportsPrior:
         bounds: Optional[BoundsType] = None,
         limits: Optional[Tuple[float, float]] = None,
     ):
+        # TODO: why are bounds and limits not being updated in the underlying object?
+        # Note: limits should come from the model (i.e., the parameter object)
+        # and bounds should come from the user (i.e., the slot value)
+
         # use self values if they are found:
         if distribution is None and self.distribution is not None:
             distribution = self.distribution
@@ -213,7 +223,7 @@ class SupportsPrior:
             # get the intersection of the limits here.
             limits = (np.clip(limits[0], *bounds), np.clip(limits[1], *bounds))
         if isinstance(distribution, Normal):
-            if limits == (-inf, inf):
+            if limits != (-inf, inf):
                 prior = mbounds.BoundedNormal(mean=distribution.mean, std=distribution.std, limits=limits)
             else:
                 prior = mbounds.Normal(mean=distribution.mean, std=distribution.std)
