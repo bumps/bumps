@@ -4,6 +4,8 @@ export type TableData = {
   header: string[];
   rows: string[][];
 };
+
+const props = defineProps<{ tableData: TableData }>();
 </script>
 
 <template>
