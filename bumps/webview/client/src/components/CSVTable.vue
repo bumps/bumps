@@ -1,14 +1,9 @@
 <script setup lang="ts">
-import { ref } from "vue";
-
 export type TableData = {
   raw: string;
   header: string[];
   rows: string[][];
 };
-
-const props = defineProps<{ tableData: TableData }>();
-
 </script>
 
 <template>
