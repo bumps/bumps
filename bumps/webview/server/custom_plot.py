@@ -25,11 +25,12 @@ def dict2csv(csvdict: dict) -> str:
 class CustomWebviewPlot(TypedDict):
     fig_type: Literal["plotly", "matplotlib", "table", "error"] = "plotly"
     plotdata: Any
-
+    exportdata: dict | str = None
 
 def process_custom_plot(plot_item: CustomWebviewPlot) -> CustomWebviewPlot:
     figtype = plot_item["fig_type"]
     plot_data = plot_item["plotdata"]
+    exportdata = plot_item.get("exportdata", None)
 
     if figtype == "plotly":
         figdict = plot_data.to_dict()
@@ -39,6 +40,8 @@ def process_custom_plot(plot_item: CustomWebviewPlot) -> CustomWebviewPlot:
         figdict = mpld3.fig_to_dict(plot_data)
     elif figtype == "table":
         figdict = csv2dict(plot_data)
+        if exportdata is None:
+            exportdata = figdict["raw"]
     elif figtype == "error":
         figdict = plot_data
     else:
@@ -46,4 +49,4 @@ def process_custom_plot(plot_item: CustomWebviewPlot) -> CustomWebviewPlot:
 
     del plot_data  # is this necessary? Does plot_item['plot_data'] also need to be deleted?
 
-    return CustomWebviewPlot(fig_type=figtype, plotdata=figdict)
+    return CustomWebviewPlot(fig_type=figtype, plotdata=figdict, exportdata=exportdata)

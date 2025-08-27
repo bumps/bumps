@@ -896,7 +896,7 @@ async def create_custom_plot(model_index: int, plot_title: str, n_samples: int =
             else:
                 plot_item: CustomWebviewPlot = await to_thread(plot_function, model, fitProblem)
         except Exception:
-            plot_item = CustomWebviewPlot(fig_type="error", plotdata=traceback.format_exc())
+            plot_item = CustomWebviewPlot(fig_type="error", plotdata=traceback.format_exc(), exportdata=None)
 
         return process_custom_plot(plot_item)
 
