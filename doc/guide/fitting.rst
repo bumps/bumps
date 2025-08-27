@@ -36,20 +36,20 @@ chance to  converge.  Restarting a number of times ``--starts=10`` gives
 a reasonably thorough search of the fit space.  Once the fit converges,
 additional starts are very quick.  From the graphical user interface, using
 ``--starts=1`` and clicking the fit button to improve the fit as needed works
-pretty well. From the command line interface, the command line will be
-something like::
+pretty well. In batch mode the command line will be something like::
 
-    bumps --fit=amoeba --steps=1000 --starts=20 --parallel model.py --store=T1
+    bumps --fit=amoeba --steps=1000 --starts=10 --parallel model.py --session=fit.h5 --export=T1
 
-Here, the results are kept in a directory ``--store=T1`` relative to the current
-directory, with files containing the current model in *model.py*, the fit
-result in *model.par* and a plots in *model-\*.png*.  The parallel option
+Here, the results will be stored in the HDF5 file ``fit.h5``. The ``T1``
+directory will contain the current model in *model.py*, the best fit
+result in *model.par* and plots in *model-\*.png*.  The parallel option
 indicates that multiple cores should be used on the cpu when running the fit.
 
 The fit may be able to be improved by using the current best fit value as
-the starting point for a new fit::
+the starting point for a new fit. The results will be appended to the session
+file. Note that the model.py file isn't required on reload::
 
-    bumps --fit=amoeba --steps=1000 --starts=20 --parallel model.py --store=T1 --pars=T1/model.par
+    bumps --fit=amoeba --steps=1000 --starts=20 --parallel --session=fit.h5
 
 If the fit is well behaved, and a numerical derivative exists, then
 switching to :ref:`fit-newton` is useful, in that it will very rapidly
@@ -57,7 +57,7 @@ converge to a nearby local minimum.
 
 ::
 
-    bumps --fit=newton model.py --pars=T1/model.par --store=T1
+    bumps --fit=newton model.py --pars=T1/model.par --session=fit.h5
 
 :ref:`fit-de` is an alternative to :ref:`fit-amoeba`, perhaps a little
 more likely to find the global minimum but somewhat slower.  This is a
@@ -68,14 +68,10 @@ of parameters in the model, so for example an 8 parameter model with
 DE's default population ``--pop=10`` would create 80 points each generation.
 This algorithms can be called from the command line as follows::
 
-    bumps --fit=de --steps=3000 --parallel model.py --store=T1
+    bumps --fit=de --steps=3000 --parallel model.py --session=fit.h5
 
 Some fitters save the complete state of the fitter on termination so that
-the fit can be resumed.  Use ``--resume=path/to/previous/store`` to resume.
-The resumed fit also needs a ``--store=path/to/store``, which could be the
-same as the resume path if you want to update it, or it could be a completely
-new path.
-
+the fit can be resumed.  Use ``--resume`` to resume from DREAM or DE.
 
 See :ref:`optimizer-guide` for a description of the available optimizers, and
 :ref:`option-guide` for a description of all the bumps options.
@@ -166,7 +162,7 @@ points can be used to estimate uncertainty on parameters.
 
 A common command line for running DREAM is::
 
-   bumps --fit=dream --burn=1000 --samples=1e5 --init=cov --parallel --pars=T1/model.par model.py --store=T2
+   bumps --fit=dream --burn=1000 --samples=1e5 --init=cov --parallel model.py --session=fit.h5
 
 
 Bayesian uncertainty analysis is described in the GUM Supplement 1,[8]
@@ -275,10 +271,7 @@ Using the posterior distribution
 ================================
 
 You can load the DREAM output population an perform uncertainty analysis
-operations after the fact.  To run an interactive bumps session
-use the following::
-
-    bumps -i
+operations after the fact.
 
 First you need to import some functions::
 
@@ -290,10 +283,9 @@ First you need to import some functions::
     from bumps.dream.stats import var_stats, format_vars
     from bumps.dream.varplot import plot_vars
 
-
 Then you need to reload the MCMC chains::
 
-    store = "/tmp/t1"   # path to the --store=/tmp/t1 directory
+    store = "/tmp/t1"   # path to the --export=/tmp/t1 directory
     modelname = "model"  # model file name without .py extension
 
     # Reload the MCMC data
@@ -446,7 +438,7 @@ The model file (call it *plot.py*) will start with the following::
     print("chisq", chisq)
 
 Assuming your model script is in model.py and you have run a fit with
-``--store=X5``, you can run this file using::
+``--export=X5``, you can run this file using::
 
     $ bumps plot.py model.py X5
 
@@ -560,7 +552,7 @@ on the fitting problem.
 Parallel tempering is run like dream, but with optional temperature
 controls::
 
-   bumps --fit=dream --burn=1000 --samples=1e5 --init=cov --parallel --pars=T1/model.par model.py --store=T2
+   bumps --fit=dream --burn=1000 --samples=1e5 --init=cov --parallel --pars=T1/model.par model.py --session=fit.h5
 
 Parallel tempering does not yet generate the uncertainty plots provided
 by DREAM.  The state is retained along the temperature for each point,
@@ -588,8 +580,8 @@ by creating a batch file (e.g., run.bat) with one line per model.  Append
 the parameter --batch to the end of the command lines so the program
 doesn't stop to show interactive graphs::
 
-    bumps model.py ... --parallel --batch
+    bumps model.py ... --parallel --batch --session=fit.h5
 
 You can view the fitted results in the GUI the next morning using::
 
-    bumps --edit model.py --pars=T1/model.par
+    bumps fit.h5
