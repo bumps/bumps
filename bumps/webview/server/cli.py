@@ -42,7 +42,7 @@ import signal
 import sys
 import logging
 from dataclasses import field
-from hashlib import file_digest
+import hashlib
 # from textwrap import dedent
 
 from bumps.fitters import FIT_AVAILABLE_IDS
@@ -760,7 +760,13 @@ def reload_export(export_path, model_file=None, model_options=None):
 
 def filehash(filename):
     with open(filename, "rb") as fd:
-        return file_digest(fd, "md5").hexdigest()
+        # TODO: simplify to this when python min version is 3.11
+        # return hashlib.file_digest(fd, "md5").hexdigest()
+        chunk_size = 2**16
+        hash = hashlib.md5()
+        while chunk := fd.read(chunk_size):
+            hash.update(chunk)
+        return hash.hexdigest()
 
 
 def build_convergence_from_fit_state(fit_state):
