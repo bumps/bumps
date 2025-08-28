@@ -1165,6 +1165,7 @@ async def set_parameter(
         warnings.warn(f"Attempting to update parameter that doesn't exist: {parameter_id}")
         return
 
+    # TODO: should never happen
     if parameter.prior is None:
         warnings.warn(f"Attempting to set prior properties on parameter without priors: {parameter}")
         return
@@ -1181,12 +1182,12 @@ async def set_parameter(
         lo = float(value)
         hi = parameter.prior.limits[1]
         parameter.range(lo, hi)
-        parameter.add_prior()
+        parameter.reset_prior()
     elif property == "max":
         lo = parameter.prior.limits[0]
         hi = float(value)
         parameter.range(lo, hi)
-        parameter.add_prior()
+        parameter.reset_prior()
     elif property == "fixed":
         if parameter.fittable:
             parameter.fixed = bool(value)
@@ -1403,7 +1404,6 @@ def params_to_list(params, lookup=None, pathlist=None, links=None) -> List[Param
             existing["paths"].append(".".join(pathlist))
         else:
             value_str = VALUE_FORMAT.format(nice(params.value))
-            has_prior = getattr(params, "prior", None) is not None
 
             if hasattr(params, "slot"):
                 writable = type(params.slot) in [Variable, Parameter]
@@ -1419,7 +1419,7 @@ def params_to_list(params, lookup=None, pathlist=None, links=None) -> List[Param
                 "fittable": params.fittable,
                 "fixed": params.fixed,
             }
-            if has_prior:
+            if hasattr(params, "prior"):
                 lo, hi = params.prior.limits
                 new_item["value01"] = params.prior.get01(float(params.value))
                 new_item["min_str"] = VALUE_FORMAT.format(nice(lo))
