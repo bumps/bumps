@@ -59,7 +59,7 @@ from numpy import inf, isnan, nan
 from scipy.stats import chi2
 
 from . import parameter, util
-from .parameter import to_dict, Parameter, Variable, tag_all
+from .parameter import to_dict, Parameter, Variable, tag_all, priors
 from .formatnum import format_uncertainty
 
 
@@ -250,6 +250,7 @@ class FitProblem(Generic[FitnessType]):
 
     _constraints_function: util.Callable[..., float]
     _models: util.List[FitnessType]
+    _priors: util.List[Parameter]
     _parameters: util.List[Parameter]
     _parameters_by_id: util.Dict[str, Parameter]
     _dof: float = np.nan  # not a schema field, and is not used in __init__
@@ -439,6 +440,10 @@ class FitProblem(Generic[FitnessType]):
         values in the unfeasible region.
         """
         if pvec is not None:
+            # Note that valid() only checks that the fit parameters are in the bounding box.
+            # It doesn't check that all the constraints are satisfied. To do that we would
+            # have to use setp on the vector then loop over p._priors, resetting to the
+            # original pvec if the new pvec is invalid.
             if self.valid(pvec):
                 self.setp(pvec)
             else:
@@ -460,20 +465,19 @@ class FitProblem(Generic[FitnessType]):
         """
         failing = []
         nllf = 0.0
-        for p in self._bounded:
+        for p in self._priors:
             p_nllf = p.nllf()
             nllf += p_nllf
             if p_nllf == np.inf:
                 failing.append(str(p))
-        # print "; ".join("%s %g %g"%(p,p.value,p.nllf()) for p in
-        # self._bounded)
+        # print("; ".join(f"{p}({p.value})={p.nllf()}" for p in self._priors))
         return nllf, failing
 
     def parameter_residuals(self):
         """
         Returns negative log likelihood of seeing parameters p.
         """
-        return [p.residual() for p in self._bounded]
+        return [p.residual() for p in self._priors]
 
     def chisq(self, nllf: Union[float, util.NDArray, None] = None, norm: bool = True, compact: bool = True):
         """
@@ -538,7 +542,7 @@ class FitProblem(Generic[FitnessType]):
             if isnan(pparameter):
                 # TODO: make sure errors get back to the user
                 info = ["Parameter nllf is wrong"]
-                info += ["%s %g" % (p, p.nllf()) for p in self._bounded]
+                info += ["%s %g" % (p, p.nllf()) for p in self._priors]
                 logging.error("\n  ".join(info))
             pconstraints, failing_constraints = self.constraints_nllf()
             failing_constraints += failing_parameter_constraints
@@ -594,44 +598,31 @@ class FitProblem(Generic[FitnessType]):
         """
         # print("In model reset with", self.model_parameters())
         all_parameters = parameter.unique(self.model_parameters())
-        # print "all_parameters",all_parameters
-        # for p in all_parameters:
-        #     if hasattr(p, 'reset_prior'):
-        #         p.reset_prior()  # no constraints
-        #     else:
-        #         raise ValueError(f"{p} does not have prior")
+
+        # Check priors
         broken = []
         for p in all_parameters:
-            # slot = p.slot
-            # value = p.value
+            if not hasattr(p, "reset_prior"):
+                continue
+            p.reset_prior()
+            limits = p.prior.limits
+            value = p.value
+            if (limits[0] > value) or (value > limits[1]):
+                broken.append(f"{p}={value} is outside {limits}")
+            elif not np.isfinite(p.prior.nllf(value)):
+                broken.append(f"{p}={value} is outside {p.prior}")
 
-            # TODO: this is a shim to accomodate Expression, Calculation etc. being
-            # put into attributes that have type "Parameter" (in user scripts)
-            # Do we cause those scripts to break instead?
-            # Or do we autoconvert to .equals()?
-            if hasattr(p, "add_prior"):
-                p.add_prior(p.distribution, bounds=p.bounds, limits=p.limits)
-
-            # TODO: currently this logic for showing breaking constraints to the user
-            # is in the chisq_str execution path instead of on model_reset - should it be here instead?
-
-            # While we are walking all parameters check which constraints aren't satisfied
-            # Build up a list of strings to help the user initialize the model correctly
-            if hasattr(p, "limits"):
-                value = p.value
-                if (p.limits[0] > value) or (value > p.limits[1]):
-                    broken.append(f"{p}={value} is outside {p.limits}")
-                elif not np.isfinite(p.prior.nllf(value)):
-                    broken.append(f"{p}={value} is outside {p.prior}")
-
+        # Check other constraints
         broken.extend([f"constraint {c} is unsatisfied" for c in self.constraints if float(c) == inf])
         if self._constraints_function() == inf:
             broken.append("user constraint function is unsatisfied")
         if len(broken) > 0:
             warnings.warn("Unsatisfied constraints: [%s]" % (",\n".join(broken)))
+
+        # TODO: return broken_constraints from reset() rather than setting state
         self.broken_constraints = broken
 
-        # TODO: shimmed to allow non-Parameter in Parameter attribute spots.
+        # Collect all fitting parameters
         pars = []
         pars_by_id = {}
         for p in all_parameters:
@@ -642,24 +633,22 @@ class FitProblem(Generic[FitnessType]):
                 pars.append(p)
         self._parameters = pars
         self._parameters_by_id = pars_by_id
-        # TODO: shimmed to allow non-Parameter in Parameter attribute spots.
-        self._bounded = [p for p in all_parameters if hasattr(p, "has_prior") and p.has_prior()]
+
+        # Collect all priors that need to be evaluated
+        self._priors = priors(all_parameters)
+
         # The degrees of freedom is the number of data points minus the number of fit
         # parameters. Gaussian priors on the parameters are treated as a simultaneous
         # fit to the data plus a fit of the parameter to its previously measured value.
         # That is, each prior adds a single data point to the fit without changing the
         # number of free parameters, thus increasing DOF by 1. Again, the target value
         # for a fit with no systematic error should be the number of degrees of freedom.
-        self._dof = self.model_points() + sum(p.prior.dof for p in self._bounded) - len(self._parameters)
+        # Uniform priors do not modify the degrees of freedom, not even soft-bounded uniform.
+        self._dof = self.model_points() + sum(p.prior.dof for p in self._priors) - len(self._parameters)
         if self.dof <= 0:
             warnings.warn(
                 f"Need more data points (currently: {self.model_points()}) than fitting parameters ({len(self._parameters)})"
             )
-        # self.constraints = pars.constraints()
-        # Find the constraints on variables and expressions that we need to compute
-        # parameter_constraints = [p.slot for p in all_parameters if isinstance(p.slot, Variable) and p.has_prior()]
-        # expression_constraints = [p.slot for p in all_parameters if isinstance(p.slot, Expression) and p.has_prior()]
-        # self._all_constraints = parameter_constraints + expression_constraints
 
     def model_points(self):
         """Return number of points in all models"""
@@ -864,7 +853,7 @@ def MultiFitProblem(*args, **kwargs) -> FitProblem:
     return FitProblem(*args, **kwargs)
 
 
-def test_weighting():
+def test_weighting_and_priors():
     class SimpleFitness(Fitness):
         def __init__(self, a=0.0, name="fit"):
             self.a = parameter.Parameter.default(a, name=name + " a")
@@ -876,17 +865,51 @@ def test_weighting():
             return 1
 
         def residuals(self):
-            y, dy = 0, 1  # fit to constant 0 +/- 1
+            y, dy = 0, 1  # fit 0 +/- 1 to a constant
             return np.array([(self.a.value - y) / dy])
 
         def nllf(self):
             return sum(r**2 for r in self.residuals()) / 2
 
     weights = 2, 3
-    models = [SimpleFitness(4.0), SimpleFitness(5.0)]
-    problem = FitProblem(models, weights=weights)
+    M0, M1 = SimpleFitness(4.0, name="M0"), SimpleFitness(5.0, name="M1")
+    problem = FitProblem((M0, M1), weights=weights)
 
     # Need to use problem.models to cycle through models in case FreeVariables is used in problem
     assert (problem.residuals() == np.hstack([w * M.residuals() for w, M in zip(weights, problem.models)])).all()
     assert problem.nllf() == sum(w**2 * M.nllf() for w, M in zip(weights, problem.models))
     assert problem.nllf() == sum(problem.residuals() ** 2) / 2
+
+    # Test priors: constraint on expression
+    M0.a.range(-10, 10)  # Set M0.a = 4 to be in bounds
+    # TODO: should setting equals() clear the constraints?
+    # If we set a constraint then assign an expression the constraint stays on
+    # the expression. The other order fails because the expression is considered
+    # "fixed" and can't accept constraints.
+    M1.a.range(0, 1)  # Set M1.a to be out of bounds
+    M1.a.equals(M0.a * 2)  # Set M1.a = 2*M0.a = 4*2 = 8
+    problem.model_reset()
+    # print(f"{problem._parameters=}, {problem._priors=} {problem._dof=}")
+    assert problem._parameters == [M0.a]  # only M0.a is fitted
+    assert problem._priors == [M0.a, M1.a]  # both M0.a and M1.a are bounded
+    assert problem._dof == 1
+    nllf, failing = problem.parameter_nllf()
+    assert np.isinf(nllf)
+    assert failing == [str(M1.a)]
+
+    M1.a.unlink()
+    M1.a.dev(mean=0, std=1)  # Set M1.a to be in bounds but with a cost
+    M1.a.equals(M0.a * 2)  # Set M1.a = 2*M0.a = 4*2 = 8
+    problem.model_reset()
+    # print(f"{problem._parameters=}, {problem._priors=} {problem._dof=}")
+    assert problem._parameters == [M0.a]  # only M0.a is fitted
+    assert problem._priors == [M0.a, M1.a]  # both M0.a and M1.a are bounded
+    # DOF is 2 because we have two data points plus one prior minus one fit parameter
+    assert problem._dof == 2
+    nllf, failing = problem.parameter_nllf()
+    assert nllf == 32  # (8 - 0)**2/(2 * 1)
+    assert failing == []
+
+
+if __name__ == "__main__":
+    test_weighting_and_priors()
