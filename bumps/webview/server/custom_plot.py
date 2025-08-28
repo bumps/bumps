@@ -1,6 +1,6 @@
 import io
 import csv
-from typing import Literal, TypedDict, Any
+from typing import Literal, TypedDict, Any, Optional
 
 
 def csv2dict(csvdata: str) -> dict:
@@ -25,7 +25,8 @@ def dict2csv(csvdict: dict) -> str:
 class CustomWebviewPlot(TypedDict):
     fig_type: Literal["plotly", "matplotlib", "table", "error"] = "plotly"
     plotdata: Any
-    exportdata: dict | str = None
+    exportdata: Optional[str] = None
+
 
 def process_custom_plot(plot_item: CustomWebviewPlot) -> CustomWebviewPlot:
     figtype = plot_item["fig_type"]
