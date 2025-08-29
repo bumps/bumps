@@ -75,7 +75,7 @@ def plot_all(state: MCMCDraw | Draw, portion: Optional[float] = None, figfile=No
         savefig(figfile + "-logp" + figext)
 
     # correlation plot
-    if draw.num_vars <= CORRPLOT_MAXVAR:
+    if draw.Nvar <= CORRPLOT_MAXVAR:
         figure()
         plot_corrmatrix(draw, nbins=nbins)
         if draw.title:

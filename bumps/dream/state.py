@@ -1540,6 +1540,9 @@ class Draw:
     of fitted parameters, but the derived and active parameter lists will
     adjust this.
 
+    *Nvar* is the number of dimensions per point in the draw after
+    including derived parameters and excluding nuisance parameters.
+
     *weights* are the weights associated with each point. Since the chains
     are run at a single temperature the weights will all be 1.
 
