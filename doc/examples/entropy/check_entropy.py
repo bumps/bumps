@@ -41,7 +41,7 @@ where dist is one of the distributions in scipy.stats.distributions and
 p1, p2, ... are the arguments for the distribution in the order that they
 appear. For example, for the normal distribution, x ~ N(3, 0.8), use:
 
-    bumps --fit=dream --entropy  --store=/tmp/T1 check_entropy.py norm 3 0.2
+    bumps --fit=dream --entropy --session=fit.h5 check_entropy.py --args norm 3 0.2
 """
 
 

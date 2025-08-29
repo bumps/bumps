@@ -8,7 +8,7 @@
 #
 # .. parsed-literal::
 #
-#    bumps peak.py N --entropy --store=/tmp/T1 --fit=dream
+#    bumps peak.py N --entropy --session=fit.h5 --fit=dream
 #
 # The parameter N is the number of data points to use within the range.
 #

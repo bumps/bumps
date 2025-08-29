@@ -12,8 +12,6 @@ import warnings
 import inspect
 from base64 import b64encode, b64decode
 
-import dill
-
 from . import plugin
 from .util import SCHEMA_ATTRIBUTE_NAME, get_libraries
 
@@ -224,8 +222,19 @@ def serialize(obj, use_refs=True, add_libraries=True):
 
 
 def deserialize_function(obj):
+    import dill
+    import cloudpickle
+
     try:
-        return dill.loads(deserialize_bytes(obj["pickle"]))
+        # CRUFT: older versions did not specify the pickler
+        pickler = obj.get("pickler", "dill")
+        data = deserialize_bytes(obj["pickle"])
+        if pickler == "dill":
+            return dill.loads(data)
+        elif pickler == "cloudpickle":
+            return cloudpickle.loads(deserialize_bytes(obj["pickle"]))
+        else:
+            raise ValueError(f"unrecognized pickler {pickler}")
     except Exception as e:
         logging.exception(e)
         warnings.warn(f"Error loading function: {e}")
@@ -241,6 +250,8 @@ def deserialize_bytes(s):
 
 
 def serialize_function(fn):
+    from cloudpickle import dumps
+
     name = getattr(fn, "__name__", "unknown")
     # print("type fn", type(fn))
     # Note: need dedent to handle decorator syntax. Dedent will fail when there are
@@ -252,8 +263,8 @@ def serialize_function(fn):
     except Exception:
         source = None
     # print("source =>", source)
-    pickle = serialize_bytes(dill.dumps(fn))
-    res = {TYPE_KEY: "Callable", "name": name, "source": source, "pickle": pickle}
+    pickle = serialize_bytes(dumps(fn))
+    res = {TYPE_KEY: "Callable", "name": name, "source": source, "pickle": pickle, "pickler": "cloudpickle"}
     # print(f"serializing {fn} to {res}")
     return res
 

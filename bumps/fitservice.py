@@ -6,10 +6,7 @@ import os
 import sys
 import json
 
-try:
-    import dill as pickle
-except ImportError:
-    import pickle
+from cloudpickle import loads
 
 from . import cli
 from . import __version__
@@ -42,8 +39,8 @@ def fitservice(request):
         raise ValueError(
             "%s version %s does not match request %s" % (model, service_model_version, request_model_version)
         )
-    options = pickle.loads(str(data["options"]))
-    problem = pickle.loads(str(data["problem"]))
+    options = loads(str(data["options"]))
+    problem = loads(str(data["problem"]))
     problem.store = path
     problem.output_path = os.path.join(path, "model")
 

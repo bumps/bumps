@@ -290,8 +290,8 @@ def main():
         help="Temperature steps for exponential ladder if Tmax is not provided",
     )
     parser.add_argument("-r", "--resume", type=str, default=None, help="Resume from file")
-    parser.add_argument("-s", "--store", type=str, default="mc.out", help="Save to file")
-    parser.add_argument("-x", "--thin", type=int, default=1, help="Number of iterations between collected points")
+    parser.add_argument("-x", "--export", type=str, default="mc.out", help="Save to file")
+    parser.add_argument("--thin", type=int, default=1, help="Number of iterations between collected points")
     parser.add_argument("modelfile", type=str, nargs=1, help="bumps model file")
     parser.add_argument("modelopts", type=str, nargs="*", help="options passed to the model")
     opts = parser.parse_args()
@@ -314,7 +314,7 @@ def main():
         dtemp=opts.dT,
         npop=opts.npop,
     )
-    save_state(opts.store, sampler, tail, labels=problem.labels())
+    save_state(opts.export, sampler, tail, labels=problem.labels())
     plot_results(problem, sampler, tail, tempstats=False)
     plt.show()
 

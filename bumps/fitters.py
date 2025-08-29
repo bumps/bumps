@@ -863,7 +863,7 @@ class DreamFit(FitBase):
         ("init", "eps"),
         ("thin", 1),
         ("alpha", 0.0),
-        ("outliers", "none"),
+        ("outliers", "iqr"),
         ("trim", False),
         ("steps", 0),  # deprecated: use --samples instead
     ]
@@ -997,7 +997,8 @@ class DreamFit(FitBase):
         from . import errplot
 
         # TODO: shouldn't mix calc and display!
-        res = errplot.calc_errors_from_state(problem=self.problem, state=self.state)
+        points = errplot.error_points_from_state(self.state)
+        res = errplot.calc_errors(self.problem, points)
         if res is not None:
             pylab.figure()
             errplot.show_errors(res)
@@ -1481,9 +1482,9 @@ def fit(
         except Exception as exc:
             # import traceback; traceback.print_exc()
             if verbose:
-                print("Problem stored using dill. It may not load in newer python versions.")
+                print("Problem stored using cloudpickle. It may not load in newer python versions.")
                 print(f"error: {exc}")
-            serializer = "dill"
+            serializer = "cloudpickle"
         state.problem = ProblemState(fitProblem=problem, serializer=serializer)
         state.fitting = fitting
         state.save_to_history(label="fit")
@@ -1492,7 +1493,7 @@ def fit(
     if export is not None:
         from .webview.server.api import _export_results
 
-        _export_results(Path(export), problem, driver.fitter.state, serializer="dill", name=name)
+        _export_results(Path(export), problem, driver.fitter.state, serializer="dataclass", name=name)
 
     result = OptimizeResult(
         x=x,

@@ -389,6 +389,8 @@ def path_contains_saved_state(filename):
 
 
 def openmc(filename):
+    # If filename ends in .mc.gz, also check for a .mc file.
+    # If filename ends in .mc, also check for a .mc.gz file.
     if filename.endswith(".gz"):
         if os.path.exists(filename):
             # print("opening with gzip")
@@ -479,6 +481,14 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
     state._best_logp = point[bestidx, 0]
     state._best_x = point[bestidx, 1 : Nvar + 1 - derived_vars]
     state._best_gen = 0
+
+    # Clean up _thin dimensions.
+    # It seems that some 0.x versions of bumps are yielding thin draws one shorter
+    # than logp and points, so throw away the first logp and points.
+    if state._thin_draws.shape[0] == state._thin_logp.shape[0] - 1:
+        # print(f"shapes differ {state._gen_draws.shape=}, {state._thin_draws.shape=}, {state._thin_logp.shape=}")
+        state._thin_logp = state._thin_logp[1:]
+        state._thin_point = state._thin_point[1:]
 
     return state
 
@@ -715,18 +725,51 @@ class MCMCDraw(object):
         save_state(self, filename)
 
     def trim_portion(self):
+        """
+        Estimate the point at which the Markov chains have reached equilibrium,
+        returning it as a portion of the currently stored length.
+
+        If not converged, then trim the first half of the samples.
+        """
         index = burn_point(self)
-        portion = 1 - (index / self.Ngen) if index >= 0 else 0.5
+        saved_gens = min(self.Ngen, self.generation)
+        portion = 1 - (index / saved_gens) if index >= 0 else 0.5
         return portion
+
+    def trim_index(self, portion: Optional[float] = None, generation: Optional[int] = None):
+        """
+        Returns the generation index corresponding to the trim portion. The returned
+        generation is relative to the start of the sampling, even if resume has been
+        called multiple times to extend the burn or the sample size.
+
+        The optional *generation* parameter is needed in case we have a state object
+        that is out of date with respect to the number of generations seen so far.
+        This can happen when the state is transferred to the user interface thread
+        much less frequently than the step monitor.
+        """
+        # Note: self.total_generations = self.generation + self._gen_offset
+        # If generation is provided, it represents self.total_generations, so
+        # we can reconstruct the number of saved generations we would see if the
+        # state object were up to date.
+        if generation is None:
+            total_gens = self.total_generations
+            saved_gens = min(self.Ngen, self.generation)
+        else:
+            total_gens = generation
+            saved_gens = min(self.Ngen, generation - self._gen_offset)
+        portion = self.portion if portion is None else portion
+        return total_gens - int(portion * saved_gens)
 
     def show(self, portion: Optional[float] = None, figfile: Union[str, Path, None] = None):
         from .views import plot_all
 
         plot_all(self, portion=portion, figfile=figfile)
 
+    # TODO: _last_gen and _draw_pop do similar things. Can they be merged?
     def _last_gen(self):
         """
-        Returns x, logp for most recent generation to dream.py.
+        Returns x, logp for most recently saved generation. This may be several
+        generations ago if thinning is enabled.
         """
         # Note: if generation number has wrapped and _gen_index is 0
         # (the usual case when this function is called to resume an
@@ -818,6 +861,7 @@ class MCMCDraw(object):
         """
         return self._gen_current
 
+    # TODO: Delete unused _draw_large_pop function
     def _draw_large_pop(self, Npop: int):
         _, chains, _ = self.chains()
         Ngen, Nchain, Nvar = chains.shape
@@ -944,22 +988,20 @@ class MCMCDraw(object):
         after drawing is complete, so that chains that did not converge are
         not included in the statistics.
 
-        *test* is 'IQR', 'Mahol' or 'none'.
+        *test* is 'IQR', 'mahal', 'grubbs', or 'none'.
 
         *portion* indicates what portion of the samples should be included
         in the outlier test.  If None, then the stored portion is used.
         """
         _, chains, logp = self.chains()
-
         if test == "none":
             self._good_chains = slice(None, None)
         else:
-            Ngen = chains.shape[0]
+            thin_saved_gens = chains.shape[0]
             portion = self.portion if portion is None else portion
-            start = int(Ngen * (1 - portion))
+            start = int(thin_saved_gens * (1 - portion))
             outliers = identify_outliers(test, logp[start:], chains[-1])
-            # print("outliers", outliers)
-            # print(logp.shape, chains.shape)
+            # print("outliers", outliers, logp.shape, chains.shape)
             if len(outliers) > 0:
                 self._good_chains = np.array([i for i in range(logp.shape[1]) if i not in outliers])
             else:
@@ -1163,11 +1205,14 @@ class MCMCDraw(object):
         """
         Compute the Gelman and Rubin R-statistic for the Markov chains.
         """
-        portion = self.portion if portion is None else portion
+        # Note: Not allowing a portion parameter here because that would
+        # require unrolling the chains or otherwise making the logic in
+        # gelman() too complicated. Keep it simple so that we can show
+        # a simple R statistic over time without thrashing memory.
         if self.generation < self.Ngen:
-            return gelman(self._thin_point[: self.generation], portion=portion)
+            return gelman(self._thin_point[: self.generation], portion=1.0)
         else:
-            return gelman(self._thin_point, portion=portion)
+            return gelman(self._thin_point, portion=1.0)
 
     def CR_weight(self):
         """

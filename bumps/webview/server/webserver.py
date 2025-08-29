@@ -6,16 +6,12 @@ import socket
 from pathlib import Path
 from typing import Callable, Optional, Union, List
 
-import matplotlib
-
 # from .main import setup_bumps
 from . import cli
 from . import api
 from . import persistent_settings
 from .logger import logger
 from .cli import BumpsOptions
-
-matplotlib.use("agg")
 
 mimetypes.add_type("text/css", ".css")
 mimetypes.add_type("text/html", ".html")
@@ -27,6 +23,7 @@ mimetypes.add_type("image/svg+xml", ".svg")
 
 TRACE_MEMORY = False
 PREFERRED_PORT = 5148  # "SLAB"
+USE_MSGPACK = True  # use msgpack for serialization, faster than JSON
 
 # can get by name and not just by id
 
@@ -60,6 +57,7 @@ routes = app = sio = None
 def init_web_app():
     import socketio
     from aiohttp import web
+    import msgpack
 
     global routes, app, sio
 
@@ -98,7 +96,11 @@ def init_web_app():
         async def with_sid(sid: str, *args, **kwargs):
             try:
                 # print("RPC:", function.__name__, args, kwargs)
-                return await function(*args, **kwargs)
+                raw_result = await function(*args, **kwargs)
+                if USE_MSGPACK:
+                    return msgpack.packb(raw_result)
+                else:
+                    return raw_result
             except Exception as err:
                 logger.error(f"Exception for {function.__name__}(*{args}, **{kwargs}): {err}")
                 raise
@@ -253,6 +255,14 @@ def start_from_cli(options: BumpsOptions):
 
     init_web_app()
     runsock = setup_app(options=options, sock=None)
+    if "JUPYTERHUB_SERVICE_PREFIX" in os.environ:
+        print(f"""
+\033[91mYou appear to be running bumps webview from within a jupyterhub terminal.
+Open the following in a new tab after replacing <HOST> with the hostname in the browser:
+
+    https://<HOST>{get_server_url()}
+
+\033[0m""")
     web.run_app(app, sock=runsock)
 
 

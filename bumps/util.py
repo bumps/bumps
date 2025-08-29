@@ -6,10 +6,10 @@ __all__ = ["kbhit", "profile", "pushdir", "push_seed", "redirect_console"]
 
 import os
 import sys
-import math
 import types
 from dataclasses import Field, dataclass, field, fields, is_dataclass
 from io import StringIO
+from contextlib import contextmanager
 
 # this can be substituted with pydantic dataclass for schema-building...
 from typing import (
@@ -410,6 +410,19 @@ class push_seed(object):
 
     def __exit__(self, *args):
         np.random.set_state(self._state)
+
+
+@contextmanager
+def push_mpl_backend(backend="agg"):
+    """Temporarily switch to a different matplotlib backend."""
+    import matplotlib
+
+    original_backend = matplotlib.get_backend()
+    try:
+        matplotlib.use(backend)
+        yield
+    finally:
+        matplotlib.use(original_backend)
 
 
 def get_libraries(obj, libraries=None):

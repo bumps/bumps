@@ -5,7 +5,6 @@ from typing import (
     Any,
     Awaitable,
     Callable,
-    Coroutine,
     Dict,
     List,
     Literal,
@@ -14,34 +13,31 @@ from typing import (
     Protocol,
     Sequence,
     Union,
-    Tuple,
     TypedDict,
-    cast,
 )
 from datetime import datetime
 import numbers
 import warnings
-from threading import Event
 import numpy as np
 import asyncio
-from pathlib import Path, PurePath
+from pathlib import Path
 import json
 from copy import deepcopy
 import os
 import uuid
 import traceback
 import math
+import time
 
 from bumps.fitters import FitDriver
 from bumps.mapper import MPMapper
 from bumps.parameter import Parameter, Constant, Variable, unique
 import bumps.cli
 import bumps.fitproblem
-import bumps.dream.views
-import bumps.dream.varplot
 import bumps.dream.stats
 from bumps.dream.state import MCMCDraw
 import bumps.errplot
+from bumps.util import push_mpl_backend
 
 from . import fit_options
 from .state_hdf5_backed import (
@@ -57,6 +53,7 @@ from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
 from .varplot import plot_vars
 from .traceplot import plot_trace
 from .logger import logger
+from .convergence_plot import convergence_plot
 from .custom_plot import process_custom_plot, CustomWebviewPlot
 
 # CRUFT: python 3.8 does not have asyncio.to_thread
@@ -161,8 +158,8 @@ async def load_problem_file(
         _serialized_problem = serialize_problem(problem, method="dataclass")
         state.problem.serializer = "dataclass"
     except Exception as exc:
-        logger.warning(f"Could not serialize problem as JSON (dataclass): {exc}, switching to dill")
-        state.problem.serializer = "dill"
+        logger.warning(f"Could not serialize problem as JSON (dataclass): {exc}, switching to cloudpickle")
+        state.problem.serializer = "cloudpickle"
         # raise
     if (
         state.shared.autosave_history
@@ -276,7 +273,8 @@ async def save_problem_file(
     path = Path(*pathlist)
     serializer = state.problem.serializer
     extension = SERIALIZER_EXTENSIONS[serializer]
-    save_filename = f"{Path(filename).stem}.{extension}"
+    # Avoid name collision with saved fit results, which may also be in .json
+    save_filename = f"{Path(filename).stem}-problem.{extension}"
     if not overwrite and Path.exists(path / save_filename):
         # confirmation needed:
         return {"filename": save_filename, "check_overwrite": True}
@@ -408,16 +406,28 @@ def _export_results(
     # Write the pars file.
     _write_pars(problem, path, f"{basename}.par")
 
-    # Produce model plots
-    problem.plot(figfile=output_pathstr)
+    with push_mpl_backend("agg"):
+        # Produce model plots
+        problem.plot(figfile=output_pathstr)
 
-    # Produce uncertainty plots
-    # TODO: Add save/show methods to the fit_state protocol
-    if hasattr(fit_state, "show"):
-        with redirect_console(str(path / f"{basename}.err")):
-            fit_state.show(figfile=output_pathstr)
-        fit_state.save(output_pathstr)
-    # print("export complete")
+        # Produce uncertainty plots
+        # TODO: Add save/show methods to the fit_state protocol
+        if hasattr(fit_state, "show"):
+            with redirect_console(str(path / f"{basename}.err")):
+                fit_state.show(figfile=output_pathstr)
+            fit_state.save(output_pathstr)
+
+            # TODO: duplicates code in fitters.DreamFit.error_plot
+            # TODO: refactor to separate calculation from display
+            # TODO: share calc_errors result with get_model_uncertainty_plot
+            from bumps import errplot
+
+            points = errplot.error_points_from_state(state=fit_state)
+            res = errplot.calc_errors(problem, points)
+            if res is not None:
+                errplot.show_errors(res, save=output_pathstr)
+
+        # print("export complete")
 
 
 @register
@@ -795,29 +805,27 @@ async def log(message: str, title: Optional[str] = None):
 
 @register
 async def get_data_plot(model_indices: Optional[List[int]] = None):
+    import matplotlib.pyplot as plt
+    import mpld3
+
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = deepcopy(state.problem.fitProblem)
-    import mpld3
-    import matplotlib
-
-    matplotlib.use("agg")
-    import matplotlib.pyplot as plt
-    import time
 
     # Suppress all mpld3 warnings
     # warnings.filterwarnings("ignore", module="mpld3")
 
     start_time = time.time()
     logger.info(f"queueing new data plot... {start_time}")
-    fig = plt.figure()
-    for i, model in enumerate(fitProblem.models):
-        if model_indices is not None and i not in model_indices:
-            continue
-        model.plot()
-    plt.text(0.01, 0.01, "chisq=%s" % fitProblem.chisq_str(), transform=plt.gca().transAxes)
-    dfig = mpld3.fig_to_dict(fig)
-    plt.close(fig)
+    with push_mpl_backend("agg"):
+        fig = plt.figure()
+        for i, model in enumerate(fitProblem.models):
+            if model_indices is not None and i not in model_indices:
+                continue
+            model.plot()
+        plt.text(0.01, 0.01, "chisq=%s" % fitProblem.chisq_str(), transform=plt.gca().transAxes)
+        dfig = mpld3.fig_to_dict(fig)
+        plt.close(fig)
     end_time = time.time()
     logger.info(f"time to draw data plot: {end_time - start_time}")
     return {"fig_type": "mpld3", "plotdata": to_json_compatible_dict(dfig)}
@@ -894,7 +902,7 @@ async def create_custom_plot(model_index: int, plot_title: str, n_samples: int =
             else:
                 plot_item: CustomWebviewPlot = await to_thread(plot_function, model, fitProblem)
         except Exception:
-            plot_item = CustomWebviewPlot(fig_type="error", plotdata=traceback.format_exc())
+            plot_item = CustomWebviewPlot(fig_type="error", plotdata=traceback.format_exc(), exportdata=None)
 
         return process_custom_plot(plot_item)
 
@@ -912,100 +920,67 @@ async def get_custom_plot(model_index: int, plot_title: str, n_samples: int = 1)
 
 
 @register
-async def get_convergence_plot():
+async def get_convergence_plot(
+    cutoff: float = 0.25, portion: Optional[float] = None, max_points: Optional[int] = 10000
+):
+    """
+    Get the convergence plot for the current fit state.
+    If the fit state is not available, return None.
+    If the convergence is not available, return None.
+
+    :param cutoff: The cutoff value for the convergence plot
+                    (fraction of points below this value are not shown)
+    :param max_points: The maximum number of points to plot
+                        (thinning applied if too many points)
+    :return: A JSON-serializable dictionary containing the convergence plot data."""
     if state.problem is None or state.problem.fitProblem is None:
         return None
-    fitProblem = state.problem.fitProblem
+    dof = state.problem.fitProblem.dof
     convergence = state.fitting.convergence
+
     if convergence is not None:
-        normalized_pop = fitProblem.chisq(nllf=convergence)
-        best, pop = normalized_pop[:, 0], normalized_pop[:, 1:]
+        fit_state = state.fitting.fit_state
+        generation = len(convergence)
+        if fit_state is not None and hasattr(fit_state, "trim_index"):
+            # If the trim index is available, we can show it on the plot:
+            trim_index = fit_state.trim_index(generation=generation, portion=portion)
+            burn_index = fit_state.trim_index(generation=generation, portion=1.0)
+            stored_portion = getattr(fit_state, "portion", None)
+        else:
+            trim_index = None
+            burn_index = None
+            stored_portion = None
 
-        ni, npop = pop.shape
-        iternum = np.arange(1, ni + 1)
-        tail = int(0.25 * ni)
-        fig = {"data": [], "layout": {}}  # go.Figure()
-        hovertemplate = "(%{{x}}, %{{y}})<br>{label}<extra></extra>"
-        x = iternum[tail:].tolist()
-        if npop == 5:
-            # fig['data'].append(dict(type="scattergl", x=x, y=pop[tail:,4].tolist(), name="95%", mode="lines", line=dict(color="lightblue", width=1), showlegend=True, hovertemplate=hovertemplate.format(label="95%")))
-            fig["data"].append(
-                dict(
-                    type="scattergl",
-                    x=x,
-                    y=pop[tail:, 3].tolist(),
-                    mode="lines",
-                    line=dict(color="lightgreen", width=0),
-                    showlegend=False,
-                    hovertemplate=hovertemplate.format(label="80%"),
-                )
-            )
-            fig["data"].append(
-                dict(
-                    type="scattergl",
-                    x=x,
-                    y=pop[tail:, 1].tolist(),
-                    name="20% to 80% range",
-                    fill="tonexty",
-                    mode="lines",
-                    line=dict(color="lightgreen", width=0),
-                    hovertemplate=hovertemplate.format(label="20%"),
-                )
-            )
-            fig["data"].append(
-                dict(
-                    type="scattergl",
-                    x=x,
-                    y=pop[tail:, 2].tolist(),
-                    name="population median",
-                    mode="lines",
-                    line=dict(color="green"),
-                    opacity=0.5,
-                )
-            )
-            fig["data"].append(
-                dict(
-                    type="scattergl",
-                    x=x,
-                    y=pop[tail:, 0].tolist(),
-                    name="population best",
-                    mode="lines",
-                    line=dict(color="green", dash="dot"),
-                )
-            )
-
-        fig["data"].append(
-            dict(
-                type="scattergl",
-                x=x,
-                y=best[tail:].tolist(),
-                name="best",
-                line=dict(color="red", width=1),
-                mode="lines",
-            )
+        plotdata = convergence_plot(
+            convergence, dof, cutoff=cutoff, trim_index=trim_index, burn_index=burn_index, max_points=max_points
         )
-        fig["layout"].update(
-            dict(
-                template={"name": "simple_white"},
-                legend=dict(x=1, y=1, xanchor="right", yanchor="top"),
-            )
-        )
-        fig["layout"].update(dict(title=dict(text="Convergence", xanchor="center", x=0.5)))
-        fig["layout"].update(dict(uirevision=1))
-        fig["layout"].update(
-            dict(
-                xaxis=dict(
-                    title="iteration number",
-                    showline=True,
-                    showgrid=False,
-                    zeroline=False,
-                )
-            )
-        )
-        fig["layout"].update(dict(yaxis=dict(title="chisq", showline=True, showgrid=False, zeroline=False)))
-        return to_json_compatible_dict(fig)
+        output = {
+            "plotdata": plotdata,
+            "portion": stored_portion,
+        }
+        return to_json_compatible_dict(output)
     else:
         return None
+
+
+@register
+async def set_trim_portion(portion: float):
+    """
+    Set the trim portion for the current fit state.
+    This will update the trim index and burn index in the fit state.
+    """
+    fit_state = state.fitting.fit_state
+    if fit_state is not None and hasattr(fit_state, "portion"):
+        if not (0.0 <= portion <= 1.0):
+            raise ValueError("Trim portion must be between 0.0 and 1.0")
+        fit_state.portion = portion
+        state.shared.updated_convergence = now_string()
+        state.shared.updated_uncertainty = now_string()
+        await add_notification(
+            f"Set trim portion to {portion}",
+            title="Trim portion set",
+            timeout=2000,
+        )
 
 
 @lru_cache(maxsize=30)
@@ -1021,8 +996,6 @@ def _get_correlation_plot(
     fit_state = state.fitting.fit_state
 
     if hasattr(fit_state, "draw"):
-        import time
-
         start_time = time.time()
         logger.info(f"queueing new correlation plot... {start_time}")
         draw = fit_state.draw(vars=vars)
@@ -1062,8 +1035,6 @@ async def get_correlation_plot(
 def _get_uncertainty_plot(timestamp: str = "", cbar_colors: int = 8):
     fit_state = state.fitting.fit_state
     if hasattr(fit_state, "draw"):
-        import time
-
         start_time = time.time()
         logger.info(f"queueing new uncertainty plot... {start_time}")
         draw = fit_state.draw()
@@ -1084,34 +1055,31 @@ async def get_uncertainty_plot(timestamp: str = ""):
 
 @register
 async def get_model_uncertainty_plot():
+    import mpld3
+    import matplotlib.pyplot as plt
+
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = state.problem.fitProblem
     fit_state = state.fitting.fit_state
-    if hasattr(fit_state, "draw"):
-        import mpld3
-        import matplotlib
+    if not hasattr(fit_state, "draw"):
+        return
 
-        matplotlib.use("agg")
-        import matplotlib.pyplot as plt
-        import time
-
-        start_time = time.time()
-        logger.info(f"queueing new model uncertainty plot... {start_time}")
-
+    start_time = time.time()
+    logger.info(f"queueing new model uncertainty plot... {start_time}")
+    points = bumps.errplot.error_points_from_state(fit_state)
+    errs = bumps.errplot.calc_errors(fitProblem, points)
+    logger.info(f"errors calculated: {time.time() - start_time}")
+    with push_mpl_backend("agg"):
         fig = plt.figure()
-        errs = bumps.errplot.calc_errors_from_state(fitProblem, fit_state)
-        logger.info(f"errors calculated: {time.time() - start_time}")
         bumps.errplot.show_errors(errs, fig=fig)
         logger.info(f"time to render but not serialize... {time.time() - start_time}")
         fig.canvas.draw()
         dfig = mpld3.fig_to_dict(fig)
         plt.close(fig)
-        end_time = time.time()
-        logger.info(f"time to draw model uncertainty plot: {end_time - start_time}")
-        return dfig
-    else:
-        return None
+    end_time = time.time()
+    logger.info(f"time to draw model uncertainty plot: {end_time - start_time}")
+    return dfig
 
 
 @register
