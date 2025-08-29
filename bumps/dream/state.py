@@ -250,7 +250,8 @@ def h5load(group: "Group"):
     portion = getattr(Fields, "portion", 1.0)
 
     # Create empty draw and fill it with loaded data
-    state = MCMCDraw(0, 0, 0, 0, 0, 0, thinning, portion=portion)
+    state = MCMCDraw(0, 0, 0, 0, 0, 0, thinning)
+    state.portion = portion
     state.draws = Ngen * Npop
     state.labels = [label.decode() for label in Fields.labels]
     state.generation = Ngen
@@ -454,6 +455,7 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
     # Create empty draw and fill it with loaded data
     state = MCMCDraw(0, 0, 0, 0, 0, 0, thinning)
     # print("gen, var, pop", Ngen, Nvar, Npop)
+    state.portion = 1.0
     state.draws = Ngen * Npop
     state.generation = Ngen
     state._gen_offset = 0
@@ -482,7 +484,69 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
 
 
 class MCMCDraw(object):
-    """ """
+    """
+    Initialization parameters:
+
+    *Ngen* is the number of generations to store. These are retrievable through
+    *k_logp()* and *acceptance_rate()* methods. Note that this is not the same
+    as the length of the saved chains.
+
+    *Nthin* is the number of thinned generations to store. These are retrievable
+    through the *draw()* and *traces()* methods.
+
+    *Nupdate* is the number of crossover ratio sets to save. The DREAM algorithm
+    runs in batches of steps, with various checks such as convergence and
+    crossover ratio updates after each batch. The results are retrievable
+    through the *CR_weight()* method.
+
+    *Nvar* is the number of parameters stored in each point.
+
+    *Npop* is the number of running chains. Note that unlike the --pop command
+    line option, this is not the number of chains per parameter.
+
+    *Ncr* is the number of crossover ratios. DREAM maintains a fixed set of
+    crossover ratios, choosing amongst them at each DE step. Depending on the
+    success rate of the steps, it will adapt the weights after every batch of
+    updates.
+
+    *thinning* is the number of update generations to skip between saves to the
+    MC chains. Additional thinning can be done when drawing samples from the
+    saved points.
+
+    Attributes and properties:
+
+    *Ngen*, *Nthin*, *Nupdate*, *Nvar*, *Npop*, *Ncr* gives the size of the
+    buffers stored in state. If the buffers are not yet full, the returned sizes
+    for the *traces()*, *k_logp()*, *acceptance_rate()*, *CR_weight()* and
+    *draw()* methods will be smaller.
+
+    *generation* is the number of generations in the current fit run. This is
+    reset to zero each time the fit is resumed.
+
+    *draws* is the number of draws in the current fit run. This is reset to zero
+    each time the fit is resumed. Use *total_generations* time *Npop* if you
+    want the number of draws including all previous runs.
+
+    *total_generations* is the total number of generations for the fit across
+    all fit runs.
+
+    *title* a title for the plot
+
+    *labels* a list of names for each parameter
+
+    *thinning* amount of thinning between the k_logp buffer and the traces
+    buffer. DREAM stores every nth generation starting at generation n
+    (1-origin). It is possible to change thinning on resume, which will change
+    the short range correlation in the traces, however these changes are not
+    recorded. Generation number on the trace plot will be incorrect until DREAM
+    burns through the entire buffer.
+
+    *portion* gives the fraction of each chain to use for statistical plots.  A
+    value can be automatically determined by calling *state.portion =
+    state.trim_portion()*, or supplied by the user to various functions that
+    work with the chains.  The value should be between 0.0 and 1.0, where 1.0
+    means the entire chain is used for statistical plots.
+    """
 
     _derived_fn: Callable[[NDArray], NDArray] = None
     _derived_labels: List[str] = None
@@ -491,7 +555,14 @@ class MCMCDraw(object):
     title = None
 
     def __init__(
-        self, Ngen: int, Nthin: int, Nupdate: int, Nvar: int, Npop: int, Ncr: int, thinning: int, portion: float = 1.0
+        self,
+        Ngen: int,
+        Nthin: int,
+        Nupdate: int,
+        Nvar: int,
+        Npop: int,
+        Ncr: int,
+        thinning: int,
     ):
         # self.generation and self.draws are used to control the number of iterations in
         # the dream loop, and must therefore be set to the current size of the state on
@@ -500,12 +571,7 @@ class MCMCDraw(object):
 
         # Total number of draws so far
         self.draws = 0
-
-        # Portion: a fraction of the chain to use for statistical plots.  A value can be
-        # automatically determined by calling self.trim_portion(), or supplied by the
-        # user interactively.  The value should be between 0.0 and 1.0, where 1.0
-        # means the entire chain is used for statistical plots.
-        self.portion = portion
+        self.portion = 1.0
 
         # Maximum observed likelihood
         # Note: with thinning and burn the best may not be in the set of samples
@@ -1420,9 +1486,37 @@ class Draw:
 
     **Attributes**
 
-    *labels* are the labels for the variables remaining after applying
-    derived variables and restricting to the requested *vars* list.
+    *points[n,k]* are the set of sampled points, where n is the number of
+    points and k is the number of parameters. The earlier points come
+    from earlier generations, but this is an accident of the implementation
+    and should not be relied on. n is usually the number of chains times the
+    number of saved generations, but this will change depending on *portion*,
+    *selection*, *thin* and *outliers* parameters. k is usually the number
+    of fitted parameters, but the derived and active parameter lists will
+    adjust this.
 
+    *weights* are the weights associated with each point. Since the chains
+    are run at a single temperature the weights will all be 1.
+
+    *logp[n]* is the negative log likelihuud for each sampled point.
+
+    *labels* are the labels for the variables remaining after applying derived
+    variables and restricting to the requested *vars* list.
+
+    *integers* is an array of flags, one per parameter* indicating whether the
+    parameter is float (0) or int (1=floor).  The values in the chain are
+    managed as floats, and it is the responsibility of the likelihood function
+    to transform them to integers. Models which use round, trunc or ceil rather
+    than float are not yet supported.[1]
+
+    *state* is the original MCMCDraw.
+
+    [1] Note that discrete parameter handling is likely to change in the future.
+    The derivative based optimizers in particular will need to know that the
+    minimum step size for discrete parameters is one when computing the partial
+    derivative. If bumps converts the parameters to integers before calling the
+    likelihood function then we will only need a discrete flag since we will
+    always use the *floor()* function.
     """
 
     state: MCMCDraw
@@ -1430,16 +1524,20 @@ class Draw:
     portion: float
     selection: SelectionType
     thin: int
+    Nvar: int
 
     title: Optional[str]
     labels: List[str]
     integers: NDArray  # boolean
     logp: NDArray
     points: NDArray
-    generation: NDArray
-    chains: NDArray
-    chains_logp: NDArray
-    mask: Optional[NDArray]
+    weights: NDArray
+
+    # # MC chains, with mask for included points.
+    # generation: NDArray
+    # chains: NDArray
+    # chains_logp: NDArray
+    # mask: Optional[NDArray]
 
     def __init__(
         self,
@@ -1475,9 +1573,14 @@ class Draw:
         # This allows resume to work without extra effort. The code is also much simpler.
         if state._derived_fn is not None:
             newvars = asarray(state._derived_fn(chains.reshape(-1, Nvar).T)).T
-            chains = np.vstack((chains, newvars.reshape(Ngen, Npop, -1)))
-            self.labels.extend(state._derived_labels)
-            self.integers = np.append(self.integers, [False] * newvars.shape[1])
+            newvars = newvars.reshape(Ngen, Npop, -1)
+            chains = np.dstack((chains, newvars))
+            Nvar = chains.shape[2]  # Update the number of variables
+            if state._derived_labels:
+                self.labels.extend(state._derived_labels)
+            else:
+                self.labels.extend("F{k+1}" for k in range(newvars.shape[2]))
+            self.integers = np.append(self.integers, [False] * newvars.shape[2])
 
         # Select points within range limits given by selection, if any.
         # This happens before variable subsetting so that numerical indices
@@ -1489,7 +1592,7 @@ class Draw:
                 if var == "logp":
                     mask = mask & (chains_logp >= limits[0]) & (chains_logp <= limits[1])
                 else:
-                    var = self._lookup(var)
+                    var = self._lookup_var(var)
                     mask = mask & (chains[:, :, var] >= limits[0]) & (chains[:, :, var] <= limits[1])
 
         # Restrict draw to a subset of the variables.
@@ -1564,6 +1667,7 @@ def test():
     # Put it into a state
     thinning = 2
     Nthin = int(Ngen / thinning)
+    thinned = xin[thinning - 1 :: thinning, :, :]
     state = MCMCDraw(Ngen=Ngen, Nthin=Nthin, Nupdate=Nupdate, Nvar=Nvar, Npop=Npop, Ncr=Ncr, thinning=thinning)
     for i in range(Nupdate):
         state._update(CR_weight=CRin[i])
@@ -1572,6 +1676,7 @@ def test():
             state._generation(new_draws=Npop, x=xin[gen], logp=pin[gen], accept=accept[gen])
 
     # Check that it got there
+    assert (thinned == state.chains()[1]).all()
     draws, logp = state.logp()
     assert norm(draws - Npop * arange(1, Ngen + 1)) == 0
     assert norm(logp - pin) == 0
@@ -1604,6 +1709,16 @@ def test():
     # assert norm(logp[:, 1] - pin[thinning-1::thinning, 2]) == 0
     # assert norm(logp[:, 2] - pin[thinning-1::thinning, 2]) == 0
 
+    draw = state.draw(selection={"P1": (0.4, 1.1)})
+    # print(format_vars(var_stats(draw)))
+    assert (draw.points[:, 1] >= 0.4).all()
+    # print(thinned[..., 1])
+    # print(thinned[..., 1] >= 0.4, thinned.shape)
+    # print(len(draw.points[:, 1]), np.sum(thinned[..., 1] >= 0.4))
+    # print("thinned", thinned[thinned[..., 1] >= 0.4][:, 1])
+    # print("points", draw.points[:, 1])
+    assert len(draw.points[:, 1]) == np.sum(thinned[..., 1] >= 0.4)
+
     if 0:  # test of deprecated interface
         # Test derived variables (inplace update! ick!)
         state.derive_vars(lambda p: p[0] + p[1], labels=["inplace x+y"])
@@ -1615,16 +1730,16 @@ def test():
         assert len(draw.labels) == Nvar + 1
 
     # Test derived variables (ephemeral)
-    state.derive_vars(lambda p: p[0] + p[1], labels=["x+y"])
+    state.set_derived_vars(lambda p: p[0] + p[1], labels=["x+y"])
     draw = state.draw()
     assert draw.labels[-1] == "x+y"
     assert (draw.points[:, -1] == draw.points[:, 0] + draw.points[:, 1]).all()
-    assert draw.points.shape[1] == Nvar + 2
-    assert len(draw.labels) == Nvar + 2
+    assert draw.points.shape[1] == Nvar + 1
+    assert len(draw.labels) == Nvar + 1
 
     from .stats import var_stats, format_vars
 
-    vstats = var_stats(state.draw())
+    vstats = var_stats(state.draw(vars=[2, "x+y"]))
     print(format_vars(vstats))
 
     # Test integer vars
@@ -1635,10 +1750,15 @@ def test():
     # print(format_vars(vstats_int))
     assert vstats_int[2].mean == np.mean(np.floor(draw.points[:, 2]))
 
-    draw = state.draw(selection={"P1": (0.4, 1.0)})
+    draw = state.draw(selection={"P1": (0.4, 1.1)})
     # print(format_vars(var_stats(draw)))
-    assert (draw.points[:, 0] >= 0.4).all()
-    assert len(draw.points[:, 0]) == np.sum(xin[..., 1] >= 0.4)
+    assert (draw.points[:, 1] >= 0.4).all()
+    # print(thinned[..., 1])
+    # print(thinned[..., 1] >= 0.4, thinned.shape)
+    # print(len(draw.points[:, 1]), np.sum(thinned[..., 1] >= 0.4))
+    # print("thinned", thinned[thinned[..., 1] >= 0.4][:, 1])
+    # print("points", draw.points[:, 1])
+    assert len(draw.points[:, 1]) == np.sum(thinned[..., 1] >= 0.4)
 
 
 if __name__ == "__main__":
