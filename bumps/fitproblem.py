@@ -88,7 +88,7 @@ class Fitness(util.Protocol):
         Called when parameters have been updated.  Any cached values will need
         to be cleared and the model reevaluated.
         """
-        raise NotImplementedError()
+        pass
 
     def numpoints(self):
         """
@@ -284,8 +284,9 @@ class FitProblem(Generic[FitnessType]):
         self.set_active_model(0)  # Set the active model to model 0
         self.name = name
 
-        # Do this step last so that it has all of the attributes initialized.
+        # Do these steps last so that it has all of the attributes initialized.
         self.model_reset()  # sets self._all_constraints
+        self.model_update()  # clears any model caches
 
     @staticmethod
     def _null_constraints_function():
@@ -307,30 +308,35 @@ class FitProblem(Generic[FitnessType]):
     def models(self):
         """Iterate over models, with free parameters set from model values"""
         try:
-            for i, f in enumerate(self._models):
-                self.freevars.set_model(i)
-                # print(f"iterating on model {f.name}")
-                # TODO: FreeVariables destroys caching within the model.
-                getattr(f, "update", lambda: None)()
-                yield f
+            for index in range(len(self._models)):
+                yield self._switch_model(index)
         finally:
             # Restore the active model after cycling, even if interrupted
-            self.freevars.set_model(self._active_model_index)
+            self._switch_model(self._active_model_index)
 
     # noinspection PyAttributeOutsideInit
-    def set_active_model(self, i):
+    def set_active_model(self, index):
         """Use free parameters from model *i*"""
-        self._active_model_index = i
-        self.active_model = self._models[i]
-        self.freevars.set_model(i)
+        self._active_model_index = index
+        self.active_model = self._switch_model(index)
+
+    def _switch_model(self, index):
+        # TODO: FreeVariables destroys caching within the model.
+        self.freevars.set_model(index)
+        if self.freevars:
+            # Clear model cache when updating the parameters
+            getattr(self._models[index], "update", lambda: None)()
+        return self._models[index]
 
     def model_parameters(self):
         """Return parameters from all models"""
         pars = {}
+        # Note: the self.models iterator plugs the free variables into
+        # the model in turn, so no need to walk self.freevars directly.
+        # The model.update() function is called each time, so whatever
+        # caching is happening in the model is cleared, and it knows that
+        # new parameter values have been inserted.
         pars["models"] = [f.parameters() for f in self.models]
-        free = self.freevars.parameters()
-        if free:
-            pars["freevars"] = free
         return pars
 
     def to_dict(self):
@@ -714,8 +720,7 @@ class FitProblem(Generic[FitnessType]):
     def show(self):
         for i, f in enumerate(self.models):
             print("-- Model %d %s" % (i, getattr(f, "name", "")))
-            subs = self.freevars.get_model(i) if self.freevars else {}
-            fitness_show_parameters(f, subs=subs)
+            fitness_show_parameters(f, subs=self.freevars.get_model(i))
         print("[overall chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
 
     def plot(self, p=None, fignum=1, figfile=None, view=None, model_indices=None):

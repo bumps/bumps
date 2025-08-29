@@ -1319,7 +1319,7 @@ class Reference(Parameter):
 
 # TODO: Can we implement the equivalent of FreeVariables that preserves caching?
 @dataclass(init=False)
-class FreeVariables(object):
+class FreeVariables:
     """
     A collection of parameter sets for a group of models.
 
@@ -1342,7 +1342,9 @@ class FreeVariables(object):
 
     Note that using FreeVariables within a fitproblem erases any caching that
     happens within the model. This means, for example, that the theory function
-    will be calculated once for plotting and again for computing χ².
+    will be calculated once for plotting and again for computing χ². To
+    avoid unnecessary cache clearing, use bool(freevars) to test if there are
+    parameters to substitute.
     """
 
     names: List[str]
@@ -1377,6 +1379,12 @@ class FreeVariables(object):
             return self.parametersets[k]
         except KeyError:
             raise AttributeError("FreeVariables has no attribute %r" % k)
+
+    def __bool__(self):
+        """
+        *if freevars* is true when there are variables to be substituted into the model.
+        """
+        return bool(self.parametersets)
 
     def parameters(self):
         """
