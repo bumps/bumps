@@ -32,7 +32,7 @@ classifiers = [
     'Topic :: Scientific/Engineering :: Chemistry',
     'Topic :: Scientific/Engineering :: Physics',
 ]
-requires-python = ">=3.10,<=3.13"
+requires-python = ">=3.9,<=3.13"
 
 [project.optional-dependencies]
 dev = [
