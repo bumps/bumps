@@ -309,6 +309,9 @@ class FitProblem(Generic[FitnessType]):
         try:
             for i, f in enumerate(self._models):
                 self.freevars.set_model(i)
+                # print(f"iterating on model {f.name}")
+                # TODO: FreeVariables destroys caching within the model.
+                getattr(f, "update", lambda: None)()
                 yield f
         finally:
             # Restore the active model after cycling, even if interrupted
@@ -359,15 +362,6 @@ class FitProblem(Generic[FitnessType]):
         otherwise returns False.
         """
         # print("Calling setp with", pvec, self._parameters)
-        # TODO: do we have to leave the model in an invalid state?
-        # WARNING: don't try to conditionally update the model
-        # depending on whether any model parameters have changed.
-        # For one thing, the model_update below probably calls
-        # the subclass FitProblem.model_update, which signals
-        # the individual models.  Furthermore, some parameters may
-        # related to others via expressions, and so a dependency
-        # tree needs to be generated.  Whether this is better than
-        # clicker() from SrFit I do not know.
         for v, p in zip(pvec, self._parameters):
             p.value = v
         # TODO: setp_hook is a hack to support parameter expressions in sasview
@@ -658,19 +652,16 @@ class FitProblem(Generic[FitnessType]):
 
     def model_update(self):
         """Let all models know they need to be recalculated"""
-        # TODO: consider an "on changed" signal for model updates.
-        # The update function would be associated with model parameters
-        # rather than always recalculating everything.  This
-        # allows us to set up fits with 'fast' and 'slow' parameters,
-        # where the fit can quickly explore a subspace where the
-        # computation is cheap before jumping to a more expensive
-        # subspace.  SrFit does this.
+        # The self.models iterator calls update for each model if there are
+        # free variable substitutions, so no need to update here.
+        if self.freevars:
+            return
         for f in self.models:
-            if hasattr(f, "update"):
-                f.update()
+            getattr(f, "update", lambda: None)()
 
     def model_nllf(self):
         """Return cost function for all data sets"""
+        # print("In model nllf with", self.getp())
         return sum(w**2 * f.nllf() for w, f in zip(self.weights, self.models))
 
     def constraints_nllf(self) -> util.Tuple[float, util.List[str]]:

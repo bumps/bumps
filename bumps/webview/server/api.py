@@ -718,8 +718,7 @@ async def _fit_complete_handler(event: Dict[str, Any]):
         # print(event['info'])  # Needed if we are dumping fit outputs to the terminal
         problem: bumps.fitproblem.FitProblem = event["problem"]
         chisq = nice(problem.chisq(nllf=event["value"]))
-        problem.setp(event["point"])
-        problem.model_update()
+        problem.setp(event["point"])  # setp calls model_update
         state.problem.fitProblem = problem
         state.set_fit_state(event["fit_state"], event["fitter_id"])
         if state.shared.autosave_history:
