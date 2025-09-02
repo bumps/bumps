@@ -73,7 +73,7 @@ generation is the last generation number
 
 # TODO: state should be collected in files as we go
 
-__all__ = ["MCMCDraw", "load"]
+__all__ = ["MCMCDraw", "dream_load"]
 
 import os.path
 import re
@@ -350,6 +350,7 @@ INF_PAT = re.compile("1#INF")
 
 
 def loadtxt(file, report=0):
+    reu
     """
     Like numpy loadtxt, but adapted for windows non-finite numbers.
     """
