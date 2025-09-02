@@ -201,7 +201,7 @@ def plot_logp(state: MCMCDraw, portion: Optional[float] = None, outliers: bool =
     from scipy.stats import chi2
 
     # Plot log likelihoods, stripping outliers
-    genid, logp = state.k_logp(portion=portion, outliers=outliers)
+    genid, logp = state.gen_logp(portion=portion, outliers=outliers)
     width, height, margin, delta = 0.7, 0.75, 0.1, 0.01
     trace = axes([margin, 0.1, width, height])
     trace.plot(genid, logp, ",", markersize=1)

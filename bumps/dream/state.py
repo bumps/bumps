@@ -7,7 +7,7 @@ The results may be queried as follows::
 
     draws, generation, thinning, total_generations
     sample(condition) returns draws, points, logp
-    k_logp()          returns genid, logp
+    gen_logp()        returns genid, logp
     acceptance_rate() returns draws, AR
     traces()          returns genid, chains
     CR_weight()       returns draws, CR_weight
@@ -499,7 +499,7 @@ class MCMCDraw(object):
     Initialization parameters:
 
     *Ngen* is the number of generations to store. These are retrievable through
-    *k_logp()* and *acceptance_rate()* methods. Note that this is not the same
+    *gen_logp()* and *acceptance_rate()* methods. Note that this is not the same
     as the length of the saved chains.
 
     *Nthin* is the number of thinned generations to store. These are retrievable
@@ -528,7 +528,7 @@ class MCMCDraw(object):
 
     *Ngen*, *Nthin*, *Nupdate*, *Nvar*, *Npop*, *Ncr* gives the size of the
     buffers stored in state. If the buffers are not yet full, the returned sizes
-    for the *traces()*, *k_logp()*, *acceptance_rate()*, *CR_weight()* and
+    for the *traces()*, *gen_logp()*, *acceptance_rate()*, *CR_weight()* and
     *draw()* methods will be smaller.
 
     *generation* is the number of generations in the current fit run. This is
@@ -545,7 +545,7 @@ class MCMCDraw(object):
 
     *labels* a list of names for each parameter
 
-    *thinning* amount of thinning between the k_logp buffer and the traces
+    *thinning* amount of thinning between the gen_logp buffer and the traces
     buffer. DREAM stores every nth generation starting at generation n
     (1-origin). It is possible to change thinning on resume, which will change
     the short range correlation in the traces, however these changes are not
@@ -1019,7 +1019,7 @@ class MCMCDraw(object):
 
         If full is True, then return all chains, not just good chains.
 
-        ** Deprecated ** Use state.k_logp() instead.
+        ** Deprecated ** Use state.gen_logp() instead.
         """
         # self._unroll()
         # draws, logp = self._gen_draws, self._gen_logp
@@ -1039,14 +1039,14 @@ class MCMCDraw(object):
 
         return draws, (logp if full else logp[:, self._good_chains])
 
-    def k_logp(self, portion: Optional[float] = None, outliers: bool = False):
+    def gen_logp(self, portion: Optional[float] = None, outliers: bool = False):
         """
         Return the iteration number and the log likelihood for each point in
         the individual sequences in that iteration.
 
         For example, to plot the convergence of each sequence::
 
-            genid, logp = state.k_logp()
+            genid, logp = state.gen_logp()
             plot(genid, logp)
 
         *portion* is the amount to trim from the head of the chain, or None
@@ -1729,7 +1729,7 @@ def test():
     draws, logp = state.logp()
     assert norm(draws - Npop * arange(1, Ngen + 1)) == 0
     assert norm(logp - pin) == 0
-    genid, logp = state.k_logp()
+    genid, logp = state.gen_logp()
     assert norm(genid - arange(1, Ngen + 1)) == 0
     assert norm(logp - pin) == 0
     genid, AR = state.acceptance_rate()
