@@ -119,8 +119,11 @@ jobs:
     steps:
       - name: Retrieve all artifacts
         uses: actions/download-artifact@v5
+        with:
+          name: artifacts
+          path: dist
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: artifacts/
+          packages-dir: dist/
