@@ -350,7 +350,6 @@ INF_PAT = re.compile("1#INF")
 
 
 def loadtxt(file, report=0):
-    reu
     """
     Like numpy loadtxt, but adapted for windows non-finite numbers.
     """
