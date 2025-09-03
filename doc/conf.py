@@ -83,6 +83,7 @@ nitpick_ignore = [
     ("py:class", "bumps.fitproblem.FitnessType"),
     ("py:obj", "bumps.fitproblem.FitnessType"),
     ("py:class", "bumps.dream.core.Model"),
+    ("py:class", "bumps.dream.state.Draw"),
     ("py:class", "collections.abc.Buffer"),
 ]
 
