@@ -244,7 +244,7 @@ class FitProblem(Generic[FitnessType]):
     _parameters: util.List[Parameter]
     _parameters_by_id: util.Dict[str, Parameter]
     _dof: float = np.nan  # not a schema field, and is not used in __init__
-
+    _active_model_index: int = 0
     # _all_constraints: util.List[util.Union[Parameter, Expression]]
 
     def __init__(
@@ -281,12 +281,11 @@ class FitProblem(Generic[FitnessType]):
             weights = [1.0 for _ in models]
         self.weights = weights
         self.penalty_nllf = float(penalty_nllf)
-        self.set_active_model(0)  # Set the active model to model 0
         self.name = name
 
         # Do these steps last so that it has all of the attributes initialized.
         self.model_reset()  # sets self._all_constraints
-        self.model_update()  # clears any model caches
+        self.set_active_model(0)  # Set the active model to model 0
 
     @staticmethod
     def _null_constraints_function():
@@ -322,6 +321,7 @@ class FitProblem(Generic[FitnessType]):
 
     def _switch_model(self, index):
         # TODO: FreeVariables destroys caching within the model.
+        # print(f"switching to {index} with freevars={bool(self.freevars)}")
         self.freevars.set_model(index)
         if self.freevars:
             # Clear model cache when updating the parameters
@@ -337,6 +337,9 @@ class FitProblem(Generic[FitnessType]):
         # caching is happening in the model is cleared, and it knows that
         # new parameter values have been inserted.
         pars["models"] = [f.parameters() for f in self.models]
+        free = self.freevars.parameters()
+        if free:
+            pars["freevars"] = free
         return pars
 
     def to_dict(self):
