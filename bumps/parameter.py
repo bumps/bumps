@@ -1408,6 +1408,10 @@ class FreeVariables:
         """
         return dict(p.get_model(i) for p in self.parametersets.values())
 
+    def isfree(self, param):
+        pid = getattr(param, "id", None)  # Expressions don't have an id
+        return any(pid == pset.reference.id for pset in self.parametersets.values())
+
 
 def flatten(s):
     if isinstance(s, (tuple, list, np.ndarray)):

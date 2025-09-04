@@ -1136,15 +1136,15 @@ async def get_parameters(only_fittable: bool = False):
     if state.problem is None or state.problem.fitProblem is None:
         return []
     fitProblem = state.problem.fitProblem
+    freevars = fitProblem.freevars
 
     all_parameters = fitProblem.model_parameters()
     if only_fittable:
-        parameter_infos = params_to_list(unique(all_parameters))
+        parameter_infos = params_to_list(unique(all_parameters), freevars=freevars)
         # only include params with priors:
         parameter_infos = [pi for pi in parameter_infos if pi["fittable"] and not pi["fixed"]]
     else:
-        parameter_infos = params_to_list(all_parameters)
-
+        parameter_infos = params_to_list(all_parameters, freevars=freevars)
     return to_json_compatible_dict(parameter_infos)
 
 
@@ -1380,35 +1380,38 @@ class ParamInfo(TypedDict, total=False):
     max_str: str
 
 
-def params_to_list(params, lookup=None, pathlist=None, links=None) -> List[ParamInfo]:
+def params_to_list(params, lookup=None, path="", freevars=None) -> List[ParamInfo]:
     lookup: Dict[str, ParamInfo] = {} if lookup is None else lookup
-    pathlist = [] if pathlist is None else pathlist
-    if isinstance(params, dict):
+    # print(f"{type(params)=} {params=}\n  {lookup=}\n   {pathlist=}")
+    if params is None:
+        pass
+    elif isinstance(params, dict):
         for k in sorted(params.keys()):
-            params_to_list(params[k], lookup=lookup, pathlist=pathlist + [k])
-    elif isinstance(params, tuple) or isinstance(params, list):
+            item = f"{path}{'.' if path else ''}{k}"
+            params_to_list(params[k], lookup=lookup, path=item, freevars=freevars)
+    elif isinstance(params, (tuple, list, np.ndarray)):
+        # print("list branch")
         for i, v in enumerate(params):
-            # add index to last item in pathlist (in-place):
-            new_pathlist = pathlist.copy()
-            if len(pathlist) < 1:
-                new_pathlist.append("")
-            new_pathlist[-1] = f"{new_pathlist[-1]}[{i:d}]"
-            params_to_list(v, lookup=lookup, pathlist=new_pathlist)
-    elif isinstance(params, Parameter) or isinstance(params, Constant):
-        path = ".".join(pathlist)
-        existing = lookup.get(params.id, None)
+            params_to_list(v, lookup=lookup, path=f"{path}[{i:d}]", freevars=freevars)
+    elif isinstance(params, (Parameter, Constant)):
+        # path = ".".join(pathlist)
+        # print(f"failing with {params} {lookup}")
+        pid = params.id
+        has_slot = hasattr(params, "slot")
+        existing = lookup.get(pid, None)
         if existing is not None:
-            existing["paths"].append(".".join(pathlist))
+            existing["paths"].append(path)
+        elif freevars.isfree(params):
+            # Don't include free parameters from the model in the list
+            # of available parameters.
+            pass
         else:
             value_str = VALUE_FORMAT.format(nice(params.value))
             has_prior = getattr(params, "prior", None) is not None
 
-            if hasattr(params, "slot"):
-                writable = type(params.slot) in [Variable, Parameter]
-            else:
-                writable = False
+            writable = has_slot and isinstance(params.slot, (Variable, Parameter))
             new_item: ParamInfo = {
-                "id": params.id,
+                "id": pid,
                 "name": str(params.name),
                 "paths": [path],
                 "tags": getattr(params, "tags", []),
@@ -1422,9 +1425,13 @@ def params_to_list(params, lookup=None, pathlist=None, links=None) -> List[Param
                 new_item["value01"] = params.prior.get01(float(params.value))
                 new_item["min_str"] = VALUE_FORMAT.format(nice(lo))
                 new_item["max_str"] = VALUE_FORMAT.format(nice(hi))
-            lookup[params.id] = new_item
+            lookup[pid] = new_item
+
+            # Check for any additional parameters referenced by the slot
+            if has_slot:
+                params_to_list(params.slot.parameters(), lookup=lookup, path=f"{path}=", freevars=freevars)
     elif callable(getattr(params, "parameters", None)):
-        # handle Expression, Constant, etc.
+        # handle Expression, etc.
         subparams = params.parameters()
-        params_to_list(subparams, lookup=lookup, pathlist=pathlist)
+        params_to_list(subparams, lookup=lookup, path=f"{path}=", freevars=freevars)
     return list(lookup.values())
