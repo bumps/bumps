@@ -1408,12 +1408,12 @@ def params_to_list(params, lookup=None, path="", freevars=None) -> List[ParamInf
         else:
             value_str = VALUE_FORMAT.format(nice(params.value))
             has_prior = getattr(params, "prior", None) is not None
-
-            writable = has_slot and isinstance(params.slot, (Variable, Parameter))
+            writable = has_slot and isinstance(params.slot, (float, Variable, Parameter))
+            paths = [path] if not has_slot or isinstance(params.slot, (float, Variable)) else [f"{path}={params.slot}"]
             new_item: ParamInfo = {
                 "id": pid,
                 "name": str(params.name),
-                "paths": [path],
+                "paths": paths,
                 "tags": getattr(params, "tags", []),
                 "writable": writable,
                 "value_str": value_str,
@@ -1429,9 +1429,15 @@ def params_to_list(params, lookup=None, path="", freevars=None) -> List[ParamInf
 
             # Check for any additional parameters referenced by the slot
             if has_slot:
-                params_to_list(params.slot.parameters(), lookup=lookup, path=f"{path}=", freevars=freevars)
+                subparams = params.slot.parameters()
+                if subparams:
+                    if len(subparams) > 1:
+                        params_to_list(subparams, lookup=lookup, path=f"{params}", freevars=freevars)
+                    else:
+                        params_to_list(subparams[0], lookup=lookup, path="", freevars=freevars)
     elif callable(getattr(params, "parameters", None)):
         # handle Expression, etc.
         subparams = params.parameters()
-        params_to_list(subparams, lookup=lookup, path=f"{path}=", freevars=freevars)
+        subparams = subparams[0] if subparams and len(subparams) == 1 else subparams
+        params_to_list(subparams, lookup=lookup, path=f"{path}={params}", freevars=freevars)
     return list(lookup.values())
