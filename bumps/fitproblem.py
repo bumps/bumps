@@ -484,7 +484,7 @@ class FitProblem(Generic[FitnessType]):
         chisq_norm, chisq_err = nllf_scale(dof=self.dof, npars=len(self._parameters), norm=norm)
         if nllf is None:
             pparameter, pconstraints, pmodel, failing_constraints = self._nllf_components()
-            nllf = pparameter + pparameter + pconstraints if compact else pmodel + pparameter
+            nllf = pparameter + pconstraints + pmodel if compact else pparameter + pmodel
         else:
             assert compact is True
         return nllf * chisq_norm
