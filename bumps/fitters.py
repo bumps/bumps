@@ -285,7 +285,7 @@ class MultiStart(FitBase):
     """
 
     name = "Multistart Monte Carlo"
-    settings = [("starts", 100), ("jump", 0.0)]
+    settings = [("starts", 100), ("jump", 0)]
 
     def __init__(self, fitter):
         FitBase.__init__(self, fitter.problem)
@@ -293,7 +293,7 @@ class MultiStart(FitBase):
 
     def solve(self, monitors: MonitorRunner, mapper=None, **options):
         starts = max(options.pop("starts", 1), 1)
-        jump = options.pop("jump", 0.0)
+        jump = options.pop("jump", 0)
         x_best, f_best, chisq_best = None, np.inf, None
         for k in range(starts):
             x, fx = self.fitter.solve(monitors=monitors, mapper=mapper, **options)
@@ -453,7 +453,8 @@ class BFGSFit(FitBase):
 
     name = "Quasi-Newton BFGS"
     id = "newton"
-    settings = [("steps", 3000), ("ftol", 1e-6), ("xtol", 1e-12), ("starts", 1), ("jump", 0.0)]
+    # TODO: are these defaults a problem when the problem is single precision? See issue #110.
+    settings = [("steps", 3000), ("ftol", 1e-6), ("xtol", 1e-12), ("starts", 1), ("jump", 0)]
 
     def solve(self, monitors: MonitorRunner, mapper=None, **options):
         options = _fill_defaults(options, self.settings)
@@ -526,7 +527,7 @@ class RLFit(FitBase):
 
     name = "Random Lines"
     id = "rl"
-    settings = [("steps", 3000), ("pop", 0.5), ("CR", 0.9), ("starts", 20), ("jump", 0.0)]
+    settings = [("steps", 3000), ("pop", 0.5), ("CR", 0.9), ("starts", 20), ("jump", 0)]
 
     def solve(self, monitors: MonitorRunner, mapper=None, **options):
         from .random_lines import random_lines
@@ -635,7 +636,7 @@ class MPFit(FitBase):
 
     name = "Levenberg-Marquardt"
     id = "lm"
-    settings = [("steps", 200), ("ftol", 1e-10), ("xtol", 1e-10), ("starts", 1), ("jump", 0.0)]
+    settings = [("steps", 200), ("ftol", 1e-10), ("xtol", 1e-10), ("starts", 1), ("jump", 0)]
 
     def solve(self, monitors=None, mapper=None, **options):
         from .mpfit import mpfit
@@ -864,7 +865,7 @@ class DreamFit(FitBase):
         ("thin", 1),
         ("alpha", 0.0),
         ("outliers", "iqr"),
-        ("trim", False),
+        ("trim", True),
         ("steps", 0),  # deprecated: use --samples instead
     ]
 

@@ -55,6 +55,17 @@ class Setting:
         self.defaults = []
         FIT_OPTIONS[name] = self
 
+    def build_help(self) -> str:
+        if self.name == "time":
+            # Fit option processed by the fit driver, so common across all fitters
+            fitters = ["all fitters"]
+        elif self.name == "fit":
+            # Not a fit option. Handled specially
+            fitters = self.fitters
+        else:
+            fitters = [f"{fitter}={FITTER_DEFAULTS[fitter]['settings'][self.name]}" for fitter in self.fitters]
+        return f"{self.label}  [{', '.join(fitters)}]\n{self.description}"
+
 
 @dataclass(frozen=True)
 class Range:
@@ -78,36 +89,36 @@ class Range:
 
 
 ## Options available for the various fitters
-Setting("fit", "Optimizer", [], "Fitting engine to use.")
+Setting("fit", "optimizer name", [], f"Fitting engine to use (default: {DEFAULT_FITTER_ID})")
 
 # Stopping conditions
 Setting(
     "steps",
-    "Steps",
+    "number of steps",
     int,
     """\
-    Stop when iteration = steps.
-    In Dream, the number of steps is inferred from --samples as samples / (pop * pars)
-    if --steps is zero, otherwise it uses the value of --steps.""",
+    Stop when iteration = steps. In Dream, when --steps=0 the number of steps is
+    calculated using (samples / chains). Here chains = pop * pars if pop > 0
+    or -pop if pop < 0.""",
 )
 Setting("xtol", "x tolerance", Range(0, 1), "Stop when population diameter < xtol relative to range.")
 Setting("ftol", "f(x) tolerance", float, "Stop when variation in log likelihood < ftol.")
 Setting(
     "alpha",
-    "Convergence",
+    "convergence criteria",
     Range(0, 0.1),
     """\
-    Stop when probability that population is varying < alpha or use default
-    zero for no convergence test.
-    (Note that while p-values vary from 0 to 1, values for alpha > 0.1 result in
-    an unstable check for convergence and are therefore disallowed)""",
+    Stop when probability that population is varying is less than alpha. This
+    uses a Kolmogorov-Smirnov test on the log-likelihood values to see if the
+    distribution at the start of the saved samples matches the distribution at
+    the end. Alpha must be 0.1 or less.""",
 )
-Setting("time", "Max time", float, "Maximum number of hours to run the fit, or zero for no maximum.")
+Setting("time", "Max time (hours)", float, "Maximum number of hours to run the fit, or zero for no maximum.")
 
 # Initializers
 Setting(
     "init",
-    "Initializer",
+    "initializer",
     list("eps lhs cov random".split()),
     """\
     Population initialization method
@@ -118,26 +129,26 @@ Setting(
 )
 Setting(
     "pop",
-    "Population",
+    "population",
     float,
     """\
-    Population size is pop times number of fitted parameters. If pop is
-    negative then set population size to -pop independent of fit parameters.""",
+    Population size is pop times number of fitted parameters. If pop is negative
+    then set population size to -pop independent of fit parameters.""",
 )
 Setting("burn", "Burn-in steps", int, "Estimated number generations before convergence")
 Setting("samples", "Samples", int, "Number of samples to draw = pop*pars*steps.")
 Setting(
     "thin",
-    "Thinning factor",
+    "thinning factor",
     int,
     """\
-    Number of iterations between samples; use a large number here
-    if you find your problem is "stuck", with minimal change from
-    step to step in the parameter trace.""",
+    Number of iterations between samples; use a large number here if you find
+    your problem is "stuck", with minimal change from step to step in the
+    parameter trace.""",
 )
 Setting(
     "outliers",
-    "Outliers test",
+    "outliers test",
     list("none iqr grubbs mahal".split()),
     """\
     Remove outlier Markov chains every n steps using the selected algorithm.
@@ -152,16 +163,16 @@ Setting(
 # Post processing
 Setting(
     "trim",
-    "Burn-in trim",
+    "burn-in trim",
     bool,
     """\
     After fitting, trim samples from early in the Markov chains before it converged.""",
 )
 
 # Parallel tempering
-Setting("nT", "# Temperatures", int, "Number of temperatures in the parallel tempering ladder")
-Setting("Tmin", "Min temperature", float, "Lowest temperature in the temperture ladder")
-Setting("Tmax", "Max temperature", float, "Highest temperature in the temperature ladder")
+Setting("nT", "number of temperatures", int, "Number of temperatures in the parallel tempering ladder")
+Setting("Tmin", "min temperature", float, "Lowest temperature in the temperture ladder")
+Setting("Tmax", "max temperature", float, "Highest temperature in the temperature ladder")
 
 # Differential evolution
 Setting("CR", "Crossover ratio", Range(0, 1), "Proportion of parameters updated in crossover step")
@@ -172,7 +183,7 @@ Setting("F", "Scale", float, "Step-size scaling on difference vector")
 # Amoeba
 Setting(
     "radius",
-    "Simplex radius",
+    "simplex radius",
     Range(0, 0.5),
     """\
     Radius around the starting point for the initial simplex. Values are in (0, 0.5],
@@ -180,16 +191,23 @@ Setting(
 )
 
 # Stochastic global minimization
-Setting("starts", "Auto restarts", int, "Number of times to restart the amoeba fit.")
+Setting(
+    "starts",
+    "Auto restarts",
+    int,
+    """\
+    Number of times to restart the amoeba fit. After each start the fitter jumps
+    to a new starting position determined by the --jump option.""",
+)
 Setting(
     "jump",
-    "Jump radius",
+    "jump radius",
     Range(0, 0.5),
     """\
-    When running with multiple starts, what size of jump to take between restarts.
-    Values are in [0, 0.5], representing the portion of the total range of each parameter.
-    A value of zero uses a random starting point in the range.
-    """,
+    When running with multiple starts, we jump to a new start position for each
+    restart. Jump values are in [0, 0.5], representing the portion of the total
+    range of each parameter. A value of zero uses a random starting point in the
+    range.""",
 )
 
 
@@ -216,10 +234,22 @@ def form_fit_options_associations():
     # Define the new associations
     for fitter in FITTERS:
         fitter_id = fitter.id
+
+        # The --fit option is pressent in every fitter. Note that stype for --fit is
+        # a list of strings representing available fitters, so build up that list as well.
+        # Similarly --fit has the same default value for each fitter.
         settings = FIT_OPTIONS["fit"]
         settings.fitters.append(fitter_id)  # produces doc string for --fit [amoeba, dream, ...]
         settings.stype.append(fitter_id)  # does option checking for --fit=fitter
         settings.defaults.append(DEFAULT_FITTER_ID)
+
+        # The --time option is present in every fitter, with default = 0.
+        settings = FIT_OPTIONS["time"]
+        settings.fitters.append(fitter_id)
+        settings.defaults.append(0.0)
+
+        # Cycle through the default options for the current fitter, and for each, add
+        # the fitter and its default value to the respective lists.
         for key, value in fitter.settings:
             if key not in FIT_OPTIONS:
                 raise TypeError(f"Missing type and description for fit option --{key} used by {fitter_id}")
@@ -238,40 +268,55 @@ def check_options(options: Dict[str, Any], fitter_id: Optional[str] = None) -> T
     # make sure it is robust against bad inputs.
     errors = []
     unknown = []
+
+    # Use the default fitter if none specified.
     if not fitter_id:
         fitter_id = options.get("fit", DEFAULT_FITTER_ID)
+
+    # Check that the fitter is one of the valid fitters. In this case we are using
+    # all the fitters, not just the ones visible in the user interface so that we
+    # can support deprecated and experimental fitters.
     # available = set(fitter.id for fitter in FITTERS)
-    # Check against all available fitters, not just the ones visibile in the interface
     available = FIT_AVAILABLE_IDS
+    # print(available)
     if fitter_id not in available:
         errors.append(f"Fitter {fitter_id} not in {', '.join(available)}. Using {DEFAULT_FITTER_ID} instead.")
         fitter_id = DEFAULT_FITTER_ID
+
     # TODO: default from state.share.fitter_settings instead of Fitter.settings?
-    fitter = lookup_fitter(fitter_id)
-    defaults = dict(fitter.settings)
+    fitter: fitters.FitBase = lookup_fitter(fitter_id)
+    defaults: Dict[str, Any] = dict(fitter.settings)
     # print(f"defaults for {fitter_id}: {defaults}")
-    # Note: time is not one of the fit options but it is ever present.
+
+    # Scan all options, correcting any errors.
+    # Note: time is processed by FitDriver so it is active in all the fitters
     new_options = {"fit": fitter_id, "time": 0.0, **defaults}
     for key, value in options.items():
-        if key == "fit":
-            # Already added.
+        # We have already checked the fit=value option above.
+        if key in "fit":
             continue
-        if key not in defaults and key != "time":
-            # Skip unrecognized options
+
+        # Collect invalid options for later reporting
+        if key not in new_options:
+            # Skip unrecognized options.
             unknown.append(f"{key}={value}")
             continue
-        stype = float if key == "time" else FIT_OPTIONS[key].stype
-        if (stype is float or isinstance(stype, Range)) and isinstance(value, int):
-            value = float(value)  # type promotion from int to float
+
+        # Promote int values to floats if the option expects a float
+        stype = FIT_OPTIONS[key].stype
+        if isinstance(value, int) and (stype is float or isinstance(stype, Range)):
+            value = float(value)
+
+        # Check the value type
         if isinstance(stype, list):  # enumeration
             if value not in stype:
                 # Default to first item in an enum if the enum is recognized.
-                errors.append(f"Expected {key}={value} to be in {{{'|'.join(stype)}}}. Using {stype[0]}")
+                errors.append(f"Setting {key} to {stype[0]} since {key}={value} is not in {{{'|'.join(stype)}}}")
                 value = stype[0]
         elif isinstance(stype, Range):
             if not isinstance(value, float):
                 # Skip values of the wrong type.
-                errors.append(f"Expected {key}={value} to be float. Ignored.")
+                errors.append(f"Skipping {key}={value} since it is not a number.")
                 continue
             if not stype.min <= value <= stype.max:
                 # Clip values to be in range.
@@ -279,11 +324,12 @@ def check_options(options: Dict[str, Any], fitter_id: Optional[str] = None) -> T
                 value = min(stype.max, max(stype.min, value))
         elif not isinstance(value, stype):
             # Skip values of the wrong type
-            errors.append(f"Expected {key}={value} to have type {stype.__name__}. Ignored")
+            errors.append(f"Skipping {key}={value} since it is not type {stype.__name__}")
             continue
         new_options[key] = value
+
+    # Report all invalid options as a single error on the error list.
     if unknown:
-        # Format the skipped options nicely and add to the error list
         errors = [f"Unused fit options in {fitter_id}: {' '.join(unknown)}", *errors]
     return new_options, errors
 

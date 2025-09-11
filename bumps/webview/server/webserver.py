@@ -11,7 +11,7 @@ from . import cli
 from . import api
 from . import persistent_settings
 from .logger import logger
-from .cli import BumpsOptions
+from .cli import BumpsOptions, PREFERRED_PORT
 
 mimetypes.add_type("text/css", ".css")
 mimetypes.add_type("text/html", ".html")
@@ -22,7 +22,6 @@ mimetypes.add_type("image/png", ".png")
 mimetypes.add_type("image/svg+xml", ".svg")
 
 TRACE_MEMORY = False
-PREFERRED_PORT = 5148  # "SLAB"
 USE_MSGPACK = True  # use msgpack for serialization, faster than JSON
 
 # can get by name and not just by id
