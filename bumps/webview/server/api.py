@@ -429,6 +429,7 @@ def _export_results(
 
         # print("export complete")
 
+
 @register
 async def save_parameters(pathlist: List[str], filename: str, overwrite: bool = False):
     problem_state = state.problem
@@ -804,8 +805,7 @@ async def log(message: str, title: Optional[str] = None):
 
 @register
 async def get_data_plot(model_indices: Optional[List[int]] = None):
-    import matplotlib.pyplot as plt
-    import mpld3
+    from bumps.fitproblem import fitness_chisq_str
 
     if state.problem is None or state.problem.fitProblem is None:
         return None
@@ -814,16 +814,150 @@ async def get_data_plot(model_indices: Optional[List[int]] = None):
     # Suppress all mpld3 warnings
     # warnings.filterwarnings("ignore", module="mpld3")
 
+    # TODO: revise get_data_plot interface to take only a single index
+    # The current interface to get_data_plot takes a list of model indices
+    # but it only returns a single figure. If called with a list of models
+    # they will overwrite each other in one figure.
+    if model_indices is None or len(model_indices) != 1:
+        raise RuntimeError("can only do one model at a time")
+    index = model_indices[0]
+
+    # Overall chisq
+    overall_chisq_str = fitProblem.chisq_str()
+    with fitProblem.push_model(index) as model:
+        # # "per model" chisq
+        if fitProblem.num_models > 1:
+            chisq_str = fitness_chisq_str(model)
+            text = f"χ² = {chisq_str}; overall {overall_chisq_str}"
+            title = f"Model {index+1}: {model.name}"
+        else:
+            text = f"χ² = {overall_chisq_str}"
+            title = f"{model.name}"
+        if hasattr(model, "plotly"):
+            return _get_data_plot_plotly(model, title=title, chisq=text)
+        elif hasattr(model, "plot"):
+            return _get_data_plot_mpl(model, title=title, chisq=text)
+        else:
+            # Use plotly to show chisq
+            return _get_data_plot_plotly(model, title=title, chisq=text)
+
+
+def _get_data_plot_plotly(model, title, chisq):
+    if hasattr(model, "plotly"):
+        fig = model.plotly()
+    else:
+        import plotly.graph_objects as go
+
+        fig = go.Figure()
+        fig.update_layout(
+            xaxis_visible=False,
+            yaxis_visible=False,
+            # plot_bgcolor='rgba(0,0,0,0)',
+            # paper_bgcolor='rgba(0,0,0,0)',
+        )
+
+    # TODO: text offset of (x=0.5em, y=0.5ex)
+    text_offset = 0.01  # portion of graph axis length
+    font = dict(size=22)
+    # fig.add_annotation(
+    #    x=text_offset, y=1+text_offset,
+    #    xanchor="left", yanchor="bottom",
+    #    xref="paper", yref="paper",
+    #    text=title,
+    #    showarrow=False,
+    #    font=font,
+    # )
+    fig.add_annotation(
+        x=1 - text_offset,
+        y=1 + text_offset,
+        xanchor="right",
+        yanchor="bottom",
+        xref="paper",
+        yref="paper",
+        text=chisq,
+        showarrow=False,
+        font=font,
+    )
+    dfig = fig.to_dict()
+    return {"fig_type": "plotly", "plotdata": to_json_compatible_dict(dfig)}
+
+
+# Make mpld3 figure controls available for monkey-patching.
+# Figure size is a hack. The correct choice will probably depend on browser,
+# screen size, dpi, available fonts, etc.
+# TODO: have webview send the desired figure size
+MPLD3_BACKEND = "agg"
+MPLD3_FIG_SIZE = (10, 8)
+MPLD3_STYLE = {
+    "figure.dpi": 72,
+    "figure.subplot.left": 0.01,
+    "figure.subplot.right": 0.99,
+    "figure.subplot.bottom": 0.01,
+    "figure.subplot.top": 0.99,
+    "axes.xmargin": 0.01,
+    "axes.ymargin": 0.01,
+    "figure.constrained_layout.h_pad": 0.0,
+    "figure.constrained_layout.w_pad": 0.0,
+    "figure.constrained_layout.hspace": 0.0,
+    "figure.constrained_layout.wspace": 0.0,
+    "font.size": 16,
+}
+
+
+def _get_data_plot_mpl(model, title, chisq):
+    import matplotlib.pyplot as plt
+    import mpld3
+    from mpld3 import plugins
+
     start_time = time.time()
     logger.info(f"queueing new data plot... {start_time}")
-    with push_mpl_backend("agg"):
-        fig = plt.figure()
-        for i, model in enumerate(fitProblem.models):
-            if model_indices is not None and i not in model_indices:
-                continue
-            model.plot()
-        plt.text(0.01, 0.01, "chisq=%s" % fitProblem.chisq_str(), transform=plt.gca().transAxes)
+    text_offset = 0.01  # portion of graph axis length
+    # Note: rc_context() says it won't modify the backend, so we still need push_mpl_backend().
+    with push_mpl_backend(MPLD3_BACKEND), plt.rc_context(MPLD3_STYLE):
+        fig = plt.figure(figsize=MPLD3_FIG_SIZE)
+        model.plot()
+
+        # TODO: can't adjust margins correctly unless we know the figure size
+        # h, w = fig.get_size_inches()
+        # h_ex = h*72 / 16  # (h in * 72 pt/in) / (16 pt/ex) = height in ex
+        h_ex = 30  # assume we are 50 lines tall, so that 2/30 ~ 0.08
+        text_offset = 0.5 / h_ex  # 1/2 ex above and below the text
+
+        top = 1 - 2 / h_ex  # leave 2 ex at the top of the figure
+        plt.subplots_adjust(top=top)
+
+        # # transFigure doesn't seem to work in mpld3
+        # transform = fig.transFigure
+        # x, y = text_offset, 1 - text_offset
+        # ha, va = "left", "top"
+        # fig.text(x, y, title, transform=transform, va=va, ha=ha)
+        # x, y = 1 - text_offset, 1 - text_offset
+        # ha, va = "right", "top"
+        # fig.text(x, y, chisq, transform=transform, va=va, ha=ha)
+
+        ax = fig.axes[0]
+        fontsize = 22
+        transform = ax.transAxes
+        # Don't need the title since it is in the models dropdown
+        # x, y = text_offset, 1 + text_offset
+        # ha, va = "left", "bottom"
+        # ax.text(x, y, title, transform=transform, va=va, ha=ha, fontsize=fontsize)
+        x, y = 1 - text_offset, 1 + text_offset
+        ha, va = "right", "bottom"
+        ax.text(x, y, chisq, transform=transform, va=va, ha=ha, fontsize=fontsize)
+
+        # Add plugins to the figure for zoom, etc.
+        # Note: these are already present in the dict, just not working on the backend?
+        plugins.clear(fig)
+        plugins.connect(
+            fig,
+            plugins.BoxZoom(enabled=True),
+            plugins.Reset(),
+            plugins.MousePosition(fontsize=14),
+        )
+
         dfig = mpld3.fig_to_dict(fig)
+        # import pprint; pprint.pprint(dfig); import sys; sys.exit()
         plt.close(fig)
     end_time = time.time()
     logger.info(f"time to draw data plot: {end_time - start_time}")

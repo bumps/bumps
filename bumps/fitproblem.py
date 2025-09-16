@@ -46,6 +46,7 @@ Summary of problem attributes::
 
 __all__ = ["Fitness", "FitProblem", "load_problem"]
 
+from contextlib import contextmanager
 from dataclasses import dataclass
 import logging
 import os
@@ -311,7 +312,6 @@ class FitProblem(Generic[FitnessType]):
     def dof(self):
         return self._dof
 
-    # TODO: make this @property\ndef models(self): ...
     @property
     def models(self):
         """Iterate over models, with free parameters set from model values"""
@@ -323,12 +323,46 @@ class FitProblem(Generic[FitnessType]):
             # Restore the active model after cycling, even if interrupted
             self.freevars.set_model(self._active_model_index)
 
+    @property
+    def num_models(self):
+        return len(self._models)
+
     # noinspection PyAttributeOutsideInit
-    def set_active_model(self, i):
-        """Use free parameters from model *i*"""
-        self._active_model_index = i
-        self.active_model = self._models[i]
-        self.freevars.set_model(i)
+    def set_active_model(self, index):
+        """
+        Fetch model *index* with the appropriate free variables substituted.
+
+        This will remain the active model until a new active model is selected.
+
+        Operations like chisq_str() or plot() which cycle through the models will
+        restore the parameters upon completion.
+        """
+        if not (-len(self._models) <= index < len(self._models)):
+            raise IndexError(f"Index {index} invalid when only {len(self._models)} models")
+        if index < 0:
+            index = len(self._models) + index
+        self._active_model_index = index
+        self.active_model = self._models[index]
+        self.freevars.set_model(index)
+        return self._models[index]
+
+    @contextmanager
+    def push_model(self, index):
+        """
+        Fetch model *index* with the appropriate free variables substituted.
+
+        On completion of the context, restore the parameters for the active model.
+        """
+        if not (-len(self._models) <= index < len(self._models)):
+            raise IndexError(f"Index {index} invalid when only {len(self._models)} models")
+        if index < 0:
+            index = len(self._models) + index
+        try:
+            self.freevars.set_model(index)
+            yield self._models[index]
+        finally:
+            # Restore the active model after cycling, even if interrupted
+            self.freevars.set_model(self._active_model_index)
 
     def model_parameters(self):
         """Return parameters from all models"""
@@ -737,22 +771,52 @@ class FitProblem(Generic[FitnessType]):
         print("[overall chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
 
     def plot(self, p=None, fignum=1, figfile=None, view=None, model_indices=None):
-        import pylab
+        import matplotlib.pyplot as plt
 
         if p is not None:
             self.setp(p)
+
+        # Overall chisq
+        overall_chisq_str = self.chisq_str()
+
         for i, f in enumerate(self.models):
             if model_indices is not None and i not in model_indices:
                 continue
             if not hasattr(f, "plot"):
                 continue
+
+            # TODO: duplicated in bumps.webserver.server.api._get_data_plot_mpl()
+            if self.num_models > 1:
+                chisq_str = fitness_chisq_str(f)
+                chisq = f"χ² = {chisq_str}; overall {overall_chisq_str}"
+                title = f"Model {i+1}: {f.name}"
+            else:
+                chisq = f"χ² = {overall_chisq_str}"
+                title = f"{f.name}"
+
+            fig = plt.figure(i + fignum)
             f.plot(view=view)
-            pylab.figure(i + fignum)
-            f.plot(view=view)
-            pylab.suptitle("Model %d - %s" % (i, f.name))
-            pylab.text(0.01, 0.01, "chisq=%s" % fitness_chisq_str(f), transform=pylab.gca().transAxes)
+
+            # TODO: duplicated in bumps.webserver.server.api._get_data_plot_mpl()
+            # TODO: attach to canvas resize_event so that margins are fixed
+            h, w = fig.get_size_inches()
+            h_ex = h * 72 / 16  # (h in * 72 pt/in) / (16 pt/ex) = height in ex
+            text_offset = 0.5 / h_ex  # 1/2 ex above and below the text
+            top = 1 - 2 / h_ex  # leave 2 ex at the top of the figure
+            plt.subplots_adjust(top=top)
+
+            transform = fig.transFigure
+            x, y = text_offset, 1 - text_offset
+            ha, va = "left", "top"
+            fig.text(x, y, title, transform=transform, va=va, ha=ha)
+            x, y = 1 - text_offset, 1 - text_offset
+            ha, va = "right", "top"
+            fig.text(x, y, chisq, transform=transform, va=va, ha=ha)
+
+            # pylab.suptitle("Model %d - %s" % (i, f.name))
+            # pylab.text(0.01, 0.01, "chisq=%s" % fitness_chisq_str(f), transform=pylab.gca().transAxes)
             if figfile is not None:
-                pylab.savefig(figfile + "-model%d.png" % i, format="png")
+                plt.savefig(figfile + "-model%d.png" % i, format="png")
 
     # Note: restore default behaviour of getstate/setstate rather than
     # inheriting from BaseFitProblem
