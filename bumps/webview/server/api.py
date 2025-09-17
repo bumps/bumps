@@ -890,12 +890,12 @@ MPLD3_BACKEND = "agg"
 MPLD3_FIG_SIZE = (10, 8)
 MPLD3_STYLE = {
     "figure.dpi": 72,
-    "figure.subplot.left": 0.01,
+    "figure.subplot.left": 0.10,
     "figure.subplot.right": 0.99,
-    "figure.subplot.bottom": 0.01,
-    "figure.subplot.top": 0.99,
-    "axes.xmargin": 0.01,
-    "axes.ymargin": 0.01,
+    "figure.subplot.bottom": 0.05,
+    "figure.subplot.top": 0.95,
+    "axes.xmargin": 0.05,
+    "axes.ymargin": 0.05,
     "figure.constrained_layout.h_pad": 0.0,
     "figure.constrained_layout.w_pad": 0.0,
     "figure.constrained_layout.hspace": 0.0,

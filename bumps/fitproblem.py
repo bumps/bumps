@@ -780,9 +780,13 @@ class FitProblem(Generic[FitnessType]):
         overall_chisq_str = self.chisq_str()
 
         for i, f in enumerate(self.models):
+            outfile = f"{figfile}-model{i}.png" if figfile else None
             if model_indices is not None and i not in model_indices:
                 continue
-            if not hasattr(f, "plot"):
+
+            backend = "matplotlib" if hasattr(f, "plot") else "plotly" if hasattr(f, "plotly") else None
+            # backend = "plotly" if hasattr(f, "plotly") else "matplotlib" if hasattr(f, "plot") else None
+            if backend is None:
                 continue
 
             # TODO: duplicated in bumps.webserver.server.api._get_data_plot_mpl()
@@ -793,30 +797,68 @@ class FitProblem(Generic[FitnessType]):
             else:
                 chisq = f"χ² = {overall_chisq_str}"
                 title = f"{f.name}"
+            fontsize = 16
+
+            if backend == "plotly":
+                fig = f.plotly()
+                # TODO: text offset of (x=0.5em, y=0.5ex)
+                text_offset = 0.01  # portion of graph axis length
+                font = dict(size=16)
+                fig.add_annotation(
+                    x=text_offset,
+                    y=1 + text_offset,
+                    xanchor="left",
+                    yanchor="bottom",
+                    xref="paper",
+                    yref="paper",
+                    text=title,
+                    showarrow=False,
+                    font=font,
+                )
+                fig.add_annotation(
+                    x=1 - text_offset,
+                    y=1 + text_offset,
+                    xanchor="right",
+                    yanchor="bottom",
+                    xref="paper",
+                    yref="paper",
+                    text=chisq,
+                    showarrow=False,
+                    font=font,
+                )
+
+                # Note: requires "pip install kaleido"
+                # Note: much slower than matplotlib
+                fig.write_image(outfile)
+                continue
 
             fig = plt.figure(i + fignum)
             f.plot(view=view)
 
-            # TODO: duplicated in bumps.webserver.server.api._get_data_plot_mpl()
+            # TODO: somewhat duplicated in bumps.webserver.server.api._get_data_plot_mpl()
             # TODO: attach to canvas resize_event so that margins are fixed
+            # TODO: fix mpld3 transFigure so that we can use the same transform
+
+            # Make room for model name and chisq on the top of the plot
             h, w = fig.get_size_inches()
-            h_ex = h * 72 / 16  # (h in * 72 pt/in) / (16 pt/ex) = height in ex
+            h_ex = h * 72 / fontsize  # (h in * 72 pt/in) / (fontsize pt/ex) = height in ex
             text_offset = 0.5 / h_ex  # 1/2 ex above and below the text
             top = 1 - 2 / h_ex  # leave 2 ex at the top of the figure
             plt.subplots_adjust(top=top)
 
+            # Add model name and chisq
             transform = fig.transFigure
             x, y = text_offset, 1 - text_offset
             ha, va = "left", "top"
-            fig.text(x, y, title, transform=transform, va=va, ha=ha)
+            fig.text(x, y, title, transform=transform, va=va, ha=ha, fontsize=fontsize)
             x, y = 1 - text_offset, 1 - text_offset
             ha, va = "right", "top"
-            fig.text(x, y, chisq, transform=transform, va=va, ha=ha)
+            fig.text(x, y, chisq, transform=transform, va=va, ha=ha, fontsize=fontsize)
 
             # pylab.suptitle("Model %d - %s" % (i, f.name))
             # pylab.text(0.01, 0.01, "chisq=%s" % fitness_chisq_str(f), transform=pylab.gca().transAxes)
-            if figfile is not None:
-                plt.savefig(figfile + "-model%d.png" % i, format="png")
+            if outfile:
+                plt.savefig(outfile, format="png")
 
     # Note: restore default behaviour of getstate/setstate rather than
     # inheriting from BaseFitProblem
