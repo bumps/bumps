@@ -771,10 +771,16 @@ class FitProblem(Generic[FitnessType]):
         print("[overall chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
 
     def plot(self, p=None, fignum=1, figfile=None, view=None, model_indices=None):
+        # TODO: remove duplicate logic from FitProblem.plot() and api.get_data_plot
         import matplotlib.pyplot as plt
 
         if p is not None:
             self.setp(p)
+
+        # Don't show the figure calling problem.plot(figfile=base_file), as is
+        # done during --export=path. If called as problem.plot(), as from a jupyter
+        # notebook, then swe should show the plot.
+        show_fig = not figfile
 
         # Overall chisq
         overall_chisq_str = self.chisq_str()
@@ -827,19 +833,28 @@ class FitProblem(Generic[FitnessType]):
                     font=font,
                 )
 
-                # Note: requires "pip install kaleido"
-                # Note: much slower than matplotlib
-                fig.write_image(outfile)
+                if outfile:
+                    # Note: requires "pip install kaleido"
+                    # Note: much slower than matplotlib
+                    fig.write_image(outfile)
+                if show_fig:
+                    # Try to guess whether we are in a jupyter notebook before deciding how
+                    # to render the plot.
+                    # TODO: gather all figures into one tab when rendering to the browser
+                    import sys
+
+                    jupyter = "ipykernel" in sys.modules
+                    renderer = None if jupyter else "browser"
+                    fig.show(renderer)
                 continue
 
+            # If not plotly then we must be using matplotlib.
+            # Note that during api.export our matplotlib backend is 'agg' so no plot will show.
             fig = plt.figure(i + fignum)
             f.plot(view=view)
 
-            # TODO: somewhat duplicated in bumps.webserver.server.api._get_data_plot_mpl()
-            # TODO: attach to canvas resize_event so that margins are fixed
-            # TODO: fix mpld3 transFigure so that we can use the same transform
-
             # Make room for model name and chisq on the top of the plot
+            # TODO: attach margins to canvas resize_event so that margins are fixed
             h, w = fig.get_size_inches()
             h_ex = h * 72 / fontsize  # (h in * 72 pt/in) / (fontsize pt/ex) = height in ex
             text_offset = 0.5 / h_ex  # 1/2 ex above and below the text
