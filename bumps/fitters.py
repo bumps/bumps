@@ -1437,7 +1437,6 @@ def fit(
     from .serialize import serialize
     from .mapper import MPMapper, SerialMapper
     from .webview.server.fit_thread import ConvergenceMonitor
-    from .webview.server.state_hdf5_backed import State, FitResult, ProblemState
 
     # verbose = True
     # Options parser stores --fit=fitter in fit_options["fit"] rather than fit_options["method"]
@@ -1468,6 +1467,8 @@ def fit(
 
     # TODO: can we put this in a function in state_hdf5_backed?
     if store is not None:
+        from .webview.server.state_hdf5_backed import State, FitResult, ProblemState
+
         # TODO: strip non-options such as mapper from fit options
         store = Path(store)
         state = State()
@@ -1508,8 +1509,9 @@ def fit(
         # njev, nhev # jacobian and hessian evaluations
         # maxcv=0, # max constraint violation
     )
-    # Non-standard result
+    # Non-standard results
     result.state = driver.fitter.state
+    result.convergence = np.array(convergence.quantiles)
     return result
 
 
