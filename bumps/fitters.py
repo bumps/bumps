@@ -1253,10 +1253,15 @@ class FitDriver(object):
         print("=" * 75)
 
     def show_err(self):
-        self.problem.show_err(self.getp(), self.cov())
+        from bumps import lsqerror
+
+        # Note: self.cov() is cached, with reset whenever the fit starts
+        dx = lsqerror.stderr(self.cov())
+        self.problem.show_err(self.problem.getp(), dx)
 
     def show_cov(self):
-        self.problem.show_cov(self.getp(), self.cov())
+        # Note: self.cov() is cached, with reset whenever the fit starts
+        self.problem.show_cov(self.problem.getp(), self.cov())
 
     def show_entropy(self, method=None):
         print("Calculating entropy...")

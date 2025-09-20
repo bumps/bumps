@@ -200,8 +200,7 @@ FitnessType = TypeVar("FitnessType", bound=Fitness)
 
 
 # Note: done as a mixin because not all problems are FitProblem. See bumps.pdfwrapper
-# TODO: currently caching in fitdriver. Maybe move caching to the Mixin
-# TODO: allow x to default to getp(); not all pdfwrapper class provide getp
+# Note: if caching is implemented, make sure it is cleared on setp
 class CovarianceMixin:
     def cov(self, x):
         r"""
@@ -268,8 +267,8 @@ class CovarianceMixin:
         is available as *result.dx* from the simple fitter, or using::
 
             from bumps import lsqerror
-            cov = problem.cov(x)
-            dx = lsqerror.stderr(cov)
+
+            dx = lsqerror.stderr(problem.cov(x))
 
         Warning: cost to compute cov grows as the cube of the number of parameters.
         """
