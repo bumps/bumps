@@ -993,16 +993,16 @@ class DreamFit(FitBase):
 
     def error_plot(self, figfile):
         # Produce error plot
-        import pylab
+        import matplotlib.pyplot as plt
         from . import errplot
 
         # TODO: shouldn't mix calc and display!
         points = errplot.error_points_from_state(self.state)
         res = errplot.calc_errors(self.problem, points)
         if res is not None:
-            pylab.figure()
+            plt.figure()
             errplot.show_errors(res)
-            pylab.savefig(figfile + "-errors.png", format="png")
+            plt.savefig(figfile + "-errors.png", format="png")
 
 
 class Resampler(FitBase):
@@ -1391,12 +1391,63 @@ assert FIT_DEFAULT_ID in FIT_ACTIVE_IDS
 assert all(f in FIT_AVAILABLE_IDS for f in FIT_ACTIVE_IDS)
 
 
+def plot_convergence(result, cutoff=0.25):
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    from .plotutil import coordinated_colors
+
+    # convergence, dof=1, cutoff=0.25, trim_index=None, burn_index=None
+    # quantiles = 2 * result.convergence / dof # convergence quantiles as nominal chisq
+    best, quantiles = result.convergence[:, 0], result.convergence[:, 1:]
+    nsteps, nquantiles = quantiles.shape
+    step = np.arange(1, nsteps + 1)
+    if result.state is not None:
+        _, chains, logp = result.state.chains()
+        trim_portion = getattr(result.state, "portion", 1.0)
+        tail = burn_index = len(best) - len(chains)
+        trim_index = len(best) - int(len(chains) * trim_portion)
+    else:
+        burn_index = trim_index = None
+        tail = int(cutoff * nsteps)
+    c = coordinated_colors(base=(0.4, 0.8, 0.2))
+    if nquantiles == 5:
+        plt.fill_between(step[tail:], quantiles[tail:, 1], quantiles[tail:, 3], color=c["light"], label="_nolegend_")
+        plt.plot(step[tail:], quantiles[tail:, 2], "-", label="median", color=c["base"])
+        plt.plot(step[tail:], quantiles[tail:, 0], ":", label="_nolegend_", color=c["base"])
+        # Suppress "worst of population" line
+        # plt.plot(step[tail:], quantiles[tail:, 4], ':', label="_nolegend_", color=c["base"])
+    plt.plot(step[tail:], best[tail:], "-", label="best", color=c["dark"])
+    if trim_index is not None:
+        plt.axvline(x=trim_index, color="k", linestyle="--", label="_nolegend_", alpha=0.8)
+        plt.axvline(x=burn_index, color="k", linestyle="--", label="_nolegend_", alpha=0.8)
+
+        # Get current axes limits
+        ax = plt.gca()
+        y_min, y_max = ax.get_ylim()
+
+        # Calculate annotation positions
+        font_height = (y_max - y_min) / 40  # font height approximation
+        burn_y = y_max - 2 * font_height
+        trim_y = burn_y - (2 * font_height)
+
+        # Add vertical lines with annotations
+        plt.text(trim_index + 1, trim_y, "trim", rotation=0, ha="left")
+        plt.text(burn_index + 1, burn_y, "burn", rotation=0, ha="left")
+
+    plt.xlabel("iteration number")
+    plt.ylabel("chisq")
+    plt.legend()
+    # plt.xscale('log')
+    # plt.yscale('log')
+
+
 def fit(
     problem,
     method=FIT_DEFAULT_ID,
-    export=None,
+    session=None,
     resume=None,
-    store=None,
+    export=None,
     name=None,
     verbose=False,
     parallel=1,
@@ -1405,32 +1456,40 @@ def fit(
     """
     Simplified fit interface.
 
-    Given a fit problem, the name of a fitter and the fitter options,
-    it will run the fit and return the best value and standard error of
-    the parameters.  If *verbose* is true, then the console monitor will
-    be enabled, showing progress through the fit and showing the parameter
-    standard error at the end of the fit, otherwise it is completely
-    silent.
+    Given a fit problem, the name of a fitter and the fitter options, it will
+    run the fit and return the best value and standard error of the parameters.
 
-    Returns a scipy *OptimizeResult* object containing "x" and "dx".  Some
-    fitters also include a "state" object. For dream this can be used in
-    the call *bumps.dream.views.plot_all(result.state)* to generate the
-    uncertainty plots. Note: success=True and status=0 for now since the
-    stopping condition is not yet available from the fitters.
+    The keyword argments mostly follow the argument names used in the bumps
+    command line interface. Try use *method=method* rather than *fit=method*)
+
+    Returns a scipy *OptimizeResult* object containing *x* and *dx*.  Some
+    fitters also include a *result.state* object. For dream this can be used as
+    *bumps.dream.views.plot_all(result.state)* to generate the uncertainty
+    plots. Use *plot_convergence(result)* to show how the fit progressed.
+    Note: All fits report *success=True* even if they did not converge. Similarly
+    *status=0* and *message="successful termination"*.
+
+    If *session=path/file.h5* is provided, append the fit to the session
+    history, or create a new session if the file doesn't exist.
 
     If *resume=result* is provided, then attempt to resume the fit from the
     previous result.
 
     If *export=path* is provided, generate the standard plots and export files
-    to the specified directory. This uses *name* as the basename for the output
-    files, or *problem.name* if name is not provided. Name defaults to "problem".
+    to the specified directory. You can set *name=basename* as the base file
+    name for all files stored in the export directory, or use
+    *name=problem.name* as the default.
+
+    If *verbose* is true, then the console monitor will be enabled, showing
+    progress through the fit and showing the parameter standard error at the end
+    of the fit, otherwise it is completely silent.
 
     If *parallel=n* is provided, then run on *n* separate cpus. By default
-    *parallel=1* to run on a single cpu. For slow functions set *parallel=0*
-    to run on all cpus. You want to run on a single cpu if your function is
-    already parallel (for example using multiprocessing or using gpu code),
-    or if your function is so fast that the overhead of transfering data is
-    higher than cost of *n* function calls.
+    *parallel=1* to run on a single cpu. For slow functions set *parallel=0* to
+    run on all cpus. You want to run on a single cpu if your function is already
+    parallel (for example using multiprocessing or using gpu code), or if your
+    function is so fast that the overhead of transfering data is higher than
+    cost of *n* function calls.
     """
     from pathlib import Path
     from scipy.optimize import OptimizeResult
@@ -1438,10 +1497,12 @@ def fit(
     from .mapper import MPMapper, SerialMapper
     from .webview.server.fit_thread import ConvergenceMonitor
 
-    # verbose = True
+    # Aliases for backwards compatibility (session=store) and cli compatibility (method=fit)
     # Options parser stores --fit=fitter in fit_options["fit"] rather than fit_options["method"]
-    if "fit" in options:
-        method = options.pop("fit")
+    method = options.pop("fit", method)
+    session = options.pop("store", session)
+
+    # verbose = True
     if method not in FIT_AVAILABLE_IDS:
         raise ValueError("unknown fit method %r not one of %s" % (method, ", ".join(sorted(FIT_ACTIVE_IDS))))
     for fitclass in FITTERS:
@@ -1452,6 +1513,7 @@ def fit(
     mapper = Mapper.start_mapper(problem, [], cpus=parallel)
     convergence = ConvergenceMonitor(problem)
     monitors = [convergence]
+
     if verbose:
         monitors.append(ConsoleMonitor(problem))
     driver = FitDriver(fitclass=fitclass, problem=problem, monitors=monitors, mapper=mapper, **options)
@@ -1460,36 +1522,41 @@ def fit(
     if resume is not None:
         problem.setp(resume.x)
     x, fx = driver.fit(fit_state=None if resume is None else resume.state)
+    steps = driver.monitor_runner.history.step[0]
+    convergence = np.array(convergence.quantiles)
     problem.setp(x)
+    chisq = problem.chisq_str()
     if verbose:
-        print("final chisq", problem.chisq_str())
+        print("final chisq", chisq)
         driver.show_err()
 
     # TODO: can we put this in a function in state_hdf5_backed?
-    if store is not None:
+    if session is not None:
         from .webview.server.state_hdf5_backed import State, FitResult, ProblemState
 
         # TODO: strip non-options such as mapper from fit options
-        store = Path(store)
+        session = Path(session)
         state = State()
-        if store.exists():
-            state.read_session_file(store)
-        fitting = FitResult(
-            method=method, options=options, convergence=np.array(convergence.quantiles), fit_state=driver.fitter.state
-        )
+        if session.exists():
+            state.read_session_file(session)
         try:
             serialize(problem)
             serializer = "dataclass"
         except Exception as exc:
             # import traceback; traceback.print_exc()
-            if verbose:
-                print("Problem stored using cloudpickle. It may not load in newer python versions.")
-                print(f"error: {exc}")
             serializer = "cloudpickle"
+            if verbose:
+                print(f"Problem stored using {serializer}. It may not load in newer python versions.")
+                print(f"error: {exc}")
         state.problem = ProblemState(fitProblem=problem, serializer=serializer)
-        state.fitting = fitting
-        state.save_to_history(label="fit")
-        state.write_session_file(store)
+        state.fitting = FitResult(
+            method=method, options=options, convergence=convergence, fit_state=driver.fitter.state
+        )
+        # TODO: move the label gnerator into a function so it is the same for simple fit as for webview
+        label = "Fit complete: {method}"
+        item_timestamp = state.save_to_history(label=label, keep=True)
+        state.shared.active_history = item_timestamp
+        state.write_session_file(session)
 
     if export is not None:
         from .webview.server.api import _export_results
@@ -1504,14 +1571,14 @@ def fit(
         success=True,
         status=0,
         message="successful termination",
-        nit=driver.monitor_runner.history.step[0],  # number of iterations
+        nit=steps,  # number of iterations
         # nfev=0, # number of function evaluations
         # njev, nhev # jacobian and hessian evaluations
         # maxcv=0, # max constraint violation
     )
-    # Non-standard results
+    # Non-standard results. Note convergence is in nominal chisq
     result.state = driver.fitter.state
-    result.convergence = np.array(convergence.quantiles)
+    result.convergence = 2 * convergence / problem.dof
     return result
 
 

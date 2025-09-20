@@ -45,5 +45,5 @@ from .bounds import Distribution
 from .pdfwrapper import PDF, VectorPDF, DirectProblem
 from .curve import Curve, PoissonCurve
 from .fitproblem import FitProblem, Fitness
-from .fitters import fit
+from .fitters import fit, plot_convergence
 from .util import relative_import
