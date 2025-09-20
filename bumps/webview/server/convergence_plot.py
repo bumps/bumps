@@ -28,7 +28,6 @@ def convergence_plot(
     # Normalize the population data
     normalized_pop = 2 * convergence / dof
     best, pop = normalized_pop[:, 0], normalized_pop[:, 1:]
-
     ni, npop = pop.shape
     x = np.arange(1, ni + 1)
     tail = int(cutoff * ni)
@@ -122,6 +121,19 @@ def convergence_plot(
                 hovertemplate=hovertemplate.format(label="20%"),
             )
         )
+        # # Including worst makes for very ugly plots when there are outlier chains.
+        # # Even without outliers, the chisq distribution has heavy tails, making it
+        # # difficult to see the details of the 60% band in the center.
+        # traces.append(
+        #     dict(
+        #         type="scattergl",
+        #         x=x_out,
+        #         y=pop_out[:, -1],
+        #         name="population worst",
+        #         mode="lines",
+        #         line=dict(color="green", dash="dot"),
+        #     )
+        # )
         traces.append(
             dict(
                 type="scattergl",
