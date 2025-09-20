@@ -428,6 +428,17 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
         state._thin_logp = state._thin_logp[1:]
         state._thin_point = state._thin_point[1:]
 
+    # Load labels from the .par file if it exists.
+    parfile = Path(f"{filename}.par")
+    if parfile.exists():
+        try:
+            text = parfile.read_text().strip()
+            lines = text.split("\n")
+            labels = [line.rsplit(None, 1)[0].strip() for line in lines]
+            state.labels = labels
+        except Exception as exc:
+            print(f"Couldn't load labels from {parfile}: {exc}")
+
     return state
 
 
