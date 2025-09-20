@@ -1186,25 +1186,8 @@ class FitDriver(object):
             self._cov = self.fitter.cov()
             # print("fitter cov", self._cov)
         if self._cov is None:
-            # Use Jacobian if residuals are available because it is faster
-            # to compute.  Otherwise punt and use Hessian.  The has_residuals
-            # attribute should be True if present.  It may be false if
-            # the problem defines a residuals method but doesn't really
-            # have residuals (e.g. to allow levenberg-marquardt to run even
-            # though it is not fitting a sum-square problem).
-            if hasattr(self.problem, "has_residuals"):
-                has_residuals = self.problem.has_residuals
-            else:
-                has_residuals = hasattr(self.problem, "residuals")
             x = self.problem.getp() if self.result is None else self.result[0]
-            if has_residuals:
-                J = lsqerror.jacobian(self.problem, x)
-                # print("Jacobian", J)
-                self._cov = lsqerror.jacobian_cov(J)
-            else:
-                H = lsqerror.hessian(self.problem, x)
-                # print("Hessian", H)
-                self._cov = lsqerror.hessian_cov(H)
+            self._cov = self.problem.cov(x)
         return self._cov
 
     def stderr(self):
@@ -1270,32 +1253,10 @@ class FitDriver(object):
         print("=" * 75)
 
     def show_err(self):
-        """
-        Display the error approximation from the numerical derivative.
-
-        Warning: cost grows as the cube of the number of parameters.
-        """
-        # TODO: need cheaper uncertainty estimate
-        # Note: error estimated from hessian diagonal is insufficient.
-        err = self.stderr_from_cov()
-        print("=== Uncertainty from curvature:     name   value(unc.) ===")
-        for k, v, dv in zip(self.problem.labels(), self.problem.getp(), err):
-            print(f"{k:>40s}   {format_uncertainty(v, dv):<15s}")
-        print("=" * 58)
+        self.problem.show_err(self.getp(), self.cov())
 
     def show_cov(self):
-        cov = self.cov()
-        maxn = 1000  # max array dims to print
-        cov_str = np.array2string(
-            cov,
-            max_line_width=20 * maxn,
-            threshold=maxn * maxn,
-            precision=6,  # suppress_small=True,
-            separator=", ",
-        )
-        print("=== Covariance matrix ===")
-        print(cov_str)
-        print("=========================")
+        self.problem.show_cov(self.getp(), self.cov())
 
     def show_entropy(self, method=None):
         print("Calculating entropy...")
@@ -1390,21 +1351,25 @@ FIT_DEFAULT_ID = SimplexFit.id
 assert FIT_DEFAULT_ID in FIT_ACTIVE_IDS
 assert all(f in FIT_AVAILABLE_IDS for f in FIT_ACTIVE_IDS)
 
+# TODO: split simple fitter interface support to a separate file
 
-def plot_convergence(result, cutoff=0.25):
+
+def plot_convergence(results, cutoff=0.25):
     import matplotlib.pyplot as plt
     import numpy as np
 
     from .plotutil import coordinated_colors
 
+    convergence, state = results.convergence, getattr(results, "state")
+
     # convergence, dof=1, cutoff=0.25, trim_index=None, burn_index=None
-    # quantiles = 2 * result.convergence / dof # convergence quantiles as nominal chisq
-    best, quantiles = result.convergence[:, 0], result.convergence[:, 1:]
+    # quantiles = 2 * convergence / dof # convergence quantiles as nominal chisq
+    best, quantiles = convergence[:, 0], convergence[:, 1:]
     nsteps, nquantiles = quantiles.shape
     step = np.arange(1, nsteps + 1)
-    if result.state is not None:
-        _, chains, logp = result.state.chains()
-        trim_portion = getattr(result.state, "portion", 1.0)
+    if state is not None:
+        _, chains, logp = state.chains()
+        trim_portion = getattr(state, "portion", 1.0)
         tail = burn_index = len(best) - len(chains)
         trim_index = len(best) - int(len(chains) * trim_portion)
     else:
@@ -1440,6 +1405,70 @@ def plot_convergence(result, cutoff=0.25):
     plt.legend()
     # plt.xscale('log')
     # plt.yscale('log')
+
+
+def reload_session(filename):
+    """Reload a session file from a saved hdf"""
+    from bumps.webview.server.state_hdf5_backed import State
+
+    session = State()
+    session.read_session_file(filename)
+
+    return session
+
+
+def reload_fit_from_session(filename, show=False):
+    """
+    Reload the results from a bumps session file.
+
+    *filename* is a path to an HDF5 file.
+
+    Use *show=True* to plot the standard plots.
+
+    Returns (*problem*, *results*) where *problem* contains
+    the model executable and *results* is a scipy
+    OptimizationResults object. We add *state* if available
+    and *convergence* to the results, similar to simple fit.
+
+    Use *reload_session(filename)* directly if you want more control.
+    """
+    from scipy.optimize import OptimizeResult
+    from bumps import lsqerror
+
+    session = reload_session(filename)
+    problem = session.problem.fitProblem
+    convergence = session.fitting.convergence
+    state = session.fitting.fit_state
+    if state:
+        state.mark_outliers()
+        state.portion = state.trim_portion()
+
+    # TODO: should be storing, x, dx, fx in the fit results
+    x = problem.getp()
+    cov = problem.cov(x)
+    dx = lsqerror.stderr(cov)
+    fx = problem.nllf()
+    msg = "successful termination"
+    # Don't know how many steps in current fit or total after resume, except
+    # if the information happens to be stored in state
+    steps = state.total_generations if state is not None else 0
+    results = OptimizeResult(x=x, dx=dx, fun=fx, success=True, status=0, msg=msg, nit=steps)
+    results.state = state
+    results.convergence = 2 * convergence / problem.dof
+    if show:
+        from bumps.names import plot_convergence
+
+        # print(session.fitting)
+        print(problem.summarize())
+        print(f"χ² = {problem.chisq_str()}")
+        plot_convergence(results)
+        problem.plot(fignum=2)
+        if state:
+            state.show()
+        else:
+            problem.show_err(x, dx)
+
+    return problem, results
 
 
 def fit(

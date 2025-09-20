@@ -199,8 +199,90 @@ def fitness_show_parameters(fitness: Fitness, subs: util.Optional[util.Dict[util
 FitnessType = TypeVar("FitnessType", bound=Fitness)
 
 
+# Note: done as a mixin because not all problems are FitProblem. See bumps.pdfwrapper
+# TODO: currently caching in fitdriver. Maybe move caching to the Mixin
+# TODO: allow x to default to getp(); not all pdfwrapper class provide getp
+class CovarianceMixin:
+    def cov(self, x):
+        r"""
+        Return an estimate of the covariance of the fit.
+
+        Depending on the fitter and the problem, this may be computed from
+        existing evaluations within the fitter, or from numerical
+        differentiation around the minimum.
+
+        If the problem has residuals available, then the covariance
+        is derived from the Jacobian::
+
+            x = fit.problem.getp()
+            J = bumps.lsqerror.jacobian(fit.problem, x)
+            cov = bumps.lsqerror.jacobian_cov(J)
+
+        Otherwise, the numerical differentiation will use the Hessian
+        estimated from nllf::
+
+            x = fit.problem.getp()
+            H = bumps.lsqerror.hessian(fit.problem, x)
+            cov = bumps.lsqerror.hessian_cov(H)
+        """
+        # Use Jacobian if residuals are available because it is faster
+        # to compute.  Otherwise punt and use Hessian.  The has_residuals
+        # attribute should be True if present.  It may be false if
+        # the problem defines a residuals method but doesn't really
+        # have residuals (e.g. to allow levenberg-marquardt to run even
+        # though it is not fitting a sum-square problem).
+        from bumps import lsqerror
+
+        if hasattr(self, "has_residuals"):
+            has_residuals = self.has_residuals
+        else:
+            has_residuals = hasattr(self, "residuals")
+
+        if has_residuals:
+            J = lsqerror.jacobian(self, x)
+            # print("Jacobian", J)
+            return lsqerror.jacobian_cov(J)
+        else:
+            H = lsqerror.hessian(self, x)
+            # print("Hessian", H)
+            return lsqerror.hessian_cov(H)
+
+    def show_cov(self, x, cov):
+        maxn = 1000  # max array dims to print
+        cov_str = np.array2string(
+            cov,
+            max_line_width=20 * maxn,
+            threshold=maxn * maxn,
+            precision=6,  # suppress_small=True,
+            separator=", ",
+        )
+        print("=== Covariance matrix ===")
+        print(cov_str)
+        print("=========================")
+
+    def show_err(self, x, dx):
+        """
+        Display the error approximation from the covariance matrix.
+
+        *err* is the standard deviation computed from the covariance matrix. It
+        is available as *result.dx* from the simple fitter, or using::
+
+            from bumps import lsqerror
+            cov = problem.cov(x)
+            dx = lsqerror.stderr(cov)
+
+        Warning: cost to compute cov grows as the cube of the number of parameters.
+        """
+        # TODO: need cheaper uncertainty estimate
+        # Note: error estimated from hessian diagonal is insufficient.
+        print("=== Uncertainty from curvature:     name   value(unc.) ===")
+        for k, v, dv in zip(self.labels(), x, dx):
+            print(f"{k:>40s}   {format_uncertainty(v, dv):<15s}")
+        print("=" * 58)
+
+
 @dataclass(init=False, eq=False)
-class FitProblem(Generic[FitnessType]):
+class FitProblem(Generic[FitnessType], CovarianceMixin):
     r"""
 
         *models* is a sequence of :class:`Fitness` instances.

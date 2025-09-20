@@ -442,6 +442,24 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
     return state
 
 
+def reload_state_from_export(parfile):
+    """
+    For the simplified fit with an export path we can reload
+    the bumps dream state from the exported MCMC files.
+
+    *parfile* is the name of the model.par file saved in the
+    export directory.
+
+    Use *state.show()* for the returned state to produce the plots.
+    """
+    assert parfile.endswith(".par"), "need model.par file"
+    path = str(parfile)[:-4]
+    state = load_state(path)
+    state.mark_outliers()
+    state.portion = state.trim_portion()
+    return state
+
+
 class MCMCDraw(object):
     """ """
 
