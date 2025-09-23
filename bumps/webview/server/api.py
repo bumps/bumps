@@ -1,3 +1,24 @@
+"""
+Python api for controlling webview::
+
+    from bumps.names import start_bumps, display_bumps
+
+    # Start the bumps server and run it in the background
+    api = await start_bumps()
+
+    # Display webview in a jupyter cell
+    display_bumps(height=600)
+
+    # Load a model script, possibly with additional command line arguments:
+    path = Path("path/to/model.py")
+    await api.load_problem_file([path.parent], path.name, args=[arg1, ...])
+
+    # Use a problem defined in a separate jupyter cell
+    await set_problem(problem)
+
+
+"""
+
 from functools import lru_cache
 import itertools
 from types import GeneratorType
@@ -139,6 +160,20 @@ async def load_problem_file(
     autosave_previous: bool = True,
     args: List[str] = None,
 ):
+    """
+    Load the problem from a script file.
+
+    *pathlist* is a list of folder components and *filename* is the script file in that folder.
+    These are joined together as "Path(*pathlist, filename)" to build the complete path. If
+    path is already a Path to the file, use *load_problem_file([path.parent], path.name, ...)*
+
+    If *autosave_previous* then store the current problem state in the session file before
+    loading the new problem (default=True).
+
+    *args* are any additional arguments to the script file. This will be available in the script
+    as *sys.argv[1:]*.
+    """
+
     # print("load_problem_file", state.fitting.fit_state)
     path = Path(*pathlist, filename)
     logger.info(f"Loading model: {path}")
@@ -175,8 +210,23 @@ async def load_problem_file(
 
 
 @register
-async def set_serialized_problem(serialized, new_model: bool = False, name: Optional[str] = None):
-    fitProblem = deserialize_problem(serialized, method="dataclass")
+async def set_serialized_problem(
+    serialized, new_model: bool = False, name: Optional[str] = None, method: str = "dataclass"
+):
+    """
+    Set the problem from a saved problem state.
+
+    *serialized* is the serialized fit problem. *method* is the method used for serialization.
+
+    If *new_model* is True, then save the model to history with tag "Loaded model". (default=False)
+
+    *name* is an optional override for the model name.
+
+    For example::
+
+        await set_serialized_problem(api.state.problem.fitProblem, method=api.state.problem.serializer)
+    """
+    fitProblem = deserialize_problem(serialized, method=method)
     state.problem.serializer = "dataclass"
     await set_problem(fitProblem, new_model=new_model, name=name)
 
@@ -191,9 +241,7 @@ async def set_problem(
     # if state.problem is None or state.problem.fitProblem is None:
     #     update = False
     state.problem.fitProblem = problem
-    name = name if name is not None else problem.name
-    if name is None:
-        name = filename
+    name = name or problem.name or filename
     state.shared.updated_model = now_string()
     state.shared.updated_parameters = now_string()
     state.shared.custom_plots_available = get_custom_plots_available(problem)
