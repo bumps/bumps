@@ -1359,7 +1359,7 @@ assert all(f in FIT_AVAILABLE_IDS for f in FIT_ACTIVE_IDS)
 # TODO: split simple fitter interface support to a separate file
 
 
-def plot_convergence(results, cutoff=0.25):
+def plot_convergence(results, cutoff=0.25, ax=None):
     import matplotlib.pyplot as plt
     import numpy as np
 
@@ -1381,19 +1381,21 @@ def plot_convergence(results, cutoff=0.25):
         burn_index = trim_index = None
         tail = int(cutoff * nsteps)
     c = coordinated_colors(base=(0.4, 0.8, 0.2))
+
+    if ax is None:
+        ax = plt.gca()
     if nquantiles == 5:
-        plt.fill_between(step[tail:], quantiles[tail:, 1], quantiles[tail:, 3], color=c["light"], label="_nolegend_")
-        plt.plot(step[tail:], quantiles[tail:, 2], "-", label="median", color=c["base"])
-        plt.plot(step[tail:], quantiles[tail:, 0], ":", label="_nolegend_", color=c["base"])
+        ax.fill_between(step[tail:], quantiles[tail:, 1], quantiles[tail:, 3], color=c["light"], label="_nolegend_")
+        ax.plot(step[tail:], quantiles[tail:, 2], "-", label="median", color=c["base"])
+        ax.plot(step[tail:], quantiles[tail:, 0], ":", label="_nolegend_", color=c["base"])
         # Suppress "worst of population" line
-        # plt.plot(step[tail:], quantiles[tail:, 4], ':', label="_nolegend_", color=c["base"])
-    plt.plot(step[tail:], best[tail:], "-", label="best", color=c["dark"])
+        # ax.plot(step[tail:], quantiles[tail:, 4], ':', label="_nolegend_", color=c["base"])
+    ax.plot(step[tail:], best[tail:], "-", label="best", color=c["dark"])
     if trim_index is not None:
-        plt.axvline(x=trim_index, color="k", linestyle="--", label="_nolegend_", alpha=0.8)
-        plt.axvline(x=burn_index, color="k", linestyle="--", label="_nolegend_", alpha=0.8)
+        ax.axvline(x=trim_index, color="k", linestyle="--", label="_nolegend_", alpha=0.8)
+        ax.axvline(x=burn_index, color="k", linestyle="--", label="_nolegend_", alpha=0.8)
 
         # Get current axes limits
-        ax = plt.gca()
         y_min, y_max = ax.get_ylim()
 
         # Calculate annotation positions
@@ -1402,14 +1404,14 @@ def plot_convergence(results, cutoff=0.25):
         trim_y = burn_y - (2 * font_height)
 
         # Add vertical lines with annotations
-        plt.text(trim_index + 1, trim_y, "trim", rotation=0, ha="left")
-        plt.text(burn_index + 1, burn_y, "burn", rotation=0, ha="left")
+        ax.text(trim_index + 1, trim_y, "trim", rotation=0, ha="left")
+        ax.text(burn_index + 1, burn_y, "burn", rotation=0, ha="left")
 
-    plt.xlabel("iteration number")
-    plt.ylabel("chisq")
-    plt.legend()
-    # plt.xscale('log')
-    # plt.yscale('log')
+    ax.set_xlabel("iteration number")
+    ax.set_ylabel("chisq")
+    ax.legend()
+    # ax.xscale('log')
+    # ax.yscale('log')
 
 
 def reload_session(filename):
@@ -1461,8 +1463,6 @@ def reload_fit_from_session(filename, show=False):
     results.state = state
     results.convergence = 2 * convergence / problem.dof
     if show:
-        from bumps.names import plot_convergence
-
         # print(session.fitting)
         print(problem.summarize())
         print(f"χ² = {problem.chisq_str()}")
