@@ -10,7 +10,7 @@ from typing import Callable, Optional, Union, List
 from . import cli
 from . import api
 from . import persistent_settings
-from .logger import logger
+from .logger import logger, LOGLEVEL, setup_console_logging
 from .cli import BumpsOptions
 
 mimetypes.add_type("text/css", ".css")
@@ -266,13 +266,17 @@ Open the following in a new tab after replacing <HOST> with the hostname in the 
     web.run_app(app, sock=runsock)
 
 
-def start_bumps_server():
+def start_bumps_server(loglevel: str = "warn"):
     """
-    Start the webview server in a background asyncio.Task,
-    and show the link to the webview in a Jupyter notebook.
-    Note that the returned Task should be awaited in order
-    to handle any exceptions that may occur during startup.
+    Start the webview server in a background asyncio.Task, and show the link to
+    the webview in a Jupyter notebook. Note that the returned Task should be
+    awaited in order to handle any exceptions that may occur during startup.
+
+    *loglevel* defaults to "warn". You can use "info" or
+    "debug", but you will have large amounts of text in the output cell.
     """
+    # TODO: can we check if the server is already running?
+    logger.setLevel(LOGLEVEL[loglevel])
     return asyncio.create_task(start_app(jupyter_link=True))
 
 
@@ -303,10 +307,12 @@ async def start_app(
         enable_convergence_kernel_heartbeat()
 
     if jupyter_link:
-        return open_tab_link()
+        open_tab_link()
     else:
         url = get_server_url()
         print(f"webserver started: {url}")
+
+    return api
 
 
 def get_server_url():
@@ -324,7 +330,7 @@ def get_server_url():
     return url
 
 
-def display_inline_jupyter(width: Union[str, int] = "100%", height: Union[str, int] = 600, single_panel=None) -> None:
+def display_inline_jupyter(width: Union[str, int] = "100%", height: Union[str, int] = 1200, single_panel=None) -> None:
     """
     Display the web server in an iframe.
 
@@ -352,10 +358,27 @@ def open_tab_link(single_panel=None) -> None:
     """
     Open the web server in a new tab in the default web browser.
     """
-    from IPython.display import display, HTML
+    from IPython.display import display, Markdown
 
     url = get_server_url()
     if single_panel is not None:
         url += f"?single_panel={single_panel}"
-    src = f'<h3><a href="{url}" target="_blank">Open Webview in Tab</a></h3>'
-    display(HTML(src))
+
+    src = f"""
+[Open in Browser]({url})
+------------------------
+
+Python commands to control webview:
+```python
+# Display webview in a cell rather than running in a separate browser tab
+display_bumps(height=600)
+
+# Load a model file, possibly with additional command line arguments:
+path = Path("path/to/model.py")
+await api.load_problem_file(str(path.parent), path.name, args=[arg1, ...])
+
+# Set problem
+await api.set_problem(problem)
+```
+"""
+    display(Markdown(src))
