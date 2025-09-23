@@ -82,7 +82,6 @@ nitpick_ignore = [
     # ("py:class", "Integral"),
     ("py:class", "bumps.fitproblem.FitnessType"),
     ("py:obj", "bumps.fitproblem.FitnessType"),
-    ("py:class", "bumps.dream.core.Model"),
     ("py:class", "collections.abc.Buffer"),
 ]
 

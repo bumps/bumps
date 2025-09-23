@@ -131,7 +131,7 @@ Version 1.0: October 2008  Adaption updated and generalized CR implementation
 Complete changelog on github.com/bumps/bumps
 """
 
-__all__ = ["Dream"]
+__all__ = ["Dream", "Model"]
 
 import sys
 import time
@@ -175,6 +175,10 @@ def console_monitor(state, pop, logp):
 
 
 class Model(Protocol):
+    """
+    Dream model interface definition.
+    """
+
     labels: List[str]
     """Labels for all the parameters"""
     bounds: Sequence[Sequence[float]]
@@ -188,7 +192,7 @@ class Model(Protocol):
         ...
 
 
-class Dream(object):
+class Dream:
     """
     Data structure containing the details of the running DREAM analysis code.
     """

@@ -44,7 +44,7 @@ Summary of problem attributes::
 
 """
 
-__all__ = ["Fitness", "FitProblem", "load_problem"]
+__all__ = ["Fitness", "FitProblem", "CovarianceMixin", "load_problem"]
 
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -199,9 +199,16 @@ def fitness_show_parameters(fitness: Fitness, subs: util.Optional[util.Dict[util
 FitnessType = TypeVar("FitnessType", bound=Fitness)
 
 
-# Note: done as a mixin because not all problems are FitProblem. See bumps.pdfwrapper
-# Note: if caching is implemented, make sure it is cleared on setp
 class CovarianceMixin:
+    """
+    Add methods for *cov*, *show_cov* and *show_err* to a bumps problem definition.
+
+    This is done as a mixin because not all problems are FitProblem. See
+    for example :class:`bumps.pdfwrapper.PDF`.
+    """
+
+    # Note: if caching is implemented for covariance, make sure it is cleared on setp
+    # This will be difficult to do as a mixin.
     def cov(self, x):
         r"""
         Return an estimate of the covariance of the fit.
@@ -284,7 +291,8 @@ class CovarianceMixin:
 class FitProblem(Generic[FitnessType], CovarianceMixin):
     r"""
 
-        *models* is a sequence of :class:`Fitness` instances.
+        *models* is a sequence of :class:`Fitness` instances. Note that they
+        do not need to all be of the same class.
 
         *weights* is an optional scale factor for each model. A weighted fit
         returns nllf $L = \sum w_k^2 L_k$. If an individual nllf is the sum
@@ -331,6 +339,7 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
     penalty_nllf: util.Union[float, util.Literal["inf"]]
 
     _constraints_function: util.Callable[..., float]
+    # The type is not quite correct. The models do not need to be of the same class
     _models: util.List[FitnessType]
     _parameters: util.List[Parameter]
     _parameters_by_id: util.Dict[str, Parameter]
