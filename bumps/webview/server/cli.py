@@ -49,7 +49,7 @@ from bumps.fitters import FIT_AVAILABLE_IDS
 from . import api
 from . import persistent_settings
 from . import fit_options
-from .logger import logger, setup_console_logging
+from .logger import logger, setup_console_logging, LOGLEVEL
 from .state_hdf5_backed import SERIALIZERS
 
 
@@ -387,7 +387,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     misc.add_argument(
         "--loglevel",
         type=str,
-        choices=["debug", "info", "warn", "error", "critical"],
+        choices=list(LOGLEVEL.keys()),
         default="warn",
     )
     # TODO: show version numbers for both refl1d and bumps?
