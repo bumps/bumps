@@ -13,23 +13,10 @@ model.py is the script describing the model.
 """
 
 import argparse
-import os
 import numpy as np
 import csv
 import json
 
-from multiprocessing import Pool, cpu_count
-import pandas as pd
-
-# from dynesty import NestedSampler, DynamicNestedSampler
-from dynesty import plotting as dyplot
-from dynesty import utils as dyfunc
-
-import ultranest
-import ultranest.stepsampler
-from ultranest.plot import cornerplot
-
-from bumps.cli import load_model, load_best
 # os.environ['OMP_NUM_THREADS'] = '7'
 # export OMP_NUM_THREADS=7
 
@@ -40,6 +27,9 @@ def put01(v, low, high):
 
 class Sampler:
     def __init__(self, problem, store):
+        import ultranest
+        import ultranest.stepsampler
+
         # TODO: need to use the --session option as done in bumps to parse the name
         self.save_name = store
         self.problem = problem
@@ -102,12 +92,16 @@ class Sampler:
         self.nested_sampler.plot()
 
     def results_df(self):
+        import pandas as pd
+
         df = pd.DataFrame(data=self.results["samples"], columns=self.results["paramnames"])
         df.describe()
 
         return df.loc["mean"]
 
     def corner(self, results):
+        from dynesty import plotting as dyplot
+
         fig, _ = dyplot.cornerplot(
             results,
             color="blue",
@@ -148,8 +142,10 @@ class Sampler:
 
 
 def main():
+    from bumps.cli import load_model, load_best
+
     parser = argparse.ArgumentParser(
-        description="run bumps model through dynesty",
+        description="run nested sampling on bumps model with ultranest",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("-p", "--pars", type=str, default="", help="retrieve starting point from .par file")
@@ -157,6 +153,12 @@ def main():
     parser.add_argument("modelfile", type=str, nargs=1, help="bumps model file")
     parser.add_argument("modelopts", type=str, nargs="*", help="options passed to the model")
     opts = parser.parse_args()
+
+    try:
+        import ultranest, dynesty
+    except ImportError:
+        print("Nested samplers not available. Use 'pip install ultranest dynesty' first.")
+        return
 
     print(opts)
     print(opts.modelfile)
