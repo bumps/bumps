@@ -1,3 +1,33 @@
+"""
+Manage optimizer settings.
+
+Each optimizer in :mod:`bumps.fitters` has its own settings attribute, giving the list of
+settings available to the optimizer and the default value if the setting was not provided.
+
+Settings for the same type of control should have the same value type and name, though the
+defaults can differ between the optimizers. This module defines the metadata for the
+various settings, each one having a setting name, a display label, an input type,
+and a long description. These are used to construct the command line help and UI interaction.
+If a fitter needs a completely new setting type it will have to be added here.
+
+Each setting used by at least one active fitter adds a `--name` entry to the command line
+parser, with a list of fitters and default setting values for that fitter. The
+:func:`form_fit_options_associations` walks the available functions and forms this list.
+
+Various setting types are available:
+
+* *float*, *int* and *str* are simple types with no restrictions.
+
+* *bool* defines a boolean setting, with an additional `--no-name entry` on the command line
+   to indicate false values. Boolean settings can default to True or False.
+
+* :class:`Range` restricts the setting to a valid setting range, with values clipped
+   to the range during :func:`check_options` processing.
+
+* *list* settings define an enumerated set of available string values.
+
+"""
+
 from typing import Dict, List, Tuple, Any, Callable, Optional
 from textwrap import dedent
 from argparse import ArgumentTypeError
@@ -29,16 +59,36 @@ FITTERS = (
     fitters.BFGSFit,
 )
 """Fitters visible to the user. This may be a subset of bumps.fitters.FITTERS"""
+
 DEFAULT_FITTER_ID = fitters.SimplexFit.id
 """Default fitter if none specified"""
+
 FITTER_DEFAULTS = get_fitter_defaults(FITTERS)
 """Fitter name and default settings for the visible fitters. This list will be amended if a hidden fitter is specified on the command line."""
+
 FIT_OPTIONS: Dict[str, "Setting"] = {}
 """Options available to the fitters."""
 
 
 @dataclass(init=False)
 class Setting:
+    """
+    Represents a setting for a fitter.
+
+    Attributes:
+        name (str): Name of the setting.
+
+        label (str): Label for the setting.
+
+        description (str): Description of the setting.
+
+        stype (Callable): Type of the setting.
+
+        fitters (List[str]): List of fitters that use this setting.
+
+        defaults (List[Any]): Default values for the setting across different fitters.
+    """
+
     name: str
     label: str
     description: str
@@ -47,6 +97,18 @@ class Setting:
     defaults: List[Any]
 
     def __init__(self, name: str, label: str, stype: type, description: str):
+        """
+        Initializes a Setting instance.
+
+        Args:
+            name (str): Name of the setting.
+
+            label (str): Label for the setting.
+
+            stype (type): Type of the setting.
+
+            description (str): Description of the setting.
+        """
         self.name = name
         self.label = label
         self.description = dedent(description)
@@ -60,20 +122,38 @@ class Setting:
 class Range:
     """
     A floating point range which is used as an argparse type converter and validator.
+
+    Attributes:
+        min (float): Minimum value of the range.
+
+        max (float): Maximum value of the range.
     """
 
     min: float
     max: float
 
-    # def __init__(self, min, max): self.min, self.max = min, max
-
     def __call__(self, v):
+        """
+        Validates if a value is within the range.
+
+        Args:
+            v: Value to be validated.
+
+        Returns:
+            float: The validated value.
+
+        Raises:
+            ArgumentTypeError: If the value is not within the range.
+        """
         v = float(v)
         if not self.min <= v <= self.max:
             raise ArgumentTypeError(f"{v} not in [{self.min:g}, {self.max:g}]")
         return v
 
     def __repr__(self):
+        """
+        Returns a string representation of the range.
+        """
         return f"float[{self.min:g},{self.max:g}]"
 
 
@@ -113,7 +193,7 @@ Setting(
     Population initialization method
         eps:    ball around initial parameter set
         lhs:    latin hypercube sampling
-        cov:    normally istributed according to covariance matrix
+        cov:    normally distributed according to covariance matrix
         random: uniformly distributed within parameter range""",
 )
 Setting(
@@ -194,6 +274,18 @@ Setting(
 
 
 def lookup_fitter(fitter_id: str):
+    """
+    Looks up a fitter by its ID.
+
+    Args:
+        fitter_id (str): ID of the fitter to look up.
+
+    Returns:
+        Fitter: The fitter instance corresponding to the given ID.
+
+    Raises:
+        ValueError: If the fitter ID is unknown.
+    """
     # Checking the complete list of fitters, not the restricted list for webview
     for fitter in fitters.FITTERS:
         if fitter.id == fitter_id:
@@ -230,9 +322,16 @@ def form_fit_options_associations():
 
 def check_options(options: Dict[str, Any], fitter_id: Optional[str] = None) -> Tuple[Dict[str, Any], List[str]]:
     """
-    Check if the set of options is consistent for the fitter.
+    Checks if the set of options is consistent for the fitter.
 
-    Returns an updated options dictionary and a list of warnings covering unknown options and bad types.
+    Args:
+        options (Dict[str, Any]): Options to be checked.
+
+        fitter_id (Optional[str]): ID of the fitter (default=None).
+
+    Returns:
+        Tuple[Dict[str, Any], List[str]]: A tuple containing the updated options
+        dictionary and a list of warnings.
     """
     # Note: this code is called with options set in a jupyter notebook so make
     # make sure it is robust against bad inputs.
@@ -289,6 +388,15 @@ def check_options(options: Dict[str, Any], fitter_id: Optional[str] = None) -> T
 
 
 def _json_compatible_setting(s: Setting):
+    """
+    Converts a Setting instance to a JSON-compatible dictionary.
+
+    Args:
+        s (Setting): Setting instance to be converted.
+
+    Returns:
+        dict: JSON-compatible dictionary representation of the Setting.
+    """
     output = asdict(s)
     stype = output["stype"]
     if stype is int:
@@ -301,5 +409,11 @@ def _json_compatible_setting(s: Setting):
 
 
 def get_fit_fields():
+    """
+    Returns a dictionary of fit fields.
+
+    Returns:
+        dict: Dictionary of fit fields where each key is a setting name and each value is a JSON-compatible Setting representation.
+    """
     fit_fields = dict([(k, _json_compatible_setting(v)) for k, v in FIT_OPTIONS.items()])
     return fit_fields

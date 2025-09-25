@@ -1,3 +1,10 @@
+"""
+Manage the fitting thread used by the server.
+
+To keep the UI responsive, fitting is run in a separate thread. The main thread is listening
+for new requests from the client.
+"""
+
 from copy import deepcopy
 from threading import Thread
 from threading import Event
@@ -8,7 +15,7 @@ from blinker import Signal
 
 import numpy as np
 from bumps import monitor
-from bumps.fitters import FitDriver, format_uncertainty, ConsoleMonitor
+from bumps.fitters import FitDriver, ConsoleMonitor
 from bumps.mapper import MPMapper, SerialMapper, can_pickle
 from bumps.util import redirect_console, NDArray
 
