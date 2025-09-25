@@ -726,8 +726,7 @@ async def _fit_complete_handler(event: Dict[str, Any]):
         # print(event['info'])  # Needed if we are dumping fit outputs to the terminal
         problem: bumps.fitproblem.FitProblem = event["problem"]
         chisq = nice(problem.chisq(nllf=event["value"]))
-        problem.setp(event["point"])
-        problem.model_update()
+        problem.setp(event["point"])  # setp calls model_update
         state.problem.fitProblem = problem
         state.set_fit_state(event["fit_state"], event["fitter_id"])
         if state.shared.autosave_history:
@@ -1136,15 +1135,15 @@ async def get_parameters(only_fittable: bool = False):
     if state.problem is None or state.problem.fitProblem is None:
         return []
     fitProblem = state.problem.fitProblem
+    freevars = fitProblem.freevars
 
     all_parameters = fitProblem.model_parameters()
     if only_fittable:
-        parameter_infos = params_to_list(unique(all_parameters))
+        parameter_infos = params_to_list(unique(all_parameters), freevars=freevars)
         # only include params with priors:
         parameter_infos = [pi for pi in parameter_infos if pi["fittable"] and not pi["fixed"]]
     else:
-        parameter_infos = params_to_list(all_parameters)
-
+        parameter_infos = params_to_list(all_parameters, freevars=freevars)
     return to_json_compatible_dict(parameter_infos)
 
 
@@ -1380,37 +1379,40 @@ class ParamInfo(TypedDict, total=False):
     max_str: str
 
 
-def params_to_list(params, lookup=None, pathlist=None, links=None) -> List[ParamInfo]:
+def params_to_list(params, lookup=None, path="", freevars=None) -> List[ParamInfo]:
     lookup: Dict[str, ParamInfo] = {} if lookup is None else lookup
-    pathlist = [] if pathlist is None else pathlist
-    if isinstance(params, dict):
+    # print(f"{type(params)=} {params=}\n  {lookup=}\n   {pathlist=}")
+    if params is None:
+        pass
+    elif isinstance(params, dict):
         for k in sorted(params.keys()):
-            params_to_list(params[k], lookup=lookup, pathlist=pathlist + [k])
-    elif isinstance(params, tuple) or isinstance(params, list):
+            item = f"{path}{'.' if path else ''}{k}"
+            params_to_list(params[k], lookup=lookup, path=item, freevars=freevars)
+    elif isinstance(params, (tuple, list, np.ndarray)):
+        # print("list branch")
         for i, v in enumerate(params):
-            # add index to last item in pathlist (in-place):
-            new_pathlist = pathlist.copy()
-            if len(pathlist) < 1:
-                new_pathlist.append("")
-            new_pathlist[-1] = f"{new_pathlist[-1]}[{i:d}]"
-            params_to_list(v, lookup=lookup, pathlist=new_pathlist)
-    elif isinstance(params, Parameter) or isinstance(params, Constant):
-        path = ".".join(pathlist)
-        existing = lookup.get(params.id, None)
+            params_to_list(v, lookup=lookup, path=f"{path}[{i:d}]", freevars=freevars)
+    elif isinstance(params, (Parameter, Constant)):
+        # path = ".".join(pathlist)
+        # print(f"failing with {params} {lookup}")
+        pid = params.id
+        has_slot = hasattr(params, "slot")
+        existing = lookup.get(pid, None)
         if existing is not None:
-            existing["paths"].append(".".join(pathlist))
+            existing["paths"].append(path)
+        elif freevars.isfree(params):
+            # Don't include free parameters from the model in the list
+            # of available parameters.
+            pass
         else:
             value_str = VALUE_FORMAT.format(nice(params.value))
             has_prior = getattr(params, "prior", None) is not None
-
-            if hasattr(params, "slot"):
-                writable = type(params.slot) in [Variable, Parameter]
-            else:
-                writable = False
+            writable = has_slot and isinstance(params.slot, (float, Variable, Parameter))
+            paths = [path] if not has_slot or isinstance(params.slot, (float, Variable)) else [f"{path}={params.slot}"]
             new_item: ParamInfo = {
-                "id": params.id,
+                "id": pid,
                 "name": str(params.name),
-                "paths": [path],
+                "paths": paths,
                 "tags": getattr(params, "tags", []),
                 "writable": writable,
                 "value_str": value_str,
@@ -1422,9 +1424,19 @@ def params_to_list(params, lookup=None, pathlist=None, links=None) -> List[Param
                 new_item["value01"] = params.prior.get01(float(params.value))
                 new_item["min_str"] = VALUE_FORMAT.format(nice(lo))
                 new_item["max_str"] = VALUE_FORMAT.format(nice(hi))
-            lookup[params.id] = new_item
+            lookup[pid] = new_item
+
+            # Check for any additional parameters referenced by the slot
+            if has_slot:
+                subparams = params.slot.parameters()
+                if subparams:
+                    if len(subparams) > 1:
+                        params_to_list(subparams, lookup=lookup, path=f"{params}", freevars=freevars)
+                    else:
+                        params_to_list(subparams[0], lookup=lookup, path="", freevars=freevars)
     elif callable(getattr(params, "parameters", None)):
-        # handle Expression, Constant, etc.
+        # handle Expression, etc.
         subparams = params.parameters()
-        params_to_list(subparams, lookup=lookup, pathlist=pathlist)
+        subparams = subparams[0] if subparams and len(subparams) == 1 else subparams
+        params_to_list(subparams, lookup=lookup, path=f"{path}={params}", freevars=freevars)
     return list(lookup.values())

@@ -88,7 +88,7 @@ class Fitness(util.Protocol):
         Called when parameters have been updated.  Any cached values will need
         to be cleared and the model reevaluated.
         """
-        raise NotImplementedError()
+        pass
 
     def numpoints(self):
         """
@@ -253,7 +253,7 @@ class FitProblem(Generic[FitnessType]):
     _parameters: util.List[Parameter]
     _parameters_by_id: util.Dict[str, Parameter]
     _dof: float = np.nan  # not a schema field, and is not used in __init__
-
+    _active_model_index: int = 0
     # _all_constraints: util.List[util.Union[Parameter, Expression]]
 
     def __init__(
@@ -290,11 +290,11 @@ class FitProblem(Generic[FitnessType]):
             weights = [1.0 for _ in models]
         self.weights = weights
         self.penalty_nllf = float(penalty_nllf)
-        self.set_active_model(0)  # Set the active model to model 0
         self.name = name
 
-        # Do this step last so that it has all of the attributes initialized.
+        # Do these steps last so that it has all of the attributes initialized.
         self.model_reset()  # sets self._all_constraints
+        self.set_active_model(0)  # Set the active model to model 0
 
     @staticmethod
     def _null_constraints_function():
@@ -316,23 +316,35 @@ class FitProblem(Generic[FitnessType]):
     def models(self):
         """Iterate over models, with free parameters set from model values"""
         try:
-            for i, f in enumerate(self._models):
-                self.freevars.set_model(i)
-                yield f
+            for index in range(len(self._models)):
+                yield self._switch_model(index)
         finally:
             # Restore the active model after cycling, even if interrupted
-            self.freevars.set_model(self._active_model_index)
+            self._switch_model(self._active_model_index)
 
     # noinspection PyAttributeOutsideInit
-    def set_active_model(self, i):
+    def set_active_model(self, index):
         """Use free parameters from model *i*"""
-        self._active_model_index = i
-        self.active_model = self._models[i]
-        self.freevars.set_model(i)
+        self._active_model_index = index
+        self.active_model = self._switch_model(index)
+
+    def _switch_model(self, index):
+        # TODO: FreeVariables destroys caching within the model.
+        # print(f"switching to {index} with freevars={bool(self.freevars)}")
+        self.freevars.set_model(index)
+        if self.freevars:
+            # Clear model cache when updating the parameters
+            getattr(self._models[index], "update", lambda: None)()
+        return self._models[index]
 
     def model_parameters(self):
         """Return parameters from all models"""
         pars = {}
+        # Note: the self.models iterator plugs the free variables into
+        # the model in turn, so no need to walk self.freevars directly.
+        # The model.update() function is called each time, so whatever
+        # caching is happening in the model is cleared, and it knows that
+        # new parameter values have been inserted.
         pars["models"] = [f.parameters() for f in self.models]
         free = self.freevars.parameters()
         if free:
@@ -368,15 +380,6 @@ class FitProblem(Generic[FitnessType]):
         otherwise returns False.
         """
         # print("Calling setp with", pvec, self._parameters)
-        # TODO: do we have to leave the model in an invalid state?
-        # WARNING: don't try to conditionally update the model
-        # depending on whether any model parameters have changed.
-        # For one thing, the model_update below probably calls
-        # the subclass FitProblem.model_update, which signals
-        # the individual models.  Furthermore, some parameters may
-        # related to others via expressions, and so a dependency
-        # tree needs to be generated.  Whether this is better than
-        # clicker() from SrFit I do not know.
         for v, p in zip(pvec, self._parameters):
             p.value = v
         # TODO: setp_hook is a hack to support parameter expressions in sasview
@@ -667,19 +670,16 @@ class FitProblem(Generic[FitnessType]):
 
     def model_update(self):
         """Let all models know they need to be recalculated"""
-        # TODO: consider an "on changed" signal for model updates.
-        # The update function would be associated with model parameters
-        # rather than always recalculating everything.  This
-        # allows us to set up fits with 'fast' and 'slow' parameters,
-        # where the fit can quickly explore a subspace where the
-        # computation is cheap before jumping to a more expensive
-        # subspace.  SrFit does this.
+        # The self.models iterator calls update for each model if there are
+        # free variable substitutions, so no need to update here.
+        if self.freevars:
+            return
         for f in self.models:
-            if hasattr(f, "update"):
-                f.update()
+            getattr(f, "update", lambda: None)()
 
     def model_nllf(self):
         """Return cost function for all data sets"""
+        # print("In model nllf with", self.getp())
         return sum(w**2 * f.nllf() for w, f in zip(self.weights, self.models))
 
     def constraints_nllf(self) -> util.Tuple[float, util.List[str]]:
@@ -732,8 +732,7 @@ class FitProblem(Generic[FitnessType]):
     def show(self):
         for i, f in enumerate(self.models):
             print("-- Model %d %s" % (i, getattr(f, "name", "")))
-            subs = self.freevars.get_model(i) if self.freevars else {}
-            fitness_show_parameters(f, subs=subs)
+            fitness_show_parameters(f, subs=self.freevars.get_model(i))
         print("[overall chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
 
     def plot(self, p=None, fignum=1, figfile=None, view=None, model_indices=None):
