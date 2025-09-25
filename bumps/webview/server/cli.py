@@ -485,7 +485,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         for k, v in arg_defaults.items():
             setattr(namespace, k, v)
     args = parser.parse_args(namespace=namespace)
-    print(f"Parse output: {args=}")
+    # print(f"Parse output: {args=}")
     return args
 
 
