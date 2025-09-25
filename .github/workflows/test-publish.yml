@@ -13,6 +13,8 @@ defaults:
     shell: bash
 
 jobs:
+  # Extract the Python version requirements from pyproject.toml,
+  # requires that requires-python is set to a range, e.g. ">=3.9,<=3.13"
   get-pyproject-python-versions:
     runs-on: ubuntu-latest
     outputs:
@@ -51,11 +53,11 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ needs.get-pyproject-python-versions.outputs.min_python }}
+          python-version: ${{ needs.get-pyproject-python-versions.outputs.max_python }}
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: build webview
         run: |
@@ -79,7 +81,7 @@ jobs:
       - build-wheel
       - get-pyproject-python-versions
     env:
-      MIN_PYTHON: ${{ needs.get-pyproject-python-versions.outputs.min_python }}
+      DEFAULT_PYTHON: ${{ needs.get-pyproject-python-versions.outputs.max_python }}
 
     strategy:
       matrix:
@@ -98,10 +100,10 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v6
 
-      - name: Set up Python ${{ matrix.py || env.MIN_PYTHON}}
+      - name: Set up Python ${{ matrix.py || env.DEFAULT_PYTHON}}
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.py || env.MIN_PYTHON}}
+          python-version: ${{ matrix.py || env.DEFAULT_PYTHON}}
 
       - name: Download the wheel
         uses: actions/download-artifact@v5
@@ -124,7 +126,7 @@ jobs:
         run: uv run python check_fitters.py
 
       - name: Check that the docs build (linux only)
-        if: ${{ matrix.py == env.MIN_PYTHON && matrix.os == 'ubuntu-latest' }}
+        if: ${{ matrix.py == env.DEFAULT_PYTHON && matrix.os == 'ubuntu-latest' }}
         run: |
           source .venv/bin/activate
           make -j 4 -C doc SPHINXOPTS="-W --keep-going -n" html
