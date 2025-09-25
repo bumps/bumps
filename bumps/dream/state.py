@@ -352,12 +352,17 @@ def openmc(filename):
 def load_state(filename, skip=0, report=0, derived_vars=0):
     """
     *filename* is the path to the saved MCMC state up to the final -chain.mc, etc.
+    Any extension will be removed before using.
 
     *derived_vars* is the number of columns added to each point, derived
     from other columns in that point. The newer set_derived_vars interface generates
     the derived variables on demand rather than storing them in the state object and
     so it will be zero always.
     """
+
+    # Trim extension from filename
+    filename = str(Path(filename).with_suffix(""))
+
     # Read chain file
     with openmc(filename + "-chain" + EXT) as fid:
         chain = loadtxt(fid)

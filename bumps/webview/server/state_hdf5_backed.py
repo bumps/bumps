@@ -71,7 +71,7 @@ def now_string():
     return f"{datetime.now().timestamp():.6f}"
 
 
-def serialize_problem(problem: "bumps.fitproblem.FitProblem", method: SERIALIZERS) -> Union[str, bytes]:
+def serialize_problem(problem: "bumps.fitproblem.FitProblem", method: SERIALIZERS | None = None) -> Union[str, bytes]:
     if method == "dataclass":
         return json.dumps(serialize(problem))
     elif method == "pickle":
@@ -254,8 +254,17 @@ class ProblemState:
 
     def write(self, parent: "Group"):
         group = parent.require_group("problem")
-        write_fitproblem(group, "fitProblem", self.fitProblem, method=self.serializer)
-        write_string(group, "serializer", self.serializer)
+        # Try the specified serializer, but fall back to cloudpickle if it fails
+        serializer = self.serializer
+        try:
+            write_fitproblem(group, "fitProblem", self.fitProblem, method=serializer)
+        except Exception:
+            if serializer != "cloudpickle":
+                serializer = "cloudpickle"
+                write_fitproblem(group, "fitProblem", self.fitProblem, method=serializer)
+            else:
+                raise
+        write_string(group, "serializer", serializer)
         write_json(group, "libraries", get_libraries(self.fitProblem))
         # write_json(group, 'pathlist', self.pathlist)
         # write_string(group, 'filename', self.filename)
@@ -552,6 +561,12 @@ class State:
             # the convergence and fit_state will be unchanged by the calls below.
             self.set_convergence(item.fitting.convergence)
             self.set_fit_state(item.fitting.fit_state, item.fitting.method)
+
+    def set_active(self, problem, fitting: FitResult | None = None):
+        self.problem = ProblemState(problem)  # default serializer
+        self.fitting = fitting
+        self.set_convergence(fitting.convergence)
+        self.set_fit_state(fitting.fit_state, fitting.method)
 
     def reset_fitstate(self, copy: bool = False):
         """

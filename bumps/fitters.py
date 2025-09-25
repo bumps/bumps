@@ -5,8 +5,14 @@ Interfaces to various optimizers.
 import sys
 import warnings
 from time import perf_counter
+from pathlib import Path
+from typing import List, Tuple, Dict, Any, Optional
 
+from h5py import Group
 import numpy as np
+
+# from numpy.typing import NDArray
+from scipy.optimize import OptimizeResult
 
 from . import monitor
 from . import initpop
@@ -15,12 +21,7 @@ from . import lsqerror
 from .history import History
 from .formatnum import format_uncertainty
 from .util import NDArray, format_duration
-
-# For typing
-from typing import List, Tuple, Dict, Any, Optional
-from numpy.typing import NDArray
-from h5py import Group
-from bumps.dream.state import MCMCDraw
+from .dream.state import MCMCDraw
 
 
 class ConsoleMonitor(monitor.TimedUpdate):
@@ -1253,8 +1254,6 @@ class FitDriver(object):
         print("=" * 75)
 
     def show_err(self):
-        from bumps import lsqerror
-
         # Note: self.cov() is cached, with reset whenever the fit starts
         dx = lsqerror.stderr(self.cov())
         self.problem.show_err(self.problem.getp(), dx)
@@ -1284,6 +1283,7 @@ class FitDriver(object):
 
     def plot(self, output_path, view=None):
         # print "calling fitter.plot"
+        # TODO: what if problem has plotly but not plt?
         if hasattr(self.problem, "plot"):
             self.problem.plot(figfile=output_path, view=view)
         if hasattr(self.fitter, "plot"):
@@ -1356,19 +1356,69 @@ FIT_DEFAULT_ID = SimplexFit.id
 assert FIT_DEFAULT_ID in FIT_ACTIVE_IDS
 assert all(f in FIT_AVAILABLE_IDS for f in FIT_ACTIVE_IDS)
 
-# TODO: split simple fitter interface support to a separate file
+# TODO: move jupyter notebook support functions to bumps/commands.py, along with load_problem().
+
+
+def help():
+    from IPython.display import display, Markdown
+
+    src = """
+Bumps functions:
+```python
+import bumps.names as bp
+bp.help()                                            # display this help
+problem = bp.load_problem(path, args=[arg1, ...])    # load model from script (.py) or export (.json)
+options = dict(fit=dream, burn=100)                  # fit options (see bumps -h for list)
+!bumps --help                                        # show available options
+fitresult = bp.fit(problem, **options)               # synchronous fit interface
+fitresult = bp.fit(problem, resume=fitresult, **options) # resume a fit from fitresult
+bp.plot_convergence(fitresult)                       # show convergence plot
+bp.show_results(problem, fitresult)                  # summarize fit results
+problem.plot()                                       # show model plots
+fitresult.state.show()                               # show dream plots
+problem, fitresult = bp.load_fit_from_session(path)  # load bumps MCMC from session file
+problem, fitresult = bp.load_fit_from_export(path)   # load bumps MCMC files that were exported
+```
+
+Webview functions:
+```python
+await bp.start_bumps()                               # start the webview server
+bp.display_bumps(height=600)                         # diplay webview in jupyter
+await bp.set_problem(problem)                        # send problem to webview
+await bp.start_fit_thread(options=options)           # start the webview fit thread
+problem, fitresult = await bp.get_fit_from_webview(wait=True) # get fit results from webview
+await bp.set_problem(problem, fit=fitresult)         # send problem and results to webview
+```
+
+MCMC statistics: [TODO]
+```python
+# parameter summary table
+# range restriction and brushing
+# calling individual plots
+# derived and hidden parameters
+# entropy calculation
+```
+"""
+    display(Markdown(src))
 
 
 def plot_convergence(results, cutoff=0.25, ax=None):
+    """
+    Create a convergence plot from the simple fitter results.
+
+    Note that this will not work with a webview FitResults object
+    returned from a session file. Those will not have dof defined,
+    and use fit_state instead of state.
+    """
     import matplotlib.pyplot as plt
     import numpy as np
-
     from .plotutil import coordinated_colors
 
     convergence, state = results.convergence, getattr(results, "state")
+    dof = getattr(results, "dof", 2)
 
-    # convergence, dof=1, cutoff=0.25, trim_index=None, burn_index=None
-    # quantiles = 2 * convergence / dof # convergence quantiles as nominal chisq
+    # Convert quantiles from nllf to nominal chisq
+    convergence = convergence * (2 / dof)
     best, quantiles = convergence[:, 0], convergence[:, 1:]
     nsteps, nquantiles = quantiles.shape
     step = np.arange(1, nsteps + 1)
@@ -1414,7 +1464,7 @@ def plot_convergence(results, cutoff=0.25, ax=None):
     # ax.yscale('log')
 
 
-def reload_session(filename):
+def load_session(filename):
     """Reload a session file from a saved hdf"""
     from bumps.webview.server.state_hdf5_backed import State
 
@@ -1424,69 +1474,141 @@ def reload_session(filename):
     return session
 
 
-def reload_fit_from_session(filename, show=False):
+def load_fit_from_session(filename: Path | str):
     """
     Reload the results from a bumps session file.
 
     *filename* is a path to an HDF5 file.
-
-    Use *show=True* to plot the standard plots.
 
     Returns (*problem*, *results*) where *problem* contains
     the model executable and *results* is a scipy
     OptimizationResults object. We add *state* if available
     and *convergence* to the results, similar to simple fit.
 
-    Use *reload_session(filename)* directly if you want more control.
+    Use *load_session(filename)* directly if you want more control.
     """
-    from scipy.optimize import OptimizeResult
-    from bumps import lsqerror
-
-    session = reload_session(filename)
+    session = load_session(filename)
     problem = session.problem.fitProblem
-    convergence = session.fitting.convergence
-    state = session.fitting.fit_state
-    if state:
-        state.mark_outliers()
-        state.portion = state.trim_portion()
-
-    # TODO: should be storing, x, dx, fx in the fit results
-    x = problem.getp()
-    cov = problem.cov(x)
-    dx = lsqerror.stderr(cov)
-    fx = problem.nllf()
-    msg = "successful termination"
-    # Don't know how many steps in current fit or total after resume, except
-    # if the information happens to be stored in state
-    steps = state.total_generations if state is not None else 0
-    results = OptimizeResult(x=x, dx=dx, fun=fx, success=True, status=0, msg=msg, nit=steps)
-    results.state = state
-    results.convergence = 2 * convergence / problem.dof
-    if show:
-        # print(session.fitting)
-        print(problem.summarize())
-        print(f"χ² = {problem.chisq_str()}")
-        plot_convergence(results)
-        problem.plot(fignum=2)
-        if state:
-            state.show()
-        else:
-            problem.show_err(x, dx)
+    fit = session.fitting
+    print(fit.__dict__)
+    fit_state = getattr(fit, "state", None)
+    if fit_state:
+        fit_state.mark_outliers()
+        fit_state.portion = fit_state.trim_portion()
+    results = _build_fit_result(problem, fit)
 
     return problem, results
 
 
-def fit(
-    problem,
-    method=FIT_DEFAULT_ID,
-    session=None,
-    resume=None,
-    export=None,
-    name=None,
-    verbose=False,
-    parallel=1,
-    **options,
+def load_fit_from_export(
+    path: Path | str,
+    modelfile: Path | str | None = None,
+    args: list[str] | None = None,
 ):
+    """
+    Reload a bumps export directory.
+
+    *path* is the path to the directory, or to a <model>.par file within that
+    directory. Use the <model>.par file if you have multiple models exported to
+    the same path.
+
+    If *modelfile* is provided then use it, otherwise use <model>.py in the
+    current directory. That means you can change to the directory containing
+    your model then run bumps with --reload-export=path without having to list
+    <model>.py on the command line. This is handy if you have several variations
+    saved to different filenames stored along with your data.
+
+    sys.argv is set to *args* before loading the model.
+    """
+    from .webview.server.cli import reload_export
+
+    problem, fit = reload_export(path, modelfile=modelfile, args=args)
+    results = _build_fit_result(problem, fit)
+
+    return problem, results
+
+
+def show_results(problem, results: OptimizeResult):
+    # print(session.fitting)
+    print(problem.summarize())
+    print(f"χ² = {problem.chisq_str()}")
+    plot_convergence(results)
+    problem.plot(fignum=2)
+    if results.state:
+        results.state.show()
+    else:
+        problem.show_err(results.x, results.dx)
+
+
+# Note: get fit is currently computing the covariance matrix each time the fit result is
+# retrieved. This will go away if it is saved along with the webview fit results.
+async def get_fit_from_webview(wait: bool = False):
+    """
+    Retrieve the current problem and fit result from webview.
+
+    If *wait* then wait for any running fit to complete before fetching.
+
+    Returns the problem and an OptimizerResult similar to the simple fit() result
+    """
+    from .webview.server.api import state, wait_for_fit_complete
+
+    # TODO: Any risk of another action happening between fit complete and fetch result?
+    if wait:
+        await wait_for_fit_complete()
+    problem, fit = state.problem.fitProblem, state.fitting
+    results = _build_fit_result(problem, fit)
+    return problem, results
+
+
+# TODO: FitResult should include, x, dx, fx, cov, dof, etc.
+# TODO: FitResult.fit_state, but OptimizerResult.state
+# webview_fit: webview.server.state_hdf5_backed.FitResult
+def _build_fit_result(problem, webview_fit):
+    x = problem.getp()
+    cov = problem.cov(x)
+    dx = lsqerror.stderr(cov)
+    fx = problem.nllf()
+    dof = problem.dof
+    # Don't know how many steps in current fit or total after resume, except
+    # if the information happens to be stored in state
+    fit_state = webview_fit.fit_state
+    steps = fit_state.total_generations if fit_state is not None else 0
+    results = OptimizeResult(
+        x=x,
+        fun=fx,
+        # TODO: need better success/status/message handling
+        success=True,
+        status=0,
+        message="successful termination",
+        nit=steps,  # number of iterations
+        # nfev=0, # number of function evaluations
+        # njev, nhev # jacobian and hessian evaluations
+        # maxcv=0, # max constraint violation
+        # Non-standard results. Note convergence is in nominal chisq
+        dx=dx,
+        dof=dof,
+        # webview FitResults
+        state=fit_state,
+        convergence=webview_fit.convergence,
+        method=webview_fit.method,
+        options=webview_fit.options,
+    )
+    return results
+
+
+# TODO: Move simplified fit interface to its own file.
+# Note: fitproblem is "higher level" so I don't want to import it into fitters.
+def fit(
+    problem,  # bumps.fitproblem.FitProblem
+    method: str = FIT_DEFAULT_ID,
+    session: Path | str | None = None,
+    resume: OptimizeResult | None = None,
+    export: Path | str | None = None,
+    name: str | None = None,
+    verbose: bool = False,
+    parallel: int = 1,
+    **options,
+) -> OptimizeResult:
     """
     Simplified fit interface.
 
@@ -1510,8 +1632,10 @@ def fit(
     previous result.
 
     If *export=path* is provided, generate the standard plots and export files
-    to the specified directory. You can set *name=basename* as the base file
-    name for all files stored in the export directory, or use
+    to the specified directory.
+
+    You can set *name=basename* as the base file name for all files stored in
+    the export directory, or use
     *name=problem.name* as the default.
 
     If *verbose* is true, then the console monitor will be enabled, showing
@@ -1527,9 +1651,9 @@ def fit(
     """
     from pathlib import Path
     from scipy.optimize import OptimizeResult
-    from .serialize import serialize
     from .mapper import MPMapper, SerialMapper
     from .webview.server.fit_thread import ConvergenceMonitor
+    from .webview.server.state_hdf5_backed import now_string
 
     # Aliases for backwards compatibility (session=store) and cli compatibility (method=fit)
     # Options parser stores --fit=fitter in fit_options["fit"] rather than fit_options["method"]
@@ -1555,51 +1679,24 @@ def fit(
     # x0 = problem.getp()
     if resume is not None:
         problem.setp(resume.x)
+
     x, fx = driver.fit(fit_state=None if resume is None else resume.state)
+
+    # TODO: merge OptimizeResult with server FitResult
+    # TODO: have driver.fit return FitResult
+    dx = driver.stderr()
+    dof = problem.dof
+    fit_state = driver.fitter.state
     steps = driver.monitor_runner.history.step[0]
     convergence = np.array(convergence.quantiles)
-    problem.setp(x)
-    chisq = problem.chisq_str()
-    if verbose:
-        print("final chisq", chisq)
-        driver.show_err()
-
-    # TODO: can we put this in a function in state_hdf5_backed?
-    if session is not None:
-        from .webview.server.state_hdf5_backed import State, FitResult, ProblemState
-
-        # TODO: strip non-options such as mapper from fit options
-        session = Path(session)
-        state = State()
-        if session.exists():
-            state.read_session_file(session)
-        try:
-            serialize(problem)
-            serializer = "dataclass"
-        except Exception as exc:
-            # import traceback; traceback.print_exc()
-            serializer = "cloudpickle"
-            if verbose:
-                print(f"Problem stored using {serializer}. It may not load in newer python versions.")
-                print(f"error: {exc}")
-        state.problem = ProblemState(fitProblem=problem, serializer=serializer)
-        state.fitting = FitResult(
-            method=method, options=options, convergence=convergence, fit_state=driver.fitter.state
-        )
-        # TODO: move the label gnerator into a function so it is the same for simple fit as for webview
-        label = "Fit complete: {method}"
-        item_timestamp = state.save_to_history(label=label, keep=True)
-        state.shared.active_history = item_timestamp
-        state.write_session_file(session)
-
-    if export is not None:
-        from .webview.server.api import _export_results
-
-        _export_results(Path(export), problem, driver.fitter.state, serializer="dataclass", name=name)
-
+    # Note: OptimizeResult is a dict with dot accessor and a pretty printer.
+    # Keys are by convention:
+    #   success: bool, status: int, message: str
+    #   (x, fun, jac, hess, hess_inv): array
+    #   (nit, nfev, njev, nhev): int
+    #   maxcv: float # max constraint violation
     result = OptimizeResult(
         x=x,
-        dx=driver.stderr(),
         fun=fx,
         # TODO: need better success/status/message handling
         success=True,
@@ -1609,11 +1706,81 @@ def fit(
         # nfev=0, # number of function evaluations
         # njev, nhev # jacobian and hessian evaluations
         # maxcv=0, # max constraint violation
+        # Non-standard results. Note convergence is in nominal chisq
+        dx=dx,
+        dof=dof,
+        timestame=now_string(),
+        # webview FitResults
+        state=fit_state,
+        convergence=2 * convergence / dof,
+        method=method,
+        options=options,
     )
-    # Non-standard results. Note convergence is in nominal chisq
-    result.state = driver.fitter.state
-    result.convergence = 2 * convergence / problem.dof
+
+    problem.setp(x)
+    chisq = problem.chisq_str()
+    if verbose:
+        print("final chisq", chisq)
+        driver.show_err()
+
+    if session is not None or export is not None:
+        from .serialize import serialize
+
+        try:
+            serialize(problem)
+            serializer = "dataclass"
+        except Exception as exc:
+            # import traceback; traceback.print_exc()
+            serializer = "cloudpickle"
+            if verbose:
+                print(f"Problem stored using {serializer}. It may not load in newer python versions.")
+                print(f"error: {exc}")
+    else:
+        serializer = None
+
+    # TODO: can we put this in a function in state_hdf5_backed?
+    if session is not None:
+        save_fit(path=session, problem=problem, fit=result)
+
+    if export is not None:
+        from .webview.server.api import export_fit
+
+        export_fit(export, problem, result.state, basename=name)
+
     return result
+
+
+# TODO: use time stamp from the end of the fit rather than now in the history file
+def save_fit(
+    path: Path | str,
+    problem,
+    fit: OptimizeResult,
+    label: str | None = None,
+    verbose: bool = True,
+):
+    """
+    Write a fit to a session file.
+    """
+    from .webview.server.state_hdf5_backed import State, FitResult, ProblemState
+
+    # TODO: strip non-options such as mapper from fit options
+    path = Path(path)
+    state = State()
+    if path.exists():
+        state.read_session_file(path)
+    state.problem = ProblemState(fitProblem=problem, serializer="dataclass")
+    state.fitting = FitResult(
+        method=fit.method,
+        options=fit.options,
+        convergence=fit.convergence,
+        fit_state=fit.state,
+    )
+    # TODO: move the label gnerator into a function so it is the same for simple fit as for webview
+    if label is None:
+        label = "Fit complete: {result.method}"
+    item_name = state.save_to_history(label=label, keep=True)
+    state.shared.active_history = item_name
+    state.write_session_file(path)
 
 
 def test_fitters():

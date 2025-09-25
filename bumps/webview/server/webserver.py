@@ -251,6 +251,9 @@ def setup_app(options: BumpsOptions, sock: Optional[socket.socket] = None):
 
 
 def start_from_cli(options: BumpsOptions):
+    """
+    Helper function to start webview from the parsed command line options.
+    """
     from aiohttp import web
 
     init_web_app()
@@ -266,7 +269,8 @@ Open the following in a new tab after replacing <HOST> with the hostname in the 
     web.run_app(app, sock=runsock)
 
 
-def start_bumps_server(loglevel: str = "warn"):
+# User command
+def start_bumps(loglevel: str = "warn"):
     """
     Start the webview server in a background asyncio.Task, and show the link to
     the webview in a Jupyter notebook. Note that the returned Task should be
@@ -276,8 +280,7 @@ def start_bumps_server(loglevel: str = "warn"):
     "debug", but you will have large amounts of text in the output cell.
     """
     # TODO: can we check if the server is already running?
-    logger.setLevel(LOGLEVEL[loglevel])
-    return asyncio.create_task(start_app(jupyter_link=True))
+    return asyncio.create_task(start_app(jupyter_link=True, loglevel=loglevel))
 
 
 async def start_app(
@@ -285,9 +288,14 @@ async def start_app(
     sock: socket.socket = None,
     jupyter_link: bool = False,
     jupyter_heartbeat: bool = False,
+    loglevel: str = "warn",
 ):
+    """
+    async version of the :fun:`start_bumps()` command.
+    """
     from aiohttp import web
 
+    logger.setLevel(LOGLEVEL[loglevel])
     init_web_app()
     if options is None:
         options = BumpsOptions()
@@ -316,6 +324,9 @@ async def start_app(
 
 
 def get_server_url():
+    """
+    Determine the url of the running server.
+    """
     port = getattr(api.state, "port", None)
     if port is None:
         raise ValueError("The web server has not been started.")
@@ -330,7 +341,8 @@ def get_server_url():
     return url
 
 
-def display_inline_jupyter(width: Union[str, int] = "100%", height: Union[str, int] = 1200, single_panel=None) -> None:
+# User command
+def display_bumps(width: Union[str, int] = "100%", height: Union[str, int] = 1200, single_panel=None) -> None:
     """
     Display the web server in an iframe.
 
@@ -356,7 +368,9 @@ def display_inline_jupyter(width: Union[str, int] = "100%", height: Union[str, i
 
 def open_tab_link(single_panel=None) -> None:
     """
-    Open the web server in a new tab in the default web browser.
+    Display web link to the active server in the jupyter cell output.
+
+    Also shows a cheat sheet of common jupyter commands.
     """
     from IPython.display import display, Markdown
 
@@ -368,17 +382,13 @@ def open_tab_link(single_panel=None) -> None:
 [Open in Browser]({url})
 ------------------------
 
-Python commands to control webview:
-```python
-# Display webview in a cell rather than running in a separate browser tab
-display_bumps(height=600)
+To open in a jupyter notebook cell use `bp.display_bumps()`.
 
-# Load a model file, possibly with additional command line arguments:
-path = Path("path/to/model.py")
-await api.load_problem_file(str(path.parent), path.name, args=[arg1, ...])
-
-# Set problem
-await api.set_problem(problem)
-```
+Type `bp.help()` for a list of useful notebook commands.
 """
     display(Markdown(src))
+
+
+# CRUFT: aliases for deprecated names
+display_inline_jupyter = display_bumps
+start_bumps_server = start_bumps

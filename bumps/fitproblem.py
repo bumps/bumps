@@ -54,6 +54,7 @@ import sys
 import traceback
 from typing import Generic, TypeVar, Union, Optional
 import warnings
+from pathlib import Path
 
 import numpy as np
 from numpy import inf, isnan, nan
@@ -287,6 +288,7 @@ class CovarianceMixin:
         print("=" * 58)
 
 
+# TODO: add filename to fitproblem so we don't have to coordinate it elsewhere?
 @dataclass(init=False, eq=False)
 class FitProblem(Generic[FitnessType], CovarianceMixin):
     r"""
@@ -331,6 +333,7 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
     linear.
     """
 
+    # TODO: problem.path is set by cli.load_model(); should we add it as standard?
     name: util.Optional[str]
     models: util.List[FitnessType]
     freevars: util.Optional[parameter.FreeVariables]
@@ -1012,7 +1015,61 @@ def nllf_scale(dof: int, npars: int, norm: bool = True):
         return 2.0 / scale, chi2.ppf(ONE_SIGMA, npars) / scale
 
 
-def load_problem(filename, options=None) -> FitProblem:
+def load_problem(path: Path | str, args: list[str] | None = None):
+    """
+    Load a model file.
+
+    *path* contains the path to the model file. This could be a python script
+    or a previously saved problem, serialized as .json, .cloudpickle, .pickle or .dill
+
+    *args* are any additional arguments to the model.  The sys.argv
+    variable will be set such that *sys.argv[1:] == model_options*.
+    """
+    from .webview.server.state_hdf5_backed import SERIALIZER_EXTENSIONS, deserialize_problem_bytes
+
+    path = Path(path)
+    table = {f".{ext}": method for method, ext in SERIALIZER_EXTENSIONS.items()}
+    method = table.get(path.suffix, "script")
+    if method == "script":
+        problem = _load_script_from_path(path, args)
+    else:
+        # export saved data as binary with encoding utf-8
+        data = path.read_bytes()
+        problem = deserialize_problem_bytes(data, method)
+    # TODO: what is problem.path when we are deserializing from a session file?
+    problem.path = str(path.resolve())
+    if not hasattr(problem, "name"):
+        problem.name = path.stem
+    if not hasattr(problem, "title"):
+        problem.title = path.name
+
+    # Guard against the user changing parameters after defining the problem.
+    problem.model_reset()
+    return problem
+
+
+def _load_script_from_path(path: Path | str, args: list[str] | None = None):
+    from .util import pushdir
+    from . import plugin
+
+    # Change to the target path before loading model so that data files
+    # can be given as relative paths in the model file.  Add the directory
+    # to the python path (at the end) so that imports work as expected.
+    path = Path(path)
+    directory, filename = path.parent, path.name
+    with pushdir(directory):
+        # Try a specialized model loader
+        problem = plugin.load_model(filename)
+        if problem is None:
+            problem = _load_script(filename, options=args)
+    # Note: keeping problem.script_path separate from problem.path because
+    # the problem.path may be the result of deserializing the model.
+    problem.script_path = str(path.resolve())
+    problem.script_args = args
+    return problem
+
+
+def _load_script(filename, options=None) -> FitProblem:
     """
     Load a problem definition from a python script file.
 
