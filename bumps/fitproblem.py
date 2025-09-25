@@ -812,23 +812,109 @@ def load_problem(filename, options=None) -> FitProblem:
 
     Namespace for imports is `bumps.user`
     """
-    # Allow relative imports from the bumps model
-    namespace = "bumps.user"
-    basename = os.path.splitext(os.path.basename(filename))[0]
-    module = util.relative_import(filename, module_name=namespace)
+    import re
+    from pathlib import Path
+    from hashlib import md5
+    from importlib.machinery import SourceFileLoader
+    from importlib.util import module_from_spec, spec_from_loader
 
-    ctx = dict(__file__=filename, __package__=module, __name__=f"{namespace}.{basename}")
+    script_path = Path(filename).resolve()
+    if options is None:
+        options = ()
+
+    # Turn filename into a python identifier
+    name = script_path.stem.split(".", 1)[0]
+    name = "_".join(name.split())  # convert whitespace
+    name = re.sub(r"[^a-zA-Z0-9_]", "_", name)  # handle invalid characters
+    if name[0].isdigit():  # idnetifiers can't start with a digit
+        name = "_" + name
+
+    # Put all user scripts in the bumps.user namespace.
+    # They shouldn't conflict because they don't show up
+    # in sys.modules.
+    package = "bumps.user"
+
+    # Create the module for the script
+    fullname = f"{package}.{name}"
+    loader = SourceFileLoader(fullname, str(script_path))
+    spec = spec_from_loader(fullname, loader)
+    module = module_from_spec(spec)
+
+    # Execute the script
+    # TODO: Enable relative imports with ScriptFinder
     old_argv = sys.argv
-    sys.argv = [filename] + options if options else [filename]
-    source = open(filename).read()
-    code = compile(source, filename, "exec")
-    exec(code, ctx)
-    sys.argv = old_argv
-    problem = ctx.get("problem", None)
+    old_bytecode = sys.dont_write_bytecode
+    # meta_path_finder = ScriptFinder(script_path.parent, package)
+    try:
+        # sys.meta_path.insert(0, meta_path_finder)
+        sys.argv = [filename, *options]
+        sys.dont_write_bytecode = True  # Suppress .pyc creation
+        loader.exec_module(module)
+    finally:
+        # sys.meta_path.pop(0)
+        sys.argv = old_argv
+        sys.dont_write_bytecode = old_bytecode
+
+    problem = getattr(module, "problem", None)
     if problem is None:
         raise ValueError(filename + " requires 'problem = FitProblem(...)'")
 
+    # # Capture the source code and any dependent libraries. On deserialize we
+    # # will need to preload the libs and stuff them in sys.modules before
+    # # calling dill. Be sure to remove them immediately so that the next load
+    # # from script will get the latest version (the user may have changed the
+    # # support libraries without having changed the script).
+    # # Note that we won't be able to rerun the script because we aren't capturing
+    # # the original datafiles, but we may want to show it to the user.
+    # script = script_path.read_text()
+    # context = dict(script=script, libs=meta_path_finder.sources, options=options)
+
     return problem
+
+
+# Note: Not currently used
+class ScriptFinder:
+    """
+    sys.meta_path finder allowing relative imports in scripts.
+
+    *script_dir* is the parent directory for the script file.
+
+    *package_name* is the module namespace for the script.
+
+    *sources* contains {fullname: source_code} for all the supporting
+    modules in the script directory. Use these to deserialize the
+    saved problem.
+    """
+
+    def __init__(self, script_dir, package_name):
+        from importlib.machinery import ModuleSpec
+
+        self._path = script_dir
+        self._package = package_name + "."
+        self._parent_spec = ModuleSpec(package_name, None, is_package=True)
+        self.sources = {}
+
+    def find_spec(self, fullname, path, target=None):
+        from importlib.machinery import SourceFileLoader
+        from importlib.util import spec_from_loader
+
+        if fullname == self._package[:-1]:
+            # print(f'import looking for {fullname}')
+            return self._parent_spec
+        if fullname.startswith(self._package):
+            # print(f'import looking for {fullname}')
+            module_name = fullname.split(".")[-1]
+            module_path = self._path / f"{module_name}.py"
+            if module_path.exists():
+                loader = SourceFileLoader(fullname, str(module_path))
+                spec = spec_from_loader(fullname, loader)
+                # It is inefficient to load this twice, but the import
+                # hook machinery is too complicated to capture the source
+                # when it is loaded. Similarly for suppressing the .pyc
+                # file creation.
+                self.sources[fullname] = module_path.read_text()
+                return spec
+        return None
 
 
 def MultiFitProblem(*args, **kwargs) -> FitProblem:

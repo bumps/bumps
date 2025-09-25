@@ -72,7 +72,10 @@ def check_fit(fitter, store, target):
         last_item = list(group.keys())[-1]
         chisq_str = group[last_item].attrs["chisq"]
         value = float(chisq_str.split("(")[0])
-        assert abs(value - target) / target < 1e-2, f"error in {fitter}: expected {target} but got {value}"
+        if target == 0:
+            assert abs(value - target) < 1e-10, f"error in {fitter}: expected {target} but got {value}"
+        else:
+            assert abs(value - target) / target < 1e-2, f"error in {fitter}: expected {target} but got {value}"
 
 
 def run_fits(model_args, path, fitters=FIT_AVAILABLE_IDS, seed=1, target=0):
