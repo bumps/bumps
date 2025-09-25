@@ -36,10 +36,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Checkout Random123
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: "DEShawResearch/random123"
           ref: v1.14.0
@@ -93,7 +93,7 @@ jobs:
       fail-fast: false
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -104,7 +104,7 @@ jobs:
           python-version: ${{ matrix.py || env.MIN_PYTHON}}
 
       - name: Download the wheel
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: artifacts
           path: dist
@@ -138,9 +138,12 @@ jobs:
       id-token: write
     steps:
       - name: Retrieve all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
+        with:
+          name: artifacts
+          path: dist
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: artifacts/
+          packages-dir: dist/

@@ -484,7 +484,7 @@ class FitProblem(Generic[FitnessType]):
         chisq_norm, chisq_err = nllf_scale(dof=self.dof, npars=len(self._parameters), norm=norm)
         if nllf is None:
             pparameter, pconstraints, pmodel, failing_constraints = self._nllf_components()
-            nllf = pparameter + pparameter + pconstraints if compact else pmodel + pparameter
+            nllf = pparameter + pconstraints + pmodel if compact else pparameter + pmodel
         else:
             assert compact is True
         return nllf * chisq_norm
@@ -765,33 +765,6 @@ class FitProblem(Generic[FitnessType]):
 
 # TODO: consider adding nllf_scale to FitProblem.
 ONE_SIGMA = 0.68268949213708585
-
-
-def nllf_scale(problem: FitProblem, norm: bool = True):
-    r"""
-    Return the scale factor for reporting the problem nllf as an approximate
-    normalized chisq, along with an associated "uncertainty".  The uncertainty
-    is the amount that chisq must change in order for the fit to be
-    significantly better.
-
-    From Numerical Recipes 15.6: *Confidence Limits on Estimated Model
-    Parameters*, the $1-\sigma$ contour in parameter space corresponds
-    to $\Delta\chi^2 = \text{invCDF}(1-\sigma,k)$ where
-    $1-\sigma \approx 0.6827$ and $k$ is the number of fitting parameters.
-
-    If *norm* is True (default), then we need to normalize chisq by
-    the degrees of freedom. This allows us to assess fit quality as the
-    average squared error in each data point, which should be around 1.0
-    if the model and measurement uncertainties are correct.
-    """
-    # Duplicated in fitness_chisq_str function above
-    dof = problem.dof if norm else 1
-    if dof <= 0 or np.isnan(dof) or np.isinf(dof):
-        return 1.0, 0.0
-    else:
-        # return 2.0 / dof, 1.0 / dof
-        npars = max(len(problem.getp()), 1)
-        return 2.0 / dof, chi2.ppf(ONE_SIGMA, npars) / dof
 
 
 def nllf_scale(dof: int, npars: int, norm: bool = True):

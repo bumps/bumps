@@ -997,7 +997,8 @@ class DreamFit(FitBase):
         from . import errplot
 
         # TODO: shouldn't mix calc and display!
-        res = errplot.calc_errors_from_state(problem=self.problem, state=self.state)
+        points = errplot.error_points_from_state(self.state)
+        res = errplot.calc_errors(self.problem, points)
         if res is not None:
             pylab.figure()
             errplot.show_errors(res)
