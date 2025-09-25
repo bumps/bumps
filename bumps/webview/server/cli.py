@@ -52,6 +52,10 @@ from . import fit_options
 from .logger import logger, setup_console_logging
 from .state_hdf5_backed import SERIALIZERS
 
+# Ick! PREFERRED_PORT is here rather than in webserver so that it can
+# be used in the command line help without a circular import.
+PREFERRED_PORT = 5148  # "SLAB"
+
 
 # TODO: try datargs to build a parser from the typed dataclass
 @dataclass
@@ -76,7 +80,7 @@ class BumpsOptions:
     read_session: Optional[str] = None
     write_session: Optional[str] = None
     serializer: SERIALIZERS = "dataclass"
-    no_auto_history: bool = False
+    auto_history: bool = True
     path: Optional[str] = None
     use_persistent_path: bool = False
     reload_export: Optional[str] = None
@@ -94,7 +98,7 @@ class BumpsOptions:
     export: Optional[str] = None
     trace: bool = False
     parallel: int = 0
-    mpi: bool = False
+    mpi: Optional[bool] = None
 
     # Webserver controls.
     mode: str = "edit"
@@ -110,7 +114,7 @@ class DictAction(argparse.Action):
     # Note: implicit __init__ inherited from argparse.Action
     def __call__(self, parser, namespace, values, option_string=None):
         if self.type is bool:
-            values = True
+            values = not option_string.startswith("--no-")
         # Find target dict name and key.
         key, subkey = self.dest.split(".")
         # Grab the target dict, if present.
@@ -134,7 +138,7 @@ class HelpFormatter(argparse.RawTextHelpFormatter, argparse.ArgumentDefaultsHelp
         if action.default is not argparse.SUPPRESS:
             # Only show default if it's not None or False
             if action.default is not None and action.default is not False:
-                help_text += f" [default: {action.default}]"
+                help_text += f" (default: {action.default})"
         return help_text
 
 
@@ -204,28 +208,32 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         type=str,
         help="arguments to send to the model loader on load",
     )
-    # parser.add_argument('-d', '--debug', action='store_true', help='autoload modules on change')
+    # parser.add_argument('-d', '--debug', action=argparse.BooleanOptionalAction, help='autoload modules on change')
 
     # Fitter controls
     fit_options.form_fit_options_associations()  # sets fitter list for each option
-    fitter = parser.add_argument_group("Fitting controls")
+    fitter = parser.add_argument_group("Fitting options")
     for name, option in fit_options.FIT_OPTIONS.items():
         stype = option.stype
-        metavar = " " if stype is bool else name.replace("_", "-").upper()
+        metavar = "" if stype is bool else name.replace("_", "-").upper()
         choices = stype if isinstance(stype, list) else None
         if name == "fit":
             choices = FIT_AVAILABLE_IDS
-        help = f"{option.label}  [{', '.join(option.fitters)}]\n{option.description}"
+        # For the trim option allow both --trim and --no-trim. The DictAction class
+        # checks for leading "--no-" in the option string when assigning to bool.
+        flagname = name.replace("_", "-")
+        flags = (f"--{flagname}", f"--no-{flagname}") if stype is bool else (f"--{flagname}",)
         fitter.add_argument(
-            f"--{name.replace('_', '-')}",
+            *flags,
             action=DictAction,
             dest=f"fit_options.{name}",
             type=str if choices else stype,
             metavar=metavar,
             nargs=0 if stype is bool else None,
             choices=choices,
-            # Allow hidden parameters for hidden optimizers. E.g., pt has --nT
-            help=help if option.fitters else argparse.SUPPRESS,
+            # Don't show parameters that don't appear in the visible optimizers.
+            # For example, don't show --nT which is only available when --fit=pt.
+            help=option.build_help() if option.fitters else argparse.SUPPRESS,
         )
 
     # TODO: show uncertainty at the end of the fit
@@ -289,7 +297,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     )
     session.add_argument(
         "--resume",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         help=dedent("""\
             Resume the most recent fit from the saved session file. [dream, de]
             Note that this loads the model from the session and ignores any model
@@ -304,20 +312,21 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         help="strategy for serializing problem, will use value from session if it has already been defined",
     )
     session.add_argument(
-        "--no-auto-history",
-        action="store_true",
-        help="disable auto-appending problem state to history on load and at fit end",
+        "--auto-history",
+        default=True,
+        action=argparse.BooleanOptionalAction,
+        help="auto-append problem state to history on load and at the end of the fit",
     )
     session.add_argument(
         "--path",
         default=None,
         type=str,
-        help="set initial path for save and load dialogs [webview only]",
+        help="set initial path for save and load dialogs (webview only)",
     )
     session.add_argument(
         "--use-persistent-path",
-        action="store_true",
-        help="save most recently used path to disk for persistence between sessions [webview only]",
+        action=argparse.BooleanOptionalAction,
+        help="save most recently used path to disk for persistence between sessions (webview only)",
     )
     session.add_argument(
         "--reload-export",
@@ -329,17 +338,17 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     sim = parser.add_argument_group("Simulation")
     sim.add_argument(
         "--simulate",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         help="simulate a dataset using the initial problem parameters",
     )
     sim.add_argument(
         "--simrandom",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         help="simulate a dataset using the random problem parameters",
     )
     sim.add_argument(
         "--shake",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         help="set random parameters before fitting",
     )
     sim.add_argument(
@@ -365,9 +374,9 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     misc.add_argument(
         "--export",
         type=str,
-        help="Directory path for data and figure export.",
+        help="directory path for data and figure export.",
     )
-    fitter.add_argument("--pars", default=None, type=str, help="Start a fit from a previously saved result.")
+    misc.add_argument("--pars", default=None, type=str, help="start a fit from an exported result.")
     misc.add_argument(
         "--parallel",
         default=0,
@@ -376,18 +385,19 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     )
     misc.add_argument(
         "--mpi",
-        action="store_true",
-        help="Use MPI to distribute work across a cluster",
+        action=argparse.BooleanOptionalAction,
+        help="Use MPI for parallelization (only needed if we fail to detect MPI correctly)",
     )
     misc.add_argument(
         "--trace",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         help="enable memory tracing (prints after every uncertainty update in dream)",
     )
     misc.add_argument(
         "--loglevel",
         type=str,
         choices=["debug", "info", "warn", "error", "critical"],
+        help="display logging to console",
         default="warn",
     )
     # TODO: show version numbers for both refl1d and bumps?
@@ -437,12 +447,12 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     server.add_argument(
         "-x",
         "--headless",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         help="do not automatically load client in browser",
     )
     server.add_argument(
         "--external",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         help="listen on all interfaces, including external (local connections only if not set)",
     )
     server.add_argument(
@@ -450,18 +460,22 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         "--port",
         default=0,
         type=int,
-        help="port on which to start the server",
+        help=f"web server port; use --port=0 to first try {PREFERRED_PORT} then fall back to a random port",
     )
     server.add_argument(
         "--hub",
         default=None,
         type=str,
-        help="api address of parent hub (only used when called as subprocess)",
+        # Don't show jupyter-only parameters to the user.
+        # help="api address of parent hub (only used when called as subprocess)",
+        help=argparse.SUPPRESS,
     )
     server.add_argument(
         "--convergence-heartbeat",
-        action="store_true",
-        help="enable convergence heartbeat for jupyter kernel (keeps kernel alive during fit)",
+        action=argparse.BooleanOptionalAction,
+        # Don't show jupyter-only parameters to the user.
+        # help="enable convergence heartbeat for jupyter kernel (keeps kernel alive during fit)",
+        help=argparse.SUPPRESS,
     )
 
     # parser.add_argument('-c', '--config-file', type=str, help='path to JSON configuration to load')
@@ -471,7 +485,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         for k, v in arg_defaults.items():
             setattr(namespace, k, v)
     args = parser.parse_args(namespace=namespace)
-    # print(f"{type(args)=} {args=}")
+    print(f"Parse output: {args=}")
     return args
 
 
@@ -519,7 +533,7 @@ def interpret_fit_options(options: BumpsOptions):
     if api.state.problem.serializer is None or api.state.problem.serializer == "":
         api.state.problem.serializer = options.serializer
 
-    if options.no_auto_history:
+    if not options.auto_history:
         api.state.shared.autosave_history = False
 
     if options.trace:
@@ -897,7 +911,8 @@ def main(options: Optional[BumpsOptions] = None):
     # sys.exit() after the worker loop finishes so that the remaining on startup
     # and on complete actions are skipped. We could instead pass an is_worker flag
     # into the options processor so that there are no tasks to skip.
-    if (options.mpi or using_mpi()) and not info_only:
+    # Don't use MPI autodetect when --mpi/--no-mpi is given on the command line.
+    if (options.mpi or (options.mpi is None and using_mpi())) and not info_only:
         # ** Warning **: importing MPI from mpi4py calls MPI_Init() which triggers
         # network traffic. Only import it when you know you are using MPI calls.
         from mpi4py import MPI
