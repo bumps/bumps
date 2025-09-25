@@ -108,6 +108,15 @@ class BumpsOptions:
 
 
 class DictAction(argparse.Action):
+    """
+    Gather argparse command line options into a dict entry.
+
+    Given *dest="group.key"* in the parser argument definition, add *group* to the
+    returned namespace and set *group["key"]=value*.
+
+    There is special handling of bool types, converting them to True/False values.
+    """
+
     # Note: implicit __init__ inherited from argparse.Action
     def __call__(self, parser, namespace, values, option_string=None):
         if self.type is bool:

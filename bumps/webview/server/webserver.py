@@ -1,3 +1,7 @@
+"""
+Manage communications with web and jupyter.
+"""
+
 import asyncio
 import functools
 import mimetypes
@@ -291,7 +295,7 @@ async def start_app(
     loglevel: str = "warn",
 ):
     """
-    async version of the :fun:`start_bumps()` command.
+    async version of the :func:`start_bumps()` command.
     """
     from aiohttp import web
 

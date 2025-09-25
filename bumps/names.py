@@ -43,9 +43,12 @@ Problem definition functions:
 
 Jupyter notebook functions:
 
-- Simple fitter: :fun:`fit`, :fun:`plot_convergence`
-- Webview server: :fun:`start_bumps`, :fun:`display_bumps`
-- MCMC save/load: :fun:`load_session`, :fun:`load_fit_from_session`, :fun:`reload_state_from_export`
+- Simple fitter: :func:`bumps.fitters.fit`, :func:`bumps.fitters.plot_convergence`
+- Webview server: `bumps.webview.server.webserver.start_bumps`,
+  `bumps.webview.server.webserver.display_bumps`
+- MCMC save/load: :func:`bumps.fitters.load_session`,
+  :func:`bumps.fitters.load_fit_from_session`,
+  :func:`bumps.fitters.load_fit_from_export`
 """
 
 # __all__ = [ 'sys', 'np', 'inf', 'pmath',

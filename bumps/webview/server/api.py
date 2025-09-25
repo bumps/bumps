@@ -75,6 +75,7 @@ from .state_hdf5_backed import (
     deserialize_problem,
     serialize_problem_bytes,
     SERIALIZER_EXTENSIONS,
+    TopicNameType,
 )
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
 from .varplot import plot_vars
@@ -152,11 +153,6 @@ async def emit(
             ignore_queue=ignore_queue,
         )
     return results
-
-
-TopicNameType = Literal[
-    "log",  # log messages
-]
 
 
 @register

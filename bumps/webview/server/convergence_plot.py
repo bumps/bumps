@@ -16,13 +16,14 @@ def convergence_plot(
     """
     Generate a convergence plot from the convergence data.
 
-    Parameters:
-    - convergence: A 2D numpy array where the first column contains the best values
-      and the remaining columns contain the population values.
-    - dof: Degrees of freedom for normalization.
+    Args:
+        convergence: A 2D numpy array where the first column contains the best values
+        and the remaining columns contain the population values.
+
+        dof: Degrees of freedom for normalization.
 
     Returns:
-    - A dictionary suitable for JSON serialization containing the plot data and layout.
+        A dictionary suitable for JSON serialization containing the plot data and layout.
     """
 
     # Normalize the population data

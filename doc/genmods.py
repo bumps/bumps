@@ -235,7 +235,32 @@ DREAM_MODULES = [
     # ('walk', 'Demo of different kinds of random walk'),
 ]
 
+# TODO: need bumps.webview.build_client
+SERVER_OPTIONS = {
+    "absolute": False,  # True if package.module in table of contents
+    "dest": "server",  # Destination directory for the api docs
+    "root": None,  # Source directory for the package, or None for default
+}
+SERVER_PACKAGE = "bumps.webview.server"
+SERVER_MODULES = [
+    ("api", "Web application interface"),
+    ("cli", "Command line interface"),
+    # ("colors", "Color cycle definition"),
+    ("convergence_plot", "Plotly convergence plot"),
+    ("corrplot", "Plotly correlation corner plot"),
+    ("custom_plot", "Custom model plot supports"),
+    ("fit_options", "Manage optimizer settings"),
+    ("fit_thread", "Manage fitting thread"),
+    ("logger", "Support tools for logger configurion"),
+    ("persistent_settings", "Preserve settings across bumps runs"),
+    ("state_hdf5_backed", "Manage bumps server state and session files"),
+    ("traceplot", "Plotly trace plots"),
+    ("varplot", "Plotly parameter histograms"),
+    ("webserver", "Manage communiction with web and jupyter"),
+]
+
 
 def make():
     gen_api_docs(BUMPS_PACKAGE, BUMPS_MODULES, **BUMPS_OPTIONS)
     gen_api_docs(DREAM_PACKAGE, DREAM_MODULES, **DREAM_OPTIONS)
+    # gen_api_docs(SERVER_PACKAGE, SERVER_MODULES, **SERVER_OPTIONS)

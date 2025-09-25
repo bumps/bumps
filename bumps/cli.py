@@ -70,8 +70,9 @@ def load_model(path: Path | str, model_options: list[str] | None = None):
     from .fitproblem import load_problem
 
     problem = load_problem(path, args=model_options)
-    # CRUFT: support old 'model_options' attribute
-    problem.options = problem.model_args
+    # CRUFT: support old 'problem.options' attribute
+    problem.options = problem.script_args
+    return problem
 
 
 def preview(problem, view=None):

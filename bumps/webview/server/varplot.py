@@ -2,7 +2,7 @@
 Build layout for histogram plots (plotly)
 """
 
-__all__ = ["var_plot_size", "plot_vars", "plot_var"]
+__all__ = ["plot_vars", "plot_var"]
 
 from math import ceil, sqrt
 import numpy as np
