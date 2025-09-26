@@ -175,43 +175,26 @@ class Calculation(ValueProtocol):  # the name Function is taken (though deprecat
 
 
 class SupportsPrior:
+    """
+    Parameter mixin allowing the value to be restricted to a prior probability.
+
+    Every prior has hard limits and bounds.
+    """
+
     prior: Optional[BoundsType]
     limits: Tuple[float, float]
     distribution: DistributionType
     bounds: BoundsType
 
     def reset_prior(self):
-        self.prior = None
-
-    def has_prior(self):
-        return (
-            self.prior is not None
-            and not isinstance(self.prior, mbounds.Unbounded)
-            and self.prior.limits != (-np.inf, np.inf)
-        )
-
-    def add_prior(
-        self,
-        distribution: Optional[DistributionType] = None,
-        bounds: Optional[BoundsType] = None,
-        limits: Optional[Tuple[float, float]] = None,
-    ):
-        # use self values if they are found:
-        if distribution is None and self.distribution is not None:
-            distribution = self.distribution
-        if bounds is None and self.bounds is not None:
-            bounds = self.bounds
-        if limits is None:
-            if self.limits is not None:
-                limits = self.limits
-            else:
-                limits = (-inf, inf)
-
-        if bounds is not None:
+        limits = (-inf, inf) if self.limits is None else self.limits
+        if self.bounds is not None:
             # get the intersection of the limits here.
-            limits = (np.clip(limits[0], *bounds), np.clip(limits[1], *bounds))
+            limits = (np.clip(limits[0], *self.bounds), np.clip(limits[1], *self.bounds))
+
+        distribution = self.distribution
         if isinstance(distribution, Normal):
-            if limits == (-inf, inf):
+            if limits != (-inf, inf):
                 prior = mbounds.BoundedNormal(mean=distribution.mean, std=distribution.std, limits=limits)
             else:
                 prior = mbounds.Normal(mean=distribution.mean, std=distribution.std)
@@ -221,6 +204,7 @@ class SupportsPrior:
         elif isinstance(distribution, Uniform):
             lo, hi = limits
             if isinf(lo) and isinf(hi):
+                # Note: lots of code depends methods from bounds, so don't use None
                 prior = mbounds.Unbounded()
             elif isinf(lo):
                 prior = mbounds.BoundedAbove(hi)
@@ -316,7 +300,6 @@ class Parameter(ValueProtocol, SupportsPrior):
 
     # Parameters may be dependent on other parameters, and the
     # fit engine will need to access them.
-    # prior: Optional[BoundsType]
     id: str = field(metadata={"format": "uuid"})
     name: Optional[str] = field(default=None, init=False)
     fixed: bool = True
@@ -1461,13 +1444,7 @@ def format(p, indent=0, freevars=None, field=None):
             s += str(p) + " = "
         s += "%g" % p.value
         if not p.fixed:
-            if p.prior is not None:
-                bounds = p.prior.limits
-            elif p.bounds is not None:
-                bounds = p.bounds
-            else:
-                bounds = p.limits
-            s += " in [%g,%g]" % tuple(bounds)
+            s += " in [%g,%g]" % tuple(p.prior.limits)
         return s
 
     elif isinstance(p, Parameter):
@@ -1552,20 +1529,14 @@ def varying(s: List[Parameter]) -> List[Parameter]:
     return [p for p in unique(s) if not p.fixed]
 
 
-def _has_prior(p: Parameter) -> bool:
-    prior = getattr(p, "prior", None)
-    limits = getattr(prior, "limits", (-np.inf, np.inf))
-    return prior is not None and not isinstance(prior, mbounds.Unbounded) and limits != (-np.inf, np.inf)
-
-
 def priors(s: List[Parameter]) -> List[Parameter]:
     """
     Return the list of parameters (fitted or computed) that have prior
-    probabilities associated with them. This includes all varying parameters,
-    plus expressions (including simple links), but ignoring constants and
-    fixed parameters whose probabilities won't change the fits.
+    probabilities associated with them. This may include parameters linked
+    to expressions and parameters that are not fitted, but excludes
+    parameters that are unbounded.
     """
-    return [p for p in unique(s) if _has_prior(p)]
+    return [p for p in unique(s) if hasattr(p, "prior") and not isinstance(p.prior, mbounds.Unbounded)]
 
 
 def randomize(s: List[Parameter]):
@@ -1882,7 +1853,7 @@ def test_operator():
 
     # Check slots
     limited = Parameter(3, name="limited", limits=[0.5, 1.5], bounds=[0, 1])
-    limited.add_prior()
+    limited.reset_prior()
     assert np.isinf(limited.nllf())
     assert np.isinf(limited.nllf())
     limited.value = 0.6
@@ -1922,7 +1893,7 @@ def test_operator():
     mu, sigma = 3, 2
     b.dev(sigma, mean=mu)
     b.value = 4
-    b.add_prior()
+    b.reset_prior()
     nllf_target = 0.5 * ((b.value - mu) / sigma) ** 2  # + np.log(2 * np.pi * sigma**2) / 2
     assert abs(b.nllf() - nllf_target) / nllf_target < 1e-12
 

@@ -429,6 +429,7 @@ def _export_results(
 
         # print("export complete")
 
+
 @register
 async def save_parameters(pathlist: List[str], filename: str, overwrite: bool = False):
     problem_state = state.problem
@@ -1162,6 +1163,7 @@ async def set_parameter(
         warnings.warn(f"Attempting to update parameter that doesn't exist: {parameter_id}")
         return
 
+    # TODO: should never happen
     if parameter.prior is None:
         warnings.warn(f"Attempting to set prior properties on parameter without priors: {parameter}")
         return
@@ -1178,12 +1180,12 @@ async def set_parameter(
         lo = float(value)
         hi = parameter.prior.limits[1]
         parameter.range(lo, hi)
-        parameter.add_prior()
+        parameter.reset_prior()
     elif property == "max":
         lo = parameter.prior.limits[0]
         hi = float(value)
         parameter.range(lo, hi)
-        parameter.add_prior()
+        parameter.reset_prior()
     elif property == "fixed":
         if parameter.fittable:
             parameter.fixed = bool(value)
@@ -1406,7 +1408,6 @@ def params_to_list(params, lookup=None, path="", freevars=None) -> List[ParamInf
             pass
         else:
             value_str = VALUE_FORMAT.format(nice(params.value))
-            has_prior = getattr(params, "prior", None) is not None
             writable = has_slot and isinstance(params.slot, (float, Variable, Parameter))
             paths = [path] if not has_slot or isinstance(params.slot, (float, Variable)) else [f"{path}={params.slot}"]
             new_item: ParamInfo = {
@@ -1419,7 +1420,7 @@ def params_to_list(params, lookup=None, path="", freevars=None) -> List[ParamInf
                 "fittable": params.fittable,
                 "fixed": params.fixed,
             }
-            if has_prior:
+            if hasattr(params, "prior"):
                 lo, hi = params.prior.limits
                 new_item["value01"] = params.prior.get01(float(params.value))
                 new_item["min_str"] = VALUE_FORMAT.format(nice(lo))
