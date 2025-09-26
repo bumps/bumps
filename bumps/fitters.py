@@ -1421,7 +1421,7 @@ def plot_convergence(results, cutoff=0.25, ax=None):
     dof = getattr(results, "dof", 2)
 
     # Convert quantiles from nllf to nominal chisq
-    convergence = convergence * (2 / dof)
+    convergence = np.asarray(convergence) * (2 / dof)
     best, quantiles = convergence[:, 0], convergence[:, 1:]
     nsteps, nquantiles = quantiles.shape
     step = np.arange(1, nsteps + 1)
