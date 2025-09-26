@@ -40,7 +40,6 @@ from typing import Callable, Dict, Optional, List, Any
 import warnings
 import signal
 import sys
-import logging
 from dataclasses import field
 import hashlib
 # from textwrap import dedent
@@ -805,7 +804,7 @@ def load_fit_result(parfile: Path | str) -> FitResult:
         fit_state.portion = fit_state.trim_portion()
     except Exception as exc:
         # no fit state, but that's okay
-        logging.warning(f"Could not load DREAM state: {exc}")
+        logger.warning(f"Could not load DREAM state: {exc}")
         fit_state = None
 
     # TODO: might be able to get method and options from the start of the .mon file
