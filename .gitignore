@@ -23,6 +23,7 @@ bumps/_version.py
 /doc/api/
 /doc/tutorial/
 /doc/dream/
+/doc/server/
 
 # python droppings from running in place
 __pycache__/

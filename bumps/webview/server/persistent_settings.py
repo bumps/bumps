@@ -1,4 +1,10 @@
-# persist settings to disk
+"""
+Persist settings to disk.
+
+Settings are stored in .venv/etc/bumps/KEY
+
+As of this writing, only `base_path` is saved.
+"""
 
 import sys
 from pathlib import Path
