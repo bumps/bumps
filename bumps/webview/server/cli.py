@@ -46,11 +46,12 @@ import hashlib
 # from textwrap import dedent
 
 from bumps.fitters import FIT_AVAILABLE_IDS
+from bumps.fitproblem import FitProblem
 from . import api
 from . import persistent_settings
 from . import fit_options
-from .logger import logger, setup_console_logging
-from .state_hdf5_backed import SERIALIZERS
+from .logger import logger, setup_console_logging, LOGLEVEL
+from .state_hdf5_backed import SERIALIZERS, FitResult
 
 # Ick! PREFERRED_PORT is here rather than in webserver so that it can
 # be used in the command line help without a circular import.
@@ -111,6 +112,15 @@ class BumpsOptions:
 
 
 class DictAction(argparse.Action):
+    """
+    Gather argparse command line options into a dict entry.
+
+    Given *dest="group.key"* in the parser argument definition, add *group* to the
+    returned namespace and set *group["key"]=value*.
+
+    There is special handling of bool types, converting them to True/False values.
+    """
+
     # Note: implicit __init__ inherited from argparse.Action
     def __call__(self, parser, namespace, values, option_string=None):
         if self.type is bool:
@@ -396,7 +406,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     misc.add_argument(
         "--loglevel",
         type=str,
-        choices=["debug", "info", "warn", "error", "critical"],
+        choices=list(LOGLEVEL.keys()),
         help="display logging to console",
         default="warn",
     )
@@ -566,15 +576,9 @@ def interpret_fit_options(options: BumpsOptions):
     if options.reload_export:
 
         async def load_export_to_state(App=None):
-            problem, fit_state = reload_export(
-                options.reload_export, model_file=options.filename, model_options=options.args
-            )
+            problem, fit = reload_export(options.reload_export, modelfile=options.filename, args=options.args)
             path = Path(problem.path)
-            await api.set_problem(problem, path.parent, path.name)
-            if fit_state is not None:
-                quantiles = build_convergence_from_fit_state(fit_state)
-                api.state.set_fit_state(fit_state, "dream")
-                api.state.set_convergence(quantiles)
+            await api.set_problem(problem, path.parent, path.name, fit=fit)
             api.state.autosave()
 
         on_startup.append(load_export_to_state)
@@ -712,9 +716,13 @@ def interpret_fit_options(options: BumpsOptions):
     return on_startup, on_complete
 
 
-def reload_export(export_path, model_file=None, model_options=None):
+def reload_export(
+    path: Path | str,
+    modelfile: Path | str | None = None,
+    args: list[str] | None = None,
+) -> tuple[FitProblem, FitResult]:
     """
-    Reload a bumps <= 0.8 export directory.
+    Reload a bumps export directory.
 
     *path* is the path to the directory, or to a <model>.par file within that
     directory. Use the <model>.par file if you have multiple models exported to
@@ -726,55 +734,100 @@ def reload_export(export_path, model_file=None, model_options=None):
     <model>.py on the command line. This is handy if you have several variations
     saved to different filenames stored along with your data.
 
-    sys.argv is set to *model_options* before loading the model.
+    sys.argv is set to *args* before loading the model.
     """
-    from bumps.cli import load_model, load_best
-    from bumps.dream.state import load_state
+    from bumps.fitproblem import load_problem
+    from bumps.cli import load_best
+    from .state_hdf5_backed import SERIALIZER_EXTENSIONS
 
     # Find the .par file in the export directory
-    export_path = Path(export_path)
-    if export_path.is_file():
-        parfile = export_path
+    path = Path(path)
+    if path.is_file():
+        parfile = path
         if parfile.suffix != ".par":
-            raise ValueError(f"Reload export needs path or path/model.par, not {export_path}")
-        export_path = export_path.parent
+            raise ValueError(f"Reload export needs path or path/model.par, not {path}")
+        path = path.parent  # set path to the directory containing *.par
     else:
-        pars_glob = list(export_path.glob("*.par"))
+        # path is already a directory; look for a par file within it
+        pars_glob = list(path.glob("*.par"))
         if len(pars_glob) == 0:
-            raise ValueError(f"Reload export {export_path}/*.par does not exist")
+            raise ValueError(f"Reload export {path}/*.par does not exist")
         if len(pars_glob) > 1:
-            raise ValueError(f"More than one .par file. Use {export_path}/model.par in reload export.")
+            raise ValueError(f"More than one .par file. Use {path}/model.par in reload export.")
         parfile = pars_glob[0]
 
-    # If modelfile is not given assume it is model.py in the current directory
-    if model_file is None:
-        model_file = parfile.stem + ".py"
+    # Look for a pickle in the parfile directory and try loading that
+    problem = None
+    for serializer, suffix in SERIALIZER_EXTENSIONS.items():
+        picklefile = parfile.with_suffix(f".{suffix}")
+        if picklefile.exists():
+            try:
+                problem = load_problem(picklefile)
+                # Note: no need to load_best because serializer contained the parameters
+            except Exception as exc:
+                logger.warn(f"Failed to deserialize {picklefile}; look for model file")
+            break
 
-    # Check that the model file hash has not changed
-    model_file = Path(model_file)
-    saved_model = export_path / model_file.name
-    if not saved_model.exists():
-        raise ValueError(f"Model '{model_file.name}' does not exist in '{export_path}'")
-    if not model_file.exists():
-        raise ValueError(f"Model '{model_file}' does not exist.")
-    if filehash(saved_model) != filehash(model_file):
-        raise ValueError(f"Model file has been modified. Copy {saved_model} into {model_file.parent}")
+    # Pickle failed. Try loading modelfile
+    if problem is None:
+        # If modelfile is not given look for one of the serializers in the current directory
+        if modelfile is None:
+            # Look for model.py file in the parent directory of the export directory
+            modelfile = path.parent / parfile.with_suffix(".py").name
+        else:
+            modelfile = Path(modelfile)
 
-    # Load the model file
-    problem = load_model(model_file, model_options=model_options)
-    load_best(problem, parfile)
+        saved_model = path / modelfile.name
+        if not saved_model.exists():
+            raise ValueError(f"Model '{modelfile.name}' does not exist in '{path}'")
+        if not modelfile.exists():
+            raise ValueError(f"Model '{modelfile}' does not exist.")
+        if filehash(saved_model) != filehash(modelfile):
+            raise ValueError(f"Model file has been modified. Copy {saved_model} into {modelfile.parent}")
 
+        # Load the model script and the fitted values.
+        problem = load_problem(modelfile, model_options=args)
+        load_best(problem, parfile)
+
+    # Load the MCMC files
+    fit_result = load_fit_result(parfile)
+
+    return problem, fit_result
+
+
+def load_fit_result(parfile: Path | str) -> FitResult:
+    from bumps.dream.state import load_state
+
+    # Reload DREAM state if it exists. Note that labels come from the parfile.
     try:
-        # Reload the fit state if it exists
         fit_state = load_state(str(parfile.parent / parfile.stem))
         fit_state.mark_outliers()
-        fit_state.labels = problem.labels()
+        fit_state.portion = fit_state.trim_portion()
     except Exception as exc:
         # no fit state, but that's okay
         logging.warning(f"Could not load DREAM state: {exc}")
         fit_state = None
 
-    return problem, fit_state
+    # TODO: might be able to get method and options from the start of the .mon file
+    if fit_state is not None:
+        # Reconstruct dream options for pop and steps are set correctly.
+        # Use negative pop for fixed number of chains independent of the number of parameters
+        Nchains, Nvar, Nsteps = fit_state.Npop, fit_state.Nvar, fit_state.Nthin
+        pop = Nchains / Nvar if Nchains % Nvar == 0 else -Nchains
+        samples = Nchains * Nsteps
+        method = "dream"
+        options = dict(pop=pop, steps=0, samples=samples)
+    else:
+        method = "amoeba"  # arbitrary method
+        options = {}
+
+    # TODO: reload convergence data when it is available
+    if fit_state is not None:
+        convergence = build_convergence_from_fit_state(fit_state)
+    else:
+        convergence = []
+
+    return FitResult(method=method, options=options, convergence=convergence, fit_state=fit_state)
 
 
 def filehash(filename):
@@ -891,6 +944,7 @@ def main(options: Optional[BumpsOptions] = None):
     if options is None:
         options = get_commandline_options()
 
+    logger.setLevel(LOGLEVEL[options.loglevel])
     setup_console_logging(options.loglevel)
     # from .logger import capture_warnings
     # capture_warnings(monkeypatch=True)

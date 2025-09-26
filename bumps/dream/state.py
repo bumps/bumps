@@ -429,12 +429,17 @@ def openmc(filename):
 def load_state(filename, skip=0, report=0, derived_vars=0):
     """
     *filename* is the path to the saved MCMC state up to the final -chain.mc, etc.
+    Any extension will be removed before using.
 
     *derived_vars* is the number of columns added to each point, derived
     from other columns in that point. The newer set_derived_vars interface generates
     the derived variables on demand rather than storing them in the state object and
     so it will be zero always.
     """
+
+    # Trim extension from filename
+    filename = str(Path(filename).with_suffix(""))
+
     # Read chain file
     with openmc(filename + "-chain" + EXT) as fid:
         chain = loadtxt(fid)
@@ -507,6 +512,35 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
         state._thin_logp = state._thin_logp[1:]
         state._thin_point = state._thin_point[1:]
 
+    # Load labels from the .par file if it exists.
+    parfile = Path(f"{filename}.par")
+    if parfile.exists():
+        try:
+            text = parfile.read_text().strip()
+            lines = text.split("\n")
+            labels = [line.rsplit(None, 1)[0].strip() for line in lines]
+            state.labels = labels
+        except Exception as exc:
+            print(f"Couldn't load labels from {parfile}: {exc}")
+
+    return state
+
+
+def reload_state_from_export(parfile):
+    """
+    For the simplified fit with an export path we can reload
+    the bumps dream state from the exported MCMC files.
+
+    *parfile* is the name of the model.par file saved in the
+    export directory.
+
+    Use *state.show()* for the returned state to produce the plots.
+    """
+    assert parfile.endswith(".par"), "need model.par file"
+    path = str(parfile)[:-4]
+    state = load_state(path)
+    state.mark_outliers()
+    state.portion = state.trim_portion()
     return state
 
 

@@ -1,3 +1,27 @@
+"""
+Python api for controlling webview.
+
+These are mostly called by webview and by the command line startup script. They
+are not particularly useful from a jupyter notebook.
+
+    import bumps.names as bp
+
+    # Start the bumps server and run it in the background
+    await bp.start_bumps()
+
+    # Display webview in a jupyter cell
+    display_bumps(height=600)
+
+    # Load a model script, possibly with additional command line arguments:
+    path = Path("path/to/model.py")
+    problem = bp.load_model(path, args=[arg1, ...])
+
+    # Use a problem defined in a separate jupyter cell
+    await bp.set_problem(problem, new_model=False)
+
+
+"""
+
 from functools import lru_cache
 import itertools
 from types import GeneratorType
@@ -29,7 +53,8 @@ import traceback
 import math
 import time
 
-from bumps.fitters import FitDriver
+from bumps.fitproblem import load_problem
+from bumps.fitters import FitDriver, OptimizeResult
 from bumps.mapper import MPMapper
 from bumps.parameter import Parameter, Constant, Variable, unique
 import bumps.cli
@@ -43,11 +68,14 @@ from . import fit_options
 from .state_hdf5_backed import (
     UNDEFINED,
     UNDEFINED_TYPE,
+    FitResult,
     State,
     get_custom_plots_available,
     serialize_problem,
     deserialize_problem,
+    serialize_problem_bytes,
     SERIALIZER_EXTENSIONS,
+    TopicNameType,
 )
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
 from .varplot import plot_vars
@@ -71,9 +99,9 @@ REGISTRY: Dict[str, Callable] = {}
 MODEL_EXT = ".json"
 TRACE_MEMORY = False
 
-
+# TODO: reloading the module wipes out state
 # TODO: any other state that needs to be initialized?
-# TODO: can initialization be moved to the SharedState constructor?
+
 # Initialize state
 state = State()
 state.shared.selected_fitter = fit_options.DEFAULT_FITTER_ID
@@ -127,11 +155,6 @@ async def emit(
     return results
 
 
-TopicNameType = Literal[
-    "log",  # log messages
-]
-
-
 @register
 async def load_problem_file(
     pathlist: List[str],
@@ -139,46 +162,67 @@ async def load_problem_file(
     autosave_previous: bool = True,
     args: List[str] = None,
 ):
+    """
+    Load the problem from json or from a script file.
+
+    *pathlist* is a list of folder components and *filename* is the script file in that folder.
+    These are joined together as "Path(*pathlist, filename)" to build the complete path. If
+    path is already a Path to the file, use *load_problem_file([path.parent], path.name, ...)*
+
+    If *autosave_previous* then store the current problem state in the session file before
+    loading the new problem (default=True).
+
+    *args* are any additional arguments to the script file. This will be available in the script
+    as *sys.argv[1:]*.
+    """
     # print("load_problem_file", state.fitting.fit_state)
     path = Path(*pathlist, filename)
     logger.info(f"Loading model: {path}")
     await log(f"Loading model: {path}")
-    if filename.endswith(".json"):
-        with open(path, "rt") as input_file:
-            serialized = input_file.read()
-        problem = deserialize_problem(serialized, method="dataclass")
-    else:
-        from bumps.cli import load_model
+    problem = load_problem(path, args=args)
 
-        # print("model", str(path), args)
-        problem = load_model(str(path), args)
-    assert isinstance(problem, bumps.fitproblem.FitProblem)
-    # problem_state = ProblemState(problem, pathlist, filename)
-    try:
-        _serialized_problem = serialize_problem(problem, method="dataclass")
-        state.problem.serializer = "dataclass"
-    except Exception as exc:
-        logger.warning(f"Could not serialize problem as JSON (dataclass): {exc}, switching to cloudpickle")
-        state.problem.serializer = "cloudpickle"
-        # raise
-    if (
-        state.shared.autosave_history
-        and autosave_previous
-        and state.problem is not None
-        and state.problem.fitProblem is not None
-    ):
-        await save_to_history("autosaved before loading new model")
-    state.shared.model_file = dict(filename=filename, pathlist=pathlist)
-    state.shared.model_loaded = now_string()
-    state.shared.custom_plots_available = {"parameter_based": False, "uncertainty_based": False}
-    await set_problem(problem, Path(*pathlist), filename)
+    await set_problem(problem, Path(*pathlist), filename, new_model=True, autosave_previous=autosave_previous)
 
 
 @register
-async def set_serialized_problem(serialized, new_model: bool = False, name: Optional[str] = None):
-    fitProblem = deserialize_problem(serialized, method="dataclass")
-    state.problem.serializer = "dataclass"
+async def set_serialized_problem(
+    serialized, new_model: bool = False, name: Optional[str] = None, method: str = "dataclass"
+):
+    """
+    Set the fit problem from a saved problem state.
+
+    *serialized* is the serialized fit problem. *method* is the method used for serialization.
+
+    If *new_model* is True, then save the model to history with tag "Loaded model". (default=False)
+
+    *name* is an optional override for the model name.
+
+    For example::
+
+        await set_serialized_problem(api.state.problem.fitProblem, method=api.state.problem.serializer)
+    """
+    fitProblem = deserialize_problem(serialized, method=method)
     await set_problem(fitProblem, new_model=new_model, name=name)
+
+
+async def set_fit_result(fit_result: FitResult):
+    if fit_result is None:
+        state.reset_fitstate()
+        return
+
+    # Allow fit_result to be either a webview FitResult or a simple fitter OptimizeResult
+    # fit has more fields, and uses fit_state instead of state for the DREAM state value.
+    fit_result = FitResult(
+        method=fit_result.method,
+        options=fit_result.options,
+        convergence=fit_result.convergence,
+        fit_state=getattr(fit_result, "fit_state", getattr(fit_result, "state", None)),
+    )
+    # Use shared settings by default, update from any provided options
+    state.set_convergence(fit_result.convergence)
+    state.set_fit_state(fit_result.fit_state, method=fit_result.method)
+    state.shared.active_history = None
+    await set_fit_options(fitter_id=fit_result.method, options=fit_result.options)
 
 
 async def set_problem(
@@ -187,24 +231,63 @@ async def set_problem(
     filename: str = "",
     new_model: bool = True,
     name: Optional[str] = None,
+    autosave_previous: bool = True,
+    fit: Optional[OptimizeResult] = None,
 ):
+    """
+    Set the fit problem.
+
+    *problem* is a fitting problem defined in a jupyter cell.
+
+    *path* and *filename* give the nominal location of the problem on disk. These are displayed
+    in webview and stored in the session file, but not actually used to load the problem.
+
+    *new_model* is True if the problem should be saved to the session file as "Loaded model" (default True)
+
+    *name* is an optional override for the model name.
+    """
+    # TODO: should only save the previous if it has been modified.
+    # Save the old model before doing anything else
+    if (
+        autosave_previous
+        and state.shared.autosave_history
+        and state.problem is not None
+        and state.problem.fitProblem is not None
+    ):
+        await save_to_history("autosaved before loading new model")
+
     # if state.problem is None or state.problem.fitProblem is None:
     #     update = False
     state.problem.fitProblem = problem
-    name = name if name is not None else problem.name
-    if name is None:
-        name = filename
+    problem_path = getattr(problem, "path", None)
+    problem_name = getattr(problem, "name", None)
+    if not filename and problem_path:
+        filename = Path(problem_path).name
+    if not path and problem_path:
+        path = Path(problem_path).parent
+    name = name or problem_name or filename
     state.shared.updated_model = now_string()
     state.shared.updated_parameters = now_string()
     state.shared.custom_plots_available = get_custom_plots_available(problem)
-    # invalidate the uncertainty state:
-    state.reset_fitstate()
+
+    pathlist = list(path.parts) if path is not None else []
+    path_string = "(no path)" if path is None else str(path / filename)
+    await log(f"Model loaded: {path_string}")
+    state.shared.model_file = dict(filename=filename, pathlist=pathlist)
+
+    # Pick a serializer by trying dataclass and defaulting to cloudpickle
+    try:
+        _ = serialize_problem(problem, method="dataclass")
+        state.problem.serializer = "dataclass"
+    except Exception as exc:
+        logger.warning(f"Could not serialize problem as JSON (dataclass): {exc}, switching to cloudpickle")
+        state.problem.serializer = "cloudpickle"
+        # raise
+
+    # reset the fit state
+    await set_fit_result(fit)
 
     if new_model:
-        pathlist = list(path.parts) if path is not None else []
-        path_string = "(no path)" if path is None else str(path / filename)
-        await log(f"Model loaded: {path_string}")
-        state.shared.model_file = dict(filename=filename, pathlist=pathlist)
         state.shared.model_loaded = now_string()
         if state.shared.autosave_history and state.problem is not None and state.problem.fitProblem is not None:
             await save_to_history(f"Loaded model: {name}", keep=True)
@@ -257,6 +340,11 @@ async def save_problem_file(
     filename: Optional[str] = None,
     overwrite: bool = False,
 ):
+    """
+    Export current problem to a file.
+
+    *pathlist* and *file*
+    """
     problem_state = state.problem
     if problem_state is None:
         logger.warning("Save failed: no problem loaded.")
@@ -279,9 +367,8 @@ async def save_problem_file(
         # confirmation needed:
         return {"filename": save_filename, "check_overwrite": True}
 
-    serialized = serialize_problem(problem_state.fitProblem, method=serializer)
-    with open(Path(path, save_filename), "wb") as output_file:
-        output_file.write(serialized.encode("utf-8"))
+    serialized = serialize_problem_bytes(problem_state.fitProblem, method=serializer)
+    Path(path, save_filename).write_bytes(serialized)
 
     await log(f"Saved: {save_filename} at path: {path}")
     return {"filename": save_filename, "check_overwrite": False}
@@ -300,7 +387,6 @@ async def save_session_copy(pathlist: List[str], filename: str):
 
 @register
 async def load_session(pathlist: List[str], filename: str, read_only: bool = False):
-    path = Path(*pathlist)
     state.setup_backing(filename, pathlist, read_only=read_only)
     state.shared.updated_model = now_string()
     state.shared.updated_parameters = now_string()
@@ -358,30 +444,38 @@ async def export_results(export_path: Union[str, List[str]] = ""):
     # issues, we could try to copy and then fall back to just using the live object,
     # or we could just always use the live object, which is unlikely to be changed before
     # the export completes, anyway.
-    fit_state = deepcopy(state.fitting.fit_state)
+    fit = deepcopy(state.fitting)
 
     if not isinstance(export_path, list):
         export_path = [export_path]
     path = Path(*export_path).expanduser().absolute()
     notification_id = await add_notification(content=f"<span>{str(path)}</span>", title="Export started", timeout=None)
     try:
-        await to_thread(_export_results, path, problem, fit_state, serializer)
+        await to_thread(export_fit, path, problem, fit, serializer)
     finally:
         await emit("cancel_notification", notification_id)
     # print("done export thread")
 
 
-def _export_results(
-    path: Path,
+# Note: need naming convention for sync and async versions
+def export_fit(
+    path: Path | str,
     problem: bumps.fitproblem.FitProblem,
-    fit_state: Any,
-    serializer: Optional[str] = None,
-    name: Optional[str] = None,
+    fit: FitResult | OptimizeResult,
+    serializer: Optional[str] = "dataclass",
+    basename: Optional[str] = None,
 ):
     # print("running export thread")
     from bumps.util import redirect_console
 
-    basename = name if name else problem.name if problem.name else "problem"
+    path = Path(path)
+
+    # Get basename for the export if not provided
+    if not basename:
+        problem_name = getattr(problem, "name", "model")
+        problem_path = getattr(problem, "path", f"{problem_name}.py")
+        basename = Path(problem_path).with_suffix("").name
+
     # Storage directory
     path.mkdir(parents=True, exist_ok=True)
     output_pathstr = str(path / basename)
@@ -389,26 +483,45 @@ def _export_results(
     # Ask model to save its information
     problem.save(output_pathstr)
 
+    # TODO: need the same logic in save session?
     # Save a snapshot of the model that can (hopefully) be reloaded
-    extension = SERIALIZER_EXTENSIONS[serializer]
-    save_filename = f"{output_pathstr}.{extension}"
+    # Complicated because it tries falling back to "cloudpickle" if it fails.
+    fallback = None if serializer == "dataclass" else "cloudpickle"
     try:
-        serialized = serialize_problem(problem, serializer)
-        with open(save_filename, "wb") as fd:
-            fd.write(serialized.encode("utf-8"))
-    except Exception as exc:
-        logger.error(f"Error exporting model: {exc}")
+        serialized = serialize_problem_bytes(problem, serializer)
+    except Exception:
+        serialized = None
+        if fallback:
+            logger.error(f"Error serializing model with {serialized}. Trying {fallback} instead")
+    if serialized is None and fallback is not None:
+        serializer = fallback
+        try:
+            serialized = serialize_problem_bytes(problem, serializer)
+        except Exception as exc:
+            logger.error(f"Error serializing model with {serialized}: {exc}")
+    if serialized:
+        extension = SERIALIZER_EXTENSIONS[serializer]
+        save_filename = f"{output_pathstr}.{extension}"
+        try:
+            Path(save_filename).write_bytes(serialized)
+        except Exception as exc:
+            logger.error(f"Error writing {save_filename}: {exc}")
 
     # Save the current state of the parameters
     with redirect_console(str(path / f"{basename}.out")):
         problem.show()
 
+    # TODO: add fit method and options to the par file header
     # Write the pars file.
     _write_pars(problem, path, f"{basename}.par")
 
+    # Handle OptimizeResult or FitResult
+    fit_state = getattr(fit, "fit_state", getattr(fit, "state", None))
     with push_mpl_backend("agg"):
         # Produce model plots
         problem.plot(figfile=output_pathstr)
+
+        # TODO: produce convergence plot and write convergence data
 
         # Produce uncertainty plots
         # TODO: Add save/show methods to the fit_state protocol
@@ -558,7 +671,9 @@ async def shake_parameters():
 
 
 @register
-async def start_fit_thread(fitter_id: str, options: Optional[Dict[str, Any]] = None, resume: bool = False):
+async def start_fit_thread(
+    fitter_id: Optional[str] = None, options: Optional[Dict[str, Any]] = None, resume: bool = False
+):
     fitProblem = state.problem.fitProblem if state.problem is not None else None
     if fitProblem is None:
         await log("Error: Can't start fit if no problem loaded")
@@ -579,15 +694,16 @@ async def start_fit_thread(fitter_id: str, options: Optional[Dict[str, Any]] = N
     # Check the options. Pass the fitter_id so that we know which options are available.
     if options is None:
         options = {}
+    # Allow fit=fitter_id or method=fitter_id in the options dictionary.
+    # Using None as the default so that fitoptions.check_options an fill
+    # in any a value if the fit id was not specified.
+    id_from_options = options.pop("fit", options.pop("method", None))
+    if not fitter_id:
+        fitter_id = id_from_options
     options, errors = fit_options.check_options(options, fitter_id=fitter_id)
     for msg in errors:
         logger.warning(msg)
         await log(msg)
-
-    # Allow fit=fitter_id in the options dictionary.
-    fitter_option = options.pop("fit")
-    if not fitter_id:
-        fitter_id = fitter_option
 
     # Start a new thread worker and give fit problem to the worker.
     # Clear abort and uncertainty state
@@ -658,6 +774,8 @@ async def start_fit_thread(fitter_id: str, options: Optional[Dict[str, Any]] = N
 async def set_fit_options(fitter_id: str, options: Dict[str, Any]):
     current_options = state.shared.fitter_settings[fitter_id]["settings"]
     current_options.update(options)
+    # TODO: do we need to update state.fitting.options as well?
+    # state.fitting.options = current_options.copy()
     # items in state.shared are not deeply reactive, so we have to explicitly notify:
     state.shared.notify("fitter_settings")
 
@@ -804,8 +922,7 @@ async def log(message: str, title: Optional[str] = None):
 
 @register
 async def get_data_plot(model_indices: Optional[List[int]] = None):
-    import matplotlib.pyplot as plt
-    import mpld3
+    from bumps.fitproblem import fitness_chisq_str
 
     if state.problem is None or state.problem.fitProblem is None:
         return None
@@ -814,16 +931,150 @@ async def get_data_plot(model_indices: Optional[List[int]] = None):
     # Suppress all mpld3 warnings
     # warnings.filterwarnings("ignore", module="mpld3")
 
+    # TODO: revise get_data_plot interface to take only a single index
+    # The current interface to get_data_plot takes a list of model indices
+    # but it only returns a single figure. If called with a list of models
+    # they will overwrite each other in one figure.
+    if model_indices is None or len(model_indices) != 1:
+        raise RuntimeError("can only do one model at a time")
+    index = model_indices[0]
+
+    # Overall chisq
+    overall_chisq_str = fitProblem.chisq_str()
+    with fitProblem.push_model(index) as model:
+        # # "per model" chisq
+        if fitProblem.num_models > 1:
+            chisq_str = fitness_chisq_str(model)
+            text = f"χ² = {chisq_str}; overall {overall_chisq_str}"
+            title = f"Model {index+1}: {model.name}"
+        else:
+            text = f"χ² = {overall_chisq_str}"
+            title = f"{model.name}"
+        if hasattr(model, "plotly"):
+            return _get_data_plot_plotly(model, title=title, chisq=text)
+        elif hasattr(model, "plot"):
+            return _get_data_plot_mpl(model, title=title, chisq=text)
+        else:
+            # Use plotly to show chisq
+            return _get_data_plot_plotly(model, title=title, chisq=text)
+
+
+def _get_data_plot_plotly(model, title, chisq):
+    if hasattr(model, "plotly"):
+        fig = model.plotly()
+    else:
+        import plotly.graph_objects as go
+
+        fig = go.Figure()
+        fig.update_layout(
+            xaxis_visible=False,
+            yaxis_visible=False,
+            # plot_bgcolor='rgba(0,0,0,0)',
+            # paper_bgcolor='rgba(0,0,0,0)',
+        )
+
+    # TODO: text offset of (x=0.5em, y=0.5ex)
+    text_offset = 0.01  # portion of graph axis length
+    font = dict(size=22)
+    # fig.add_annotation(
+    #    x=text_offset, y=1+text_offset,
+    #    xanchor="left", yanchor="bottom",
+    #    xref="paper", yref="paper",
+    #    text=title,
+    #    showarrow=False,
+    #    font=font,
+    # )
+    fig.add_annotation(
+        x=1 - text_offset,
+        y=1 + text_offset,
+        xanchor="right",
+        yanchor="bottom",
+        xref="paper",
+        yref="paper",
+        text=chisq,
+        showarrow=False,
+        font=font,
+    )
+    dfig = fig.to_dict()
+    return {"fig_type": "plotly", "plotdata": to_json_compatible_dict(dfig)}
+
+
+# Make mpld3 figure controls available for monkey-patching.
+# Figure size is a hack. The correct choice will probably depend on browser,
+# screen size, dpi, available fonts, etc.
+# TODO: have webview send the desired figure size
+MPLD3_BACKEND = "agg"
+MPLD3_FIG_SIZE = (10, 8)
+MPLD3_STYLE = {
+    "figure.dpi": 72,
+    "figure.subplot.left": 0.10,
+    "figure.subplot.right": 0.99,
+    "figure.subplot.bottom": 0.05,
+    "figure.subplot.top": 0.95,
+    "axes.xmargin": 0.05,
+    "axes.ymargin": 0.05,
+    "figure.constrained_layout.h_pad": 0.0,
+    "figure.constrained_layout.w_pad": 0.0,
+    "figure.constrained_layout.hspace": 0.0,
+    "figure.constrained_layout.wspace": 0.0,
+    "font.size": 16,
+}
+
+
+def _get_data_plot_mpl(model, title, chisq):
+    import matplotlib.pyplot as plt
+    import mpld3
+    from mpld3 import plugins
+
     start_time = time.time()
     logger.info(f"queueing new data plot... {start_time}")
-    with push_mpl_backend("agg"):
-        fig = plt.figure()
-        for i, model in enumerate(fitProblem.models):
-            if model_indices is not None and i not in model_indices:
-                continue
-            model.plot()
-        plt.text(0.01, 0.01, "chisq=%s" % fitProblem.chisq_str(), transform=plt.gca().transAxes)
+    text_offset = 0.01  # portion of graph axis length
+    # Note: rc_context() says it won't modify the backend, so we still need push_mpl_backend().
+    with push_mpl_backend(MPLD3_BACKEND), plt.rc_context(MPLD3_STYLE):
+        fig = plt.figure(figsize=MPLD3_FIG_SIZE)
+        model.plot()
+
+        # TODO: can't adjust margins correctly unless we know the figure size
+        # h, w = fig.get_size_inches()
+        # h_ex = h*72 / 16  # (h in * 72 pt/in) / (16 pt/ex) = height in ex
+        h_ex = 30  # assume we are 50 lines tall, so that 2/30 ~ 0.08
+        text_offset = 0.5 / h_ex  # 1/2 ex above and below the text
+
+        top = 1 - 2 / h_ex  # leave 2 ex at the top of the figure
+        plt.subplots_adjust(top=top)
+
+        # # transFigure doesn't seem to work in mpld3
+        # transform = fig.transFigure
+        # x, y = text_offset, 1 - text_offset
+        # ha, va = "left", "top"
+        # fig.text(x, y, title, transform=transform, va=va, ha=ha)
+        # x, y = 1 - text_offset, 1 - text_offset
+        # ha, va = "right", "top"
+        # fig.text(x, y, chisq, transform=transform, va=va, ha=ha)
+
+        ax = fig.axes[0]
+        fontsize = 22
+        transform = ax.transAxes
+        # Don't need the title since it is in the models dropdown
+        # x, y = text_offset, 1 + text_offset
+        # ha, va = "left", "bottom"
+        # ax.text(x, y, title, transform=transform, va=va, ha=ha, fontsize=fontsize)
+        x, y = 1 - text_offset, 1 + text_offset
+        ha, va = "right", "bottom"
+        ax.text(x, y, chisq, transform=transform, va=va, ha=ha, fontsize=fontsize)
+
+        # Add plugins to the figure for zoom, etc.
+        # Note: these are already present in the dict, just not working on the backend?
+        plugins.clear(fig)
+        plugins.connect(
+            fig,
+            plugins.BoxZoom(enabled=True),
+            plugins.Reset(),
+            plugins.MousePosition(fontsize=14),
+        )
+
         dfig = mpld3.fig_to_dict(fig)
+        # import pprint; pprint.pprint(dfig); import sys; sys.exit()
         plt.close(fig)
     end_time = time.time()
     logger.info(f"time to draw data plot: {end_time - start_time}")

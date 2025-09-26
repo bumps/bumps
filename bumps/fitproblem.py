@@ -44,8 +44,9 @@ Summary of problem attributes::
 
 """
 
-__all__ = ["Fitness", "FitProblem", "load_problem"]
+__all__ = ["Fitness", "FitProblem", "CovarianceMixin", "load_problem"]
 
+from contextlib import contextmanager
 from dataclasses import dataclass
 import logging
 import os
@@ -53,6 +54,7 @@ import sys
 import traceback
 from typing import Generic, TypeVar, Union, Optional
 import warnings
+from pathlib import Path
 
 import numpy as np
 from numpy import inf, isnan, nan
@@ -198,11 +200,101 @@ def fitness_show_parameters(fitness: Fitness, subs: util.Optional[util.Dict[util
 FitnessType = TypeVar("FitnessType", bound=Fitness)
 
 
+class CovarianceMixin:
+    """
+    Add methods for *cov*, *show_cov* and *show_err* to a bumps problem definition.
+
+    This is done as a mixin because not all problems are FitProblem. See
+    for example :class:`bumps.pdfwrapper.PDF`.
+    """
+
+    # Note: if caching is implemented for covariance, make sure it is cleared on setp
+    # This will be difficult to do as a mixin.
+    def cov(self, x):
+        r"""
+        Return an estimate of the covariance of the fit.
+
+        Depending on the fitter and the problem, this may be computed from
+        existing evaluations within the fitter, or from numerical
+        differentiation around the minimum.
+
+        If the problem has residuals available, then the covariance
+        is derived from the Jacobian::
+
+            x = fit.problem.getp()
+            J = bumps.lsqerror.jacobian(fit.problem, x)
+            cov = bumps.lsqerror.jacobian_cov(J)
+
+        Otherwise, the numerical differentiation will use the Hessian
+        estimated from nllf::
+
+            x = fit.problem.getp()
+            H = bumps.lsqerror.hessian(fit.problem, x)
+            cov = bumps.lsqerror.hessian_cov(H)
+        """
+        # Use Jacobian if residuals are available because it is faster
+        # to compute.  Otherwise punt and use Hessian.  The has_residuals
+        # attribute should be True if present.  It may be false if
+        # the problem defines a residuals method but doesn't really
+        # have residuals (e.g. to allow levenberg-marquardt to run even
+        # though it is not fitting a sum-square problem).
+        from bumps import lsqerror
+
+        if hasattr(self, "has_residuals"):
+            has_residuals = self.has_residuals
+        else:
+            has_residuals = hasattr(self, "residuals")
+
+        if has_residuals:
+            J = lsqerror.jacobian(self, x)
+            # print("Jacobian", J)
+            return lsqerror.jacobian_cov(J)
+        else:
+            H = lsqerror.hessian(self, x)
+            # print("Hessian", H)
+            return lsqerror.hessian_cov(H)
+
+    def show_cov(self, x, cov):
+        maxn = 1000  # max array dims to print
+        cov_str = np.array2string(
+            cov,
+            max_line_width=20 * maxn,
+            threshold=maxn * maxn,
+            precision=6,  # suppress_small=True,
+            separator=", ",
+        )
+        print("=== Covariance matrix ===")
+        print(cov_str)
+        print("=========================")
+
+    def show_err(self, x, dx):
+        """
+        Display the error approximation from the covariance matrix.
+
+        *err* is the standard deviation computed from the covariance matrix. It
+        is available as *result.dx* from the simple fitter, or using::
+
+            from bumps import lsqerror
+
+            dx = lsqerror.stderr(problem.cov(x))
+
+        Warning: cost to compute cov grows as the cube of the number of parameters.
+        """
+        # TODO: need cheaper uncertainty estimate
+        # Note: error estimated from hessian diagonal is insufficient.
+        print("=== Uncertainty from curvature:     name   value(unc.) ===")
+        for k, v, dv in zip(self.labels(), x, dx):
+            print(f"{k:>40s}   {format_uncertainty(v, dv):<15s}")
+        print("=" * 58)
+
+
+# TODO: add filename to fitproblem so we don't have to coordinate it elsewhere?
 @dataclass(init=False, eq=False)
-class FitProblem(Generic[FitnessType]):
+class FitProblem(Generic[FitnessType], CovarianceMixin):
     r"""
 
-        *models* is a sequence of :class:`Fitness` instances.
+        *models* is a sequence of :class:`Fitness` instances. Note that they
+        do not need to all be of the same class.
 
         *weights* is an optional scale factor for each model. A weighted fit
         returns nllf $L = \sum w_k^2 L_k$. If an individual nllf is the sum
@@ -241,6 +333,7 @@ class FitProblem(Generic[FitnessType]):
     linear.
     """
 
+    # TODO: problem.path is set by cli.load_model(); should we add it as standard?
     name: util.Optional[str]
     models: util.List[FitnessType]
     freevars: util.Optional[parameter.FreeVariables]
@@ -249,6 +342,7 @@ class FitProblem(Generic[FitnessType]):
     penalty_nllf: util.Union[float, util.Literal["inf"]]
 
     _constraints_function: util.Callable[..., float]
+    # The type is not quite correct. The models do not need to be of the same class
     _models: util.List[FitnessType]
     _priors: util.List[Parameter]
     _parameters: util.List[Parameter]
@@ -312,31 +406,66 @@ class FitProblem(Generic[FitnessType]):
     def dof(self):
         return self._dof
 
-    # TODO: make this @property\ndef models(self): ...
+    @property
+    def num_models(self):
+        return len(self._models)
+
     @property
     def models(self):
         """Iterate over models, with free parameters set from model values"""
         try:
             for index in range(len(self._models)):
-                yield self._switch_model(index)
+                index, model = self._switch_model(index)
+                yield model
         finally:
             # Restore the active model after cycling, even if interrupted
             self._switch_model(self._active_model_index)
 
+    # TODO: deprecate set_active_model and push_model
+    # set_active_model is only used once in the wx gui. push_model is only needed
+    # if we have a notion of active model.
+
     # noinspection PyAttributeOutsideInit
     def set_active_model(self, index):
-        """Use free parameters from model *i*"""
-        self._active_model_index = index
-        self.active_model = self._switch_model(index)
+        """
+        Fetch model *index* with the appropriate free variables substituted.
+
+        This will remain the active model until a new active model is selected.
+
+        Operations like chisq_str() or plot() which cycle through the models will
+        restore the parameters upon completion.
+        """
+        index, model = self._switch_model(index)
+        self._active_model_index, self.active_model = index, model
+        return model
+
+    @contextmanager
+    def push_model(self, index):
+        """
+        Fetch model *index* with the appropriate free variables substituted.
+
+        On completion of the context, restore the parameters for the active model.
+        """
+        try:
+            index, model = self._switch_model(index)
+            yield model
+        finally:
+            # Restore the active model after cycling, even if interrupted
+            self._switch_model(self._active_model_index)
 
     def _switch_model(self, index):
-        # TODO: FreeVariables destroys caching within the model.
         # print(f"switching to {index} with freevars={bool(self.freevars)}")
+        if not (-len(self._models) <= index < len(self._models)):
+            raise IndexError(f"Index {index} invalid when only {len(self._models)} models")
+        if index < 0:
+            index = len(self._models) + index
+        # TODO: FreeVariables destroys caching within the model. Replace it.
+        # TODO: Only update parameters if index has changed. We can track this in freevars.
         self.freevars.set_model(index)
         if self.freevars:
             # Clear model cache when updating the parameters
             getattr(self._models[index], "update", lambda: None)()
-        return self._models[index]
+        return index, self._models[index]
 
     def model_parameters(self):
         """Return parameters from all models"""
@@ -725,22 +854,109 @@ class FitProblem(Generic[FitnessType]):
         print("[overall chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
 
     def plot(self, p=None, fignum=1, figfile=None, view=None, model_indices=None):
-        import pylab
+        # TODO: remove duplicate logic from FitProblem.plot() and api.get_data_plot
+        import matplotlib.pyplot as plt
 
         if p is not None:
             self.setp(p)
+
+        # Don't show the figure calling problem.plot(figfile=base_file), as is
+        # done during --export=path. If called as problem.plot(), as from a jupyter
+        # notebook, then swe should show the plot.
+        show_fig = not figfile
+
+        # Overall chisq
+        overall_chisq_str = self.chisq_str()
+
         for i, f in enumerate(self.models):
+            outfile = f"{figfile}-model{i}.png" if figfile else None
             if model_indices is not None and i not in model_indices:
                 continue
-            if not hasattr(f, "plot"):
+
+            backend = "matplotlib" if hasattr(f, "plot") else "plotly" if hasattr(f, "plotly") else None
+            # backend = "plotly" if hasattr(f, "plotly") else "matplotlib" if hasattr(f, "plot") else None
+            if backend is None:
                 continue
+
+            # TODO: duplicated in bumps.webserver.server.api._get_data_plot_mpl()
+            if self.num_models > 1:
+                chisq_str = fitness_chisq_str(f)
+                chisq = f"χ² = {chisq_str}; overall {overall_chisq_str}"
+                title = f"Model {i+1}: {f.name}"
+            else:
+                chisq = f"χ² = {overall_chisq_str}"
+                title = f"{f.name}"
+            fontsize = 16
+
+            if backend == "plotly":
+                fig = f.plotly()
+                # TODO: text offset of (x=0.5em, y=0.5ex)
+                text_offset = 0.01  # portion of graph axis length
+                font = dict(size=16)
+                fig.add_annotation(
+                    x=text_offset,
+                    y=1 + text_offset,
+                    xanchor="left",
+                    yanchor="bottom",
+                    xref="paper",
+                    yref="paper",
+                    text=title,
+                    showarrow=False,
+                    font=font,
+                )
+                fig.add_annotation(
+                    x=1 - text_offset,
+                    y=1 + text_offset,
+                    xanchor="right",
+                    yanchor="bottom",
+                    xref="paper",
+                    yref="paper",
+                    text=chisq,
+                    showarrow=False,
+                    font=font,
+                )
+
+                if outfile:
+                    # Note: requires "pip install kaleido"
+                    # Note: much slower than matplotlib
+                    fig.write_image(outfile)
+                if show_fig:
+                    # Try to guess whether we are in a jupyter notebook before deciding how
+                    # to render the plot.
+                    # TODO: gather all figures into one tab when rendering to the browser
+                    import sys
+
+                    jupyter = "ipykernel" in sys.modules
+                    renderer = None if jupyter else "browser"
+                    fig.show(renderer)
+                continue
+
+            # If not plotly then we must be using matplotlib.
+            # Note that during api.export our matplotlib backend is 'agg' so no plot will show.
+            fig = plt.figure(i + fignum)
             f.plot(view=view)
-            pylab.figure(i + fignum)
-            f.plot(view=view)
-            pylab.suptitle("Model %d - %s" % (i, f.name))
-            pylab.text(0.01, 0.01, "chisq=%s" % fitness_chisq_str(f), transform=pylab.gca().transAxes)
-            if figfile is not None:
-                pylab.savefig(figfile + "-model%d.png" % i, format="png")
+
+            # Make room for model name and chisq on the top of the plot
+            # TODO: attach margins to canvas resize_event so that margins are fixed
+            h, w = fig.get_size_inches()
+            h_ex = h * 72 / fontsize  # (h in * 72 pt/in) / (fontsize pt/ex) = height in ex
+            text_offset = 0.5 / h_ex  # 1/2 ex above and below the text
+            top = 1 - 2 / h_ex  # leave 2 ex at the top of the figure
+            plt.subplots_adjust(top=top)
+
+            # Add model name and chisq
+            transform = fig.transFigure
+            x, y = text_offset, 1 - text_offset
+            ha, va = "left", "top"
+            fig.text(x, y, title, transform=transform, va=va, ha=ha, fontsize=fontsize)
+            x, y = 1 - text_offset, 1 - text_offset
+            ha, va = "right", "top"
+            fig.text(x, y, chisq, transform=transform, va=va, ha=ha, fontsize=fontsize)
+
+            # pylab.suptitle("Model %d - %s" % (i, f.name))
+            # pylab.text(0.01, 0.01, "chisq=%s" % fitness_chisq_str(f), transform=pylab.gca().transAxes)
+            if outfile:
+                plt.savefig(outfile, format="png")
 
     # Note: restore default behaviour of getstate/setstate rather than
     # inheriting from BaseFitProblem
@@ -789,7 +1005,61 @@ def nllf_scale(dof: int, npars: int, norm: bool = True):
         return 2.0 / scale, chi2.ppf(ONE_SIGMA, npars) / scale
 
 
-def load_problem(filename, options=None) -> FitProblem:
+def load_problem(path: Path | str, args: list[str] | None = None):
+    """
+    Load a model file.
+
+    *path* contains the path to the model file. This could be a python script
+    or a previously saved problem, serialized as .json, .cloudpickle, .pickle or .dill
+
+    *args* are any additional arguments to the model.  The sys.argv
+    variable will be set such that *sys.argv[1:] == model_options*.
+    """
+    from .webview.server.state_hdf5_backed import SERIALIZER_EXTENSIONS, deserialize_problem_bytes
+
+    path = Path(path)
+    table = {f".{ext}": method for method, ext in SERIALIZER_EXTENSIONS.items()}
+    method = table.get(path.suffix, "script")
+    if method == "script":
+        problem = _load_script_from_path(path, args)
+    else:
+        # export saved data as binary with encoding utf-8
+        data = path.read_bytes()
+        problem = deserialize_problem_bytes(data, method)
+    # TODO: what is problem.path when we are deserializing from a session file?
+    problem.path = str(path.resolve())
+    if not hasattr(problem, "name"):
+        problem.name = path.stem
+    if not hasattr(problem, "title"):
+        problem.title = path.name
+
+    # Guard against the user changing parameters after defining the problem.
+    problem.model_reset()
+    return problem
+
+
+def _load_script_from_path(path: Path | str, args: list[str] | None = None):
+    from .util import pushdir
+    from . import plugin
+
+    # Change to the target path before loading model so that data files
+    # can be given as relative paths in the model file.  Add the directory
+    # to the python path (at the end) so that imports work as expected.
+    path = Path(path)
+    directory, filename = path.parent, path.name
+    with pushdir(directory):
+        # Try a specialized model loader
+        problem = plugin.load_model(filename)
+        if problem is None:
+            problem = _load_script(filename, options=args)
+    # Note: keeping problem.script_path separate from problem.path because
+    # the problem.path may be the result of deserializing the model.
+    problem.script_path = str(path.resolve())
+    problem.script_args = args
+    return problem
+
+
+def _load_script(filename, options=None) -> FitProblem:
     """
     Load a problem definition from a python script file.
 
