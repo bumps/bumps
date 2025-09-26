@@ -315,7 +315,7 @@ def save_state(state: "MCMCDraw", filename: str):
     # trace.write("extracting draws, logp\n")
     draws, logp = state.logp(full=True)
     # trace.write("extracting acceptance rate\n")
-    _, AR = state.acceptance_rate()
+    _, AR = state.acceptance_rate(portion=1)
     # trace.write("building chain from draws, AR and logp\n")
     chain = hstack((draws[:, None], AR[:, None], logp))
 
