@@ -73,7 +73,7 @@ generation is the last generation number
 
 # TODO: state should be collected in files as we go
 
-__all__ = ["MCMCDraw", "dream_load"]
+__all__ = ["MCMCDraw", "Draw", "dream_load", "h5load", "h5dump"]
 
 import os.path
 import re
@@ -89,7 +89,7 @@ from numpy.typing import NDArray
 
 from .convergence import burn_point
 from .outliers import identify_outliers
-from .util import draw, rng
+from .util import rng
 from .gelman import gelman
 
 # Don't load hdf5 if you don't need it
@@ -97,10 +97,6 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from h5py import Group
-else:
-
-    class Group: ...
-
 
 EXT = ".mc.gz"
 CREATE = gzip.open
@@ -116,6 +112,7 @@ LABEL_DTYPE = f"|S{MAX_LABEL_LENGTH}"
 H5_COMPRESSION = 5
 
 
+# TODO: Unused code. Using webview.server.cli.reload_export instead
 def dream_load(store):
     """
     Load the saved DREAM state.
@@ -169,9 +166,6 @@ def dream_load(store):
     basename = str(store / modelname)
     state = load_state(basename)
 
-    # Attach the labels from the .par file:
-    with open(basename + ".par") as fid:
-        state.labels = [" ".join(line.strip().split()[:-1]) for line in fid]
     return state
 
 
@@ -525,6 +519,7 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
     return state
 
 
+# TODO: Unused code. Using webview.server.cli.reload_export instead
 def reload_state_from_export(parfile):
     """
     For the simplified fit with an export path we can reload
