@@ -214,11 +214,11 @@ def convert_state(state):
     Sequences = np.concatenate((points, np.exp(logp), logp), axis=2)
     X = Sequences[-1, :, :]
 
-    draws, logp = state.logp()
+    draws, logp = state.logp(full=True)
     hist_logp = np.concatenate((draws[:, None], logp), axis=1)
 
     out = struct()
-    draws, AR = state.acceptance_rate()
+    _, AR = state.acceptance_rate()
     out.AR = np.concatenate((draws[:, None], AR[:, None]), axis=1)
     draws, w = state.CR_weight()
     out.CR = np.concatenate((draws[:, None], w), axis=1)
