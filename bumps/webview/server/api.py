@@ -1104,20 +1104,13 @@ async def get_parameter_trace_plot(var: int):
         start_time = time.time()
         logger.info(f"queueing new parameter_trace plot... {start_time}")
 
-        # begin plotting:
-        draw, points, _ = fit_state.chains()
+        # Portion defaults to burn point
+        # Set outliers to true to include bad chains
+        genid, chains = fit_state.traces(portion=None, thin=1, outliers=False)
         label = fit_state.labels[var]
-        start = int((1 - fit_state.portion) * len(draw))
-        genid = (
-            np.arange(
-                fit_state.generation - len(draw) + start,
-                fit_state.generation,
-            )
-            + 1
-        )
         fig = plot_trace(
-            genid * fit_state.thinning,
-            np.squeeze(points[start:, fit_state._good_chains, var]).T,
+            genid,
+            chains[:, :, var],
             label=label,
             alpha=0.4,
         )
