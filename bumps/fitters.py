@@ -1396,7 +1396,7 @@ await bp.set_problem(problem, fit=fitresult)         # send problem and results 
 ```
 """,
         dream="""
-MCMC statistics: [TODO]
+MCMC statistics:
 ```python
 import matplotlib.pyplot as plt
 from bumps.dream.views import plot_all, plot_corrmatrix
