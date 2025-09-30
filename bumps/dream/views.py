@@ -96,7 +96,6 @@ def plot_all(state: MCMCDraw | Draw, portion: Optional[float] = None, figfile=No
 
 
 def plot_corrmatrix(draw, nbins=50, vstats=None, full=False, fig=None):
-    print("hello")
     ranges = None if vstats is None or full else [v.p95_range for v in vstats]
     c = corrplot.Corr2d(draw.points.T, bins=nbins, ranges=ranges, labels=draw.labels)
     c.plot(fig=fig)
@@ -122,7 +121,12 @@ class KDE2D(gaussian_kde):
 
 
 def plot_corr(draw, vars=(0, 1)):
-    from pylab import MaxNLocator, axes, setp
+    """
+    Plot kernel density estimate of the parameter correlation.
+
+    *vars* is the pair of parameters to plot (from *draw.labels*, 0-origin).
+    """
+    import matplotlib.pyplot as plt
 
     _, _ = vars  # Make sure vars is length 2
     labels = [draw.labels[v] for v in vars]
@@ -131,37 +135,37 @@ def plot_corr(draw, vars=(0, 1)):
     # Form kernel density estimates of the parameters
     xmin, xmax = min(values[0]), max(values[0])
     density_x = KDE1D(values[0])
-    x = linspace(xmin, xmax, 100)
+    x = np.linspace(xmin, xmax, 100)
     px = density_x(x)
 
     density_y = KDE1D(values[1])
     ymin, ymax = min(values[1]), max(values[1])
-    y = linspace(ymin, ymax, 100)
+    y = np.linspace(ymin, ymax, 100)
     py = density_y(y)
 
     nbins = 50
-    ax_data = axes([0.1, 0.1, 0.63, 0.63])  # x,y,w,h
+    ax_data = plt.axes([0.1, 0.1, 0.63, 0.63])  # x,y,w,h
 
-    # density_xy = KDE2D(values[vars])
-    # dxy = density_xy(x,y)*points.shape[0]
-    # ax_data.pcolorfast(x,y,dxy,cmap=cm.gist_earth_r) #@UndefinedVariable
+    density_xy = KDE2D(values[vars])
+    dxy = density_xy(x, y) * draw.points.shape[0]
+    ax_data.pcolorfast(x, y, dxy, cmap=plt.cm.gist_earth_r)  # @UndefinedVariable
 
     ax_data.plot(values[0], values[1], "k.", markersize=1)
     ax_data.set_xlabel(labels[0])
     ax_data.set_ylabel(labels[1])
-    ax_hist_x = axes([0.1, 0.75, 0.63, 0.2], sharex=ax_data)
+    ax_hist_x = plt.axes([0.1, 0.75, 0.63, 0.2], sharex=ax_data)
     ax_hist_x.hist(values[0], nbins, orientation="vertical", density=1)
     ax_hist_x.plot(x, px, "k-")
-    ax_hist_x.yaxis.set_major_locator(MaxNLocator(4, prune="both"))
-    setp(
+    ax_hist_x.yaxis.set_major_locator(plt.MaxNLocator(4, prune="both"))
+    plt.setp(
         ax_hist_x.get_xticklabels(),
         visible=False,
     )
-    ax_hist_y = axes([0.75, 0.1, 0.2, 0.63], sharey=ax_data)
+    ax_hist_y = plt.axes([0.75, 0.1, 0.2, 0.63], sharey=ax_data)
     ax_hist_y.hist(values[1], nbins, orientation="horizontal", density=1)
     ax_hist_y.plot(py, y, "k-")
-    ax_hist_y.xaxis.set_major_locator(MaxNLocator(4, prune="both"))
-    setp(ax_hist_y.get_yticklabels(), visible=False)
+    ax_hist_y.xaxis.set_major_locator(plt.MaxNLocator(4, prune="both"))
+    plt.setp(ax_hist_y.get_yticklabels(), visible=False)
 
 
 def plot_traces(
