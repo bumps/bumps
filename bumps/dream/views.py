@@ -95,8 +95,10 @@ def plot_all(state: MCMCDraw | Draw, portion: Optional[float] = None, figfile=No
             savefig(figfile + "-parcor" + figext)
 
 
-def plot_corrmatrix(draw, nbins=50, fig=None):
-    c = corrplot.Corr2d(draw.points.T, bins=nbins, labels=draw.labels)
+def plot_corrmatrix(draw, nbins=50, vstats=None, full=False, fig=None):
+    print("hello")
+    ranges = None if vstats is None or full else [v.p95_range for v in vstats]
+    c = corrplot.Corr2d(draw.points.T, bins=nbins, ranges=ranges, labels=draw.labels)
     c.plot(fig=fig)
     # print "Correlation matrix\n",c.R()
 
@@ -166,6 +168,11 @@ def plot_traces(
     state: MCMCDraw, vars: Optional[List[int]] = None, portion: Optional[float] = None, fig=None, max_traces=6
 ):
     from pylab import clf, gcf
+
+    # TODO: Consider using masked chains in draw for traces rather than original
+    # Can only plot traces for on the original state. Ignore any variables that are out of range.
+    if vars:
+        vars = [v for v in vars if v < state.Nvar]
 
     if fig is None:
         fig = gcf()

@@ -1393,20 +1393,30 @@ class MCMCDraw(object):
         # Always return entropy estimate from draw, even if it is normal
         return S, Serr
 
+    def show_labels(self):
+        """
+        List of parameters in the state, with the parameter number for each. Use this
+        to help with the inputs to state.draw().
+        """
+        print("\n".join(f"p[{k}] = {v}" for k, v in enumerate(self.labels)))
+
     def draw(
         self,
         portion: Optional[float] = None,
         vars: Optional[List[int]] = None,
+        exclude: Optional[List[int]] = None,
         selection: SelectionType = None,
         thin: int = 1,
         outliers: bool = False,
+        derived: Optional[Callable] = None,
     ):
         """
         Return a sample from the posterior distribution.
 
         *portion* is the portion of each chain to use
 
-        *vars* is a list of variables to return for each point
+        *vars* is a list of variables to return for each point. You can also
+        use *exclude* to list the nuisance variables that should  be excluded.
 
         *selection* sets the range each parameter in the returned distribution,
         using {variable: (low, high)}. Missing variables use the full range.
@@ -1425,9 +1435,19 @@ class MCMCDraw(object):
             draw = state.sample()
             plot(draw.points[:, 0], draw.points[:, 1], '.')
         """
+        # Fill in defaults
         vars = vars if vars is not None else getattr(self, "_shown", None)
         portion = self.portion if portion is None else portion
-        return Draw(self, portion=portion, vars=vars, selection=selection, thin=thin, outliers=outliers)
+        return Draw(
+            state=self,
+            portion=portion,
+            vars=vars,
+            exclude=exclude,
+            selection=selection,
+            thin=thin,
+            outliers=outliers,
+            derived=derived,
+        )
 
     # TODO: Move processing of visible/integer/derived out of state
     def set_visible_vars(self, labels: List[str]):
@@ -1588,10 +1608,12 @@ class Draw:
         self,
         state: MCMCDraw,
         vars: Optional[List[Union[int, str]]] = None,
+        exclude: Optional[List[Union[int, str]]] = None,
         portion: float = 1.0,
         selection: SelectionType = None,
         thin: int = 1,
         outliers: bool = False,
+        derived: Optional[Callable] = None,
     ):
         self.state = state
         self.vars = vars
@@ -1616,16 +1638,24 @@ class Draw:
 
         # Derived variables are created during the draw so that existing data isn't altered.
         # This allows resume to work without extra effort. The code is also much simpler.
-        if state._derived_fn is not None:
-            newvars = asarray(state._derived_fn(chains.reshape(-1, Nvar).T)).T
+        if derived is None:
+            derived = state._derived_fn
+        if derived is not None:
+            newvars = derived(chains.reshape(-1, Nvar).T)
+            # If derived returns a dict, then use its keys as parameter labels
+            if isinstance(newvars, dict):
+                newlabels, newvars = zip(*newvars.items())
+            else:
+                # Backward compatibility: old interface had derived returning a list
+                newlabels = state._derived_labels
+                if not newlabels:
+                    newlabels = [f"F{k+1}" for k in range(len(derived))]
+            newvars = asarray(newvars).T
             newvars = newvars.reshape(Ngen, Npop, -1)
             chains = np.dstack((chains, newvars))
             Nvar = chains.shape[2]  # Update the number of variables
-            if state._derived_labels:
-                self.labels.extend(state._derived_labels)
-            else:
-                self.labels.extend("F{k+1}" for k in range(newvars.shape[2]))
             self.integers = np.append(self.integers, [False] * newvars.shape[2])
+            self.labels.extend(newlabels)
 
         # Select points within range limits given by selection, if any.
         # This happens before variable subsetting so that numerical indices
@@ -1641,6 +1671,9 @@ class Draw:
                     mask = mask & (chains[:, :, var] >= limits[0]) & (chains[:, :, var] <= limits[1])
 
         # Restrict draw to a subset of the variables.
+        if exclude is not None and vars is None:
+            exclude = [self._lookup_var(v) for v in exclude]
+            vars = [k for k in range(Nvar) if k not in exclude]
         if vars is not None:
             vars = [self._lookup_var(v) for v in vars]
             chains = chains[:, :, vars]
@@ -1649,6 +1682,7 @@ class Draw:
             Nvar = chains.shape[-1]
             self.labels = [self.labels[v] for v in vars]
             self.integers = self.integers[vars]
+            self.vars = vars  # indices of selected items
 
         # Convert to a vector of selected points.
         if mask is True:
