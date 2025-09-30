@@ -875,7 +875,7 @@ class DreamFit(FitBase):
         self.state = None
 
     def solve(self, monitors: MonitorRunner, mapper=None, **options):
-        from .dream import Dream
+        from .dream.core import Dream
 
         options = _fill_defaults(options, self.settings)
 
@@ -1380,6 +1380,8 @@ bp.plot_convergence(fitresult)                       # show convergence plot
 bp.show_results(problem, fitresult)                  # summarize fit results
 problem.plot()                                       # show model plots
 fitresult.state.show()                               # show dream plots
+bp.save_fit("session.h5", problem, fitresult, label="example fit")  # append to session.h5
+bp.export_fit("/tmp/T1", problem, fitresult, basename="test")       # export /tmp/T1/test.par etc.
 problem, fitresult = bp.load_fit_from_session(path)  # load bumps MCMC from session file
 problem, fitresult = bp.load_fit_from_export(path)   # load bumps MCMC files that were exported
 ```
@@ -1804,7 +1806,6 @@ def save_fit(
     problem,
     fit: OptimizeResult,
     label: str | None = None,
-    verbose: bool = True,
 ):
     """
     Write a fit to a session file.
