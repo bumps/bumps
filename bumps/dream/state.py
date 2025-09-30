@@ -81,6 +81,7 @@ import gzip
 from typing import List, Dict, Tuple, Union, Optional, Callable
 from pathlib import Path
 import warnings
+from fnmatch import fnmatch
 
 import numpy as np
 from numpy import empty, sum, asarray, inf, argmax, hstack, dstack
@@ -1415,11 +1416,15 @@ class MCMCDraw(object):
 
         *portion* is the portion of each chain to use
 
-        *vars* is a list of variables to return for each point. You can also
-        use *exclude* to list the nuisance variables that should  be excluded.
+        *vars* is the list of vars that are active. Variables can be
+        0-origin integers or strings matching a variable label. Match uses
+        standard glob rules, with `*` matching any sequence, `?` matching any
+        character, `[abc]` matching one of `abc`, and `[!abc]` not matching
+        one of `abc`.
 
         *selection* sets the range each parameter in the returned distribution,
-        using {variable: (low, high)}. Missing variables use the full range.
+        using {var: (low, high)}. If *var* matches multiple labels, then use the
+        first restriction only. Missing variables use the full range.
 
         *thin* takes every nth item.
 
@@ -1529,16 +1534,24 @@ class Draw:
 
     *state* is the :class:`MCMCDraw` containing all points.
 
-    *vars* is the list of vars that are active. Variables can be
-    0-origin integers or strings matching a variable label.
-
     *portion* is the fraction of points to use for the sample, starting
     from the ends of the Markov chains.
 
+    *vars* is the list of vars that are active. Variables can be
+    0-origin integers or strings matching a variable label. Match uses
+    standard glob rules, with `*` matching any sequence, `?` matching any
+    character, `[abc]` matching one of `abc`, and `[!abc]` not matching
+    one of `abc`.
+
+    *exclude* all labels that match a pattern in the list. Matching rules
+    are the same as for *vars*. If a variable matches both *vars* and
+    *exclude* then it is included.
+
     *selection* restricts the points returned to a specific region of the
     parameter space using {var: (low, high)}. The var can be a 0-origin
-    integer or label as for *vars* or it can be *logp* if restricting by
-    log likelihood.
+    integer or label as for *vars*. It can also be *logp* if restricting by
+    log likelihood. If a label matches multiple patterns then choose the
+    first restriction (this may change to all that match in future).
 
     *thin* is the amount of thinning to apply, using every nth point in
     the chain. This reduces autocorrelation in the chains and reduces
@@ -1607,16 +1620,15 @@ class Draw:
     def __init__(
         self,
         state: MCMCDraw,
+        portion: float = 1.0,
         vars: Optional[List[Union[int, str]]] = None,
         exclude: Optional[List[Union[int, str]]] = None,
-        portion: float = 1.0,
         selection: SelectionType = None,
         thin: int = 1,
         outliers: bool = False,
         derived: Optional[Callable] = None,
     ):
         self.state = state
-        self.vars = vars
         self.portion = portion
         self.thin = thin
         self.selection = selection
@@ -1662,27 +1674,32 @@ class Draw:
         # are independent of the displayed parameters. It happens after
         # calculating derived variables so that we can apply selection to derived values.
         mask = True
-        if selection:
-            for var, limits in selection.items():
-                if var == "logp":
-                    mask = mask & (chains_logp >= limits[0]) & (chains_logp <= limits[1])
-                else:
-                    var = self._lookup_var(var)
-                    mask = mask & (chains[:, :, var] >= limits[0]) & (chains[:, :, var] <= limits[1])
+        selection = self._selection_pattern_to_index(selection)
+        for var, limits in selection.items():
+            if var == "logp":
+                mask = mask & (chains_logp >= limits[0]) & (chains_logp <= limits[1])
+            else:
+                mask = mask & (chains[..., var] >= limits[0]) & (chains[..., var] <= limits[1])
 
-        # Restrict draw to a subset of the variables.
-        if exclude is not None and vars is None:
-            exclude = [self._lookup_var(v) for v in exclude]
-            vars = [k for k in range(Nvar) if k not in exclude]
-        if vars is not None:
-            vars = [self._lookup_var(v) for v in vars]
-            chains = chains[:, :, vars]
-            if mask is not True:
-                mask = mask[:, :, vars]
+        # TODO: with pattern matching we've lost the ability to reorder parameters
+        # Restrict draw to a subset of the variables. Labels matching include take
+        # precedence over those matching exclude.
+        include = self._var_pattern_to_index(vars)
+        exclude = self._var_pattern_to_index(exclude)
+        exclude = [k for k in exclude if k not in include]
+        include = [k for k in include if k not in exclude]
+        # if vars and not include:
+        #     # Note: could be empty because everything is excluded
+        #    logging.warning(f"No parameters match {vars} in {self.labels}")
+        if include:  # if nothing matches then match everything
+            chains = chains[:, :, include]
+            # Mask doesn't include the final dimension, so doesn't need to be trimmed.
             Nvar = chains.shape[-1]
-            self.labels = [self.labels[v] for v in vars]
-            self.integers = self.integers[vars]
-            self.vars = vars  # indices of selected items
+            self.labels = [self.labels[v] for v in include]
+            self.integers = self.integers[include]
+            self.vars = include  # indices of selected items
+        else:
+            self.vars = None
 
         # Convert to a vector of selected points.
         if mask is True:
@@ -1715,15 +1732,38 @@ class Draw:
             self._argsort_indices[var] = np.argsort(self.points[:, var].flatten())
         return self._argsort_indices[var]
 
-    def _lookup_var(self, var: Union[int, np.integer, str]):
+    def _selection_pattern_to_index(self, selection: dict[int | str, tuple[float, float]] | None):
         """
-        Lookup columns by integer or by string. If names are duplicated only the
-        first one is saved.
+        For the selection dictionary {pattern: data}, return a dictionary of {index: data}
+        where data comes from the first pattern to matched by the label. Patterns are the
+        standard unix glob patterns, or integers for specific numbered variables
+        (see :meth:`State.show_labels`).
         """
-        try:
-            return var if isinstance(var, (int, np.integer)) else self.labels.index(var)
-        except ValueError:
-            raise ValueError(f"Parameter '{var} not in {self.labels}") from None
+        if selection is None:
+            return {}
+        result = {}
+        if data := selection.get("logp", None):
+            result["logp"] = data
+        for index, label in enumerate(self.labels):
+            for var, data in selection.items():
+                if index == var or (isinstance(var, str) and fnmatch(label, var)):
+                    result[index] = data
+                    break
+        return result
+
+    def _var_pattern_to_index(self, vars: list[int | str] | None):
+        """
+        Convert the include/exclude list of var patterns into a list of integer
+        parameter indices. Patterns are the standard unix glob patterns, or integers
+        for specific numbered variables (see :meth:`State.show_labels`)
+        """
+        if vars is None:
+            return []
+
+        def var_match(var, label, index):
+            return index == var or (isinstance(var, str) and fnmatch(label, var))
+
+        return [k for k, p in enumerate(self.labels) if any(var_match(v, p, k) for v in vars)]
 
 
 def test():
@@ -1737,6 +1777,7 @@ def test():
     Nvar, Npop, Ncr = 3, 6, 2
     xin = rand(Ngen, Npop, Nvar)
     xin[..., 2] *= 9  # make one parameter range large enough for integer tests
+    xin += 0.1  # force above 0.1 so that arrays print nicer
     pin = rand(Ngen, Npop)
     accept = rand(Ngen, Npop) < 0.8
     CRin = rand(Nupdate, Ncr)
@@ -1780,25 +1821,15 @@ def test():
     assert pin[i, j] == p
     assert norm(xin[i, j, :] - x) == 0
 
-    # Check that outlier updates properly
-    state._replace_outlier(1, 2)
-    outliers = state.outliers()
-    draws, logp = state.sample()
-    assert norm(outliers - asarray([[state._thin_index, 1, 2]])) == 0
-    # assert norm(sample[:, 1, :] - xin[thinning-1::thinning, 2, :]) == 0
-    # assert norm(sample[:, 2, :] - xin[thinning-1::thinning, 2, :]) == 0
-    # assert norm(logp[:, 1] - pin[thinning-1::thinning, 2]) == 0
-    # assert norm(logp[:, 2] - pin[thinning-1::thinning, 2]) == 0
-
-    draw = state.draw(selection={"P1": (0.4, 1.1)})
-    # print(format_vars(var_stats(draw)))
-    assert (draw.points[:, 1] >= 0.4).all()
+    draw = state.draw(selection={"P1": (0.4, 1.1)}, portion=1, outliers=True)
+    assert ((draw.points[:, 1] >= 0.4) & (draw.points[:, 1] <= 1.1)).all()
     # print(thinned[..., 1])
     # print(thinned[..., 1] >= 0.4, thinned.shape)
     # print(len(draw.points[:, 1]), np.sum(thinned[..., 1] >= 0.4))
     # print("thinned", thinned[thinned[..., 1] >= 0.4][:, 1])
     # print("points", draw.points[:, 1])
-    assert len(draw.points[:, 1]) == np.sum(thinned[..., 1] >= 0.4)
+    mask = (thinned[..., 1] >= 0.4) & (thinned[..., 1] <= 1.1)
+    assert len(draw.points[:, 1]) == np.sum(mask)
 
     if 0:  # test of deprecated interface
         # Test derived variables (inplace update! ick!)
@@ -1840,6 +1871,17 @@ def test():
     # print("thinned", thinned[thinned[..., 1] >= 0.4][:, 1])
     # print("points", draw.points[:, 1])
     assert len(draw.points[:, 1]) == np.sum(thinned[..., 1] >= 0.4)
+
+    # Note: check mods to the state data structures last
+    # Check that outlier updates properly
+    state._replace_outlier(1, 2)
+    outliers = state.outliers()
+    draws, logp = state.sample()
+    assert norm(outliers - asarray([[state._thin_index, 1, 2]])) == 0
+    # assert norm(sample[:, 1, :] - xin[thinning-1::thinning, 2, :]) == 0
+    # assert norm(sample[:, 2, :] - xin[thinning-1::thinning, 2, :]) == 0
+    # assert norm(logp[:, 1] - pin[thinning-1::thinning, 2]) == 0
+    # assert norm(logp[:, 2] - pin[thinning-1::thinning, 2]) == 0
 
 
 if __name__ == "__main__":
