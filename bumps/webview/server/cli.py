@@ -45,6 +45,7 @@ from dataclasses import field
 import hashlib
 # from textwrap import dedent
 
+from bumps import __version__ as bumps_version
 from bumps.fitters import FIT_AVAILABLE_IDS
 from . import api
 from . import persistent_settings
@@ -137,6 +138,17 @@ class HelpFormatter(argparse.RawTextHelpFormatter, argparse.ArgumentDefaultsHelp
                 help_text += f" [default: {action.default}]"
         return help_text
 
+
+def _branding():
+    """Return a string with version and system information."""
+    output = f"{'='*55}\n"
+    output += f"{api.state.app_name}\t\t{api.state.app_version}\n"
+    if api.state.app_name != "bumps":
+        output += f"bumps\t\t{bumps_version}\n"
+    output += "Python\t\t" + ".".join(map(str, sys.version_info[:3])) + "\n"
+    output += f"Platform\t{sys.platform}\n"
+    output += f"{'='*55}\n"
+    return output
 
 def get_commandline_options(arg_defaults: Optional[Dict] = None):
     """Parse bumps command line options."""
@@ -390,12 +402,12 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         choices=["debug", "info", "warn", "error", "critical"],
         default="warn",
     )
-    # TODO: show version numbers for both refl1d and bumps?
+    # Show version numbers for both bumps and child program
     misc.add_argument(
         "-V",
         "--version",
         action="version",
-        version=f"%(prog)s {api.state.app_version}",
+        version=_branding(),
     )
 
     # TODO: restructure so that -b -s -r --webview override each other
@@ -909,6 +921,7 @@ def main(options: Optional[BumpsOptions] = None):
         # api.state.rank = ""
 
     if webview and is_controller:  # gui mode
+        print(_branding())
         start_from_cli(options)
     else:  # console mode
         run_batch_fit(options)
