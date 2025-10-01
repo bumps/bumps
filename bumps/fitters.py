@@ -1377,7 +1377,8 @@ options = dict(fit=dream, burn=100)                  # fit options (see bumps -h
 fitresult = bp.fit(problem, **options)               # synchronous fit interface
 fitresult = bp.fit(problem, resume=fitresult, **options) # resume a fit from fitresult
 bp.plot_convergence(fitresult)                       # show convergence plot
-bp.show_results(problem, fitresult)                  # summarize fit results
+bp.show_results(problem, fitresult)                  # summarize fit results including plots
+bp.show_table(problem, result)                       # show just χ² and the parameter uncertainty table
 problem.plot()                                       # show model plots
 fitresult.state.show()                               # show dream plots
 bp.save_fit("session.h5", problem, fitresult, label="example fit")  # append to session.h5
@@ -1433,9 +1434,16 @@ plot_corrmatrix(draw, vstats=vstats, nbins=50, full=True)  # correlation plot wi
 plt.figure(figsize=var_plot_size(len(vstats)))
 plot_vars(draw, vstats, nbins=50, full=True) # parameter histogram with outliers
 
-# Creating a single parameter histogram is hard because of the shared colorbar.
-# See code in bumps/dream/varplot.py if you want to attempt it. It may be easier
-# use `draw = result.state.draw(vars=['parameter'])` then `plot_all(draw)`.
+# Parameter histogram comparison between fits for problem1 and problem2
+draw1, draw2 = result1.state.draw(), result2.state.draw()
+par, nsigma = 1, 4
+bins = np.linspace(result1.x[par] - nsigma*result1.dx[par], result1.x[par] + nsigma*result1.dx[par], 50)
+plt.hist(draw1.points[:, par], bins=bins, alpha=0.5, label=f"{problem1.name or 'problem 1'}", density=True)
+plt.hist(draw2.points[:, par], bins=bins, alpha=0.5, label=f"{problem2.name or 'problem 2'}", density=True)
+plt.ylabel(f"P({draw1.labels[par]})")
+plt.xlabel(f"{draw1.labels[par]}")
+plt.title("Parameter distribution comparison")
+plt.legend()
 ```
 """,
     )
@@ -1577,12 +1585,25 @@ def load_fit_from_export(
 
 def show_results(problem, results: OptimizeResult):
     # print(session.fitting)
+    print(f"Fit results for {problem.name or "problem"}: χ² = {problem.chisq_str()}")
     print(problem.summarize())
-    print(f"χ² = {problem.chisq_str()}")
+    print()
     plot_convergence(results)
     problem.plot(fignum=2)
     if results.state:
         results.state.show()
+    else:
+        problem.show_err(results.x, results.dx)
+
+
+def show_table(problem, results):
+    print(f"Fit results for {problem.name or "problem"}: χ² = {problem.chisq_str()}")
+    if results.state:
+        from bumps.dream.stats import var_stats, format_vars
+
+        draw = results.state.draw()
+        vstats = var_stats(draw)
+        print(format_vars(vstats))
     else:
         problem.show_err(results.x, results.dx)
 
