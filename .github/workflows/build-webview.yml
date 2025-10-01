@@ -23,7 +23,7 @@ jobs:
         ref: ${{ env.branch_name }}
 
     - name: Set up Python ${{ matrix.config.py }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.config.py }}
 
