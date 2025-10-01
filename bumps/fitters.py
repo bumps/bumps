@@ -1545,7 +1545,6 @@ def load_fit_from_session(filename: Path | str):
     session = load_session(filename)
     problem = session.problem.fitProblem
     fit = session.fitting
-    print(fit.__dict__)
     fit_state = getattr(fit, "state", None)
     if fit_state:
         fit_state.mark_outliers()
@@ -1789,10 +1788,8 @@ def fit(
     )
 
     problem.setp(x)
-    chisq = problem.chisq_str()
     if verbose:
-        print("final chisq", chisq)
-        driver.show_err()
+        show_table(problem, result)
 
     if session is not None or export is not None:
         from .serialize import serialize

@@ -8,7 +8,6 @@ import math
 from typing import Optional, List
 
 import numpy as np
-from numpy import linspace, meshgrid, vstack
 from scipy.stats import gaussian_kde
 
 from . import corrplot, varplot
@@ -113,8 +112,8 @@ class KDE2D(gaussian_kde):
         gaussian_kde.__init__(self, dataset.T)
 
     def evalxy(self, x, y):
-        grid_x, grid_y = meshgrid(x, y)
-        dxy = self.evaluate(vstack([grid_x.flatten(), grid_y.flatten()]))
+        grid_x, grid_y = np.meshgrid(x, y)
+        dxy = self.evaluate(np.vstack([grid_x.flatten(), grid_y.flatten()]))
         return dxy.reshape(grid_x.shape)
 
     __call__ = evalxy
