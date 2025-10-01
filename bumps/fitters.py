@@ -1588,7 +1588,7 @@ def load_fit_from_export(
 
 def show_results(problem, results: OptimizeResult):
     # print(session.fitting)
-    print(f"Fit results for {problem.name or "problem"}: χ² = {problem.chisq_str()}")
+    print(f"Fit results for {problem.name or 'problem'}: χ² = {problem.chisq_str()}")
     print(problem.summarize())
     print()
     plot_convergence(results)
