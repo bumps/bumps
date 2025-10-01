@@ -93,6 +93,7 @@ from .fitters import (
     fit,
     plot_convergence,
     show_results,
+    show_table,
     load_session,
     load_fit_from_session,
     load_fit_from_export,
