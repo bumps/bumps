@@ -2,7 +2,7 @@
 Build layout for histogram plots (plotly)
 """
 
-__all__ = ["var_plot_size", "plot_vars", "plot_var"]
+__all__ = ["plot_vars", "plot_var"]
 
 from math import ceil, sqrt
 import numpy as np
@@ -76,8 +76,7 @@ def plot_vars(draw: "Draw", all_vstats, cbar_colors=CBAR_COLORS, **kw):
     fig["layout"].update(shapes=[], annotations=[])
 
     for k, vstats in enumerate(all_vstats):
-        row = (k // ncol) + 1
-        col = (k % ncol) + 1
+        # row, col = (k // ncol) + 1, (k % ncol) + 1
         subplot = k + 1
         plot_var(fig, draw, vstats, k, cbar_edges=cbar_edges, subplot=subplot, **kw)
 

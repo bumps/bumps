@@ -13,17 +13,15 @@ parts of the model, or different models.
 
 # __all__ = [ 'Parameter']
 import operator
-import sys
 import builtins
-from dataclasses import dataclass, field, InitVar
+from dataclasses import dataclass, field
 from functools import reduce
 import warnings
-from copy import copy
+from copy import copy, deepcopy
 import uuid
-from functools import wraps
 from enum import Enum
+from typing import runtime_checkable, Optional, Any, Union, Dict, Callable, Tuple, List, Sequence, Protocol
 
-from typing import Type, TypeVar, Optional, Any, Union, Dict, Callable, Tuple, List, Sequence
 from .util import Literal
 
 import numpy as np
@@ -177,43 +175,26 @@ class Calculation(ValueProtocol):  # the name Function is taken (though deprecat
 
 
 class SupportsPrior:
+    """
+    Parameter mixin allowing the value to be restricted to a prior probability.
+
+    Every prior has hard limits and bounds.
+    """
+
     prior: Optional[BoundsType]
     limits: Tuple[float, float]
     distribution: DistributionType
     bounds: BoundsType
 
     def reset_prior(self):
-        self.prior = None
-
-    def has_prior(self):
-        return (
-            self.prior is not None
-            and not isinstance(self.prior, mbounds.Unbounded)
-            and self.prior.limits != (-np.inf, np.inf)
-        )
-
-    def add_prior(
-        self,
-        distribution: Optional[DistributionType] = None,
-        bounds: Optional[BoundsType] = None,
-        limits: Optional[Tuple[float, float]] = None,
-    ):
-        # use self values if they are found:
-        if distribution is None and self.distribution is not None:
-            distribution = self.distribution
-        if bounds is None and self.bounds is not None:
-            bounds = self.bounds
-        if limits is None:
-            if self.limits is not None:
-                limits = self.limits
-            else:
-                limits = (-inf, inf)
-
-        if bounds is not None:
+        limits = (-inf, inf) if self.limits is None else self.limits
+        if self.bounds is not None:
             # get the intersection of the limits here.
-            limits = (np.clip(limits[0], *bounds), np.clip(limits[1], *bounds))
+            limits = (np.clip(limits[0], *self.bounds), np.clip(limits[1], *self.bounds))
+
+        distribution = self.distribution
         if isinstance(distribution, Normal):
-            if limits == (-inf, inf):
+            if limits != (-inf, inf):
                 prior = mbounds.BoundedNormal(mean=distribution.mean, std=distribution.std, limits=limits)
             else:
                 prior = mbounds.Normal(mean=distribution.mean, std=distribution.std)
@@ -223,6 +204,7 @@ class SupportsPrior:
         elif isinstance(distribution, Uniform):
             lo, hi = limits
             if isinf(lo) and isinf(hi):
+                # Note: lots of code depends methods from bounds, so don't use None
                 prior = mbounds.Unbounded()
             elif isinf(lo):
                 prior = mbounds.BoundedAbove(hi)
@@ -318,7 +300,6 @@ class Parameter(ValueProtocol, SupportsPrior):
 
     # Parameters may be dependent on other parameters, and the
     # fit engine will need to access them.
-    # prior: Optional[BoundsType]
     id: str = field(metadata={"format": "uuid"})
     name: Optional[str] = field(default=None, init=False)
     fixed: bool = True
@@ -669,8 +650,8 @@ class Parameter(ValueProtocol, SupportsPrior):
 
         Use :meth:`unlink` to convert from an expression to a variable.
         """
-        if isinstance(self.slot, Calculation):
-            raise TypeError("parameter is calculated by the model and cannot be changed")
+        if isinstance(self.slot, (Calculation, Constant)):
+            raise TypeError("Parameter is set by the model and cannot be changed")
         elif expression is self:
             # don't make a circular reference to self.
             warnings.warn(f"{self} tried to make circular reference to self...")
@@ -679,8 +660,8 @@ class Parameter(ValueProtocol, SupportsPrior):
             self.slot = expression
 
     def unlink(self):
-        if isinstance(self.slot, Calculation):
-            raise TypeError("parameter is calculated by the model and cannot be changed")
+        if isinstance(self.slot, (Calculation, Constant)):
+            raise TypeError("Parameter is set by the model and cannot be changed")
         # Replace the slot with a new variable initialized to the only variable value
         self.slot = Variable(self.value)
 
@@ -695,10 +676,18 @@ class Parameter(ValueProtocol, SupportsPrior):
             self.tags = [t for t in self.tags if not t == tag]
 
     def __copy__(self):
-        """copy will only be called when a new instance is desired, with a different id"""
+        """
+        Copy will only be called when a new instance is desired, with a different id.
+        Make sure the slot is not shared with the original, otherwise the parameters
+        will be tied together after the copy.
+        """
         obj = type(self).__new__(self.__class__)
         obj.__dict__.update(self.__dict__)
         obj.id = str(uuid.uuid4())
+        # Note: ValueType (Expression, Parameter, float) can be shared
+        # between slots, but each parameter needs its own variable.
+        if isinstance(self.slot, Variable):
+            obj.slot = copy(self.slot)
         return obj
 
 
@@ -1029,10 +1018,13 @@ def function(fn: Callable):
     The value of the function is computed from the values of the parameters
     at the time that the function value is requested rather than when the
     function is created.
+
+    Wrapped functions are automatically added to bumps.pmath
     """
     name = fn.__name__
     op = UserFunction(fn)
 
+    # TODO: Return the immediate value when none of the arguments are parameters
     def wrapped(*args: "ValueType"):
         return Expression(op, args)
 
@@ -1108,6 +1100,7 @@ pmath.asinh = asinh = pmath.arcsinh
 pmath.acosh = acosh = pmath.arccosh
 pmath.atanh = atanh = pmath.arctanh
 
+# Add aliases for arc functions to pmath
 pmath.__all__.extend(
     (
         "asin",
@@ -1228,7 +1221,9 @@ class ParameterSet:
         """
         Set the underlying model parameter to the value of the nth model.
         """
+        # TODO: should we be updating the slot rather than the value?
         self.reference.value = self.parameters[index].value
+        # self.reference.equals(self.parameters[index])
 
     def get_model(self, index):
         """
@@ -1298,8 +1293,9 @@ class Reference(Parameter):
         setattr(self.obj, self.attr, value)
 
 
+# TODO: Can we implement the equivalent of FreeVariables that preserves caching?
 @dataclass(init=False)
-class FreeVariables(object):
+class FreeVariables:
     """
     A collection of parameter sets for a group of models.
 
@@ -1319,6 +1315,12 @@ class FreeVariables(object):
     sample structure, sharing references to common parameters and creating
     new parameters for each model for the free parameters.  Setting up
     these copies was inconvenient.
+
+    Note that using FreeVariables within a fitproblem erases any caching that
+    happens within the model. This means, for example, that the theory function
+    will be calculated once for plotting and again for computing χ². To
+    avoid unnecessary cache clearing, use bool(freevars) to test if there are
+    parameters to substitute.
     """
 
     names: List[str]
@@ -1354,6 +1356,12 @@ class FreeVariables(object):
         except KeyError:
             raise AttributeError("FreeVariables has no attribute %r" % k)
 
+    def __bool__(self):
+        """
+        *if freevars* is true when there are variables to be substituted into the model.
+        """
+        return bool(self.parametersets)
+
     def parameters(self):
         """
         Return the set of free variables for all the models.
@@ -1375,6 +1383,10 @@ class FreeVariables(object):
         Get the parameters for model *i* as {reference: substitution}
         """
         return dict(p.get_model(i) for p in self.parametersets.values())
+
+    def isfree(self, param):
+        pid = getattr(param, "id", None)  # Expressions don't have an id
+        return any(pid == pset.reference.id for pset in self.parametersets.values())
 
 
 def flatten(s):
@@ -1398,6 +1410,9 @@ def format(p, indent=0, freevars=None, field=None):
 
     Note that this only says how the parameters are arranged, not how they
     relate to each other.
+
+    Note that *freevars* here is the substitution dictionary returned by
+    *FreeVars.get_model(i)*, not the FreeVars object itself.
     """
     freevars = {} if freevars is None else freevars
     p = freevars.get(id(p), p)
@@ -1433,13 +1448,7 @@ def format(p, indent=0, freevars=None, field=None):
             s += str(p) + " = "
         s += "%g" % p.value
         if not p.fixed:
-            if p.prior is not None:
-                bounds = p.prior.limits
-            elif p.bounds is not None:
-                bounds = p.bounds
-            else:
-                bounds = p.limits
-            s += " in [%g,%g]" % tuple(bounds)
+            s += " in [%g,%g]" % tuple(p.prior.limits)
         return s
 
     elif isinstance(p, Parameter):
@@ -1524,20 +1533,14 @@ def varying(s: List[Parameter]) -> List[Parameter]:
     return [p for p in unique(s) if not p.fixed]
 
 
-def _has_prior(p: Parameter) -> bool:
-    prior = getattr(p, "prior", None)
-    limits = getattr(prior, "limits", (-np.inf, np.inf))
-    return prior is not None and not isinstance(prior, mbounds.Unbounded) and limits != (-np.inf, np.inf)
-
-
 def priors(s: List[Parameter]) -> List[Parameter]:
     """
     Return the list of parameters (fitted or computed) that have prior
-    probabilities associated with them. This includes all varying parameters,
-    plus expressions (including simple links), but ignoring constants and
-    fixed parameters whose probabilities won't change the fits.
+    probabilities associated with them. This may include parameters linked
+    to expressions and parameters that are not fitted, but excludes
+    parameters that are unbounded.
     """
-    return [p for p in unique(s) if _has_prior(p)]
+    return [p for p in unique(s) if hasattr(p, "prior") and not isinstance(p.prior, mbounds.Unbounded)]
 
 
 def randomize(s: List[Parameter]):
@@ -1553,28 +1556,41 @@ def current(s: List[Parameter]):
     return [p.value for p in s]
 
 
-# ========= trash ===================
+@runtime_checkable
+class HasParameters(Protocol):
+    parameters: Callable[[], Union[List[Parameter], Dict[str, Parameter]]]
 
 
-def copy_linked(has_parameters, free_names=None):
+def copy_linked(has_parameters: HasParameters, exclude: Optional[List[Parameter]] = None) -> HasParameters:
     """
     make a copy of an object with parameters
      - then link all the parameters, except
-     - those with names matching "free_names"
+     - those in exclude
     """
     assert callable(getattr(has_parameters, "parameters", None)) == True
-    from copy import deepcopy
 
     copied = deepcopy(has_parameters)
-    free_names = [] if free_names is None else free_names
+    exclude = [] if exclude is None else exclude
     original_pars = unique(has_parameters.parameters())
     copied_pars = unique(copied.parameters())
     for op, cp in zip(original_pars, copied_pars):
-        if not op.name in free_names:
-            cp.slot = op.slot
-        else:
-            cp.id = str(uuid.uuid4())
+        if isinstance(cp, Parameter):
+            if op not in exclude and not isinstance(cp.slot, Calculation):
+                cp.equals(op)
+            else:
+                cp.id = str(uuid.uuid4())
     return copied
+
+
+def make_linked_copies(
+    has_parameters: HasParameters, num: int = 1, exclude: Optional[List[Parameter]] = None
+) -> List[HasParameters]:
+    """
+    make a list of <num> copies of an object with parameters
+     - then link all the parameters, except
+     - those in exclude
+    """
+    return [copy_linked(has_parameters, exclude=exclude) for _ in range(num)]
 
 
 # ==== Comparison operators ===
@@ -1841,7 +1857,7 @@ def test_operator():
 
     # Check slots
     limited = Parameter(3, name="limited", limits=[0.5, 1.5], bounds=[0, 1])
-    limited.add_prior()
+    limited.reset_prior()
     assert np.isinf(limited.nllf())
     assert np.isinf(limited.nllf())
     limited.value = 0.6
@@ -1881,7 +1897,7 @@ def test_operator():
     mu, sigma = 3, 2
     b.dev(sigma, mean=mu)
     b.value = 4
-    b.add_prior()
+    b.reset_prior()
     nllf_target = 0.5 * ((b.value - mu) / sigma) ** 2  # + np.log(2 * np.pi * sigma**2) / 2
     assert abs(b.nllf() - nllf_target) / nllf_target < 1e-12
 
