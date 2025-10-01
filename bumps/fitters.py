@@ -1363,6 +1363,7 @@ assert all(f in FIT_AVAILABLE_IDS for f in FIT_ACTIVE_IDS)
 
 
 def help(*shown):
+    import sys
     from IPython.display import display, Markdown
 
     pages = dict(
@@ -1454,7 +1455,10 @@ plt.legend()
         print("available help:", " ".join(sorted(pages.keys())))
     else:
         src = "\n".join(pages[p] for p in shown)
-        display(Markdown(src))
+        if "ipykernel" in sys.modules:
+            display(Markdown(src))
+        else:
+            print(src)
 
 
 def plot_convergence(results, cutoff=0.25, ax=None):
@@ -1596,7 +1600,7 @@ def show_results(problem, results: OptimizeResult):
 
 
 def show_table(problem, results):
-    print(f"Fit results for {problem.name or "problem"}: χ² = {problem.chisq_str()}")
+    print(f"Fit results for {problem.name or 'problem'}: χ² = {problem.chisq_str()}")
     if results.state:
         from bumps.dream.stats import var_stats, format_vars
 
