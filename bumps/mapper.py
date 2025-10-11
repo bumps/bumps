@@ -4,6 +4,12 @@ Parallel and serial mapper implementations.
 The API is a bit crufty since interprocess communication has evolved from
 the original implementation. And the names are misleading.
 
+Available mappers:
+- SerialMapper: Single-threaded execution
+- MPMapper: Multi-process execution using multiprocessing (for CPU-bound tasks)
+- ThreadPoolMapper: Multi-threaded execution using ThreadPoolExecutor (for I/O-bound tasks)
+- MPIMapper: MPI-based distributed execution across cluster nodes
+
 Usage::
 
     Mapper.start_worker(problem)
@@ -18,6 +24,9 @@ Usage::
 import sys
 import os
 import signal
+import threading
+import copy
+from concurrent.futures import ThreadPoolExecutor
 
 from cloudpickle import dumps, loads
 # {{{ http://code.activestate.com/recipes/496767/ (r1)
@@ -196,6 +205,63 @@ class MPMapper(BaseMapper):
             MPMapper.manager = None
         # Don't reset problem id; it keeps count even when mapper is restarted.
         ##MPMapper.problem_id = 0
+
+
+def _TP_run_problem(problem_point_tuple):
+    """Thread pool worker function with thread-local problem copy."""
+    original_problem, point = problem_point_tuple
+
+    # Get or create thread-local problem copy
+    thread_local = threading.current_thread()
+    if not hasattr(thread_local, 'problem_copy'):
+        thread_local.problem_copy = copy.deepcopy(original_problem)
+    return thread_local.problem_copy.nllf(point)
+
+
+class ThreadPoolMapper(BaseMapper):
+    """
+    Thread-based parallel mapper using concurrent.futures.ThreadPoolExecutor.
+
+    Each thread maintains its own copy of the problem object for independent
+    calculations of nllf.
+
+    This mapper will only be efficient when using a free-threaded python interpreter
+    (otherwise the GIL will prevent true parallelism).
+    """
+    pool = None
+
+    @staticmethod
+    def start_worker(problem):
+        pass
+
+    @staticmethod
+    def start_mapper(problem, modelargs=None, cpus=0):
+        # Set up the thread pool on the first call.
+        if ThreadPoolMapper.pool is None:
+            if cpus == 0:
+                import multiprocessing
+                cpus = multiprocessing.cpu_count()
+            ThreadPoolMapper.pool = ThreadPoolExecutor(max_workers=cpus)
+
+        # Create mapper function that submits tasks to thread pool
+        def mapper(points):
+            try:
+                futures = [ThreadPoolMapper.pool.submit(_TP_run_problem, (problem, p)) for p in points]
+                # Collect results in order
+                return [future.result() for future in futures]
+            except KeyboardInterrupt:
+                ThreadPoolMapper.stop_mapper()
+                raise
+
+        return mapper
+
+    @staticmethod
+    def stop_mapper(mapper=None):
+        if ThreadPoolMapper.pool is not None:
+            ThreadPoolMapper.pool.shutdown(wait=True)
+            ThreadPoolMapper.pool = None
+            # Thread-local copies will be automatically garbage collected
+            # when threads are destroyed
 
 
 def _MPI_set_problem(problem, comm, root=0):
