@@ -6,8 +6,8 @@ the original implementation. And the names are misleading.
 
 Available mappers:
 - SerialMapper: Single-threaded execution
-- MPMapper: Multi-process execution using multiprocessing (for CPU-bound tasks)
-- ThreadPoolMapper: Multi-threaded execution using ThreadPoolExecutor (for I/O-bound tasks)
+- MPMapper: Multi-process execution using multiprocessing
+- ThreadPoolMapper: Multi-threaded execution using ThreadPoolExecutor
 - MPIMapper: MPI-based distributed execution across cluster nodes
 
 Usage::
