@@ -209,11 +209,12 @@ class MPMapper(BaseMapper):
 
 def _TP_run_problem(problem_point_tuple):
     """Thread pool worker function with thread-local problem copy."""
-    original_problem, point = problem_point_tuple
+    problem_id, point, original_problem = problem_point_tuple
 
     # Get or create thread-local problem copy
     thread_local = threading.current_thread()
-    if not hasattr(thread_local, 'problem_copy'):
+    if getattr(thread_local, 'problem_id', None) != problem_id:
+        thread_local.problem_id = problem_id
         thread_local.problem_copy = copy.deepcopy(original_problem)
     return thread_local.problem_copy.nllf(point)
 
@@ -229,6 +230,7 @@ class ThreadPoolMapper(BaseMapper):
     (otherwise the GIL will prevent true parallelism).
     """
     pool = None
+    problem_id = 0
 
     @staticmethod
     def start_worker(problem):
@@ -243,10 +245,12 @@ class ThreadPoolMapper(BaseMapper):
                 cpus = multiprocessing.cpu_count()
             ThreadPoolMapper.pool = ThreadPoolExecutor(max_workers=cpus)
 
+        ThreadPoolMapper.problem_id += 1
+
         # Create mapper function that submits tasks to thread pool
         def mapper(points):
             try:
-                futures = [ThreadPoolMapper.pool.submit(_TP_run_problem, (problem, p)) for p in points]
+                futures = [ThreadPoolMapper.pool.submit(_TP_run_problem, (ThreadPoolMapper.problem_id, p, problem)) for p in points]
                 # Collect results in order
                 return [future.result() for future in futures]
             except KeyboardInterrupt:
