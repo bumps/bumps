@@ -150,7 +150,6 @@ def _branding():
     output += f"{'='*55}\n"
     return output
 
-
 def get_commandline_options(arg_defaults: Optional[Dict] = None):
     """Parse bumps command line options."""
     # TODO: if running as a refl1d we should show prog=refl1d instead of prog=bumps

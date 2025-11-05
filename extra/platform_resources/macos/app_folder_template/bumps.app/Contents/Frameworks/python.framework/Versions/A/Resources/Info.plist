@@ -5,7 +5,7 @@
 <dict>
     <key>CFBundleDevelopmentRegion</key>
     <string>English</string>
-
+    
     <!-- Framework Identity -->
     <key>CFBundleExecutable</key>
     <string></string>
@@ -13,13 +13,13 @@
     <string>org.reflectometry.bumps.pythonframework</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
-
+    
     <!-- Version Information -->
     <key>CFBundleShortVersionString</key>
     <string>1.0</string>
     <key>CFBundleVersion</key>
     <string>1</string>
-
+    
     <!-- Framework Type -->
     <key>CFBundlePackageType</key>
     <string>FMWK</string>
