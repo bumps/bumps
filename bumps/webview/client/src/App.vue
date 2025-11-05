@@ -236,7 +236,7 @@ async function startFit() {
   const settings = shared_state.fitter_settings ?? default_fitter_settings.value;
   if (active && settings) {
     const fit_args = settings[active];
-    await socket.asyncEmit("start_fit_thread", active, toRaw(fit_args.settings));
+    await socket.asyncEmit("start_fit_thread", active, toRaw(fit_args?.settings));
   }
 }
 
@@ -265,7 +265,7 @@ file_menu_items.value = [
 
 <template>
   <div class="h-100 w-100 m-0 d-flex flex-column">
-    <nav v-if="singlePanel === null" class="navbar navbar-expand-sm bg-dark" data-bs-theme="dark">
+    <nav v-if="singlePanel === null" class="navbar navbar-expand-sm bg-dark navbar-dark">
       <div class="container-fluid">
         <div class="navbar-brand">
           <img src="./assets/bumps-icon_256x256x32.png" alt="" height="24" class="d-inline-block align-text-middle" />
