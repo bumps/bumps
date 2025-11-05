@@ -75,7 +75,7 @@ socket.on("connect", async () => {
   socket.asyncEmit("get_fitter_defaults", (new_fitter_defaults: { [fit_name: string]: FitSetting }) => {
     default_fitter_settings.value = new_fitter_defaults;
   });
-  socket.asyncEmit("get_shared_setting", "model_file", ({ filename }) => {
+  socket.asyncEmit("get_shared_setting", "model_file", ({ filename }: { filename: string }) => {
     document.title = filename ? `${props.name} - ${filename}` : props.name;
   });
 });
