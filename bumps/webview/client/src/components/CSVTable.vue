@@ -5,7 +5,7 @@ export type TableData = {
   rows: string[][];
 };
 
-const props = defineProps<{ tableData: TableData }>();
+defineProps<{ tableData: TableData }>();
 </script>
 
 <template>
