@@ -46,19 +46,15 @@ async function fetch_and_draw() {
 
 async function onMove(index: number) {
   // props.socket.volatile.emit('set_parameter01', parameters.value[index].name, parameters_local01.value[index]);
-  props.socket.asyncEmit("set_parameter", parameters.value[index]?.id, "value01", parameters_local01.value[index]);
+  props.socket.asyncEmit("set_parameter", parameters.value[index].id, "value01", parameters_local01.value[index]);
 }
 
 async function editItem(event: FocusEvent, item_name: "min" | "max" | "value", index: number) {
-  const parameter = parameters.value[index];
-  if (!parameter) {
-    return;
-  }
   const new_value = (event.target as HTMLElement).textContent?.trim();
   if (validate_numeric(new_value, true)) {
-    props.socket.asyncEmit("set_parameter", parameter.id, item_name, new_value);
+    props.socket.asyncEmit("set_parameter", parameters.value[index].id, item_name, new_value);
   } else {
-    (event.target as HTMLElement).innerText = parameter[`${item_name}_str`];
+    (event.target as HTMLElement).innerText = parameters.value[index][`${item_name}_str`];
   }
 }
 
@@ -143,7 +139,7 @@ async function onInactive(param: parameter_info) {
           @focus="selectContents"
           @blur="(ev) => editItem(ev, 'value', index)"
           @keydown.enter="(e) => (e.target as HTMLElement).blur()"
-          @keydown.esc="(e) => ((e.target as HTMLElement).innerText = parameters_localstr[index] ?? '')"
+          @keydown.esc="(e) => ((e.target as HTMLElement).innerText = parameters_localstr[index])"
         >
           {{ parameters_localstr[index] }}
         </td>

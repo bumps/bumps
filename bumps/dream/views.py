@@ -24,7 +24,7 @@ def plot_all(state: MCMCDraw, portion: Optional[float] = None, figfile=None):
     all_vstats = var_stats(draw)
     print(format_vars(all_vstats))
     print(
-        f"\nStatistics and plots based on {len(draw.points)} samples ({int(100 * draw.portion)}% of total samples drawn)"
+        f"\nStatistics and plots based on {len(draw.points)} samples ({int(100*draw.portion)}% of total samples drawn)"
     )
     if figfile is not None:
         save_vars(all_vstats, figfile + "-err.json")
