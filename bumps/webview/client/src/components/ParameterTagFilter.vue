@@ -22,10 +22,9 @@ function toggle(tag: string, listname: "show" | "hide") {
   }
 }
 
-const tag_colors = computed(() => {
-  // const tag_names = Array.from(new Set(props.parameters.map((p) => p.name).flat())); // test with all parameters
-  const tag_names = Array.from(new Set(props.parameters.map((p) => p.tags ?? []).flat()));
-  let tagColors = Object.fromEntries(tag_names.map((t, i) => [t, COLORS[i % COLORS.length]]));
+const tag_colors = computed((): Record<string, string> => {
+  const tag_names = Array.from(new Set(props.parameters.flatMap((p) => p.tags ?? [])));
+  const tagColors = Object.fromEntries(tag_names.map((t, i) => [t, COLORS[i % COLORS.length]]!));
   return tagColors;
 });
 

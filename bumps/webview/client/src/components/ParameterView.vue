@@ -46,7 +46,7 @@ async function fetch_and_draw() {
 async function editItem(event: FocusEvent, item_name: "min" | "max" | "value", index: number) {
   const new_value = (event.target as HTMLElement).innerText;
   if (validate_numeric(new_value)) {
-    props.socket.asyncEmit("set_parameter", parameters_local.value[index].id, item_name, new_value);
+    props.socket.asyncEmit("set_parameter", parameters_local.value[index]?.id, item_name, new_value);
   }
 }
 
@@ -63,8 +63,8 @@ function validate_numeric(value: string, allow_inf: boolean = false) {
 // }
 
 async function setFittable(event: MouseEvent, index: number) {
-  console.debug(event, event.target, index, parameters_local.value[index].fixed);
-  const parameter = parameters_local.value[index];
+  const parameter = parameters_local.value[index]!;
+  console.debug(event, event.target, index, parameter.fixed);
   props.socket.asyncEmit("set_parameter", parameter.id, "fixed", !parameter.fixed);
 }
 </script>

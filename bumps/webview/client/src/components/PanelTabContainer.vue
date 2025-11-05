@@ -46,7 +46,7 @@ watch(
   </ul>
   <div class="tab-content d-flex flex-column flex-grow-1 overflow-auto">
     <KeepAlive>
-      <component :is="panels[activePanel].component" :socket="props.socket"></component>
+      <component :is="panels[activePanel]?.component" :socket="props.socket"></component>
     </KeepAlive>
   </div>
 </template>
