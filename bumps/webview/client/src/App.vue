@@ -30,6 +30,7 @@ import PanelTabContainer from "./components/PanelTabContainer.vue";
 import ServerShutdown from "./components/ServerShutdown.vue";
 import ServerStartup from "./components/ServerStartup.vue";
 import SessionMenu from "./components/SessionMenu.vue";
+import ThemeToggle from "./components/ThemeToggle.vue";
 import type { Panel } from "./panels";
 
 const props = defineProps<{
@@ -358,6 +359,7 @@ file_menu_items.value = [
             </h4>
           </div>
         </div>
+        <ThemeToggle />
       </div>
     </nav>
     <div v-if="active_layout === 'left-right'" class="flex-grow-1 row overflow-hidden">
