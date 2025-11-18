@@ -51,6 +51,7 @@ import logging
 import os
 import sys
 import traceback
+from types import NoneType
 from typing import Generic, TypeVar, Union, Optional
 import warnings
 
@@ -263,7 +264,11 @@ class FitProblem(Generic[FitnessType]):
         penalty_nllf="inf",
         soft_limit: util.Optional[float] = None,  # TODO: deprecate,
         auto_tag=False,
+        freevars: NoneType = None,  # TODO: deprecate
     ):
+        if freevars is not None:
+            raise ValueError("freevars argument is removed; use FreeVarsFitProblem directly")
+
         if not isinstance(models, (list, tuple)):
             models = [models]
         if callable(constraints):
