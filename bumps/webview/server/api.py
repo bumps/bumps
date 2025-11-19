@@ -299,6 +299,11 @@ async def save_session_copy(pathlist: List[str], filename: str):
 
 
 @register
+async def get_session():
+    return state.get_session_bytes()
+
+
+@register
 async def load_session(pathlist: List[str], filename: str, read_only: bool = False):
     path = Path(*pathlist)
     state.setup_backing(filename, pathlist, read_only=read_only)
@@ -428,6 +433,7 @@ def _export_results(
                 errplot.show_errors(res, save=output_pathstr)
 
         # print("export complete")
+
 
 @register
 async def save_parameters(pathlist: List[str], filename: str, overwrite: bool = False):
