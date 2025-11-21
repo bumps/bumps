@@ -24,6 +24,9 @@ class VarStats(object):
     def __init__(self, **kw):
         self.__dict__ = kw
 
+    def __str__(self):
+        return f"{self.label}={format_uncertainty(self.mean, self.std)}"
+
 
 def var_stats(draw, vars=None):
     if vars is None:
