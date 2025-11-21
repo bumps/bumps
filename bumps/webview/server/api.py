@@ -429,6 +429,7 @@ def _export_results(
 
         # print("export complete")
 
+
 @register
 async def save_parameters(pathlist: List[str], filename: str, overwrite: bool = False):
     problem_state = state.problem
@@ -515,25 +516,6 @@ async def get_chisq(problem: Optional[bumps.fitproblem.FitProblem] = None, nllf=
     return problem.chisq_str(nllf=nllf)  # Default is norm=True and compact=True
 
 
-# TODO: Ask the fitter for the number of steps instead of guessing
-# This is difficult because dream doesn't know it until DreamFit.solve() is called.
-def get_max_steps(num_fitparams: int, fitter_id: str, options: Dict[str, Any]):
-    """Returns the maximum number of iterations allowed for the fit."""
-    # fitter_id = options["fit"]
-    fitter = fit_options.lookup_fitter(fitter_id)
-    options = {**dict(fitter.settings), **dict(options)}
-    steps = options["steps"]  # all fitters have "steps"
-    starts = options.get("starts", 1)  # Multistart fitter
-    # TODO: Max steps is wrong for DE with resume. Instead let the fitter tell the step monitor how many steps.
-    if fitter_id == "dream":  # Dream has steps + burn
-        if steps == 0:  # Steps not specified; using samples instead
-            pop, draws = options["pop"], options["samples"]
-            pop_size = int(math.ceil(pop * num_fitparams)) if pop > 0 else int(-pop)
-            steps = (draws + pop_size - 1) // pop_size
-        steps += options["burn"]
-    return steps * starts
-
-
 def get_running_loop():
     try:
         return asyncio.get_running_loop()
@@ -592,7 +574,6 @@ async def start_fit_thread(fitter_id: str, options: Optional[Dict[str, Any]] = N
     # Clear abort and uncertainty state
     # state.abort = False
     # state.fitting.uncertainty_state = None
-    max_steps = get_max_steps(num_params, fitter_id, options)
     state.fit_abort_event.clear()
     # TODO: remove this re-creation of the Event object when minimum python is >= 3.10
     state.fit_complete_event = asyncio.Event()
@@ -607,6 +588,9 @@ async def start_fit_thread(fitter_id: str, options: Optional[Dict[str, Any]] = N
     # TODO: model.py may have changed; check that the list of parameters is the same
     # TODO: maybe prefer problem saved in store on resume
     # print(f"start fit thread {resume} {state.fitting.fit_state}")
+    fitclass = fit_options.lookup_fitter(fitter_id)
+    max_steps = fitclass.max_steps(fitProblem, full_options)
+
     if resume and state.fitting.method != fitter_id:
         msg = f"Can't resume {fitter_id} from state saved by {state.fitting.method}"
         logger.warning(msg)
@@ -627,7 +611,6 @@ async def start_fit_thread(fitter_id: str, options: Optional[Dict[str, Any]] = N
         )
     )
 
-    fitclass = fit_options.lookup_fitter(fitter_id)
     fit_thread = FitThread(
         fit_abort_event=state.fit_abort_event,
         fitclass=fitclass,
