@@ -63,43 +63,15 @@ def install_plugin(p):
             setattr(plugin, symbol, getattr(p, symbol))
 
 
-def load_model(path, model_options=None):
+def load_model(path: Path | str, model_options: list[str] | None = None):
     """
-    Load a model file.
-
-    *path* contains the path to the model file.
-
-    *model_options* are any additional arguments to the model.  The sys.argv
-    variable will be set such that *sys.argv[1:] == model_options*.
+    *** DEPRECATED***. Use fitproblem.load_model(path, [args=...]) instead.
     """
     from .fitproblem import load_problem
 
-    # Change to the target path before loading model so that data files
-    # can be given as relative paths in the model file.  Add the directory
-    # to the python path (at the end) so that imports work as expected.
-    directory, filename = os.path.split(path)
-    with pushdir(directory):
-        # Try a specialized model loader
-        problem = plugin.load_model(filename)
-        if problem is None:
-            # print "loading",filename,"from",directory
-            # Note: old .pickle files were stored with dill. Very little chance
-            # they will reload in the newer version of python, but we can try.
-            if filename.endswith("pickle"):
-                import dill
-
-                with open(filename, "rb") as fd:
-                    problem = dill.load(fd)
-            else:
-                problem = load_problem(filename, options=model_options)
-
-    # Guard against the user changing parameters after defining the problem.
-    problem.model_reset()
-    problem.path = os.path.abspath(path)
-    if not hasattr(problem, "title"):
-        problem.title = filename
-    problem.name, _ = os.path.splitext(filename)
-    problem.options = model_options
+    problem = load_problem(path, args=model_options)
+    # CRUFT: support old 'problem.options' attribute
+    problem.options = problem.script_args
     return problem
 
 

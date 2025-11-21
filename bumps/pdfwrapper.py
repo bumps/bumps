@@ -18,11 +18,11 @@ import inspect
 import numpy as np
 
 from .parameter import Parameter
-from .fitproblem import Fitness
+from .fitproblem import Fitness, CovarianceMixin
 from .bounds import init_bounds
 
 
-class PDF:
+class PDF(CovarianceMixin):
     """
     Build a model from a function.
 
@@ -122,7 +122,7 @@ class PDF:
     numpoints.__doc__ = Fitness.numpoints.__doc__
 
 
-class VectorPDF:
+class VectorPDF(CovarianceMixin):
     """
     Build a model from a function.
 
@@ -219,7 +219,7 @@ class VectorPDF:
     residuals.__doc__ = Fitness.residuals.__doc__
 
 
-class DirectProblem(object):
+class DirectProblem(CovarianceMixin):
     """
     Build model from negative log likelihood function *f(p)*.
 

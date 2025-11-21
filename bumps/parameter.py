@@ -1029,10 +1029,13 @@ def function(fn: Callable):
     The value of the function is computed from the values of the parameters
     at the time that the function value is requested rather than when the
     function is created.
+
+    Wrapped functions are automatically added to bumps.pmath
     """
     name = fn.__name__
     op = UserFunction(fn)
 
+    # TODO: Return the immediate value when none of the arguments are parameters
     def wrapped(*args: "ValueType"):
         return Expression(op, args)
 
@@ -1108,6 +1111,7 @@ pmath.asinh = asinh = pmath.arcsinh
 pmath.acosh = acosh = pmath.arccosh
 pmath.atanh = atanh = pmath.arctanh
 
+# Add aliases for arc functions to pmath
 pmath.__all__.extend(
     (
         "asin",

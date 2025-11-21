@@ -14,6 +14,7 @@
 import os
 import sys
 
+# os.environ.setdefault('TYPE_CHECKING', 'True')
 sys.dont_write_bytecode = True
 print("python", sys.executable)
 
@@ -64,6 +65,18 @@ extensions = [
 # plot_formats = [('png', 120), ('pdf', 50)] # Only make 80 dpi plots
 
 nitpick_ignore = [
+    ("py:class", "collections.abc.Buffer"),
+    ("py:class", "pathlib.Path"),
+    ("py:class", "socket.socket"),
+    ("py:class", "threading.Event"),
+    ("py:class", "threading.Thread"),
+    ("py:class", "asyncio.locks.Event"),
+    ("py:class", "asyncio.events.AbstractEventLoop"),
+    ("py:class", "deque"),
+    ("py:class", "logging.Handler"),
+    ("py:class", "argparse.Action"),
+    ("py:class", "argparse.RawTextHelpFormatter"),
+    ("py:class", "argparse.ArgumentDefaultsHelpFormatter"),
     # ("py:class", "any"),
     # ("py:class", "type"),
     ("py:class", "enum.Enum"),
@@ -77,14 +90,23 @@ nitpick_ignore = [
     ("py:class", "numpy.ndarray"),
     ("py:class", "NDArray"),
     ("py:class", "h5py._hl.group.Group"),
-    ("py:class", "pathlib.Path"),
+    ("py:class", "Group"),
+    ("py:class", "scipy.optimize._optimize.OptimizeResult"),
     # ("py:class", "Real"),
     # ("py:class", "Integral"),
+    ("py:class", "JSON_TYPE"),
+    # From plotly
+    ("py:class", "go.Figure"),
+    ("py:class", "Draw"),
+    # From bumps
     ("py:class", "bumps.fitproblem.FitnessType"),
     ("py:obj", "bumps.fitproblem.FitnessType"),
-    ("py:class", "bumps.dream.core.Model"),
-    ("py:class", "collections.abc.Buffer"),
+    ("py:class", "bumps.webview.server.state_hdf5_backed.Timestamp"),
+    ("py:obj", "bumps.webview.server.state_hdf5_backed.Timestamp"),
+    ("py:obj", "bumps.webview.server.state_hdf5_backed.UNDEFINED"),
+    ("py:class", "bumps.webview.server.api.ParamInfo"),
 ]
+
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
