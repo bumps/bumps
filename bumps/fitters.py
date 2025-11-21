@@ -1783,7 +1783,7 @@ def fit(
         # Non-standard results. Note convergence is in nominal chisq
         dx=dx,
         dof=dof,
-        timestame=now_string(),
+        timestamp=now_string(),
         # webview FitResults
         state=fit_state,
         convergence=convergence,
