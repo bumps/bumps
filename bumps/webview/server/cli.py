@@ -150,6 +150,7 @@ def _branding():
     output += f"{'='*55}\n"
     return output
 
+
 def get_commandline_options(arg_defaults: Optional[Dict] = None):
     """Parse bumps command line options."""
     # TODO: if running as a refl1d we should show prog=refl1d instead of prog=bumps
@@ -385,6 +386,12 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         default=0,
         type=int,
         help="run fit using multiprocessing for parallelism; use --parallel=0 for all cpus",
+    )
+    misc.add_argument(
+        "--threads",
+        action="store_true",
+        help=argparse.SUPPRESS,
+        # help="run fit using multithreading for parallelism",
     )
     misc.add_argument(
         "--mpi",
@@ -629,7 +636,7 @@ def interpret_fit_options(options: BumpsOptions):
 
     need_mapper = not options.chisq
     if need_mapper:
-        from bumps.mapper import MPIMapper, MPMapper, SerialMapper, using_mpi
+        from bumps.mapper import MPIMapper, MPMapper, SerialMapper, ThreadPoolMapper, using_mpi
 
         async def start_mapper(App=None):
             # print(f"{api.state.rank}start mapper")
@@ -646,6 +653,8 @@ def interpret_fit_options(options: BumpsOptions):
                 mapper = MPIMapper
             elif options.parallel == 1:
                 mapper = SerialMapper
+            elif options.threads:
+                mapper = ThreadPoolMapper
             else:
                 mapper = MPMapper
             mapper.start_worker(problem)
