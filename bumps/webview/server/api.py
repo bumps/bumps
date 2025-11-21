@@ -85,6 +85,22 @@ def register(fn: Callable):
     return fn
 
 
+def register_download(mimetype: str = "application/octet-stream", filename: str = "result.dat"):
+    """
+    Decorator to register a function as a download endpoint with a specific mimetype.
+    """
+
+    def decorator(fn: Callable):
+        # Store the mimetype as an attribute on the function
+        fn.mimetype = mimetype
+        fn.filename = filename
+        # Register the function in the REGISTRY
+        REGISTRY[fn.__name__] = fn
+        return fn
+
+    return decorator
+
+
 class Emitter(Protocol):
     def __call__(
         self,
@@ -298,6 +314,11 @@ async def save_session_copy(pathlist: List[str], filename: str):
     state.write_session_file(str(path / filename))
 
 
+@register_download(mimetype="application/octet-stream", filename="session.h5")
+async def get_session():
+    return state.get_session_bytes()
+
+
 @register
 async def load_session(pathlist: List[str], filename: str, read_only: bool = False):
     path = Path(*pathlist)
@@ -428,6 +449,7 @@ def _export_results(
                 errplot.show_errors(res, save=output_pathstr)
 
         # print("export complete")
+
 
 @register
 async def save_parameters(pathlist: List[str], filename: str, overwrite: bool = False):
