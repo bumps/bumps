@@ -70,7 +70,7 @@ async function fetch_and_draw(latest_timestamp?: string) {
         return;
       }
       // we are putting an array of numbers in customdata on the server side.
-      vars.value = ev.points[0].data.customdata as number[];
+      vars.value = ev.points[0]?.data.customdata as number[];
       fetch_and_draw();
     });
     callback_registered.value = true;

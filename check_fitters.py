@@ -43,7 +43,7 @@ def run_fit(fitter, model_args, store, seed=1):
         f"--session={store}",
         f"--seed={seed}",
         "--batch",
-        f"--export={str(Path(store).parent / ('T1-'+fitter))}",
+        f"--export={str(Path(store).parent / ('T1-' + fitter))}",
     ]
     if len(model_args) > 1:
         command += ["--args", *model_args[1:]]

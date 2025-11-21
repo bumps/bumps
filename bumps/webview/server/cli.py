@@ -141,14 +141,15 @@ class HelpFormatter(argparse.RawTextHelpFormatter, argparse.ArgumentDefaultsHelp
 
 def _branding():
     """Return a string with version and system information."""
-    output = f"{'='*55}\n"
+    output = f"{'=' * 55}\n"
     output += f"{api.state.app_name}\t\t{api.state.app_version}\n"
     if api.state.app_name != "bumps":
         output += f"bumps\t\t{bumps_version}\n"
     output += "Python\t\t" + ".".join(map(str, sys.version_info[:3])) + "\n"
     output += f"Platform\t{sys.platform}\n"
-    output += f"{'='*55}\n"
+    output += f"{'=' * 55}\n"
     return output
+
 
 def get_commandline_options(arg_defaults: Optional[Dict] = None):
     """Parse bumps command line options."""
