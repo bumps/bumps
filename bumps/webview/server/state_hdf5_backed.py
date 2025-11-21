@@ -625,13 +625,17 @@ class State:
         shutil.move(tmp_name, session_fullpath)
         os.chmod(session_fullpath, 0o644)
 
-    def get_session_bytestring(self) -> str:
-        # Get session as byte string
+    def get_session_bytes(self) -> bytes:
+        # Get session as bytes
 
         with h5py.File("in_memory.h5", mode="w", driver="core", backing_store=False) as root_group:
             self._write_session(root_group)
             root_group.flush()
-            return base64.b64encode(root_group.id.get_file_image()).decode("utf-8")
+            return root_group.id.get_file_image()
+
+    def get_session_bytestring(self) -> str:
+        # Get session as byte string
+        return base64.b64encode(self.get_session_bytes()).decode("utf-8")
 
     def read_session_bytestring(self, session_bytestring: str, read_problem: bool = True, read_fitstate: bool = True):
         # load session from byte string
