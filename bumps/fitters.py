@@ -255,7 +255,9 @@ class FitBase(object):
         raise NotImplementedError()
 
     @classmethod
-    def max_steps(cls, problem: "bumps.fitproblem.FitProblem", options: Optional[Dict[str, Any]] = None) -> int:
+    def max_steps(
+        cls, problem: Optional["bumps.fitproblem.FitProblem"] = None, options: Optional[Dict[str, Any]] = None
+    ) -> int:
         """
         Return the maximum number of steps the fitter will take based on
         the given options.
@@ -333,7 +335,9 @@ class MultiStart(FitBase):
         return x_best, f_best
 
     @classmethod
-    def max_steps(cls, problem: "bumps.fitproblem.FitProblem", options: Optional[Dict[str, Any]] = None) -> int:
+    def max_steps(
+        cls, problem: Optional["bumps.fitproblem.FitProblem"] = None, options: Optional[Dict[str, Any]] = None
+    ) -> int:
         raise ValueError("Cannot call max steps on MultiStart directly; use the wrapped fitter.")
 
 
@@ -1037,7 +1041,7 @@ class DreamFit(FitBase):
             pop_size = int(np.ceil(pop * num_fitparams)) if pop > 0 else int(-pop)
             DE_steps = Dream.DE_steps  # DreamFit does not override DE_steps, uses default
             steps = (draws + pop_size - 1) // pop_size
-            steps += steps % DE_steps  # round up to multiple of DE_steps
+            steps = int(np.ceil(steps / DE_steps)) * DE_steps  # round up to multiple of DE_steps
         steps += options["burn"]
         return steps
 
