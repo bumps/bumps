@@ -51,6 +51,7 @@ import logging
 import os
 import sys
 import traceback
+from types import NoneType
 from typing import Generic, TypeVar, Union, Optional
 import warnings
 
@@ -73,6 +74,8 @@ class Fitness(util.Protocol):
 
     See :ref:`fitness` for a detailed explanation.
     """
+
+    name: Optional[str]
 
     def parameters(self) -> util.List[Parameter]:
         """
@@ -211,9 +214,6 @@ class FitProblem(Generic[FitnessType]):
         weights should be in [0, 1], representing an unknown systematic
         uncertainty spread across the individual measurements.
 
-        *freevars* is :class:`.parameter.FreeVariables` instance defining the
-        per-model parameter assignments.  See :ref:`freevariables` for details.
-
 
     Additional parameters:
 
@@ -243,7 +243,6 @@ class FitProblem(Generic[FitnessType]):
 
     name: util.Optional[str]
     models: util.List[FitnessType]
-    freevars: util.Optional[parameter.FreeVariables]
     weights: util.Union[util.List[float], util.Literal[None]]
     constraints: util.Optional[util.Sequence[parameter.Constraint]]
     penalty_nllf: util.Union[float, util.Literal["inf"]]
@@ -263,10 +262,13 @@ class FitProblem(Generic[FitnessType]):
         name=None,
         constraints=None,
         penalty_nllf="inf",
-        freevars=None,
         soft_limit: util.Optional[float] = None,  # TODO: deprecate,
         auto_tag=False,
+        freevars: NoneType = None,  # TODO: deprecate
     ):
+        if freevars is not None:
+            raise ValueError("freevars argument is removed; use FreeVarsFitProblem directly")
+
         if not isinstance(models, (list, tuple)):
             models = [models]
         if callable(constraints):
@@ -277,10 +279,6 @@ class FitProblem(Generic[FitnessType]):
             self._constraints_function = self._null_constraints_function
             # TODO: do we want to allow "constraints=a<b" or do we require a sequence "constraints=[a<b]"?
             self.constraints = constraints if constraints is not None else []
-        if freevars is None:
-            names = ["M%d" % i for i, _ in enumerate(models)]
-            freevars = parameter.FreeVariables(names=names)
-        self.freevars = freevars
         if auto_tag:
             for index, model in enumerate(models):
                 model_name = model.name if model.name is not None else f"Model{index}"
@@ -290,7 +288,6 @@ class FitProblem(Generic[FitnessType]):
             weights = [1.0 for _ in models]
         self.weights = weights
         self.penalty_nllf = float(penalty_nllf)
-        self.set_active_model(0)  # Set the active model to model 0
         self.name = name
 
         # Do this step last so that it has all of the attributes initialized.
@@ -311,33 +308,14 @@ class FitProblem(Generic[FitnessType]):
     def dof(self):
         return self._dof
 
-    # TODO: make this @property\ndef models(self): ...
     @property
     def models(self):
-        """Iterate over models, with free parameters set from model values"""
-        try:
-            for i, f in enumerate(self._models):
-                self.freevars.set_model(i)
-                yield f
-        finally:
-            # Restore the active model after cycling, even if interrupted
-            self.freevars.set_model(self._active_model_index)
-
-    # noinspection PyAttributeOutsideInit
-    def set_active_model(self, i):
-        """Use free parameters from model *i*"""
-        self._active_model_index = i
-        self.active_model = self._models[i]
-        self.freevars.set_model(i)
+        """Return the list of models in the problem"""
+        return self._models
 
     def model_parameters(self):
         """Return parameters from all models"""
-        pars = {}
-        pars["models"] = [f.parameters() for f in self.models]
-        free = self.freevars.parameters()
-        if free:
-            pars["freevars"] = free
-        return pars
+        return {"models": [f.parameters() for f in self.models]}
 
     def to_dict(self):
         return {
@@ -348,7 +326,6 @@ class FitProblem(Generic[FitnessType]):
             "penalty_nllf": self.penalty_nllf,
             # TODO: constraints may be a function.
             "constraints": to_dict(self.constraints),
-            "freevars": to_dict(self.freevars),
         }
 
     def __repr__(self):
@@ -732,8 +709,7 @@ class FitProblem(Generic[FitnessType]):
     def show(self):
         for i, f in enumerate(self.models):
             print("-- Model %d %s" % (i, getattr(f, "name", "")))
-            subs = self.freevars.get_model(i) if self.freevars else {}
-            fitness_show_parameters(f, subs=subs)
+            fitness_show_parameters(f, subs={})
         print("[overall chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
 
     def plot(self, p=None, fignum=1, figfile=None, view=None, model_indices=None):
@@ -761,6 +737,62 @@ class FitProblem(Generic[FitnessType]):
 
     def __setstate__(self, state):
         self.__dict__ = state
+
+
+@dataclass(init=False, eq=False)
+class FreeVarsFitProblem(FitProblem[FitnessType]):
+    """
+    FitProblem where FreeVars is used to substitute parameters into models.
+
+    Parameters:
+    *freevars* is :class:`.parameter.FreeVariables` instance defining the
+        per-model parameter assignments.  See :ref:`freevariables` for details.
+
+    """
+
+    freevars: parameter.FreeVariables
+
+    def __init__(self, *args, freevars=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if freevars is None:
+            raise ValueError("freevars must be provided to FreeVarsFitProblem")
+        self.freevars = freevars if freevars is not None else parameter.FreeVariables()
+        self.set_active_model(0)
+        self.model_reset()
+
+    @property
+    def models(self):  # type: ignore
+        """Iterate over models, with free parameters set from model values"""
+        try:
+            for i, f in enumerate(self._models):
+                self.freevars.set_model(i)
+                yield f
+        finally:
+            # Restore the active model after cycling, even if interrupted
+            self.freevars.set_model(self._active_model_index)
+
+    # noinspection PyAttributeOutsideInit
+    def set_active_model(self, i):
+        """Use free parameters from model *i*"""
+        self._active_model_index = i
+        self.active_model = self._models[i]
+        self.freevars.set_model(i)
+
+    def model_parameters(self):
+        """Return parameters from all models"""
+        pars = {}
+        pars["models"] = [f.parameters() for f in self.models]
+        free = self.freevars.parameters()
+        if free:
+            pars["freevars"] = free
+        return pars
+
+    def show(self):
+        for i, f in enumerate(self.models):
+            print("-- Model %d %s" % (i, getattr(f, "name", "")))
+            subs = self.freevars.get_model(i) if self.freevars else {}
+            fitness_show_parameters(f, subs=subs)
+        print("[overall chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
 
 
 # TODO: consider adding nllf_scale to FitProblem.
