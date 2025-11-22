@@ -13,17 +13,15 @@ parts of the model, or different models.
 
 # __all__ = [ 'Parameter']
 import operator
-import sys
 import builtins
-from dataclasses import dataclass, field, InitVar
+from dataclasses import dataclass, field
 from functools import reduce
 import warnings
-from copy import copy
+from copy import copy, deepcopy
 import uuid
-from functools import wraps
 from enum import Enum
 
-from typing import Type, TypeVar, Optional, Any, Union, Dict, Callable, Tuple, List, Sequence
+from typing import Optional, Any, Union, Dict, Callable, Tuple, List, Sequence
 from .util import Literal
 
 import numpy as np
@@ -669,8 +667,8 @@ class Parameter(ValueProtocol, SupportsPrior):
 
         Use :meth:`unlink` to convert from an expression to a variable.
         """
-        if isinstance(self.slot, Calculation):
-            raise TypeError("parameter is calculated by the model and cannot be changed")
+        if isinstance(self.slot, (Calculation, Constant)):
+            raise TypeError("Parameter is set by the model and cannot be changed")
         elif expression is self:
             # don't make a circular reference to self.
             warnings.warn(f"{self} tried to make circular reference to self...")
@@ -679,8 +677,8 @@ class Parameter(ValueProtocol, SupportsPrior):
             self.slot = expression
 
     def unlink(self):
-        if isinstance(self.slot, Calculation):
-            raise TypeError("parameter is calculated by the model and cannot be changed")
+        if isinstance(self.slot, (Calculation, Constant)):
+            raise TypeError("Parameter is set by the model and cannot be changed")
         # Replace the slot with a new variable initialized to the only variable value
         self.slot = Variable(self.value)
 
@@ -695,10 +693,18 @@ class Parameter(ValueProtocol, SupportsPrior):
             self.tags = [t for t in self.tags if not t == tag]
 
     def __copy__(self):
-        """copy will only be called when a new instance is desired, with a different id"""
+        """
+        Copy will only be called when a new instance is desired, with a different id.
+        Make sure the slot is not shared with the original, otherwise the parameters
+        will be tied together after the copy.
+        """
         obj = type(self).__new__(self.__class__)
         obj.__dict__.update(self.__dict__)
         obj.id = str(uuid.uuid4())
+        # Note: ValueType (Expression, Parameter, float) can be shared
+        # between slots, but each parameter needs its own variable.
+        if isinstance(self.slot, Variable):
+            obj.slot = copy(self.slot)
         return obj
 
 
@@ -1228,7 +1234,9 @@ class ParameterSet:
         """
         Set the underlying model parameter to the value of the nth model.
         """
+        # TODO: should we be updating the slot rather than the value?
         self.reference.value = self.parameters[index].value
+        # self.reference.equals(self.parameters[index])
 
     def get_model(self, index):
         """
@@ -1298,8 +1306,9 @@ class Reference(Parameter):
         setattr(self.obj, self.attr, value)
 
 
+# TODO: Can we implement the equivalent of FreeVariables that preserves caching?
 @dataclass(init=False)
-class FreeVariables(object):
+class FreeVariables:
     """
     A collection of parameter sets for a group of models.
 
@@ -1319,6 +1328,12 @@ class FreeVariables(object):
     sample structure, sharing references to common parameters and creating
     new parameters for each model for the free parameters.  Setting up
     these copies was inconvenient.
+
+    Note that using FreeVariables within a fitproblem erases any caching that
+    happens within the model. This means, for example, that the theory function
+    will be calculated once for plotting and again for computing χ². To
+    avoid unnecessary cache clearing, use bool(freevars) to test if there are
+    parameters to substitute.
     """
 
     names: List[str]
@@ -1354,6 +1369,12 @@ class FreeVariables(object):
         except KeyError:
             raise AttributeError("FreeVariables has no attribute %r" % k)
 
+    def __bool__(self):
+        """
+        *if freevars* is true when there are variables to be substituted into the model.
+        """
+        return bool(self.parametersets)
+
     def parameters(self):
         """
         Return the set of free variables for all the models.
@@ -1375,6 +1396,10 @@ class FreeVariables(object):
         Get the parameters for model *i* as {reference: substitution}
         """
         return dict(p.get_model(i) for p in self.parametersets.values())
+
+    def isfree(self, param):
+        pid = getattr(param, "id", None)  # Expressions don't have an id
+        return any(pid == pset.reference.id for pset in self.parametersets.values())
 
 
 def flatten(s):
@@ -1398,6 +1423,9 @@ def format(p, indent=0, freevars=None, field=None):
 
     Note that this only says how the parameters are arranged, not how they
     relate to each other.
+
+    Note that *freevars* here is the substitution dictionary returned by
+    *FreeVars.get_model(i)*, not the FreeVars object itself.
     """
     freevars = {} if freevars is None else freevars
     p = freevars.get(id(p), p)
@@ -1563,7 +1591,6 @@ def copy_linked(has_parameters, free_names=None):
      - those with names matching "free_names"
     """
     assert callable(getattr(has_parameters, "parameters", None)) == True
-    from copy import deepcopy
 
     copied = deepcopy(has_parameters)
     free_names = [] if free_names is None else free_names
