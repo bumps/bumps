@@ -411,6 +411,157 @@ class Curve:
             pylab.subplot2grid((plot_ratio, 1), (plot_ratio - 1, 0), sharex=h)
             _plot_resids(x, resid, colors=colors, labels=labels, view=view)
 
+    def plotly(self, view=None):
+        """Create an interactive plot using plotly."""
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
+
+        x = self.x
+        if self.plot_x is not None:
+            theory_x, theory_y = self.plot_x, self.theory(self.plot_x)
+        else:
+            theory_x, theory_y = x, self.theory()
+        resid = self.residuals()
+
+        if self._num_curves > 1:
+            y, dy, theory_y, resid = self.y.T, self.dy.T, theory_y.T, resid.T
+        else:
+            y, dy, theory_y, resid = (v[:, None] for v in (self.y, self.dy, theory_y, resid))
+
+        labels = self.labels
+
+        # Color scheme similar to coordinated_colors
+        colors = [
+            {"base": "rgb(31, 119, 180)", "dark": "rgb(23, 89, 135)"},  # blue
+            {"base": "rgb(255, 127, 14)", "dark": "rgb(191, 95, 10)"},  # orange
+            {"base": "rgb(44, 160, 44)", "dark": "rgb(33, 120, 33)"},  # green
+            {"base": "rgb(214, 39, 40)", "dark": "rgb(160, 29, 30)"},  # red
+            {"base": "rgb(148, 103, 189)", "dark": "rgb(111, 77, 142)"},  # purple
+        ]
+        colors = colors[: self._num_curves]
+
+        if view == "residual":
+            # Only residuals plot
+            fig = go.Figure()
+
+            # Add reference lines
+            fig.add_hline(y=1, line=dict(dash="dot", color="black"))
+            fig.add_hline(y=0, line=dict(dash="solid", color="black"))
+            fig.add_hline(y=-1, line=dict(dash="dot", color="black"))
+
+            # Add residual traces
+            for k, color in enumerate(colors):
+                fig.add_trace(
+                    go.Scatter(
+                        x=x,
+                        y=resid[:, k],
+                        mode="markers",
+                        marker=dict(color=color["base"]),
+                        name=labels[k + 2] if self._num_curves > 1 else "residuals",
+                        showlegend=self._num_curves > 1,
+                    )
+                )
+
+            fig.update_xaxes(title_text=labels[0])
+            fig.update_yaxes(title_text="(f(x)-y)/dy")
+
+            # Apply axis scaling
+            if view == "logx":
+                fig.update_xaxes(type="log")
+            elif view == "loglog":
+                fig.update_xaxes(type="log")
+
+        else:
+            # Combined fit and residuals plot
+            plot_ratio = 4
+            fig = make_subplots(
+                rows=2,
+                cols=1,
+                row_heights=[plot_ratio - 1, 1],
+                shared_xaxes=True,
+                vertical_spacing=0.02,
+                subplot_titles=None,
+            )
+
+            # Add fit traces to top subplot
+            for k, color in enumerate(colors):
+                # Data with error bars
+                fig.add_trace(
+                    go.Scatter(
+                        x=x,
+                        y=y[:, k],
+                        error_y=dict(type="data", array=dy[:, k], visible=True),
+                        mode="markers",
+                        marker=dict(color=color["base"]),
+                        name=labels[k + 2],
+                        showlegend=self._num_curves > 1,
+                        legendgroup=f"group{k}",
+                    ),
+                    row=1,
+                    col=1,
+                )
+
+                # Theory line
+                fig.add_trace(
+                    go.Scatter(
+                        x=theory_x,
+                        y=theory_y[:, k],
+                        mode="lines",
+                        line=dict(color=color["dark"]),
+                        name=labels[k + 2],
+                        showlegend=False,
+                        legendgroup=f"group{k}",
+                    ),
+                    row=1,
+                    col=1,
+                )
+
+            # Add residual reference lines to bottom subplot
+            fig.add_hline(y=1, line=dict(dash="dot", color="black"), row=2, col=1)
+            fig.add_hline(y=0, line=dict(dash="solid", color="black"), row=2, col=1)
+            fig.add_hline(y=-1, line=dict(dash="dot", color="black"), row=2, col=1)
+
+            # Add residual traces to bottom subplot
+            for k, color in enumerate(colors):
+                fig.add_trace(
+                    go.Scatter(
+                        x=x,
+                        y=resid[:, k],
+                        mode="markers",
+                        marker=dict(color=color["base"]),
+                        name=labels[k + 2],
+                        showlegend=False,
+                        legendgroup=f"group{k}",
+                    ),
+                    row=2,
+                    col=1,
+                )
+
+            # Update axes
+            fig.update_xaxes(title_text=labels[0], row=2, col=1)
+            fig.update_yaxes(title_text=labels[1], row=1, col=1)
+            fig.update_yaxes(title_text="(f(x)-y)/dy", row=2, col=1)
+
+            # Apply axis scaling
+            if view == "log":
+                fig.update_yaxes(type="log", row=1, col=1)
+            elif view == "logx":
+                fig.update_xaxes(type="log")
+            elif view == "logy":
+                fig.update_yaxes(type="log", row=1, col=1)
+            elif view == "loglog":
+                fig.update_xaxes(type="log")
+                fig.update_yaxes(type="log", row=1, col=1)
+
+        # Update layout
+        fig.update_layout(
+            # height=600 if view != "residual" else 300,
+            hovermode="closest",
+            showlegend=self._num_curves > 1,
+        )
+
+        return fig
+
     def register_webview_plot(
         self, plot_title: str, plot_function: Callable, change_with: Literal["parameter", "uncertainty"]
     ):

@@ -43,7 +43,7 @@ async function fetch_and_draw() {
   let { fig_type, plotdata } = payload as { fig_type: "plotly" | "mpld3"; plotdata: object };
   if (fig_type === "plotly") {
     const { data, layout } = plotdata as Plotly.PlotlyDataLayoutConfig;
-    const config = { responsive: true };
+    const config = { responsive: true, scrollZoom: true };
     await Plotly.react(plot_div.value as HTMLDivElement, [...data], layout, config);
   } else if (fig_type === "mpld3") {
     let mpld3_data = plotdata as { width: number; height: number };
