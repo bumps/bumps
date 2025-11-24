@@ -595,7 +595,7 @@ class State:
             self.save()
 
     def save(self):
-        if self.shared.session_output_file not in [None, UNDEFINED]:
+        if self.shared.session_output_file not in (None, UNDEFINED):
             pathlist = self.shared.session_output_file["pathlist"]
             filename = self.shared.session_output_file["filename"]
             full_path = Path(*pathlist) / filename
@@ -604,7 +604,7 @@ class State:
     def _write_session(self, root_group: h5py.File):
         self.problem.write(root_group)
         history_group = self.history.write(root_group)
-        if self.shared.active_history is not None:
+        if self.shared.active_history not in (None, UNDEFINED):
             active_history_group = history_group.get(self.shared.active_history)
             # make a hard link instead of writing the fitting state
             root_group["fitting"] = active_history_group["fitting"]
