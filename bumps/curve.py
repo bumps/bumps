@@ -430,14 +430,20 @@ class Curve:
 
         labels = self.labels
 
+        marker_size = 10
+        line_thickness = 2
+        opacity = 0.6
+
         # Color scheme similar to coordinated_colors
         colors = [
-            {"base": "rgb(31, 119, 180)", "dark": "rgb(23, 89, 135)"},  # blue
-            {"base": "rgb(255, 127, 14)", "dark": "rgb(191, 95, 10)"},  # orange
-            {"base": "rgb(44, 160, 44)", "dark": "rgb(33, 120, 33)"},  # green
-            {"base": "rgb(214, 39, 40)", "dark": "rgb(160, 29, 30)"},  # red
-            {"base": "rgb(148, 103, 189)", "dark": "rgb(111, 77, 142)"},  # purple
+            {"base": f"rgba(31, 119, 180, {opacity})", "dark": f"rgba(23, 89, 135, {opacity})"},  # blue
+            {"base": f"rgba(255, 127, 14, {opacity})", "dark": f"rgba(191, 95, 10, {opacity})"},  # orange
+            {"base": f"rgba(44, 160, 44, {opacity})", "dark": f"rgba(33, 120, 33, {opacity})"},  # green
+            {"base": f"rgba(214, 39, 40, {opacity})", "dark": f"rgba(160, 29, 30, {opacity})"},  # red
+            {"base": f"rgba(148, 103, 189, {opacity})", "dark": f"rgba(111, 77, 142, {opacity})"},  # purple
         ]
+        color_axes = "rgb(200, 200, 200)"
+        color_hlines = "rgb(100, 100, 100)"
         colors = colors[: self._num_curves]
 
         if view == "residual":
@@ -445,9 +451,9 @@ class Curve:
             fig = go.Figure()
 
             # Add reference lines
-            fig.add_hline(y=1, line=dict(dash="dot", color="black"))
-            fig.add_hline(y=0, line=dict(dash="solid", color="black"))
-            fig.add_hline(y=-1, line=dict(dash="dot", color="black"))
+            fig.add_hline(y=1, line=dict(dash="dot", color=color_hlines), layer="below")
+            fig.add_hline(y=0, line=dict(dash="solid", color=color_hlines), layer="below")
+            fig.add_hline(y=-1, line=dict(dash="dot", color=color_hlines), layer="below")
 
             # Add residual traces
             for k, color in enumerate(colors):
@@ -456,7 +462,14 @@ class Curve:
                         x=x,
                         y=resid[:, k],
                         mode="markers",
-                        marker=dict(color=color["base"]),
+                        marker=dict(
+                            size=marker_size,
+                            color=color["base"],
+                            line=dict(
+                                color=color["dark"],
+                                width=line_thickness,
+                            ),
+                        ),
                         name=labels[k + 2] if self._num_curves > 1 else "residuals",
                         showlegend=self._num_curves > 1,
                     )
@@ -490,9 +503,23 @@ class Curve:
                     go.Scatter(
                         x=x,
                         y=y[:, k],
-                        error_y=dict(type="data", array=dy[:, k], visible=True),
+                        error_y=dict(
+                            type="data",
+                            array=dy[:, k],
+                            visible=True,
+                            color=color["dark"],
+                            thickness=line_thickness,
+                            width=marker_size / 1.5,
+                        ),
                         mode="markers",
-                        marker=dict(color=color["base"]),
+                        marker=dict(
+                            size=marker_size,
+                            color=color["base"],
+                            line=dict(
+                                color=color["dark"],
+                                width=line_thickness,
+                            ),
+                        ),
                         name=labels[k + 2],
                         showlegend=self._num_curves > 1,
                         legendgroup=f"group{k}",
@@ -516,11 +543,6 @@ class Curve:
                     col=1,
                 )
 
-            # Add residual reference lines to bottom subplot
-            fig.add_hline(y=1, line=dict(dash="dot", color="black"), row=2, col=1)
-            fig.add_hline(y=0, line=dict(dash="solid", color="black"), row=2, col=1)
-            fig.add_hline(y=-1, line=dict(dash="dot", color="black"), row=2, col=1)
-
             # Add residual traces to bottom subplot
             for k, color in enumerate(colors):
                 fig.add_trace(
@@ -528,7 +550,14 @@ class Curve:
                         x=x,
                         y=resid[:, k],
                         mode="markers",
-                        marker=dict(color=color["base"]),
+                        marker=dict(
+                            size=marker_size,
+                            color=color["base"],
+                            line=dict(
+                                color=color["dark"],
+                                width=line_thickness,
+                            ),
+                        ),
                         name=labels[k + 2],
                         showlegend=False,
                         legendgroup=f"group{k}",
@@ -537,10 +566,23 @@ class Curve:
                     col=1,
                 )
 
+            # Add residual reference lines to bottom subplot
+            fig.add_hline(
+                y=1, line=dict(dash="dot", color=color_hlines, width=line_thickness), row=2, col=1, layer="below"
+            )
+            fig.add_hline(
+                y=0, line=dict(dash="solid", color=color_hlines, width=line_thickness), row=2, col=1, layer="below"
+            )
+            fig.add_hline(
+                y=-1, line=dict(dash="dot", color=color_hlines, width=line_thickness), row=2, col=1, layer="below"
+            )
+
             # Update axes
+            axis_kwargs = dict(showline=True, linewidth=line_thickness, linecolor=color_axes)
+            yaxis_kwargs = dict(zeroline=True, zerolinewidth=line_thickness, zerolinecolor=color_axes)
             fig.update_xaxes(title_text=labels[0], row=2, col=1)
-            fig.update_yaxes(title_text=labels[1], row=1, col=1)
-            fig.update_yaxes(title_text="(f(x)-y)/dy", row=2, col=1)
+            fig.update_yaxes(title_text=labels[1], row=1, col=1, **axis_kwargs, **yaxis_kwargs)
+            fig.update_yaxes(title_text="(f(x)-y)/dy", row=2, col=1, **axis_kwargs, **yaxis_kwargs)
 
             # Apply axis scaling
             if view == "log":
@@ -556,7 +598,9 @@ class Curve:
         # Update layout
         fig.update_layout(
             # height=600 if view != "residual" else 300,
+            template="plotly_white",
             hovermode="closest",
+            font=dict(size=16),
             showlegend=self._num_curves > 1,
         )
 
