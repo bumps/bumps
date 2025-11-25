@@ -585,15 +585,16 @@ class Curve:
             fig.update_yaxes(title_text="(f(x)-y)/dy", row=2, col=1, **axis_kwargs, **yaxis_kwargs)
 
             # Apply axis scaling
+            log_kwargs = dict(exponentformat="power")
             if view == "log":
-                fig.update_yaxes(type="log", row=1, col=1)
+                fig.update_yaxes(type="log", row=1, col=1, **log_kwargs)
             elif view == "logx":
-                fig.update_xaxes(type="log")
+                fig.update_xaxes(type="log", **log_kwargs)
             elif view == "logy":
-                fig.update_yaxes(type="log", row=1, col=1)
+                fig.update_yaxes(type="log", row=1, col=1, **log_kwargs)
             elif view == "loglog":
-                fig.update_xaxes(type="log")
-                fig.update_yaxes(type="log", row=1, col=1)
+                fig.update_xaxes(type="log", **log_kwargs)
+                fig.update_yaxes(type="log", row=1, col=1, **log_kwargs)
 
         # Update layout
         fig.update_layout(
