@@ -118,12 +118,6 @@ class SerialMapper(BaseMapper):
         pass
 
 
-# Load the problem in the remote process rather than pickling
-# def _MP_load_problem(*modelargs):
-#    from .fitproblem import load_problem
-#    _MP_set_problem(load_problem(*modelargs))
-
-
 def _MP_setup():
     # Using MPMapper class variables to store worker globals.
     # It doesn't matter if they conflict with the controller values since

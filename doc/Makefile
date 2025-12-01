@@ -40,8 +40,8 @@ help:
 clean:
 	# Cleaning matplotlib plots from build
 	# Cleaning html/pdf from $(BUILDDIR)
-	# Resetting api/ and tutorial/
-	-rm -rf $(BUILDDIR) api tutorial
+	# Resetting tutorial and autodoc directories
+	-rm -rf $(BUILDDIR) tutorial api dream server
 
 html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
