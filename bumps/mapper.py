@@ -92,6 +92,27 @@ def nice():
         os.nice(5)
 
 
+def pool_size(cpus=0):
+    """
+    Get the number of cpus available for processing, or use the number provided.
+
+    On linux, use os.sched_getaffinity to count the number of cpus allocated to the
+    process rather than multiprocessing.cpu_count to return all processors on the
+    system. This allows us to restrict the amount of parallelism to the number of
+    cpus allocated by slurm when running on a compute cluster with a partial node.
+    """
+    if cpus > 0:
+        return cpus
+
+    # Use sched_getaffinity if available (only on linux)
+    if hasattr(os, "sched_getaffinity"):
+        return len(os.sched_getaffinity(0))
+
+    import multiprocessing
+
+    return multiprocessing.cpu_count()
+
+
 # Noise so that the type checker is happy
 class BaseMapper(object):
     has_problem = False
@@ -171,9 +192,7 @@ class MPMapper(BaseMapper):
             # Create a sync namespace to distribute the problem description.
             MPMapper.manager = multiprocessing.Manager()
             # Start the process pool, sending the namespace handle
-            if cpus == 0:
-                cpus = multiprocessing.cpu_count()
-            MPMapper.pool = multiprocessing.Pool(cpus, _MP_setup)
+            MPMapper.pool = multiprocessing.Pool(pool_size(cpus), _MP_setup)
 
         # Increment the problem number and store the problem in the namespace.
         # The store action uses pickle to transfer python objects to the
@@ -213,7 +232,7 @@ def _TP_run_problem(problem_point_tuple):
 
     # Get or create thread-local problem copy
     thread_local = threading.current_thread()
-    if getattr(thread_local, 'problem_id', None) != problem_id:
+    if getattr(thread_local, "problem_id", None) != problem_id:
         thread_local.problem_id = problem_id
         thread_local.problem_copy = copy.deepcopy(original_problem)
     return thread_local.problem_copy.nllf(point)
@@ -229,6 +248,7 @@ class ThreadPoolMapper(BaseMapper):
     This mapper will only be efficient when using a free-threaded python interpreter
     (otherwise the GIL will prevent true parallelism).
     """
+
     pool = None
     problem_id = 0
 
@@ -240,17 +260,17 @@ class ThreadPoolMapper(BaseMapper):
     def start_mapper(problem, modelargs=None, cpus=0):
         # Set up the thread pool on the first call.
         if ThreadPoolMapper.pool is None:
-            if cpus == 0:
-                import multiprocessing
-                cpus = multiprocessing.cpu_count()
-            ThreadPoolMapper.pool = ThreadPoolExecutor(max_workers=cpus)
+            ThreadPoolMapper.pool = ThreadPoolExecutor(max_workers=pool_size(cpus))
 
         ThreadPoolMapper.problem_id += 1
 
         # Create mapper function that submits tasks to thread pool
         def mapper(points):
             try:
-                futures = [ThreadPoolMapper.pool.submit(_TP_run_problem, (ThreadPoolMapper.problem_id, p, problem)) for p in points]
+                futures = [
+                    ThreadPoolMapper.pool.submit(_TP_run_problem, (ThreadPoolMapper.problem_id, p, problem))
+                    for p in points
+                ]
                 # Collect results in order
                 return [future.result() for future in futures]
             except KeyboardInterrupt:
