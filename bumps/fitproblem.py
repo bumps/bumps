@@ -44,8 +44,9 @@ Summary of problem attributes::
 
 """
 
-__all__ = ["Fitness", "FitProblem", "load_problem"]
+__all__ = ["Fitness", "FitProblem", "CovarianceMixin", "load_problem"]
 
+from contextlib import contextmanager
 from dataclasses import dataclass
 import logging
 import os
@@ -53,13 +54,14 @@ import sys
 import traceback
 from typing import Generic, TypeVar, Union, Optional
 import warnings
+from pathlib import Path
 
 import numpy as np
 from numpy import inf, isnan, nan
 from scipy.stats import chi2
 
 from . import parameter, util
-from .parameter import to_dict, Parameter, Variable, tag_all
+from .parameter import to_dict, Parameter, Variable, tag_all, priors
 from .formatnum import format_uncertainty
 
 
@@ -88,7 +90,7 @@ class Fitness(util.Protocol):
         Called when parameters have been updated.  Any cached values will need
         to be cleared and the model reevaluated.
         """
-        raise NotImplementedError()
+        pass
 
     def numpoints(self):
         """
@@ -198,11 +200,101 @@ def fitness_show_parameters(fitness: Fitness, subs: util.Optional[util.Dict[util
 FitnessType = TypeVar("FitnessType", bound=Fitness)
 
 
+class CovarianceMixin:
+    """
+    Add methods for *cov*, *show_cov* and *show_err* to a bumps problem definition.
+
+    This is done as a mixin because not all problems are FitProblem. See
+    for example :class:`bumps.pdfwrapper.PDF`.
+    """
+
+    # Note: if caching is implemented for covariance, make sure it is cleared on setp
+    # This will be difficult to do as a mixin.
+    def cov(self, x):
+        r"""
+        Return an estimate of the covariance of the fit.
+
+        Depending on the fitter and the problem, this may be computed from
+        existing evaluations within the fitter, or from numerical
+        differentiation around the minimum.
+
+        If the problem has residuals available, then the covariance
+        is derived from the Jacobian::
+
+            x = fit.problem.getp()
+            J = bumps.lsqerror.jacobian(fit.problem, x)
+            cov = bumps.lsqerror.jacobian_cov(J)
+
+        Otherwise, the numerical differentiation will use the Hessian
+        estimated from nllf::
+
+            x = fit.problem.getp()
+            H = bumps.lsqerror.hessian(fit.problem, x)
+            cov = bumps.lsqerror.hessian_cov(H)
+        """
+        # Use Jacobian if residuals are available because it is faster
+        # to compute.  Otherwise punt and use Hessian.  The has_residuals
+        # attribute should be True if present.  It may be false if
+        # the problem defines a residuals method but doesn't really
+        # have residuals (e.g. to allow levenberg-marquardt to run even
+        # though it is not fitting a sum-square problem).
+        from bumps import lsqerror
+
+        if hasattr(self, "has_residuals"):
+            has_residuals = self.has_residuals
+        else:
+            has_residuals = hasattr(self, "residuals")
+
+        if has_residuals:
+            J = lsqerror.jacobian(self, x)
+            # print("Jacobian", J)
+            return lsqerror.jacobian_cov(J)
+        else:
+            H = lsqerror.hessian(self, x)
+            # print("Hessian", H)
+            return lsqerror.hessian_cov(H)
+
+    def show_cov(self, x, cov):
+        maxn = 1000  # max array dims to print
+        cov_str = np.array2string(
+            cov,
+            max_line_width=20 * maxn,
+            threshold=maxn * maxn,
+            precision=6,  # suppress_small=True,
+            separator=", ",
+        )
+        print("=== Covariance matrix ===")
+        print(cov_str)
+        print("=========================")
+
+    def show_err(self, x, dx):
+        """
+        Display the error approximation from the covariance matrix.
+
+        *err* is the standard deviation computed from the covariance matrix. It
+        is available as *result.dx* from the simple fitter, or using::
+
+            from bumps import lsqerror
+
+            dx = lsqerror.stderr(problem.cov(x))
+
+        Warning: cost to compute cov grows as the cube of the number of parameters.
+        """
+        # TODO: need cheaper uncertainty estimate
+        # Note: error estimated from hessian diagonal is insufficient.
+        print("=== Uncertainty from curvature:     name   value(unc.) ===")
+        for k, v, dv in zip(self.labels(), x, dx):
+            print(f"{k:>40s}   {format_uncertainty(v, dv):<15s}")
+        print("=" * 58)
+
+
+# TODO: add filename to fitproblem so we don't have to coordinate it elsewhere?
 @dataclass(init=False, eq=False)
-class FitProblem(Generic[FitnessType]):
+class FitProblem(Generic[FitnessType], CovarianceMixin):
     r"""
 
-        *models* is a sequence of :class:`Fitness` instances.
+        *models* is a sequence of :class:`Fitness` instances. Note that they
+        do not need to all be of the same class.
 
         *weights* is an optional scale factor for each model. A weighted fit
         returns nllf $L = \sum w_k^2 L_k$. If an individual nllf is the sum
@@ -241,6 +333,7 @@ class FitProblem(Generic[FitnessType]):
     linear.
     """
 
+    # TODO: problem.path is set by cli.load_model(); should we add it as standard?
     name: util.Optional[str]
     models: util.List[FitnessType]
     freevars: util.Optional[parameter.FreeVariables]
@@ -249,11 +342,13 @@ class FitProblem(Generic[FitnessType]):
     penalty_nllf: util.Union[float, util.Literal["inf"]]
 
     _constraints_function: util.Callable[..., float]
+    # The type is not quite correct. The models do not need to be of the same class
     _models: util.List[FitnessType]
+    _priors: util.List[Parameter]
     _parameters: util.List[Parameter]
     _parameters_by_id: util.Dict[str, Parameter]
     _dof: float = np.nan  # not a schema field, and is not used in __init__
-
+    _active_model_index: int = 0
     # _all_constraints: util.List[util.Union[Parameter, Expression]]
 
     def __init__(
@@ -290,11 +385,11 @@ class FitProblem(Generic[FitnessType]):
             weights = [1.0 for _ in models]
         self.weights = weights
         self.penalty_nllf = float(penalty_nllf)
-        self.set_active_model(0)  # Set the active model to model 0
         self.name = name
 
-        # Do this step last so that it has all of the attributes initialized.
+        # Do these steps last so that it has all of the attributes initialized.
         self.model_reset()  # sets self._all_constraints
+        self.set_active_model(0)  # Set the active model to model 0
 
     @staticmethod
     def _null_constraints_function():
@@ -311,28 +406,75 @@ class FitProblem(Generic[FitnessType]):
     def dof(self):
         return self._dof
 
-    # TODO: make this @property\ndef models(self): ...
+    @property
+    def num_models(self):
+        return len(self._models)
+
     @property
     def models(self):
         """Iterate over models, with free parameters set from model values"""
         try:
-            for i, f in enumerate(self._models):
-                self.freevars.set_model(i)
-                yield f
+            for index in range(len(self._models)):
+                index, model = self._switch_model(index)
+                yield model
         finally:
             # Restore the active model after cycling, even if interrupted
-            self.freevars.set_model(self._active_model_index)
+            self._switch_model(self._active_model_index)
+
+    # TODO: deprecate set_active_model and push_model
+    # set_active_model is only used once in the wx gui. push_model is only needed
+    # if we have a notion of active model.
 
     # noinspection PyAttributeOutsideInit
-    def set_active_model(self, i):
-        """Use free parameters from model *i*"""
-        self._active_model_index = i
-        self.active_model = self._models[i]
-        self.freevars.set_model(i)
+    def set_active_model(self, index):
+        """
+        Fetch model *index* with the appropriate free variables substituted.
+
+        This will remain the active model until a new active model is selected.
+
+        Operations like chisq_str() or plot() which cycle through the models will
+        restore the parameters upon completion.
+        """
+        index, model = self._switch_model(index)
+        self._active_model_index, self.active_model = index, model
+        return model
+
+    @contextmanager
+    def push_model(self, index):
+        """
+        Fetch model *index* with the appropriate free variables substituted.
+
+        On completion of the context, restore the parameters for the active model.
+        """
+        try:
+            index, model = self._switch_model(index)
+            yield model
+        finally:
+            # Restore the active model after cycling, even if interrupted
+            self._switch_model(self._active_model_index)
+
+    def _switch_model(self, index):
+        # print(f"switching to {index} with freevars={bool(self.freevars)}")
+        if not (-len(self._models) <= index < len(self._models)):
+            raise IndexError(f"Index {index} invalid when only {len(self._models)} models")
+        if index < 0:
+            index = len(self._models) + index
+        # TODO: FreeVariables destroys caching within the model. Replace it.
+        # TODO: Only update parameters if index has changed. We can track this in freevars.
+        self.freevars.set_model(index)
+        if self.freevars:
+            # Clear model cache when updating the parameters
+            getattr(self._models[index], "update", lambda: None)()
+        return index, self._models[index]
 
     def model_parameters(self):
         """Return parameters from all models"""
         pars = {}
+        # Note: the self.models iterator plugs the free variables into
+        # the model in turn, so no need to walk self.freevars directly.
+        # The model.update() function is called each time, so whatever
+        # caching is happening in the model is cleared, and it knows that
+        # new parameter values have been inserted.
         pars["models"] = [f.parameters() for f in self.models]
         free = self.freevars.parameters()
         if free:
@@ -368,15 +510,6 @@ class FitProblem(Generic[FitnessType]):
         otherwise returns False.
         """
         # print("Calling setp with", pvec, self._parameters)
-        # TODO: do we have to leave the model in an invalid state?
-        # WARNING: don't try to conditionally update the model
-        # depending on whether any model parameters have changed.
-        # For one thing, the model_update below probably calls
-        # the subclass FitProblem.model_update, which signals
-        # the individual models.  Furthermore, some parameters may
-        # related to others via expressions, and so a dependency
-        # tree needs to be generated.  Whether this is better than
-        # clicker() from SrFit I do not know.
         for v, p in zip(pvec, self._parameters):
             p.value = v
         # TODO: setp_hook is a hack to support parameter expressions in sasview
@@ -439,6 +572,10 @@ class FitProblem(Generic[FitnessType]):
         values in the unfeasible region.
         """
         if pvec is not None:
+            # Note that valid() only checks that the fit parameters are in the bounding box.
+            # It doesn't check that all the constraints are satisfied. To do that we would
+            # have to use setp on the vector then loop over p._priors, resetting to the
+            # original pvec if the new pvec is invalid.
             if self.valid(pvec):
                 self.setp(pvec)
             else:
@@ -460,20 +597,19 @@ class FitProblem(Generic[FitnessType]):
         """
         failing = []
         nllf = 0.0
-        for p in self._bounded:
+        for p in self._priors:
             p_nllf = p.nllf()
             nllf += p_nllf
             if p_nllf == np.inf:
                 failing.append(str(p))
-        # print "; ".join("%s %g %g"%(p,p.value,p.nllf()) for p in
-        # self._bounded)
+        # print("; ".join(f"{p}({p.value})={p.nllf()}" for p in self._priors))
         return nllf, failing
 
     def parameter_residuals(self):
         """
         Returns negative log likelihood of seeing parameters p.
         """
-        return [p.residual() for p in self._bounded]
+        return [p.residual() for p in self._priors]
 
     def chisq(self, nllf: Union[float, util.NDArray, None] = None, norm: bool = True, compact: bool = True):
         """
@@ -484,7 +620,7 @@ class FitProblem(Generic[FitnessType]):
         chisq_norm, chisq_err = nllf_scale(dof=self.dof, npars=len(self._parameters), norm=norm)
         if nllf is None:
             pparameter, pconstraints, pmodel, failing_constraints = self._nllf_components()
-            nllf = pparameter + pparameter + pconstraints if compact else pmodel + pparameter
+            nllf = pparameter + pconstraints + pmodel if compact else pparameter + pmodel
         else:
             assert compact is True
         return nllf * chisq_norm
@@ -538,7 +674,7 @@ class FitProblem(Generic[FitnessType]):
             if isnan(pparameter):
                 # TODO: make sure errors get back to the user
                 info = ["Parameter nllf is wrong"]
-                info += ["%s %g" % (p, p.nllf()) for p in self._bounded]
+                info += ["%s %g" % (p, p.nllf()) for p in self._priors]
                 logging.error("\n  ".join(info))
             pconstraints, failing_constraints = self.constraints_nllf()
             failing_constraints += failing_parameter_constraints
@@ -594,44 +730,31 @@ class FitProblem(Generic[FitnessType]):
         """
         # print("In model reset with", self.model_parameters())
         all_parameters = parameter.unique(self.model_parameters())
-        # print "all_parameters",all_parameters
-        # for p in all_parameters:
-        #     if hasattr(p, 'reset_prior'):
-        #         p.reset_prior()  # no constraints
-        #     else:
-        #         raise ValueError(f"{p} does not have prior")
+
+        # Check priors
         broken = []
         for p in all_parameters:
-            # slot = p.slot
-            # value = p.value
+            if not hasattr(p, "reset_prior"):
+                continue
+            p.reset_prior()
+            limits = p.prior.limits
+            value = p.value
+            if (limits[0] > value) or (value > limits[1]):
+                broken.append(f"{p}={value} is outside {limits}")
+            elif not np.isfinite(p.prior.nllf(value)):
+                broken.append(f"{p}={value} is outside {p.prior}")
 
-            # TODO: this is a shim to accomodate Expression, Calculation etc. being
-            # put into attributes that have type "Parameter" (in user scripts)
-            # Do we cause those scripts to break instead?
-            # Or do we autoconvert to .equals()?
-            if hasattr(p, "add_prior"):
-                p.add_prior(p.distribution, bounds=p.bounds, limits=p.limits)
-
-            # TODO: currently this logic for showing breaking constraints to the user
-            # is in the chisq_str execution path instead of on model_reset - should it be here instead?
-
-            # While we are walking all parameters check which constraints aren't satisfied
-            # Build up a list of strings to help the user initialize the model correctly
-            if hasattr(p, "limits"):
-                value = p.value
-                if (p.limits[0] > value) or (value > p.limits[1]):
-                    broken.append(f"{p}={value} is outside {p.limits}")
-                elif not np.isfinite(p.prior.nllf(value)):
-                    broken.append(f"{p}={value} is outside {p.prior}")
-
+        # Check other constraints
         broken.extend([f"constraint {c} is unsatisfied" for c in self.constraints if float(c) == inf])
         if self._constraints_function() == inf:
             broken.append("user constraint function is unsatisfied")
         if len(broken) > 0:
             warnings.warn("Unsatisfied constraints: [%s]" % (",\n".join(broken)))
+
+        # TODO: return broken_constraints from reset() rather than setting state
         self.broken_constraints = broken
 
-        # TODO: shimmed to allow non-Parameter in Parameter attribute spots.
+        # Collect all fitting parameters
         pars = []
         pars_by_id = {}
         for p in all_parameters:
@@ -642,24 +765,22 @@ class FitProblem(Generic[FitnessType]):
                 pars.append(p)
         self._parameters = pars
         self._parameters_by_id = pars_by_id
-        # TODO: shimmed to allow non-Parameter in Parameter attribute spots.
-        self._bounded = [p for p in all_parameters if hasattr(p, "has_prior") and p.has_prior()]
+
+        # Collect all priors that need to be evaluated
+        self._priors = priors(all_parameters)
+
         # The degrees of freedom is the number of data points minus the number of fit
         # parameters. Gaussian priors on the parameters are treated as a simultaneous
         # fit to the data plus a fit of the parameter to its previously measured value.
         # That is, each prior adds a single data point to the fit without changing the
         # number of free parameters, thus increasing DOF by 1. Again, the target value
         # for a fit with no systematic error should be the number of degrees of freedom.
-        self._dof = self.model_points() + sum(p.prior.dof for p in self._bounded) - len(self._parameters)
+        # Uniform priors do not modify the degrees of freedom, not even soft-bounded uniform.
+        self._dof = self.model_points() + sum(p.prior.dof for p in self._priors) - len(self._parameters)
         if self.dof <= 0:
             warnings.warn(
                 f"Need more data points (currently: {self.model_points()}) than fitting parameters ({len(self._parameters)})"
             )
-        # self.constraints = pars.constraints()
-        # Find the constraints on variables and expressions that we need to compute
-        # parameter_constraints = [p.slot for p in all_parameters if isinstance(p.slot, Variable) and p.has_prior()]
-        # expression_constraints = [p.slot for p in all_parameters if isinstance(p.slot, Expression) and p.has_prior()]
-        # self._all_constraints = parameter_constraints + expression_constraints
 
     def model_points(self):
         """Return number of points in all models"""
@@ -667,19 +788,16 @@ class FitProblem(Generic[FitnessType]):
 
     def model_update(self):
         """Let all models know they need to be recalculated"""
-        # TODO: consider an "on changed" signal for model updates.
-        # The update function would be associated with model parameters
-        # rather than always recalculating everything.  This
-        # allows us to set up fits with 'fast' and 'slow' parameters,
-        # where the fit can quickly explore a subspace where the
-        # computation is cheap before jumping to a more expensive
-        # subspace.  SrFit does this.
+        # The self.models iterator calls update for each model if there are
+        # free variable substitutions, so no need to update here.
+        if self.freevars:
+            return
         for f in self.models:
-            if hasattr(f, "update"):
-                f.update()
+            getattr(f, "update", lambda: None)()
 
     def model_nllf(self):
         """Return cost function for all data sets"""
+        # print("In model nllf with", self.getp())
         return sum(w**2 * f.nllf() for w, f in zip(self.weights, self.models))
 
     def constraints_nllf(self) -> util.Tuple[float, util.List[str]]:
@@ -732,27 +850,113 @@ class FitProblem(Generic[FitnessType]):
     def show(self):
         for i, f in enumerate(self.models):
             print("-- Model %d %s" % (i, getattr(f, "name", "")))
-            subs = self.freevars.get_model(i) if self.freevars else {}
-            fitness_show_parameters(f, subs=subs)
+            fitness_show_parameters(f, subs=self.freevars.get_model(i))
         print("[overall chisq=%s, nllf=%g]" % (self.chisq_str(), self.nllf()))
 
     def plot(self, p=None, fignum=1, figfile=None, view=None, model_indices=None):
-        import pylab
+        # TODO: remove duplicate logic from FitProblem.plot() and api.get_data_plot
+        import matplotlib.pyplot as plt
 
         if p is not None:
             self.setp(p)
+
+        # Don't show the figure calling problem.plot(figfile=base_file), as is
+        # done during --export=path. If called as problem.plot(), as from a jupyter
+        # notebook, then swe should show the plot.
+        show_fig = not figfile
+
+        # Overall chisq
+        overall_chisq_str = self.chisq_str()
+
         for i, f in enumerate(self.models):
+            outfile = f"{figfile}-model{i}.png" if figfile else None
             if model_indices is not None and i not in model_indices:
                 continue
-            if not hasattr(f, "plot"):
+
+            backend = "matplotlib" if hasattr(f, "plot") else "plotly" if hasattr(f, "plotly") else None
+            # backend = "plotly" if hasattr(f, "plotly") else "matplotlib" if hasattr(f, "plot") else None
+            if backend is None:
                 continue
+
+            # TODO: duplicated in bumps.webserver.server.api._get_data_plot_mpl()
+            if self.num_models > 1:
+                chisq_str = fitness_chisq_str(f)
+                chisq = f"χ² = {chisq_str}; overall {overall_chisq_str}"
+                title = f"Model {i+1}: {f.name}"
+            else:
+                chisq = f"χ² = {overall_chisq_str}"
+                title = f"{f.name}"
+            fontsize = 16
+
+            if backend == "plotly":
+                fig = f.plotly()
+                # TODO: text offset of (x=0.5em, y=0.5ex)
+                text_offset = 0.01  # portion of graph axis length
+                font = dict(size=16)
+                fig.add_annotation(
+                    x=text_offset,
+                    y=1 + text_offset,
+                    xanchor="left",
+                    yanchor="bottom",
+                    xref="paper",
+                    yref="paper",
+                    text=title,
+                    showarrow=False,
+                    font=font,
+                )
+                fig.add_annotation(
+                    x=1 - text_offset,
+                    y=1 + text_offset,
+                    xanchor="right",
+                    yanchor="bottom",
+                    xref="paper",
+                    yref="paper",
+                    text=chisq,
+                    showarrow=False,
+                    font=font,
+                )
+
+                if outfile:
+                    # Note: requires "pip install kaleido"
+                    # Note: much slower than matplotlib
+                    fig.write_image(outfile)
+                if show_fig:
+                    # Try to guess whether we are in a jupyter notebook before deciding how
+                    # to render the plot.
+                    # TODO: gather all figures into one tab when rendering to the browser
+                    import sys
+
+                    jupyter = "ipykernel" in sys.modules
+                    renderer = None if jupyter else "browser"
+                    fig.show(renderer)
+                continue
+
+            # If not plotly then we must be using matplotlib.
+            # Note that during api.export our matplotlib backend is 'agg' so no plot will show.
+            fig = plt.figure(i + fignum)
             f.plot(view=view)
-            pylab.figure(i + fignum)
-            f.plot(view=view)
-            pylab.suptitle("Model %d - %s" % (i, f.name))
-            pylab.text(0.01, 0.01, "chisq=%s" % fitness_chisq_str(f), transform=pylab.gca().transAxes)
-            if figfile is not None:
-                pylab.savefig(figfile + "-model%d.png" % i, format="png")
+
+            # Make room for model name and chisq on the top of the plot
+            # TODO: attach margins to canvas resize_event so that margins are fixed
+            h, w = fig.get_size_inches()
+            h_ex = h * 72 / fontsize  # (h in * 72 pt/in) / (fontsize pt/ex) = height in ex
+            text_offset = 0.5 / h_ex  # 1/2 ex above and below the text
+            top = 1 - 2 / h_ex  # leave 2 ex at the top of the figure
+            plt.subplots_adjust(top=top)
+
+            # Add model name and chisq
+            transform = fig.transFigure
+            x, y = text_offset, 1 - text_offset
+            ha, va = "left", "top"
+            fig.text(x, y, title, transform=transform, va=va, ha=ha, fontsize=fontsize)
+            x, y = 1 - text_offset, 1 - text_offset
+            ha, va = "right", "top"
+            fig.text(x, y, chisq, transform=transform, va=va, ha=ha, fontsize=fontsize)
+
+            # pylab.suptitle("Model %d - %s" % (i, f.name))
+            # pylab.text(0.01, 0.01, "chisq=%s" % fitness_chisq_str(f), transform=pylab.gca().transAxes)
+            if outfile:
+                plt.savefig(outfile, format="png")
 
     # Note: restore default behaviour of getstate/setstate rather than
     # inheriting from BaseFitProblem
@@ -765,33 +969,6 @@ class FitProblem(Generic[FitnessType]):
 
 # TODO: consider adding nllf_scale to FitProblem.
 ONE_SIGMA = 0.68268949213708585
-
-
-def nllf_scale(problem: FitProblem, norm: bool = True):
-    r"""
-    Return the scale factor for reporting the problem nllf as an approximate
-    normalized chisq, along with an associated "uncertainty".  The uncertainty
-    is the amount that chisq must change in order for the fit to be
-    significantly better.
-
-    From Numerical Recipes 15.6: *Confidence Limits on Estimated Model
-    Parameters*, the $1-\sigma$ contour in parameter space corresponds
-    to $\Delta\chi^2 = \text{invCDF}(1-\sigma,k)$ where
-    $1-\sigma \approx 0.6827$ and $k$ is the number of fitting parameters.
-
-    If *norm* is True (default), then we need to normalize chisq by
-    the degrees of freedom. This allows us to assess fit quality as the
-    average squared error in each data point, which should be around 1.0
-    if the model and measurement uncertainties are correct.
-    """
-    # Duplicated in fitness_chisq_str function above
-    dof = problem.dof if norm else 1
-    if dof <= 0 or np.isnan(dof) or np.isinf(dof):
-        return 1.0, 0.0
-    else:
-        # return 2.0 / dof, 1.0 / dof
-        npars = max(len(problem.getp()), 1)
-        return 2.0 / dof, chi2.ppf(ONE_SIGMA, npars) / dof
 
 
 def nllf_scale(dof: int, npars: int, norm: bool = True):
@@ -828,7 +1005,61 @@ def nllf_scale(dof: int, npars: int, norm: bool = True):
         return 2.0 / scale, chi2.ppf(ONE_SIGMA, npars) / scale
 
 
-def load_problem(filename, options=None) -> FitProblem:
+def load_problem(path: Path | str, args: list[str] | None = None):
+    """
+    Load a model file.
+
+    *path* contains the path to the model file. This could be a python script
+    or a previously saved problem, serialized as .json, .cloudpickle, .pickle or .dill
+
+    *args* are any additional arguments to the model.  The sys.argv
+    variable will be set such that *sys.argv[1:] == model_options*.
+    """
+    from .webview.server.state_hdf5_backed import SERIALIZER_EXTENSIONS, deserialize_problem_bytes
+
+    path = Path(path)
+    table = {f".{ext}": method for method, ext in SERIALIZER_EXTENSIONS.items()}
+    method = table.get(path.suffix, "script")
+    if method == "script":
+        problem = _load_script_from_path(path, args)
+    else:
+        # export saved data as binary with encoding utf-8
+        data = path.read_bytes()
+        problem = deserialize_problem_bytes(data, method)
+    # TODO: what is problem.path when we are deserializing from a session file?
+    problem.path = str(path.resolve())
+    if not hasattr(problem, "name"):
+        problem.name = path.stem
+    if not hasattr(problem, "title"):
+        problem.title = path.name
+
+    # Guard against the user changing parameters after defining the problem.
+    problem.model_reset()
+    return problem
+
+
+def _load_script_from_path(path: Path | str, args: list[str] | None = None):
+    from .util import pushdir
+    from . import plugin
+
+    # Change to the target path before loading model so that data files
+    # can be given as relative paths in the model file.  Add the directory
+    # to the python path (at the end) so that imports work as expected.
+    path = Path(path)
+    directory, filename = path.parent, path.name
+    with pushdir(directory):
+        # Try a specialized model loader
+        problem = plugin.load_model(filename)
+        if problem is None:
+            problem = _load_script(filename, options=args)
+    # Note: keeping problem.script_path separate from problem.path because
+    # the problem.path may be the result of deserializing the model.
+    problem.script_path = str(path.resolve())
+    problem.script_args = args
+    return problem
+
+
+def _load_script(filename, options=None) -> FitProblem:
     """
     Load a problem definition from a python script file.
 
@@ -840,23 +1071,109 @@ def load_problem(filename, options=None) -> FitProblem:
 
     Namespace for imports is `bumps.user`
     """
-    # Allow relative imports from the bumps model
-    namespace = "bumps.user"
-    basename = os.path.splitext(os.path.basename(filename))[0]
-    module = util.relative_import(filename, module_name=namespace)
+    import re
+    from pathlib import Path
+    from hashlib import md5
+    from importlib.machinery import SourceFileLoader
+    from importlib.util import module_from_spec, spec_from_loader
 
-    ctx = dict(__file__=filename, __package__=module, __name__=f"{namespace}.{basename}")
+    script_path = Path(filename).resolve()
+    if options is None:
+        options = ()
+
+    # Turn filename into a python identifier
+    name = script_path.stem.split(".", 1)[0]
+    name = "_".join(name.split())  # convert whitespace
+    name = re.sub(r"[^a-zA-Z0-9_]", "_", name)  # handle invalid characters
+    if name[0].isdigit():  # idnetifiers can't start with a digit
+        name = "_" + name
+
+    # Put all user scripts in the bumps.user namespace.
+    # They shouldn't conflict because they don't show up
+    # in sys.modules.
+    package = "bumps.user"
+
+    # Create the module for the script
+    fullname = f"{package}.{name}"
+    loader = SourceFileLoader(fullname, str(script_path))
+    spec = spec_from_loader(fullname, loader)
+    module = module_from_spec(spec)
+
+    # Execute the script
+    # TODO: Enable relative imports with ScriptFinder
     old_argv = sys.argv
-    sys.argv = [filename] + options if options else [filename]
-    source = open(filename).read()
-    code = compile(source, filename, "exec")
-    exec(code, ctx)
-    sys.argv = old_argv
-    problem = ctx.get("problem", None)
+    old_bytecode = sys.dont_write_bytecode
+    # meta_path_finder = ScriptFinder(script_path.parent, package)
+    try:
+        # sys.meta_path.insert(0, meta_path_finder)
+        sys.argv = [filename, *options]
+        sys.dont_write_bytecode = True  # Suppress .pyc creation
+        loader.exec_module(module)
+    finally:
+        # sys.meta_path.pop(0)
+        sys.argv = old_argv
+        sys.dont_write_bytecode = old_bytecode
+
+    problem = getattr(module, "problem", None)
     if problem is None:
         raise ValueError(filename + " requires 'problem = FitProblem(...)'")
 
+    # # Capture the source code and any dependent libraries. On deserialize we
+    # # will need to preload the libs and stuff them in sys.modules before
+    # # calling dill. Be sure to remove them immediately so that the next load
+    # # from script will get the latest version (the user may have changed the
+    # # support libraries without having changed the script).
+    # # Note that we won't be able to rerun the script because we aren't capturing
+    # # the original datafiles, but we may want to show it to the user.
+    # script = script_path.read_text()
+    # context = dict(script=script, libs=meta_path_finder.sources, options=options)
+
     return problem
+
+
+# Note: Not currently used
+class ScriptFinder:
+    """
+    sys.meta_path finder allowing relative imports in scripts.
+
+    *script_dir* is the parent directory for the script file.
+
+    *package_name* is the module namespace for the script.
+
+    *sources* contains {fullname: source_code} for all the supporting
+    modules in the script directory. Use these to deserialize the
+    saved problem.
+    """
+
+    def __init__(self, script_dir, package_name):
+        from importlib.machinery import ModuleSpec
+
+        self._path = script_dir
+        self._package = package_name + "."
+        self._parent_spec = ModuleSpec(package_name, None, is_package=True)
+        self.sources = {}
+
+    def find_spec(self, fullname, path, target=None):
+        from importlib.machinery import SourceFileLoader
+        from importlib.util import spec_from_loader
+
+        if fullname == self._package[:-1]:
+            # print(f'import looking for {fullname}')
+            return self._parent_spec
+        if fullname.startswith(self._package):
+            # print(f'import looking for {fullname}')
+            module_name = fullname.split(".")[-1]
+            module_path = self._path / f"{module_name}.py"
+            if module_path.exists():
+                loader = SourceFileLoader(fullname, str(module_path))
+                spec = spec_from_loader(fullname, loader)
+                # It is inefficient to load this twice, but the import
+                # hook machinery is too complicated to capture the source
+                # when it is loaded. Similarly for suppressing the .pyc
+                # file creation.
+                self.sources[fullname] = module_path.read_text()
+                return spec
+        return None
 
 
 def MultiFitProblem(*args, **kwargs) -> FitProblem:
@@ -864,7 +1181,7 @@ def MultiFitProblem(*args, **kwargs) -> FitProblem:
     return FitProblem(*args, **kwargs)
 
 
-def test_weighting():
+def test_weighting_and_priors():
     class SimpleFitness(Fitness):
         def __init__(self, a=0.0, name="fit"):
             self.a = parameter.Parameter.default(a, name=name + " a")
@@ -876,17 +1193,51 @@ def test_weighting():
             return 1
 
         def residuals(self):
-            y, dy = 0, 1  # fit to constant 0 +/- 1
+            y, dy = 0, 1  # fit 0 +/- 1 to a constant
             return np.array([(self.a.value - y) / dy])
 
         def nllf(self):
             return sum(r**2 for r in self.residuals()) / 2
 
     weights = 2, 3
-    models = [SimpleFitness(4.0), SimpleFitness(5.0)]
-    problem = FitProblem(models, weights=weights)
+    M0, M1 = SimpleFitness(4.0, name="M0"), SimpleFitness(5.0, name="M1")
+    problem = FitProblem((M0, M1), weights=weights)
 
     # Need to use problem.models to cycle through models in case FreeVariables is used in problem
     assert (problem.residuals() == np.hstack([w * M.residuals() for w, M in zip(weights, problem.models)])).all()
     assert problem.nllf() == sum(w**2 * M.nllf() for w, M in zip(weights, problem.models))
     assert problem.nllf() == sum(problem.residuals() ** 2) / 2
+
+    # Test priors: constraint on expression
+    M0.a.range(-10, 10)  # Set M0.a = 4 to be in bounds
+    # TODO: should setting equals() clear the constraints?
+    # If we set a constraint then assign an expression the constraint stays on
+    # the expression. The other order fails because the expression is considered
+    # "fixed" and can't accept constraints.
+    M1.a.range(0, 1)  # Set M1.a to be out of bounds
+    M1.a.equals(M0.a * 2)  # Set M1.a = 2*M0.a = 4*2 = 8
+    problem.model_reset()
+    # print(f"{problem._parameters=}, {problem._priors=} {problem._dof=}")
+    assert problem._parameters == [M0.a]  # only M0.a is fitted
+    assert problem._priors == [M0.a, M1.a]  # both M0.a and M1.a are bounded
+    assert problem._dof == 1
+    nllf, failing = problem.parameter_nllf()
+    assert np.isinf(nllf)
+    assert failing == [str(M1.a)]
+
+    M1.a.unlink()
+    M1.a.dev(mean=0, std=1)  # Set M1.a to be in bounds but with a cost
+    M1.a.equals(M0.a * 2)  # Set M1.a = 2*M0.a = 4*2 = 8
+    problem.model_reset()
+    # print(f"{problem._parameters=}, {problem._priors=} {problem._dof=}")
+    assert problem._parameters == [M0.a]  # only M0.a is fitted
+    assert problem._priors == [M0.a, M1.a]  # both M0.a and M1.a are bounded
+    # DOF is 2 because we have two data points plus one prior minus one fit parameter
+    assert problem._dof == 2
+    nllf, failing = problem.parameter_nllf()
+    assert nllf == 32  # (8 - 0)**2/(2 * 1)
+    assert failing == []
+
+
+if __name__ == "__main__":
+    test_weighting_and_priors()

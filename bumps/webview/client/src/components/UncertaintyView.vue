@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref } from "vue";
-// @ts-ignore - plotly.js does not define Bar as type
 import Bar from "plotly.js/lib/bar";
 import * as Plotly from "plotly.js/lib/core";
 import { v4 as uuidv4 } from "uuid";
@@ -9,14 +8,10 @@ import { cache } from "../plot_cache";
 import { SVGDownloadButton } from "../plotly_extras";
 import { setupDrawLoop } from "../setupDrawLoop";
 
-// workaround to PlotlyModule not being exported as type!
-type RegisterTypes = Parameters<typeof Plotly.register>[0];
-type PlotlyModule = Exclude<RegisterTypes, any[]>;
-
 // server sends annotations with name field
 type CustomAnnotations = Plotly.Annotations & { name: string };
 
-Plotly.register([Bar as PlotlyModule]);
+Plotly.register([Bar]);
 
 const title = "Uncertainty";
 const plot_div = ref<HTMLDivElement>();

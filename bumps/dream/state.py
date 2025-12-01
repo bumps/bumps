@@ -73,7 +73,7 @@ generation is the last generation number
 
 # TODO: state should be collected in files as we go
 
-__all__ = ["MCMCDraw", "dream_load"]
+__all__ = ["MCMCDraw", "Draw", "dream_load", "h5load", "h5dump"]
 
 import os.path
 import re
@@ -81,6 +81,7 @@ import gzip
 from typing import List, Dict, Tuple, Union, Optional, Callable
 from pathlib import Path
 import warnings
+from fnmatch import fnmatch
 
 import numpy as np
 from numpy import empty, sum, asarray, inf, argmax, hstack, dstack
@@ -89,7 +90,7 @@ from numpy.typing import NDArray
 
 from .convergence import burn_point
 from .outliers import identify_outliers
-from .util import draw, rng
+from .util import rng
 from .gelman import gelman
 
 # Don't load hdf5 if you don't need it
@@ -97,10 +98,6 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from h5py import Group
-else:
-
-    class Group: ...
-
 
 EXT = ".mc.gz"
 CREATE = gzip.open
@@ -110,13 +107,13 @@ CREATE = gzip.open
 
 SelectionType = Optional[Dict[Union[int, str], Tuple[float, float]]]
 
-
 UNCERTAINTY_DTYPE = "d"
 MAX_LABEL_LENGTH = 1024
 LABEL_DTYPE = f"|S{MAX_LABEL_LENGTH}"
 H5_COMPRESSION = 5
 
 
+# TODO: Unused code. Using webview.server.cli.reload_export instead
 def dream_load(store):
     """
     Load the saved DREAM state.
@@ -170,9 +167,6 @@ def dream_load(store):
     basename = str(store / modelname)
     state = load_state(basename)
 
-    # Attach the labels from the .par file:
-    with open(basename + ".par") as fid:
-        state.labels = [" ".join(line.strip().split()[:-1]) for line in fid]
     return state
 
 
@@ -187,6 +181,8 @@ def _h5_write_field(group: "Group", field: str, data: Union[NDArray, str]):
         return group.create_dataset(field, data=data, dtype=np.int64)
     elif isinstance(data, (float, np.floating)):
         return group.create_dataset(field, data=data, dtype=np.double)
+    elif np.isscalar(data):
+        return group.create_dataset(field, data=data, dtype=data.dtype)
     else:
         return group.create_dataset(field, data=data, dtype=data.dtype, compression=H5_COMPRESSION)
 
@@ -217,6 +213,9 @@ def h5dump(group: "Group", state: "MCMCDraw"):
         # state, but they need to be cleared when updates are given. Make sure the
         # request for the population from dream includes the outliers.
         good_chains = None if isinstance(state._good_chains, slice) else state._good_chains
+        # In case the MCMC chains are stored as 32-bit, save the current population
+        # as 64-bit so that resume is consistent.
+        current_population, current_logp = state._last_gen()
         best_x, best_logp = state.best()
         best_gen = state._best_gen
         portion = state.portion
@@ -226,7 +225,11 @@ def h5dump(group: "Group", state: "MCMCDraw"):
     # print("wrote", Fields.__dict__)
     for field, value in Fields.__dict__.items():
         if field[0] != "_" and value is not None:
-            _h5_write_field(group, field, value)
+            try:
+                _h5_write_field(group, field, value)
+            except Exception as exc:
+                exc.args = (f"{exc.args[0]} while writing {field}",) + exc.args[1:]
+                raise
 
 
 def h5load(group: "Group"):
@@ -244,6 +247,12 @@ def h5load(group: "Group"):
     good_chains = getattr(Fields, "good_chains", None)
     total_generations = getattr(Fields, "total_generations", Ngen)
     thinning = getattr(Fields, "thinning", 1)
+    current_population = getattr(Fields, "current_population", None)
+    if current_population is None:
+        current_population = Fields.thin_point[-1].astype("d")
+    current_logp = getattr(Fields, "current_logp", None)
+    if current_logp is None:
+        current_logp = Fields.thin_logp[-1].astype("d")
     best_x = getattr(Fields, "best_x", None)
     best_logp = getattr(Fields, "best_logp", 0.0)
     best_gen = getattr(Fields, "best_gen", 0)
@@ -258,18 +267,19 @@ def h5load(group: "Group"):
     # print(f"loading {total_generations=} {Ngen=}")
     state._gen_offset = total_generations - Ngen
     state._gen_index = 0
-    state._gen_draws = Fields.gen_draws.astype(int)
+    state._gen_draws = Fields.gen_draws.astype(np.int64)
     state._gen_acceptance_rate = Fields.AR
     state._gen_logp = Fields.gen_logp
     state._thin_count = Nthin
     state._thin_index = 0
-    state._thin_draws = Fields.thin_draws.astype(int)
+    state._thin_draws = Fields.thin_draws.astype(np.int64)
     state._thin_logp = Fields.thin_logp
     state._thin_point = Fields.thin_point
-    state._gen_current = state._thin_point[-1].copy()
+    state._gen_current = current_population
+    state._gen_current_logp = current_logp
     state._update_count = Nupdate
     state._update_index = 0
-    state._update_draws = Fields.update_draws.astype(int)
+    state._update_draws = Fields.update_draws.astype(np.int64)
     state._update_CR_weight = Fields.update_CR_weight
     state._outliers = []
 
@@ -300,7 +310,7 @@ def save_state(state: "MCMCDraw", filename: str):
     # trace.write("extracting draws, logp\n")
     draws, logp = state.logp(full=True)
     # trace.write("extracting acceptance rate\n")
-    _, AR = state.acceptance_rate()
+    _, AR = state.acceptance_rate(portion=1)
     # trace.write("building chain from draws, AR and logp\n")
     chain = hstack((draws[:, None], AR[:, None], logp))
 
@@ -413,12 +423,17 @@ def openmc(filename):
 def load_state(filename, skip=0, report=0, derived_vars=0):
     """
     *filename* is the path to the saved MCMC state up to the final -chain.mc, etc.
+    Any extension will be removed before using.
 
     *derived_vars* is the number of columns added to each point, derived
     from other columns in that point. The newer set_derived_vars interface generates
     the derived variables on demand rather than storing them in the state object and
     so it will be zero always.
     """
+
+    # Trim extension from filename
+    filename = str(Path(filename).with_suffix(""))
+
     # Read chain file
     with openmc(filename + "-chain" + EXT) as fid:
         chain = loadtxt(fid)
@@ -462,7 +477,7 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
     state.generation = Ngen
     state._gen_offset = 0
     state._gen_index = 0
-    state._gen_draws = chain[:, 0]
+    state._gen_draws = chain[:, 0].astype(np.int64)
     state._gen_acceptance_rate = chain[:, 1]
     state._gen_logp = chain[:, 2:]
     state._thin_count = Ngen // thinning
@@ -471,9 +486,10 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
     state._thin_logp = point[:, 0].reshape((Nthin, Npop))
     state._thin_point = reshape(point[:, 1 : Nvar + 1 - derived_vars], (Nthin, Npop, -1))
     state._gen_current = state._thin_point[-1].copy()
+    state._gen_current_logp = state._thin_logp[-1].copy()
     state._update_count = Nupdate
     state._update_index = 0
-    state._update_draws = stats[:, 0]
+    state._update_draws = stats[:, 0].astype(np.int64)
     state._update_CR_weight = stats[:, 1 + num_r :]
     state._outliers = []
 
@@ -490,6 +506,36 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
         state._thin_logp = state._thin_logp[1:]
         state._thin_point = state._thin_point[1:]
 
+    # Load labels from the .par file if it exists.
+    parfile = Path(f"{filename}.par")
+    if parfile.exists():
+        try:
+            text = parfile.read_text().strip()
+            lines = text.split("\n")
+            labels = [line.rsplit(None, 1)[0].strip() for line in lines]
+            state.labels = labels
+        except Exception as exc:
+            print(f"Couldn't load labels from {parfile}: {exc}")
+
+    return state
+
+
+# TODO: Unused code. Using webview.server.cli.reload_export instead
+def reload_state_from_export(parfile):
+    """
+    For the simplified fit with an export path we can reload
+    the bumps dream state from the exported MCMC files.
+
+    *parfile* is the name of the model.par file saved in the
+    export directory.
+
+    Use *state.show()* for the returned state to produce the plots.
+    """
+    assert parfile.endswith(".par"), "need model.par file"
+    path = str(parfile)[:-4]
+    state = load_state(path)
+    state.mark_outliers()
+    state.portion = state.trim_portion()
     return state
 
 
@@ -589,35 +635,35 @@ class MCMCDraw(object):
         self._best_logp = -inf
         self._best_gen = 0
 
+        # TODO: Scrap the per-generation data. It takes memory and disk, but doesn't add value.
         # Per generation iteration
         self.generation = 0
         self._gen_offset = 0
         self._gen_index = 0
-        self._gen_draws = empty(Ngen, "i")
-        self._gen_logp = empty((Ngen, Npop))
-        self._gen_acceptance_rate = empty(Ngen)
+        self._gen_draws = empty(Ngen, np.int64)
+        self._gen_logp = empty((Ngen, Npop), dtype=UNCERTAINTY_DTYPE)
+        self._gen_acceptance_rate = empty(Ngen, dtype=UNCERTAINTY_DTYPE)
 
-        # If we are thinning, we need to keep the current generation
-        # separately. [Note: don't remember why we need both the _gen_*
-        # and _thin_*]  [Note: the caller x vector is assigned to
-        # _gen_current; this may lead to unexpected behaviour if x is
-        # changed by the caller.
-        self._gen_current = None
+        # TODO: should current generation be single precision if the model is single precision?
+        # The current generation, stored as double precision so that nothing
+        # is lost on resume.
+        self._gen_current = empty((Npop, Nvar), dtype="d")
+        self._gen_current_logp = empty((Npop,), dtype="d")
 
         # Per thinned generation iteration
         self.thinning = thinning
         self._thin_index = 0
         self._thin_count = 0
         self._thin_timer = 0
-        self._thin_draws = empty(Nthin, "i")
-        self._thin_point = empty((Nthin, Npop, Nvar))
-        self._thin_logp = empty((Nthin, Npop))
+        self._thin_draws = empty(Nthin, np.int64)
+        self._thin_point = empty((Nthin, Npop, Nvar), dtype=UNCERTAINTY_DTYPE)
+        self._thin_logp = empty((Nthin, Npop), dtype=UNCERTAINTY_DTYPE)
 
         # Per update iteration
         self._update_index = 0
         self._update_count = 0
-        self._update_draws = empty(Nupdate, "i")
-        self._update_CR_weight = empty((Nupdate, Ncr))
+        self._update_draws = empty(Nupdate, np.int64)
+        self._update_CR_weight = empty((Nupdate, Ncr), dtype=UNCERTAINTY_DTYPE)
 
         self._outliers = []
 
@@ -771,10 +817,7 @@ class MCMCDraw(object):
         Returns x, logp for most recently saved generation. This may be several
         generations ago if thinning is enabled.
         """
-        # Note: if generation number has wrapped and _gen_index is 0
-        # (the usual case when this function is called to resume an
-        # existing chain), then this returns the last row in the array.
-        return (self._thin_point[self._thin_index - 1], self._thin_logp[self._thin_index - 1])
+        return self._gen_current, self._gen_current_logp
 
     def _generation(self, new_draws: int, x: NDArray, logp: NDArray, accept: NDArray, force_keep: bool = False):
         """
@@ -819,9 +862,8 @@ class MCMCDraw(object):
             if i == len(self._thin_draws):
                 i = 0
             self._thin_index = i
-            self._gen_current = x + 0  # force a copy
-        else:
-            self._gen_current = x + 0  # force a copy
+        self._gen_current[:] = x
+        self._gen_current_logp[:] = logp
 
     def _update(self, CR_weight: NDArray):
         """
@@ -860,49 +902,6 @@ class MCMCDraw(object):
         Return the current population.
         """
         return self._gen_current
-
-    # TODO: Delete unused _draw_large_pop function
-    def _draw_large_pop(self, Npop: int):
-        _, chains, _ = self.chains()
-        Ngen, Nchain, Nvar = chains.shape
-        points = reshape(chains, (Ngen * Nchain, Nvar))
-
-        # There are two complications with the history buffer:
-        # (1) due to thinning, not every generation is stored
-        # (2) because it is circular, the cursor may be in the middle
-        # If the current generation isn't in the buffer (but is instead
-        # stored separately as _gen_current), then the entire buffer
-        # becomes the history pool.
-        # otherwise we need to exclude the current generation from
-        # the pool.  If (2) happens, we need to increment everything
-        # above the cursor by the number of chains.
-        if self._gen_current is not None:
-            pool_size = Ngen * Nchain
-            cursor = pool_size  # infinite
-        else:
-            pool_size = (Ngen - 1) * Nchain
-            k = len(self._thin_draws)
-            cursor = Nchain * ((k + self._thin_index - 1) % k)
-
-        # Make a return population and fill it with the current generation
-        pop = empty((Npop, Nvar), "d")
-        if self._gen_current is not None:
-            pop[:Nchain] = self._gen_current
-        else:
-            # print(pop.shape, points.shape, chains.shape)
-            pop[:Nchain] = points[cursor : cursor + Nchain]
-
-        if Npop > Nchain:
-            # Find the remainder with unique ancestors.
-            # Again, because this is a circular buffer, their may be random
-            # numbers generated at or above the cursor.  All of these must
-            # be shifted by Nchains to avoid the cursor.
-            perm = draw(Npop - Nchain, pool_size)
-            perm[perm >= cursor] += Nchain
-            # print("perm", perm; raw_input('wait'))
-            pop[Nchain:] = points[perm]
-
-        return pop
 
     def _unroll(self):
         """
@@ -1289,20 +1288,19 @@ class MCMCDraw(object):
             final = self._good_chains[-1] - Npop
 
         # Find the location of the best point if it exists and swap with
-        # the final position
+        # the final position, or overwrite the final position if it does
+        # not exist.
         idx = np.where(logp == self._best_logp)[0]
         if len(idx) == 0:
             logp[final] = self._best_logp
             points[final, :] = self._best_x
         else:
+            # If there are multiple best values, arbitrarily choose one of them.
+            # The chances are very high that it is the same point that was kept
+            # after a proposed step was rejected.
             idx = idx[0]
             logp[final], logp[idx] = logp[idx], logp[final]
             points[final, :], points[idx, :] = points[idx, :], points[final, :]
-        # For multiple minima, arbitrarily choose one of them
-        # TODO: this will lead to possible confusion when the best value
-        # spontaneously changes when the fit is complete.
-        self._best_p = points[final]
-        self._best_logp = logp[final]
 
     def sample(self, **kw):
         """
@@ -1396,23 +1394,37 @@ class MCMCDraw(object):
         # Always return entropy estimate from draw, even if it is normal
         return S, Serr
 
+    def show_labels(self):
+        """
+        List of parameters in the state, with the parameter number for each. Use this
+        to help with the inputs to state.draw().
+        """
+        print("\n".join(f"p[{k}] = {v}" for k, v in enumerate(self.labels)))
+
     def draw(
         self,
         portion: Optional[float] = None,
         vars: Optional[List[int]] = None,
+        exclude: Optional[List[int]] = None,
         selection: SelectionType = None,
         thin: int = 1,
         outliers: bool = False,
+        derived: Optional[Callable] = None,
     ):
         """
         Return a sample from the posterior distribution.
 
         *portion* is the portion of each chain to use
 
-        *vars* is a list of variables to return for each point
+        *vars* is the list of vars that are active. Variables can be
+        0-origin integers or strings matching a variable label. Match uses
+        standard glob rules, with `*` matching any sequence, `?` matching any
+        character, `[abc]` matching one of `abc`, and `[!abc]` not matching
+        one of `abc`.
 
         *selection* sets the range each parameter in the returned distribution,
-        using {variable: (low, high)}. Missing variables use the full range.
+        using {var: (low, high)}. If *var* matches multiple labels, then use the
+        first restriction only. Missing variables use the full range.
 
         *thin* takes every nth item.
 
@@ -1428,9 +1440,19 @@ class MCMCDraw(object):
             draw = state.sample()
             plot(draw.points[:, 0], draw.points[:, 1], '.')
         """
+        # Fill in defaults
         vars = vars if vars is not None else getattr(self, "_shown", None)
         portion = self.portion if portion is None else portion
-        return Draw(self, portion=portion, vars=vars, selection=selection, thin=thin, outliers=outliers)
+        return Draw(
+            state=self,
+            portion=portion,
+            vars=vars,
+            exclude=exclude,
+            selection=selection,
+            thin=thin,
+            outliers=outliers,
+            derived=derived,
+        )
 
     # TODO: Move processing of visible/integer/derived out of state
     def set_visible_vars(self, labels: List[str]):
@@ -1512,16 +1534,24 @@ class Draw:
 
     *state* is the :class:`MCMCDraw` containing all points.
 
-    *vars* is the list of vars that are active. Variables can be
-    0-origin integers or strings matching a variable label.
-
     *portion* is the fraction of points to use for the sample, starting
     from the ends of the Markov chains.
 
+    *vars* is the list of vars that are active. Variables can be
+    0-origin integers or strings matching a variable label. Match uses
+    standard glob rules, with `*` matching any sequence, `?` matching any
+    character, `[abc]` matching one of `abc`, and `[!abc]` not matching
+    one of `abc`.
+
+    *exclude* all labels that match a pattern in the list. Matching rules
+    are the same as for *vars*. If a variable matches both *vars* and
+    *exclude* then it is included.
+
     *selection* restricts the points returned to a specific region of the
     parameter space using {var: (low, high)}. The var can be a 0-origin
-    integer or label as for *vars* or it can be *logp* if restricting by
-    log likelihood.
+    integer or label as for *vars*. It can also be *logp* if restricting by
+    log likelihood. If a label matches multiple patterns then choose the
+    first restriction (this may change to all that match in future).
 
     *thin* is the amount of thinning to apply, using every nth point in
     the chain. This reduces autocorrelation in the chains and reduces
@@ -1590,14 +1620,15 @@ class Draw:
     def __init__(
         self,
         state: MCMCDraw,
-        vars: Optional[List[Union[int, str]]] = None,
         portion: float = 1.0,
+        vars: Optional[List[Union[int, str]]] = None,
+        exclude: Optional[List[Union[int, str]]] = None,
         selection: SelectionType = None,
         thin: int = 1,
         outliers: bool = False,
+        derived: Optional[Callable] = None,
     ):
         self.state = state
-        self.vars = vars
         self.portion = portion
         self.thin = thin
         self.selection = selection
@@ -1619,39 +1650,56 @@ class Draw:
 
         # Derived variables are created during the draw so that existing data isn't altered.
         # This allows resume to work without extra effort. The code is also much simpler.
-        if state._derived_fn is not None:
-            newvars = asarray(state._derived_fn(chains.reshape(-1, Nvar).T)).T
+        if derived is None:
+            derived = state._derived_fn
+        if derived is not None:
+            newvars = derived(chains.reshape(-1, Nvar).T)
+            # If derived returns a dict, then use its keys as parameter labels
+            if isinstance(newvars, dict):
+                newlabels, newvars = zip(*newvars.items())
+            else:
+                # Backward compatibility: old interface had derived returning a list
+                newlabels = state._derived_labels
+                if not newlabels:
+                    newlabels = [f"F{k+1}" for k in range(len(derived))]
+            newvars = asarray(newvars).T
             newvars = newvars.reshape(Ngen, Npop, -1)
             chains = np.dstack((chains, newvars))
             Nvar = chains.shape[2]  # Update the number of variables
-            if state._derived_labels:
-                self.labels.extend(state._derived_labels)
-            else:
-                self.labels.extend("F{k+1}" for k in range(newvars.shape[2]))
             self.integers = np.append(self.integers, [False] * newvars.shape[2])
+            self.labels.extend(newlabels)
 
         # Select points within range limits given by selection, if any.
         # This happens before variable subsetting so that numerical indices
         # are independent of the displayed parameters. It happens after
         # calculating derived variables so that we can apply selection to derived values.
         mask = True
-        if selection:
-            for var, limits in selection.items():
-                if var == "logp":
-                    mask = mask & (chains_logp >= limits[0]) & (chains_logp <= limits[1])
-                else:
-                    var = self._lookup_var(var)
-                    mask = mask & (chains[:, :, var] >= limits[0]) & (chains[:, :, var] <= limits[1])
+        selection = self._selection_pattern_to_index(selection)
+        for var, limits in selection.items():
+            if var == "logp":
+                mask = mask & (chains_logp >= limits[0]) & (chains_logp <= limits[1])
+            else:
+                mask = mask & (chains[..., var] >= limits[0]) & (chains[..., var] <= limits[1])
 
-        # Restrict draw to a subset of the variables.
-        if vars is not None:
-            vars = [self._lookup_var(v) for v in vars]
-            chains = chains[:, :, vars]
-            if mask is not True:
-                mask = mask[:, :, vars]
+        # TODO: with pattern matching we've lost the ability to reorder parameters
+        # Restrict draw to a subset of the variables. Labels matching include take
+        # precedence over those matching exclude.
+        include = self._var_pattern_to_index(vars)
+        exclude = self._var_pattern_to_index(exclude)
+        exclude = [k for k in exclude if k not in include]
+        include = [k for k in include if k not in exclude]
+        # if vars and not include:
+        #     # Note: could be empty because everything is excluded
+        #    logging.warning(f"No parameters match {vars} in {self.labels}")
+        if include:  # if nothing matches then match everything
+            chains = chains[:, :, include]
+            # Mask doesn't include the final dimension, so doesn't need to be trimmed.
             Nvar = chains.shape[-1]
-            self.labels = [self.labels[v] for v in vars]
-            self.integers = self.integers[vars]
+            self.labels = [self.labels[v] for v in include]
+            self.integers = self.integers[include]
+            self.vars = include  # indices of selected items
+        else:
+            self.vars = None
 
         # Convert to a vector of selected points.
         if mask is True:
@@ -1684,15 +1732,38 @@ class Draw:
             self._argsort_indices[var] = np.argsort(self.points[:, var].flatten())
         return self._argsort_indices[var]
 
-    def _lookup_var(self, var: Union[int, np.integer, str]):
+    def _selection_pattern_to_index(self, selection: dict[int | str, tuple[float, float]] | None):
         """
-        Lookup columns by integer or by string. If names are duplicated only the
-        first one is saved.
+        For the selection dictionary {pattern: data}, return a dictionary of {index: data}
+        where data comes from the first pattern to matched by the label. Patterns are the
+        standard unix glob patterns, or integers for specific numbered variables
+        (see :meth:`State.show_labels`).
         """
-        try:
-            return var if isinstance(var, (int, np.integer)) else self.labels.index(var)
-        except ValueError:
-            raise ValueError(f"Parameter '{var} not in {self.labels}") from None
+        if selection is None:
+            return {}
+        result = {}
+        if data := selection.get("logp", None):
+            result["logp"] = data
+        for index, label in enumerate(self.labels):
+            for var, data in selection.items():
+                if index == var or (isinstance(var, str) and fnmatch(label, var)):
+                    result[index] = data
+                    break
+        return result
+
+    def _var_pattern_to_index(self, vars: list[int | str] | None):
+        """
+        Convert the include/exclude list of var patterns into a list of integer
+        parameter indices. Patterns are the standard unix glob patterns, or integers
+        for specific numbered variables (see :meth:`State.show_labels`)
+        """
+        if vars is None:
+            return []
+
+        def var_match(var, label, index):
+            return index == var or (isinstance(var, str) and fnmatch(label, var))
+
+        return [k for k, p in enumerate(self.labels) if any(var_match(v, p, k) for v in vars)]
 
 
 def test():
@@ -1706,6 +1777,7 @@ def test():
     Nvar, Npop, Ncr = 3, 6, 2
     xin = rand(Ngen, Npop, Nvar)
     xin[..., 2] *= 9  # make one parameter range large enough for integer tests
+    xin += 0.1  # force above 0.1 so that arrays print nicer
     pin = rand(Ngen, Npop)
     accept = rand(Ngen, Npop) < 0.8
     CRin = rand(Nupdate, Ncr)
@@ -1727,45 +1799,37 @@ def test():
     assert (thinned == state.chains()[1]).all()
     draws, logp = state.logp()
     assert norm(draws - Npop * arange(1, Ngen + 1)) == 0
-    assert norm(logp - pin) == 0
+    # Data is generated as double but may be stored as single,
+    # so there could be a loss of precision.
+    assert norm(logp - pin.astype(UNCERTAINTY_DTYPE)) == 0
     genid, logp = state.gen_logp()
     assert norm(genid - arange(1, Ngen + 1)) == 0
     assert norm(logp - pin) == 0
     genid, AR = state.acceptance_rate()
     assert norm(genid - arange(1, Ngen + 1)) == 0
-    assert norm(AR - 100 * sum(accept, axis=1) / Npop) == 0
+    assert norm(AR - (100 * sum(accept, axis=1) / Npop).astype(UNCERTAINTY_DTYPE)) == 0
     draws, logp = state.sample()
     # assert norm(draws - thinning*Npop*arange(1, Nthin+1)) == 0
     # assert norm(sample - xin[thinning-1::thinning]) == 0
     # assert norm(logp - pin[thinning-1::thinning]) == 0
     draws, CR = state.CR_weight()
     assert norm(draws - Npop * Nstep * arange(Nupdate)) == 0
-    assert norm(CR - CRin) == 0
+    assert norm(CR - CRin.astype(UNCERTAINTY_DTYPE)) == 0
     x, p = state.best()
     bestid = argmax(pin)
     i, j = bestid // Npop, bestid % Npop
     assert pin[i, j] == p
     assert norm(xin[i, j, :] - x) == 0
 
-    # Check that outlier updates properly
-    state._replace_outlier(1, 2)
-    outliers = state.outliers()
-    draws, logp = state.sample()
-    assert norm(outliers - asarray([[state._thin_index, 1, 2]])) == 0
-    # assert norm(sample[:, 1, :] - xin[thinning-1::thinning, 2, :]) == 0
-    # assert norm(sample[:, 2, :] - xin[thinning-1::thinning, 2, :]) == 0
-    # assert norm(logp[:, 1] - pin[thinning-1::thinning, 2]) == 0
-    # assert norm(logp[:, 2] - pin[thinning-1::thinning, 2]) == 0
-
-    draw = state.draw(selection={"P1": (0.4, 1.1)})
-    # print(format_vars(var_stats(draw)))
-    assert (draw.points[:, 1] >= 0.4).all()
+    draw = state.draw(selection={"P1": (0.4, 1.1)}, portion=1, outliers=True)
+    assert ((draw.points[:, 1] >= 0.4) & (draw.points[:, 1] <= 1.1)).all()
     # print(thinned[..., 1])
     # print(thinned[..., 1] >= 0.4, thinned.shape)
     # print(len(draw.points[:, 1]), np.sum(thinned[..., 1] >= 0.4))
     # print("thinned", thinned[thinned[..., 1] >= 0.4][:, 1])
     # print("points", draw.points[:, 1])
-    assert len(draw.points[:, 1]) == np.sum(thinned[..., 1] >= 0.4)
+    mask = (thinned[..., 1] >= 0.4) & (thinned[..., 1] <= 1.1)
+    assert len(draw.points[:, 1]) == np.sum(mask)
 
     if 0:  # test of deprecated interface
         # Test derived variables (inplace update! ick!)
@@ -1807,6 +1871,17 @@ def test():
     # print("thinned", thinned[thinned[..., 1] >= 0.4][:, 1])
     # print("points", draw.points[:, 1])
     assert len(draw.points[:, 1]) == np.sum(thinned[..., 1] >= 0.4)
+
+    # Note: check mods to the state data structures last
+    # Check that outlier updates properly
+    state._replace_outlier(1, 2)
+    outliers = state.outliers()
+    draws, logp = state.sample()
+    assert norm(outliers - asarray([[state._thin_index, 1, 2]])) == 0
+    # assert norm(sample[:, 1, :] - xin[thinning-1::thinning, 2, :]) == 0
+    # assert norm(sample[:, 2, :] - xin[thinning-1::thinning, 2, :]) == 0
+    # assert norm(logp[:, 1] - pin[thinning-1::thinning, 2]) == 0
+    # assert norm(logp[:, 2] - pin[thinning-1::thinning, 2]) == 0
 
 
 if __name__ == "__main__":

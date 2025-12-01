@@ -40,17 +40,22 @@ from typing import Callable, Dict, Optional, List, Any
 import warnings
 import signal
 import sys
-import logging
 from dataclasses import field
 import hashlib
 # from textwrap import dedent
 
+from bumps import __version__ as bumps_version
 from bumps.fitters import FIT_AVAILABLE_IDS
+from bumps.fitproblem import FitProblem
 from . import api
 from . import persistent_settings
 from . import fit_options
-from .logger import logger, setup_console_logging
-from .state_hdf5_backed import SERIALIZERS
+from .logger import logger, setup_console_logging, LOGLEVEL
+from .state_hdf5_backed import SERIALIZERS, FitResult
+
+# Ick! PREFERRED_PORT is here rather than in webserver so that it can
+# be used in the command line help without a circular import.
+PREFERRED_PORT = 5148  # "SLAB"
 
 
 # TODO: try datargs to build a parser from the typed dataclass
@@ -76,7 +81,7 @@ class BumpsOptions:
     read_session: Optional[str] = None
     write_session: Optional[str] = None
     serializer: SERIALIZERS = "dataclass"
-    no_auto_history: bool = False
+    auto_history: bool = True
     path: Optional[str] = None
     use_persistent_path: bool = False
     reload_export: Optional[str] = None
@@ -94,7 +99,7 @@ class BumpsOptions:
     export: Optional[str] = None
     trace: bool = False
     parallel: int = 0
-    mpi: bool = False
+    mpi: Optional[bool] = None
 
     # Webserver controls.
     mode: str = "edit"
@@ -107,10 +112,19 @@ class BumpsOptions:
 
 
 class DictAction(argparse.Action):
+    """
+    Gather argparse command line options into a dict entry.
+
+    Given *dest="group.key"* in the parser argument definition, add *group* to the
+    returned namespace and set *group["key"]=value*.
+
+    There is special handling of bool types, converting them to True/False values.
+    """
+
     # Note: implicit __init__ inherited from argparse.Action
     def __call__(self, parser, namespace, values, option_string=None):
         if self.type is bool:
-            values = True
+            values = not option_string.startswith("--no-")
         # Find target dict name and key.
         key, subkey = self.dest.split(".")
         # Grab the target dict, if present.
@@ -134,9 +148,20 @@ class HelpFormatter(argparse.RawTextHelpFormatter, argparse.ArgumentDefaultsHelp
         if action.default is not argparse.SUPPRESS:
             # Only show default if it's not None or False
             if action.default is not None and action.default is not False:
-                help_text += f" [default: {action.default}]"
+                help_text += f" (default: {action.default})"
         return help_text
 
+
+def _branding():
+    """Return a string with version and system information."""
+    output = f"{'='*55}\n"
+    output += f"{api.state.app_name}\t\t{api.state.app_version}\n"
+    if api.state.app_name != "bumps":
+        output += f"bumps\t\t{bumps_version}\n"
+    output += "Python\t\t" + ".".join(map(str, sys.version_info[:3])) + "\n"
+    output += f"Platform\t{sys.platform}\n"
+    output += f"{'='*55}\n"
+    return output
 
 def get_commandline_options(arg_defaults: Optional[Dict] = None):
     """Parse bumps command line options."""
@@ -204,28 +229,32 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         type=str,
         help="arguments to send to the model loader on load",
     )
-    # parser.add_argument('-d', '--debug', action='store_true', help='autoload modules on change')
+    # parser.add_argument('-d', '--debug', action=argparse.BooleanOptionalAction, help='autoload modules on change')
 
     # Fitter controls
     fit_options.form_fit_options_associations()  # sets fitter list for each option
-    fitter = parser.add_argument_group("Fitting controls")
+    fitter = parser.add_argument_group("Fitting options")
     for name, option in fit_options.FIT_OPTIONS.items():
         stype = option.stype
-        metavar = " " if stype is bool else name.replace("_", "-").upper()
+        metavar = "" if stype is bool else name.replace("_", "-").upper()
         choices = stype if isinstance(stype, list) else None
         if name == "fit":
             choices = FIT_AVAILABLE_IDS
-        help = f"{option.label}  [{', '.join(option.fitters)}]\n{option.description}"
+        # For the trim option allow both --trim and --no-trim. The DictAction class
+        # checks for leading "--no-" in the option string when assigning to bool.
+        flagname = name.replace("_", "-")
+        flags = (f"--{flagname}", f"--no-{flagname}") if stype is bool else (f"--{flagname}",)
         fitter.add_argument(
-            f"--{name.replace('_', '-')}",
+            *flags,
             action=DictAction,
             dest=f"fit_options.{name}",
             type=str if choices else stype,
             metavar=metavar,
             nargs=0 if stype is bool else None,
             choices=choices,
-            # Allow hidden parameters for hidden optimizers. E.g., pt has --nT
-            help=help if option.fitters else argparse.SUPPRESS,
+            # Don't show parameters that don't appear in the visible optimizers.
+            # For example, don't show --nT which is only available when --fit=pt.
+            help=option.build_help() if option.fitters else argparse.SUPPRESS,
         )
 
     # TODO: show uncertainty at the end of the fit
@@ -289,7 +318,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     )
     session.add_argument(
         "--resume",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         help=dedent("""\
             Resume the most recent fit from the saved session file. [dream, de]
             Note that this loads the model from the session and ignores any model
@@ -304,20 +333,21 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         help="strategy for serializing problem, will use value from session if it has already been defined",
     )
     session.add_argument(
-        "--no-auto-history",
-        action="store_true",
-        help="disable auto-appending problem state to history on load and at fit end",
+        "--auto-history",
+        default=True,
+        action=argparse.BooleanOptionalAction,
+        help="auto-append problem state to history on load and at the end of the fit",
     )
     session.add_argument(
         "--path",
         default=None,
         type=str,
-        help="set initial path for save and load dialogs [webview only]",
+        help="set initial path for save and load dialogs (webview only)",
     )
     session.add_argument(
         "--use-persistent-path",
-        action="store_true",
-        help="save most recently used path to disk for persistence between sessions [webview only]",
+        action=argparse.BooleanOptionalAction,
+        help="save most recently used path to disk for persistence between sessions (webview only)",
     )
     session.add_argument(
         "--reload-export",
@@ -329,17 +359,17 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     sim = parser.add_argument_group("Simulation")
     sim.add_argument(
         "--simulate",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         help="simulate a dataset using the initial problem parameters",
     )
     sim.add_argument(
         "--simrandom",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         help="simulate a dataset using the random problem parameters",
     )
     sim.add_argument(
         "--shake",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         help="set random parameters before fitting",
     )
     sim.add_argument(
@@ -365,9 +395,9 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     misc.add_argument(
         "--export",
         type=str,
-        help="Directory path for data and figure export.",
+        help="directory path for data and figure export.",
     )
-    fitter.add_argument("--pars", default=None, type=str, help="Start a fit from a previously saved result.")
+    misc.add_argument("--pars", default=None, type=str, help="start a fit from an exported result.")
     misc.add_argument(
         "--parallel",
         default=0,
@@ -376,26 +406,27 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     )
     misc.add_argument(
         "--mpi",
-        action="store_true",
-        help="Use MPI to distribute work across a cluster",
+        action=argparse.BooleanOptionalAction,
+        help="Use MPI for parallelization (only needed if we fail to detect MPI correctly)",
     )
     misc.add_argument(
         "--trace",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         help="enable memory tracing (prints after every uncertainty update in dream)",
     )
     misc.add_argument(
         "--loglevel",
         type=str,
-        choices=["debug", "info", "warn", "error", "critical"],
+        choices=list(LOGLEVEL.keys()),
+        help="display logging to console",
         default="warn",
     )
-    # TODO: show version numbers for both refl1d and bumps?
+    # Show version numbers for both bumps and child program
     misc.add_argument(
         "-V",
         "--version",
         action="version",
-        version=f"%(prog)s {api.state.app_version}",
+        version=_branding(),
     )
 
     # TODO: restructure so that -b -s -r --webview override each other
@@ -437,12 +468,12 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     server.add_argument(
         "-x",
         "--headless",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         help="do not automatically load client in browser",
     )
     server.add_argument(
         "--external",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         help="listen on all interfaces, including external (local connections only if not set)",
     )
     server.add_argument(
@@ -450,18 +481,22 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         "--port",
         default=0,
         type=int,
-        help="port on which to start the server",
+        help=f"web server port; use --port=0 to first try {PREFERRED_PORT} then fall back to a random port",
     )
     server.add_argument(
         "--hub",
         default=None,
         type=str,
-        help="api address of parent hub (only used when called as subprocess)",
+        # Don't show jupyter-only parameters to the user.
+        # help="api address of parent hub (only used when called as subprocess)",
+        help=argparse.SUPPRESS,
     )
     server.add_argument(
         "--convergence-heartbeat",
-        action="store_true",
-        help="enable convergence heartbeat for jupyter kernel (keeps kernel alive during fit)",
+        action=argparse.BooleanOptionalAction,
+        # Don't show jupyter-only parameters to the user.
+        # help="enable convergence heartbeat for jupyter kernel (keeps kernel alive during fit)",
+        help=argparse.SUPPRESS,
     )
 
     # parser.add_argument('-c', '--config-file', type=str, help='path to JSON configuration to load')
@@ -471,7 +506,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         for k, v in arg_defaults.items():
             setattr(namespace, k, v)
     args = parser.parse_args(namespace=namespace)
-    # print(f"{type(args)=} {args=}")
+    # print(f"Parse output: {args=}")
     return args
 
 
@@ -519,7 +554,7 @@ def interpret_fit_options(options: BumpsOptions):
     if api.state.problem.serializer is None or api.state.problem.serializer == "":
         api.state.problem.serializer = options.serializer
 
-    if options.no_auto_history:
+    if not options.auto_history:
         api.state.shared.autosave_history = False
 
     if options.trace:
@@ -552,15 +587,9 @@ def interpret_fit_options(options: BumpsOptions):
     if options.reload_export:
 
         async def load_export_to_state(App=None):
-            problem, fit_state = reload_export(
-                options.reload_export, model_file=options.filename, model_options=options.args
-            )
+            problem, fit = reload_export(options.reload_export, modelfile=options.filename, args=options.args)
             path = Path(problem.path)
-            await api.set_problem(problem, path.parent, path.name)
-            if fit_state is not None:
-                quantiles = build_convergence_from_fit_state(fit_state)
-                api.state.set_fit_state(fit_state, "dream")
-                api.state.set_convergence(quantiles)
+            await api.set_problem(problem, path.parent, path.name, fit=fit)
             api.state.autosave()
 
         on_startup.append(load_export_to_state)
@@ -698,9 +727,13 @@ def interpret_fit_options(options: BumpsOptions):
     return on_startup, on_complete
 
 
-def reload_export(export_path, model_file=None, model_options=None):
+def reload_export(
+    path: Path | str,
+    modelfile: Path | str | None = None,
+    args: list[str] | None = None,
+) -> tuple[FitProblem, FitResult]:
     """
-    Reload a bumps <= 0.8 export directory.
+    Reload a bumps export directory.
 
     *path* is the path to the directory, or to a <model>.par file within that
     directory. Use the <model>.par file if you have multiple models exported to
@@ -712,55 +745,100 @@ def reload_export(export_path, model_file=None, model_options=None):
     <model>.py on the command line. This is handy if you have several variations
     saved to different filenames stored along with your data.
 
-    sys.argv is set to *model_options* before loading the model.
+    sys.argv is set to *args* before loading the model.
     """
-    from bumps.cli import load_model, load_best
-    from bumps.dream.state import load_state
+    from bumps.fitproblem import load_problem
+    from bumps.cli import load_best
+    from .state_hdf5_backed import SERIALIZER_EXTENSIONS
 
     # Find the .par file in the export directory
-    export_path = Path(export_path)
-    if export_path.is_file():
-        parfile = export_path
+    path = Path(path)
+    if path.is_file():
+        parfile = path
         if parfile.suffix != ".par":
-            raise ValueError(f"Reload export needs path or path/model.par, not {export_path}")
-        export_path = export_path.parent
+            raise ValueError(f"Reload export needs path or path/model.par, not {path}")
+        path = path.parent  # set path to the directory containing *.par
     else:
-        pars_glob = list(export_path.glob("*.par"))
+        # path is already a directory; look for a par file within it
+        pars_glob = list(path.glob("*.par"))
         if len(pars_glob) == 0:
-            raise ValueError(f"Reload export {export_path}/*.par does not exist")
+            raise ValueError(f"Reload export {path}/*.par does not exist")
         if len(pars_glob) > 1:
-            raise ValueError(f"More than one .par file. Use {export_path}/model.par in reload export.")
+            raise ValueError(f"More than one .par file. Use {path}/model.par in reload export.")
         parfile = pars_glob[0]
 
-    # If modelfile is not given assume it is model.py in the current directory
-    if model_file is None:
-        model_file = parfile.stem + ".py"
+    # Look for a pickle in the parfile directory and try loading that
+    problem = None
+    for serializer, suffix in SERIALIZER_EXTENSIONS.items():
+        picklefile = parfile.with_suffix(f".{suffix}")
+        if picklefile.exists():
+            try:
+                problem = load_problem(picklefile)
+                # Note: no need to load_best because serializer contained the parameters
+            except Exception as exc:
+                logger.warn(f"Failed to deserialize {picklefile}; look for model file")
+            break
 
-    # Check that the model file hash has not changed
-    model_file = Path(model_file)
-    saved_model = export_path / model_file.name
-    if not saved_model.exists():
-        raise ValueError(f"Model '{model_file.name}' does not exist in '{export_path}'")
-    if not model_file.exists():
-        raise ValueError(f"Model '{model_file}' does not exist.")
-    if filehash(saved_model) != filehash(model_file):
-        raise ValueError(f"Model file has been modified. Copy {saved_model} into {model_file.parent}")
+    # Pickle failed. Try loading modelfile
+    if problem is None:
+        # If modelfile is not given look for one of the serializers in the current directory
+        if modelfile is None:
+            # Look for model.py file in the parent directory of the export directory
+            modelfile = path.parent / parfile.with_suffix(".py").name
+        else:
+            modelfile = Path(modelfile)
 
-    # Load the model file
-    problem = load_model(model_file, model_options=model_options)
-    load_best(problem, parfile)
+        saved_model = path / modelfile.name
+        if not saved_model.exists():
+            raise ValueError(f"Model '{modelfile.name}' does not exist in '{path}'")
+        if not modelfile.exists():
+            raise ValueError(f"Model '{modelfile}' does not exist.")
+        if filehash(saved_model) != filehash(modelfile):
+            raise ValueError(f"Model file has been modified. Copy {saved_model} into {modelfile.parent}")
 
+        # Load the model script and the fitted values.
+        problem = load_problem(modelfile, model_options=args)
+        load_best(problem, parfile)
+
+    # Load the MCMC files
+    fit_result = load_fit_result(parfile)
+
+    return problem, fit_result
+
+
+def load_fit_result(parfile: Path | str) -> FitResult:
+    from bumps.dream.state import load_state
+
+    # Reload DREAM state if it exists. Note that labels come from the parfile.
     try:
-        # Reload the fit state if it exists
         fit_state = load_state(str(parfile.parent / parfile.stem))
         fit_state.mark_outliers()
-        fit_state.labels = problem.labels()
+        fit_state.portion = fit_state.trim_portion()
     except Exception as exc:
         # no fit state, but that's okay
-        logging.warning(f"Could not load DREAM state: {exc}")
+        logger.warning(f"Could not load DREAM state: {exc}")
         fit_state = None
 
-    return problem, fit_state
+    # TODO: might be able to get method and options from the start of the .mon file
+    if fit_state is not None:
+        # Reconstruct dream options for pop and steps are set correctly.
+        # Use negative pop for fixed number of chains independent of the number of parameters
+        Nchains, Nvar, Nsteps = fit_state.Npop, fit_state.Nvar, fit_state.Nthin
+        pop = Nchains / Nvar if Nchains % Nvar == 0 else -Nchains
+        samples = Nchains * Nsteps
+        method = "dream"
+        options = dict(pop=pop, steps=0, samples=samples)
+    else:
+        method = "amoeba"  # arbitrary method
+        options = {}
+
+    # TODO: reload convergence data when it is available
+    if fit_state is not None:
+        convergence = build_convergence_from_fit_state(fit_state)
+    else:
+        convergence = []
+
+    return FitResult(method=method, options=options, convergence=convergence, fit_state=fit_state)
 
 
 def filehash(filename):
@@ -877,6 +955,7 @@ def main(options: Optional[BumpsOptions] = None):
     if options is None:
         options = get_commandline_options()
 
+    logger.setLevel(LOGLEVEL[options.loglevel])
     setup_console_logging(options.loglevel)
     # from .logger import capture_warnings
     # capture_warnings(monkeypatch=True)
@@ -897,7 +976,8 @@ def main(options: Optional[BumpsOptions] = None):
     # sys.exit() after the worker loop finishes so that the remaining on startup
     # and on complete actions are skipped. We could instead pass an is_worker flag
     # into the options processor so that there are no tasks to skip.
-    if (options.mpi or using_mpi()) and not info_only:
+    # Don't use MPI autodetect when --mpi/--no-mpi is given on the command line.
+    if (options.mpi or (options.mpi is None and using_mpi())) and not info_only:
         # ** Warning **: importing MPI from mpi4py calls MPI_Init() which triggers
         # network traffic. Only import it when you know you are using MPI calls.
         from mpi4py import MPI
@@ -909,6 +989,7 @@ def main(options: Optional[BumpsOptions] = None):
         # api.state.rank = ""
 
     if webview and is_controller:  # gui mode
+        print(_branding())
         start_from_cli(options)
     else:  # console mode
         run_batch_fit(options)

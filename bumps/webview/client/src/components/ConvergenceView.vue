@@ -24,6 +24,12 @@ interface ConvergencePlotData {
 }
 
 const { draw_requested } = setupDrawLoop("updated_convergence", props.socket, fetch_and_draw, title);
+const plot_config = {
+  responsive: true,
+  scrollZoom: true,
+  edits: { legendPosition: true },
+  modeBarButtonsToAdd: [SVGDownloadButton],
+};
 
 async function fetch_and_draw() {
   if (plot_div.value == null) {
@@ -45,11 +51,10 @@ async function fetch_and_draw() {
   } else {
     trim_is_set.value = false;
   }
-  const config = { responsive: true, scrollZoom: true, modeBarButtonsToAdd: [SVGDownloadButton] };
   if (data == null) {
     Plotly.purge(plot_div.value);
   } else {
-    await Plotly.react(plot_div.value, [...data], layout, config);
+    await Plotly.react(plot_div.value, [...data], layout, plot_config);
   }
 }
 

@@ -3,7 +3,7 @@ import os
 import numpy as np
 
 from bumps import fitters
-from bumps.cli import load_model
+from bumps.names import load_problem
 
 SEED = 1
 
@@ -46,7 +46,7 @@ def plot_model(filename):
 
     # import sys; print >>sys.stderr, "in plot with",filename, example_dir()
     np.random.seed(SEED)
-    p = load_model(os.path.join(example_dir(), filename))
+    p = load_problem(os.path.join(example_dir(), filename))
     p.plot()
     plt.show()
 
@@ -56,7 +56,7 @@ def fit_model(filename):
 
     # import sys; print >>sys.stderr, "in plot with",filename, example_dir()
     np.random.seed(SEED)
-    problem = load_model(os.path.join(example_dir(), filename))
+    problem = load_problem(os.path.join(example_dir(), filename))
     # x, fx = fit.RLFit(problem).solve(steps=1000, burn=99)
     # x, fx = fit.DEFit(problem).solve(steps=200, pop=10)
     # x, fx = fit.PTFit(problem).solve(steps=100,burn=400)
