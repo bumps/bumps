@@ -1040,9 +1040,9 @@ class DreamFit(FitBase):
             pop, draws = options["pop"], options["samples"]
             pop_size = int(np.ceil(pop * num_fitparams)) if pop > 0 else int(-pop)
             steps = (draws + pop_size - 1) // pop_size
+        steps += options["burn"]  # add burn-in steps
         DE_steps = Dream.DE_steps  # DreamFit does not override DE_steps, uses default
-        steps = int(np.ceil(steps / DE_steps)) * DE_steps  # round up to multiple of DE_steps
-        steps += options["burn"]
+        steps = int(np.ceil((steps - 1) / DE_steps)) * DE_steps + 1  # round up to multiple of DE_steps
         return steps
 
 
