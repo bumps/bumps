@@ -56,16 +56,20 @@ async function fetch_and_draw() {
 
 async function draw_plot(childDiv: HTMLDivElement, plotitem: { fig_type: "plotly" | "mpld3"; plotdata: object }) {
   const { fig_type, plotdata } = plotitem;
+  // Find the plot content div inside childDiv
+  const plotContentDiv = childDiv.querySelector(".plot-content") as HTMLDivElement;
+  if (!plotContentDiv) return;
+
   if (fig_type === "plotly") {
     const { data, layout } = plotdata as Plotly.PlotlyDataLayoutConfig;
     const config = { responsive: true };
-    // draw into the child div with index index
-    await Plotly.react(childDiv, [...data], layout, config);
+    // draw into the plot content div
+    await Plotly.react(plotContentDiv, [...data], layout, config);
   } else if (fig_type === "mpld3") {
     let mpld3_data = plotdata as { width: number; height: number };
-    mpld3_data.width = Math.round(childDiv.clientWidth ?? 640) - 8;
-    mpld3_data.height = Math.round(childDiv.clientHeight ?? 480) - 8;
-    mpld3.draw_figure(childDiv.id, mpld3_data, false, true);
+    mpld3_data.width = Math.round(plotContentDiv.clientWidth ?? 640) - 8;
+    mpld3_data.height = Math.round(plotContentDiv.clientHeight ?? 480) - 8;
+    mpld3.draw_figure(plotContentDiv.id, mpld3_data, false, true);
   }
 }
 
@@ -100,53 +104,61 @@ function toggleDropdown() {
 
 <template>
   <div class="container d-flex flex-column flex-grow-1">
-    <div class="form-check">
-      <label class="form-check-label pe-2" for="multiple">Show multiple</label>
-      <input
-        id="multiple"
-        v-model="show_multiple"
-        class="form-check-input"
-        type="checkbox"
-        @change="toggle_multiple()"
-      />
-    </div>
-    <label for="model-select">Models:</label>
-    <div v-if="show_multiple" class="dropdown">
-      <button
-        class="btn btn-secondary dropdown-toggle"
-        type="button"
-        :aria-expanded="dropdown_open"
-        @click="toggleDropdown"
+    <div class="d-flex align-items-center gap-3 mb-2">
+      <div class="form-check mb-0">
+        <input
+          id="multiple"
+          v-model="show_multiple"
+          class="form-check-input"
+          type="checkbox"
+          @change="toggle_multiple()"
+        />
+        <label class="form-check-label" for="multiple">Show multiple</label>
+      </div>
+      <label for="model-select" class="visually-hidden">Models:</label>
+      <div v-if="show_multiple" class="dropdown flex-grow-1">
+        <button
+          class="btn btn-secondary dropdown-toggle"
+          type="button"
+          :aria-expanded="dropdown_open"
+          aria-label="Select models to display"
+          @click="toggleDropdown"
+        >
+          {{ current_models.length }} model(s) selected
+        </button>
+        <ul class="dropdown-menu" :class="{ show: dropdown_open }">
+          <li v-for="(model, model_index) in model_names" :key="model_index">
+            <label class="dropdown-item">
+              <input
+                type="checkbox"
+                class="form-check-input me-2"
+                :value="model_index"
+                :checked="current_models.includes(model_index)"
+                @change="toggleModelSelection(model_index)"
+              />
+              Model {{ model_index + 1 }}: {{ model }}
+            </label>
+          </li>
+        </ul>
+      </div>
+      <select
+        v-else
+        id="model-select"
+        v-model="current_model"
+        class="form-select flex-grow-1"
+        aria-label="Select model to display"
+        @change="changeModel()"
       >
-        {{ current_models.length }} model(s) selected
-      </button>
-      <ul class="dropdown-menu" :class="{ show: dropdown_open }">
-        <li v-for="(model, model_index) in model_names" :key="model_index">
-          <label class="dropdown-item">
-            <input
-              type="checkbox"
-              class="form-check-input me-2"
-              :value="model_index"
-              :checked="current_models.includes(model_index)"
-              @change="toggleModelSelection(model_index)"
-            />
-            Model {{ model_index + 1 }}: {{ model }}
-          </label>
-        </li>
-      </ul>
+        <option v-for="(model, model_index) in model_names" :key="model_index" :value="model_index">
+          Model {{ model_index + 1 }}: {{ model }}
+        </option>
+      </select>
     </div>
-    <select v-else id="model-select" v-model="current_model" @change="changeModel()">
-      <option v-for="(model, model_index) in model_names" :key="model_index" :value="model_index">
-        Model {{ model_index + 1 }}: {{ model }}
-      </option>
-    </select>
     <div :id="plot_div_id" ref="plot_div" class="flex-grow-1 plot-container">
-      <div
-        v-for="model_index in current_selection"
-        :id="'child_plot_' + model_index"
-        :key="model_index"
-        class="plot-grid-item"
-      ></div>
+      <div v-for="model_index in current_selection" :key="model_index" class="plot-grid-item">
+        <div class="model-name">Model {{ model_index + 1 }}: {{ model_names[model_index] }}</div>
+        <div :id="'plot_content_' + model_index" class="plot-content"></div>
+      </div>
     </div>
   </div>
 </template>
@@ -163,6 +175,8 @@ function toggleDropdown() {
 }
 
 .plot-grid-item {
+  display: flex;
+  flex-direction: column;
   width: 100%;
   min-width: 400px;
   height: 100%;
@@ -170,6 +184,18 @@ function toggleDropdown() {
   margin: 0;
   padding: 0;
   --bs-gutter-x: 0rem;
+}
+
+.model-name {
+  flex-shrink: 0;
+  padding: 0.5rem;
+  background-color: rgba(0, 0, 0, 0.05);
+  font-weight: bold;
+}
+
+.plot-content {
+  flex-grow: 1;
+  min-height: 0;
 }
 
 @media (prefers-color-scheme: dark) {
