@@ -875,7 +875,7 @@ class DreamFit(FitBase):
         self.state = None
 
     def solve(self, monitors: MonitorRunner, mapper=None, **options):
-        from .dream import Dream
+        from .dream.core import Dream
 
         options = _fill_defaults(options, self.settings)
 
@@ -1362,27 +1362,33 @@ assert all(f in FIT_AVAILABLE_IDS for f in FIT_ACTIVE_IDS)
 # TODO: move jupyter notebook support functions to bumps/commands.py, along with load_problem().
 
 
-def help():
+def help(*shown):
+    import sys
     from IPython.display import display, Markdown
 
-    src = """
+    pages = dict(
+        fit="""
 Bumps functions:
 ```python
 import bumps.names as bp
-bp.help()                                            # display this help
+bp.help("dream")                                     # display dream plot functions
 problem = bp.load_problem(path, args=[arg1, ...])    # load model from script (.py) or export (.json)
 options = dict(fit=dream, burn=100)                  # fit options (see bumps -h for list)
 !bumps --help                                        # show available options
 fitresult = bp.fit(problem, **options)               # synchronous fit interface
 fitresult = bp.fit(problem, resume=fitresult, **options) # resume a fit from fitresult
 bp.plot_convergence(fitresult)                       # show convergence plot
-bp.show_results(problem, fitresult)                  # summarize fit results
+bp.show_results(problem, fitresult)                  # summarize fit results including plots
+bp.show_table(problem, result)                       # show just χ² and the parameter uncertainty table
 problem.plot()                                       # show model plots
 fitresult.state.show()                               # show dream plots
+bp.save_fit("session.h5", problem, fitresult, label="example fit")  # append to session.h5
+bp.export_fit("/tmp/T1", problem, fitresult, basename="test")       # export /tmp/T1/test.par etc.
 problem, fitresult = bp.load_fit_from_session(path)  # load bumps MCMC from session file
 problem, fitresult = bp.load_fit_from_export(path)   # load bumps MCMC files that were exported
 ```
-
+""",
+        webview="""
 Webview functions:
 ```python
 await bp.start_bumps()                               # start the webview server
@@ -1392,17 +1398,67 @@ await bp.start_fit_thread(options=options)           # start the webview fit thr
 problem, fitresult = await bp.get_fit_from_webview(wait=True) # get fit results from webview
 await bp.set_problem(problem, fit=fitresult)         # send problem and results to webview
 ```
-
-MCMC statistics: [TODO]
+""",
+        dream="""
+MCMC statistics:
 ```python
-# parameter summary table
-# range restriction and brushing
-# calling individual plots
-# derived and hidden parameters
-# entropy calculation
+import matplotlib.pyplot as plt
+from bumps.dream.views import plot_all, plot_corrmatrix
+from bumps.dream.varplot import var_plot_size, plot_vars, plot_var
+from bumps.dream.stats import var_stats, format_vars
+
+# Select from the distribution
+result.state.show_labels()
+draw = result.state.draw(
+    portion=1,  # portion to keep, from the right; use 1.0 for all
+    derived=lambda p: {'name': expression, ...},  # derived parameters
+    selection={'name': (low, hi),...},  # ranges on individual parameters, or logp
+    vars=['name', 'name', ...],  # variables to use for stats and plots
+    exclude=['name', 'name', ...],  # list nuisance variables you don't want plotted
+    thin=1,   # to reduce autocorrelation spikes choose a large thinning value
+)
+plot_all(draw) # standard plots and tables on the selection
+
+# Summary statistics
+vstats = var_stats(draw)  # parameter statistics
+print(format_vars(vstats))  # formatted parameter table
+
+# Entropy calculation using Gaussian mixture model (requires `pip install scikit-learn`)
+from uncertainties import ufloat as U
+from bumps.dream.entropy import gmm_entropy
+S, Serr = gmm_entropy(draw.points, n_est=10000) # Entropy from draw
+print(f"entropy={U(S, Serr):fS} (Gaussian mixture model)")
+
+# Histograms and correlation plots including outliers
+plt.figure()
+plot_corrmatrix(draw, vstats=vstats, nbins=50, full=True)  # correlation plot with outliers
+plt.figure(figsize=var_plot_size(len(vstats)))
+plot_vars(draw, vstats, nbins=50, full=True) # parameter histogram with outliers
+
+# Parameter histogram comparison between fits for problem1 and problem2
+draw1, draw2 = result1.state.draw(), result2.state.draw()
+par, nsigma = 1, 4
+bins = np.linspace(result1.x[par] - nsigma*result1.dx[par], result1.x[par] + nsigma*result1.dx[par], 50)
+plt.hist(draw1.points[:, par], bins=bins, alpha=0.5, label=f"{problem1.name or 'problem 1'}", density=True)
+plt.hist(draw2.points[:, par], bins=bins, alpha=0.5, label=f"{problem2.name or 'problem 2'}", density=True)
+plt.ylabel(f"P({draw1.labels[par]})")
+plt.xlabel(f"{draw1.labels[par]}")
+plt.title("Parameter distribution comparison")
+plt.legend()
 ```
-"""
-    display(Markdown(src))
+""",
+    )
+
+    if not shown:
+        shown = ["fit", "webview"]
+    if not all(p in pages for p in shown):
+        print("available help:", " ".join(sorted(pages.keys())))
+    else:
+        src = "\n".join(pages[p] for p in shown)
+        if "ipykernel" in sys.modules:
+            display(Markdown(src))
+        else:
+            print(src)
 
 
 def plot_convergence(results, cutoff=0.25, ax=None):
@@ -1493,7 +1549,6 @@ def load_fit_from_session(filename: Path | str):
     session = load_session(filename)
     problem = session.problem.fitProblem
     fit = session.fitting
-    print(fit.__dict__)
     fit_state = getattr(fit, "state", None)
     if fit_state:
         fit_state.mark_outliers()
@@ -1533,12 +1588,25 @@ def load_fit_from_export(
 
 def show_results(problem, results: OptimizeResult):
     # print(session.fitting)
+    print(f"Fit results for {problem.name or 'problem'}: χ² = {problem.chisq_str()}")
     print(problem.summarize())
-    print(f"χ² = {problem.chisq_str()}")
+    print()
     plot_convergence(results)
     problem.plot(fignum=2)
     if results.state:
         results.state.show()
+    else:
+        problem.show_err(results.x, results.dx)
+
+
+def show_table(problem, results):
+    print(f"Fit results for {problem.name or 'problem'}: χ² = {problem.chisq_str()}")
+    if results.state:
+        from bumps.dream.stats import var_stats, format_vars
+
+        draw = results.state.draw()
+        vstats = var_stats(draw)
+        print(format_vars(vstats))
     else:
         problem.show_err(results.x, results.dx)
 
@@ -1625,8 +1693,11 @@ def fit(
     fitters also include a *result.state* object. For dream this can be used as
     *bumps.dream.views.plot_all(result.state)* to generate the uncertainty
     plots. Use *plot_convergence(result)* to show how the fit progressed.
-    Note: All fits report *success=True* even if they did not converge. Similarly
-    *status=0* and *message="successful termination"*.
+    *result.convergence* is a vector of current value for each step, or an array
+    with best and population quantiles, [best, 0%, 20%, 50%, 80%, 100%].
+
+    Note: All fits report *result.success=True* even if they did not converge.
+    Similarly *result.status=0* and *result.message="successful termination"*.
 
     If *session=path/file.h5* is provided, append the fit to the session
     history, or create a new session if the file doesn't exist.
@@ -1712,19 +1783,17 @@ def fit(
         # Non-standard results. Note convergence is in nominal chisq
         dx=dx,
         dof=dof,
-        timestame=now_string(),
+        timestamp=now_string(),
         # webview FitResults
         state=fit_state,
-        convergence=2 * convergence / dof,
+        convergence=convergence,
         method=method,
         options=options,
     )
 
     problem.setp(x)
-    chisq = problem.chisq_str()
     if verbose:
-        print("final chisq", chisq)
-        driver.show_err()
+        show_table(problem, result)
 
     if session is not None or export is not None:
         from .serialize import serialize
@@ -1759,7 +1828,6 @@ def save_fit(
     problem,
     fit: OptimizeResult,
     label: str | None = None,
-    verbose: bool = True,
 ):
     """
     Write a fit to a session file.
