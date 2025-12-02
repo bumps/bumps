@@ -1,5 +1,17 @@
 """
 Standard math functions for parameter expressions.
+
+These functions delay evaluation of the expression until the value is requested,
+thus allowing the value to change when the parameter is updated. Most numpy functions
+will do this automatically, so nothing special is needed.
+
+- *degrees*, *radians*, *min*, *max*
+- powers: *exp*, *log*, *log10*, *sqrt*
+- radians trig: *sin*, *cos*, *tan*, *arcsin*, *arccos*, *arctan*, *arctan2*
+- degrees trig: *sind*, *cosd*, *tand*, *arcsind*, *arccosd*, *arctand*, *arctan2d*
+- hyperbolic trig: *sinh*, *cosh*, *tanh*, *arcsinh*, *arccosh*, *arctanh*
+
+arc-function aliases (*asin*, *asinh*, ...) are added to pmath for convenience.
 """
 
 __all__ = []

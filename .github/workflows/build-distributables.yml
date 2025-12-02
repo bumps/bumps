@@ -162,7 +162,7 @@ jobs:
         tar -czf "artifacts/$FULL_PACKAGE_NAME.tar.gz" "$PRODUCT_NAME"
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: artifacts-${{ matrix.config.os }}-${{ matrix.config.py }}
         path: artifacts/*

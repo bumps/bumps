@@ -30,13 +30,14 @@ import PanelTabContainer from "./components/PanelTabContainer.vue";
 import ServerShutdown from "./components/ServerShutdown.vue";
 import ServerStartup from "./components/ServerStartup.vue";
 import SessionMenu from "./components/SessionMenu.vue";
+import ThemeToggle from "./components/ThemeToggle.vue";
 import type { Panel } from "./panels";
 
 const props = defineProps<{
   panels: Panel[];
   socket: AsyncSocket;
   singlePanel?: string;
-  name?: string;
+  name: string;
 }>();
 
 const show_menu = ref(false);
@@ -52,7 +53,7 @@ setDarkTheme(prefersDarkMediaQueryList.matches);
 
 if (props.singlePanel) {
   active_layout.value = "full";
-  const panel_index = props.panels.findIndex(({ title }) => title.toLowerCase() == props?.singlePanel?.toLowerCase());
+  const panel_index = props.panels.findIndex(({ title }) => title.toLowerCase() === props?.singlePanel?.toLowerCase());
   if (panel_index > -1) {
     startPanel.value[0] = panel_index;
   } else {
@@ -75,6 +76,9 @@ socket.on("connect", async () => {
   socket.asyncEmit("get_fitter_defaults", (new_fitter_defaults: { [fit_name: string]: FitSetting }) => {
     default_fitter_settings.value = new_fitter_defaults;
   });
+  socket.asyncEmit("get_shared_setting", "model_file", ({ filename }: { filename: string }) => {
+    document.title = filename ? `${props.name} - ${filename}` : props.name;
+  });
 });
 
 socket.on("disconnect", (payload) => {
@@ -88,10 +92,9 @@ socket.on("disconnect", (payload) => {
 socket.on("add_notification", addNotification);
 socket.on("cancel_notification", cancelNotification);
 
-// function disconnect() {
-//   socket.disconnect();
-//   connected.value = false;
-// }
+socket.on("model_file", ({ filename }) => {
+  document.title = filename ? `${props.name} - ${filename}` : props.name;
+});
 
 async function selectOpenFile() {
   if (fileBrowser.value) {
@@ -363,6 +366,7 @@ file_menu_items.value = [
             </h4>
           </div>
         </div>
+        <ThemeToggle />
       </div>
     </nav>
     <div v-if="active_layout === 'left-right'" class="flex-grow-1 row overflow-hidden">

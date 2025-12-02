@@ -4,13 +4,12 @@ import * as mpld3 from "mpld3";
 import contour from "plotly.js/lib/contour";
 import * as Plotly from "plotly.js/lib/core";
 import heatmap from "plotly.js/lib/heatmap";
-import image from "plotly.js/lib/image";
 import scatterternary from "plotly.js/lib/scatterternary";
 import { v4 as uuidv4 } from "uuid";
 import type { AsyncSocket } from "../asyncSocket";
 import { setupDrawLoop } from "../setupDrawLoop";
 
-Plotly.register([heatmap, contour, scatterternary, image]);
+Plotly.register([heatmap, contour, scatterternary]);
 // type ModelNameInfo = { name: string; model_index: number };
 // const title = "Data";
 const plot_div = ref<HTMLDivElement | null>(null);

@@ -1,3 +1,7 @@
+"""
+Manage bumps server state and session files.
+"""
+
 import asyncio
 import threading
 from copy import deepcopy
@@ -16,6 +20,7 @@ from typing import (
     Literal,
     Union,
 )
+
 from collections import deque
 from dataclasses import dataclass, field, fields
 import json
@@ -46,9 +51,6 @@ from .fit_options import lookup_fitter, DEFAULT_FITTER_ID
 
 if TYPE_CHECKING:
     import bumps
-    import bumps.fitproblem
-    import bumps.dream.state
-    from .webserver import TopicNameType
     from .fit_thread import FitThread
     from h5py import Group
 from bumps.mapper import BaseMapper
@@ -63,6 +65,10 @@ SERIALIZERS = Literal["dataclass", "pickle", "cloudpickle", "dill"]
 SERIALIZER_EXTENSIONS = {"dataclass": "json", "cloudpickle": "cloudpickle", "pickle": "pickle", "dill": "dill"}
 DEFAULT_SERIALIZER: SERIALIZERS = "dataclass"
 
+TopicNameType = Literal[
+    "log",  # log messages
+]
+
 
 @dataclass(frozen=True)
 class UNDEFINED_TYPE:
@@ -76,7 +82,7 @@ def now_string():
     return f"{datetime.now().timestamp():.6f}"
 
 
-def serialize_problem(problem: "bumps.fitproblem.FitProblem", method: SERIALIZERS) -> Union[str, bytes]:
+def serialize_problem(problem: "bumps.fitproblem.FitProblem", method: SERIALIZERS | None = None) -> Union[str, bytes]:
     if method == "dataclass":
         return json.dumps(serialize(problem))
     elif method == "pickle":
@@ -254,18 +260,48 @@ class StringAttribute:
 
 @dataclass
 class ProblemState:
+    """
+    Stores the state of a Bumps fit problem.
+
+    Attributes:
+        fitProblem: The Bumps fit problem instance.
+
+        serializer: The serialization method to use.
+    """
+
     fitProblem: Optional["bumps.fitproblem.FitProblem"] = None
     serializer: Optional[SERIALIZERS] = None
 
     def write(self, parent: "Group"):
+        """
+        Write the problem state to an HDF5 group.
+
+        Args:
+            parent: The parent HDF5 group.
+        """
         group = parent.require_group("problem")
-        write_fitproblem(group, "fitProblem", self.fitProblem, method=self.serializer)
-        write_string(group, "serializer", self.serializer)
+        # Try the specified serializer, but fall back to cloudpickle if it fails
+        serializer = self.serializer
+        try:
+            write_fitproblem(group, "fitProblem", self.fitProblem, method=serializer)
+        except Exception:
+            if serializer != "cloudpickle":
+                serializer = "cloudpickle"
+                write_fitproblem(group, "fitProblem", self.fitProblem, method=serializer)
+            else:
+                raise
+        write_string(group, "serializer", serializer)
         write_json(group, "libraries", get_libraries(self.fitProblem))
         # write_json(group, 'pathlist', self.pathlist)
         # write_string(group, 'filename', self.filename)
 
     def read(self, parent: "Group"):
+        """
+        Read the problem state from an HDF5 group.
+
+        Args:
+            parent: The parent HDF5 group.
+        """
         group = parent["problem"]
         self.serializer = read_string(group, "serializer")
         self.fitProblem = read_fitproblem(group, "fitProblem", method=self.serializer)
@@ -274,6 +310,23 @@ class ProblemState:
 
 
 class HistoryItem:
+    """
+    Represents a single item in the fit history.
+
+    Attributes:
+        problem: The problem state at this point in history.
+
+        fitting: The fit result associated with this history item.
+
+        timestamp: The timestamp when this history item was created.
+
+        label: A label for this history item.
+
+        chisq_str: A string representation of the chi-squared value.
+
+        keep: Whether to permanently keep this history item, or drop it when too many history items are saved.
+    """
+
     problem: ProblemState
     fitting: Optional["FitResult"]
     timestamp: str
@@ -283,12 +336,33 @@ class HistoryItem:
 
 
 class History:
+    """
+    Manages the history of fit results.
+
+    Attributes:
+        store: A dictionary mapping history item names to HistoryItem instances.
+    """
+
     store: Dict[str, HistoryItem]
 
     def __init__(self):
+        """
+        Initialize the History instance.
+        """
         self.store = {}
 
     def get_item(self, name: Union[str, UNDEFINED_TYPE, None], default=None):
+        """
+        Get a history item by name.
+
+        Args:
+            name: The name of the history item.
+
+            default: The default value to return if the item is not found.
+
+        Returns:
+            The history item, or the default value if not found.
+        """
         return self.store.get(name, default)
 
     # def get_item(self, timestamp: Union[str, UNDEFINED_TYPE, None], default=None):
@@ -298,6 +372,14 @@ class History:
     #     return default
 
     def write(self, parent: "Group", include_fit_state=True):
+        """
+        Write the history to an HDF5 group.
+
+        Args:
+            parent: The parent HDF5 group.
+
+            include_fit_state: Whether to include the fit state in the history.
+        """
         group = parent.require_group("problem_history")
         for name, item in self.store.items():
             problem = item.problem
@@ -312,6 +394,12 @@ class History:
         return group
 
     def read(self, parent: "Group"):
+        """
+        Read the history from an HDF5 group.
+
+        Args:
+            parent: The parent HDF5 group.
+        """
         group = parent.get("problem_history", {})
         self.store = {}
         for name in group:
@@ -330,9 +418,21 @@ class History:
             self.store[name] = item
 
     def remove_item(self, name: str):
+        """
+        Remove a history item by name.
+
+        Args:
+            name: The name of the history item to remove.
+        """
         self.store.pop(name)
 
     def prune(self, target_length: int):
+        """
+        Prune the history to a target length.
+
+        Args:
+            target_length: The desired length of the history.
+        """
         # remove oldest items with keep=False until the length is target_length
         num_to_remove = len(self.store) - target_length
         if num_to_remove <= 0:
@@ -348,6 +448,15 @@ class History:
             self.store.pop(name)
 
     def _get_unique_name(self, timestamp: str):
+        """
+        Generate a unique name for a history item based on its timestamp.
+
+        Args:
+            timestamp: The timestamp of the history item.
+
+        Returns:
+            A unique name for the history item.
+        """
         name = timestamp
         counter = 1
         while name in self.store:
@@ -356,12 +465,29 @@ class History:
         return name
 
     def add_item(self, item: HistoryItem, target_length: int):
+        """
+        Add a new history item to the history.
+
+        Args:
+            item: The history item to add.
+
+            target_length: The maximum length of the history.
+
+        Returns:
+            The name of the added history item.
+        """
         self.prune(target_length)
         stored_name = self._get_unique_name(item.timestamp)
         self.store[stored_name] = item
         return stored_name
 
     def list(self):
+        """
+        List the history items.
+
+        Returns:
+            A list of dictionaries containing information about each history item.
+        """
         return [
             dict(
                 timestamp=item.timestamp,
@@ -376,9 +502,25 @@ class History:
         ]
 
     def set_keep(self, name: str, keep: bool):
+        """
+        Set whether to keep a history item.
+
+        Args:
+            name: The name of the history item.
+
+            keep: Whether to keep the history item.
+        """
         self.store[name].keep = keep
 
     def update_label(self, name: str, label: str):
+        """
+        Update the label of a history item.
+
+        Args:
+            name: The name of the history item.
+
+            label: The new label for the history item.
+        """
         self.store[name].label = label
 
 
@@ -389,6 +531,19 @@ class History:
 
 @dataclass
 class FitResult:
+    """
+    Stores the result of a fit operation.
+
+    Attributes:
+        method: The fitting method used.
+
+        options: Options used to run the fitters.
+
+        convergence: List of quantiles for each fit iteration.
+
+        fit_state: Fit state for resume, and for sampling from Monte Carlo fitters.
+    """
+
     # TODO: chisq, dof, and {model: (chisq, dof)} separate from fx=nllf+constraints
     # TODO: Model specific dof is difficult because of shared parameters. Just use #points?
     # TODO: Rename fitter_id to method throughout?
@@ -420,12 +575,21 @@ class FitResult:
     # TODO: display completion status in history tab
     # status: str
     # """Fit status: active, converged, timeout, maxiter, abort, failed"
+    # TODO: Include a step number column in convergence?
     convergence: Optional[List] = None
     """List of best or (best, min, -1sigma, median, +1sigma, max) for the population at each step of the fit."""
     fit_state: Any = None
     """Fit state for resume, and for sampling from Monte Carlo fitters."""
 
     def write(self, parent: "Group", include_fit_state=True):
+        """
+        Write the fit result to an HDF5 group.
+
+        Args:
+            parent: The parent HDF5 group.
+
+            include_fit_state: Whether to include the fit state in the output.
+        """
         fitting_group = parent.require_group("fitting")
         write_version(fitting_group, (1, 0))
         write_string(fitting_group, "method", self.method)
@@ -438,6 +602,12 @@ class FitResult:
                 fitter.h5dump(state_group, self.fit_state)
 
     def read(self, parent: "Group"):
+        """
+        Read the fit result from an HDF5 group.
+
+        Args:
+            parent: The parent HDF5 group containing the entries.
+        """
         fitting_group = parent["fitting"]
         version = read_version(fitting_group)
         # Note: fitter h5load needs to deal with its own versioning
@@ -466,6 +636,14 @@ class FitResult:
 
 
 class State:
+    """
+    Manage the state for a bumps server session.
+
+    There is a primary state object for the current webview instance defined
+    in webview.server.api. Temporary state objects are created to save
+    the temporary fit results as a session file.
+    """
+
     # These attributes are ephemeral, not to be serialized/stored:
     app_name: str = "bumps"
     app_version: str = __version__
@@ -490,7 +668,7 @@ class State:
     problem: ProblemState
     fitting: FitResult
     history: History
-    topics: Dict["TopicNameType", "deque[Dict]"]
+    topics: Dict[TopicNameType, "deque[Dict]"]
     shared: "SharedState"
     mapper: Optional[BaseMapper] = None
 
@@ -558,11 +736,18 @@ class State:
             self.set_convergence(item.fitting.convergence)
             self.set_fit_state(item.fitting.fit_state, item.fitting.method)
 
+    def set_active(self, problem, fitting: FitResult | None = None):
+        self.problem = ProblemState(problem)  # default serializer
+        self.fitting = fitting
+        self.set_convergence(fitting.convergence)
+        self.set_fit_state(fitting.fit_state, fitting.method)
+
     def reset_fitstate(self, copy: bool = False):
         """
-        Unlink the fitting state from a history item:
-        (this action to be taken when fitProblem object is modified so that
-         it is no longer compatible with fit results)
+        Unlink the fitting state from a history item.
+
+        This action occurs when fitProblem object is modified so that
+        it is no longer compatible with fit results.
         """
         if copy:
             self.fitting = deepcopy(self.fitting)
@@ -672,7 +857,7 @@ class State:
             if topic_data is not None and topic in self.topics:
                 self.topics[topic].extend(topic_data)
 
-    def get_last_message(self, topic: "TopicNameType"):
+    def get_last_message(self, topic: TopicNameType):
         return self.topics[topic][-1] if len(self.topics[topic]) > 0 else None
 
     def cleanup(self):
@@ -689,6 +874,11 @@ class State:
 
 
 class ActiveFit(TypedDict):
+    """
+    Information about the currently active fit. This is used
+    to share information between the webview client and the server.
+    """
+
     fitter_id: str
     options: Dict[str, Any]
     num_steps: int
@@ -698,16 +888,35 @@ class ActiveFit(TypedDict):
 
 
 class FileInfo(TypedDict):
+    """
+    Webview client treats a path as a filename plus a list of leading
+    folder names.
+    """
+
     filename: str
     pathlist: List[str]
 
 
 class UncertaintyAvailable(TypedDict):
+    """
+    Whether or not the fit results contain MCMC samples.
+    """
+
     available: bool
     num_points: int
 
 
 class CustomPlotsAvailable(TypedDict):
+    """
+    Whether or not the current model has custom plots.
+
+    If *parameter_based* is True then new plots need to be generated
+    whenever the parameter values are updated.
+
+    If *uncertainty_based* is True then new plots need to be generated
+    whenever the MCMC sample is updated.
+    """
+
     parameter_based: bool
     uncertainty_based: bool
 
@@ -729,6 +938,10 @@ def get_custom_plots_available(problem: "bumps.fitproblem.FitProblem"):
 
 @dataclass
 class SharedState:
+    """
+    Server state that automatically synchronizes with the attached clients.
+    """
+
     updated_convergence: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
     updated_uncertainty: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
     updated_parameters: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
