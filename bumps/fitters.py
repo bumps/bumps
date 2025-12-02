@@ -17,14 +17,12 @@ from .formatnum import format_uncertainty
 from .util import NDArray, format_duration
 
 # For typing
-from typing import List, Tuple, Dict, Any, Optional
+from typing import TYPE_CHECKING, List, Tuple, Dict, Any, Optional
 from numpy.typing import NDArray
 
-try:
+if TYPE_CHECKING:
     from h5py import Group
-except ImportError:
-    pass
-from bumps.dream.state import MCMCDraw
+    from bumps.dream.state import MCMCDraw
 
 
 class ConsoleMonitor(monitor.TimedUpdate):
@@ -977,13 +975,13 @@ class DreamFit(FitBase):
         self.state.save(output_path)
 
     @staticmethod
-    def h5load(group: "Group") -> MCMCDraw:
+    def h5load(group: "Group") -> "MCMCDraw":
         from .dream.state import h5load
 
         return h5load(group)
 
     @staticmethod
-    def h5dump(group: "Group", state: MCMCDraw):
+    def h5dump(group: "Group", state: "MCMCDraw"):
         from .dream.state import h5dump
 
         h5dump(group, state)
