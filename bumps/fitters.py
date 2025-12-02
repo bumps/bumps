@@ -21,8 +21,14 @@ from . import lsqerror
 from .history import History
 from .formatnum import format_uncertainty
 from .util import NDArray, format_duration
-from .dream.state import MCMCDraw
 
+# For typing
+from typing import TYPE_CHECKING, List, Tuple, Dict, Any, Optional
+from numpy.typing import NDArray
+
+if TYPE_CHECKING:
+    from h5py import Group
+    from bumps.dream.state import MCMCDraw
 
 class ConsoleMonitor(monitor.TimedUpdate):
     """
@@ -377,13 +383,13 @@ class DEFit(FitBase):
         _de_save_history(output_path, self.state)
 
     @staticmethod
-    def h5load(group: Group) -> Any:
+    def h5load(group: "Group") -> Any:
         from .webview.server.state_hdf5_backed import read_json
 
         return read_json(group, "DE_history")
 
     @staticmethod
-    def h5dump(group: Group, state: Dict[str, Any]):
+    def h5dump(group: "Group", state: Dict[str, Any]):
         from .webview.server.state_hdf5_backed import write_json
 
         write_json(group, "DE_history", state)
@@ -977,13 +983,13 @@ class DreamFit(FitBase):
         self.state.save(output_path)
 
     @staticmethod
-    def h5load(group: Group) -> MCMCDraw:
+    def h5load(group: "Group") -> "MCMCDraw":
         from .dream.state import h5load
 
         return h5load(group)
 
     @staticmethod
-    def h5dump(group: Group, state: MCMCDraw):
+    def h5dump(group: "Group", state: "MCMCDraw"):
         from .dream.state import h5dump
 
         h5dump(group, state)
