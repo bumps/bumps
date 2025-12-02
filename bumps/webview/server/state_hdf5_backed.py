@@ -24,12 +24,17 @@ import os
 import tempfile
 from pathlib import Path
 import pickle
+import warnings
 
-import h5py
 import numpy as np
 from numpy.typing import NDArray
 import dill
 import cloudpickle
+
+try:
+    import h5py
+except ImportError:
+    warnings.warn("h5py is not available; can't access session files")
 
 from bumps import __version__
 from bumps.serialize import serialize, deserialize
