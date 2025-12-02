@@ -21,6 +21,7 @@ Usage::
     Mapper.stop_mapper()
 """
 
+import time
 import sys
 import os
 import signal
@@ -112,6 +113,33 @@ def pool_size(cpus=0):
 
     return multiprocessing.cpu_count()
 
+# For debugging parallelism it is handy to know which core the process is using
+def cpu_id(num_sockets=2):
+    """
+    Return the processor id for the currently running process.
+    """
+    import multiprocessing
+    import psutil
+
+    process = multiprocessing.current_process()
+    return psutil.Process(process.pid).cpu_num()
+
+SHOW_PERFORMANCE = False
+def show_performance(timestamps):
+    """
+    *timestamps* is a series of pairs (tstart, tstop) before and after the synchronous map
+    call, with times in nanoseconds returned from time.perf_counter_ns(). Display the
+    median time within *(tstop[k] - tstart[k])* and between *(tstart[k+1] = tstop[k])*
+    map calls.
+    """
+    if not timestamps or not SHOW_PERFORMANCE:
+        return
+
+    import numpy as np
+
+    tstart, tstop = [np.array(v) for v in zip(*timestamps)]
+    print(f"median step time {np.median(tstart[1:]-tstop[:-1])/1e6:.2f} ms (serial) and map time {np.median(tstop-tstart)/1e6:.2f} ms (parallel)")
+
 
 # Noise so that the type checker is happy
 class BaseMapper(object):
@@ -134,17 +162,29 @@ class BaseMapper(object):
 
 
 class SerialMapper(BaseMapper):
+    timestamps = []
+
     @staticmethod
     def start_worker(problem):
         pass
 
     @staticmethod
     def start_mapper(problem, modelargs=None, cpus=0):
-        # Note: map is n iterator in python 3.x
-        return lambda points: list(map(problem.nllf, points))
+        # Note: map is an iterator in python 3.x
+        # return lambda points: list(map(problem.nllf, points))
+        SerialMapper.timestamps = []
+        def mapper(points):
+            tstart = time.perf_counter_ns()
+            result = list(map(problem.nllf, points))
+            tstop = time.perf_counter_ns()
+            SerialMapper.timestamps.append((tstart, tstop))
+            return result
+        return mapper
+
 
     @staticmethod
     def stop_mapper(mapper=None):
+        show_performance(MPMapper.timestamps)
         pass
 
 
@@ -160,10 +200,13 @@ def _MP_setup():
     # they are in a different process.
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     nice()
+    #print(f"starting pool worker on {cpu_id()}")
 
 
 def _MP_run_problem(problem_point_tuple):
     problem_id, point, shared_pickled_problem = problem_point_tuple
+    #problem_id, point, shared_pickled_problem, cpu_usage, lock = problem_point_tuple
+    #with lock: cpu_usage[cpu_id()] += 1
     if problem_id != MPMapper.problem_id:
         # print(f"Fetching problem {problem_id} from namespace")
         MPMapper.problem = loads(shared_pickled_problem[:].tobytes())
@@ -178,6 +221,7 @@ class MPMapper(BaseMapper):
     problem_id = 0
     shared_pickled_problem = None
     problem = None
+    timestamps = []
 
     @staticmethod
     def start_worker(problem):
@@ -193,6 +237,12 @@ class MPMapper(BaseMapper):
             MPMapper.manager = multiprocessing.Manager()
             # Start the process pool, sending the namespace handle
             MPMapper.pool = multiprocessing.Pool(pool_size(cpus), _MP_setup)
+            # For verifying that the execution threads can migrate between cpus, accumulate
+            # a histogram of the processor id for each function evaluation.
+            #MPMapper.num_cpus = multiprocessing.cpu_count() # may be more than pool_size
+            #MPMapper.lock = MPMapper.manager.Lock()
+            #MPMapper.cpu_usage = MPMapper.manager.Array('i', [0]*MPMapper.num_cpus)
+            #print("pool created")
 
         # Increment the problem number and store the problem in the namespace.
         # The store action uses pickle to transfer python objects to the
@@ -204,11 +254,17 @@ class MPMapper(BaseMapper):
         MPMapper.shared_pickled_problem = MPMapper.manager.Array("B", MPMapper.pickled_problem)
 
         # Set the mapper to send problem_id/point/shared_pickled_problem value triples
+        MPMapper.timestamps = []
         def mapper(points):
             try:
-                return MPMapper.pool.map(
-                    _MP_run_problem, ((MPMapper.problem_id, p, MPMapper.shared_pickled_problem) for p in points)
-                )
+                tstart = time.perf_counter_ns()
+                #args = ((MPMapper.problem_id, p, MPMapper.shared_pickled_problem, MPMapper.cpu_usage, MPMapper.lock) for p in points)
+                args = ((MPMapper.problem_id, p, MPMapper.shared_pickled_problem) for p in points)
+                result = MPMapper.pool.map(_MP_run_problem, args)
+                tstop = time.perf_counter_ns()
+                #print(f"map time {tstart} => {tstop}")
+                MPMapper.timestamps.append((tstart, tstop))
+                return result
             except KeyboardInterrupt:
                 MPMapper.stop_mapper()
 
@@ -216,10 +272,17 @@ class MPMapper(BaseMapper):
 
     @staticmethod
     def stop_mapper(mapper=None):
+        #print("stopping mapper")
         # reset pool and manager
         if MPMapper.pool is not None:
             MPMapper.pool.terminate()
             MPMapper.pool = None
+            # Show cpu histogram
+            #print("== evaluation count per cpu ==")
+            #for k in range(MPMapper.num_cpus):
+            #    print(MPMapper.cpu_usage[k], end=" ")
+            #print()
+            show_performance(MPMapper.timestamps)
             MPMapper.manager.shutdown()
             MPMapper.manager = None
         # Don't reset problem id; it keeps count even when mapper is restarted.
@@ -251,6 +314,7 @@ class ThreadPoolMapper(BaseMapper):
 
     pool = None
     problem_id = 0
+    timestamps = []
 
     @staticmethod
     def start_worker(problem):
@@ -265,14 +329,19 @@ class ThreadPoolMapper(BaseMapper):
         ThreadPoolMapper.problem_id += 1
 
         # Create mapper function that submits tasks to thread pool
+        ThreadPoolMapper.timestamps = []
         def mapper(points):
             try:
+                tstart = time.perf_counter_ns()
                 futures = [
                     ThreadPoolMapper.pool.submit(_TP_run_problem, (ThreadPoolMapper.problem_id, p, problem))
                     for p in points
                 ]
                 # Collect results in order
-                return [future.result() for future in futures]
+                result = [future.result() for future in futures]
+                tstop= time.perf_counter_ns()
+                ThreadPoolMapper.append((tstart, tstop))
+                return result
             except KeyboardInterrupt:
                 ThreadPoolMapper.stop_mapper()
                 raise
@@ -282,6 +351,7 @@ class ThreadPoolMapper(BaseMapper):
     @staticmethod
     def stop_mapper(mapper=None):
         if ThreadPoolMapper.pool is not None:
+            show_performance(ThreadPoolMapper.timestamps)
             ThreadPoolMapper.pool.shutdown(wait=True)
             ThreadPoolMapper.pool = None
             # Thread-local copies will be automatically garbage collected
@@ -341,6 +411,7 @@ def using_mpi():
 class MPIMapper(BaseMapper):
     has_problem = True
     """For MPIMapper only the worker is initialized with the fit problem."""
+    timestamps = []
 
     @staticmethod
     def start_worker(problem):
@@ -403,8 +474,13 @@ class MPIMapper(BaseMapper):
         # if the problem can't be pickled, but you will need to restart the
         # MPI job separately for each fit.)
         # Note: setting problem to None stops the program, so call finalize().
+        MPIMapper.timestamps = []
         def mapper(points):
-            return _MPI_map(problem, points, comm, root)
+            tstart = time.perf_counter_ns()
+            result = _MPI_map(problem, points, comm, root)
+            tstop = time.perf_counter_ns()
+            MPIMapper.timestamps.append((tstart, tstop))
+            return result
 
         if not MPIMapper.has_problem:  # Only true on the first fit
             # print(f"*** {comm.rank}: replacing problem")
@@ -421,4 +497,5 @@ class MPIMapper(BaseMapper):
     def stop_mapper(mapper=None):
         # print("stopping mapper")
         # Set problem=None to stop the program.
+        show_performance(MPIMapper.timestamps)
         MPIMapper.start_mapper(None, None)
