@@ -37,7 +37,7 @@ const props = defineProps<{
   panels: Panel[];
   socket: AsyncSocket;
   singlePanel?: string;
-  name?: string;
+  name: string;
 }>();
 
 const show_menu = ref(false);
@@ -76,6 +76,9 @@ socket.on("connect", async () => {
   socket.asyncEmit("get_fitter_defaults", (new_fitter_defaults: { [fit_name: string]: FitSetting }) => {
     default_fitter_settings.value = new_fitter_defaults;
   });
+  socket.asyncEmit("get_shared_setting", "model_file", ({ filename }: { filename: string }) => {
+    document.title = filename ? `${props.name} - ${filename}` : props.name;
+  });
 });
 
 socket.on("disconnect", (payload) => {
@@ -88,6 +91,10 @@ socket.on("disconnect", (payload) => {
 
 socket.on("add_notification", addNotification);
 socket.on("cancel_notification", cancelNotification);
+
+socket.on("model_file", ({ filename }) => {
+  document.title = filename ? `${props.name} - ${filename}` : props.name;
+});
 
 async function selectOpenFile() {
   if (fileBrowser.value) {
