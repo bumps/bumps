@@ -1,3 +1,17 @@
+# bumps specific ignores
+bumps/webview/client/node_modules/
+bumps/webview/client/dist
+
+# virtual environment
+venv/
+env/
+.venv/
+.env/
+
+# lockfiles
+uv.lock
+bun.lock
+
 # Eclipse/pycharm settings files
 .idea
 .project
@@ -23,6 +37,7 @@ bumps/_version.py
 /doc/api/
 /doc/tutorial/
 /doc/dream/
+/doc/server/
 
 # python droppings from running in place
 __pycache__/
@@ -36,5 +51,3 @@ __pycache__/
 # run in place sets .mplconfig
 .mplconfig
 
-bumps/webview/client/node_modules/
-bumps/webview/client/dist

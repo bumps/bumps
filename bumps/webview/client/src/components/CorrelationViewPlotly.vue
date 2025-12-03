@@ -1,17 +1,12 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import * as Plotly from "plotly.js/lib/core";
-// @ts-ignore - plotly.js does not define Heatmap as type
 import Heatmap from "plotly.js/lib/heatmap";
 import type { AsyncSocket } from "../asyncSocket.ts";
-import { SVGDownloadButton } from "../plotly_extras";
+import { configWithSVGDownloadButton } from "../plotly_extras";
 import { setupDrawLoop } from "../setupDrawLoop";
 
-// workaround to PlotlyModule not being exported as type!
-type RegisterTypes = Parameters<typeof Plotly.register>[0];
-type PlotlyModule = Exclude<RegisterTypes, any[]>;
-
-Plotly.register([Heatmap as unknown as PlotlyModule]);
+Plotly.register([Heatmap]);
 
 const title = "Correlations";
 const plot_div = ref<Plotly.PlotlyHTMLElement | HTMLDivElement>();
@@ -60,9 +55,9 @@ async function fetch_and_draw(latest_timestamp?: string) {
     return;
   }
   const config: Partial<Plotly.Config> = {
+    ...configWithSVGDownloadButton,
     responsive: true,
     scrollZoom: true,
-    modeBarButtonsToAdd: [SVGDownloadButton],
   };
   const plotlyElement = await Plotly.react(plot_div.value as HTMLDivElement, [...data], layout, config);
   clearTimeout(show_loader);

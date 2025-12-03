@@ -1,3 +1,7 @@
+"""
+Manage communications with web and jupyter.
+"""
+
 import asyncio
 import functools
 import mimetypes
@@ -10,8 +14,8 @@ from typing import Callable, Optional, Union, List
 from . import cli
 from . import api
 from . import persistent_settings
-from .logger import logger
-from .cli import BumpsOptions
+from .logger import logger, LOGLEVEL
+from .cli import BumpsOptions, PREFERRED_PORT
 
 mimetypes.add_type("text/css", ".css")
 mimetypes.add_type("text/html", ".html")
@@ -22,7 +26,6 @@ mimetypes.add_type("image/png", ".png")
 mimetypes.add_type("image/svg+xml", ".svg")
 
 TRACE_MEMORY = False
-PREFERRED_PORT = 5148  # "SLAB"
 USE_MSGPACK = True  # use msgpack for serialization, faster than JSON
 
 # can get by name and not just by id
@@ -277,6 +280,9 @@ def setup_app(options: BumpsOptions, sock: Optional[socket.socket] = None):
 
 
 def start_from_cli(options: BumpsOptions):
+    """
+    Helper function to start webview from the parsed command line options.
+    """
     from aiohttp import web
 
     init_web_app()
@@ -292,14 +298,18 @@ Open the following in a new tab after replacing <HOST> with the hostname in the 
     web.run_app(app, sock=runsock)
 
 
-def start_bumps_server():
+# User command
+def start_bumps(loglevel: str = "warn"):
     """
-    Start the webview server in a background asyncio.Task,
-    and show the link to the webview in a Jupyter notebook.
-    Note that the returned Task should be awaited in order
-    to handle any exceptions that may occur during startup.
+    Start the webview server in a background asyncio.Task, and show the link to
+    the webview in a Jupyter notebook. Note that the returned Task should be
+    awaited in order to handle any exceptions that may occur during startup.
+
+    *loglevel* defaults to "warn". You can use "info" or
+    "debug", but you will have large amounts of text in the output cell.
     """
-    return asyncio.create_task(start_app(jupyter_link=True))
+    # TODO: can we check if the server is already running?
+    return asyncio.create_task(start_app(jupyter_link=True, loglevel=loglevel))
 
 
 async def start_app(
@@ -307,9 +317,14 @@ async def start_app(
     sock: socket.socket = None,
     jupyter_link: bool = False,
     jupyter_heartbeat: bool = False,
+    loglevel: str = "warn",
 ):
+    """
+    async version of the :func:`start_bumps()` command.
+    """
     from aiohttp import web
 
+    logger.setLevel(LOGLEVEL[loglevel])
     init_web_app()
     if options is None:
         options = BumpsOptions()
@@ -329,13 +344,18 @@ async def start_app(
         enable_convergence_kernel_heartbeat()
 
     if jupyter_link:
-        return open_tab_link()
+        open_tab_link()
     else:
         url = get_server_url()
         print(f"webserver started: {url}")
 
+    return api
+
 
 def get_server_url():
+    """
+    Determine the url of the running server.
+    """
     port = getattr(api.state, "port", None)
     if port is None:
         raise ValueError("The web server has not been started.")
@@ -350,7 +370,8 @@ def get_server_url():
     return url
 
 
-def display_inline_jupyter(width: Union[str, int] = "100%", height: Union[str, int] = 600, single_panel=None) -> None:
+# User command
+def display_bumps(width: Union[str, int] = "100%", height: Union[str, int] = 1200, single_panel=None) -> None:
     """
     Display the web server in an iframe.
 
@@ -376,12 +397,27 @@ def display_inline_jupyter(width: Union[str, int] = "100%", height: Union[str, i
 
 def open_tab_link(single_panel=None) -> None:
     """
-    Open the web server in a new tab in the default web browser.
+    Display web link to the active server in the jupyter cell output.
+
+    Also shows a cheat sheet of common jupyter commands.
     """
-    from IPython.display import display, HTML
+    from IPython.display import display, Markdown
 
     url = get_server_url()
     if single_panel is not None:
         url += f"?single_panel={single_panel}"
-    src = f'<h3><a href="{url}" target="_blank">Open Webview in Tab</a></h3>'
-    display(HTML(src))
+
+    src = f"""
+[Open in Browser]({url})
+------------------------
+
+To open in a jupyter notebook cell use `bp.display_bumps()`.
+
+Type `bp.help()` for a list of useful notebook commands.
+"""
+    display(Markdown(src))
+
+
+# CRUFT: aliases for deprecated names
+display_inline_jupyter = display_bumps
+start_bumps_server = start_bumps
