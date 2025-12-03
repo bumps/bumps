@@ -247,13 +247,30 @@ class FitBase(object):
     Internal fit state. If the state object has a draw method this should return
     a set of points from the posterior probability distribution for the fit.
     """
+    problem: "bumps.fitproblem.FitProblem"
+    "The problem that is being fit."
 
-    def __init__(self, problem):
-        """Fit the models and show the results"""
-        self.problem: "bumps.fitproblem.FitProblem" = problem
+    def __init__(self, problem: "bumps.fitproblem.FitProblem"):
+        """Initialize a fit method for a given problem."""
+        self.problem = problem
 
     def solve(self, monitors: MonitorRunner, mapper=None, **options):
         raise NotImplementedError()
+
+    @classmethod
+    def max_steps(
+        cls, problem: Optional["bumps.fitproblem.FitProblem"] = None, options: Optional[Dict[str, Any]] = None
+    ) -> int:
+        """
+        Return the maximum number of steps the fitter will take based on
+        the given options.
+
+        Default implementation just returns the 'steps' option multiplied by 'starts',
+        """
+        options = _fill_defaults(options, cls.settings)
+        starts = max(options.get("starts", 1), 1)
+        steps = options.get("steps", 1) * starts
+        return steps
 
     @staticmethod
     def h5dump(group: "Group", state: Any) -> None:
@@ -294,7 +311,7 @@ class MultiStart(FitBase):
     name = "Multistart Monte Carlo"
     settings = [("starts", 100), ("jump", 0)]
 
-    def __init__(self, fitter):
+    def __init__(self, fitter: FitBase):
         FitBase.__init__(self, fitter.problem)
         self.fitter = fitter
 
@@ -319,6 +336,12 @@ class MultiStart(FitBase):
                 self.problem.setp(pop[0])
             # print(f"jump={jump} moving from {x} to {self.problem.getp()}")
         return x_best, f_best
+
+    @classmethod
+    def max_steps(
+        cls, problem: Optional["bumps.fitproblem.FitProblem"] = None, options: Optional[Dict[str, Any]] = None
+    ) -> int:
+        raise ValueError("Cannot call max steps on MultiStart directly; use the wrapped fitter.")
 
 
 class DEFit(FitBase):
@@ -1014,6 +1037,21 @@ class DreamFit(FitBase):
             errplot.show_errors(res)
             plt.savefig(figfile + "-errors.png", format="png")
 
+    @classmethod
+    def max_steps(cls, problem: "bumps.fitproblem.FitProblem", options: Optional[Dict[str, Any]] = None) -> int:
+        from .dream.core import Dream
+        options = _fill_defaults(options, cls.settings)
+        num_fitparams = len(problem.getp())
+        steps = options["steps"]
+        if steps == 0:  # Steps not specified; using samples instead
+            pop, draws = options["pop"], options["samples"]
+            pop_size = int(np.ceil(pop * num_fitparams)) if pop > 0 else int(-pop)
+            steps = (draws + pop_size - 1) // pop_size
+        steps += options["burn"]  # add burn-in steps
+        DE_steps = Dream.DE_steps  # DreamFit does not override DE_steps, uses default
+        steps = int(np.ceil((steps - 1) / DE_steps)) * DE_steps + 1  # round up to multiple of DE_steps
+        return steps
+
 
 class Resampler(FitBase):
     # TODO: why isn't cli.resynth using this?
@@ -1311,16 +1349,17 @@ class FitDriver(object):
         }
 
 
-def _fill_defaults(options, settings):
+def _fill_defaults(options: Optional[Dict[str, Any]], settings: List[Tuple[str, Any]]) -> Dict[str, Any]:
     """
     Returns options dict with missing values filled from settings.
     """
     result = dict(settings)  # settings is a list of (key,value) pairs
-    result.update(options)
+    if options is not None:
+        result.update(options)
     return result
 
 
-FITTERS = []
+FITTERS: List[FitBase] = []
 FIT_AVAILABLE_IDS = []
 FIT_ACTIVE_IDS = []
 
