@@ -18,7 +18,7 @@ export default defineConfig({
       "plotly.js/lib/contour",
       "plotly.js/lib/scatterternary",
       "plotly.js/lib/bar",
-      "json-difference"
+      "json-difference",
     ],
   },
 });

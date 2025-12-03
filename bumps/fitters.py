@@ -324,9 +324,9 @@ class MultiStart(FitBase):
             chisq = self.problem.chisq_str(nllf=fx)
             if fx < f_best:
                 x_best, f_best, chisq_best = x, fx, chisq
-                monitors.info(f"fit {k+1} of {starts}: {chisq} [new best]")
+                monitors.info(f"fit {k + 1} of {starts}: {chisq} [new best]")
             else:
-                monitors.info(f"fit {k+1} of {starts}: {chisq} [best={chisq_best}]")
+                monitors.info(f"fit {k + 1} of {starts}: {chisq} [best={chisq_best}]")
             if k >= starts - 1 or monitors.stopping():
                 break
             if jump == 0.0:
