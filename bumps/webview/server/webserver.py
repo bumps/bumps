@@ -75,12 +75,12 @@ def init_web_app():
 
         @routes.get(f"/{fn.__name__}")
         async def handler(request: web.Request):
+            result = await fn(**request.query)
+            size = len(result)
+
             try:
                 if getattr(fn, "mimetype", None) is not None:
                     # set the response content type
-                    result = await fn(**request.query)
-                    size = len(result)
-
                     response = web.StreamResponse()
                     response.content_type = fn.mimetype
                     response.content_length = size
@@ -99,8 +99,10 @@ def init_web_app():
                         await response.write(result[start:end])
                     await response.write_eof()
                     return response
+                elif request.headers.get("Accept") == "application/msgpack":
+                    packed = msgpack.packb(result)
+                    return web.Response(body=packed, content_type="application/msgpack")
                 else:
-                    result = await fn(**request.query)
                     return web.json_response(result)
             except Exception as err:
                 logger.exception(err)
