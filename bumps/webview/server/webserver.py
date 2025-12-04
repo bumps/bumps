@@ -1,3 +1,7 @@
+"""
+Manage communications with web and jupyter.
+"""
+
 import asyncio
 import functools
 import mimetypes
@@ -6,16 +10,12 @@ import socket
 from pathlib import Path
 from typing import Callable, Optional, Union, List
 
-import matplotlib
-
 # from .main import setup_bumps
 from . import cli
 from . import api
 from . import persistent_settings
-from .logger import logger
-from .cli import BumpsOptions
-
-matplotlib.use("agg")
+from .logger import logger, LOGLEVEL
+from .cli import BumpsOptions, PREFERRED_PORT
 
 mimetypes.add_type("text/css", ".css")
 mimetypes.add_type("text/html", ".html")
@@ -26,7 +26,7 @@ mimetypes.add_type("image/png", ".png")
 mimetypes.add_type("image/svg+xml", ".svg")
 
 TRACE_MEMORY = False
-PREFERRED_PORT = 5148  # "SLAB"
+USE_MSGPACK = True  # use msgpack for serialization, faster than JSON
 
 # can get by name and not just by id
 
@@ -60,6 +60,7 @@ routes = app = sio = None
 def init_web_app():
     import socketio
     from aiohttp import web
+    import msgpack
 
     global routes, app, sio
 
@@ -77,9 +78,35 @@ def init_web_app():
 
         @routes.get(f"/{fn.__name__}")
         async def handler(request: web.Request):
+            result = await fn(**request.query)
+            size = len(result)
+
             try:
-                result = await fn(**request.query)
-                return web.json_response(result)
+                if getattr(fn, "mimetype", None) is not None:
+                    # set the response content type
+                    response = web.StreamResponse()
+                    response.content_type = fn.mimetype
+                    response.content_length = size
+
+                    # Set download headers
+                    filename = getattr(fn, "filename", "bumps_download")
+                    response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+                    # Prepare the response
+                    await response.prepare(request)
+
+                    # Stream the result (assume it is bytes or sliceable)
+                    chunk_size = 65536  # 64KB
+                    for start in range(0, size, chunk_size):
+                        end = min(start + chunk_size, size)
+                        await response.write(result[start:end])
+                    await response.write_eof()
+                    return response
+                elif request.headers.get("Accept") == "application/msgpack":
+                    packed = msgpack.packb(result)
+                    return web.Response(body=packed, content_type="application/msgpack")
+                else:
+                    return web.json_response(result)
             except Exception as err:
                 logger.exception(err)
                 raise
@@ -98,7 +125,11 @@ def init_web_app():
         async def with_sid(sid: str, *args, **kwargs):
             try:
                 # print("RPC:", function.__name__, args, kwargs)
-                return await function(*args, **kwargs)
+                raw_result = await function(*args, **kwargs)
+                if USE_MSGPACK:
+                    return msgpack.packb(raw_result)
+                else:
+                    return raw_result
             except Exception as err:
                 logger.error(f"Exception for {function.__name__}(*{args}, **{kwargs}): {err}")
                 raise
@@ -249,33 +280,54 @@ def setup_app(options: BumpsOptions, sock: Optional[socket.socket] = None):
 
 
 def start_from_cli(options: BumpsOptions):
+    """
+    Helper function to start webview from the parsed command line options.
+    """
     from aiohttp import web
 
     init_web_app()
     runsock = setup_app(options=options, sock=None)
+    if "JUPYTERHUB_SERVICE_PREFIX" in os.environ:
+        print(f"""
+\033[91mYou appear to be running bumps webview from within a jupyterhub terminal.
+Open the following in a new tab after replacing <HOST> with the hostname in the browser:
+
+    https://<HOST>{get_server_url()}
+
+\033[0m""")
     web.run_app(app, sock=runsock)
 
 
-server_task = None
+# User command
+def start_bumps(loglevel: str = "warn"):
+    """
+    Start the webview server in a background asyncio.Task, and show the link to
+    the webview in a Jupyter notebook. Note that the returned Task should be
+    awaited in order to handle any exceptions that may occur during startup.
 
-
-def bumps_server():
-    global server_task
-
-    # Start the server
-    server_task = asyncio.create_task(start_app(jupyter_link=True))
-    return server_task
+    *loglevel* defaults to "warn". You can use "info" or
+    "debug", but you will have large amounts of text in the output cell.
+    """
+    # TODO: can we check if the server is already running?
+    return asyncio.create_task(start_app(jupyter_link=True, loglevel=loglevel))
 
 
 async def start_app(
-    options: BumpsOptions,
+    options: BumpsOptions = None,
     sock: socket.socket = None,
     jupyter_link: bool = False,
     jupyter_heartbeat: bool = False,
+    loglevel: str = "warn",
 ):
+    """
+    async version of the :func:`start_bumps()` command.
+    """
     from aiohttp import web
 
+    logger.setLevel(LOGLEVEL[loglevel])
     init_web_app()
+    if options is None:
+        options = BumpsOptions()
 
     # this function is called from jupyter notebook, so set headless = True
     options.headless = True
@@ -292,17 +344,18 @@ async def start_app(
         enable_convergence_kernel_heartbeat()
 
     if jupyter_link:
-        return open_tab_link()
+        open_tab_link()
     else:
         url = get_server_url()
         print(f"webserver started: {url}")
 
-
-def create_server_task():
-    return asyncio.create_task(start_app())
+    return api
 
 
 def get_server_url():
+    """
+    Determine the url of the running server.
+    """
     port = getattr(api.state, "port", None)
     if port is None:
         raise ValueError("The web server has not been started.")
@@ -317,7 +370,8 @@ def get_server_url():
     return url
 
 
-def display_inline_jupyter(width: Union[str, int] = "100%", height: Union[str, int] = 600, single_panel=None) -> None:
+# User command
+def display_bumps(width: Union[str, int] = "100%", height: Union[str, int] = 1200, single_panel=None) -> None:
     """
     Display the web server in an iframe.
 
@@ -343,12 +397,27 @@ def display_inline_jupyter(width: Union[str, int] = "100%", height: Union[str, i
 
 def open_tab_link(single_panel=None) -> None:
     """
-    Open the web server in a new tab in the default web browser.
+    Display web link to the active server in the jupyter cell output.
+
+    Also shows a cheat sheet of common jupyter commands.
     """
-    from IPython.display import display, HTML
+    from IPython.display import display, Markdown
 
     url = get_server_url()
     if single_panel is not None:
         url += f"?single_panel={single_panel}"
-    src = f'<h3><a href="{url}" target="_blank">Open Webview in Tab</a></h3>'
-    display(HTML(src))
+
+    src = f"""
+[Open in Browser]({url})
+------------------------
+
+To open in a jupyter notebook cell use `bp.display_bumps()`.
+
+Type `bp.help()` for a list of useful notebook commands.
+"""
+    display(Markdown(src))
+
+
+# CRUFT: aliases for deprecated names
+display_inline_jupyter = display_bumps
+start_bumps_server = start_bumps

@@ -14,11 +14,8 @@ import h5py
 
 sys.dont_write_bytecode = True
 
-# Ask bumps for a list of available fitters
-ROOT = Path(__file__).absolute().parent
-EXAMPLEDIR = ROOT / "doc" / "examples"
-
 # Add the build dir to the system path
+ROOT = Path(__file__).absolute().parent
 packages = [str(ROOT)]
 if "PYTHONPATH" in os.environ:
     packages.append(os.environ["PYTHONPATH"])
@@ -29,17 +26,30 @@ sys.path.insert(0, str(ROOT))
 from bumps.fitters import FIT_AVAILABLE_IDS
 
 
-command = [sys.executable, "-m", "bumps"]
+BUMPS_COMMAND = [sys.executable, "-m", "bumps"]
+
+EXAMPLEDIR = ROOT / "doc" / "examples"
 
 
 def decode(b):
     return b.decode("utf-8")
 
 
-def run_fit(fit_args, model_args, store, seed=1):
-    command_parts = [*command, *fit_args, *model_args, f"--store={store}", f"--seed={seed}", "--batch"]
+def run_fit(fitter, model_args, store, seed=1):
+    command = [
+        *BUMPS_COMMAND,
+        str(model_args[0]),
+        f"--fit={fitter}",
+        f"--session={store}",
+        f"--seed={seed}",
+        "--batch",
+        f"--export={str(Path(store).parent / ('T1-' + fitter))}",
+    ]
+    if len(model_args) > 1:
+        command += ["--args", *model_args[1:]]
     try:
-        output = subprocess.check_output(command_parts, stderr=subprocess.STDOUT)
+        # print("Command:", " ".join(command))
+        output = subprocess.check_output(command, stderr=subprocess.STDOUT)
         output = decode(output.strip())
         if output:
             print(output)
@@ -50,7 +60,7 @@ def run_fit(fit_args, model_args, store, seed=1):
         if "KeyboardInterrupt" in output:
             raise KeyboardInterrupt()
         else:
-            raise RuntimeError("fit failed:\n" + " ".join(command_parts))
+            raise RuntimeError("fit failed:\n" + " ".join(command))
 
 
 def check_fit(fitter, store, target):
@@ -62,7 +72,10 @@ def check_fit(fitter, store, target):
         last_item = list(group.keys())[-1]
         chisq_str = group[last_item].attrs["chisq"]
         value = float(chisq_str.split("(")[0])
-        assert abs(value - target) / target < 1e-2, f"error in {fitter}: expected {target} but got {value}"
+        if target == 0:
+            assert abs(value - target) < 1e-10, f"error in {fitter}: expected {target} but got {value}"
+        else:
+            assert abs(value - target) / target < 1e-2, f"error in {fitter}: expected {target} but got {value}"
 
 
 def run_fits(model_args, path, fitters=FIT_AVAILABLE_IDS, seed=1, target=0):
@@ -71,7 +84,7 @@ def run_fits(model_args, path, fitters=FIT_AVAILABLE_IDS, seed=1, target=0):
         print(f"====== fitter: {f}")
         try:
             store = Path(path) / f"{f}.hdf"
-            run_fit([f"--fit={f}"], model_args, str(store), seed=seed)
+            run_fit(f, model_args, str(store), seed=seed)
             check_fit(f, store, target)
         except Exception as exc:
             # import traceback; traceback.print_exc()

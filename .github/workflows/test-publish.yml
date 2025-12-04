@@ -19,24 +19,24 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Checkout Random123
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: "DEShawResearch/random123"
           ref: v1.14.0
           path: bumps/dream/random123
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
 
@@ -49,7 +49,7 @@ jobs:
         run: uv build
 
       - name: Upload the wheel and source distribution artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: artifacts
           path: |
@@ -63,29 +63,29 @@ jobs:
     strategy:
       matrix:
         cfg:
-          - { os: ubuntu-latest, py: 3.8 }
-          - { os: ubuntu-latest, py: 3.9, doc: 1 }
+          #- { os: ubuntu-latest, py: 3.8 }
+          #- { os: ubuntu-latest, py: "3.9" }
           - { os: ubuntu-latest, py: "3.10" }
-          - { os: ubuntu-latest, py: 3.11 }
-          - { os: ubuntu-latest, py: 3.12 }
-          - { os: ubuntu-latest, py: 3.13 }
-          - { os: windows-latest, py: "3.10" }
-          - { os: macos-latest, py: "3.10" }
+          - { os: ubuntu-latest, py: "3.11", doc: 1 }
+          - { os: ubuntu-latest, py: "3.12" }
+          - { os: ubuntu-latest, py: "3.13" }
+          - { os: windows-latest, py: "3.11" }
+          - { os: macos-latest, py: "3.11" }
       fail-fast: false
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
 
       - name: Set up Python ${{ matrix.cfg.py }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.cfg.py }}
 
       - name: Download the wheel
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: artifacts
           path: dist
@@ -94,11 +94,6 @@ jobs:
         run: |
           uv venv
           find dist -name "bumps-*-py3-none-any.whl" -exec uv pip install {}[dev] \;
-      - name: Run tests, except for webview
-        run: uv run python -m pytest -v --ignore=bumps/webview
-
-      - name: Install dependencies for webview testing
-        run: find dist -name "bumps-*-py3-none-any.whl" -exec uv pip install {}[webview] \;
 
       - name: Run tests
         run: uv run python -m pytest -v
@@ -123,9 +118,12 @@ jobs:
       id-token: write
     steps:
       - name: Retrieve all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
+        with:
+          name: artifacts
+          path: dist
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: artifacts/
+          packages-dir: dist/

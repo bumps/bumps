@@ -10,8 +10,14 @@ dependencies = [
     'scipy',
     'h5py',
     'dill',
+    'cloudpickle',
     'matplotlib',
     'blinker',
+    'aiohttp',
+    'python-socketio',
+    'plotly',
+    'mpld3',
+    'msgpack',
     'graphlib_backport; python_version < "3.9"',
 ]
 classifiers = [
@@ -26,7 +32,7 @@ classifiers = [
     'Topic :: Scientific/Engineering :: Chemistry',
     'Topic :: Scientific/Engineering :: Physics',
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 
 [project.optional-dependencies]
 dev = [
@@ -39,12 +45,6 @@ dev = [
     'setuptools',
     'sphinx',
     'versioningit',
-]
-webview = [
-    'aiohttp',
-    'python-socketio',
-    'plotly',
-    'mpld3',
 ]
 
 [project.urls]

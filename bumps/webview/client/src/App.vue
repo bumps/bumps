@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import { io } from "socket.io-client";
+import { computed, ref, toRaw } from "vue";
 import {
   active_layout,
   addNotification,
@@ -31,11 +30,14 @@ import PanelTabContainer from "./components/PanelTabContainer.vue";
 import ServerShutdown from "./components/ServerShutdown.vue";
 import ServerStartup from "./components/ServerStartup.vue";
 import SessionMenu from "./components/SessionMenu.vue";
+import ThemeToggle from "./components/ThemeToggle.vue";
 import type { Panel } from "./panels";
 
 const props = defineProps<{
   panels: Panel[];
-  name?: string;
+  socket: AsyncSocket;
+  singlePanel?: string;
+  name: string;
 }>();
 
 const show_menu = ref(false);
@@ -49,23 +51,13 @@ function setDarkTheme(prefersDark: boolean) {
 prefersDarkMediaQueryList.addEventListener("change", (e) => setDarkTheme(e.matches));
 setDarkTheme(prefersDarkMediaQueryList.matches);
 
-// const nativefs = ref(false);
-
-// Create a SocketIO connection, to be passed to child components
-// so that they can do their own communications with the host.
-const queryString = window.location.search;
-const urlParams = new URLSearchParams(queryString);
-
-const sio_base_path = urlParams.get("base_path") ?? window.location.pathname;
-const sio_server = urlParams.get("server") ?? "";
-const single_panel = urlParams.get("single_panel");
-if (single_panel !== null) {
+if (props.singlePanel) {
   active_layout.value = "full";
-  const panel_index = props.panels.findIndex(({ title }) => title.toLowerCase() == single_panel.toLowerCase());
+  const panel_index = props.panels.findIndex(({ title }) => title.toLowerCase() === props?.singlePanel?.toLowerCase());
   if (panel_index > -1) {
     startPanel.value[0] = panel_index;
   } else {
-    console.error(`Panel ${single_panel} not found`);
+    console.error(`Panel ${props?.singlePanel} not found`);
   }
 }
 
@@ -73,9 +65,7 @@ if (single_panel !== null) {
 connecting.value = true;
 disconnected.value = false;
 
-const socket = io(sio_server, {
-  path: `${sio_base_path}socket.io`,
-}) as AsyncSocket;
+const socket = props.socket;
 socket_ref.value = socket;
 
 socket.on("connect", async () => {
@@ -85,6 +75,9 @@ socket.on("connect", async () => {
   autoupdate_state.init(socket);
   socket.asyncEmit("get_fitter_defaults", (new_fitter_defaults: { [fit_name: string]: FitSetting }) => {
     default_fitter_settings.value = new_fitter_defaults;
+  });
+  socket.asyncEmit("get_shared_setting", "model_file", ({ filename }: { filename: string }) => {
+    document.title = filename ? `${props.name} - ${filename}` : props.name;
   });
 });
 
@@ -99,10 +92,9 @@ socket.on("disconnect", (payload) => {
 socket.on("add_notification", addNotification);
 socket.on("cancel_notification", cancelNotification);
 
-// function disconnect() {
-//   socket.disconnect();
-//   connected.value = false;
-// }
+socket.on("model_file", ({ filename }) => {
+  document.title = filename ? `${props.name} - ${filename}` : props.name;
+});
 
 async function selectOpenFile() {
   if (fileBrowser.value) {
@@ -251,7 +243,7 @@ async function startFit() {
   const settings = shared_state.fitter_settings ?? default_fitter_settings.value;
   if (active && settings) {
     const fit_args = settings[active];
-    await socket.asyncEmit("start_fit_thread", active, fit_args.settings);
+    await socket.asyncEmit("start_fit_thread", active, toRaw(fit_args?.settings));
   }
 }
 
@@ -280,7 +272,7 @@ file_menu_items.value = [
 
 <template>
   <div class="h-100 w-100 m-0 d-flex flex-column">
-    <nav v-if="single_panel === null" class="navbar navbar-expand-sm bg-dark" data-bs-theme="dark">
+    <nav v-if="singlePanel === null" class="navbar navbar-expand-sm bg-dark navbar-dark">
       <div class="container-fluid">
         <div class="navbar-brand">
           <img src="./assets/bumps-icon_256x256x32.png" alt="" height="24" class="d-inline-block align-text-middle" />
@@ -333,7 +325,7 @@ file_menu_items.value = [
           <div class="flex-grow-1 px-4 m-0">
             <h4 class="m-0">
               <!-- <div class="rounded p-2 bg-primary">Fitting: </div> -->
-              <div v-if="shared_state.active_fit?.fitter_id !== undefined" class="badge bg-secondary p-2 align-middle">
+              <div v-if="shared_state.active_fit?.fitter_id !== undefined" class="badge bg-secondary p-1 align-middle">
                 <div class="align-middle pt-2 pb-1 px-1 d-inline-block">
                   <span
                     >Fitting: {{ shared_state.active_fit?.fitter_id }} step {{ shared_state.active_fit?.step }} of
@@ -359,8 +351,11 @@ file_menu_items.value = [
                 <button class="btn btn-danger btn-sm" @click="stopFit">Stop</button>
               </div>
               <div v-else class="badge bg-secondary p-1">
-                <div class="align-middle p-2 d-inline-block">
-                  <span>Fitting: </span>
+                <div class="align-middle pt-2 pb-1 px-1 d-inline-block">
+                  <span
+                    >Fitting:
+                    <div class="mt-1" style="height: 3px"></div>
+                  </span>
                 </div>
                 <button class="btn btn-light btn-sm me-2" @click="openFitOptions">
                   {{ shared_state.selected_fitter ?? default_fitter }}
@@ -371,6 +366,7 @@ file_menu_items.value = [
             </h4>
           </div>
         </div>
+        <ThemeToggle />
       </div>
     </nav>
     <div v-if="active_layout === 'left-right'" class="flex-grow-1 row overflow-hidden">
@@ -395,14 +391,14 @@ file_menu_items.value = [
           :panels="panels"
           :socket="socket"
           :start-panel="startPanel[0]"
-          :hide-tabs="single_panel !== null"
+          :hide-tabs="singlePanel !== null"
         />
       </div>
     </div>
   </div>
   <FitOptions ref="fitOptions" :socket="socket" />
   <FileBrowser ref="fileBrowser" :socket="socket" />
-  <ServerShutdown :socket="socket" />
+  <ServerShutdown :disconnected="disconnected" />
   <ServerStartup :socket="socket" />
   <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 11">
     <div

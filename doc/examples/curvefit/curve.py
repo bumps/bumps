@@ -66,12 +66,12 @@ problem = FitProblem(M)
 #
 # .. parsed-literal::
 #
-#    $ bumps.py curve.py --fit=newton --steps=100 --store=T1
+#    $ bumps.py curve.py --fit=newton --steps=100 --session=fit.h5
 #
 # The ``--fit=newton`` option says to use the quasi-newton optimizer for
-# not more than 100 steps.  The ``--store=T1`` option says to store the
+# not more than 100 steps.  The ``--session=fit.h5`` option says to store the
 # initial model, the fit results and any monitoring information in the
-# directory T1.
+# HDF5 file ``fit.h5``.
 #
 # As the fit progresses, we are shown an iteration number and a cost
 # value.  The cost value is approximately the normalized $\chi^2_N$.

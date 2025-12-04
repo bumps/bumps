@@ -1,6 +1,16 @@
 import logging
 
-formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+LOGLEVEL = dict(
+    debug=logging.DEBUG,
+    info=logging.INFO,
+    warn=logging.WARNING,
+    warning=logging.WARNING,
+    error=logging.ERROR,
+    critical=logging.CRITICAL,
+)
+
+_CONSOLE_FORMATTER = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+_CONSOLE_HANDLER = None
 
 # Create a logger and allow all messages through. We will use separate handlers
 # to control the level going to the server console and to the client.
@@ -14,20 +24,51 @@ warnings_logger.setLevel(logging.WARNING)
 
 
 def setup_console_logging(level):
-    handler = logging.StreamHandler()
-    handler.setFormatter(formatter)
-    handler.setLevel(logging.WARNING)
-    handler.setLevel(level)
-    logger.addHandler(handler)
-    warnings_logger.addHandler(handler)
-    # logger.error("Are errors printed?")
-    # logger.warning("Are warnings printed?")
-    # logger.info("Is info printed?")
-    # logger.debug("Are debug messages printed?")
-    # import warnings; warnings.warn("Test warning")
-    return handler
+    global _CONSOLE_HANDLER
+    if _CONSOLE_HANDLER is None:
+        _CONSOLE_HANDLER = logging.StreamHandler()
+        _CONSOLE_HANDLER.setFormatter(_CONSOLE_FORMATTER)
+        logger.addHandler(_CONSOLE_HANDLER)
+        warnings_logger.addHandler(_CONSOLE_HANDLER)
+        # logger.error("Are errors printed?")
+        # logger.warning("Are warnings printed?")
+        # logger.info("Is info printed?")
+        # logger.debug("Are debug messages printed?")
+        # import warnings; warnings.warn("Test warning")
+    _CONSOLE_HANDLER.setLevel(LOGLEVEL[level])
+    return _CONSOLE_HANDLER
 
 
+# From PHIND-70B-Model
+def print_logging_configuration():
+    # Print root logger configuration
+    print("\nRoot Logger Configuration:")
+    root = logging.getLogger()
+    print(f"Root logger level: {logging.getLevelName(root.level)}")
+
+    # Print all handlers and their configurations
+    print("\nHandlers:")
+    for handler in root.handlers:
+        print(f"- Handler type: {handler.__class__.__name__}")
+        print(f"  Level: {logging.getLevelName(handler.level)}")
+
+        # Print formatter details if available
+        if hasattr(handler, "formatter"):
+            print(f"  Formatter format: {handler.formatter._fmt}")
+
+    # Print all logger configurations
+    print("\nAll Loggers:")
+    loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+    for logger in loggers:
+        if len(logger.handlers) > 0:
+            print(f"\nLogger '{logger.name}':")
+            print(f"Level: {logging.getLevelName(logger.level)}")
+            for handler in logger.handlers:
+                print(f"- Handler type: {handler.__class__.__name__}")
+                print(f"  Level: {logging.getLevelName(handler.level)}")
+
+
+# TODO: unused code: ClientHandler, setup_client_logging
 # TODO: replace emit with something that communicates with the client
 class ClientHandler(logging.Handler):
     def __init__(self, action=None):
@@ -44,8 +85,8 @@ class ClientHandler(logging.Handler):
 
 def setup_client_logging(level, action=None):
     handler = ClientHandler(action)
-    handler.setFormatter(formatter)
-    handler.setLevel(logging.INFO)
+    handler.setFormatter(_CONSOLE_FORMATTER)
+    handler.setLevel(LOGLEVEL[level])
     logger.addHandler(handler)
     return handler
 

@@ -1,3 +1,27 @@
+"""
+Python api for controlling webview.
+
+These are mostly called by webview and by the command line startup script. They
+are not particularly useful from a jupyter notebook.
+
+    import bumps.names as bp
+
+    # Start the bumps server and run it in the background
+    await bp.start_bumps()
+
+    # Display webview in a jupyter cell
+    display_bumps(height=600)
+
+    # Load a model script, possibly with additional command line arguments:
+    path = Path("path/to/model.py")
+    problem = bp.load_model(path, args=[arg1, ...])
+
+    # Use a problem defined in a separate jupyter cell
+    await bp.set_problem(problem, new_model=False)
+
+
+"""
+
 from functools import lru_cache
 import itertools
 from types import GeneratorType
@@ -5,7 +29,6 @@ from typing import (
     Any,
     Awaitable,
     Callable,
-    Coroutine,
     Dict,
     List,
     Literal,
@@ -14,62 +37,71 @@ from typing import (
     Protocol,
     Sequence,
     Union,
-    Tuple,
     TypedDict,
-    cast,
 )
 from datetime import datetime
 import numbers
 import warnings
-from threading import Event
 import numpy as np
 import asyncio
-from pathlib import Path, PurePath
+from pathlib import Path
 import json
 from copy import deepcopy
 import os
 import uuid
 import traceback
 import math
+import time
 
-from bumps.fitters import (
-    FitDriver,
-    nllf_scale,
-    format_uncertainty,
-)
+from bumps.fitproblem import load_problem
+from bumps.fitters import FitDriver, OptimizeResult
 from bumps.mapper import MPMapper
 from bumps.parameter import Parameter, Constant, FixedLimitParameter, Reparameterized, Variable, unique
 import bumps.cli
 import bumps.fitproblem
-import bumps.dream.views
-import bumps.dream.varplot
 import bumps.dream.stats
 from bumps.dream.state import MCMCDraw
 import bumps.errplot
+from bumps.util import push_mpl_backend
 
 from . import fit_options
 from .state_hdf5_backed import (
     UNDEFINED,
     UNDEFINED_TYPE,
+    FitResult,
     State,
     get_custom_plots_available,
     serialize_problem,
     deserialize_problem,
+    serialize_problem_bytes,
     SERIALIZER_EXTENSIONS,
+    TopicNameType,
 )
 from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
 from .varplot import plot_vars
 from .traceplot import plot_trace
 from .logger import logger
+from .convergence_plot import convergence_plot
 from .custom_plot import process_custom_plot, CustomWebviewPlot
+
+# CRUFT: python 3.8 does not have asyncio.to_thread
+try:
+    from asyncio import to_thread
+except ImportError:
+
+    async def to_thread(func, *args, **kwargs):
+        """Run a synchronous function in a separate thread."""
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, func, *args, **kwargs)
+
 
 REGISTRY: Dict[str, Callable] = {}
 MODEL_EXT = ".json"
 TRACE_MEMORY = False
 
-
+# TODO: reloading the module wipes out state
 # TODO: any other state that needs to be initialized?
-# TODO: can initialization be moved to the SharedState constructor?
+
 # Initialize state
 state = State()
 state.shared.selected_fitter = fit_options.DEFAULT_FITTER_ID
@@ -79,6 +111,22 @@ state.shared.fitter_settings = deepcopy(fit_options.FITTER_DEFAULTS)
 def register(fn: Callable):
     REGISTRY[fn.__name__] = fn
     return fn
+
+
+def register_download(mimetype: str = "application/octet-stream", filename: str = "result.dat"):
+    """
+    Decorator to register a function as a download endpoint with a specific mimetype.
+    """
+
+    def decorator(fn: Callable):
+        # Store the mimetype as an attribute on the function
+        fn.mimetype = mimetype
+        fn.filename = filename
+        # Register the function in the REGISTRY
+        REGISTRY[fn.__name__] = fn
+        return fn
+
+    return decorator
 
 
 class Emitter(Protocol):
@@ -123,11 +171,6 @@ async def emit(
     return results
 
 
-TopicNameType = Literal[
-    "log",  # log messages
-]
-
-
 @register
 async def load_problem_file(
     pathlist: List[str],
@@ -135,45 +178,67 @@ async def load_problem_file(
     autosave_previous: bool = True,
     args: List[str] = None,
 ):
+    """
+    Load the problem from json or from a script file.
+
+    *pathlist* is a list of folder components and *filename* is the script file in that folder.
+    These are joined together as "Path(*pathlist, filename)" to build the complete path. If
+    path is already a Path to the file, use *load_problem_file([path.parent], path.name, ...)*
+
+    If *autosave_previous* then store the current problem state in the session file before
+    loading the new problem (default=True).
+
+    *args* are any additional arguments to the script file. This will be available in the script
+    as *sys.argv[1:]*.
+    """
     # print("load_problem_file", state.fitting.fit_state)
     path = Path(*pathlist, filename)
     logger.info(f"Loading model: {path}")
     await log(f"Loading model: {path}")
-    if filename.endswith(".json"):
-        with open(path, "rt") as input_file:
-            serialized = input_file.read()
-        problem = deserialize_problem(serialized, method="dataclass")
-    else:
-        from bumps.cli import load_model
+    problem = load_problem(path, args=args)
 
-        # print("model", str(path), args)
-        problem = load_model(str(path), args)
-    assert isinstance(problem, bumps.fitproblem.FitProblem)
-    # problem_state = ProblemState(problem, pathlist, filename)
-    try:
-        _serialized_problem = serialize_problem(problem, method="dataclass")
-        state.problem.serializer = "dataclass"
-    except Exception as exc:
-        logger.info(f"Could not serialize problem as JSON (dataclass): {exc}, switching to dill")
-        state.problem.serializer = "dill"
-    if (
-        state.shared.autosave_history
-        and autosave_previous
-        and state.problem is not None
-        and state.problem.fitProblem is not None
-    ):
-        await save_to_history("autosaved before loading new model")
-    state.shared.model_file = dict(filename=filename, pathlist=pathlist)
-    state.shared.model_loaded = now_string()
-    state.shared.custom_plots_available = {"parameter_based": False, "uncertainty_based": False}
-    await set_problem(problem, Path(*pathlist), filename)
+    await set_problem(problem, Path(*pathlist), filename, new_model=True, autosave_previous=autosave_previous)
 
 
 @register
-async def set_serialized_problem(serialized, new_model: bool = False, name: Optional[str] = None):
-    fitProblem = deserialize_problem(serialized, method="dataclass")
-    state.problem.serializer = "dataclass"
+async def set_serialized_problem(
+    serialized, new_model: bool = False, name: Optional[str] = None, method: str = "dataclass"
+):
+    """
+    Set the fit problem from a saved problem state.
+
+    *serialized* is the serialized fit problem. *method* is the method used for serialization.
+
+    If *new_model* is True, then save the model to history with tag "Loaded model". (default=False)
+
+    *name* is an optional override for the model name.
+
+    For example::
+
+        await set_serialized_problem(api.state.problem.fitProblem, method=api.state.problem.serializer)
+    """
+    fitProblem = deserialize_problem(serialized, method=method)
     await set_problem(fitProblem, new_model=new_model, name=name)
+
+
+async def set_fit_result(fit_result: FitResult):
+    if fit_result is None:
+        state.reset_fitstate()
+        return
+
+    # Allow fit_result to be either a webview FitResult or a simple fitter OptimizeResult
+    # fit has more fields, and uses fit_state instead of state for the DREAM state value.
+    fit_result = FitResult(
+        method=fit_result.method,
+        options=fit_result.options,
+        convergence=fit_result.convergence,
+        fit_state=getattr(fit_result, "fit_state", getattr(fit_result, "state", None)),
+    )
+    # Use shared settings by default, update from any provided options
+    state.set_convergence(fit_result.convergence)
+    state.set_fit_state(fit_result.fit_state, method=fit_result.method)
+    state.shared.active_history = None
+    await set_fit_options(fitter_id=fit_result.method, options=fit_result.options)
 
 
 async def set_problem(
@@ -182,24 +247,63 @@ async def set_problem(
     filename: str = "",
     new_model: bool = True,
     name: Optional[str] = None,
+    autosave_previous: bool = True,
+    fit: Optional[OptimizeResult] = None,
 ):
+    """
+    Set the fit problem.
+
+    *problem* is a fitting problem defined in a jupyter cell.
+
+    *path* and *filename* give the nominal location of the problem on disk. These are displayed
+    in webview and stored in the session file, but not actually used to load the problem.
+
+    *new_model* is True if the problem should be saved to the session file as "Loaded model" (default True)
+
+    *name* is an optional override for the model name.
+    """
+    # TODO: should only save the previous if it has been modified.
+    # Save the old model before doing anything else
+    if (
+        autosave_previous
+        and state.shared.autosave_history
+        and state.problem is not None
+        and state.problem.fitProblem is not None
+    ):
+        await save_to_history("autosaved before loading new model")
+
     # if state.problem is None or state.problem.fitProblem is None:
     #     update = False
     state.problem.fitProblem = problem
-    name = name if name is not None else problem.name
-    if name is None:
-        name = filename
+    problem_path = getattr(problem, "path", None)
+    problem_name = getattr(problem, "name", None)
+    if not filename and problem_path:
+        filename = Path(problem_path).name
+    if not path and problem_path:
+        path = Path(problem_path).parent
+    name = name or problem_name or filename
     state.shared.updated_model = now_string()
     state.shared.updated_parameters = now_string()
     state.shared.custom_plots_available = get_custom_plots_available(problem)
-    # invalidate the uncertainty state:
-    state.reset_fitstate()
+
+    pathlist = list(path.parts) if path is not None else []
+    path_string = "(no path)" if path is None else str(path / filename)
+    await log(f"Model loaded: {path_string}")
+    state.shared.model_file = dict(filename=filename, pathlist=pathlist)
+
+    # Pick a serializer by trying dataclass and defaulting to cloudpickle
+    try:
+        _ = serialize_problem(problem, method="dataclass")
+        state.problem.serializer = "dataclass"
+    except Exception as exc:
+        logger.warning(f"Could not serialize problem as JSON (dataclass): {exc}, switching to cloudpickle")
+        state.problem.serializer = "cloudpickle"
+        # raise
+
+    # reset the fit state
+    await set_fit_result(fit)
 
     if new_model:
-        pathlist = list(path.parts) if path is not None else []
-        path_string = "(no path)" if path is None else str(path / filename)
-        await log(f"Model loaded: {path_string}")
-        state.shared.model_file = dict(filename=filename, pathlist=pathlist)
         state.shared.model_loaded = now_string()
         if state.shared.autosave_history and state.problem is not None and state.problem.fitProblem is not None:
             await save_to_history(f"Loaded model: {name}", keep=True)
@@ -252,6 +356,11 @@ async def save_problem_file(
     filename: Optional[str] = None,
     overwrite: bool = False,
 ):
+    """
+    Export current problem to a file.
+
+    *pathlist* and *file*
+    """
     problem_state = state.problem
     if problem_state is None:
         logger.warning("Save failed: no problem loaded.")
@@ -268,14 +377,14 @@ async def save_problem_file(
     path = Path(*pathlist)
     serializer = state.problem.serializer
     extension = SERIALIZER_EXTENSIONS[serializer]
-    save_filename = f"{Path(filename).stem}.{extension}"
+    # Avoid name collision with saved fit results, which may also be in .json
+    save_filename = f"{Path(filename).stem}-problem.{extension}"
     if not overwrite and Path.exists(path / save_filename):
         # confirmation needed:
         return {"filename": save_filename, "check_overwrite": True}
 
-    serialized = serialize_problem(problem_state.fitProblem, method=serializer)
-    with open(Path(path, save_filename), "wb") as output_file:
-        output_file.write(serialized)
+    serialized = serialize_problem_bytes(problem_state.fitProblem, method=serializer)
+    Path(path, save_filename).write_bytes(serialized)
 
     await log(f"Saved: {save_filename} at path: {path}")
     return {"filename": save_filename, "check_overwrite": False}
@@ -292,20 +401,41 @@ async def save_session_copy(pathlist: List[str], filename: str):
     state.write_session_file(str(path / filename))
 
 
+@register_download(mimetype="application/octet-stream", filename="session.h5")
+async def get_session():
+    return state.get_session_bytes()
+
+
 @register
 async def load_session(pathlist: List[str], filename: str, read_only: bool = False):
-    path = Path(*pathlist)
     state.setup_backing(filename, pathlist, read_only=read_only)
     state.shared.updated_model = now_string()
     state.shared.updated_parameters = now_string()
 
 
 @register
-async def set_session_output_file(pathlist: Optional[List[str]] = None, filename: Optional[str] = None):
-    if filename is None or pathlist is None:
+async def set_session_output_file(filepath: Optional[Union[str, Path]] = None):
+    """
+    Set the session output file to be used for saving results, and enable autosave.
+    If `filepath` is None, the session output file is cleared and autosave is disabled.
+    """
+    if filepath is None:
         await state.shared.set("session_output_file", None)
+        await state.shared.set("autosave_session", False)
     else:
-        await state.shared.set("session_output_file", dict(filename=filename, pathlist=pathlist))
+        if isinstance(filepath, str):
+            filepath = Path(filepath)
+
+        parent_dir = filepath.parent
+        filename = filepath.name
+        if not parent_dir.exists():
+            raise ValueError(f"Parent directory {parent_dir} does not exist.")
+        if not parent_dir.is_dir():
+            raise ValueError(f"Path {parent_dir} is not a directory.")
+        if filepath.is_dir():
+            raise ValueError(f"Path {filepath} is a directory, not a file.")
+        await state.shared.set("session_output_file", dict(filename=filename, pathlist=parent_dir.parts))
+        await state.shared.set("autosave_session", True)
 
 
 @register
@@ -335,30 +465,38 @@ async def export_results(export_path: Union[str, List[str]] = ""):
     # issues, we could try to copy and then fall back to just using the live object,
     # or we could just always use the live object, which is unlikely to be changed before
     # the export completes, anyway.
-    fit_state = deepcopy(state.fitting.fit_state)
+    fit = deepcopy(state.fitting)
 
     if not isinstance(export_path, list):
         export_path = [export_path]
     path = Path(*export_path).expanduser().absolute()
     notification_id = await add_notification(content=f"<span>{str(path)}</span>", title="Export started", timeout=None)
     try:
-        await asyncio.to_thread(_export_results, path, problem, fit_state, serializer)
+        await to_thread(export_fit, path, problem, fit, serializer)
     finally:
         await emit("cancel_notification", notification_id)
     # print("done export thread")
 
 
-def _export_results(
-    path: Path,
+# Note: need naming convention for sync and async versions
+def export_fit(
+    path: Path | str,
     problem: bumps.fitproblem.FitProblem,
-    fit_state: Any,
-    serializer: Optional[str] = None,
-    name: Optional[str] = None,
+    fit: FitResult | OptimizeResult,
+    serializer: Optional[str] = "dataclass",
+    basename: Optional[str] = None,
 ):
     # print("running export thread")
     from bumps.util import redirect_console
 
-    basename = name if name else problem.name if problem.name else "problem"
+    path = Path(path)
+
+    # Get basename for the export if not provided
+    if not basename:
+        problem_name = getattr(problem, "name", "model")
+        problem_path = getattr(problem, "path", f"{problem_name}.py")
+        basename = Path(problem_path).with_suffix("").name
+
     # Storage directory
     path.mkdir(parents=True, exist_ok=True)
     output_pathstr = str(path / basename)
@@ -366,33 +504,64 @@ def _export_results(
     # Ask model to save its information
     problem.save(output_pathstr)
 
+    # TODO: need the same logic in save session?
     # Save a snapshot of the model that can (hopefully) be reloaded
-    extension = SERIALIZER_EXTENSIONS[serializer]
-    save_filename = f"{output_pathstr}.{extension}"
+    # Complicated because it tries falling back to "cloudpickle" if it fails.
+    fallback = None if serializer == "dataclass" else "cloudpickle"
     try:
-        serialized = serialize_problem(problem, serializer)
-        with open(save_filename, "wb") as fd:
-            fd.write(serialized)
-    except Exception as exc:
-        logger.error(f"Error exporting model: {exc}")
+        serialized = serialize_problem_bytes(problem, serializer)
+    except Exception:
+        serialized = None
+        if fallback:
+            logger.error(f"Error serializing model with {serialized}. Trying {fallback} instead")
+    if serialized is None and fallback is not None:
+        serializer = fallback
+        try:
+            serialized = serialize_problem_bytes(problem, serializer)
+        except Exception as exc:
+            logger.error(f"Error serializing model with {serialized}: {exc}")
+    if serialized:
+        extension = SERIALIZER_EXTENSIONS[serializer]
+        save_filename = f"{output_pathstr}.{extension}"
+        try:
+            Path(save_filename).write_bytes(serialized)
+        except Exception as exc:
+            logger.error(f"Error writing {save_filename}: {exc}")
 
     # Save the current state of the parameters
     with redirect_console(str(path / f"{basename}.out")):
         problem.show()
 
+    # TODO: add fit method and options to the par file header
     # Write the pars file.
     _write_pars(problem, path, f"{basename}.par")
 
-    # Produce model plots
-    problem.plot(figfile=output_pathstr)
+    # Handle OptimizeResult or FitResult
+    fit_state = getattr(fit, "fit_state", getattr(fit, "state", None))
+    with push_mpl_backend("agg"):
+        # Produce model plots
+        problem.plot(figfile=output_pathstr)
 
-    # Produce uncertainty plots
-    # TODO: Add save/show methods to the fit_state protocol
-    if hasattr(fit_state, "show"):
-        with redirect_console(str(path / f"{basename}.err")):
-            fit_state.show(figfile=output_pathstr)
-        fit_state.save(output_pathstr)
-    # print("export complete")
+        # TODO: produce convergence plot and write convergence data
+
+        # Produce uncertainty plots
+        # TODO: Add save/show methods to the fit_state protocol
+        if hasattr(fit_state, "show"):
+            with redirect_console(str(path / f"{basename}.err")):
+                fit_state.show(figfile=output_pathstr)
+            fit_state.save(output_pathstr)
+
+            # TODO: duplicates code in fitters.DreamFit.error_plot
+            # TODO: refactor to separate calculation from display
+            # TODO: share calc_errors result with get_model_uncertainty_plot
+            from bumps import errplot
+
+            points = errplot.error_points_from_state(state=fit_state)
+            res = errplot.calc_errors(problem, points)
+            if res is not None:
+                errplot.show_errors(res, save=output_pathstr)
+
+        # print("export complete")
 
 
 @register
@@ -430,13 +599,11 @@ async def apply_parameters(pathlist: List[str], filename: str):
             title="Parameters applied",
             timeout=2000,
         )
-    except Exception:
-        await log(f"Unable to apply parameters from {fullpath}")
-        await add_notification(
-            f"Unable to apply parameters from {fullpath}",
-            title="Error applying parameters",
-            timeout=2000,
-        )
+    except Exception as exc:
+        msg = f"error loading parameters from {fullpath}: {exc}"
+        logger.error(msg)
+        await log(msg)
+        await add_notification(msg, title="Error applying parameters", timeout=2000)
 
 
 @register
@@ -475,33 +642,12 @@ async def stop_fit(wait=True):
 
 
 @register
-async def get_chisq(problem: Optional[bumps.fitproblem.FitProblem] = None, nllf=None):
-    problem = state.problem.fitProblem if problem is None else problem
+async def get_chisq(problem: Optional[bumps.fitproblem.FitProblem] = None, nllf=None) -> str:
+    if problem is None:
+        problem = state.problem.fitProblem
     if problem is None:
         return ""
-    nllf = problem.nllf() if nllf is None else nllf
-    scale, err = nllf_scale(problem)
-    chisq = format_uncertainty(scale * nllf, err)
-    return chisq
-
-
-# TODO: Ask the fitter for the number of steps instead of guessing
-# This is difficult because dream doesn't know it until DreamFit.solve() is called.
-def get_max_steps(num_fitparams: int, fitter_id: str, options: Dict[str, Any]):
-    """Returns the maximum number of iterations allowed for the fit."""
-    # fitter_id = options["fit"]
-    fitter = fit_options.lookup_fitter(fitter_id)
-    options = {**dict(fitter.settings), **dict(options)}
-    steps = options["steps"]  # all fitters have "steps"
-    starts = options.get("starts", 1)  # Multistart fitter
-    # TODO: Max steps is wrong for DE with resume. Instead let the fitter tell the step monitor how many steps.
-    if fitter_id == "dream":  # Dream has steps + burn
-        if steps == 0:  # Steps not specified; using samples instead
-            pop, draws = options["pop"], options["samples"]
-            pop_size = int(math.ceil(pop * num_fitparams)) if pop > 0 else int(-pop)
-            steps = (draws + pop_size - 1) // pop_size
-        steps += options["burn"]
-    return steps * starts
+    return problem.chisq_str(nllf=nllf)  # Default is norm=True and compact=True
 
 
 def get_running_loop():
@@ -527,7 +673,9 @@ async def shake_parameters():
 
 
 @register
-async def start_fit_thread(fitter_id: str, options: Optional[Dict[str, Any]] = None, resume: bool = False):
+async def start_fit_thread(
+    fitter_id: Optional[str] = None, options: Optional[Dict[str, Any]] = None, resume: bool = False
+):
     fitProblem = state.problem.fitProblem if state.problem is not None else None
     if fitProblem is None:
         await log("Error: Can't start fit if no problem loaded")
@@ -546,21 +694,23 @@ async def start_fit_thread(fitter_id: str, options: Optional[Dict[str, Any]] = N
         raise ValueError("Problem has no fittable parameters")
 
     # Check the options. Pass the fitter_id so that we know which options are available.
+    if options is None:
+        options = {}
+    # Allow fit=fitter_id or method=fitter_id in the options dictionary.
+    # Using None as the default so that fitoptions.check_options an fill
+    # in any a value if the fit id was not specified.
+    id_from_options = options.pop("fit", options.pop("method", None))
+    if not fitter_id:
+        fitter_id = id_from_options
     options, errors = fit_options.check_options(options, fitter_id=fitter_id)
     for msg in errors:
         logger.warning(msg)
         await log(msg)
 
-    # Allow fit=fitter_id in the options dictionary.
-    fitter_option = options.pop("fit")
-    if not fitter_id:
-        fitter_id = fitter_option
-
     # Start a new thread worker and give fit problem to the worker.
     # Clear abort and uncertainty state
     # state.abort = False
     # state.fitting.uncertainty_state = None
-    max_steps = get_max_steps(num_params, fitter_id, options)
     state.fit_abort_event.clear()
     # TODO: remove this re-creation of the Event object when minimum python is >= 3.10
     state.fit_complete_event = asyncio.Event()
@@ -575,6 +725,9 @@ async def start_fit_thread(fitter_id: str, options: Optional[Dict[str, Any]] = N
     # TODO: model.py may have changed; check that the list of parameters is the same
     # TODO: maybe prefer problem saved in store on resume
     # print(f"start fit thread {resume} {state.fitting.fit_state}")
+    fitclass = fit_options.lookup_fitter(fitter_id)
+    max_steps = fitclass.max_steps(fitProblem, full_options)
+
     if resume and state.fitting.method != fitter_id:
         msg = f"Can't resume {fitter_id} from state saved by {state.fitting.method}"
         logger.warning(msg)
@@ -595,7 +748,6 @@ async def start_fit_thread(fitter_id: str, options: Optional[Dict[str, Any]] = N
         )
     )
 
-    fitclass = fit_options.lookup_fitter(fitter_id)
     fit_thread = FitThread(
         fit_abort_event=state.fit_abort_event,
         fitclass=fitclass,
@@ -625,6 +777,8 @@ async def start_fit_thread(fitter_id: str, options: Optional[Dict[str, Any]] = N
 async def set_fit_options(fitter_id: str, options: Dict[str, Any]):
     current_options = state.shared.fitter_settings[fitter_id]["settings"]
     current_options.update(options)
+    # TODO: do we need to update state.fitting.options as well?
+    # state.fitting.options = current_options.copy()
     # items in state.shared are not deeply reactive, so we have to explicitly notify:
     state.shared.notify("fitter_settings")
 
@@ -693,9 +847,8 @@ async def _fit_complete_handler(event: Dict[str, Any]):
 
         # print(event['info'])  # Needed if we are dumping fit outputs to the terminal
         problem: bumps.fitproblem.FitProblem = event["problem"]
-        chisq = nice(2 * event["value"] / problem.dof)
-        problem.setp(event["point"])
-        problem.model_update()
+        chisq = nice(problem.chisq(nllf=event["value"]))
+        problem.setp(event["point"])  # setp calls model_update
         state.problem.fitProblem = problem
         state.set_fit_state(event["fit_state"], event["fitter_id"])
         if state.shared.autosave_history:
@@ -772,29 +925,160 @@ async def log(message: str, title: Optional[str] = None):
 
 @register
 async def get_data_plot(model_indices: Optional[List[int]] = None):
+    from bumps.fitproblem import fitness_chisq_str
+
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = deepcopy(state.problem.fitProblem)
-    import mpld3
-    import matplotlib
-
-    matplotlib.use("agg")
-    import matplotlib.pyplot as plt
-    import time
 
     # Suppress all mpld3 warnings
     # warnings.filterwarnings("ignore", module="mpld3")
 
+    # TODO: revise get_data_plot interface to take only a single index
+    # The current interface to get_data_plot takes a list of model indices
+    # but it only returns a single figure. If called with a list of models
+    # they will overwrite each other in one figure.
+    if model_indices is None or len(model_indices) != 1:
+        raise RuntimeError("can only do one model at a time")
+    index = model_indices[0]
+
+    # Overall chisq
+    overall_chisq_str = fitProblem.chisq_str()
+    with fitProblem.push_model(index) as model:
+        # # "per model" chisq
+        if fitProblem.num_models > 1:
+            chisq_str = fitness_chisq_str(model)
+            text = f"χ² = {chisq_str}; overall {overall_chisq_str}"
+            title = f"Model {index+1}: {model.name}"
+        else:
+            text = f"χ² = {overall_chisq_str}"
+            title = f"{model.name}"
+        if hasattr(model, "plotly"):
+            return _get_data_plot_plotly(model, title=title, chisq=text)
+        elif hasattr(model, "plot"):
+            return _get_data_plot_mpl(model, title=title, chisq=text)
+        else:
+            # Use plotly to show chisq
+            return _get_data_plot_plotly(model, title=title, chisq=text)
+
+
+def _get_data_plot_plotly(model, title, chisq):
+    if hasattr(model, "plotly"):
+        fig = model.plotly()
+    else:
+        import plotly.graph_objects as go
+
+        fig = go.Figure()
+        fig.update_layout(
+            xaxis_visible=False,
+            yaxis_visible=False,
+            # plot_bgcolor='rgba(0,0,0,0)',
+            # paper_bgcolor='rgba(0,0,0,0)',
+        )
+
+    # TODO: text offset of (x=0.5em, y=0.5ex)
+    text_offset = 0.01  # portion of graph axis length
+    font = dict(size=22)
+    # fig.add_annotation(
+    #    x=text_offset, y=1+text_offset,
+    #    xanchor="left", yanchor="bottom",
+    #    xref="paper", yref="paper",
+    #    text=title,
+    #    showarrow=False,
+    #    font=font,
+    # )
+    fig.add_annotation(
+        x=1 - text_offset,
+        y=1 + text_offset,
+        xanchor="right",
+        yanchor="bottom",
+        xref="paper",
+        yref="paper",
+        text=chisq,
+        showarrow=False,
+        font=font,
+    )
+    dfig = fig.to_dict()
+    return {"fig_type": "plotly", "plotdata": to_json_compatible_dict(dfig)}
+
+
+# Make mpld3 figure controls available for monkey-patching.
+# Figure size is a hack. The correct choice will probably depend on browser,
+# screen size, dpi, available fonts, etc.
+# TODO: have webview send the desired figure size
+MPLD3_BACKEND = "agg"
+MPLD3_FIG_SIZE = (10, 8)
+MPLD3_STYLE = {
+    "figure.dpi": 72,
+    "figure.subplot.left": 0.10,
+    "figure.subplot.right": 0.99,
+    "figure.subplot.bottom": 0.05,
+    "figure.subplot.top": 0.95,
+    "axes.xmargin": 0.05,
+    "axes.ymargin": 0.05,
+    "figure.constrained_layout.h_pad": 0.0,
+    "figure.constrained_layout.w_pad": 0.0,
+    "figure.constrained_layout.hspace": 0.0,
+    "figure.constrained_layout.wspace": 0.0,
+    "font.size": 16,
+}
+
+
+def _get_data_plot_mpl(model, title, chisq):
+    import matplotlib.pyplot as plt
+    import mpld3
+    from mpld3 import plugins
+
     start_time = time.time()
     logger.info(f"queueing new data plot... {start_time}")
-    fig = plt.figure()
-    for i, model in enumerate(fitProblem.models):
-        if model_indices is not None and i not in model_indices:
-            continue
+    text_offset = 0.01  # portion of graph axis length
+    # Note: rc_context() says it won't modify the backend, so we still need push_mpl_backend().
+    with push_mpl_backend(MPLD3_BACKEND), plt.rc_context(MPLD3_STYLE):
+        fig = plt.figure(figsize=MPLD3_FIG_SIZE)
         model.plot()
-    plt.text(0.01, 0.01, "chisq=%s" % fitProblem.chisq_str(), transform=plt.gca().transAxes)
-    dfig = mpld3.fig_to_dict(fig)
-    plt.close(fig)
+
+        # TODO: can't adjust margins correctly unless we know the figure size
+        # h, w = fig.get_size_inches()
+        # h_ex = h*72 / 16  # (h in * 72 pt/in) / (16 pt/ex) = height in ex
+        h_ex = 30  # assume we are 50 lines tall, so that 2/30 ~ 0.08
+        text_offset = 0.5 / h_ex  # 1/2 ex above and below the text
+
+        top = 1 - 2 / h_ex  # leave 2 ex at the top of the figure
+        plt.subplots_adjust(top=top)
+
+        # # transFigure doesn't seem to work in mpld3
+        # transform = fig.transFigure
+        # x, y = text_offset, 1 - text_offset
+        # ha, va = "left", "top"
+        # fig.text(x, y, title, transform=transform, va=va, ha=ha)
+        # x, y = 1 - text_offset, 1 - text_offset
+        # ha, va = "right", "top"
+        # fig.text(x, y, chisq, transform=transform, va=va, ha=ha)
+
+        ax = fig.axes[0]
+        fontsize = 22
+        transform = ax.transAxes
+        # Don't need the title since it is in the models dropdown
+        # x, y = text_offset, 1 + text_offset
+        # ha, va = "left", "bottom"
+        # ax.text(x, y, title, transform=transform, va=va, ha=ha, fontsize=fontsize)
+        x, y = 1 - text_offset, 1 + text_offset
+        ha, va = "right", "bottom"
+        ax.text(x, y, chisq, transform=transform, va=va, ha=ha, fontsize=fontsize)
+
+        # Add plugins to the figure for zoom, etc.
+        # Note: these are already present in the dict, just not working on the backend?
+        plugins.clear(fig)
+        plugins.connect(
+            fig,
+            plugins.BoxZoom(enabled=True),
+            plugins.Reset(),
+            plugins.MousePosition(fontsize=14),
+        )
+
+        dfig = mpld3.fig_to_dict(fig)
+        # import pprint; pprint.pprint(dfig); import sys; sys.exit()
+        plt.close(fig)
     end_time = time.time()
     logger.info(f"time to draw data plot: {end_time - start_time}")
     return {"fig_type": "mpld3", "plotdata": to_json_compatible_dict(dfig)}
@@ -867,13 +1151,11 @@ async def create_custom_plot(model_index: int, plot_title: str, n_samples: int =
             model.update()
             model.nllf()
             if plot_info.get("change_with", None) == "uncertainty":
-                plot_item: CustomWebviewPlot = await asyncio.to_thread(
-                    plot_function, model, fitProblem, fit_state, n_samples
-                )
+                plot_item: CustomWebviewPlot = await to_thread(plot_function, model, fitProblem, fit_state, n_samples)
             else:
-                plot_item: CustomWebviewPlot = await asyncio.to_thread(plot_function, model, fitProblem)
+                plot_item: CustomWebviewPlot = await to_thread(plot_function, model, fitProblem)
         except Exception:
-            plot_item = CustomWebviewPlot(fig_type="error", plotdata=traceback.format_exc())
+            plot_item = CustomWebviewPlot(fig_type="error", plotdata=traceback.format_exc(), exportdata=None)
 
         return process_custom_plot(plot_item)
 
@@ -891,100 +1173,67 @@ async def get_custom_plot(model_index: int, plot_title: str, n_samples: int = 1)
 
 
 @register
-async def get_convergence_plot():
+async def get_convergence_plot(
+    cutoff: float = 0.25, portion: Optional[float] = None, max_points: Optional[int] = 10000
+):
+    """
+    Get the convergence plot for the current fit state.
+    If the fit state is not available, return None.
+    If the convergence is not available, return None.
+
+    :param cutoff: The cutoff value for the convergence plot
+                    (fraction of points below this value are not shown)
+    :param max_points: The maximum number of points to plot
+                        (thinning applied if too many points)
+    :return: A JSON-serializable dictionary containing the convergence plot data."""
     if state.problem is None or state.problem.fitProblem is None:
         return None
-    fitProblem = state.problem.fitProblem
+    dof = state.problem.fitProblem.dof
     convergence = state.fitting.convergence
+
     if convergence is not None:
-        normalized_pop = 2 * convergence / fitProblem.dof
-        best, pop = normalized_pop[:, 0], normalized_pop[:, 1:]
+        fit_state = state.fitting.fit_state
+        generation = len(convergence)
+        if fit_state is not None and hasattr(fit_state, "trim_index"):
+            # If the trim index is available, we can show it on the plot:
+            trim_index = fit_state.trim_index(generation=generation, portion=portion)
+            burn_index = fit_state.trim_index(generation=generation, portion=1.0)
+            stored_portion = getattr(fit_state, "portion", None)
+        else:
+            trim_index = None
+            burn_index = None
+            stored_portion = None
 
-        ni, npop = pop.shape
-        iternum = np.arange(1, ni + 1)
-        tail = int(0.25 * ni)
-        fig = {"data": [], "layout": {}}  # go.Figure()
-        hovertemplate = "(%{{x}}, %{{y}})<br>{label}<extra></extra>"
-        x = iternum[tail:].tolist()
-        if npop == 5:
-            # fig['data'].append(dict(type="scattergl", x=x, y=pop[tail:,4].tolist(), name="95%", mode="lines", line=dict(color="lightblue", width=1), showlegend=True, hovertemplate=hovertemplate.format(label="95%")))
-            fig["data"].append(
-                dict(
-                    type="scattergl",
-                    x=x,
-                    y=pop[tail:, 3].tolist(),
-                    mode="lines",
-                    line=dict(color="lightgreen", width=0),
-                    showlegend=False,
-                    hovertemplate=hovertemplate.format(label="80%"),
-                )
-            )
-            fig["data"].append(
-                dict(
-                    type="scattergl",
-                    x=x,
-                    y=pop[tail:, 1].tolist(),
-                    name="20% to 80% range",
-                    fill="tonexty",
-                    mode="lines",
-                    line=dict(color="lightgreen", width=0),
-                    hovertemplate=hovertemplate.format(label="20%"),
-                )
-            )
-            fig["data"].append(
-                dict(
-                    type="scattergl",
-                    x=x,
-                    y=pop[tail:, 2].tolist(),
-                    name="population median",
-                    mode="lines",
-                    line=dict(color="green"),
-                    opacity=0.5,
-                )
-            )
-            fig["data"].append(
-                dict(
-                    type="scattergl",
-                    x=x,
-                    y=pop[tail:, 0].tolist(),
-                    name="population best",
-                    mode="lines",
-                    line=dict(color="green", dash="dot"),
-                )
-            )
-
-        fig["data"].append(
-            dict(
-                type="scattergl",
-                x=x,
-                y=best[tail:].tolist(),
-                name="best",
-                line=dict(color="red", width=1),
-                mode="lines",
-            )
+        plotdata = convergence_plot(
+            convergence, dof, cutoff=cutoff, trim_index=trim_index, burn_index=burn_index, max_points=max_points
         )
-        fig["layout"].update(
-            dict(
-                template="simple_white",
-                legend=dict(x=1, y=1, xanchor="right", yanchor="top"),
-            )
-        )
-        fig["layout"].update(dict(title=dict(text="Convergence", xanchor="center", x=0.5)))
-        fig["layout"].update(dict(uirevision=1))
-        fig["layout"].update(
-            dict(
-                xaxis=dict(
-                    title="iteration number",
-                    showline=True,
-                    showgrid=False,
-                    zeroline=False,
-                )
-            )
-        )
-        fig["layout"].update(dict(yaxis=dict(title="chisq", showline=True, showgrid=False, zeroline=False)))
-        return to_json_compatible_dict(fig)
+        output = {
+            "plotdata": plotdata,
+            "portion": stored_portion,
+        }
+        return to_json_compatible_dict(output)
     else:
         return None
+
+
+@register
+async def set_trim_portion(portion: float):
+    """
+    Set the trim portion for the current fit state.
+    This will update the trim index and burn index in the fit state.
+    """
+    fit_state = state.fitting.fit_state
+    if fit_state is not None and hasattr(fit_state, "portion"):
+        if not (0.0 <= portion <= 1.0):
+            raise ValueError("Trim portion must be between 0.0 and 1.0")
+        fit_state.portion = portion
+        state.shared.updated_convergence = now_string()
+        state.shared.updated_uncertainty = now_string()
+        await add_notification(
+            f"Set trim portion to {portion}",
+            title="Trim portion set",
+            timeout=2000,
+        )
 
 
 @lru_cache(maxsize=30)
@@ -1000,8 +1249,6 @@ def _get_correlation_plot(
     fit_state = state.fitting.fit_state
 
     if hasattr(fit_state, "draw"):
-        import time
-
         start_time = time.time()
         logger.info(f"queueing new correlation plot... {start_time}")
         draw = fit_state.draw(vars=vars)
@@ -1026,7 +1273,7 @@ async def get_correlation_plot(
 ):
     # need vars to be immutable (hashable) for caching based on arguments:
     vars = tuple(vars) if vars is not None else None
-    result = await asyncio.to_thread(
+    result = await to_thread(
         _get_correlation_plot,
         sort=sort,
         max_rows=max_rows,
@@ -1041,8 +1288,6 @@ async def get_correlation_plot(
 def _get_uncertainty_plot(timestamp: str = "", cbar_colors: int = 8):
     fit_state = state.fitting.fit_state
     if hasattr(fit_state, "draw"):
-        import time
-
         start_time = time.time()
         logger.info(f"queueing new uncertainty plot... {start_time}")
         draw = fit_state.draw()
@@ -1057,40 +1302,37 @@ def _get_uncertainty_plot(timestamp: str = "", cbar_colors: int = 8):
 
 @register
 async def get_uncertainty_plot(timestamp: str = ""):
-    result = await asyncio.to_thread(_get_uncertainty_plot, timestamp=timestamp, cbar_colors=8)
+    result = await to_thread(_get_uncertainty_plot, timestamp=timestamp, cbar_colors=8)
     return result
 
 
 @register
 async def get_model_uncertainty_plot():
+    import mpld3
+    import matplotlib.pyplot as plt
+
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = state.problem.fitProblem
     fit_state = state.fitting.fit_state
-    if hasattr(fit_state, "draw"):
-        import mpld3
-        import matplotlib
+    if not hasattr(fit_state, "draw"):
+        return
 
-        matplotlib.use("agg")
-        import matplotlib.pyplot as plt
-        import time
-
-        start_time = time.time()
-        logger.info(f"queueing new model uncertainty plot... {start_time}")
-
+    start_time = time.time()
+    logger.info(f"queueing new model uncertainty plot... {start_time}")
+    points = bumps.errplot.error_points_from_state(fit_state)
+    errs = bumps.errplot.calc_errors(fitProblem, points)
+    logger.info(f"errors calculated: {time.time() - start_time}")
+    with push_mpl_backend("agg"):
         fig = plt.figure()
-        errs = bumps.errplot.calc_errors_from_state(fitProblem, fit_state)
-        logger.info(f"errors calculated: {time.time() - start_time}")
         bumps.errplot.show_errors(errs, fig=fig)
         logger.info(f"time to render but not serialize... {time.time() - start_time}")
         fig.canvas.draw()
         dfig = mpld3.fig_to_dict(fig)
         plt.close(fig)
-        end_time = time.time()
-        logger.info(f"time to draw model uncertainty plot: {end_time - start_time}")
-        return dfig
-    else:
-        return None
+    end_time = time.time()
+    logger.info(f"time to draw model uncertainty plot: {end_time - start_time}")
+    return dfig
 
 
 @register
@@ -1116,21 +1358,13 @@ async def get_parameter_trace_plot(var: int):
         start_time = time.time()
         logger.info(f"queueing new parameter_trace plot... {start_time}")
 
-        # begin plotting:
-        portion = None
-        draw, points, _ = fit_state.chains()
+        # Portion defaults to burn point
+        # Set outliers to true to include bad chains
+        genid, chains = fit_state.traces(portion=None, thin=1, outliers=False)
         label = fit_state.labels[var]
-        start = int((1 - portion) * len(draw)) if portion else 0
-        genid = (
-            np.arange(
-                fit_state.generation - len(draw) + start,
-                fit_state.generation,
-            )
-            + 1
-        )
         fig = plot_trace(
-            genid * fit_state.thinning,
-            np.squeeze(points[start:, fit_state._good_chains, var]).T,
+            genid,
+            chains[:, :, var],
             label=label,
             alpha=0.4,
         )
@@ -1149,15 +1383,15 @@ async def get_parameters(only_fittable: bool = False):
     if state.problem is None or state.problem.fitProblem is None:
         return []
     fitProblem = state.problem.fitProblem
+    freevars = fitProblem.freevars
 
     all_parameters = fitProblem.model_parameters()
     if only_fittable:
-        parameter_infos = params_to_list(unique(all_parameters))
+        parameter_infos = params_to_list(unique(all_parameters), freevars=freevars)
         # only include params with priors:
         parameter_infos = [pi for pi in parameter_infos if pi["fittable"] and not pi["fixed"]]
     else:
-        parameter_infos = params_to_list(all_parameters)
-
+        parameter_infos = params_to_list(all_parameters, freevars=freevars)
     return to_json_compatible_dict(parameter_infos)
 
 
@@ -1176,6 +1410,7 @@ async def set_parameter(
         warnings.warn(f"Attempting to update parameter that doesn't exist: {parameter_id}")
         return
 
+    # TODO: should never happen
     if parameter.prior is None:
         warnings.warn(f"Attempting to set prior properties on parameter without priors: {parameter}")
         return
@@ -1192,12 +1427,12 @@ async def set_parameter(
         lo = float(value)
         hi = parameter.prior.limits[1]
         parameter.range(lo, hi)
-        parameter.add_prior()
+        parameter.reset_prior()
     elif property == "max":
         lo = parameter.prior.limits[0]
         hi = float(value)
         parameter.range(lo, hi)
-        parameter.add_prior()
+        parameter.reset_prior()
     elif property == "fixed":
         if parameter.fittable:
             parameter.fixed = bool(value)
@@ -1393,56 +1628,63 @@ class ParamInfo(TypedDict, total=False):
     max_str: str
 
 
-def params_to_list(params, lookup=None, pathlist=None, links=None) -> List[ParamInfo]:
+def params_to_list(params, lookup=None, path="", freevars=None) -> List[ParamInfo]:
     lookup: Dict[str, ParamInfo] = {} if lookup is None else lookup
-    pathlist = [] if pathlist is None else pathlist
-    if isinstance(params, dict):
+    # print(f"{type(params)=} {params=}\n  {lookup=}\n   {pathlist=}")
+    if params is None:
+        pass
+    elif isinstance(params, dict):
         for k in sorted(params.keys()):
-            params_to_list(params[k], lookup=lookup, pathlist=pathlist + [k])
-    elif isinstance(params, tuple) or isinstance(params, list):
+            item = f"{path}{'.' if path else ''}{k}"
+            params_to_list(params[k], lookup=lookup, path=item, freevars=freevars)
+    elif isinstance(params, (tuple, list, np.ndarray)):
+        # print("list branch")
         for i, v in enumerate(params):
-            # add index to last item in pathlist (in-place):
-            new_pathlist = pathlist.copy()
-            if len(pathlist) < 1:
-                new_pathlist.append("")
-            new_pathlist[-1] = f"{new_pathlist[-1]}[{i:d}]"
-            params_to_list(v, lookup=lookup, pathlist=new_pathlist)
-    elif isinstance(params, Parameter) or isinstance(params, Constant):
-        path = ".".join(pathlist)
-        existing = lookup.get(params.id, None)
+            params_to_list(v, lookup=lookup, path=f"{path}[{i:d}]", freevars=freevars)
+    elif isinstance(params, (Parameter, Constant)):
+        # path = ".".join(pathlist)
+        # print(f"failing with {params} {lookup}")
+        pid = params.id
+        has_slot = hasattr(params, "slot")
+        existing = lookup.get(pid, None)
         if existing is not None:
-            existing["paths"].append(".".join(pathlist))
+            existing["paths"].append(path)
+        elif freevars.isfree(params):
+            # Don't include free parameters from the model in the list
+            # of available parameters.
+            pass
         else:
             value_str = VALUE_FORMAT.format(nice(params.value))
-            if hasattr(params, "has_prior"):
-                has_prior = params.has_prior()
-            else:
-                has_prior = False
-
-            if hasattr(params, "slot"):
-                writable = type(params.slot) in [Variable, Parameter]
-            else:
-                writable = False
+            writable = has_slot and isinstance(params.slot, (float, Variable, Parameter))
+            paths = [path] if not has_slot or isinstance(params.slot, (float, Variable)) else [f"{path}={params.slot}"]
             new_item: ParamInfo = {
-                "id": params.id,
+                "id": pid,
                 "name": str(params.name),
-                "paths": [path],
+                "paths": paths,
                 "tags": getattr(params, "tags", []),
                 "writable": writable,
                 "value_str": value_str,
                 "fittable": params.fittable,
                 "fixed": params.fixed,
             }
-            if has_prior:
-                assert params.prior is not None
+            if hasattr(params, "prior"):
                 lo, hi = params.prior.limits
                 new_item["value01"] = params.prior.get01(float(params.value))
                 new_item["min_str"] = VALUE_FORMAT.format(nice(lo))
                 new_item["max_str"] = VALUE_FORMAT.format(nice(hi))
-            lookup[params.id] = new_item
-            params_to_list(params.parameters(), lookup=lookup, pathlist=pathlist + ["subparameters"], links=links)
+            lookup[pid] = new_item
+
+            # Check for any additional parameters referenced by the slot
+            if has_slot:
+                subparams = params.slot.parameters()
+                if subparams:
+                    if len(subparams) > 1:
+                        params_to_list(subparams, lookup=lookup, path=f"{params}", freevars=freevars)
+                    else:
+                        params_to_list(subparams[0], lookup=lookup, path="", freevars=freevars)
     elif callable(getattr(params, "parameters", None)):
-        # handle Expression, Constant, etc.
+        # handle Expression, etc.
         subparams = params.parameters()
-        params_to_list(subparams, lookup=lookup, pathlist=pathlist)
+        subparams = subparams[0] if subparams and len(subparams) == 1 else subparams
+        params_to_list(subparams, lookup=lookup, path=f"{path}={params}", freevars=freevars)
     return list(lookup.values())

@@ -7,8 +7,10 @@ import json
 from importlib import import_module
 from typing import Dict, List, Literal, Optional, TypedDict, Union
 from types import GeneratorType
-import traceback
+import logging
 import warnings
+import inspect
+from base64 import b64encode, b64decode
 
 from . import plugin
 from .util import SCHEMA_ATTRIBUTE_NAME, get_libraries
@@ -74,7 +76,8 @@ def deserialize(serialized: SerializedObject, migration: bool = True):
     # references is now full of deserialized objects,
     # and we're ready to rehydrate the entire tree...
 
-    return _rehydrate(serialized["object"], references)
+    obj = _rehydrate(serialized["object"], references)
+    return obj
 
 
 #### deserializer helpers:
@@ -91,6 +94,8 @@ def _rehydrate(obj, references: Dict[str, object]):
         elif t == "bumps.util.NumpyArray":
             # skip processing values list in ndarray
             return _to_ndarray(obj)
+        elif t == "Callable":
+            return deserialize_function(obj)
         else:
             for key in obj:
                 obj[key] = _rehydrate(obj[key], references)
@@ -103,12 +108,13 @@ def _rehydrate(obj, references: Dict[str, object]):
                     module_name, class_name = t.rsplit(".", 1)
                     # print(module_name, class_name)
                     klass = getattr(import_module(module_name), class_name)
-                    hydrated = _instantiate(klass, t, obj)
-                    return hydrated
                 except Exception as e:
                     # there is a type, but it is not found...
-                    raise e
-                    raise ValueError("type %s not found!, error: %s" % (t, e), obj)
+                    logging.exception(e)
+                    raise RuntimeError(f"Error importing {t}: {e}")
+                hydrated = _instantiate(klass, t, obj)
+                # print("returning instantiated object", t, hydrated)
+                return hydrated
     elif isinstance(obj, list):
         # rehydrate all the items
         return [_rehydrate(v, references) for v in obj]
@@ -118,15 +124,18 @@ def _rehydrate(obj, references: Dict[str, object]):
 
 
 def _instantiate(klass: type, typename: str, serialized: dict):
-    s = serialized.copy()
+    # TODO: why are we copying the top-level dict?
+    serialized = serialized.copy()
     # if klass provides 'from_dict' method, use it -
     # otherwise use klass.__init__ directly.
     class_factory = getattr(klass, "from_dict", klass)
     try:
-        hydrated = class_factory(**s)
+        hydrated = class_factory(**serialized)
     except Exception as e:
-        print(class_factory, s, typename)
-        raise e
+        logging.exception(e)
+        warnings.warn(f"Error restoring {typename}: {e}")
+        # Note: users of the failed deserialization may complain that it is None
+        hydrated = None
     return hydrated
 
 
@@ -199,15 +208,67 @@ def serialize(obj, use_refs=True, add_libraries=True):
             return str(obj) if np.isinf(obj) else obj
         elif isinstance(obj, int) or isinstance(obj, str) or obj is None:
             return obj
+        elif isinstance(obj, np.integer):
+            return int(obj)
+        elif callable(obj):
+            return serialize_function(obj)
         else:
-            raise ValueError("obj %s is not serializable" % str(obj))
+            raise ValueError(f"obj {str(obj)} of type {type(obj)} is not serializable")
 
     serialized = {"$schema": SCHEMA, "object": obj_to_dict(obj), REFERENCES_KEY: references}
 
     if add_libraries:
         serialized["libraries"] = get_libraries(obj)
-
+    # print("serialized as", serialized)
     return serialized
+
+
+def deserialize_function(obj):
+    import dill
+    import cloudpickle
+
+    try:
+        # CRUFT: older versions did not specify the pickler
+        pickler = obj.get("pickler", "dill")
+        data = deserialize_bytes(obj["pickle"])
+        if pickler == "dill":
+            return dill.loads(data)
+        elif pickler == "cloudpickle":
+            return cloudpickle.loads(deserialize_bytes(obj["pickle"]))
+        else:
+            raise ValueError(f"unrecognized pickler {pickler}")
+    except Exception as e:
+        logging.exception(e)
+        warnings.warn(f"Error loading function: {e}")
+        return None
+
+
+def serialize_bytes(b):
+    return b64encode(b).decode("ascii")
+
+
+def deserialize_bytes(s):
+    return b64decode(s)
+
+
+def serialize_function(fn):
+    from cloudpickle import dumps
+
+    name = getattr(fn, "__name__", "unknown")
+    # print("type fn", type(fn))
+    # Note: need dedent to handle decorator syntax. Dedent will fail when there are
+    # triple-quoted strings. Alternative: if first character is a space, then wrap
+    # the code in an "if True:" block
+    # source = dedent(inspect.getsource(fn)) #.strip()
+    try:
+        source = inspect.getsource(fn)
+    except Exception:
+        source = None
+    # print("source =>", source)
+    pickle = serialize_bytes(dumps(fn))
+    res = {TYPE_KEY: "Callable", "name": name, "source": source, "pickle": pickle, "pickler": "cloudpickle"}
+    # print(f"serializing {fn} to {res}")
+    return res
 
 
 def save_file(filename, problem):
@@ -215,8 +276,8 @@ def save_file(filename, problem):
         p = serialize(problem)
         with open(filename, "w") as fid:
             json.dump(p, fid)
-    except Exception:
-        traceback.print_exc()
+    except Exception as e:
+        logging.exception(e)
         warnings.warn(f"failed to create JSON file {filename} for fit problem")
 
 
@@ -224,7 +285,7 @@ def load_file(filename):
     with open(filename, "r") as fid:
         serialized: SerializedObject = json.loads(fid.read())
         final_version, migrated = migrate(serialized)
-        print("final version: ", final_version)
+        # print("final version: ", final_version)
         return deserialize(migrated)
 
 

@@ -44,6 +44,7 @@ __all__ = ["reload_errors", "calc_errors_from_state", "calc_errors", "show_error
 import os
 import traceback
 import logging
+from typing import Optional
 
 import numpy as np
 
@@ -72,10 +73,11 @@ def reload_errors(model, store, nshown=50, random=True):
     load_best(problem, os.path.join(store, problem.name + ".par"))
     state = load_state(os.path.join(store, problem.name))
     state.mark_outliers()
-    return calc_errors_from_state(problem, state, nshown=nshown, random=random)
+    points = error_points_from_state(state, nshown=nshown, random=random)
+    return calc_errors(problem, points)
 
 
-def error_points_from_state(state, nshown=50, random=True, portion=1.0):
+def error_points_from_state(state, nshown=50, random=True, portion: Optional[float] = None):
     """
     Return a set of points from the state for calculating errors.
 
@@ -100,7 +102,7 @@ def error_points_from_state(state, nshown=50, random=True, portion=1.0):
     return points[-nshown:-1]
 
 
-def calc_errors_from_state(problem, state, nshown=50, random=True, portion=1.0):
+def calc_errors_from_state(problem, state, nshown=50, random=True, portion: Optional[float] = None):
     """
     Compute confidence regions for a problem from the
     Align the sample profiles and compute the residual difference from
@@ -134,10 +136,11 @@ def calc_errors(problem, points):
     return ret
 
 
-def show_errors(errs, fig=None):
+# Note: should be figfile=None rather than save=None
+def show_errors(errs, fig=None, save=None):
     """
     Display the confidence regions returned by :func:`calc_errors`.
 
     The content of *errs* depends on the active plugin.
     """
-    return plugin.show_errors(errs, fig=fig)
+    return plugin.show_errors(errs, fig=fig, save=save)

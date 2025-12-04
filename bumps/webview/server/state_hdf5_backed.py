@@ -1,3 +1,7 @@
+"""
+Manage bumps server state and session files.
+"""
+
 import asyncio
 import threading
 from copy import deepcopy
@@ -16,6 +20,7 @@ from typing import (
     Literal,
     Union,
 )
+
 from collections import deque
 from dataclasses import dataclass, field, fields
 import json
@@ -23,13 +28,24 @@ import shutil
 import os
 import tempfile
 from pathlib import Path
+import pickle
+import warnings
 
-import h5py
+import io
+import base64
 import numpy as np
 from numpy.typing import NDArray
+import dill
+import cloudpickle
+
+try:
+    import h5py
+except ImportError:
+    warnings.warn("h5py is not available; can't access session files")
 
 from bumps import __version__
 from bumps.serialize import serialize, deserialize
+from bumps.serialize import serialize_bytes, deserialize_bytes
 from bumps.util import get_libraries
 from .logger import logger
 
@@ -37,21 +53,23 @@ from .fit_options import lookup_fitter, DEFAULT_FITTER_ID
 
 if TYPE_CHECKING:
     import bumps
-    import bumps.fitproblem
-    import bumps.dream.state
-    from .webserver import TopicNameType
     from .fit_thread import FitThread
     from h5py import Group
 from bumps.mapper import BaseMapper
 
 
 SESSION_FILE_NAME = "session.h5"
-ARRAY_COMPRESSION = COMPRESSION = 5
+ARRAY_COMPRESSION = 5
+COMPRESSION = 9
 # MAX_PROBLEM_SIZE = 100 * 1024 * 1024  # 100 MBi problem max size [unused]
 
-SERIALIZERS = Literal["dataclass", "pickle", "dill"]
-SERIALIZER_EXTENSIONS = {"dataclass": "json", "pickle": "pickle", "dill": "pickle"}
-DEFAULT_SERIALIZER: SERIALIZERS = "dill"
+SERIALIZERS = Literal["dataclass", "pickle", "cloudpickle", "dill"]
+SERIALIZER_EXTENSIONS = {"dataclass": "json", "cloudpickle": "cloudpickle", "pickle": "pickle", "dill": "dill"}
+DEFAULT_SERIALIZER: SERIALIZERS = "dataclass"
+
+TopicNameType = Literal[
+    "log",  # log messages
+]
 
 
 @dataclass(frozen=True)
@@ -66,54 +84,84 @@ def now_string():
     return f"{datetime.now().timestamp():.6f}"
 
 
-def serialize_problem(problem: "bumps.fitproblem.FitProblem", method: SERIALIZERS):
+def serialize_problem(problem: "bumps.fitproblem.FitProblem", method: SERIALIZERS | None = None) -> Union[str, bytes]:
     if method == "dataclass":
-        return json.dumps(serialize(problem)).encode()
+        return json.dumps(serialize(problem))
     elif method == "pickle":
-        import pickle
-
-        return pickle.dumps(problem)
+        return serialize_bytes(pickle.dumps(problem))
     elif method == "dill":
-        import dill
+        return serialize_bytes(dill.dumps(problem))
+    elif method == "cloudpickle":
+        return serialize_bytes(cloudpickle.dumps(problem))
+    else:
+        raise ValueError(f"Unknown serialization method: {method}")
 
-        return dill.dumps(problem, recurse=True)
 
-
-def deserialize_problem(serialized: bytes, method: SERIALIZERS):
+def deserialize_problem(serialized: str, method: SERIALIZERS) -> "bumps.fitproblem.FitProblem":
     if method == "dataclass":
         serialized_dict = json.loads(serialized)
         return deserialize(serialized_dict, migration=True)
     elif method == "pickle":
-        import pickle
+        return pickle.loads(deserialize_bytes(serialized))
+    elif method == "dill":
+        return dill.loads(deserialize_bytes(serialized))
+    elif method == "cloudpickle":
+        return cloudpickle.loads(deserialize_bytes(serialized))
+    else:
+        raise ValueError(f"Unknown serialization method: {method}")
 
+
+def serialize_problem_bytes(problem: "bumps.fitproblem.FitProblem", method: SERIALIZERS) -> bytes:
+    if method == "dataclass":
+        return json.dumps(serialize(problem)).encode()
+    elif method == "pickle":
+        return pickle.dumps(problem)
+    elif method == "dill":
+        return dill.dumps(problem)
+    elif method == "cloudpickle":
+        return cloudpickle.dumps(problem)
+    else:
+        raise ValueError(f"Unknown serialization method: {method}")
+
+
+def deserialize_problem_bytes(serialized: bytes, method: SERIALIZERS) -> "bumps.fitproblem.FitProblem":
+    if method == "dataclass":
+        serialized_dict = json.loads(serialized.decode())
+        return deserialize(serialized_dict, migration=True)
+    elif method == "pickle":
         return pickle.loads(serialized)
     elif method == "dill":
-        import dill
-
         return dill.loads(serialized)
+    elif method == "cloudpickle":
+        return cloudpickle.loads(serialized)
+    else:
+        raise ValueError(f"Unknown serialization method: {method}")
 
 
-def write_bytes_data(group: "Group", name: str, data: bytes):
+def write_bytes(group: "Group", name: str, data: bytes):
     saved_data = [data] if data is not None else []
     return group.create_dataset(name, data=np.void(saved_data), compression=COMPRESSION)
 
 
-def read_bytes_data(group: "Group", name: str):
+def read_bytes(group: "Group", name: str):
     if name not in group:
         return UNDEFINED
     raw_data = group[name][()]
     size = raw_data.size
     if size is not None and size > 0:
-        return raw_data.tobytes().rstrip(b"\x00")
+        return raw_data[0].tobytes().rstrip(b"\x00")
     else:
         return None
 
 
 def write_string(group: "Group", name: str, data: str, encoding="utf-8"):
-    saved_data = np.bytes_([data]) if data is not None else []
-    return group.create_dataset(
-        name, data=saved_data, compression=COMPRESSION, dtype=h5py.string_dtype(encoding=encoding)
-    )
+    if data is None:
+        return group.create_dataset(name, data="")
+    # saved_data = np.bytes_([data]) if data is not None else []
+    dtype = h5py.string_dtype(encoding=encoding, length=len(data))
+    saved_data = np.array([data], dtype=dtype) if data is not None else []
+    # print(f"write_string {dtype=}")
+    return group.create_dataset(name, data=saved_data, compression=COMPRESSION, dtype=dtype)
 
 
 def read_string(group: "Group", name: str):
@@ -127,23 +175,33 @@ def read_string(group: "Group", name: str):
         return None
 
 
-def write_fitproblem(group: "Group", name: str, fitProblem: "bumps.fitproblem.FitProblem", serializer: SERIALIZERS):
-    serialized = serialize_problem(fitProblem, serializer) if fitProblem is not None else None
-    dset = write_bytes_data(group, name, serialized)
+def write_fitproblem(group: "Group", name: str, fitProblem: "bumps.fitproblem.FitProblem", method: SERIALIZERS):
+    encoding = str if method == "dataclass" else bytes
+    if encoding is bytes:
+        serialized = serialize_problem_bytes(fitProblem, method) if fitProblem is not None else None
+        dset = write_bytes(group, name, serialized)
+    else:
+        serialized = serialize_problem(fitProblem, method) if fitProblem is not None else None
+        dset = write_string(group, name, serialized)
     return dset
 
 
-def read_fitproblem(group: "Group", name: str, serializer: SERIALIZERS):
+def read_fitproblem(group: "Group", name: str, method: SERIALIZERS) -> "bumps.fitproblem.FitProblem":
     if name not in group:
         return UNDEFINED
-    serialized = read_bytes_data(group, name)
-    fitProblem = deserialize_problem(serialized, serializer) if serialized is not None else None
+    if group[name].dtype.kind == "V":
+        # Old encoding stored bytes directly
+        serialized = read_bytes(group, name)
+        fitProblem = deserialize_problem_bytes(serialized, method) if serialized is not None else None
+    else:
+        # New encode uses base64 to encode bytes to string
+        serialized = read_string(group, name)
+        fitProblem = deserialize_problem(serialized, method) if serialized is not None else None
     return fitProblem
 
 
 def write_json(group: "Group", name: str, data):
-    serialized = json.dumps(data)
-    dset = write_string(group, name, serialized.encode())
+    dset = write_string(group, name, json.dumps(data))
     return dset
 
 
@@ -204,26 +262,73 @@ class StringAttribute:
 
 @dataclass
 class ProblemState:
+    """
+    Stores the state of a Bumps fit problem.
+
+    Attributes:
+        fitProblem: The Bumps fit problem instance.
+
+        serializer: The serialization method to use.
+    """
+
     fitProblem: Optional["bumps.fitproblem.FitProblem"] = None
     serializer: Optional[SERIALIZERS] = None
 
     def write(self, parent: "Group"):
+        """
+        Write the problem state to an HDF5 group.
+
+        Args:
+            parent: The parent HDF5 group.
+        """
         group = parent.require_group("problem")
-        write_fitproblem(group, "fitProblem", self.fitProblem, self.serializer)
-        write_string(group, "serializer", self.serializer)
+        # Try the specified serializer, but fall back to cloudpickle if it fails
+        serializer = self.serializer
+        try:
+            write_fitproblem(group, "fitProblem", self.fitProblem, method=serializer)
+        except Exception:
+            if serializer != "cloudpickle":
+                serializer = "cloudpickle"
+                write_fitproblem(group, "fitProblem", self.fitProblem, method=serializer)
+            else:
+                raise
+        write_string(group, "serializer", serializer)
         write_json(group, "libraries", get_libraries(self.fitProblem))
         # write_json(group, 'pathlist', self.pathlist)
         # write_string(group, 'filename', self.filename)
 
     def read(self, parent: "Group"):
+        """
+        Read the problem state from an HDF5 group.
+
+        Args:
+            parent: The parent HDF5 group.
+        """
         group = parent["problem"]
         self.serializer = read_string(group, "serializer")
-        self.fitProblem = read_fitproblem(group, "fitProblem", self.serializer)
+        self.fitProblem = read_fitproblem(group, "fitProblem", method=self.serializer)
         # self.pathlist = read_json(group, 'pathlist')
         # self.filename = read_string(group, 'filename')
 
 
 class HistoryItem:
+    """
+    Represents a single item in the fit history.
+
+    Attributes:
+        problem: The problem state at this point in history.
+
+        fitting: The fit result associated with this history item.
+
+        timestamp: The timestamp when this history item was created.
+
+        label: A label for this history item.
+
+        chisq_str: A string representation of the chi-squared value.
+
+        keep: Whether to permanently keep this history item, or drop it when too many history items are saved.
+    """
+
     problem: ProblemState
     fitting: Optional["FitResult"]
     timestamp: str
@@ -233,12 +338,33 @@ class HistoryItem:
 
 
 class History:
+    """
+    Manages the history of fit results.
+
+    Attributes:
+        store: A dictionary mapping history item names to HistoryItem instances.
+    """
+
     store: Dict[str, HistoryItem]
 
     def __init__(self):
+        """
+        Initialize the History instance.
+        """
         self.store = {}
 
     def get_item(self, name: Union[str, UNDEFINED_TYPE, None], default=None):
+        """
+        Get a history item by name.
+
+        Args:
+            name: The name of the history item.
+
+            default: The default value to return if the item is not found.
+
+        Returns:
+            The history item, or the default value if not found.
+        """
         return self.store.get(name, default)
 
     # def get_item(self, timestamp: Union[str, UNDEFINED_TYPE, None], default=None):
@@ -248,6 +374,14 @@ class History:
     #     return default
 
     def write(self, parent: "Group", include_fit_state=True):
+        """
+        Write the history to an HDF5 group.
+
+        Args:
+            parent: The parent HDF5 group.
+
+            include_fit_state: Whether to include the fit state in the history.
+        """
         group = parent.require_group("problem_history")
         for name, item in self.store.items():
             problem = item.problem
@@ -259,8 +393,15 @@ class History:
             item_group.attrs["label"] = item.label
             item_group.attrs["keep"] = item.keep
             item_group.attrs["timestamp"] = item.timestamp
+        return group
 
     def read(self, parent: "Group"):
+        """
+        Read the history from an HDF5 group.
+
+        Args:
+            parent: The parent HDF5 group.
+        """
         group = parent.get("problem_history", {})
         self.store = {}
         for name in group:
@@ -279,9 +420,21 @@ class History:
             self.store[name] = item
 
     def remove_item(self, name: str):
+        """
+        Remove a history item by name.
+
+        Args:
+            name: The name of the history item to remove.
+        """
         self.store.pop(name)
 
     def prune(self, target_length: int):
+        """
+        Prune the history to a target length.
+
+        Args:
+            target_length: The desired length of the history.
+        """
         # remove oldest items with keep=False until the length is target_length
         num_to_remove = len(self.store) - target_length
         if num_to_remove <= 0:
@@ -297,6 +450,15 @@ class History:
             self.store.pop(name)
 
     def _get_unique_name(self, timestamp: str):
+        """
+        Generate a unique name for a history item based on its timestamp.
+
+        Args:
+            timestamp: The timestamp of the history item.
+
+        Returns:
+            A unique name for the history item.
+        """
         name = timestamp
         counter = 1
         while name in self.store:
@@ -305,12 +467,29 @@ class History:
         return name
 
     def add_item(self, item: HistoryItem, target_length: int):
+        """
+        Add a new history item to the history.
+
+        Args:
+            item: The history item to add.
+
+            target_length: The maximum length of the history.
+
+        Returns:
+            The name of the added history item.
+        """
         self.prune(target_length)
         stored_name = self._get_unique_name(item.timestamp)
         self.store[stored_name] = item
         return stored_name
 
     def list(self):
+        """
+        List the history items.
+
+        Returns:
+            A list of dictionaries containing information about each history item.
+        """
         return [
             dict(
                 timestamp=item.timestamp,
@@ -325,9 +504,25 @@ class History:
         ]
 
     def set_keep(self, name: str, keep: bool):
+        """
+        Set whether to keep a history item.
+
+        Args:
+            name: The name of the history item.
+
+            keep: Whether to keep the history item.
+        """
         self.store[name].keep = keep
 
     def update_label(self, name: str, label: str):
+        """
+        Update the label of a history item.
+
+        Args:
+            name: The name of the history item.
+
+            label: The new label for the history item.
+        """
         self.store[name].label = label
 
 
@@ -338,6 +533,19 @@ class History:
 
 @dataclass
 class FitResult:
+    """
+    Stores the result of a fit operation.
+
+    Attributes:
+        method: The fitting method used.
+
+        options: Options used to run the fitters.
+
+        convergence: List of quantiles for each fit iteration.
+
+        fit_state: Fit state for resume, and for sampling from Monte Carlo fitters.
+    """
+
     # TODO: chisq, dof, and {model: (chisq, dof)} separate from fx=nllf+constraints
     # TODO: Model specific dof is difficult because of shared parameters. Just use #points?
     # TODO: Rename fitter_id to method throughout?
@@ -369,12 +577,21 @@ class FitResult:
     # TODO: display completion status in history tab
     # status: str
     # """Fit status: active, converged, timeout, maxiter, abort, failed"
+    # TODO: Include a step number column in convergence?
     convergence: Optional[List] = None
     """List of best or (best, min, -1sigma, median, +1sigma, max) for the population at each step of the fit."""
     fit_state: Any = None
     """Fit state for resume, and for sampling from Monte Carlo fitters."""
 
     def write(self, parent: "Group", include_fit_state=True):
+        """
+        Write the fit result to an HDF5 group.
+
+        Args:
+            parent: The parent HDF5 group.
+
+            include_fit_state: Whether to include the fit state in the output.
+        """
         fitting_group = parent.require_group("fitting")
         write_version(fitting_group, (1, 0))
         write_string(fitting_group, "method", self.method)
@@ -387,6 +604,12 @@ class FitResult:
                 fitter.h5dump(state_group, self.fit_state)
 
     def read(self, parent: "Group"):
+        """
+        Read the fit result from an HDF5 group.
+
+        Args:
+            parent: The parent HDF5 group containing the entries.
+        """
         fitting_group = parent["fitting"]
         version = read_version(fitting_group)
         # Note: fitter h5load needs to deal with its own versioning
@@ -415,6 +638,14 @@ class FitResult:
 
 
 class State:
+    """
+    Manage the state for a bumps server session.
+
+    There is a primary state object for the current webview instance defined
+    in webview.server.api. Temporary state objects are created to save
+    the temporary fit results as a session file.
+    """
+
     # These attributes are ephemeral, not to be serialized/stored:
     app_name: str = "bumps"
     app_version: str = __version__
@@ -439,7 +670,7 @@ class State:
     problem: ProblemState
     fitting: FitResult
     history: History
-    topics: Dict["TopicNameType", "deque[Dict]"]
+    topics: Dict[TopicNameType, "deque[Dict]"]
     shared: "SharedState"
     mapper: Optional[BaseMapper] = None
 
@@ -473,7 +704,10 @@ class State:
             return
         item = HistoryItem()
         item.problem = deepcopy(self.problem)
-        item.fitting = deepcopy(self.fitting)
+        # Creates a reference to the current fit_state, not a copy
+        # When a new fit is started, self.fitting is reset to a new FitResult
+        # but the handle to the current fit_state is kept in the history item.
+        item.fitting = self.fitting
         item.timestamp = str(datetime.now())
         item.label = label
         item.chisq_str = item.problem.fitProblem.chisq_str()
@@ -486,24 +720,36 @@ class State:
         return dict(problem_history=self.history.list())
 
     def remove_history_item(self, name: str):
+        if self.shared.active_history == name:
+            self.shared.active_history = None
         self.history.remove_item(name)
 
     def reload_history_item(self, name: str):
         item = self.history.get_item(name, None)
         if item is not None:
             self.problem = deepcopy(item.problem)
+            self.fitting = item.fitting
             self.shared.active_history = name
             self.shared.updated_model = now_string()
             self.shared.updated_parameters = now_string()
             self.shared.custom_plots_available = get_custom_plots_available(self.problem.fitProblem)
+            # These are called only to trigger the update signals...
+            # the convergence and fit_state will be unchanged by the calls below.
             self.set_convergence(item.fitting.convergence)
             self.set_fit_state(item.fitting.fit_state, item.fitting.method)
 
+    def set_active(self, problem, fitting: FitResult | None = None):
+        self.problem = ProblemState(problem)  # default serializer
+        self.fitting = fitting
+        self.set_convergence(fitting.convergence)
+        self.set_fit_state(fitting.fit_state, fitting.method)
+
     def reset_fitstate(self, copy: bool = False):
         """
-        Unlink the fitting state from a history item:
-        (this action to be taken when fitProblem object is modified so that
-         it is no longer compatible with fit results)
+        Unlink the fitting state from a history item.
+
+        This action occurs when fitProblem object is modified so that
+        it is no longer compatible with fit results.
         """
         if copy:
             self.fitting = deepcopy(self.fitting)
@@ -514,6 +760,7 @@ class State:
                 method=self.shared.selected_fitter,
                 options=self.shared.fitter_settings[self.shared.selected_fitter]["settings"],
             )
+            # These are called only to trigger the update signals...
             self.set_convergence(None)
             self.set_fit_state(None)
         self.shared.active_history = None
@@ -538,11 +785,24 @@ class State:
             self.save()
 
     def save(self):
-        if self.shared.session_output_file not in [None, UNDEFINED]:
+        if self.shared.session_output_file not in (None, UNDEFINED):
             pathlist = self.shared.session_output_file["pathlist"]
             filename = self.shared.session_output_file["filename"]
             full_path = Path(*pathlist) / filename
             self.write_session_file(full_path)
+
+    def _write_session(self, root_group: h5py.File):
+        self.problem.write(root_group)
+        history_group = self.history.write(root_group)
+        if self.shared.active_history not in (None, UNDEFINED):
+            active_history_group = history_group.get(self.shared.active_history)
+            # make a hard link instead of writing the fitting state
+            root_group["fitting"] = active_history_group["fitting"]
+        else:
+            # no active history item, so write the fitting state
+            self.fitting.write(root_group)
+        self.write_topics(root_group)
+        self.shared.write(root_group)
 
     def write_session_file(self, session_fullpath: str):
         # Session filename is assumed to be a full path
@@ -551,19 +811,26 @@ class State:
         )
         with os.fdopen(tmp_fd, "w+b") as output_file:
             with h5py.File(output_file, "w") as root_group:
-                self.problem.write(root_group)
-                if self.shared.active_history in (None, UNDEFINED):
-                    # write the live fitting state
-                    self.fitting.write(root_group)
-                else:
-                    # a history item is active, so write an empty FittingState
-                    # TODO: can we just omit the write completely in this case?
-                    FitResult().write(root_group)
-                self.history.write(root_group)
-                self.write_topics(root_group)
-                self.shared.write(root_group)
+                self._write_session(root_group)
         shutil.move(tmp_name, session_fullpath)
         os.chmod(session_fullpath, 0o644)
+
+    def get_session_bytes(self) -> bytes:
+        # Get session as bytes
+
+        with h5py.File("in_memory.h5", mode="w", driver="core", backing_store=False) as root_group:
+            self._write_session(root_group)
+            root_group.flush()
+            return root_group.id.get_file_image()
+
+    def get_session_bytestring(self) -> str:
+        # Get session as byte string
+        return base64.b64encode(self.get_session_bytes()).decode("utf-8")
+
+    def read_session_bytestring(self, session_bytestring: str, read_problem: bool = True, read_fitstate: bool = True):
+        # load session from byte string
+        bio = io.BytesIO(base64.b64decode(session_bytestring))
+        self.read_session_file(bio, read_problem, read_fitstate)
 
     def read_session_file(self, session_fullpath: str, read_problem: bool = True, read_fitstate: bool = True):
         try:
@@ -581,7 +848,6 @@ class State:
                 self.read_topics(root_group)
         except Exception as e:
             # logger.exception(e)
-            # import traceback; traceback.print_exception(e)
             logger.warning(f"could not load session file {session_fullpath} because of {e}")
             raise e
 
@@ -590,6 +856,7 @@ class State:
             with h5py.File(session_fullpath, "r") as root_group:
                 self.problem.read(root_group)
         except Exception as e:
+            # logger.exception(e)
             logger.warning(f"could not load fitProblem from {session_fullpath} because of {e}")
 
     def read_fitstate_from_session(self, session_fullpath: str):
@@ -597,6 +864,7 @@ class State:
             with h5py.File(session_fullpath, "r") as root_group:
                 self.fitting.read(root_group)
         except Exception as e:
+            # logger.exception(e)
             logger.warning(f"could not load fit state from {session_fullpath} because of {e}")
 
     def write_topics(self, parent: "Group"):
@@ -612,7 +880,7 @@ class State:
             if topic_data is not None and topic in self.topics:
                 self.topics[topic].extend(topic_data)
 
-    def get_last_message(self, topic: "TopicNameType"):
+    def get_last_message(self, topic: TopicNameType):
         return self.topics[topic][-1] if len(self.topics[topic]) > 0 else None
 
     def cleanup(self):
@@ -629,6 +897,11 @@ class State:
 
 
 class ActiveFit(TypedDict):
+    """
+    Information about the currently active fit. This is used
+    to share information between the webview client and the server.
+    """
+
     fitter_id: str
     options: Dict[str, Any]
     num_steps: int
@@ -638,16 +911,35 @@ class ActiveFit(TypedDict):
 
 
 class FileInfo(TypedDict):
+    """
+    Webview client treats a path as a filename plus a list of leading
+    folder names.
+    """
+
     filename: str
     pathlist: List[str]
 
 
 class UncertaintyAvailable(TypedDict):
+    """
+    Whether or not the fit results contain MCMC samples.
+    """
+
     available: bool
     num_points: int
 
 
 class CustomPlotsAvailable(TypedDict):
+    """
+    Whether or not the current model has custom plots.
+
+    If *parameter_based* is True then new plots need to be generated
+    whenever the parameter values are updated.
+
+    If *uncertainty_based* is True then new plots need to be generated
+    whenever the MCMC sample is updated.
+    """
+
     parameter_based: bool
     uncertainty_based: bool
 
@@ -669,6 +961,10 @@ def get_custom_plots_available(problem: "bumps.fitproblem.FitProblem"):
 
 @dataclass
 class SharedState:
+    """
+    Server state that automatically synchronizes with the attached clients.
+    """
+
     updated_convergence: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
     updated_uncertainty: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED
     updated_parameters: Union[UNDEFINED_TYPE, Timestamp] = UNDEFINED

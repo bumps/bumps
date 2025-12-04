@@ -14,15 +14,18 @@ here as well.
 """
 
 import inspect
+from dataclasses import dataclass
+from typing import Callable, Dict
 
 import numpy as np
 
-from .parameter import Parameter
-from .fitproblem import Fitness
+from .parameter import Parameter, ValueProtocol
+from .fitproblem import Fitness, CovarianceMixin
 from .bounds import init_bounds
 
 
-class PDF:
+@dataclass(init=False, eq=False)
+class PDF(CovarianceMixin):
     """
     Build a model from a function.
 
@@ -46,15 +49,22 @@ class PDF:
     given in the function.
     """
 
+    fn: Callable
+    name: str
+    plotter: Callable
+    dof: int
+    pars: Dict[str, Parameter] = None  # Needs to be None initially for getattr/setattr to work
+
     has_residuals = False  # Don't have true residuals
 
-    def __init__(self, fn, name="", plot=None, dof=1, **kw):
+    def __init__(self, fn, name="", plotter=None, dof=1, pars=None, **kw):
         self.dof = dof
         # Make every name a parameter; initialize the parameters
         # with the default value if function is defined with keyword
         # initializers; override the initializers with any keyword
         # arguments specified in the fit function constructor.
         labels, vararg, varkw, values, *_ = inspect.getfullargspec(fn)
+
         if vararg or varkw:
             raise TypeError("Function cannot have *args or **kwargs in declaration")
         # Parameters default to zero
@@ -70,35 +80,50 @@ class PDF:
         init.update(kw)
 
         # Build parameters out of ranges and initial values
-        pars = dict((p, Parameter.default(init[p], name=name + p)) for p in labels)
-
-        # Make parameters accessible as model attributes
-        for k, v in pars.items():
-            if hasattr(self, k):
-                raise TypeError("Parameter cannot be named %s" % k)
-            setattr(self, k, v)
+        if pars is None:
+            pars = dict((p, Parameter.default(init[p], name=name + p)) for p in labels)
+        self.pars = pars
 
         # Remember the function, parameters, and number of parameters
-        self._function = fn
+        self.fn = fn
         self._labels = labels
-        self._plot = plot
+        self.plotter = plotter
         self.name = name if name else "PDF"
 
+    # Allow dot access to members of the parameter dictionary. Existing attributes
+    # of the object take precedence.
+    def __setattr__(self, key, value):
+        # print(f"setting {key}")
+        if self.pars and key in self.pars and key not in self.__dict__:
+            if not isinstance(value, ValueProtocol):
+                raise TypeError("Can only assign parameter or expression to a parameter slot")
+            self.__dict__["pars"][key] = value
+        else:
+            super().__setattr__(key, value)
+
+    def __getattr__(self, key):
+        # print(f"getting {key}")
+        if self.pars and key in self.pars:
+            return self.pars[key]
+        raise AttributeError(f"{type(self)!r} has no attribute {key!r}")
+
     def parameters(self):
-        # Note: need to refetch the pars from self in case the user assigned
-        # model.par = new_parameter after creating the model.
-        return dict((p, getattr(self, p)) for p in self._labels)
+        return self.pars
 
     parameters.__doc__ = Fitness.parameters.__doc__
 
     def nllf(self):
         kw = dict((p, getattr(self, p).value) for p in self._labels)
-        return self._function(**kw)
+        return self.fn(**kw)
 
     nllf.__doc__ = Fitness.__call__.__doc__
 
     def chisq(self):
-        return self.nllf() / self.dof
+        return 2 * self.nllf() / self.dof
+
+    def residuals(self):
+        # A fake residuals vector of length 1.
+        return np.sqrt([2 * self.nllf()])
 
     # chisq.__doc__ = Fitness.chisq.__doc__
 
@@ -110,9 +135,9 @@ class PDF:
     __call__ = chisq
 
     def plot(self, view=None):
-        if self._plot:
+        if self.plotter:
             kw = dict((p, getattr(self, p).value) for p in self._labels)
-            self._plot(view=view, **kw)
+            self.plotter(view=view, **kw)
 
     plot.__doc__ = Fitness.plot.__doc__
 
@@ -122,7 +147,7 @@ class PDF:
     numpoints.__doc__ = Fitness.numpoints.__doc__
 
 
-class VectorPDF:
+class VectorPDF(CovarianceMixin):
     """
     Build a model from a function.
 
@@ -190,7 +215,7 @@ class VectorPDF:
     nllf.__doc__ = Fitness.__call__.__doc__
 
     def chisq(self):
-        return self.nllf() / self.dof
+        return 2 * self.nllf() / self.dof
 
     # chisq.__doc__ = Fitness.chisq.__doc__
 
@@ -219,7 +244,7 @@ class VectorPDF:
     residuals.__doc__ = Fitness.residuals.__doc__
 
 
-class DirectProblem(object):
+class DirectProblem(CovarianceMixin):
     """
     Build model from negative log likelihood function *f(p)*.
 
@@ -267,7 +292,7 @@ class DirectProblem(object):
         return self._parameters
 
     def chisq(self):
-        return self.nllf() / self.dof
+        return 2 * self.nllf() / self.dof
 
     def chisq_str(self):
         return "%g" % self.chisq()

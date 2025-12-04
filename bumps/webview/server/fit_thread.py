@@ -1,3 +1,10 @@
+"""
+Manage the fitting thread used by the server.
+
+To keep the UI responsive, fitting is run in a separate thread. The main thread is listening
+for new requests from the client.
+"""
+
 from copy import deepcopy
 from threading import Thread
 from threading import Event
@@ -8,7 +15,7 @@ from blinker import Signal
 
 import numpy as np
 from bumps import monitor
-from bumps.fitters import FitDriver, nllf_scale, format_uncertainty, ConsoleMonitor
+from bumps.fitters import FitDriver, ConsoleMonitor
 from bumps.mapper import MPMapper, SerialMapper, can_pickle
 from bumps.util import redirect_console, NDArray
 
@@ -33,8 +40,7 @@ class GUIProgressMonitor(monitor.TimedUpdate):
         self.problem = problem
 
     def show_progress(self, history):
-        scale, err = nllf_scale(self.problem)
-        chisq = format_uncertainty(scale * history.value[0], err)
+        chisq = self.problem.chisq_str(nllf=history.value[0])
         evt = dict(
             # problem=self.problem,
             message="progress",
@@ -291,15 +297,11 @@ class FitThread(Thread):
 
             with redirect_console() as fid:
                 driver.show()
-                # entropy = self.outputs.get('entropy', None)
-                # err = self.outputs.get('err', False)
-                # cov = self.outputs.get('cov', False)
-                # if cov:
+                # if self.outputs.get('err', False):
                 #     driver.show_err()
+                # if self.outputs.get('err', False):
                 #     driver.show_cov()
-                # elif err:
-                #     driver.show_err()
-                # if entropy:
+                # if entropy := self.outputs.get('entropy', ''):
                 #     driver.show_entropy(entropy)
                 captured_output = fid.getvalue()
 

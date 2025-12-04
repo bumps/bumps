@@ -36,14 +36,14 @@ import sys
 import os
 import re
 import warnings
-import traceback
-
 import shutil
+import traceback
+from pathlib import Path
 
 import numpy as np
 # np.seterr(all="raise")
 
-from .fitters import FitDriver, StepMonitor, ConsoleMonitor, CheckpointMonitor, nllf_scale
+from .fitters import FitDriver, StepMonitor, ConsoleMonitor, CheckpointMonitor
 from .mapper import MPMapper, MPIMapper, SerialMapper
 from . import util
 from . import initpop
@@ -63,46 +63,15 @@ def install_plugin(p):
             setattr(plugin, symbol, getattr(p, symbol))
 
 
-def load_model(path, model_options=None):
+def load_model(path: Path | str, model_options: list[str] | None = None):
     """
-    Load a model file.
-
-    *path* contains the path to the model file.
-
-    *model_options* are any additional arguments to the model.  The sys.argv
-    variable will be set such that *sys.argv[1:] == model_options*.
+    *** DEPRECATED***. Use fitproblem.load_model(path, [args=...]) instead.
     """
     from .fitproblem import load_problem
 
-    # Change to the target path before loading model so that data files
-    # can be given as relative paths in the model file.  Add the directory
-    # to the python path (at the end) so that imports work as expected.
-    directory, filename = os.path.split(path)
-    with pushdir(directory):
-        # Try a specialized model loader
-        problem = plugin.load_model(filename)
-        if problem is None:
-            # print "loading",filename,"from",directory
-            # TODO: eliminate pickle!!
-            if filename.endswith("pickle"):
-                try:
-                    import dill as pickle
-                except ImportError:
-                    import pickle
-                # First see if it is a pickle
-                with open(filename, "rb") as fd:
-                    problem = pickle.load(fd)
-            else:
-                # Then see if it is a python model script
-                problem = load_problem(filename, options=model_options)
-
-    # Guard against the user changing parameters after defining the problem.
-    problem.model_reset()
-    problem.path = os.path.abspath(path)
-    if not hasattr(problem, "title"):
-        problem.title = filename
-    problem.name, _ = os.path.splitext(filename)
-    problem.options = model_options
+    problem = load_problem(path, args=model_options)
+    # CRUFT: support old 'problem.options' attribute
+    problem.options = problem.script_args
     return problem
 
 
@@ -164,10 +133,11 @@ def load_best(problem, path):
     """
     # WARNING: Labels are not unique! Need to track multiple instances of
     # the same label.
-    if not os.path.isfile(path):
-        path = os.path.join(path, problem.name + ".par")
-    if not os.path.isfile(path):
-        raise ValueError("Parameter file %s does not exist." % path)
+    path = Path(path)
+    if not path.is_file():
+        path = path / (problem.name + ".par")
+    if not path.is_file():
+        raise ValueError("Parameter file {path} does not exist.")
     labels = problem.labels()
     targets = {label: [] for label in labels}
     with open(path, "rt") as fid:
@@ -304,13 +274,7 @@ def start_remote_fit(problem, options, queue, notify):
     Queue remote fit.
     """
     from jobqueue.client import connect
-
-    try:
-        from dill import dumps as dill_dumps
-
-        dumps = lambda obj: dill_dumps(obj, recurse=True)
-    except ImportError:
-        from pickle import dumps
+    from cloudpickle import dumps
 
     data = dict(package="bumps", version=__version__, problem=dumps(problem), options=dumps(options))
     request = dict(
@@ -386,9 +350,9 @@ def resynth(fitdriver, problem, mapper, opts):
     for i in range(opts.resynth):
         problem.resynth_data()
         best, fbest = fitdriver.fit()
-        scale, err = nllf_scale(problem)
-        print("step %d chisq %g" % (i, scale * fbest))
-        fid.write("%.15g " % (scale * fbest))
+        chisq = problem.chisq(nllf=fbest)
+        print(f"step {i} chisq={chisq:.2f}")
+        fid.write("%.15g " % chisq)
         fid.write(" ".join("%.15g" % v for v in best))
         fid.write("\n")
     problem.restore_data()

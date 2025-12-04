@@ -51,8 +51,7 @@ Set initial parameter values from a previous fit.  The par file is a list
 of lines with parameter name followed by parameter value on each line.
 The parameters must appear with the same name and in the same order as
 the fitted parameters in the model. Additional parameters are ignored. Missing
-parameters are filled using LHS. :ref:`option-preview` will show the
-model parameters.
+parameters are filled using LHS.
 
 .. _option-shake:
 
@@ -385,39 +384,30 @@ fitter keeps the best value from the previous fit(s).
 Execution Controls
 ==================
 
-.. _option-store:
+.. _option-export:
 
-``--store``
------------
+``--export``
+------------
 
 Directory in which to store the results of the fit.  Fits produce multiple
 files and plots.  Rather than cluttering up the current directory, all the
 outputs are written to the store directory along with a copy of the model
 file.
 
-.. _option-overwrite:
+.. _option-session:
 
-``--overwrite``
----------------
+``--session``
+-------------
 
-If the store directory already exists then you need to include overwrite on
-the command line to reuse it.  While inconvenient, this prevents accidental
-overwriting of fits that may have taken hours to generate.
-
-.. _option-checkpoint:
-
-``--checkpoint``
-----------------
-
-Save fit state every ``--checkpoint=n`` hours. [dream only]
+Path to the HDF5 session file used to store the problem and the fit results.
+Run bumps with that session file to view the output and the plots.
 
 .. _option-resume:
 
 ``--resume``
 ------------
 
-Continue fit from a previous store directory. Use ``--resume`` or ``--resume=-``
-to reuse the existing store directory.
+Continue the most recent fit in the current session file.
 
 .. _option-parallel:
 
@@ -451,16 +441,6 @@ cluster computing where the cluster nodes do not have access to the outside
 network and can't display an interactive window.  Batch is automatic
 when running with :ref:`option-mpi`.
 
-.. _option-stepmon:
-
-``--stepmon``
--------------
-
-Create a log file tracking each point examined during the fit.  This does
-not provide any real utility except for generating plots of the population
-over time, which can be useful for understanding the different fitting
-methods.
-
 
 Output Controls
 ===============
@@ -472,6 +452,8 @@ Output Controls
 
 Show uncertainties at the end of the fit using the square root of the
 diagonals of the covariance matrix. See :ref:`option-cov`.
+
+Note: not currently available.
 
 .. _option-cov:
 
@@ -485,6 +467,8 @@ derivative of each residual with respect to each parameter. If the
 likelihood function is not a simple sum of squared residuals, then
 the Hessian matrix is used for the covariance, formed from the numerical
 derivative of the likelihood with respect to pairs of parameters.
+
+Note: not currently available.
 
 .. _option-entropy:
 
@@ -514,15 +498,7 @@ entropy calcualation method. This can be one of:
   Note: use with caution. The results from this implementation are not
   consistent with other methods. DOI:10.1214/18-AOS1688
 
-
-.. _option-plot:
-
-``--plot``
-----------
-
-For problems that have different view options for plotting, select the default
-option to display.  For example, when fitting a power law to a dataset, you
-may want to choose *log* or *linear* as the output plot type.
+Note: not currently available.
 
 
 .. _option-trim:
@@ -537,25 +513,8 @@ the MCMC output files so they will be available when the fit is resumed.
 Use ``--trim=true`` to set trimming.
 
 
-.. _option-noshow:
-
-``--noshow``
-------------
-
-*No show* suppresses the plot window after the fit. This is done automatically
-when ``--batch`` is selected.
-
 Bumps Controls
 ==============
-
-.. _option-preview:
-
-``--preview``
--------------
-
-If the command contains *preview* then display model but do not perform
-a fitting operation.  Use this to see the initial model before running a fit.
-It will also show the fit range.
 
 .. _option-chisq:
 
@@ -564,6 +523,27 @@ It will also show the fit range.
 
 If the command contains *chisq* then show $\chi^2$ and exit.  Use this to
 check that the model does not have any syntax errors.
+
+
+Special Options
+===============
+
+.. _option-edit:
+
+``--webview``
+-------------
+
+If the command contains *webview* then start the Bumps user interface so that
+you can interact with the model, adjusting fitted parameters with a slider
+and seeing how they impact the result.
+
+.. _option-help:
+
+``--help``, ``-h``
+------------------
+
+Use ``-h`` or ``--help`` to show a brief description of each
+command line option.
 
 .. _option-resynth:
 
@@ -581,66 +561,4 @@ Each of these datasets will be fit with the specified optimizer, and the
 resulting parameters saved in *T1/model.rsy*.  On completion, the parameter
 values can be loaded into python and averaged or histogrammed.
 
-.. _option-time_model:
-
-``--time_model``
-----------------
-
-Run the model :ref:`option-steps` times and find the average run time per step.
-If :ref:`option-parallel` is used, then the models will be run in parallel.
-
-
-.. _option-profile:
-
-``--profile``
--------------
-
-Run the model :ref:`option-steps` times using the python profiler.  This can
-be useful for identifying slow parts of your model definition, or
-alternatively, finding out that the model runtime is smaller than the
-Bumps overhead.  Use a larger value of steps for better statistics.
-
-
-Special Options
-===============
-
-.. _option-edit:
-
-``--edit``
-----------
-
-If the command contains *edit* then start the Bumps user interface so that
-you can interact with the model, adjusting fitted parameters with a slider
-and seeing how they impact the result.
-
-.. _option-help:
-
-``--help``, ``-h``, ``-?``
---------------------------
-
-Use ``-?``, ``-h`` or ``--help`` to show a brief description of each
-command line option.
-
-
-.. _option-python:
-
-``-i``, ``-m``, ``-c``, ``-p``
-------------------------------
-
-The bumps program can be used as a python interpreter with numpy, scipy,
-matplotlib and bumps packages available.  This is useful if you do not have
-python set up on your system, and you are using a bundled executable like
-Bumps or Refl1D on windows.  Even if you have python, you may want to run the
-bumps post-analysis scripts through the bumps command which already has
-the appropriate path set up to bumps on your system.
-
-The options are:
-
-* ``-i``: run an interactive interpreter.
-
-* ``-m package.module``: run a module as main. This is similar to
-  ``python -m package.module`` with the python interpreter.
-
-* ``-c expression``: run a python command and quit.
-
-* ``-p script.py``: run a python script.
+Note: not currently available.

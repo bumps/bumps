@@ -105,20 +105,23 @@ def plot_vars(draw, all_vstats, fig=None, **kw):
         fig.canvas.draw()
 
 
-def plot_var(draw, vstats, var, cbar, nbins=30, axes=None):
+def plot_var(draw, vstats, var, cbar, axes=None, nbins=30, full=False):
+    import matplotlib.pyplot as plt
+
     values = draw.points[:, var].flatten()
-    bin_range = vstats.p95_range
-    # bin_range = np.min(values), np.max(values)
-    import pylab
+    if full:
+        bin_range = np.min(values), np.max(values)
+    else:
+        bin_range = vstats.p95_range
 
     if axes is None:
-        axes = pylab.gca()
+        axes = plt.gca()
 
-    _make_logp_histogram(values, draw.logp, nbins, bin_range, draw.weights, cbar, axes)
-    _decorate_histogram(vstats, axes)
+    make_logp_histogram(values, draw.logp, nbins, bin_range, draw.weights, cbar, axes)
+    decorate_histogram(vstats, axes)
 
 
-def _decorate_histogram(vstats, axes):
+def decorate_histogram(vstats, axes):
     from matplotlib.transforms import blended_transform_factory as blend
 
     l95, h95 = vstats.p95_range
@@ -158,20 +161,20 @@ def _decorate_histogram(vstats, axes):
 
 def _make_fig_colorbar(logp, fig=None):
     import matplotlib as mpl
-    import pylab
+    import matplotlib.pyplot as plt
 
     # Option 1: min to min + 4
     # vmin=-max(logp); vmax=vmin+4
     # Option 1b: min to min log10(num samples)
     # vmin=-max(logp); vmax=vmin+log10(len(logp))
     # Option 2: full range of best 98%
-    snllf = pylab.sort(-logp)
+    snllf = np.sort(-logp)
     vmin, vmax = snllf[0], snllf[int(0.98 * (len(snllf) - 1))]  # robust range
     # Option 3: full range
     # vmin,vmax = -max(logp),-min(logp)
 
     if fig is None:
-        fig = pylab.gcf()
+        fig = plt.gcf()
     ax = fig.axes[-1]
     cmap = mpl.cm.copper
 
@@ -208,8 +211,8 @@ def _make_fig_colorbar(logp, fig=None):
     return cbar
 
 
-def _make_logp_histogram(values, logp, nbins, ci, weights, cbar, axes):
-    from numpy import ones_like, searchsorted, linspace, cumsum, diff, unique, argsort, array, hstack, exp
+def make_logp_histogram(values, logp, nbins, ci, weights, cbar, axes):
+    from numpy import ones_like, searchsorted, linspace, cumsum, unique, argsort, array, hstack, exp
 
     if weights is None:
         weights = ones_like(logp)
@@ -244,6 +247,7 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, cbar, axes):
         # For debugging compare with one rectangle per sample
         if False:
             import matplotlib as mpl
+            import matplotlib.pyplot as plt
 
             cmap = mpl.cm.flag
             edgecolors = "k"
@@ -251,7 +255,7 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, cbar, axes):
             x = [xlo, xmid]
             y = hstack((0, y_top))
             z = pv[:, None]
-            pylab.pcolormesh(x, y, z, norm=cbar.norm, cmap=cmap)
+            plt.pcolormesh(x, y, z, norm=cbar.norm, cmap=cmap)
             x = [xmid, xhi]
 
         # Possibly millions of samples, so group those which have the
@@ -302,10 +306,10 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, cbar, axes):
     ## TODO: use weighted average for standard deviation
     # mean, std = np.average(values, weights=weights), np.std(values, ddof=1)
     # pdf = G(centers, mean, std)
-    # pylab.plot(centers, pdf*np.sum(height)/np.sum(pdf), '-b')
+    # plt.plot(centers, pdf*np.sum(height)/np.sum(pdf), '-b')
 
 
-def _make_var_histogram(values, logp, nbins, ci, weights):
+def make_var_histogram(values, logp, nbins, ci, weights):
     # Produce a histogram
     hist, bins = np.histogram(
         values,
@@ -323,16 +327,16 @@ def _make_var_histogram(values, logp, nbins, ci, weights):
     # scale to marginalized probability with peak the same height as hist
     histbest = np.exp(np.asarray(histbest) - max(logp)) * np.max(hist)
 
-    import pylab
+    import matplotlib.pyplot as plt
 
     # Plot the histogram
-    pylab.bar(bins[:-1], hist, width=bins[1] - bins[0])
+    plt.bar(bins[:-1], hist, width=bins[1] - bins[0])
 
     # Plot the kernel density estimate
     # density = KDE1D(values)
     # x = linspace(bins[0],bins[-1],100)
-    # pylab.plot(x, density(x), '-k')
+    # plt.plot(x, density(x), '-k')
 
     # Plot the marginal maximum likelihood
     centers = (bins[:-1] + bins[1:]) / 2
-    pylab.plot(centers, histbest, "-g")
+    plt.plot(centers, histbest, "-g")

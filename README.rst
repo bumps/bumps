@@ -14,6 +14,11 @@ Installation is with the usual python installation command::
 Once the system is installed, you can verify that it is working with::
 
     bumps doc/examples/peaks/model.py --chisq
+    bumps -h
+
+To start the GUI use::
+
+    bumps
 
 Documentation is available at `readthedocs <http://bumps.readthedocs.org>`_. See
 `CHANGES.rst <https://github.com/bumps/bumps/blob/master/CHANGES.rst>`_
@@ -23,12 +28,10 @@ If a compiler is available, then significant speedup is possible for DREAM using
 
     python -m bumps.dream.build_compiled
 
-(If you have installed from source, you must first check out the random123 library)::
+If you have installed from source, you must first check out the random123 library::
 
     git clone --branch v1.14.0 https://github.com/DEShawResearch/random123.git bumps/dream/random123
     python -m bumps.dream.build_compiled
-
-For now this requires an install from source rather than pip.
 
 |CI| |RTD| |DOI|
 
@@ -36,9 +39,9 @@ For now this requires an install from source rather than pip.
    :alt: Build status
    :target: https://github.com/bumps/bumps/actions/workflows/test-publish.yml
 
-.. |DOI| image:: https://zenodo.org/badge/18489/bumps/bumps.svg
+.. |DOI| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.594099.svg
    :alt: DOI tag
-   :target: https://zenodo.org/badge/latestdoi/18489/bumps/bumps
+   :target: https://doi.org/10.5281/zenodo.594099
 
 .. |RTD| image:: https://readthedocs.org/projects/bumps/badge/?version=latest
    :alt: Documentation status

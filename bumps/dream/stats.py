@@ -24,6 +24,9 @@ class VarStats(object):
     def __init__(self, **kw):
         self.__dict__ = kw
 
+    def __str__(self):
+        return f"{self.label}={format_uncertainty(self.mean, self.std)}"
+
 
 def var_stats(draw, vars=None):
     if vars is None:
@@ -96,7 +99,7 @@ def format_vars(all_vstats):
         interval68="68% interval",
         interval95="95% interval",
     )
-    s = ["   %(parameter)20s %(mean)10s %(median)7s %(best)7s " "[%(interval68)15s] [%(interval95)15s]" % v]
+    s = ["   %(parameter)20s %(mean)10s %(median)7s %(best)7s [%(interval68)15s] [%(interval95)15s]" % v]
     for v in all_vstats:
         # Make sure numbers are formatted with the appropriate precision
         place = (
