@@ -1024,6 +1024,7 @@ class Reparameterized(ValueProtocol):
                 tags=["reparameterized"],
                 prior=mbounds.Bounded(0.0, 1.0),  # default prior for value01
             )
+            self.value01.reset_prior()
         else:
             raise TypeError(f"value must be a float or Parameter, not {type(value)}")
 
