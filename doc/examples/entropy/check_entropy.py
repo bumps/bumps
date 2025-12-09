@@ -21,6 +21,7 @@
 # to compute the entropy of the distribution.  We can use these to test
 # the values from bumps against known good values.
 
+import sys
 import numpy as np
 from math import log
 from scipy.stats import distributions, multivariate_normal
@@ -94,7 +95,7 @@ if len(sys.argv) > 1:
         print("unknown distribution " + dist_name)
         sys.exit()
     args = [
-        [[float(vjk) for vjk in vj.split(",")] for vj in v.split(",")]
+        [[float(vjk) for vjk in vj.split(",")] for vj in v.split(";")]
         if ";" in v
         else [float(vj) for vj in v.split(",")]
         if "," in v
