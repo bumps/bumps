@@ -29,8 +29,9 @@ TRIALS = 5
 MIN_WINDOW = 100
 
 
-def ks_converged(state, trials=TRIALS, density=DENSITY, alpha=ALPHA, samples=SAMPLES):
-    # type: ("MCMCDraw", int, float, float, int) -> bool
+def ks_converged(
+    state: "MCMCDraw", trials: int = TRIALS, density: float = DENSITY, alpha: float = ALPHA, samples: int = SAMPLES
+) -> bool:
     """
     Return True if the MCMC has converged according to the K-S window test.
 
@@ -99,10 +100,10 @@ def ks_converged(state, trials=TRIALS, density=DENSITY, alpha=ALPHA, samples=SAM
     n_draw = int(density * samples)
     p = _robust_ks_2samp(head, tail, n_draw, trials)
     # print(f"convergence {state.generation}: pval={p} < {alpha}?")
-    return p < alpha
+    return bool(p < alpha)
 
 
-def check_nllf_distribution(state):
+def check_nllf_distribution(state: "MCMCDraw") -> bool:
     """
     Check if the nllf distribution looks like chisq.
 
@@ -137,9 +138,7 @@ def _check_nllf_distribution(data, df, n_draw, trials, alpha):
     return alpha > np.mean(p_vals)
 
 
-def burn_point(state, method="window", trials=TRIALS, **kwargs):
-    # type: ("MCMCDraw", str, int, **dict) -> int
-
+def burn_point(state: "MCMCDraw", method="window", trials: int = TRIALS, **kwargs) -> int:
     r"""
     Determines the point at which the MCMC chain seems to have converged.
 
@@ -168,7 +167,9 @@ def burn_point(state, method="window", trials=TRIALS, **kwargs):
     return index
 
 
-def _ks_sliding_window(state, trials=TRIALS, density=DENSITY, alpha=ALPHA, samples=SAMPLES):
+def _ks_sliding_window(
+    state: "MCMCDraw", trials: int = TRIALS, density: float = DENSITY, alpha: float = ALPHA, samples: int = SAMPLES
+) -> int:
     _, logp = state.logp()
 
     window_size = min(max(samples // state.Npop + 1, MIN_WINDOW), state.Ngen // 2)
