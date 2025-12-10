@@ -168,7 +168,6 @@ BUMPS_MODULES = [
     ("fitproblem", "Interface between models and fitters"),
     ("fitservice", "Remote job plugin for fit jobs"),
     ("fitters", "Wrappers for various optimization algorithms"),
-    ("formatnum", "Format numbers and uncertainties"),
     ("history", "Optimizer evaluation trace"),
     ("initpop", "Population initialization strategies"),
     ("lsqerror", "Least squares eorror analysis"),
@@ -215,7 +214,6 @@ DREAM_MODULES = [
     # ('digits', 'Uncertainty on credible intervals')
     ("entropy", "Entropy calculation"),
     ("exppow", "Exponential power density parameter calculator"),
-    ("formatnum", "Format values and uncertainties nicely for printing"),
     ("gelman", "R-statistic convergence test"),
     ("geweke", "Geweke convergence test"),
     ("initpop", "Population initialization routines"),
