@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
@@ -54,38 +54,3 @@ jobs:
 
       - name: Run test
         run: bun run test:types
-
-  # Run unit tests
-#   test-unit:
-#     runs-on: ubuntu-latest
-#     steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v5
-
-#       - name: Set up Bun
-#         uses: oven-sh/setup-bun@v2
-
-#       - name: Install packages
-#         run: bun install
-
-#       - name: Run test
-#         run: bun run test:unit
-
-  # Run end to end integration tests
-#   test-e2e:
-#     runs-on: ubuntu-latest
-#     steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v5
-
-#       - name: Set up Bun
-#         uses: oven-sh/setup-bun@v2
-
-#       - name: Install packages
-#         run: bun install
-
-#       - name: Install Playwright
-#         run: bunx playwright install
-
-#       - name: Run test
-#         run: bun run test:e2e

@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import * as mpld3 from "mpld3";
+import contour from "plotly.js/lib/contour";
 import * as Plotly from "plotly.js/lib/core";
+import heatmap from "plotly.js/lib/heatmap";
+import scatterternary from "plotly.js/lib/scatterternary";
 import { v4 as uuidv4 } from "uuid";
 import type { AsyncSocket } from "../asyncSocket";
+import { configWithSVGDownloadButton } from "../plotly_extras";
 import { setupDrawLoop } from "../setupDrawLoop";
 
+Plotly.register([heatmap, contour, scatterternary]);
 // type ModelNameInfo = { name: string; model_index: number };
 // const title = "Data";
 const plot_div = ref<HTMLDivElement | null>(null);
@@ -62,9 +67,11 @@ async function draw_plot(childDiv: HTMLDivElement, plotitem: { fig_type: "plotly
 
   if (fig_type === "plotly") {
     const { data, layout } = plotdata as Plotly.PlotlyDataLayoutConfig;
-    const config = { responsive: true };
-    // draw into the plot content div
-    await Plotly.react(plotContentDiv, [...data], layout, config);
+    const config: Partial<Plotly.Config> = {
+      ...configWithSVGDownloadButton,
+      responsive: true,
+    };
+    await Plotly.react(plot_div.value as HTMLDivElement, [...data], layout, config);
   } else if (fig_type === "mpld3") {
     let mpld3_data = plotdata as { width: number; height: number };
     mpld3_data.width = Math.round(plotContentDiv.clientWidth ?? 640) - 8;

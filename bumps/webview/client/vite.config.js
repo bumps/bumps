@@ -12,6 +12,13 @@ export default defineConfig({
     global: {},
   },
   optimizeDeps: {
-    include: ["plotly.js/lib/core", "plotly.js/lib/heatmap", "plotly.js/lib/bar", "json-difference"],
+    include: [
+      "plotly.js/lib/core",
+      "plotly.js/lib/heatmap",
+      "plotly.js/lib/contour",
+      "plotly.js/lib/scatterternary",
+      "plotly.js/lib/bar",
+      "json-difference",
+    ],
   },
 });

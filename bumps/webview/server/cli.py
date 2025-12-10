@@ -44,6 +44,7 @@ from dataclasses import field
 import hashlib
 # from textwrap import dedent
 
+from bumps import __version__ as bumps_version
 from bumps.fitters import FIT_AVAILABLE_IDS
 from bumps.fitproblem import FitProblem
 from . import api
@@ -149,6 +150,18 @@ class HelpFormatter(argparse.RawTextHelpFormatter, argparse.ArgumentDefaultsHelp
             if action.default is not None and action.default is not False:
                 help_text += f" (default: {action.default})"
         return help_text
+
+
+def _branding():
+    """Return a string with version and system information."""
+    output = f"{'=' * 55}\n"
+    output += f"{api.state.app_name}\t\t{api.state.app_version}\n"
+    if api.state.app_name != "bumps":
+        output += f"bumps\t\t{bumps_version}\n"
+    output += "Python\t\t" + ".".join(map(str, sys.version_info[:3])) + "\n"
+    output += f"Platform\t{sys.platform}\n"
+    output += f"{'=' * 55}\n"
+    return output
 
 
 def get_commandline_options(arg_defaults: Optional[Dict] = None):
@@ -393,6 +406,12 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         help="run fit using multiprocessing for parallelism; use --parallel=0 for all cpus",
     )
     misc.add_argument(
+        "--threads",
+        action="store_true",
+        help=argparse.SUPPRESS,
+        # help="run fit using multithreading for parallelism",
+    )
+    misc.add_argument(
         "--mpi",
         action=argparse.BooleanOptionalAction,
         help="Use MPI for parallelization (only needed if we fail to detect MPI correctly)",
@@ -409,12 +428,12 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         help="display logging to console",
         default="warn",
     )
-    # TODO: show version numbers for both refl1d and bumps?
+    # Show version numbers for both bumps and child program
     misc.add_argument(
         "-V",
         "--version",
         action="version",
-        version=f"%(prog)s {api.state.app_version}",
+        version=_branding(),
     )
 
     # TODO: restructure so that -b -s -r --webview override each other
@@ -634,7 +653,7 @@ def interpret_fit_options(options: BumpsOptions):
 
     need_mapper = not options.chisq
     if need_mapper:
-        from bumps.mapper import MPIMapper, MPMapper, SerialMapper, using_mpi
+        from bumps.mapper import MPIMapper, MPMapper, SerialMapper, ThreadPoolMapper, using_mpi
 
         async def start_mapper(App=None):
             # print(f"{api.state.rank}start mapper")
@@ -651,6 +670,8 @@ def interpret_fit_options(options: BumpsOptions):
                 mapper = MPIMapper
             elif options.parallel == 1:
                 mapper = SerialMapper
+            elif options.threads:
+                mapper = ThreadPoolMapper
             else:
                 mapper = MPMapper
             mapper.start_worker(problem)
@@ -688,7 +709,7 @@ def interpret_fit_options(options: BumpsOptions):
         on_startup.append(start_fit)
         api.state.console_update_interval = 0 if webview else 1
 
-        if write_session is None and autostop:
+        if not options.export and write_session is None and autostop:
             # TODO: can we specify problem.path in the model file?
             # TODO: can we default the session file name to model.hdf?
             raise RuntimeError("Include '--session=output.h5' on the command line to save the fit.")
@@ -977,6 +998,7 @@ def main(options: Optional[BumpsOptions] = None):
         # api.state.rank = ""
 
     if webview and is_controller:  # gui mode
+        print(_branding())
         start_from_cli(options)
     else:  # console mode
         run_batch_fit(options)

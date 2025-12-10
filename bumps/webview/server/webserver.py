@@ -78,9 +78,35 @@ def init_web_app():
 
         @routes.get(f"/{fn.__name__}")
         async def handler(request: web.Request):
+            result = await fn(**request.query)
+            size = len(result)
+
             try:
-                result = await fn(**request.query)
-                return web.json_response(result)
+                if getattr(fn, "mimetype", None) is not None:
+                    # set the response content type
+                    response = web.StreamResponse()
+                    response.content_type = fn.mimetype
+                    response.content_length = size
+
+                    # Set download headers
+                    filename = getattr(fn, "filename", "bumps_download")
+                    response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+                    # Prepare the response
+                    await response.prepare(request)
+
+                    # Stream the result (assume it is bytes or sliceable)
+                    chunk_size = 65536  # 64KB
+                    for start in range(0, size, chunk_size):
+                        end = min(start + chunk_size, size)
+                        await response.write(result[start:end])
+                    await response.write_eof()
+                    return response
+                elif request.headers.get("Accept") == "application/msgpack":
+                    packed = msgpack.packb(result)
+                    return web.Response(body=packed, content_type="application/msgpack")
+                else:
+                    return web.json_response(result)
             except Exception as err:
                 logger.exception(err)
                 raise

@@ -29,12 +29,19 @@ import os
 import tempfile
 from pathlib import Path
 import pickle
+import warnings
 
-import h5py
+import io
+import base64
 import numpy as np
 from numpy.typing import NDArray
 import dill
 import cloudpickle
+
+try:
+    import h5py
+except ImportError:
+    warnings.warn("h5py is not available; can't access session files")
 
 from bumps import __version__
 from bumps.serialize import serialize, deserialize
@@ -778,11 +785,24 @@ class State:
             self.save()
 
     def save(self):
-        if self.shared.session_output_file not in [None, UNDEFINED]:
+        if self.shared.session_output_file not in (None, UNDEFINED):
             pathlist = self.shared.session_output_file["pathlist"]
             filename = self.shared.session_output_file["filename"]
             full_path = Path(*pathlist) / filename
             self.write_session_file(full_path)
+
+    def _write_session(self, root_group: h5py.File):
+        self.problem.write(root_group)
+        history_group = self.history.write(root_group)
+        if self.shared.active_history not in (None, UNDEFINED):
+            active_history_group = history_group.get(self.shared.active_history)
+            # make a hard link instead of writing the fitting state
+            root_group["fitting"] = active_history_group["fitting"]
+        else:
+            # no active history item, so write the fitting state
+            self.fitting.write(root_group)
+        self.write_topics(root_group)
+        self.shared.write(root_group)
 
     def write_session_file(self, session_fullpath: str):
         # Session filename is assumed to be a full path
@@ -791,19 +811,26 @@ class State:
         )
         with os.fdopen(tmp_fd, "w+b") as output_file:
             with h5py.File(output_file, "w") as root_group:
-                self.problem.write(root_group)
-                history_group = self.history.write(root_group)
-                if self.shared.active_history is not None:
-                    active_history_group = history_group.get(self.shared.active_history)
-                    # make a hard link instead of writing the fitting state
-                    root_group["fitting"] = active_history_group["fitting"]
-                else:
-                    # no active history item, so write the fitting state
-                    self.fitting.write(root_group)
-                self.write_topics(root_group)
-                self.shared.write(root_group)
+                self._write_session(root_group)
         shutil.move(tmp_name, session_fullpath)
         os.chmod(session_fullpath, 0o644)
+
+    def get_session_bytes(self) -> bytes:
+        # Get session as bytes
+
+        with h5py.File("in_memory.h5", mode="w", driver="core", backing_store=False) as root_group:
+            self._write_session(root_group)
+            root_group.flush()
+            return root_group.id.get_file_image()
+
+    def get_session_bytestring(self) -> str:
+        # Get session as byte string
+        return base64.b64encode(self.get_session_bytes()).decode("utf-8")
+
+    def read_session_bytestring(self, session_bytestring: str, read_problem: bool = True, read_fitstate: bool = True):
+        # load session from byte string
+        bio = io.BytesIO(base64.b64decode(session_bytestring))
+        self.read_session_file(bio, read_problem, read_fitstate)
 
     def read_session_file(self, session_fullpath: str, read_problem: bool = True, read_fitstate: bool = True):
         try:
