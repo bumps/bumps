@@ -36,6 +36,7 @@ from numpy import ascontiguousarray as _dense
 # **DEPRECATED** we can import erf directly from scipy.special.erf
 # so there is no longer a need for bumps.util.erf.
 from scipy.special import erf
+from uncertainties import ufloat
 
 USE_PYDANTIC = os.environ.get("BUMPS_USE_PYDANTIC", "False") == "True"
 from numpy.typing import NDArray
@@ -469,6 +470,11 @@ def format_duration(seconds):
                 return f"{value:.1f} {unit_name}s"
 
     return f"0.0 {units[-1][0]}"
+
+
+def format_uncertainty(mean, std):
+    """Opinionated formatting of mean and standard deviation."""
+    return f"{ufloat(mean, std):S}"
 
 
 def format_duration_demo():
