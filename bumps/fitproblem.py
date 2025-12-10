@@ -61,6 +61,7 @@ from numpy import inf, isnan, nan
 from scipy.stats import chi2
 
 from . import parameter, util
+from . import bounds
 from .parameter import to_dict, Parameter, Variable, tag_all, priors
 from .formatnum import format_uncertainty
 

@@ -304,7 +304,14 @@ class Curve:
         self._cached_theory = None
 
     def parameters(self):
-        return self.pars
+        output_pars = {}
+        for par_name, par in self.pars.items():
+            subparameters = par.parameters()
+            if len(subparameters) == 1 and subparameters[0] == par:
+                output_pars[par_name] = par
+            else:
+                output_pars[par_name] = subparameters
+        return output_pars
 
     def numpoints(self):
         return np.prod(self.y.shape)
