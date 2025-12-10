@@ -31,7 +31,7 @@ problem = FitProblem(M)
 # uncertainty analysis.
 
 from bumps.fitters import fit
-from bumps.formatnum import format_uncertainty
+from bumps.util import format_uncertainty
 
 # Allow choice of fitter from the command line
 method = "amoeba" if len(sys.argv) < 2 else sys.argv[1]
