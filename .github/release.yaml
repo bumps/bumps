@@ -1,0 +1,5 @@
+changelog:
+  # 1. Exclude Dependabot by the bot's username
+  exclude:
+    authors:
+      - "dependabot[bot]"
