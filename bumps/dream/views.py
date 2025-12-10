@@ -222,8 +222,6 @@ def plot_logp(state: MCMCDraw, portion: Optional[float] = None, outliers: bool =
     # Plot log likelihood trend line
     from bumps.wsolve import wpolyfit
 
-    from .formatnum import format_uncertainty
-
     x = genid
     y = np.mean(logp, axis=1)
     dy = np.std(logp, axis=1, ddof=1)
