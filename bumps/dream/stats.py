@@ -17,7 +17,12 @@ import json
 
 import numpy as np
 
-from .formatnum import format_uncertainty
+from uncertainties import ufloat, ufloat_fromstr
+
+
+def format_uncertainty(mean, std):
+    """Opinionated formatting of mean and standard deviation."""
+    return f"{ufloat(mean, std):S}"
 
 
 class VarStats(object):
@@ -157,9 +162,7 @@ VAR_PATTERN = re.compile(
    ^\ *
    (?P<parnum>[0-9]+)\ +
    (?P<parname>.+?)\ +
-   (?P<mean>[0-9.-]+?)
-   \((?P<err>[0-9]+)\)
-   (e(?P<exp>[+-]?[0-9]+))?\ +
+   (?P<mean_with_std>[0-9.-]+?\([0-9]+\)(e[+-]?[0-9]+)?)\ +
    (?P<median>[0-9.eE+-]+?)\ +
    (?P<best>[0-9.eE+-]+?)\ +
    \[\ *(?P<lo68>[0-9.eE+-]+?)\ +
@@ -179,11 +182,16 @@ def parse_var(line):
     """
     m = VAR_PATTERN.match(line)
     if m:
-        exp = int(m.group("exp")) if m.group("exp") else 0
+        # Parse the full ufloat string (e.g., "1.23(8)" or "1.2346(8)e+06")
+        parsed_value = ufloat_fromstr(m.group("mean_with_std"))
+        mean = parsed_value.nominal_value
+        std = parsed_value.std_dev
+
         return VarStats(
             index=int(m.group("parnum")),
             name=m.group("parname"),
-            mean=float(m.group("mean")) * 10**exp,
+            mean=mean,
+            std=std,
             median=float(m.group("median")),
             best=float(m.group("best")),
             p68=(float(m.group("lo68")), float(m.group("hi68"))),
