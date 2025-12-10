@@ -588,7 +588,14 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
         # Note: pmodel is zero if any constraints are failing. In that case the cost
         # will be the squared distance from the boundary of the feasible region for
         # the breaking parameters so that gradient descent can guide us back to the
-        # feasible region. The penalty is a large constant offset so that
+        # feasible region. The penalty would ideally be greater than any value of
+        # pmodel inside the boundary (otherwise the fitter may prefer the point in the
+        # infeasible region) but it has to be small enough that adding a small distance
+        # changes the penalty value (otherwise the slope outside the boundary is zero).
+        # Currently using 1e12 as the default penalty. This will be too small for many problems
+        # but any larger and the derivatives will break.
+        # TODO: Drop the penalty term, either by rewriting the fitters so they know that
+        # the constraints are broken, or rewriting the constraints to simple box constraints.
         cost = pparameter + pconstraints + (self.penalty_nllf if failing else pmodel)
         # print(f"prior:{float(pparameter)} + constraint:{float(pconstraints)} + nllf:{float(pmodel)} => {float(cost)} at [{pvec=}]")
         if isnan(cost):
