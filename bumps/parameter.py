@@ -646,17 +646,12 @@ class Parameter(OperatorMixin, SupportsPrior):
         # are given bounds, then assume this is a fitted parameter, otherwise
         # the parameter defaults to fixed; if value is not set, use the
         # midpoint of the range.
-        if bounds is None:
-            try:
-                # Note: throws TypeError if not a sequence (which we want to
-                # fall through to the remainder of the function), or ValueError
-                # if the sequence is the wrong length (which we want to fail).
-                lo, hi = value  # type: ignore[assignment]
-                warnings.warn(DeprecationWarning("parameters can no longer be initialized with a fit range"))
-                bounds = lo, hi
-                value = None
-            except TypeError:
-                pass
+        if bounds is None and isinstance(value, (list, tuple)):
+            # Note: unpacking will raise ValueError if the sequence is the wrong length
+            lo, hi = value
+            warnings.warn(DeprecationWarning("parameters can no longer be initialized with a fit range"))
+            bounds = lo, hi
+            value = None
         if fixed is None:
             fixed = bounds is None
         if slot is None:
