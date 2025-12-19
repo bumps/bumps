@@ -20,7 +20,22 @@ import warnings
 from copy import copy, deepcopy
 import uuid
 from enum import Enum
-from typing import runtime_checkable, Optional, Any, Union, Dict, Callable, Tuple, List, Sequence, Protocol
+from typing import (
+    cast,
+    runtime_checkable,
+    Optional,
+    Any,
+    Union,
+    Dict,
+    Callable,
+    Tuple,
+    List,
+    Sequence,
+    Protocol,
+    TypeAlias,
+    TYPE_CHECKING,
+    overload,
+)
 
 from .util import Literal
 
@@ -29,11 +44,11 @@ from numpy import inf, isinf, isfinite
 
 from . import bounds as mbounds
 from . import pmath
-from .util import field_desc, schema_config
+from .util import field_desc, schema_config, LimitType, NDArray
 
 BoundsType = mbounds.BoundsType
 
-ValueType = Union["Expression", "Parameter", "Calculation", float]
+ValueType: TypeAlias = Union["Expression", "Parameter", "Calculation", "Constant"]
 
 # TODO: avoid evaluation of subexpressions if parameters do not change.
 # This is especially important if the subexpression invokes an expensive
@@ -86,14 +101,34 @@ class Normal:
 
 # Leave out of schema for now.
 # TODO: determine if this is used by anyone
-# @dataclass(init=False)
+@dataclass
 class UniformSoftBounded:
     """Uniform distribution with error-function PDF on boundaries"""
 
     std: float = field_desc("width of the edge distribution")
 
 
-DistributionType = Union[Uniform, Normal]  # , UniformSoftBounded]
+DistributionType = Union[Uniform, Normal, UniformSoftBounded]
+
+
+@runtime_checkable
+class ValueProtocol(Protocol):
+    """
+    Values can be combined to form expressions
+    Provide a suite of operators for creating parameter expressions.
+    """
+
+    # TODO: Do values have names? Or do the names belong to the model parameter?
+    # name: str
+    # TODO: are priors on the parameter or on the value?
+    # bounds: Optional[BoundsType] = None
+    def parameters(self) -> List["Parameter"]: ...
+
+    @property
+    def fittable(self) -> bool: ...
+
+    @property
+    def value(self) -> float: ...
 
 
 class OperatorMixin:
@@ -108,45 +143,82 @@ class OperatorMixin:
     Much like abs(obj) => obj.__abs__(), np.sin(obj) => obj.sin()
     """
 
-    # float(value) is special: it returns the current value rather than
-    # becoming part of the parameter expression.
-    value: float
-
-    def __float__(self):
+    def __float__(self: ValueProtocol) -> float:
         return float(self.value)
 
-    def __int__(self):
+    def __int__(self: ValueProtocol) -> int:
         return int(self.value)
 
-    def __bool__(self):
+    def __bool__(self: ValueProtocol) -> None:
         # Note: __bool__ must return true or false, so we can't handle
         # lazy constraint expressions like not a, a or b, a and b.
         raise TypeError("use (p != 0) to test against zero")
 
-    ...  # operators and functions will be filled in later
+    # This is added as a convenience, as most classes inheriting this
+    # are not fittable:
+    @property
+    def fittable(self) -> bool:
+        return False
 
-
-class ValueProtocol(OperatorMixin):
-    """
-    Values can be combined to form expressions
-    Provide a suite of operators for creating parameter expressions.
-    """
-
-    fittable: bool = False
-    fixed: bool = True
-    value: float
-
-    # TODO: Do values have names? Or do the names belong to the model parameter?
-    # name: str
-    # TODO: are priors on the parameter or on the value?
-    # bounds: Optional[BoundsType] = None
+    # Similarly, most inheriting classes have no parameters:
     def parameters(self) -> List["Parameter"]:
-        # default implementation:
         return []
+
+    # Type stubs for operators added at runtime by _build_operator_mixin()
+    # These signatures satisfy Pylance but are overridden at module load time
+    def __pos__(self) -> "Expression": ...
+    def __neg__(self) -> "Expression": ...
+    def __abs__(self) -> "Expression": ...
+    def __add__(self, other) -> "Expression": ...
+    def __radd__(self, other) -> "Expression": ...
+    def __sub__(self, other) -> "Expression": ...
+    def __rsub__(self, other) -> "Expression": ...
+    def __mul__(self, other) -> "Expression": ...
+    def __rmul__(self, other) -> "Expression": ...
+    def __truediv__(self, other) -> "Expression": ...
+    def __rtruediv__(self, other) -> "Expression": ...
+    def __floordiv__(self, other) -> "Expression": ...
+    def __rfloordiv__(self, other) -> "Expression": ...
+    def __pow__(self, other) -> "Expression": ...
+    def __rpow__(self, other) -> "Expression": ...
+
+    # Type stubs for math functions added at runtime
+    def exp(self) -> "Expression": ...
+    def expm1(self) -> "Expression": ...
+    def log(self) -> "Expression": ...
+    def log10(self) -> "Expression": ...
+    def log1p(self) -> "Expression": ...
+    def sqrt(self) -> "Expression": ...
+    def degrees(self) -> "Expression": ...
+    def radians(self) -> "Expression": ...
+    def sin(self) -> "Expression": ...
+    def cos(self) -> "Expression": ...
+    def tan(self) -> "Expression": ...
+    def arcsin(self) -> "Expression": ...
+    def arccos(self) -> "Expression": ...
+    def arctan(self) -> "Expression": ...
+    def sinh(self) -> "Expression": ...
+    def cosh(self) -> "Expression": ...
+    def tanh(self) -> "Expression": ...
+    def arcsinh(self) -> "Expression": ...
+    def arccosh(self) -> "Expression": ...
+    def arctanh(self) -> "Expression": ...
+    def ceil(self) -> "Expression": ...
+    def floor(self) -> "Expression": ...
+    def trunc(self) -> "Expression": ...
+    def rint(self) -> "Expression": ...
+    def round(self) -> "Expression": ...
+    def arctan2(self, other) -> "Expression": ...
+
+    # Type stubs for comparison operators added at runtime by _build_constraints_mixin()
+    def __lt__(self, other) -> "Constraint": ...
+    def __le__(self, other) -> "Constraint": ...
+    def __gt__(self, other) -> "Constraint": ...
+    def __ge__(self, other) -> "Constraint": ...
 
 
 @dataclass(init=False)
-class Calculation(ValueProtocol):  # the name Function is taken (though deprecated)
+class Calculation(OperatorMixin):  # the name Function is taken (though deprecated)
     """
     A Parameter with a model-specific, calculated value.
     The function used to calculate this value should be well-documented in the
@@ -158,19 +230,22 @@ class Calculation(ValueProtocol):  # the name Function is taken (though deprecat
     description: str
     _function: Callable[[], float]  # added by the model; not serialized
 
-    def __init__(self, description: str = "", function: Callable = None):
+    def __init__(self, description: str = "", function: Optional[Callable] = None):
         self.description = description
         # Default to bad return value during reconstruction
         self._function = function if function is not None else lambda: np.nan
 
     @property
-    def value(self):
+    def value(self) -> float:
         return self._function()
 
-    def __float__(self):
+    def parameters(self) -> List["Parameter"]:
+        return []
+
+    def __float__(self) -> float:
         return self.value
 
-    def set_function(self, function):
+    def set_function(self, function: Callable[[], float]) -> None:
         self._function = function
 
 
@@ -181,12 +256,12 @@ class SupportsPrior:
     Every prior has hard limits and bounds.
     """
 
-    prior: Optional[BoundsType]
-    limits: Tuple[float, float]
+    prior: BoundsType
+    limits: Tuple[LimitType, LimitType]
     distribution: DistributionType
-    bounds: BoundsType
+    bounds: Optional[Tuple[LimitType, LimitType]]
 
-    def reset_prior(self):
+    def reset_prior(self) -> None:
         limits = (-inf, inf) if self.limits is None else self.limits
         if self.bounds is not None:
             # get the intersection of the limits here.
@@ -220,7 +295,7 @@ class SupportsPrior:
 
 @schema_config()
 @dataclass(init=False)
-class Parameter(ValueProtocol, SupportsPrior):
+class Parameter(OperatorMixin, SupportsPrior):
     """
     A parameter is a container for a symbolic value.
 
@@ -304,13 +379,11 @@ class Parameter(ValueProtocol, SupportsPrior):
     name: Optional[str] = field(default=None, init=False)
     fixed: bool = True
     slot: Union["Variable", ValueType]
-    limits: Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]] = (-inf, inf)
-    bounds: Optional[Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]] = None
+    limits: Tuple[LimitType, LimitType] = (-inf, inf)
+    bounds: Optional[Tuple[LimitType, LimitType]] = None
     distribution: DistributionType = field(default_factory=Uniform)
     discrete: bool = False
     tags: List[str] = field(default_factory=list)
-
-    _fixed: bool
 
     def parameters(self):
         pars = [self]
@@ -420,27 +493,16 @@ class Parameter(ValueProtocol, SupportsPrior):
     # Delegate to slots
     @property
     def value(self):
-        return int(self.slot) if self.discrete else float(self.slot)
+        return self.slot.__int__() if self.discrete else self.slot.__float__()
 
     @value.setter
-    def value(self, update):
-        self.slot.value = round(update) if self.discrete else update
+    def value(self, v):
+        possibly_rounded_value = round(v) if self.discrete else v
+        _write_value(self.slot, possibly_rounded_value)
 
     @property
-    def fittable(self):
+    def fittable(self):  # type: ignore[override]
         return isinstance(self.slot, Variable)
-
-    @property
-    def fixed(self):
-        return not self.fittable or self._fixed
-
-    @fixed.setter
-    def fixed(self, state):
-        # Can't set fixed to false if the parameter is not fittable
-        if self.fittable:
-            self._fixed = state
-        elif not state:
-            raise TypeError(f"value in {self.name} is not fittable")
 
     ## Use the following if bounds are on the value rather than the parameter
     # @property
@@ -471,8 +533,9 @@ class Parameter(ValueProtocol, SupportsPrior):
             return np.inf
         else:
             logp = self.prior.nllf(value)
-            if hasattr(self.slot, "nllf"):
-                logp += self.slot.nllf()
+            slot_nllf_fn = getattr(self.slot, "nllf", None)
+            if slot_nllf_fn is not None:
+                logp += slot_nllf_fn()
             return logp
 
     def residual(self) -> float:
@@ -508,16 +571,16 @@ class Parameter(ValueProtocol, SupportsPrior):
     def __repr__(self):
         return "Parameter(%s)" % self
 
-    # TODO: deprecate
+    # TODO: deprecate?
     @classmethod
-    def default(cls: type, value: Union[float, Tuple[float, float], ValueType], **kw) -> "Parameter":
+    def default(cls, value: Union[float, Tuple[float, float], ValueType], **kw) -> "Parameter":
         """
         Create a new parameter with the *value* and *kw* attributes. If value
         is already a parameter or expression, set it to that value.
         """
         # Need to constrain the parameter to fit within fixed limits and
         # to receive a name if a name has not already been provided.
-        if isinstance(value, ValueProtocol):
+        if isinstance(value, cls):
             return value
         else:
             return cls(value, **kw)
@@ -549,18 +612,24 @@ class Parameter(ValueProtocol, SupportsPrior):
         """
         Set a new value for the parameter, ignoring the bounds.
         """
-        self.slot.value = value
+        self.value = value
 
-    def clip_set(self, value):
+    def clip_set(self, value: Union[float, int]):
         """
         Set a new value for the parameter, clipping it to the bounds.
         """
         low, high = self.prior.limits
-        self.slot.value = builtins.min(builtins.max(value, low), high)
+        self.value = builtins.min(builtins.max(value, low), high)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name == "fixed":
+            if not self.fittable:
+                raise TypeError(f"value in {self.name} is not fittable")
+        return super().__setattr__(name, value)
 
     def __init__(
         self,
-        value: Optional[Union[float, Tuple[float, float]]] = None,
+        value: Optional[Union[float, Tuple[float, float], ValueType]] = None,
         slot: Optional[Union["Variable", ValueType]] = None,
         # bounds: Optional[Union[BoundsType, Tuple[float, float]]]=None,
         fixed: Optional[bool] = None,
@@ -582,7 +651,7 @@ class Parameter(ValueProtocol, SupportsPrior):
                 # Note: throws TypeError if not a sequence (which we want to
                 # fall through to the remainder of the function), or ValueError
                 # if the sequence is the wrong length (which we want to fail).
-                lo, hi = value
+                lo, hi = value  # type: ignore[assignment]
                 warnings.warn(DeprecationWarning("parameters can no longer be initialized with a fit range"))
                 bounds = lo, hi
                 value = None
@@ -600,7 +669,7 @@ class Parameter(ValueProtocol, SupportsPrior):
                 slot = value
             else:
                 raise TypeError("value %s: %s cannot be converted to Variable" % (str(name), str(value)))
-        assert isinstance(slot, (float, Variable, Expression, Parameter, Constant, Calculation))
+        assert isinstance(slot, (Variable, Expression, Parameter, Constant, Calculation))
 
         self.slot = slot
         self.name = name
@@ -630,13 +699,13 @@ class Parameter(ValueProtocol, SupportsPrior):
         # has something to work with.
         for k, v in kw.items():
             setattr(self, k, v)
-        self.prior = None  # to be filled by model_reset
+        self.reset_prior()
 
-    def randomize(self, rng=None):
+    def randomize(self):
         """
         Set a random value for the parameter.
         """
-        self.value = self.prior.random(rng if rng is not None else mbounds.RNG)
+        self.value = self.prior.random()
 
     def feasible(self):
         """
@@ -691,8 +760,35 @@ class Parameter(ValueProtocol, SupportsPrior):
         return obj
 
 
+def _is_writable(slot: Union[ValueType, "Variable"]) -> bool:
+    if isinstance(slot, Variable):
+        return True
+    elif isinstance(slot, Parameter):
+        return slot.fittable
+    elif isinstance(slot, Calculation):
+        return False
+    elif isinstance(slot, Constant):
+        return False
+    elif isinstance(slot, Expression):
+        return False
+    else:
+        return False
+
+
+def _write_value(slot: Union[ValueType, "Variable"], value: float):
+    if isinstance(slot, Variable):
+        slot.value = value
+    elif isinstance(slot, Parameter):
+        slot.value = value
+    else:
+        raise TypeError(f"value in {slot} is not writable")
+
+
 def tag_all(parameter_tree, tag, remove=False):
-    if isinstance(parameter_tree, dict):
+    # print(f"tag_all: {parameter_tree} with tag={tag} remove={remove}")
+    if parameter_tree is None:
+        return
+    elif isinstance(parameter_tree, dict):
         tag_all([item for item in parameter_tree.values()], tag, remove=remove)
     elif hasattr(parameter_tree, "add_tag"):
         if remove:
@@ -712,21 +808,25 @@ def untag_all(parameter_tree, tag: Optional[str] = None):
     tag_all(parameter_tree, tag, remove=True)
 
 
+# NOTE: implements the ValueProtocol
 @dataclass
-class Variable(ValueProtocol):
+class Variable(OperatorMixin):
     """
     Saved state for a random variable in the model.
     """
 
     value: float
 
-    def parameters(self):
+    def parameters(self) -> List["Parameter"]:
         return []
 
 
-@schema_config()
+if TYPE_CHECKING:
+    v: ValueProtocol = Variable(0.0)
+
+
 @dataclass(init=True, frozen=True, eq=False)
-class Constant(ValueProtocol):  # type: ignore
+class Constant(OperatorMixin):  # type: ignore
     """
     Saved state for an unmodifiable value.
 
@@ -735,14 +835,11 @@ class Constant(ValueProtocol):  # type: ignore
     """
 
     value: float
-    name: Optional[str] = None
+    name: str
     id: str = field(metadata={"format": "uuid"}, default_factory=lambda: str(uuid.uuid4()))
 
-    fittable = False  # class property fixed across all objects
-    fixed = True  # class property fixed across all objects
-
     def parameters(self):
-        return [self]
+        return []
 
     def __str__(self):
         return self.name
@@ -845,7 +942,7 @@ OPERATOR_STRING = {
 }
 
 
-def _lookup_operator(op_name):
+def _lookup_operator(op_name: str):
     if not hasattr(Operators, op_name) and op_name not in UserFunctionRegistry:
         raise ValueError(f"function {op_name} is not available")
     fn = None
@@ -875,12 +972,11 @@ def _precedence(obj: Any) -> int:
 
 
 @dataclass(init=False)
-class Expression(ValueProtocol):
+class Expression(OperatorMixin):
     """
     Parameter expression
     """
 
-    fittable = False
     fixed = True
 
     op: Union[Operators, "UserFunction"]  # Enumerated str type {function_name: display_name}
@@ -888,10 +984,10 @@ class Expression(ValueProtocol):
     _fn: Callable[..., float]  # _fn(float, float, ...) -> float
 
     def __init__(self, op: Union[str, Operators, "UserFunction"], args):
-        op = op if (isinstance(op, Operators) or isinstance(op, UserFunction)) else getattr(Operators, op)
-        object.__setattr__(self, "op", op)
-        object.__setattr__(self, "_fn", _lookup_operator(op.name))
-        object.__setattr__(self, "args", args)
+        resolved_op: Union[Operators, "UserFunction"] = Operators(op) if isinstance(op, str) else op
+        self.op = resolved_op
+        self.args = args
+        self._fn = _lookup_operator(resolved_op.name)
 
     def parameters(self):
         # Walk expression tree combining parameters from each subexpression
@@ -1085,40 +1181,8 @@ def arctan2d(dy, dx):
     return np.degrees(np.arctan2(dy, dx))
 
 
-# Aliases for arcsin, etc., both here in bumps.parameters and in bumps.pmath.
-pmath.asin = asin = pmath.arcsin
-pmath.acos = acos = pmath.arccos
-pmath.atan = atan = pmath.arctan
-pmath.atan2 = atan2 = pmath.arctan2
-
-pmath.asind = asind = arcsind
-pmath.acosd = acosd = arccosd
-pmath.atand = atand = arctand
-pmath.atan2d = atan2d = arctan2d
-
-pmath.asinh = asinh = pmath.arcsinh
-pmath.acosh = acosh = pmath.arccosh
-pmath.atanh = atanh = pmath.arctanh
-
-# Add aliases for arc functions to pmath
-pmath.__all__.extend(
-    (
-        "asin",
-        "acos",
-        "atan",
-        "atan2",
-        "asind",
-        "acosd",
-        "atand",
-        "atan2d",
-        "asinh",
-        "acosh",
-        "atanh",
-    )
-)
-
 # restate these for export, now that they're all defined:
-ValueType = Union[Parameter, Expression, Calculation, float]
+# ValueType: TypeAlias = Union[Parameter, Expression, Calculation, float]
 
 
 @dataclass(init=False)
@@ -1127,9 +1191,9 @@ class ParameterSet:
     A parameter that depends on the model.
     """
 
-    names: Optional[List[str]]
+    names: List[str]
     reference: Parameter
-    parameterlist: Optional[List[Parameter]]
+    parameterlist: List[Parameter]
 
     def __init__(
         self, reference: Parameter, names: Optional[List[str]] = None, parameterlist: Optional[List[Parameter]] = None
@@ -1142,42 +1206,34 @@ class ParameterSet:
         *reference* is the underlying :class:`parameter.Parameter` that will
         be set when the model is selected.
 
-        *parameters* will be created, with one parameter per model.
+        *parameterlist* will be created, with one parameter per model.
         """
         names = names if names is not None else []
         self.names = names
         self.reference = reference
-        # TODO: explain better why parameters are using np.array
-        # Force numpy semantics on slice operations by using an array
-        # of objects rather than a list of objects
         if parameterlist is not None:
             # we are being reinitialized with parameters
-            self.parameters = np.array(parameterlist)
+            self.parameterlist = parameterlist
         else:
-            self.parameters = np.array([copy(reference) for _ in names])
-        # print self.reference, self.parameters
-        for p, n in zip(self.parameters, names):
-            p.name = " ".join((n, p.name))
+            self.parameterlist = [copy(reference) for _ in names]
+            # print self.reference, self.parameters
+            for p, n in zip(self.parameterlist, names):
+                p.name = " ".join((n, p.name if p.name is not None else ""))
 
         # N.B. if the reference parameter is not referenced anywhere in the models,
         # it will no longer show up in FitProblem.parameters
         # self.__class__.parameterlist = property(self._get_parameterlist) #lambda self: self.parameters.tolist())
 
-    @property
-    def parameterlist(self) -> List[Parameter]:
-        return self.parameters.tolist()
-
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         return {
             "type": "ParameterSet",
             "names": self.names,
             "reference": to_dict(self.reference),
             # Note: parameters are stored in a numpy array
-            "parameters": to_dict(self.parameters.tolist()),
+            "parameters": to_dict(self.parameterlist),
         }
 
-    # Make the parameter set act like a list
-    def __getitem__(self, i):
+    def __getitem__(self, i) -> Union[Parameter, "ParameterSet"]:
         """
         Return the underlying parameter for the model index.  Index can
         either be an integer or a model name.  It can also be a slice,
@@ -1193,9 +1249,9 @@ class ParameterSet:
             obj = copy(self)
             obj.names = self.names[i]
             obj.reference = self.reference
-            obj.parameters = self.parameters[i]
+            obj.parameterlist = self.parameterlist[i]
             return obj
-        return self.parameters[i]
+        return self.parameterlist[i]
 
     def __setitem__(self, i, v):
         """
@@ -1209,56 +1265,56 @@ class ParameterSet:
             i = self.names.index(i)
         except ValueError:
             pass
-        self.parameters[i] = v
+        self.parameterlist[i] = v
 
     def __iter__(self):
-        return iter(self.parameters)
+        return iter(self.parameterlist)
 
     def __len__(self):
-        return len(self.parameters)
+        return len(self.parameterlist)
 
     def set_model(self, index):
         """
         Set the underlying model parameter to the value of the nth model.
         """
         # TODO: should we be updating the slot rather than the value?
-        self.reference.value = self.parameters[index].value
+        self.reference.value = self.parameterlist[index].value
         # self.reference.equals(self.parameters[index])
 
     def get_model(self, index):
         """
         Get the reference and underlying model parameter for the nth model.
         """
-        return (id(self.reference), self.parameters[index])
+        return (id(self.reference), self.parameterlist[index])
 
     @property
     def values(self):
-        return [p.value for p in self.parameters]
+        return [p.value for p in self.parameterlist]
 
     @values.setter
     def values(self, values):
-        for p, v in zip(self.parameters, values):
+        for p, v in zip(self.parameterlist, values):
             p.value = v
 
     def range(self, *args, **kw):
         """
         Like :meth:`Parameter.range`, but applied to all models.
         """
-        for p in self.parameters:
+        for p in self.parameterlist:
             p.range(*args, **kw)
 
     def pm(self, *args, **kw):
         """
         Like :meth:`Parameter.pm`, but applied to all models.
         """
-        for p in self.parameters:
+        for p in self.parameterlist:
             p.pm(*args, **kw)
 
     def pmp(self, *args, **kw):
         """
         Like :meth:`Parameter.pmp`, but applied to all models.
         """
-        for p in self.parameters:
+        for p in self.parameterlist:
             p.pmp(*args, **kw)
 
 
@@ -1366,7 +1422,7 @@ class FreeVariables:
         """
         Return the set of free variables for all the models.
         """
-        return dict((k, v.parameters) for k, v in self.parametersets.items())
+        return dict((k, v.parameterlist) for k, v in self.parametersets.items())
 
     def to_dict(self):
         return {"type": type(self).__name__, "names": self.names, "parameters": to_dict(self.parametersets)}
@@ -1458,7 +1514,7 @@ def format(p, indent=0, freevars=None, field=None):
         return str(p)
 
 
-def summarize(pars, sorted=False):
+def summarize(pars: List[Parameter], sorted=False):
     """
     Return a stylized list of parameter names and values with range bars
     suitable for printing.
@@ -1467,21 +1523,21 @@ def summarize(pars, sorted=False):
     """
     output = []
     if sorted:
-        pars = sorted(pars, key=lambda x: x.name)
+        pars = builtins.sorted(pars, key=lambda x: x.name if x.name is not None else "")
     for p in pars:
         if not isfinite(p.value):
             bar = ["*invalid* "]
         else:
             bar = ["."] * 10
-            if p.value < p.bounds[0]:
+            if p.value < p.prior.limits[0]:
                 bar[0] = "<"
-            elif p.value > p.bounds[1]:
+            elif p.value > p.prior.limits[1]:
                 bar[9] = ">"
             else:
                 position = int(p.prior.get01(p.value) * 9.999999999)
                 bar[position] = "|"
-        left = f"[{p.bounds[0]:g}" if np.isfinite(p.bounds[0]) else "(-inf"
-        right = f"{p.bounds[1]:g}]" if np.isfinite(p.bounds[1]) else "inf)"
+        left = f"[{p.prior.limits[0]:g}" if np.isfinite(p.prior.limits[0]) else "(-inf"
+        right = f"{p.prior.limits[1]:g}]" if np.isfinite(p.prior.limits[1]) else "inf)"
         output.append("%40s %s %10g in %s, %s" % (p.name, "".join(bar), p.value, left, right))
     return "\n".join(output)
 
@@ -1530,7 +1586,7 @@ def varying(s: List[Parameter]) -> List[Parameter]:
 
     This is the set of parameters that will vary during the fit.
     """
-    return [p for p in unique(s) if not p.fixed]
+    return [p for p in unique(s) if (p.fittable and not p.fixed)]
 
 
 def priors(s: List[Parameter]) -> List[Parameter]:
@@ -1549,7 +1605,8 @@ def randomize(s: List[Parameter]):
     values chosen according to the bounds.
     """
     for p in s:
-        p.value = p.prior.random(1)[0]
+        # we know that p.prior.random(n=1) returns an array of length n
+        p.value = cast(np.ndarray, p.prior.random(n=1))[0]
 
 
 def current(s: List[Parameter]):
@@ -1615,13 +1672,15 @@ class Constraint:
     a: ValueType
     b: ValueType
 
+    _compare: Callable[[float, float], bool]
+
     def __init__(self, a, b, op):
         import operator
 
         object.__setattr__(self, "a", a)
         object.__setattr__(self, "b", b)
         op_name = str(Comparisons(op).name)
-        object.__setattr__(self, "compare", getattr(operator, op_name.lower()))
+        object.__setattr__(self, "_compare", getattr(operator, op_name.lower()))
         object.__setattr__(self, "op", op)
 
     # TODO: is this really necessary?  What is the reason for this trap?
@@ -1642,7 +1701,7 @@ class Constraint:
 
     @property
     def satisfied(self):
-        return self.compare(float(self.a), float(self.b))
+        return self._compare(float(self.a), float(self.b))
 
 
 def _make_constraint(op_str: str) -> Callable[..., Constraint]:
@@ -1670,7 +1729,7 @@ class Alias(object):
 
     """
 
-    def __init__(self, obj, attr, p=None, name=None):
+    def __init__(self, obj, attr, p: Union[float, Parameter] = 0, name=None):
         self.obj = obj
         self.attr = attr
         if name is None:
@@ -1727,8 +1786,8 @@ class Function(ValueProtocol):
 
     __slots__ = ["op", "args", "kw"]
     op: Callable[..., float]
-    args: Optional[Any]
-    kw: Dict[Any, Any]
+    args: Tuple[Any]
+    kw: Dict[str, Any]
 
     def __init__(self, op, *args, **kw):
         warnings.warn("Function no longer supported", DeprecationWarning, stacklevel=1)
@@ -1754,7 +1813,7 @@ class Function(ValueProtocol):
     def _value(self):
         # Expand args and kw, replacing instances of parameters
         # with their values
-        return self.op(*substitute(self.args), **substitute(self.kw))
+        return self.op(*cast(Tuple[Any], substitute(self.args)), **cast(Dict[str, Any], substitute(self.kw)))
 
     value = property(_value)
 
@@ -1804,17 +1863,17 @@ def test_operator():
     assert (-a).value == -a.value
     assert str(a + b * c) == "a + b * c"
     assert str((a + b) * c) == "(a + b) * c"
-    assert str(np.sin(a + b) * c) == "sin(a + b) * c"
+    assert str(np.sin(a + b) * c) == "sin(a + b) * c"  # type: ignore
     assert str(a + C) == "a + C"
     assert str(a + C + 3) == "a + C + 3"
     assert str(3 + a + C) == "3 + a + C"
     assert str(a.sin()) == "sin(a)"
-    assert str(atan2(a, b)) == "arctan2(a, b)"
+    assert str(np.arctan2(a, b)) == "arctan2(a, b)"  # type: ignore
     # float(expr) evaluates the expression; it doesn't build an expr with float.
 
     # Check parameters
     assert (a + b).parameters() == [a, b]
-    assert (np.sin(a + b) * c).parameters() == [a, b, c]
+    assert (np.sin(a + b) * c).parameters() == [a, b, c]  # type: ignore
 
     # Check values
     a.value = 3
@@ -1822,8 +1881,8 @@ def test_operator():
     assert float(a + b) == a.value + b.value
     assert a.sin().value == np.sin(a.value)
     assert (3 + a + C).value == 3 + 3 + 5
-    assert np.sin(a + b).value == np.sin(a.value + b.value)
-    assert atan2(a, b).value == atan2(a.value, b.value)
+    assert np.sin(a + b).value == np.sin(a.value + b.value)  # type: ignore
+    assert np.arctan2(a, b).value == np.arctan2(a.value, b.value)  # type: ignore
 
     # Make sure that evaluation is lazy. Capture the expression with one
     # set of values for the parameters, update them with a new set of values,
@@ -1842,21 +1901,21 @@ def test_operator():
             for k, v in saved.items():
                 scope[k].value = v
 
-    capture_test(np.sin(a + b), np.sin(0.5 + 3), a=0.5, b=3)
-    capture_test(np.arctan2(a, b), atan2(0.5, 3), a=0.5, b=3)
-    capture_test(np.round(a), np.round(-0.6), a=-0.6)
+    capture_test(np.sin(a + b), np.sin(0.5 + 3), a=0.5, b=3)  # type: ignore
+    capture_test(np.arctan2(a, b), np.arctan2(0.5, 3), a=0.5, b=3)  # type: ignore
+    capture_test(np.round(a), np.round(-0.6), a=-0.6)  # type: ignore
     capture_test(min(a, b), builtins.min(-0.6, 3), a=-0.6, b=3)
-    capture_test(min(a, b, -2), builtins.min(-0.6, 3, -2), a=-0.6, b=3)
+    capture_test(min(a, b, -2), builtins.min(-0.6, 3, -2), a=-0.6, b=3)  # type: ignore
     capture_test(abs(a), 2.5, a=-2.5)
 
     # Check that symbols are defined in pmath
-    capture_test(pmath.sind(a), np.sin(np.radians(25)), a=25)
+    capture_test(pmath.sind(a), np.sin(np.radians(25)), a=25)  # type: ignore
     assert "sind" in pmath.__all__
 
     # TODO: can we evaluate an expression for an entire population at once?
 
     # Check slots
-    limited = Parameter(3, name="limited", limits=[0.5, 1.5], bounds=[0, 1])
+    limited = Parameter(3, name="limited", limits=(0.5, 1.5), bounds=(0, 1))
     limited.reset_prior()
     assert np.isinf(limited.nllf())
     assert np.isinf(limited.nllf())
@@ -1913,7 +1972,7 @@ def test_operator():
 
     def raises(condition_str, exception):
         try:
-            eval(condition_str, locals=scope)
+            eval(condition_str, {}, scope)
         except exception:
             pass
         else:

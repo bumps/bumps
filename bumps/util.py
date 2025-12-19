@@ -2,7 +2,7 @@
 Miscellaneous utility functions.
 """
 
-__all__ = ["kbhit", "profile", "pushdir", "push_seed", "redirect_console"]
+__all__ = ["profile", "pushdir", "push_seed", "redirect_console"]
 
 import os
 import sys
@@ -14,6 +14,7 @@ from contextlib import contextmanager
 # this can be substituted with pydantic dataclass for schema-building...
 from typing import (
     TYPE_CHECKING,
+    Annotated,
     Any,
     Callable,
     Dict,
@@ -25,6 +26,7 @@ from typing import (
     Sequence,
     Tuple,
     Type,
+    TypeAlias,
     TypeVar,
     Union,
     runtime_checkable,
@@ -38,7 +40,7 @@ from numpy import ascontiguousarray as _dense
 from scipy.special import erf
 
 USE_PYDANTIC = os.environ.get("BUMPS_USE_PYDANTIC", "False") == "True"
-from numpy.typing import NDArray
+from numpy.typing import NDArray as _NDArray
 
 
 def field_desc(description: str) -> Any:
@@ -90,10 +92,28 @@ class NumpyArray:
     values: Sequence = field(default_factory=list)
 
 
+# Define FloatInf type - works for both type checkers and runtime (including Pydantic)
+# At runtime, choose the appropriate type based on USE_PYDANTIC
 if USE_PYDANTIC:
-    from typing import TypeAlias
+    from pydantic import WithJsonSchema
+else:
+    WithJsonSchema = lambda schema: schema
 
-    NDArray: TypeAlias = NumpyArray
+
+INF_SCHEMA = {"anyOf": [{"type": "number"}, {"type": "string", "enum": ["-inf", "inf"]}], "title": "FloatWithInf"}
+LimitType: TypeAlias = Annotated[float, WithJsonSchema(INF_SCHEMA)]
+
+NDARRAY_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "dtype": {"type": "string"},
+        "values": {"type": "array", "items": {}},
+    },
+    "required": ["dtype", "values"],
+    "additionalProperties": False,
+}
+
+NDArray: TypeAlias = Annotated[_NDArray[Any], WithJsonSchema(NDARRAY_SCHEMA)]
 
 
 def parse_errfile(errfile):
@@ -161,21 +181,6 @@ def profile(fn, *args, **kw):
     stats.print_stats()
     os.unlink(datafile)
     return result[0]
-
-
-def kbhit():
-    """
-    Check whether a key has been pressed on the console.
-    """
-    try:  # Windows
-        import msvcrt
-
-        return msvcrt.kbhit()
-    except ImportError:  # Unix
-        import select
-
-        i, _, _ = select.select([sys.stdin], [], [], 0.0001)
-        return sys.stdin in i
 
 
 class redirect_console(object):

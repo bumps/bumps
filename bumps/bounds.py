@@ -86,8 +86,9 @@ except ImportError:
 
 from typing import Optional, Any, Dict, Union, Literal, Tuple, Protocol
 
-LimitValue = Union[float, Literal["-inf", "inf"]]
-LimitsType = Tuple[Union[float, Literal["-inf"]], Union[float, Literal["inf"]]]
+from .util import LimitType
+
+LimitsType = Tuple[LimitType, LimitType]
 
 # TODO: should we use this in the bounds limits?
 # @dataclass(init=False)
@@ -606,7 +607,7 @@ class Distribution(Bounds):
     described in the DistProtocol class.
     """
 
-    dist: DistProtocol = None
+    dist: DistProtocol
 
     def __init__(self, dist):
         object.__setattr__(self, "dist", dist)
@@ -647,7 +648,7 @@ class Distribution(Bounds):
         self.dist = cls(*args, **kwds)
 
     def __str__(self):
-        return "%s(%s)" % (self.dist.dist.name, ",".join(str(s) for s in self.dist.args))
+        return "%s(%s)" % (self.dist.name, ",".join(str(s) for s in self.dist.args))
 
     def to_dict(self):
         return dict(
@@ -710,8 +711,8 @@ class BoundedNormal(Bounds):
 
     mean: float = 0.0
     std: float = 1.0
-    lo: Union[float, Literal["-inf"]]
-    hi: Union[float, Literal["inf"]]
+    lo: LimitType
+    hi: LimitType
 
     _left: float = field(init=False)
     _delta: float = field(init=False)
@@ -810,7 +811,7 @@ class BoundedNormal(Bounds):
         return f"({self.limits[0]},{self.limits[1]}), norm({self.mean},{self.std})"
 
 
-@dataclass(init=False, frozen=True)
+@dataclass(init=True, frozen=True)
 class SoftBounded(Bounds):
     """
     Parameter is pulled from a stretched normal distribution.
@@ -831,9 +832,8 @@ class SoftBounded(Bounds):
     hi: float = 1.0
     std: float = 1.0
 
-    def __init__(self, lo, hi, std=1.0):
-        self.lo, self.hi, self.std = lo, hi, std
-        self._nllf_scale = log(hi - lo + sqrt(2 * pi * std))
+    def __post_init__(self):
+        object.__setattr__(self, "_nllf_scale", log(self.hi - self.lo + sqrt(2 * pi * self.std)))
 
     @property
     def limits(self):
