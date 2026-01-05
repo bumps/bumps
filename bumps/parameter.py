@@ -571,7 +571,6 @@ class Parameter(ValueProtocol, SupportsPrior):
         distribution: DistributionType = Uniform(),
         discrete: bool = False,
         tags: Optional[List[str]] = None,
-        **kw,
     ):
         # Check if we are started with value=range or bounds=range; if we
         # are given bounds, then assume this is a fitted parameter, otherwise
@@ -625,11 +624,6 @@ class Parameter(ValueProtocol, SupportsPrior):
         self.fixed = fixed
         self.discrete = discrete
 
-        # Store whatever values the user needs to associate with the parameter.
-        # For example, models can set units and tool tips so the user interface
-        # has something to work with.
-        for k, v in kw.items():
-            setattr(self, k, v)
         self.prior = None  # to be filled by model_reset
 
     def randomize(self, rng=None):
