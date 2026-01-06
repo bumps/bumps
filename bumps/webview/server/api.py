@@ -934,32 +934,30 @@ async def get_data_plot(model_indices: Optional[List[int]] = None):
     # Suppress all mpld3 warnings
     # warnings.filterwarnings("ignore", module="mpld3")
 
-    # TODO: revise get_data_plot interface to take only a single index
-    # The current interface to get_data_plot takes a list of model indices
-    # but it only returns a single figure. If called with a list of models
-    # they will overwrite each other in one figure.
-    if model_indices is None or len(model_indices) != 1:
-        raise RuntimeError("can only do one model at a time")
-    index = model_indices[0]
+    if model_indices is None:
+        return None
 
     # Overall chisq
     overall_chisq_str = fitProblem.chisq_str()
-    with fitProblem.push_model(index) as model:
-        # # "per model" chisq
-        if fitProblem.num_models > 1:
-            chisq_str = fitness_chisq_str(model)
-            text = f"χ² = {chisq_str}; overall {overall_chisq_str}"
-            title = f"Model {index+1}: {model.name}"
-        else:
-            text = f"χ² = {overall_chisq_str}"
-            title = f"{model.name}"
-        if hasattr(model, "plotly"):
-            return _get_data_plot_plotly(model, title=title, chisq=text)
-        elif hasattr(model, "plot"):
-            return _get_data_plot_mpl(model, title=title, chisq=text)
-        else:
-            # Use plotly to show chisq
-            return _get_data_plot_plotly(model, title=title, chisq=text)
+    figures = []
+    for model_index in model_indices:
+        with fitProblem.push_model(model_index) as model:
+            # # "per model" chisq
+            if fitProblem.num_models > 1:
+                chisq_str = fitness_chisq_str(model)
+                text = f"χ² = {chisq_str}; overall {overall_chisq_str}"
+                title = f"Model {model_index+1}: {model.name}"
+            else:
+                text = f"χ² = {overall_chisq_str}"
+                title = f"{model.name}"
+            if hasattr(model, "plotly"):
+                figures.append(_get_data_plot_plotly(model, title=title, chisq=text))
+            elif hasattr(model, "plot"):
+                figures.append(_get_data_plot_mpl(model, title=title, chisq=text))
+            else:
+                # Use plotly to show chisq
+                figures.append(_get_data_plot_plotly(model, title=title, chisq=text))
+    return figures
 
 
 def _get_data_plot_plotly(model, title, chisq):
