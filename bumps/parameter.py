@@ -290,11 +290,11 @@ class Parameter(ValueProtocol, SupportsPrior):
     the hard limits are restrictions on the value imposed by the model.
     For example, the thickness of a layer must be zero or more.
 
-    Any additional keyword arguments are preserved as properties of the
-    parameter. For example, *tip* and *units* for decorating an input form
-    in the GUI:
+    *discrete* is True if the parameter value must be an integer.
 
-         p = Parameter(10, name="width", units="cm", tip="Width of sample")
+    *tags* are user-supplied labels that can be used to group parameters together
+    for display or for setting values, and are used in the GUI for filtering
+    parameters.
 
     """
 
