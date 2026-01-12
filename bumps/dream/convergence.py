@@ -100,6 +100,8 @@ def ks_converged(
     n_draw = int(density * samples)
     p = _robust_ks_2samp(head, tail, n_draw, trials)
     # print(f"convergence {state.generation}: pval={p} < {alpha}?")
+
+    # comparison returns np.bool type which is not exactly the same as bool
     return bool(p < alpha)
 
 
