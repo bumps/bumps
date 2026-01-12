@@ -375,7 +375,7 @@ class Curve:
             self.plotter(self.x, self.y, self.dy, self.theory(), view=view, **kw)
             return
 
-        import pylab
+        import matplotlib.pyplot as plt
         from .plotutil import coordinated_colors
 
         x = self.x
@@ -392,7 +392,7 @@ class Curve:
 
         colors = tuple(coordinated_colors() for _ in range(self._num_curves))
         # clear figure after calling coordinated_colors, which can create an axis object
-        pylab.clf()
+        plt.clf()
         labels = self.labels
 
         # print "kw_plot",kw
@@ -400,15 +400,15 @@ class Curve:
             _plot_resids(x, resid, colors, labels=labels, view=view)
         else:
             plot_ratio = 4
-            h = pylab.subplot2grid((plot_ratio, 1), (0, 0), rowspan=plot_ratio - 1)
+            h = plt.subplot2grid((plot_ratio, 1), (0, 0), rowspan=plot_ratio - 1)
             for tick_label in h.get_xticklabels():
                 tick_label.set_visible(False)
             _plot_fits(data=(x, y, dy), theory=(theory_x, theory_y), colors=colors, labels=labels, view=view)
-            # pylab.gca().xaxis.set_visible(False)
-            # pylab.gca().spines['bottom'].set_visible(False)
-            # pylab.gca().set_xticks([])
+            # plt.gca().xaxis.set_visible(False)
+            # plt.gca().spines['bottom'].set_visible(False)
+            # plt.gca().set_xticks([])
 
-            pylab.subplot2grid((plot_ratio, 1), (plot_ratio - 1, 0), sharex=h)
+            plt.subplot2grid((plot_ratio, 1), (plot_ratio - 1, 0), sharex=h)
             _plot_resids(x, resid, colors=colors, labels=labels, view=view)
 
     def register_webview_plot(
@@ -425,63 +425,63 @@ class Curve:
 
 
 def _plot_resids(x, resid, colors, labels, view):
-    import pylab
+    import matplotlib.pyplot as plt
 
-    pylab.axhline(y=1, ls="dotted", color="k")
-    pylab.axhline(y=0, ls="solid", color="k")
-    pylab.axhline(y=-1, ls="dotted", color="k")
+    plt.axhline(y=1, ls="dotted", color="k")
+    plt.axhline(y=0, ls="solid", color="k")
+    plt.axhline(y=-1, ls="dotted", color="k")
     for k, color in enumerate(colors):
-        pylab.plot(x, resid[:, k], ".", color=color["base"])
-    pylab.gca().locator_params(axis="y", tight=True, nbins=4)
-    pylab.xlabel(labels[0])
-    pylab.ylabel("(f(x)-y)/dy")
+        plt.plot(x, resid[:, k], ".", color=color["base"])
+    plt.gca().locator_params(axis="y", tight=True, nbins=4)
+    plt.xlabel(labels[0])
+    plt.ylabel("(f(x)-y)/dy")
     if view == "logx":
-        pylab.xscale("log")
+        plt.xscale("log")
     elif view == "loglog":
-        pylab.xscale("log")
+        plt.xscale("log")
 
 
 def _plot_fits(data, theory, colors, labels, view):
-    import pylab
+    import matplotlib.pyplot as plt
 
     x, y, dy = data
     theory_x, theory_y = theory
     for k, color in enumerate(colors):
-        pylab.errorbar(x, y[:, k], yerr=dy[:, k], fmt=".", color=color["base"], label="_")
-        pylab.plot(theory_x, theory_y[:, k], "-", color=color["dark"], label=labels[k + 2])
+        plt.errorbar(x, y[:, k], yerr=dy[:, k], fmt=".", color=color["base"], label="_")
+        plt.plot(theory_x, theory_y[:, k], "-", color=color["dark"], label=labels[k + 2])
     # Note: no xlabel since it is supplied by the residual plot below this plot
-    pylab.ylabel(labels[1])
+    plt.ylabel(labels[1])
     if len(colors) > 1:
-        pylab.legend()
+        plt.legend()
     if view == "log":
-        pylab.xscale("linear")
-        pylab.yscale("log")
+        plt.xscale("linear")
+        plt.yscale("log")
     elif view == "logx":
-        pylab.xscale("log")
-        pylab.yscale("linear")
+        plt.xscale("log")
+        plt.yscale("linear")
     elif view == "logy":
-        pylab.xscale("linear")
-        pylab.yscale("log")
+        plt.xscale("linear")
+        plt.yscale("log")
     elif view == "loglog":
-        pylab.xscale("log")
-        pylab.yscale("log")
+        plt.xscale("log")
+        plt.yscale("log")
     else:  # view == 'linear'
-        pylab.xscale("linear")
-        pylab.yscale("linear")
+        plt.xscale("linear")
+        plt.yscale("linear")
 
 
 def plot_resid(x, resid):
     """
     **DEPRECATED**
     """
-    import pylab
+    import matplotlib.pyplot as plt
 
-    pylab.axhline(y=1, ls="dotted", color="k")
-    pylab.axhline(y=0, ls="solid", color="k")
-    pylab.axhline(y=-1, ls="dotted", color="k")
-    pylab.plot(x, resid, ".")
-    pylab.gca().locator_params(axis="y", tight=True, nbins=4)
-    pylab.ylabel("Residuals")
+    plt.axhline(y=1, ls="dotted", color="k")
+    plt.axhline(y=0, ls="solid", color="k")
+    plt.axhline(y=-1, ls="dotted", color="k")
+    plt.plot(x, resid, ".")
+    plt.gca().locator_params(axis="y", tight=True, nbins=4)
+    plt.ylabel("Residuals")
 
 
 def plot_err(x, y, dy, fy, view=None, **kw):
@@ -492,22 +492,22 @@ def plot_err(x, y, dy, fy, view=None, **kw):
 
     *view* is one of linear, log, logx or loglog.
     """
-    import pylab
+    import matplotlib.pyplot as plt
 
-    pylab.errorbar(x, y, yerr=dy, fmt=".")
-    pylab.plot(x, fy, "-")
+    plt.errorbar(x, y, yerr=dy, fmt=".")
+    plt.plot(x, fy, "-")
     if view == "log":
-        pylab.xscale("linear")
-        pylab.yscale("log")
+        plt.xscale("linear")
+        plt.yscale("log")
     elif view == "logx":
-        pylab.xscale("log")
-        pylab.yscale("linear")
+        plt.xscale("log")
+        plt.yscale("linear")
     elif view == "loglog":
-        pylab.xscale("log")
-        pylab.yscale("log")
+        plt.xscale("log")
+        plt.yscale("log")
     else:  # view == 'linear'
-        pylab.xscale("linear")
-        pylab.yscale("linear")
+        plt.xscale("linear")
+        plt.yscale("linear")
 
 
 _LOGFACTORIAL = np.array([log(np.prod(np.arange(1.0, k + 1))) for k in range(21)])

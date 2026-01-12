@@ -503,13 +503,13 @@ def _run_dream(dream: Dream, abort_test=lambda: False):
 
 
 def _show_logp_frame(dream, state, frame):
-    from pylab import clf, savefig
+    import matplotlib.pyplot as plt
     from . import views
 
-    clf()
+    plt.clf()
     views.plot_logp(state)
-    savefig("logp%03d.png" % frame)
-    clf()
+    plt.savefig("logp%03d.png" % frame)
+    plt.clf()
 
 
 def allocate_state(dream):

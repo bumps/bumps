@@ -20,16 +20,16 @@ def auto_shift(offset):
         plot(x, y, trans=trans)
     """
     from matplotlib.transforms import ScaledTranslation
-    import pylab
+    import matplotlib.pyplot as plt
 
-    ax = pylab.gca()
+    ax = plt.gca()
     if ax.lines and hasattr(ax, "_auto_shift"):
         ax._auto_shift += offset
     else:
         ax._auto_shift = 0
-    trans = pylab.gca().transData
+    trans = plt.gca().transData
     if ax._auto_shift:
-        trans += ScaledTranslation(0, ax._auto_shift / 72.0, pylab.gcf().dpi_scale_trans)
+        trans += ScaledTranslation(0, ax._auto_shift / 72.0, plt.gcf().dpi_scale_trans)
     return trans
 
 
@@ -49,10 +49,10 @@ def next_color(axes=None):
         # Draw the theory line with the same color as the data, but darker
         plt.plot(x, y, '-', color=dhsv(color, dv=-0.2))
     """
-    import pylab
+    import matplotlib.pyplot as plt
 
     if axes is None:
-        axes = pylab.gca()
+        axes = plt.gca()
     lines = axes._get_lines
     try:
         base = lines.get_next_color()
@@ -145,13 +145,13 @@ def plot_quantiles(x, y, contours, color, alpha=None, axes=None):
 
 
 def _plot_quantiles(x, q, color, alpha, axes=None):
-    import pylab
+    import matplotlib.pyplot as plt
 
     # print "p",p
     # print "q",q[:,:,0]
     # print "y",y[:,0]
     if axes is None:
-        axes = pylab.gca()
+        axes = plt.gca()
     if alpha is None:
         alpha = 2.0 / (len(q) + 1)
     edgecolor = dhsv(color, ds=-(1 - alpha), dv=(1 - alpha))

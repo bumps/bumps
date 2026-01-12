@@ -55,11 +55,11 @@ class Corr2d(object):
         """
         Plot the correlation histograms on the specified figure
         """
-        import pylab
+        import matplotlib.pyplot as plt
 
         if fig is None:
-            pylab.clf()
-            fig = pylab.gcf()
+            plt.clf()
+            fig = plt.gcf()
         if title is not None:
             fig.text(0.5, 0.95, title, horizontalalignment="center", fontproperties=FontProperties(size=16))
         self.ax = _plot(fig, self.hists, self.labels, self.N)

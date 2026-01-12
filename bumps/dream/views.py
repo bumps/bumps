@@ -21,7 +21,7 @@ CORRPLOT_MAXVAR = 25  # maximum number of variables to plot in correlation matri
 # TODO: plot_all not tested with revised handling of derived parameters
 # TODO: remove hack allowing plot_all to accept a state.draw as well as a state object
 def plot_all(state: MCMCDraw | Draw, portion: Optional[float] = None, figfile=None):
-    # Print/save uncertainty report before loading pylab or creating plots
+    # Print/save uncertainty report before loading matplotlib or creating plots
     if isinstance(state, MCMCDraw):
         draw = state.draw(portion=portion)
     else:
@@ -35,63 +35,63 @@ def plot_all(state: MCMCDraw | Draw, portion: Optional[float] = None, figfile=No
     if figfile is not None:
         save_vars(all_vstats, figfile + "-err.json")
 
-    from pylab import figure, rcParams, savefig, suptitle
+    import matplotlib.pyplot as plt
 
-    figext = "." + rcParams.get("savefig.format", "png")
+    figext = "." + plt.rcParams.get("savefig.format", "png")
 
     # Use finer binning with more samples. For 1% bin variation p,
     # points per bin k = (100/p)**2 = 10000, and nbins = N // k.
     nbins = max(min(draw.points.shape[0] // 10000, 400), 30)
 
     # histograms
-    figure(figsize=varplot.var_plot_size(len(all_vstats)))
+    plt.figure(figsize=varplot.var_plot_size(len(all_vstats)))
     varplot.plot_vars(draw, all_vstats, nbins=nbins)
     if draw.title:
-        suptitle(draw.title, x=0, y=1, va="top", ha="left")
+        plt.suptitle(draw.title, x=0, y=1, va="top", ha="left")
     if figfile is not None:
-        savefig(figfile + "-vars" + figext)
+        plt.savefig(figfile + "-vars" + figext)
 
     # parameter traces
-    figure()
+    plt.figure()
     plot_traces(draw.state, portion=draw.portion, vars=draw.vars)
-    suptitle("Parameter history" + (" for " + draw.title if draw.title else ""))
+    plt.suptitle("Parameter history" + (" for " + draw.title if draw.title else ""))
     if figfile is not None:
-        savefig(figfile + "-trace" + figext)
+        plt.savefig(figfile + "-trace" + figext)
 
     # Acceptance rate
     if False:
-        figure()
+        plt.figure()
         plot_acceptance_rate(draw.state, portion=draw.portion)
         if figfile is not None:
-            savefig(figfile + "-acceptance" + figext)
+            plt.savefig(figfile + "-acceptance" + figext)
 
     # convergence plot
-    figure()
+    plt.figure()
     plot_logp(draw.state, portion=draw.portion)
     if draw.title:
-        suptitle(draw.title)
+        plt.suptitle(draw.title)
     if figfile is not None:
-        savefig(figfile + "-logp" + figext)
+        plt.savefig(figfile + "-logp" + figext)
 
     # correlation plot
     if draw.Nvar <= CORRPLOT_MAXVAR:
-        figure()
+        plt.figure()
         plot_corrmatrix(draw, nbins=nbins)
         if draw.title:
-            suptitle(draw.title)
+            plt.suptitle(draw.title)
         if figfile is not None:
-            savefig(figfile + "-corr" + figext)
+            plt.savefig(figfile + "-corr" + figext)
 
     # parallel coordinates plot
     if draw.Nvar > 1:
         from . import parcoord
 
-        figure()
+        plt.figure()
         parcoord.plot(draw, control_var=0)
         if draw.title:
-            suptitle(draw.title)
+            plt.suptitle(draw.title)
         if figfile is not None:
-            savefig(figfile + "-parcor" + figext)
+            plt.savefig(figfile + "-parcor" + figext)
 
 
 def plot_corrmatrix(draw, nbins=50, vstats=None, full=False, fig=None):
@@ -170,7 +170,7 @@ def plot_corr(draw, vars=(0, 1)):
 def plot_traces(
     state: MCMCDraw, vars: Optional[List[int]] = None, portion: Optional[float] = None, fig=None, max_traces=6
 ):
-    from pylab import clf, gcf
+    import matplotlib.pyplot as plt
 
     # TODO: Consider using masked chains in draw for traces rather than original
     # Can only plot traces for on the original state. Ignore any variables that are out of range.
@@ -178,10 +178,10 @@ def plot_traces(
         vars = [v for v in vars if v < state.Nvar]
 
     if fig is None:
-        fig = gcf()
+        fig = plt.gcf()
     if vars is None:
         vars = list(range(min(state.Nvar, max_traces)))
-    clf()
+    plt.clf()
     nw, nh = tile_axes(len(vars), fig=fig)
     fig.subplots_adjust(hspace=0.0)
     for k, var in enumerate(vars):
@@ -190,11 +190,11 @@ def plot_traces(
 
 
 def plot_trace(state: MCMCDraw, var: int = 0, portion: Optional[float] = None, axes=None, fig=None):
-    from pylab import gcf
+    import matplotlib.pyplot as plt
 
     if axes is None:
         if fig is None:
-            fig = gcf()
+            fig = plt.gcf()
         axes = fig.add_subplot(111)
     # TODO: We could reuse the same state.traces outputs for all traces.
     generations, chains = state.traces(portion=portion, thin=1, outliers=False)
@@ -207,17 +207,17 @@ def plot_trace(state: MCMCDraw, var: int = 0, portion: Optional[float] = None, a
 
 def plot_logp(state: MCMCDraw, portion: Optional[float] = None, outliers: bool = False):
     from matplotlib.ticker import NullFormatter
-    from pylab import axes, title
+    import matplotlib.pyplot as plt
     from scipy.stats import chi2
 
     # Plot log likelihoods, stripping outliers
     genid, logp = state.gen_logp(portion=portion, outliers=outliers)
     width, height, margin, delta = 0.7, 0.75, 0.1, 0.01
-    trace = axes([margin, 0.1, width, height])
+    trace = plt.axes([margin, 0.1, width, height])
     trace.plot(genid, logp, ",", markersize=1)
     trace.set_xlabel("Generation number")
     trace.set_ylabel("Log likelihood at x[k]")
-    title("Log Likelihood History")
+    plt.title("Log Likelihood History")
 
     # Plot log likelihood trend line
     from bumps.wsolve import wpolyfit
@@ -235,7 +235,7 @@ def plot_logp(state: MCMCDraw, portion: Optional[float] = None, outliers: bool =
     # Plot long likelihood histogram
     data = logp.flatten()
     data = data[np.isfinite(data)]
-    hist = axes([margin + width + delta, 0.1, 1 - 2 * margin - width - delta, height])
+    hist = plt.axes([margin + width + delta, 0.1, 1 - 2 * margin - width - delta, height])
     hist.hist(data, bins=40, orientation="horizontal", density=True)
     hist.set_ylim(trace.get_ylim())
     null_formatter = NullFormatter()
@@ -259,11 +259,11 @@ def tile_axes(n, size=None, fig=None):
     Creates a tile for the axes which covers as much area of the graph as
     possible while keeping the plot shape near the golden ratio.
     """
-    from pylab import gcf
+    import matplotlib.pyplot as plt
 
     if size is None:
         if fig is None:
-            fig = gcf()
+            fig = plt.gcf()
         size = fig.get_size_inches()
     figwidth, figheight = size
     # Golden ratio phi is the preferred dimension
