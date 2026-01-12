@@ -15,7 +15,6 @@ __all__ = [
 from dataclasses import dataclass, field
 import re
 import json
-from typing import Tuple
 
 import numpy as np
 
@@ -26,8 +25,8 @@ from .formatnum import format_uncertainty
 class VarStats(object):
     label: str
     index: int
-    p95: Tuple[float, float]
-    p68: Tuple[float, float]
+    p95: tuple[float, float]
+    p68: tuple[float, float]
     # p95sd: float
     # p68sd: float
     median: float
@@ -35,8 +34,8 @@ class VarStats(object):
     std: float
     best: float
     integer: bool = False
-    p95_range: Tuple[float, float] = field(init=False)
-    p68_range: Tuple[float, float] = field(init=False)
+    p95_range: tuple[float, float] = field(init=False)
+    p68_range: tuple[float, float] = field(init=False)
 
     def __post_init__(self):
         self.p95_range = (self.p95[0], self.p95[1] + self.integer * 0.9999999999)
