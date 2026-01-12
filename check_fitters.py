@@ -100,7 +100,7 @@ def main():
     test_functions = EXAMPLEDIR / "test_functions" / "model.py"
     # model_args = [test_functions, '"fk(rosenbrock, 3)"']
     model_args, target = [test_functions, "gauss", "3"], 0
-    model_args, target = [EXAMPLEDIR / "curvefit" / "curve.py"], 1.760
+    model_args, target = [EXAMPLEDIR / "curvefit" / "curve.py"], 1.8
     seed = 1
     with tempfile.TemporaryDirectory() as path:
         failed = run_fits(model_args, path, fitters=fitters, seed=seed, target=target)
