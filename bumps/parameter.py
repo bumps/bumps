@@ -1629,7 +1629,7 @@ class Constraint:
 
     def __float__(self):
         """return a float value that can be differentiated"""
-        return 0.0 if self.satisfied else abs(float(self.a) - float(self.b))
+        return 0.0 if self.satisfied else (float(self.a) - float(self.b)) ** 2
 
     def __str__(self):
         return "(%s %s %s)" % (self.a, self.op, self.b)
