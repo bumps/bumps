@@ -98,10 +98,10 @@ Generation %(step)d, chisq %(cost)g
         open(os.path.join(self.path, "status.html"), "wt").write(html_status)
 
     def show_improvement(self, history):
-        import pylab
+        import matplotlib.pyplot as plt
 
         # print "step",history.step[0],"chisq",history.value[0]
         self.problem.setp(history.point[0])
-        pylab.cla()
+        plt.cla()
         self.problem.plot(figfile=os.path.join(self.path, "K"))
-        pylab.gcf().canvas.draw()
+        plt.gcf().canvas.draw()
