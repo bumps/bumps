@@ -31,7 +31,7 @@ from typing import (
 )
 
 import numpy as np
-from numpy import ascontiguousarray as _dense
+from numpy import ascontiguousarray as _dense, isinf, isnan
 
 # **DEPRECATED** we can import erf directly from scipy.special.erf
 # so there is no longer a need for bumps.util.erf.
@@ -472,9 +472,27 @@ def format_duration(seconds):
     return f"0.0 {units[-1][0]}"
 
 
+def clean_exponent(s: str) -> str:
+    """Remove leading + and leading zeros from exponent in a scientific notation number."""
+    head, sep, tail = s.partition("e")
+
+    # If there is no 'e', return the original string
+    if not sep:
+        return s
+
+    # Reassemble: head + 'e' + cleaned integer exponent
+    return f"{head}e{int(tail)}"
+
+
 def format_uncertainty(mean, std):
     """Opinionated formatting of mean and standard deviation."""
-    return f"{ufloat(mean, std):S}"
+    # Handle indefinite value
+    if isinf(mean):
+        return "inf" if mean > 0 else "-inf"
+    if isnan(mean):
+        return "NaN"
+
+    return clean_exponent(f"{ufloat(mean, std):S}")
 
 
 def format_duration_demo():
