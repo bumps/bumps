@@ -210,7 +210,8 @@ def make_store(problem, opts, exists_handler):
         problem.store = opts.store
     if getattr(problem, "store", None) is None:
         raise RuntimeError("Need to specify '--store=path' on command line or problem.store='path' in definition file.")
-    problem.output_path = os.path.join(problem.store, problem.name)
+    problem_name = problem.name if problem.name else "problem"
+    problem.output_path = os.path.join(problem.store, problem_name)
 
     # Check if already exists
     store_exists = os.path.exists(problem.output_path + ".par")
