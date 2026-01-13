@@ -111,7 +111,7 @@ class Setting:
         """
         self.name = name
         self.label = label
-        self.description = dedent(description)
+        self.description = flow(dedent(description))
         self.stype = stype
         self.fitters = []
         self.defaults = []
@@ -127,6 +127,39 @@ class Setting:
         else:
             fitters = [f"{fitter}={FITTER_DEFAULTS[fitter]['settings'][self.name]}" for fitter in self.fitters]
         return f"{self.label}  [{', '.join(fitters)}]\n{self.description}"
+
+
+def flow(text: str, proportional=True) -> str:
+    """Flow paragraphs in text, replacing line breaks in the paragraph with spaces.
+
+    Line breaks are preserved within indented text.
+
+    Paragraphs are separated by blank lines.
+
+    When operating on a multiline string, first call textwrap.dedent to remove the common
+    indent level.
+
+    If proportional, remove extra blanks within a line because we are displaying the text in a
+    proportional rather than fixed width font.
+    """
+    paragraphs = []
+    current = []
+    for line in text.split("\n"):
+        line = line.rstrip()
+        if proportional:
+            indent = len(line) - len(line.lstrip())
+            line = f"{line[:indent]}{' '.join(line[indent:].split())}"
+        if not line or line[0] in " \t":
+            if current:
+                paragraphs.append(" ".join(current))
+                current = []
+            if line:
+                paragraphs.append(line)
+        else:
+            current.append(line)
+    if current:
+        paragraphs.append(" ".join(current))
+    return "\n".join(paragraphs)
 
 
 @dataclass(frozen=True)
