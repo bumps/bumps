@@ -11,13 +11,13 @@ from matplotlib import pyplot as plt
 
 # Set space between plots in horiz and vert.
 H_SPACE = 0.2
-V_SPACE = 0.2
+V_SPACE = 0.3
 
 # Set top, bottom, left margins.
 T_MARGIN = 0.2
-B_MARGIN = 0.2
+B_MARGIN = 0.1
 L_MARGIN = 0.2
-R_MARGIN = 0.4
+R_MARGIN = 0.2
 
 # Set desired plot sizes.
 TILE_W = 3.0
@@ -95,13 +95,13 @@ def tile_axes_square(n):
     return cols, rows
 
 
-def plot_vars(draw, all_vstats, fig=None, **kw):
+def plot_vars(draw, all_vstats, fig=None, nbins: int = 30, full: bool = False):
     n = len(all_vstats)
     fig = _make_var_axes(n, fig=fig)
     cbar = _make_fig_colorbar(draw.logp, fig=fig)
     for k, vstats in enumerate(all_vstats):
         axes = fig.axes[k]
-        plot_var(draw, vstats, k, cbar, axes=axes, **kw)
+        plot_var(draw, vstats, k, cbar, axes=axes, nbins=nbins, full=full)
         fig.canvas.draw()
 
 
@@ -128,32 +128,41 @@ def decorate_histogram(vstats, axes):
     l68, h68 = vstats.p68_range
 
     # Shade things inside 1-sigma
-    axes.axvspan(l68, h68, color="gold", alpha=0.5, zorder=-1)
+    axes.axvspan(l68, h68, color="gold", alpha=0.5, zorder=-2)
+    # Mark the median with a vertical line
+    axes.axvline(x=vstats.median, color="g", ls=":", alpha=0.7, zorder=-1)
     # build transform with x=data, y=axes(0,1)
     transform = blend(axes.transData, axes.transAxes)
 
-    def marker(symbol, position):
+    # Mark the mean and best with symbols
+    def marker(symbol: str, position: float) -> None:
         if position < l95:
-            symbol, position, ha = "<" + symbol, l95, "left"
+            text, x, ha = f"{symbol}←", l95, "left"
         elif position > h95:
-            symbol, position, ha = ">" + symbol, h95, "right"
+            text, x, ha = f"→{symbol}", h95, "right"
         else:
-            symbol, position, ha = symbol, position, "center"
-        axes.text(position, 0.95, symbol, va="top", ha=ha, transform=transform, zorder=3, color="g")
+            text, x, ha = symbol, position, "center"
+        y, va = -0.01, "top"
+        axes.text(x, 1 + y, text, va=va, ha=ha, transform=transform, zorder=3, color="g")
         # axes.axvline(v)
 
-    marker("|", vstats.median)
-    marker("E", vstats.mean)
-    marker("*", vstats.best)
+    marker("▽", vstats.mean)
+    marker("∗", vstats.best)
 
+    # Put the parameter label on the line with mean and best markers. Use the side without
+    # the mean/best marker so that they don't overwrite each other.
+    if (vstats.mean - l95) / (h95 - l95) > 0.4 or (vstats.best - l95) / (h95 - l95) > 0.4:
+        x, ha = 0.02, "left"
+    else:
+        x, ha = 0.98, "right"
     axes.text(
-        0.01,
-        0.95,
+        x,
+        0.99,
         vstats.label,
         zorder=2,
-        backgroundcolor=(1, 1, 0, 0.2),
+        # backgroundcolor=(0.6, 1.0, 0.6, 0.6),
         verticalalignment="top",
-        horizontalalignment="left",
+        horizontalalignment=ha,
         transform=axes.transAxes,
     )
     axes.set_yticklabels([])
@@ -211,7 +220,7 @@ def _make_fig_colorbar(logp, fig=None):
     return cbar
 
 
-def make_logp_histogram(values, logp, nbins, ci, weights, cbar, axes):
+def make_logp_histogram(values, logp, nbins, ci, weights, cbar, ax):
     from numpy import ones_like, searchsorted, linspace, cumsum, unique, argsort, array, hstack, exp
 
     if weights is None:
@@ -282,7 +291,7 @@ def make_logp_histogram(values, logp, nbins, ci, weights, cbar, axes):
         tops = unique(hstack((change_point, len(pv) - 1)))
         y = hstack((0, y_top[tops]))
         z = pv[tops][:, None]
-        axes.pcolormesh(x, y, z, norm=cbar.norm, cmap=cmap, edgecolors=edgecolors)
+        ax.pcolormesh(x, y, z, norm=cbar.norm, cmap=cmap, edgecolors=edgecolors)
 
         # centerpoint, histogram height, maximum likelihood for each bin
         bins.append(((xlo + xhi) / 2, y_top[-1], exp(cbar.norm.vmin - pv[0])))
@@ -298,7 +307,13 @@ def make_logp_histogram(values, logp, nbins, ci, weights, cbar, axes):
     ml_peak = np.max(maxlikelihood)
     if ml_peak > hist_peak * 1.3:
         maxlikelihood *= hist_peak * 1.3 / ml_peak
-    axes.plot(centers, maxlikelihood, "-g")
+        ml_peak = hist_peak * 1.3
+    ax.plot(centers, maxlikelihood, "-b")
+
+    # Leave space for parameter label and statistics markers at the top of the plot
+    ax.autoscale(enable=True, axis="x", tight=True)
+    ax.set_ylim(0, 1.1 * max(hist_peak, ml_peak))
+    # ax.autoscale(enable=True, axis='y', tight=False)
 
     ## plot marginal gaussian approximation along with histogram
     # def G(x, mean, std):
