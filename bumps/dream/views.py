@@ -229,8 +229,9 @@ def plot_logp(state: MCMCDraw, portion: Optional[float] = None, outliers: bool =
     dy = np.std(logp, axis=1, ddof=1)
     p = wpolyfit(x, y, dy=dy, degree=1)
     px, dpx = p.ci(x, 1.0)
+    label = f"slope={format_uncertainty(p.coeff[0], p.std[0])}"
     trace.plot(x, px, "k-", x, px + dpx, "k-.", x, px - dpx, "k-.")
-    trace.text(x[0], y[0], "slope=" + format_uncertainty(p.coeff[0], p.std[0]), va="top", ha="left")
+    trace.text(0.02, 0.02, label, transform=trace.transAxes, va="bottom", ha="left")
 
     # Plot long likelihood histogram
     data = logp.flatten()
