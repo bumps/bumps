@@ -1028,9 +1028,9 @@ def load_problem(path: Path | str, args: list[str] | None = None):
         problem = deserialize_problem_bytes(data, method)
     # TODO: what is problem.path when we are deserializing from a session file?
     problem.path = str(path.resolve())
-    if not hasattr(problem, "name"):
+    if not getattr(problem, "name", None):
         problem.name = path.stem
-    if not hasattr(problem, "title"):
+    if not getattr(problem, "title", None):
         problem.title = path.name
 
     # Guard against the user changing parameters after defining the problem.
