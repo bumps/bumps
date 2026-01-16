@@ -119,7 +119,8 @@ def _plot(fig, hists, labels, n, show_ticks=None):
             if i != 0:
                 artist.setp(a.get_xticklabels(), visible=False)
             if i == n - 2 and j == n - 1:
-                a.set_xlabel(labels[j])
+                a.text(0.5, 1.02, labels[j], va="bottom", ha="center", transform=a.transAxes)
+                # a.set_xlabel(labels[j])
                 # a.xaxis.set_label_position("top")
                 # a.xaxis.set_offset_position("top")
             if not show_ticks:

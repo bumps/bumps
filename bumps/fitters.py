@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from h5py import Group
     from bumps.dream.state import MCMCDraw
 
+
 class ConsoleMonitor(monitor.TimedUpdate):
     """
     Display fit progress on the console
@@ -59,7 +60,8 @@ class ConsoleMonitor(monitor.TimedUpdate):
         sys.stdout.flush()
 
     def final(self, history: History, best: Dict[str, Any]):
-        self._print_chisq(history.step[0], best["value"], final=True)
+        k = history.step[0] if history.step else 0
+        self._print_chisq(k, best["value"], final=True)
         self._print_pars(best["point"])
         print(f"time {format_duration(history.time[0])}")
         sys.stdout.flush()
@@ -1040,6 +1042,7 @@ class DreamFit(FitBase):
     @classmethod
     def max_steps(cls, problem: "bumps.fitproblem.FitProblem", options: Optional[Dict[str, Any]] = None) -> int:
         from .dream.core import Dream
+
         options = _fill_defaults(options, cls.settings)
         num_fitparams = len(problem.getp())
         steps = options["steps"]
