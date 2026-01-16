@@ -15,6 +15,8 @@ from .stats import format_vars, save_vars, var_stats
 from .state import MCMCDraw, Draw
 
 CORRPLOT_MAXVAR = 25  # maximum number of variables to plot in correlation matrix
+TRACE_WSPACE = 0.15
+TRACE_HSPACE = 0.1
 
 
 # TODO: plot_all does not allow us to specify variables or their ranges
@@ -183,7 +185,7 @@ def plot_traces(
         vars = list(range(min(state.Nvar, max_traces)))
     clf()
     nw, nh = tile_axes(len(vars), fig=fig)
-    fig.subplots_adjust(hspace=0.1, wspace=0.15)
+    fig.subplots_adjust(hspace=TRACE_HSPACE, wspace=TRACE_WSPACE)
     for k, var in enumerate(vars):
         axes = fig.add_subplot(nw, nh, k + 1)
         plot_trace(state, var=var, portion=portion, axes=axes)

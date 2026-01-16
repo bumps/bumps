@@ -96,6 +96,23 @@ def tile_axes_square(n):
 
 
 def plot_vars(draw, all_vstats, fig=None, nbins: int = 30, full: bool = False):
+    """
+    Plot parameter histograms in a grid on the figure. Each bar on the histogram
+    is shaded according the nllf of points in that bar, sorted to make a color
+    gradient. The colorbar showing the nllf range is shared across all plots.
+
+    If *fig* is not provided and new figure will be created.
+
+    *nbins* controls the number of bars on each histogram.
+
+    Use *full=True* to plot the histogram across the full range of sample values. By
+    default *full=False* and only the central 95% range is histogrammed.
+
+    The plots can be unreadable when labels overwrite each other. You can adjust the
+    layout by setting H_SPACE, V_SPACE, T_MARGIN, B_MARGIN, L_MARGIN, R_MARGIN
+    (see pyplot.subplots_adjust), TILE_W, TILE_H (for aspect ratio of the subplots)
+    and CBAR_WIDTH (it's complicated). This will affect every subsequent plot.
+    """
     n = len(all_vstats)
     fig = _make_var_axes(n, fig=fig)
     cbar = _make_fig_colorbar(draw.logp, fig=fig)
