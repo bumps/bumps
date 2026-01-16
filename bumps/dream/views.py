@@ -183,10 +183,16 @@ def plot_traces(
         vars = list(range(min(state.Nvar, max_traces)))
     clf()
     nw, nh = tile_axes(len(vars), fig=fig)
-    fig.subplots_adjust(hspace=0.0)
+    fig.subplots_adjust(hspace=0.1)
     for k, var in enumerate(vars):
         axes = fig.add_subplot(nw, nh, k + 1)
         plot_trace(state, var=var, portion=portion, axes=axes)
+        axes.set_yticklabels([])
+        row = k // nh
+        if row != nw - 1:
+            # print(f"row {row} of {nw} x {nh}")
+            axes.set_xticklabels([])
+            axes.set_xlabel("")
 
 
 def plot_trace(state: MCMCDraw, var: int = 0, portion: Optional[float] = None, axes=None, fig=None):
@@ -202,7 +208,8 @@ def plot_trace(state: MCMCDraw, var: int = 0, portion: Optional[float] = None, a
     axes.clear()
     axes.plot(generations, chains[:, :, var])
     axes.set_xlabel("Generation number")
-    axes.set_ylabel(label)
+    # axes.set_ylabel(label)
+    axes.text(0.93, 0.93, label, ha="right", va="top", transform=axes.transAxes, backgroundcolor=(1.0, 1.0, 1.0, 0.7))
 
 
 def plot_logp(state: MCMCDraw, portion: Optional[float] = None, outliers: bool = False):
