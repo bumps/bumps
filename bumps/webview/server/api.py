@@ -455,7 +455,7 @@ async def export_results(export_path: Union[str, List[str]] = ""):
     # from concurrent.futures import ThreadPoolExecutor
 
     problem_state = state.problem
-    if problem_state is None:
+    if problem_state is None or problem_state.fitProblem is None:
         logger.warning("Save failed: no problem loaded.")
         return
 
