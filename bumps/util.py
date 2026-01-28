@@ -492,7 +492,7 @@ def format_uncertainty(mean, std):
     if isnan(mean):
         return "NaN"
 
-    return clean_exponent(f"{ufloat(mean, std):S}")
+    return clean_exponent(f"{ufloat(mean, std):.2uS}")
 
 
 def format_duration_demo():

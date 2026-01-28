@@ -20,9 +20,27 @@ import numpy as np
 from uncertainties import ufloat, ufloat_fromstr
 
 
+def clean_exponent(s: str) -> str:
+    """Remove leading + and leading zeros from exponent in a scientific notation number."""
+    head, sep, tail = s.partition("e")
+
+    # If there is no 'e', return the original string
+    if not sep:
+        return s
+
+    # Reassemble: head + 'e' + cleaned integer exponent
+    return f"{head}e{int(tail)}"
+
+
 def format_uncertainty(mean, std):
     """Opinionated formatting of mean and standard deviation."""
-    return f"{ufloat(mean, std):S}"
+    # Handle indefinite value
+    if np.isinf(mean):
+        return "inf" if mean > 0 else "-inf"
+    if np.isnan(mean):
+        return "NaN"
+
+    return clean_exponent(f"{ufloat(mean, std):.2uS}")
 
 
 class VarStats(object):
