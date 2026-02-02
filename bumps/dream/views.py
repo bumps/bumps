@@ -15,6 +15,8 @@ from .stats import format_vars, save_vars, var_stats
 from .state import MCMCDraw, Draw
 
 CORRPLOT_MAXVAR = 25  # maximum number of variables to plot in correlation matrix
+TRACE_WSPACE = 0.15
+TRACE_HSPACE = 0.1
 
 
 # TODO: plot_all does not allow us to specify variables or their ranges
@@ -183,10 +185,20 @@ def plot_traces(
         vars = list(range(min(state.Nvar, max_traces)))
     plt.clf()
     nw, nh = tile_axes(len(vars), fig=fig)
-    fig.subplots_adjust(hspace=0.0)
+    fig.subplots_adjust(hspace=TRACE_HSPACE, wspace=TRACE_WSPACE)
     for k, var in enumerate(vars):
         axes = fig.add_subplot(nw, nh, k + 1)
         plot_trace(state, var=var, portion=portion, axes=axes)
+        axes.set_yticklabels([])
+        # TODO: label traces on the plots to save space between plots
+        # label = state.labels[var]
+        # axes.text(0.93, 0.93, label, ha="right", va="top", transform=axes.transAxes, backgroundcolor=(1.0, 1.0, 1.0, 0.75))
+        # axes.set_ylabel("")
+        row = k // nh
+        if row != nw - 1:
+            # print(f"row {row} of {nw} x {nh}")
+            axes.set_xticklabels([])
+            axes.set_xlabel("")
 
 
 def plot_trace(state: MCMCDraw, var: int = 0, portion: Optional[float] = None, axes=None, fig=None):
@@ -229,8 +241,9 @@ def plot_logp(state: MCMCDraw, portion: Optional[float] = None, outliers: bool =
     dy = np.std(logp, axis=1, ddof=1)
     p = wpolyfit(x, y, dy=dy, degree=1)
     px, dpx = p.ci(x, 1.0)
+    label = f"slope={format_uncertainty(p.coeff[0], p.std[0])}"
     trace.plot(x, px, "k-", x, px + dpx, "k-.", x, px - dpx, "k-.")
-    trace.text(x[0], y[0], "slope=" + format_uncertainty(p.coeff[0], p.std[0]), va="top", ha="left")
+    trace.text(0.02, 0.02, label, transform=trace.transAxes, va="bottom", ha="left")
 
     # Plot long likelihood histogram
     data = logp.flatten()
