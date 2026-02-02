@@ -357,50 +357,50 @@ def test():
 
 def demo():
     """Show bsline curve for a set of control points."""
-    from pylab import linspace, subplot, plot, legend, show
+    import matplotlib.pyplot as plt
 
     # y = [9 ,6, 1, 3, 8, 4, 2]
     # y = [9, 11, 13, 3, -2, 0, 2]
     y = [9, 11, 2, 3, 8, 0]
     # y = [9, 9, 1, 3, 8, 2, 2]
-    x = linspace(0, 1, len(y))
-    t = linspace(x[0], x[-1], 400)
-    subplot(211)
-    plot(t, bspline(y, t, clamp=False), "-.y", label="unclamped bspline")  # bspline
+    x = np.linspace(0, 1, len(y))
+    t = np.linspace(x[0], x[-1], 400)
+    plt.subplot(211)
+    plt.plot(t, bspline(y, t, clamp=False), "-.y", label="unclamped bspline")  # bspline
     # bspline
-    plot(t, bspline(y, t, clamp=True), "-y", label="clamped bspline")
-    plot(sorted(x), y, ":oy", label="control points")
-    legend()
+    plt.plot(t, bspline(y, t, clamp=True), "-y", label="clamped bspline")
+    plt.plot(sorted(x), y, ":oy", label="control points")
+    plt.legend()
     # left, right = _derivs(t, bspline(y, t, clamp=False))
     # print(left, (y[1] - y[0]) / (x[1] - x[0]))
 
-    subplot(212)
+    plt.subplot(212)
     xt, yt = pbs(x, y, t, clamp=False)
-    plot(xt, yt, "-.b", label="unclamped pbs")  # pbs
+    plt.plot(xt, yt, "-.b", label="unclamped pbs")  # pbs
     xt, yt = pbs(x, y, t, clamp=True)
-    plot(xt, yt, "-b", label="clamped pbs")  # pbs
+    plt.plot(xt, yt, "-b", label="clamped pbs")  # pbs
     # xt,yt = pbs(x,y,t,clamp=True, parametric=True)
     # plot(xt,yt,'-g') # pbs
-    plot(sorted(x), y, ":ob", label="control points")
-    legend()
-    show()
+    plt.plot(sorted(x), y, ":ob", label="control points")
+    plt.legend()
+    plt.show()
 
 
 # B-Spline control point inverse function is not yet implemented
 """
 def demo_interp():
-    from pylab import linspace, plot, show
-    x = linspace(0, 1, 7)
+    import matplotlib.pyplot as plt
+    x = np.linspace(0, 1, 7)
     y = [9, 11, 2, 3, 8, 0, 2]
-    t = linspace(0, 1, 400)
+    t = np.linspace(0, 1, 400)
     yc = bspline_control(y, clamp=True)
-    xc = linspace(x[0], x[-1], 9)
-    plot(xc, yc, ':oy', x, y, 'xg')
+    xc = np.linspace(x[0], x[-1], 9)
+    plt.plot(xc, yc, ':oy', x, y, 'xg')
     #knot = np.hstack((0, np.linspace(0,1,len(y)), 1))
     #fy = _bspline3(knot,yc,t)
     fy = bspline(yc, t, clamp=True)
-    plot(t, fy, '-.y')
-    show()
+    plt.plot(t, fy, '-.y')
+    plt.show()
 """
 
 if __name__ == "__main__":

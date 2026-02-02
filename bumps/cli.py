@@ -79,11 +79,11 @@ def preview(problem, view=None):
     """
     Show the problem plots and parameters.
     """
-    import pylab
+    import matplotlib.pyplot as plt
 
     problem.show()
     problem.plot(view=view)
-    pylab.show()
+    plt.show()
 
 
 def save_best(fitdriver, problem, best, view=None):
@@ -383,8 +383,8 @@ def config_matplotlib(backend=None):
     This distinction allows us to run in environments such as cluster computers
     which do not have wx installed on the compute nodes.
 
-    This function must be called before any imports to pylab.  To allow
-    this, modules should not import pylab at the module level, but instead
+    This function must be called before any imports to matplotlib.  To allow
+    this, modules should not import matplotlib at the module level, but instead
     import it for each function/method that uses it.  Exceptions can be made
     for modules which are completely dedicated to plotting, but these modules
     should never be imported at the module level.
@@ -693,9 +693,9 @@ def main():
         # Display the plots
         if not opts.batch and not opts.mpi and not opts.noshow:
             beep()
-            import pylab
+            import matplotlib.pyplot as plt
 
-            pylab.show()
+            plt.show()
 
 
 # Allow  "$python -m bumps.cli args" calling pattern

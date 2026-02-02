@@ -302,7 +302,7 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, idx, cbar_edges, show
     ## TODO: use weighted average for standard deviation
     # mean, std = np.average(values, weights=weights), np.std(values, ddof=1)
     # pdf = G(centers, mean, std)
-    # pylab.plot(centers, pdf*np.sum(height)/np.sum(pdf), '-b')
+    # plt.plot(centers, pdf*np.sum(height)/np.sum(pdf), '-b')
 
 
 def subplot_axis_names(subplot: int):

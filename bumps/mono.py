@@ -95,16 +95,17 @@ def plot_inflections(x, y):
     """
     Plot inflection points in a curve.
     """
+    import matplotlib.pyplot as plt
+
     m = (y[2:] - y[:-2]) / (x[2:] - x[:-2])
     b = y[2:] - m * x[2:]
     delta = y[1:-1] - (m * x[1:-1] + b)
     t = linspace(x[0], x[-1], 400)
-    import pylab
 
-    ax1 = pylab.subplot(211)
-    pylab.plot(t, monospline(x, y, t), "-b", x, y, "ob")
-    pylab.subplot(212, sharex=ax1)
+    ax1 = plt.subplot(211)
+    plt.plot(t, monospline(x, y, t), "-b", x, y, "ob")
+    plt.subplot(212, sharex=ax1)
     delta_x = x[1:-1]
-    pylab.stem(delta_x, delta)
-    pylab.plot(delta_x[delta < 0], delta[delta < 0], "og")
-    pylab.axis([x[0], x[-1], min(min(delta), 0), max(max(delta), 0)])
+    plt.stem(delta_x, delta)
+    plt.plot(delta_x[delta < 0], delta[delta < 0], "og")
+    plt.axis([x[0], x[-1], min(min(delta), 0), max(max(delta), 0)])
