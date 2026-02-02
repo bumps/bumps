@@ -74,7 +74,9 @@ class BumpsOptions:
     # Fitter controls.
     fit_options: Dict[str, Any] = field(default_factory=dict)
     resume: bool = False
-    # fit_outputs: Dict[str, Any] = field(default_factory=dict)
+    show_cov: bool = False
+    show_err: bool = False
+    show_entropy: Optional[str] = None
 
     # Session file controls.
     session: Optional[str] = None
@@ -258,41 +260,36 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
             help=option.build_help() if option.fitters else argparse.SUPPRESS,
         )
 
-    # TODO: show uncertainty at the end of the fit
-    # # Fit outputs
-    # output = parser.add_argument_group("Fitting outputs")
-    # output.add_argument(
-    #     "--err",
-    #     action=DictAction,
-    #     dest="fit_outputs.err",
-    #     type=bool,
-    #     metavar=" ",
-    #     nargs=0,
-    #     help="Show uncertainty from covariance",
-    # )
-    # output.add_argument(
-    #     "--cov",
-    #     action=DictAction,
-    #     dest="fit_outputs.cov",
-    #     type=bool,
-    #     metavar=" ",
-    #     nargs=0,
-    #     help="Show covariance matrix on output",
-    # )
-    # output.add_argument(
-    #     "--entropy",
-    #     action=DictAction,
-    #     dest="fit_outputs.entropy",
-    #     type=str,
-    #     choices=["gmm", "mvn", "wnn", "llf"],
-    #     help=dedent("""\
-    #     Compute entropy from uncertainty distribution [dream only]:
-    #         mvn: Fit to a single multivariate normal
-    #         gmm: Fit to a Gaussian mixture model
-    #         wnn: Weighted Kozeachenko-Leonenko nearest neighbour (Berrettt 2016)
-    #         llf: Use local density to estimate loglikelihood factor (Kramer 2010)
-    #     """),
-    # )
+    # Fit outputs
+    output = parser.add_argument_group("Fitting outputs")
+    output.add_argument(
+        "--err",
+        action="store_true",
+        dest="show_err",
+        help="Show uncertainty from covariance",
+    )
+    output.add_argument(
+        "--cov",
+        action="store_true",
+        dest="show_cov",
+        help="Show covariance matrix on output",
+    )
+    output.add_argument(
+        "--entropy",
+        dest="show_entropy",
+        type=str,  # TODO: type is str|None
+        default=None,
+        const="gmm",
+        nargs="?",
+        choices=["gmm", "mvn", "wnn", "llf"],
+        help=dedent("""\
+        Compute entropy from uncertainty distribution [dream only]:
+            mvn: Fit to a single multivariate normal
+            gmm: Fit to a Gaussian mixture model
+            wnn: Weighted Kozeachenko-Leonenko nearest neighbour (Berrettt 2016)
+            llf: Use local density to estimate loglikelihood factor (Kramer 2010)
+        """),
+    )
 
     # Session file controls.
     session = parser.add_argument_group("Session file management")
@@ -706,6 +703,50 @@ def interpret_fit_options(options: BumpsOptions):
             if api.state.problem is not None:
                 await api.start_fit_thread(fitter_id, fitopts, resume=options.resume)
 
+        # TODO: This is duplicating code from bumps/fitters.py. Move it and share it.
+        def _show_results(show_err: bool = True, show_cov: bool = False, show_entropy: str | None = None):
+            import numpy as np
+            from bumps.lsqerror import stderr
+            from bumps.dream.entropy import cov_entropy
+            from bumps.formatnum import format_uncertainty
+            from bumps.dream.stats import var_stats, format_vars
+
+            if not (show_err or show_cov or show_entropy):
+                return
+
+            problem, state = api.state.problem.fitProblem, api.state.fitting.fit_state
+            x = problem.getp()
+            # TODO: Should we show the estimates from derivatives even when running dream?
+            if state is None:
+                cov = problem.cov(x)
+                vstats = None
+                dx = stderr(cov)
+                S, dS = cov_entropy(cov), 0
+            else:
+                draw = state.draw()
+                # TODO: if there are derived variables then problem.show() doesn't work
+                # TODO: sample from whole population, not just the end, to reduce autocorrelation
+                if show_cov:
+                    cov = np.cov(draw.points[-1000:].T)
+                vstats = var_stats(draw)
+                # dx = np.array([(v.p68[1] - v.p68[0]) / 2 for v in vstats])
+                if show_entropy:
+                    entropy_method = show_entropy
+                    S, dS = state.entropy(method=entropy_method)
+
+            if show_cov:
+                problem.show_cov(x, cov)
+            if show_err:
+                if state is None:
+                    problem.show_err(x, dx)
+                else:
+                    print(format_vars(vstats))
+            if show_entropy:
+                print(f"Entropy: {format_uncertainty(S, dS)} bits")
+
+        async def show_results(App=None):
+            _show_results(options.show_err, options.show_cov, options.show_entropy)
+
         on_startup.append(start_fit)
         api.state.console_update_interval = 0 if webview else 1
 
@@ -718,6 +759,9 @@ def interpret_fit_options(options: BumpsOptions):
         if options.export and autostop:
             # print("adding completion lambda")
             on_complete.append(lambda App=None: api.export_results(options.export))
+
+        if autostop:
+            on_complete.append(show_results)
 
         # TODO: cleaner handling of autostop
         if webview and autostop:  # trigger shutdown on fit complete [webview only]
