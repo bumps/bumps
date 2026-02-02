@@ -953,8 +953,8 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
             ha, va = "right", "top"
             fig.text(x, y, chisq, transform=transform, va=va, ha=ha, fontsize=fontsize)
 
-            # pylab.suptitle("Model %d - %s" % (i, f.name))
-            # pylab.text(0.01, 0.01, "chisq=%s" % fitness_chisq_str(f), transform=pylab.gca().transAxes)
+            # plt.suptitle("Model %d - %s" % (i, f.name))
+            # plt.text(0.01, 0.01, "chisq=%s" % fitness_chisq_str(f), transform=plt.gca().transAxes)
             if outfile:
                 plt.savefig(outfile, format="png")
 

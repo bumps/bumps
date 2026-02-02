@@ -147,7 +147,7 @@ def _decorate_histogram(vstats: "VarStats", fig: dict, subplot: int = 1):
             hovertext=info_template.format(position=position, label=vstats.label),
         )
         fig["layout"]["annotations"].append(new_marker)
-        # pylab.axvline(v)
+        # plt.axvline(v)
 
     marker("|", vstats.median, "{label}<br>median: {position}")
     marker("E", vstats.mean, "{label}<br>mean: {position}")
@@ -282,7 +282,7 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, idx, cbar_edges, show
     ## TODO: use weighted average for standard deviation
     # mean, std = np.average(values, weights=weights), np.std(values, ddof=1)
     # pdf = G(centers, mean, std)
-    # pylab.plot(centers, pdf*np.sum(height)/np.sum(pdf), '-b')
+    # plt.plot(centers, pdf*np.sum(height)/np.sum(pdf), '-b')
 
 
 def subplot_axis_names(subplot: int):
