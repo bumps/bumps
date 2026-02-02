@@ -19,8 +19,7 @@ from . import initpop
 from . import lsqerror
 
 from .history import History
-from .formatnum import format_uncertainty
-from .util import NDArray, format_duration
+from .util import NDArray, format_duration, format_uncertainty
 
 # For typing
 from typing import TYPE_CHECKING, List, Tuple, Dict, Any, Optional
@@ -29,6 +28,7 @@ from numpy.typing import NDArray
 if TYPE_CHECKING:
     from h5py import Group
     from bumps.dream.state import MCMCDraw
+
 
 class ConsoleMonitor(monitor.TimedUpdate):
     """
@@ -1040,6 +1040,7 @@ class DreamFit(FitBase):
     @classmethod
     def max_steps(cls, problem: "bumps.fitproblem.FitProblem", options: Optional[Dict[str, Any]] = None) -> int:
         from .dream.core import Dream
+
         options = _fill_defaults(options, cls.settings)
         num_fitparams = len(problem.getp())
         steps = options["steps"]
