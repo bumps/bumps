@@ -201,6 +201,10 @@ def store_overwrite_query(path):
         sys.exit(1)
 
 
+def sanitize_filename(name: str) -> str:
+    return re.sub(r"[^A-Za-z0-9._-]", "_", name)
+
+
 def make_store(problem, opts, exists_handler):
     """
     Create the store directory and populate it with the model definition file.
@@ -210,7 +214,14 @@ def make_store(problem, opts, exists_handler):
         problem.store = opts.store
     if getattr(problem, "store", None) is None:
         raise RuntimeError("Need to specify '--store=path' on command line or problem.store='path' in definition file.")
-    problem.output_path = os.path.join(problem.store, problem.name)
+    stem = (
+        Path(problem.path).stem
+        if hasattr(problem, "path")
+        else sanitize_filename(problem.name)
+        if problem.name
+        else "problem"
+    )
+    problem.output_path = os.path.join(problem.store, stem)
 
     # Check if already exists
     store_exists = os.path.exists(problem.output_path + ".par")
