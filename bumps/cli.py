@@ -215,7 +215,7 @@ def make_store(problem, opts, exists_handler):
     if getattr(problem, "store", None) is None:
         raise RuntimeError("Need to specify '--store=path' on command line or problem.store='path' in definition file.")
     stem = (
-        problem.path.stem
+        Path(problem.path).stem
         if hasattr(problem, "path")
         else sanitize_filename(problem.name)
         if problem.name
