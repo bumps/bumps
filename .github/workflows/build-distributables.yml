@@ -22,7 +22,7 @@ jobs:
           - { os: ubuntu-latest }
           - { os: windows-latest }
           - { os: macos-latest }
-          - { os: macos-13 }
+          - { os: macos-15-intel }
 
     steps:
     - uses: actions/checkout@v6
