@@ -14,6 +14,7 @@ include bin/*
 recursive-include bumps/webview/client/dist *.html *.js *.css *.svg *.png
 recursive-include bumps/webview/client/src *.html *.js *.mjs *.css *.svg *.png *.ts *.vue
 recursive-include bumps/dream/random123/include *.h
+recursive-include bumps/gui/resources *.ico *.png *.wav
 include bumps/dream/random123/LICENSE
 include bumps/dream/compiled.c
 include bumps/webview/client/*.html
