@@ -849,6 +849,7 @@ class State:
         except Exception as e:
             # logger.exception(e)
             logger.warning(f"could not load session file {session_fullpath} because of {e}")
+            raise e
 
     def read_problem_from_session(self, session_fullpath: str):
         try:

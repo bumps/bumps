@@ -185,10 +185,46 @@ class SupportsPrior:
     limits: Tuple[float, float]
     distribution: DistributionType
     bounds: BoundsType
+    slot: Union["Variable", ValueType]
 
-    def reset_prior(self):
-        limits = (-inf, inf) if self.limits is None else self.limits
-        if self.bounds is not None:
+    def has_prior(self):
+        return (
+            self.prior is not None
+            and not isinstance(self.prior, mbounds.Unbounded)
+            and self.prior.limits != (-np.inf, np.inf)
+        )
+
+    def reset_prior(
+        self,
+        distribution: Optional[DistributionType] = None,
+        bounds: Optional[BoundsType] = None,
+        limits: Optional[Tuple[float, float]] = None,
+    ):
+        # use self values if they are found:
+        if distribution is None and self.distribution is not None:
+            distribution = self.distribution
+        if bounds is None and self.bounds is not None:
+            bounds = self.bounds
+        if limits is None:
+            if self.limits is not None:
+                limits = self.limits
+            else:
+                limits = (-inf, inf)
+
+        if bounds is not None:
+            lo, hi = bounds
+            if hasattr(lo, "value") or hasattr(hi, "value"):
+                # if bounds inlude other parameters or expression:
+                lo_limit, hi_limit = limits
+                self.prior = mbounds.DynamicBounds(lo, hi, lo_limit=lo_limit, hi_limit=hi_limit)
+                if not isinstance(self.slot, Reparameterized):
+                    print("reparameterizing slot for dynamic bounds", self.name)
+                    self.slot = Reparameterized(name=self.name, prior=self.prior, value01=self.value, fixed=self.fixed)
+                # new id every time:
+                else:
+                    print("reusing reparameterized slot for dynamic bounds", self.name)
+                # self.fixed = True  # reparameterized slot is always fixed
+                return
             # get the intersection of the limits here.
             limits = (np.clip(limits[0], *self.bounds), np.clip(limits[1], *self.bounds))
 
@@ -439,6 +475,8 @@ class Parameter(ValueProtocol, SupportsPrior):
         # Can't set fixed to false if the parameter is not fittable
         if self.fittable:
             self._fixed = state
+        elif isinstance(self.slot, Reparameterized):
+            self.slot.value01.fixed = state
         elif not state:
             raise TypeError(f"value in {self.name} is not fittable")
 
@@ -599,7 +637,7 @@ class Parameter(ValueProtocol, SupportsPrior):
                 slot = value
             else:
                 raise TypeError("value %s: %s cannot be converted to Variable" % (str(name), str(value)))
-        assert isinstance(slot, (float, Variable, Expression, Parameter, Constant, Calculation))
+        assert isinstance(slot, (float, Variable, Expression, Parameter, Constant, Calculation, Reparameterized))
 
         self.slot = slot
         self.name = name
@@ -914,6 +952,106 @@ class Expression(ValueProtocol):
         else:
             # f(a, b, ...) with no parens needed
             return f"{self.op.name}({', '.join(v for v in vals)})"
+
+
+@dataclass
+class FixedLimitParameter(ValueProtocol):
+    """
+    A parameter that is not named, but is used in the model, with fixed limits.
+
+    This is used in reparameterization to create a paramter o create a parameter that is not named, but is used in the
+    model. It is useful for creating parameters that are not meant to be
+    displayed to the user, but are used in the model.
+    """
+
+    slot: Variable
+    name: Optional[str] = "ReparameterizedValue"  # name is not used, but can be set for debugging
+    limits: Tuple[float, float] = (0.0, 1.0)  # hard limits on the value
+    fixed: bool = True  # fixed means that the value cannot be changed
+    id: str = field(metadata={"format": "uuid"}, default_factory=lambda: str(uuid.uuid4()))
+
+    fittable = True
+
+    @property
+    def value(self):
+        """
+        Return the value of the parameter as a float.
+        """
+        return self.slot.value
+
+    @value.setter
+    def value(self, value: float):
+        self.slot.value = value
+
+
+@dataclass(init=False)
+class Reparameterized(ValueProtocol):
+    """
+    A specialized expression for a parameter with dynamic bounds.
+
+    Must be initilalized with a DynamicBounds and an initial value.
+    """
+
+    name: str
+    prior: mbounds.DynamicBounds
+    value01: Parameter
+
+    has_prior = lambda self: True  # this is a reparameterized parameter with a prior
+    fittable = False
+
+    def __init__(self, name: str, prior: mbounds.DynamicBounds, value01: Union[float, Parameter], fixed: bool = True):
+        if not isinstance(prior, mbounds.DynamicBounds):
+            raise TypeError("prior must be a DynamicBounds")
+        self.prior = prior
+        self.name = name
+        print("initializing Reparameterized with prior: ", prior, fixed, value01, type(value01))
+        if isinstance(value01, Parameter):
+            self.value01 = value01
+        elif isinstance(value01, (float, int)):
+            value01 = prior.get01(value01)
+            self.value01 = Parameter(
+                name=f"{name} value01",
+                slot=Variable(value01),
+                limits=(0.0, 1.0),
+                bounds=(0.0, 1.0),
+                fixed=fixed,
+                tags=["reparameterized"],
+                prior=mbounds.Bounded(0.0, 1.0),  # default prior for value01
+            )
+            self.value01.reset_prior()
+        else:
+            raise TypeError(f"value must be a float or Parameter, not {type(value)}")
+
+        print(self.name, self.value01.value, self.value01.id, id(self.value01))
+        name = name if name is not None else "Reparameterized"
+
+    def parameters(self):
+        return [self.value01] + self.prior.parameters()
+
+    @property
+    def fixed(self):
+        return self.value01.fixed
+
+    @fixed.setter
+    def fixed(self, state: bool):
+        self.value01.fixed = state
+
+    @property
+    def value(self):
+        return self.prior.put01(self.value01.value)
+
+    def __float__(self):
+        """
+        Return the value of the parameter as a float.
+        """
+        return self.value
+
+    # @value.setter:
+    # def value(self, value: float):
+    #     self.value01.value = self.prior.get01(value)
+
+    def __str__(self):
+        return f"Reparameterized({self.prior}, {self.value})"
 
 
 def _make_unary_op(op_name: str):
