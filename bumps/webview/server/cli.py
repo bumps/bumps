@@ -537,6 +537,7 @@ def interpret_fit_options(options: BumpsOptions):
     write_session = options.write_session if options.write_session is not None else options.session
 
     # The logic for setting the current fit problem is complex.
+    #
     # (1) bumps [PATH/MODEL.py] --reload-export=PATH[/MODEL.par] [--session=SESSION.h5] [--resume]
     #     Load the results of a pre-1.0 bumps fit. Use PATH/MODEL.py if specified, otherwise
     #     use ./MODEL.py in the current directory, or ./GLOB.par with PATH/*.par expands only
@@ -631,13 +632,13 @@ def interpret_fit_options(options: BumpsOptions):
 
         async def load_problem_to_state(App=None):
             path = Path(options.filename).absolute()
-            logger.debug(f"fitter for filename {path.name} is {fitter_id}")
             problem = load_problem(path, args=options.args)
             await api.set_problem(problem, path.parent, path.name)
 
         on_startup.append(load_problem_to_state)
 
     # TODO: allow pars to be loaded from a session file.
+    # TODO: verify that --pars doesn't interfere with --resume
     if options.pars is not None:
         filepath = Path(options.pars).absolute()
         pars_pathlist = list(filepath.parent.parts)
