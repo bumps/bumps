@@ -1036,7 +1036,7 @@ def main(options: Optional[BumpsOptions] = None):
         from mpi4py import MPI
 
         is_controller = MPI.COMM_WORLD.rank == 0
-        # api.state.rank = f"{MPI.COMM_WORLD.rank:3d}: "
+        api.state.rank = MPI.COMM_WORLD.rank
     else:
         is_controller = True
         # api.state.rank = ""

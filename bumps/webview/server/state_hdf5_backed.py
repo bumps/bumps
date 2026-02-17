@@ -665,6 +665,7 @@ class State:
     calling_loop: Optional[asyncio.AbstractEventLoop] = None
     base_path: str = ""
     console_update_interval: int = 0  # seconds (float would work too, but unnecessary)
+    rank: int = -1  # for mpi: -1 means not set (not mpi), 0 is controller, >0 are workers
 
     # State to be stored:
     problem: ProblemState
@@ -700,8 +701,11 @@ class State:
                 self.save()
 
     def save_to_history(self, label: str, keep: bool = False) -> str:
+        if self.rank is not None and self.rank > 0:
+            # only the controller should save to history, not the mpi workers
+            return ""
         if self.problem.fitProblem is None:
-            return
+            return ""
         item = HistoryItem()
         item.problem = deepcopy(self.problem)
         # Creates a reference to the current fit_state, not a copy
@@ -785,6 +789,10 @@ class State:
             self.save()
 
     def save(self):
+        # only save if not in MPI worker process:
+        if self.rank is not None and self.rank > 0:
+            # print(f"Not saving session in MPI worker process with rank {self.rank}")
+            return
         if self.shared.session_output_file not in (None, UNDEFINED):
             pathlist = self.shared.session_output_file["pathlist"]
             filename = self.shared.session_output_file["filename"]
