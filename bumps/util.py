@@ -2,10 +2,9 @@
 Miscellaneous utility functions.
 """
 
-__all__ = ["kbhit", "profile", "pushdir", "push_seed", "redirect_console"]
+__all__ = ["kbhit", "profile", "pushdir", "push_seed", "redirect_console", "format_uncertainty"]
 
 import os
-import re
 import sys
 import types
 from dataclasses import Field, dataclass, field, fields, is_dataclass
@@ -32,15 +31,16 @@ from typing import (
 )
 
 import numpy as np
-from numpy import ascontiguousarray as _dense, isinf, isnan
 
 # **DEPRECATED** we can import erf directly from scipy.special.erf
 # so there is no longer a need for bumps.util.erf.
 from scipy.special import erf
-from uncertainties import ufloat
 
 USE_PYDANTIC = os.environ.get("BUMPS_USE_PYDANTIC", "False") == "True"
-from numpy.typing import NDArray
+from numpy.typing import NDArray  # noqa
+
+# Use the DREAM version of format_uncertainty for other places in bumps
+from .dream.stats import format_uncertainty  # noqa
 
 
 def field_desc(description: str) -> Any:
@@ -471,62 +471,6 @@ def format_duration(seconds):
                 return f"{value:.1f} {unit_name}s"
 
     return f"0.0 {units[-1][0]}"
-
-
-def clean_exponent(s: str) -> str:
-    """Remove leading + and leading zeros from exponent in a scientific notation number."""
-    head, sep, tail = s.partition("e")
-
-    # If there is no 'e', return the original string
-    if not sep:
-        return s
-
-    # Reassemble: head + 'e' + cleaned integer exponent
-    return f"{head}e{int(tail)}"
-
-
-def format_uncertainty(mean, std):
-    """Opinionated formatting of mean and standard deviation."""
-    # Handle indefinite value
-    if isinf(mean):
-        return "inf" if mean > 0 else "-inf"
-    if isnan(mean):
-        return "NaN"
-
-    if std is None or std <= 0 or isnan(std):
-        return str(mean)
-    if isinf(std):
-        # Format val(inf) using two digits of precision
-        two_digits = f"{ufloat(mean, abs(mean)):.2uS}"
-        return clean_exponent(re.sub(r"\(.*\)", "(inf)", two_digits))
-
-    return clean_exponent(f"{ufloat(mean, std):uS}")
-
-
-def test_format_uncertainty():
-    from math import inf, nan
-
-    def check_val(val, unc, expected):
-        res = format_uncertainty(val, unc)
-        # if res != expected:
-        #    print(f"{val} ± {unc} => {res} != {expected}")
-        assert res == expected, f"{val} ± {unc} => {res} != {expected}"
-
-    # non-finite values
-    check_val(-inf, None, "-inf")
-    check_val(inf, None, "inf")
-    check_val(nan, None, "NaN")
-
-    # bad or missing uncertainty
-    check_val(-1.23567, nan, "-1.23567")
-    check_val(-1.23567, -inf, "-1.23567")
-    check_val(-1.23567, -0.1, "-1.23567")
-    check_val(-1.23567, 0, "-1.23567")
-    check_val(-1.23567, None, "-1.23567")
-    check_val(-1.23567, inf, "-1.2(inf)")
-    check_val(-123.567, inf, "-1.2(inf)e2")
-    check_val(-0.00123567, inf, "-0.0012(inf)")
-    check_val(-0.0000123567, inf, "-1.2(inf)e-5")
 
 
 def format_duration_demo():

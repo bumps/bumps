@@ -5,6 +5,8 @@ Statistics helper functions.
 __all__ = [
     "VarStats",
     "var_stats",
+    "format_uncertainty",
+    "format_num",
     "format_vars",
     "parse_var",
     "stats",
@@ -17,7 +19,6 @@ import re
 import json
 
 import numpy as np
-
 from uncertainties import ufloat, ufloat_fromstr
 
 
@@ -41,7 +42,40 @@ def format_uncertainty(mean, std):
     if np.isnan(mean):
         return "NaN"
 
+    if std is None or std <= 0 or np.isnan(std):
+        return str(mean)
+    if np.isinf(std):
+        # Format val(inf) using two digits of precision
+        two_digits = f"{ufloat(mean, abs(mean)):.2uS}"
+        return clean_exponent(re.sub(r"\(.*\)", "(inf)", two_digits))
+
     return clean_exponent(f"{ufloat(mean, std):.2uS}")
+
+
+def test_format_uncertainty():
+    from math import inf, nan
+
+    def check_val(val, unc, expected):
+        res = format_uncertainty(val, unc)
+        # if res != expected:
+        #    print(f"{val} ± {unc} => {res} != {expected}")
+        assert res == expected, f"{val} ± {unc} => {res} != {expected}"
+
+    # non-finite values
+    check_val(-inf, None, "-inf")
+    check_val(inf, None, "inf")
+    check_val(nan, None, "NaN")
+
+    # bad or missing uncertainty
+    check_val(-1.23567, nan, "-1.23567")
+    check_val(-1.23567, -inf, "-1.23567")
+    check_val(-1.23567, -0.1, "-1.23567")
+    check_val(-1.23567, 0, "-1.23567")
+    check_val(-1.23567, None, "-1.23567")
+    check_val(-1.23567, inf, "-1.2(inf)")
+    check_val(-123.567, inf, "-1.2(inf)e2")
+    check_val(-0.00123567, inf, "-0.0012(inf)")
+    check_val(-0.0000123567, inf, "-1.2(inf)e-5")
 
 
 @dataclass
