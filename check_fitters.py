@@ -86,6 +86,7 @@ def run_fits(model_args, path, fitters=FIT_AVAILABLE_IDS, seed=1, target=0):
             store = Path(path) / f"{f}.hdf"
             run_fit(f, model_args, str(store), seed=seed)
             check_fit(f, store, target)
+            raise Failure
         except Exception as exc:
             # import traceback; traceback.print_exc()
             print(str(exc))
