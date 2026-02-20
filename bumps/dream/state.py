@@ -85,7 +85,7 @@ from fnmatch import fnmatch
 
 import numpy as np
 from numpy import empty, sum, asarray, inf, argmax, hstack, dstack
-from numpy import savetxt, reshape
+from numpy import loadtxt, savetxt, reshape
 from numpy.typing import NDArray
 
 from .convergence import burn_point
@@ -359,7 +359,18 @@ IND_PAT = re.compile("-1#IND")
 INF_PAT = re.compile("1#INF")
 
 
-def loadtxt(file, report=0):
+def loadtxt_with_fallback(file, report=0):
+    """
+    Try to load the file with numpy.loadtxt, but if it fails then
+    fall back to loadtxt_MSVC, which is adapted for windows non-finite numbers.
+    """
+    try:
+        return loadtxt(file)
+    except Exception:
+        return loadtxt_MSVC(file, report=report)
+
+
+def loadtxt_MSVC(file, report=0):
     """
     Like numpy loadtxt, but adapted for windows non-finite numbers.
     """
@@ -436,7 +447,7 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
 
     # Read chain file
     with openmc(filename + "-chain" + EXT) as fid:
-        chain = loadtxt(fid)
+        chain = loadtxt_with_fallback(fid)
 
     # Read point file
     with openmc(filename + "-point" + EXT) as fid:
@@ -445,12 +456,12 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
         Nthin, Npop, Nvar = eval(point_dims)
         for _ in range(skip * Npop):
             fid.readline()
-        point = loadtxt(fid, report=report * Npop)
+        point = loadtxt_with_fallback(fid, report=report * Npop)
 
     # Read stats file
     with openmc(filename + "-stats" + EXT) as fd:
         stats_header = fd.readline()
-        stats = loadtxt(fd)
+        stats = loadtxt_with_fallback(fd)
 
     # Determine number of R-stat stored in the stats file
     if "R-stat" in stats_header:
