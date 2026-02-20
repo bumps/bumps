@@ -1781,6 +1781,12 @@ def fit(
     method = options.pop("fit", method)
     session = options.pop("store", session)
 
+    checkpoint_interval = options.pop("checkpoint", None)
+    if checkpoint_interval is not None:
+        warnings.warn("Checkpointing is not yet implemented in the simple fit interface")
+        # if session is None:
+        #     warnings.warn("Cannot save checkpoints when no session file is given.")
+
     # verbose = True
     if method not in FIT_AVAILABLE_IDS:
         raise ValueError("unknown fit method %r not one of %s" % (method, ", ".join(sorted(FIT_ACTIVE_IDS))))
