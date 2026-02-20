@@ -22,11 +22,14 @@ import math
 import numpy as np
 from numpy import diag, empty, isinf, isfinite, clip, inf
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from numpy.typing import NDArray
 
+if TYPE_CHECKING:
+    from .fitproblem import FitProblem
 
-def generate(problem, init="eps", pop=10, use_point=True, **options):
+
+def generate(problem: "FitProblem", init="eps", pop=10, use_point=True, **options):
     # type: (Any, str, int, bool, ...) -> NDArray
     """
     Population initializer.
@@ -53,7 +56,7 @@ def generate(problem, init="eps", pop=10, use_point=True, **options):
     if init == "random":
         population = random_init(pop_size, initial, bounds, use_point=use_point, problem=problem)
     elif init == "cov":
-        cov = problem.cov()
+        cov = problem.cov(initial)
         population = cov_init(pop_size, initial, bounds, use_point=use_point, cov=cov)
     elif init == "lhs":
         population = lhs_init(pop_size, initial, bounds, use_point=use_point)

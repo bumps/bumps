@@ -12,6 +12,7 @@ __all__ = [
     "shortest_credible_interval",
 ]
 
+from dataclasses import dataclass, field
 import re
 import json
 
@@ -43,9 +44,25 @@ def format_uncertainty(mean, std):
     return clean_exponent(f"{ufloat(mean, std):.2uS}")
 
 
+@dataclass
 class VarStats(object):
-    def __init__(self, **kw):
-        self.__dict__ = kw
+    label: str
+    index: int
+    p95: tuple[float, float]
+    p68: tuple[float, float]
+    # p95sd: float
+    # p68sd: float
+    median: float
+    mean: float
+    std: float
+    best: float
+    integer: bool = False
+    p95_range: tuple[float, float] = field(init=False)
+    p68_range: tuple[float, float] = field(init=False)
+
+    def __post_init__(self):
+        self.p95_range = (self.p95[0], self.p95[1] + self.integer * 0.9999999999)
+        self.p68_range = (self.p68[0], self.p68[1] + self.integer * 0.9999999999)
 
     def __str__(self):
         return f"{self.label}={format_uncertainty(self.mean, self.std)}"
@@ -93,9 +110,7 @@ def _var_stats_one(draw, var):
         label=draw.labels[var],
         index=var + 1,
         p95=p95,
-        p95_range=(p95[0], p95[1] + integer * 0.9999999999),
         p68=p68,
-        p68_range=(p68[0], p68[1] + integer * 0.9999999999),
         # p95sd=p95sd, p68sd=p68sd,
         median=p0[0],
         mean=mean,

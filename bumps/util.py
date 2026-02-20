@@ -114,9 +114,9 @@ def parse_errfile(errfile):
         import glob
         errfile = glob.glob(os.path.join(path, '*.err'))[0]
     """
-    from .dream.stats import parse_var
+    from .dream.stats import parse_var, VarStats
 
-    pars = []
+    pars: List[VarStats] = []
     chisq = []
     overall = None
     with open(errfile) as fid:
@@ -135,7 +135,7 @@ def parse_errfile(errfile):
 
     if overall is None:
         overall = chisq[0]
-    pardict = dict((p.name, p) for p in pars)
+    pardict = dict((p.label, p) for p in pars)
     return overall, chisq, pardict
 
 

@@ -34,7 +34,7 @@ if typing.TYPE_CHECKING:
 
 CBAR_COLORS = 64
 LINE_COLOR = "red"
-ANNOTATION_COLOR = "blue"
+ANNOTATION_FONT = {"color": "blue", "size": 16}
 HISTOGRAM_COLORMAP = "Cividis"
 
 
@@ -107,13 +107,30 @@ def plot_var(fig: "go.Figure", draw: "Draw", vstats: "VarStats", var: int, cbar_
 
 
 def _decorate_histogram(vstats: "VarStats", fig: dict, subplot: int = 1):
-    import plotly.graph_objects as go
+    from bumps.dream.stats import format_num, format_uncertainty
 
     xaxis, yaxis = subplot_axis_names(subplot)
     l95, h95 = vstats.p95_range
     l68, h68 = vstats.p68_range
     # Shade things inside 1-sigma
 
+    # Make sure numbers are formatted with the appropriate precision
+    place = int(np.log10(h95 - l95)) - 2 if h95 > l95 else int(np.log10(abs(l95))) - 3 if l95 != 0 else 0
+
+    median_line = dict(
+        type="line",
+        x0=vstats.median,
+        x1=vstats.median,
+        y0=0,
+        y1=1,
+        xref=xaxis,
+        yref=f"{yaxis} domain",
+        line=dict(color="darkblue", width=1, dash="dot"),
+        layer="below",
+        # TODO: hovertext is not appearing when the cursor is above the line
+        hovertext=f"{vstats.label}<br>median: {format_num(vstats.median, place-1)}",
+    )
+    fig["layout"]["shapes"].append(median_line)
     shading_rect = dict(
         type="rect",
         x0=l68,
@@ -129,29 +146,32 @@ def _decorate_histogram(vstats: "VarStats", fig: dict, subplot: int = 1):
     )
     fig["layout"]["shapes"].append(shading_rect)
 
-    def marker(symbol, position, info_template):
+    # Mark the mean and best with symbols
+    def marker(symbol: str, position: float, hovertext: str) -> None:
         if position < l95:
-            symbol, position, ha = "<" + symbol, l95, "left"
+            text, x, ha = f"{symbol}←", l95, "left"
         elif position > h95:
-            symbol, position, ha = ">" + symbol, h95, "right"
+            text, x, ha = f"→{symbol}", h95, "right"
         else:
-            symbol, position, ha = symbol, position, "center"
+            text, x, ha = symbol, position, "center"
         new_marker = dict(
             xref=xaxis,
             yref=f"{yaxis} domain",
-            x=position,
-            y=0.95,
-            text=symbol,
+            x=x,
+            y=1.0,
+            xanchor=ha,
+            yanchor="top",
+            yshift=6,
+            text=text,
             showarrow=False,
-            font=dict(color=ANNOTATION_COLOR),
-            hovertext=info_template.format(position=position, label=vstats.label),
+            font=ANNOTATION_FONT,
+            hovertext=hovertext,
         )
         fig["layout"]["annotations"].append(new_marker)
-        # pylab.axvline(v)
 
-    marker("|", vstats.median, "{label}<br>median: {position}")
-    marker("E", vstats.mean, "{label}<br>mean: {position}")
-    marker("*", vstats.best, "{label}<br>best: {position}")
+    # marker("|", vstats.median, f"{vstats.label}<br>median: {format_num(vstats.median, place-1)}")
+    marker("▽", vstats.mean, f"{vstats.label}<br>mean: {format_uncertainty(vstats.mean, vstats.std)}")
+    marker("∗", vstats.best, f"{vstats.label}<br>best: {format_num(vstats.best, place-1)}")
 
     label_annotation = dict(
         xref=f"{xaxis} domain",
@@ -282,7 +302,7 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, idx, cbar_edges, show
     ## TODO: use weighted average for standard deviation
     # mean, std = np.average(values, weights=weights), np.std(values, ddof=1)
     # pdf = G(centers, mean, std)
-    # pylab.plot(centers, pdf*np.sum(height)/np.sum(pdf), '-b')
+    # plt.plot(centers, pdf*np.sum(height)/np.sum(pdf), '-b')
 
 
 def subplot_axis_names(subplot: int):

@@ -47,7 +47,7 @@ def _check_uniform_draw():
     """
     Draws from history should
     """
-    import pylab
+    import matplotlib.pyplot as plt
 
     k, n = 50, 400
     counts = np.zeros(n * k)
@@ -55,14 +55,14 @@ def _check_uniform_draw():
     for _ in range(100000):
         t = draw(k, n)
         counts[k * t + idx] += 1
-    pylab.subplot(211)
-    pylab.pcolormesh(np.reshape(counts, (n, k)))
-    pylab.colorbar()
-    pylab.title("drawn number vs. draw position")
-    pylab.subplot(212)
-    pylab.hist(counts)
-    pylab.title("number of draws per (number,position) bin")
-    pylab.show()
+    plt.subplot(211)
+    plt.pcolormesh(np.reshape(counts, (n, k)))
+    plt.colorbar()
+    plt.title("drawn number vs. draw position")
+    plt.subplot(212)
+    plt.hist(counts)
+    plt.title("number of draws per (number,position) bin")
+    plt.show()
 
 
 def console():
@@ -104,6 +104,6 @@ def console():
         ip.mainloop()
     else:
         # Not a tty; try doing show() anyway
-        import pylab
+        import matplotlib.pyplot as plt
 
-        pylab.show()
+        plt.show()

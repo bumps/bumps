@@ -365,20 +365,20 @@ class PolynomialModel(object):
         return "Polynomial(%s)" % self.coeff
 
     def plot(self, ci=1, pi=0):
-        import pylab
+        import matplotlib.pyplot as plt
 
         min_x, max_x = np.min(self.x), np.max(self.x)
         padding = (max_x - min_x) * 0.1
         x = np.linspace(min_x - padding, max_x + padding, 200)
         y = self.__call__(x)
-        pylab.errorbar(self.x, self.y, self.dy, fmt="b.")
-        pylab.plot(x, y, "b-")
+        plt.errorbar(self.x, self.y, self.dy, fmt="b.")
+        plt.plot(x, y, "b-")
         if ci > 0:
             _, cdy = self.ci(x, ci)
-            pylab.plot(x, y + cdy, "b-.", x, y - cdy, "b-.")
+            plt.plot(x, y + cdy, "b-.", x, y - cdy, "b-.")
         if pi > 0:
             py, pdy = self.pi(x, pi)
-            pylab.plot(x, y + pdy, "b-.", x, y - pdy, "b-.")
+            plt.plot(x, y + pdy, "b-.", x, y - pdy, "b-.")
 
 
 def wpolyfit(x, y, dy=1, degree=None, origin=False):
@@ -400,7 +400,7 @@ def demo():
     """
     Fit a random cubic polynomial.
     """
-    import pylab
+    import matplotlib.pyplot as plt
 
     # Make fake data
     x = np.linspace(-15, 5, 15)
@@ -411,18 +411,18 @@ def demo():
     # Fit to a polynomial
     poly = wpolyfit(x, y, dy=dy, degree=3)
     poly.plot()
-    pylab.show()
+    plt.show()
 
 
 def demo2():
-    import pylab
+    import matplotlib.pyplot as plt
 
     x = [1, 2, 3, 4, 5]
     y = [10.2, 7.9, 6.9, 4.4, 1.8]
     dy = [1, 3, 1, 0.2, 1.5]
     poly = wpolyfit(x, y, dy=dy, degree=1)
     poly.plot()
-    pylab.show()
+    plt.show()
 
 
 def test():

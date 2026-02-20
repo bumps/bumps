@@ -79,11 +79,11 @@ def preview(problem, view=None):
     """
     Show the problem plots and parameters.
     """
-    import pylab
+    import matplotlib.pyplot as plt
 
     problem.show()
     problem.plot(view=view)
-    pylab.show()
+    plt.show()
 
 
 def save_best(fitdriver, problem, best, view=None):
@@ -201,6 +201,10 @@ def store_overwrite_query(path):
         sys.exit(1)
 
 
+def sanitize_filename(name: str) -> str:
+    return re.sub(r"[^A-Za-z0-9._-]", "_", name)
+
+
 def make_store(problem, opts, exists_handler):
     """
     Create the store directory and populate it with the model definition file.
@@ -210,7 +214,14 @@ def make_store(problem, opts, exists_handler):
         problem.store = opts.store
     if getattr(problem, "store", None) is None:
         raise RuntimeError("Need to specify '--store=path' on command line or problem.store='path' in definition file.")
-    problem.output_path = os.path.join(problem.store, problem.name)
+    stem = (
+        Path(problem.path).stem
+        if hasattr(problem, "path")
+        else sanitize_filename(problem.name)
+        if problem.name
+        else "problem"
+    )
+    problem.output_path = os.path.join(problem.store, stem)
 
     # Check if already exists
     store_exists = os.path.exists(problem.output_path + ".par")
@@ -383,8 +394,8 @@ def config_matplotlib(backend=None):
     This distinction allows us to run in environments such as cluster computers
     which do not have wx installed on the compute nodes.
 
-    This function must be called before any imports to pylab.  To allow
-    this, modules should not import pylab at the module level, but instead
+    This function must be called before any imports to matplotlib.  To allow
+    this, modules should not import matplotlib at the module level, but instead
     import it for each function/method that uses it.  Exceptions can be made
     for modules which are completely dedicated to plotting, but these modules
     should never be imported at the module level.
@@ -693,9 +704,9 @@ def main():
         # Display the plots
         if not opts.batch and not opts.mpi and not opts.noshow:
             beep()
-            import pylab
+            import matplotlib.pyplot as plt
 
-            pylab.show()
+            plt.show()
 
 
 # Allow  "$python -m bumps.cli args" calling pattern

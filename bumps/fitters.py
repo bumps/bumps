@@ -59,7 +59,8 @@ class ConsoleMonitor(monitor.TimedUpdate):
         sys.stdout.flush()
 
     def final(self, history: History, best: Dict[str, Any]):
-        self._print_chisq(history.step[0], best["value"], final=True)
+        k = history.step[0] if history.step else 0
+        self._print_chisq(k, best["value"], final=True)
         self._print_pars(best["point"])
         print(f"time {format_duration(history.time[0])}")
         sys.stdout.flush()

@@ -44,7 +44,7 @@ jobs:
     # See the following for how to upload to a release
     #  https://eugene-babichenko.github.io/blog/2020/05/09/github-actions-cross-platform-auto-releases/
     - name: Archive artifacts
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v6
       with:
         name: artifacts
         path: |
@@ -55,7 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Retrieve all artifacts
-      uses: actions/download-artifact@v6
+      uses: actions/download-artifact@v7
       with:
         name: artifacts
 
