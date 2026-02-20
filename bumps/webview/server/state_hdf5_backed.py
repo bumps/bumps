@@ -786,6 +786,7 @@ class State:
 
     def save(self):
         if self.shared.session_output_file not in (None, UNDEFINED):
+            # print(f"Saving session file (pid={os.getpid()})...")
             pathlist = self.shared.session_output_file["pathlist"]
             filename = self.shared.session_output_file["filename"]
             full_path = Path(*pathlist) / filename

@@ -198,6 +198,7 @@ async def load_problem_file(
     problem = load_problem(path, args=args)
 
     await set_problem(problem, Path(*pathlist), filename, new_model=True, autosave_previous=autosave_previous)
+    state.autosave()
 
 
 @register
@@ -219,6 +220,7 @@ async def set_serialized_problem(
     """
     fitProblem = deserialize_problem(serialized, method=method)
     await set_problem(fitProblem, new_model=new_model, name=name)
+    state.autosave()
 
 
 async def set_fit_result(fit_result: FitResult):
@@ -308,7 +310,6 @@ async def set_problem(
         if state.shared.autosave_history and state.problem is not None and state.problem.fitProblem is not None:
             await save_to_history(f"Loaded model: {name}", keep=True)
         await add_notification(content=path_string, title="Model loaded", timeout=2000)
-    state.autosave()
 
 
 @register
