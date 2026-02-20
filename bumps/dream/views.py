@@ -11,7 +11,7 @@ import numpy as np
 from scipy.stats import gaussian_kde
 
 from . import corrplot, varplot
-from .stats import format_vars, save_vars, var_stats
+from .stats import format_vars, format_uncertainty, save_vars, var_stats
 from .state import MCMCDraw, Draw
 
 CORRPLOT_MAXVAR = 25  # maximum number of variables to plot in correlation matrix
@@ -233,8 +233,6 @@ def plot_logp(state: MCMCDraw, portion: Optional[float] = None, outliers: bool =
 
     # Plot log likelihood trend line
     from bumps.wsolve import wpolyfit
-
-    from .formatnum import format_uncertainty
 
     x = genid
     y = np.mean(logp, axis=1)

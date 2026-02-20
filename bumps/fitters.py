@@ -19,8 +19,7 @@ from . import initpop
 from . import lsqerror
 
 from .history import History
-from .formatnum import format_uncertainty
-from .util import NDArray, format_duration
+from .util import NDArray, format_duration, format_uncertainty
 
 # For typing
 from typing import TYPE_CHECKING, List, Tuple, Dict, Any, Optional

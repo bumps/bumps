@@ -5,6 +5,8 @@ Statistics helper functions.
 __all__ = [
     "VarStats",
     "var_stats",
+    "format_uncertainty",
+    "format_num",
     "format_vars",
     "parse_var",
     "stats",
@@ -17,8 +19,63 @@ import re
 import json
 
 import numpy as np
+from uncertainties import ufloat, ufloat_fromstr
 
-from .formatnum import format_uncertainty
+
+def clean_exponent(s: str) -> str:
+    """Remove leading + and leading zeros from exponent in a scientific notation number."""
+    head, sep, tail = s.partition("e")
+
+    # If there is no 'e', return the original string
+    if not sep:
+        return s
+
+    # Reassemble: head + 'e' + cleaned integer exponent
+    return f"{head}e{int(tail)}"
+
+
+def format_uncertainty(mean, std):
+    """Opinionated formatting of mean and standard deviation."""
+    # Handle indefinite value
+    if np.isinf(mean):
+        return "inf" if mean > 0 else "-inf"
+    if np.isnan(mean):
+        return "NaN"
+
+    if std is None or std <= 0 or np.isnan(std):
+        return str(mean)
+    if np.isinf(std):
+        # Format val(inf) using two digits of precision
+        two_digits = f"{ufloat(mean, abs(mean)):.2uS}"
+        return clean_exponent(re.sub(r"\(.*\)", "(inf)", two_digits))
+
+    return clean_exponent(f"{ufloat(mean, std):.2uS}")
+
+
+def test_format_uncertainty():
+    from math import inf, nan
+
+    def check_val(val, unc, expected):
+        res = format_uncertainty(val, unc)
+        # if res != expected:
+        #    print(f"{val} ± {unc} => {res} != {expected}")
+        assert res == expected, f"{val} ± {unc} => {res} != {expected}"
+
+    # non-finite values
+    check_val(-inf, None, "-inf")
+    check_val(inf, None, "inf")
+    check_val(nan, None, "NaN")
+
+    # bad or missing uncertainty
+    check_val(-1.23567, nan, "-1.23567")
+    check_val(-1.23567, -inf, "-1.23567")
+    check_val(-1.23567, -0.1, "-1.23567")
+    check_val(-1.23567, 0, "-1.23567")
+    check_val(-1.23567, None, "-1.23567")
+    check_val(-1.23567, inf, "-1.2(inf)")
+    check_val(-123.567, inf, "-1.2(inf)e2")
+    check_val(-0.00123567, inf, "-0.0012(inf)")
+    check_val(-0.0000123567, inf, "-1.2(inf)e-5")
 
 
 @dataclass
@@ -172,9 +229,7 @@ VAR_PATTERN = re.compile(
    ^\ *
    (?P<parnum>[0-9]+)\ +
    (?P<parname>.+?)\ +
-   (?P<mean>[0-9.-]+?)
-   \((?P<err>[0-9]+)\)
-   (e(?P<exp>[+-]?[0-9]+))?\ +
+   (?P<mean_with_std>[0-9.-]+?\([0-9.]+\)(e[+-]?[0-9]+)?)\ +
    (?P<median>[0-9.eE+-]+?)\ +
    (?P<best>[0-9.eE+-]+?)\ +
    \[\ *(?P<lo68>[0-9.eE+-]+?)\ +
@@ -194,11 +249,16 @@ def parse_var(line):
     """
     m = VAR_PATTERN.match(line)
     if m:
-        exp = int(m.group("exp")) if m.group("exp") else 0
+        # Parse the full ufloat string (e.g., "1.23(8)" or "1.2346(8)e+06")
+        parsed_value = ufloat_fromstr(m.group("mean_with_std"))
+        mean = parsed_value.nominal_value
+        std = parsed_value.std_dev
+
         return VarStats(
             index=int(m.group("parnum")),
             name=m.group("parname"),
-            mean=float(m.group("mean")) * 10**exp,
+            mean=mean,
+            std=std,
             median=float(m.group("median")),
             best=float(m.group("best")),
             p68=(float(m.group("lo68")), float(m.group("hi68"))),

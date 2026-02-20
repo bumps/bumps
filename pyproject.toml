@@ -43,6 +43,7 @@ dev = [
     'wheel',
     'setuptools',
     'sphinx',
+    'uncertainties',
     'versioningit',
 ]
 

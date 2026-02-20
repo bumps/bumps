@@ -708,7 +708,7 @@ def interpret_fit_options(options: BumpsOptions):
             import numpy as np
             from bumps.lsqerror import stderr
             from bumps.dream.entropy import cov_entropy
-            from bumps.formatnum import format_uncertainty
+            from bumps.util import format_uncertainty
             from bumps.dream.stats import var_stats, format_vars
 
             if not (show_err or show_cov or show_entropy):

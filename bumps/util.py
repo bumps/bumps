@@ -2,7 +2,7 @@
 Miscellaneous utility functions.
 """
 
-__all__ = ["kbhit", "profile", "pushdir", "push_seed", "redirect_console"]
+__all__ = ["kbhit", "profile", "pushdir", "push_seed", "redirect_console", "format_uncertainty"]
 
 import os
 import sys
@@ -31,14 +31,16 @@ from typing import (
 )
 
 import numpy as np
-from numpy import ascontiguousarray as _dense
 
 # **DEPRECATED** we can import erf directly from scipy.special.erf
 # so there is no longer a need for bumps.util.erf.
 from scipy.special import erf
 
 USE_PYDANTIC = os.environ.get("BUMPS_USE_PYDANTIC", "False") == "True"
-from numpy.typing import NDArray
+from numpy.typing import NDArray  # noqa
+
+# Use the DREAM version of format_uncertainty for other places in bumps
+from .dream.stats import format_uncertainty  # noqa
 
 
 def field_desc(description: str) -> Any:
@@ -490,3 +492,4 @@ def format_duration_demo():
 
 if __name__ == "__main__":
     format_duration_demo()
+    # test_format_uncertainty()
