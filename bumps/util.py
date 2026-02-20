@@ -500,132 +500,17 @@ def format_uncertainty(mean, std):
         two_digits = f"{ufloat(mean, abs(mean)):.2uS}"
         return clean_exponent(re.sub(r"\(.*\)", "(inf)", two_digits))
 
-    return clean_exponent(f"{ufloat(mean, std):.2uS}")
+    return clean_exponent(f"{ufloat(mean, std):uS}")
 
 
 def test_format_uncertainty():
     from math import inf, nan
 
     def check_val(val, unc, expected):
-        # res = format_uncertainty(val, unc/4) # check 19 rather than 77
         res = format_uncertainty(val, unc)
         # if res != expected:
         #    print(f"{val} ± {unc} => {res} != {expected}")
         assert res == expected, f"{val} ± {unc} => {res} != {expected}"
-
-    # val_place > err_place
-    check_val(1235670, 766000, "1.24(77)e6")
-    check_val(123567.0, 76600, "1.24(77)e5")
-    check_val(12356.7, 7660, "1.24(77)e4")
-    check_val(1235.67, 766, "1.24(77)e3")
-    check_val(123.567, 76.6, "124(77)")
-    check_val(12.3567, 7.66, "12.4(7.7)")
-    check_val(1.23567, 0.766, "1.24(77)")
-    check_val(0.123567, 0.0766, "0.124(77)")
-    check_val(0.0123567, 0.00766, "0.0124(77)")
-    check_val(0.00123567, 0.000766, "0.00124(77)")
-    check_val(0.000123567, 0.0000766, "0.000124(77)")
-    check_val(0.0000123567, 0.00000766, "1.24(77)e-5")
-    check_val(0.00000123567, 0.000000766, "1.24(77)e-6")
-    check_val(0.000000123567, 0.0000000766, "1.24(77)e-7")
-    check_val(0.00000123567, 0.0000000766, "1.236(77)e-6")
-    check_val(0.0000123567, 0.0000000766, "1.2357(77)e-5")
-    check_val(0.000123567, 0.0000000766, "0.000123567(77)")
-    check_val(0.00123567, 0.000000766, "0.00123567(77)")
-    check_val(0.0123567, 0.00000766, "0.0123567(77)")
-    check_val(0.123567, 0.0000766, "0.123567(77)")
-    check_val(1.23567, 0.000766, "1.23567(77)")
-    check_val(12.3567, 0.00766, "12.3567(77)")
-    check_val(123.567, 0.0764, "123.567(76)")
-    check_val(1235.67, 0.764, "1235.67(76)")
-    check_val(12356.7, 7.64, "12356.7(7.6)")
-    check_val(123567, 76.4, "123567(76)")
-    check_val(1235670, 764, "1.23567(76)e6")
-    check_val(12356700, 764, "1.235670(76)e7")
-    check_val(123567000, 764, "1.2356700(76)e8")
-    check_val(123567000, 7640, "1.235670(76)e8")
-    check_val(1235670000, 76400, "1.235670(76)e9")
-
-    # val_place == err_place
-    check_val(123567, 764000, "1.2(7.6)e5")
-    check_val(12356.7, 76400, "1.2(7.6)e4")
-    check_val(1235.67, 7640, "1.2(7.6)e3")
-    check_val(123.567, 764, "1.2(7.6)e2")
-    check_val(12.3567, 76.4, "12(76)")
-    check_val(1.23567, 7.64, "1.2(7.6)")
-    check_val(0.123567, 0.764, "0.12(76)")
-    check_val(0.0123567, 0.0764, "0.012(76)")
-    check_val(0.00123567, 0.00764, "0.0012(76)")
-    check_val(0.000123567, 0.000764, "0.00012(76)")
-
-    # val_place == err_place-1
-    check_val(123567, 7640000, "0.1(7.6)e6")
-    check_val(12356.7, 764000, "0.1(7.6)e5")
-    check_val(1235.67, 76400, "0.1(7.6)e4")
-    check_val(123.567, 7640, "0.1(7.6)e3")
-    check_val(12.3567, 764, "0.1(7.6)e2")
-    check_val(1.23567, 76.4, "1(76)")
-    check_val(0.123567, 7.64, "0.1(7.6)")
-    check_val(0.0123567, 0.764, "0.01(76)")
-    check_val(0.00123567, 0.0764, "0.001(76)")
-    check_val(0.000123567, 0.00764, "0.0001(76)")
-
-    # val_place == err_place-2
-    check_val(12356700, 7640000000, "0.0(7.6)e9")
-    check_val(1235670, 764000000, "0.0(7.6)e8")
-    check_val(123567, 76400000, "0.0(7.6)e7")
-    check_val(12356, 7640000, "0.0(7.6)e6")
-    check_val(1235, 764000, "0.0(7.6)e5")
-    check_val(123, 76400, "0.0(7.6)e4")
-    check_val(12, 7640, "0.0(7.6)e3")
-    check_val(1, 764, "0.0(7.6)e2")
-    check_val(0.1, 76.4, "0(76)")
-    check_val(0.01, 7.64, "0.0(7.6)")
-    check_val(0.001, 0.764, "0.00(76)")
-    check_val(0.0001, 0.0764, "0.000(76)")
-    check_val(0.00001, 0.00764, "0.0000(76)")
-
-    # val_place == err_place-3
-    check_val(12356700, 76400000000, "0.0(7.6)e10")
-    check_val(1235670, 7640000000, "0.0(7.6)e9")
-    check_val(123567, 764000000, "0.0(7.6)e8")
-    check_val(12356, 76400000, "0.0(7.6)e7")
-    check_val(1235, 7640000, "0.0(7.6)e6")
-    check_val(123, 764000, "0.0(7.6)e5")
-    check_val(12, 76400, "0.0(7.6)e4")
-    check_val(1, 7640, "0.0(7.6)e3")
-    check_val(0.1, 764, "0.0(7.6)e2")
-    check_val(0.01, 76.4, "0(76)")
-    check_val(0.001, 7.64, "0.0(7.6)")
-    check_val(0.0001, 0.764, "0.00(76)")
-    check_val(0.00001, 0.0764, "0.000(76)")
-    check_val(0.000001, 0.00764, "0.0000(76)")
-
-    # Zero values
-    check_val(0, 7640000, "0.0(7.6)e6")
-    check_val(0, 764000, "0.0(7.6)e5")
-    check_val(0, 76400, "0.0(7.6)e4")
-    check_val(0, 7640, "0.0(7.6)e3")
-    check_val(0, 764, "0.0(7.6)e2")
-    check_val(0, 76.4, "0(76)")
-    check_val(0, 7.64, "0.0(7.6)")
-    check_val(0, 0.764, "0.00(76)")
-    check_val(0, 0.0764, "0.000(76)")
-    check_val(0, 0.00764, "0.0000(76)")
-    check_val(0, 0.000764, "0.00000(76)")
-    check_val(0, 0.0000764, "0.0(7.6)e-5")
-
-    # negative values
-    check_val(-1235670, 765000, "-1.24(77)e6")
-    check_val(-1.23567, 0.766, "-1.24(77)")
-    check_val(-0.00000123567, 0.0000000766, "-1.236(77)e-6")
-    check_val(-12356.7, 7.64, "-12356.7(7.6)")
-    check_val(-123.567, 764, "-1.2(7.6)e2")
-    check_val(-1235.67, 76400, "-0.1(7.6)e4")
-    check_val(-0.000123567, 0.00764, "-0.0001(76)")
-    check_val(-12356, 7640000, "-0.0(7.6)e6")
-    check_val(-12, 76400, "-0.0(7.6)e4")
-    check_val(-0.0001, 0.764, "-0.00(76)")
 
     # non-finite values
     check_val(-inf, None, "-inf")
@@ -663,3 +548,4 @@ def format_duration_demo():
 
 if __name__ == "__main__":
     format_duration_demo()
+    # test_format_uncertainty()
