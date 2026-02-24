@@ -83,6 +83,7 @@ class BumpsOptions:
     read_session: Optional[str] = None
     write_session: Optional[str] = None
     serializer: SERIALIZERS = "dataclass"
+    checkpoint: int = 300
     auto_history: bool = True
     path: Optional[str] = None
     use_persistent_path: bool = False
@@ -324,6 +325,12 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
             """),
     )
     session.add_argument(
+        "--checkpoint",
+        default=300,
+        type=int,
+        help="session autosave interval in seconds. This is also the update interval for the DREAM parameter histograms.",
+    )
+    session.add_argument(
         "--serializer",
         default=BumpsOptions.serializer,
         type=str,
@@ -554,6 +561,8 @@ def interpret_fit_options(options: BumpsOptions):
             pathlist=list(write_session_path.parent.parts), filename=write_session_path.name
         )
         api.state.shared.autosave_session = True
+
+    api.state.shared.autosave_session_interval = options.checkpoint
 
     if api.state.problem.serializer is None or api.state.problem.serializer == "":
         api.state.problem.serializer = options.serializer
