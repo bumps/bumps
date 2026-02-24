@@ -78,14 +78,14 @@ __all__ = ["MCMCDraw", "Draw", "dream_load", "h5load", "h5dump"]
 import os.path
 import re
 import gzip
-from typing import List, Dict, Tuple, Union, Optional, Callable
+from typing import List, Dict, TextIO, Tuple, Union, Optional, Callable
 from pathlib import Path
 import warnings
 from fnmatch import fnmatch
 
 import numpy as np
 from numpy import empty, sum, asarray, inf, argmax, hstack, dstack
-from numpy import savetxt, reshape
+from numpy import loadtxt, savetxt, reshape
 from numpy.typing import NDArray
 
 from .convergence import burn_point
@@ -359,18 +359,26 @@ IND_PAT = re.compile("-1#IND")
 INF_PAT = re.compile("1#INF")
 
 
-def loadtxt(file, report=0):
+def loadtxt_with_fallback(file: TextIO, report=0):
+    """
+    Try to load the file with numpy.loadtxt, but if it fails then
+    fall back to loadtxt_MSVC, which is adapted for windows non-finite numbers.
+    """
+
+    # record current position in file so that we can reset it if loadtxt fails
+    pos = file.tell()
+    try:
+        return loadtxt(file)
+    except Exception:
+        file.seek(pos)
+        return loadtxt_MSVC(file, report=report)
+
+
+def loadtxt_MSVC(fh: TextIO, report=0):
     """
     Like numpy loadtxt, but adapted for windows non-finite numbers.
     """
-    if not hasattr(file, "readline"):
-        if file.endswith(".gz"):
-            # print("opening with gzip")
-            fh = gzip.open(file, "rt")
-        else:
-            fh = open(file, "rt")
-    else:
-        fh = file
+
     res = []
     section = 0
     lineno = 0
@@ -388,17 +396,15 @@ def loadtxt(file, report=0):
                 res.append([float(v) for v in values])
             except ValueError:
                 print("Parse error:", values)
-    if fh != file:
-        fh.close()
     return asarray(res)
 
 
-def path_contains_saved_state(filename):
+def path_contains_saved_state(filename: str) -> bool:
     chain_file = filename + "-chain" + EXT
     return os.path.exists(chain_file)
 
 
-def openmc(filename):
+def openmc(filename: str) -> TextIO:
     # If filename ends in .mc.gz, also check for a .mc file.
     # If filename ends in .mc, also check for a .mc.gz file.
     if filename.endswith(".gz"):
@@ -420,7 +426,7 @@ def openmc(filename):
     return fh
 
 
-def load_state(filename, skip=0, report=0, derived_vars=0):
+def load_state(filename: str, skip=0, report=0, derived_vars=0):
     """
     *filename* is the path to the saved MCMC state up to the final -chain.mc, etc.
     Any extension will be removed before using.
@@ -436,7 +442,7 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
 
     # Read chain file
     with openmc(filename + "-chain" + EXT) as fid:
-        chain = loadtxt(fid)
+        chain = loadtxt_with_fallback(fid)
 
     # Read point file
     with openmc(filename + "-point" + EXT) as fid:
@@ -445,12 +451,12 @@ def load_state(filename, skip=0, report=0, derived_vars=0):
         Nthin, Npop, Nvar = eval(point_dims)
         for _ in range(skip * Npop):
             fid.readline()
-        point = loadtxt(fid, report=report * Npop)
+        point = loadtxt_with_fallback(fid, report=report * Npop)
 
     # Read stats file
     with openmc(filename + "-stats" + EXT) as fd:
         stats_header = fd.readline()
-        stats = loadtxt(fd)
+        stats = loadtxt_with_fallback(fd)
 
     # Determine number of R-stat stored in the stats file
     if "R-stat" in stats_header:
