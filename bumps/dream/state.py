@@ -404,7 +404,7 @@ def path_contains_saved_state(filename):
     return os.path.exists(chain_file)
 
 
-def openmc(filename):
+def openmc(filename) -> TextIO:
     # If filename ends in .mc.gz, also check for a .mc file.
     # If filename ends in .mc, also check for a .mc.gz file.
     if filename.endswith(".gz"):
