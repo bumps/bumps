@@ -78,7 +78,7 @@ __all__ = ["MCMCDraw", "Draw", "dream_load", "h5load", "h5dump"]
 import os.path
 import re
 import gzip
-from typing import List, Dict, Tuple, Union, Optional, Callable
+from typing import List, Dict, TextIO, Tuple, Union, Optional, Callable
 from pathlib import Path
 import warnings
 from fnmatch import fnmatch
@@ -359,29 +359,26 @@ IND_PAT = re.compile("-1#IND")
 INF_PAT = re.compile("1#INF")
 
 
-def loadtxt_with_fallback(file, report=0):
+def loadtxt_with_fallback(file: TextIO, report=0):
     """
     Try to load the file with numpy.loadtxt, but if it fails then
     fall back to loadtxt_MSVC, which is adapted for windows non-finite numbers.
     """
+
+    # record current position in file so that we can reset it if loadtxt fails
+    pos = file.tell()
     try:
         return loadtxt(file)
     except Exception:
+        file.seek(pos)
         return loadtxt_MSVC(file, report=report)
 
 
-def loadtxt_MSVC(file, report=0):
+def loadtxt_MSVC(fh: TextIO, report=0):
     """
     Like numpy loadtxt, but adapted for windows non-finite numbers.
     """
-    if not hasattr(file, "readline"):
-        if file.endswith(".gz"):
-            # print("opening with gzip")
-            fh = gzip.open(file, "rt")
-        else:
-            fh = open(file, "rt")
-    else:
-        fh = file
+
     res = []
     section = 0
     lineno = 0
@@ -399,8 +396,6 @@ def loadtxt_MSVC(file, report=0):
                 res.append([float(v) for v in values])
             except ValueError:
                 print("Parse error:", values)
-    if fh != file:
-        fh.close()
     return asarray(res)
 
 
