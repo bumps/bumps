@@ -399,12 +399,12 @@ def loadtxt_MSVC(fh: TextIO, report=0):
     return asarray(res)
 
 
-def path_contains_saved_state(filename):
+def path_contains_saved_state(filename: str) -> bool:
     chain_file = filename + "-chain" + EXT
     return os.path.exists(chain_file)
 
 
-def openmc(filename) -> TextIO:
+def openmc(filename: str) -> TextIO:
     # If filename ends in .mc.gz, also check for a .mc file.
     # If filename ends in .mc, also check for a .mc.gz file.
     if filename.endswith(".gz"):
@@ -426,7 +426,7 @@ def openmc(filename) -> TextIO:
     return fh
 
 
-def load_state(filename, skip=0, report=0, derived_vars=0):
+def load_state(filename: str, skip=0, report=0, derived_vars=0):
     """
     *filename* is the path to the saved MCMC state up to the final -chain.mc, etc.
     Any extension will be removed before using.
