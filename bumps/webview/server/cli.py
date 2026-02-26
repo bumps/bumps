@@ -101,6 +101,7 @@ class BumpsOptions:
     export: Optional[str] = None
     trace: bool = False
     parallel: int = 0
+    threads: bool = False
     mpi: Optional[bool] = None
 
     # Webserver controls.
