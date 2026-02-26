@@ -5,14 +5,14 @@ Basic command line usage::
     # Run a model from show its χ² value. This is useful for debugging the model file.
     bumps model.py --chisq
 
-    # Run a simple batch fit, appending results to a store file.
-    bumps -b --session=T1.hdf model.py
+    # Run a simple batch fit on model.py, appending results to a store file.
+    bumps --batch --session=T1.hdf model.py
 
-    # Run a DREAM fit to explore parameter uncertainties
-    bumps -b --session=T1.hdf model.py --fit=dream
+    # Run a DREAM fit on model.py to explore parameter uncertainties
+    bumps --batch --session=T1.hdf model.py --fit=dream
 
-    # Load and fit the last model in a session file.
-    bumps -b --session=T1.hdf
+    # Load and resume the last fit in a session file. The model.py file is ignored.
+    bumps --batch --session=T1.hdf [model.py] --resume
 
 Basic interactive usage::
 
@@ -26,7 +26,7 @@ Basic interactive usage::
     bumps model.py --run --session=T1.hdf
 
 There are many more options available to control the fit, particularly for
-batch mode fitting, and to control the viewer. To see them type::
+batch mode fitting. To see them type::
 
     bumps --help
 """
@@ -46,7 +46,7 @@ import hashlib
 
 from bumps import __version__ as bumps_version
 from bumps.fitters import FIT_AVAILABLE_IDS
-from bumps.fitproblem import FitProblem
+from bumps.fitproblem import FitProblem, load_problem
 from . import api
 from . import persistent_settings
 from . import fit_options
@@ -543,7 +543,35 @@ def interpret_fit_options(options: BumpsOptions):
     read_session = options.read_session if options.read_session is not None else options.session
     write_session = options.write_session if options.write_session is not None else options.session
 
+    # The logic for setting the current fit problem is complex.
+    #
+    # (1) bumps [PATH/MODEL.py] --reload-export=PATH[/MODEL.par] [--session=SESSION.h5] [--resume]
+    #     Load the results of a pre-1.0 bumps fit. Use PATH/MODEL.py if specified, otherwise
+    #     use ./MODEL.py in the current directory, or ./GLOB.par with PATH/*.par expands only
+    #     to PATH/GLOB.par. This is useful for exploring the results of an old DREAM run, and
+    #     possibly resuming the fit. This loads the model from its original location
+    #     because the model script probably refers to data files using relative paths, and these
+    #     aren't included in the export directory.
+    # (2) bumps PATH/MODEL.py --session=SESSION.h5
+    #     Load from PATH/MODEL.py even if SESSION.h5 is available. This is useful for a workflow
+    #     where you tweak the model script then rerun the fit, collecting all the results in
+    #     SESSION.h5.
+    # (3) bumps PATH/MODEL.py --session=SESSION.h5 --resume
+    #     Load from SESSION.h5 even if PATH/MODEL.py is available. This is useful for resuming
+    #     the fit where it left off, even if the model constraints were adjusted in webview
+    #     before fitting.
+    # (4) bumps --session=SESSION.h5
+    #     Load from SESSION.h5. This is useful for a workflow primarily driven by webview, but
+    #     done over multiple sessions.
+    #
+    # More succinctly:
+    #
+    #     Use --reload-export if specified.
+    #     Otherwise use MODEL.py if specified except on resume.
+    #     Otherwise use SESSION.h5.
+
     # TODO: why is session file read immediately but model.py delayed?
+    # If a session file exists load the problem.
     if read_session is not None:
         read_session_path = Path(read_session).absolute()
         if read_session_path.exists():
@@ -603,7 +631,6 @@ def interpret_fit_options(options: BumpsOptions):
             problem, fit = reload_export(options.reload_export, modelfile=options.filename, args=options.args)
             path = Path(problem.path)
             await api.set_problem(problem, path.parent, path.name, fit=fit)
-            api.state.autosave()
 
         on_startup.append(load_export_to_state)
 
@@ -611,13 +638,16 @@ def interpret_fit_options(options: BumpsOptions):
     # resume only works when you have an identical problem, so we don't load from file
     # if you are resuming the fit.
     elif options.filename is not None and not options.resume:
-        filepath = Path(options.filename).absolute()
-        model_pathlist = list(filepath.parent.parts)
-        model_filename = filepath.name
-        logger.debug(f"fitter for filename {model_filename} is {fitter_id}")
-        on_startup.append(lambda App: api.load_problem_file(model_pathlist, model_filename, args=options.args))
+
+        async def load_problem_to_state(App=None):
+            path = Path(options.filename).absolute()
+            problem = load_problem(path, args=options.args)
+            await api.set_problem(problem, path.parent, path.name)
+
+        on_startup.append(load_problem_to_state)
 
     # TODO: allow pars to be loaded from a session file.
+    # TODO: verify that --pars doesn't interfere with --resume
     if options.pars is not None:
         filepath = Path(options.pars).absolute()
         pars_pathlist = list(filepath.parent.parts)
