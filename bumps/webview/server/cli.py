@@ -40,7 +40,7 @@ from typing import Callable, Dict, Optional, List, Any
 import warnings
 import signal
 import sys
-from dataclasses import field
+from dataclasses import field, fields
 import hashlib
 # from textwrap import dedent
 
@@ -59,13 +59,25 @@ PREFERRED_PORT = 5148  # "SLAB"
 
 
 # TODO: try datargs to build a parser from the typed dataclass
+
+
 @dataclass
 class BumpsOptions:
-    """provide type hints for arguments"""
+    """
+    Bumps options returned from the command line parser.
 
-    # TODO: verify that attributes correspond to command line options
-    # Note: order of attributes should match order of arguments in
-    # the options processor while we are relying on manual verification.
+    This can be used as a stand-alone object if you are invoking
+    bumps from a script without using the command line parser.
+    """
+
+    # The list of command line argument destinations must match the list
+    # of BumpsOptions attributes, including default values. This check
+    # is performed in test_bumps_options() during CI.
+    #
+    # Although the default values from BumpsOptions are used when parsing,
+    # the bumps --help output will show the default value from the command
+    # line parser. The easiest way to ensure these are the same is to set
+    # default=BumpsOptions.field when defining field in the parser.
 
     # Positional arguments.
     filename: Optional[str] = None
@@ -94,14 +106,16 @@ class BumpsOptions:
     simulate: bool = False
     simrandom: bool = False
     shake: bool = False
-    noise: float = 5
+    noise: float = 5.0
     seed: int = 0
 
     # Program controls.
     chisq: bool = False
     export: Optional[str] = None
     trace: bool = False
+    loglevel: str = "warn"
     parallel: int = 0
+    threads: bool = False
     mpi: Optional[bool] = None
 
     # Webserver controls.
@@ -167,18 +181,13 @@ def _branding():
     return output
 
 
-def get_commandline_options(arg_defaults: Optional[Dict] = None):
-    """Parse bumps command line options."""
-    # TODO: if running as a refl1d we should show prog=refl1d instead of prog=bumps
+def build_arg_parser() -> argparse.ArgumentParser:
     # TODO: allow --pars from session file
-    # TODO: missing options from pre-1.0
+    # TODO: missing the following options from pre-1.0
     """
-
     # Wait for someone to ask for the following
     --overwrite                    [new version extends session file]
         if store already exists, replace it
-    --checkpoint=0                 [verify we have checkpointing in batch mode]
-        save fit state every n hours, or 0 for no checkpoints
     --resynth=0
         run resynthesis error analysis for n generations
     --time_model
@@ -279,7 +288,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         "--entropy",
         dest="show_entropy",
         type=str,  # TODO: type is str|None
-        default=None,
+        default=BumpsOptions.show_entropy,
         const="gmm",
         nargs="?",
         choices=["gmm", "mvn", "wnn", "llf"],
@@ -317,6 +326,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     )
     session.add_argument(
         "--resume",
+        default=BumpsOptions.resume,
         action=argparse.BooleanOptionalAction,
         help=dedent("""\
             Resume the most recent fit from the saved session file. [dream, de]
@@ -339,7 +349,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     )
     session.add_argument(
         "--auto-history",
-        default=True,
+        default=BumpsOptions.auto_history,
         action=argparse.BooleanOptionalAction,
         help="auto-append problem state to history on load and at the end of the fit",
     )
@@ -380,7 +390,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     sim.add_argument(
         "--noise",
         type=float,
-        default=5.0,
+        default=BumpsOptions.noise,
         help="percent noise to add to the simulated data",
     )
     sim.add_argument(
@@ -405,7 +415,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     misc.add_argument("--pars", default=None, type=str, help="start a fit from an exported result.")
     misc.add_argument(
         "--parallel",
-        default=0,
+        default=BumpsOptions.parallel,
         type=int,
         help="run fit using multiprocessing for parallelism; use --parallel=0 for all cpus",
     )
@@ -430,7 +440,7 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         type=str,
         choices=list(LOGLEVEL.keys()),
         help="display logging to console",
-        default="warn",
+        default=BumpsOptions.loglevel,
     )
     # Show version numbers for both bumps and child program
     misc.add_argument(
@@ -490,13 +500,13 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
     server.add_argument(
         "-p",
         "--port",
-        default=0,
+        default=BumpsOptions.port,
         type=int,
         help=f"web server port; use --port=0 to first try {PREFERRED_PORT} then fall back to a random port",
     )
     server.add_argument(
         "--hub",
-        default=None,
+        default=BumpsOptions.hub,
         type=str,
         # Don't show jupyter-only parameters to the user.
         # help="api address of parent hub (only used when called as subprocess)",
@@ -510,15 +520,52 @@ def get_commandline_options(arg_defaults: Optional[Dict] = None):
         help=argparse.SUPPRESS,
     )
 
+    return parser
+
+
+def get_commandline_options(arg_defaults: Optional[Dict] = None):
+    """Parse bumps command line options."""
+    parser = build_arg_parser()
+
     # parser.add_argument('-c', '--config-file', type=str, help='path to JSON configuration to load')
     namespace = BumpsOptions()
     if arg_defaults is not None:
         logger.debug(f"arg_defaults: {arg_defaults}")
         for k, v in arg_defaults.items():
             setattr(namespace, k, v)
-    args = parser.parse_args(namespace=namespace)
-    # print(f"Parse output: {args=}")
-    return args
+    parser.parse_args(namespace=namespace)
+
+    return namespace
+
+
+def test_bumps_options():
+    """
+    Check that BumpsOptions includes fields for all options, and that defaults are correct.
+    """
+    parser = build_arg_parser()
+    args = parser.parse_args(args=[])
+
+    # Note that fit_options.* will appear directly as keys in the namespace. We aren't
+    # checking them here.
+    valid = {f.name for f in fields(BumpsOptions)}
+    parsed = {k.split(".")[0] for k in args.__dict__.keys()}
+    if parsed - valid:
+        raise TypeError(f"The following fields are missing from BumpsOptions: {parsed-valid}")
+    if valid - parsed:
+        raise TypeError(f"The following fields don't have command options: {valid-parsed}")
+
+    # Check defaults.
+    # Using `defaults = BumpsOptions()` so that fit_options dict field gets assigned {}
+    # Using `namespace = BumpsOptions()` because that is how we are calling the parser
+    # during regular processing. The parse_args() call updates namespace with values from
+    # the parser. Since we are using no command line arguments this should populate it
+    # with the defaults.
+    defaults = BumpsOptions()
+    namespace = BumpsOptions()
+    parser.parse_args(args=[], namespace=namespace)
+    for f in fields(BumpsOptions):
+        target, actual = getattr(defaults, f.name), getattr(namespace, f.name)
+        assert target == actual, f"BumpsOptions.{f.name} default={target} does not match parser default={actual}"
 
 
 def interpret_fit_options(options: BumpsOptions):
