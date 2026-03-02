@@ -18,6 +18,7 @@ dependencies = [
     'plotly',
     'mpld3',
     'msgpack',
+    'uncertainties',
 ]
 classifiers = [
     'Development Status :: 4 - Beta',
@@ -43,7 +44,6 @@ dev = [
     'wheel',
     'setuptools',
     'sphinx',
-    'uncertainties',
     'versioningit',
 ]
 
