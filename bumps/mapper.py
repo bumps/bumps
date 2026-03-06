@@ -199,6 +199,18 @@ def _MP_setup():
     # Using MPMapper class variables to store worker globals.
     # It doesn't matter if they conflict with the controller values since
     # they are in a different process.
+
+    # Set environment variables to force single-threaded execution in numerical libraries
+    for var in [
+        "OMP_NUM_THREADS",
+        "MKL_NUM_THREADS",
+        "OPENBLAS_NUM_THREADS",
+        "NUMBA_NUM_THREADS",
+        "BLIS_NUM_THREADS",
+        "VECLIB_MAXIMUM_THREADS",
+    ]:
+        os.environ[var] = "1"
+
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     nice()
     # print(f"starting pool worker on {cpu_id()}")
