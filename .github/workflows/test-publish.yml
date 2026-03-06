@@ -85,7 +85,7 @@ jobs:
           python-version: ${{ matrix.cfg.py }}
 
       - name: Download the wheel
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: artifacts
           path: dist
@@ -118,7 +118,7 @@ jobs:
       id-token: write
     steps:
       - name: Retrieve all artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: artifacts
           path: dist
