@@ -86,14 +86,14 @@ class Normal:
 
 # Leave out of schema for now.
 # TODO: determine if this is used by anyone
-# @dataclass(init=False)
+@dataclass
 class UniformSoftBounded:
     """Uniform distribution with error-function PDF on boundaries"""
 
     std: float = field_desc("width of the edge distribution")
 
 
-DistributionType = Union[Uniform, Normal]  # , UniformSoftBounded]
+DistributionType = Union[Uniform, Normal, UniformSoftBounded]
 
 
 class OperatorMixin:
