@@ -107,6 +107,10 @@ jobs:
         codesign --verify --options=runtime --timestamp --verbose=4 --force --sign "${DEVELOPER_IDENTITY}" "$APP"
         codesign --verify --options=runtime --timestamp --verbose=4 --force --sign "${DEVELOPER_IDENTITY}" "$APP_FOLDER/${PACKAGE_NAME}_shell.app"
 
+        # After signing, ensure all writes are flushed
+        sync
+        sleep 2
+
         DMG="artifacts/$FULL_PACKAGE_NAME.dmg"
         mkdir -p artifacts
         hdiutil create $DMG -srcfolder "$BUILD_DIR" -ov -format UDZO
