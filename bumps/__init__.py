@@ -20,6 +20,17 @@ except ImportError:
 __schema_version__ = "1"
 
 
+def examples():
+    """
+    Path to the examples directory.
+    """
+    import bumps
+    from importlib.resources import files
+
+    path = files(bumps) / "examples"
+    return path
+
+
 def data_files():
     """
     Return the data files associated with the package for setup_py2exe.py.
