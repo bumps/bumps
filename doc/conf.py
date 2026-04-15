@@ -77,6 +77,7 @@ nitpick_ignore = [
     ("py:class", "argparse.Action"),
     ("py:class", "argparse.RawTextHelpFormatter"),
     ("py:class", "argparse.ArgumentDefaultsHelpFormatter"),
+    ("py:class", "argparse.ArgumentParser"),
     # ("py:class", "any"),
     # ("py:class", "type"),
     ("py:class", "enum.Enum"),
