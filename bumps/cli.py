@@ -1,714 +1,1138 @@
+# Note: the following text appears at the end of the bumps -h command line help.
 """
-Bumps command line interface.
+Basic command line usage::
 
-The functions in this module are used by the bumps command to implement
-the command line interface.  Bumps plugin models can use them to create
-stand alone applications with a similar interface.  For example, the
-Refl1D application uses the following::
+    # Run a model from show its χ² value. This is useful for debugging the model file.
+    bumps model.py --chisq
 
-    from . import fitplugin
-    import bumps.cli
-    bumps.cli.set_mplconfig(appdatadir='Refl1D')
-    bumps.cli.install_plugin(fitplugin)
-    bumps.cli.main()
+    # Run a simple batch fit on model.py, appending results to a store file.
+    bumps --batch --session=T1.hdf model.py
 
-After completing a set of fits on related systems, a post-analysis script
-can use :func:`load_model` to load the problem definition and
-:func:`load_best` to load the best value  found in the fit.  This can
-be used for example in experiment design, where you look at the expected
-parameter uncertainty when fitting simulated data from a range of experimental
-systems.
+    # Run a DREAM fit on model.py to explore parameter uncertainties
+    bumps --batch --session=T1.hdf model.py --fit=dream
+
+    # Load and resume the last fit in a session file. The model.py file is ignored.
+    bumps --batch --session=T1.hdf [model.py] --resume
+
+Basic interactive usage::
+
+    # Open a web browser to the bumps application. Show the initial model if any.
+    bumps [model.py]
+
+    # Open a web browser and start a fit
+    bumps model.py --start
+
+    # Watch fit progress and exit when complete
+    bumps model.py --run --session=T1.hdf
+
+There are many more options available to control the fit, particularly for
+batch mode fitting. To see them type::
+
+    bumps --help
 """
 
-__all__ = [
-    "main",
-    "install_plugin",
-    "set_mplconfig",
-    "config_matplotlib",
-    "load_model",
-    "preview",
-    "load_best",
-    "save_best",
-    "resynth",
-]
-
-import sys
-import os
-import re
-import warnings
-import shutil
-import traceback
+import argparse
+import asyncio
+from dataclasses import dataclass
 from pathlib import Path
+from textwrap import dedent
+from typing import Callable, Dict, Optional, List, Any
+import warnings
+import signal
+import sys
+from dataclasses import field, fields
+import hashlib
+# from textwrap import dedent
 
-import numpy as np
-# np.seterr(all="raise")
+from bumps import __version__ as bumps_version
+from bumps.fitters import FIT_AVAILABLE_IDS
+from bumps.fitproblem import FitProblem, load_problem
+from . import api
+from . import persistent_settings
+from . import fit_options
+from .logger import logger, setup_console_logging, LOGLEVEL
+from .state_hdf5_backed import SERIALIZERS, FitResult
 
-from .fitters import FitDriver, StepMonitor, ConsoleMonitor, CheckpointMonitor
-from .mapper import MPMapper, MPIMapper, SerialMapper
-from . import util
-from . import initpop
-from . import __version__
-from . import plugin
-
-from .util import pushdir
+# Ick! PREFERRED_PORT is here rather than in webserver so that it can
+# be used in the command line help without a circular import.
+PREFERRED_PORT = 5148  # "SLAB"
 
 
-def install_plugin(p):
+# TODO: try datargs to build a parser from the typed dataclass
+
+
+@dataclass
+class BumpsOptions:
     """
-    Replace symbols in :mod:`bumps.plugin` with application specific
-    methods.
+    Bumps options returned from the command line parser.
+
+    This can be used as a stand-alone object if you are invoking
+    bumps from a script without using the command line parser.
     """
-    for symbol in plugin.__all__:
-        if hasattr(p, symbol):
-            setattr(plugin, symbol, getattr(p, symbol))
+
+    # The list of command line argument destinations must match the list
+    # of BumpsOptions attributes, including default values. This check
+    # is performed in test_bumps_options() during CI.
+    #
+    # Although the default values from BumpsOptions are used when parsing,
+    # the bumps --help output will show the default value from the command
+    # line parser. The easiest way to ensure these are the same is to set
+    # default=BumpsOptions.field when defining field in the parser.
+
+    # Positional arguments.
+    filename: Optional[str] = None
+    args: Optional[List[str]] = None
+
+    # Fitter controls.
+    fit_options: Dict[str, Any] = field(default_factory=dict)
+    resume: bool = False
+    show_cov: bool = False
+    show_err: bool = False
+    show_entropy: Optional[str] = None
+
+    # Session file controls.
+    session: Optional[str] = None
+    read_session: Optional[str] = None
+    write_session: Optional[str] = None
+    serializer: SERIALIZERS = "dataclass"
+    checkpoint: int = 300
+    auto_history: bool = True
+    path: Optional[str] = None
+    use_persistent_path: bool = False
+    reload_export: Optional[str] = None
+    pars: Optional[str] = None
+
+    # Simulation controls.
+    simulate: bool = False
+    simrandom: bool = False
+    shake: bool = False
+    noise: float = 5.0
+    seed: int = 0
+
+    # Program controls.
+    chisq: bool = False
+    export: Optional[str] = None
+    trace: bool = False
+    loglevel: str = "warn"
+    parallel: int = 0
+    threads: bool = False
+    mpi: Optional[bool] = None
+
+    # Webserver controls.
+    mode: str = "edit"
+    """One of "batch", "edit", "start" or "run" depending on -b, -s and -r options"""
+    headless: bool = False
+    external: bool = False
+    port: int = 0
+    hub: Optional[str] = None
+    convergence_heartbeat: bool = False
 
 
-def load_model(path: Path | str, model_options: list[str] | None = None):
+class DictAction(argparse.Action):
     """
-    *** DEPRECATED***. Use fitproblem.load_model(path, [args=...]) instead.
+    Gather argparse command line options into a dict entry.
+
+    Given *dest="group.key"* in the parser argument definition, add *group* to the
+    returned namespace and set *group["key"]=value*.
+
+    There is special handling of bool types, converting them to True/False values.
     """
-    from .fitproblem import load_problem
 
-    problem = load_problem(path, args=model_options)
-    # CRUFT: support old 'problem.options' attribute
-    problem.options = problem.script_args
-    return problem
+    # Note: implicit __init__ inherited from argparse.Action
+    def __call__(self, parser, namespace, values, option_string=None):
+        if self.type is bool:
+            values = not option_string.startswith("--no-")
+        # Find target dict name and key.
+        key, subkey = self.dest.split(".")
+        # Grab the target dict, if present.
+        store = getattr(namespace, key, None)
+        if store is None:
+            store = {}
+        store[subkey] = values
+        # Store the target back in the namespace in case it was missing or None.
+        setattr(namespace, key, store)
 
 
-def preview(problem, view=None):
+class HelpFormatter(argparse.RawTextHelpFormatter, argparse.ArgumentDefaultsHelpFormatter):
     """
-    Show the problem plots and parameters.
+    Help formatter customization:
+    * Don't reflow text
+    * Show non-trivial default values
     """
-    import matplotlib.pyplot as plt
 
-    problem.show()
-    problem.plot(view=view)
-    plt.show()
+    def _get_help_string(self, action):
+        help_text = action.help
+        if action.default is not argparse.SUPPRESS:
+            # Only show default if it's not None or False
+            if action.default is not None and action.default is not False:
+                help_text += f" (default: {action.default})"
+        return help_text
 
 
-def save_best(fitdriver, problem, best, view=None):
+def _branding():
+    """Return a string with version and system information."""
+    output = f"{'=' * 55}\n"
+    output += f"{api.state.app_name}\t\t{api.state.app_version}\n"
+    if api.state.app_name != "bumps":
+        output += f"bumps\t\t{bumps_version}\n"
+    output += "Python\t\t" + ".".join(map(str, sys.version_info[:3])) + "\n"
+    output += f"Platform\t{sys.platform}\n"
+    output += f"{'=' * 55}\n"
+    return output
+
+
+def build_arg_parser() -> argparse.ArgumentParser:
+    # TODO: allow --pars from session file
+    # TODO: missing the following options from pre-1.0
     """
-    Save the fit data, including parameter values, uncertainties and plots.
+    # Wait for someone to ask for the following
+    --overwrite                    [new version extends session file]
+        if store already exists, replace it
+    --resynth=0
+        run resynthesis error analysis for n generations
+    --time_model
+        run the model --steps times in order to estimate total run time.
+    --profile
+        run the python profiler on the model; use --steps to run multiple
+        models for better statistics
+    --stepmon
+        show details for each step in .log file
 
-    *fitdriver* is the fitter that was used to drive the fit.
+    # Won't implement
+    --plot=linear|log|residuals    [plugin specific]
+        type of plot to display
+    --view=linear|log              [plugin specific]
+        one of the predefined problem views; reflectometry also has fresnel,
+        logfresnel, q4 and residuals
+    --staj                         [plugin specific. Can plugins extend argparse?]
+        output staj file when done [Refl1D only]
 
-    *problem* is a FitProblem instance.
-
-    *best* is the parameter set to save.
+    # Superceded
+    -m/-c/-p command               [we are shipping a python environment]
+        run the python interpreter with bumps on the path:
+            m: command is a module such as bumps.cli, run as __main__
+            c: command is a python one-line command
+            p: command is the name of a python script
+    -i                             [our python environment can install ipython with pip]
+        start the interactive interpreter
+    --noshow                       [use --export to produce plots]
+        semi-batch; send output to console but don't show plots after fit
+    --preview                      [use webview instead]
+        display model but do not perform a fitting operation
+    --edit                         [default]
+        start the gui
+    --batch                        [current version doesn't save .mon]
+        batch mode; save output in .mon file and don't show plots after fit
     """
-    # Make sure the problem contains the best value
-    # TODO: avoid recalculating if problem is already at best.
-    problem.setp(best)
-    # print "remembering best"
-    pardata = "".join("%s %.15g\n" % (name, value) for name, value in zip(problem.labels(), problem.getp()))
-    open(problem.output_path + ".par", "wt").write(pardata)
-
-    fitdriver.save(problem.output_path)
-    with util.redirect_console(problem.output_path + ".err"):
-        fitdriver.show()
-        fitdriver.plot(output_path=problem.output_path, view=view)
-    # print "plotting"
-
-
-PARS_PATTERN = re.compile(r"^(?P<label>.*) (?P<value>[^ ]*)\n$")
-
-
-def load_best(problem, path):
-    """
-    Reload individual parameter values from a saved .par file.
-
-    If the label does not exist in the file, use the value from the model
-    as the default value. Ignore labels that do not exist in the model. In
-    that way we can load parameters from an old fit with minimal fuss, even
-    as we add, delete and move parameters in the model. If any parameters
-    are missing, set *problem.undefined* to the a boolean index of the
-    undefined parameters.
-
-    There is an interaction with --init=eps and the par file. If any parameters
-    are missing from the par file they will be randomized across the
-    entire parameter range using the equivalent of --init=lhs. That means
-    you can drop a # at the beginning of the line in the .par file
-    and that parameter will be shuffled on restart, with the remaining
-    parameters starting near the initial value.
-    """
-    # WARNING: Labels are not unique! Need to track multiple instances of
-    # the same label.
-    path = Path(path)
-    if not path.is_file():
-        path = path / (problem.name + ".par")
-    if not path.is_file():
-        raise ValueError("Parameter file {path} does not exist.")
-    labels = problem.labels()
-    targets = {label: [] for label in labels}
-    with open(path, "rt") as fid:
-        for line in fid:
-            m = PARS_PATTERN.match(line)
-            label, value = m.group("label"), float(m.group("value"))
-            # Accumulate values for labels only if they appear in the model.
-            if label in targets:
-                targets[label].append(value)
-
-    # Populate model with named parameters in the order they occur in the
-    # parameter file. Identify the missing parameters if any, adding them
-    # to the the problem definition as an optional "undefined" attribute with
-    # one bit for each parameter. This ugly hack is to support a previous
-    # ugly hack in which undefined parameters are initialized with LHS but
-    # defined parameters are initialized with eps, cov or random.
-    # TODO: find a better way to "free" parameters on --pars.
-    # TODO: find a way to "free" parameters on --resume.
-    values, undefined = [], []
-    for label, default_value in zip(labels, problem.getp()):
-        remaining = targets[label]
-        is_empty = not remaining
-        # popping the next value from remaining modifies targets[label]
-        values.append(default_value if is_empty else remaining.pop(0))
-        undefined.append(is_empty)
-    problem.setp(np.asarray(values))
-    if any(undefined):
-        problem.undefined = np.asarray(undefined)
-
-
-# CRUFT
-recall_best = load_best
-
-
-def store_overwrite_query_gui(path):
-    """
-    Ask if store path should be overwritten.
-
-    Use this in a call to :func:`make_store` from a graphical user interface.
-    """
-    import wx
-
-    msg = path + " already exists. Press 'yes' to overwrite, or 'No' to abort and restart with newpath"
-    msg_dlg = wx.MessageDialog(None, msg, "Overwrite Directory", wx.YES_NO | wx.ICON_QUESTION)
-    retCode = msg_dlg.ShowModal()
-    msg_dlg.Destroy()
-    if retCode != wx.ID_YES:
-        raise RuntimeError("Could not create path")
-
-
-def store_overwrite_query(path):
-    """
-    Ask if store path should be overwritten.
-
-    Use this in a call to :func:`make_store` from a command line interface.
-    """
-    print(path, "already exists.")
-    print("Press 'y' to overwrite, or 'n' to abort and restart with --overwrite, --resume, or --store=newpath")
-    ans = input("Overwrite [y/n]? ")
-    if ans not in ("y", "Y", "yes"):
-        sys.exit(1)
-
-
-def sanitize_filename(name: str) -> str:
-    return re.sub(r"[^A-Za-z0-9._-]", "_", name)
-
-
-def make_store(problem, opts, exists_handler):
-    """
-    Create the store directory and populate it with the model definition file.
-    """
-    # Determine if command line override
-    if opts.store:
-        problem.store = opts.store
-    if getattr(problem, "store", None) is None:
-        raise RuntimeError("Need to specify '--store=path' on command line or problem.store='path' in definition file.")
-    stem = (
-        Path(problem.path).stem
-        if hasattr(problem, "path")
-        else sanitize_filename(problem.name)
-        if problem.name
-        else "problem"
+    prog = api.state.app_name
+    parser = argparse.ArgumentParser(
+        prog=prog,
+        formatter_class=HelpFormatter,
+        epilog=__doc__.replace("::", ":").replace("bumps", prog),
     )
-    problem.output_path = os.path.join(problem.store, stem)
+    parser.add_argument(
+        "filename",
+        nargs="?",
+        help="problem file to load, .py or .json (serialized) fitproblem",
+    )
+    # TODO: Don't need --args specifier since this is just the extras after model.py
+    parser.add_argument(
+        "--args",
+        nargs="*",
+        type=str,
+        help="arguments to send to the model loader on load",
+    )
+    # parser.add_argument('-d', '--debug', action=argparse.BooleanOptionalAction, help='autoload modules on change')
 
-    # Check if already exists
-    store_exists = os.path.exists(problem.output_path + ".par")
-    if not opts.overwrite and opts.resume is None and store_exists:
-        if opts.batch:
-            print(
-                problem.store + " already exists.  Restart with --overwrite, --resume, or --store=newpath",
-                file=sys.stderr,
-            )
-            sys.exit(1)
-        exists_handler(problem.output_path)
+    # Fitter controls
+    fit_options.form_fit_options_associations()  # sets fitter list for each option
+    fitter = parser.add_argument_group("Fitting options")
+    for name, option in fit_options.FIT_OPTIONS.items():
+        stype = option.stype
+        metavar = "" if stype is bool else name.replace("_", "-").upper()
+        choices = stype if isinstance(stype, list) else None
+        if name == "fit":
+            choices = FIT_AVAILABLE_IDS
+        # For the trim option allow both --trim and --no-trim. The DictAction class
+        # checks for leading "--no-" in the option string when assigning to bool.
+        flagname = name.replace("_", "-")
+        flags = (f"--{flagname}", f"--no-{flagname}") if stype is bool else (f"--{flagname}",)
+        fitter.add_argument(
+            *flags,
+            action=DictAction,
+            dest=f"fit_options.{name}",
+            type=str if choices else stype,
+            metavar=metavar,
+            nargs=0 if stype is bool else None,
+            choices=choices,
+            # Don't show parameters that don't appear in the visible optimizers.
+            # For example, don't show --nT which is only available when --fit=pt.
+            help=option.build_help() if option.fitters else argparse.SUPPRESS,
+        )
 
-    # Create it and copy model
-    if not os.path.exists(problem.store):
-        os.mkdir(problem.store)
-    shutil.copy2(problem.path, problem.store)
-
-
-def run_profiler(problem, steps):
-    """
-    Model execution profiler.
-
-    Run the program with "--profiler --steps=N" to generate a function
-    profile chart breaking down the cost of evaluating N models.
-    """
-    # Here is the findings from one profiling session::
-    #   23 ms total
-    #    6 ms rendering model
-    #    8 ms abeles
-    #    4 ms convolution
-    #    1 ms setting parameters and computing nllf
-    from .util import profile
-
-    p = initpop.random_init(int(steps), initial=None, bounds=None, use_point=False, problem=problem)
-    # Note: map is an iterator in python 3
-    profile(lambda *args: list(map(*args)), problem.nllf, p)
-
-
-def run_timer(mapper, problem, steps):
-    """
-    Model execution timer.
-
-    Run the program with "--timer --steps=N" to determine the average
-    run time of the model.  If --parallel is included, then the model
-    will be run in parallel on separate cores.
-    """
-    import time
-
-    T0 = time.time()
-    steps = int(steps)
-    p = initpop.generate(problem, init="random", pop=-steps, use_point=False)
-    if p.shape == (0,):
-        # No fitting parameters --- generate an empty population
-        p = np.empty((steps, 0))
-    mapper(p)
-    print("time per model eval: %g ms" % (1000 * (time.time() - T0) / steps,))
-
-
-def start_remote_fit(problem, options, queue, notify):
-    """
-    Queue remote fit.
-    """
-    from jobqueue.client import connect
-    from cloudpickle import dumps
-
-    data = dict(package="bumps", version=__version__, problem=dumps(problem), options=dumps(options))
-    request = dict(
-        service="fitter",
-        version=__version__,  # fitter service version
-        notify=notify,
-        name=problem.title,
-        data=data,
+    # Fit outputs
+    output = parser.add_argument_group("Fitting outputs")
+    output.add_argument(
+        "--err",
+        action="store_true",
+        dest="show_err",
+        help="Show uncertainty from covariance",
+    )
+    output.add_argument(
+        "--cov",
+        action="store_true",
+        dest="show_cov",
+        help="Show covariance matrix on output",
+    )
+    output.add_argument(
+        "--entropy",
+        dest="show_entropy",
+        type=str,  # TODO: type is str|None
+        default=BumpsOptions.show_entropy,
+        const="gmm",
+        nargs="?",
+        choices=["gmm", "mvn", "wnn", "llf"],
+        help=dedent("""\
+        Compute entropy from uncertainty distribution [dream only]:
+            mvn: Fit to a single multivariate normal
+            gmm: Fit to a Gaussian mixture model
+            wnn: Weighted Kozeachenko-Leonenko nearest neighbour (Berrettt 2016)
+            llf: Use local density to estimate loglikelihood factor (Kramer 2010)
+        """),
     )
 
-    server = connect(queue)
-    job = server.submit(request)
-    return job
+    # Session file controls.
+    session = parser.add_argument_group("Session file management")
+    session.add_argument(
+        "--session",
+        metavar="SESSION",
+        default=None,
+        type=str,
+        help="set read/write session to same file",
+    )
+    session.add_argument(
+        "--read-session",
+        metavar="SESSION",
+        default=None,
+        type=str,
+        help="read initial session state from file (overrides --session)",
+    )
+    session.add_argument(
+        "--write-session",
+        metavar="SESSION",
+        default=None,
+        type=str,
+        help="output file for session state (overrides --session)",
+    )
+    session.add_argument(
+        "--resume",
+        default=BumpsOptions.resume,
+        action=argparse.BooleanOptionalAction,
+        help=dedent("""\
+            Resume the most recent fit from the saved session file. [dream, de]
+            Note that this loads the model from the session and ignores any model
+            file specified on the command line.
+            """),
+    )
+    session.add_argument(
+        "--checkpoint",
+        default=300,
+        type=int,
+        help="session autosave interval in seconds. This is also the update interval for the DREAM parameter histograms.",
+    )
+    session.add_argument(
+        "--serializer",
+        default=BumpsOptions.serializer,
+        type=str,
+        choices=["pickle", "cloudpickle", "dill", "dataclass"],
+        help="strategy for serializing problem, will use value from session if it has already been defined",
+    )
+    session.add_argument(
+        "--auto-history",
+        default=BumpsOptions.auto_history,
+        action=argparse.BooleanOptionalAction,
+        help="auto-append problem state to history on load and at the end of the fit",
+    )
+    session.add_argument(
+        "--path",
+        default=None,
+        type=str,
+        help="set initial path for save and load dialogs (webview only)",
+    )
+    session.add_argument(
+        "--use-persistent-path",
+        action=argparse.BooleanOptionalAction,
+        help="save most recently used path to disk for persistence between sessions (webview only)",
+    )
+    session.add_argument(
+        "--reload-export",
+        type=str,
+        help="reload a bumps 0.x store directory as if it were a session file",
+    )
+
+    # Simulation controls.
+    sim = parser.add_argument_group("Simulation")
+    sim.add_argument(
+        "--simulate",
+        action=argparse.BooleanOptionalAction,
+        help="simulate a dataset using the initial problem parameters",
+    )
+    sim.add_argument(
+        "--simrandom",
+        action=argparse.BooleanOptionalAction,
+        help="simulate a dataset using the random problem parameters",
+    )
+    sim.add_argument(
+        "--shake",
+        action=argparse.BooleanOptionalAction,
+        help="set random parameters before fitting",
+    )
+    sim.add_argument(
+        "--noise",
+        type=float,
+        default=BumpsOptions.noise,
+        help="percent noise to add to the simulated data",
+    )
+    sim.add_argument(
+        "--seed",
+        type=int,
+        default=0,
+        help="random number seed, or 0 for none",
+    )
+
+    # Program controls.
+    misc = parser.add_argument_group("Miscellaneous")
+    misc.add_argument(
+        "--chisq",
+        action="store_true",
+        help="print χ² and exit",
+    )
+    misc.add_argument(
+        "--export",
+        type=str,
+        help="directory path for data and figure export.",
+    )
+    misc.add_argument("--pars", default=None, type=str, help="start a fit from an exported result.")
+    misc.add_argument(
+        "--parallel",
+        default=BumpsOptions.parallel,
+        type=int,
+        help="run fit using multiprocessing for parallelism; use --parallel=0 for all cpus",
+    )
+    misc.add_argument(
+        "--threads",
+        action="store_true",
+        help=argparse.SUPPRESS,
+        # help="run fit using multithreading for parallelism",
+    )
+    misc.add_argument(
+        "--mpi",
+        action=argparse.BooleanOptionalAction,
+        help="Use MPI for parallelization (only needed if we fail to detect MPI correctly)",
+    )
+    misc.add_argument(
+        "--trace",
+        action=argparse.BooleanOptionalAction,
+        help="enable memory tracing (prints after every uncertainty update in dream)",
+    )
+    misc.add_argument(
+        "--loglevel",
+        type=str,
+        choices=list(LOGLEVEL.keys()),
+        help="display logging to console",
+        default=BumpsOptions.loglevel,
+    )
+    # Show version numbers for both bumps and child program
+    misc.add_argument(
+        "-V",
+        "--version",
+        action="version",
+        version=_branding(),
+    )
+
+    # TODO: restructure so that -b -s -r --webview override each other
+    # Maybe a runmode enum: 0=batch 1=edit 2=start 3=run
+    # Webserver controls
+    server = parser.add_argument_group("Webview server controls")
+    server.add_argument(
+        "--edit",
+        "--webview",
+        action="store_const",
+        const="edit",
+        dest="mode",
+        help="run bumps fit with the webview server (this is the default)",
+    )
+    server.add_argument(
+        "-b",
+        "--batch",
+        action="store_const",
+        const="batch",
+        dest="mode",
+        help="run bumps fit in batch mode without the webview server",
+    )
+    server.add_argument(
+        "-s",
+        "--start",
+        action="store_const",
+        const="start",
+        dest="mode",
+        help="start fit immediately, leaving it open when done",
+    )
+    server.add_argument(
+        "-r",
+        "--run",
+        action="store_const",
+        const="run",
+        dest="mode",
+        help="run the fit to completion",
+    )
+    server.add_argument(
+        "-x",
+        "--headless",
+        action=argparse.BooleanOptionalAction,
+        help="do not automatically load client in browser",
+    )
+    server.add_argument(
+        "--external",
+        action=argparse.BooleanOptionalAction,
+        help="listen on all interfaces, including external (local connections only if not set)",
+    )
+    server.add_argument(
+        "-p",
+        "--port",
+        default=BumpsOptions.port,
+        type=int,
+        help=f"web server port; use --port=0 to first try {PREFERRED_PORT} then fall back to a random port",
+    )
+    server.add_argument(
+        "--hub",
+        default=BumpsOptions.hub,
+        type=str,
+        # Don't show jupyter-only parameters to the user.
+        # help="api address of parent hub (only used when called as subprocess)",
+        help=argparse.SUPPRESS,
+    )
+    server.add_argument(
+        "--convergence-heartbeat",
+        action=argparse.BooleanOptionalAction,
+        # Don't show jupyter-only parameters to the user.
+        # help="enable convergence heartbeat for jupyter kernel (keeps kernel alive during fit)",
+        help=argparse.SUPPRESS,
+    )
+
+    return parser
 
 
-# ==== Main ====
+def get_commandline_options(arg_defaults: Optional[Dict] = None):
+    """Parse bumps command line options."""
+    parser = build_arg_parser()
+
+    # parser.add_argument('-c', '--config-file', type=str, help='path to JSON configuration to load')
+    namespace = BumpsOptions()
+    if arg_defaults is not None:
+        logger.debug(f"arg_defaults: {arg_defaults}")
+        for k, v in arg_defaults.items():
+            setattr(namespace, k, v)
+    parser.parse_args(namespace=namespace)
+
+    return namespace
 
 
-def initial_model(opts):
+def test_bumps_options():
     """
-    Load and initialize the model.
-
-    *opts* are the processed command line options.
-
-    If --pars is in opts, then load the parameters from a .par file.
-
-    If --simulate is in opts, then generate random data from the model.
-
-    If --simrandom is in opts, then generate random data from a random model.
-
-    If --shake is in opts, then use a random initial state for the fit.
+    Check that BumpsOptions includes fields for all options, and that defaults are correct.
     """
-    if opts.seed is not None:
-        np.random.seed(opts.seed)
+    parser = build_arg_parser()
+    args = parser.parse_args(args=[])
 
-    if opts.args:
-        problem = load_model(opts.args[0], opts.args[1:])
-        if opts.pars is not None:
-            load_best(problem, opts.pars)
-        if opts.simrandom:
-            problem.randomize()
-        if opts.simulate or opts.simrandom:
-            noise = None if opts.noise == "data" else float(opts.noise)
+    # Note that fit_options.* will appear directly as keys in the namespace. We aren't
+    # checking them here.
+    valid = {f.name for f in fields(BumpsOptions)}
+    parsed = {k.split(".")[0] for k in args.__dict__.keys()}
+    if parsed - valid:
+        raise TypeError(f"The following fields are missing from BumpsOptions: {parsed-valid}")
+    if valid - parsed:
+        raise TypeError(f"The following fields don't have command options: {valid-parsed}")
+
+    # Check defaults.
+    # Using `defaults = BumpsOptions()` so that fit_options dict field gets assigned {}
+    # Using `namespace = BumpsOptions()` because that is how we are calling the parser
+    # during regular processing. The parse_args() call updates namespace with values from
+    # the parser. Since we are using no command line arguments this should populate it
+    # with the defaults.
+    defaults = BumpsOptions()
+    namespace = BumpsOptions()
+    parser.parse_args(args=[], namespace=namespace)
+    for f in fields(BumpsOptions):
+        target, actual = getattr(defaults, f.name), getattr(namespace, f.name)
+        assert target == actual, f"BumpsOptions.{f.name} default={target} does not match parser default={actual}"
+
+
+def interpret_fit_options(options: BumpsOptions):
+    # ordered list of actions to do on startup
+    on_startup: List[Callable] = []
+    on_complete: List[Callable] = []
+
+    if options.use_persistent_path:
+        api.state.base_path = persistent_settings.get_value(
+            "base_path", str(Path().absolute()), application=api.state.app_name
+        )
+    elif options.path is not None and Path(options.path).exists():
+        api.state.base_path = options.path
+    else:
+        api.state.base_path = str(Path.cwd().absolute())
+
+    if options.read_session is not None and options.session is not None:
+        warnings.warn("read_session and session are both set; read_session will be used to initialize state")
+    if options.write_session is not None and options.session is not None:
+        warnings.warn("write_session and session are both set; write_session will be used to save state")
+
+    read_session = options.read_session if options.read_session is not None else options.session
+    write_session = options.write_session if options.write_session is not None else options.session
+
+    # The logic for setting the current fit problem is complex.
+    #
+    # (1) bumps [PATH/MODEL.py] --reload-export=PATH[/MODEL.par] [--session=SESSION.h5] [--resume]
+    #     Load the results of a pre-1.0 bumps fit. Use PATH/MODEL.py if specified, otherwise
+    #     use ./MODEL.py in the current directory, or ./GLOB.par with PATH/*.par expands only
+    #     to PATH/GLOB.par. This is useful for exploring the results of an old DREAM run, and
+    #     possibly resuming the fit. This loads the model from its original location
+    #     because the model script probably refers to data files using relative paths, and these
+    #     aren't included in the export directory.
+    # (2) bumps PATH/MODEL.py --session=SESSION.h5
+    #     Load from PATH/MODEL.py even if SESSION.h5 is available. This is useful for a workflow
+    #     where you tweak the model script then rerun the fit, collecting all the results in
+    #     SESSION.h5.
+    # (3) bumps PATH/MODEL.py --session=SESSION.h5 --resume
+    #     Load from SESSION.h5 even if PATH/MODEL.py is available. This is useful for resuming
+    #     the fit where it left off, even if the model constraints were adjusted in webview
+    #     before fitting.
+    # (4) bumps --session=SESSION.h5
+    #     Load from SESSION.h5. This is useful for a workflow primarily driven by webview, but
+    #     done over multiple sessions.
+    #
+    # More succinctly:
+    #
+    #     Use --reload-export if specified.
+    #     Otherwise use MODEL.py if specified except on resume.
+    #     Otherwise use SESSION.h5.
+
+    # TODO: why is session file read immediately but model.py delayed?
+    # If a session file exists load the problem.
+    if read_session is not None:
+        read_session_path = Path(read_session).absolute()
+        if read_session_path.exists():
+            api.state.read_session_file(str(read_session_path))
+            if write_session is None:
+                api.state.shared.session_output_file = dict(
+                    pathlist=list(read_session_path.parent.parts),
+                    filename=read_session_path.name,
+                )
+
+    if write_session is not None:
+        write_session_path = Path(write_session).absolute()
+        # TODO: Why are we splitting path into parts?
+        api.state.shared.session_output_file = dict(
+            pathlist=list(write_session_path.parent.parts), filename=write_session_path.name
+        )
+        api.state.shared.autosave_session = True
+
+    api.state.shared.autosave_session_interval = options.checkpoint
+
+    if api.state.problem.serializer is None or api.state.problem.serializer == "":
+        api.state.problem.serializer = options.serializer
+
+    if not options.auto_history:
+        api.state.shared.autosave_history = False
+
+    if options.trace:
+        global TRACE_MEMORY
+        TRACE_MEMORY = True
+        api.TRACE_MEMORY = True
+
+    fitopts, errors = fit_options.check_options(options.fit_options)
+    if errors:
+        warnings.warn("\n".join(errors))
+    # TODO: leave fitter_id in fitopts
+    # TODO: use dict rather than list of pairs for fitopts
+    fitter_id = fitopts.pop("fit")
+
+    # Add secret fitter to the GUI (pt and scipy.leastsq as of this writing)
+    # TODO: FitOptions.vue needs to update fit_names on changeActiveFitter
+    if fitter_id not in api.state.shared.fitter_settings:
+        fitter = fit_options.lookup_fitter(fitter_id)
+        api.state.shared.fitter_settings[fitter_id] = {"name": fitter.name, "settings": dict(fitter.settings)}
+
+    # Show selected fit options in the GUI
+    api.state.shared.selected_fitter = fitter_id
+    api.state.shared.fitter_settings[fitter_id]["settings"].update(fitopts)
+    api.state.parallel = options.parallel
+
+    # TODO: How do we resume if the model is saved as a pickle and can't be restored?
+    # on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
+    # resume only works when you have an identical problem, so we don't load from file
+    # if we are resuming the fit.
+    if options.reload_export:
+
+        async def load_export_to_state(App=None):
+            problem, fit = reload_export(options.reload_export, modelfile=options.filename, args=options.args)
+            path = Path(problem.path)
+            await api.set_problem(problem, path.parent, path.name, fit=fit)
+
+        on_startup.append(load_export_to_state)
+
+    # on_startup.append(lambda App: publish('', 'local_file_path', Path().absolute().parts))
+    # resume only works when you have an identical problem, so we don't load from file
+    # if you are resuming the fit.
+    elif options.filename is not None and not options.resume:
+
+        async def load_problem_to_state(App=None):
+            path = Path(options.filename).absolute()
+            problem = load_problem(path, args=options.args)
+            await api.set_problem(problem, path.parent, path.name)
+
+        on_startup.append(load_problem_to_state)
+
+    # TODO: allow pars to be loaded from a session file.
+    # TODO: verify that --pars doesn't interfere with --resume
+    if options.pars is not None:
+        filepath = Path(options.pars).absolute()
+        pars_pathlist = list(filepath.parent.parts)
+        pars_filename = filepath.name
+        on_startup.append(lambda App: api.apply_parameters(pars_pathlist, pars_filename))
+
+    # TODO: make sure --seed on command line produces the same result each time
+    # TODO: store the seed with the fit results and print on console monitor
+    # TODO: need separate seed for simulate and for fit
+    # TODO: make sure seed works with async and threading and mpi
+    # Reproducibility requires a known seed and a guaranteed order of execution.
+    # So long as the startup items loop over awaits rather than using asyncio gather
+    # this should be guaranteed.
+    if options.seed:
+        # raise NotImplementedError("--seed not yet supported")
+        import numpy as np
+
+        np.random.seed(options.seed)
+
+    if options.simulate or options.simrandom:
+        noise = None if options.noise <= 0.0 else options.noise
+
+        async def simulate(App=None):
+            if api.state.problem is None or api.state.problem.fitProblem is None:
+                return
+            problem = api.state.problem.fitProblem
+            if options.simrandom:
+                problem.randomize()
             problem.simulate_data(noise=noise)
+            # TODO: How do these make it to the GUI?
             print("simulation parameters")
             print(problem.summarize())
-            print("chisq at simulation", problem.chisq_str())
-        if opts.shake:
-            problem.randomize()
+            print("chisq", problem.chisq_str())
+
+        on_startup.append(simulate)
+
+    if options.shake:
+        on_startup.append(lambda App=None: api.shake_parameters())
+
+    need_mapper = not options.chisq
+    if need_mapper:
+        from bumps.mapper import MPIMapper, MPMapper, SerialMapper, ThreadPoolMapper, using_mpi
+
+        async def start_mapper(App=None):
+            # print(f"{api.state.rank}start mapper")
+            # TODO: When running Only load problem from root on MPI?
+            # MPI is assumed
+            # You can still run non-picklable problems on MPI using batch mode
+            # since each work loads its own copy of the problem.
+            if api.state.problem is not None:
+                problem = api.state.problem.fitProblem
+            else:
+                problem = None
+            if using_mpi() or options.mpi:
+                # print("Starting with MPI mapper")
+                mapper = MPIMapper
+            elif options.parallel == 1:
+                mapper = SerialMapper
+            elif options.threads:
+                mapper = ThreadPoolMapper
+            else:
+                mapper = MPMapper
+            mapper.start_worker(problem)
+            # if mapper == MPIMapper: print(f"{MPIMapper.rank}: got beyond start worker.")
+            api.state.mapper = mapper
+
+        on_startup.append(start_mapper)
+
+    webview = options.mode != "batch"
+    autostart = not webview or options.mode in ("start", "run") or options.resume
+    autostop = not webview or options.mode == "run"
+    # print(f"{options.mode=} {webview=} {autostart=} {autostop=}")
+
+    if options.chisq:
+
+        async def show_chisq(App=None):
+            if api.state.problem is not None:
+                # show_cov won't work yet because I don't have driver
+                # defined and because I don't have a --cov option.
+                # if opts.cov: fitdriver.show_cov()
+                problem = api.state.problem.fitProblem
+                # print(problem.summarize())
+                print("chisq", problem.chisq_str())
+
+        on_startup.append(show_chisq)
+
+    elif autostart:  # if batch mode then start the fit
+
+        async def start_fit(App=None):
+            # print(f"{api.state.rank}start fit")
+            # print(f"{fitter_settings=}")
+            if api.state.problem is not None:
+                await api.start_fit_thread(fitter_id, fitopts, resume=options.resume)
+
+        # TODO: This is duplicating code from bumps/fitters.py. Move it and share it.
+        def _show_results(show_err: bool = True, show_cov: bool = False, show_entropy: str | None = None):
+            import numpy as np
+            from bumps.lsqerror import stderr
+            from bumps.dream.entropy import cov_entropy
+            from bumps.util import format_uncertainty
+            from bumps.dream.stats import var_stats, format_vars
+
+            if not (show_err or show_cov or show_entropy):
+                return
+
+            problem, state = api.state.problem.fitProblem, api.state.fitting.fit_state
+            x = problem.getp()
+            # TODO: Should we show the estimates from derivatives even when running dream?
+            if state is None:
+                cov = problem.cov(x)
+                vstats = None
+                dx = stderr(cov)
+                S, dS = cov_entropy(cov), 0
+            else:
+                draw = state.draw()
+                # TODO: if there are derived variables then problem.show() doesn't work
+                # TODO: sample from whole population, not just the end, to reduce autocorrelation
+                if show_cov:
+                    cov = np.cov(draw.points[-1000:].T)
+                vstats = var_stats(draw)
+                # dx = np.array([(v.p68[1] - v.p68[0]) / 2 for v in vstats])
+                if show_entropy:
+                    entropy_method = show_entropy
+                    S, dS = state.entropy(method=entropy_method)
+
+            if show_cov:
+                problem.show_cov(x, cov)
+            if show_err:
+                if state is None:
+                    problem.show_err(x, dx)
+                else:
+                    print(format_vars(vstats))
+            if show_entropy:
+                print(f"Entropy: {format_uncertainty(S, dS)} bits")
+
+        async def show_results(App=None):
+            _show_results(options.show_err, options.show_cov, options.show_entropy)
+
+        on_startup.append(start_fit)
+        api.state.console_update_interval = 0 if webview else 1
+
+        if not options.export and write_session is None and autostop:
+            # TODO: can we specify problem.path in the model file?
+            # TODO: can we default the session file name to model.hdf?
+            raise RuntimeError("Include '--session=output.h5' on the command line to save the fit.")
+
+        # TODO: if not autostop maybe --export after fit only or after every fit
+        if options.export and autostop:
+            # print("adding completion lambda")
+            on_complete.append(lambda App=None: api.export_results(options.export))
+
+        if autostop:
+            on_complete.append(show_results)
+
+        # TODO: cleaner handling of autostop
+        if webview and autostop:  # trigger shutdown on fit complete [webview only]
+            # print("setting shutdown True")
+            api.state.shutdown_on_fit_complete = True
+
     else:
-        problem = None
-    return problem
+        # signal that no fit is running at startup, even if a fit was
+        # interrupted and the state was saved:
+        on_startup.append(lambda App=None: api.state.shared.set("active_fit", {}))
+
+    # TODO: maybe warn when --export option is ignored
+    # if options.export and not autostop:
+    #     ...
+
+    return on_startup, on_complete
 
 
-def resynth(fitdriver, problem, mapper, opts):
+def reload_export(
+    path: Path | str,
+    modelfile: Path | str | None = None,
+    args: list[str] | None = None,
+) -> tuple[FitProblem, FitResult]:
     """
-    Generate maximum likelihood fits to resynthesized data sets.
+    Reload a bumps export directory.
 
-    *fitdriver* is a :class:`bumps.fitters.FitDriver` object with a fitter
-    already chosen.
+    *path* is the path to the directory, or to a <model>.par file within that
+    directory. Use the <model>.par file if you have multiple models exported to
+    the same path.
 
-    *problem* is a :func:`bumps.fitproblem.FitProblem` object.  It should
-    be initialized with optimal values for the parameters.
+    If *modelfile* is provided then use it, otherwise use <model>.py in the
+    current directory. That means you can change to the directory containing
+    your model then run bumps with --reload-export=path without having to list
+    <model>.py on the command line. This is handy if you have several variations
+    saved to different filenames stored along with your data.
 
-    *mapper* is one of the available :mod:`bumps.mapper` classes.
-
-    *opts* is a :class:`bumps.options.BumpsOpts` object representing the command
-    line parameters.
+    sys.argv is set to *args* before loading the model.
     """
-    make_store(problem, opts, exists_handler=store_overwrite_query)
-    fid = open(problem.output_path + ".rsy", "at")
-    fitdriver.mapper = mapper.start_mapper(problem, opts.args)
-    for i in range(opts.resynth):
-        problem.resynth_data()
-        best, fbest = fitdriver.fit()
-        chisq = problem.chisq(nllf=fbest)
-        print(f"step {i} chisq={chisq:.2f}")
-        fid.write("%.15g " % chisq)
-        fid.write(" ".join("%.15g" % v for v in best))
-        fid.write("\n")
-    problem.restore_data()
-    fid.close()
+    from bumps.fitproblem import load_problem
+    from bumps.cli import load_best
+    from .state_hdf5_backed import SERIALIZER_EXTENSIONS
 
-
-def set_mplconfig(appdatadir):
-    r"""
-    Point the matplotlib config dir to %LOCALAPPDATA%\{appdatadir}\mplconfig.
-    """
-    if hasattr(sys, "frozen"):
-        if os.name == "nt":
-            mplconfigdir = os.path.join(os.environ["LOCALAPPDATA"], appdatadir, "mplconfig")
-        elif sys.platform == "darwin":
-            mplconfigdir = os.path.join(os.path.expanduser("~/Library/Caches"), appdatadir, "mplconfig")
-        else:
-            return  # do nothing on linux
-        mplconfigdir = os.environ.setdefault("MPLCONFIGDIR", mplconfigdir)
-        if not os.path.exists(mplconfigdir):
-            os.makedirs(mplconfigdir)
-
-
-def config_matplotlib(backend=None):
-    """
-    Setup matplotlib to use a particular backend.
-
-    The backend should be 'WXAgg' for interactive use, or 'Agg' for batch.
-    This distinction allows us to run in environments such as cluster computers
-    which do not have wx installed on the compute nodes.
-
-    This function must be called before any imports to matplotlib.  To allow
-    this, modules should not import matplotlib at the module level, but instead
-    import it for each function/method that uses it.  Exceptions can be made
-    for modules which are completely dedicated to plotting, but these modules
-    should never be imported at the module level.
-    """
-    import matplotlib as mpl
-
-    # When running from a frozen environment created by py2exe, we will not
-    # have a range of backends available, and must set the default to WXAgg.
-    # With a full matplotlib distribution we can use whatever the user prefers.
-    if hasattr(sys, "frozen"):
-        if "MPLCONFIGDIR" not in os.environ:
-            raise RuntimeError(r"MPLCONFIGDIR should be set to e.g., %LOCALAPPDATA%\YourApp\mplconfig")
-        if backend is None:
-            backend = "WXAgg"
-
-    ## CRUFT: check that backend is valid, trying alternates if an import fails
-    # if backend is None:
-    #    backend = os.environ.get('MPLBACKEND', mpl.rcParams['backend'])
-    # import importlib
-    # for name in (backend, 'MacOSX', 'Qt5Agg', 'Qt4Agg', 'Gtk3Agg', 'TkAgg', 'WXAgg'):
-    #    path = 'matplotlib.backends.backend_' + name.lower()
-    #    try:
-    #        importlib.import_module(path)
-    #        backend = name
-    #        break
-    #    except ImportError:
-    #        backend = None
-
-    # Specify the backend to use for plotting and import backend dependent
-    # classes.  This must be done before importing pyplot to have an
-    # effect.  If no backend is given, let pyplot use the default.
-    if backend is not None:
-        mpl.use(backend)
-
-    # Disable interactive mode so that plots are only updated on show() or
-    # draw(). The interactive function must be called before importing pyplot,
-    # otherwise it will have no effect.
-    mpl.interactive(False)
-
-    # configure the plot style
-    line_width = 1
-    pad = 2
-    font_family = "Arial" if os.name == "nt" else "sans-serif"
-    font_size = 12
-    plot_style = {
-        "xtick.direction": "in",
-        "ytick.direction": "in",
-        "lines.linewidth": line_width,
-        "axes.linewidth": line_width,
-        "xtick.labelsize": font_size,
-        "ytick.labelsize": font_size,
-        "xtick.major.size": 5,
-        "ytick.major.size": 5,
-        "xtick.minor.size": 2.5,
-        "ytick.minor.size": 2.5,
-        "xtick.major.width": line_width,
-        "ytick.major.width": line_width,
-        "xtick.minor.width": line_width,
-        "ytick.minor.width": line_width,
-        "xtick.major.pad": pad,
-        "ytick.major.pad": pad,
-        "xtick.top": True,
-        "ytick.right": True,
-        "font.size": font_size,
-        "font.family": font_family,
-        "svg.fonttype": "none",
-        "savefig.dpi": 100,
-    }
-    mpl.rcParams.update(plot_style)
-
-
-def beep():
-    """
-    Audio signal that fit is complete.
-    """
-    if sys.platform == "win32":
-        try:
-            import winsound
-
-            winsound.MessageBeep(winsound.MB_OK)
-        except Exception:
-            pass
+    # Find the .par file in the export directory
+    path = Path(path)
+    if path.is_file():
+        parfile = path
+        if parfile.suffix != ".par":
+            raise ValueError(f"Reload export needs path or path/model.par, not {path}")
+        path = path.parent  # set path to the directory containing *.par
     else:
-        print("\a", file=sys.__stdout__)
+        # path is already a directory; look for a par file within it
+        pars_glob = list(path.glob("*.par"))
+        if len(pars_glob) == 0:
+            raise ValueError(f"Reload export {path}/*.par does not exist")
+        if len(pars_glob) > 1:
+            raise ValueError(f"More than one .par file. Use {path}/model.par in reload export.")
+        parfile = pars_glob[0]
 
+    # Look for a pickle in the parfile directory and try loading that
+    problem = None
+    for serializer, suffix in SERIALIZER_EXTENSIONS.items():
+        picklefile = parfile.with_suffix(f".{suffix}")
+        if picklefile.exists():
+            try:
+                problem = load_problem(picklefile)
+                # Note: no need to load_best because serializer contained the parameters
+            except Exception as exc:
+                logger.warn(f"Failed to deserialize {picklefile}; look for model file")
+            break
 
-def run_command(c):
-    """
-    Run an arbitrary python command.
-    """
-    exec(c, globals())
-
-
-def setup_logging():
-    """Start logger"""
-    import logging
-
-    logging.basicConfig(level=logging.INFO)
-
-
-# From http://stackoverflow.com/questions/22373927/get-traceback-of-warnings
-# answered by mgab (2014-03-13)
-# edited by Gareth Rees (2015-11-28)
-def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
-    """
-    Alternate warning printer which shows a traceback with the warning.
-
-    To use, set *warnings.showwarning = warn_with_traceback*.
-    """
-    traceback.print_stack()
-    log = file if hasattr(file, "write") else sys.stderr
-    log.write(warnings.formatwarning(message, category, filename, lineno, line))
-
-
-def main():
-    """
-    Run the bumps program with the command line interface.
-
-    Input parameters are taken from sys.argv.
-    """
-    from . import options
-
-    # add full traceback to warnings
-    # warnings.showwarning = warn_with_traceback
-
-    if len(sys.argv) == 1:
-        sys.argv.append("-?")
-
-    # run command with bumps in the environment
-    if sys.argv[1] == "-m":
-        import runpy
-
-        sys.argv = sys.argv[2:]
-        runpy.run_module(sys.argv[0], run_name="__main__")
-        sys.exit(0)
-    elif sys.argv[1] == "-p":
-        import runpy
-
-        sys.argv = sys.argv[2:]
-        runpy.run_path(sys.argv[0], run_name="__main__")
-        sys.exit()
-    elif sys.argv[1] == "-c":
-        run_command(sys.argv[2])
-        sys.exit()
-    elif sys.argv[1] == "-i":
-        sys.argv = ["ipython", "--pylab"]
-        from IPython import start_ipython
-
-        sys.exit(start_ipython())
-
-    opts = options.getopts()
-    setup_logging()
-
-    if opts.edit:
-        from .gui.gui_app import main as gui
-
-        gui()
-        return
-
-    # Set up the matplotlib backend to minimize the wx/gui dependency.
-    # If no GUI specified and not editing, then use the default mpl
-    # backend for the python version.
-    if opts.batch or opts.remote or opts.noshow:  # no interactivity
-        config_matplotlib(backend="agg")
-    else:  # let preview use default graphs
-        config_matplotlib()
-
-    problem = initial_model(opts)
+    # Pickle failed. Try loading modelfile
     if problem is None:
-        print("\n!!! Model file missing from command line --- abort !!!.", file=sys.stderr)
-        sys.exit(1)
-
-    if opts.mpi:
-        MPIMapper.start_worker(problem)
-        mapper = MPIMapper
-    elif opts.parallel != "" or opts.worker:
-        if opts.transport == "mp":
-            mapper = MPMapper
+        # If modelfile is not given look for one of the serializers in the current directory
+        if modelfile is None:
+            # Look for model.py file in the parent directory of the export directory
+            modelfile = path.parent / parfile.with_suffix(".py").name
         else:
-            raise ValueError("unknown mapper")
+            modelfile = Path(modelfile)
+
+        saved_model = path / modelfile.name
+        if not saved_model.exists():
+            raise ValueError(f"Model '{modelfile.name}' does not exist in '{path}'")
+        if not modelfile.exists():
+            raise ValueError(f"Model '{modelfile}' does not exist.")
+        if filehash(saved_model) != filehash(modelfile):
+            raise ValueError(f"Model file has been modified. Copy {saved_model} into {modelfile.parent}")
+
+        # Load the model script and the fitted values.
+        problem = load_problem(modelfile, model_options=args)
+        load_best(problem, parfile)
+
+    # Load the MCMC files
+    fit_result = load_fit_result(parfile)
+
+    return problem, fit_result
+
+
+def load_fit_result(parfile: Path | str) -> FitResult:
+    from bumps.dream.state import load_state
+
+    # Reload DREAM state if it exists. Note that labels come from the parfile.
+    try:
+        fit_state = load_state(str(parfile.parent / parfile.stem))
+        fit_state.mark_outliers()
+        fit_state.portion = fit_state.trim_portion()
+    except Exception as exc:
+        # no fit state, but that's okay
+        logger.warning(f"Could not load DREAM state: {exc}")
+        fit_state = None
+
+    # TODO: might be able to get method and options from the start of the .mon file
+    if fit_state is not None:
+        # Reconstruct dream options for pop and steps are set correctly.
+        # Use negative pop for fixed number of chains independent of the number of parameters
+        Nchains, Nvar, Nsteps = fit_state.Npop, fit_state.Nvar, fit_state.Nthin
+        pop = Nchains / Nvar if Nchains % Nvar == 0 else -Nchains
+        samples = Nchains * Nsteps
+        method = "dream"
+        options = dict(pop=pop, steps=0, samples=samples)
     else:
-        mapper = SerialMapper
-    if opts.worker:
-        mapper.start_worker(problem)
-        return
+        method = "amoeba"  # arbitrary method
+        options = {}
 
-    if np.isfinite(float(opts.time)):
-        import time
-
-        start_time = time.time()
-        stop_time = start_time + float(opts.time) * 3600
-        abort_test = lambda: time.time() >= stop_time
+    # TODO: reload convergence data when it is available
+    if fit_state is not None:
+        convergence = build_convergence_from_fit_state(fit_state)
     else:
-        abort_test = lambda: False
+        convergence = []
 
-    fitdriver = FitDriver(
-        opts.fit_config.selected_fitter, problem=problem, abort_test=abort_test, **opts.fit_config.selected_values
-    )
+    return FitResult(method=method, options=options, convergence=convergence, fit_state=fit_state)
 
-    # Start fitter within the domain so that constraints are valid
-    clipped = fitdriver.clip()
-    if clipped:
-        print("Start value clipped to range for parameter", ", ".join(clipped))
 
-    if opts.time_model:
-        run_timer(mapper.start_mapper(problem, opts.args), problem, steps=int(opts.steps))
-    elif opts.profile:
-        run_profiler(problem, steps=int(opts.steps))
-    elif opts.chisq:
-        if opts.cov:
-            fitdriver.show_cov()
-        print("chisq", problem.chisq_str())
-        # import pprint; pprint.pprint(problem.to_dict(), indent=2, width=272)
-    elif opts.preview:
-        if opts.cov:
-            fitdriver.show_cov()
-        preview(problem, view=opts.view)
-    elif opts.resynth > 0:
-        resynth(fitdriver, problem, mapper, opts)
+def filehash(filename):
+    with open(filename, "rb") as fd:
+        # TODO: simplify to this when python min version is 3.11
+        # return hashlib.file_digest(fd, "md5").hexdigest()
+        chunk_size = 2**16
+        hash = hashlib.md5()
+        while chunk := fd.read(chunk_size):
+            hash.update(chunk)
+        return hash.hexdigest()
 
-    elif opts.remote:
-        # Check that problem runs before submitting it remotely
-        # TODO: this may fail if problem requires remote resources such as GPU
-        print("initial chisq:", problem.chisq_str())
-        job = start_remote_fit(problem, opts, queue=opts.queue, notify=opts.notify)
-        print("remote job:", job["id"])
 
+def build_convergence_from_fit_state(fit_state):
+    """
+    Build a pseudo-convergence array from a dream state object.
+
+    "pseudo" because it doesn't include burn or thinning.
+
+    Also, the best value seen during burn may be lower than the best value seen
+    at the start of the buffer, our estimate of the best so far is an over
+    estimate. It will look like the best is improving even though it is not.
+    This is better than assuming the best occurred before the buffer started.
+    """
+    import numpy as np
+
+    if fit_state is None:
+        return []
+
+    draws, point, logp = fit_state.chains()
+    p = np.sort(abs(logp), axis=1)
+    best = np.minimum.accumulate(p[:, 0])
+    QI, Qmid = int(0.2 * logp.shape[1]), int(0.5 * logp.shape[1])
+    quantiles = np.vstack((best, p[:, 0], p[:, QI], p[:, Qmid], p[:, -(QI + 1)], p[:, -1]))
+    return quantiles.T
+
+
+async def _run_operations(on_startup, on_complete):
+    for step in on_startup:
+        await step(None)
+    # print("waiting for fit complete")
+    await api.wait_for_fit_complete()
+    # print("running complete actions")
+    for step in on_complete:
+        await step(None)
+    # if api.state.mapper is not None:
+    #    api.mapper.stop_mapper()
+    #    api.mapper = None
+    # print("shutting down")
+    await api.shutdown()
+    # print("exiting")
+
+
+def sigint_handler(sig, frame):
+    """
+    Support user interrupt of the fit in batch mode.
+
+    The first Ctrl-C triggers a graceful shutdown. The second Ctrl-C should abort
+    immediately.
+    """
+    # The first Ctrl-C will set fit_abort_event, and the second Ctrl-C will see that
+    # the event is set and abort immediately.
+    # Scenarios:
+    # 1) Ctrl-C before the fit starts. The abort flag starts clear, so we set it.
+    # If another Ctrl-C is received before the start_fit_thread is called then it
+    # will still be set and we will abort. Otherwise, start_fit_thread will clear
+    # the flag before starting the fit and the first Ctrl-C is ignored.
+    # 2) Ctrl-C during fit. start_fit_thread clears the abort flag before starting
+    # so we set it. If another Ctrl-C is received, either during the fit or after
+    # the fit during save and cleanup, the flag will be set and we will abort.
+    # 3) Ctrl-C after fit.  The abort flag will still be clear so we set it. The
+    # subsequent Ctrl-C will abort.
+    # Note: the same behaviour should work if we attach this signal handler
+    # when starting webview. If stop fit is triggered by the GUI, then like the
+    # first Ctrl-S it will set the abort event. Futher stop requests do nothing,
+    # but Ctrl-C in the terminal will exit the program.
+    if api.state.fit_abort_event.is_set():
+        print("Program is not stopping. Aborting.")
+        sys.exit(0)
+    # print("\nCaught KeyboardInterrupt, stopping fit")
+    api.state.fit_abort_event.set()
+
+
+def run_batch_fit(options: BumpsOptions):
+    # TODO: use GUI notifications instead of console monitor for console output
+    # TODO: provide info such as steps k of n and chisq with emit notifications
+    # async def emit_to_console(*args, **kw):
+    #    ...
+    #    print("console", args, kw)
+    # api.EMITTERS["console"] = emit_to_console
+
+    # Monkeypatch shutdown so it doesn't raise system exit
+    signal.signal(signal.SIGINT, sigint_handler)
+    on_startup, on_complete = interpret_fit_options(options)
+    asyncio.run(_run_operations(on_startup, on_complete))
+    # print("completed run")
+
+
+def plugin_main(name: str, client: Path, version: str = ""):
+    api.state.app_name = name
+    api.state.app_version = version
+    api.state.client_path = client
+    main()
+
+
+def main(options: Optional[BumpsOptions] = None):
+    # TODO: where do we configure matplotlib?
+    # Need to set matplotlib to a non-interactive backend because it is being used in the
+    # the export thread. The next_color method calls gca() which needs to produce a blank
+    # graph even when there is none (we ask for next color before making the plot).
+    from bumps.mapper import using_mpi
+    from .webserver import start_from_cli
+
+    if options is None:
+        options = get_commandline_options()
+
+    logger.setLevel(LOGLEVEL[options.loglevel])
+    setup_console_logging(options.loglevel)
+    # from .logger import capture_warnings
+    # capture_warnings(monkeypatch=True)
+    logger.info(options)
+
+    info_only = options.chisq
+    webview = options.mode != "batch" and not info_only
+
+    # TODO: cleaner way to isolate MPI?
+    # TODO: cleaner handling of worker exit.
+    # TODO: allow mpi fits from a jupyter slurm allocation spanning multiple nodes.
+    # Only want one aiohttp server running so we need to know up front whether
+    # the process we are running is the controller or one of the workers.
+    # In order to support unpickleable problems in MPI we need to load the model
+    # independently for each worker. Unfortunately the problem loader is in an
+    # asynchronous function so we need the full async processing loop to load
+    # the problem before we start the worker loop. The current hack is to call
+    # sys.exit() after the worker loop finishes so that the remaining on startup
+    # and on complete actions are skipped. We could instead pass an is_worker flag
+    # into the options processor so that there are no tasks to skip.
+    # Don't use MPI autodetect when --mpi/--no-mpi is given on the command line.
+    if (options.mpi or (options.mpi is None and using_mpi())) and not info_only:
+        # ** Warning **: importing MPI from mpi4py calls MPI_Init() which triggers
+        # network traffic. Only import it when you know you are using MPI calls.
+        from mpi4py import MPI
+
+        is_controller = MPI.COMM_WORLD.rank == 0
+        # api.state.rank = f"{MPI.COMM_WORLD.rank:3d}: "
     else:
-        # Show command line arguments and initial model
-        print("#", " ".join(sys.argv), "--seed=%d" % opts.seed)
-        problem.show()
+        is_controller = True
+        # api.state.rank = ""
 
-        # Check that there are parameters to be fitted.
-        if not len(problem.getp()):
-            print("\n!!! No parameters selected for fitting---abort !!!\n", file=sys.stderr)
-            sys.exit(1)
-
-        # Run the fit
-        if opts.resume == "-":
-            opts.resume = opts.store if os.path.exists(opts.store) else None
-        if opts.resume:
-            resume_path = os.path.join(opts.resume, problem.name)
-        else:
-            resume_path = None
-
-        make_store(problem, opts, exists_handler=store_overwrite_query)
-
-        # Redirect sys.stdout to capture progress
-        if opts.batch:
-            sys.stdout = open(problem.output_path + ".mon", "w")
-
-        # TODO: fix techical debt with checkpoint monitor implementation
-        # * The current checkpoint implementation is self-referential:
-        #     checkpoint = lambda: save_best(fitdriver, ...)
-        #     fitdriver.monitors = [..., CheckpointMonitor(checkpoint), ...]
-        #   It is done this way because the checkpoint monitor needs the fitter
-        #   so it can ask it to save state, but the fitter needs the list of
-        #   monitors, including the checkpoint monitor, before it is run.
-        # * Figures are cumulative, with each checkpoint adding a new set
-        # * Figures are slow! Can they go into a separate thread?  Can we
-        #   have the problem cache the best value?
-        checkpoint_time = float(opts.checkpoint) * 3600
-
-        def checkpoint(history):
-            problem = fitdriver.problem
-            ## Use the following to save only the fitter state
-            fitdriver.fitter.save(problem.output_path)
-            ## Use the following to save the fitter state plus all other
-            ## plots and other output files.  This won't work yet since
-            ## plots are generated sequentially, with each checkpoint producing
-            ## a completely new set of plots.
-            # best = history.point[0]
-            # save_best(fitdriver, problem, best, view=opts.view)
-
-        monitors = [ConsoleMonitor(problem)]
-        if checkpoint_time > 0 and np.isfinite(checkpoint_time):
-            mon = CheckpointMonitor(checkpoint, progress=checkpoint_time)
-            monitors.append(mon)
-        if opts.stepmon:
-            fid = open(problem.output_path + ".log", "w")
-            mon = StepMonitor(problem, fid, fields=["step", "value"])
-            monitors.append(mon)
-        fitdriver.monitors = monitors
-
-        # import time; t0=time.clock()
-        cpus = int(opts.parallel) if opts.parallel != "" else 0
-        fitdriver.mapper = mapper.start_mapper(problem, opts.args, cpus=cpus)
-        best, fbest = fitdriver.fit(resume=resume_path)
-        # print("time=%g"%(time.clock()-t0),file=sys.__stdout__)
-        # Note: keep this in sync with the checkpoint function above
-        save_best(fitdriver, problem, best, view=opts.view)
-        fitdriver.show()
-        if opts.err or opts.cov:
-            fitdriver.show_err()
-        if opts.cov:
-            fitdriver.show_cov()
-        if opts.entropy:
-            fitdriver.show_entropy(opts.entropy)
-        mapper.stop_mapper()
-
-        # If in batch mode then explicitly close the monitor file on completion
-        if opts.batch:
-            sys.stdout.close()
-            sys.stdout = sys.__stdout__
-
-        # Display the plots
-        if not opts.batch and not opts.mpi and not opts.noshow:
-            beep()
-            import matplotlib.pyplot as plt
-
-            plt.show()
+    if webview and is_controller:  # gui mode
+        print(_branding())
+        start_from_cli(options)
+    else:  # console mode
+        run_batch_fit(options)
 
 
-# Allow  "$python -m bumps.cli args" calling pattern
 if __name__ == "__main__":
     main()
