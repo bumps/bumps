@@ -1007,15 +1007,15 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
         # TODO: find a better way to "free" parameters on --pars.
         # TODO: find a way to "free" parameters on --resume.
         values, undefined = [], []
-        for label, default_value in zip(labels, problem.getp()):
+        for label, default_value in zip(labels, self.getp()):
             remaining = targets[label]
             is_empty = not remaining
             # popping the next value from remaining modifies targets[label]
             values.append(default_value if is_empty else remaining.pop(0))
             undefined.append(is_empty)
-        problem.setp(np.asarray(values))
+        self.setp(np.asarray(values))
         if any(undefined):
-            problem.undefined = np.asarray(undefined)
+            self.undefined = np.asarray(undefined)
 
         # Note: restore default behaviour of getstate/setstate rather than
         # inheriting from BaseFitProblem
