@@ -101,7 +101,7 @@ from .fitters import (
     help,
     save_fit,
 )
-from .webview.server.api import (
+from .api import (
     set_problem,
     start_fit_thread,
     wait_for_fit_complete,

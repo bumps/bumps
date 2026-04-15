@@ -408,13 +408,13 @@ class DEFit(FitBase):
 
     @staticmethod
     def h5load(group: "Group") -> Any:
-        from .webview.server.state_hdf5_backed import read_json
+        from .state import read_json
 
         return read_json(group, "DE_history")
 
     @staticmethod
     def h5dump(group: "Group", state: Dict[str, Any]):
-        from .webview.server.state_hdf5_backed import write_json
+        from .state import write_json
 
         write_json(group, "DE_history", state)
 
@@ -1572,7 +1572,7 @@ def plot_convergence(results, cutoff=0.25, ax=None):
 
 def load_session(filename):
     """Reload a session file from a saved hdf"""
-    from bumps.webview.server.state_hdf5_backed import State
+    from bumps.state import State
 
     session = State()
     session.read_session_file(filename)
@@ -1773,8 +1773,8 @@ def fit(
     from pathlib import Path
     from scipy.optimize import OptimizeResult
     from .mapper import MPMapper, SerialMapper
-    from .webview.server.fit_thread import ConvergenceMonitor
-    from .webview.server.state_hdf5_backed import now_string
+    from .fit_thread import ConvergenceMonitor
+    from .state import now_string
 
     # Aliases for backwards compatibility (session=store) and cli compatibility (method=fit)
     # Options parser stores --fit=fitter in fit_options["fit"] rather than fit_options["method"]
@@ -1885,7 +1885,7 @@ def save_fit(
     """
     Write a fit to a session file.
     """
-    from .webview.server.state_hdf5_backed import State, FitResult, ProblemState
+    from .state import State, FitResult, ProblemState
 
     # TODO: strip non-options such as mapper from fit options
     path = Path(path)

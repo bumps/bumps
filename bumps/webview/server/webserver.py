@@ -11,11 +11,11 @@ from pathlib import Path
 from typing import Callable, Optional, Union, List
 
 # from .main import setup_bumps
-from . import cli
-from . import api
-from . import persistent_settings
-from .logger import logger, LOGLEVEL
-from .cli import BumpsOptions, PREFERRED_PORT
+from bumps import cli
+from bumps import api
+from bumps import persistent_settings
+from bumps.logger import logger, LOGLEVEL
+from bumps.cli import BumpsOptions, PREFERRED_PORT
 
 mimetypes.add_type("text/css", ".css")
 mimetypes.add_type("text/html", ".html")

@@ -47,7 +47,7 @@ from bumps import __version__
 from bumps.serialize import serialize, deserialize
 from bumps.serialize import serialize_bytes, deserialize_bytes
 from bumps.util import get_libraries
-from .logger import logger
+from bumps.logger import logger
 
 from .fit_options import lookup_fitter, DEFAULT_FITTER_ID
 
@@ -649,7 +649,7 @@ class State:
     # These attributes are ephemeral, not to be serialized/stored:
     app_name: str = "bumps"
     app_version: str = __version__
-    client_path: Path = Path(__file__).parent.parent / "client"
+    client_path: Path = Path(__file__).parent / "webview" / "client"
     hostname: str
     port: int
     parallel: int = 0

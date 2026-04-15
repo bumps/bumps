@@ -42,6 +42,7 @@ import signal
 import sys
 from dataclasses import field, fields
 import hashlib
+import re
 # from textwrap import dedent
 
 from bumps import __version__ as bumps_version
@@ -49,9 +50,9 @@ from bumps.fitters import FIT_AVAILABLE_IDS
 from bumps.fitproblem import FitProblem, load_problem
 from . import api
 from . import persistent_settings
-from . import fit_options
-from .logger import logger, setup_console_logging, LOGLEVEL
-from .state_hdf5_backed import SERIALIZERS, FitResult
+from bumps import fit_options
+from bumps.logger import logger, setup_console_logging, LOGLEVEL
+from bumps.state import SERIALIZERS, FitResult
 
 # Ick! PREFERRED_PORT is here rather than in webserver so that it can
 # be used in the command line help without a circular import.
@@ -886,9 +887,7 @@ def reload_export(
 
     sys.argv is set to *args* before loading the model.
     """
-    from bumps.fitproblem import load_problem
-    from bumps.cli import load_best
-    from .state_hdf5_backed import SERIALIZER_EXTENSIONS
+    from bumps.state import SERIALIZER_EXTENSIONS
 
     # Find the .par file in the export directory
     path = Path(path)
@@ -937,7 +936,7 @@ def reload_export(
 
         # Load the model script and the fitted values.
         problem = load_problem(modelfile, model_options=args)
-        load_best(problem, parfile)
+        problem.load_best(parfile)
 
     # Load the MCMC files
     fit_result = load_fit_result(parfile)
@@ -1089,7 +1088,6 @@ def main(options: Optional[BumpsOptions] = None):
     # the export thread. The next_color method calls gca() which needs to produce a blank
     # graph even when there is none (we ask for next color before making the plot).
     from bumps.mapper import using_mpi
-    from .webserver import start_from_cli
 
     if options is None:
         options = get_commandline_options()
@@ -1129,6 +1127,8 @@ def main(options: Optional[BumpsOptions] = None):
 
     if webview and is_controller:  # gui mode
         print(_branding())
+        from bumps.webview.server.webserver import start_from_cli
+
         start_from_cli(options)
     else:  # console mode
         run_batch_fit(options)

@@ -49,6 +49,7 @@ __all__ = ["Fitness", "FitProblem", "CovarianceMixin", "load_problem"]
 from contextlib import contextmanager
 from dataclasses import dataclass
 import logging
+import re
 import os
 import sys
 import traceback
@@ -962,17 +963,73 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
             if outfile:
                 plt.savefig(outfile, format="png")
 
-    # Note: restore default behaviour of getstate/setstate rather than
-    # inheriting from BaseFitProblem
-    def __getstate__(self):
-        return self.__dict__
+    def load_best(self, path: Path | str) -> None:
+        """
+        Reload individual parameter values from a saved .par file.
 
-    def __setstate__(self, state):
-        self.__dict__ = state
+        If the label does not exist in the file, use the value from the model
+        as the default value. Ignore labels that do not exist in the model. In
+        that way we can load parameters from an old fit with minimal fuss, even
+        as we add, delete and move parameters in the model. If any parameters
+        are missing, set *problem.undefined* to the a boolean index of the
+        undefined parameters.
+
+        There is an interaction with --init=eps and the par file. If any parameters
+        are missing from the par file they will be randomized across the
+        entire parameter range using the equivalent of --init=lhs. That means
+        you can drop a # at the beginning of the line in the .par file
+        and that parameter will be shuffled on restart, with the remaining
+        parameters starting near the initial value.
+        """
+        # WARNING: Labels are not unique! Need to track multiple instances of
+        # the same label.
+        path = Path(path)
+        if not path.is_file():
+            path = path / (self.name + ".par")
+        if not path.is_file():
+            raise ValueError("Parameter file {path} does not exist.")
+        labels = self.labels()
+        targets = {label: [] for label in labels}
+        with open(path, "rt") as fid:
+            for line in fid:
+                m = PARS_PATTERN.match(line)
+                label, value = m.group("label"), float(m.group("value"))
+                # Accumulate values for labels only if they appear in the model.
+                if label in targets:
+                    targets[label].append(value)
+
+        # Populate model with named parameters in the order they occur in the
+        # parameter file. Identify the missing parameters if any, adding them
+        # to the the problem definition as an optional "undefined" attribute with
+        # one bit for each parameter. This ugly hack is to support a previous
+        # ugly hack in which undefined parameters are initialized with LHS but
+        # defined parameters are initialized with eps, cov or random.
+        # TODO: find a better way to "free" parameters on --pars.
+        # TODO: find a way to "free" parameters on --resume.
+        values, undefined = [], []
+        for label, default_value in zip(labels, problem.getp()):
+            remaining = targets[label]
+            is_empty = not remaining
+            # popping the next value from remaining modifies targets[label]
+            values.append(default_value if is_empty else remaining.pop(0))
+            undefined.append(is_empty)
+        problem.setp(np.asarray(values))
+        if any(undefined):
+            problem.undefined = np.asarray(undefined)
+
+        # Note: restore default behaviour of getstate/setstate rather than
+        # inheriting from BaseFitProblem
+        def __getstate__(self):
+            return self.__dict__
+
+        def __setstate__(self, state):
+            self.__dict__ = state
 
 
 # TODO: consider adding nllf_scale to FitProblem.
 ONE_SIGMA = 0.68268949213708585
+
+PARS_PATTERN = re.compile(r"^(?P<label>.*) (?P<value>[^ ]*)\n$")
 
 
 def nllf_scale(dof: int, npars: int, norm: bool = True):
@@ -1019,7 +1076,7 @@ def load_problem(path: Path | str, args: list[str] | None = None):
     *args* are any additional arguments to the model.  The sys.argv
     variable will be set such that *sys.argv[1:] == model_options*.
     """
-    from .webview.server.state_hdf5_backed import SERIALIZER_EXTENSIONS, deserialize_problem_bytes
+    from .state import SERIALIZER_EXTENSIONS, deserialize_problem_bytes
 
     path = Path(path)
     table = {f".{ext}": method for method, ext in SERIALIZER_EXTENSIONS.items()}

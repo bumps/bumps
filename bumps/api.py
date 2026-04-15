@@ -64,8 +64,8 @@ from bumps.dream.state import MCMCDraw
 import bumps.errplot
 from bumps.util import push_mpl_backend
 
-from . import fit_options
-from .state_hdf5_backed import (
+from bumps import fit_options
+from bumps.state import (
     UNDEFINED,
     UNDEFINED_TYPE,
     FitResult,
@@ -77,12 +77,14 @@ from .state_hdf5_backed import (
     SERIALIZER_EXTENSIONS,
     TopicNameType,
 )
-from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
-from .varplot import plot_vars
-from .traceplot import plot_trace
-from .logger import logger
-from .convergence_plot import convergence_plot
-from .custom_plot import process_custom_plot, CustomWebviewPlot
+from bumps.logger import logger
+from bumps.fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
+
+from .plots.varplot import plot_vars
+from .plots.traceplot import plot_trace
+from .plots.convergence_plot import convergence_plot
+from .plots.custom_plot import process_custom_plot, CustomWebviewPlot
+from .plots.corrplot import Corr2d
 
 # CRUFT: python 3.8 does not have asyncio.to_thread
 try:
@@ -592,7 +594,7 @@ async def apply_parameters(pathlist: List[str], filename: str):
     fullpath = path / filename
     try:
         # print(f"loading parameters from {fullpath}")
-        bumps.cli.load_best(state.problem.fitProblem, fullpath)
+        state.problem.fitProblem.load_best(fullpath)
         state.shared.updated_parameters = now_string()
         await log(f"Applied parameters from {fullpath}")
         await add_notification(
@@ -1245,8 +1247,6 @@ def _get_correlation_plot(
     vars=None,
     timestamp: str = "",
 ):
-    from .corrplot import Corr2d
-
     fit_state = state.fitting.fit_state
 
     if hasattr(fit_state, "draw"):
