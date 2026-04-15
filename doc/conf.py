@@ -77,6 +77,7 @@ nitpick_ignore = [
     ("py:class", "argparse.Action"),
     ("py:class", "argparse.RawTextHelpFormatter"),
     ("py:class", "argparse.ArgumentDefaultsHelpFormatter"),
+    ("py:class", "argparse.ArgumentParser"),
     # ("py:class", "any"),
     # ("py:class", "type"),
     ("py:class", "enum.Enum"),
@@ -86,6 +87,7 @@ nitpick_ignore = [
     ("py:class", "numpy._typing._array_like._SupportsArray"),
     ("py:class", "numpy._typing._array_like._ScalarT"),
     ("py:class", "numpy._typing._array_like._Buffer"),
+    ("py:class", "numpy._typing.ArrayLike"),
     ("py:class", "numpy._typing._nested_sequence._NestedSequence"),
     ("py:class", "numpy.ndarray"),
     ("py:class", "NDArray"),
@@ -101,10 +103,12 @@ nitpick_ignore = [
     # From bumps
     ("py:class", "bumps.fitproblem.FitnessType"),
     ("py:obj", "bumps.fitproblem.FitnessType"),
-    ("py:class", "bumps.webview.server.state_hdf5_backed.Timestamp"),
-    ("py:obj", "bumps.webview.server.state_hdf5_backed.Timestamp"),
-    ("py:obj", "bumps.webview.server.state_hdf5_backed.UNDEFINED"),
-    ("py:class", "bumps.webview.server.api.ParamInfo"),
+    ("py:class", "bumps.state.Timestamp"),
+    ("py:obj", "bumps.state.Timestamp"),
+    ("py:obj", "bumps.state.UNDEFINED"),
+    ("py:class", "bumps.api.ParamInfo"),
+    ("py:obj", "typing.Dict[str"),
+    ("py:obj", "typing.Literal['dataclass'"),
 ]
 
 
@@ -320,6 +324,34 @@ slink_vars = dict(
     imacapp=download("bumps-{version}-Darwin-x86_64.dmg"),
     linuxapp=download("bumps-{version}-Linux-x86_64.tar.gz"),
 )
+
+
+# Sphinx has trouble with TypedDict documentation:
+def skip_typeddict_inherited(app, what, name, obj, skip, options):
+    # Standard dict methods that cause the warnings
+    dict_methods = (
+        "clear",
+        "copy",
+        "fromkeys",
+        "get",
+        "items",
+        "keys",
+        "pop",
+        "popitem",
+        "setdefault",
+        "update",
+        "values",
+    )
+
+    if name in dict_methods and getattr(obj, "__objclass__", None) is dict:
+        return True
+
+    return skip
+
+
+def setup(app):
+    app.connect("autodoc-skip-member", skip_typeddict_inherited)
+
 
 # -- Options for manual page output --------------------------------------------
 

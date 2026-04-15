@@ -191,6 +191,8 @@ BUMPS_MODULES = [
     ("simplex", "Nelder-Mead simplex optimizer (amoeba)"),
     ("util", "Miscellaneous functions"),
     ("wsolve", "Weighted linear and polynomial solver with uncertainty"),
+    ("state", "state management for fit sessions"),
+    ("fit_thread", "Manage fitting thread"),
 ]
 
 DREAM_OPTIONS = {

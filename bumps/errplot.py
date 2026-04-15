@@ -50,7 +50,7 @@ import numpy as np
 
 from .dream.state import load_state
 from . import plugin
-from .cli import load_model, load_best
+from .fitproblem import load_problem
 
 
 def reload_errors(model, store, nshown=50, random=True):
@@ -69,8 +69,8 @@ def reload_errors(model, store, nshown=50, random=True):
 
     Returns *errs* for :func:`show_errors`.
     """
-    problem = load_model(model)
-    load_best(problem, os.path.join(store, problem.name + ".par"))
+    problem = load_problem(model)
+    problem.load_best(os.path.join(store, problem.name + ".par"))
     state = load_state(os.path.join(store, problem.name))
     state.mark_outliers()
     points = error_points_from_state(state, nshown=nshown, random=random)
