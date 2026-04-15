@@ -186,38 +186,50 @@ def build_arg_parser() -> argparse.ArgumentParser:
     # TODO: allow --pars from session file
     # TODO: missing the following options from pre-1.0
     """
-    # Wait for someone to ask for the following
+    # Wait for someone to ask for the following:
+
     --overwrite                    [new version extends session file]
         if store already exists, replace it
+
     --resynth=0
         run resynthesis error analysis for n generations
+
     --time_model
         run the model --steps times in order to estimate total run time.
+
     --profile
         run the python profiler on the model; use --steps to run multiple
         models for better statistics
+
     --stepmon
         show details for each step in .log file
 
-    # Won't implement
+    # Won't implement:
+
     --plot=linear|log|residuals    [plugin specific]
         type of plot to display
+
     --view=linear|log              [plugin specific]
         one of the predefined problem views; reflectometry also has fresnel,
         logfresnel, q4 and residuals
+
     --staj                         [plugin specific. Can plugins extend argparse?]
         output staj file when done [Refl1D only]
 
     # Superceded
+
     -m/-c/-p command               [we are shipping a python environment]
         run the python interpreter with bumps on the path:
             m: command is a module such as bumps.cli, run as __main__
             c: command is a python one-line command
             p: command is the name of a python script
+
     -i                             [our python environment can install ipython with pip]
         start the interactive interpreter
+
     --noshow                       [use --export to produce plots]
         semi-batch; send output to console but don't show plots after fit
+
     --preview                      [use webview instead]
         display model but do not perform a fitting operation
     --edit                         [default]
