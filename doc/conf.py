@@ -106,6 +106,8 @@ nitpick_ignore = [
     ("py:obj", "bumps.state.Timestamp"),
     ("py:obj", "bumps.state.UNDEFINED"),
     ("py:class", "bumps.api.ParamInfo"),
+    ("py:obj", "typing.Dict[str"),
+    ("py:obj", "typing.Literal['dataclass'"),
 ]
 
 
