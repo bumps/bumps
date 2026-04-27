@@ -1620,6 +1620,7 @@ class ParamInfo(TypedDict, total=False):
     id: str
     name: str
     paths: List[str]
+    slot_repr: str
     value_str: str
     fittable: bool
     fixed: bool
@@ -1627,6 +1628,7 @@ class ParamInfo(TypedDict, total=False):
     value01: float
     min_str: str
     max_str: str
+    tags: List[str]
 
 
 def params_to_list(params, lookup=None, path="", freevars=None) -> List[ParamInfo]:
@@ -1650,18 +1652,18 @@ def params_to_list(params, lookup=None, path="", freevars=None) -> List[ParamInf
         existing = lookup.get(pid, None)
         if existing is not None:
             existing["paths"].append(path)
-        elif freevars.isfree(params):
+        elif freevars is not None and freevars.isfree(params):
             # Don't include free parameters from the model in the list
             # of available parameters.
             pass
         else:
             value_str = VALUE_FORMAT.format(nice(params.value))
             writable = has_slot and isinstance(params.slot, (float, Variable, Parameter))
-            paths = [path] if not has_slot or isinstance(params.slot, (float, Variable)) else [f"{path}={params.slot}"]
             new_item: ParamInfo = {
                 "id": pid,
                 "name": str(params.name),
-                "paths": paths,
+                "paths": [path],
+                "slot_repr": str(params.slot) if has_slot else "",
                 "tags": getattr(params, "tags", []),
                 "writable": writable,
                 "value_str": value_str,
