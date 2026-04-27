@@ -170,6 +170,12 @@ class Calculation(ValueProtocol):  # the name Function is taken (though deprecat
     def __float__(self):
         return self.value
 
+    def __repr__(self):
+        return f'Calculation(description="{self.description}")'
+
+    def __str__(self):
+        return self.description
+
     def set_function(self, function):
         self._function = function
 
