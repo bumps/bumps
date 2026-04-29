@@ -16,7 +16,9 @@ jobs:
   # Build a pure Python wheel and upload as an artifact
   build-wheel:
     runs-on: ubuntu-latest
-
+    outputs:
+      versions: ${{ steps.set-matrix.outputs.versions }}
+      max_version: ${{ steps.set-matrix.outputs.max_version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -31,6 +33,36 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
 
+      - name: Get Filtered Minor Versions
+        id: set-matrix
+        run: |
+          # 1. Extract the minimum version (e.g., "3.10")
+          MIN_VERSION=$(grep "requires-python" pyproject.toml | grep -oE '[0-9]+\.[0-9]+' | head -1)
+
+          # 2. Use jq to compare as numeric arrays instead of strings
+          # Logic: "3.9" -> [3, 9], "3.10" -> [3, 10].
+          # jq compares arrays element-by-element numerically.
+          RAW_JSON=$(uv python list --output-format json | jq -c --arg min "$MIN_VERSION" '
+            ($min | split(".") | map(tonumber)) as $min_parts |
+            [ .[] | .version | split(".") | .[0:2] | map(tonumber) ]
+            | unique
+            | map(select(. >= $min_parts))
+            | sort
+          ')
+
+          # 3. Format the full matrix for the next job
+          VERSIONS=$(echo "$RAW_JSON" | jq -c 'map(join("."))')
+
+          # 4. Extract the absolute maximum version
+          MAX_VERSION=$(echo "$RAW_JSON" | jq -r 'last | join(".")')
+
+          echo "versions=$VERSIONS" >> $GITHUB_OUTPUT
+          echo "max_version=$MAX_VERSION" >> $GITHUB_OUTPUT
+
+          # Optional: Print to logs for debugging
+          echo "Full Matrix: $VERSIONS"
+          echo "Latest Version: $MAX_VERSION"
+
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
@@ -38,7 +70,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
 
       - name: build webview
         run: |
@@ -57,21 +89,19 @@ jobs:
             dist/bumps-*.tar.gz
   # Test the wheel on different platforms, test webview, and check docs build
   test:
-    runs-on: ${{ matrix.cfg.os }}
+    runs-on: ${{ matrix.os }}
     needs: build-wheel
-
+    env:
+      DEFAULT_PYTHON: ${{ needs.build-wheel.outputs.max_version }}
     strategy:
       matrix:
-        cfg:
-          #- { os: ubuntu-latest, py: 3.8 }
-          #- { os: ubuntu-latest, py: "3.9" }
-          - { os: ubuntu-latest, py: "3.10" }
-          - { os: ubuntu-latest, py: "3.11", doc: 1 }
-          - { os: ubuntu-latest, py: "3.12" }
-          - { os: ubuntu-latest, py: "3.13" }
-          - { os: ubuntu-latest, py: "3.14" }
-          - { os: windows-latest, py: "3.11" }
-          - { os: macos-latest, py: "3.11" }
+        os: ["ubuntu-latest"]
+        py: ${{ fromJson(needs.build-wheel.outputs.versions) }}
+        include:
+          - os: windows-latest
+            py: "" # placeholder, will use default version
+          - os: macos-latest
+            py: ""
       fail-fast: false
 
     steps:
@@ -79,11 +109,6 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
-
-      - name: Set up Python ${{ matrix.cfg.py }}
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.cfg.py }}
 
       - name: Download the wheel
         uses: actions/download-artifact@v7
@@ -93,7 +118,7 @@ jobs:
 
       - name: Install the wheel
         run: |
-          uv venv
+          uv venv --python={{ matrix.py }}
           find dist -name "bumps-*-py3-none-any.whl" -exec uv pip install {}[dev] \;
 
       - name: Run tests
@@ -106,10 +131,11 @@ jobs:
         run: uv run python check_fitters.py
 
       - name: Check that the docs build (linux only)
-        if: matrix.cfg.doc == 1
+        if: ${{ matrix.py == env.DEFAULT_PYTHON && matrix.os == 'ubuntu-latest' }}
         run: |
           source .venv/bin/activate
           make -j 4 -C doc SPHINXOPTS="-W --keep-going -n" html
+
   # Upload wheel to PyPI only when a tag is pushed, and its name begins with 'v'
   upload-to-pypi:
     runs-on: ubuntu-latest
