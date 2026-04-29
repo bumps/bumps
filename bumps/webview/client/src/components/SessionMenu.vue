@@ -177,5 +177,10 @@ async function setOutputFile(enable_autosave = true, immediate_save = false) {
         Save Session As
       </button>
     </li>
+    <li>
+      <a class="btn btn-link dropdown-item" href="./get_session" download="session.h5" @click="hide()">
+        Download Session
+      </a>
+    </li>
   </DropDown>
 </template>

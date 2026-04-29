@@ -42,16 +42,16 @@ class Fitness(object):
         """
         Plot a profile for the given p
         """
-        import pylab
+        import matplotlib.pyplot as plt
 
         if self.dy is not None:
-            pylab.errorbar(self.x, self.y, yerr=self.dy, fmt="x")
+            plt.errorbar(self.x, self.y, yerr=self.dy, fmt="x")
         else:
-            pylab.plot(self.x, self.y, "x")
+            plt.plot(self.x, self.y, "x")
         if p is None:
             p = self.start
         x, y = self.profile(p)
-        pylab.plot(x, y)
+        plt.plot(x, y)
 
     def response_surface(self, p=None, dims=[0, 1]):
         if p is None:
@@ -63,22 +63,22 @@ def plot_response_surface(f, p, dims=[0, 1]):
     """
     Plot a line or a slice around a point in a n-D function
     """
-    import pylab
+    import matplotlib.pyplot as plt
 
     if len(dims) == 1:
         xi = dims[0]
-        x = pylab.linspace(-10, 10, 40) - p[xi]
+        x = np.linspace(-10, 10, 40) - p[xi]
 
         def value(v):
             p[xi] = v
             return f(p)
 
         z = [value(v) for v in x]
-        pylab.plot(x, z)
+        plt.plot(x, z)
     else:
         xi, yi = dims
-        x = pylab.linspace(-10, 10, 40) - p[xi]
-        y = pylab.linspace(-10, 10, 40) - p[yi]
+        x = np.linspace(-10, 10, 40) - p[xi]
+        y = np.linspace(-10, 10, 40) - p[yi]
 
         def value(pt):
             p[xi] = pt[0]
@@ -86,4 +86,4 @@ def plot_response_surface(f, p, dims=[0, 1]):
             return f(p)
 
         z = np.array([[value((v, w)) for v in x] for w in y])
-        pylab.pcolor(x, y, z)
+        plt.pcolor(x, y, z)

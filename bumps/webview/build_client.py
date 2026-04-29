@@ -43,7 +43,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Build the webview client.")
-    parser.add_argument("--no-deps", action="store_false", help="Don't install npm dependencies.")
+    parser.add_argument("--no-deps", action="store_true", help="Don't install npm dependencies.")
     parser.add_argument("--sourcemap", action="store_true", help="Generate sourcemaps.")
     parser.add_argument("--cleanup", action="store_true", help="Remove the node_modules directory.")
     args = parser.parse_args()

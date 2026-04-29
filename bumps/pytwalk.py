@@ -7,7 +7,7 @@ T-walk self adjusting MCMC.
 
 # 2010-04-17 Paul Kienzle
 # * typo fixups
-# * move pylab import to the particular functions
+# * move matplotlib import to the particular functions
 # * remove scipy dependence
 
 __all__ = ["pytwalk"]
@@ -426,7 +426,7 @@ class pytwalk:
 
     def TS(self, par=-1, start=0, end=0):
         """Plot time series of parameter par (default = log f) etc."""
-        from pylab import plot, xlabel, ylabel
+        import matplotlib.pyplot as plt
 
         if par == -1:
             par = self.n
@@ -435,12 +435,12 @@ class pytwalk:
             end = self.T
 
         if par == self.n:
-            plot(arange(start, end), -1 * self.Output[start:end, par])
-            ylabel("Log of Objective")
+            plt.plot(arange(start, end), -1 * self.Output[start:end, par])
+            plt.ylabel("Log of Objective")
         else:
-            plot(arange(start, end), self.Output[start:end, par])
-            ylabel("Parameter %d" % par)
-        xlabel("Iteration")
+            plt.plot(arange(start, end), self.Output[start:end, par])
+            plt.ylabel("Parameter %d" % par)
+        plt.xlabel("Iteration")
 
     def Ana(self, par=-1, start=0, end=0):
         """Output Analysis, TS plots, acceptance rates, IAT etc."""
@@ -463,7 +463,7 @@ class pytwalk:
         The function g provides a transformation to be applied to the data,
         eg g=(lambda x: abs(x[0]-x[1]) would plot a histogram of the distance
         between parameters 0 and 1, etc."""
-        from pylab import hist, xlabel
+        import matplotlib.pyplot as plt
 
         if end == 0:
             end = self.T
@@ -472,15 +472,15 @@ class pytwalk:
             ser = zeros(end - start)
             for it in range(end - start):
                 ser[it] = g(self.Output[it + start, :])
-            xlabel(xlab)
+            plt.xlabel(xlab)
             print("Mean for %s= %f" % (xlab, mean(ser)))
         else:
             ser = self.Output[start:end, par]
-            xlabel("Parameter %d" % par)
+            plt.xlabel("Parameter %d" % par)
             print("Mean for par %d= %f" % (par, mean(ser)))
 
-        hist(ser, bins=bins)
-        print("Do:\nfrom pylab import show\nshow()")
+        plt.hist(ser, bins=bins)
+        print("Do:\nimport matplotlib.pyplot as plt\nplt.show()")
 
     def Save(self, fnam, start=0, thin=1):
         """Saves the Output as a text file, starting at start (burn in), with thinning (thin)."""

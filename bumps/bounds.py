@@ -1013,10 +1013,10 @@ def demo_01():
             bounds = Bounded(base, base + 1)
             v01 = bounds.get01(value)
             vp = bounds.put01(v01)
-            message = f"{value} => {v01} => {vp} in [{base}, {base+1}]"
+            message = f"{value} => {v01} => {vp} in [{base}, {base + 1}]"
             # print(message)
             target = clip(value, base, base + 1)
-            assert abs(vp - target) < abs(value * eps), f"{value} => {vp} in [{base}, {base+1}]"
+            assert abs(vp - target) < abs(value * eps), f"{value} => {vp} in [{base}, {base + 1}]"
     print("All 01 passed")
 
 
@@ -1053,10 +1053,10 @@ def demo_full():
             bounds = Bounded(base, base + 1)
             vfull = bounds.getfull(value)
             vp = bounds.putfull(vfull)
-            message = f"{value} => {vfull} => {vp} in [{base}, {base+1}]"
+            message = f"{value} => {vfull} => {vp} in [{base}, {base + 1}]"
             # print(message)
             target = clip(value, base, base + 1)
-            assert abs(vp - target) < abs(value * eps), f"{value} => {vp} in [{base}, {base+1}]"
+            assert abs(vp - target) < abs(value * eps), f"{value} => {vp} in [{base}, {base + 1}]"
     print("All full passed")
 
 

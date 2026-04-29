@@ -17,15 +17,16 @@ jobs:
       run:
         shell: bash -el {0}
     strategy:
+      fail-fast: false
       matrix:
         config:
           - { os: ubuntu-latest }
           - { os: windows-latest }
           - { os: macos-latest }
-          - { os: macos-13 }
+          - { os: macos-15-intel }
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
       with:
         ref: ${{ env.branch_name }}
         fetch-depth: 0
@@ -107,6 +108,10 @@ jobs:
         codesign --verify --options=runtime --timestamp --verbose=4 --force --sign "${DEVELOPER_IDENTITY}" "$APP"
         codesign --verify --options=runtime --timestamp --verbose=4 --force --sign "${DEVELOPER_IDENTITY}" "$APP_FOLDER/${PACKAGE_NAME}_shell.app"
 
+        # After signing, ensure all writes are flushed
+        sync
+        sleep 2
+
         DMG="artifacts/$FULL_PACKAGE_NAME.dmg"
         mkdir -p artifacts
         hdiutil create $DMG -srcfolder "$BUILD_DIR" -ov -format UDZO
@@ -162,7 +167,7 @@ jobs:
         tar -czf "artifacts/$FULL_PACKAGE_NAME.tar.gz" "$PRODUCT_NAME"
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: artifacts-${{ matrix.config.os }}-${{ matrix.config.py }}
         path: artifacts/*

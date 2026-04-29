@@ -11,13 +11,13 @@ from matplotlib import pyplot as plt
 
 # Set space between plots in horiz and vert.
 H_SPACE = 0.2
-V_SPACE = 0.2
+V_SPACE = 0.3
 
 # Set top, bottom, left margins.
 T_MARGIN = 0.2
-B_MARGIN = 0.2
+B_MARGIN = 0.1
 L_MARGIN = 0.2
-R_MARGIN = 0.4
+R_MARGIN = 0.2
 
 # Set desired plot sizes.
 TILE_W = 3.0
@@ -95,62 +95,91 @@ def tile_axes_square(n):
     return cols, rows
 
 
-def plot_vars(draw, all_vstats, fig=None, **kw):
+def plot_vars(draw, all_vstats, fig=None, nbins: int = 30, full: bool = False):
+    """
+    Plot parameter histograms in a grid on the figure. Each bar on the histogram
+    is shaded according the nllf of points in that bar, sorted to make a color
+    gradient. The colorbar showing the nllf range is shared across all plots.
+
+    If *fig* is not provided and new figure will be created.
+
+    *nbins* controls the number of bars on each histogram.
+
+    Use *full=True* to plot the histogram across the full range of sample values. By
+    default *full=False* and only the central 95% range is histogrammed.
+
+    The plots can be unreadable when labels overwrite each other. You can adjust the
+    layout by setting H_SPACE, V_SPACE, T_MARGIN, B_MARGIN, L_MARGIN, R_MARGIN
+    (see pyplot.subplots_adjust), TILE_W, TILE_H (for aspect ratio of the subplots)
+    and CBAR_WIDTH (it's complicated). This will affect every subsequent plot.
+    """
     n = len(all_vstats)
     fig = _make_var_axes(n, fig=fig)
     cbar = _make_fig_colorbar(draw.logp, fig=fig)
     for k, vstats in enumerate(all_vstats):
         axes = fig.axes[k]
-        plot_var(draw, vstats, k, cbar, axes=axes, **kw)
+        plot_var(draw, vstats, k, cbar, axes=axes, nbins=nbins, full=full)
         fig.canvas.draw()
 
 
-def plot_var(draw, vstats, var, cbar, nbins=30, axes=None):
+def plot_var(draw, vstats, var, cbar, axes=None, nbins=30, full=False):
+    import matplotlib.pyplot as plt
+
     values = draw.points[:, var].flatten()
-    bin_range = vstats.p95_range
-    # bin_range = np.min(values), np.max(values)
-    import pylab
+    if full:
+        bin_range = np.min(values), np.max(values)
+    else:
+        bin_range = vstats.p95_range
 
     if axes is None:
-        axes = pylab.gca()
+        axes = plt.gca()
 
-    _make_logp_histogram(values, draw.logp, nbins, bin_range, draw.weights, cbar, axes)
-    _decorate_histogram(vstats, axes)
+    make_logp_histogram(values, draw.logp, nbins, bin_range, draw.weights, cbar, axes)
+    decorate_histogram(vstats, axes)
 
 
-def _decorate_histogram(vstats, axes):
+def decorate_histogram(vstats, axes):
     from matplotlib.transforms import blended_transform_factory as blend
 
     l95, h95 = vstats.p95_range
     l68, h68 = vstats.p68_range
 
     # Shade things inside 1-sigma
-    axes.axvspan(l68, h68, color="gold", alpha=0.5, zorder=-1)
+    axes.axvspan(l68, h68, color="gold", alpha=0.5, zorder=-2)
+    # Mark the median with a vertical line
+    axes.axvline(x=vstats.median, color="g", ls=":", alpha=0.7, zorder=-1)
     # build transform with x=data, y=axes(0,1)
     transform = blend(axes.transData, axes.transAxes)
 
-    def marker(symbol, position):
+    # Mark the mean and best with symbols
+    def marker(symbol: str, position: float) -> None:
         if position < l95:
-            symbol, position, ha = "<" + symbol, l95, "left"
+            text, x, ha = f"{symbol}←", l95, "left"
         elif position > h95:
-            symbol, position, ha = ">" + symbol, h95, "right"
+            text, x, ha = f"→{symbol}", h95, "right"
         else:
-            symbol, position, ha = symbol, position, "center"
-        axes.text(position, 0.95, symbol, va="top", ha=ha, transform=transform, zorder=3, color="g")
+            text, x, ha = symbol, position, "center"
+        y, va = -0.01, "top"
+        axes.text(x, 1 + y, text, va=va, ha=ha, transform=transform, zorder=3, color="g")
         # axes.axvline(v)
 
-    marker("|", vstats.median)
-    marker("E", vstats.mean)
-    marker("*", vstats.best)
+    marker("▽", vstats.mean)
+    marker("∗", vstats.best)
 
+    # Put the parameter label on the line with mean and best markers. Use the side without
+    # the mean/best marker so that they don't overwrite each other.
+    if (vstats.mean - l95) / (h95 - l95) > 0.4 or (vstats.best - l95) / (h95 - l95) > 0.4:
+        x, ha = 0.02, "left"
+    else:
+        x, ha = 0.98, "right"
     axes.text(
-        0.01,
-        0.95,
+        x,
+        0.99,
         vstats.label,
         zorder=2,
-        backgroundcolor=(1, 1, 0, 0.2),
+        # backgroundcolor=(0.6, 1.0, 0.6, 0.6),
         verticalalignment="top",
-        horizontalalignment="left",
+        horizontalalignment=ha,
         transform=axes.transAxes,
     )
     axes.set_yticklabels([])
@@ -158,20 +187,20 @@ def _decorate_histogram(vstats, axes):
 
 def _make_fig_colorbar(logp, fig=None):
     import matplotlib as mpl
-    import pylab
+    import matplotlib.pyplot as plt
 
     # Option 1: min to min + 4
     # vmin=-max(logp); vmax=vmin+4
     # Option 1b: min to min log10(num samples)
     # vmin=-max(logp); vmax=vmin+log10(len(logp))
     # Option 2: full range of best 98%
-    snllf = pylab.sort(-logp)
+    snllf = np.sort(-logp)
     vmin, vmax = snllf[0], snllf[int(0.98 * (len(snllf) - 1))]  # robust range
     # Option 3: full range
     # vmin,vmax = -max(logp),-min(logp)
 
     if fig is None:
-        fig = pylab.gcf()
+        fig = plt.gcf()
     ax = fig.axes[-1]
     cmap = mpl.cm.copper
 
@@ -208,8 +237,8 @@ def _make_fig_colorbar(logp, fig=None):
     return cbar
 
 
-def _make_logp_histogram(values, logp, nbins, ci, weights, cbar, axes):
-    from numpy import ones_like, searchsorted, linspace, cumsum, diff, unique, argsort, array, hstack, exp
+def make_logp_histogram(values, logp, nbins, ci, weights, cbar, ax):
+    from numpy import ones_like, searchsorted, linspace, cumsum, unique, argsort, array, hstack, exp
 
     if weights is None:
         weights = ones_like(logp)
@@ -244,6 +273,7 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, cbar, axes):
         # For debugging compare with one rectangle per sample
         if False:
             import matplotlib as mpl
+            import matplotlib.pyplot as plt
 
             cmap = mpl.cm.flag
             edgecolors = "k"
@@ -251,7 +281,7 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, cbar, axes):
             x = [xlo, xmid]
             y = hstack((0, y_top))
             z = pv[:, None]
-            pylab.pcolormesh(x, y, z, norm=cbar.norm, cmap=cmap)
+            plt.pcolormesh(x, y, z, norm=cbar.norm, cmap=cmap)
             x = [xmid, xhi]
 
         # Possibly millions of samples, so group those which have the
@@ -278,7 +308,7 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, cbar, axes):
         tops = unique(hstack((change_point, len(pv) - 1)))
         y = hstack((0, y_top[tops]))
         z = pv[tops][:, None]
-        axes.pcolormesh(x, y, z, norm=cbar.norm, cmap=cmap, edgecolors=edgecolors)
+        ax.pcolormesh(x, y, z, norm=cbar.norm, cmap=cmap, edgecolors=edgecolors)
 
         # centerpoint, histogram height, maximum likelihood for each bin
         bins.append(((xlo + xhi) / 2, y_top[-1], exp(cbar.norm.vmin - pv[0])))
@@ -294,7 +324,13 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, cbar, axes):
     ml_peak = np.max(maxlikelihood)
     if ml_peak > hist_peak * 1.3:
         maxlikelihood *= hist_peak * 1.3 / ml_peak
-    axes.plot(centers, maxlikelihood, "-g")
+        ml_peak = hist_peak * 1.3
+    ax.plot(centers, maxlikelihood, "-b")
+
+    # Leave space for parameter label and statistics markers at the top of the plot
+    ax.autoscale(enable=True, axis="x", tight=True)
+    ax.set_ylim(0, 1.1 * max(hist_peak, ml_peak))
+    # ax.autoscale(enable=True, axis='y', tight=False)
 
     ## plot marginal gaussian approximation along with histogram
     # def G(x, mean, std):
@@ -302,10 +338,10 @@ def _make_logp_histogram(values, logp, nbins, ci, weights, cbar, axes):
     ## TODO: use weighted average for standard deviation
     # mean, std = np.average(values, weights=weights), np.std(values, ddof=1)
     # pdf = G(centers, mean, std)
-    # pylab.plot(centers, pdf*np.sum(height)/np.sum(pdf), '-b')
+    # plt.plot(centers, pdf*np.sum(height)/np.sum(pdf), '-b')
 
 
-def _make_var_histogram(values, logp, nbins, ci, weights):
+def make_var_histogram(values, logp, nbins, ci, weights):
     # Produce a histogram
     hist, bins = np.histogram(
         values,
@@ -323,16 +359,16 @@ def _make_var_histogram(values, logp, nbins, ci, weights):
     # scale to marginalized probability with peak the same height as hist
     histbest = np.exp(np.asarray(histbest) - max(logp)) * np.max(hist)
 
-    import pylab
+    import matplotlib.pyplot as plt
 
     # Plot the histogram
-    pylab.bar(bins[:-1], hist, width=bins[1] - bins[0])
+    plt.bar(bins[:-1], hist, width=bins[1] - bins[0])
 
     # Plot the kernel density estimate
     # density = KDE1D(values)
     # x = linspace(bins[0],bins[-1],100)
-    # pylab.plot(x, density(x), '-k')
+    # plt.plot(x, density(x), '-k')
 
     # Plot the marginal maximum likelihood
     centers = (bins[:-1] + bins[1:]) / 2
-    pylab.plot(centers, histbest, "-g")
+    plt.plot(centers, histbest, "-g")

@@ -52,7 +52,7 @@ async function open(settings_in: FileBrowserSettings) {
   await setPath(pathlist.value ?? []);
   if (settings_in.search_patterns && settings_in.search_patterns.length > 0) {
     // this triggers doSorting and filtering...
-    active_search_pattern.value = settings_in.search_patterns[0];
+    active_search_pattern.value = settings_in.search_patterns[0] ?? null;
   }
   dialog.value?.showModal();
   isOpen.value = true;
@@ -117,7 +117,7 @@ const LOG_1024 = Math.log(1024);
 function formatSize(bytes: number) {
   const scale = bytes > 0 ? Math.min(5, Math.floor(Math.log(bytes) / LOG_1024)) : 0;
   const prefix = PREFIXES[scale];
-  const reduced = bytes / SCALES[scale];
+  const reduced = bytes / SCALES[scale]!;
   const extra_digits = scale == 0 ? 0 : 1;
   return `${reduced.toFixed(extra_digits)} ${prefix}B`;
 }
@@ -158,7 +158,7 @@ function selectNotSuffix(ev: Event) {
   const value = target.value;
   const matches = value.match(SUFFIX_SEARCH);
   if (matches !== null) {
-    const selection_length = matches[1].length;
+    const selection_length = matches[1]!.length;
     target.setSelectionRange(0, selection_length);
   }
 }
