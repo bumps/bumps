@@ -118,7 +118,7 @@ jobs:
 
       - name: Install the wheel
         run: |
-          uv venv --python={{ matrix.py }}
+          uv venv --python=${{ matrix.py }}
           find dist -name "bumps-*-py3-none-any.whl" -exec uv pip install {}[dev] \;
 
       - name: Run tests
