@@ -57,7 +57,7 @@ function changeActiveFitter() {
 function process_settings() {
   return Object.fromEntries(
     Object.entries(active_settings.value).map(([sname, value]) => {
-      const field_type = fit_fields.value[sname].stype;
+      const field_type = fit_fields.value[sname]?.stype;
       let processed_value: any = value;
       if (field_type === "integer") {
         processed_value = Math.round(Number(value));
@@ -104,11 +104,11 @@ async function save(start: boolean = false, resume: boolean = false) {
 
 function reset() {
   active_settings.value =
-    structuredClone({ ...default_fitter_settings.value[selected_fitter_local.value].settings }) ?? {};
+    structuredClone({ ...default_fitter_settings.value[selected_fitter_local.value]?.settings }) ?? {};
 }
 
 function validation_error(value: any, field_name: string) {
-  const field_type = fit_fields.value[field_name].stype;
+  const field_type = fit_fields.value[field_name]?.stype;
   if (Array.isArray(field_type) || field_type === "boolean") {
     // there's no way to get an incorrect option.
     return null;
@@ -117,7 +117,7 @@ function validation_error(value: any, field_name: string) {
   if (isNaN(float_value)) {
     return "not a number";
   }
-  if (field_type === "integer" && parseInt(value, 10) != float_value) {
+  if (field_type === "integer" && parseInt(value, 10) !== float_value) {
     return "not an integer";
   } else if (typeof field_type === "object") {
     if ("min" in field_type && float_value < field_type.min) {
@@ -169,7 +169,7 @@ defineExpose({
                       @change="changeActiveFitter"
                     />
                     <label class="form-check-label" :for="fname">
-                      {{ default_fitter_settings[fname].name }}
+                      {{ default_fitter_settings[fname]?.name }}
                       <span v-if="fname !== 'scipy.leastsq'">({{ fname }})</span>
                     </label>
                   </div>
@@ -186,7 +186,7 @@ defineExpose({
                       @change="changeActiveFitter"
                     />
                     <label class="form-check-label" :for="fname">
-                      {{ default_fitter_settings[fname].name }}
+                      {{ default_fitter_settings[fname]?.name }}
                       <span v-if="fname !== 'scipy.leastsq'">({{ fname }})</span>
                     </label>
                   </div>
@@ -202,24 +202,24 @@ defineExpose({
                   <label
                     class="col-sm-4 col-form-label"
                     :for="`fitter_setting_${sname}`"
-                    :title="fit_fields[sname].description"
+                    :title="fit_fields[sname]?.description"
                   >
-                    {{ fit_fields[sname].label }}
+                    {{ fit_fields[sname]?.label }}
                   </label>
                   <div class="col-sm-8">
                     <select
-                      v-if="Array.isArray(fit_fields[sname].stype)"
+                      v-if="Array.isArray(fit_fields[sname]?.stype)"
                       :id="'fitter_setting_' + sname"
                       v-model="active_settings[sname]"
                       class="form-select"
                       :name="sname"
                     >
-                      <option v-for="opt in fit_fields[sname].stype" :key="opt">
+                      <option v-for="opt in fit_fields[sname]?.stype" :key="opt">
                         {{ opt }}
                       </option>
                     </select>
                     <input
-                      v-else-if="fit_fields[sname].stype === 'boolean'"
+                      v-else-if="fit_fields[sname]?.stype === 'boolean'"
                       :id="'fitter_setting_' + sname"
                       v-model="active_settings[sname]"
                       class="form-check-input m-2"
@@ -236,7 +236,7 @@ defineExpose({
                       }"
                       type="text"
                       :name="sname"
-                      :title="validation_error(active_settings[sname], sname) ?? fit_fields[sname].description"
+                      :title="validation_error(active_settings[sname], sname) ?? fit_fields[sname]?.description"
                       @keydown.enter="() => save()"
                     />
                   </div>

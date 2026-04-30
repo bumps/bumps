@@ -2,7 +2,7 @@
 Miscellaneous utility functions.
 """
 
-__all__ = ["kbhit", "profile", "pushdir", "push_seed", "redirect_console"]
+__all__ = ["kbhit", "profile", "pushdir", "push_seed", "redirect_console", "format_uncertainty"]
 
 import os
 import sys
@@ -31,14 +31,16 @@ from typing import (
 )
 
 import numpy as np
-from numpy import ascontiguousarray as _dense
 
 # **DEPRECATED** we can import erf directly from scipy.special.erf
 # so there is no longer a need for bumps.util.erf.
 from scipy.special import erf
 
 USE_PYDANTIC = os.environ.get("BUMPS_USE_PYDANTIC", "False") == "True"
-from numpy.typing import NDArray
+from numpy.typing import NDArray  # noqa
+
+# Use the DREAM version of format_uncertainty for other places in bumps
+from .dream.stats import format_uncertainty  # noqa
 
 
 def field_desc(description: str) -> Any:
@@ -113,9 +115,9 @@ def parse_errfile(errfile):
         import glob
         errfile = glob.glob(os.path.join(path, '*.err'))[0]
     """
-    from .dream.stats import parse_var
+    from .dream.stats import parse_var, VarStats
 
-    pars = []
+    pars: List[VarStats] = []
     chisq = []
     overall = None
     with open(errfile) as fid:
@@ -134,7 +136,7 @@ def parse_errfile(errfile):
 
     if overall is None:
         overall = chisq[0]
-    pardict = dict((p.name, p) for p in pars)
+    pardict = dict((p.label, p) for p in pars)
     return overall, chisq, pardict
 
 
@@ -176,33 +178,6 @@ def kbhit():
 
         i, _, _ = select.select([sys.stdin], [], [], 0.0001)
         return sys.stdin in i
-
-
-class DynamicModule(types.ModuleType):
-    def __init__(self, path, name):
-        self.__path__ = [path]
-        self.__name__ = name
-        # In the bowels of importlib the parent spec attribute is used to
-        # avoid circular imports, but only if spec is not None. This behaviour
-        # was observed on python 3.11, and perhaps earlier.
-        self.__spec__ = None
-
-
-def relative_import(filename, module_name="relative_import"):
-    """
-    Define an empty module allowing relative imports from a script.
-
-    By setting :code:`__package__ = relative_import(__file__)` at the top of
-    your script file you can even run your model as a python script.  So long
-    as the script behaviour is isolated in :code:`if __name__ == "__main__":`
-    code block and :code:`problem = FitProblem(...)` is defined, the same model
-    can be used both within and outside of bumps.
-    """
-    path = os.path.dirname(os.path.abspath(filename))
-    if module_name in sys.modules and not isinstance(sys.modules[module_name], DynamicModule):
-        raise ImportError("relative import would override the existing module %s. Use another name" % module_name)
-    sys.modules[module_name] = DynamicModule(path, module_name)
-    return module_name
 
 
 class redirect_console(object):
@@ -517,3 +492,4 @@ def format_duration_demo():
 
 if __name__ == "__main__":
     format_duration_demo()
+    # test_format_uncertainty()

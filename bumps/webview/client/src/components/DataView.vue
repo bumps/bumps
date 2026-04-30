@@ -7,6 +7,7 @@ import heatmap from "plotly.js/lib/heatmap";
 import scatterternary from "plotly.js/lib/scatterternary";
 import { v4 as uuidv4 } from "uuid";
 import type { AsyncSocket } from "../asyncSocket";
+import { configWithSVGDownloadButton } from "../plotly_extras";
 import { setupDrawLoop } from "../setupDrawLoop";
 
 Plotly.register([heatmap, contour, scatterternary]);
@@ -47,7 +48,10 @@ async function fetch_and_draw() {
   let { fig_type, plotdata } = payload as { fig_type: "plotly" | "mpld3"; plotdata: object };
   if (fig_type === "plotly") {
     const { data, layout } = plotdata as Plotly.PlotlyDataLayoutConfig;
-    const config = { responsive: true };
+    const config: Partial<Plotly.Config> = {
+      ...configWithSVGDownloadButton,
+      responsive: true,
+    };
     await Plotly.react(plot_div.value as HTMLDivElement, [...data], layout, config);
   } else if (fig_type === "mpld3") {
     let mpld3_data = plotdata as { width: number; height: number };

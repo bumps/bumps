@@ -8,88 +8,97 @@ import math
 from typing import Optional, List
 
 import numpy as np
-from numpy import arange, linspace, meshgrid, squeeze, vstack
 from scipy.stats import gaussian_kde
 
 from . import corrplot, varplot
-from .stats import format_vars, save_vars, var_stats
-from .state import MCMCDraw
+from .stats import format_vars, format_uncertainty, save_vars, var_stats
+from .state import MCMCDraw, Draw
 
 CORRPLOT_MAXVAR = 25  # maximum number of variables to plot in correlation matrix
+TRACE_WSPACE = 0.15
+TRACE_HSPACE = 0.1
 
 
-def plot_all(state: MCMCDraw, portion: Optional[float] = None, figfile=None):
-    # Print/save uncertainty report before loading pylab or creating plots
-    draw = state.draw(portion=portion)
+# TODO: plot_all does not allow us to specify variables or their ranges
+# TODO: plot_all not tested with revised handling of derived parameters
+# TODO: remove hack allowing plot_all to accept a state.draw as well as a state object
+def plot_all(state: MCMCDraw | Draw, portion: Optional[float] = None, figfile=None):
+    # Print/save uncertainty report before loading matplotlib or creating plots
+    if isinstance(state, MCMCDraw):
+        draw = state.draw(portion=portion)
+    else:
+        draw = state
+        state = draw.state
     all_vstats = var_stats(draw)
     print(format_vars(all_vstats))
     print(
-        f"\nStatistics and plots based on {len(draw.points)} samples ({int(100*draw.portion)}% of total samples drawn)"
+        f"\nStatistics and plots based on {len(draw.points)} samples ({int(100 * draw.portion)}% of total samples drawn)"
     )
     if figfile is not None:
         save_vars(all_vstats, figfile + "-err.json")
 
-    from pylab import figure, rcParams, savefig, suptitle
+    import matplotlib.pyplot as plt
 
-    figext = "." + rcParams.get("savefig.format", "png")
+    figext = "." + plt.rcParams.get("savefig.format", "png")
 
     # Use finer binning with more samples. For 1% bin variation p,
     # points per bin k = (100/p)**2 = 10000, and nbins = N // k.
     nbins = max(min(draw.points.shape[0] // 10000, 400), 30)
 
     # histograms
-    figure(figsize=varplot.var_plot_size(len(all_vstats)))
+    plt.figure(figsize=varplot.var_plot_size(len(all_vstats)))
     varplot.plot_vars(draw, all_vstats, nbins=nbins)
-    if state.title:
-        suptitle(state.title, x=0, y=1, va="top", ha="left")
+    if draw.title:
+        plt.suptitle(draw.title, x=0, y=1, va="top", ha="left")
     if figfile is not None:
-        savefig(figfile + "-vars" + figext)
+        plt.savefig(figfile + "-vars" + figext)
 
     # parameter traces
-    figure()
-    plot_traces(state, portion=portion)
-    suptitle("Parameter history" + (" for " + state.title if state.title else ""))
+    plt.figure()
+    plot_traces(draw.state, portion=draw.portion, vars=draw.vars)
+    plt.suptitle("Parameter history" + (" for " + draw.title if draw.title else ""))
     if figfile is not None:
-        savefig(figfile + "-trace" + figext)
+        plt.savefig(figfile + "-trace" + figext)
 
     # Acceptance rate
     if False:
-        figure()
-        plot_acceptance_rate(state, portion=portion)
+        plt.figure()
+        plot_acceptance_rate(draw.state, portion=draw.portion)
         if figfile is not None:
-            savefig(figfile + "-acceptance" + figext)
+            plt.savefig(figfile + "-acceptance" + figext)
 
     # convergence plot
-    figure()
-    plot_logp(state, portion=portion)
-    if state.title:
-        suptitle(state.title)
+    plt.figure()
+    plot_logp(draw.state, portion=draw.portion)
+    if draw.title:
+        plt.suptitle(draw.title)
     if figfile is not None:
-        savefig(figfile + "-logp" + figext)
+        plt.savefig(figfile + "-logp" + figext)
 
     # correlation plot
-    if draw.num_vars <= CORRPLOT_MAXVAR:
-        figure()
+    if draw.Nvar <= CORRPLOT_MAXVAR:
+        plt.figure()
         plot_corrmatrix(draw, nbins=nbins)
-        if state.title:
-            suptitle(state.title)
+        if draw.title:
+            plt.suptitle(draw.title)
         if figfile is not None:
-            savefig(figfile + "-corr" + figext)
+            plt.savefig(figfile + "-corr" + figext)
 
     # parallel coordinates plot
-    if draw.num_vars > 1:
+    if draw.Nvar > 1:
         from . import parcoord
 
-        figure()
+        plt.figure()
         parcoord.plot(draw, control_var=0)
-        if state.title:
-            suptitle(state.title)
+        if draw.title:
+            plt.suptitle(draw.title)
         if figfile is not None:
-            savefig(figfile + "-parcor" + figext)
+            plt.savefig(figfile + "-parcor" + figext)
 
 
-def plot_corrmatrix(draw, nbins=50, fig=None):
-    c = corrplot.Corr2d(draw.points.T, bins=nbins, labels=draw.labels)
+def plot_corrmatrix(draw, nbins=50, vstats=None, full=False, fig=None):
+    ranges = None if vstats is None or full else [v.p95_range for v in vstats]
+    c = corrplot.Corr2d(draw.points.T, bins=nbins, ranges=ranges, labels=draw.labels)
     c.plot(fig=fig)
     # print "Correlation matrix\n",c.R()
 
@@ -105,15 +114,20 @@ class KDE2D(gaussian_kde):
         gaussian_kde.__init__(self, dataset.T)
 
     def evalxy(self, x, y):
-        grid_x, grid_y = meshgrid(x, y)
-        dxy = self.evaluate(vstack([grid_x.flatten(), grid_y.flatten()]))
+        grid_x, grid_y = np.meshgrid(x, y)
+        dxy = self.evaluate(np.vstack([grid_x.flatten(), grid_y.flatten()]))
         return dxy.reshape(grid_x.shape)
 
     __call__ = evalxy
 
 
 def plot_corr(draw, vars=(0, 1)):
-    from pylab import MaxNLocator, axes, setp
+    """
+    Plot kernel density estimate of the parameter correlation.
+
+    *vars* is the pair of parameters to plot (from *draw.labels*, 0-origin).
+    """
+    import matplotlib.pyplot as plt
 
     _, _ = vars  # Make sure vars is length 2
     labels = [draw.labels[v] for v in vars]
@@ -122,106 +136,117 @@ def plot_corr(draw, vars=(0, 1)):
     # Form kernel density estimates of the parameters
     xmin, xmax = min(values[0]), max(values[0])
     density_x = KDE1D(values[0])
-    x = linspace(xmin, xmax, 100)
+    x = np.linspace(xmin, xmax, 100)
     px = density_x(x)
 
     density_y = KDE1D(values[1])
     ymin, ymax = min(values[1]), max(values[1])
-    y = linspace(ymin, ymax, 100)
+    y = np.linspace(ymin, ymax, 100)
     py = density_y(y)
 
     nbins = 50
-    ax_data = axes([0.1, 0.1, 0.63, 0.63])  # x,y,w,h
+    ax_data = plt.axes([0.1, 0.1, 0.63, 0.63])  # x,y,w,h
 
-    # density_xy = KDE2D(values[vars])
-    # dxy = density_xy(x,y)*points.shape[0]
-    # ax_data.pcolorfast(x,y,dxy,cmap=cm.gist_earth_r) #@UndefinedVariable
+    density_xy = KDE2D(values[vars])
+    dxy = density_xy(x, y) * draw.points.shape[0]
+    ax_data.pcolorfast(x, y, dxy, cmap=plt.cm.gist_earth_r)  # @UndefinedVariable
 
     ax_data.plot(values[0], values[1], "k.", markersize=1)
     ax_data.set_xlabel(labels[0])
     ax_data.set_ylabel(labels[1])
-    ax_hist_x = axes([0.1, 0.75, 0.63, 0.2], sharex=ax_data)
+    ax_hist_x = plt.axes([0.1, 0.75, 0.63, 0.2], sharex=ax_data)
     ax_hist_x.hist(values[0], nbins, orientation="vertical", density=1)
     ax_hist_x.plot(x, px, "k-")
-    ax_hist_x.yaxis.set_major_locator(MaxNLocator(4, prune="both"))
-    setp(
+    ax_hist_x.yaxis.set_major_locator(plt.MaxNLocator(4, prune="both"))
+    plt.setp(
         ax_hist_x.get_xticklabels(),
         visible=False,
     )
-    ax_hist_y = axes([0.75, 0.1, 0.2, 0.63], sharey=ax_data)
+    ax_hist_y = plt.axes([0.75, 0.1, 0.2, 0.63], sharey=ax_data)
     ax_hist_y.hist(values[1], nbins, orientation="horizontal", density=1)
     ax_hist_y.plot(py, y, "k-")
-    ax_hist_y.xaxis.set_major_locator(MaxNLocator(4, prune="both"))
-    setp(ax_hist_y.get_yticklabels(), visible=False)
+    ax_hist_y.xaxis.set_major_locator(plt.MaxNLocator(4, prune="both"))
+    plt.setp(ax_hist_y.get_yticklabels(), visible=False)
 
 
-def plot_traces(state: MCMCDraw, vars: Optional[List[int]] = None, portion: Optional[float] = None, fig=None):
-    from pylab import clf, gcf
+def plot_traces(
+    state: MCMCDraw, vars: Optional[List[int]] = None, portion: Optional[float] = None, fig=None, max_traces=6
+):
+    import matplotlib.pyplot as plt
+
+    # TODO: Consider using masked chains in draw for traces rather than original
+    # Can only plot traces for on the original state. Ignore any variables that are out of range.
+    if vars:
+        vars = [v for v in vars if v < state.Nvar]
 
     if fig is None:
-        fig = gcf()
+        fig = plt.gcf()
     if vars is None:
-        vars = list(range(min(state.Nvar, 6)))
-    clf()
+        vars = list(range(min(state.Nvar, max_traces)))
+    plt.clf()
     nw, nh = tile_axes(len(vars), fig=fig)
-    fig.subplots_adjust(hspace=0.0)
+    fig.subplots_adjust(hspace=TRACE_HSPACE, wspace=TRACE_WSPACE)
     for k, var in enumerate(vars):
         axes = fig.add_subplot(nw, nh, k + 1)
         plot_trace(state, var=var, portion=portion, axes=axes)
+        axes.set_yticklabels([])
+        # TODO: label traces on the plots to save space between plots
+        # label = state.labels[var]
+        # axes.text(0.93, 0.93, label, ha="right", va="top", transform=axes.transAxes, backgroundcolor=(1.0, 1.0, 1.0, 0.75))
+        # axes.set_ylabel("")
+        row = k // nh
+        if row != nw - 1:
+            # print(f"row {row} of {nw} x {nh}")
+            axes.set_xticklabels([])
+            axes.set_xlabel("")
 
 
 def plot_trace(state: MCMCDraw, var: int = 0, portion: Optional[float] = None, axes=None, fig=None):
-    from pylab import gcf
+    import matplotlib.pyplot as plt
 
-    portion = state.portion if portion is None else portion
     if axes is None:
         if fig is None:
-            fig = gcf()
+            fig = plt.gcf()
         axes = fig.add_subplot(111)
-    draw, points, _ = state.chains()
+    # TODO: We could reuse the same state.traces outputs for all traces.
+    generations, chains = state.traces(portion=portion, thin=1, outliers=False)
     label = state.labels[var]
-    start = int((1 - portion) * len(draw))
-    genid = arange(state.generation - len(draw) + start, state.generation) + 1
     axes.clear()
-    axes.plot(genid * state.thinning, squeeze(points[start:, state._good_chains, var]))
+    axes.plot(generations, chains[:, :, var])
     axes.set_xlabel("Generation number")
     axes.set_ylabel(label)
 
 
-def plot_logp(state: MCMCDraw, portion: Optional[float] = None):
+def plot_logp(state: MCMCDraw, portion: Optional[float] = None, outliers: bool = False):
     from matplotlib.ticker import NullFormatter
-    from pylab import axes, title
-    from scipy.stats import chi2, kstest
+    import matplotlib.pyplot as plt
+    from scipy.stats import chi2
 
-    # Plot log likelihoods
-    draw, logp = state.logp()
-    portion = state.portion if portion is None else portion
-    start = int((1 - portion) * len(draw))
-    genid = arange(state.generation - len(draw) + start, state.generation) + 1
+    # Plot log likelihoods, stripping outliers
+    genid, logp = state.gen_logp(portion=portion, outliers=outliers)
     width, height, margin, delta = 0.7, 0.75, 0.1, 0.01
-    trace = axes([margin, 0.1, width, height])
-    trace.plot(genid, logp[start:], ",", markersize=1)
+    trace = plt.axes([margin, 0.1, width, height])
+    trace.plot(genid, logp, ",", markersize=1)
     trace.set_xlabel("Generation number")
     trace.set_ylabel("Log likelihood at x[k]")
-    title("Log Likelihood History")
+    plt.title("Log Likelihood History")
 
     # Plot log likelihood trend line
     from bumps.wsolve import wpolyfit
 
-    from .formatnum import format_uncertainty
-
-    x = np.arange(start, logp.shape[0]) + state.generation - state.Ngen + 1
-    y = np.mean(logp[start:], axis=1)
-    dy = np.std(logp[start:], axis=1, ddof=1)
+    x = genid
+    y = np.mean(logp, axis=1)
+    dy = np.std(logp, axis=1, ddof=1)
     p = wpolyfit(x, y, dy=dy, degree=1)
     px, dpx = p.ci(x, 1.0)
+    label = f"slope={format_uncertainty(p.coeff[0], p.std[0])}"
     trace.plot(x, px, "k-", x, px + dpx, "k-.", x, px - dpx, "k-.")
-    trace.text(x[0], y[0], "slope=" + format_uncertainty(p.coeff[0], p.std[0]), va="top", ha="left")
+    trace.text(0.02, 0.02, label, transform=trace.transAxes, va="bottom", ha="left")
 
     # Plot long likelihood histogram
-    data = logp[start:].flatten()
+    data = logp.flatten()
     data = data[np.isfinite(data)]
-    hist = axes([margin + width + delta, 0.1, 1 - 2 * margin - width - delta, height])
+    hist = plt.axes([margin + width + delta, 0.1, 1 - 2 * margin - width - delta, height])
     hist.hist(data, bins=40, orientation="horizontal", density=True)
     hist.set_ylim(trace.get_ylim())
     null_formatter = NullFormatter()
@@ -231,7 +256,8 @@ def plot_logp(state: MCMCDraw, portion: Optional[float] = None):
     # Plot chisq fit to log likelihood histogram
     float_df, loc, scale = chi2.fit(-data, f0=state.Nvar)
     df = int(float_df + 0.5)
-    pval = kstest(-data, lambda x: chi2.cdf(x, df, loc, scale))
+    # from scipy.stats import kstest
+    # pval = kstest(-data, lambda x: chi2.cdf(x, df, loc, scale))
     # with open("/tmp/chi", "a") as fd:
     #    print("chi2 pars for llf", float_df, loc, scale, pval, file=fd)
     xmin, xmax = trace.get_ylim()
@@ -244,11 +270,11 @@ def tile_axes(n, size=None, fig=None):
     Creates a tile for the axes which covers as much area of the graph as
     possible while keeping the plot shape near the golden ratio.
     """
-    from pylab import gcf
+    import matplotlib.pyplot as plt
 
     if size is None:
         if fig is None:
-            fig = gcf()
+            fig = plt.gcf()
         size = fig.get_size_inches()
     figwidth, figheight = size
     # Golden ratio phi is the preferred dimension
@@ -278,12 +304,8 @@ def tile_axes(n, size=None, fig=None):
 def plot_acceptance_rate(state: MCMCDraw, portion: Optional[float] = None):
     from matplotlib import pyplot as plt
 
-    gen, AR = state.acceptance_rate()
-    portion = state.portion if portion is None else portion
-    if portion != 1.0:
-        index = int(portion * len(AR))
-        gen, AR = gen[-index:], AR[-index:]
-    plt.plot(gen, AR)
+    genid, AR = state.acceptance_rate(portion=portion)
+    plt.plot(genid, AR)
     plt.xlabel("Generation #")
     plt.ylabel("Acceptance rate (%)")
     plt.title("DREAM acceptance rate by generation")

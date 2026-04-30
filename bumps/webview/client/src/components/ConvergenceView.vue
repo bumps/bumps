@@ -3,7 +3,7 @@ import { ref, watchEffect } from "vue";
 import * as Plotly from "plotly.js/lib/core";
 import { shared_state } from "../app_state.ts";
 import type { AsyncSocket } from "../asyncSocket.ts";
-import { SVGDownloadButton } from "../plotly_extras";
+import { configWithSVGDownloadButton } from "../plotly_extras";
 import { setupDrawLoop } from "../setupDrawLoop";
 
 const title = "Convergence";
@@ -24,11 +24,11 @@ interface ConvergencePlotData {
 }
 
 const { draw_requested } = setupDrawLoop("updated_convergence", props.socket, fetch_and_draw, title);
-const plot_config = {
+const plot_config: Partial<Plotly.Config> = {
+  ...configWithSVGDownloadButton,
   responsive: true,
   scrollZoom: true,
   edits: { legendPosition: true },
-  modeBarButtonsToAdd: [SVGDownloadButton],
 };
 
 async function fetch_and_draw() {

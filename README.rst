@@ -39,9 +39,9 @@ If you have installed from source, you must first check out the random123 librar
    :alt: Build status
    :target: https://github.com/bumps/bumps/actions/workflows/test-publish.yml
 
-.. |DOI| image:: https://zenodo.org/badge/18489/bumps/bumps.svg
+.. |DOI| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.594099.svg
    :alt: DOI tag
-   :target: https://zenodo.org/badge/latestdoi/18489/bumps/bumps
+   :target: https://doi.org/10.5281/zenodo.594099
 
 .. |RTD| image:: https://readthedocs.org/projects/bumps/badge/?version=latest
    :alt: Documentation status

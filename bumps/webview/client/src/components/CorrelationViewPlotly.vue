@@ -3,7 +3,7 @@ import { ref } from "vue";
 import * as Plotly from "plotly.js/lib/core";
 import Heatmap from "plotly.js/lib/heatmap";
 import type { AsyncSocket } from "../asyncSocket.ts";
-import { SVGDownloadButton } from "../plotly_extras";
+import { configWithSVGDownloadButton } from "../plotly_extras";
 import { setupDrawLoop } from "../setupDrawLoop";
 
 Plotly.register([Heatmap]);
@@ -55,9 +55,9 @@ async function fetch_and_draw(latest_timestamp?: string) {
     return;
   }
   const config: Partial<Plotly.Config> = {
+    ...configWithSVGDownloadButton,
     responsive: true,
     scrollZoom: true,
-    modeBarButtonsToAdd: [SVGDownloadButton],
   };
   const plotlyElement = await Plotly.react(plot_div.value as HTMLDivElement, [...data], layout, config);
   clearTimeout(show_loader);
@@ -70,7 +70,7 @@ async function fetch_and_draw(latest_timestamp?: string) {
         return;
       }
       // we are putting an array of numbers in customdata on the server side.
-      vars.value = ev.points[0].data.customdata as number[];
+      vars.value = ev.points[0]?.data.customdata as number[];
       fetch_and_draw();
     });
     callback_registered.value = true;

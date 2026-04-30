@@ -29,8 +29,9 @@ TRIALS = 5
 MIN_WINDOW = 100
 
 
-def ks_converged(state, trials=TRIALS, density=DENSITY, alpha=ALPHA, samples=SAMPLES):
-    # type: ("MCMCDraw", int, float, float, int) -> bool
+def ks_converged(
+    state: "MCMCDraw", trials: int = TRIALS, density: float = DENSITY, alpha: float = ALPHA, samples: int = SAMPLES
+) -> bool:
     """
     Return True if the MCMC has converged according to the K-S window test.
 
@@ -99,10 +100,12 @@ def ks_converged(state, trials=TRIALS, density=DENSITY, alpha=ALPHA, samples=SAM
     n_draw = int(density * samples)
     p = _robust_ks_2samp(head, tail, n_draw, trials)
     # print(f"convergence {state.generation}: pval={p} < {alpha}?")
-    return p < alpha
+
+    # comparison returns np.bool type which is not exactly the same as bool
+    return bool(p < alpha)
 
 
-def check_nllf_distribution(state):
+def check_nllf_distribution(state: "MCMCDraw") -> bool:
     """
     Check if the nllf distribution looks like chisq.
 
@@ -137,38 +140,54 @@ def _check_nllf_distribution(data, df, n_draw, trials, alpha):
     return alpha > np.mean(p_vals)
 
 
-def burn_point(state, method="window", trials=TRIALS, **kwargs):
-    # type: ("MCMCDraw", str, int, **dict) -> int
-
+def burn_point(
+    state: "MCMCDraw", trials: int = TRIALS, density: float = DENSITY, alpha: float = ALPHA, samples: int = SAMPLES
+) -> int:
     r"""
-    Determines the point at which the MCMC chain seems to have converged.
+    Determines the point at which the MCMC chain seems to have converged,
+    using a Kolmogorov-Smirnov sliding window test.
 
     *state* contains the MCMC chain information.
 
-    *method="window"* is the name of the convergence diagnostic (see below).
-
     *trials* is the number of times to run the K-S test.
+
+    *density* is the proportion of samples to select from the window.  Prefer
+    lower density from larger number of samples so the sets chosen for the
+    K-S test have fewer duplicates.  For density=0.1 about 5% of samples will
+    be duplicates.  For density=0.6 about 25% will be duplicates.
+
+    *alpha* is the significance level for the test.  With smaller alpha
+    values the K-S test is less likely to reject the current window when
+    testing against the tail of the distribution, and so the fit will end
+    earlier, with more samples after the burn point.
+
+    *samples* is the size of the sample window. If the window is too big
+    the test will falsly end burn when the start of the window is still
+    converging.  If the window is too small the test will take a long time,
+    and will start to show effects of autocorrelation (efficient MCMC
+    samplers move slowly across the posterior probability space, showing
+    short term autocorrelation between samples.)  A minimum of 10 generations
+    and a maximum of 1/2 the generations will be used.
 
     Returns the index of the burn points, or -1 if no good burn point is found.
 
     **Kolmogorov-Smirnov sliding window**
 
-    The "window" method detects convergence by comparing the distribution of
+    Detects convergence by comparing the distribution of
     $\log(p)$ values in a small window at the start of the chains and the
     values in a section at the end of the chain using a Kolmogorov-Smirnov
-    test.  See :func:`ks_converged` for a description of the parameters.
+    test.
     """
-    if method == "window":
-        index = _ks_sliding_window(state, trials=trials, **kwargs)
-    else:
-        raise ValueError("Unknown convergence test " + method)
+
+    index = _ks_sliding_window(state=state, trials=trials, density=density, alpha=alpha, samples=samples)
+
     # TODO: need a better way to report convergence failure
     if index < 0:
         warnings.warn("Did not converge!")
     return index
 
 
-def _ks_sliding_window(state, trials=TRIALS, density=DENSITY, alpha=ALPHA, samples=SAMPLES):
+def _ks_sliding_window(*, state: "MCMCDraw", trials: int, density: float, alpha: float, samples: int) -> int:
     _, logp = state.logp()
 
     window_size = min(max(samples // state.Npop + 1, MIN_WINDOW), state.Ngen // 2)

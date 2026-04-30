@@ -43,7 +43,7 @@ def run_fit(fitter, model_args, store, seed=1):
         f"--session={store}",
         f"--seed={seed}",
         "--batch",
-        f"--export={str(Path(store).parent / ('T1-'+fitter))}",
+        f"--export={str(Path(store).parent / ('T1-' + fitter))}",
     ]
     if len(model_args) > 1:
         command += ["--args", *model_args[1:]]
@@ -72,7 +72,10 @@ def check_fit(fitter, store, target):
         last_item = list(group.keys())[-1]
         chisq_str = group[last_item].attrs["chisq"]
         value = float(chisq_str.split("(")[0])
-        assert abs(value - target) / target < 1e-2, f"error in {fitter}: expected {target} but got {value}"
+        if target == 0:
+            assert abs(value - target) < 1e-10, f"error in {fitter}: expected {target} but got {value}"
+        else:
+            assert abs(value - target) / target < 1e-2, f"error in {fitter}: expected {target} but got {value}"
 
 
 def run_fits(model_args, path, fitters=FIT_AVAILABLE_IDS, seed=1, target=0):
@@ -97,7 +100,7 @@ def main():
     test_functions = EXAMPLEDIR / "test_functions" / "model.py"
     # model_args = [test_functions, '"fk(rosenbrock, 3)"']
     model_args, target = [test_functions, "gauss", "3"], 0
-    model_args, target = [EXAMPLEDIR / "curvefit" / "curve.py"], 1.760
+    model_args, target = [EXAMPLEDIR / "curvefit" / "curve.py"], 1.76
     seed = 1
     with tempfile.TemporaryDirectory() as path:
         failed = run_fits(model_args, path, fitters=fitters, seed=seed, target=target)
