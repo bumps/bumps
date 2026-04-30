@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       versions: ${{ steps.set-matrix.outputs.versions }}
-      max_version: ${{ steps.set-matrix.outputs.max_version }}
+      default_version: ${{ steps.set-matrix.outputs.default_version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
