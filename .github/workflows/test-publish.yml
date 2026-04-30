@@ -1,4 +1,4 @@
-name: Test and Publish to PyPI
+ppname: Test and Publish to PyPI
 
 on:
   push:
@@ -101,7 +101,7 @@ jobs:
           - os: windows-latest
             py: "" # placeholder, will use default version
           - os: macos-latest
-            py: ""
+            py: ${{ needs.build-wheel.outputs.max_version }}
       fail-fast: false
 
     steps:
