@@ -110,7 +110,9 @@ jobs:
         continue-on-error: true
         run: |
           uv venv --python=${{ matrix.py }}
-          find dist -name "bumps-*-py3-none-any.whl" -exec uv pip install --no-build {}[dev] \;
+          for whl in dist/bumps-*-py3-none-any.whl; do
+            uv pip install --no-build "$whl[dev]"
+          done
 
       # Emit a warning annotation if the install failed, but don't fail the job
       - name: Notify Missing Wheels
