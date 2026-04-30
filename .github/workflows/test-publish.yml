@@ -36,38 +36,26 @@ jobs:
       - name: Get Filtered Minor Versions
         id: set-matrix
         run: |
-          # 1. Extract the minimum version (e.g., "3.10")
           MIN_VERSION=$(grep "requires-python" pyproject.toml | grep -oE '[0-9]+\.[0-9]+' | head -1)
 
-          # 2. Use jq to compare as numeric arrays instead of strings
-          # Logic: "3.9" -> [3, 9], "3.10" -> [3, 10].
-          # jq compares arrays element-by-element numerically.
+          # Get all versions as numeric arrays, sorted
           RAW_JSON=$(uv python list --output-format json | jq -c --arg min "$MIN_VERSION" '
             ($min | split(".") | map(tonumber)) as $min_parts |
             [ .[] | .version | split(".") | .[0:2] | map(tonumber) ]
             | unique
             | map(select(. >= $min_parts))
             | sort
-            | .[0:-1]
           ')
 
-          # 3. Format the full matrix for the next job
+          # 1. Full Matrix (everything)
           VERSIONS=$(echo "$RAW_JSON" | jq -c 'map(join("."))')
 
-          # 4. Extract the absolute maximum version
-          MAX_VERSION=$(echo "$RAW_JSON" | jq -r 'last | join(".")')
+          # 2. Extract (n-1) version for "stable" default
+          # If only one version exists, it defaults to that one
+          DEFAULT_VERSION=$(echo "$RAW_JSON" | jq -r 'if length > 1 then .[-2] else .[-1] end | join(".")')
 
           echo "versions=$VERSIONS" >> $GITHUB_OUTPUT
-          echo "max_version=$MAX_VERSION" >> $GITHUB_OUTPUT
-
-          # Optional: Print to logs for debugging
-          echo "Full Matrix: $VERSIONS"
-          echo "Latest Version: $MAX_VERSION"
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.11"
+          echo "default_python=$DEFAULT_VERSION" >> $GITHUB_OUTPUT
 
       - uses: actions/setup-node@v6
         with:
@@ -79,7 +67,7 @@ jobs:
           npm install
           npm run build
       - name: Create the wheel
-        run: uv build
+        run: uv build --python ${{ steps.set-matrix.outputs.default_python }}
 
       - name: Upload the wheel and source distribution artifacts
         uses: actions/upload-artifact@v6
