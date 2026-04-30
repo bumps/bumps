@@ -55,7 +55,7 @@ jobs:
           DEFAULT_VERSION=$(echo "$RAW_JSON" | jq -r 'if length > 1 then .[-2] else .[-1] end | join(".")')
 
           echo "versions=$VERSIONS" >> $GITHUB_OUTPUT
-          echo "default_python=$DEFAULT_VERSION" >> $GITHUB_OUTPUT
+          echo "default_version=$DEFAULT_VERSION" >> $GITHUB_OUTPUT
 
       - name: setup bun
         uses: oven-sh/setup-bun@v2
@@ -66,7 +66,7 @@ jobs:
           bun install
           bun run build
       - name: Create the wheel
-        run: uv build --python ${{ steps.set-matrix.outputs.default_python }}
+        run: uv build --python ${{ steps.set-matrix.outputs.default_version }}
 
       - name: Upload the wheel and source distribution artifacts
         uses: actions/upload-artifact@v6
@@ -81,16 +81,16 @@ jobs:
     needs: build-wheel
     env:
       # Use the n-1 version as the "stable" baseline
-      STABLE_PYTHON: ${{ needs.build-wheel.outputs.default_python }}
+      STABLE_PYTHON: ${{ needs.build-wheel.outputs.default_version }}
     strategy:
       matrix:
         os: ["ubuntu-latest"]
         py: ${{ fromJson(needs.build-wheel.outputs.versions) }}
         include:
           - os: windows-latest
-            py: ${{ needs.build-wheel.outputs.default_python }}
+            py: ${{ needs.build-wheel.outputs.default_version }}
           - os: macos-latest
-            py: ${{ needs.build-wheel.outputs.default_python }}
+            py: ${{ needs.build-wheel.outputs.default_version }}
       fail-fast: false
 
     steps:
