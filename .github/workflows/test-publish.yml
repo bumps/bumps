@@ -57,15 +57,14 @@ jobs:
           echo "versions=$VERSIONS" >> $GITHUB_OUTPUT
           echo "default_python=$DEFAULT_VERSION" >> $GITHUB_OUTPUT
 
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
+      - name: setup bun
+        uses: oven-sh/setup-bun@v2
 
       - name: build webview
         run: |
           cd bumps/webview/client
-          npm install
-          npm run build
+          bun install
+          bun run build
       - name: Create the wheel
         run: uv build --python ${{ steps.set-matrix.outputs.default_python }}
 
