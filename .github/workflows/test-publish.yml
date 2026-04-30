@@ -91,6 +91,9 @@ jobs:
             py: ${{ needs.build-wheel.outputs.default_version }}
           - os: macos-latest
             py: ${{ needs.build-wheel.outputs.default_version }}
+          - os: ubuntu-latest
+            py: ${{ needs.build-wheel.outputs.default_version }}
+            extra: docs
       fail-fast: false
 
     steps:
@@ -122,14 +125,12 @@ jobs:
 
       - name: Run tests
         # Only run tests if the install actually succeeded
-        if: steps.install-step.outcome == 'success'
+        if: steps.install-step.outcome == 'success' && matrix.extra != 'docs'
         run: uv run python -m pytest -v
 
-      # ... other check steps using 'if: steps.install-step.outcome == "success"' ...
-
-      - name: Check that the docs build (linux only, penultimate python version)
+      - name: Check that the docs build (linux only)
         # Use the stable n-1 version for doc builds
-        if: ${{ matrix.py == env.STABLE_PYTHON && matrix.os == 'ubuntu-latest' }}
+        if: matrix.extra == 'docs'
         run: |
           source .venv/bin/activate
           make -j 4 -C doc SPHINXOPTS="-W --keep-going -n" html
