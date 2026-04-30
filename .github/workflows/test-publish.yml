@@ -48,6 +48,7 @@ jobs:
             | unique
             | map(select(. >= $min_parts))
             | sort
+            | .[0:-1]
           ')
 
           # 3. Format the full matrix for the next job
@@ -99,7 +100,7 @@ jobs:
         py: ${{ fromJson(needs.build-wheel.outputs.versions) }}
         include:
           - os: windows-latest
-            py: "" # placeholder, will use default version
+            py: ${{ needs.build-wheel.outputs.max_version }}
           - os: macos-latest
             py: ${{ needs.build-wheel.outputs.max_version }}
       fail-fast: false
