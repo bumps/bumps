@@ -92,8 +92,7 @@ jobs:
           - os: macos-latest
             py: ${{ needs.build-wheel.outputs.default_version }}
           - os: ubuntu-latest
-            py: ${{ needs.build-wheel.outputs.default_version }}
-            extra: docs
+            py: docs
       fail-fast: false
 
     steps:
@@ -112,7 +111,8 @@ jobs:
         # This allows the job to proceed even if wheels are missing for dependencies
         continue-on-error: true
         run: |
-          uv venv --python=${{ matrix.py }}
+          PY_VER="${{ (matrix.py == 'docs' && env.STABLE_PYTHON) || matrix.py }}"
+          uv venv --python=$PY_VER
           for whl in dist/bumps-*-py3-none-any.whl; do
             uv pip install --no-build "$whl[dev]"
           done
