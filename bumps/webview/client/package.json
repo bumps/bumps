@@ -12,7 +12,7 @@
     "build": "vite build --emptyOutDir -m development",
     "build_prod": "vite build --emptyOutDir -m production",
     "preview": "vite preview --port 4173",
-    "format": "biome --write \"src/**/*\" \"*.json\"",
+    "format": "biome format --write src",
     "lint": "eslint src --fix",
     "test:format": "biome format src/ *.json",
     "test:lint": "eslint src",
