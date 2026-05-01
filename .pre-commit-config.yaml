@@ -18,6 +18,7 @@ repos:
         # '--no-errors-on-unmatched' prevents pre-commit from failing if it hits a file type it doesn't know
         args: ["format", "--write", "--no-errors-on-unmatched"]
         files: \.(vue|js|ts|mjs|tsx|jsx|json)$
+        additional_dependencies: ["@biomejs/biome@1.9.4"]
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
