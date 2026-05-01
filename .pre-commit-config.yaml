@@ -17,7 +17,10 @@ repos:
         files: \.(json|yaml|md|vue|js|ts|mjs|tsx|jsx)$
         types: [file]
         args: ["--write", "--config", "bumps/webview/client/prettier.config.js"]
-        additional_dependencies: ["prettier@3.6.2"]
+        additional_dependencies:
+          - "prettier@3.6.2"
+          - "@ianvs/prettier-plugin-sort-imports@4.7.0"
+          - "prettier-plugin-css-order@2.1.2"
         language: node
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
