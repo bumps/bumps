@@ -174,7 +174,7 @@ async function saveFile(override?: { pathlist: string[]; filename: string }) {
           await socket.asyncEmit("save_problem_file", pathlist, filename, overwrite);
         }
       }
-    }
+    },
   );
 }
 
@@ -220,7 +220,7 @@ async function saveParameters() {
                 await socket.asyncEmit("save_parameters", pathlist, filename, overwrite);
               }
             }
-          }
+          },
         );
       },
       show_name_input: true,

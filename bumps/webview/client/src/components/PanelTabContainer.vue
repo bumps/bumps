@@ -27,7 +27,7 @@ watch(
       // revert to startPanel if the active panel is hidden
       activePanel.value = props.startPanel;
     }
-  }
+  },
 );
 </script>
 

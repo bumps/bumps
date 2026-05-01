@@ -44,7 +44,7 @@ async function fetch_and_draw(latest_timestamp?: string) {
     max_rows.value,
     n_bins.value,
     output_vars,
-    timestamp
+    timestamp,
   )) as Plotly.PlotlyDataLayoutConfig;
   const plotdata = { ...payload };
   const { data, layout } = plotdata;

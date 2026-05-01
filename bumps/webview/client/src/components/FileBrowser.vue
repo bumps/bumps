@@ -168,7 +168,7 @@ watch(active_search_pattern, async (newval) => {
     active_search_regexp.value = null;
   } else {
     const subexps = newval?.split(",") ?? [];
-    const re = subexps.map((s) => `(${s.trim().replace(/\./g, "\.")})`);
+    const re = subexps.map((s) => `(${s.trim().replace(/\./g, ".")})`);
     active_search_regexp.value = new RegExp(`(${re.join("|")})$`);
   }
   doSorting();

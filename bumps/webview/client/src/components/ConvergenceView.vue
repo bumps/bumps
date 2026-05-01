@@ -39,7 +39,7 @@ async function fetch_and_draw() {
   const payload = (await props.socket.asyncEmit(
     "get_convergence_plot",
     cutoff.value,
-    trim_portion_preview_value
+    trim_portion_preview_value,
   )) as ConvergencePlotData;
   const { plotdata, portion } = { ...payload };
   const { data, layout } = plotdata ?? {};

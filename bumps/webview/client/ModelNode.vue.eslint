@@ -84,28 +84,48 @@ const onToggle = (event: Event) => {
 </script>
 
 <template>
-  <div v-if="isVisible" class="model-node">
+  <div
+    v-if="isVisible"
+    class="model-node"
+  >
     <template v-if="isPrimitive">
       <span class="key">{{ name }}:</span>
       <span class="val primitive">{{ actualValue }}</span>
     </template>
 
-    <details v-else-if="isPrimitiveArray" :open="isOpen" @toggle="onToggle">
+    <details
+      v-else-if="isPrimitiveArray"
+      :open="isOpen"
+      @toggle="onToggle"
+    >
       <summary>
         <span class="key">{{ name }}:</span>
         <span class="val array-preview">{{ primitiveArrayPreview }}</span>
       </summary>
-      <div class="children full-array">[{{ actualValue.join(", ") }}]</div>
+      <div class="children full-array">
+        [{{ actualValue.join(", ") }}]
+      </div>
     </details>
 
-    <details v-else :open="isOpen" @toggle="onToggle">
+    <details
+      v-else
+      :open="isOpen"
+      @toggle="onToggle"
+    >
       <summary>
         <span class="key">{{ name }}</span>
-        <span v-if="isRef" class="ref-badge" title="Dereferenced Parameter">⤤</span>
+        <span
+          v-if="isRef"
+          class="ref-badge"
+          title="Dereferenced Parameter"
+        >⤤</span>
         <span class="summary-text">{{ summaryText }}</span>
       </summary>
       <div class="children">
-        <template v-for="(childVal, childKey) in actualValue" :key="childKey">
+        <template
+          v-for="(childVal, childKey) in actualValue"
+          :key="childKey"
+        >
           <ModelNode
             v-if="childKey !== '__class__' && childKey !== 'id'"
             :name="childKey"
