@@ -1,24 +1,26 @@
 repos:
-  - repo: local
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v9.15.0  # Matches your current version
     hooks:
       - id: eslint
         name: eslint
-        entry: eslint
-        files: \.(vue|js|ts|mjs|tsx|jsx)$ # *.js, *.jsx, *.ts and *.tsx
-        types: [file]
+        # Use 'additional_dependencies' to ensure your Vue/TS plugins are present
+        additional_dependencies:
+          - "eslint@9.15.0"
+          - "eslint-plugin-vue@10.5.1"
+          - "@vue/eslint-config-typescript@14.6.0"
+          - "eslint-plugin-vuejs-accessibility@2.4.1"
+        # Point to your specific config file
         args: ["-c", "bumps/webview/client/eslint.config.js", "--fix"]
-        additional_dependencies: ["eslint@9.15.0"]
-        language: node
-  - repo: local
+        files: \.(vue|js|ts|mjs|tsx|jsx)$
+  - repo: https://github.com/biomejs/pre-commit
+    rev: v0.6.1
     hooks:
-      - id: prettier
-        name: prettier
-        entry: prettier
-        files: \.(json|yaml|md|vue|js|ts|mjs|tsx|jsx)$
-        types: [file]
-        args: ["--write", "--config", "bumps/webview/client/prettier.config.js"]
-        additional_dependencies: ["prettier@3.4.1"]
-        language: node
+      - id: biome-format
+        name: biome-format
+        # Point to your subdirectory config to ensure spaces vs tabs are correct
+        files: ^bumps/webview/client/.*$
+        additional_dependencies: ["@biomejs/biome@1.9.4"]
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
