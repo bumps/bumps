@@ -60,8 +60,9 @@ async function readSession(readOnly: boolean) {
       show_files: true,
       search_patterns: [".h5"],
       chosenfile_in: "",
-      pathlist_in:
-        shared_state.session_output_file?.pathlist ? [...shared_state.session_output_file.pathlist] : undefined,
+      pathlist_in: shared_state.session_output_file?.pathlist
+        ? [...shared_state.session_output_file.pathlist]
+        : undefined,
     };
     fileBrowser.value.open(settings);
   }
@@ -94,8 +95,9 @@ async function setOutputFile(enable_autosave = true, immediate_save = false) {
       show_files: true,
       search_patterns: [".h5"],
       chosenfile_in: shared_state.session_output_file?.filename,
-      pathlist_in:
-        shared_state.session_output_file?.pathlist ? [...shared_state.session_output_file.pathlist] : undefined,
+      pathlist_in: shared_state.session_output_file?.pathlist
+        ? [...shared_state.session_output_file.pathlist]
+        : undefined,
     };
     fileBrowser.value.open(settings);
   }

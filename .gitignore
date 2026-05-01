@@ -22,6 +22,10 @@ bun.lock
 *~
 *.bak
 
+# patches
+*.patch
+*.diff
+
 # build/test
 .settings
 .coverage
@@ -50,3 +54,6 @@ __pycache__/
 
 # run in place sets .mplconfig
 .mplconfig
+
+# session files
+*.h5

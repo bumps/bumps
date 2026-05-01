@@ -40,7 +40,7 @@ onMounted(async () => {
 async function fetch_and_draw() {
   const payload = (await props.socket.asyncEmit(
     "get_parameter_trace_plot",
-    current_index.value
+    current_index.value,
   )) as Plotly.PlotlyDataLayoutConfig;
 
   let plotdata = { ...payload };
