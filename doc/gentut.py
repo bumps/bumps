@@ -12,7 +12,7 @@ You may want to change SOURCE_PATH and TARGET_PATH.  Be sure to exclude
 the source path using exclude_trees directive in conf.py.
 """
 
-SOURCE_PATH = "examples"
+SOURCE_PATH = "../bumps/examples"
 TARGET_PATH = "tutorial"
 
 # =======================================================================

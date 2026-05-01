@@ -7,7 +7,7 @@ import subprocess
 sys.dont_write_bytecode = True
 
 ROOT = Path(__file__).absolute().parent
-EXAMPLEDIR = ROOT / "doc" / "examples"
+EXAMPLEDIR = ROOT / "bumps" / "examples"
 
 # Add the build dir to the system path
 packages = [str(ROOT)]
