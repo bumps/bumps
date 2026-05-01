@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v9.15.0  # Matches your current version
+    rev: v9.15.0 # Matches your current version
     hooks:
       - id: eslint
         name: eslint
@@ -19,8 +19,17 @@ repos:
       - id: biome-format
         name: biome-format
         # Point to your subdirectory config to ensure spaces vs tabs are correct
-        files: ^bumps/webview/client/.*$
+        files: \.(vue|js|ts|mjs|tsx|jsx)$
         additional_dependencies: ["@biomejs/biome@1.9.4"]
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.1.0 # Current stable mirror version
+    hooks:
+      - id: prettier
+        name: prettier-docs
+        # Limit strictly to non-code files
+        files: \.(md|yaml|yml)$
+        # Recommended for Markdown to prevent weird line breaks in docs
+        args: ["--prose-wrap", "always"]
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
