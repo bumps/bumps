@@ -1,15 +1,18 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { onMounted, ref, computed, toRaw } from "vue";
 import { getDiff } from "json-difference";
-import ModelNode from "./ModelNode.vue";
 import type { AsyncSocket } from "../asyncSocket.ts";
 import { setupDrawLoop } from "../setupDrawLoop";
+import ModelNode from "./ModelNode.vue";
+import ParameterLinker from "./ParameterLinker.vue"; // Add this import
 
 type json = string | number | boolean | null | json[] | { [key: string]: json };
 
 const modelJson = ref<any>({});
+const draftModel = ref<any>({}); // The local mutable copy
 const searchQuery = ref("");
 const collapseTrigger = ref(0);
+const currentTab = ref("tree");
 
 const props = defineProps<{
   socket: AsyncSocket;
@@ -24,19 +27,26 @@ props.socket.on("model_loaded", () => {
 async function fetch_and_draw(reset: boolean = false) {
   const payload = (await props.socket.asyncEmit("get_model")) as string;
   const json_value: json = JSON.parse(payload);
+
   if (reset) {
     modelJson.value = json_value;
+    draftModel.value = structuredClone(json_value); // Create the local draft
   } else {
+    // If updating from server, you might want to handle merge conflicts here later.
+    // For now, we update the original, and if the draft isn't dirty, update it too.
+    const isClean = !isDirty.value;
     const old_model: json = modelJson.value as Record<string, any>;
     const new_model: json = json_value as Record<string, any>;
     const diff = getDiff(old_model, new_model);
+
     for (let [path, oldval, newval] of diff.edited) {
       const { target, parent, key } = resolve_diffpath(old_model, path);
-      if (typeof key === "number" && Array.isArray(parent)) {
-        parent.splice(key, 1, newval);
-      } else {
-        parent[key] = newval;
-      }
+      if (typeof key === "number" && Array.isArray(parent)) parent.splice(key, 1, newval);
+      else parent[key] = newval;
+    }
+
+    if (isClean) {
+      draftModel.value = structuredClone(modelJson.value);
     }
   }
 }
@@ -60,16 +70,36 @@ function resolve_diffpath(obj: Record<number | string, any>, diffpath: string) {
   return { target, parent, key };
 }
 
-// Computes both visible and expanded paths based on the search query
+// Check if draft has been mutated
+const isDirty = computed(() => {
+  if (!modelJson.value || !draftModel.value) return false;
+  console.log("isDirty?");
+  // Use toRaw here to ensure clean comparison of primitives inside proxies
+  return JSON.stringify(modelJson.value) !== JSON.stringify(draftModel.value);
+});
+
+const saveDraft = () => {
+  // Push the draft back to the server
+  props.socket.asyncEmit("set_serialized_problem", JSON.stringify(toRaw(draftModel.value)));
+  // console.log("Saving model...", JSON.parse(JSON.stringify(draftModel.value)));
+  // modelJson.value = JSON.parse(JSON.stringify(draftModel.value)); // Sync original to clear dirty state
+  modelJson.value = structuredClone(toRaw(draftModel.value)); // Sync original to clear dirty state
+};
+
+const discardDraft = () => {
+  draftModel.value = structuredClone(toRaw(modelJson.value));
+};
+
+// Search State Logic (same as previous)
 const searchState = computed(() => {
-  if (!searchQuery.value.trim() || !modelJson.value.object) {
+  if (!searchQuery.value.trim() || !draftModel.value.object) {
     return { visible: null, expand: null };
   }
 
   const visiblePaths = new Set<string>();
   const expandPaths = new Set<string>();
   const query = searchQuery.value.trim().toLowerCase();
-  const refs = modelJson.value.references || {};
+  const refs = draftModel.value.references || {};
 
   function traverse(obj: any, currentPath: string, ancestorMatched: boolean, key: string | number): boolean {
     let actualObj = obj;
@@ -78,15 +108,11 @@ const searchState = computed(() => {
     }
 
     let isMatch = false;
-
-    // If an ancestor already matched, we ONLY check the local key/value.
-    // This stops the full path string from cascading a match to all descendants.
     if (ancestorMatched) {
       isMatch =
         String(key).toLowerCase().includes(query) ||
         (typeof actualObj !== "object" && actualObj !== null && String(actualObj).toLowerCase().includes(query));
     } else {
-      // If no ancestor has matched yet, we evaluate the full path string (to support "probe.mm")
       isMatch =
         currentPath.toLowerCase().includes(query) ||
         (typeof actualObj !== "object" && actualObj !== null && String(actualObj).toLowerCase().includes(query));
@@ -98,116 +124,183 @@ const searchState = computed(() => {
     if (actualObj && typeof actualObj === "object") {
       for (const childKey in actualObj) {
         if (childKey === "__class__" || childKey === "id") continue;
-        const childPath = currentPath ? currentPath + "." + childKey : String(childKey);
-
+        const childPath = currentPath ? `${currentPath}.${childKey}` : String(childKey);
         const childHasMatch = traverse(actualObj[childKey], childPath, childAncestorMatched, childKey);
         if (childHasMatch) descendantMatched = true;
       }
     }
 
-    // Node is visible if it matches, a descendant matches, or an ancestor matched
-    if (isMatch || descendantMatched || ancestorMatched) {
-      visiblePaths.add(currentPath);
-    }
-
-    // Node is ONLY expanded if it matches or a descendant matches (prevents opening children of matches)
-    if (isMatch || descendantMatched) {
-      expandPaths.add(currentPath);
-    }
+    if (isMatch || descendantMatched || ancestorMatched) visiblePaths.add(currentPath);
+    if (isMatch || descendantMatched) expandPaths.add(currentPath);
 
     return isMatch || descendantMatched;
   }
 
-  traverse(modelJson.value.object, "FitProblem", false, "FitProblem");
+  traverse(draftModel.value.object, "FitProblem", false, "FitProblem");
   return { visible: visiblePaths, expand: expandPaths };
 });
 
-const triggerCollapseAll = () => {
-  collapseTrigger.value++;
-};
+const triggerCollapseAll = () => collapseTrigger.value++;
 </script>
 
 <template>
   <div class="model-inspector-container">
-    <div class="toolbar">
-      <input
-        v-model="searchQuery"
-        type="search"
-        class="search-input"
-        aria-label="Filter models"
-        placeholder="Filter by path or value (e.g., probe.mm or magnetism)"
-      />
-      <button class="action-btn" title="Collapse All" @click="triggerCollapseAll">
-        <i class="bi bi-text-paragraph"></i>
+    <div class="tabs">
+      <button
+        :class="['tab-btn', { active: currentTab === 'tree' }]"
+        @click="currentTab = 'tree'"
+      >
+        Model Tree
+      </button>
+      <button
+        :class="['tab-btn', { active: currentTab === 'links' }]"
+        @click="currentTab = 'links'"
+      >
+        Parameter Links
       </button>
     </div>
 
-    <div class="tree-container">
-      <ModelNode
-        v-if="modelJson.object"
-        name="FitProblem"
-        :value="modelJson.object"
-        :references="modelJson.references"
-        :start-expanded="true"
-        :visible-paths="searchState.visible"
-        :expand-paths="searchState.expand"
-        :collapse-trigger="collapseTrigger"
-      />
-      <div v-else class="loading">Loading model...</div>
+    <div class="toolbar">
+      <template v-if="currentTab === 'tree'">
+        <input type="search" v-model="searchQuery" class="search-input" placeholder="Filter by path or value..." />
+
+        <button class="icon-btn" @click="triggerCollapseAll" title="Collapse All">
+          <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
+            <path d="M2 4h12v1H2V4zm0 4h12v1H2V8zm0 4h12v1H2v-1z" />
+            <path d="M4 6l4-3 4 3H4zm0 4l4 3 4-3H4z" opacity="0.6"/>
+          </svg>
+        </button>
+      </template>
+
+      <div class="draft-controls" v-if="isDirty">
+        <button class="btn btn-discard" @click="discardDraft">Discard</button>
+        <button class="btn btn-save" @click="saveDraft">Save Changes</button>
+      </div>
+    </div>
+
+    <div class="view-container">
+
+      <div class="tree-container" v-if="currentTab === 'tree'">
+        <ModelNode
+          v-if="draftModel.object"
+          name="FitProblem"
+          :value="draftModel.object"
+          :parentObj="{ FitProblem: draftModel.object }"
+          :references="draftModel.references"
+          :start-expanded="true"
+          :visible-paths="searchState.visible"
+          :expand-paths="searchState.expand"
+          :collapse-trigger="collapseTrigger"
+        />
+        <div v-else class="loading">Loading model...</div>
+      </div>
+
+      <div class="linker-container" v-else-if="currentTab === 'links'">
+        <ParameterLinker
+          v-if="draftModel.object"
+          :draftModel="draftModel"
+        />
+        <div v-else class="loading">Loading model...</div>
+      </div>
+
     </div>
   </div>
 </template>
 
 <style scoped>
 .model-inspector-container {
+  padding: 1rem;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
-  padding: 1rem;
   gap: 1rem;
-  border-radius: 8px;
-  background-color: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 .toolbar {
   display: flex;
   align-items: center;
-  padding-bottom: 0.75rem;
   gap: 0.5rem;
   border-bottom: 1px solid #eee;
+  padding-bottom: 0.75rem;
 }
 .search-input {
   flex: 1;
-  padding: 4px 8px;
+  padding: 6px 8px;
+  font-size: 13px;
   border: 1px solid #ccc;
   border-radius: 4px;
-  outline: none;
-  font-size: 13px;
 }
-.search-input:focus {
-  border-color: #007acc;
-}
-.action-btn {
+.icon-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
+  background: transparent;
   border: 1px solid transparent;
   border-radius: 4px;
-  background: transparent;
-  color: #444;
   cursor: pointer;
 }
-.action-btn:hover {
-  border-color: #ddd;
-  background-color: #f0f0f0;
+.icon-btn:hover { background-color: #f0f0f0; border-color: #ddd; }
+.draft-controls { display: flex; gap: 0.5rem; margin-left: auto; }
+.btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: none;
+  font-weight: 600;
 }
-.tree-container {
-  max-height: 80vh;
-  overflow-y: auto;
+.btn-save { background-color: #007acc; color: white; }
+.btn-save:hover { background-color: #005f9e; }
+.btn-discard { background-color: #e0e0e0; color: #333; }
+.btn-discard:hover { background-color: #ccc; }
+.tree-container { overflow-y: auto; max-height: 80vh; }
+.loading { color: #666; font-style: italic; }
+
+.tabs {
+  display: flex;
+  gap: 2px;
+  background-color: #f5f5f5;
+  padding: 8px 8px 0 8px;
+  border-radius: 8px 8px 0 0;
+  border-bottom: 1px solid #ddd;
 }
-.loading {
+.tab-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
   color: #666;
-  font-family: sans-serif;
+  cursor: pointer;
+  border-radius: 6px 6px 0 0;
+}
+.tab-btn:hover {
+  background-color: #e9e9e9;
+}
+.tab-btn.active {
+  background-color: #fff;
+  border-color: #ddd;
+  color: #007acc;
+  margin-bottom: -1px; /* Overlap the bottom border */
+}
+
+/* Ensure the draft controls get pushed to the right even if the search bar is hidden */
+.draft-controls {
+  margin-left: auto;
+}
+.view-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.linker-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 </style>
