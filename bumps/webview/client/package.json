@@ -14,6 +14,7 @@
     "preview": "vite preview --port 4173",
     "format": "biome --write \"src/**/*\" \"*.json\"",
     "lint": "eslint src --fix",
+    "test:format": "biome format src/ *.json",
     "test:lint": "eslint src",
     "test:types": "vue-tsc --noEmit --skipLibCheck -p tsconfig.json --composite false"
   },
