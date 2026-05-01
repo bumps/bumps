@@ -1,0 +1,192 @@
+<script setup lang="ts">
+import { computed, ref, watch } from "vue";
+
+const props = defineProps<{
+  name: string | number;
+  value: any;
+  references?: Record<string, any>;
+  path?: string;
+  visiblePaths?: Set<string> | null;
+  expandPaths?: Set<string> | null;
+  collapseTrigger?: number;
+  startExpanded?: boolean;
+}>();
+
+const currentPath = computed(() => {
+  return props.path ? `${props.path}.${props.name}` : String(props.name);
+});
+
+// Render condition
+const isVisible = computed(() => {
+  if (!props.visiblePaths) return true; 
+  return props.visiblePaths.has(currentPath.value);
+});
+
+const isOpen = ref(props.startExpanded ?? false);
+
+// UI Button hook
+watch(
+  () => props.collapseTrigger,
+  () => {
+    isOpen.value = false;
+  }
+);
+
+// Search expansion hook
+watch(
+  () => props.expandPaths,
+  (newExpand) => {
+    if (newExpand) {
+      isOpen.value = newExpand.has(currentPath.value);
+    }
+  }
+);
+
+const isRef = computed(() => {
+  return (
+    props.value &&
+    typeof props.value === "object" &&
+    props.value.__class__ === "Reference"
+  );
+});
+
+const actualValue = computed(() => {
+  if (isRef.value && props.references && props.value.id) {
+    return props.references[props.value.id] ?? props.value;
+  }
+  return props.value;
+});
+
+const isPrimitive = computed(
+  () => actualValue.value === null || typeof actualValue.value !== "object"
+);
+const isArray = computed(() => Array.isArray(actualValue.value));
+const isPrimitiveArray = computed(() => {
+  return (
+    isArray.value &&
+    actualValue.value.every((v: any) => v === null || typeof v !== "object")
+  );
+});
+
+const summaryText = computed(() => {
+  const val = actualValue.value;
+  if (isArray.value) return `Array(${val.length})`;
+  if (!isPrimitive.value) {
+    const cls = val.__class__ ? val.__class__.split(".").pop() : "";
+    const name = val.name ? `"${val.name}"` : "";
+    return [cls, name].filter(Boolean).join(" ") || "Object";
+  }
+  return "";
+});
+
+const primitiveArrayPreview = computed(() => {
+  if (!isPrimitiveArray.value) return "";
+  const val = actualValue.value;
+  if (val.length <= 10) return `[${val.join(", ")}]`;
+  return `[${val.slice(0, 10).join(", ")}, ... (${val.length - 10} more)]`;
+});
+
+// Ensures manual toggling still works cleanly despite the watches
+const onToggle = (event: Event) => {
+  isOpen.value = (event.target as HTMLDetailsElement).open;
+};
+</script>
+
+<template>
+  <div class="model-node" v-if="isVisible">
+    <template v-if="isPrimitive">
+      <span class="key">{{ name }}:</span>
+      <span class="val primitive">{{ actualValue }}</span>
+    </template>
+
+    <details
+      v-else-if="isPrimitiveArray"
+      :open="isOpen"
+      @toggle="onToggle"
+    >
+      <summary>
+        <span class="key">{{ name }}:</span>
+        <span class="val array-preview">{{ primitiveArrayPreview }}</span>
+      </summary>
+      <div class="children full-array">
+        [{{ actualValue.join(", ") }}]
+      </div>
+    </details>
+
+    <details
+      v-else
+      :open="isOpen"
+      @toggle="onToggle"
+    >
+      <summary>
+        <span class="key">{{ name }}</span>
+        <span v-if="isRef" class="ref-badge" title="Dereferenced Parameter">⤤</span>
+        <span class="summary-text">{{ summaryText }}</span>
+      </summary>
+      <div class="children">
+        <template v-for="(childVal, childKey) in actualValue" :key="childKey">
+          <ModelNode
+            v-if="childKey !== '__class__' && childKey !== 'id'"
+            :name="childKey"
+            :value="childVal"
+            :references="references"
+            :path="currentPath"
+            :visible-paths="visiblePaths"
+            :expand-paths="expandPaths"
+            :collapse-trigger="collapseTrigger"
+          />
+        </template>
+      </div>
+    </details>
+  </div>
+</template>
+
+<style scoped>
+.model-node {
+  font-family: monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.children {
+  margin-left: 1.5rem;
+  border-left: 1px solid #e0e0e0;
+  padding-left: 0.5rem;
+}
+.full-array {
+  color: #444;
+  word-break: break-all;
+  white-space: normal;
+}
+.key {
+  font-weight: bold;
+  color: #881391;
+}
+.val.primitive {
+  color: #1a1aa6;
+}
+.val.array-preview {
+  color: #555;
+  font-style: italic;
+}
+summary {
+  cursor: pointer;
+  user-select: none;
+  display: list-item;
+}
+summary:hover {
+  background-color: #f5f5f5;
+  border-radius: 4px;
+}
+.summary-text {
+  color: #666;
+  margin-left: 0.5rem;
+}
+.ref-badge {
+  color: #d94b2b;
+  font-weight: bold;
+  margin-left: 0.3rem;
+}
+details > summary::marker {
+  color: #aaa;
+}
+</style>
