@@ -1,5 +1,4 @@
 import url from "url";
-// import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended";
 import pluginVue from "eslint-plugin-vue";
 import { FlatCompat } from "@eslint/eslintrc";
 import js from "@eslint/js";
@@ -19,7 +18,6 @@ export default defineConfigWithVueTs(
   ...compat.extends("plugin:vuejs-accessibility/recommended"),
   ...pluginVue.configs["flat/recommended"],
   vueTsConfigs.recommended,
-  // eslintPluginPrettierRecommended,
   /** Configuration */
   {
     languageOptions: {

@@ -23,7 +23,7 @@ jobs:
       - name: Run test
         run: bun run build
 
-  # Test that app is properly formatted and linted
+  # Test that app is properly linted
   test-lint:
     runs-on: ubuntu-latest
     steps:
@@ -38,6 +38,22 @@ jobs:
 
       - name: Run test
         run: bun run test:lint
+
+  # Test that app is properly formatted
+  test-format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install packages
+        run: bun install
+
+      - name: Run test
+        run: bun run test:format
 
   # Test that app has no typescript errors
   test-types:

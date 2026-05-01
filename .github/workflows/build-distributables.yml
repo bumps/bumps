@@ -31,7 +31,7 @@ jobs:
         ref: ${{ env.branch_name }}
         fetch-depth: 0
 
-    - uses: conda-incubator/setup-miniconda@v3
+    - uses: conda-incubator/setup-miniconda@v4
       with:
         auto-update-conda: true
         python-version: ${{ env.PYTHON_VERSION }}
