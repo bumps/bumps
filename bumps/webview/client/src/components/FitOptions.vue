@@ -76,7 +76,7 @@ function process_settings() {
         processed_value = Number(value);
       }
       return [sname, processed_value];
-    })
+    }),
   );
 }
 

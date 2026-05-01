@@ -7,6 +7,6 @@ declare module "mpld3" {
     div_id: string,
     data: { width: number; height: number },
     process?: false | ((fig: any, element: HTMLElement) => void),
-    clearElem?: boolean
+    clearElem?: boolean,
   ): void;
 }
