@@ -87,10 +87,14 @@ const allParameters = computed(() => {
 const filteredParameters = computed(() => {
   let list = allParameters.value;
   if (searchQuery.value) {
-    const q = searchQuery.value.toLowerCase();
-    list = list.filter(
-      (p) => p.name.toLowerCase().includes(q) || p.allPathsFormatted.some((path) => path.toLowerCase().includes(q)),
-    );
+    const tokens = searchQuery.value.toLowerCase().split(/\s+/).filter(Boolean);
+    list = list.filter((p) => {
+      // Join the name and ALL formatted paths into one giant searchable string
+      const searchString = `${p.name} ${p.allPathsFormatted.join(" ")}`.toLowerCase();
+
+      // Ensure EVERY word the user typed is found somewhere in this parameter's data
+      return tokens.every((token) => searchString.includes(token));
+    });
   }
   return list.sort((a, b) => a.primaryPath.localeCompare(b.primaryPath));
 });
