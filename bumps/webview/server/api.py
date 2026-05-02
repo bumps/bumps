@@ -56,7 +56,7 @@ import time
 from bumps.fitproblem import load_problem
 from bumps.fitters import FitDriver, OptimizeResult
 from bumps.mapper import MPMapper
-from bumps.parameter import Parameter, Constant, Variable, unique
+from bumps.parameter import Parameter, Constant, FixedLimitParameter, Reparameterized, Variable, unique
 import bumps.cli
 import bumps.fitproblem
 import bumps.dream.stats
