@@ -31,10 +31,10 @@ Summary of problem attributes::
     plot(figfile: str, view: str) -> None
 
     # Set/used by bumps.cli
-    model_reset() -> None # called by load_model
-    path: str  # set by load_model
-    name: str # set by load_model
-    title: str = filename # set by load_moel
+    model_reset() -> None # called by load_problem
+    path: str  # set by load_problem
+    name: str # set by load_problem
+    title: str = filename # set by load_problem
     options: List[str]  # from sys.argv[1:]
     undefined:List[int]  # when loading a save .par file, these parameters weren't defined
     store: str # set by make_store
@@ -49,7 +49,7 @@ __all__ = ["Fitness", "FitProblem", "CovarianceMixin", "load_problem"]
 from contextlib import contextmanager
 from dataclasses import dataclass
 import logging
-import os
+import re
 import sys
 import traceback
 from typing import Generic, TypeVar, Union, Optional
@@ -346,7 +346,7 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
     linear.
     """
 
-    # TODO: problem.path is set by cli.load_model(); should we add it as standard?
+    # TODO: problem.path is set by fitproblem.load_problem(); should we add it as standard?
     name: util.Optional[str]
     models: util.List[FitnessType]
     freevars: util.Optional[parameter.FreeVariables]
@@ -969,6 +969,72 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
 
     def __setstate__(self, state):
         self.__dict__ = state
+
+
+PARS_PATTERN = re.compile(r"^(?P<label>.*) (?P<value>[^ ]*)\n$")
+
+
+def dump_pars(problem, path: Path, filename: str):
+    # TODO: Include non-fitted parameters in .par file?
+    # TODO: replaces api._write_pars
+    pardata = "".join(f"{name} {value:.15g}\n" for name, value in zip(problem.labels(), problem.getp()))
+    with open(path / filename, "wt") as fd:
+        fd.write(pardata)
+
+
+def load_pars(problem, path):
+    """
+    Reload individual parameter values from a saved .par file.
+
+    If the label does not exist in the file, use the value from the model
+    as the default value. Ignore labels that do not exist in the model. In
+    that way we can load parameters from an old fit with minimal fuss, even
+    as we add, delete and move parameters in the model. If any parameters
+    are missing, set *problem.undefined* to the a boolean index of the
+    undefined parameters.
+
+    There is an interaction with --init=eps and the par file. If any parameters
+    are missing from the par file they will be randomized across the
+    entire parameter range using the equivalent of --init=lhs. That means
+    you can drop a # at the beginning of the line in the .par file
+    and that parameter will be shuffled on restart, with the remaining
+    parameters starting near the initial value.
+    """
+    # WARNING: Labels are not unique! Need to track multiple instances of
+    # the same label.
+    path = Path(path)
+    if not path.is_file():
+        path = path / (problem.name + ".par")
+    if not path.is_file():
+        raise ValueError("Parameter file {path} does not exist.")
+    labels = problem.labels()
+    targets = {label: [] for label in labels}
+    with open(path, "rt") as fid:
+        for line in fid:
+            m = PARS_PATTERN.match(line)
+            label, value = m.group("label"), float(m.group("value"))
+            # Accumulate values for labels only if they appear in the model.
+            if label in targets:
+                targets[label].append(value)
+
+    # Populate model with named parameters in the order they occur in the
+    # parameter file. Identify the missing parameters if any, adding them
+    # to the the problem definition as an optional "undefined" attribute with
+    # one bit for each parameter. This ugly hack is to support a previous
+    # ugly hack in which undefined parameters are initialized with LHS but
+    # defined parameters are initialized with eps, cov or random.
+    # TODO: find a better way to "free" parameters on --pars.
+    # TODO: find a way to "free" parameters on --resume.
+    values, undefined = [], []
+    for label, default_value in zip(labels, problem.getp()):
+        remaining = targets[label]
+        is_empty = not remaining
+        # popping the next value from remaining modifies targets[label]
+        values.append(default_value if is_empty else remaining.pop(0))
+        undefined.append(is_empty)
+    problem.setp(np.asarray(values))
+    if any(undefined):
+        problem.undefined = np.asarray(undefined)
 
 
 # TODO: consider adding nllf_scale to FitProblem.

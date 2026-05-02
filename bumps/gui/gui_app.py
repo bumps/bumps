@@ -56,14 +56,17 @@ import warnings
 
 try:
     from io import StringIO
-except:
+except ImportError:
     from StringIO import StringIO
 
 import wx, wx.aui
 
 from bumps import plugin
-from bumps import cli
+
+# TODO: undo circular import
+from bumps.cli import initial_model
 from bumps import options as bumps_options
+from bumps.plotutil import config_matplotlib
 
 from .about import APP_TITLE
 from .utilities import resource_dir, resource, log_time
@@ -147,7 +150,7 @@ class MainApp(wx.App):
             log_time("Starting to build the GUI application")
 
         # Can't delay matplotlib configuration any longer
-        cli.config_matplotlib("WXAgg")
+        config_matplotlib("WXAgg")
 
         from .app_frame import AppFrame
 
@@ -269,7 +272,7 @@ class MainApp(wx.App):
                 print("%5d  %s" % (i, p))
 
         # Put up the initial model
-        model, output = initial_model(opts)
+        model, output = initial_model_with_stdout(opts)
         if not model:
             model = plugin.new_model()
         signal.log_message(message=output)
@@ -286,12 +289,12 @@ class MainApp(wx.App):
 # ==============================================================================
 
 
-def initial_model(opts):
-    # Capture stdout from problem definition
+def initial_model_with_stdout(opts):
+    """Capture stdout from problem definition"""
     saved_stdout = sys.stdout
     sys.stdout = StringIO()
     try:
-        problem = cli.initial_model(opts)
+        problem = initial_model(opts)
         error = ""
     except Exception:
         problem = None

@@ -57,6 +57,12 @@ from .state_hdf5_backed import SERIALIZERS, FitResult
 # be used in the command line help without a circular import.
 PREFERRED_PORT = 5148  # "SLAB"
 
+# # CRUFT: mock old bumps.cli interfaces that may be used elsewhere
+# from bumps.fitproblem import load_pars as load_best
+# from bumps.fitproblem import load_problem as load_model
+# from bumps.fitters import save_best
+# from bumps.plotutil import config_matplotlib, set_mplconfig
+# from bumps.plugin import install_plugin
 
 # TODO: try datargs to build a parser from the typed dataclass
 
@@ -886,8 +892,7 @@ def reload_export(
 
     sys.argv is set to *args* before loading the model.
     """
-    from bumps.fitproblem import load_problem
-    from bumps.cli import load_best
+    from bumps.fitproblem import load_problem, load_pars
     from .state_hdf5_backed import SERIALIZER_EXTENSIONS
 
     # Find the .par file in the export directory
@@ -913,7 +918,7 @@ def reload_export(
         if picklefile.exists():
             try:
                 problem = load_problem(picklefile)
-                # Note: no need to load_best because serializer contained the parameters
+                # Note: no need to load pars because serializer contains the parameters
             except Exception as exc:
                 logger.warn(f"Failed to deserialize {picklefile}; look for model file")
             break
@@ -937,7 +942,7 @@ def reload_export(
 
         # Load the model script and the fitted values.
         problem = load_problem(modelfile, model_options=args)
-        load_best(problem, parfile)
+        load_pars(problem, parfile)
 
     # Load the MCMC files
     fit_result = load_fit_result(parfile)
