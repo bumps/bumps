@@ -14,7 +14,7 @@ are not particularly useful from a jupyter notebook.
 
     # Load a model script, possibly with additional command line arguments:
     path = Path("path/to/model.py")
-    problem = bp.load_model(path, args=[arg1, ...])
+    problem = bp.load_problem(path, args=[arg1, ...])
 
     # Use a problem defined in a separate jupyter cell
     await bp.set_problem(problem, new_model=False)
@@ -57,7 +57,6 @@ from bumps.fitproblem import load_problem
 from bumps.fitters import FitDriver, OptimizeResult
 from bumps.mapper import MPMapper
 from bumps.parameter import Parameter, Constant, Variable, unique
-import bumps.cli
 import bumps.fitproblem
 import bumps.dream.stats
 from bumps.dream.state import MCMCDraw
@@ -592,7 +591,7 @@ async def apply_parameters(pathlist: List[str], filename: str):
     fullpath = path / filename
     try:
         # print(f"loading parameters from {fullpath}")
-        bumps.cli.load_best(state.problem.fitProblem, fullpath)
+        bumps.fitproblem.load_pars(state.problem.fitProblem, fullpath)
         state.shared.updated_parameters = now_string()
         await log(f"Applied parameters from {fullpath}")
         await add_notification(

@@ -142,7 +142,7 @@ class Sampler:
 
 
 def main():
-    from bumps.cli import load_model, load_best
+    from bumps.fitproblem import load_problem, load_pars
 
     parser = argparse.ArgumentParser(
         description="run nested sampling on bumps model with ultranest",
@@ -162,9 +162,9 @@ def main():
 
     print(opts)
     print(opts.modelfile)
-    problem = load_model(opts.modelfile[0], model_options=opts.modelopts)
+    problem = load_problem(opts.modelfile[0], model_options=opts.modelopts)
     if opts.pars:
-        load_best(problem, opts.pars)
+        load_pars(problem, opts.pars)
     sampler = Sampler(problem, opts.export)
     sampler.sample()
 

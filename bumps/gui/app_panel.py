@@ -35,7 +35,7 @@ import wx
 import wx.aui
 
 from .. import plugin
-from ..cli import load_best, load_model
+from ..fitproblem import load_pars, load_problem
 from ..dream import stats as dream_stats
 from ..util import redirect_console
 from . import signal
@@ -589,11 +589,11 @@ class AppPanel(wx.Panel):
 
     def load_model(self, path):
         self._reload_path = path
-        model = load_model(path)
+        model = load_problem(path)
         signal.model_new(model=model)
 
     def apply_parameters(self, path):
-        load_best(self.model, path)
+        load_pars(self.model, path)
         # TODO: remove this once LHS randomization is controlled from the command line. Ticket #51
         if hasattr(self.model, "undefined"):
             del self.model.undefined

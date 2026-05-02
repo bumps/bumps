@@ -7,14 +7,16 @@ stand alone applications with a similar interface.  For example, the
 Refl1D application uses the following::
 
     from . import fitplugin
-    import bumps.cli
-    bumps.cli.set_mplconfig(appdatadir='Refl1D')
-    bumps.cli.install_plugin(fitplugin)
-    bumps.cli.main()
+    from bumps.plugin import install_plugin
+    from bumps.plotutil import set_mplconfig
+    from bumps.cli import main as bumps_main
+    set_mplconfig(appdatadir='Refl1D')
+    install_plugin(fitplugin)
+    bumps_main()
 
 After completing a set of fits on related systems, a post-analysis script
 can use :func:`load_model` to load the problem definition and
-:func:`load_best` to load the best value  found in the fit.  This can
+:func:`load_pars` to load the best value  found in the fit.  This can
 be used for example in experiment design, where you look at the expected
 parameter uncertainty when fitting simulated data from a range of experimental
 systems.
@@ -27,7 +29,7 @@ __all__ = [
     "config_matplotlib",
     "load_model",
     "preview",
-    "load_best",
+    "load_pars",
     "save_best",
     "resynth",
 ]
@@ -43,29 +45,19 @@ from pathlib import Path
 import numpy as np
 # np.seterr(all="raise")
 
+from .plotutil import config_matplotlib, set_mplconfig
+from .plugin import install_plugin
+from .fitproblem import load_pars
+from .fitters import save_best
 from .fitters import FitDriver, StepMonitor, ConsoleMonitor, CheckpointMonitor
 from .mapper import MPMapper, MPIMapper, SerialMapper
-from . import util
 from . import initpop
 from . import __version__
-from . import plugin
-
-from .util import pushdir
-
-
-def install_plugin(p):
-    """
-    Replace symbols in :mod:`bumps.plugin` with application specific
-    methods.
-    """
-    for symbol in plugin.__all__:
-        if hasattr(p, symbol):
-            setattr(plugin, symbol, getattr(p, symbol))
 
 
 def load_model(path: Path | str, model_options: list[str] | None = None):
     """
-    *** DEPRECATED***. Use fitproblem.load_model(path, [args=...]) instead.
+    *** DEPRECATED***. Use fitproblem.load_problem(path, [args=...]) instead.
     """
     from .fitproblem import load_problem
 
@@ -86,90 +78,8 @@ def preview(problem, view=None):
     plt.show()
 
 
-def save_best(fitdriver, problem, best, view=None):
-    """
-    Save the fit data, including parameter values, uncertainties and plots.
-
-    *fitdriver* is the fitter that was used to drive the fit.
-
-    *problem* is a FitProblem instance.
-
-    *best* is the parameter set to save.
-    """
-    # Make sure the problem contains the best value
-    # TODO: avoid recalculating if problem is already at best.
-    problem.setp(best)
-    # print "remembering best"
-    pardata = "".join("%s %.15g\n" % (name, value) for name, value in zip(problem.labels(), problem.getp()))
-    open(problem.output_path + ".par", "wt").write(pardata)
-
-    fitdriver.save(problem.output_path)
-    with util.redirect_console(problem.output_path + ".err"):
-        fitdriver.show()
-        fitdriver.plot(output_path=problem.output_path, view=view)
-    # print "plotting"
-
-
-PARS_PATTERN = re.compile(r"^(?P<label>.*) (?P<value>[^ ]*)\n$")
-
-
-def load_best(problem, path):
-    """
-    Reload individual parameter values from a saved .par file.
-
-    If the label does not exist in the file, use the value from the model
-    as the default value. Ignore labels that do not exist in the model. In
-    that way we can load parameters from an old fit with minimal fuss, even
-    as we add, delete and move parameters in the model. If any parameters
-    are missing, set *problem.undefined* to the a boolean index of the
-    undefined parameters.
-
-    There is an interaction with --init=eps and the par file. If any parameters
-    are missing from the par file they will be randomized across the
-    entire parameter range using the equivalent of --init=lhs. That means
-    you can drop a # at the beginning of the line in the .par file
-    and that parameter will be shuffled on restart, with the remaining
-    parameters starting near the initial value.
-    """
-    # WARNING: Labels are not unique! Need to track multiple instances of
-    # the same label.
-    path = Path(path)
-    if not path.is_file():
-        path = path / (problem.name + ".par")
-    if not path.is_file():
-        raise ValueError("Parameter file {path} does not exist.")
-    labels = problem.labels()
-    targets = {label: [] for label in labels}
-    with open(path, "rt") as fid:
-        for line in fid:
-            m = PARS_PATTERN.match(line)
-            label, value = m.group("label"), float(m.group("value"))
-            # Accumulate values for labels only if they appear in the model.
-            if label in targets:
-                targets[label].append(value)
-
-    # Populate model with named parameters in the order they occur in the
-    # parameter file. Identify the missing parameters if any, adding them
-    # to the the problem definition as an optional "undefined" attribute with
-    # one bit for each parameter. This ugly hack is to support a previous
-    # ugly hack in which undefined parameters are initialized with LHS but
-    # defined parameters are initialized with eps, cov or random.
-    # TODO: find a better way to "free" parameters on --pars.
-    # TODO: find a way to "free" parameters on --resume.
-    values, undefined = [], []
-    for label, default_value in zip(labels, problem.getp()):
-        remaining = targets[label]
-        is_empty = not remaining
-        # popping the next value from remaining modifies targets[label]
-        values.append(default_value if is_empty else remaining.pop(0))
-        undefined.append(is_empty)
-    problem.setp(np.asarray(values))
-    if any(undefined):
-        problem.undefined = np.asarray(undefined)
-
-
 # CRUFT
-recall_best = load_best
+recall_best = load_best = load_pars
 
 
 def store_overwrite_query_gui(path):
@@ -324,7 +234,7 @@ def initial_model(opts):
     if opts.args:
         problem = load_model(opts.args[0], opts.args[1:])
         if opts.pars is not None:
-            load_best(problem, opts.pars)
+            load_pars(problem, opts.pars)
         if opts.simrandom:
             problem.randomize()
         if opts.simulate or opts.simrandom:
@@ -368,103 +278,6 @@ def resynth(fitdriver, problem, mapper, opts):
         fid.write("\n")
     problem.restore_data()
     fid.close()
-
-
-def set_mplconfig(appdatadir):
-    r"""
-    Point the matplotlib config dir to %LOCALAPPDATA%\{appdatadir}\mplconfig.
-    """
-    if hasattr(sys, "frozen"):
-        if os.name == "nt":
-            mplconfigdir = os.path.join(os.environ["LOCALAPPDATA"], appdatadir, "mplconfig")
-        elif sys.platform == "darwin":
-            mplconfigdir = os.path.join(os.path.expanduser("~/Library/Caches"), appdatadir, "mplconfig")
-        else:
-            return  # do nothing on linux
-        mplconfigdir = os.environ.setdefault("MPLCONFIGDIR", mplconfigdir)
-        if not os.path.exists(mplconfigdir):
-            os.makedirs(mplconfigdir)
-
-
-def config_matplotlib(backend=None):
-    """
-    Setup matplotlib to use a particular backend.
-
-    The backend should be 'WXAgg' for interactive use, or 'Agg' for batch.
-    This distinction allows us to run in environments such as cluster computers
-    which do not have wx installed on the compute nodes.
-
-    This function must be called before any imports to matplotlib.  To allow
-    this, modules should not import matplotlib at the module level, but instead
-    import it for each function/method that uses it.  Exceptions can be made
-    for modules which are completely dedicated to plotting, but these modules
-    should never be imported at the module level.
-    """
-    import matplotlib as mpl
-
-    # When running from a frozen environment created by py2exe, we will not
-    # have a range of backends available, and must set the default to WXAgg.
-    # With a full matplotlib distribution we can use whatever the user prefers.
-    if hasattr(sys, "frozen"):
-        if "MPLCONFIGDIR" not in os.environ:
-            raise RuntimeError(r"MPLCONFIGDIR should be set to e.g., %LOCALAPPDATA%\YourApp\mplconfig")
-        if backend is None:
-            backend = "WXAgg"
-
-    ## CRUFT: check that backend is valid, trying alternates if an import fails
-    # if backend is None:
-    #    backend = os.environ.get('MPLBACKEND', mpl.rcParams['backend'])
-    # import importlib
-    # for name in (backend, 'MacOSX', 'Qt5Agg', 'Qt4Agg', 'Gtk3Agg', 'TkAgg', 'WXAgg'):
-    #    path = 'matplotlib.backends.backend_' + name.lower()
-    #    try:
-    #        importlib.import_module(path)
-    #        backend = name
-    #        break
-    #    except ImportError:
-    #        backend = None
-
-    # Specify the backend to use for plotting and import backend dependent
-    # classes.  This must be done before importing pyplot to have an
-    # effect.  If no backend is given, let pyplot use the default.
-    if backend is not None:
-        mpl.use(backend)
-
-    # Disable interactive mode so that plots are only updated on show() or
-    # draw(). The interactive function must be called before importing pyplot,
-    # otherwise it will have no effect.
-    mpl.interactive(False)
-
-    # configure the plot style
-    line_width = 1
-    pad = 2
-    font_family = "Arial" if os.name == "nt" else "sans-serif"
-    font_size = 12
-    plot_style = {
-        "xtick.direction": "in",
-        "ytick.direction": "in",
-        "lines.linewidth": line_width,
-        "axes.linewidth": line_width,
-        "xtick.labelsize": font_size,
-        "ytick.labelsize": font_size,
-        "xtick.major.size": 5,
-        "ytick.major.size": 5,
-        "xtick.minor.size": 2.5,
-        "ytick.minor.size": 2.5,
-        "xtick.major.width": line_width,
-        "ytick.major.width": line_width,
-        "xtick.minor.width": line_width,
-        "ytick.minor.width": line_width,
-        "xtick.major.pad": pad,
-        "ytick.major.pad": pad,
-        "xtick.top": True,
-        "ytick.right": True,
-        "font.size": font_size,
-        "font.family": font_family,
-        "svg.fonttype": "none",
-        "savefig.dpi": 100,
-    }
-    mpl.rcParams.update(plot_style)
 
 
 def beep():
@@ -686,7 +499,7 @@ def main():
         best, fbest = fitdriver.fit(resume=resume_path)
         # print("time=%g"%(time.clock()-t0),file=sys.__stdout__)
         # Note: keep this in sync with the checkpoint function above
-        save_best(fitdriver, problem, best, view=opts.view)
+        save_best(fitdriver, view=opts.view)
         fitdriver.show()
         if opts.err or opts.cov:
             fitdriver.show_err()
