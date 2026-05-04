@@ -9,6 +9,9 @@ const searchQuery = ref("");
 const linkingParamId = ref<string | null>(null);
 const linkSearchQuery = ref("");
 
+// --- Toggle State ---
+const showNamedPaths = ref(true);
+
 // --- Bulk Selection State ---
 const selectedIds = ref(new Set<string>());
 
@@ -21,12 +24,14 @@ const generateUUID = () => {
   });
 };
 
-// 1. Walk the object tree and map Reference IDs to arrays of paths
+// 1. Walk the object tree and map Reference IDs to arrays of PathSteps
+type PathStep = { key: string | number; name?: string };
+
 const idToPaths = computed(() => {
-  const map: Record<string, (string | number)[][]> = {};
+  const map: Record<string, PathStep[][]> = {};
   if (!props.draftModel?.object) return map;
 
-  function walk(obj: any, currentPath: (string | number)[]) {
+  function walk(obj: any, currentPath: PathStep[]) {
     if (!obj || typeof obj !== "object") return;
     if (obj.__class__ === "Reference" && obj.id) {
       if (!map[obj.id]) map[obj.id] = [];
@@ -34,11 +39,15 @@ const idToPaths = computed(() => {
       return;
     }
     if (Array.isArray(obj)) {
-      obj.forEach((item, idx) => walk(item, [...currentPath, idx]));
+      obj.forEach((item, idx) => {
+        const stepName = item && typeof item.name === "string" ? item.name : undefined;
+        walk(item, [...currentPath, { key: idx, name: stepName }]);
+      });
     } else {
       for (const key in obj) {
         if (key === "__class__" || key === "id") continue;
-        walk(obj[key], [...currentPath, key]);
+        const child = obj[key];
+        walk(child, [...currentPath, { key }]);
       }
     }
   }
@@ -47,17 +56,25 @@ const idToPaths = computed(() => {
   return map;
 });
 
-const formatPath = (path: (string | number)[]) => {
-  return path.reduce((acc: string, curr: string | number) => {
-    if (typeof curr === "number") return `${acc}[${curr}]`;
-    return acc ? `${acc}.${curr}` : String(curr);
+const formatPath = (path: PathStep[], useName: boolean) => {
+  return path.reduce((acc: string, curr: PathStep) => {
+    const isIndex = typeof curr.key === "number";
+    const showName = useName && curr.name;
+
+    let step;
+    if (showName) step = `["${curr.name}"]`;
+    else if (isIndex) step = `[${curr.key}]`;
+    else step = String(curr.key);
+
+    if (isIndex || showName) return `${acc}${step}`;
+    return acc ? `${acc}.${step}` : step;
   }, "");
 };
 
-const setValueAt = (obj: any, path: (string | number)[], value: any) => {
+const setValueAt = (obj: any, path: PathStep[], value: any) => {
   let target = obj;
-  for (let i = 0; i < path.length - 1; i++) target = target[path[i]];
-  target[path[path.length - 1]] = value;
+  for (let i = 0; i < path.length - 1; i++) target = target[path[i].key];
+  target[path[path.length - 1].key] = value;
 };
 
 // 2. Build the flat array of all Parameters
@@ -69,14 +86,18 @@ const allParameters = computed(() => {
     .filter((r: any) => r && r.__class__ === "bumps.parameter.Parameter")
     .map((param: any) => {
       const pathsRaw = idToPaths.value[param.id] || [];
-      const pathsFormatted = pathsRaw.map(formatPath);
+      const pathsIndexed = pathsRaw.map((p) => formatPath(p, false));
+      const pathsNamed = pathsRaw.map((p) => formatPath(p, true));
+
+      const displayPaths = showNamedPaths.value ? pathsNamed : pathsIndexed;
+      const primaryPath = displayPaths[0] || "Unused Parameter";
 
       return {
         id: param.id,
         name: param.name || "Unnamed",
-        primaryPath: pathsFormatted[0] || "Unused Parameter",
+        primaryPath,
         allPathsRaw: pathsRaw,
-        allPathsFormatted: pathsFormatted,
+        displayPaths,
         isShared: pathsRaw.length > 1,
         rawParam: param,
       };
@@ -89,8 +110,8 @@ const filteredParameters = computed(() => {
   if (searchQuery.value) {
     const tokens = searchQuery.value.toLowerCase().split(/\s+/).filter(Boolean);
     list = list.filter((p) => {
-      // Join the name and ALL formatted paths into one giant searchable string
-      const searchString = `${p.name} ${p.allPathsFormatted.join(" ")}`.toLowerCase();
+      // Join the name and ALL currently displayed paths into one giant searchable string
+      const searchString = `${p.name} ${p.displayPaths.join(" ")}`.toLowerCase();
 
       // Ensure EVERY word the user typed is found somewhere in this parameter's data
       return tokens.every((token) => searchString.includes(token));
@@ -127,14 +148,17 @@ const getScoredTargets = (sourceParamId: string | null, searchString: string) =>
     if (sourceParam) {
       sourceKeywords = new Set([
         ...sourceParam.name.toLowerCase().split(/[\s_\.]+/),
-        ...sourceParam.primaryPath.toLowerCase().split(/[\s_\.\[\]]+/),
+        ...sourceParam.primaryPath.toLowerCase().split(/[\s_\.\[\]"]+/),
       ]);
       candidates = candidates.filter((p) => p.id !== sourceParam.id);
     }
   }
 
   const scored = candidates.map((p) => {
-    const pKeywords = [...p.name.toLowerCase().split(/[\s_\.]+/), ...p.primaryPath.toLowerCase().split(/[\s_\.\[\]]+/)];
+    const pKeywords = [
+      ...p.name.toLowerCase().split(/[\s_\.]+/),
+      ...p.primaryPath.toLowerCase().split(/[\s_\.\[\]"]+/),
+    ];
     let score = 0;
     for (const kw of pKeywords) {
       if (kw.length > 2 && sourceKeywords.has(kw)) score++;
@@ -192,7 +216,7 @@ const executeBulkMerge = () => {
   closePopovers();
 };
 
-const unlinkSpecificPath = (sourceId: string, rawPath: (string | number)[]) => {
+const unlinkSpecificPath = (sourceId: string, rawPath: PathStep[]) => {
   const newId = generateUUID();
   const sourceParam = props.draftModel.references[sourceId];
   const clonedParam = JSON.parse(JSON.stringify(sourceParam));
@@ -226,6 +250,11 @@ const executeBulkShatter = () => {
         class="main-search"
       />
 
+      <label class="toggle-names" title="Swap between array indices and element names">
+        <input type="checkbox" v-model="showNamedPaths" />
+        Named Paths
+      </label>
+
       <div v-if="selectedIds.size > 0" class="bulk-actions">
         <div class="divider"></div>
         <span class="selection-count">{{ selectedIds.size }} selected</span>
@@ -233,7 +262,7 @@ const executeBulkShatter = () => {
         <button
           class="btn btn-link-action"
           :disabled="selectedIds.size < 2"
-          :title="selectedIds.size < 2 ? 'Select at least 2 paths to merge' : 'Merge all selected paths to point to a single parameter'"
+          :title="selectedIds.size < 2 ? 'Select at least 2 parameters to merge' : 'Merge all selected parameters into a single parameter'"
           @click="executeBulkMerge"
         >
           🔗 Merge Selected
@@ -241,7 +270,7 @@ const executeBulkShatter = () => {
 
         <button
           class="btn btn-unlink-action"
-          title="Unlink selected paths from their shared groups"
+          title="Split selected shared parameters back into independent parameters"
           @click="executeBulkShatter"
         >
           ✕ Unlink Selected
@@ -284,11 +313,11 @@ const executeBulkShatter = () => {
                 />
                 <span v-else class="inline-fallback">{{ param.rawParam.slot?.value ?? 'calc/expr' }}</span>
 
-                <span v-if="param.isShared" class="shared-badge">Shared ({{ param.allPathsFormatted.length }})</span>
+                <span v-if="param.isShared" class="shared-badge">Shared ({{ param.displayPaths.length }})</span>
               </div>
 
               <div class="paths-list">
-                <div v-for="(path, idx) in param.allPathsFormatted" :key="idx" class="path-item">
+                <div v-for="(path, idx) in param.displayPaths" :key="idx" class="path-item">
                   <span class="path-text">{{ path }}</span>
                   <button
                     v-if="param.isShared"
@@ -339,12 +368,14 @@ const executeBulkShatter = () => {
 .parameter-linker { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; flex-direction: column; height: 100%; }
 .toolbar { padding: 1rem; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 12px; }
 .main-search { flex: 1; padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+.toggle-names { display: flex; align-items: center; gap: 4px; font-size: 13px; color: #555; cursor: pointer; user-select: none; }
 .bulk-actions { display: flex; align-items: center; gap: 8px; }
 .divider { width: 1px; height: 24px; background-color: #ddd; margin: 0 4px; }
 .selection-count { font-size: 13px; font-weight: bold; color: #007acc; background: #e6f3ff; padding: 4px 8px; border-radius: 4px;}
 .bulk-popover-container { position: relative; }
 .btn-link-action { background: #fff; border: 1px solid #ccc; padding: 6px 12px; border-radius: 4px; font-size: 13px; cursor: pointer; color: #333; font-weight: 500;}
-.btn-link-action:hover { border-color: #007acc; color: #007acc; background: #f0f8ff; }
+.btn-link-action:hover:not(:disabled) { border-color: #007acc; color: #007acc; background: #f0f8ff; }
+.btn-link-action:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-unlink-action { background: #fff; border: 1px solid #f5c2c7; padding: 6px 12px; border-radius: 4px; font-size: 13px; cursor: pointer; color: #c82a2a; font-weight: 500;}
 .btn-unlink-action:hover { background: #f8d7da; }
 
@@ -360,22 +391,8 @@ const executeBulkShatter = () => {
 
 /* Inline Editor Styling */
 .name-wrapper { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
-.inline-name-input {
-  font-size: 14px;
-  font-weight: 600;
-  color: #2c3e50;
-  border: 1px solid transparent;
-  background: transparent;
-  border-radius: 4px;
-  padding: 2px 4px;
-  max-width: 160px;
-  text-overflow: ellipsis;
-}
-.inline-name-input:hover, .inline-name-input:focus {
-  background: white;
-  border-color: #ccc;
-  outline: none;
-}
+.inline-name-input { font-size: 14px; font-weight: 600; color: #2c3e50; border: 1px solid transparent; background: transparent; border-radius: 4px; padding: 2px 4px; max-width: 160px; text-overflow: ellipsis; }
+.inline-name-input:hover, .inline-name-input:focus { background: white; border-color: #ccc; outline: none; }
 .inline-value-input { width: 80px; padding: 2px 6px; font-family: monospace; font-size: 13px; font-weight: bold; color: #881391; border: 1px solid transparent; background: transparent; border-radius: 4px; cursor: text; margin-left: 6px; }
 .inline-value-input:hover, .inline-value-input:focus { background: white; border-color: #ccc; outline: none; }
 .inline-fallback { font-family: monospace; font-size: 12px; color: #888; background: #f0f0f0; padding: 2px 6px; border-radius: 4px; pointer-events: none; margin-left: 6px; }
