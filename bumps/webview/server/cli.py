@@ -45,7 +45,6 @@ import hashlib
 # from textwrap import dedent
 
 from bumps import __version__ as bumps_version
-from bumps.fitters import FIT_AVAILABLE_IDS
 from bumps.fitproblem import FitProblem, load_problem
 from . import api
 from . import persistent_settings
@@ -56,7 +55,7 @@ from .state_hdf5_backed import SERIALIZERS, FitResult
 # # CRUFT: mock old bumps.cli interfaces that may be used elsewhere
 # from bumps.fitproblem import load_pars as load_best
 # from bumps.fitproblem import load_problem as load_model
-# from bumps.fitters import save_best
+# from bumps.fitters import save_best # used by scattertools
 # from bumps.plotutil import config_matplotlib, set_mplconfig
 # from bumps.plugin import install_plugin
 

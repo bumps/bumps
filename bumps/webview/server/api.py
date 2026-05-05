@@ -50,7 +50,6 @@ from copy import deepcopy
 import os
 import uuid
 import traceback
-import math
 import time
 
 from bumps.fitproblem import load_problem
@@ -65,7 +64,6 @@ from bumps.util import push_mpl_backend
 
 from . import fit_options
 from .state_hdf5_backed import (
-    UNDEFINED,
     UNDEFINED_TYPE,
     FitResult,
     State,
