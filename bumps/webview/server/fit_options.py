@@ -30,44 +30,41 @@ Various setting types are available:
 
 from typing import Dict, List, Tuple, Any, Callable, Optional
 from textwrap import dedent
-from argparse import ArgumentTypeError
+from argparse import ArgumentTypeError, SUPPRESS
 from dataclasses import dataclass, asdict
 
-from bumps import fitters
-from bumps.fitters import FIT_AVAILABLE_IDS
+from bumps.fitters import FitBase, FITTERS, FIT_DEFAULT_ID, FIT_AVAILABLE_IDS, FIT_ACTIVE_IDS
+
+# TODO: unify handling of fit options in jupyter, sasview, script, webview and bumps cli.
+# Current fitter is now and shared and fit options use Setting, but SasView and the wx GUI
+# still use options.FIT_CONFIG and options.FIT_FIELDS. We can move options.py into
+# gui/old_options.py, move webview/server/fit_options.py into options.py and import the
+# symbols we need, but we can't remove the old option handler until SasView and webview
+# are updated to a unified interface.
+
+# CRUFT: SasView is still using FIT_CONFIG and FIT_FIELDS
+# from bumps.gui.old_options import FIT_CONFIG, FIT_FIELDS
 
 
-def get_fitter_defaults(fitters):
+def get_fitter_defaults() -> dict[str, dict[str, Any]]:
     """
     Determines the default values for each setting of each fitter.
 
     This comes from the Fitter.settings attribute in the fitters defined by bumps.fitter,
     with an additional ("time", 0.0) setting implicit to all fitters.
+
+    Returns {fitter_id: {setting: value, ...}, ...}
     """
-    defaults = {f.id: dict(name=f.name, settings=dict(f.settings)) for f in fitters}
+    defaults = {f.id: dict(name=f.name, settings=dict(f.settings)) for f in FITTERS}
     # Add an implicit time=0 for the max time on each fitter.
     for k, v in defaults.items():
         v["settings"]["time"] = 0.0
     return defaults
 
 
-FITTERS = (
-    fitters.SimplexFit,
-    fitters.DreamFit,
-    fitters.DEFit,
-    fitters.MPFit,
-    fitters.BFGSFit,
-)
-"""Fitters visible to the user. This may be a subset of bumps.fitters.FITTERS"""
-
-DEFAULT_FITTER_ID = fitters.SimplexFit.id
-"""Default fitter if none specified"""
-
-FITTER_DEFAULTS = get_fitter_defaults(FITTERS)
-"""Fitter name and default settings for the visible fitters. This list will be amended if a hidden fitter is specified on the command line."""
-
-FIT_OPTIONS: Dict[str, "Setting"] = {}
-"""Options available to the fitters."""
+# TODO: move the setting registry into the Setting class
+_Setting_registry: dict[str, "Setting"] = {}
+# _registry: dict[str, "Setting"] = field(default_factory=dict, repr=False)
 
 
 @dataclass(init=False)
@@ -83,18 +80,12 @@ class Setting:
         description (str): Description of the setting.
 
         stype (Callable): Type of the setting.
-
-        fitters (List[str]): List of fitters that use this setting.
-
-        defaults (List[Any]): Default values for the setting across different fitters.
     """
 
     name: str
     label: str
     description: str
     stype: Callable
-    fitters: List[str]
-    defaults: List[Any]
 
     def __init__(self, name: str, label: str, stype: type, description: str):
         """
@@ -109,23 +100,71 @@ class Setting:
 
             description (str): Description of the setting.
         """
+        # These attributes are associated with each setting (name, label, description, type)
         self.name = name
         self.label = label
         self.description = flow(dedent(description))
         self.stype = stype
-        self.fitters = []
-        self.defaults = []
-        FIT_OPTIONS[name] = self
 
-    def build_help(self) -> str:
+        # Register all settings. Make sure each is only declared once.
+        if name in _Setting_registry:
+            raise RuntimeError(f'Setting("{name}", ...) already defined')
+        _Setting_registry[name] = self
+
+    @classmethod
+    def items(cls):
+        """
+        Iterate over the registered *(name, Setting)* pairs.
+        """
+        return _Setting_registry.items()
+
+    # Note: don't use __class_item__ since that will look like a type annotation
+    @classmethod
+    def get(cls, name):
+        """
+        Retrieve the setting for *name*.
+        """
+        return _Setting_registry[name]
+
+    def get_defaults(self, active_only=True):
+        """
+        Retrieve the defaults for setting *name* for all fitters that use it.
+
+        If *active_only*, only include the active fitters, not anything experimental
+        or deprecated.
+        """
+        defaults = [
+            (fitter.id, value)
+            for fitter in FITTERS
+            for setting, value in fitter.settings
+            if setting == self.name and (fitter.id in FIT_ACTIVE_IDS or not active_only)
+        ]
+        return defaults
+
+    def help(self, active_only=True) -> str:
+        """
+        Help string for the --settings option in the argument parser, or SUPPRESS if the
+        setting is only available for experimental or deprecated optimizers.
+        """
         if self.name == "time":
-            # Fit option processed by the fit driver, so common across all fitters
+            # Produces the label for the --time option. This option is processed by
+            # the fit driver, so it is common across all fitters
+            #     Max time (hours)  [all fitters]
             fitters = ["all fitters"]
         elif self.name == "fit":
-            # Not a fit option. Handled specially
-            fitters = self.fitters
+            # Produces the list of active fitters for the --fit options:
+            #     Optimizer name  [amoeba, de, dream, newton, lm]
+            fitters = FIT_ACTIVE_IDS
         else:
-            fitters = [f"{fitter}={FITTER_DEFAULTS[fitter]['settings'][self.name]}" for fitter in self.fitters]
+            # Produces the label for the setting with per-fitter default values.
+            # For --xtol this is:
+            #     x tolerance  [amoeba=1e-06, de=1e-06, newton=1e-12, lm=1e-10]
+            # Don't show parameters that don't appear in the visible optimizers.
+            # For example, don't show --nT which is only available when --fit=pt.
+            defaults = self.get_defaults(active_only=active_only)
+            if not defaults:
+                return SUPPRESS
+            fitters = [f"{fitter}={value}" for fitter, value in defaults]
         return f"{self.label}  [{', '.join(fitters)}]\n{self.description}"
 
 
@@ -202,12 +241,12 @@ class Range:
 
 
 ## Options available for the various fitters
-Setting("fit", "optimizer name", [], f"Fitting engine to use (default: {DEFAULT_FITTER_ID})")
+Setting("fit", "Optimizer name", FIT_AVAILABLE_IDS, f"Fitting engine to use (default: {FIT_DEFAULT_ID})")
 
 # Stopping conditions
 Setting(
     "steps",
-    "number of steps",
+    "Number of steps",
     int,
     """\
     Stop when iteration = steps. In Dream, when --steps=0 the number of steps is
@@ -218,7 +257,7 @@ Setting("xtol", "x tolerance", Range(0, 1), "Stop when population diameter < xto
 Setting("ftol", "f(x) tolerance", float, "Stop when variation in log likelihood < ftol.")
 Setting(
     "alpha",
-    "convergence criteria",
+    "Convergence criteria",
     Range(0, 0.1),
     """\
     Stop when probability that population is varying is less than alpha. This
@@ -231,7 +270,7 @@ Setting("time", "Max time (hours)", float, "Maximum number of hours to run the f
 # Initializers
 Setting(
     "init",
-    "initializer",
+    "Population initializer",
     list("eps lhs cov random".split()),
     """\
     Population initialization method
@@ -242,7 +281,7 @@ Setting(
 )
 Setting(
     "pop",
-    "population",
+    "Population size",
     float,
     """\
     Population size is pop times number of fitted parameters. If pop is negative
@@ -252,7 +291,7 @@ Setting("burn", "Burn-in steps", int, "Estimated number generations before conve
 Setting("samples", "Samples", int, "Number of samples to draw = pop*pars*steps.")
 Setting(
     "thin",
-    "thinning factor",
+    "Thinning factor",
     int,
     """\
     Number of iterations between samples; use a large number here if you find
@@ -261,7 +300,7 @@ Setting(
 )
 Setting(
     "outliers",
-    "outliers test",
+    "Outliers test",
     list("none iqr grubbs mahal".split()),
     """\
     Remove outlier Markov chains every n steps using the selected algorithm.
@@ -276,16 +315,16 @@ Setting(
 # Post processing
 Setting(
     "trim",
-    "burn-in trim",
+    "Burn-in trim",
     bool,
     """\
     After fitting, trim samples from early in the Markov chains before it converged.""",
 )
 
 # Parallel tempering
-Setting("nT", "number of temperatures", int, "Number of temperatures in the parallel tempering ladder")
-Setting("Tmin", "min temperature", float, "Lowest temperature in the temperture ladder")
-Setting("Tmax", "max temperature", float, "Highest temperature in the temperature ladder")
+Setting("nT", "Number of temperatures", int, "Number of temperatures in the parallel tempering ladder")
+Setting("Tmin", "Min temperature", float, "Lowest temperature in the temperture ladder")
+Setting("Tmax", "Max temperature", float, "Highest temperature in the temperature ladder")
 
 # Differential evolution
 Setting("CR", "Crossover ratio", Range(0, 1), "Proportion of parameters updated in crossover step")
@@ -296,7 +335,7 @@ Setting("F", "Scale", float, "Step-size scaling on difference vector")
 # Amoeba
 Setting(
     "radius",
-    "simplex radius",
+    "Simplex radius",
     Range(0, 0.5),
     """\
     Radius around the starting point for the initial simplex. Values are in (0, 0.5],
@@ -314,7 +353,7 @@ Setting(
 )
 Setting(
     "jump",
-    "jump radius",
+    "Jump radius",
     Range(0, 0.5),
     """\
     When running with multiple starts, we jump to a new start position for each
@@ -324,7 +363,7 @@ Setting(
 )
 
 
-def lookup_fitter(fitter_id: str):
+def lookup_fitter(fitter_id: str) -> FitBase:
     """
     Looks up a fitter by its ID.
 
@@ -338,49 +377,10 @@ def lookup_fitter(fitter_id: str):
         ValueError: If the fitter ID is unknown.
     """
     # Checking the complete list of fitters, not the restricted list for webview
-    for fitter in fitters.FITTERS:
+    for fitter in FITTERS:
         if fitter.id == fitter_id:
             return fitter
     raise ValueError(f"Unknown fitter '{fitter_id}'")
-
-
-def form_fit_options_associations():
-    """
-    Builds the association list between settings and the optimizers which use them.
-
-    Rerun after changes to fit_options.FITTERS
-    """
-    # Clear out old associations
-    del FIT_OPTIONS["fit"].stype[:]
-    for settings in FIT_OPTIONS.values():
-        del settings.fitters[:]
-        del settings.defaults[:]
-
-    # Define the new associations
-    for fitter in FITTERS:
-        fitter_id = fitter.id
-
-        # The --fit option is pressent in every fitter. Note that stype for --fit is
-        # a list of strings representing available fitters, so build up that list as well.
-        # Similarly --fit has the same default value for each fitter.
-        settings = FIT_OPTIONS["fit"]
-        settings.fitters.append(fitter_id)  # produces doc string for --fit [amoeba, dream, ...]
-        settings.stype.append(fitter_id)  # does option checking for --fit=fitter
-        settings.defaults.append(DEFAULT_FITTER_ID)
-
-        # The --time option is present in every fitter, with default = 0.
-        settings = FIT_OPTIONS["time"]
-        settings.fitters.append(fitter_id)
-        settings.defaults.append(0.0)
-
-        # Cycle through the default options for the current fitter, and for each, add
-        # the fitter and its default value to the respective lists.
-        for key, value in fitter.settings:
-            if key not in FIT_OPTIONS:
-                raise TypeError(f"Missing type and description for fit option --{key} used by {fitter_id}")
-            setting = FIT_OPTIONS[key]
-            setting.fitters.append(fitter_id)
-            setting.defaults.append(value)
 
 
 def check_options(options: Dict[str, Any], fitter_id: Optional[str] = None) -> Tuple[Dict[str, Any], List[str]]:
@@ -401,22 +401,24 @@ def check_options(options: Dict[str, Any], fitter_id: Optional[str] = None) -> T
     errors = []
     unknown = []
 
+    default_id = FIT_DEFAULT_ID
+    # available = set(fitter.id for fitter in FITTERS)
+    available_ids = FIT_AVAILABLE_IDS
+
     # Use the default fitter if none specified.
     if not fitter_id:
-        fitter_id = options.get("fit", DEFAULT_FITTER_ID)
+        fitter_id = options.get("fit", default_id)
 
     # Check that the fitter is one of the valid fitters. In this case we are using
     # all the fitters, not just the ones visible in the user interface so that we
     # can support deprecated and experimental fitters.
-    # available = set(fitter.id for fitter in FITTERS)
-    available = FIT_AVAILABLE_IDS
     # print(available)
-    if fitter_id not in available:
-        errors.append(f"Fitter {fitter_id} not in {', '.join(available)}. Using {DEFAULT_FITTER_ID} instead.")
-        fitter_id = DEFAULT_FITTER_ID
+    if fitter_id not in available_ids:
+        errors.append(f"Fitter {fitter_id} not in {', '.join(available_ids)}. Using {default_id} instead.")
+        fitter_id = default_id
 
     # TODO: default from state.share.fitter_settings instead of Fitter.settings?
-    fitter: fitters.FitBase = lookup_fitter(fitter_id)
+    fitter: FitBase = lookup_fitter(fitter_id)
     defaults: Dict[str, Any] = dict(fitter.settings)
     # print(f"defaults for {fitter_id}: {defaults}")
 
@@ -425,7 +427,7 @@ def check_options(options: Dict[str, Any], fitter_id: Optional[str] = None) -> T
     new_options = {"fit": fitter_id, "time": 0.0, **defaults}
     for key, value in options.items():
         # We have already checked the fit=value option above.
-        if key in "fit":
+        if key == "fit":
             continue
 
         # Collect invalid options for later reporting
@@ -435,7 +437,8 @@ def check_options(options: Dict[str, Any], fitter_id: Optional[str] = None) -> T
             continue
 
         # Promote int values to floats if the option expects a float
-        stype = FIT_OPTIONS[key].stype
+        setting = Setting.get(key)
+        stype = setting.stype
         if isinstance(value, int) and (stype is float or isinstance(stype, Range)):
             value = float(value)
 
@@ -494,5 +497,5 @@ def get_fit_fields():
     Returns:
         dict: Dictionary of fit fields where each key is a setting name and each value is a JSON-compatible Setting representation.
     """
-    fit_fields = dict([(k, _json_compatible_setting(v)) for k, v in FIT_OPTIONS.items()])
+    fit_fields = dict([(k, _json_compatible_setting(v)) for k, v in Setting.items()])
     return fit_fields

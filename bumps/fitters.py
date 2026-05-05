@@ -1390,9 +1390,9 @@ def _fill_defaults(options: Optional[Dict[str, Any]], settings: List[Tuple[str, 
     return result
 
 
-FITTERS: List[FitBase] = []
-FIT_AVAILABLE_IDS = []
-FIT_ACTIVE_IDS = []
+FITTERS: list[FitBase] = []
+FIT_AVAILABLE_IDS: list[str] = []
+FIT_ACTIVE_IDS: list[str] = []
 
 
 def register(fitter, active=True):

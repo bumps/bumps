@@ -363,6 +363,7 @@ def main():
     setup_logging()
 
     if opts.edit:
+        # TODO: circular imports
         from .gui.gui_app import main as gui
 
         gui()

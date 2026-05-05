@@ -54,7 +54,7 @@ import math
 import time
 
 from bumps.fitproblem import load_problem
-from bumps.fitters import FitDriver, OptimizeResult
+from bumps.fitters import FitDriver, OptimizeResult, FIT_DEFAULT_ID
 from bumps.mapper import MPMapper
 from bumps.parameter import Parameter, Constant, Variable, unique
 import bumps.fitproblem
@@ -101,10 +101,10 @@ TRACE_MEMORY = False
 # TODO: reloading the module wipes out state
 # TODO: any other state that needs to be initialized?
 
-# Initialize state
+# Initialize state with default fitter id and default options for each fitter.
 state = State()
-state.shared.selected_fitter = fit_options.DEFAULT_FITTER_ID
-state.shared.fitter_settings = deepcopy(fit_options.FITTER_DEFAULTS)
+state.shared.selected_fitter = FIT_DEFAULT_ID
+state.shared.fitter_settings = deepcopy(fit_options.get_fitter_defaults())
 
 
 def register(fn: Callable):
@@ -1536,7 +1536,7 @@ async def get_dirlisting(pathlist: Optional[List[str]] = None):
 
 @register
 async def get_fitter_defaults():
-    return fit_options.FITTER_DEFAULTS
+    return fit_options.get_fitter_defaults()
 
 
 @register
