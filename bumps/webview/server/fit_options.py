@@ -46,7 +46,10 @@ from bumps.fitters import FitBase, FITTERS, FIT_DEFAULT_ID, FIT_AVAILABLE_IDS, F
 # from bumps.gui.old_options import FIT_CONFIG, FIT_FIELDS
 
 
-def get_fitter_defaults() -> dict[str, dict[str, Any]]:
+# TODO: If --fit=pt is specified then we need the pt options in the defaults
+# The problem is that the defaults are set in api.py before the command line is processed.
+# Options are to start with all and strip the inactive or start with the active and add extras
+def get_fitter_defaults(active_only=True) -> dict[str, dict[str, Any]]:
     """
     Determines the default values for each setting of each fitter.
 
@@ -55,7 +58,8 @@ def get_fitter_defaults() -> dict[str, dict[str, Any]]:
 
     Returns {fitter_id: {setting: value, ...}, ...}
     """
-    defaults = {f.id: dict(name=f.name, settings=dict(f.settings)) for f in FITTERS}
+    fitters = [f for f in FITTERS if f.id in FIT_ACTIVE_IDS] if active_only else FITTERS
+    defaults = {f.id: dict(name=f.name, settings=dict(f.settings)) for f in fitters}
     # Add an implicit time=0 for the max time on each fitter.
     for k, v in defaults.items():
         v["settings"]["time"] = 0.0

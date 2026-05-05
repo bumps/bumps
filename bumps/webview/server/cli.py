@@ -250,6 +250,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     # parser.add_argument('-d', '--debug', action=argparse.BooleanOptionalAction, help='autoload modules on change')
 
+    # TODO: Help is missing for pt options even when --fit=pt is on the command line
     # Fitter controls
     fitter = parser.add_argument_group("Fitting options")
     for name, option in fit_options.Setting.items():

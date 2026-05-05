@@ -54,7 +54,7 @@ import math
 import time
 
 from bumps.fitproblem import load_problem
-from bumps.fitters import FitDriver, OptimizeResult, FIT_DEFAULT_ID
+from bumps.fitters import FitDriver, OptimizeResult, FIT_DEFAULT_ID, FIT_ACTIVE_IDS
 from bumps.mapper import MPMapper
 from bumps.parameter import Parameter, Constant, Variable, unique
 import bumps.fitproblem
@@ -104,7 +104,7 @@ TRACE_MEMORY = False
 # Initialize state with default fitter id and default options for each fitter.
 state = State()
 state.shared.selected_fitter = FIT_DEFAULT_ID
-state.shared.fitter_settings = deepcopy(fit_options.get_fitter_defaults())
+state.shared.fitter_settings = deepcopy(fit_options.get_fitter_defaults(active_only=False))
 
 
 def register(fn: Callable):
@@ -1536,7 +1536,14 @@ async def get_dirlisting(pathlist: Optional[List[str]] = None):
 
 @register
 async def get_fitter_defaults():
-    return fit_options.get_fitter_defaults()
+    # TODO: Need a better way to include experimental fitters in the web ui.
+    # This hack allows gui reset of fit options when --fit=pt is on the command line
+    # by allowing every experimental and deprecated fitter to appear in the fit selector.
+    # That all of them appear is okay since this only affects users who already know that
+    # there are experimental fitters available. It will probably break when we refactor
+    # the command line processor, or when we start webview from a jupyter notebook.
+    active_only = state.shared.selected_fitter in FIT_ACTIVE_IDS
+    return fit_options.get_fitter_defaults(active_only=active_only)
 
 
 @register
