@@ -19,7 +19,7 @@ from . import initpop
 from . import lsqerror
 
 from .history import History
-from .util import NDArray, format_duration, format_uncertainty
+from .util import NDArray, format_duration, format_uncertainty, redirect_console
 
 # For typing
 from typing import TYPE_CHECKING, List, Tuple, Dict, Any, Optional
@@ -1351,6 +1351,35 @@ class FitDriver(object):
         }
 
 
+# CRUFT: replaced by export_fit, but still used by third parties.
+def save_best(fitdriver, problem=None, best=None, view=None):
+    """
+    Save the fit data, including parameter values, uncertainties and plots.
+
+    *fitdriver* is the fitter that was used to drive the fit.
+
+    *problem* is a FitProblem instance.
+
+    *best* is the parameter set to save.
+    """
+    if problem is None:
+        problem = fitdriver.problem
+    if best is None:
+        best = fitdriver.result[0]
+    # Make sure the problem contains the best value
+    if (problem.getp() != best).any():
+        problem.setp(best)
+    # TODO: use fitproblem.dump_pars(problem, path)
+    pardata = "".join("%s %.15g\n" % (name, value) for name, value in zip(problem.labels(), problem.getp()))
+    open(problem.output_path + ".par", "wt").write(pardata)
+
+    fitdriver.save(problem.output_path)
+    with redirect_console(problem.output_path + ".err"):
+        fitdriver.show()
+        fitdriver.plot(output_path=problem.output_path, view=view)
+    # print "plotting"
+
+
 def _fill_defaults(options: Optional[Dict[str, Any]], settings: List[Tuple[str, Any]]) -> Dict[str, Any]:
     """
     Returns options dict with missing values filled from settings.
@@ -1361,9 +1390,9 @@ def _fill_defaults(options: Optional[Dict[str, Any]], settings: List[Tuple[str, 
     return result
 
 
-FITTERS: List[FitBase] = []
-FIT_AVAILABLE_IDS = []
-FIT_ACTIVE_IDS = []
+FITTERS: list[FitBase] = []
+FIT_AVAILABLE_IDS: list[str] = []
+FIT_ACTIVE_IDS: list[str] = []
 
 
 def register(fitter, active=True):

@@ -191,7 +191,7 @@ class FitConfig(object):
     to the user in a GUI dialog for example.
 
     *values = {id: {option: value, ...}}* maps ids to the settings for
-    each fitter.  Note that in the GUI, different fitters may have there
+    each fitter.  Note that in the GUI, different fitters may have their
     settings recorded and preserved even when not selected.
 
     *active_ids = [id, id, ...]* is the list of fitters to show the user in

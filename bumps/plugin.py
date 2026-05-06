@@ -18,10 +18,11 @@ Create a main program which looks like::
         import multiprocessing
         multiprocessing.freeze_support()
 
-        import bumps.cli
+        from bumps.plugin import install_plugin
+        from bumps.cli import main as bumps_main
         import mypackage.plugin
-        bumps.cli.install_plugin(mypackage.plugin)
-        bumps.cli.main()
+        install_plugin(mypackage.plugin)
+        bumps_main()
 
 You should be able to use this as a driver program for your application.
 
@@ -48,6 +49,17 @@ __all__ = [
 #
 # It also wants to modify the opts so that more plotters are available,
 # such as Fresnel.
+
+
+def install_plugin(p):
+    """
+    Replace symbols in :mod:`bumps.plugin` with application specific
+    methods.
+    """
+    symtab = globals()
+    for symbol in __all__:
+        if hasattr(p, symbol):
+            symtab[symbol] = getattr(p, symbol)
 
 
 def new_model():

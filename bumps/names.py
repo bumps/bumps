@@ -88,7 +88,7 @@ from .fitproblem import FitProblem, Fitness
 
 # === jupyter notebook support ===
 from .webview.server.webserver import start_bumps, display_bumps
-from .fitproblem import load_problem
+from .fitproblem import load_problem, load_pars
 from .fitters import (
     fit,
     plot_convergence,

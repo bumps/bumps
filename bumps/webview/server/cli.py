@@ -45,7 +45,6 @@ import hashlib
 # from textwrap import dedent
 
 from bumps import __version__ as bumps_version
-from bumps.fitters import FIT_AVAILABLE_IDS
 from bumps.fitproblem import FitProblem, load_problem
 from . import api
 from . import persistent_settings
@@ -53,10 +52,16 @@ from . import fit_options
 from .logger import logger, setup_console_logging, LOGLEVEL
 from .state_hdf5_backed import SERIALIZERS, FitResult
 
+# # CRUFT: mock old bumps.cli interfaces that may be used elsewhere
+# from bumps.fitproblem import load_pars as load_best
+# from bumps.fitproblem import load_problem as load_model
+# from bumps.fitters import save_best # used by scattertools
+# from bumps.plotutil import config_matplotlib, set_mplconfig
+# from bumps.plugin import install_plugin
+
 # Ick! PREFERRED_PORT is here rather than in webserver so that it can
 # be used in the command line help without a circular import.
 PREFERRED_PORT = 5148  # "SLAB"
-
 
 # TODO: try datargs to build a parser from the typed dataclass
 
@@ -244,15 +249,13 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     # parser.add_argument('-d', '--debug', action=argparse.BooleanOptionalAction, help='autoload modules on change')
 
+    # TODO: Help is missing for pt options even when --fit=pt is on the command line
     # Fitter controls
-    fit_options.form_fit_options_associations()  # sets fitter list for each option
     fitter = parser.add_argument_group("Fitting options")
-    for name, option in fit_options.FIT_OPTIONS.items():
+    for name, option in fit_options.Setting.items():
         stype = option.stype
         metavar = "" if stype is bool else name.replace("_", "-").upper()
         choices = stype if isinstance(stype, list) else None
-        if name == "fit":
-            choices = FIT_AVAILABLE_IDS
         # For the trim option allow both --trim and --no-trim. The DictAction class
         # checks for leading "--no-" in the option string when assigning to bool.
         flagname = name.replace("_", "-")
@@ -265,9 +268,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
             metavar=metavar,
             nargs=0 if stype is bool else None,
             choices=choices,
-            # Don't show parameters that don't appear in the visible optimizers.
-            # For example, don't show --nT which is only available when --fit=pt.
-            help=option.build_help() if option.fitters else argparse.SUPPRESS,
+            help=option.help(),
         )
 
     # Fit outputs
@@ -886,8 +887,7 @@ def reload_export(
 
     sys.argv is set to *args* before loading the model.
     """
-    from bumps.fitproblem import load_problem
-    from bumps.cli import load_best
+    from bumps.fitproblem import load_problem, load_pars
     from .state_hdf5_backed import SERIALIZER_EXTENSIONS
 
     # Find the .par file in the export directory
@@ -913,7 +913,7 @@ def reload_export(
         if picklefile.exists():
             try:
                 problem = load_problem(picklefile)
-                # Note: no need to load_best because serializer contained the parameters
+                # Note: no need to load pars because serializer contains the parameters
             except Exception as exc:
                 logger.warn(f"Failed to deserialize {picklefile}; look for model file")
             break
@@ -937,7 +937,7 @@ def reload_export(
 
         # Load the model script and the fitted values.
         problem = load_problem(modelfile, model_options=args)
-        load_best(problem, parfile)
+        load_pars(problem, parfile)
 
     # Load the MCMC files
     fit_result = load_fit_result(parfile)

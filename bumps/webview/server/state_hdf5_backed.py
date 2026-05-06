@@ -44,12 +44,12 @@ except ImportError:
     warnings.warn("h5py is not available; can't access session files")
 
 from bumps import __version__
+from bumps.fitters import FIT_DEFAULT_ID
 from bumps.serialize import serialize, deserialize
 from bumps.serialize import serialize_bytes, deserialize_bytes
 from bumps.util import get_libraries
 from .logger import logger
-
-from .fit_options import lookup_fitter, DEFAULT_FITTER_ID
+from .fit_options import lookup_fitter
 
 if TYPE_CHECKING:
     import bumps
@@ -553,7 +553,7 @@ class FitResult:
     # TODO: Save labels in fit results so we don't need to walk the problem definition?
     # TODO: Save the initial value in the problem so users can reset after a fit?
     # TODO: Add the following to FitResult:
-    method: str = DEFAULT_FITTER_ID  # => shared.selected_fitter
+    method: str = FIT_DEFAULT_ID  # => shared.selected_fitter
     """Fitting method"""
     options: Dict[str, Any] = field(default_factory=dict)  # => shared.fitter_settings
     """Options used to run the fitters"""
@@ -633,7 +633,7 @@ class FitResult:
                 fitter = lookup_fitter(self.method)
                 self.fit_state = fitter.h5load(state_group)
             else:
-                self.method = DEFAULT_FITTER_ID
+                self.method = FIT_DEFAULT_ID
                 self.fit_state = None
 
 

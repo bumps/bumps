@@ -14,7 +14,7 @@ are not particularly useful from a jupyter notebook.
 
     # Load a model script, possibly with additional command line arguments:
     path = Path("path/to/model.py")
-    problem = bp.load_model(path, args=[arg1, ...])
+    problem = bp.load_problem(path, args=[arg1, ...])
 
     # Use a problem defined in a separate jupyter cell
     await bp.set_problem(problem, new_model=False)
@@ -50,14 +50,12 @@ from copy import deepcopy
 import os
 import uuid
 import traceback
-import math
 import time
 
 from bumps.fitproblem import load_problem
-from bumps.fitters import FitDriver, OptimizeResult
+from bumps.fitters import FitDriver, OptimizeResult, FIT_DEFAULT_ID, FIT_ACTIVE_IDS
 from bumps.mapper import MPMapper
 from bumps.parameter import Parameter, Constant, Variable, unique
-import bumps.cli
 import bumps.fitproblem
 import bumps.dream.stats
 from bumps.dream.state import MCMCDraw
@@ -66,7 +64,6 @@ from bumps.util import push_mpl_backend
 
 from . import fit_options
 from .state_hdf5_backed import (
-    UNDEFINED,
     UNDEFINED_TYPE,
     FitResult,
     State,
@@ -102,10 +99,10 @@ TRACE_MEMORY = False
 # TODO: reloading the module wipes out state
 # TODO: any other state that needs to be initialized?
 
-# Initialize state
+# Initialize state with default fitter id and default options for each fitter.
 state = State()
-state.shared.selected_fitter = fit_options.DEFAULT_FITTER_ID
-state.shared.fitter_settings = deepcopy(fit_options.FITTER_DEFAULTS)
+state.shared.selected_fitter = FIT_DEFAULT_ID
+state.shared.fitter_settings = deepcopy(fit_options.get_fitter_defaults(active_only=False))
 
 
 def register(fn: Callable):
@@ -592,7 +589,7 @@ async def apply_parameters(pathlist: List[str], filename: str):
     fullpath = path / filename
     try:
         # print(f"loading parameters from {fullpath}")
-        bumps.cli.load_best(state.problem.fitProblem, fullpath)
+        bumps.fitproblem.load_pars(state.problem.fitProblem, fullpath)
         state.shared.updated_parameters = now_string()
         await log(f"Applied parameters from {fullpath}")
         await add_notification(
@@ -1537,7 +1534,14 @@ async def get_dirlisting(pathlist: Optional[List[str]] = None):
 
 @register
 async def get_fitter_defaults():
-    return fit_options.FITTER_DEFAULTS
+    # TODO: Need a better way to include experimental fitters in the web ui.
+    # This hack allows gui reset of fit options when --fit=pt is on the command line
+    # by allowing every experimental and deprecated fitter to appear in the fit selector.
+    # That all of them appear is okay since this only affects users who already know that
+    # there are experimental fitters available. It will probably break when we refactor
+    # the command line processor, or when we start webview from a jupyter notebook.
+    active_only = state.shared.selected_fitter in FIT_ACTIVE_IDS
+    return fit_options.get_fitter_defaults(active_only=active_only)
 
 
 @register

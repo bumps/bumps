@@ -2,20 +2,21 @@
 Fit job definition for the distributed job queue.
 """
 
+# TODO: Never used in production. Remove from tree.
+
 import os
 import sys
 import json
 
 from cloudpickle import loads
 
-from . import cli
 from . import __version__
 
 # Site configuration determines what kind of mapper to use
 # This should be true in cli.py as well
 from .mapper import MPMapper as Mapper
 from . import monitor
-from .fitters import FitDriver
+from .fitters import FitDriver, save_best
 
 
 def fitservice(request):
@@ -50,7 +51,7 @@ def fitservice(request):
     problem.show()
     print("#", " ".join(sys.argv))
     best, fbest = fitdriver.fit()
-    cli.save_best(fitdriver, problem, best)
+    save_best(fitdriver)
     matplotlib.pyplot.show()
     return list(best), fbest
 
