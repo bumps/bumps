@@ -1449,7 +1449,7 @@ Bumps functions:
 import bumps.names as bp
 bp.help("dream")                                     # display dream plot functions
 problem = bp.load_problem(path, args=[arg1, ...])    # load model from script (.py) or export (.json)
-options = dict(fit=dream, burn=100)                  # fit options (see bumps -h for list)
+options = dict(fit="dream", burn=100)                # fit options (see bumps -h for list)
 !bumps --help                                        # show available options
 fitresult = bp.fit(problem, **options)               # synchronous fit interface
 fitresult = bp.fit(problem, resume=fitresult, **options) # resume a fit from fitresult
@@ -1654,7 +1654,7 @@ def load_fit_from_export(
 
     sys.argv is set to *args* before loading the model.
     """
-    from .webview.server.cli import reload_export
+    from bumps.cli import reload_export
 
     problem, fit = reload_export(path, modelfile=modelfile, args=args)
     results = _build_fit_result(problem, fit)

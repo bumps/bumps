@@ -10,12 +10,11 @@ import socket
 from pathlib import Path
 from typing import Callable, Optional, Union, List
 
-# from .main import setup_bumps
-from . import cli
+# TODO: circular import since cli.main() imports webserver imports cli
+from bumps.cli import BumpsOptions, PREFERRED_PORT, interpret_fit_options
 from . import api
 from . import persistent_settings
 from .logger import logger, LOGLEVEL
-from .cli import BumpsOptions, PREFERRED_PORT
 
 mimetypes.add_type("text/css", ".css")
 mimetypes.add_type("text/html", ".html")
@@ -227,7 +226,7 @@ def setup_app(options: BumpsOptions, sock: Optional[socket.socket] = None):
         logger.info(message)
 
     # run setup tasks:
-    on_startup, on_complete = cli.interpret_fit_options(options)
+    on_startup, on_complete = interpret_fit_options(options)
     app.on_startup.extend(on_startup)
     app.on_cleanup.append(lambda App: notice("cleanup task"))
     app.on_shutdown.extend(on_complete)

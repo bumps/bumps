@@ -1,550 +1,515 @@
 """
-Option parser for bumps command line
+Manage optimizer settings.
+
+Each optimizer in :mod:`bumps.fitters` has its own settings attribute, giving the list of
+settings available to the optimizer and the default value if the setting was not provided.
+
+Settings for the same type of control should have the same value type and name, though the
+defaults can differ between the optimizers. This module defines the metadata for the
+various settings, each one having a setting name, a display label, an input type,
+and a long description. These are used to construct the command line help and UI interaction.
+If a fitter needs a completely new setting type it will have to be added here.
+
+Each setting used by at least one active fitter adds a `--name` entry to the command line
+parser, with a list of fitters and default setting values for that fitter. The
+:func:`form_fit_options_associations` walks the available functions and forms this list.
+
+Various setting types are available:
+
+* *float*, *int* and *str* are simple types with no restrictions.
+
+* *bool* defines a boolean setting, with an additional `--no-name entry` on the command line
+   to indicate false values. Boolean settings can default to True or False.
+
+* :class:`Range` restricts the setting to a valid setting range, with values clipped
+   to the range during :func:`check_options` processing.
+
+* *list* settings define an enumerated set of available string values.
+
 """
 
-import sys
+__all__ = [
+    "check_options",
+    "get_fitter_defaults",
+    "get_fit_fields",
+    "lookup_fitter",
+    "Setting",
+    # CRUFT: old fit options data structures are still used by sasview
+    "FIT_CONFIG",
+    "FIT_FIELDS",
+    "ChoiceList",
+]
 
-import numpy as np
+from typing import Dict, List, Tuple, Any, Callable, Optional
+from textwrap import dedent
+from argparse import ArgumentTypeError, SUPPRESS
+from dataclasses import dataclass, asdict
 
-from .fitters import FITTERS, FIT_AVAILABLE_IDS, FIT_ACTIVE_IDS, FIT_DEFAULT_ID
+from bumps.fitters import FitBase, FITTERS, FIT_DEFAULT_ID, FIT_AVAILABLE_IDS, FIT_ACTIVE_IDS
+
+# TODO: unify handling of fit options in jupyter, sasview, script, webview and bumps cli.
+# Current fitter is now in shared state and fit options use Setting, but SasView and the wx GUI
+# still use options.FIT_CONFIG and options.FIT_FIELDS. We can't remove the old option handler
+# until SasView and webview are updated to a unified interface.
+
+# CRUFT: SasView is still using FIT_CONFIG, FIT_FIELDS and ChoiceList
+from bumps.gui.old_options import FIT_CONFIG, FIT_FIELDS, ChoiceList
 
 
-# TODO: replace with standard argparse module
-class ParseOpts(object):
+# TODO: If --fit=pt is specified then we need the pt options in the defaults
+# The problem is that the defaults are set in api.py before the command line is processed.
+# Options are to start with all and strip the inactive or start with the active and add extras
+def get_fitter_defaults(active_only=True) -> dict[str, dict[str, Any]]:
     """
-    Options parser.
+    Determines the default values for each setting of each fitter.
 
-    Subclass should define *MINARGS*, *FLAGS*, *VALUES* and *USAGE*.
+    This comes from the Fitter.settings attribute in the fitters defined by bumps.fitter,
+    with an additional ("time", 0.0) setting implicit to all fitters.
 
-    *MINARGS* is the minimum number of positional arguments.
+    Returns {fitter_id: {setting: value, ...}, ...}
+    """
+    fitters = [f for f in FITTERS if f.id in FIT_ACTIVE_IDS] if active_only else FITTERS
+    defaults = {f.id: dict(name=f.name, settings=dict(f.settings)) for f in fitters}
+    # Add an implicit time=0 for the max time on each fitter.
+    for k, v in defaults.items():
+        v["settings"]["time"] = 0.0
+    return defaults
 
-    *FLAGS* is a set of arguments that may be present or absent.
 
-    *VALUES* is a set of arguments that take values.  Value checking
-    can be done in the setter for each argument in the set.  Default
-    values should be set in the corresponding object attribute.
+# TODO: move the setting registry into the Setting class
+_Setting_registry: dict[str, "Setting"] = {}
+# _registry: dict[str, "Setting"] = field(default_factory=dict, repr=False)
 
-    *USAGE* is the help string to display for option "help".
 
-    The constructor will invoke the command line parser, leaving the
-    values set by the command line as attribute values.   Flag options
-    will be True or False.
+@dataclass(init=False)
+class Setting:
+    """
+    Represents a setting for a fitter.
+
+    Attributes:
+        name (str): Name of the setting.
+
+        label (str): Label for the setting.
+
+        description (str): Description of the setting.
+
+        stype (Callable): Type of the setting.
     """
 
-    MINARGS = 0
-    FLAGS = set()
-    VALUES = set()
-    #: Value to use if a value flag is is present without '='.  This is
-    #: different from the default value if the flag is not present, which
-    #: is the default value set in the calling class.
-    IMPLICIT_VALUES = {}
-    USAGE = ""
+    name: str
+    label: str
+    description: str
+    stype: Callable
 
-    def __init__(self, args):
-        if self.VALUES & self.FLAGS:
-            raise TypeError("option used as both a flag and a value: %s" % ",".join(self.VALUES & self.FLAGS))
-        self._parse(args)
+    def __init__(self, name: str, label: str, stype: type, description: str):
+        """
+        Initializes a Setting instance.
 
-    def _parse(self, args):
-        if any(v in args for v in ("-?", "-h", "-help")):
-            print(self.USAGE)
-            sys.exit()
+        Args:
+            name (str): Name of the setting.
 
-        # Drop the "bumps" arg from the beginning of the list.
-        args = args[1:]
+            label (str): Label for the setting.
 
-        # Fill in implicit values. We need to do this to support something
-        # like "bumps ... --parallel=2 ... --parallel", which should have the
-        # later (implicit) parameter take precedence over the earlier
-        # parameters.
-        args = [
-            (arg + "=" + str(self.IMPLICIT_VALUES[arg[2:]]) if arg[2:] in self.IMPLICIT_VALUES else arg) for arg in args
+            stype (type): Type of the setting.
+
+            description (str): Description of the setting.
+        """
+        # These attributes are associated with each setting (name, label, description, type)
+        self.name = name
+        self.label = label
+        self.description = flow(dedent(description))
+        self.stype = stype
+
+        # Register all settings. Make sure each is only declared once.
+        if name in _Setting_registry:
+            raise RuntimeError(f'Setting("{name}", ...) already defined')
+        _Setting_registry[name] = self
+
+    @classmethod
+    def items(cls):
+        """
+        Iterate over the registered *(name, Setting)* pairs.
+        """
+        return _Setting_registry.items()
+
+    # Note: don't use __class_item__ since that will look like a type annotation
+    @classmethod
+    def get(cls, name):
+        """
+        Retrieve the setting for *name*.
+        """
+        return _Setting_registry[name]
+
+    def get_defaults(self, active_only=True):
+        """
+        Retrieve the defaults for setting *name* for all fitters that use it.
+
+        If *active_only*, only include the active fitters, not anything experimental
+        or deprecated.
+        """
+        defaults = [
+            (fitter.id, value)
+            for fitter in FITTERS
+            for setting, value in fitter.settings
+            if setting == self.name and (fitter.id in FIT_ACTIVE_IDS or not active_only)
         ]
+        return defaults
 
-        # Parse options.
-        # Given tuples [..., (a, 1), ..., (a, 2), ...], then dict(tuples)
-        # will use the later value for the key rather than the earlier
-        # value, which is what we want for the command line interpreter.
-        position_args = [v for v in sys.argv[1:] if not v.startswith("--")]
-        flag_args = [
-            v[2:]  # convert --flag => flag
-            for v in args
-            if v.startswith("--") and not "=" in v
-        ]
-        value_args = dict(
-            v[2:].split("=", 1)  # convert --flag=value => (flag, value)
-            for v in args
-            if v.startswith("--") and "=" in v
-        )
-
-        # Check that options are valid.
-        # TODO: move type checking from FitConfig.set_from_cli to here.
-        flags, values = set(flag_args), set(value_args.keys())
-        unknown = (flags | values) - (self.FLAGS | self.VALUES)
-        unexpected_value = flags - self.FLAGS
-        blank_values = set(k for k, v in value_args.items() if k in self.VALUES and v == "")
-        missing_value = (values - self.VALUES) | blank_values
-        errors = []
-        if any(unknown):
-            errors.append("Unknown options --%s." % ", --".join(unknown))
-        if any(unexpected_value):
-            errors.append("Unexpected value for --%s." % ", --".join(sorted(unexpected_value)))
-        if any(missing_value):
-            errors.append("Missing value for --%s." % ", --".join(sorted(missing_value)))
-        if errors:
-            message = " ".join(errors + ["Use -? for help."])
-            raise ValueError(message)
-
-        # Set the values into the fields.
-        for option in self.FLAGS:
-            setattr(self, option, (option in flags))
-
-        for option, value in value_args.items():
-            setattr(self, option, value)
-
-        self.args = position_args
-
-
-# === Fitter option parsing ===
-
-
-class ChoiceList(object):
-    def __init__(self, *choices):
-        self.choices = choices
-
-    def __call__(self, value):
-        if not value in self.choices:
-            raise ValueError('invalid option "%s": use %s' % (value, "|".join(self.choices)))
+    def help(self, active_only=True) -> str:
+        """
+        Help string for the --settings option in the argument parser, or SUPPRESS if the
+        setting is only available for experimental or deprecated optimizers.
+        """
+        if self.name == "time":
+            # Produces the label for the --time option. This option is processed by
+            # the fit driver, so it is common across all fitters
+            #     Max time (hours)  [all fitters]
+            fitters = ["all fitters"]
+        elif self.name == "fit":
+            # Produces the list of active fitters for the --fit options:
+            #     Optimizer name  [amoeba, de, dream, newton, lm]
+            fitters = FIT_ACTIVE_IDS
         else:
-            return value
+            # Produces the label for the setting with per-fitter default values.
+            # For --xtol this is:
+            #     x tolerance  [amoeba=1e-06, de=1e-06, newton=1e-12, lm=1e-10]
+            # Don't show parameters that don't appear in the visible optimizers.
+            # For example, don't show --nT which is only available when --fit=pt.
+            defaults = self.get_defaults(active_only=active_only)
+            if not defaults:
+                return SUPPRESS
+            fitters = [f"{fitter}={value}" for fitter, value in defaults]
+        return f"{self.label}  [{', '.join(fitters)}]\n{self.description}"
 
 
-def yesno(value):
-    if value.lower() in ("true", "yes", "on", "1"):
-        return True
-    elif value.lower() in ("false", "no", "off", "0"):
-        return False
-    raise ValueError('invalid option "%s": use yes|no')
+def flow(text: str, proportional=True) -> str:
+    """Flow paragraphs in text, replacing line breaks in the paragraph with spaces.
+
+    Line breaks are preserved within indented text.
+
+    Paragraphs are separated by blank lines.
+
+    When operating on a multiline string, first call textwrap.dedent to remove the common
+    indent level.
+
+    If proportional, remove extra blanks within a line because we are displaying the text in a
+    proportional rather than fixed width font.
+    """
+    paragraphs = []
+    current = []
+    for line in text.split("\n"):
+        line = line.rstrip()
+        if proportional:
+            indent = len(line) - len(line.lstrip())
+            line = f"{line[:indent]}{' '.join(line[indent:].split())}"
+        if not line or line[0] in " \t":
+            if current:
+                paragraphs.append(" ".join(current))
+                current = []
+            if line:
+                paragraphs.append(line)
+        else:
+            current.append(line)
+    if current:
+        paragraphs.append(" ".join(current))
+    return "\n".join(paragraphs)
 
 
-def parse_int(value):
-    float_value = float(value)
-    if int(float_value) != float_value:
-        raise ValueError("integer expected")
-    return int(float_value)
+@dataclass(frozen=True)
+class Range:
+    """
+    A floating point range which is used as an argparse type converter and validator.
+
+    Attributes:
+        min (float): Minimum value of the range.
+
+        max (float): Maximum value of the range.
+    """
+
+    min: float
+    max: float
+
+    def __call__(self, v):
+        """
+        Validates if a value is within the range.
+
+        Args:
+            v: Value to be validated.
+
+        Returns:
+            float: The validated value.
+
+        Raises:
+            ArgumentTypeError: If the value is not within the range.
+        """
+        v = float(v)
+        if not self.min <= v <= self.max:
+            raise ArgumentTypeError(f"{v} not in [{self.min:g}, {self.max:g}]")
+        return v
+
+    def __repr__(self):
+        """
+        Returns a string representation of the range.
+        """
+        return f"float[{self.min:g},{self.max:g}]"
 
 
-FIT_FIELDS = dict(
-    steps=("Steps", parse_int),
-    samples=("Samples", parse_int),
-    xtol=("x tolerance", float),
-    ftol=("f(x) tolerance", float),
-    alpha=("Convergence", float),
-    stop=("Stopping criteria", str),
-    thin=("Thinning", parse_int),
-    burn=("Burn-in steps", parse_int),
-    pop=("Population", float),
-    init=("Initializer", ChoiceList("eps", "lhs", "cov", "random")),
-    CR=("Crossover ratio", float),
-    F=("Scale", float),
-    nT=("# Temperatures", parse_int),
-    Tmin=("Min temperature", float),
-    Tmax=("Max temperature", float),
-    radius=("Simplex radius", float),
-    # TODO: convert --trim into a boolean flag and update docs
-    trim=("Burn-in trim", yesno),
-    outliers=("Outliers", ChoiceList("none", "iqr", "grubbs", "mahal")),
-    starts=("Starts", parse_int),
-    jump=("Jump radius", float),
+## Options available for the various fitters
+Setting("fit", "Optimizer name", FIT_AVAILABLE_IDS, f"Fitting engine to use (default: {FIT_DEFAULT_ID})")
+
+# Stopping conditions
+Setting(
+    "steps",
+    "Number of steps",
+    int,
+    """\
+    Stop when iteration = steps. In Dream, when --steps=0 the number of steps is
+    calculated using (samples / chains). Here chains = pop * pars if pop > 0
+    or -pop if pop < 0.""",
+)
+Setting("xtol", "x tolerance", Range(0, 1), "Stop when population diameter < xtol relative to range.")
+Setting("ftol", "f(x) tolerance", float, "Stop when variation in log likelihood < ftol.")
+Setting(
+    "alpha",
+    "Convergence criteria",
+    Range(0, 0.1),
+    """\
+    Stop when probability that population is varying is less than alpha. This
+    uses a Kolmogorov-Smirnov test on the log-likelihood values to see if the
+    distribution at the start of the saved samples matches the distribution at
+    the end. Alpha must be 0.1 or less.""",
+)
+Setting("time", "Max time (hours)", float, "Maximum number of hours to run the fit, or zero for no maximum.")
+
+# Initializers
+Setting(
+    "init",
+    "Population initializer",
+    list("eps lhs cov random".split()),
+    """\
+    Population initialization method
+        eps:    ball around initial parameter set
+        lhs:    latin hypercube sampling
+        cov:    normally distributed according to covariance matrix
+        random: uniformly distributed within parameter range""",
+)
+Setting(
+    "pop",
+    "Population size",
+    float,
+    """\
+    Population size is pop times number of fitted parameters. If pop is negative
+    then set population size to -pop independent of fit parameters.""",
+)
+Setting("burn", "Burn-in steps", int, "Estimated number generations before convergence")
+Setting("samples", "Samples", int, "Number of samples to draw = pop*pars*steps.")
+Setting(
+    "thin",
+    "Thinning factor",
+    int,
+    """\
+    Number of iterations between samples; use a large number here if you find
+    your problem is "stuck", with minimal change from step to step in the
+    parameter trace.""",
+)
+Setting(
+    "outliers",
+    "Outliers test",
+    list("none iqr grubbs mahal".split()),
+    """\
+    Remove outlier Markov chains every n steps using the selected algorithm.
+        none:   no outlier removal during fit
+        iqr:    use interquartile range on likelihood
+        grubbs: use t-test on likelihood
+        mahal:  use distance from parameter values on the best chain
+    At the end of the fit the iqr algorithm is used to remove any remaining
+    outlier chains from the statistical results and plots.""",
 )
 
-# Make sure all settings are parseable
-for fit in FITTERS:
-    assert all(opt in FIT_FIELDS for opt, _ in fit.settings), "Fitter %s contains unknown settings %s" % (
-        fit.id,
-        ", ".join(opt for opt, _ in sorted(fit.settings) if opt not in FIT_FIELDS),
-    )
-del fit
+# Post processing
+Setting(
+    "trim",
+    "Burn-in trim",
+    bool,
+    """\
+    After fitting, trim samples from early in the Markov chains before it converged.""",
+)
+
+# Parallel tempering
+Setting("nT", "Number of temperatures", int, "Number of temperatures in the parallel tempering ladder")
+Setting("Tmin", "Min temperature", float, "Lowest temperature in the temperture ladder")
+Setting("Tmax", "Max temperature", float, "Highest temperature in the temperature ladder")
+
+# Differential evolution
+Setting("CR", "Crossover ratio", Range(0, 1), "Proportion of parameters updated in crossover step")
+Setting("F", "Scale", float, "Step-size scaling on difference vector")
+# TODO: DE accepts --stop=expr for bumps.mystic.stop.parse_condition(expr)
+# Settings("stop", "Stopping condition", str, "Generalized stopping condition expression")
+
+# Amoeba
+Setting(
+    "radius",
+    "Simplex radius",
+    Range(0, 0.5),
+    """\
+    Radius around the starting point for the initial simplex. Values are in (0, 0.5],
+    representing the portion of the total range of the parameter being initialized.""",
+)
+
+# Stochastic global minimization
+Setting(
+    "starts",
+    "Auto restarts",
+    int,
+    """\
+    Number of times to restart the amoeba fit. After each start the fitter jumps
+    to a new starting position determined by the --jump option.""",
+)
+Setting(
+    "jump",
+    "Jump radius",
+    Range(0, 0.5),
+    """\
+    When running with multiple starts, we jump to a new start position for each
+    restart. Jump values are in [0, 0.5], representing the portion of the total
+    range of each parameter. A value of zero uses a random starting point in the
+    range.""",
+)
 
 
-class FitConfig(object):
+def lookup_fitter(fitter_id: str) -> FitBase:
     """
-    Fit settings configuration object.
+    Looks up a fitter by its ID.
 
-    The command line parser will define a FitConfig object which contains
-    the fitter that was given on the command line and all its options.  For
-    embedded bumps, which does not use the bumps command line parser, a
-    new FitConfig object can be created with its own selected options.
+    Args:
+        fitter_id (str): ID of the fitter to look up.
 
-    **Attributes**
+    Returns:
+        Fitter: The fitter instance corresponding to the given ID.
 
-    *ids = [id, id, ...]* is a list available fitters in "preferred" order.
-    Depending on usage, you may want to sort them, or alternatively, sort
-    by long name with *[id for _,id in sorted((v,k) for k,v in self.names]*
-
-    *fitters = {id: fitclasss}* maps ids to fitters.
-
-    *names* = {id: name}* maps ids to long names
-
-    *settings = {id: [(option, default), ...]}* maps ids to default settings.
-    The order of the settings is the preferred order to present the settings
-    to the user in a GUI dialog for example.
-
-    *values = {id: {option: value, ...}}* maps ids to the settings for
-    each fitter.  Note that in the GUI, different fitters may have their
-    settings recorded and preserved even when not selected.
-
-    *active_ids = [id, id, ...]* is the list of fitters to show the user in
-    a GUI dialog for example.  The other fitters should still be available from
-    the command line.
-
-    *default_id = id* is the fitter to use by default.
-
-    *selected_id = id* is the fitter that was selected, either by command line
-    or by GUI.
-
-    *selected_values = {option: value}* returns the settings for the current
-    fitter.
-
-    *selected_name = name* returns the name of the selected fitter.
-
-    *selected_fitter = FitClass* returns the class of the selected fitter.
-
+    Raises:
+        ValueError: If the fitter ID is unknown.
     """
-
-    def __init__(self, default=FIT_DEFAULT_ID, active=FIT_ACTIVE_IDS):
-        # Keep a private copy of the configure settings rather than modifying
-        # the global defaults
-        self.ids = [fit.id for fit in FITTERS]
-        # FITTERS is a list of FitBase classes
-        # Each class has:
-        #     fit.id: the short name used on the command line
-        #     fit.name: the long name used in the GUI
-        #     fit.settings: available options: [(key,default value), ...]
-        self.fitters = dict((fit.id, fit) for fit in FITTERS)
-        self.names = dict((fit.id, fit.name) for fit in FITTERS)
-        self.settings = dict((fit.id, fit.settings) for fit in FITTERS)
-        self.values = dict((fit.id, dict(fit.settings)) for fit in FITTERS)
-        if not all(k in self.ids for k in active):
-            raise ValueError("Some active fitters are not available")
-        if default not in active:
-            raise ValueError("default fitter is not active")
-        self.active_ids = active
-        self.default_id = default
-        self.selected_id = default
-
-    def set_from_cli(self, opts):
-        """
-        Use the BumpsOpts command line parser values to set the selected
-        fitter and its configuration options.
-        """
-        fitter = opts.fit
-        self.selected_id = fitter
-        # Convert supplied options to the correct types and save them in value
-        for field, reset_value in self.settings[fitter]:
-            value = getattr(opts, field, None)
-            parse = FIT_FIELDS[field][1]
-            if value is not None:
-                try:
-                    self.values[fitter][field] = parse(value)
-                except Exception as exc:
-                    raise ValueError("error in --%s: %s" % (field, str(exc)))
-                    # print("options=%s"%(str(self.options)))
-
-    @property
-    def selected_values(self):
-        return self.values[self.selected_id]
-
-    @property
-    def selected_name(self):
-        return self.names[self.selected_id]
-
-    @property
-    def selected_fitter(self):
-        return self.fitters[self.selected_id]
+    # Checking the complete list of fitters, not the restricted list for webview
+    for fitter in FITTERS:
+        if fitter.id == fitter_id:
+            return fitter
+    raise ValueError(f"Unknown fitter '{fitter_id}'")
 
 
-#: FitConfig singleton for the common case in which only one config is needed.
-#: There may be other use cases, such as saving the fit config along with the
-#: rest of the state so that on resume the fit options are restored, but in that
-#: case the application will not be using the singleton.
-FIT_CONFIG = FitConfig()
-
-
-# === Bumps options parsing ===
-class BumpsOpts(ParseOpts):
+def check_options(options: Dict[str, Any], fitter_id: Optional[str] = None) -> Tuple[Dict[str, Any], List[str]]:
     """
-    Option parser for bumps.
+    Checks if the set of options is consistent for the fitter.
+
+    Args:
+        options (Dict[str, Any]): Options to be checked.
+
+        fitter_id (Optional[str]): ID of the fitter (default=None).
+
+    Returns:
+        Tuple[Dict[str, Any], List[str]]: A tuple containing the updated options
+        dictionary and a list of warnings.
     """
+    # Note: this code is called with options set in a jupyter notebook so make
+    # make sure it is robust against bad inputs.
+    errors = []
+    unknown = []
 
-    MINARGS = 1
-    # TODO: document all options in USAGE and doc/guide/options.rst
-    # TODO: remove application-specific options like --staj
-    FLAGS = set(
-        (
-            "preview",
-            "chisq",
-            "profile",
-            "time_model",
-            "simulate",
-            "simrandom",
-            "shake",
-            "worker",  # internal, so not documented
-            "multiprocessing-fork",  # passed in when app is a frozen image
-            "remote",  # not active, so not documented
-            "batch",
-            "noshow",
-            "overwrite",
-            "stepmon",
-            "err",
-            "cov",
-            "edit",
-            "mpi",
-            "staj",
-            # passed when not running bumps, but instead using a
-            # bundled application as a python distribution with domain
-            # specific models pre-defined.
-            "i",
-        )
-    )
-    VALUES = set(
-        (
-            "plot",
-            "store",
-            "resume",
-            "entropy",
-            "fit",
-            "noise",
-            "seed",
-            "pars",
-            "resynth",
-            "time",
-            "checkpoint",
-            "m",
-            "c",
-            "p",
-            "parallel",
-            "view",
-            "trim",
-            "near_best",
-            "alpha",
-            "outliers",
-            # The following options are for remote fitting via the
-            # fitting service, but this is not currently active.
-            "transport",
-            "notify",
-            "queue",
-        )
-    )
-    # Add in parameters from the fitters
-    VALUES |= set(FIT_FIELDS.keys())
-    # --parallel is equivalent to --parallel=0
-    IMPLICIT_VALUES = {
-        "parallel": "0",
-        "entropy": "llf",
-        "resume": "-",
-    }
-    pars = None
-    notify = ""
-    queue = None
-    resynth = "0"
-    noise = "5"
-    starts = "1"
-    seed = ""
-    time = "inf"
-    checkpoint = "0"
-    parallel = ""
-    entropy = None
-    trim = "true"
-    view = None
-    alpha = 0.0
-    PLOTTERS = "linear", "log", "residuals"
-    USAGE = """\
-Usage: bumps [options] modelfile [modelargs]
+    default_id = FIT_DEFAULT_ID
+    # available = set(fitter.id for fitter in FITTERS)
+    available_ids = FIT_AVAILABLE_IDS
 
-The modelfile is a Python script (i.e., a series of Python commands)
-which sets up the data, the models, and the fittable parameters.
-The model arguments are available in the modelfile as sys.argv[1:].
-Model arguments may not start with '-'.
+    # Use the default fitter if none specified.
+    if not fitter_id:
+        fitter_id = options.get("fit", default_id)
 
-Options:
+    # Check that the fitter is one of the valid fitters. In this case we are using
+    # all the fitters, not just the ones visible in the user interface so that we
+    # can support deprecated and experimental fitters.
+    # print(available)
+    if fitter_id not in available_ids:
+        errors.append(f"Fitter {fitter_id} not in {', '.join(available_ids)}. Using {default_id} instead.")
+        fitter_id = default_id
 
-    --preview
-        display model but do not perform a fitting operation
-    --pars=filename or store path
-        initial parameter values; fit results are saved as path/<modelname>.par
-    --plot=log      [%(plotter)s]
-        type of plot to display
-    --trim=true
-        trim any remaining burn before displaying plots [dream only]
-    --simulate
-        simulate a dataset using the initial problem parameters
-    --simrandom
-        simulate a dataset using random problem parameters
-    --shake
-        set random parameters before fitting
-    --noise=5%%
-        percent noise to add to the simulated data
-    --seed=integer
-        random number seed
-    --err
-        show uncertainty estimate from curvature at the minimum
-    --cov
-        show the covariance matrix for the model when done
-    --entropy=gmm|mvn|wnn|llf
-        compute entropy on posterior distribution [dream only]
-    --staj
-        output staj file when done [Refl1D only]
-    --edit
-        start the gui
-    --view=linear|log
-        one of the predefined problem views; reflectometry also has fresnel,
-        logfresnel, q4 and residuals
+    # TODO: default from state.share.fitter_settings instead of Fitter.settings?
+    fitter: FitBase = lookup_fitter(fitter_id)
+    defaults: Dict[str, Any] = dict(fitter.settings)
+    # print(f"defaults for {fitter_id}: {defaults}")
 
-    --store=path
-        output directory for plots and models
-    --overwrite
-        if store already exists, replace it
-    --resume=path    [dream]
-        resume a fit from previous stored state; if path is '-' then use the
-        path given by --store, if it exists
-    --parallel=n
-        run fit using multiprocessing for parallelism; use --parallel=0 for all cpus
-    --mpi
-        run fit using MPI for parallelism (use command "mpirun -n cpus ...")
-    --batch
-        batch mode; save output in .mon file and don't show plots after fit
-    --noshow
-        semi-batch; send output to console but don't show plots after fit
-    --time=inf
-        run for a maximum number of hours
-    --checkpoint=0
-        save fit state every n hours, or 0 for no checkpoints
+    # Scan all options, correcting any errors.
+    # Note: time is processed by FitDriver so it is active in all the fitters
+    new_options = {"fit": fitter_id, "time": 0.0, **defaults}
+    for key, value in options.items():
+        # We have already checked the fit=value option above.
+        if key == "fit":
+            continue
 
-    --fit=amoeba    [%(fitter)s]
-        fitting engine to use; see manual for details
-    --steps=0       [%(fitter)s]
-        number of fit iterations after any burn-in time; use samples if steps=0
-    --samples=1e4   [dream]
-        set steps=samples/(pop*#pars) so the target number of samples is drawn
-    --xtol=1e-4     [de, amoeba]
-        minimum population diameter
-    --ftol=1e-4     [de, amoeba]
-        minimum population flatness
-    --alpha=0.0     [dream]
-        p-level for rejecting convergence; with fewer samples use a stricter
-        stopping condition, such as --alpha=0.01 --samples=20000
-    --outliers=none [dream]
-        name of test used for removing outlier chains every N samples:
-          none:   no outlier removal
-          iqr:    use interquartile range on likelihood
-          grubbs: use t-test on likelihood
-          mahal:  use distance from parameter values on the best chain
-    --pop=10        [dream, de, rl, ps]
-        population size is pop times number of fitted parameters; if pop is
-        negative, then set population size to -pop.
-    --burn=100      [dream, pt]
-        number of burn-in iterations before accumulating stats
-    --thin=1        [dream]
-        number of fit iterations between steps
-    --nT=25
-    --Tmin=0.1
-    --Tmax=10       [pt]
-        temperatures vector; use a higher maximum temperature and a larger
-        nT if your fit is getting stuck in local minima
-    --CR=0.9        [de, rl, pt]
-        crossover ratio for population mixing
-    --starts=1      [newton, rl, amoeba]
-        number of times to run the fit from random starting points.
-    --near_best
-        when running with multiple starts, restart from a point near the
-        last minimum rather than using a completely random starting point.
-    --init=eps      [dream]
-        population initialization method:
-          eps:    ball around initial parameter set
-          lhs:    latin hypercube sampling
-          cov:    normally distributed according to covariance matrix
-          random: uniformly distributed within parameter ranges
-    --stepmon
-        show details for each step
-    --resynth=0
-        run resynthesis error analysis for n generations
+        # Collect invalid options for later reporting
+        if key not in new_options:
+            # Skip unrecognized options.
+            unknown.append(f"{key}={value}")
+            continue
 
-    --time_model
-        run the model --steps times in order to estimate total run time.
-    --profile
-        run the python profiler on the model; use --steps to run multiple
-        models for better statistics
-    --chisq
-        print the model description and chisq value and exit
-    -m/-c/-p command
-        run the python interpreter with bumps on the path:
-            m: command is a module such as bumps.cli, run as __main__
-            c: command is a python one-line command
-            p: command is the name of a python script
-    -i
-        start the interactive interpreter
-    -?/-h/--help
-        display this help
-""" % {
-        "fitter": "|".join(sorted(FIT_AVAILABLE_IDS)),
-        "plotter": "|".join(PLOTTERS),
-    }
+        # Promote int values to floats if the option expects a float
+        setting = Setting.get(key)
+        stype = setting.stype
+        if isinstance(value, int) and (stype is float or isinstance(stype, Range)):
+            value = float(value)
 
-    #    --remote
-    #        queue fit to run on remote server
-    #    --notify=user@email
-    #        remote fit notification
-    #    --queue=http://reflectometry.org
-    #        remote job queue
-    #    --transport=mp  {amqp|mp|mpi}
-    #        use amqp/multiprocessing/mpi for parallel evaluation
+        # Check the value type
+        if isinstance(stype, list):  # enumeration
+            if value not in stype:
+                # Default to first item in an enum if the enum is recognized.
+                errors.append(f"Setting {key} to {stype[0]} since {key}={value} is not in {{{'|'.join(stype)}}}")
+                value = stype[0]
+        elif isinstance(stype, Range):
+            if not isinstance(value, float):
+                # Skip values of the wrong type.
+                errors.append(f"Skipping {key}={value} since it is not a number.")
+                continue
+            if not stype.min <= value <= stype.max:
+                # Clip values to be in range.
+                errors.append(f"Clipping {key}={value} to [{stype.min:g}, {stype.max:g}]")
+                value = min(stype.max, max(stype.min, value))
+        elif not isinstance(value, stype):
+            # Skip values of the wrong type
+            errors.append(f"Skipping {key}={value} since it is not type {stype.__name__}")
+            continue
+        new_options[key] = value
 
-    _plot = "log"
-
-    def _set_plot(self, value):
-        if value not in set(self.PLOTTERS):
-            raise ValueError("unknown plot type %s; use %s" % (value, "|".join(self.PLOTTERS)))
-        self._plot = value
-
-    plot = property(fget=lambda self: self._plot, fset=_set_plot)
-    store = None
-    resume = None
-    _fit = FIT_DEFAULT_ID
-
-    @property
-    def fit(self):
-        return self._fit
-
-    @fit.setter
-    def fit(self, value):
-        if value not in FIT_AVAILABLE_IDS:
-            raise ValueError("unknown fitter %s; use %s" % (value, "|".join(sorted(FIT_AVAILABLE_IDS))))
-        self._fit = value
-
-    fit_config = FIT_CONFIG
-    TRANSPORTS = "amqp", "mp", "mpi", "celery"
-    _transport = "mp"
-
-    def _set_transport(self, value):
-        if value not in self.TRANSPORTS:
-            raise ValueError("unknown transport %s; use %s" % (value, "|".join(self.TRANSPORTS)))
-        self._transport = value
-
-    transport = property(fget=lambda self: self._transport, fset=_set_transport)
-    meshsteps = 40
+    # Report all invalid options as a single error on the error list.
+    if unknown:
+        errors = [f"Unused fit options in {fitter_id}: {' '.join(unknown)}", *errors]
+    return new_options, errors
 
 
-def getopts():
+def _json_compatible_setting(s: Setting):
     """
-    Process command line options.
+    Converts a Setting instance to a JSON-compatible dictionary.
 
-    Option values will be stored as attributes in the returned object.
+    Args:
+        s (Setting): Setting instance to be converted.
+
+    Returns:
+        dict: JSON-compatible dictionary representation of the Setting.
     """
-    opts = BumpsOpts(sys.argv)
-    opts.resynth = int(opts.resynth)
-    # Set a random seed if none is given; want to know the seed so we can
-    # reproduce the run.  The seed needs to be saved to the monitor file.
-    opts.seed = int(opts.seed) if opts.seed else np.random.randint(1000000)
-    opts.fit_config.set_from_cli(opts)
-    return opts
+    output = asdict(s)
+    stype = output["stype"]
+    if stype is int:
+        output["stype"] = "integer"
+    elif stype is float:
+        output["stype"] = "float"
+    elif stype is bool:
+        output["stype"] = "boolean"
+    return output
+
+
+def get_fit_fields():
+    """
+    Returns a dictionary of fit fields.
+
+    Returns:
+        dict: Dictionary of fit fields where each key is a setting name and each value is a JSON-compatible Setting representation.
+    """
+    fit_fields = dict([(k, _json_compatible_setting(v)) for k, v in Setting.items()])
+    return fit_fields
