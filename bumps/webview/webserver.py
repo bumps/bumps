@@ -11,10 +11,10 @@ from pathlib import Path
 from typing import Callable, Optional, Union, List
 
 # TODO: circular import since cli.main() imports webserver imports cli
+from bumps import api
+from bumps import persistent_settings
 from bumps.cli import BumpsOptions, PREFERRED_PORT, interpret_fit_options
-from . import api
-from . import persistent_settings
-from .logger import logger, LOGLEVEL
+from bumps.logger import logger, LOGLEVEL
 
 mimetypes.add_type("text/css", ".css")
 mimetypes.add_type("text/html", ".html")

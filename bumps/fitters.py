@@ -408,13 +408,13 @@ class DEFit(FitBase):
 
     @staticmethod
     def h5load(group: "Group") -> Any:
-        from .webview.server.state_hdf5_backed import read_json
+        from .state import read_json
 
         return read_json(group, "DE_history")
 
     @staticmethod
     def h5dump(group: "Group", state: Dict[str, Any]):
-        from .webview.server.state_hdf5_backed import write_json
+        from .state import write_json
 
         write_json(group, "DE_history", state)
 
@@ -1601,7 +1601,7 @@ def plot_convergence(results, cutoff=0.25, ax=None):
 
 def load_session(filename):
     """Reload a session file from a saved hdf"""
-    from bumps.webview.server.state_hdf5_backed import State
+    from .state import State
 
     session = State()
     session.read_session_file(filename)
@@ -1697,7 +1697,7 @@ async def get_fit_from_webview(wait: bool = False):
 
     Returns the problem and an OptimizerResult similar to the simple fit() result
     """
-    from .webview.server.api import state, wait_for_fit_complete
+    from .api import state, wait_for_fit_complete
 
     # TODO: Any risk of another action happening between fit complete and fetch result?
     if wait:
@@ -1709,7 +1709,7 @@ async def get_fit_from_webview(wait: bool = False):
 
 # TODO: FitResult should include, x, dx, fx, cov, dof, etc.
 # TODO: FitResult.fit_state, but OptimizerResult.state
-# webview_fit: webview.server.state_hdf5_backed.FitResult
+# webview_fit: .state.FitResult
 def _build_fit_result(problem, webview_fit):
     x = problem.getp()
     cov = problem.cov(x)
@@ -1802,8 +1802,8 @@ def fit(
     from pathlib import Path
     from scipy.optimize import OptimizeResult
     from .mapper import MPMapper, SerialMapper
-    from .webview.server.fit_thread import ConvergenceMonitor
-    from .webview.server.state_hdf5_backed import now_string
+    from .fit_thread import ConvergenceMonitor
+    from .state import now_string
 
     # Aliases for backwards compatibility (session=store) and cli compatibility (method=fit)
     # Options parser stores --fit=fitter in fit_options["fit"] rather than fit_options["method"]
@@ -1892,12 +1892,12 @@ def fit(
     else:
         serializer = None
 
-    # TODO: can we put this in a function in state_hdf5_backed?
+    # TODO: can we put this in a function in state.py?
     if session is not None:
         save_fit(path=session, problem=problem, fit=result)
 
     if export is not None:
-        from .webview.server.api import export_fit
+        from .api import export_fit
 
         export_fit(export, problem, result.state, basename=name)
 
@@ -1914,7 +1914,7 @@ def save_fit(
     """
     Write a fit to a session file.
     """
-    from .webview.server.state_hdf5_backed import State, FitResult, ProblemState
+    from .state import State, FitResult, ProblemState
 
     # TODO: strip non-options such as mapper from fit options
     path = Path(path)
