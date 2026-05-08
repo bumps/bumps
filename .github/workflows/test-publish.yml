@@ -41,7 +41,7 @@ jobs:
           # Get all versions as numeric arrays, sorted
           RAW_JSON=$(uv python list --output-format json | jq -c --arg min "$MIN_VERSION" '
             ($min | split(".") | map(tonumber)) as $min_parts |
-            [ .[] | .version | split(".") | .[0:2] | map(tonumber) ]
+            [ .[] | select(.version | test("(?i)(a|b|rc)") | not) | .version | split(".") | .[0:2] | map(tonumber) ]
             | unique
             | map(select(. >= $min_parts))
             | sort
