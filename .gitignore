@@ -35,7 +35,6 @@ bun.lock
 bumps.iss-include
 iss-version
 bumps/_version.py
-/bumps/webview/client/package-lock.json
 
 # doc targets
 /doc/_build/
