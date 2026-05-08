@@ -41,7 +41,11 @@ jobs:
           # Get all versions as numeric arrays, sorted
           RAW_JSON=$(uv python list --output-format json | jq -c --arg min "$MIN_VERSION" '
             ($min | split(".") | map(tonumber)) as $min_parts |
-            [ .[] | select(.version | test("(?i)(a|b|rc)") | not) | .version | split(".") | .[0:2] | map(tonumber) ]
+            [ .[] | 
+              # Only select versions that do not have a dash or letter suffixes for pre-releases
+              select(.version | test("^\\d+\\.\\d+\\.\\d+$")) | 
+              .version | split(".") | map(tonumber) | .[0:2]
+            ]
             | unique
             | map(select(. >= $min_parts))
             | sort
