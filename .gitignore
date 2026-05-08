@@ -35,6 +35,7 @@ bun.lock
 bumps.iss-include
 iss-version
 bumps/_version.py
+/bumps/webview/client/package-lock.json
 
 # doc targets
 /doc/_build/
@@ -45,6 +46,7 @@ bumps/_version.py
 /doc/server/
 
 # python droppings from running in place
+.ipynb_checkpoints/
 __pycache__/
 *.pyc
 *.pyo
