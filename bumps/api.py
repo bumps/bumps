@@ -79,6 +79,8 @@ from .plots.varplot import plot_vars
 from .plots.traceplot import plot_trace
 from .plots.convergence_plot import convergence_plot
 from .plots.custom_plot import process_custom_plot, CustomWebviewPlot
+from .plots.corrplot import Corr2d
+
 
 # CRUFT: python 3.8 does not have asyncio.to_thread
 try:
@@ -1237,8 +1239,6 @@ def _get_correlation_plot(
     vars=None,
     timestamp: str = "",
 ):
-    from .corrplot import Corr2d
-
     fit_state = state.fitting.fit_state
 
     if hasattr(fit_state, "draw"):
