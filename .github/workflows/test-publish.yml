@@ -39,7 +39,7 @@ jobs:
           MIN_VERSION=$(grep "requires-python" pyproject.toml | grep -oE '[0-9]+\.[0-9]+' | head -1)
 
           # Get all versions as numeric arrays, sorted
-          RAW_JSON=$(uv python list --output-format json | jq -c --arg min "$MIN_VERSION" '
+          RAW_JSON=$(uv python list --all-versions --output-format json | jq -c --arg min "$MIN_VERSION" '
             ($min | split(".") | map(tonumber)) as $min_parts |
             [ .[] | 
               # Only select versions that do not have a dash or letter suffixes for pre-releases
