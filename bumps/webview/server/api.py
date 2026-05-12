@@ -61,8 +61,8 @@ import bumps.dream.stats
 from bumps.dream.state import MCMCDraw
 import bumps.errplot
 from bumps.util import push_mpl_backend
+from bumps import options as fit_options
 
-from . import fit_options
 from .state_hdf5_backed import (
     UNDEFINED_TYPE,
     FitResult,

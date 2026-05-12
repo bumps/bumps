@@ -45,11 +45,11 @@ except ImportError:
 
 from bumps import __version__
 from bumps.fitters import FIT_DEFAULT_ID
+from bumps.options import lookup_fitter
 from bumps.serialize import serialize, deserialize
 from bumps.serialize import serialize_bytes, deserialize_bytes
 from bumps.util import get_libraries
 from .logger import logger
-from .fit_options import lookup_fitter
 
 if TYPE_CHECKING:
     import bumps
