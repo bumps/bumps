@@ -101,6 +101,11 @@ class VarStats(object):
     def __str__(self):
         return f"{self.label}={format_uncertainty(self.mean, self.std)}"
 
+    # CRUFT: sasview is looking for name instead of label
+    @property
+    def name(self):
+        return self.label
+
 
 def var_stats(draw, vars=None):
     if vars is None:
@@ -255,14 +260,16 @@ def parse_var(line):
         std = parsed_value.std_dev
 
         return VarStats(
+            label=m.group("parname"),
             index=int(m.group("parnum")),
-            name=m.group("parname"),
+            p95=(float(m.group("lo95")), float(m.group("hi95"))),
+            p68=(float(m.group("lo68")), float(m.group("hi68"))),
+            median=float(m.group("median")),
             mean=mean,
             std=std,
-            median=float(m.group("median")),
             best=float(m.group("best")),
-            p68=(float(m.group("lo68")), float(m.group("hi68"))),
-            p95=(float(m.group("lo95")), float(m.group("hi95"))),
+            # TODO: The format_vars line does not show whether the var is integer.
+            # integer=False,
         )
     else:
         return None
