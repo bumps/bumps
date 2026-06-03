@@ -1899,7 +1899,7 @@ def fit(
     if export is not None:
         from .webview.server.api import export_fit
 
-        export_fit(export, problem, result.state, basename=name)
+        export_fit(export, problem, result, basename=name)
 
     return result
 
