@@ -223,10 +223,16 @@ def numpy_json(o):
     To automatically convert numpy data to lists when writing a datastream
     use json.dumps(object, default=numpy_json).
     """
-    try:
+    if isinstance(o, np.integer):
+        return int(o)
+    elif isinstance(o, np.floating):
+        return float(o)
+    elif isinstance(o, np.bool):
+        return bool(o)
+    elif isinstance(o, np.ndarray):
         return o.tolist()
-    except AttributeError:
-        raise TypeError
+    else:
+        raise TypeError(f"unexpected type found: {type(o)}, {o}")
 
 
 VAR_PATTERN = re.compile(
