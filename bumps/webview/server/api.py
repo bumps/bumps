@@ -1498,30 +1498,32 @@ async def get_topic_messages(topic: Optional[TopicNameType] = None, max_num=None
         return list(itertools.islice(q, start, q_length))
 
 
-@register
-async def get_dirlisting(pathlist: Optional[List[str]] = None):
-    # GET request
-    # TODO: use psutil to get disk listing as well?
+DIRLISTING_TIMEOUT = 10.0  # seconds before an unreachable path returns an error instead of hanging
+
+
+def _get_dirlisting_sync(pathlist: Optional[List[str]] = None):
+    """Walk a directory synchronously; run via asyncio.to_thread (filesystem I/O may be slow on network drives)."""
     subfolders = []
     files = []
     path = Path(state.base_path) if (pathlist is None or len(pathlist) == 0) else Path(*pathlist)
+    missing = None
     if not path.exists():
-        await add_notification(
-            f"Path does not exist: {path}, falling back to current working directory",
-            title="Error",
-            timeout=2000,
-        )
+        missing = path
         path = Path.cwd()
 
     abs_path = path.absolute()
     for p in abs_path.iterdir():
-        if not p.exists():
+        try:
+            stat = p.stat()
+        except OSError:
+            # entry vanished between iterdir() and stat(), or is a broken symlink
             continue
-        stat = p.stat()
         mtime = stat.st_mtime
         fileinfo = {"name": p.name, "modified": mtime}
         if p.is_dir():
-            fileinfo["size"] = len(list(p.glob("*")))
+            # NOTE: not counting directory contents — a glob per subfolder costs one
+            # round-trip each on network filesystems, and the count is not displayed.
+            fileinfo["size"] = 0
             subfolders.append(fileinfo)
         else:
             # files.append(p.resolve().name)
@@ -1529,7 +1531,30 @@ async def get_dirlisting(pathlist: Optional[List[str]] = None):
             files.append(fileinfo)
     # for Windows: list drives as well
     drives = os.listdrives() if hasattr(os, "listdrives") else []
-    return dict(drives=drives, pathlist=abs_path.parts, subfolders=subfolders, files=files)
+    return dict(drives=drives, pathlist=abs_path.parts, subfolders=subfolders, files=files), missing
+
+
+@register
+async def get_dirlisting(pathlist: Optional[List[str]] = None):
+    # GET request
+    # TODO: use psutil to get disk listing as well?
+    try:
+        result, missing = await asyncio.wait_for(
+            asyncio.to_thread(_get_dirlisting_sync, pathlist),
+            timeout=DIRLISTING_TIMEOUT,
+        )
+    except asyncio.TimeoutError:
+        path_str = str(Path(*pathlist)) if pathlist else str(state.base_path)
+        return {"error": f"Timed out reading directory: {path_str} (network drive may be unreachable)"}
+    except OSError as exc:
+        return {"error": f"Cannot read directory: {exc}"}
+    if missing is not None:
+        await add_notification(
+            f"Path does not exist: {missing}, falling back to current working directory",
+            title="Error",
+            timeout=2000,
+        )
+    return result
 
 
 @register
