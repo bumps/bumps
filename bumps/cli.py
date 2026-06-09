@@ -59,13 +59,13 @@ import hashlib
 # from textwrap import dedent
 
 from bumps import __version__ as bumps_version
-from .fitproblem import FitProblem, load_problem
+from . import api
 from . import options as fit_options
+from . import persistent_settings
+from .fitproblem import FitProblem, load_problem
+from .logger import logger, setup_console_logging, LOGLEVEL
+from .state import SERIALIZERS, FitResult
 
-from .webview.server import api
-from .webview.server import persistent_settings
-from .webview.server.logger import logger, setup_console_logging, LOGLEVEL
-from .webview.server.state_hdf5_backed import SERIALIZERS, FitResult
 
 # CRUFT: mock old bumps.cli interfaces that may be used elsewhere
 from .fitproblem import load_pars as load_best
@@ -902,8 +902,8 @@ def reload_export(
 
     sys.argv is set to *args* before loading the model.
     """
-    from bumps.fitproblem import load_problem, load_pars
-    from bumps.webview.server.state_hdf5_backed import SERIALIZER_EXTENSIONS
+    from .fitproblem import load_problem, load_pars
+    from .state import SERIALIZER_EXTENSIONS
 
     # Find the .par file in the export directory
     path = Path(path)
@@ -1150,8 +1150,8 @@ def main(options: Optional[BumpsOptions] = None):
         # api.state.rank = ""
 
     if webview and is_controller:  # gui mode
-        # Delayed load of web server
-        from bumps.webview.server.webserver import start_from_cli
+        # TODO: circular import since webserver imports from cli
+        from .webview.webserver import start_from_cli
 
         print(_branding())
         start_from_cli(options)

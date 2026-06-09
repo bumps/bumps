@@ -11,8 +11,7 @@ and a long description. These are used to construct the command line help and UI
 If a fitter needs a completely new setting type it will have to be added here.
 
 Each setting used by at least one active fitter adds a `--name` entry to the command line
-parser, with a list of fitters and default setting values for that fitter. The
-:func:`form_fit_options_associations` walks the available functions and forms this list.
+parser, with a list of fitters and default setting values for that fitter.
 
 Various setting types are available:
 
@@ -21,11 +20,10 @@ Various setting types are available:
 * *bool* defines a boolean setting, with an additional `--no-name entry` on the command line
    to indicate false values. Boolean settings can default to True or False.
 
-* :class:`Range` restricts the setting to a valid setting range, with values clipped
+* The *Range* type restricts the setting to a valid setting range, with values clipped
    to the range during :func:`check_options` processing.
 
 * *list* settings define an enumerated set of available string values.
-
 """
 
 __all__ = [
@@ -53,7 +51,18 @@ from bumps.fitters import FitBase, FITTERS, FIT_DEFAULT_ID, FIT_AVAILABLE_IDS, F
 # until SasView and webview are updated to a unified interface.
 
 # CRUFT: SasView is still using FIT_CONFIG, FIT_FIELDS and ChoiceList
-from bumps.gui.old_options import FIT_CONFIG, FIT_FIELDS, ChoiceList
+# Note: symbols are not imported directly, but instead assigned within the module so we can override
+# the sphinx documentation.
+from bumps.gui.old_options import FIT_CONFIG as _FIT_CONFIG, FIT_FIELDS as _FIT_FIELDS, ChoiceList as _ChoiceList
+
+FIT_CONFIG = _FIT_CONFIG
+"""*** DEPRECATED ***"""
+
+FIT_FIELDS = _FIT_FIELDS
+"""*** DEPRECATED ***"""
+
+ChoiceList = _ChoiceList
+"""*** DEPRECATED ***"""
 
 
 # TODO: If --fit=pt is specified then we need the pt options in the defaults
