@@ -47,7 +47,6 @@ import asyncio
 from pathlib import Path
 import json
 from copy import deepcopy
-import os
 import sys
 import uuid
 import traceback
@@ -81,6 +80,21 @@ from .traceplot import plot_trace
 from .logger import logger
 from .convergence_plot import convergence_plot
 from .custom_plot import process_custom_plot, CustomWebviewPlot
+
+# CRUFT: os.listdrives requires python 3.12 (and only exists on windows)
+try:
+    from os import listdrives
+except ImportError:
+
+    def listdrives() -> list[str]:
+        """List Windows drive roots, e.g. ["C:\\", "D:\\"]; empty on other platforms."""
+        if sys.platform == "win32":
+            import ctypes
+
+            bitmask = ctypes.windll.kernel32.GetLogicalDrives()
+            return [f"{chr(65 + i)}:\\" for i in range(26) if bitmask & (1 << i)]
+        return []
+
 
 # CRUFT: python 3.8 does not have asyncio.to_thread
 try:
@@ -1502,18 +1516,6 @@ async def get_topic_messages(topic: Optional[TopicNameType] = None, max_num=None
 DIRLISTING_TIMEOUT = 10.0  # seconds before an unreachable path returns an error instead of hanging
 
 
-def _get_drives() -> List[str]:
-    """List Windows drive roots, e.g. ["C:\\", "D:\\"]; empty on other platforms."""
-    if hasattr(os, "listdrives"):  # Python 3.12+
-        return os.listdrives()
-    if sys.platform == "win32":
-        import ctypes
-
-        bitmask = ctypes.windll.kernel32.GetLogicalDrives()
-        return [f"{chr(65 + i)}:\\" for i in range(26) if bitmask & (1 << i)]
-    return []
-
-
 def _get_dirlisting_sync(pathlist: Optional[List[str]] = None):
     """Walk a directory synchronously; run via asyncio.to_thread (filesystem I/O may be slow on network drives)."""
     subfolders = []
@@ -1543,7 +1545,7 @@ def _get_dirlisting_sync(pathlist: Optional[List[str]] = None):
             fileinfo["size"] = stat.st_size
             files.append(fileinfo)
     # for Windows: list drives as well
-    drives = _get_drives()
+    drives = listdrives()
     return dict(drives=drives, pathlist=abs_path.parts, subfolders=subfolders, files=files), missing
 
 
