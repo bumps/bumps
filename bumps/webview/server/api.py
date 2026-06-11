@@ -53,7 +53,7 @@ import traceback
 import time
 
 from bumps.fitproblem import load_problem
-from bumps.fitters import FitDriver, OptimizeResult, FIT_DEFAULT_ID, FIT_ACTIVE_IDS
+from bumps.fitters import FitDriver, OptimizeResult, FIT_DEFAULT_ID, FIT_ACTIVE_IDS, save_fit_result
 from bumps.mapper import MPMapper
 from bumps.parameter import Parameter, Constant, Variable, unique
 import bumps.fitproblem
@@ -548,6 +548,12 @@ def export_fit(
     # TODO: add fit method and options to the par file header
     # Write the pars file.
     _write_pars(problem, path, f"{basename}.par")
+
+    # Write a machine-readable summary of the fit results.
+    try:
+        save_fit_result(problem, fit, path / f"{basename}-fit.json")
+    except Exception as exc:
+        logger.error(f"Error writing {basename}-fit.json: {exc}")
 
     # Handle OptimizeResult or FitResult
     fit_state = getattr(fit, "fit_state", getattr(fit, "state", None))
