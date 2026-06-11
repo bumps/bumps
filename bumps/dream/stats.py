@@ -227,7 +227,7 @@ def numpy_json(o):
         return int(o)
     elif isinstance(o, np.floating):
         return float(o)
-    elif isinstance(o, np.bool):
+    elif isinstance(o, np.bool_):
         return bool(o)
     elif isinstance(o, np.ndarray):
         return o.tolist()
