@@ -53,7 +53,7 @@ import traceback
 import time
 
 from bumps.fitproblem import load_problem
-from bumps.fitters import FitDriver, OptimizeResult, FIT_DEFAULT_ID, FIT_ACTIVE_IDS, _build_fit_result, save_fit_result
+from bumps.fitters import FitDriver, OptimizeResult, FIT_DEFAULT_ID, FIT_ACTIVE_IDS, save_fit_result
 from bumps.mapper import MPMapper
 from bumps.parameter import Parameter, Constant, Variable, unique
 import bumps.fitproblem
@@ -536,8 +536,7 @@ def export_fit(
 
     # Write a machine-readable summary of the fit results.
     try:
-        results = fit if isinstance(fit, OptimizeResult) else _build_fit_result(problem, fit)
-        save_fit_result(problem, results, path / f"{basename}-fit.json")
+        save_fit_result(problem, fit, path / f"{basename}-fit.json")
     except Exception as exc:
         logger.error(f"Error writing {basename}-fit.json: {exc}")
 

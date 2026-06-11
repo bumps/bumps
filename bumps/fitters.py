@@ -1785,13 +1785,17 @@ def fit_result_summary(problem, results: OptimizeResult) -> dict:
     return summary
 
 
-def save_fit_result(problem, results: OptimizeResult, filename):
+def save_fit_result(problem, fit, filename):
     """
-    Save the :func:`fit_result_summary` of *results* to *filename* as JSON,
+    Save the :func:`fit_result_summary` of *fit* to *filename* as JSON,
     conventionally *<model>-fit.json* in the export directory.
+
+    *fit* may be an :class:`OptimizeResult` or a webview ``FitResult``; the
+    latter is converted to an :class:`OptimizeResult` for the summary.
     """
     from .dream.stats import numpy_json
 
+    results = fit if isinstance(fit, OptimizeResult) else _build_fit_result(problem, fit)
     with open(filename, "w") as fid:
         json.dump(fit_result_summary(problem, results), fid, default=numpy_json, sort_keys=True, indent=2)
 
