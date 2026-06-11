@@ -1855,7 +1855,10 @@ def fit(
     The keyword argments mostly follow the argument names used in the bumps
     command line interface. Try use *method=method* rather than *fit=method*)
 
-    Returns a scipy *OptimizeResult* object containing *x* and *dx*.  Some
+    Returns a scipy *OptimizeResult* object containing *x* and *dx*, plus
+    *labels* (the fitted parameter labels, matching the order of x and dx),
+    *numpoints* (number of data points) and *chisq* (normalized chi-squared
+    at the best point, at full precision). Some
     fitters also include a *result.state* object. For dream this can be used as
     *bumps.dream.views.plot_all(result.state)* to generate the uncertainty
     plots. Use *plot_convergence(result)* to show how the fit progressed.
