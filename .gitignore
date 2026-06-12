@@ -41,9 +41,11 @@ bumps/_version.py
 /doc/api/
 /doc/tutorial/
 /doc/dream/
+/doc/plots/
 /doc/server/
 
 # python droppings from running in place
+.ipynb_checkpoints/
 __pycache__/
 *.pyc
 *.pyo

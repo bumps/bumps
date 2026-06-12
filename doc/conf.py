@@ -50,6 +50,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.coverage",
     "sphinx.ext.viewcode",
+    "sphinx.ext.intersphinx",
     #'sphinx.ext.pngmath',
     #'sphinx.ext.jsmath',
     "sphinx.ext.mathjax",
@@ -64,48 +65,34 @@ extensions = [
 ]
 # plot_formats = [('png', 120), ('pdf', 50)] # Only make 80 dpi plots
 
+# TODO: AI suggests using intersphinx to point refs into the python documentation
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
+    "h5py": ("https://docs.h5py.org/en/stable/", None),
+}
+
 nitpick_ignore = [
-    ("py:class", "collections.abc.Buffer"),
-    ("py:class", "pathlib.Path"),
-    ("py:class", "socket.socket"),
-    ("py:class", "threading.Event"),
-    ("py:class", "threading.Thread"),
-    ("py:class", "asyncio.locks.Event"),
     ("py:class", "asyncio.events.AbstractEventLoop"),
-    ("py:class", "deque"),
-    ("py:class", "logging.Handler"),
-    ("py:class", "argparse.Action"),
-    ("py:class", "argparse.RawTextHelpFormatter"),
-    ("py:class", "argparse.ArgumentDefaultsHelpFormatter"),
-    # ("py:class", "any"),
-    # ("py:class", "type"),
-    ("py:class", "enum.Enum"),
-    # ("py:class", "object"),
-    ("py:class", "numpy.dtype"),
+    ("py:class", "asyncio.locks.Event"),
+    ("py:class", "NDArray"),  # for NDArray in initpop.py; others don't seem to need it
     ("py:class", "numpy._typing._array_like._ScalarType_co"),
     ("py:class", "numpy._typing._array_like._SupportsArray"),
     ("py:class", "numpy._typing._array_like._ScalarT"),
     ("py:class", "numpy._typing._array_like._Buffer"),
     ("py:class", "numpy._typing.ArrayLike"),
     ("py:class", "numpy._typing._nested_sequence._NestedSequence"),
-    ("py:class", "numpy.ndarray"),
-    ("py:class", "NDArray"),
     ("py:class", "h5py._hl.group.Group"),
     ("py:class", "Group"),
-    ("py:class", "scipy.optimize._optimize.OptimizeResult"),
-    # ("py:class", "Real"),
-    # ("py:class", "Integral"),
+    # Types defined in bumps
     ("py:class", "JSON_TYPE"),
-    # From plotly
-    ("py:class", "go.Figure"),
-    ("py:class", "Draw"),
-    # From bumps
     ("py:class", "bumps.fitproblem.FitnessType"),
     ("py:obj", "bumps.fitproblem.FitnessType"),
-    ("py:class", "bumps.webview.server.state_hdf5_backed.Timestamp"),
-    ("py:obj", "bumps.webview.server.state_hdf5_backed.Timestamp"),
-    ("py:obj", "bumps.webview.server.state_hdf5_backed.UNDEFINED"),
-    ("py:class", "bumps.webview.server.api.ParamInfo"),
+    ("py:class", "bumps.plots.custom_plot.CustomWebviewPlot"),
+    # From plotly
+    # ("py:class", "go.Figure"),
+    # ("py:class", "Draw"),
 ]
 
 

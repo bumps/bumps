@@ -62,6 +62,6 @@ if __name__ == "__main__":
 
     multiprocessing.freeze_support()
     prepare()
-    from bumps.cli import main
+    from bumps.gui.old_cli import main as old_main
 
-    main()
+    old_main()
