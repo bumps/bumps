@@ -2,6 +2,7 @@
 Interfaces to various optimizers.
 """
 
+import json
 import sys
 import warnings
 from time import perf_counter
@@ -1734,6 +1735,9 @@ def _build_fit_result(problem, webview_fit):
         # Non-standard results. Note convergence is in nominal chisq
         dx=dx,
         dof=dof,
+        labels=problem.labels(),
+        numpoints=problem.model_points(),
+        chisq=problem.chisq(nllf=fx),
         # webview FitResults
         state=fit_state,
         convergence=webview_fit.convergence,
@@ -1741,6 +1745,92 @@ def _build_fit_result(problem, webview_fit):
         options=webview_fit.options,
     )
     return results
+
+
+# OptimizeResult entries excluded from the exported fit results. The fitter
+# state is not JSON serializable and the convergence history belongs with the
+# plottable outputs rather than the fit summary; both are available in the
+# session file.
+_FIT_RESULT_EXCLUDE_FIELDS = ("state", "convergence")
+
+
+def fit_result_summary(results: OptimizeResult) -> dict:
+    """
+    Return a JSON-serializable summary of the fit *results*.
+
+    The summary contains every entry from *results* except the fitter state
+    and the convergence history. This includes the scipy-convention entries
+    (x, dx, fun, success, status, message, nit, ...) plus *labels* (the
+    fitted parameter labels, matching the order of x and dx), *numpoints*
+    (number of data points) and *chisq* (normalized chi-squared at the best
+    point, at full precision). For a model with gaussian independent
+    uncertainties the raw sum of squares is chisq*dof.
+    """
+    return {key: value for key, value in results.items() if key not in _FIT_RESULT_EXCLUDE_FIELDS}
+
+
+def save_fit_result(problem, fit, filename):
+    """
+    Save the :func:`fit_result_summary` of *fit* to *filename* as JSON,
+    conventionally *<model>-fit.json* in the export directory.
+
+    *fit* may be an :class:`OptimizeResult` or a webview ``FitResult``; the
+    latter is converted to an :class:`OptimizeResult` for the summary.
+    """
+    from .dream.stats import numpy_json
+
+    results = fit if isinstance(fit, OptimizeResult) else _build_fit_result(problem, fit)
+    with open(filename, "w") as fid:
+        json.dump(fit_result_summary(results), fid, default=numpy_json, sort_keys=True, indent=2)
+
+
+def test_fit_result_summary():
+    class _Problem:
+        dof = 8.0
+
+        def getp(self):
+            return np.array([1.0, 2.0])
+
+        def cov(self, x):
+            return np.diag([0.01, 0.04])
+
+        def nllf(self):
+            return 20.0
+
+        def labels(self):
+            return ["P1", "P2"]
+
+        def chisq(self, nllf=None):
+            return 2 * (self.nllf() if nllf is None else nllf) / self.dof
+
+        def model_points(self):
+            return 10
+
+    class _WebviewFit:
+        fit_state = None
+        convergence = np.zeros((5, 6))
+        method = "dream"
+        options = {"samples": 100}
+
+    results = _build_fit_result(_Problem(), _WebviewFit())
+    assert results["labels"] == ["P1", "P2"]
+    assert results["chisq"] == 5.0  # 2*20/8, full precision
+    assert results["numpoints"] == 10
+    assert results["dof"] == 8.0
+    assert results["method"] == "dream"
+
+    summary = fit_result_summary(results)
+    # everything except the fitter state and convergence history is exported
+    assert "state" not in summary
+    assert "convergence" not in summary
+    assert set(summary.keys()) == set(results.keys()) - set(_FIT_RESULT_EXCLUDE_FIELDS)
+    # the whole summary must survive a json round trip
+    from .dream.stats import numpy_json
+
+    data = json.loads(json.dumps(summary, default=numpy_json))
+    assert data["x"] == [1.0, 2.0]
+    assert data["dx"] == [0.1, 0.2]
+    assert data["chisq"] == 5.0
 
 
 # TODO: Move simplified fit interface to its own file.
@@ -1765,7 +1855,10 @@ def fit(
     The keyword argments mostly follow the argument names used in the bumps
     command line interface. Try use *method=method* rather than *fit=method*)
 
-    Returns a scipy *OptimizeResult* object containing *x* and *dx*.  Some
+    Returns a scipy *OptimizeResult* object containing *x* and *dx*, plus
+    *labels* (the fitted parameter labels, matching the order of x and dx),
+    *numpoints* (number of data points) and *chisq* (normalized chi-squared
+    at the best point, at full precision). Some
     fitters also include a *result.state* object. For dream this can be used as
     *bumps.dream.views.plot_all(result.state)* to generate the uncertainty
     plots. Use *plot_convergence(result)* to show how the fit progressed.
@@ -1865,6 +1958,9 @@ def fit(
         # Non-standard results. Note convergence is in nominal chisq
         dx=dx,
         dof=dof,
+        labels=problem.labels(),
+        numpoints=problem.model_points(),
+        chisq=problem.chisq(nllf=fx),
         timestamp=now_string(),
         # webview FitResults
         state=fit_state,
@@ -1899,7 +1995,7 @@ def fit(
     if export is not None:
         from .api import export_fit
 
-        export_fit(export, problem, result.state, basename=name)
+        export_fit(export, problem, result, basename=name)
 
     return result
 
