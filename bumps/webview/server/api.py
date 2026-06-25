@@ -478,6 +478,7 @@ async def prepare_warm_start(
         heads_logp = heads_logp.copy()
         Nvar = fit_state.Nvar
         Npop = fit_state.Npop
+        Ncr = fit_state.Ncr
         fitter_method = state.fitting.method or "dream"
 
     # Install the new problem.
@@ -492,7 +493,6 @@ async def prepare_warm_start(
     # log-probability values from the old likelihood surface contaminating
     # best-point tracking on the new problem.
     if heads is not None:
-        Ncr = 3  # AdaptiveCrossover default; resize() will correct if needed
         new_fit_state = MCMCDraw(1, 1, 1, Nvar, Npop, Ncr, 1)
         new_fit_state._gen_current[:] = heads
         new_fit_state._gen_current_logp[:] = heads_logp
