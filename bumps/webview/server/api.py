@@ -427,44 +427,37 @@ async def load_session(pathlist: List[str], filename: str, read_only: bool = Fal
 
 
 @register
-async def prepare_warm_start(
+async def replace_serialized_problem(
     serialized: str,
     method: str = "dataclass",
     name: Optional[str] = None,
 ):
-    """Inject a new FitProblem and prepare the server for a warm-start DREAM fit.
+    """Replace the current FitProblem without resetting the fit state.
 
-    Replaces the current FitProblem (e.g. one with an additional data point)
-    while retaining only the DREAM chain heads from the existing fit state —
-    discarding the thinned sample history, convergence data, and any stale
-    log-probability values.  The next ``start_fit_thread("dream", options,
-    resume=True)`` call will seed the chain population from those heads rather
-    than drawing a fresh initial population, substantially reducing burn-in
-    cost in autonomous measurement loops.
-
-    The degrees of freedom are recomputed automatically from the new problem
-    (via ``model_reset()`` inside deserialization), so adding data points does
-    not require any manual dof update.
+    Use this instead of ``set_serialized_problem`` when the new problem has the
+    same parameter space as the current one (e.g. an additional data point has
+    been added) and you want to resume DREAM from the existing chain population
+    rather than starting fresh.  On the next
+    ``start_fit_thread("dream", options, resume=True)`` call, ``_run_dream``
+    will recompute nllf for all chain heads and the stored best point on the
+    new likelihood surface, and will defer the convergence test by one full
+    buffer cycle so stale samples are flushed before convergence is checked.
 
     Raises ``ValueError`` if the number of free parameters in *serialized*
-    differs from the current chain state — chain heads are meaningless for a
-    different parameter space and a cold start via ``set_serialized_problem``
-    is required instead.
+    differs from the current chain state — the chain is meaningless for a
+    different parameter space; use ``set_serialized_problem()`` for a cold
+    start in that case.
 
     The *method* parameter accepts ``"dataclass"`` (default, safe),
     ``"pickle"``, ``"cloudpickle"``, or ``"dill"``.  The latter three enable
     arbitrary code execution and carry the same caveat as
     ``set_serialized_problem``.
     """
-    import numpy as _np
-    from bumps.dream.state import MCMCDraw
-
     # Deserialize the new problem first so we fail fast on bad input.
     fitProblem = deserialize_problem(serialized, method=method)
 
-    # Extract chain heads from the current fit state before replacing anything.
+    # Validate parameter count against the current chain state.
     fit_state = state.fitting.fit_state
-    heads = heads_logp = fitter_method = None
     if fit_state is not None and hasattr(fit_state, "Nvar"):
         new_nvar = len(fitProblem.getp())
         if new_nvar != fit_state.Nvar:
@@ -473,40 +466,14 @@ async def prepare_warm_start(
                 f"but the current chain state has {fit_state.Nvar}. "
                 f"Call set_serialized_problem() to start a fresh fit."
             )
-        heads, heads_logp = fit_state._last_gen()
-        heads = heads.copy()
-        heads_logp = heads_logp.copy()
-        Nvar = fit_state.Nvar
-        Npop = fit_state.Npop
-        Ncr = fit_state.Ncr
-        fitter_method = state.fitting.method or "dream"
 
-    # Install the new problem.
+    # Install the new problem; the existing fit_state is preserved intact.
+    # _run_dream recomputes nllf on resume, so stale logp values are not a concern.
     state.problem.fitProblem = fitProblem
     if name:
         fitProblem.name = name
     state.shared.updated_model = now_string()
     state.shared.updated_parameters = now_string()
-
-    # Replace fit_state with a minimal MCMCDraw carrying only the chain heads.
-    # Discarding the thinned history keeps the state small and avoids stale
-    # log-probability values from the old likelihood surface contaminating
-    # best-point tracking on the new problem.
-    if heads is not None:
-        new_fit_state = MCMCDraw(1, 1, 1, Nvar, Npop, Ncr, 1)
-        new_fit_state._gen_current[:] = heads
-        new_fit_state._gen_current_logp[:] = heads_logp
-        # draws=Npop / generation=1: triggers the warm-start path in core.py
-        # (`if previous_draws: x, logp = state._last_gen()`) while leaving
-        # the full new sample budget available.
-        new_fit_state.draws = Npop
-        new_fit_state.generation = 1
-        # _best_logp from the old run is incommensurable with the new
-        # likelihood surface — reset so any new sample can claim the best.
-        new_fit_state._best_x = None
-        new_fit_state._best_logp = -_np.inf
-        state.set_fit_state(new_fit_state, method=fitter_method)
-        state.fitting.method = fitter_method
 
     state.autosave()
 

@@ -295,6 +295,11 @@ def _run_dream(dream: Dream, abort_test=lambda: False):
     previous_draws = state.draws
     if previous_draws:
         x, logp = state._last_gen()
+        x = x.copy()
+        logp = dream.model.map(x)
+        state._gen_current_logp[:] = logp
+        if state._best_x is not None:
+            state._best_logp = float(dream.model.map(state._best_x[None, :])[0])
     else:
         # No initial state, so evaluate initial population
         for x in dream.population:
@@ -327,7 +332,7 @@ def _run_dream(dream: Dream, abort_test=lambda: False):
 
     # frame = 0  # For debugging...
     next_outlier_test = max(state.Ngen, 2 * state.Ngen - 10)
-    next_convergence_test = state.Ngen
+    next_convergence_test = state.generation + state.Ngen if previous_draws else state.Ngen
     final_gen = dream.draws + dream.burn
     # print(f"running dream with {dream.draws} draws and {dream.burn} burn; final gen={final_gen} draws={state.draws} gen={state.generation}")
     while state.draws < final_gen:
