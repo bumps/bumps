@@ -427,7 +427,7 @@ async def load_session(pathlist: List[str], filename: str, read_only: bool = Fal
 
 
 @register
-async def warm_start(
+async def prepare_warm_start(
     serialized: str,
     method: str = "dataclass",
     name: Optional[str] = None,
