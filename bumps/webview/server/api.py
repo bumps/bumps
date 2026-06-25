@@ -420,10 +420,200 @@ async def get_session():
 
 
 @register
+async def get_fit_state_heads() -> Optional[str]:
+    """Return a base64-encoded minimal HDF5 blob containing only the DREAM
+    chain heads (current population positions and log-probabilities).
+
+    Unlike *get_session* or extracting the full *fit_state*, this payload is
+    tiny: two arrays of shape ``(Npop, Nvar)`` and ``(Npop,)`` plus the fitter
+    method string.  For 40 parameters and pop=10 that is roughly 3 KB — well
+    within socket.io's default message limit regardless of how many MCMC
+    samples have been collected.
+
+    The returned string can be passed directly to *load_fit_state_heads* on
+    the next iteration to warm-start the chain.
+    """
+    import io as _io
+    import base64 as _base64
+    import h5py as _h5py
+    import numpy as _np
+
+    fitting = state.fitting
+    if fitting is None or fitting.fit_state is None:
+        return None
+
+    fs = fitting.fit_state
+    heads, heads_logp = fs._last_gen()
+
+    bio = _io.BytesIO()
+    with _h5py.File(bio, "w") as f:
+        g = f.require_group("fit_state_heads")
+        g.create_dataset("current_population", data=heads, compression=9)
+        g.create_dataset("current_logp", data=heads_logp, compression=9)
+        g.attrs["method"] = fitting.method or "dream"
+        g.attrs["Nvar"] = int(fs.Nvar)
+        g.attrs["Npop"] = int(fs.Npop)
+    return _base64.b64encode(bio.getvalue()).decode()
+
+
+@register
+async def load_fit_state_heads(heads_b64: str):
+    """Restore DREAM chain heads from a base64-encoded blob produced by
+    *get_fit_state_heads*.
+
+    This is the socket.io-native counterpart to *load_fit_state*: it accepts
+    only the chain-head arrays (not the full thinned history), so the payload
+    is always a few kilobytes and passes through socket.io without size issues.
+
+    After calling this, call *set_problem_keep_state* (to inject the updated
+    FitProblem) and then *start_fit_thread* with ``resume=True``.
+
+    Raises *ValueError* if the number of free parameters in the stored heads
+    differs from the current FitProblem — the chain heads would be invalid for
+    a different parameter space.
+    """
+    import io as _io
+    import base64 as _base64
+    import h5py as _h5py
+    import numpy as _np
+    from bumps.dream.state import MCMCDraw
+
+    bio = _io.BytesIO(_base64.b64decode(heads_b64))
+    with _h5py.File(bio, "r") as f:
+        g = f.get("fit_state_heads")
+        if g is None:
+            raise ValueError("Blob contains no fit_state_heads group")
+        heads = g["current_population"][:]
+        heads_logp = g["current_logp"][:]
+        method = g.attrs.get("method", "dream")
+        Nvar = int(g.attrs["Nvar"])
+        Npop = int(g.attrs["Npop"])
+
+    # Validate against current problem if one is loaded.
+    if state.problem is not None and state.problem.fitProblem is not None:
+        new_nvar = len(state.problem.fitProblem.getp())
+        if new_nvar != Nvar:
+            raise ValueError(
+                f"Chain heads have {Nvar} parameters but current problem has "
+                f"{new_nvar}. Use set_serialized_problem() to start a fresh fit."
+            )
+
+    # Build a minimal MCMCDraw that carries only the chain heads.
+    # Ngen=1, Nthin=1, Nupdate=1 keep memory negligible; DREAM will resize
+    # on the first call to allocate_state().
+    Ncr = 3  # AdaptiveCrossover default
+    fit_state = MCMCDraw(1, 1, 1, Nvar, Npop, Ncr, 1)
+    fit_state._gen_current[:] = heads
+    fit_state._gen_current_logp[:] = heads_logp
+    # One prior generation recorded so core.py warm-start path triggers.
+    fit_state.draws = Npop
+    fit_state.generation = 1
+    # Fresh best tracking — old logp is incommensurable with the new problem.
+    fit_state._best_x = None
+    fit_state._best_logp = -_np.inf
+
+    state.set_fit_state(fit_state, method=method)
+    state.fitting.method = method
+
+
+@register
 async def load_session(pathlist: List[str], filename: str, read_only: bool = False):
     state.setup_backing(filename, pathlist, read_only=read_only)
     state.shared.updated_model = now_string()
     state.shared.updated_parameters = now_string()
+
+
+@register
+async def load_fit_state(session_b64: str):
+    """Restore only the MCMC chain state from a base64-encoded HDF5 session blob.
+
+    Unlike *load_session*, this endpoint does **not** deserialise the stored
+    FitProblem, so it is safe to call with a session produced by a remote
+    server.  Only the fit_state (chain heads, thinned draws, CR weights, …)
+    and the fitter method name are extracted; everything else in the blob is
+    ignored.
+
+    Typical use: warm-start an autonomous measurement loop.  Call this first
+    to restore chain state from the previous iteration, then call
+    *set_problem_keep_state* to inject the updated FitProblem (with a new
+    data point added), then call *start_fit_thread* with ``resume=True``.
+    """
+    import io
+    import base64
+    import h5py
+    from bumps.dream.state import h5load
+    from .state_hdf5_backed import read_string, UNDEFINED
+
+    bio = io.BytesIO(base64.b64decode(session_b64))
+    with h5py.File(bio, "r") as f:
+        fitting_group = f.get("fitting")
+        if fitting_group is None or "fit_state" not in fitting_group:
+            raise ValueError("Session blob contains no fit_state")
+        _method = read_string(fitting_group, "method")
+        method = _method if isinstance(_method, str) else "dream"
+        fit_state = h5load(fitting_group["fit_state"])
+
+    # Reset draw counters so DREAM runs a full new set of samples from the
+    # chain heads.  h5load() sets draws = Ngen * Npop (the full prior run),
+    # which would immediately satisfy the stopping condition (draws >= budget)
+    # and cause DREAM to exit after zero iterations.
+    #
+    # Setting draws = Npop and generation = 1 leaves exactly one "prior
+    # generation" in the buffer, which is all the warm-start path needs:
+    # core.py checks `if previous_draws:` and calls state._last_gen() to
+    # seed chain heads rather than evaluating the initial population afresh.
+    fit_state.draws = fit_state.Npop
+    fit_state.generation = 1
+    # Reset best-point tracking.  _best_x / _best_logp are carried over from
+    # the prior run's likelihood surface.  With a different FitProblem (new
+    # data), those log-likelihood values are incommensurable with new draws, so
+    # new samples will never beat the stale _best_logp and setp() will keep the
+    # old parameter values forever.
+    import numpy as _np
+
+    fit_state._best_x = None
+    fit_state._best_logp = -_np.inf
+
+    state.set_fit_state(fit_state, method=method)
+    state.fitting.method = method
+
+
+@register
+async def set_problem_keep_state(
+    serialized: str,
+    method: str = "dataclass",
+    name: Optional[str] = None,
+):
+    """Replace the FitProblem without clearing the MCMC chain state.
+
+    This is the counterpart to *set_serialized_problem*: it swaps in a new
+    problem definition (e.g. one with an additional data point) while
+    preserving the existing *fit_state* so that the next *start_fit_thread*
+    call with ``resume=True`` warm-starts from the current chain heads rather
+    than drawing a fresh initial population.
+
+    Raises *ValueError* if the number of free parameters in *serialized*
+    differs from the dimensionality of the stored chain state — the chain
+    heads would be meaningless for a different parameter space.
+    """
+    fitProblem = deserialize_problem(serialized, method=method)
+
+    fit_state = state.fitting.fit_state
+    if fit_state is not None and hasattr(fit_state, "Nvar"):
+        new_nvar = len(fitProblem.getp())
+        if new_nvar != fit_state.Nvar:
+            raise ValueError(
+                f"Cannot keep chain state: new problem has {new_nvar} free "
+                f"parameters but the stored chain state has {fit_state.Nvar}. "
+                f"Call set_serialized_problem() to start a fresh fit."
+            )
+
+    state.problem.fitProblem = fitProblem
+    if name:
+        fitProblem.name = name
+    state.shared.updated_model = now_string()
+    state.shared.updated_parameters = now_string()
+    state.autosave()
 
 
 @register
