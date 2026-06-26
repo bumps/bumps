@@ -346,7 +346,7 @@ Setting(
 
 # Parallel tempering
 Setting("nT", "Number of temperatures", int, "Number of temperatures in the parallel tempering ladder")
-Setting("Tmin", "Min temperature", float, "Lowest temperature in the temperture ladder")
+Setting("Tmin", "Min temperature", float, "Lowest temperature in the temperature ladder")
 Setting("Tmax", "Max temperature", float, "Highest temperature in the temperature ladder")
 
 # Differential evolution

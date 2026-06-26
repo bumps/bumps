@@ -227,7 +227,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     --staj                         [plugin specific. Can plugins extend argparse?]
         output staj file when done [Refl1D only]
 
-    # Superceded
+    # Superseded
     -m/-c/-p command               [we are shipping a python environment]
         run the python interpreter with bumps on the path:
             m: command is a module such as bumps.cli, run as __main__

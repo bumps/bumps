@@ -172,13 +172,14 @@ BUMPS_MODULES = [
     ("fitters", "Wrappers for various optimization algorithms"),
     ("history", "Optimizer evaluation trace"),
     ("initpop", "Population initialization strategies"),
-    ("logger", "Support tools for logger configurion"),
-    ("lsqerror", "Least squares eorror analysis"),
+    ("logger", "Support tools for logger configuration"),
+    ("lsqerror", "Least squares error analysis"),
     ("mapper", "Parallel processing implementations"),
     ("monitor", "Monitor fit progress"),
     ("mono", "Freeform - Monotonic Spline"),
     # ('mpfit', 'Levenberg-Marquardt with bounds'),  # docstrings don't use rst
     ("names", "External interface"),
+    ("nested", "Nested sampling with bumps models"),
     ("options", "Command line options processor"),
     ("parameter", "Optimization parameter definition"),
     ("partemp", "Parallel tempering optimizer"),
@@ -245,7 +246,7 @@ SERVER_OPTIONS = {
 SERVER_PACKAGE = "bumps.webview"
 SERVER_MODULES = [
     ("build_client", "Manage the javascript client build"),
-    ("webserver", "Manage communiction with web and jupyter"),
+    ("webserver", "Manage communication with web and jupyter"),
 ]
 
 PLOTS_OPTIONS = {

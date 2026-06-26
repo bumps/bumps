@@ -76,7 +76,7 @@ def simplex(
     Minimize a function using Nelder-Mead downhill simplex algorithm.
 
     This optimizer is also known as Amoeba (from Numerical Recipes) and
-    the Nealder-Mead simplex algorithm.  This is not the simplex algorithm
+    the Nelder-Mead simplex algorithm.  This is not the simplex algorithm
     for solving constrained linear systems.
 
     Downhill simplex is a robust derivative free algorithm for finding
