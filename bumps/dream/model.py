@@ -135,7 +135,7 @@ class MCMCModel:
 
 class Density(MCMCModel):
     """
-    Construct an MCMC model from a probablility density function.
+    Construct an MCMC model from a probability density function.
 
     *f* is the density function
     """
@@ -149,7 +149,7 @@ class Density(MCMCModel):
 
 class LogDensity(MCMCModel):
     """
-    Construct an MCMC model from a log probablility density function.
+    Construct an MCMC model from a log probability density function.
 
     *f* is the log density function
     """
