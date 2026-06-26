@@ -1,7 +1,7 @@
 .. :
 
     Fit option names are defined in bumps/fitters.py  Make sure any changes
-    are done both hear and there.
+    are done both here and there.
 
 .. _option-guide:
 
@@ -162,7 +162,7 @@ maximum difference between highest and lowest value in the population.
 fit is complete.  The different fitters will interpret this in different
 ways.  The Newton descent algorithms (:ref:`fit-newton`, :ref:`fit-lm`) will use
 this as the minimum change in the parameter values with each step.   The
-population-based algorithgms (:ref:`fit-de`, :ref:`fit-amoeba`) will use the
+population-based algorithms (:ref:`fit-de`, :ref:`fit-amoeba`) will use the
 maximum difference between highest and lowest parameter in the population.
 :ref:`fit-dream` does not use this stopping condition.
 
@@ -478,7 +478,7 @@ Note: not currently available.
 *Calculate entropy* is a flag which indicates whether entropy should be
 computed for the final fit. Entropy an estimate of the number of bits of
 information available from the fit. Use "--entropy=method" to specify the
-entropy calcualation method. This can be one of:
+entropy calculation method. This can be one of:
 
 * gmm: fit sample to a gaussian mixture model (GMM) with $5 \sqrt{d}$
   components where $d$ is the number fitted parameters and estimate
