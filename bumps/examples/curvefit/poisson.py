@@ -49,7 +49,7 @@
 #   5) $\lambda = k \pm \sqrt{k}$ for $k>0$, $0 \pm 1$ for $k = 0$
 #
 # See the notes from the CDF Statistics Committee for details at
-# `<https://www-cdf.fnal.gov/physics/statistics/notes/pois_eb.txt>`_.
+# `<http://web.archive.org/web/20210222093249/https://www-cdf.fnal.gov/physics/statistics/notes/pois_eb.txt>`_.
 #
 # Of these, option 5 works slightly better for fitting, giving the best
 # estimate of the background.
@@ -120,8 +120,8 @@ def peak(x, scale, center, width, background):
 
 x = np.linspace(5, 20, 345)
 # y = np.random.poisson(peak(x, 1000, 12, 1.0, 1))
-# y = np.random.poisson(peak(x, 300, 12, 1.5, 1))
-y = np.random.poisson(peak(x, 3, 12, 1.5, 1))
+y = np.random.poisson(peak(x, 300, 12, 1.5, 1))
+# y = np.random.poisson(peak(x, 3, 12, 1.5, 1))
 
 # Define the various conditions.  These can be selected on the command
 # line by listing the condition name after the model file.  Note that
@@ -172,12 +172,12 @@ M.background.range(0, max(y))
 
 problem = FitProblem(M)
 
-# We can now load and run the fit.  Be sure to substitute COND for one of the
-# conditions defined above:
+# We can now load and run the fit.  Be sure to substitute METHOD for one of the
+# methods shown below:
 #
 # .. parsed-literal::
 #
-#    $ bumps.py poisson.py --fit=dream --burn=600 --store=/tmp/T1 COND
+#    $ bumps poisson.py --fit=dream --burn=600 --start --args METHOD
 #
 # Comparing the results for the various conditions, we can see that all methods
 # yield a good fit to the underlying center, scale and width.  It is only the
