@@ -426,57 +426,6 @@ async def load_session(pathlist: List[str], filename: str, read_only: bool = Fal
     state.shared.updated_parameters = now_string()
 
 
-def _rebuild_mcmc_state(old_fit_state: MCMCDraw, fitProblem, options: dict) -> MCMCDraw:
-    """Build a minimal MCMCDraw for a parameter space change (add/remove/reorder).
-
-    Uses ``bumps.initpop.generate`` with the stored fit options to produce a
-    correctly-sized population for the new problem (same pop scaling and init
-    strategy as DreamFit.solve).  Matched parameters then have their columns
-    overwritten with the old chain-head values.  New parameters keep the
-    generated values.
-
-    Returns a new MCMCDraw with draws=new_Npop so that _run_dream enters the
-    resume path, triggering nllf recompute and convergence delay.
-    """
-    from bumps.initpop import generate
-
-    old_labels = old_fit_state.labels
-    new_labels = fitProblem.labels()
-    old_x, _ = old_fit_state._last_gen()  # (old_Npop, old_Nvar)
-
-    # generate() handles pop scaling, init strategy, bounds, and use_point.
-    new_pop = generate(fitProblem, **options)  # (new_Npop, new_Nvar)
-    new_Npop, new_Nvar = new_pop.shape
-
-    # Override columns for parameters that survived from the old chain.
-    # np.resize tiles old rows to fill new_Npop (which may be larger, e.g. going
-    # from 1 to 2 parameters doubles the required population).  Duplicated rows
-    # diverge quickly via DE perturbations; this is preferable to leaving the
-    # extra rows as cold random draws from generate(), which would drag convergence.
-    old_label_to_col = {label: i for i, label in enumerate(old_labels)}
-    old_x_resized = np.resize(old_x, (new_Npop, old_x.shape[1]))
-    for new_col, label in enumerate(new_labels):
-        if label in old_label_to_col:
-            new_pop[:, new_col] = old_x_resized[:, old_label_to_col[label]]
-
-    Ncr = old_fit_state.Ncr
-    thinning = old_fit_state.thinning
-    new_state = MCMCDraw(1, 1, 1, new_Nvar, new_Npop, Ncr, thinning)
-    new_state._gen_current[:] = new_pop
-    # -inf logp_old causes metropolis to accept all proposals on the first DE step,
-    # ensuring real logp values are recorded before _best_x is needed by the monitor.
-    new_state._gen_current_logp[:] = -np.inf
-    # Guarantee state.best() returns a valid array; also lets _run_dream's nllf
-    # recompute at the top of the resume path evaluate a sensible starting point.
-    new_state._best_x = new_pop[0].copy()
-    new_state._best_logp = -np.inf
-    new_state.labels = new_labels
-    # draws=new_Npop > 0 makes previous_draws truthy in _run_dream
-    new_state.draws = new_Npop
-    new_state.generation = 1
-    return new_state
-
-
 @register
 async def update_serialized_problem(
     serialized: str,
@@ -486,16 +435,12 @@ async def update_serialized_problem(
     """Update the current FitProblem without resetting the fit state.
 
     Use this instead of ``set_serialized_problem`` when you want to resume
-    DREAM from the existing chain population rather than starting fresh.  On
-    the next ``start_fit_thread("dream", options, resume=True)`` call,
-    ``_run_dream`` will recompute nllf for all chain heads on the new
-    likelihood surface and defer the convergence test by one full buffer cycle.
+    DREAM from the existing chain population rather than starting fresh.
 
-    If the parameter labels are identical to the current chain state the full
-    chain history is preserved.  If labels have changed (parameters added,
-    removed, or renamed) a minimal MCMCDraw is built: matched parameters carry
-    their chain-head values forward; new parameters are seeded with LHS draws.
-    History is lost in this case but a cold start is avoided.
+    Parameter-space changes (parameters added, removed, or renamed) are handled
+    automatically on the next ``start_fit_thread("dream", options, resume=True)``
+    call: ``DreamFit.solve`` detects the label mismatch and rebuilds the chain
+    state via ``_rebuild_mcmc_state`` before sampling begins.
 
     Use ``set_serialized_problem()`` for a true cold start.
 
@@ -507,16 +452,8 @@ async def update_serialized_problem(
     # Deserialize the new problem first so we fail fast on bad input.
     fitProblem = deserialize_problem(serialized, method=method)
 
-    fit_state = state.fitting.fit_state
-    if fit_state is not None and hasattr(fit_state, "labels"):
-        new_labels = fitProblem.labels()
-        if fit_state.labels != new_labels:
-            # Parameter space has changed — rebuild a minimal MCMCDraw so that
-            # _run_dream still enters the resume path (nllf recompute + convergence delay).
-            new_fit_state = _rebuild_mcmc_state(fit_state, fitProblem, options=state.fitting.options)
-            state.set_fit_state(new_fit_state, method=state.fitting.method)
-
-    # Install the new problem; the existing (or rebuilt) fit_state is preserved.
+    # Install the new problem; the existing fit_state is preserved intact.
+    # Any parameter-space mismatch is resolved automatically by DreamFit.solve().
     state.problem.fitProblem = fitProblem
     if name:
         fitProblem.name = name

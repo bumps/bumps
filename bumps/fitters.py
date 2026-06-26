@@ -886,6 +886,53 @@ class DreamModel:
         return -np.array(self.mapper(pop))
 
 
+def _rebuild_mcmc_state(old_fit_state, fitProblem, options: dict):
+    """Build a minimal MCMCDraw for a parameter-space change (add/remove/reorder).
+
+    Uses ``initpop.generate`` with the stored fit options to produce a
+    correctly-sized population for the new problem (same pop scaling and init
+    strategy as DreamFit.solve).  Matched parameters have their columns
+    overwritten with old chain-head values; new parameters keep generated values.
+
+    Returns a new MCMCDraw with ``draws=new_Npop`` so that ``_run_dream`` enters
+    the resume path, triggering nllf recompute and convergence delay.
+    """
+    from .dream.state import MCMCDraw
+
+    old_labels = old_fit_state.labels
+    new_labels = fitProblem.labels()
+    old_x, _ = old_fit_state._last_gen()  # (old_Npop, old_Nvar)
+
+    # generate() handles pop scaling, init strategy, bounds, and use_point.
+    new_pop = initpop.generate(fitProblem, **options)  # (new_Npop, new_Nvar)
+    new_Npop, new_Nvar = new_pop.shape
+
+    # Override columns for parameters that survived from the old chain.
+    # np.resize tiles old rows to fill new_Npop.  Duplicated rows diverge quickly
+    # via DE perturbations; this is preferable to cold random draws from generate().
+    old_label_to_col = {label: i for i, label in enumerate(old_labels)}
+    old_x_resized = np.resize(old_x, (new_Npop, old_x.shape[1]))
+    for new_col, label in enumerate(new_labels):
+        if label in old_label_to_col:
+            new_pop[:, new_col] = old_x_resized[:, old_label_to_col[label]]
+
+    Ncr = old_fit_state.Ncr
+    thinning = old_fit_state.thinning
+    new_state = MCMCDraw(1, 1, 1, new_Nvar, new_Npop, Ncr, thinning)
+    new_state._gen_current[:] = new_pop
+    # -inf logp causes metropolis to accept all proposals on the first DE step,
+    # ensuring real logp values are recorded before _best_x is needed by the monitor.
+    new_state._gen_current_logp[:] = -np.inf
+    # Guarantee state.best() returns a valid array immediately.
+    new_state._best_x = new_pop[0].copy()
+    new_state._best_logp = -np.inf
+    new_state.labels = new_labels
+    # draws=new_Npop > 0 makes previous_draws truthy in _run_dream
+    new_state.draws = new_Npop
+    new_state.generation = 1
+    return new_state
+
+
 class DreamFit(FitBase):
     name = "DREAM"
     id = "dream"
@@ -924,6 +971,14 @@ class DreamFit(FitBase):
         if steps == 0:
             steps = (draws + pop_size - 1) // pop_size
         monitors.info(f"# burn: {options['burn']} # steps: {steps}, # draws: {pop_size * steps}")
+
+        # On resume, if the parameter space changed (add/remove/reorder) rebuild the
+        # chain state so _run_dream enters the resume path (nllf recompute + convergence
+        # delay) rather than starting cold.
+        if self.state is not None and hasattr(self.state, "labels"):
+            if self.state.labels != self.problem.labels():
+                self.state = _rebuild_mcmc_state(self.state, self.problem, options)
+
         population = population[None, :, :]
         # print(f"Running dream with {population.shape=} {pop_size=} {steps=}")
         sampler = Dream(
