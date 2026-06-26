@@ -295,9 +295,10 @@ def _run_dream(dream: Dream, abort_test=lambda: False):
     previous_draws = state.draws
     if previous_draws:
         x, logp = state._last_gen()
-        x = x.copy()
-        logp = dream.model.map(x)
-        state._gen_current_logp[:] = logp
+        # Recalculating the likelihood at the start of resume in case the model definition has changed.
+        # This can happen when a fit is aborted, new data is added to the model, and the fit is resumed.
+        # The fit can also be resumed if there are changes to the model code or the constraints as long
+        # the list of fit parameters is the same.
         if state._best_x is not None:
             state._best_logp = float(dream.model.map(state._best_x[None, :])[0])
     else:
@@ -332,7 +333,7 @@ def _run_dream(dream: Dream, abort_test=lambda: False):
 
     # frame = 0  # For debugging...
     next_outlier_test = max(state.Ngen, 2 * state.Ngen - 10)
-    next_convergence_test = state.generation + state.Ngen if previous_draws else state.Ngen
+    next_convergence_test = state.generation + state.Ngen
     final_gen = dream.draws + dream.burn
     # print(f"running dream with {dream.draws} draws and {dream.burn} burn; final gen={final_gen} draws={state.draws} gen={state.generation}")
     while state.draws < final_gen:

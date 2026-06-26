@@ -427,12 +427,12 @@ async def load_session(pathlist: List[str], filename: str, read_only: bool = Fal
 
 
 @register
-async def replace_serialized_problem(
+async def update_serialized_problem(
     serialized: str,
     method: str = "dataclass",
     name: Optional[str] = None,
 ):
-    """Replace the current FitProblem without resetting the fit state.
+    """Update the current FitProblem without resetting the fit state.
 
     Use this instead of ``set_serialized_problem`` when the new problem has the
     same parameter space as the current one (e.g. an additional data point has
@@ -443,10 +443,9 @@ async def replace_serialized_problem(
     new likelihood surface, and will defer the convergence test by one full
     buffer cycle so stale samples are flushed before convergence is checked.
 
-    Raises ``ValueError`` if the number of free parameters in *serialized*
-    differs from the current chain state — the chain is meaningless for a
-    different parameter space; use ``set_serialized_problem()`` for a cold
-    start in that case.
+    Raises ``ValueError`` if the parameter labels in *serialized* differ from
+    the current chain state — the chain is meaningless for a different parameter
+    space; use ``set_serialized_problem()`` for a cold start in that case.
 
     The *method* parameter accepts ``"dataclass"`` (default, safe),
     ``"pickle"``, ``"cloudpickle"``, or ``"dill"``.  The latter three enable
@@ -456,14 +455,15 @@ async def replace_serialized_problem(
     # Deserialize the new problem first so we fail fast on bad input.
     fitProblem = deserialize_problem(serialized, method=method)
 
-    # Validate parameter count against the current chain state.
+    # Validate parameter labels against the current chain state.
+    # Comparing labels is robust against adding, removing, or reordering parameters.
     fit_state = state.fitting.fit_state
-    if fit_state is not None and hasattr(fit_state, "Nvar"):
-        new_nvar = len(fitProblem.getp())
-        if new_nvar != fit_state.Nvar:
+    if fit_state is not None and hasattr(fit_state, "labels"):
+        new_labels = fitProblem.labels()
+        if fit_state.labels != new_labels:
             raise ValueError(
-                f"Cannot warm-start: new problem has {new_nvar} free parameters "
-                f"but the current chain state has {fit_state.Nvar}. "
+                f"Cannot warm-start: parameter labels have changed. "
+                f"Old: {fit_state.labels}. New: {new_labels}. "
                 f"Call set_serialized_problem() to start a fresh fit."
             )
 
