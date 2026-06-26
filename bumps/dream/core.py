@@ -299,6 +299,13 @@ def _run_dream(dream: Dream, abort_test=lambda: False):
         # This can happen when a fit is aborted, new data is added to the model, and the fit is resumed.
         # The fit can also be resumed if there are changes to the model code or the constraints as long
         # the list of fit parameters is the same.
+        # Recompute logp for every chain head on the new likelihood surface before
+        # the Metropolis loop starts.  Without this, stale logp values from the
+        # previous fit (which may be much higher or lower under the new data) are
+        # used as the acceptance baseline, causing all new proposals to be either
+        # universally accepted or universally rejected and freezing the chain.
+        logp = dream.model.map(x)
+        state._gen_current_logp[:] = logp
         if state._best_x is not None:
             state._best_logp = float(dream.model.map(state._best_x[None, :])[0])
     else:
