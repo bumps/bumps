@@ -28,7 +28,7 @@ from bumps.fitters import FIT_AVAILABLE_IDS
 
 BUMPS_COMMAND = [sys.executable, "-m", "bumps"]
 
-EXAMPLEDIR = ROOT / "doc" / "examples"
+EXAMPLEDIR = ROOT / "bumps" / "examples"
 
 
 def decode(b):

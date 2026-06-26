@@ -107,25 +107,20 @@ notebook cell using pip:
 
 To start webview, use the following code cell::
 
-    import asyncio
-    from bumps.webview.server import start_bumps_server, api
+    import bumps.names as bp
+    await bp.start_bumps()
 
-    # Start the server
-    await start_bumps_server()
+A link to the server will be printed in the notebook output. You can open this link in a browser to access the server,
+or show the webview interface in a cell using::
 
-A link to the server will be printed in the notebook output. You can open this link in a browser to access the server.
+    bp.display_bumps()
 
-In a different cell you can define a problem and load it into the server using the `api` module::
+In a different cell you can define a problem and send it into the server. There are some tutorial
+examples in the bp.examples_path() directory::
 
-    # Define a problem
-    from bumps.fitproblem import FitProblem
-
-    model = MyFitnessClass()
-    ...
-
-    problem = FitProblem([model])
-    await api.set_problem(problem)
-
+    # Load or define a problem
+    problem = bp.load_problem(bp.examples_path() / "curvefit" / "curve.py")
+    await bp.set_problem(problem)
 
 Fast Stepper for DREAM on MPI
 =============================

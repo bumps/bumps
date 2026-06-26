@@ -49,6 +49,7 @@ Jupyter notebook functions:
 - MCMC save/load: :func:`bumps.fitters.load_session`,
   :func:`bumps.fitters.load_fit_from_session`,
   :func:`bumps.fitters.load_fit_from_export`
+  :func:`bumps.util.examples_path`
 """
 
 # __all__ = [ 'sys', 'np', 'inf', 'pmath',
@@ -107,3 +108,4 @@ from .webview.server.api import (
     wait_for_fit_complete,
     export_fit,
 )
+from .util import examples_path
