@@ -311,6 +311,10 @@ def start_bumps(jupyter: bool = True, **options: dict[str, Any]):
     to the command line options shown on the command line by *bumps --help*. Unlike
     the command line, fit options are collected into *fit_options=dict(...)*.
     See *bp.help("startup")* for a complete list options.
+
+    Options should include *session=filename.h5" to set the session file for the fit.
+    This adds checkpointing to the fit and saves the results outside the notebook.
+    That way the results are available even after the notebook is terminated.
     """
     options = BumpsOptions(**options)
 

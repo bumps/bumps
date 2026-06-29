@@ -1524,7 +1524,7 @@ problem, fitresult = bp.load_fit_from_export(path)   # load bumps MCMC files tha
         webview="""
 Webview functions:
 ```python
-await bp.start_bumps(option=value, ...)              # start the webview server; see help("startup") for options
+await bp.start_bumps(session="results.h5", ...)      # start the webview server; see help("startup") for options
 bp.display_bumps(height=600)                         # diplay webview in jupyter
 await bp.set_problem(problem)                        # send problem to webview
 await bp.start_fit_thread(options=options)           # start the webview fit thread
