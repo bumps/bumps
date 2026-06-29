@@ -1484,17 +1484,29 @@ assert all(f in FIT_AVAILABLE_IDS for f in FIT_ACTIVE_IDS)
 
 
 def help(*shown):
+    """
+    Provide help for the bumps interface in a jupyter notebook.
+
+    *shown* lists the help sections to display (default: "bumps", "webview")
+
+    * "bumps" shows the basic functions for loading a problem, running a fit and saving results
+    * "webview" shows how to interact with the webview interface from a notebook
+    * "fit" shows options from the fitter (similar to "bumps -h" on the command line)
+    * "dream" shows functions for summarizing the MCMC results from DREAM
+    * "startup" shows bumps options available when starting the server (similar to "bumps -h" on the command line)
+    """
     import sys
     from IPython.display import display, Markdown
+    from bumps.cli import options_help
 
     pages = dict(
-        fit="""
+        bumps="""
 Bumps functions:
 ```python
 import bumps.names as bp
 bp.help("dream")                                     # display dream plot functions
 problem = bp.load_problem(path, args=[arg1, ...])    # load model from script (.py) or export (.json)
-options = dict(fit="dream", burn=100)                # fit options (see bumps -h for list)
+options = dict(fit="dream", burn=100)                # fit options; see help("fit") for details
 !bumps --help                                        # show available options
 fitresult = bp.fit(problem, **options)               # synchronous fit interface
 fitresult = bp.fit(problem, resume=fitresult, **options) # resume a fit from fitresult
@@ -1512,7 +1524,7 @@ problem, fitresult = bp.load_fit_from_export(path)   # load bumps MCMC files tha
         webview="""
 Webview functions:
 ```python
-await bp.start_bumps()                               # start the webview server
+await bp.start_bumps(option=value, ...)              # start the webview server; see help("startup") for options
 bp.display_bumps(height=600)                         # diplay webview in jupyter
 await bp.set_problem(problem)                        # send problem to webview
 await bp.start_fit_thread(options=options)           # start the webview fit thread
@@ -1568,18 +1580,28 @@ plt.title("Parameter distribution comparison")
 plt.legend()
 ```
 """,
+        # Help for the following sections comes from the cli parser.
+        startup=None,
+        fit=None,
     )
 
     if not shown:
-        shown = ["fit", "webview"]
+        shown = ["bumps", "webview"]
     if not all(p in pages for p in shown):
         print("available help:", " ".join(sorted(pages.keys())))
+        return
+
+    # Fill in the generated help strings when they are requested.
+    if "startup" in shown and not pages["startup"]:
+        pages["startup"] = f"App startup options:\n{options_help()}"
+    if "fit" in shown and not pages["fit"]:
+        pages["fit"] = f"Options for fit(problem, ...):\n{options_help(fit_only=True)}"
+
+    src = "\n".join(pages[p] for p in shown)
+    if "ipykernel" in sys.modules:
+        display(Markdown(src))
     else:
-        src = "\n".join(pages[p] for p in shown)
-        if "ipykernel" in sys.modules:
-            display(Markdown(src))
-        else:
-            print(src)
+        print(src)
 
 
 def plot_convergence(results, cutoff=0.25, ax=None):
