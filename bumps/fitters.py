@@ -886,51 +886,30 @@ class DreamModel:
         return -np.array(self.mapper(pop))
 
 
-def _rebuild_mcmc_state(old_fit_state, fitProblem, options: dict):
-    """Build a minimal MCMCDraw for a parameter-space change (add/remove/reorder).
+def map_labels(labels: list, old_labels: list) -> list:
+    """Return (new_index, old_index) pairs for every label in *labels* that also
+    appears in *old_labels*.
 
-    Uses ``initpop.generate`` with the stored fit options to produce a
-    correctly-sized population for the new problem (same pop scaling and init
-    strategy as DreamFit.solve).  Matched parameters have their columns
-    overwritten with old chain-head values; new parameters keep generated values.
+    Duplicates are matched in order: the first occurrence of a value in *labels*
+    maps to the first unused occurrence in *old_labels*, the second to the second,
+    and so on.
 
-    Returns a new MCMCDraw with ``draws=new_Npop`` so that ``_run_dream`` enters
-    the resume path, triggering nllf recompute and convergence delay.
+    # TODO: Use map_labels() to simplify fitproblem.load_pars()
     """
-    from .dream.state import MCMCDraw
+    from collections import defaultdict
 
-    old_labels = old_fit_state.labels
-    new_labels = fitProblem.labels()
-    old_x, _ = old_fit_state._last_gen()  # (old_Npop, old_Nvar)
+    # Build a list of old positions for each label (to handle duplicates).
+    idx_map: defaultdict = defaultdict(list)
+    for j, s in enumerate(old_labels):
+        idx_map[s].append(j)
 
-    # generate() handles pop scaling, init strategy, bounds, and use_point.
-    new_pop = initpop.generate(fitProblem, **options)  # (new_Npop, new_Nvar)
-    new_Npop, new_Nvar = new_pop.shape
+    pairs = []
+    for i, s in enumerate(labels):
+        if idx_map[s]:
+            j = idx_map[s].pop(0)
+            pairs.append((i, j))
 
-    # Override columns for parameters that survived from the old chain.
-    # np.resize tiles old rows to fill new_Npop.  Duplicated rows diverge quickly
-    # via DE perturbations; this is preferable to cold random draws from generate().
-    old_label_to_col = {label: i for i, label in enumerate(old_labels)}
-    old_x_resized = np.resize(old_x, (new_Npop, old_x.shape[1]))
-    for new_col, label in enumerate(new_labels):
-        if label in old_label_to_col:
-            new_pop[:, new_col] = old_x_resized[:, old_label_to_col[label]]
-
-    Ncr = old_fit_state.Ncr
-    thinning = old_fit_state.thinning
-    new_state = MCMCDraw(1, 1, 1, new_Nvar, new_Npop, Ncr, thinning)
-    new_state._gen_current[:] = new_pop
-    # -inf logp causes metropolis to accept all proposals on the first DE step,
-    # ensuring real logp values are recorded before _best_x is needed by the monitor.
-    new_state._gen_current_logp[:] = -np.inf
-    # Guarantee state.best() returns a valid array immediately.
-    new_state._best_x = new_pop[0].copy()
-    new_state._best_logp = -np.inf
-    new_state.labels = new_labels
-    # draws=new_Npop > 0 makes previous_draws truthy in _run_dream
-    new_state.draws = new_Npop
-    new_state.generation = 1
-    return new_state
+    return pairs
 
 
 class DreamFit(FitBase):
@@ -965,19 +944,29 @@ class DreamFit(FitBase):
             monitors(step=step, point=x, value=-fx, population_points=pop, population_values=-logp)
             return True
 
-        population = initpop.generate(self.problem, **options)
+        if self.state is not None and hasattr(self.state, "labels"):
+            # Number of chains can't change on resume, so ignore pop option and
+            # use the existing chain count (negative pop = absolute count in generate).
+            population = initpop.generate(self.problem, init=options["init"], pop=-self.state.Npop)
+            labels, old_labels = self.problem.labels(), self.state.labels
+            if labels != old_labels:
+                # Parameter space changed (add/remove/reorder).  Seed matched
+                # columns from chain heads, then discard the old state so
+                # _run_dream starts fresh without an incompatible history buffer.
+                pairs = map_labels(labels, old_labels)
+                if pairs:
+                    new_index, old_index = zip(*pairs)
+                    old_population, _ = self.state._last_gen()
+                    population[:, list(new_index)] = old_population[:, list(old_index)]
+                self.state = None
+        else:
+            population = initpop.generate(self.problem, **options)
+
         pop_size = population.shape[0]
         draws, steps = int(options["samples"]), options["steps"]
         if steps == 0:
             steps = (draws + pop_size - 1) // pop_size
         monitors.info(f"# burn: {options['burn']} # steps: {steps}, # draws: {pop_size * steps}")
-
-        # On resume, if the parameter space changed (add/remove/reorder) rebuild the
-        # chain state so _run_dream enters the resume path (nllf recompute + convergence
-        # delay) rather than starting cold.
-        if self.state is not None and hasattr(self.state, "labels"):
-            if self.state.labels != self.problem.labels():
-                self.state = _rebuild_mcmc_state(self.state, self.problem, options)
 
         population = population[None, :, :]
         # print(f"Running dream with {population.shape=} {pop_size=} {steps=}")
