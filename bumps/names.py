@@ -88,6 +88,7 @@ from .fitproblem import FitProblem, Fitness
 
 # === jupyter notebook support ===
 from .webview.webserver import start_bumps, display_bumps
+from .serialize import serialize, deserialize
 from .fitproblem import load_problem, load_pars
 from .fitters import (
     fit,

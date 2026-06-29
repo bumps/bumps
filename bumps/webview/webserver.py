@@ -8,7 +8,7 @@ import mimetypes
 import os
 import socket
 from pathlib import Path
-from typing import Callable, Optional, Union, List
+from typing import Callable, Optional, Union, List, Any
 
 # TODO: circular import since cli.main() imports webserver imports cli
 from bumps import api
@@ -298,17 +298,32 @@ Open the following in a new tab after replacing <HOST> with the hostname in the 
 
 
 # User command
-def start_bumps(loglevel: str = "warn"):
+def start_bumps(jupyter: bool = True, **options: dict[str, Any]):
     """
     Start the webview server in a background asyncio.Task, and show the link to
     the webview in a Jupyter notebook. Note that the returned Task should be
     awaited in order to handle any exceptions that may occur during startup.
 
-    *loglevel* defaults to "warn". You can use "info" or
-    "debug", but you will have large amounts of text in the output cell.
+    *jupyter* is True if starting from a jupyter notebook. Use jupyter=False from
+    within a script.
+
+    *option=value, ...* provides server startup options.  These mostly correspond
+    to the command line options shown on the command line by *bumps --help*. Unlike
+    the command line, fit options are collected into *fit_options=dict(...)*.
+    See *bp.help("startup")* for a complete list options.
     """
+    options = BumpsOptions(**options)
+
     # TODO: can we check if the server is already running?
-    return asyncio.create_task(start_app(jupyter_link=True, loglevel=loglevel))
+    return asyncio.create_task(
+        start_app(
+            options=options,
+            jupyter_link=jupyter,
+            jupyter_heartbeat=jupyter,
+            # CRUFT: start_app interface takes loglevel separately
+            loglevel=options.loglevel,
+        )
+    )
 
 
 async def start_app(
@@ -316,31 +331,46 @@ async def start_app(
     sock: socket.socket = None,
     jupyter_link: bool = False,
     jupyter_heartbeat: bool = False,
+    # CRUFT: loglevel is already in BumpsOptions
     loglevel: str = "warn",
 ):
     """
-    async version of the :func:`start_bumps()` command.
+    async variant of the :func:`start_bumps()` with a low level interface.
+
+    *options* are parsed bumps command line options.
+
+    *sock* is an existing connection to a URL. If None then a new connection is made
+    using host=0.0.0.0 if *options.external* else localhost. Port defaults to *options.port*,
+    but falls back to a random port if there is already a server running there. Use
+    *bumps.webview.webserver.get_server_url()* after starting to determine the running port.
+
+    *jupyter_link* is True if the link to the server should be displayed in the cell outputs.
+    *jupyter_heartbeat* should be set to True as well to keep the notebook open until the fit
+    is complete. Be sure to set a session file in options to save the results on completion.
+
+    *loglevel* sets the logging level for the server. Default is "warn".
     """
     from aiohttp import web
 
-    logger.setLevel(LOGLEVEL[loglevel])
-    init_web_app()
     if options is None:
         options = BumpsOptions()
+        options.loglevel = loglevel
 
-    # this function is called from jupyter notebook, so set headless = True
-    options.headless = True
-    # TODO: redirect logging somewhere perhaps
-    # from .logger import setup_client_handler
-    # setup_client_handler(logging.INFO, action=lambda msg: msg)
+    # If this function is called from jupyter notebook then force headless
+    if jupyter_heartbeat:
+        options.headless = True
+        options.convergence_heartbeat = True
+
+    logger.setLevel(LOGLEVEL[options.loglevel])
+    init_web_app()
     runsock = setup_app(options=options, sock=sock)
+
+    # Assume we already have an event loop already running, so we don't
+    # need web.run_app() to manage it.
     runner = web.AppRunner(app, handle_signals=False)
     await runner.setup()
     site = web.SockSite(runner, sock=runsock)
     await site.start()
-
-    if jupyter_heartbeat:
-        enable_convergence_kernel_heartbeat()
 
     if jupyter_link:
         open_tab_link()
