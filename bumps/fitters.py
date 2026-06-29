@@ -886,6 +886,32 @@ class DreamModel:
         return -np.array(self.mapper(pop))
 
 
+def map_labels(labels: list, old_labels: list) -> list:
+    """Return (new_index, old_index) pairs for every label in *labels* that also
+    appears in *old_labels*.
+
+    Duplicates are matched in order: the first occurrence of a value in *labels*
+    maps to the first unused occurrence in *old_labels*, the second to the second,
+    and so on.
+
+    # TODO: Use map_labels() to simplify fitproblem.load_pars()
+    """
+    from collections import defaultdict
+
+    # Build a list of old positions for each label (to handle duplicates).
+    idx_map: defaultdict = defaultdict(list)
+    for j, s in enumerate(old_labels):
+        idx_map[s].append(j)
+
+    pairs = []
+    for i, s in enumerate(labels):
+        if idx_map[s]:
+            j = idx_map[s].pop(0)
+            pairs.append((i, j))
+
+    return pairs
+
+
 class DreamFit(FitBase):
     name = "DREAM"
     id = "dream"
@@ -918,12 +944,30 @@ class DreamFit(FitBase):
             monitors(step=step, point=x, value=-fx, population_points=pop, population_values=-logp)
             return True
 
-        population = initpop.generate(self.problem, **options)
+        if self.state is not None and hasattr(self.state, "labels"):
+            # Number of chains can't change on resume, so ignore pop option and
+            # use the existing chain count (negative pop = absolute count in generate).
+            population = initpop.generate(self.problem, init=options["init"], pop=-self.state.Npop)
+            labels, old_labels = self.problem.labels(), self.state.labels
+            if labels != old_labels:
+                # Parameter space changed (add/remove/reorder).  Seed matched
+                # columns from chain heads, then discard the old state so
+                # _run_dream starts fresh without an incompatible history buffer.
+                pairs = map_labels(labels, old_labels)
+                if pairs:
+                    new_index, old_index = zip(*pairs)
+                    old_population, _ = self.state._last_gen()
+                    population[:, list(new_index)] = old_population[:, list(old_index)]
+                self.state = None
+        else:
+            population = initpop.generate(self.problem, **options)
+
         pop_size = population.shape[0]
         draws, steps = int(options["samples"]), options["steps"]
         if steps == 0:
             steps = (draws + pop_size - 1) // pop_size
         monitors.info(f"# burn: {options['burn']} # steps: {steps}, # draws: {pop_size * steps}")
+
         population = population[None, :, :]
         # print(f"Running dream with {population.shape=} {pop_size=} {steps=}")
         sampler = Dream(

@@ -427,6 +427,43 @@ async def load_session(pathlist: List[str], filename: str, read_only: bool = Fal
 
 
 @register
+async def update_serialized_problem(
+    serialized: str,
+    method: str = "dataclass",
+    name: Optional[str] = None,
+):
+    """Update the current FitProblem without resetting the fit state.
+
+    Use this instead of ``set_serialized_problem`` when you want to resume
+    DREAM from the existing chain population rather than starting fresh.
+
+    Parameter-space changes (parameters added, removed, or renamed) are handled
+    automatically on the next ``start_fit_thread("dream", options, resume=True)``
+    call: ``DreamFit.solve`` detects the label mismatch and rebuilds the chain
+    state via ``_rebuild_mcmc_state`` before sampling begins.
+
+    Use ``set_serialized_problem()`` for a true cold start.
+
+    The *method* parameter accepts ``"dataclass"`` (default, safe),
+    ``"pickle"``, ``"cloudpickle"``, or ``"dill"``.  The latter three enable
+    arbitrary code execution and carry the same caveat as
+    ``set_serialized_problem``.
+    """
+    # Deserialize the new problem first so we fail fast on bad input.
+    fitProblem = deserialize_problem(serialized, method=method)
+
+    # Install the new problem; the existing fit_state is preserved intact.
+    # Any parameter-space mismatch is resolved automatically by DreamFit.solve().
+    state.problem.fitProblem = fitProblem
+    if name:
+        fitProblem.name = name
+    state.shared.updated_model = now_string()
+    state.shared.updated_parameters = now_string()
+
+    state.autosave()
+
+
+@register
 async def set_session_output_file(filepath: Optional[Union[str, Path]] = None):
     """
     Set the session output file to be used for saving results, and enable autosave.
