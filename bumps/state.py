@@ -44,12 +44,12 @@ except ImportError:
     warnings.warn("h5py is not available; can't access session files")
 
 from bumps import __version__
-from bumps.fitters import FIT_DEFAULT_ID
-from bumps.serialize import serialize, deserialize
-from bumps.serialize import serialize_bytes, deserialize_bytes
-from bumps.util import get_libraries
+from .fitters import FIT_DEFAULT_ID
 from .logger import logger
-from .fit_options import lookup_fitter
+from .options import lookup_fitter
+from .serialize import serialize, deserialize
+from .serialize import serialize_bytes, deserialize_bytes
+from .util import get_libraries
 
 if TYPE_CHECKING:
     import bumps
@@ -74,10 +74,15 @@ TopicNameType = Literal[
 
 @dataclass(frozen=True)
 class UNDEFINED_TYPE:
+    """Type for the UNDEFINED singleton."""
+
     pass
 
 
 UNDEFINED = UNDEFINED_TYPE()
+"""
+Singleton value which is undefined. This is different from a value which is present but None."
+"""
 
 
 def now_string():
@@ -642,14 +647,14 @@ class State:
     Manage the state for a bumps server session.
 
     There is a primary state object for the current webview instance defined
-    in webview.server.api. Temporary state objects are created to save
+    in bumps.api. Temporary state objects are created to save
     the temporary fit results as a session file.
     """
 
     # These attributes are ephemeral, not to be serialized/stored:
     app_name: str = "bumps"
     app_version: str = __version__
-    client_path: Path = Path(__file__).parent.parent / "client"
+    client_path: Path = Path(__file__).parent / "webview" / "client"
     hostname: str
     port: int
     parallel: int = 0
@@ -670,7 +675,7 @@ class State:
     problem: ProblemState
     fitting: FitResult
     history: History
-    topics: Dict[TopicNameType, "deque[Dict]"]
+    topics: Dict[TopicNameType, deque[dict]]
     shared: "SharedState"
     mapper: Optional[BaseMapper] = None
 
@@ -945,6 +950,7 @@ class CustomPlotsAvailable(TypedDict):
 
 
 Timestamp = NewType("Timestamp", str)
+"""ISO8601 time string"""
 
 
 def get_custom_plots_available(problem: "bumps.fitproblem.FitProblem"):

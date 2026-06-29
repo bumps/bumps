@@ -690,7 +690,7 @@ class Cx(Condition):
 
     scale is fit range if given,  |Z_i|, or 1 if Z_i=0
 
-    Paramaters::
+    Parameters::
 
         *tol* (float = 0.001)
             tolerance to test against
@@ -761,7 +761,7 @@ class Cf(Condition):
 
     scale is |A| or 1 if A=0
 
-    Paramaters::
+    Parameters::
 
         *tol* (float = 0.001)
             tolerance to test against

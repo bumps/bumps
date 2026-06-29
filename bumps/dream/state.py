@@ -113,7 +113,7 @@ LABEL_DTYPE = f"|S{MAX_LABEL_LENGTH}"
 H5_COMPRESSION = 5
 
 
-# TODO: Unused code. Using webview.server.cli.reload_export instead
+# TODO: Unused code. Using bumps.cli.reload_export instead
 def dream_load(store):
     """
     Load the saved DREAM state.
@@ -526,7 +526,7 @@ def load_state(filename: str, skip=0, report=0, derived_vars=0):
     return state
 
 
-# TODO: Unused code. Using webview.server.cli.reload_export instead
+# TODO: Unused code. Using bumps.cli.reload_export instead
 def reload_state_from_export(parfile):
     """
     For the simplified fit with an export path we can reload

@@ -63,11 +63,11 @@ import wx, wx.aui
 
 from bumps import plugin
 
-# TODO: undo circular import
-from bumps.cli import initial_model
-from bumps import options as bumps_options
 from bumps.plotutil import config_matplotlib
 
+# TODO: undo circular import
+from .old_cli import initial_model
+from . import old_options as bumps_options
 from .about import APP_TITLE
 from .utilities import resource_dir, resource, log_time
 

@@ -52,18 +52,19 @@ import uuid
 import traceback
 import time
 
-from bumps.fitproblem import load_problem
-from bumps.fitters import FitDriver, OptimizeResult, FIT_DEFAULT_ID, FIT_ACTIVE_IDS, save_fit_result
-from bumps.mapper import MPMapper
-from bumps.parameter import Parameter, Constant, Variable, unique
-import bumps.fitproblem
-import bumps.dream.stats
-from bumps.dream.state import MCMCDraw
-import bumps.errplot
-from bumps.util import push_mpl_backend
+from . import errplot
+from . import options as fit_options
+from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
+from .fitproblem import Fitness, FitProblem, load_problem, load_pars, fitness_chisq_str
+from .fitters import FitDriver, OptimizeResult, FIT_DEFAULT_ID, FIT_ACTIVE_IDS, save_fit_result
+from .logger import logger
+from .mapper import MPMapper
+from .parameter import Parameter, Constant, Variable, unique
+from .dream.stats import var_stats
+from .dream.state import MCMCDraw
+from .util import push_mpl_backend
 
-from . import fit_options
-from .state_hdf5_backed import (
+from .state import (
     UNDEFINED_TYPE,
     FitResult,
     State,
@@ -74,12 +75,12 @@ from .state_hdf5_backed import (
     SERIALIZER_EXTENSIONS,
     TopicNameType,
 )
-from .fit_thread import FitThread, EVT_FIT_COMPLETE, EVT_FIT_PROGRESS
-from .varplot import plot_vars
-from .traceplot import plot_trace
-from .logger import logger
-from .convergence_plot import convergence_plot
-from .custom_plot import process_custom_plot, CustomWebviewPlot
+from .plots.varplot import plot_vars
+from .plots.traceplot import plot_trace
+from .plots.convergence_plot import convergence_plot
+from .plots.custom_plot import process_custom_plot, CustomWebviewPlot
+from .plots.corrplot import Corr2d
+
 
 # CRUFT: os.listdrives requires python 3.12 (and only exists on windows)
 try:
@@ -256,7 +257,7 @@ async def set_fit_result(fit_result: FitResult):
 
 
 async def set_problem(
-    problem: bumps.fitproblem.FitProblem,
+    problem: FitProblem,
     path: Optional[Path] = None,
     filename: str = "",
     new_model: bool = True,
@@ -531,13 +532,13 @@ async def export_results(export_path: Union[str, List[str]] = ""):
 # Note: need naming convention for sync and async versions
 def export_fit(
     path: Path | str,
-    problem: bumps.fitproblem.FitProblem,
+    problem: FitProblem,
     fit: FitResult | OptimizeResult,
     serializer: Optional[str] = "dataclass",
     basename: Optional[str] = None,
 ):
     # print("running export thread")
-    from bumps.util import redirect_console
+    from .util import redirect_console
 
     path = Path(path)
 
@@ -610,8 +611,6 @@ def export_fit(
             # TODO: duplicates code in fitters.DreamFit.error_plot
             # TODO: refactor to separate calculation from display
             # TODO: share calc_errors result with get_model_uncertainty_plot
-            from bumps import errplot
-
             points = errplot.error_points_from_state(state=fit_state)
             res = errplot.calc_errors(problem, points)
             if res is not None:
@@ -647,7 +646,7 @@ async def apply_parameters(pathlist: List[str], filename: str):
     fullpath = path / filename
     try:
         # print(f"loading parameters from {fullpath}")
-        bumps.fitproblem.load_pars(state.problem.fitProblem, fullpath)
+        load_pars(state.problem.fitProblem, fullpath)
         state.shared.updated_parameters = now_string()
         await log(f"Applied parameters from {fullpath}")
         await add_notification(
@@ -698,7 +697,7 @@ async def stop_fit(wait=True):
 
 
 @register
-async def get_chisq(problem: Optional[bumps.fitproblem.FitProblem] = None, nllf=None) -> str:
+async def get_chisq(problem: Optional[FitProblem] = None, nllf=None) -> str:
     if problem is None:
         problem = state.problem.fitProblem
     if problem is None:
@@ -902,7 +901,7 @@ async def _fit_complete_handler(event: Dict[str, Any]):
             return
 
         # print(event['info'])  # Needed if we are dumping fit outputs to the terminal
-        problem: bumps.fitproblem.FitProblem = event["problem"]
+        problem: FitProblem = event["problem"]
         chisq = nice(problem.chisq(nllf=event["value"]))
         problem.setp(event["point"])  # setp calls model_update
         state.problem.fitProblem = problem
@@ -981,8 +980,6 @@ async def log(message: str, title: Optional[str] = None):
 
 @register
 async def get_data_plot(model_indices: Optional[List[int]] = None):
-    from bumps.fitproblem import fitness_chisq_str
-
     if state.problem is None or state.problem.fitProblem is None:
         return None
     fitProblem = deepcopy(state.problem.fitProblem)
@@ -1160,8 +1157,8 @@ async def get_model():
 class WebviewPlotFunction(Protocol):
     def __call__(
         self,
-        model: bumps.fitproblem.Fitness,
-        problem: bumps.fitproblem.FitProblem,
+        model: Fitness,
+        problem: FitProblem,
         state: Optional[MCMCDraw] = None,
         n_samples: Optional[int] = None,
     ) -> dict: ...
@@ -1300,8 +1297,6 @@ def _get_correlation_plot(
     vars=None,
     timestamp: str = "",
 ):
-    from .corrplot import Corr2d
-
     fit_state = state.fitting.fit_state
 
     if hasattr(fit_state, "draw"):
@@ -1348,7 +1343,7 @@ def _get_uncertainty_plot(timestamp: str = "", cbar_colors: int = 8):
         logger.info(f"queueing new uncertainty plot... {start_time}")
         draw = fit_state.draw()
         nbins = max(min(draw.points.shape[0] // 20000, 100), 30)
-        stats = bumps.dream.stats.var_stats(draw)
+        stats = var_stats(draw)
         fig = plot_vars(draw, stats, nbins=nbins, cbar_colors=cbar_colors)
         logger.info(f"time to draw uncertainty plot: {time.time() - start_time}")
         return to_json_compatible_dict(fig)
@@ -1376,12 +1371,12 @@ async def get_model_uncertainty_plot():
 
     start_time = time.time()
     logger.info(f"queueing new model uncertainty plot... {start_time}")
-    points = bumps.errplot.error_points_from_state(fit_state)
-    errs = bumps.errplot.calc_errors(fitProblem, points)
+    points = errplot.error_points_from_state(fit_state)
+    errs = errplot.calc_errors(fitProblem, points)
     logger.info(f"errors calculated: {time.time() - start_time}")
     with push_mpl_backend("agg"):
         fig = plt.figure()
-        bumps.errplot.show_errors(errs, fig=fig)
+        errplot.show_errors(errs, fig=fig)
         logger.info(f"time to render but not serialize... {time.time() - start_time}")
         fig.canvas.draw()
         dfig = mpld3.fig_to_dict(fig)
@@ -1680,6 +1675,7 @@ def nice(v, digits=4):
 
 
 JSON_TYPE = Union[str, float, bool, None, Sequence["JSON_TYPE"], Mapping[str, "JSON_TYPE"]]
+"""Type union of a JSON compatible python structure"""
 
 
 def to_json_compatible_dict(obj) -> JSON_TYPE:

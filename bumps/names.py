@@ -44,8 +44,8 @@ Problem definition functions:
 Jupyter notebook functions:
 
 - Simple fitter: :func:`bumps.fitters.fit`, :func:`bumps.fitters.plot_convergence`
-- Webview server: `bumps.webview.server.webserver.start_bumps`,
-  `bumps.webview.server.webserver.display_bumps`
+- Webview server: `bumps.webview.webserver.start_bumps`,
+  `bumps.webview.server.display_bumps`
 - MCMC save/load: :func:`bumps.fitters.load_session`,
   :func:`bumps.fitters.load_fit_from_session`,
   :func:`bumps.fitters.load_fit_from_export`
@@ -87,7 +87,7 @@ from .fitproblem import FitProblem, Fitness
 # from .util import relative_import
 
 # === jupyter notebook support ===
-from .webview.server.webserver import start_bumps, display_bumps
+from .webview.webserver import start_bumps, display_bumps
 from .fitproblem import load_problem, load_pars
 from .fitters import (
     fit,
@@ -101,7 +101,7 @@ from .fitters import (
     help,
     save_fit,
 )
-from .webview.server.api import (
+from .api import (
     set_problem,
     start_fit_thread,
     wait_for_fit_complete,

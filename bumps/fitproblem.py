@@ -200,6 +200,7 @@ def fitness_show_parameters(fitness: Fitness, subs: util.Optional[util.Dict[util
 
 
 FitnessType = TypeVar("FitnessType", bound=Fitness)
+""":class:`Fitness` interface"""
 
 
 class CovarianceMixin:
@@ -882,7 +883,7 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
             if backend is None:
                 continue
 
-            # TODO: duplicated in bumps.webserver.server.api._get_data_plot_mpl()
+            # TODO: duplicated in bumps.api._get_data_plot_mpl()
             if self.num_models > 1:
                 chisq_str = fitness_chisq_str(f)
                 chisq = f"χ² = {chisq_str}; overall {overall_chisq_str}"
@@ -1085,7 +1086,7 @@ def load_problem(path: Path | str, args: list[str] | None = None):
     *args* are any additional arguments to the model.  The sys.argv
     variable will be set such that *sys.argv[1:] == model_options*.
     """
-    from .webview.server.state_hdf5_backed import SERIALIZER_EXTENSIONS, deserialize_problem_bytes
+    from .state import SERIALIZER_EXTENSIONS, deserialize_problem_bytes
 
     path = Path(path)
     table = {f".{ext}": method for method, ext in SERIALIZER_EXTENSIONS.items()}

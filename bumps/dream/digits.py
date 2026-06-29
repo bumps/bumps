@@ -30,7 +30,7 @@ using a Monte Carlo method (No. JCGM 101:2008). Geneva, Switzerland.
 """
 THINGS TO DO:
 - actually useful display of information in output
-- an effective, fast, online version to use as a stoping crit
+- an effective, fast, online version to use as a stopping crit
 - use as a method to guess how many more samples:
     - provides estimate of sd of sampling distribution of statistic
     - sd of stat for n samples = sd for k samples / sqrt(n/k - 1)
@@ -200,12 +200,12 @@ class FastJackknife(object):
 
 def n_dig(sx, sd):
     """
-    Converts standard deviation to # of significand digits.
+    Converts standard deviation to # of significant digits.
 
     *sx* is standard deviation of the statistic
     *sd* is standard deviation of the sample
 
-    Adapted from section 7.9.2 of gum suppliment 1
+    Adapted from section 7.9.2 of gum supplement 1
     """
     l = np.log10(4 * sx)
     return np.floor(np.log10(sd)) - l + 1  # return as float or round now?
