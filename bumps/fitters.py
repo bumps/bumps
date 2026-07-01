@@ -944,7 +944,7 @@ class DreamFit(FitBase):
             monitors(step=step, point=x, value=-fx, population_points=pop, population_values=-logp)
             return True
 
-        if self.state is not None and hasattr(self.state, "labels"):
+        if self.state is not None:
             # Number of chains can't change on resume, so ignore pop option and
             # use the existing chain count (negative pop = absolute count in generate).
             population = initpop.generate(self.problem, init=options["init"], pop=-self.state.Npop)
