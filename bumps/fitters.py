@@ -944,7 +944,7 @@ class DreamFit(FitBase):
             monitors(step=step, point=x, value=-fx, population_points=pop, population_values=-logp)
             return True
 
-        if self.state is not None and hasattr(self.state, "labels"):
+        if self.state is not None:
             # Number of chains can't change on resume, so ignore pop option and
             # use the existing chain count (negative pop = absolute count in generate).
             population = initpop.generate(self.problem, init=options["init"], pop=-self.state.Npop)
@@ -1722,7 +1722,7 @@ def show_results(problem, results: OptimizeResult):
 
 def show_table(problem, results):
     print(f"Fit results for {problem.name or 'problem'}: χ² = {problem.chisq_str()}")
-    if results.state:
+    if hasattr(results.state, "draw"):
         from bumps.dream.stats import var_stats, format_vars
 
         draw = results.state.draw()
@@ -1764,7 +1764,7 @@ def _build_fit_result(problem, webview_fit):
     # Don't know how many steps in current fit or total after resume, except
     # if the information happens to be stored in state
     fit_state = webview_fit.fit_state
-    steps = fit_state.total_generations if fit_state is not None else 0
+    steps = getattr(fit_state, "total_generations", 0)
     results = OptimizeResult(
         x=x,
         fun=fx,

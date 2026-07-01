@@ -608,6 +608,9 @@ def export_fit(
                 fit_state.show(figfile=output_pathstr)
             fit_state.save(output_pathstr)
 
+        # TODO: draw from covariance matrix if we don't have an MC sample
+        # Only proceed with uncertainty plots if we can draw from the state
+        if hasattr(fit_state, "draw"):
             # TODO: duplicates code in fitters.DreamFit.error_plot
             # TODO: refactor to separate calculation from display
             # TODO: share calc_errors result with get_model_uncertainty_plot
