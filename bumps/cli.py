@@ -819,7 +819,7 @@ def interpret_fit_options(options: BumpsOptions):
             problem, state = api.state.problem.fitProblem, api.state.fitting.fit_state
             x = problem.getp()
             # TODO: Should we show the estimates from derivatives even when running dream?
-            if state is None:
+            if state is None or not hasattr(state, "draw"):
                 cov = problem.cov(x)
                 vstats = None
                 dx = stderr(cov)
