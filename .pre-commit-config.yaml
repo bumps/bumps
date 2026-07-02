@@ -57,6 +57,7 @@ repos:
         exclude: |
           bumps/dream/random123
           bumps/webview/client/src
+          bumps/webview/client.pyi
           extra/platform_scripts
   - repo: local
     hooks:
