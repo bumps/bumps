@@ -1,4 +1,36 @@
 #!/usr/bin/env python3
+"""
+Generate a .pyi file for a module.
+
+Usage:
+
+    python extra/mod_stubs.py bumps.webview.client
+
+This creates bumps/webview/client.pyi with stubs for each interface in bumps.webview.client.
+
+These stubs are used by your editor for type checking and autocompletion. They are required
+when the module in question has dynamically generated symbols. For example, the BumpsClient
+class provides client-side proxies for the RPC methods defined in bumps.api. This are too
+difficult to synchronize manually, but adding a pre-commit hook to .pre-commit-config.yaml
+makes it automatic::
+
+    repos:
+      - repo: local
+        hooks:
+        - id: generate-client-stubs
+            name: Generate bumps.webview.client stubs
+            # Run the generator and then stage the .pyi file.
+            entry: >
+            bash -c '
+                python extra/mod_stubs.py bumps.webview.client &&
+                git add bumps/webview/client.pyi
+            '
+            language: system # use the host’s Python / Git
+            # Trigger when either bumps/api.py or bumps/webview/client.py changes
+            files: ^bumps/(api\.py|webview/client\.py)$
+            stages: [commit] # default – runs on every commit
+
+"""
 
 import inspect
 import importlib
