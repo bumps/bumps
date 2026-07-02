@@ -66,6 +66,34 @@ else:  # CRUFT: Python 3.8‑3.10
             return getattr(ann, "__name__", "Any")
 
 
+def _param_to_stub(p: inspect.Parameter) -> str:
+    """
+    Convert a single `inspect.Parameter` into the string that belongs in a .pyi.
+    Handles normal, *args, **kwargs, keyword-only and positional-only.
+    """
+    # 1️⃣  Determine the prefix (`*` or `**`) based on the kind.
+    prefix = ""
+    if p.kind == inspect.Parameter.VAR_POSITIONAL:  # *args
+        prefix = "*"
+    elif p.kind == inspect.Parameter.VAR_KEYWORD:  # **kwargs
+        prefix = "**"
+
+    # 2️⃣  Annotation (fallback to Any)
+    ann = _annotation_to_str(p.annotation)
+
+    # 3️⃣  Default value, if any
+    default_part = ""
+    if p.default is not inspect.Parameter.empty:
+        # Render strings as quoted literals; otherwise use repr().
+        if isinstance(p.default, str):
+            default_part = f' = "{p.default}"'
+        else:
+            default_part = f" = {repr(p.default)}"
+
+    # 4️⃣  Assemble the piece
+    return f"{prefix}{p.name}: {ann}{default_part}"
+
+
 def generate_pyi(module):
     """
     Generate a .pyi stub for *module* where every annotation is rendered
@@ -73,7 +101,7 @@ def generate_pyi(module):
     """
     lines = [
         "import typing",
-        "from typing import Any",
+        "from typing import Any, NoneType",
         "",
     ]
 
@@ -106,14 +134,7 @@ def generate_pyi(module):
                     # Drop the implicit ``self`` for instance methods
                     if i == 0 and p_name == "self":
                         continue
-
-                    ann = _annotation_to_str(p.annotation)
-                    # Preserve defaults when they exist (simple literals only)
-                    if p.default is not inspect.Parameter.empty:
-                        default_repr = f'"{p.default}"' if isinstance(p.default, str) else repr(p.default)
-                        params.append(f"{p_name}: {ann} = {default_repr}")
-                    else:
-                        params.append(f"{p_name}: {ann}")
+                    params.append(_param_to_stub(p))
 
                 ret_ann = _annotation_to_str(sig.return_annotation)
 
@@ -128,15 +149,7 @@ def generate_pyi(module):
             prefix = "async " if inspect.iscoroutinefunction(obj) else ""
             sig = inspect.signature(obj)
 
-            params = []
-            for p_name, p in sig.parameters.items():
-                ann = _annotation_to_str(p.annotation)
-                if p.default is not inspect.Parameter.empty:
-                    default_repr = f'"{p.default}"' if isinstance(p.default, str) else repr(p.default)
-                    params.append(f"{p_name}: {ann} = {default_repr}")
-                else:
-                    params.append(f"{p_name}: {ann}")
-
+            params = [_param_to_stub(p) for p in sig.parameters.values()]
             ret_ann = _annotation_to_str(sig.return_annotation)
 
             func_doc = inspect.getdoc(obj) or ""

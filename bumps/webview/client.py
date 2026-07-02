@@ -1,20 +1,34 @@
 """
 Remote bumps api access.
 
-Usage::
+:class:`BumpsClient` is the proxy for the remote API.
+
+:func:`remote_bumps` is a context manager for the bumps connection.
+
+Example::
 
     import bumps.names as bp
+    import json
 
-    client = bp.remote_bumps(url=...)
-    client.set_fit_problem(problem)
-    ...
-    client.disconnect()
+    dream_options = {"samples": 5000, "burn": 1000, "alpha":0.05, "pop": 8, "thin": 1, "init": "lhs"}
+
+    problem = ... define problem ...
+    problem_str = json.dumps(bp.serialize(problem))
+    async with bp.remote_bumps(session='/tmp/test.h5') as client:
+        client = cast(bp.BumpsClient, client) # Shouldn't be necessary
+        await client.set_serialized_problem(serialized=packet, new_model=True)
+        await client.start_fit_thread("dream", dream_options, resume=False)
+        await client.wait_for_fit(timeout=60)
+
+Results of the fit will be appended to the session file stored in /tmp/test.h5.
 """
 
 import asyncio
+import contextlib
 import inspect
 import json
 import socketio
+from typing import AsyncGenerator
 
 from bumps.api import REGISTRY
 
@@ -40,13 +54,13 @@ class BumpsClient:
 
     async def connect(self) -> None:
         """
-        Connect to the client.
+        Connect to the server.
         """
         await self._sio.connect(self.url)
         print(f"Connected to {self.url}")
 
     async def disconnect(self) -> None:
-        """Disconnect from client."""
+        """Disconnect from server."""
         await self._sio.disconnect()
 
     async def __aenter__(self):
@@ -145,18 +159,38 @@ def _populate_client_api() -> None:
 _populate_client_api()
 
 
-async def remote_bumps(url: str | None = None) -> BumpsClient:
+@contextlib.asynccontextmanager
+async def remote_bumps(url: str | None = None, **kwargs) -> AsyncGenerator[BumpsClient, None]:
     """
     Open a client connection to a remote bumps server.
 
-    If *url* is not provided then start a new bumps server.
+    This is an async context manager used as:
+
+        async with bp.remote_bumps(...) as client:
+            client = cast(bp.BumpsClient, client)
+            ...
+
+    If *url* is provided then connect to a remote server within the context. Note that
+    the server provides only one context.  If different clients sending jobs to the
+    server at the same time will cause conflicts.
+
+    If no *url* is provided then start a new bumps server. Any additional *key=value*
+    pairs as options to the :func:`bumps.webview.server.start_bumps` command
+    (see :class:`bumps.cli.BumpsOptions` for details). On exit, the server is shut
+    down and the connection closed.
+
     """
     if url is None:
         from .webserver import start_bumps, get_server_url
 
-        await start_bumps()
+        await start_bumps(**kwargs)
         url = get_server_url()
 
     client = BumpsClient(url)
     await client.connect()
-    return client
+    yield client
+
+    if url is None:
+        await client.shutdown()
+
+    await client.disconnect()
