@@ -20,7 +20,7 @@ from . import initpop
 from . import lsqerror
 
 from .history import History
-from .util import NDArray, format_duration, format_uncertainty, redirect_console
+from .util import NDArray, format_duration, format_uncertainty, redirect_console, use_markdown
 
 # For typing
 from typing import TYPE_CHECKING, List, Tuple, Dict, Any, Optional
@@ -1598,7 +1598,7 @@ plt.legend()
         pages["fit"] = f"Options for fit(problem, ...):\n{options_help(fit_only=True)}"
 
     src = "\n".join(pages[p] for p in shown)
-    if "ipykernel" in sys.modules:
+    if use_markdown():
         display(Markdown(src))
     else:
         print(src)
