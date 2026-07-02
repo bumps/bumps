@@ -55,6 +55,7 @@ async def index(request):
     )
 
 
+# Note: importlib.reload(bumps.webview.webserver) will close any existing servers
 routes = app = sio = None
 
 
@@ -170,9 +171,12 @@ def init_web_app():
             await asyncio.sleep(0.1)
 
     async def _shutdown():
+        global routes, app, sio
+
         await disconnect_all_clients()
         logger.info("webserver shutdown tasks complete")
         await asyncio.sleep(0.1)
+        routes = app = sio = None
         raise web.GracefulExit()
 
     api._shutdown = _shutdown
@@ -459,12 +463,11 @@ def open_tab_link(single_panel=None) -> None:
         url += f"?single_panel={single_panel}"
 
     src = f"""
-[Open in Browser]({url})
-------------------------
+Click {url} to open webview in a browser.
 
-To open in a jupyter notebook cell use `bp.display_bumps()`.
+Enter `bp.display_bumps()` to open in a jupyter notebook cell.
 
-Type `bp.help()` for a list of useful notebook commands.
+Enter `bp.help()` for a list of useful notebook commands.
 """
     display(Markdown(src))
 
