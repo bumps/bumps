@@ -9,12 +9,14 @@ import os
 import socket
 from pathlib import Path
 from typing import Callable, Optional, Union, List, Any
+from copy import copy
 
 # TODO: circular import since cli.main() imports webserver imports cli
 from bumps import api
 from bumps import persistent_settings
 from bumps.cli import BumpsOptions, PREFERRED_PORT, interpret_fit_options
 from bumps.logger import logger, LOGLEVEL
+from bumps.util import use_markdown, jupyter_is_running
 
 mimetypes.add_type("text/css", ".css")
 mimetypes.add_type("text/html", ".html")
@@ -135,6 +137,7 @@ def init_web_app():
 
         return with_sid
 
+    # TODO: client does not get a response if the api call has an uncaught exception
     api.EMITTERS["socketio"] = sio.emit
     for name, action in api.REGISTRY.items():
         sio.on(name, handler=wrap_with_sid(action))
@@ -176,7 +179,17 @@ def init_web_app():
 
 
 def enable_convergence_kernel_heartbeat():
-    from comm import create_comm
+    """
+    The convergence heartbeat keeps a jupyter notebook active while a fit is running.
+
+    Without the heartbeat the notebook could stop before the fit is complete when running in
+    a jupyter hub environment with automatic timeouts.
+    """
+    try:
+        from comm import create_comm
+    except ImportError:
+        # No kernel heartbeat if jupyter is not installed
+        return
 
     comm = create_comm(target_name="heartbeat")
 
@@ -298,14 +311,11 @@ Open the following in a new tab after replacing <HOST> with the hostname in the 
 
 
 # User command
-def start_bumps(jupyter: bool = True, **options: dict[str, Any]):
+def start_bumps(**options: dict[str, Any]):
     """
     Start the webview server in a background asyncio.Task, and show the link to
     the webview in a Jupyter notebook. Note that the returned Task should be
     awaited in order to handle any exceptions that may occur during startup.
-
-    *jupyter* is True if starting from a jupyter notebook. Use jupyter=False from
-    within a script.
 
     *option=value, ...* provides server startup options.  These mostly correspond
     to the command line options shown on the command line by *bumps --help*. Unlike
@@ -315,19 +325,16 @@ def start_bumps(jupyter: bool = True, **options: dict[str, Any]):
     Options should include *session=filename.h5" to set the session file for the fit.
     This adds checkpointing to the fit and saves the results outside the notebook.
     That way the results are available even after the notebook is terminated.
+
+    Because we are sharing a global state object within the API only a single
+    instance of the server can be running within a process. If the server is already
+    running then *start_bumps* just reports the url but does nothing else. In particular,
+    options such as *session="newfile.h5"* are ignored. Therefore rerunning the
+    *start_bumps* cell in a webview notebook will not change state.
     """
     options = BumpsOptions(**options)
 
-    # TODO: can we check if the server is already running?
-    return asyncio.create_task(
-        start_app(
-            options=options,
-            jupyter_link=jupyter,
-            jupyter_heartbeat=jupyter,
-            # CRUFT: start_app interface takes loglevel separately
-            loglevel=options.loglevel,
-        )
-    )
+    return asyncio.create_task(start_app(options))
 
 
 async def start_app(
@@ -335,59 +342,70 @@ async def start_app(
     sock: socket.socket = None,
     jupyter_link: bool = False,
     jupyter_heartbeat: bool = False,
-    # CRUFT: loglevel is already in BumpsOptions
     loglevel: str = "warn",
 ):
     """
-    async variant of the :func:`start_bumps()` with a low level interface.
+    async variant of the :func:`start_bumps()`.
 
-    *options* are parsed bumps command line options.
+    The *options* parameter contains parsed bumps command line options. It can be set
+    directly using *BumpsOptions(option=value, ...)*, or from sys.args using
+    *cli.get_commandline_options()*. If *options=None* then use the default values.
 
-    *sock* is an existing connection to a URL. If None then a new connection is made
-    using host=0.0.0.0 if *options.external* else localhost. Port defaults to *options.port*,
-    but falls back to a random port if there is already a server running there. Use
-    *bumps.webview.webserver.get_server_url()* after starting to determine the running port.
+    When running in jupyter *options.headless* and *options.convergence_heartbeat* are set
+    to True.
 
-    *jupyter_link* is True if the link to the server should be displayed in the cell outputs.
-    *jupyter_heartbeat* should be set to True as well to keep the notebook open until the fit
-    is complete. Be sure to set a session file in options to save the results on completion.
+    *sock* is an existing connection to a URL. If None then a new connection is made. The
+    new connection will use *host=0.0.0.0* if *options.external* is true otherwise it will
+    use *localhost*. The port defaults to *options.port=5148*. If the port is in use, it
+    falls back to a random port. Call *bp.get_server_url()* to find the chosen host:port.
 
-    *loglevel* sets the logging level for the server. Default is "warn".
+    ** DEPRECATED ** *jupyter_link* and *jupyter_heartbeat* are now automatic.
+    *loglevel* is set in options.
     """
     from aiohttp import web
 
     if options is None:
         options = BumpsOptions()
-        options.loglevel = loglevel
 
-    # If this function is called from jupyter notebook then force headless
-    if jupyter_heartbeat:
+    # If this function is called from jupyter notebook then force headless and heartbeat
+    if jupyter_is_running():
+        options = copy(options)
         options.headless = True
         options.convergence_heartbeat = True
 
-    logger.setLevel(LOGLEVEL[options.loglevel])
-    init_web_app()
-    runsock = setup_app(options=options, sock=sock)
+    if not server_is_running():
+        # Setting loglevel inside the block so that we don't change it when
+        # the server is already running.
+        logger.setLevel(LOGLEVEL[options.loglevel])
 
-    # Assume we already have an event loop already running, so we don't
-    # need web.run_app() to manage it.
-    runner = web.AppRunner(app, handle_signals=False)
-    await runner.setup()
-    site = web.SockSite(runner, sock=runsock)
-    await site.start()
+        init_web_app()
+        runsock = setup_app(options=options, sock=sock)
 
-    if jupyter_link:
+        # Assume we already have an event loop already running, so we don't
+        # need web.run_app() to manage it.
+        runner = web.AppRunner(app, handle_signals=False)
+        await runner.setup()
+        site = web.SockSite(runner, sock=runsock)
+        await site.start()
+
+    if use_markdown():
         open_tab_link()
     else:
-        url = get_server_url()
-        print(f"webserver started: {url}")
+        print(f"webserver started: {get_server_url()}")
 
     return api
 
 
+def server_is_running():
+    """
+    Returns True if a webview server is already running.
+    """
+    return app is not None and getattr(api.state, "port", None) is not None
+
+
 def get_server_url():
     """
-    Determine the url of the running server.
+    Determine the url of the running webview server.
     """
     port = getattr(api.state, "port", None)
     if port is None:
