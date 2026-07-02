@@ -539,6 +539,55 @@ def build_arg_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def options_help(fit_only=False):
+    """
+    Return a markdown table documenting the attributes that BumpsOptions
+    receives from *parser*.
+    """
+    parser = build_arg_parser()
+
+    rows = []
+    # Header
+    rows.append("| option | description |")
+    rows.append("|--------|-------------|")
+
+    for action in parser._actions:
+        # Skip internal/help actions that don’t map to a BumpsOptions field
+        if not hasattr(action, "dest") or action.dest in {"help"}:
+            continue
+
+        # The dest is the attribute name in BumpsOptions
+        attr = action.dest
+
+        # Fit options are dumped into the fit_options dict, with
+        # destination `fit_options.key` targeting `fit_options["key"]`.
+        # If fit_only then only include documentation for fit options
+        # in the output, with attribute as `key` only.
+        if attr.startswith("fit_options."):
+            key = attr.split(".")[1]
+            attr = key if fit_only else f'fit_options["{key}"]'
+        elif fit_only:
+            continue
+
+        if action.const:
+            attr = f"{attr}={action.const}"
+
+        # Help text – the HelpFormatter already appends the default,
+        # but we want the raw help string (without the auto‑appended
+        # “(default: …)”) because we display the default ourselves.
+        help_text = action.help or ""
+
+        if "SUPPRESS" in help_text:
+            continue
+
+        # Make a one‑line description (collapse newlines)
+        help_text = " ".join(help_text.split())
+
+        rows.append(f"| `{attr}` | {help_text} |")
+
+    return "\n".join(rows)
+
+
 def get_commandline_options(arg_defaults: Optional[Dict] = None):
     """Parse bumps command line options."""
     parser = build_arg_parser()

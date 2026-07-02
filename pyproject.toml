@@ -60,6 +60,7 @@ build-backend = "setuptools.build_meta"
 line-length = 120
 extend-exclude = [
     "bumps/webview/client/*",
+    "bumps/webview/client.pyi",
     "doc/pylit.py",
     "extra/platform_scripts/*",
 ]

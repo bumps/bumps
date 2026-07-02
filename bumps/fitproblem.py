@@ -62,7 +62,7 @@ from scipy.stats import chi2
 
 from . import parameter, util
 from .parameter import to_dict, Parameter, Variable, tag_all, priors
-from .util import format_uncertainty
+from .util import format_uncertainty, jupyter_is_running
 
 
 # Abstract base class:
@@ -929,10 +929,7 @@ class FitProblem(Generic[FitnessType], CovarianceMixin):
                     # Try to guess whether we are in a jupyter notebook before deciding how
                     # to render the plot.
                     # TODO: gather all figures into one tab when rendering to the browser
-                    import sys
-
-                    jupyter = "ipykernel" in sys.modules
-                    renderer = None if jupyter else "browser"
+                    renderer = None if jupyter_is_running() else "browser"
                     fig.show(renderer)
                 continue
 
