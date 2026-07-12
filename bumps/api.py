@@ -835,7 +835,7 @@ async def set_fit_options(fitter_id: str, options: Dict[str, Any]):
     # TODO: do we need to update state.fitting.options as well?
     # state.fitting.options = current_options.copy()
     # items in state.shared are not deeply reactive, so we have to explicitly notify:
-    state.shared.notify("fitter_settings")
+    await state.shared.notify("fitter_settings")
 
 
 async def wait_for_fit_complete():
