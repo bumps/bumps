@@ -43,23 +43,25 @@ install directly into a python environment with pip.
 To avoid conflicts between python applications it is good practice to create
 a separate python environment for each one.
 
-We recommend using
-`miniforge <https://github.com/conda-forge/miniforge/releases/latest>`_.
-This installs a conda system with the "conda-forge" channel for packages.
-Versions are available for Windows, MacOS and Linux.
+The uv package from astral is a very fast python installer. To set it up following
+the instruction on `https://docs.astral.sh/uv/`_. Another options is a conda installer
+such as `miniforge <https://github.com/conda-forge/miniforge/releases/latest>`_.
 
-To create your environment and install bumps use::
+* temporary uv environment
+
+    uv run --with bumps bumps
+
+* permanent uv environment
+
+    uv venv path/to/bumps_env
+    source /path/to/bumps_env/bin/activate  # mac, unix
+    # /path/to/bumps_env/Scripts/activate.bat  % windows cmd [untested]
+    uv pip install bumps
+
+* conda environment
 
     conda create --name bumps python
     conda activate bumps
-    pip install bumps
-
-You could instead download Python directly from
-`Python.org <https://www.python.org/downloads/>`_.
-Again, recommended practice is to use an isolated python environment::
-
-    python -m venv bumps
-    . bumps/bin/activate
     pip install bumps
 
 Running bumps
@@ -92,26 +94,39 @@ Jupyter notebooks
 The webview interface can be run inside a Jupyter notebook. This allows you to interact with the server
 from within the notebook, providing a more integrated experience for users who are already working in a Jupyter environment.
 
-You will need to set up Jupyter. You can install jupyter into your bumps
-environment with pip and run the Jupyter server from there. If you are using
-JupyterHub, you can install and run ipykernel in your bumps environment to make
-it available::
+* start jupyter in a temporary uv environment
+
+    uv run --with jupyter,bumps jupyter lab
+
+* add jupyter to your permanent environment
+
+    pip install jupyter
+    jupyter lab
+
+* add bumps to your jupyter hub server
+
+If you are accessing jupyter through a remote JupyterHub server, you can start a terminal and
+create a permanent bumps environment using uv or conda. To register this environment with your
+hub server, active the environment and do the following::
 
     pip install ipykernel
     python -m ipykernel install --user --name bumps --display-name "bumps"
 
-If running on colab or similar, then you can install bumps from within a
-notebook cell using pip:
+Once you have jupyter running you will need to access bumps withing the notebook.
 
-    %pip install bumps
+Start with the following cell::
+
+    ## Uncomment the following to install bumps in your environment
+    # %pip install bumps
 
 To start webview, use the following code cell::
 
-    import asyncio
-    from bumps.webview.server import start_bumps_server, api
+    import bumps.names as bp
 
-    # Start the server
-    await start_bumps_server()
+    # Start the server, with options similar to the command line
+    await bp.start_bumps(fit="dream", ...)
+    # Show the webview interface
+    bp.display_bumps()
 
 A link to the server will be printed in the notebook output. You can open this link in a browser to access the server.
 
@@ -126,6 +141,18 @@ In a different cell you can define a problem and load it into the server using t
     problem = FitProblem([model])
     await api.set_problem(problem)
 
+You may need to work with an unreleased version of bumps, installed from a development branch
+on github. The install cell becomes a little more complicated in this case::
+
+    %pip install git+https://github.com/bumps/bumps@BRANCHNAME
+
+    # Check if nodejs is available; if not install it via the python nodeenv package
+    !npm -v
+    # %pip install nodeenv
+    # !nodeenv --prebuilt -p
+
+    # Build the webview client
+    !python -m bumps.webview.build_client
 
 Fast Stepper for DREAM on MPI
 =============================

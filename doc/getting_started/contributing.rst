@@ -73,37 +73,43 @@ This allows you to change the files in place and see the changes the next time
 you run the program. It also includes all the additional packages needed for
 building documentation and testing.
 
-To set up and install the developer version use::
-
-    cd bumps
-    conda create --name bumps-dev python
-    conda activate bumps-dev
-    pip install -e .[dev]
-
-This puts bumps and bumps-webview on your path while leaving the files in place.
-Any changes you do to the files will appear when you next run the program.
-
 The webview client uses modern web technologies such as TypeScript, Vue.js, and Plotly.
 These are pre-compiled and included with the python wheel for pip installs and also in the
 binary installers, but when running from source you will need to build the client package
 before starting the server.
 
-To install `nodejs` and build the client use::
+To set up and install the developer version [using conda]::
 
-    conda install nodejs
+    cd bumps
+    conda create --name bumps-dev python nodejs
+    conda activate bumps-dev
+    pip install -e .[dev]
     python -m bumps.webview.build_client
 
-This will download the necessary dependencies to build the client package and
-save it to the `bumps/webview/client/dist` directory.
-You need to run the `build_client` command whenever you change the javascript for the webview interface.
+To set up and install the developer version [using uv]::
+
+    cd bumps
+    uv sync
+    source .venv/bin/activate  # unix/mac command
+    #.venv/Scripts/activate.bat  % windows [untested]
+    # Check if node is available on your system; if not install it using nodeenv
+    npm -v
+    # uv pip install nodeenv
+    # nodeenv --prebuilt -p
+    python -m bumps.webview.build_client
+
+The `build_client`` command will download the necessary dependencies and build the client,
+saving it to the `bumps/webview/client/dist` directory. You need to run `uv sync` and
+`build_client` whenever you change the source in the `bumps/webview/client` directory.
 
 If you already have a python environment with the necessary dependencies and
 you don't want to install the package into your environment (for example,
 because you are testing out a fork in another source tree), then you can
 change to the bumps directory and run the package in place::
 
+    python -m bumps.webview.build_client
     python -m bumps --batch ... # for the command line interface
-    python -m bumps ... # for the webview interface
+x    python -m bumps ... # for the webview interface
 
 .. _docbuild:
 
