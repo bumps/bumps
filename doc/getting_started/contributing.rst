@@ -8,7 +8,7 @@ Contributing Changes
 
 
 The bumps package is a community project, and we welcome contributions from anyone.
-The package is developed collaboratively on `GitHub <https://github.com>`_ - if
+The package is developed collaboratively on `GitHub <https://github.com/bumps/bumps>`_ - if
 you don't have an account yet, you can sign up for free.
 For direct write access to the repository, it is required that your account have
 `two-factor authentication enabled <https://docs.github.com/en/authentication/securing-your-account-with-two-factor-authentication-2fa>`_.
@@ -19,51 +19,26 @@ for authentication.
 The best way to contribute to the bumps package is to work
 from a copy of the source tree in the revision control system.
 
-The bumps project is hosted on GitHub at:
-
-    https://github.com/bumps/bumps
-
-You will need the git source control software for your computer.  This can
-be downloaded from the `git page <http://www.git-scm.com/>`_, or you can use
-an integrated development environment (IDE) such as PyCharm or VS Code, which
-may have git built in.
-
+You will need the git source control software for your computer.  This is available
+for windows from `git-scm <http://www.git-scm.com/>`_. For MacOSX type "git" in a terminal
+and it will prompt you to install the command line developer tools.
 
 Getting the Code
 ================
 
 To get the code, you will need to clone the repository.  If you are planning
-on making only a few small changes, you can clone the repository directly,
-make the changes, document and test, then send a patch (see `Simple patches <#Simple-patches>`_ below).
+on making only a few small changes, you can clone the repository directly:
+
+.. code-block:: bash
+
+    git clone https://github.com/bumps/bumps
+    git clone --branch v1.14.0 https://github.com/DEShawResearch/random123.git bumps/dream/random123
+
+Make the changes, document and test, then send a patch (see `Simple patches <#Simple-patches>`_ below).
 
 If you are planning on making larger changes, you should fork the repository
 on GitHub, make the changes in your fork, then issue a pull request to the
 main repository (see `Larger changes <#Larger-changes>`_ below).
-
-.. note::
-
-    If you are working on a fork, the clone line is slightly different::
-
-        git clone https://github.com/YourGitHubAccount/bumps
-
-
-    You will also need to keep your fork up to date
-    with the main repository.  You can do this by adding the main repository
-    as a remote, fetching the changes, then merging them into your fork.
-
-    .. code-block:: bash
-
-        # Add the main repository as a remote
-        git remote add bumps
-
-        # Fetch the changes from the main repository
-        git fetch bumps
-
-        # Merge the changes into your fork
-        git merge bumps/master
-
-        # Push the changes to your fork
-        git push
 
 Run from source
 ===============
@@ -78,21 +53,28 @@ These are pre-compiled and included with the python wheel for pip installs and a
 binary installers, but when running from source you will need to build the client package
 before starting the server.
 
-To set up and install the developer version [using conda]::
+To set up and install the developer version [using conda]:
+
+.. code-block:: bash
 
     cd bumps
     conda create --name bumps-dev python nodejs
     conda activate bumps-dev
     pip install -e .[dev]
     python -m bumps.webview.build_client
+    python -m bumps.dream.build_compiled  # optional
 
-To set up and install the developer version [using uv]::
+To set up and install the developer version [using uv]:
+
+.. code-block:: bash
 
     cd bumps
     uv sync
     source .venv/bin/activate  # unix/mac command
     #.venv/Scripts/activate.bat  % windows [untested]
-    # Check if node is available on your system; if not install it using nodeenv
+    python -m bumps.dream.build_compiled  # optional
+
+    # Build the client. Use nodeenv if nodejs is not available.
     npm -v
     # uv pip install nodeenv
     # nodeenv --prebuilt -p
@@ -105,11 +87,13 @@ saving it to the `bumps/webview/client/dist` directory. You need to run `uv sync
 If you already have a python environment with the necessary dependencies and
 you don't want to install the package into your environment (for example,
 because you are testing out a fork in another source tree), then you can
-change to the bumps directory and run the package in place::
+change to the bumps directory and run the package in place:
+
+.. code-block:: bash
 
     python -m bumps.webview.build_client
     python -m bumps --batch ... # for the command line interface
-x    python -m bumps ... # for the webview interface
+    python -m bumps ... # for the webview interface
 
 .. _docbuild:
 
@@ -129,8 +113,7 @@ To build the documentation use::
 
 Windows users please note that this only works with a unix-like environment
 such as *gitbash*, *msys* or *cygwin*.  There is a skeleton *make.bat* in
-the directory that will work using the *cmd* console, but it doesn't yet
-build PDF files.
+the directory that will work using the *cmd* console, but it is unmaintained.
 
 You can see the result of the doc build by pointing your browser to::
 
@@ -141,7 +124,7 @@ ReStructured text format does not have a nice syntax for superscripts and
 subscripts.  Units such as |g/cm^3| are entered using macros such as
 \|g/cm^3| to hide the details.  The complete list of macros is available in
 
-        doc/sphinx/rst_prolog
+    doc/sphinx/rst_prolog
 
 In addition to macros for units, we also define cdot, angstrom and degrees
 unicode characters here.  The corresponding latex symbols are defined in
@@ -171,7 +154,7 @@ or via the convenience Makefile target::
     # or
     make test
 
-When all the tests run, create a patch and send it to paul.kienzle@nist.gov::
+When all the tests run create a patch and send it to paul.kienzle@nist.gov::
 
     git diff > patch
 
@@ -204,34 +187,42 @@ Larger changes
 For a larger set of changes, you should fork bumps on GitHub, and issue pull
 requests for each part.
 
-After you have tested your changes, you will need to push them to your GitHub
-fork::
+Test your changes before pushing them to your GitHub fork:
 
-    git commit -a -m "short sentence describing what the change is for"
-    git push
+.. code-block:: bash
+
+    pip install -e .[dev]
+    pytest
 
 Good commit messages are a bit of an art.  Ideally you should be able to
 read through the commit messages and create a "what's new" summary without
 looking at the actual code.
 
+.. code-block:: bash
+
+    git commit -a -m "short sentence describing what the change is for"
+
 Make sure your fork is up to date before issuing a pull request.  You can
-track updates to the original bumps package using::
+track updates to the original bumps package using:
+
+.. code-block:: bash
 
     git remote add bumps https://github.com/bumps/bumps
     git fetch bumps
     git merge bumps/master
     git push
 
+The continuous integration backend will run your changes on a range of operating
+systems and python versions.
+
 When making changes, you need to take care that they work on different
 versions of python. Using conda makes it convenient to maintain multiple independent
-environments. You can create a new environment for testing with, for example::
+environments. You can create a new environment for testing with, for example:
+
+.. code-block:: bash
 
     conda create -n py312 python=3.12
     conda activate py312
-    pip install -e .[dev]
-    pytest
-
-When all the tests pass, issue a pull request from your GitHub account.
 
 Please make sure that the documentation is up to date, and can be properly
 processed by the sphinx documentation system.  See `_docbuild` for details.
@@ -243,15 +234,17 @@ Building an installer (all platforms)
 To build a packed distribution for Windows, you will need to install
 conda-pack in your base conda environment.  If you don't already have
 a base interpreter, install that as well (e.g. on Windows) from
-conda-forge::
+conda-forge:
+
+.. code-block:: bash
 
     conda install -c conda-forge conda-pack bash
 
-Then you can build the packed distribution using::
+Then you can build the packed distribution in the dist directory using:
+
+.. code-block:: bash
 
     bash extra/build_conda_packed.sh
-
-This will create a packed distribution in the dist directory.
 
 Creating a New Release
 ======================

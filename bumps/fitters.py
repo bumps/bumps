@@ -1840,8 +1840,8 @@ def save_fit_result(problem, fit, filename):
     Save the :func:`fit_result_summary` of *fit* to *filename* as JSON,
     conventionally *<model>-fit.json* in the export directory.
 
-    *fit* may be an :class:`OptimizeResult` or a webview ``FitResult``; the
-    latter is converted to an :class:`OptimizeResult` for the summary.
+    *fit* may be an :class:`scipy.optimize.OptimizeResult` or a webview ``FitResult``; the
+    latter is converted to an ``OptimizeResult`` for the summary.
     """
     from .dream.stats import numpy_json
 

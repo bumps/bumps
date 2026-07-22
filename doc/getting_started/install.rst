@@ -44,14 +44,18 @@ To avoid conflicts between python applications it is good practice to create
 a separate python environment for each one.
 
 The uv package from astral is a very fast python installer. To set it up following
-the instruction on `https://docs.astral.sh/uv/`_. Another options is a conda installer
+the instruction on `<https://docs.astral.sh/uv/>`_. Another options is a conda installer
 such as `miniforge <https://github.com/conda-forge/miniforge/releases/latest>`_.
 
 * temporary uv environment
 
+.. code-block:: bash
+
     uv run --with bumps bumps
 
 * permanent uv environment
+
+.. code-block:: bash
 
     uv venv path/to/bumps_env
     source /path/to/bumps_env/bin/activate  # mac, unix
@@ -59,6 +63,8 @@ such as `miniforge <https://github.com/conda-forge/miniforge/releases/latest>`_.
     uv pip install bumps
 
 * conda environment
+
+.. code-block:: bash
 
     conda create --name bumps python
     conda activate bumps
@@ -71,20 +77,28 @@ Fitting problems in bumps are defined in python files or jupyter notebooks. You
 can retrieve the example *curve.py* model
 `here <https://github.com/bumps/bumps/blob/master/doc/examples/curvefit/curve.py>`_
 
-To run the webview interface with your problem showing in a browser window use::
+To run the webview interface with your problem showing in a browser window use:
+
+.. code-block:: bash
 
     bumps curve.py
 
-To run in batch mode with no interactive interface use::
+To run in batch mode with no interactive interface use:
+
+.. code-block:: bash
 
     bumps -b curve.py --session=fit.h5
 
 This runs a complete fit, appending the results to the session file T1.hdf. To later
-view the fit results use::
+view the fit results use:
+
+.. code-block:: bash
 
     bumps --session=fit.h5
 
-There are many command line options for controlling the fit. For a complete list use::
+There are many command line options for controlling the fit. For a complete list use:
+
+.. code-block:: bash
 
     bumps -h
 
@@ -96,9 +110,13 @@ from within the notebook, providing a more integrated experience for users who a
 
 * start jupyter in a temporary uv environment
 
+.. code-block:: bash
+
     uv run --with jupyter,bumps jupyter lab
 
 * add jupyter to your permanent environment
+
+.. code-block:: bash
 
     pip install jupyter
     jupyter lab
@@ -107,52 +125,63 @@ from within the notebook, providing a more integrated experience for users who a
 
 If you are accessing jupyter through a remote JupyterHub server, you can start a terminal and
 create a permanent bumps environment using uv or conda. To register this environment with your
-hub server, active the environment and do the following::
+hub server, active the environment and do the following:
+
+.. code-block:: bash
 
     pip install ipykernel
     python -m ipykernel install --user --name bumps --display-name "bumps"
 
 Once you have jupyter running you will need to access bumps withing the notebook.
 
-Start with the following cell::
+Start with an install cell which you can use in a temporary environment such as Google Colab::
 
     ## Uncomment the following to install bumps in your environment
     # %pip install bumps
 
-To start webview, use the following code cell::
+    ## Use the following when working with a branch from a github pull request
+    # %pip install git+https://github.com/bumps/bumps@BRANCHNAME
+    # !python -m bumps.webview.build_client
 
-    import bumps.names as bp
-
-    # Start the server, with options similar to the command line
-    await bp.start_bumps(fit="dream", ...)
-    # Show the webview interface
-    bp.display_bumps()
-
-A link to the server will be printed in the notebook output. You can open this link in a browser to access the server.
-
-In a different cell you can define a problem and load it into the server using the `api` module::
-
-    # Define a problem
-    from bumps.fitproblem import FitProblem
-
-    model = MyFitnessClass()
-    ...
-
-    problem = FitProblem([model])
-    await api.set_problem(problem)
-
-You may need to work with an unreleased version of bumps, installed from a development branch
-on github. The install cell becomes a little more complicated in this case::
-
-    %pip install git+https://github.com/bumps/bumps@BRANCHNAME
-
-    # Check if nodejs is available; if not install it via the python nodeenv package
-    !npm -v
+    ## If the client build fails it is probably because it can't find javascript.
     # %pip install nodeenv
     # !nodeenv --prebuilt -p
+    # !python -m bumps.webview.build_client
 
-    # Build the webview client
-    !python -m bumps.webview.build_client
+Next is an environment cell where you import your packages::
+
+    import bumps.names as bp
+    import matplotlib.pyplot as plt
+    %matplotlib inline
+
+    # Display the bumps cheat sheet
+    bp.help()
+
+To start webview, use the following code cell::
+
+    # Start the server and display webview
+    await bp.start_bumps()
+    bp.display_bumps()
+
+In a different cell you can define a problem and load it into webview. For example::
+
+    # data
+    x = [1, 2, 3, 4, 5, 6]
+    y = [2.1, 4.0, 6.3, 8.03, 9.6, 11.9]
+    dy = [0.05, 0.05, 0.2, 0.05, 0.2, 0.2]
+
+    # function
+    def line(x, m=1, b=0):
+        return m * x + b
+
+    # model = function + data
+    M = bp.Curve(line, x, y, dy, m=2, b=2)
+    M.m.range(0, 4)
+    M.b.range(-5, 5)
+
+    # Send the model to webview
+    problem = bp.FitProblem([M])
+    await bp.set_problem(problem)
 
 Fast Stepper for DREAM on MPI
 =============================
@@ -164,26 +193,36 @@ case, the DE stepper and the bounds check.  Compiling this in C with OpenMP
 allows us to scale to hundreds of nodes until the stepper again becomes a
 bottleneck.
 
-The following command should build the fast stepper binary module::
+The following command should build the fast stepper binary module:
+
+.. code-block:: bash
 
     python -m bumps.dream.build_compiled
 
-If you have installed from source, you must first check out the random123 library::
+If you have installed from source, you must first check out the random123 library:
+
+.. code-block:: bash
 
     git clone --branch v1.14.0 https://github.com/DEShawResearch/random123.git bumps/dream/random123
     python -m bumps.dream.build_compiled
 
 If this fails you can try running the compiler directly. First find the path
-to the bumps directory::
+to the bumps directory:
+
+.. code-block:: bash
 
     $ python -c "import bumps.dream; print(bumps.dream.__file__)"
     #path/to/bumps/dream/__init__.py
 
-Change into that directory and compile the module::
+Change into that directory and compile the module:
+
+.. code-block:: bash
 
     (cd path/to/bumps/dream && cc compiled.c -I ./random123/include/ -O2 -DMAX_THREADS=64 -fopenmp -shared -lm -o _compiled.so -fPIC)
 
-Note: clang doesn't support OpenMP, so on macOS use::
+Note: clang doesn't support OpenMP, so on macOS use:
+
+.. code-block:: bash
 
     (cd path/to/bumps/dream && cc compiled.c -I ./random123/include/ -O2 -DMAX_THREADS=64 -shared -lm -o _compiled.so -fPIC)
 
