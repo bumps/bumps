@@ -443,7 +443,7 @@ def display_bumps(width: Union[str, int] = "100%", height: Union[str, int] = 120
         # If running in a colab notebook then use the google colab proxy to display webview
         from google.colab import output
 
-        port = getattr(api.sate, "port", None)
+        port = getattr(api.state, "port", None)
         if port is None:
             raise ValueError("The web server has not been started.")
         path = "/" if single_panel else f"/?single_panel={single_panel}"
