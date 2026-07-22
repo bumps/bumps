@@ -446,7 +446,7 @@ def display_bumps(width: Union[str, int] = "100%", height: Union[str, int] = 120
         port = getattr(api.state, "port", None)
         if port is None:
             raise ValueError("The web server has not been started.")
-        path = "/" if single_panel else f"/?single_panel={single_panel}"
+        path = "/" if not single_panel else f"/?single_panel={single_panel}"
         # TODO: set cache_in_notebook=True if the displayed content should be cached in the
         # notebook for offline viewing.
         output.serve_kernel_port_as_iframe(port, path=path, width=width, height=height)
