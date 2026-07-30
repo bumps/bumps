@@ -7,16 +7,22 @@ problems.  It has a variety of optimization algorithms available for locating
 the most like value for function parameters given data, and for exploring
 the uncertainty around the minimum.
 
-Installation is with the usual python installation command::
+Installation is with the usual python installation command:
+
+.. code-block:: bash
 
     pip install bumps
 
-Once the system is installed, you can verify that it is working with::
+Once the system is installed, you can verify that it is working with:
+
+.. code-block:: bash
 
     bumps doc/examples/peaks/model.py --chisq
     bumps -h
 
-To start the GUI use::
+To start the webview interface use:
+
+.. code-block:: bash
 
     bumps
 
@@ -26,12 +32,22 @@ for details on recent changes.
 
 If a compiler is available, then significant speedup is possible for DREAM using::
 
+.. code-block:: bash
+
     python -m bumps.dream.build_compiled
 
 If you have installed from source, you must first check out the random123 library::
 
     git clone --branch v1.14.0 https://github.com/DEShawResearch/random123.git bumps/dream/random123
     python -m bumps.dream.build_compiled
+
+If you have installed from source you will need to build the webview client:
+
+.. code-block:: bash
+
+    pip install nodeenv  # if nodejs is unavailable
+    nodeenv --prebuilt -p  # then install it with nodeenv
+    python -m bumps.webview.build_client
 
 |CI| |RTD| |DOI|
 
