@@ -168,7 +168,7 @@ def decorate_histogram(vstats, axes):
 
     # Put the parameter label on the line with mean and best markers. Use the side without
     # the mean/best marker so that they don't overwrite each other.
-    if (vstats.mean - l95) / (h95 - l95) > 0.4 or (vstats.best - l95) / (h95 - l95) > 0.4:
+    if h95 == l95 or (vstats.mean - l95) / (h95 - l95) > 0.4 or (vstats.best - l95) / (h95 - l95) > 0.4:
         x, ha = 0.02, "left"
     else:
         x, ha = 0.98, "right"
