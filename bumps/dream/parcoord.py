@@ -81,7 +81,6 @@ def best_in_bin(x, value, bins=50, range=None, keep_empty=False):
     if (x == x[0]).all():
         x = value
 
-    print(x.shape, x.min(), x.max(), value.shape, value.min(), value.max())
     # Find the bin index for each coordinate value. This may put multiple
     # values in each bin, and some bins may be empty.
     if isinstance(bins, int):
