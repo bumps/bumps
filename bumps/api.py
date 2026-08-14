@@ -1415,7 +1415,7 @@ async def get_parameter_trace_plot(var: int):
         label = fit_state.labels[var]
         fig = plot_trace(
             genid,
-            chains[:, :, var],
+            chains[:, :, var].T,
             label=label,
             alpha=0.4,
         )
