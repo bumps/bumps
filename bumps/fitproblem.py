@@ -1084,7 +1084,7 @@ def load_problem(path: Path | str, args: list[str] | None = None):
     or a previously saved problem, serialized as .json, .cloudpickle, .pickle or .dill
 
     *args* are any additional arguments to the model.  The sys.argv
-    variable will be set such that *sys.argv[1:] == model_options*.
+    variable will be set such that *sys.argv[1:] == args*.
     """
     from .state import SERIALIZER_EXTENSIONS, deserialize_problem_bytes
 
