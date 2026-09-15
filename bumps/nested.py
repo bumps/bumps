@@ -162,7 +162,7 @@ def main():
 
     print(opts)
     print(opts.modelfile)
-    problem = load_problem(opts.modelfile[0], model_options=opts.modelopts)
+    problem = load_problem(opts.modelfile[0], args=opts.modelopts)
     if opts.pars:
         load_pars(problem, opts.pars)
     sampler = Sampler(problem, opts.export)

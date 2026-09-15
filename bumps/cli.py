@@ -951,7 +951,7 @@ def reload_export(
             raise ValueError(f"Model file has been modified. Copy {saved_model} into {modelfile.parent}")
 
         # Load the model script and the fitted values.
-        problem = load_problem(modelfile, model_options=args)
+        problem = load_problem(modelfile, args=args)
         load_pars(problem, parfile)
 
     # Load the MCMC files
