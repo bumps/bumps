@@ -157,8 +157,8 @@ def log_evidence(logls, betas, fburnin=0.1):
     isort = np.argsort(betas)
     betas = betas[isort]
     mean_logls = mean_logls[isort]
-    lnZ = np.trapz(mean_logls, betas)
-    lnZ2 = np.trapz(mean_logls[::2], betas[::2])
+    lnZ = np.trapezoid(mean_logls, betas)
+    lnZ2 = np.trapezoid(mean_logls[::2], betas[::2])
 
     return lnZ, np.abs(lnZ - lnZ2)
 
