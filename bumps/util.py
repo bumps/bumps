@@ -490,6 +490,17 @@ def format_duration_demo():
         print(f"{seconds:>12.3f}s → {format_duration(seconds)}")
 
 
+def use_markdown():
+    return jupyter_is_running()
+
+
+def jupyter_is_running():
+    """Returns True if the console supports display(Markdown(...))"""
+    import sys
+
+    return "ipykernel" in sys.modules
+
+
 if __name__ == "__main__":
     format_duration_demo()
     # test_format_uncertainty()
