@@ -69,7 +69,7 @@ To set up and install the developer version [using uv]:
 .. code-block:: bash
 
     cd bumps
-    uv sync
+    uv sync --extra dev
     source .venv/bin/activate  # unix/mac command
     #.venv/Scripts/activate.bat  % windows [untested]
     python -m bumps.dream.build_compiled  # optional
@@ -80,7 +80,7 @@ To set up and install the developer version [using uv]:
     # nodeenv --prebuilt -p
     python -m bumps.webview.build_client
 
-The `build_client`` command will download the necessary dependencies and build the client,
+The ``build_client`` command will download the necessary dependencies and build the client,
 saving it to the `bumps/webview/client/dist` directory. You need to run `uv sync` and
 `build_client` whenever you change the source in the `bumps/webview/client` directory.
 

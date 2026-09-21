@@ -43,8 +43,8 @@ install directly into a python environment with pip.
 To avoid conflicts between python applications it is good practice to create
 a separate python environment for each one.
 
-The uv package from astral is a very fast python installer. To set it up following
-the instruction on `<https://docs.astral.sh/uv/>`_. Another options is a conda installer
+The uv package from Astral is a very fast Python installer. To set it up, follow
+the instructions at `<https://docs.astral.sh/uv/>`_. Another option is a conda installer
 such as `miniforge <https://github.com/conda-forge/miniforge/releases/latest>`_.
 
 * temporary uv environment
@@ -58,8 +58,8 @@ such as `miniforge <https://github.com/conda-forge/miniforge/releases/latest>`_.
 .. code-block:: bash
 
     uv venv path/to/bumps_env
-    source /path/to/bumps_env/bin/activate  # mac, unix
-    # /path/to/bumps_env/Scripts/activate.bat  % windows cmd [untested]
+    source path/to/bumps_env/bin/activate  # mac, unix
+    # path/to/bumps_env/Scripts/activate.bat  % windows cmd [untested]
     uv pip install bumps
 
 * conda environment
@@ -125,14 +125,14 @@ from within the notebook, providing a more integrated experience for users who a
 
 If you are accessing jupyter through a remote JupyterHub server, you can start a terminal and
 create a permanent bumps environment using uv or conda. To register this environment with your
-hub server, active the environment and do the following:
+hub server, activate the environment and do the following:
 
 .. code-block:: bash
 
     pip install ipykernel
     python -m ipykernel install --user --name bumps --display-name "bumps"
 
-Once you have jupyter running you will need to access bumps withing the notebook.
+Once you have jupyter running you will need to access bumps within the notebook.
 
 Start with an install cell which you can use in a temporary environment such as Google Colab::
 

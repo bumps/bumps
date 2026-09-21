@@ -30,7 +30,7 @@ Documentation is available at `readthedocs <http://bumps.readthedocs.org>`_. See
 `CHANGES.rst <https://github.com/bumps/bumps/blob/master/CHANGES.rst>`_
 for details on recent changes.
 
-If a compiler is available, then significant speedup is possible for DREAM using::
+If a compiler is available, then significant speedup is possible for DREAM using:
 
 .. code-block:: bash
 
