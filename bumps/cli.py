@@ -819,12 +819,7 @@ def interpret_fit_options(options: BumpsOptions):
             problem, state = api.state.problem.fitProblem, api.state.fitting.fit_state
             x = problem.getp()
             # TODO: Should we show the estimates from derivatives even when running dream?
-            if state is None:
-                cov = problem.cov(x)
-                vstats = None
-                dx = stderr(cov)
-                S, dS = cov_entropy(cov), 0
-            else:
+            if hasattr(state, "draw"):
                 draw = state.draw()
                 # TODO: if there are derived variables then problem.show() doesn't work
                 # TODO: sample from whole population, not just the end, to reduce autocorrelation
@@ -835,6 +830,11 @@ def interpret_fit_options(options: BumpsOptions):
                 if show_entropy:
                     entropy_method = show_entropy
                     S, dS = state.entropy(method=entropy_method)
+            else:
+                cov = problem.cov(x)
+                vstats = None
+                dx = stderr(cov)
+                S, dS = cov_entropy(cov), 0
 
             if show_cov:
                 problem.show_cov(x, cov)
