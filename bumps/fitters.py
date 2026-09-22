@@ -1524,7 +1524,7 @@ problem, fitresult = bp.load_fit_from_export(path)   # load bumps MCMC files tha
         webview="""
 Webview functions:
 ```python
-await bp.start_bumps(session="results.h5", ...)      # start the webview server; see help("startup") for options
+await bp.start_bumps()                               # start the webview server; see help("startup") for options
 bp.display_bumps(height=600)                         # diplay webview in jupyter
 await bp.set_problem(problem)                        # send problem to webview
 await bp.start_fit_thread(options=options)           # start the webview fit thread
@@ -1840,8 +1840,8 @@ def save_fit_result(problem, fit, filename):
     Save the :func:`fit_result_summary` of *fit* to *filename* as JSON,
     conventionally *<model>-fit.json* in the export directory.
 
-    *fit* may be an :class:`OptimizeResult` or a webview ``FitResult``; the
-    latter is converted to an :class:`OptimizeResult` for the summary.
+    *fit* may be an :class:`scipy.optimize.OptimizeResult` or a webview ``FitResult``; the
+    latter is converted to an ``OptimizeResult`` for the summary.
     """
     from .dream.stats import numpy_json
 

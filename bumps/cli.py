@@ -543,6 +543,12 @@ def options_help(fit_only=False):
     """
     Return a markdown table documenting the attributes that BumpsOptions
     receives from *parser*.
+
+    If *fit_only* then we are showing help for the bp.fit() method, which
+    takes fit options as key=value pairs, and doesn't take the rest of the
+    options. When not *fit_only* we are showing help for bp.start_bumps().
+    Here we show all the startup options, with the fit options collected
+    in a fit_options dictionary.
     """
     parser = build_arg_parser()
 
@@ -551,6 +557,11 @@ def options_help(fit_only=False):
     rows.append("| option | description |")
     rows.append("|--------|-------------|")
 
+    # Before the first fit option, add a row to the table saying that
+    # fit_options is a dictionary of fit options. Only do this when
+    # displaying the options for bp.start_bumps(). The fit options
+    # for bp.fit() are given as key=value pairs, not as a dictionary.
+    first_fit_options = not fit_only
     for action in parser._actions:
         # Skip internal/help actions that don’t map to a BumpsOptions field
         if not hasattr(action, "dest") or action.dest in {"help"}:
@@ -564,9 +575,13 @@ def options_help(fit_only=False):
         # If fit_only then only include documentation for fit options
         # in the output, with attribute as `key` only.
         if attr.startswith("fit_options."):
+            if first_fit_options:
+                rows.append("| `fit_options` | Dictionary of fitting controls |")
+                first_fit_options = False
             key = attr.split(".")[1]
             attr = key if fit_only else f'fit_options["{key}"]'
         elif fit_only:
+            # Skip non-fit options when showing bp.fit() help.
             continue
 
         if action.const:
