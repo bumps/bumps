@@ -89,7 +89,7 @@ To run in batch mode with no interactive interface use:
 
     bumps -b curve.py --session=fit.h5
 
-This runs a complete fit, appending the results to the session file T1.hdf. To later
+This runs a complete fit, appending the results to the session file fit.h5. To later
 view the fit results use:
 
 .. code-block:: bash
