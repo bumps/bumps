@@ -764,7 +764,7 @@ def interpret_fit_options(options: BumpsOptions):
                 problem = api.state.problem.fitProblem
             else:
                 problem = None
-            if using_mpi() or options.mpi:
+            if options.mpi or (options.mpi is None and using_mpi()):
                 # print("Starting with MPI mapper")
                 mapper = MPIMapper
             elif options.parallel == 1:
