@@ -158,11 +158,14 @@ class BumpsOptions:
         return not self.info_only()
 
     def use_mpi(self):
-        from bumps.mapper import using_mpi
-
+        # bumps.mapper.using_mpi() is unreliable --- there is no way to tell if
+        # the program was launched via mpirun or as a standalone application.
+        # from bumps.mapper import using_mpi
+        # is_mpi = (self.mpi or (self.mpi is None and using_mpi()))
+        is_mpi = self.mpi
         # Note: if we aren't using the mpi mapper the mpi initialization will
         # not be called even if the program was started using mpiexec or mpirun.
-        return self.need_mapper() and self.parallel != 1 and (self.mpi or (self.mpi is None and using_mpi()))
+        return self.need_mapper() and self.parallel != 1 and is_mpi
 
     def autostart(self):
         return not self.use_webview() or self.mode in ("start", "run") or self.resume
@@ -467,7 +470,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     misc.add_argument(
         "--mpi",
         action=argparse.BooleanOptionalAction,
-        help="Use MPI for parallelization (only needed if we fail to detect MPI correctly)",
+        help=f"Use MPI for parallelization (mpirun {prog} --mpi ...)",
     )
     misc.add_argument(
         "--trace",
