@@ -27,8 +27,9 @@ import asyncio
 import contextlib
 import inspect
 import json
+from collections.abc import AsyncGenerator
+
 import socketio
-from typing import AsyncGenerator
 
 from bumps.api import REGISTRY
 
