@@ -246,7 +246,8 @@ SERVER_OPTIONS = {
 SERVER_PACKAGE = "bumps.webview"
 SERVER_MODULES = [
     ("build_client", "Manage the javascript client build"),
-    ("webserver", "Manage communication with web and jupyter"),
+    ("webserver", "Bumps server for webview and RPC"),
+    ("client", "Python client for the bumps server"),
 ]
 
 PLOTS_OPTIONS = {

@@ -57,7 +57,22 @@ repos:
         exclude: |
           bumps/dream/random123
           bumps/webview/client/src
+          bumps/webview/client.pyi
           extra/platform_scripts
+  - repo: local
+    hooks:
+      - id: generate-client-stubs
+        name: Generate bumps.webview.client stubs
+        # Run the generator and then stage the .pyi file.
+        entry: >
+          bash -c '
+            python extra/mod_stubs.py bumps.webview.client &&
+            git add bumps/webview/client.pyi
+          '
+        language: system # use the host’s Python / Git
+        # Trigger when either bumps/api.py or bumps/webview/client.py changes
+        files: ^bumps/(api\.py|webview/client\.py)$
+        stages: [commit] # default – runs on every commit
 
 ci:
   autoupdate_schedule: monthly
