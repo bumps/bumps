@@ -560,7 +560,9 @@ class Bounded(Bounds):
 
     def get01(self, x):
         lo, hi = self.limits
-        # TODO: check hi > lo during constructor
+        if lo >= hi:
+            # Return 50th percentile for all values if width is zero
+            return 0.5
         return clip(float(x - lo) / (hi - lo), 0, 1)
 
     def put01(self, v):

@@ -101,9 +101,9 @@ def plot_var(fig: "go.Figure", draw: "Draw", vstats: "VarStats", var: int, cbar_
         showscale=showscale,
         subplot=subplot,
     )
-
-    fig["data"].extend(traces)
-    _decorate_histogram(vstats, fig, subplot=subplot)
+    if traces is not None:
+        fig["data"].extend(traces)
+        _decorate_histogram(vstats, fig, subplot=subplot)
 
 
 def _decorate_histogram(vstats: "VarStats", fig: dict, subplot: int = 1):
@@ -187,6 +187,10 @@ def _decorate_histogram(vstats: "VarStats", fig: dict, subplot: int = 1):
 
 def _make_logp_histogram(values, logp, nbins, ci, weights, idx, cbar_edges, showscale=False, subplot=None):
     from numpy import ones_like, searchsorted, linspace, cumsum, diff, unique, argsort, array, hstack, exp
+
+    # TODO: what to do when the posterior width is zero?
+    if ci[0] == ci[1]:
+        return
 
     if weights is None:
         weights = ones_like(logp)
